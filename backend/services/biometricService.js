@@ -8,9 +8,6 @@ const BAUD_RATE = 9600; // Match Arduino code
 
 export const initBiometrics = async () => {
   try {
-    // Auto-detect Arduino (this is a bit naive, usually look for specific manufacturer or ask user)
-    // For now, we'll list ports and pick the first COM port that looks like an Arduino or just the first one.
-    // In production, put this in .env
     const ports = await SerialPort.list();
     const arduinoPort = ports.find(p => p.manufacturer?.includes('Arduino') || p.path.includes('USB'));
     
@@ -67,11 +64,13 @@ export const initBiometrics = async () => {
 
 const processBiometricData = async (data) => {
   console.log('Processing Biometric Data:', data);
-  const { action, fingerprint_id, employee_id, timestamp } = data;
+  const { action, fingerprint_id, employee_id } = data;
 
   try {
     if (action === 'ENROLL') {
-      // Map fingerprint ID to employee ID
+      // Link fingerprint ID to employee ID in DB
+      // We assume the 'startEnrollment' function has already sent the command to Arduino
+      // and Arduino is confirming success here.
       await db.query(
         `INSERT INTO fingerprints (fingerprint_id, employee_id) VALUES (?, ?) 
          ON DUPLICATE KEY UPDATE employee_id = ?`,
@@ -80,11 +79,6 @@ const processBiometricData = async (data) => {
       console.log(`Fingerprint ${fingerprint_id} linked to ${employee_id}`);
     } 
     else if (action === 'CHECK_IN' || action === 'CHECK_OUT') {
-      // Get employee_id from fingerprint_id if not provided (though Arduino sends it if mapped)
-      // The Arduino code sends employee_id, assuming it stored it during enroll.
-      // We should double check or rely on the Arduino's data.
-      // To be safe, let's query our DB map.
-      
       const [mapping] = await db.query("SELECT employee_id FROM fingerprints WHERE fingerprint_id = ?", [fingerprint_id]);
       
       if (mapping.length === 0 && !employee_id) {
@@ -107,9 +101,8 @@ const processBiometricData = async (data) => {
 
 const handleClockIn = async (employeeId) => {
   const date = new Date().toISOString().split('T')[0];
-  const now = new Date(); // Use server time for security, or convert timestamp if needed
+  const now = new Date();
   
-  // 1. Check if already clocked in
   const [existing] = await db.query(
     "SELECT * FROM daily_time_records WHERE employee_id = ? AND date = ?",
     [employeeId, date]
@@ -120,11 +113,9 @@ const handleClockIn = async (employeeId) => {
     return;
   }
 
-  // 2. Determine Status (Present vs Late)
   let status = 'Present';
   let lateMinutes = 0;
 
-  // Fetch Schedule
   const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   const dayName = days[now.getDay()];
   
@@ -135,7 +126,7 @@ const handleClockIn = async (employeeId) => {
 
   if (schedule.length > 0) {
     const startTime = new Date(`${date}T${schedule[0].start_time}`);
-    const gracePeriod = 15 * 60000; // 15 minutes in ms
+    const gracePeriod = 15 * 60000;
     
     if (now.getTime() > (startTime.getTime() + gracePeriod)) {
       status = 'Late';
@@ -143,7 +134,6 @@ const handleClockIn = async (employeeId) => {
     }
   }
 
-  // 3. Insert Record
   await db.query(
     `INSERT INTO daily_time_records 
     (employee_id, date, time_in, status, late_minutes) 
@@ -162,4 +152,19 @@ const handleClockOut = async (employeeId) => {
     [now, employeeId, date]
   );
   console.log(`Clock Out recorded for ${employeeId}`);
+};
+
+// Export function to send commands to Arduino
+export const sendCommandToDevice = (commandString) => {
+  if (port && port.isOpen) {
+    port.write(commandString + '\n', (err) => {
+      if (err) {
+        return console.log('Error on write: ', err.message);
+      }
+      console.log('Sent command to device:', commandString.trim());
+    });
+  } else {
+    console.log('Device not connected, cannot send command:', commandString);
+    throw new Error('Device not connected');
+  }
 };
