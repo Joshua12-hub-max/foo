@@ -1,0 +1,7 @@
+{
+  "name": "Test User",
+  "role": "employee",
+  "department": "IT",
+  "employeeId": "TEST002",
+  "password": "password123"
+}

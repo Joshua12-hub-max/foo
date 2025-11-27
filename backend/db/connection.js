@@ -15,6 +15,7 @@ const connectDB = async () => {
       connectionLimit: 10,
       queueLimit: 0
     });
+     
 
     // Test the connection
     await db.ping();

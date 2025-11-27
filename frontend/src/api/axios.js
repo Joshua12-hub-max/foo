@@ -4,8 +4,8 @@ const api = axios.create({
   baseURL: "http://localhost:5000/api",
   withCredentials: true,
   headers: {
-    'Content-Type': 'application/json'
-  }
+    "Content-Type": "application/json",
+  },
 });
 
 // Request interceptor - attach na token sa requests
@@ -19,7 +19,7 @@ api.interceptors.request.use(
   },
   (error) => {
     return Promise.reject(error);
-  }
+  },
 );
 
 // Response interceptor - handle token refresh    ito yung response interceptor wag gagalawin pls masisisra
@@ -34,7 +34,7 @@ api.interceptors.response.use(
 
       try {
         // Try to refresh the token
-        const refreshResponse = await api.post("/refresh");
+        const refreshResponse = await api.post("/auth/refresh");
         const newToken = refreshResponse.data.accessToken;
 
         // Save new token
@@ -62,7 +62,7 @@ api.interceptors.response.use(
     }
 
     return Promise.reject(error);
-  }
+  },
 );
 
 export default api;

@@ -1,7 +1,6 @@
 export const ITEMS_PER_PAGE = 10;
 
 export const TABLE_HEADERS = [
-  "Status",
   "Department",
   "Employee ID",
   "Employee Name",
@@ -14,11 +13,18 @@ export const TABLE_HEADERS = [
   "Leave Without Pay",
   "Work From Home",
   "Undertime",
+  "Overtime",
   "Time In",
+  "Lunch In",
+  "Lunch Out",
+  "Break In",
+  "Break Out",
   "Time Out",
+  "Half Day",
   "Total Hours",
   "Total Work",
-  "Remarks",
+  "Status",
+  "Notes",
 ];
 
 export const STATUS_STYLES = {

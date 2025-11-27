@@ -22,11 +22,6 @@ const AttendanceTable = ({ currentItems, debouncedSearchQuery, filters }) => {
             {currentItems.length ? (
               currentItems.map((item) => (
                 <tr key={item.id} className="hover:bg-[#34645c] transition-colors">
-                  <td className="px-6 py-4">
-                    <span className={`${getStatusBadge(item.status)} px-3 py-1 text-sm font-medium inline-block rounded-full`}>
-                      {item.status}
-                    </span>
-                  </td>
                   <td className="px-6 py-4 text-sm text-gray-800">{item.department}</td>
                   <td className="px-6 py-4 text-sm text-gray-800">{item.id}</td>
                   <td className="px-6 py-4 text-sm text-gray-800">{item.name}</td>
@@ -39,11 +34,22 @@ const AttendanceTable = ({ currentItems, debouncedSearchQuery, filters }) => {
                   <td className="px-6 py-4 text-sm text-gray-800">{item.leaveWithoutPay}</td>
                   <td className="px-6 py-4 text-sm text-gray-800">{item.workFromHome}</td>
                   <td className="px-6 py-4 text-sm text-gray-800">{item.undertime}</td>
+                  <td className="px-6 py-4 text-sm text-gray-800">{item.overtime}</td>
                   <td className="px-6 py-4 text-sm text-gray-800">{item.timeIn}</td>
+                  <td className="px-6 py-4 text-sm text-gray-800">{item.lunchIn}</td>
+                  <td className="px-6 py-4 text-sm text-gray-800">{item.lunchOut}</td>
+                  <td className="px-6 py-4 text-sm text-gray-800">{item.breakIn }</td>
+                  <td className="px-6 py-4 text-sm text-gray-800">{item.breakOut}</td>
                   <td className="px-6 py-4 text-sm text-gray-800">{item.timeOut}</td>
+                  <td className="px-6 py-4 text-sm text-gray-800">{item.halfDay}</td>
                   <td className="px-6 py-4 text-sm text-gray-800">{item.totalHours}</td>
                   <td className="px-6 py-4 text-sm text-gray-800">{item.totalWork}</td>
-                  <td className="px-6 py-4 text-sm text-gray-800">{item.remarks}</td>
+                  <td className="px-6 py-4">
+                      <span className={`${getStatusBadge(item.status)} px-3 py-1 text-sm font-medium inline-block rounded-full`}>
+                        {item.status}
+                      </span>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-800">{item.notes}</td>
                 </tr>
               ))
             ) : (

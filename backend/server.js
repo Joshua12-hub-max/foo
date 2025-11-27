@@ -2,7 +2,10 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import cookieParser from "cookie-parser";
+import helmet from 'helmet';
 import authRoutes from './routes/authRoutes.js';
+import userRoutes from './routes/userRoutes.js';
+
 
 //CRITICAL: Load .env file FIRST before anything else
 dotenv.config();
@@ -24,6 +27,9 @@ if (!process.env.JWT_SECRET || !process.env.REFRESH_SECRET) {
 }
 
 const app = express();
+
+// Set security HTTP headers
+app.use(helmet());
 
 // Allow multiple dev origins (e.g. Vite on 5173 and 5174) and keep cookie support
 const whitelist = ["http://localhost:5173", "http://localhost:5174"];
@@ -56,7 +62,9 @@ app.get("/", (req, res) => {
 });
 
 // API routes
-app.use("/api", authRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/users", userRoutes);
+
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -66,7 +74,7 @@ app.use((err, req, res, next) => {
     error: process.env.NODE_ENV === 'development' ? err.message : undefined
   });                               
 
-[]});
+});
 
 
 
@@ -74,5 +82,5 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`\nServer running on port ${PORT}`);
   console.log(`   http://localhost:${PORT}`);
-  console.log(`   Auth: http://localhost:${PORT}/api`);
+  console.log(`   Auth: http://localhost:${PORT}/api/auth`);
 });

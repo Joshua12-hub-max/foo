@@ -1,10 +1,16 @@
 import db from "../db/connection.js";
 import bcrypt from "bcryptjs";
 import { createAccessToken, createRefreshToken, verifyRefreshToken } from "../utils/token.js";
+import { validationResult } from 'express-validator';
 
 // ======================== REGISTER USER ========================
 export const registerUser = async (req, res) => {
-  const { name, role, employeeId, password } = req.body;
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+
+  const { name, role, employeeId, password, department } = req.body;
 
   try {
     // Check if employee already exists
@@ -20,10 +26,13 @@ export const registerUser = async (req, res) => {
     // Hash the password
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    // Normalize role to lowercase for consistency
+    const normalizedRole = role.toLowerCase();
+
     // Insert user securely (no visible password)
     await db.query(
-      "INSERT INTO attendance (employee_id, employee_name, role, password_hash, status, date) VALUES (?, ?, ?, ?, 'Active', CURDATE())",
-      [employeeId, name, role, hashedPassword]
+      "INSERT INTO attendance (employee_id, employee_name, role, department, password_hash, status, date) VALUES (?, ?, ?, ?, ?, 'Active', CURDATE())",
+      [employeeId, name, normalizedRole, department, hashedPassword]
     );
 
     res.status(201).json({ message: "Account created successfully!" });
@@ -35,12 +44,18 @@ export const registerUser = async (req, res) => {
 
 // ======================== LOGIN USER ========================
 export const loginUser = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+
   const { employeeId, password } = req.body;
 
   try {
     // Fetch user by employeeId (latest record for password check)
+    // Using ORDER BY id DESC to get the most recent record reliably
     const [rows] = await db.query(
-      "SELECT * FROM attendance WHERE employee_id = ? ORDER BY created_at DESC LIMIT 1",
+      "SELECT * FROM attendance WHERE employee_id = ? ORDER BY id DESC LIMIT 1",
       [employeeId]
     );
 
@@ -68,8 +83,8 @@ export const loginUser = async (req, res) => {
 
     if (todayRow.length === 0) {
       await db.query(
-        "INSERT INTO attendance (employee_id, employee_name, role, password_hash, status, date) VALUES (?, ?, ?, ?, 'Active', CURDATE())",
-        [user.employee_id, user.employee_name, user.role, user.password_hash]
+        "INSERT INTO attendance (employee_id, employee_name, role, department, password_hash, status, date) VALUES (?, ?, ?, ?, ?, 'Active', CURDATE())",
+        [user.employee_id, user.employee_name, user.role, user.department, user.password_hash]
       );
     }
 

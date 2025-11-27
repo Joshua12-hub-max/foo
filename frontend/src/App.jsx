@@ -53,12 +53,16 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 
   try {
     const user = JSON.parse(userStr);
-    if (allowedRoles && !allowedRoles.includes(user.role)) {
+    const userRole = user.role.toLowerCase();
+    // Normalize allowedRoles to lowercase for comparison
+    const normalizedAllowedRoles = allowedRoles ? allowedRoles.map(r => r.toLowerCase()) : [];
+
+    if (allowedRoles && !normalizedAllowedRoles.includes(userRole)) {
       console.log("ProtectedRoute: Unauthorized user role:", user.role);
-      if (user.role === "employee") {
+      if (userRole === "employee") {
         return <Navigate to="/employee-dashboard" replace />;
       }
-      if (user.role === "hr" || user.role === "admin") {
+      if (userRole === "hr" || userRole === "admin") {
         return <Navigate to="/admin-dashboard" replace />;
       }
       return <Navigate to="/login" replace />;
@@ -75,8 +79,9 @@ const PublicRoute = ({ children }) => {
   if (userStr) {
     try {
       const user = JSON.parse(userStr);
-      if (user.role === "employee") return <Navigate to="/employee-dashboard" replace />;
-      if (user.role === "admin" || user.role === "hr") return <Navigate to="/admin-dashboard" replace />;
+      const userRole = user.role.toLowerCase();
+      if (userRole === "employee") return <Navigate to="/employee-dashboard" replace />;
+      if (userRole === "admin" || userRole === "hr") return <Navigate to="/admin-dashboard" replace />;
     } catch (e) {
       // Invalid user, treat as logged out
     }

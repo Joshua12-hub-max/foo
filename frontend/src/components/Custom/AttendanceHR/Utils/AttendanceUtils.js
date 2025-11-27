@@ -3,12 +3,10 @@ import { STATUS_STYLES, TABLE_HEADERS } from '../Constants/AttendanceConstant';
 export const getStatusBadge = (status) => {
   return STATUS_STYLES[status] || "bg-gray-100 text-gray-800";
 };
-
 export const exportToCSV = (data, filename) => {
   const csvContent = [
     TABLE_HEADERS.join(','),
     ...data.map(row => [
-      row.status,
       row.department,
       row.id,
       row.name,
@@ -25,7 +23,8 @@ export const exportToCSV = (data, filename) => {
       row.timeOut,
       row.totalHours,
       row.totalWork,
-      row.remarks
+      row.status,
+      row.notes
     ].map(field => `"${String(field).replace(/"/g, '""')}"`).join(','))
   ].join('\n');
 
