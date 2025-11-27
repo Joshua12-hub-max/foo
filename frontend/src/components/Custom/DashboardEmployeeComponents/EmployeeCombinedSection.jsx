@@ -1,7 +1,8 @@
 import { useState, useCallback, useMemo, memo } from 'react';
-import { BarChart3, Bell, LayoutDashboard } from 'lucide-react';
-import { SystemPerformanceChart, PerformancePieChart, AnnouncementsList, EventsList } from "../../CustomUI";
-import { holidays } from "../../../utils/holidays";
+import { Calendar, Bell, LayoutDashboard } from 'lucide-react';
+import ScheduleSection from '../DashboardEmployeeComponents/ScheduleSection';
+import EventsAndHolidays from '../DashboardEmployeeComponents/EventsAndHolidays';
+import AnnouncementSection from '../DashboardEmployeeComponents/AnnouncementSection';
 
 // Memoized Tab Button Component
 const TabButton = memo(({ tab, isActive, isLoading, onClick }) => {
@@ -27,85 +28,34 @@ const TabButton = memo(({ tab, isActive, isLoading, onClick }) => {
 
 TabButton.displayName = 'TabButton';
 
-// Memoized Chart Card Component
-const ChartCard = memo(({ title, children, className = "" }) => (
+// Memoized Card Component
+const Card = memo(({ children, className = "" }) => (
   <div className={`bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-all duration-300 ${className}`}>
-    {title && (
-      <h4 className="text-lg font-semibold text-gray-800 mb-6 flex items-center gap-2">
-        <div className="w-1 h-6 bg-[#274b46] rounded-full"></div>
-        {title}
-      </h4>
-    )}
     {children}
   </div>
 ));
 
-ChartCard.displayName = 'ChartCard';
+Card.displayName = 'Card';
 
 // Memoized Loading Overlay
 const LoadingOverlay = memo(() => (
   <div className="absolute inset-0 flex items-center justify-center bg-white/60 backdrop-blur-[2px] rounded-2xl z-20 transition-all duration-300">
     <div className="flex flex-col items-center gap-3 bg-white p-6 rounded-2xl shadow-xl border border-gray-100">
       <div className="animate-spin rounded-full h-8 w-8 border-3 border-gray-100 border-t-blue-600"></div>
-      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Loading Data...</p>
+      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Loading...</p>
     </div>
   </div>
 ));
 
 LoadingOverlay.displayName = 'LoadingOverlay';
 
-export default function CombinedSection() {
-  const [activeTab, setActiveTab] = useState('charts');
+export default function EmployeeCombinedSection() {
+  const [activeTab, setActiveTab] = useState('schedule');
   const [isLoading, setIsLoading] = useState(false);
 
-  // Memoized static data
-  const attendanceData = useMemo(() => [
-    { label: "Present", value: 85, color: "#10B981" }, // Emerald
-    { label: "Absent", value: 10, color: "#EF4444" }, // Red
-    { label: "Late", value: 3, color: "#F59E0B" }, // Amber
-    { label: "On Leave", value: 2, color: "#3B82F6" }, // Blue
-  ], []);
-
-  const performanceData = useMemo(() => [
-    {
-      outstanding: 5,
-      exceedsExpectations: 25,
-      meetsExpectations: 50,
-      needsImprovement: 15,
-      poorPerformance: 5,
-    }
-  ], []);
-
-  const announcements = useMemo(() => [
-    { id: 1, title: 'Company Meeting', date: '2024-10-20', priority: 'high' },
-    { id: 2, title: 'New Policy Update', date: '2024-10-18', priority: 'medium' },
-    { id: 3, title: 'Holiday Notice', date: '2024-10-15', priority: 'low' },
-  ], []);
-
-  const events = useMemo(() => {
-    // Get upcoming holidays (filtering for future dates relative to a mock 'today')
-    // For demo purposes, we'll pick a few specific holidays to match the user's screenshot context or just upcoming ones
-    const upcomingHolidays = holidays.filter(h => 
-      (h.month === 11 && (h.day === 25 || h.day === 30 || h.day === 31)) || // Dec holidays
-      (h.month === 0 && h.day === 1) // Jan 1
-    ).map(h => ({
-      id: h.id,
-      title: h.title,
-      date: `2024-${String(h.month + 1).padStart(2, '0')}-${String(h.day).padStart(2, '0')}`,
-      type: h.type // This will now be 'Regular Holiday' or 'Special Non-Working'
-    }));
-
-    const manualEvents = [
-      { id: 'e1', title: 'Christmas Party', date: '2024-12-20', type: 'event' },
-      { id: 'e3', title: 'Team Building', date: '2024-11-15', type: 'event' },
-    ];
-
-    return [...manualEvents, ...upcomingHolidays].sort((a, b) => new Date(a.date) - new Date(b.date));
-  }, []);
-
   const tabs = useMemo(() => [
-    { id: 'charts', label: 'Analytics Overview', icon: BarChart3 },
-    { id: 'announcements', label: 'Updates & Events', icon: Bell },
+    { id: 'schedule', label: 'Schedule & Events', icon: Calendar },
+    { id: 'announcements', label: 'Announcements', icon: Bell },
   ], []);
 
   // Memoized tab change handler
@@ -121,27 +71,22 @@ export default function CombinedSection() {
   }, [activeTab]);
 
   // Memoized content rendering
-  const chartContent = useMemo(() => (
+  const scheduleContent = useMemo(() => (
     <>
-      <ChartCard title="System Performance">
-        <SystemPerformanceChart />
-      </ChartCard>
-      <ChartCard title="Performance Evaluation">
-        <PerformancePieChart reportData={performanceData} />
-      </ChartCard>
+      <Card className="h-full">
+        <ScheduleSection />
+      </Card>
+      <Card className="h-full">
+        <EventsAndHolidays />
+      </Card>
     </>
-  ), [performanceData]);
+  ), []);
 
   const announcementContent = useMemo(() => (
-    <>
-      <ChartCard title="Latest Announcements">
-        <AnnouncementsList announcements={announcements} />
-      </ChartCard>
-      <ChartCard title="Upcoming Events">
-        <EventsList events={events} />
-      </ChartCard>
-    </>
-  ), [announcements, events]);
+    <Card className="col-span-1 lg:col-span-2">
+      <AnnouncementSection />
+    </Card>
+  ), []);
 
   return (
     <div className="bg-gray-50/50 rounded-3xl p-8 relative transition-all duration-500">
@@ -152,7 +97,7 @@ export default function CombinedSection() {
             <LayoutDashboard className="w-5 h-5 text-[#79B791] text-3xl font-bold" />
             <span className="text-xl font-bold tracking-wider">Dashboard Overview</span>
           </div>
-          <p className="text-gray-800 mt-2 font-medium">Real-time metrics and updates</p>
+          <p className="text-gray-800 mt-2 font-medium">Manage your time and stay updated</p>
         </div>
 
         {/* Enhanced Tabs */}
@@ -177,7 +122,7 @@ export default function CombinedSection() {
             isLoading ? 'opacity-0 scale-[0.98] translate-y-4' : 'opacity-100 scale-100 translate-y-0'
           }`}
         >
-          {activeTab === 'charts' ? chartContent : announcementContent}
+          {activeTab === 'schedule' ? scheduleContent : announcementContent}
         </div>
       </div>
     </div>

@@ -5,9 +5,7 @@ import Sidebar from "../../components/Custom/DashboardEmployeeComponents/Sidebar
 import Header from "../../components/Custom/DashboardEmployeeComponents/Header";
 import WelcomeBanner from "../../components/Custom/DashboardEmployeeComponents/WelcomeBanner";
 import StatCard from "../../components/Custom/DashboardEmployeeComponents/StatCard";
-import ScheduleSection from "../../components/Custom/DashboardEmployeeComponents/ScheduleSection";
-import EventsAndHolidays from "../../components/Custom/DashboardEmployeeComponents/EventsAndHolidays";
-import AnnouncementSection from "../../components/Custom/DashboardEmployeeComponents/AnnouncementSection";
+import EmployeeCombinedSection from "../../components/Custom/DashboardEmployeeComponents/EmployeeCombinedSection";
 import LoadingScreen from "../../components/Custom/DashboardEmployeeComponents/LoadingScreen";
 import api from "../../api/axios"; 
 import { attendanceApi } from "../../api/attendanceApi";
@@ -163,13 +161,7 @@ export default function EmployeeDashboard() {
                   />
                 ))}
               </div>
-              <div className="bg-[#F8F9FA] rounded-lg shadow-sm border border-[#34645c] p-8">
-                <div className="grid grid-cols-3 gap-6">
-                  <ScheduleSection />
-                  <EventsAndHolidays />
-                  <AnnouncementSection />
-                </div>
-              </div>
+              <EmployeeCombinedSection />
             </>
           ) : (
             <Outlet context={{ sidebarOpen }} />
