@@ -1,13 +1,15 @@
 
 import { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
-import { getEmployees, startFingerprintEnrollment } from '../../api/employeeApi';
+import { getEmployees, startFingerprintEnrollment, checkEnrollmentStatus } from '../../api/employeeApi';
+import { CheckCircle, XCircle } from 'lucide-react';
 
 const BiometricsEnrollment = () => {
   const { sidebarOpen } = useOutletContext?.() || { sidebarOpen: true };
   
   const [employees, setEmployees] = useState([]);
   const [selectedEmployee, setSelectedEmployee] = useState('');
+  const [isEnrolled, setIsEnrolled] = useState(null); // null = checking, true = enrolled, false = not
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [statusMessage, setStatusMessage] = useState('');
@@ -29,6 +31,23 @@ const BiometricsEnrollment = () => {
     };
     fetchEmployees();
   }, []);
+
+  // Check status when employee is selected
+  useEffect(() => {
+    const checkStatus = async () => {
+        if (!selectedEmployee) {
+            setIsEnrolled(null);
+            return;
+        }
+        try {
+            const result = await checkEnrollmentStatus(selectedEmployee);
+            setIsEnrolled(result.isEnrolled);
+        } catch (e) {
+            console.error(e);
+        }
+    };
+    checkStatus();
+  }, [selectedEmployee]);
 
   const handleEnrollClick = async () => {
     if (!selectedEmployee) {
@@ -81,13 +100,30 @@ const BiometricsEnrollment = () => {
           </select>
         </div>
 
+        {selectedEmployee && (
+            <div className="mb-6 flex items-center gap-2">
+                <span className="text-sm font-medium text-gray-600">Enrollment Status:</span>
+                {isEnrolled === true ? (
+                    <span className="flex items-center gap-1 text-green-600 font-bold text-sm">
+                        <CheckCircle className="w-4 h-4" /> Enrolled
+                    </span>
+                ) : isEnrolled === false ? (
+                    <span className="flex items-center gap-1 text-gray-500 text-sm">
+                        <XCircle className="w-4 h-4" /> Not Enrolled
+                    </span>
+                ) : (
+                    <span className="text-gray-400 text-sm">Checking...</span>
+                )}
+            </div>
+        )}
+
         <div className="flex items-center justify-end">
           <button
             onClick={handleEnrollClick}
             disabled={isLoading || !selectedEmployee}
             className="px-6 py-2 bg-[#274b46] text-white font-semibold rounded-lg shadow-md hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#274b46] disabled:bg-gray-400 disabled:cursor-not-allowed"
           >
-            {isLoading ? 'Processing...' : 'Enroll Fingerprint'}
+            {isLoading ? 'Processing...' : (isEnrolled ? 'Re-Enroll Fingerprint' : 'Enroll Fingerprint')}
           </button>
         </div>
 

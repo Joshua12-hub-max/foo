@@ -76,6 +76,21 @@ export const startEnrollment = async (req, res) => {
   }
 };
 
+export const getEnrollmentStatus = async (req, res) => {
+  const { employeeId } = req.params;
+
+  try {
+    const [fingerprint] = await db.query("SELECT fingerprint_id FROM fingerprints WHERE employee_id = ?", [employeeId]);
+    
+    return res.status(200).json({
+      success: true,
+      isEnrolled: fingerprint.length > 0
+    });
+  } catch (err) {
+    handleError(res, err, 'getEnrollmentStatus');
+  }
+};
+
 /**
  * Legacy sync endpoint (kept for compatibility if needed, but service now handles data directly)
  */

@@ -108,7 +108,6 @@ export default function HDashboard() {
         icon: Clock,
         children: [
           { name: "Attendance", action: "attendance" },
-          { name: "Biometrics Monitor", action: "biometrics-monitor" },
           { name: "Calendar", action: "calendar" },
           { name: "Daily Time Record", action: "daily-time-record" },
           { name: "DTR Corrections", action: "dtr-corrections" },
@@ -137,6 +136,7 @@ export default function HDashboard() {
           { name: "Department Profile", action: "profile-settings" },
           { name: "User Profile", action: "account-settings" },
           { name: "Biometrics Logs", action: "biometrics-logs" },
+          { name: "Biometrics Monitor", action: "biometrics-monitor" },
           { name: "Biometrics Enrollment", action: "biometrics-enrollment" },
           { name: "Company Policies", action: "company-policies" },
         ],
