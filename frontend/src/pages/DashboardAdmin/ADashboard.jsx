@@ -137,6 +137,7 @@ export default function HDashboard() {
           { name: "Department Profile", action: "profile-settings" },
           { name: "User Profile", action: "account-settings" },
           { name: "Biometrics Logs", action: "biometrics-logs" },
+          { name: "Biometrics Enrollment", action: "biometrics-enrollment" },
           { name: "Company Policies", action: "company-policies" },
         ],
       },

@@ -1,41 +1,37 @@
-import { useMemo } from 'react';
+import { useMemo, useCallback } from 'react';
 
-export default function StatCard({ icon: Icon, title, value = 0, loading = false, subtext = "View details" }) {
-  const bgColor = useMemo(() => {
-    switch (title) {
-      case 'Present Days':
-        return 'bg-green-700';
-      case 'Absent Days':
-        return 'bg-red-700';
-      case 'Late Arrivals':
-        return 'bg-yellow-600';
-      case 'Reports Filed':
-        return 'bg-orange-600';
-      default:
-        return 'bg-blue-700';
-    }
-  }, [title]);
+export default function StatCard({ icon: Icon, title, value = 0, loading = false, subtext = "View details", onClick }) {
+  const colorMap = useMemo(() => ({
+    'Present Days': 'bg-[#79B791]',
+    'Absent Days': 'bg-[#7A0000]',
+    'Late Arrivals': 'bg-[#CF9033]',
+    'Reports Filed': 'bg-[#2C497F]',
+    'Leave Balance': 'bg-[#778797]',
+  }), []);
+
+  const handleClick = useCallback(() => {
+    if (onClick) onClick({ title, value });
+  }, [onClick, title, value]);
 
   return (
-    <div
-      className="bg-[#34645c] p-5 rounded-lg border border-[#FFFFFF] shadow-[8px_0_10px_#274b46] hover:shadow-[0_0_15px_#4a8f83] hover:scale-105 transition-all duration-300 cursor-pointer group"
+    <button
+      onClick={handleClick}
+      className="bg-[#F8F9FA] p-5 rounded-lg border border-gray-200 shadow-md hover:shadow-xl hover:scale-[1.02] transition-all duration-300 w-full text-left"
     >
       <div className="flex justify-between items-center mb-3">
-        <div className={`p-3 rounded-lg ${bgColor} group-hover:brightness-110 transition-all`}>
-          {Icon && <Icon className="w-5 h-5 text-[#F8F9FA]" />}
+        <div className={`p-3 rounded-lg ${colorMap[title] || 'bg-gray-500'} shadow-sm`}>
+          {Icon && <Icon className="w-5 h-5 text-white" />}
         </div>
-        <span className="text-xs text-[#F8F9FA] opacity-75 group-hover:opacity-100 transition-opacity">
-            {subtext}
-        </span>
+        <span className="text-xs text-[#274b46] font-medium opacity-80">{subtext}</span>
       </div>
-      <h3 className="text-sm font-medium text-[#F8F9FA] opacity-90">{title}</h3>
-      <p className="text-2xl font-bold text-[#F8F9FA] mt-1">
+      <h3 className="text-sm font-bold text-[#274b46] tracking-wide">{title}</h3>
+      <p className="text-3xl font-bold text-[#274b46] mt-2">
         {loading ? (
             <span className="animate-pulse">...</span>
         ) : (
             value
         )}
       </p>
-    </div>
+    </button>
   );
 }
