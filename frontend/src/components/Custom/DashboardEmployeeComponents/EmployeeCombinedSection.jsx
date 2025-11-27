@@ -1,8 +1,9 @@
 import { useState, useCallback, useMemo, memo } from 'react';
-import { Calendar, Bell, LayoutDashboard } from 'lucide-react';
+import { Calendar, Bell, LayoutDashboard, PieChart } from 'lucide-react';
 import ScheduleSection from '../DashboardEmployeeComponents/ScheduleSection';
 import EventsAndHolidays from '../DashboardEmployeeComponents/EventsAndHolidays';
 import AnnouncementSection from '../DashboardEmployeeComponents/AnnouncementSection';
+import { PerformancePieChart } from '../../CustomUI';
 
 // Memoized Tab Button Component
 const TabButton = memo(({ tab, isActive, isLoading, onClick }) => {
@@ -29,8 +30,14 @@ const TabButton = memo(({ tab, isActive, isLoading, onClick }) => {
 TabButton.displayName = 'TabButton';
 
 // Memoized Card Component
-const Card = memo(({ children, className = "" }) => (
+const Card = memo(({ title, children, className = "" }) => (
   <div className={`bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-all duration-300 ${className}`}>
+     {title && (
+      <h4 className="text-lg font-semibold text-gray-800 mb-6 flex items-center gap-2">
+        <div className="w-1 h-6 bg-[#274b46] rounded-full"></div>
+        {title}
+      </h4>
+    )}
     {children}
   </div>
 ));
@@ -55,7 +62,19 @@ export default function EmployeeCombinedSection() {
 
   const tabs = useMemo(() => [
     { id: 'schedule', label: 'Schedule & Events', icon: Calendar },
+    { id: 'performance', label: 'Performance', icon: PieChart },
     { id: 'announcements', label: 'Announcements', icon: Bell },
+  ], []);
+
+  // Mock performance data for the employee
+  const performanceData = useMemo(() => [
+    {
+      outstanding: 2,
+      exceedsExpectations: 5,
+      meetsExpectations: 8,
+      needsImprovement: 1,
+      poorPerformance: 0,
+    }
   ], []);
 
   // Memoized tab change handler
@@ -81,6 +100,12 @@ export default function EmployeeCombinedSection() {
       </Card>
     </>
   ), []);
+
+  const performanceContent = useMemo(() => (
+    <Card title="My Performance Evaluation" className="col-span-1 lg:col-span-2">
+      <PerformancePieChart reportData={performanceData} />
+    </Card>
+  ), [performanceData]);
 
   const announcementContent = useMemo(() => (
     <Card className="col-span-1 lg:col-span-2">
@@ -122,7 +147,9 @@ export default function EmployeeCombinedSection() {
             isLoading ? 'opacity-0 scale-[0.98] translate-y-4' : 'opacity-100 scale-100 translate-y-0'
           }`}
         >
-          {activeTab === 'schedule' ? scheduleContent : announcementContent}
+          {activeTab === 'schedule' && scheduleContent}
+          {activeTab === 'performance' && performanceContent}
+          {activeTab === 'announcements' && announcementContent}
         </div>
       </div>
     </div>
