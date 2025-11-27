@@ -16,23 +16,24 @@ const HRCalendar = lazy(() => import("./pages/TimekeepingAdmin/adminCalendar"));
 const DailyTimeRecord = lazy(() => import("./pages/TimekeepingAdmin/adminDailyTimeRecord"));
 const DTRCorrection = lazy(() => import("./pages/TimekeepingAdmin/admindtrcorrection"));
 const LeaveRequestHR = lazy(() => import("./pages/TimekeepingAdmin/adminLeaverequest"));
-const LeaveFormsTable = lazy(() => import("./pages/TimekeepingAdmin/adminLeaveForms"));
 const LeaveCredit = lazy(() => import("./pages/TimekeepingAdmin/adminLeavecredit"));
 const Schedule = lazy(() => import("./pages/TimekeepingAdmin/adminSchedule"));
-const Undertimeform = lazy(() => import("./pages/TimekeepingAdmin/adminUndertimeForm"));
 const UndertimeRequests = lazy(() => import("./pages/TimekeepingAdmin/adminUndertimerequest"));
+const BiometricsMonitor = lazy(() => import("./pages/TimekeepingAdmin/BiometricsMonitor"));
 
 //Settings Admin Pages
 const BiometricsLogsUI = lazy(() => import("./pages/SettingsAdmin/BiometricsLogs"));
+const BiometricsEnrollment = lazy(() => import("./pages/SettingsAdmin/BiometricsEnrollment"));
 
 
 // Lazy load employeeTimekeepingpages
 const AttendanceEM = lazy(() => import("./pages/TimekeepingEmployee/EmployeeAttendance"));
 const EmployeeCalendar = lazy(() => import("./pages/TimekeepingEmployee/EmployeeCalendar")); 
 const LeaveRequest = lazy(() => import("./pages/TimekeepingEmployee/EmployeeLeaveRequest"));
-const EmployeeLeaveForms= lazy(() => import("./pages/TimekeepingEmployee/EmployeeLeaveForms"));
 const EmployeeDailyTimeRecord = lazy(() => import("./pages/TimekeepingEmployee/EmployeeDailyTimeRecord"));
 const EmployeeDtrcorrections = lazy(() => import("./pages/TimekeepingEmployee/EmployeedtrCorrection"));
+const EmployeeUndertimeRequest = lazy(() => import("./pages/TimekeepingEmployee/EmployeeUndertimeRequest"));
+const EmployeeSchedule = lazy(() => import("./pages/TimekeepingEmployee/EmployeeSchedule"));
 // Loading fallback component
 
 
@@ -101,7 +102,9 @@ export default function App() {
           path="/login"
           element={
             <PublicRoute>
-              <Login />
+              <Suspense fallback={<PageLoader />}>
+                <Login />
+              </Suspense>
             </PublicRoute>
           }
         />
@@ -109,7 +112,9 @@ export default function App() {
           path="/register"
           element={
             <PublicRoute>
-              <Register />
+              <Suspense fallback={<PageLoader />}>
+                <Register />
+              </Suspense>
             </PublicRoute>
           }
         />
@@ -119,7 +124,9 @@ export default function App() {
           path="/admin-dashboard"
           element={
             <ProtectedRoute allowedRoles={["admin", "hr"]}>
-              <AdminDashboard />
+              <Suspense fallback={<PageLoader />}>
+                <AdminDashboard />
+              </Suspense>
             </ProtectedRoute>
           }
         >
@@ -129,6 +136,14 @@ export default function App() {
             element={
               <Suspense fallback={<PageLoader />}>
                 <Attendance />
+              </Suspense>
+            }
+          />
+          <Route
+            path="biometrics-monitor"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <BiometricsMonitor />
               </Suspense>
             }
           />
@@ -167,14 +182,6 @@ export default function App() {
             }
           />
           <Route
-            path="leave-forms"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <LeaveFormsTable />
-              </Suspense>
-            }
-          />
-          <Route
             path="leave-credit"
             element={
               <Suspense fallback={<PageLoader />}>
@@ -187,14 +194,6 @@ export default function App() {
             element={
               <Suspense fallback={<PageLoader />}>
                 <Schedule />
-              </Suspense>
-            }
-          />
-          <Route
-            path="undertime"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <Undertimeform />
               </Suspense>
             }
           />
@@ -214,6 +213,14 @@ export default function App() {
               </Suspense>
             }
           />
+          <Route
+            path="biometrics-enrollment"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <BiometricsEnrollment />
+              </Suspense>
+            }
+          />
         </Route>
 
         {/* Protected routes - Employee Dashboard */}
@@ -221,7 +228,9 @@ export default function App() {
           path="/employee-dashboard"
           element={
             <ProtectedRoute allowedRoles={["employee"]}>
-              <EmployeeDashboard />
+              <Suspense fallback={<PageLoader />}>
+                <EmployeeDashboard />
+              </Suspense>
             </ProtectedRoute>
           }
         >
@@ -267,10 +276,18 @@ export default function App() {
             }
           />
           <Route
-            path="leave-forms"
+            path="undertime-request"
             element={
               <Suspense fallback={<PageLoader />}>
-                <EmployeeLeaveForms />
+                <EmployeeUndertimeRequest />
+              </Suspense>
+            }
+          />
+          <Route
+            path="schedule"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <EmployeeSchedule />
               </Suspense>
             }
           />

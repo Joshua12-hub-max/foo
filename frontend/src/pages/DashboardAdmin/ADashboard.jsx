@@ -14,6 +14,8 @@ import LateTable from "../../components/Custom/DashboardAdminComponents/LateTabl
 import LeaveTable from "../../components/Custom/DashboardAdminComponents/LeaveTable";
 import HiredTable from "../../components/Custom/DashboardAdminComponents/HiredTable";
 
+import NotificationMenu from '../../components/CustomUI/NotificationMenu';
+
 // Icons remember ito yung kinuha mo sa lucide-react
 import {LayoutDashboard, Clock, Users, Building2, Briefcase, DollarSign,Award, FileText, Settings,} from "lucide-react";
 
@@ -33,7 +35,7 @@ const DashboardHome = ({ user, statsCards, handleStatCardClick, activeTable, set
         ))}
       </div>
       {activeTable && (
-        <div className="absolute inset-0 bg-[#F8F9FA] p-6 rounded-lg shadow-sm border border-gray-100 z-10 h-[32rem] overflow-y-auto">
+        <div className="absolute inset-0 bg-[#F8F9FA] p-6 rounded-lg shadow-md border border-gray-100 z-10 h-[32rem] overflow-y-auto">
           {activeTable === "Present" && <PresentTable onClose={() => setActiveTable(null)} />}
           {activeTable === "Absent" && <AbsentTable onClose={() => setActiveTable(null)} />}
           {activeTable === "Late" && <LateTable onClose={() => setActiveTable(null)} />}
@@ -70,7 +72,7 @@ export default function HDashboard() {
   // Logout handler
   const handleLogout = useCallback(async () => {
     try {
-      await api.post("/logout", {}, { withCredentials: true });
+      await api.post("/auth/logout", {}, { withCredentials: true });
       localStorage.removeItem("user");
       sessionStorage.removeItem("accessToken");
       navigate("/login");
@@ -106,23 +108,20 @@ export default function HDashboard() {
         icon: Clock,
         children: [
           { name: "Attendance", action: "attendance" },
+          { name: "Biometrics Monitor", action: "biometrics-monitor" },
           { name: "Calendar", action: "calendar" },
           { name: "Daily Time Record", action: "daily-time-record" },
           { name: "DTR Corrections", action: "dtr-corrections" },
           { name: "Leave Request", action: "leave-request" },
-          { name: "Leave Forms", action: "leave-forms" },
           { name: "Leave Credit", action: "leave-credit" },
           { name: "Schedule", action: "schedule" },
-          { name: "Undertime forms", action: "undertime"},
           { name: "Undertime Requests", action: "undertime-requests"},
-          { name: "Work From Home", action: "work-from-home"}
         ],
       },
       {
         name: "Employee Management",
         icon: Users,
         children: [
-          { name: "Employee Directory", action: "employee-directory" },
           { name: "Role Based Control ", action: "rbac" },
         ],
       },

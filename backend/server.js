@@ -4,83 +4,55 @@ import dotenv from 'dotenv';
 import cookieParser from "cookie-parser";
 import helmet from 'helmet';
 import authRoutes from './routes/authRoutes.js';
-import userRoutes from './routes/userRoutes.js';
+import notificationRoutes from './routes/notificationRoutes.js';
+import dtrRoutes from './routes/dtrRoutes.js';
+import dtrCorrectionRoutes from './routes/dtrCorrectionRoutes.js';
+import attendanceRoutes from './routes/attendanceRoutes.js';
+import leaveRoutes from './routes/leaveRoutes.js';
+import scheduleRoutes from './routes/scheduleRoutes.js';
+import undertimeRoutes from './routes/undertimeRoutes.js';
+import biometricsRoutes from './routes/biometricsRoutes.js';
 
-
-//CRITICAL: Load .env file FIRST before anything else
 dotenv.config();
-
-// Verify environment variables are loaded
-console.log("   Checking environment variables...");
-console.log("   DB_HOST:", process.env.DB_HOST ? "Loaded" : "Missing");
-console.log("   DB_NAME:", process.env.DB_NAME ? "Loaded" : "Missing");
-console.log("   JWT_SECRET:", process.env.JWT_SECRET ? "Loaded" : "Missing");
-console.log("   REFRESH_SECRET:", process.env.REFRESH_SECRET ? "Loaded" : "Missing");
-console.log("   PORT:", process.env.PORT || "5000 (default)");
-
-// Exit if critical variables are missing
-if (!process.env.JWT_SECRET || !process.env.REFRESH_SECRET) {
-  console.error("\nCRITICAL ERROR: JWT secrets not found!");
-  console.error("   Make sure you have a .env file in your backend root directory");
-  console.error("   with JWT_SECRET and REFRESH_SECRET defined.");
-  process.exit(1);
-}
+import { initBiometrics } from './services/biometricService.js';
 
 const app = express();
 
-// Set security HTTP headers
-app.use(helmet());
+// Initialize Biometrics Service
+initBiometrics();
 
-// Allow multiple dev origins (e.g. Vite on 5173 and 5174) and keep cookie support
-const whitelist = ["http://localhost:5173", "http://localhost:5174"];
+// Middleware
+app.use(helmet());
 app.use(cors({
-  origin: function (origin, callback) {
-    
-    // allow requests with no origin (like mobile clients or curl)
-    if (!origin) return callback(null, true);
-    if (whitelist.indexOf(origin) !== -1) {
-      return callback(null, true);
-    }
-    return callback(new Error("Not allowed by CORS"));
-  },
-  credentials: true,
+  origin: ["http://localhost:5173", "http://localhost:5174"],
+  credentials: true
 }));
 app.use(express.json());
 app.use(cookieParser());
 
+// Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/dtr', dtrRoutes);
+app.use('/api/dtr-corrections', dtrCorrectionRoutes);
+app.use('/api/attendance', attendanceRoutes);
+app.use('/api/leave', leaveRoutes);
+app.use('/api/schedule', scheduleRoutes);
+app.use('/api/undertime', undertimeRoutes);
+app.use('/api/biometrics', biometricsRoutes);
+
 // Root route
 app.get("/", (req, res) => {
-  res.json({ 
-    status: "Backend is running",
-    timestamp: new Date().toISOString(),
-    env: {
-      nodeEnv: process.env.NODE_ENV || "development",
-      hasJwtSecret: !!process.env.JWT_SECRET,
-      hasRefreshSecret: !!process.env.REFRESH_SECRET
-    }
-  });
+  res.json({ message: "Backend is running!" });
 });
 
-// API routes
-app.use("/api/auth", authRoutes);
-app.use("/api/users", userRoutes);
-
-
-// Error handling middleware
+// Error handling
 app.use((err, req, res, next) => {
-  console.error("Unhandled error:", err);
-  res.status(500).json({ 
-    message: "Internal server error",
-    error: process.env.NODE_ENV === 'development' ? err.message : undefined
-  });                               
-
+  console.error(err.stack);
+  res.status(500).json({ message: "Internal Server Error" });
 });
-
-
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`\nServer running on port ${PORT}`);
-  console.log(`   http://localhost:${PORT}`);
-  console.log(`   Auth: http://localhost:${PORT}/api/auth`);
+  console.log(`Server running on port ${PORT}`);
 });
