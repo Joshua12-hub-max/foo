@@ -51,13 +51,13 @@ const BrandingSection = () => (
 );
 
 const FormHeader = ({ image, title, subtitle }) => (
-  <div className="flex flex-col items-center justify-center gap-3 mb-6">
+  <div className="flex flex-col items-center justify-center gap-2 mb-4">
     <img 
       src={image ?? DEFAULT_LOGO} 
       alt="Municipal of Meycauayan Logo" 
-      className="w-16 h-16 rounded-lg object-contain" 
+      className="w-12 h-12 rounded-lg object-contain" 
     />
-    <h1 className="font-bold text-slate-950 text-2xl text-center">
+    <h1 className="font-bold text-slate-950 text-xl text-center">
       {title}
     </h1>
     {subtitle && (
@@ -77,15 +77,7 @@ const FormHeader = ({ image, title, subtitle }) => (
  * @param {boolean} showBranding - Toggle branding section (default: true)
  * @param {string} leftBgGradient - Custom left section gradient (optional)
  */
-export default function AuthLayout({ 
-  children, 
-  title, 
-  subtitle, 
-  image,
-  showQuotes = true,
-  showBranding = true,
-  leftBgGradient = "from-slate-950 to-green-800"
-}) {
+export default function AuthLayout({children, title, subtitle, image, showQuotes = true, showBranding = true, leftBgGradient = "from-slate-950 to-green-800"}) {
   const [currentQuote, setCurrentQuote] = useState(0);
   const [fadeIn, setFadeIn] = useState(true);
   const [quotes, setQuotes] = useState([]);
@@ -160,9 +152,9 @@ export default function AuthLayout({
       </div>
 
       {/* Right Section - Form Container */}
-      <div className="flex flex-col justify-center w-full md:w-1/2 bg-white p-6 sm:p-10">
+      <div className="flex flex-col justify-center w-full md:w-1/2 bg-white p-4 sm:p-6">
         <div className="max-w-sm mx-auto w-full">
-          <div className="bg-white border border-gray-200 rounded-[15px] shadow-lg p-4 sm:p-8 text-gray-800 hover:shadow-2xl transition-shadow duration-200">
+          <div className="bg-white border border-gray-200 rounded-[15px] shadow-lg p-5 sm:p-6 text-gray-800 hover:shadow-2xl transition-shadow duration-200">
             <FormHeader 
               image={image} 
               title={pageTitle} 

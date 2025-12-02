@@ -3,13 +3,13 @@ export const filterData = (data, searchQuery, filters) => {
   
   return data.filter((item) => {
     const matchesSearch = !query || (
-      item.name.toLowerCase().includes(query) ||
-      item.id.toLowerCase().includes(query) ||
-      item.department.toLowerCase().includes(query)
+      item.employeeName?.toLowerCase().includes(query) ||
+      item.employeeid?.toLowerCase().includes(query) ||
+      item.department?.toLowerCase().includes(query)
     );
 
     const matchesDepartment = !filters.department || item.department === filters.department;
-    const matchesEmployee = !filters.employee || item.name === filters.employee;
+    const matchesEmployee = !filters.employee || item.employeeName === filters.employee;
 
     const itemDate = new Date(item.date);
     let matchesDateRange = true;

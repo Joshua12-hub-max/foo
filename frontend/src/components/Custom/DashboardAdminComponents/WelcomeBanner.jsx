@@ -10,7 +10,7 @@ export default function WelcomeBanner({ user }) {
   });
 
   return (
-    <div className="flex justify-between items-center bg-[#274b46] text-[#F8F9FA] rounded-md p-4 shadow-sm mb-6">
+    <div className="flex justify-between items-center bg-[#274b46] text-[#F8F9FA] rounded-md p-2 shadow-sm mb-6">
       <div className="flex items-center gap-3">
         <TrendingUp className="w-6 h-6 text-[#F8F9FA]" />
         <div>
@@ -21,14 +21,14 @@ export default function WelcomeBanner({ user }) {
         </div>
       </div>
 
-      <div className="bg-white text-center rounded-md p-2 min-w-[65px] shadow">
-        <div className="text-[10px] font-semibold text-[#274b46] uppercase">
+      <div className="bg-[#F8F9FA] text-center rounded-md p-1 min-w-[50px] shadow-md">
+        <div className="text-[8px] font-semibold text-[#274b46] uppercase">
           {date.toLocaleString("en-US", { month: "short" })}
         </div>
         <div className="text-2xl font-bold text-[#274b46] leading-none">
           {date.getDate()}
         </div>
-        <div className="text-[10px] text-[#274b46]">{date.getFullYear()}</div>
+        <div className="text-[8px] text-[#274b46]">{date.getFullYear()}</div>
       </div>
     </div>
   );

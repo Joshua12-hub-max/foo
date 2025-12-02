@@ -1,221 +1,239 @@
-// Mga kinakailangang pag-import mula sa React, React Router, at iba pang mga aklatan.
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { User, Users, IdCardLanyard, FileLock, Building } from "lucide-react";
+import { User, Mail, Lock, Briefcase, Building2, AlertCircle, Loader2 } from "lucide-react";
 import AuthLayout from "../components/Custom/Auth/AuthLayout";
-import api from "../api/axios";
+import { register } from "../Service/Auth";
+import { useAuth } from "../hooks/useAuth"; // Import useAuth for googleLogin
+import { GoogleLogin } from '@react-oauth/google';
 
-// Ito ang pangunahing bahagi para sa pahina ng pagpaparehistro.
 export default function Register() {
-  // Pinamamahalaan ng 'useState' ang estado para sa form, mga error, tagumpay, at katayuan sa pag-load.
   const [form, setForm] = useState({
     name: "",
-    role: "",
-    department: "",
-    employeeId: "",
+    email: "",
     password: "",
+    role: "",
+    department: ""
   });
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const [loading, setLoading] = useState(false);
-  const navigate = useNavigate(); // Ginagamit para i-redirect ang user.
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const navigate = useNavigate();
+  const { googleLogin } = useAuth();
 
-  // Pinangangasiwaan ang mga pagbabago sa mga input field ng form.
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
     setError("");
-    setSuccess("");
   };
 
-  // Pinangangasiwaan ang pagsusumite ng form sa pagpaparehistro.
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsSubmitting(true);
     setError("");
     setSuccess("");
-    setLoading(true);
 
     try {
-      // Nagpapadala ng kahilingan sa POST sa '/register' endpoint ng backend.
-      const res = await api.post("/auth/register", form);
-
-      // Iniimbak ang impormasyon ng huling nagparehistrong user para sa kaginhawahan sa pahina ng pag-login.
-      localStorage.setItem(
-        "lastRegisteredUser",
-        JSON.stringify({
-          employeeId: form.employeeId,
-          role: form.role,
-        }),
-      );
-
-      // Nagtatakda ng mensahe ng tagumpay at nagre-redirect sa pahina ng pag-login pagkatapos ng isang segundo.
-      setSuccess(res.data.message);
-      setTimeout(() => navigate("/login"), 2000);
+      const response = await register(form);
+      setSuccess(response.data.message || "Registration successful! Please check your email.");
+      
+      // Store for login pre-fill
+      localStorage.setItem("lastRegisteredUser", JSON.stringify({ email: form.email, role: form.role }));
+      
+      // Optional: Redirect after delay
+      // setTimeout(() => navigate("/login"), 3000);
     } catch (err) {
-      console.error("Registration Error:", err);
-      if (err.response) {
-        // Server responded with an error
-        if (err.response.data?.errors) {
-           const errorMessages = err.response.data.errors.map(e => e.msg).join(", ");
-           setError(errorMessages);
-        } else {
-           setError(err.response.data?.message || "Nabigo ang pagpaparehistro.");
-        }
-      } else if (err.request) {
-        // Request was made but no response received
-        setError("Hindi makakonekta sa server. Pakisuri kung tumatakbo ang backend.");
-      } else {
-        // Something else happened
-        setError("May naganap na error: " + err.message);
-      }
+      console.error("Registration error:", err);
+      setError(err.response?.data?.message || "Registration failed. Please try again.");
     } finally {
-      // Tinitiyak na ang estado ng pag-load ay naka-set sa false pagkatapos ng pagtatangka.
-      setLoading(false);
+      setIsSubmitting(false);
     }
   };
 
-  // Nagre-render ng UI ng registration form.
+  const handleGoogleSuccess = async (credentialResponse) => {
+    setIsSubmitting(true);
+    setError("");
+    try {
+      const user = await googleLogin(credentialResponse.credential);
+      // Redirect based on role
+      if (user.role === "admin" || user.role === "hr") {
+        navigate("/admin-dashboard", { replace: true });
+      } else {
+        navigate("/employee-dashboard", { replace: true });
+      }
+    } catch (err) {
+      console.error("Google Login Error:", err);
+      setError("Google Sign-In failed. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
-    <AuthLayout
-      title="Create an Account"
-      subtitle="Pakipunan ang mga detalye para magrehistro."
-    >
-      {/* Nagpapakita ng mensahe ng error kung mayroon. */}
-      {error && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
-          {error}
+    <AuthLayout title="Create Account">
+      <div className="space-y-4">
+        <div className="text-center">
+            <p className="text-gray-500 mt-1 text-sm">Join us and start your journey</p>
         </div>
-      )}
 
-      {/* Nagpapakita ng mensahe ng tagumpay kung mayroon. */}
-      {success && (
-        <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
-          {success}
-        </div>
-      )}
+        {error && (
+          <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm animate-in fade-in slide-in-from-top-2">
+            <AlertCircle size={16} />
+            <span>{error}</span>
+          </div>
+        )}
 
-      {/* Ang mismong registration form. */}
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="text-sm text-gray-700 mb-1 block">
-            Buong Pangalan
-          </label>
-          <div className="relative">
-            <User
-              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-              size={17}
-            />
-            <input
-              type="text"
-              name="name"
-              value={form.name}
-              onChange={handleChange}
-              className="w-full pl-10 pr-3 py-2 border-[2px] border-gray-300 rounded-[15px] shadow-md bg-white focus:ring focus:ring-gray-100"
-              placeholder="Ilagay ang iyong buong pangalan"
-              required
-            />
+        {success && (
+          <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm animate-in fade-in slide-in-from-top-2">
+            <AlertCircle size={16} />
+            <span>{success}</span>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+                <label className="text-xs font-medium text-gray-700 mb-0.5 block">Full Name</label>
+                <div className="relative group">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <User className="h-5 w-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
+                </div>
+                <input
+                    type="text"
+                    name="name"
+                    value={form.name}
+                    onChange={handleChange}
+                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-xl bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                    placeholder="John Doe"
+                    required
+                />
+                </div>
+            </div>
+
+            <div>
+                <label className="text-xs font-medium text-gray-700 mb-0.5 block">Email Address</label>
+                <div className="relative group">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Mail className="h-5 w-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
+                </div>
+                <input
+                    type="email"
+                    name="email"
+                    value={form.email}
+                    onChange={handleChange}
+                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-xl bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                    placeholder="john@example.com"
+                    required
+                />
+                </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+                <label className="text-xs font-medium text-gray-700 mb-0.5 block">Role</label>
+                <div className="relative group">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Briefcase className="h-5 w-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
+                </div>
+                <select
+                    name="role"
+                    value={form.role}
+                    onChange={handleChange}
+                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-xl bg-gray-50 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all appearance-none text-sm"
+                    required
+                >
+                    <option value="">Select Role</option>
+                    <option value="employee">Employee</option>
+                    <option value="admin">Admin</option>
+                    <option value="hr">HR</option>
+                </select>
+                </div>
+            </div>
+
+            <div>
+                <label className="text-xs font-medium text-gray-700 mb-0.5 block">Department</label>
+                <div className="relative group">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Building2 className="h-5 w-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
+                </div>
+                <select
+                    name="department"
+                    value={form.department}
+                    onChange={handleChange}
+                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-xl bg-gray-50 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all appearance-none text-sm"
+                    required
+                >
+                    <option value="">Select Department</option>
+                    <option value="IT">IT</option>
+                    <option value="HR">HR</option>
+                    <option value="Finance">Finance</option>
+                    <option value="Operations">Operations</option>
+                </select>
+                </div>
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-medium text-gray-700 mb-0.5 block">Password</label>
+            <div className="relative group">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Lock className="h-5 w-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
+              </div>
+              <input
+                type="password"
+                name="password"
+                value={form.password}
+                onChange={handleChange}
+                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-xl bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                placeholder="Create a strong password"
+                required
+              />
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="w-full flex justify-center items-center py-2 px-4 rounded-xl text-sm font-semibold glass-button glass-button-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500"
+          >
+            {isSubmitting ? (
+                <>
+                    <Loader2 className="animate-spin -ml-1 mr-2 h-4 w-4" />
+                    Creating Account...
+                </>
+            ) : (
+                "Create Account"
+            )}
+          </button>
+        </form>
+
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-gray-200"></div>
+          </div>
+          <div className="relative flex justify-center text-sm">
+            <span className="px-2 bg-white text-gray-500">Or continue with</span>
           </div>
         </div>
 
-        <div>
-          <label className="text-sm text-gray-700 mb-1 block">Papel</label>
-          <div className="relative">
-            <Users
-              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-              size={17}
+        <div className="flex justify-center">
+            <GoogleLogin
+                onSuccess={handleGoogleSuccess}
+                onError={() => setError("Google Sign-In failed")}
+                theme="outline"
+                shape="pill"
+                size="large"
+                width="350"
+                text="signup_with"
             />
-            <select
-              name="role"
-              value={form.role}
-              onChange={handleChange}
-              className="w-full pl-10 pr-3 py-2 border-[2px] border-gray-300 rounded-[15px] shadow-md bg-white focus:ring focus:ring-gray-100 appearance-none"
-              required
-            >
-              <option value="">Pumili ng papel</option>
-              <option value="employee">Empleyado</option>
-              <option value="admin">Human Resource (Admin)</option>
-            </select>
-          </div>
         </div>
 
-        <div>
-          <label className="text-sm text-gray-700 mb-1 block">Departamento</label>
-          <div className="relative">
-            <Building
-              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-              size={17}
-            />
-            <input
-              type="text"
-              name="department"
-              value={form.department}
-              onChange={handleChange}
-              className="w-full pl-10 pr-3 py-2 border-[2px] border-gray-300 rounded-[15px] shadow-md bg-white focus:ring focus:ring-gray-100"
-              placeholder="Ilagay ang iyong departamento"
-              required
-            />
-          </div>
-        </div>
-
-        <div>
-          <label className="text-sm text-gray-700 mb-1 block">
-            Employee ID
-          </label>
-          <div className="relative">
-            <IdCardLanyard
-              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-              size={17}
-            />
-            <input
-              type="text"
-              name="employeeId"
-              value={form.employeeId}
-              onChange={handleChange}
-              className="w-full pl-10 pr-3 py-2 border-[2px] border-gray-300 rounded-[15px] shadow-md bg-white focus:ring focus:ring-gray-100"
-              placeholder="Ilagay ang iyong Employee ID"
-              required
-            />
-          </div>
-        </div>
-
-        <div>
-          <label className="text-sm text-gray-700 mb-1 block">Password</label>
-          <div className="relative">
-            <FileLock
-              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-              size={17}
-            />
-            <input
-              type="password"
-              name="password"
-              value={form.password}
-              onChange={handleChange}
-              className="w-full pl-10 pr-3 py-2 border-[2px] border-gray-300 rounded-[15px] shadow-md bg-white focus:ring focus:ring-gray-100"
-              placeholder="Maglagay ng isang malakas na password"
-              required
-            />
-          </div>
-        </div>
-
-        {/* Pindutan para sa pagsusumite ng form */}
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full bg-gradient-to-r from-slate-950 to-green-700 text-white py-2 rounded-[10px] font-semibold hover:from-slate-700 hover:to-green-500 transition disabled:opacity-50"
-        >
-          {loading ? "Gumagawa ng Account..." : "Magrehistro"}
-        </button>
-      </form>
-
-      {/* Link para sa mga user na may account na. */}
-      <p className="text-center mt-5 text-gray-700 text-sm">
-        May account ka na?{" "}
-        <Link
-          to="/login"
-          className="font-semibold text-gray-900 hover:underline"
-        >
-          Mag-login dito
-        </Link>
-      </p>
+        <p className="text-center text-sm text-gray-600">
+          Already have an account?{" "}
+          <Link to="/login" className="font-semibold text-blue-600 hover:text-blue-500 hover:underline">
+            Sign in instead
+          </Link>
+        </p>
+      </div>
     </AuthLayout>
   );
 }

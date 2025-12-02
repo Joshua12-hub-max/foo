@@ -1,7 +1,9 @@
-import { useState, useCallback, useMemo, memo } from 'react';
+import { useState, useCallback, useMemo, memo, useEffect } from 'react';
 import { BarChart3, Bell, LayoutDashboard } from 'lucide-react';
 import { SystemPerformanceChart, PerformancePieChart, AnnouncementsList, EventsList } from "../../CustomUI";
 import { holidays } from "../../../utils/holidays";
+import { announcementApi } from '../../../api/announcementApi';
+import { eventApi } from '../../../api/eventApi';
 
 // Memoized Tab Button Component
 const TabButton = memo(({ tab, isActive, isLoading, onClick }) => {
@@ -12,14 +14,14 @@ const TabButton = memo(({ tab, isActive, isLoading, onClick }) => {
       disabled={isLoading}
       className={`relative flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 outline-none focus:ring-2 focus:ring-blue-100 ${
         isActive
-          ? 'bg-white text-[#274b46] shadow-sm ring-1 ring-gray-100'
+          ? 'bg-white text-gray-800 shadow-sm ring-1 ring-gray-100'
           : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
       } ${isLoading ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'}`}
     >
-      <Icon className={`w-4 h-4 transition-colors ${isActive ? 'text-[#274b46]' : 'text-gray-400'}`} />
+      <Icon className={`w-4 h-4 transition-colors ${isActive ? 'text-gray-800' : 'text-gray-400'}`} />
       {tab.label}
       {isActive && (
-        <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1/2 h-0.5 bg-[#274b46] rounded-full mb-1.5 opacity-0" />
+        <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1/2 h-0.5 bg-gray-800 rounded-full mb-1.5 opacity-0" />
       )}
     </button>
   );
@@ -32,7 +34,7 @@ const ChartCard = memo(({ title, children, className = "" }) => (
   <div className={`bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-all duration-300 ${className}`}>
     {title && (
       <h4 className="text-lg font-semibold text-gray-800 mb-6 flex items-center gap-2">
-        <div className="w-1 h-6 bg-[#274b46] rounded-full"></div>
+        <div className="w-1 h-6 bg-gray-700 rounded-full"></div>
         {title}
       </h4>
     )}
@@ -57,14 +59,54 @@ LoadingOverlay.displayName = 'LoadingOverlay';
 export default function CombinedSection() {
   const [activeTab, setActiveTab] = useState('charts');
   const [isLoading, setIsLoading] = useState(false);
+  const [announcements, setAnnouncements] = useState([]);
+  const [events, setEvents] = useState([]);
 
-  // Memoized static data
-  const attendanceData = useMemo(() => [
-    { label: "Present", value: 85, color: "#10B981" }, // Emerald
-    { label: "Absent", value: 10, color: "#EF4444" }, // Red
-    { label: "Late", value: 3, color: "#F59E0B" }, // Amber
-    { label: "On Leave", value: 2, color: "#3B82F6" }, // Blue
-  ], []);
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Fetch Announcements
+        const annResponse = await announcementApi.getAnnouncements();
+        if (annResponse.data && annResponse.data.announcements) {
+            const formattedAnnouncements = annResponse.data.announcements.map(a => ({
+                ...a,
+                date: a.start_date || a.created_at ? new Date(a.start_date || a.created_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
+            }));
+            setAnnouncements(formattedAnnouncements);
+        }
+
+        // Fetch Events and Combine with Holidays
+        const eventResponse = await eventApi.getEvents();
+        const apiEvents = (eventResponse.data && eventResponse.data.events) ? eventResponse.data.events : [];
+        
+        // Get current year holidays
+        const currentYear = new Date().getFullYear();
+        const holidayEvents = holidays.map(h => ({
+            id: `holiday-${h.id}-${currentYear}`,
+            title: h.title,
+            date: new Date(currentYear, h.month, h.day).toISOString().split('T')[0],
+            type: h.type,
+            priority: 'medium', // Default priority for display
+            isHoliday: true
+        }));
+
+        // Combine and sort
+        const combinedEvents = [...apiEvents, ...holidayEvents].sort((a, b) => new Date(a.date) - new Date(b.date));
+        
+        // Filter for upcoming events (optional, but good for dashboard)
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const upcomingEvents = combinedEvents.filter(e => new Date(e.date) >= today);
+
+        setEvents(upcomingEvents.slice(0, 10)); // Show top 10 upcoming
+
+      } catch (error) {
+        console.error("Failed to fetch dashboard data:", error);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   const performanceData = useMemo(() => [
     {
@@ -76,36 +118,9 @@ export default function CombinedSection() {
     }
   ], []);
 
-  const announcements = useMemo(() => [
-    { id: 1, title: 'Company Meeting', date: '2024-10-20', priority: 'high' },
-    { id: 2, title: 'New Policy Update', date: '2024-10-18', priority: 'medium' },
-    { id: 3, title: 'Holiday Notice', date: '2024-10-15', priority: 'low' },
-  ], []);
-
-  const events = useMemo(() => {
-    // Get upcoming holidays (filtering for future dates relative to a mock 'today')
-    // For demo purposes, we'll pick a few specific holidays to match the user's screenshot context or just upcoming ones
-    const upcomingHolidays = holidays.filter(h => 
-      (h.month === 11 && (h.day === 25 || h.day === 30 || h.day === 31)) || // Dec holidays
-      (h.month === 0 && h.day === 1) // Jan 1
-    ).map(h => ({
-      id: h.id,
-      title: h.title,
-      date: `2024-${String(h.month + 1).padStart(2, '0')}-${String(h.day).padStart(2, '0')}`,
-      type: h.type // This will now be 'Regular Holiday' or 'Special Non-Working'
-    }));
-
-    const manualEvents = [
-      { id: 'e1', title: 'Christmas Party', date: '2024-12-20', type: 'event' },
-      { id: 'e3', title: 'Team Building', date: '2024-11-15', type: 'event' },
-    ];
-
-    return [...manualEvents, ...upcomingHolidays].sort((a, b) => new Date(a.date) - new Date(b.date));
-  }, []);
-
   const tabs = useMemo(() => [
     { id: 'charts', label: 'Analytics Overview', icon: BarChart3 },
-    { id: 'announcements', label: 'Updates & Events', icon: Bell },
+    { id: 'announcements', label: 'Announcements & Events', icon: Bell },
   ], []);
 
   // Memoized tab change handler
@@ -134,12 +149,8 @@ export default function CombinedSection() {
 
   const announcementContent = useMemo(() => (
     <>
-      <ChartCard title="Latest Announcements">
-        <AnnouncementsList announcements={announcements} />
-      </ChartCard>
-      <ChartCard title="Upcoming Events">
-        <EventsList events={events} />
-      </ChartCard>
+      <AnnouncementsList announcements={announcements} />
+      <EventsList events={events} />
     </>
   ), [announcements, events]);
 
@@ -149,7 +160,7 @@ export default function CombinedSection() {
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
         <div>
           <div className="flex items-center gap-2 text-xl text-gray-900 mb-2">
-            <LayoutDashboard className="w-5 h-5 text-[#79B791] text-3xl font-bold" />
+            <LayoutDashboard className="w-5 h-5 text-gray-700 text-3xl font-bold" />
             <span className="text-xl font-bold tracking-wider">Dashboard Overview</span>
           </div>
           <p className="text-gray-800 mt-2 font-medium">Real-time metrics and updates</p>

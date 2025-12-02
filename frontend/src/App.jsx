@@ -5,6 +5,9 @@ import ErrorBoundary from "./components/ErrorBoundary";
 //lazy load authentication
 const Login = lazy(() => import("./Authentication/Login"));
 const Register = lazy(() => import("./Authentication/Register"));
+const VerifyEmail = lazy(() => import("./Authentication/VerifyEmail"));
+const ForgotPassword = lazy(() => import("./Authentication/ForgotPassword"));
+const ResetPassword = lazy(() => import("./Authentication/ResetPassword"));
 
 // Lazy load dashboards 
 const AdminDashboard = lazy(() => import("./pages/DashboardAdmin/ADashboard"));
@@ -14,7 +17,7 @@ const EmployeeDashboard = lazy(() => import("./pages/DashboardEmployee/EDashboar
 const Attendance = lazy(() => import("./pages/TimekeepingAdmin/adminAttendance"));
 const HRCalendar = lazy(() => import("./pages/TimekeepingAdmin/adminCalendar"));
 const DailyTimeRecord = lazy(() => import("./pages/TimekeepingAdmin/adminDailyTimeRecord"));
-const DTRCorrection = lazy(() => import("./pages/TimekeepingAdmin/admindtrcorrection"));
+const DTRCorrection = lazy(() => import("./pages/TimekeepingAdmin/admindtrCorrection"));
 const LeaveRequestHR = lazy(() => import("./pages/TimekeepingAdmin/adminLeaverequest"));
 const LeaveCredit = lazy(() => import("./pages/TimekeepingAdmin/adminLeavecredit"));
 const Schedule = lazy(() => import("./pages/TimekeepingAdmin/adminSchedule"));
@@ -44,58 +47,72 @@ const PageLoader = () => (
   </div>
 );
 
+import { AuthProvider } from "./context/AuthContext";
+import { useAuth } from "./hooks/useAuth";
+
 /** ProtectedRoute — restricts access to allowed roles */
 const ProtectedRoute = ({ children, allowedRoles }) => {
-  const userStr = localStorage.getItem("user");
-  if (!userStr) {
-    console.log("ProtectedRoute: No user found, redirecting to login");
+  const { user, loading } = useAuth();
+
+  if (loading) return <PageLoader />;
+
+  if (!user) {
+
     return <Navigate to="/login" replace />;
   }
 
-  try {
-    const user = JSON.parse(userStr);
-    const userRole = user.role.toLowerCase();
-    // Normalize allowedRoles to lowercase for comparison
-    const normalizedAllowedRoles = allowedRoles ? allowedRoles.map(r => r.toLowerCase()) : [];
+  const userRole = user.role.toLowerCase();
+  const normalizedAllowedRoles = allowedRoles ? allowedRoles.map(r => r.toLowerCase()) : [];
 
-    if (allowedRoles && !normalizedAllowedRoles.includes(userRole)) {
-      console.log("ProtectedRoute: Unauthorized user role:", user.role);
-      if (userRole === "employee") {
-        return <Navigate to="/employee-dashboard" replace />;
-      }
-      if (userRole === "hr" || userRole === "admin") {
-        return <Navigate to="/admin-dashboard" replace />;
-      }
-      return <Navigate to="/login" replace />;
+  if (allowedRoles && !normalizedAllowedRoles.includes(userRole)) {
+
+    if (userRole === "employee") {
+      return <Navigate to="/employee-dashboard" replace />;
     }
-    return children;
-  } catch (e) {
+    if (userRole === "hr" || userRole === "admin") {
+      return <Navigate to="/admin-dashboard" replace />;
+    }
     return <Navigate to="/login" replace />;
   }
+
+  return children;
 };
 
 /** PublicRoute — redirects logged-in users to their dashboard */
 const PublicRoute = ({ children }) => {
-  const userStr = localStorage.getItem("user");
-  if (userStr) {
-    try {
-      const user = JSON.parse(userStr);
-      const userRole = user.role.toLowerCase();
-      if (userRole === "employee") return <Navigate to="/employee-dashboard" replace />;
-      if (userRole === "admin" || userRole === "hr") return <Navigate to="/admin-dashboard" replace />;
-    } catch (e) {
-      // Invalid user, treat as logged out
-    }
+  const { user, loading } = useAuth();
+
+  if (loading) return <PageLoader />;
+
+  if (user) {
+    const userRole = user.role.toLowerCase();
+    if (userRole === "employee") return <Navigate to="/employee-dashboard" replace />;
+    if (userRole === "admin" || userRole === "hr") return <Navigate to="/admin-dashboard" replace />;
   }
+  
   return children;
 };
 
+import { DndProvider } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
+
 export default function App() {
   return (
-    <Router>
-      <Routes>
-        {/* Default redirect */}
-        <Route path="/" element={<Navigate to="/login" replace />} />
+    <DndProvider backend={HTML5Backend}>
+      <AuthProvider>
+        <Router>
+          <Routes>
+          {/* Default redirect */}
+          <Route 
+            path="/" 
+            element={
+              <PublicRoute>
+                <Suspense fallback={<PageLoader />}>
+                  <Login />
+                </Suspense>
+              </PublicRoute>
+            } 
+          />
 
         {/* Public routes */}
         <Route
@@ -114,6 +131,36 @@ export default function App() {
             <PublicRoute>
               <Suspense fallback={<PageLoader />}>
                 <Register />
+              </Suspense>
+            </PublicRoute>
+          }
+        />
+        <Route
+          path="/verify-email"
+          element={
+            <PublicRoute>
+              <Suspense fallback={<PageLoader />}>
+                <VerifyEmail />
+              </Suspense>
+            </PublicRoute>
+          }
+        />
+        <Route
+          path="/forgot-password"
+          element={
+            <PublicRoute>
+              <Suspense fallback={<PageLoader />}>
+                <ForgotPassword />
+              </Suspense>
+            </PublicRoute>
+          }
+        />
+        <Route
+          path="/reset-password"
+          element={
+            <PublicRoute>
+              <Suspense fallback={<PageLoader />}>
+                <ResetPassword />
               </Suspense>
             </PublicRoute>
           }
@@ -296,6 +343,9 @@ export default function App() {
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
-    </Router>
+
+        </Router>
+      </AuthProvider>
+    </DndProvider>
   );
 }

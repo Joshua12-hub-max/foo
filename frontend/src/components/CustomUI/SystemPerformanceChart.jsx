@@ -5,10 +5,10 @@ export default function SystemPerformanceChart({ data = [] }) {
 
   // Default data if none provided
   const chartData = data.length ? data : [
-    { label: 'Server Load', value: 45, color: '#6366f1' }, // Indigo
-    { label: 'Memory', value: 62, color: '#8b5cf6' },      // Violet
-    { label: 'Disk I/O', value: 28, color: '#ec4899' },    // Pink
-    { label: 'Network', value: 75, color: '#14b8a6' },     // Teal
+    { label: 'Server Load', value: 45, color: '#79B791' }, // Matching StatCard Present color
+    { label: 'Memory', value: 62, color: '#2C497F' },      // Matching StatCard On-Leave color
+    { label: 'Disk I/O', value: 28, color: '#CF9033' },    // Matching StatCard Late color
+    { label: 'Network', value: 75, color: '#778797' },     // Matching StatCard Hired color
   ];
 
   const maxValue = Math.max(...chartData.map(d => d.value));

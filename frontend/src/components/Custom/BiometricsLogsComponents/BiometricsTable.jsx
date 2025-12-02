@@ -1,0 +1,52 @@
+import { Search } from "lucide-react";
+
+export const BiometricsTable = ({ currentItems, isLoading }) => (
+  <div className="flex-1 overflow-hidden rounded-xl bg-[#F8F9FA] p-1">
+    <div className="overflow-x-auto bg-gray-50 rounded-lg">
+      <table className="w-full min-w-[1000px]">
+        <thead className="bg-[#274b46] text-[#F8F9FA]">
+          <tr>
+            {["Department", "Employee ID", "Employee Name", "Date", "Time", "Action", "Status"].map((header) => (
+              <th key={header} className="px-6 py-4 text-left text-sm font-bold tracking-wide">{header}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-100">
+          {currentItems.length ? (
+            currentItems.map((item, index) => (
+              <tr key={`${item.id}-${index}`} className="hover:bg-[#34645c] hover:text-white transition-colors group">
+                <td className="px-6 py-4 text-sm text-gray-800 group-hover:text-white">{item.department}</td>
+                <td className="px-6 py-4 text-sm text-gray-800 group-hover:text-white">{item.id}</td>
+                <td className="px-6 py-4 text-sm text-gray-800 group-hover:text-white">{item.name}</td>
+                <td className="px-6 py-4 text-sm text-gray-800 group-hover:text-white">{item.date}</td>
+                <td className="px-6 py-4 text-sm text-gray-800 group-hover:text-white">{item.time}</td>
+                <td className="px-6 py-4 text-sm font-bold">
+                    <span className={item.type === 'IN' ? 'text-blue-600 group-hover:text-blue-200' : 'text-orange-600 group-hover:text-orange-200'}>
+                        {item.type}
+                    </span>
+                </td>
+                <td className="px-6 py-4 text-sm">
+                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                        item.status === 'Present' ? 'bg-green-100 text-green-800' : 
+                        item.status === 'Late' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'
+                    }`}>
+                        {item.status}
+                    </span>
+                </td>
+              </tr>
+            ))
+          ) : (
+            <tr>
+              <td colSpan="7" className="px-6 py-12 text-center">
+                <div className="flex flex-col items-center justify-center text-gray-500">
+                  <Search className="w-12 h-12 mb-3 opacity-50" />
+                  <p className="text-lg font-medium">No records found</p>
+                </div>
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  </div>
+);

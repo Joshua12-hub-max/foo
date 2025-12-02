@@ -2,8 +2,8 @@ import { useState } from "react";
 import { useOutletContext } from 'react-router-dom';
 
 //Modals
-import { ViewModal } from "../../components/Modal UI/adminDtrcorrection/View";
-import { EditModal } from "../../components/Modal UI/adminDtrcorrection/Edit";
+import { ViewModal } from "../../components/Custom/DTRCorrectionHR/components/Modals/View";
+import { EditModal } from "../../components/Custom/DTRCorrectionHR/components/Modals/Edit";
 
 //Components
 import { LoadingSpinner } from "../../components/Custom/DTRCorrectionHR/components/DTRCorrectionLoadingSpinner";

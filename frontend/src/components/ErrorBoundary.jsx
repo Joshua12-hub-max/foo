@@ -20,7 +20,6 @@ export default class ErrorBoundary extends React.Component {
   render() {
     const { hasError, error, info } = this.state;
     if (!hasError) return this.props.children;
-    n;
     return (
       <div className="p-6 bg-red-50 border border-red-200 rounded-lg">
         <h3 className="text-lg font-bold text-red-700 mb-2">

@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate, Outlet, useLocation } from "react-router-dom";
+import { useAuth } from "../../hooks/useAuth";
 import api from "../../api/axios";
 
-// Dashboard Components (stay in HDashboard/dito lang dapat)
+// Dashboard Components
 import Sidebar from "../../components/Custom/DashboardAdminComponents/Sidebar";
 import Header from "../../components/Custom/DashboardAdminComponents/Header";
 import WelcomeBanner from "../../components/Custom/DashboardAdminComponents/WelcomeBanner";
@@ -16,7 +17,7 @@ import HiredTable from "../../components/Custom/DashboardAdminComponents/HiredTa
 
 import NotificationMenu from '../../components/CustomUI/NotificationMenu';
 
-// Icons remember ito yung kinuha mo sa lucide-react
+// Icons
 import {LayoutDashboard, Clock, Users, Building2, Briefcase, DollarSign,Award, FileText, Settings,} from "lucide-react";
 
 // Dashboard Home Component
@@ -49,7 +50,7 @@ const DashboardHome = ({ user, statsCards, handleStatCardClick, activeTable, set
 );
 
 export default function HDashboard() {
-  const [user, setUser] = useState(null);
+  const { user, logout } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeTable, setActiveTable] = useState(null);
@@ -59,31 +60,11 @@ export default function HDashboard() {
   // Determine if we're on dashboard home
   const isDashboardHome = location.pathname === "/admin-dashboard" || location.pathname === "/admin-dashboard/";
 
-  // Load user from localStorage
-  useEffect(() => {
-    const storedUser = localStorage.getItem("user");
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    } else {
-      navigate("/login");
-    }
-  }, [navigate]);
-
   // Logout handler
-  const handleLogout = useCallback(async () => {
-    try {
-      await api.post("/auth/logout", {}, { withCredentials: true });
-      localStorage.removeItem("user");
-      sessionStorage.removeItem("accessToken");
-      navigate("/login");
-    } catch (error) {
-      console.error("logout failed:", error);
-      // Fallback: clear local data
-      localStorage.removeItem("user");
-      sessionStorage.removeItem("accessToken");
-      navigate("/login");
-    }
-  }, [navigate]);
+  const handleLogout = async () => {
+    await logout();
+    navigate("/login");
+  };
 
   // Navigation handler
   const handleNavigate = useCallback(

@@ -1,15 +1,24 @@
-import { Calendar } from 'lucide-react';
+import { Calendar, ArrowRight } from 'lucide-react';
+import { EventsList } from "../../CustomUI";
 
-export default function EventsAndHolidays() {
+export default function EventsAndHolidays({ events = [] }) {
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6">
-      <h3 className="text-sm font-semibold text-slate-800 mb-4 flex items-center gap-2">
-        <Calendar className="w-4 h-4 text-gray-800" />
-        Events & Holidays
-      </h3>
-      <div className="text-center py-8">
-        <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-        <p className="text-sm text-gray-500">No upcoming events</p>
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 h-full flex flex-col">
+      <div className="flex items-center justify-between mb-6">
+        <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+          <div className="p-2 bg-blue-50 rounded-lg">
+            <Calendar className="w-5 h-5 text-blue-600" />
+          </div>
+          Events & Holidays
+        </h3>
+        <button className="text-sm font-medium text-blue-600 hover:text-blue-700 flex items-center gap-1 transition-colors group">
+          View Calendar
+          <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+        </button>
+      </div>
+      
+      <div className="flex-1 overflow-hidden">
+        <EventsList events={events} />
       </div>
     </div>
   );

@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, memo } from 'react';
-import { Calendar, Bell, LayoutDashboard, PieChart } from 'lucide-react';
+import { Calendar, Bell, LayoutDashboard, BarChart3 } from 'lucide-react';
 import ScheduleSection from '../DashboardEmployeeComponents/ScheduleSection';
 import EventsAndHolidays from '../DashboardEmployeeComponents/EventsAndHolidays';
 import AnnouncementSection from '../DashboardEmployeeComponents/AnnouncementSection';
@@ -14,14 +14,14 @@ const TabButton = memo(({ tab, isActive, isLoading, onClick }) => {
       disabled={isLoading}
       className={`relative flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 outline-none focus:ring-2 focus:ring-blue-100 ${
         isActive
-          ? 'bg-white text-[#274b46] shadow-sm ring-1 ring-gray-100'
+          ? 'bg-white text-gray-800 shadow-sm ring-1 ring-gray-100'
           : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
       } ${isLoading ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'}`}
     >
-      <Icon className={`w-4 h-4 transition-colors ${isActive ? 'text-[#274b46]' : 'text-gray-400'}`} />
+      <Icon className={`w-4 h-4 transition-colors ${isActive ? 'text-gray-800' : 'text-gray-400'}`} />
       {tab.label}
       {isActive && (
-        <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1/2 h-0.5 bg-[#274b46] rounded-full mb-1.5 opacity-0" />
+        <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1/2 h-0.5 bg-gray-800 rounded-full mb-1.5 opacity-0" />
       )}
     </button>
   );
@@ -34,7 +34,7 @@ const Card = memo(({ title, children, className = "" }) => (
   <div className={`bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-all duration-300 ${className}`}>
      {title && (
       <h4 className="text-lg font-semibold text-gray-800 mb-6 flex items-center gap-2">
-        <div className="w-1 h-6 bg-[#274b46] rounded-full"></div>
+        <div className="w-1 h-6 bg-gray-700 rounded-full"></div>
         {title}
       </h4>
     )}
@@ -57,13 +57,12 @@ const LoadingOverlay = memo(() => (
 LoadingOverlay.displayName = 'LoadingOverlay';
 
 export default function EmployeeCombinedSection() {
-  const [activeTab, setActiveTab] = useState('schedule');
+  const [activeTab, setActiveTab] = useState('analytics');
   const [isLoading, setIsLoading] = useState(false);
 
   const tabs = useMemo(() => [
+    { id: 'analytics', label: 'Analytics & Updates', icon: BarChart3 },
     { id: 'schedule', label: 'Schedule & Events', icon: Calendar },
-    { id: 'performance', label: 'Performance', icon: PieChart },
-    { id: 'announcements', label: 'Announcements', icon: Bell },
   ], []);
 
   // Mock performance data for the employee
@@ -92,26 +91,19 @@ export default function EmployeeCombinedSection() {
   // Memoized content rendering
   const scheduleContent = useMemo(() => (
     <>
-      <Card className="h-full">
-        <ScheduleSection />
-      </Card>
-      <Card className="h-full">
-        <EventsAndHolidays />
-      </Card>
+      <ScheduleSection />
+      <EventsAndHolidays />
     </>
   ), []);
 
-  const performanceContent = useMemo(() => (
-    <Card title="My Performance Evaluation" className="col-span-1 lg:col-span-2">
-      <PerformancePieChart reportData={performanceData} />
-    </Card>
-  ), [performanceData]);
-
-  const announcementContent = useMemo(() => (
-    <Card className="col-span-1 lg:col-span-2">
+  const analyticsContent = useMemo(() => (
+    <>
+      <Card title="My Performance Evaluation">
+        <PerformancePieChart reportData={performanceData} />
+      </Card>
       <AnnouncementSection />
-    </Card>
-  ), []);
+    </>
+  ), [performanceData]);
 
   return (
     <div className="bg-gray-50/50 rounded-3xl p-8 relative transition-all duration-500">
@@ -119,7 +111,7 @@ export default function EmployeeCombinedSection() {
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
         <div>
           <div className="flex items-center gap-2 text-xl text-gray-900 mb-2">
-            <LayoutDashboard className="w-5 h-5 text-[#79B791] text-3xl font-bold" />
+            <LayoutDashboard className="w-5 h-5 text-gray-700 text-3xl font-bold" />
             <span className="text-xl font-bold tracking-wider">Dashboard Overview</span>
           </div>
           <p className="text-gray-800 mt-2 font-medium">Manage your time and stay updated</p>
@@ -148,8 +140,7 @@ export default function EmployeeCombinedSection() {
           }`}
         >
           {activeTab === 'schedule' && scheduleContent}
-          {activeTab === 'performance' && performanceContent}
-          {activeTab === 'announcements' && announcementContent}
+          {activeTab === 'analytics' && analyticsContent}
         </div>
       </div>
     </div>

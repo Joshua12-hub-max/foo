@@ -23,7 +23,7 @@ export default function Sidebar({ sidebarOpen, navItems, handleLogout, onSection
   };
 
   return (
-    <aside className={`scrollbar-green-950 bg-[#274b46] text-[#F8F9FA] p-4 shadow-sm p-4 shadow-sm mb-6 flex flex-col justify-between shadow-lg transition-all duration-300 z-40 min-h-screen sticky top-0 overflow-y-auto ${sidebarOpen ? 'w-70' : 'w-30'}`}>
+    <aside className={`scrollbar-[#274b46] scrollbar-thin bg-[#274b46] text-[#F8F9FA] p-4 shadow-sm mb-6 flex flex-col justify-between shadow-lg transition-all duration-300 z-40 min-h-screen sticky top-0 overflow-y-auto ${sidebarOpen ? 'w-70' : 'w-30'}`}>
       <div className="flex flex-col">
         <div className={`border-b border-[#F8F9FA] flex flex-col items-center justify-center flex-shrink-0 py-6 transition-all duration-300 ${
               sidebarOpen ? 'px-6' : 'px-2'}`}>

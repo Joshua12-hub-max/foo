@@ -1,431 +1,418 @@
-import { useState, useMemo, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, CalendarDays, Clock, Menu, X, Plus, Calendar as CalendarIcon } from 'lucide-react';
+import { useState, useCallback, useEffect } from 'react';
+import { DndProvider } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
 
-import AddEventModal from '../../components/Modal UI/adminCalendar/addevent';
-import ScheduleModal from '../../components/Modal UI/adminCalendar/schedule';
+// Shared hooks and components
+import { useCalendarState } from '../../components/Custom/CalendarComponents/shared/hooks/useCalendarState';
+import { useCalendarNav } from '../../components/Custom/CalendarComponents/shared/hooks/useCalendarNav';
+import { useCalendarData } from '../../components/Custom/CalendarComponents/shared/hooks/useCalendarData';
+import { HOURS_12, EVENT_COLORS } from '../../components/Custom/CalendarComponents/shared/constants/calendarConstants';
+
+import CalendarHeader from '../../components/Custom/CalendarComponents/shared/components/CalendarHeader';
+import CalendarControls from '../../components/Custom/CalendarComponents/shared/components/CalendarControls';
+import CalendarGrid from '../../components/Custom/CalendarComponents/shared/components/CalendarGrid';
+import AgendaView from '../../components/Custom/CalendarComponents/shared/components/AgendaView';
+import DrawerSidebar from '../../components/Custom/CalendarComponents/shared/components/DrawerSidebar';
+import EventDetailsModal from '../../components/Custom/CalendarComponents/shared/Modals/EventDetailsModal';
+import ConfirmDeleteModal from '../../components/Custom/CalendarComponents/shared/Modals/ConfirmDeleteModal';
+import AdminCalendarActions from '../../components/Custom/CalendarComponents/AdminCalendarActions';
+import { Plus, Calendar as CalendarIcon, Clock, RefreshCw, List } from 'lucide-react';
+import { eventApi } from '../../api/eventApi';
+import { getEmployees } from '../../api/employeeApi';
+import AddEventModal from '../../components/Custom/CalendarComponents/admin/Modals/AddEventModal';
+import EditEventModal from '../../components/Custom/CalendarComponents/admin/Modals/EditEventModal';
+import ScheduleModal from '../../components/Custom/CalendarComponents/admin/Modals/ScheduleModal';
+import CreateAnnouncementModal from '../../components/Custom/CalendarComponents/admin/Modals/CreateAnnouncementModal';
+
+// Utilities
+import { holidays } from '../../utils/holidays';
+import { getRandomEventColor } from '../../components/Custom/CalendarComponents/shared/utils/eventUtils';
+import { scheduleApi } from '../../api/scheduleApi';
+import { announcementApi } from '../../api/announcementApi';
 
 export default function AdminCalendar() {
-  // ─────────────────────────────
-  // STATE MANAGEMENT
-  // ─────────────────────────────
-  const today = useMemo(() => new Date(), []);
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  // Calendar state management
+  const calendarState = useCalendarState();
+  const { 
+    today, 
+    currentDate, 
+    setCurrentDate,
+    isDrawerOpen, 
+    setIsDrawerOpen,
+    showHolidays, 
+    setShowHolidays,
+    showEventDetails, 
+    setShowEventDetails
+  } = calendarState;
 
-  const [events, setEvents] = useState([
-    { id: 1, title: 'Team Meeting', time: 7, color: 'bg-gray-200 border-gray-400 text-gray-800', type: 'meeting' },
-    { id: 2, title: 'Lunch Break', time: 12, color: 'bg-gray-300 border-gray-500 text-gray-900', type: 'break' },
-    { id: 3, title: 'Project Review', time: 14, color: 'bg-gray-200 border-gray-400 text-gray-800', type: 'meeting' },
-  ]);
+  // Navigation handlers
+  const navigation = useCalendarNav({ setCurrentDate });
 
-  const [showEventDetails, setShowEventDetails] = useState(null);
+  // Events state
+  const [events, setEvents] = useState([]);
+  const [announcements, setAnnouncements] = useState([]);
+  const [schedules, setSchedules] = useState([]);
+  const [employees, setEmployees] = useState([]);
+
+  // Fetch Data
+  const fetchData = useCallback(async () => {
+      try {
+        const announcementResponse = await announcementApi.getAnnouncements();
+        if (announcementResponse.data && announcementResponse.data.announcements) {
+            setAnnouncements(announcementResponse.data.announcements);
+        }
+
+        const eventResponse = await eventApi.getEvents();
+        if (eventResponse.data && eventResponse.data.events) {
+            const apiEvents = eventResponse.data.events.map(e => ({
+               ...e,
+               color: getRandomEventColor(EVENT_COLORS)
+            }));
+            setEvents(apiEvents);
+        }
+
+        // Fetch Schedules
+        const scheduleResponse = await scheduleApi.getAllSchedules();
+        if (scheduleResponse.data && scheduleResponse.data.schedules) {
+            setSchedules(scheduleResponse.data.schedules);
+        }
+
+        // Fetch employees for filters
+        const employeeResponse = await getEmployees();
+        if (employeeResponse.data && employeeResponse.data.employees) {
+            setEmployees(employeeResponse.data.employees);
+        }
+      } catch (error) {
+        console.error("Failed to fetch data:", error);
+      }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  // Modal states
   const [showAddEvent, setShowAddEvent] = useState(false);
+  const [showEditEvent, setShowEditEvent] = useState(false);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [showAnnouncementModal, setShowAnnouncementModal] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [eventToEdit, setEventToEdit] = useState(null);
+  const [itemToDelete, setItemToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  const [newEvent, setNewEvent] = useState({ title: '', time: 9 });
+  // View state
+  const [currentView, setCurrentView] = useState('month');
+
+  // Form states
+  const [newEvent, setNewEvent] = useState({ title: '', time: 9, date: '' });
   const [newSchedule, setNewSchedule] = useState({
-    title: '', startDate: '', endDate: '', startTime: 9, endTime: 10, description: '', repeat: 'none',});
+    title: '', 
+    employee_id: '',
+    startDate: '', 
+    endDate: '', 
+    startTime: '09:00', 
+    endTime: '17:00', 
+    description: '', 
+    repeat: 'none'
+  });
 
-  // ─────────────────────────────
-  // CONSTANTS
-  // ─────────────────────────────
-  const months = useMemo(
-    () => [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December',
-    ],
-    []
-  );
+  // Calendar data processing
+  const calendarData = useCalendarData({
+    currentDate,
+    events,
+    showHolidays,
+    holidays,
+    announcements
+  });
+  const { month, day, year, dayName, displayedEvents } = calendarData;
 
-  const days = useMemo(() => ['Su', 'M', 'Tu', 'W', 'Th', 'F', 'Sa'], []);
-
-  const hours = useMemo(
-    () =>
-      Array.from({ length: 24 }, (_, i) => {
-        const hour = i % 12 || 12;
-        const period = i < 12 ? 'AM' : 'PM';
-        return `${hour}${period}`;
-      }),
-    []
-  );
-
-  const colors = useMemo(
-    () => [
-      'bg-blue-100 border-blue-300 text-blue-800',
-      'bg-green-100 border-green-300 text-green-800',
-      'bg-purple-100 border-purple-300 text-purple-800',
-      'bg-pink-100 border-pink-300 text-pink-800',
-      'bg-yellow-100 border-yellow-300 text-yellow-800',
-      'bg-red-100 border-red-300 text-red-800',
-    ],
-    []
-  );
-
-  // ─────────────────────────────
-  // HELPERS
-  // ─────────────────────────────
-  const getDaysInMonth = useCallback((date) => {
-    const year = date.getFullYear();
-    const month = date.getMonth();
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-    const daysInMonth = lastDay.getDate();
-    const startingDayOfWeek = firstDay.getDay();
-    return { daysInMonth, startingDayOfWeek };
-  }, []);
-
-  const formatDate = useCallback((date) => {
-    const dayNames = ['Su', 'M', 'Tu', 'W', 'Th', 'F', 'Sa'];
-    return {
-      month: months[date.getMonth()],
-      day: date.getDate(),
-      year: date.getFullYear(),
-      dayName: dayNames[date.getDay()],
-    };
-  }, [months]);
-
-  // ─────────────────────────────
-  // NAVIGATION HANDLERS
-  // ─────────────────────────────
-  const handlePrevMonth = useCallback(() => {
-    setCurrentDate((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, prev.getDate()));
-  }, []);
-
-  const handleNextMonth = useCallback(() => {
-    setCurrentDate((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, prev.getDate()));
-  }, []);
-
-  const handleToday = useCallback(() => setCurrentDate(new Date()), []);
-
-  // ─────────────────────────────
-  // EVENT HANDLERS
-  // ─────────────────────────────
-  const handleAddEventClick = useCallback((time) => {
-    setNewEvent({ title: '', time });
+  // Event handlers
+  const handleAddEventClick = useCallback((time = 9) => {
+    setNewEvent({ title: '', time, date: currentDate.toISOString().split('T')[0] });
     setShowAddEvent(true);
+  }, [currentDate]);
+
+  const handleAddEvent = useCallback(async () => {
+    if (newEvent.title.trim() && newEvent.date) {
+      try {
+          await eventApi.createEvent({
+              ...newEvent,
+              time: parseInt(newEvent.time),
+          });
+          
+          // Refresh data
+          await fetchData();
+          
+          setNewEvent({ title: '', time: 9, date: '' });
+          setShowAddEvent(false);
+          alert("Event created successfully!");
+      } catch (error) {
+          console.error("Failed to create event:", error);
+          alert("Failed to create event.");
+      }
+    } else {
+        alert("Please fill in the Event Title and Date.");
+    }
+  }, [newEvent, fetchData]);
+
+  const handleCreateSchedule = useCallback(async () => {
+    if (newSchedule.employee_id && newSchedule.startDate && newSchedule.endDate && newSchedule.startTime && newSchedule.endTime) {
+      try {
+        await scheduleApi.createSchedule(newSchedule);
+        
+        // Refresh data
+        await fetchData(); 
+
+        setNewSchedule({ 
+          title: '', 
+          employee_id: '',
+          startDate: '', 
+          endDate: '', 
+          startTime: '09:00', 
+          endTime: '17:00', 
+          description: '', 
+          repeat: 'none' 
+        });
+        setShowScheduleModal(false);
+        alert("Schedule created successfully!");
+      } catch (error) {
+        console.error("Failed to create schedule:", error);
+        alert("Failed to create schedule. Please try again.");
+      }
+    } else {
+      alert("Please fill in all required fields (Employee, Start/End Date, Start/End Time).");
+    }
+  }, [newSchedule]);
+
+  const handleCreateAnnouncement = useCallback(async (announcementData) => {
+      if (announcementData.title && announcementData.content) {
+        try {
+            await announcementApi.createAnnouncement(announcementData);
+            await fetchData(); // Refresh to show new announcement
+            setShowAnnouncementModal(false);
+            alert("Announcement created successfully!");
+        } catch (error) {
+            console.error("Failed to create announcement:", error);
+            const errorMessage = error.response?.data?.message || error.message || "Failed to create announcement.";
+            alert(`Error: ${errorMessage}`);
+        }
+      } else {
+          alert("Please fill in the Title and Content.");
+      }
+  }, [fetchData]);
+
+  // Edit event handler
+  const handleEditEvent = useCallback((event) => {
+    setEventToEdit(event);
+    setShowEventDetails(null);
+    setShowEditEvent(true);
   }, []);
 
-  const handleAddEvent = useCallback(() => {
-    if (newEvent.title.trim()) {
-      setEvents((prev) => [
-        ...prev,
-        {
-          id: Date.now(),
-          title: newEvent.title,
-          time: parseInt(newEvent.time),
-          color: colors[Math.floor(Math.random() * colors.length)],
-        },
-      ]);
-      setNewEvent({ title: '', time: 9 });
-      setShowAddEvent(false);
-    }
-  }, [newEvent, colors]);
+  // Update event handler
+  const handleUpdateEvent = useCallback(async (updatedData) => {
+    if (!eventToEdit) return;
 
-  const handleDeleteEvent = useCallback((id) => {
-    setEvents((prev) => prev.filter((e) => e.id !== id));
+    try {
+      await eventApi.updateEvent(eventToEdit.id, updatedData);
+      await fetchData(); // Refresh data
+      setShowEditEvent(false);
+      setEventToEdit(null);
+      alert("Event updated successfully!");
+    } catch (error) {
+      console.error("Failed to update event:", error);
+      alert("Failed to update event. Please try again.");
+    }
+  }, [eventToEdit, fetchData]);
+
+  // Delete event/schedule handler
+  const handleDeleteClick = useCallback((item) => {
+    setItemToDelete(item);
+    setShowEventDetails(null);
+    setShowDeleteConfirm(true);
   }, []);
 
-  const handleCreateSchedule = useCallback(() => {
-    if (newSchedule.title && newSchedule.startDate && newSchedule.endDate)
-    { console.log('Creating schedule:', newSchedule);
-      setNewSchedule({ title: '', startDate: '', endDate: '', startTime: 9, endTime: 10, description: '', repeat: 'none', });
-      setShowScheduleModal(false);
-    }}, [newSchedule]);
+  const handleConfirmDelete = useCallback(async () => {
+    if (!itemToDelete) return;
 
-  // ─────────────────────────────
-  // MEMOIZED DATA
-  // ─────────────────────────────
-  const { month, day, year, dayName } = useMemo(() => formatDate(currentDate), [currentDate, formatDate]);
-  const sortedEvents = useMemo(() => [...events].sort((a, b) => a.time - b.time), [events]);
-
-  // Render mini calendar for sidebar
-  const renderCalendarDays = useMemo(() => {
-    const { daysInMonth, startingDayOfWeek } = getDaysInMonth(currentDate);
-    const prevMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
-    const { daysInMonth: prevMonthDays } = getDaysInMonth(prevMonth);
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
-
-    const cells = [];
-
-    for (let i = startingDayOfWeek - 1; i >= 0; i--) {
-      const prevDay = prevMonthDays - i;
-      cells.push(
-        <div
-          key={`prev-${i}`}
-          className="aspect-square border border-gray-300 rounded flex items-center justify-center text-gray-400 text-xs hover:bg-gray-100 cursor-pointer"
-          onClick={() => setCurrentDate(new Date(prevMonth.getFullYear(), prevMonth.getMonth(), prevDay))}
-        >
-          {prevDay}
-        </div>
-      );
+    setIsDeleting(true);
+    try {
+      if (itemToDelete.id) {
+        // Check if it's a schedule or event
+        if (itemToDelete.day_of_week) {
+          // It's a schedule
+          await scheduleApi.deleteSchedule(itemToDelete.id);
+        } else {
+          // It's an event
+          await eventApi.deleteEvent(itemToDelete.id);
+        }
+        await fetchData(); // Refresh data
+        alert("Deleted successfully!");
+      }
+      setShowDeleteConfirm(false);
+      setItemToDelete(null);
+    } catch (error) {
+      console.error("Failed to delete:", error);
+      alert("Failed to delete. Please try again.");
+    } finally {
+      setIsDeleting(false);
     }
+  }, [itemToDelete, fetchData]);
 
-    for (let d = 1; d <= daysInMonth; d++) {
-      const isToday = today.getDate() === d && today.getMonth() === month;
-      const isSelected = currentDate.getDate() === d;
-      cells.push(
-        <div
-          key={`curr-${d}`}
-          onClick={() => setCurrentDate(new Date(year, month, d))}
-          className={`aspect-square border rounded flex items-center justify-center text-xs font-medium cursor-pointer transition-all ${
-            isToday
-              ? 'bg-[#274b46] text-[#F8F9FA] border-gray-700'
-              : isSelected
-              ? 'bg-[#274b46] text-gray-900 border-gray-400'
-              : 'border-[#274b46] text-gray-700 hover:border-gray-400 hover:bg-gray-100'
-          }`}
-        >
-          {d}
-        </div>
-      );
+  // Handle event drop for drag and drop
+  const handleEventDrop = useCallback(async (event, newDate) => {
+    try {
+      const formattedDate = newDate.toISOString().split('T')[0];
+      await eventApi.updateEvent(event.id, { ...event, date: formattedDate });
+      await fetchData(); // Refresh calendar
+      alert(`Event "${event.title}" moved to ${formattedDate}`);
+    } catch (error) {
+      console.error('Failed to move event:', error);
+      alert('Failed to move event. Please try again.');
     }
+  }, [fetchData]);
 
-    return cells;
-  }, [currentDate, today, getDaysInMonth]);
-
-  // ─────────────────────────────
-  // RENDER VIEWS
-  // ─────────────────────────────
-  const renderMonthView = () => {
-    const { daysInMonth, startingDayOfWeek } = getDaysInMonth(currentDate);
-    const cells = [];
-
-    for (let i = 0; i < startingDayOfWeek; i++) {
-      cells.push(<div key={`empty-${i}`} className="aspect-square"></div>);
-    }
-
-    for (let d = 1; d <= daysInMonth; d++) {
-      const isToday = today.getDate() === d && today.getMonth() === currentDate.getMonth();
-      const isSelected = currentDate.getDate() === d;
-      cells.push(
-        <div
-          key={d}
-          className={`aspect-square border rounded-lg p-2 cursor-pointer hover:text-[#F8F9FA] transition-all ${
-            isToday && isSelected
-              ? 'bg-[#274b46] border-gray-400'
-              : isToday
-              ? 'bg-gray-100 border-gray-300'
-              : isSelected
-              ? 'bg-gray-300 border-gray-500'
-              : 'border-gray-300'
-          }`}
-          onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth(), d))}
-        >
-          <div className={`text-sm font-semibold ${isToday ? 'text-[#F8F9FA]' : isSelected ? 'text-gray-900' : 'text-gray-700'}`}>{d}</div>
-        </div>
-      );
-    }
-
-    return (
-      <div>
-        <div className="grid grid-cols-7 gap-2 mb-2">
-          {days.map((d, i) => (
-            <div key={i} className="text-center text-xs font-semibold text-gray-600">
-              {d}
-            </div>
-          ))}
-        </div>
-        <div className="grid grid-cols-7 gap-2">{cells}</div>
-      </div>
-    );
-  };
-
-  // ─────────────────────────────
-  // RENDER
-  // ─────────────────────────────
   return (
-    <div className="flex h-screen bg-[#274b46] overflow-hidden">
+    <DndProvider backend={HTML5Backend}>
+      <div className="flex h-screen bg-[#274b46] overflow-hidden">
       {/* MAIN CALENDAR AREA */}
       <div className="flex-1 flex flex-col">
-        {/* Header */}
-        <div className="bg-[#274b46] border-b border-[#305d56] px-6 py-4 shadow-sm">
-          <h1 className="text-xl-md font-bold text-[#F8F9FA]">
-            {month} {year}
-          </h1>
-        </div>
+        <CalendarHeader month={month} year={year} />
 
-        {/* Controls */}
-        <div className="bg-gray-200 border-b border-gray-300 px-8 py-4 flex items-center justify-between shadow-sm">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={handlePrevMonth}
-              className="p-2 border border-gray-400 rounded-lg hover:bg-gray-300 transition-colors"
-            >
-              <ChevronLeft className="w-5 h-5 text-gray-700" />
-            </button>
-            <button
-              onClick={handleToday}
-              className="px-4 py-2 text-sm font-semibold text-gray-800 border border-gray-400 rounded-lg hover:bg-gray-300 transition-colors"
-            >
-              Today
-            </button>
-            <button
-              onClick={handleNextMonth}
-              className="p-2 border border-gray-400 rounded-lg hover:bg-gray-300 transition-colors"
-            >
-              <ChevronRight className="w-5 h-5 text-gray-700" />
-            </button>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setShowScheduleModal(true)}
-              className="px-4 py-2 text-sm font-semibold text-gray-800 border border-gray-400 rounded-lg hover:bg-gray-300 transition-colors flex items-center gap-2"
-            >
-              <CalendarIcon className="w-4 h-4" />
-              Schedule
-            </button>
-
-            <button
-              onClick={() => handleAddEventClick(9)}
-              className="px-4 py-2 text-sm font-semibold text-gray-800 border border-gray-400 rounded-lg hover:bg-gray-300 transition-colors flex items-center gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              Add event
-            </button>
-
-            <button
-              onClick={() => setIsDrawerOpen(true)}
-              className="p-2 border border-gray-400 rounded-lg hover:bg-gray-300 transition-colors"
-            >
-              <Menu className="w-5 h-5 text-gray-700" />
-            </button>
-          </div>
-        </div>
-
-        {/* Calendar Body */}
-        <div className="flex-1 overflow-auto p-8 bg-[#F8F9FA]">
-          {renderMonthView()}
-        </div>
-      </div>
-
-      {/* DRAWER OVERLAY */}
-      {isDrawerOpen && (
-        <div 
-          className="fixed inset-0 z-40 transition-opacity"
-          onClick={() => setIsDrawerOpen(false)}
+        <CalendarControls
+          onPrevMonth={navigation.handlePrevMonth}
+          onNextMonth={navigation.handleNextMonth}
+          onToday={navigation.handleToday}
+          showHolidays={showHolidays}
+          onToggleHolidays={() => setShowHolidays(!showHolidays)}
+          currentView={currentView}
+          onViewChange={setCurrentView}
+          allowedViews={['month', 'agenda']}
+          actions={
+            <>
+              <AdminCalendarActions
+                onAddEvent={() => handleAddEventClick(9)}
+                onSchedule={() => setShowScheduleModal(true)}
+                onAnnouncement={() => setShowAnnouncementModal(true)}
+                onOpenDrawer={() => setIsDrawerOpen(true)}
+              />
+            </>
+          }
         />
-      )}
 
-      {/* RIGHT DRAWER SIDEBAR */}
-      <div 
-        className={`fixed top-0 right-0 h-full w-80 bg-gray-100 border-l border-gray-300 shadow-2xl z-50 transform transition-transform duration-300 ease-in-out ${
-          isDrawerOpen ? 'translate-x-0' : 'translate-x-full'
-        }`}
-      >
-        <div className="h-full overflow-auto p-6">
-          {/* Close Button */}
-          <button
-            onClick={() => setIsDrawerOpen(false)}
-            className="absolute top-4 right-4 p-2 hover:bg-gray-200 rounded-lg transition-colors"
-          >
-            <X className="w-5 h-5 text-gray-700" />
-          </button>
-
-          {/* Mini Calendar */}
-          <div className="mb-8 mt-8">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl-md font-bold text-gray-900">{month} {year}</h2>
-              <div className="flex gap-1">
-                <button
-                  onClick={handlePrevMonth}
-                  className="p-1 hover:bg-[#274b46] rounded transition-colors"
-                >
-                  <ChevronLeft className="w-4 h-4 text-gray-700" />
-                </button>
-                <button
-                  onClick={handleNextMonth}
-                  className="p-1 hover:bg-[#274b46] rounded transition-colors"
-                >
-                  <ChevronRight className="w-4 h-4 text-gray-700" />
-                </button>
-              </div>
-            </div>
-            <div className="grid grid-cols-7 gap-1 mb-2">
-              {days.map((d, i) => (
-                <div key={i} className="text-center text-xs font-semibold text-gray-600">
-                  {d}
-                </div>
-              ))}
-            </div>
-            <div className="grid grid-cols-7 gap-1">{renderCalendarDays}</div>
-          </div>
-
-          {/* Today's Schedule */}
-          <div>
-            <h2 className="text-xl-md font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <Clock className="w-5 h-5 text-[#274b46]" />
-              Today's Schedule
-            </h2>
-            {sortedEvents.length === 0 ? (
-              <p className="text-sm text-gray-500 italic">No events scheduled</p>
-            ) : (
-              <div className="space-y-3">
-                {sortedEvents.map((event) => (
-                  <div
-                    key={event.id}
-                    className={`p-3 rounded-lg border-l-4 ${event.color} cursor-pointer hover:shadow-md transition-shadow`}
-                    onClick={() => setShowEventDetails(event)}
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="font-semibold text-sm">{event.title}</div>
-                        <div className="text-xs mt-1 opacity-70">{hours[event.time]}</div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+        {/* Calendar Body - Conditional View Rendering */}
+        <div className="flex-1 overflow-auto p-8 bg-[#F8F9FA]">
+          {currentView === 'month' && (
+            <CalendarGrid
+              currentDate={currentDate}
+              today={today}
+              onDateClick={navigation.handleDateClick}
+              showHolidays={showHolidays}
+              holidays={holidays}
+              announcements={announcements}
+              events={events}
+              schedules={schedules}
+              displayedEvents={displayedEvents}
+              onEventDrop={handleEventDrop}
+            />
+          )}
+          {currentView === 'agenda' && (
+            <AgendaView
+              events={events}
+              announcements={announcements}
+              onEventClick={setShowEventDetails}
+            />
+          )}
         </div>
       </div>
+
+      {/* DRAWER SIDEBAR */}
+      <DrawerSidebar
+        isOpen={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+        currentDate={currentDate}
+        today={today}
+        month={month}
+        year={year}
+        onDateClick={navigation.handleDateClick}
+        onPrevMonth={navigation.handlePrevMonth}
+        onNextMonth={navigation.handleNextMonth}
+        displayedEvents={displayedEvents}
+        hours={HOURS_12}
+        onEventClick={setShowEventDetails}
+        showHolidays={showHolidays}
+        holidays={holidays}
+        announcements={announcements}
+      />
 
       {/* Event Details Modal */}
       {showEventDetails && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowEventDetails(null)}>
-          <div className="bg-[#F8F9FA] rounded-lg shadow-xl p-6 w-96" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-xl font-bold text-gray-900 mb-4">{showEventDetails.title}</h3>
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 text-gray-600">
-                <Clock className="w-4 h-4" />
-                <span className="text-sm">{hours[showEventDetails.time]}</span>
-              </div>
-              <div className="flex items-center gap-2 text-gray-600">
-                <CalendarDays className="w-4 h-4" />
-                <span className="text-sm">{dayName}, {month} {day}</span>
-              </div>
-            </div>
-            <div className="mt-6 flex gap-3">
-              <button
-                onClick={() => setShowEventDetails(null)}
-                className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
+        <EventDetailsModal
+          event={showEventDetails}
+          onClose={() => setShowEventDetails(null)}
+          hours={HOURS_12}
+          month={month}
+          day={day}
+          dayName={dayName}
+          isAdmin={true}
+          onEdit={handleEditEvent}
+          onDelete={handleDeleteClick}
+        />
       )}
 
-        <AddEventModal
-          show={showAddEvent}
-          newEvent={newEvent}
-          setNewEvent={setNewEvent}
-          onClose={() => setShowAddEvent(false)}
-          onAdd={handleAddEvent}
-          hours={hours}
-        />
+      {/* Add Event Modal */}
+      <AddEventModal
+        show={showAddEvent}
+        newEvent={newEvent}
+        setNewEvent={setNewEvent}
+        onClose={() => setShowAddEvent(false)}
+        onAdd={handleAddEvent}
+        hours={HOURS_12}
+      />
 
-        <ScheduleModal
-          show={showScheduleModal}
-          newSchedule={newSchedule}
-          setNewSchedule={setNewSchedule}
-          onClose={() => setShowScheduleModal(false)}
-          onCreate={handleCreateSchedule}
-          hours={hours}
-        />
+      {/* Schedule Modal */}
+      <ScheduleModal
+        show={showScheduleModal}
+        newSchedule={newSchedule}
+        setNewSchedule={setNewSchedule}
+        onClose={() => setShowScheduleModal(false)}
+        onCreate={handleCreateSchedule}
+        hours={HOURS_12}
+      />
+
+      {/* Announcement Modal */}
+      <CreateAnnouncementModal
+        show={showAnnouncementModal}
+        onClose={() => setShowAnnouncementModal(false)}
+        onCreate={handleCreateAnnouncement}
+      />
+
+      {/* Edit Event Modal */}
+      <EditEventModal
+        show={showEditEvent}
+        event={eventToEdit}
+        onClose={() => {
+          setShowEditEvent(false);
+          setEventToEdit(null);
+        }}
+        onUpdate={handleUpdateEvent}
+        hours={HOURS_12}
+      />
+
+      {/* Confirm Delete Modal */}
+      <ConfirmDeleteModal
+        show={showDeleteConfirm}
+        title="Confirm Deletion"
+        message={`Are you sure you want to delete "${itemToDelete?.title || 'this item'}"? This action cannot be undone.`}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => {
+          setShowDeleteConfirm(false);
+          setItemToDelete(null);
+        }}
+        isDeleting={isDeleting}
+      />
+
     </div>
+    </DndProvider>
   );
 }

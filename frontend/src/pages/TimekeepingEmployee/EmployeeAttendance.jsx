@@ -1,119 +1,81 @@
-import { useCallback, useMemo } from "react";
 import { useOutletContext } from 'react-router-dom';
+import { EMPLOYEE_ATTENDANCE_HEADERS } from '../../components/Custom/AttendanceComponents/admin/constants/attendanceConstants';
+import { useAttendanceData } from '../../components/Custom/AttendanceComponents/admin/hooks/useAttendanceData';
+import { useAttendanceFilters } from '../../components/Custom/AttendanceComponents/admin/hooks/useAttendanceFilters';
+import { useAttendancePagination } from '../../components/Custom/AttendanceComponents/admin/hooks/useAttendancePagination';
 
-// Hooks
-import useEmployeedata from "../../components/Custom/employeeAttendance/hooks/useEmployeedata";
-import useEmployeeloadingstate from "../../components/Custom/employeeAttendance/hooks/useEmployeeloadingstate";
-import useEmployeeactions from "../../components/Custom/employeeAttendance/hooks/useEmployeeactions";
+import AttendanceHeader from '../../components/Custom/AttendanceComponents/employee/components/AttendanceHeader';
+import AttendanceFilters from '../../components/Custom/AttendanceComponents/employee/components/AttendanceFilters';
+import AttendanceSearch from '../../components/Custom/AttendanceComponents/employee/components/AttendanceSearch';
+import AttendanceExport from '../../components/Custom/AttendanceComponents/employee/components/AttendanceExport';
+import AttendanceTable from '../../components/Custom/AttendanceComponents/employee/components/AttendanceTable';
 
-// Components
-import Employeeattendanceerrorbanner from "../../components/Custom/employeeAttendance/components/employeeattendanceerrorbanner";
-import Employeeattendancesuccessbanner from "../../components/Custom/employeeAttendance/components/employeeattendacesuccesbanner";
-import EmployeeAttendanceFilter from "../../components/Custom/employeeAttendance/components/employeettendanceFilter";
-import EmployeeAttendanceTable from "../../components/Custom/employeeAttendance/components/employeeattendancetable";
-import EmployeeAttendancePagination from "../../components/Custom/employeeAttendance/components/employeeattendancepagination";
-import EmployeeAttendanceLoadingSpinner from "../../components/Custom/employeeAttendance/components/employeeattendanceloadingspinner";
-import EmployeeAttendanceExportButtons from "../../components/Custom/employeeAttendance/components/employeeattendanceexportbuttons";
-import EmployeeAttendanceSearchBar from "../../components/Custom/employeeAttendance/components/employeeattendancesearchbar";
-import EmployeeAttendanceHeader from "../../components/Custom/employeeAttendance/components/employeeattendanceheader";
+const EmployeeAttendance = () => {
+  const outletContext = useOutletContext?.() || { sidebarOpen: true };
+  const { sidebarOpen = true } = outletContext;
 
-const AttendanceEM = () => {
-    const outletContext = useOutletContext?.() || { sidebarOpen: true };
-    const { sidebarOpen = true } = outletContext;
-    const today = useMemo(() => new Date().toLocaleDateString("en-US"), []);
+  // 1. Fetch Data
+  const { data, isLoading, error, refetch } = useAttendanceData(false); // false = isEmployee
 
-    const { filters, setFilters, attendanceData, setAttendanceData, 
-        searchQuery,  setSearchQuery,  debouncedSearchQuery, currentPage, setCurrentPage,  searchTimeoutRef, 
-        handleFilterChange,  handleSearchChange,  statusOptions,  filteredData,  paginationData,  attendanceStats
-    } = useEmployeedata();
+  // 2. Filter Data
+  const { 
+    searchQuery,
+    dateRange, 
+    filteredData, 
+    handleSearchChange,
+    handleDateRangeChange, 
+    clearFilters 
+  } = useAttendanceFilters(data);
 
-    const { isLoading, setIsLoading, loadingType, setLoadingType, error, setError, successMessage,  setSuccessMessage} = useEmployeeloadingstate();
+  // 3. Paginate Data
+  const pagination = useAttendancePagination(filteredData);
 
-    const { handleApply, handleClear, handleExportCSV, handleExportPDF, handleRefresh} = useEmployeeactions
-    ({filteredData, setFilters, setSearchQuery, setSuccessMessage, setError, setIsLoading, setLoadingType, today,attendanceStats});
+  return (
+    <div className={`min-h-screen flex flex-col bg-gradient-to-br from-neutral-100 to-stone-50 rounded-xl shadow-xl p-7 w-full overflow-hidden text-gray-800 transition-all duration-300 ${!sidebarOpen ? 'max-w-[1600px] xl:max-w-[88vw]' : 'max-w-[1400px] xl:max-w-[77vw]'}`}>
+      
+      <AttendanceHeader 
+        title="My Attendance History" 
+        subtitle="View your daily time records"
+        onRefresh={refetch}
+        isLoading={isLoading}
+      />
 
-    const handlePrevPage = useCallback(() => {
-        setCurrentPage((prev) => Math.max(prev - 1, 1));
-    }, [setCurrentPage]);
-    
-    const handleNextPage = useCallback(() => {
-        setCurrentPage((prev) => Math.min(prev + 1, paginationData.totalPages));
-    }, [paginationData.totalPages, setCurrentPage]);
+      <hr className="mb-6 border-[1px] border-[#274b46]" />
 
-    const { totalPages, startIndex, endIndex, currentItems } = paginationData;
-    
-    if (isLoading && loadingType === 'data') {
-        return <EmployeeAttendanceLoadingSpinner loadingType={loadingType} />;
-    }
-
-    return (
-        <div className={`min-h-screen flex flex-col bg-gradient-to-br from-neutral-100 to-stone-50 rounded-xl shadow-xl p-7 w-full overflow-hidden text-gray-800 transition-all duration-300 ${sidebarOpen ? 'max-w-[1400px] xl:max-w-[77vw]' : 'max-w-[1600px] xl:max-w-[88vw]'}`}>
-            <EmployeeAttendanceHeader
-                today={today}
-                handleRefresh={handleRefresh}
-                isLoading={isLoading}
-            />
-
-            <hr className="mb-6 border-[1px] border-[#274b46]" />
-
-            {error && (
-                <Employeeattendanceerrorbanner 
-                    error={error} 
-                    setError={setError} 
-                />
-            )}
-
-            {successMessage && (
-                <Employeeattendancesuccessbanner 
-                    successMessage={successMessage} 
-                    setSuccessMessage={setSuccessMessage} 
-                />
-            )}
-
-            <EmployeeAttendanceFilter
-                filters={filters}
-                setFilters={setFilters}
-                statusOptions={statusOptions}
-                handleFilterChange={handleFilterChange}
-                handleApply={handleApply}
-                handleClear={handleClear}
-                isLoading={isLoading}
-            />
-        
-            <EmployeeAttendanceSearchBar
-                searchQuery={searchQuery}
-                handleSearchChange={handleSearchChange}
-                filteredData={filteredData}
-                isLoading={isLoading}
-            />
-           
-            <EmployeeAttendanceExportButtons
-                handleExportCSV={handleExportCSV}
-                handleExportPDF={handleExportPDF}
-                isLoading={isLoading}
-                filteredData={filteredData}
-            />
-
-            <EmployeeAttendanceTable
-                currentItems={currentItems}
-                debouncedSearchQuery={debouncedSearchQuery}
-                filters={filters}
-            />
-
-            {filteredData.length > 0 && (
-                <EmployeeAttendancePagination
-                    currentPage={currentPage}
-                    totalPages={totalPages}
-                    startIndex={startIndex}  
-                    endIndex={endIndex}
-                    filteredData={filteredData}
-                    handlePrevPage={handlePrevPage}
-                    handleNextPage={handleNextPage}
-                    isLoading={isLoading}
-                />
-            )}
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
+          {error}
         </div>
-    ); 
+      )}
+
+      <AttendanceFilters 
+        dateRange={dateRange}
+        onDateRangeChange={handleDateRangeChange}
+        onClear={clearFilters}
+        onApply={() => {}}
+        showDepartmentFilter={false}
+        showEmployeeFilter={false}
+      />
+
+      <AttendanceSearch 
+        searchQuery={searchQuery}
+        onSearchChange={handleSearchChange}
+        filteredDataLength={filteredData.length}
+      />
+
+      <AttendanceExport 
+        data={filteredData}
+        title="My Attendance"
+      />
+
+      <AttendanceTable 
+        data={pagination.currentData}
+        headers={EMPLOYEE_ATTENDANCE_HEADERS}
+        isLoading={isLoading}
+        pagination={pagination}
+      />
+    </div>
+  );
 };
 
-export default AttendanceEM;
+export default EmployeeAttendance;

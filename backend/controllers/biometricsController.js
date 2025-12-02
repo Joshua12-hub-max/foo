@@ -90,10 +90,3 @@ export const getEnrollmentStatus = async (req, res) => {
     handleError(res, err, 'getEnrollmentStatus');
   }
 };
-
-/**
- * Legacy sync endpoint (kept for compatibility if needed, but service now handles data directly)
- */
-export const sync = async (req, res) => {
-  res.status(200).json({ message: "Sync is now handled by internal service." });
-};

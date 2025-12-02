@@ -1,5 +1,5 @@
-
 /** @type {import('tailwindcss').Config} */
+const defaultTheme = require('tailwindcss/defaultTheme');
 export default {
   theme: {
     extend: {
@@ -13,5 +13,9 @@ export default {
         fadeIn: 'fadeIn 0.4s ease-out',
       },
     },
+    fontFamily: {
+      sans: ['SF Pro Text', ...defaultTheme.fontFamily.sans],
+    },
   },
+  plugins: [],
 };

@@ -1,4 +1,5 @@
 import db from '../db/connection.js';
+import { processDailyAttendance } from '../services/attendanceProcessor.js';
 
 // Helper function for consistent error response
 const handleError = (res, error, context) => {
@@ -18,26 +19,17 @@ export const clockIn = async (req, res) => {
   }
 
   try {
-    const date = new Date().toISOString().split('T')[0];
     const scanTime = time ? new Date(time) : new Date();
-    
-    const [existingDTR] = await db.query(
-      "SELECT * FROM daily_time_records WHERE employee_id = ? AND date = ?",
-      [employeeId, date]
-    );
+    const dateStr = scanTime.toISOString().split('T')[0];
 
-    if (existingDTR.length > 0) {
-      return res.status(200).json({ 
-        success: true, 
-        message: "Already clocked in for today.",
-        data: { timeIn: existingDTR[0].time_in }
-      });
-    }
-
+    // 1. Log the raw event
     await db.query(
-      "INSERT INTO daily_time_records (employee_id, date, time_in, status) VALUES (?, ?, ?, 'Present')",
-      [employeeId, date, scanTime]
+      "INSERT INTO attendance_logs (employee_id, scan_time, type, source) VALUES (?, ?, 'IN', 'WEB')",
+      [employeeId, scanTime]
     );
+
+    // 2. Process DTR (Calculate Late, etc.)
+    await processDailyAttendance(employeeId, dateStr);
 
     return res.status(201).json({ 
       success: true, 
@@ -58,17 +50,17 @@ export const clockOut = async (req, res) => {
   }
 
   try {
-    const date = new Date().toISOString().split('T')[0];
     const scanTime = time ? new Date(time) : new Date();
+    const dateStr = scanTime.toISOString().split('T')[0];
     
-    const [result] = await db.query(
-      "UPDATE daily_time_records SET time_out = ? WHERE employee_id = ? AND date = ? AND time_out IS NULL",
-      [scanTime, employeeId, date]
+    // 1. Log the raw event
+    await db.query(
+      "INSERT INTO attendance_logs (employee_id, scan_time, type, source) VALUES (?, ?, 'OUT', 'WEB')",
+      [employeeId, scanTime]
     );
 
-    if (result.affectedRows === 0) {
-        return res.status(404).json({ success: false, message: "No active clock-in found for today to clock out.", data: null });
-    }
+    // 2. Process DTR (Calculate Undertime, etc.)
+    await processDailyAttendance(employeeId, dateStr);
 
     return res.status(200).json({ 
         success: true, 
@@ -82,19 +74,43 @@ export const clockOut = async (req, res) => {
 };
 
 export const getLogs = async (req, res) => {
-  const { employeeId } = req.query;
-
-  if (!employeeId) {
-    return res.status(400).json({ success: false, message: "Employee ID is required.", data: null });
-  }
+  const employeeId = req.query.employeeId || req.query.id;
 
   try {
-    const [logs] = await db.query("SELECT * FROM daily_time_records WHERE employee_id = ? ORDER BY date DESC LIMIT 50", [employeeId]);
+    let query;
+    let params = [];
+
+    if (employeeId) {
+      query = `
+        SELECT dtr.*, a.first_name, a.last_name, a.department 
+        FROM daily_time_records dtr
+        JOIN authentication a ON dtr.employee_id = a.employee_id
+        WHERE dtr.employee_id = ? 
+        ORDER BY dtr.date DESC LIMIT 50
+      `;
+      params = [employeeId];
+    } else {
+      // Admin view: fetch all logs
+      query = `
+        SELECT dtr.*, a.first_name, a.last_name, a.department 
+        FROM daily_time_records dtr
+        JOIN authentication a ON dtr.employee_id = a.employee_id
+        ORDER BY dtr.date DESC LIMIT 200
+      `;
+    }
+
+    const [logs] = await db.query(query, params);
     
+    // Transform data if necessary or return as is
+    const formattedLogs = logs.map(log => ({
+      ...log,
+      employee_name: `${log.first_name} ${log.last_name}`
+    }));
+
     return res.status(200).json({
       success: true,
-      message: logs.length > 0 ? "Logs retrieved successfully." : "No logs found.",
-      data: logs
+      message: formattedLogs.length > 0 ? "Logs retrieved successfully." : "No logs found.",
+      data: formattedLogs
     });
 
   } catch (err) {
@@ -104,6 +120,8 @@ export const getLogs = async (req, res) => {
 
 export const getRecentActivity = async (req, res) => {
   try {
+    // Getting raw logs for recent activity feed might be better, but DTR is okay too. 
+    // Let's stick to DTR as per original code to show "Summarized" activity.
     const [logs] = await db.query(
       `SELECT dtr.*, CONCAT(a.first_name, ' ', a.last_name) as name, a.department 
        FROM daily_time_records dtr
@@ -154,5 +172,24 @@ export const getTodayStatus = async (req, res) => {
     }
   } catch (err) {
     handleError(res, err, 'getTodayStatus');
+  }
+};
+
+export const getRawLogs = async (req, res) => {
+  try {
+    const [logs] = await db.query(`
+      SELECT al.*, a.first_name, a.last_name, a.department
+      FROM attendance_logs al
+      LEFT JOIN authentication a ON al.employee_id = a.employee_id
+      ORDER BY al.scan_time DESC
+      LIMIT 500
+    `);
+
+    return res.status(200).json({
+      success: true,
+      data: logs
+    });
+  } catch (err) {
+    handleError(res, err, 'getRawLogs');
   }
 };

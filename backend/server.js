@@ -12,6 +12,8 @@ import leaveRoutes from './routes/leaveRoutes.js';
 import scheduleRoutes from './routes/scheduleRoutes.js';
 import undertimeRoutes from './routes/undertimeRoutes.js';
 import biometricsRoutes from './routes/biometricsRoutes.js';
+import announcementRoutes from './routes/announcementRoutes.js';
+import eventRoutes from './routes/eventRoutes.js';
 
 dotenv.config();
 import { initBiometrics } from './services/biometricService.js';
@@ -40,6 +42,8 @@ app.use('/api/leave', leaveRoutes);
 app.use('/api/schedule', scheduleRoutes);
 app.use('/api/undertime', undertimeRoutes);
 app.use('/api/biometrics', biometricsRoutes);
+app.use('/api/announcement', announcementRoutes);
+app.use('/api/event', eventRoutes);
 
 // Root route
 app.get("/", (req, res) => {

@@ -1,51 +1,17 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { filterData, getUniqueValues, calculatePagination } from "../Utils/dtrCorrections";
 import { ITEMS_PER_PAGE, TABS, MESSAGES, DELAYS } from "../Constants/dtrCorrection.constant";
+import { dtrCorrectionApi } from "../../../../api/dtrCorrectionApi";
 
 export const useDTRCorrection = () => {
   const [activeTab, setActiveTab] = useState(TABS.EMPLOYEE);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [employeeData] = useState([
-    {
-      id: 1,
-      department: "HR",
-      employeeName: "John Doe",
-      employeeid: "E001",
-      date: "2025-11-17",
-      timeIn: "08:00",
-      timeOut: "17:00",
-      correctedTime: "08:15",
-      reason: "Forgot to clock in",
-      status: "Pending",
-    },
-    {
-      id: 2,
-      department: "IT",
-      employeeName: "Jane Smith",
-      employeeid: "E002",
-      date: "2025-11-17",
-      timeIn: "09:30",
-      timeOut: "18:30",
-      correctedTime: "09:45",
-      reason: "Meeting with client",
-      status: "Pending",
-    },
-  ]);
-  const [adminData, setAdminData] = useState([
-    {
-      id: 1,
-      department: "HR",
-      employeeName: "John Doe",
-      employeeid: "E001",
-      date: "2025-11-17",
-      timeIn: "08:00",
-      timeOut: "17:00",
-      correctedTime: "08:15",
-      reason: "Forgot to clock in",
-      status: "Pending",
-    },
-  ]);
+  
+  // Real data from API instead of mock data
+  const [employeeData, setEmployeeData] = useState([]);
+  const [adminData, setAdminData] = useState([]);
+  
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
@@ -59,6 +25,18 @@ export const useDTRCorrection = () => {
   });
 
   const today = useMemo(() => new Date().toLocaleDateString("en-US"), []);
+
+  // Fetch employee corrections on mount
+  useEffect(() => {
+    fetchEmployeeCorrections();
+  }, []);
+
+  // Fetch admin corrections when switching to admin tab
+  useEffect(() => {
+    if (activeTab === TABS.ADMIN) {
+      fetchAdminCorrections();
+    }
+  }, [activeTab]);
 
   // Auto-dismiss notifications
   useEffect(() => {
@@ -75,6 +53,89 @@ export const useDTRCorrection = () => {
     }
   }, [successMessage]);
 
+  // Fetch employee corrections from API
+  const fetchEmployeeCorrections = async () => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const response = await dtrCorrectionApi.getMyCorrections();
+      const corrections = response.data.corrections || [];
+      
+      // Map API response to match component structure
+      const mappedData = corrections.map(item => ({
+        id: item.id,
+        department: item.department || "N/A",
+        employeeName: item.employee_name || "Unknown",
+        employeeid: item.employee_id || "N/A",
+        date: item.date_time,
+        timeIn: item.in_time || "N/A",
+        timeOut: item.out_time || "N/A",
+        correctedTime: item.corrected_time,
+        reason: item.reason,
+        status: item.status,
+      }));
+      
+      setEmployeeData(mappedData);
+    } catch (err) {
+      console.error("Error fetching employee corrections:", err);
+      setError("Failed to load corrections. Please try again.");
+      setEmployeeData([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Fetch admin corrections from API
+  const fetchAdminCorrections = async () => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const response = await dtrCorrectionApi.getAllCorrections();
+      const empCorrections = response.data.employeeCorrections || [];
+      const admCorrections = response.data.adminCorrections || [];
+      
+      // Combine both employee and admin corrections
+      const allCorrections = [
+        ...empCorrections.map(item => ({
+          id: item.id,
+          department: item.department || "N/A",
+          employeeName: item.employee_name || "Unknown",
+          employeeid: item.employee_id || "N/A",
+          date: item.date_time,
+          timeIn: item.in_time || "N/A",
+          timeOut: item.out_time || "N/A",
+          correctedTime: item.corrected_time,
+          reason: item.reason,
+          status: item.status,
+          source: "employee"
+        })),
+        ...admCorrections.map(item => ({
+          id: item.id,
+          department: item.department || "N/A",
+          employeeName: item.employee_name,
+          employeeid: item.employee_id,
+          date: item.date_time,
+          timeIn: item.in_time || "N/A",
+          timeOut: item.out_time || "N/A",
+          correctedTime: item.corrected_time,
+          reason: item.reason,
+          status: item.status,
+          source: "admin"
+        }))
+      ];
+      
+      setAdminData(allCorrections);
+    } catch (err) {
+      console.error("Error fetching admin corrections:", err);
+      setError("Failed to load corrections. Please try again.");
+      setAdminData([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const currentData = useMemo(() => 
     activeTab === TABS.EMPLOYEE ? employeeData : adminData,
     [activeTab, employeeData, adminData]
@@ -86,7 +147,7 @@ export const useDTRCorrection = () => {
   );
 
   const uniqueEmployees = useMemo(() => 
-    getUniqueValues(currentData, 'name'),
+    getUniqueValues(currentData, 'employeeName'),
     [currentData]
   );
 
@@ -141,77 +202,93 @@ export const useDTRCorrection = () => {
     setSuccessMessage(MESSAGES.FILTERS_CLEARED);
   }, []);
 
-const handleApprove = useCallback(async (id) => {
-  if (activeTab !== TABS.ADMIN) return false;
+  const handleApprove = useCallback(async (id, source = "employee") => {
+    setActionLoading(id);
+    setError(null);
 
-  setActionLoading(id);
-  setError(null);
+    try {
+      await dtrCorrectionApi.approveCorrection(id, "");
+      
+      // Update local state
+      setAdminData(prev =>
+        prev.map(item =>
+          item.id === id && item.source === source 
+            ? { ...item, status: "Approved" } 
+            : item
+        )
+      );
 
-  try {
-    await new Promise(resolve => setTimeout(resolve, DELAYS.APPROVE));
+      setSuccessMessage(MESSAGES.RECORD_APPROVED);
+      return true;
 
-    setAdminData(prev =>
-      prev.map(item =>
-        item.id === id ? { ...item, status: "Approved" } : item
-      )
-    );
+    } catch (err) {
+      console.error("Error approving correction:", err);
+      setError(err.response?.data?.message || MESSAGES.ERROR_APPROVE);
+      return false;
 
-    setSuccessMessage(MESSAGES.RECORD_APPROVED);
-    return true;
+    } finally {
+      setActionLoading(null);
+    }
+  }, []);
 
-  } catch (err) {
-    setError(MESSAGES.ERROR_APPROVE);
-    return false;
+  const handleReject = useCallback(async (id, reason, source = "employee") => {
+    setActionLoading(id);
+    setError(null);
 
-  } finally {
-    setActionLoading(null);
-  }
-}, [activeTab]);
+    try {
+      await dtrCorrectionApi.rejectCorrection(id, reason);
+      
+      // Update local state
+      setAdminData(prev =>
+        prev.map(item =>
+          item.id === id && item.source === source
+            ? { ...item, status: "Rejected" }
+            : item
+        )
+      );
 
+      setSuccessMessage(MESSAGES.RECORD_REJECTED);
+      return true;
 
-  const handleReject = useCallback(async (id) => {
-  if (activeTab !== TABS.ADMIN) return false;
+    } catch (err) {
+      console.error("Error rejecting correction:", err);
+      setError(err.response?.data?.message || MESSAGES.ERROR_REJECT);
+      return false;
 
-  setActionLoading(id);
-  setError(null);
-
-  try {
-    await new Promise(resolve => setTimeout(resolve, DELAYS.REJECT));
-
-    setAdminData(prev =>
-      prev.map(item =>
-        item.id === id ? { ...item, status: "Rejected" } : item
-      )
-    );
-
-    setSuccessMessage(MESSAGES.RECORD_REJECTED);
-    return true;
-
-  } catch (err) {
-    setError(MESSAGES.ERROR_REJECT);
-    return false;
-
-  } finally {
-    setActionLoading(null);
-  }
-}, [activeTab]);
-
-
+    } finally {
+      setActionLoading(null);
+    }
+  }, []);
 
   const handleSaveEdit = useCallback(async (updatedRecord) => {
     setActionLoading(updatedRecord.id);
     setError(null);
     
     try {
-      await new Promise(resolve => setTimeout(resolve, DELAYS.UPDATE));
+      const source = updatedRecord.source || 'employee'; // Default to employee if missing
+      
+      // Format data for API
+      const apiData = {
+          department: updatedRecord.department,
+          employee_id: updatedRecord.employeeid, // Note: casing match with component data
+          employee_name: updatedRecord.employeeName,
+          date_time: updatedRecord.date,
+          in_time: updatedRecord.timeIn === "N/A" ? null : updatedRecord.timeIn,
+          out_time: updatedRecord.timeOut === "N/A" ? null : updatedRecord.timeOut,
+          corrected_time: updatedRecord.correctedTime,
+          reason: updatedRecord.reason
+      };
+
+      await dtrCorrectionApi.updateCorrectionByAdmin(updatedRecord.id, apiData, source);
       
       setAdminData((prev) =>
-        prev.map((item) => (item.id === updatedRecord.id ? updatedRecord : item))
+        prev.map((item) => (item.id === updatedRecord.id && item.source === source ? updatedRecord : item))
       );
       setSuccessMessage(MESSAGES.RECORD_UPDATED);
       return true;
     } catch (err) {
-      setError(MESSAGES.ERROR_UPDATE);
+      console.error("Error updating correction:", err);
+      setError(err.response?.data?.message || MESSAGES.ERROR_UPDATE);
       return false;
     } finally {
       setActionLoading(null);
@@ -223,14 +300,19 @@ const handleApprove = useCallback(async (id) => {
     setError(null);
     
     try {
-      await new Promise(resolve => setTimeout(resolve, DELAYS.REFRESH));
+      if (activeTab === TABS.EMPLOYEE) {
+        await fetchEmployeeCorrections();
+      } else {
+        await fetchAdminCorrections();
+      }
       setSuccessMessage(MESSAGES.DATA_REFRESHED);
     } catch (err) {
+      console.error("Error refreshing data:", err);
       setError(MESSAGES.ERROR_REFRESH);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [activeTab]);
 
   return {
     today,
@@ -256,7 +338,11 @@ const handleApprove = useCallback(async (id) => {
     handleTabChange,
     handleApplyFilters,
     handleClearFilters,
+    handleApprove,
+    handleReject,
     handleSaveEdit,
-    handleRefresh
+    handleRefresh,
+    fetchEmployeeCorrections,
+    fetchAdminCorrections
   };
 };

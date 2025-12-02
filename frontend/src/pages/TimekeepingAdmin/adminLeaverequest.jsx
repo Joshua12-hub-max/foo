@@ -1,10 +1,12 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { Download, FileText, RefreshCw, AlertCircle, Check, Calendar, Search } from "lucide-react";
 import { useOutletContext } from 'react-router-dom';
+import { leaveApi } from "../../api/leaveApi";
 
-//modal
-import ApproveModal from "../../components/Modal UI/adminModalLeaveRequest/Approve";
-import RejectModal from "../../components/Modal UI/adminModalLeaveRequest/Reject";
+// Modals
+import ApproveModal from "../../components/Custom/LeaveRequestAdminComponents/Modals/Approve";
+import RejectModal from "../../components/Custom/LeaveRequestAdminComponents/Modals/Reject";
+import ProcessModal from "../../components/Custom/LeaveRequestAdminComponents/Modals/Process";
 
 const ITEMS_PER_PAGE = 10;
 
@@ -13,6 +15,7 @@ const LeaveRequestsTable = () => {
   
   const outletContext = useOutletContext?.() || { sidebarOpen: true };
   const { sidebarOpen = true } = outletContext;
+  
   const [leaveRequests, setLeaveRequests] = useState([]);
   const [filters, setFilters] = useState({ department: "", employee: "", fromDate: "", toDate: "" });
   const [searchQuery, setSearchQuery] = useState("");
@@ -26,8 +29,47 @@ const LeaveRequestsTable = () => {
   // Modal states
   const [approveModal, setApproveModal] = useState({ isOpen: false, request: null, remarks: "" });
   const [rejectModal, setRejectModal] = useState({ isOpen: false, request: null, remarks: "" });
+  const [processModal, setProcessModal] = useState({ isOpen: false, request: null });
 
   const searchTimeoutRef = useRef(null);
+
+  // Fetch Data
+  const fetchRequests = async () => {
+    setIsLoading(true);
+    try {
+      const res = await leaveApi.getAllLeaves();
+      // Map API data to component structure
+      const mapped = res.data.leaves.map(l => ({
+        id: l.id,
+        employee_id: l.employee_id,
+        name: `${l.first_name} ${l.last_name}`,
+        department: l.department || 'N/A',
+        leaveType: l.leave_type,
+        fromDate: l.start_date, // Keep raw for filtering, format for display
+        toDate: l.end_date,
+        reason: l.reason,
+        status: l.status,
+        with_pay: l.with_pay,
+        attachment_path: l.attachment_path,
+        final_attachment_path: l.final_attachment_path,
+        first_name: l.first_name,
+        last_name: l.last_name,
+        leave_type: l.leave_type,
+        start_date: l.start_date,
+        end_date: l.end_date
+      }));
+      setLeaveRequests(mapped);
+    } catch (err) {
+      console.error(err);
+      setError("Failed to fetch leave requests.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchRequests();
+  }, []);
 
   const calculateDuration = useCallback((fromDate, toDate) => {
     if (!fromDate || !toDate) return 'N/A';
@@ -80,7 +122,6 @@ const LeaveRequestsTable = () => {
   }, []);
 
   const handleApplyFilters = useCallback(() => {
-    console.log("Filters applied:", filters);
     setSuccessMessage("Filters applied successfully!");
   }, [filters]);
 
@@ -114,7 +155,7 @@ const LeaveRequestsTable = () => {
       data = data.filter(
         (item) =>
           item.name.toLowerCase().includes(query) ||
-          item.id.toLowerCase().includes(query) ||
+          String(item.id).toLowerCase().includes(query) ||
           item.department.toLowerCase().includes(query) ||
           item.leaveType.toLowerCase().includes(query) ||
           item.status.toLowerCase().includes(query)
@@ -139,14 +180,13 @@ const LeaveRequestsTable = () => {
     }
     setIsLoading(true);
     setLoadingType("CSV");
-    setError(null);
     try {
       await new Promise(resolve => setTimeout(resolve, 100));
       const headers = ["Employee ID", "Employee Name", "Department", "Leave Type", "From Date", "To Date", "Duration", "Status"];
       const csvContent = [
         headers.join(","),
         ...filteredRequests.map(item => 
-          `${item.id},${item.name},${item.department},${item.leaveType},${item.fromDate},${item.toDate},${calculateDuration(item.fromDate, item.toDate)},${item.status}`
+          `${item.employee_id},${item.name},${item.department},${item.leaveType},${item.fromDate},${item.toDate},${calculateDuration(item.fromDate, item.toDate)},${item.status}`
         )
       ].join("\n");
       
@@ -160,7 +200,7 @@ const LeaveRequestsTable = () => {
       setSuccessMessage("CSV exported successfully!");
     } catch (err) {
       console.error('Export to CSV failed:', err);
-      setError(`CSV Export failed: ${err.message || 'Unknown error. Please try again.'}`);
+      setError(`CSV Export failed: ${err.message || 'Unknown error.'}`);
     } finally {
       setIsLoading(false);
       setLoadingType("");
@@ -174,11 +214,10 @@ const LeaveRequestsTable = () => {
     }
     setIsLoading(true);
     setLoadingType("PDF");
-    setError(null);
     try {
       await new Promise(resolve => setTimeout(resolve, 100));
       
-      const headers = ["Employee ID", "Employee Name", "Department", "Leave Type", "From Date", "To Date", "Duration", "Status"];
+      const headers = ["ID", "Employee Name", "Dept", "Type", "From", "To", "Days", "Status"];
       
       let htmlContent = `
         <!DOCTYPE html>
@@ -212,12 +251,12 @@ const LeaveRequestsTable = () => {
             <tbody>
               ${filteredRequests.map(row => `
                 <tr>
-                  <td>${row.id}</td>
+                  <td>${row.employee_id}</td>
                   <td>${row.name}</td>
                   <td>${row.department}</td>
                   <td>${row.leaveType}</td>
-                  <td>${row.fromDate}</td>
-                  <td>${row.toDate}</td>
+                  <td>${new Date(row.fromDate).toLocaleDateString()}</td>
+                  <td>${new Date(row.toDate).toLocaleDateString()}</td>
                   <td>${calculateDuration(row.fromDate, row.toDate)}</td>
                   <td>${row.status}</td>
                 </tr>
@@ -244,7 +283,7 @@ const LeaveRequestsTable = () => {
       setSuccessMessage("PDF print dialog opened!");
     } catch (err) {
       console.error('Export to PDF failed:', err);
-      setError(`PDF Export failed: ${err.message || 'Unknown error. Please try again.'}`);
+      setError(`PDF Export failed: ${err.message || 'Unknown error.'}`);
     } finally {
       setIsLoading(false);
       setLoadingType("");
@@ -260,54 +299,29 @@ const LeaveRequestsTable = () => {
   }, [paginationData.totalPages]);
 
   const handleRefresh = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
     setLoadingType("data");
-    try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setSuccessMessage("Data refreshed successfully!");
-    } catch (err) {
-      setError("Failed to refresh data. Please try again.");
-    } finally {
-      setIsLoading(false);
-      setLoadingType("");
-    }
+    await fetchRequests();
+    setLoadingType("");
+    setSuccessMessage("Data refreshed!");
   }, []);
 
-  const openApproveModal = (request) => {
-    setApproveModal({ isOpen: true, request, remarks: "" });
-  };
+  // Modal Openers
+  const openApproveModal = (request) => setApproveModal({ isOpen: true, request, remarks: "" });
+  const openRejectModal = (request) => setRejectModal({ isOpen: true, request, remarks: "" });
+  const openProcessModal = (request) => setProcessModal({ isOpen: true, request });
 
-  const closeApproveModal = () => {
-    setApproveModal({ isOpen: false, request: null, remarks: "" });
-  };
+  // Modal Closers
+  const closeApproveModal = () => setApproveModal({ isOpen: false, request: null, remarks: "" });
+  const closeRejectModal = () => setRejectModal({ isOpen: false, request: null, remarks: "" });
+  const closeProcessModal = () => setProcessModal({ isOpen: false, request: null });
 
-  const handleApproveConfirm = () => {
-    setLeaveRequests(prev =>
-      prev.map(item =>
-        item.id === approveModal.request.id ? { ...item, status: "Approved" } : item
-      )
-    );
+  // Handlers (Refresh data after action)
+  const handleActionSuccess = () => {
     closeApproveModal();
-    setSuccessMessage("Request approved successfully!");
-  };
-
-  const openRejectModal = (request) => {
-    setRejectModal({ isOpen: true, request, remarks: "" });
-  };
-
-  const closeRejectModal = () => {
-    setRejectModal({ isOpen: false, request: null, remarks: "" });
-  };
-
-  const handleRejectConfirm = () => {
-    setLeaveRequests(prev =>
-      prev.map(item =>
-        item.id === rejectModal.request.id ? { ...item, status: "Rejected" } : item
-      )
-    );
     closeRejectModal();
-    setSuccessMessage("Request rejected successfully!");
+    closeProcessModal();
+    fetchRequests();
+    setSuccessMessage("Action completed successfully!");
   };
 
   const getStatusBadge = (status) => {
@@ -315,18 +329,20 @@ const LeaveRequestsTable = () => {
       Approved: "bg-green-100 text-green-800",
       Rejected: "bg-red-100 text-red-800",
       Pending: "bg-yellow-100 text-yellow-800",
+      Processing: "bg-blue-100 text-blue-800",
+      Finalizing: "bg-purple-100 text-purple-800",
     };
     return statusStyles[status] || "bg-gray-100 text-gray-800";
   };
 
   const { totalPages, startIndex, endIndex, currentItems } = paginationData;
 
-  if (isLoading && loadingType === "data") {
+  if (isLoading && loadingType !== "CSV" && loadingType !== "PDF") {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-50">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-800 mx-auto mb-4"></div>
-          <p className="text-gray-800">Processing data...</p>
+          <p className="text-gray-800">Loading leave requests...</p>
         </div>
       </div>
     );
@@ -358,183 +374,75 @@ const LeaveRequestsTable = () => {
 
       <hr className="mb-6 border-[1px] border-[#274b46]" />
 
-      {/* Error Message */}
+      {/* Alerts */}
       {error && (
-        <div className="bg-red-50 border-l-4 border-red-500 text-red-700 px-4 py-3 rounded mb-4 flex items-start gap-3 animate-slide-down" role="alert" aria-live="assertive">
-          <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
-          <div className="flex-1">
-            <p className="font-medium">Error</p>
-            <p className="text-sm">{error}</p>
-          </div>
-          <button
-            onClick={() => setError(null)}
-            className="text-red-700 hover:text-red-900"
-            aria-label="Dismiss error"
-          >
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+        <div className="bg-red-50 border-l-4 border-red-500 text-red-700 px-4 py-3 rounded mb-4 flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 mt-0.5" />
+          <p>{error}</p>
         </div>
       )}
-
-      {/* Success Message */}
       {successMessage && (
-        <div className="bg-green-50 border-l-4 border-green-500 text-green-700 px-4 py-3 rounded mb-4 flex items-start gap-3 animate-slide-down" role="alert" aria-live="polite">
-          <Check className="w-5 h-5 flex-shrink-0 mt-0.5" />
-          <div className="flex-1">
-            <p className="font-medium">Success</p>
-            <p className="text-sm">{successMessage}</p>
-          </div>
-          <button
-            onClick={() => setSuccessMessage(null)}
-            className="text-green-700 hover:text-green-900"
-            aria-label="Dismiss success message"
-          >
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+        <div className="bg-green-50 border-l-4 border-green-500 text-green-700 px-4 py-3 rounded mb-4 flex items-start gap-3">
+          <Check className="w-5 h-5 mt-0.5" />
+          <p>{successMessage}</p>
         </div>
       )}
 
-      {/* Advanced Filters */}
+      {/* Filters & Search (Same UI as before) */}
       <div className="grid grid-cols-1 md:grid-cols-6 gap-4 mb-6 items-start bg-[#F8F9FA] p-4 rounded-lg shadow-md">
-        {/* Department Filter */}
         <div className="md:col-span-1">
           <select
             value={filters.department}
             onChange={(e) => handleFilterChange("department", e.target.value)}
-            disabled={isLoading}
-            className="w-full bg-[#F8F9FA] border border-gray-300 rounded-lg shadow-md px-3 py-2 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-200 transition-all disabled:opacity-50"
-            aria-label="Filter by department"
+            className="w-full bg-[#F8F9FA] border border-gray-300 rounded-lg px-3 py-2 text-sm"
           >
             <option value="">Department</option>
-            {departments.map((dept) => (
-              <option key={dept} value={dept}>{dept}</option>
-            ))}
+            {departments.map((dept) => <option key={dept} value={dept}>{dept}</option>)}
           </select>
         </div>
-
-        {/* Employee Filter */}
         <div className="md:col-span-1">
           <select
             value={filters.employee}
             onChange={(e) => handleFilterChange("employee", e.target.value)}
-            disabled={isLoading}
-            className="w-full bg-[#F8F9FA] border border-gray-300 rounded-lg shadow-md px-3 py-2 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-200 transition-all disabled:opacity-50"
-            aria-label="Filter by employee"
+            className="w-full bg-[#F8F9FA] border border-gray-300 rounded-lg px-3 py-2 text-sm"
           >
             <option value="">Employee</option>
-            {uniqueEmployees.map((emp) => (
-              <option key={emp} value={emp}>{emp}</option>
-            ))}
+            {uniqueEmployees.map((emp) => <option key={emp} value={emp}>{emp}</option>)}
           </select>
         </div>
-
-        {/* From Date Filter */}
+        {/* Date Filters */}
         <div className="relative md:col-span-1">
-          <Calendar className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none z-10" />
-          <input
-            type="date"
-            value={filters.fromDate}
-            onChange={(e) => handleFilterChange("fromDate", e.target.value)}
-            disabled={isLoading}
-            className="w-full pl-10 bg-[#F8F9FA] border border-gray-300 rounded-lg shadow-md px-3 py-2 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-200 transition-all disabled:opacity-50"
-            aria-label="From date"
-          />
+           <input type="date" value={filters.fromDate} onChange={(e) => handleFilterChange("fromDate", e.target.value)} className="w-full bg-[#F8F9FA] border border-gray-300 rounded-lg px-3 py-2 text-sm" />
         </div>
-
-        {/* To Date Filter */}
         <div className="relative md:col-span-1">
-          <Calendar className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none z-10" />
-          <input
-            type="date"
-            value={filters.toDate}
-            onChange={(e) => handleFilterChange("toDate", e.target.value)}
-            disabled={isLoading}
-            className="w-full pl-10 bg-[#F8F9FA] border border-gray-300 rounded-lg shadow-md px-3 py-2 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-200 transition-all disabled:opacity-50"
-            aria-label="To date"
-          />
+           <input type="date" value={filters.toDate} onChange={(e) => handleFilterChange("toDate", e.target.value)} className="w-full bg-[#F8F9FA] border border-gray-300 rounded-lg px-3 py-2 text-sm" />
         </div>
-
-        {/* Action Buttons */}
         <div className="flex gap-2 md:col-span-2">
-          <button
-            onClick={handleApplyFilters}
-            disabled={isLoading}
-            className="flex-1 bg-[#F8F9FA] border border-gray-300 text-gray-800 font-semibold px-3 py-2 rounded-lg text-sm transition-all hover:bg-[#FFFFFF] active:scale-95"
-            aria-label="Apply filters"
-          >
-            Apply
-          </button>
-          <button
-            onClick={handleClear}
-              disabled={isLoading}
-              className="flex-1 bg-[#F8F9FA] border border-gray-300 text-gray-800 font-semibold px-3 py-2 rounded-lg text-sm transition-all hover:bg-[#FFFFFF] active:scale-95"
-            aria-label="Clear filters"
-          >
-            Clear
-          </button>
+          <button onClick={handleApplyFilters} className="flex-1 bg-white border px-3 py-2 rounded-lg text-sm">Apply</button>
+          <button onClick={handleClear} className="flex-1 bg-white border px-3 py-2 rounded-lg text-sm">Clear</button>
         </div>
       </div>
 
-      {/* Search */}
+      {/* Search & Export */}
       <div className="flex justify-between items-center mb-6">
-        <div className="relative w-80">
-          <Search className="absolute left-3 top-2.5 w-4 h-4 text-[#274b46]" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={handleSearchChange}
-            placeholder="Search by name, ID, department..."
-            disabled={isLoading}
-            className="pl-10 pr-4 py-2 bg-[#F8F9FA] border border-gray-300 rounded-lg w-full text-sm"
-            aria-label="Search leave requests"
-          />
-        </div>
-        {searchQuery && (
-          <div className="text-sm text-gray-600">
-            Found <span className="font-semibold text-gray-800">{filteredRequests.length}</span> result{filteredRequests.length !== 1 ? 's' : ''}
-          </div>
-        )}
+         <div className="relative w-80">
+            <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-500" />
+            <input type="text" value={searchQuery} onChange={handleSearchChange} placeholder="Search..." className="pl-10 pr-4 py-2 bg-[#F8F9FA] border rounded-lg w-full text-sm" />
+         </div>
+         <div className="flex items-center space-x-3">
+             <button onClick={handleExportCSV} className="text-green-700 text-sm font-medium flex items-center gap-1"><Download className="w-4 h-4" /> CSV</button>
+             <button onClick={handleExportPDF} className="text-red-700 text-sm font-medium flex items-center gap-1"><FileText className="w-4 h-4" /> PDF</button>
+         </div>
       </div>
 
-      {/* Export Options */}
-      <div className="flex justify-between items-center mb-4">
-        <div className="flex items-center space-x-3">
-          <span className="text-sm font-semibold text-gray-800">Export Options:</span>
-          <button
-            onClick={handleExportCSV}
-            disabled={isLoading || filteredRequests.length === 0}
-            className="text-green-700 flex items-center text-sm font-medium space-x-1 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
-            aria-label="Export to CSV"
-          >
-            <Download className="w-4 h-4" />
-            <span>CSV</span>
-          </button>
-          <button
-            onClick={handleExportPDF}
-            disabled={isLoading || filteredRequests.length === 0}
-            className="text-red-700 flex items-center text-sm font-medium space-x-1 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
-            aria-label="Export to PDF"
-          >
-            <FileText className="w-4 h-4" />
-            <span>PDF</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Modern Table */}
+      {/* Table */}
       <div className="flex-1 overflow-hidden rounded-xl bg-[#F8F9FA] p-1">
         <div className="overflow-x-auto bg-[#F8F9FA] rounded-lg">
           <table className="w-full min-w-[1400px]">
             <thead className="bg-[#274b46] text-[#F8F9FA]">
               <tr>
                 {["Status", "Department", "Employee ID", "Employee Name", "Leave Type", "From Date", "To Date", "Duration", "Actions"].map((header) => (
-                  <th key={header} className="px-6 py-4 text-left text-sm font-bold tracking-wide">
-                    {header}
-                  </th>
+                  <th key={header} className="px-6 py-4 text-left text-sm font-bold tracking-wide">{header}</th>
                 ))}
               </tr>
             </thead>
@@ -548,48 +456,38 @@ const LeaveRequestsTable = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-800">{item.department}</td>
-                    <td className="px-6 py-4 text-sm text-gray-800">{item.id}</td>
+                    <td className="px-6 py-4 text-sm text-gray-800">{item.employee_id}</td>
                     <td className="px-6 py-4 text-sm text-gray-800">{item.name}</td>
                     <td className="px-6 py-4 text-sm text-gray-800">{item.leaveType}</td>
-                    <td className="px-6 py-4 text-sm text-gray-800">{item.fromDate}</td>
-                    <td className="px-6 py-4 text-sm text-gray-800">{item.toDate}</td>
+                    <td className="px-6 py-4 text-sm text-gray-800">{new Date(item.fromDate).toLocaleDateString()}</td>
+                    <td className="px-6 py-4 text-sm text-gray-800">{new Date(item.toDate).toLocaleDateString()}</td>
                     <td className="px-6 py-4 text-sm text-gray-800">{calculateDuration(item.fromDate, item.toDate)}</td>
                     <td className="px-6 py-4">
-                      {item.status === "Pending" ? (
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => openApproveModal(item)}
-                            className="bg-green-500 hover:bg-green-600 text-[#F8F9FA] px-3 py-1.5 rounded text-xs font-semibold"
-                          >
-                            Approve
-                          </button>
-                          <button
-                            onClick={() => openRejectModal(item)}
-                            className="bg-red-500 hover:bg-red-600 text-[#F8F9FA] px-3 py-1.5 rounded text-xs font-semibold"
-                          >
-                            Reject
-                          </button>
-                        </div>
-                      ) : (
-                        <span className="text-gray-400 text-xs italic">No action</span>
-                      )}
+                      <div className="flex gap-2">
+                        {item.status === "Pending" && (
+                          <>
+                            <button onClick={() => openProcessModal(item)} className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded text-xs font-semibold">Process</button>
+                            <button onClick={() => openRejectModal(item)} className="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded text-xs font-semibold">Reject</button>
+                          </>
+                        )}
+                        {item.status === "Processing" && (
+                             <span className="text-blue-600 text-xs italic">Waiting for employee</span>
+                        )}
+                        {item.status === "Finalizing" && (
+                          <>
+                            <button onClick={() => openApproveModal(item)} className="bg-green-500 hover:bg-green-600 text-white px-3 py-1.5 rounded text-xs font-semibold">Approve</button>
+                            <button onClick={() => openRejectModal(item)} className="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded text-xs font-semibold">Reject</button>
+                          </>
+                        )}
+                        {(item.status === "Approved" || item.status === "Rejected") && (
+                            <span className="text-gray-400 text-xs italic">Completed</span>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))
               ) : (
-                <tr>
-                  <td colSpan="9" className="px-6 py-12 text-center">
-                    <div className="flex flex-col items-center justify-center text-gray-500">
-                      <Search className="w-12 h-12 mb-3 opacity-50" />
-                      <p className="text-lg font-medium">No records found</p>
-                      <p className="text-sm mt-1">
-                        {debouncedSearchQuery || Object.values(filters).some(v => v) 
-                          ? "Try adjusting your filters or search terms" 
-                          : "No data available"}
-                      </p>
-                    </div>
-                  </td>
-                </tr>
+                <tr><td colSpan="9" className="px-6 py-12 text-center">No records found</td></tr>
               )}
             </tbody>
           </table>
@@ -599,29 +497,11 @@ const LeaveRequestsTable = () => {
       {/* Pagination */}
       {!isLoading && filteredRequests.length > 0 && (
         <div className="flex justify-between items-center mt-6">
-          <div className="text-sm text-gray-800">
-            Showing <span className="font-semibold text-gray-800">{startIndex + 1}–{Math.min(endIndex, filteredRequests.length)}</span> of <span className="font-semibold text-gray-800">{filteredRequests.length}</span> records
-          </div>
+          <div className="text-sm text-gray-800">Showing {startIndex + 1}–{Math.min(endIndex, filteredRequests.length)} of {filteredRequests.length}</div>
           <div className="flex items-center space-x-2">
-            <button
-              onClick={handlePrevPage}
-              disabled={currentPage === 1 || isLoading}
-              className="px-4 py-2 bg-[#F8F9FA] border border-gray-300 rounded-lg shadow-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-all text-sm font-medium text-gray-800"
-              aria-label="Previous page"
-            >
-              Previous
-            </button>
-            <span className="text-sm px-4 py-2 bg-gray-50 text-gray-800 rounded-lg font-semibold">
-              Page {currentPage} of {totalPages || 1}
-            </span>
-            <button
-              onClick={handleNextPage}
-              disabled={currentPage === totalPages || totalPages === 0 || isLoading}
-              className="px-4 py-2 bg-[#F8F9FA] border border-gray-300 rounded-lg shadow-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-all text-sm font-medium text-gray-800"
-              aria-label="Next page"
-            >
-              Next
-            </button>
+            <button onClick={handlePrevPage} disabled={currentPage === 1} className="px-4 py-2 border rounded-lg hover:bg-gray-50 disabled:opacity-50">Previous</button>
+            <span className="text-sm px-4 py-2 bg-gray-50 rounded-lg font-semibold">Page {currentPage}</span>
+            <button onClick={handleNextPage} disabled={currentPage === totalPages} className="px-4 py-2 border rounded-lg hover:bg-gray-50 disabled:opacity-50">Next</button>
           </div>
         </div>
       )}
@@ -631,7 +511,7 @@ const LeaveRequestsTable = () => {
         request={approveModal.request}
         remarks={approveModal.remarks}
         onRemarksChange={(remarks) => setApproveModal(prev => ({ ...prev, remarks }))}
-        onConfirm={handleApproveConfirm}
+        onConfirm={handleActionSuccess}
         onCancel={closeApproveModal}
       />
 
@@ -640,8 +520,15 @@ const LeaveRequestsTable = () => {
         request={rejectModal.request}
         remarks={rejectModal.remarks}
         onRemarksChange={(remarks) => setRejectModal(prev => ({ ...prev, remarks }))}
-        onConfirm={handleRejectConfirm}
+        onConfirm={handleActionSuccess}
         onCancel={closeRejectModal}
+      />
+
+      <ProcessModal
+        isOpen={processModal.isOpen}
+        request={processModal.request}
+        onConfirm={handleActionSuccess}
+        onCancel={closeProcessModal}
       />
     </div>
   );

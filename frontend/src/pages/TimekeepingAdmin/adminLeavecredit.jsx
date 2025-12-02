@@ -1,35 +1,80 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
-import { Download, FileText, RefreshCw, AlertCircle, Check, Search, Plus } from "lucide-react";
-import AddCreditModal from "../../components/Modal UI/adminleavecredit/Addcredit";
+import { Download, FileText, RefreshCw, Plus, AlertCircle, Check, Search } from "lucide-react";
+
+// API
+import { leaveApi } from "../../api/leaveApi";
+import { getEmployees } from "../../api/employeeApi";
+
+// Modal
+import AddCreditModal from "../../components/Custom/LeaveCreditAdminComponents/Modals/AddCreditModal";
 
 const ITEMS_PER_PAGE = 10;
 
-export default function LeaveCredit() {
+const LeaveCredit = () => {
   const today = useMemo(() => new Date().toLocaleDateString("en-US"), []);
   
+  const [leaveData, setLeaveData] = useState([]);
+  const [employees, setEmployees] = useState([]);
+
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingType, setLoadingType] = useState("");
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  
+  const [creditForm, setCreditForm] = useState({
+    employeeId: "",
+    employeeName: "",
+    department: "",
+    creditType: "Vacation",
+    credits: "",
+  });
 
   const searchTimeoutRef = useRef(null);
 
-  // Modal form state
-  const [creditForm, setCreditForm] = useState({
-    employeeName: "",
-    department: "",
-    credits: "",
-    date: new Date().toISOString().split("T")[0],
-  });
+  // Fetch Data
+  const fetchData = useCallback(async () => {
+    setIsLoading(true);
+    setLoadingType("data");
+    setError(null);
+    try {
+        const [creditsRes, employeesRes] = await Promise.all([
+            leaveApi.getAllCredits(),
+            getEmployees()
+        ]);
 
-  // Sample data as state
-  const [leaveData, setLeaveData] = useState([]);
+        if (creditsRes.data && creditsRes.data.credits) {
+            const mapped = creditsRes.data.credits.map(c => ({
+                id: c.id,
+                employeeId: c.employee_id,
+                employeeName: `${c.first_name} ${c.last_name}`,
+                department: c.department,
+                creditType: c.credit_type,
+                balance: c.balance
+            }));
+            setLeaveData(mapped);
+        }
 
-  // Debounced search
+        if (employeesRes.data && employeesRes.data.employees) {
+            setEmployees(employeesRes.data.employees);
+        }
+
+    } catch (err) {
+        console.error("Failed to fetch data:", err);
+        setError("Failed to load data.");
+    } finally {
+        setIsLoading(false);
+        setLoadingType("");
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
   useEffect(() => {
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
@@ -45,7 +90,6 @@ export default function LeaveCredit() {
     };
   }, [searchTerm]);
 
-  // Auto-dismiss error
   useEffect(() => {
     if (error) {
       const timer = setTimeout(() => setError(null), 5000);
@@ -53,7 +97,6 @@ export default function LeaveCredit() {
     }
   }, [error]);
 
-  // Auto-dismiss success
   useEffect(() => {
     if (successMessage) {
       const timer = setTimeout(() => setSuccessMessage(null), 3000);
@@ -61,15 +104,12 @@ export default function LeaveCredit() {
     }
   }, [successMessage]);
 
-  // Reset pagination when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [debouncedSearchTerm]);
 
-  // Search + filter logic
   const filteredData = useMemo(() => {
     let data = leaveData;
-
     const query = debouncedSearchTerm.toLowerCase();
     if (query) {
       data = data.filter(
@@ -77,11 +117,9 @@ export default function LeaveCredit() {
           item.employeeName.toLowerCase().includes(query) ||
           item.employeeId.toLowerCase().includes(query) ||
           item.department.toLowerCase().includes(query) ||
-          item.date.toLowerCase().includes(query) ||
-          String(item.totalCredits).includes(query)
+          item.creditType.toLowerCase().includes(query)
       );
     }
-
     return data;
   }, [debouncedSearchTerm, leaveData]);
 
@@ -103,20 +141,9 @@ export default function LeaveCredit() {
   }, [paginationData.totalPages]);
 
   const handleRefresh = useCallback(async () => {
-    setIsLoading(true);
-    setLoadingType("data");
-    setError(null);
-    try {
-      await new Promise(resolve => setTimeout(resolve, 500));
-      setSuccessMessage("Data refreshed successfully!");
-    } catch (err) {
-      console.error('Refresh failed:', err);
-      setError(`Refresh failed: ${err.message || 'Unknown error. Please try again.'}`);
-    } finally {
-      setIsLoading(false);
-      setLoadingType("");
-    }
-  }, []);
+    await fetchData();
+    setSuccessMessage("Data refreshed successfully!");
+  }, [fetchData]);
 
   // Export CSV
   const handleExportCSV = useCallback(async () => {
@@ -129,23 +156,23 @@ export default function LeaveCredit() {
     setError(null);
     try {
       await new Promise(resolve => setTimeout(resolve, 100));
-      const headers = ['Employee ID', 'Employee Name', 'Department', 'Date', 'Total Credits'];
+      const headers = ['Employee ID', 'Employee Name', 'Department', 'Credit Type', 'Balance'];
       const csvContent = [
         headers.join(','),
         ...filteredData.map(row => [
           row.employeeId,
           row.employeeName,
           row.department,
-          row.date,
-          row.totalCredits
-        ].map(field => `"${field.replace(/"/g, '""')}"`).join(','))
+          row.creditType,
+          row.balance
+        ].map(field => `"${String(field).replace(/"/g, '""')}"`).join(','))
       ].join('\n');
 
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const link = document.createElement('a');
       const url = URL.createObjectURL(blob);
       link.setAttribute('href', url);
-      link.setAttribute('download', `leave_information_${today.replace(/\//g, '-')}.csv`);
+      link.setAttribute('download', `leave_credits_${today.replace(/\//g, '-')}.csv`);
       link.style.visibility = 'hidden';
       document.body.appendChild(link);
       link.click();
@@ -173,20 +200,20 @@ export default function LeaveCredit() {
     try {
       await new Promise(resolve => setTimeout(resolve, 100));
       
-      const headers = ['Employee ID', 'Employee Name', 'Department', 'Date', 'Total Credits'];
+      const headers = ['Employee ID', 'Employee Name', 'Department', 'Credit Type', 'Balance'];
       
       let htmlContent = `
         <!DOCTYPE html>
         <html>
         <head>
           <meta charset="UTF-8">
-          <title>Leave Information Report</title>
+          <title>Leave Credits Report</title>
           <style>
             body { font-family: Arial, sans-serif; margin: 20px; }
             h1 { color: #333; font-size: 24px; margin-bottom: 10px; }
             .meta { color: #666; font-size: 14px; margin-bottom: 20px; }
             table { width: 100%; border-collapse: collapse; font-size: 12px; }
-            th { background-color: #1e293b; color: white; padding: 10px; text-align: left; font-weight: bold; }
+            th { background-color: #274b46; color: white; padding: 10px; text-align: left; font-weight: bold; }
             td { padding: 8px; border-bottom: 1px solid #e2e8f0; }
             tr:hover { background-color: #f8fafc; }
             @media print {
@@ -196,7 +223,7 @@ export default function LeaveCredit() {
           </style>
         </head>
         <body>
-          <h1>Leave Information Report</h1>
+          <h1>Leave Credits Report</h1>
           <div class="meta">Generated on: ${today}</div>
           <table>
             <thead>
@@ -210,8 +237,8 @@ export default function LeaveCredit() {
                   <td>${row.employeeId}</td>
                   <td>${row.employeeName}</td>
                   <td>${row.department}</td>
-                  <td>${row.date}</td>
-                  <td>${row.totalCredits}</td>
+                  <td>${row.creditType}</td>
+                  <td>${row.balance}</td>
                 </tr>
               `).join('')}
             </tbody>
@@ -246,36 +273,50 @@ export default function LeaveCredit() {
   // Modal Handlers
   const handleModalChange = (e) => {
     const { name, value } = e.target;
-    setCreditForm((prev) => ({ ...prev, [name]: value }));
+    
+    // If employee selected, fill in details
+    if (name === 'employeeId') {
+        const selectedEmp = employees.find(emp => emp.employee_id === value);
+        if (selectedEmp) {
+            setCreditForm(prev => ({
+                ...prev,
+                employeeId: value,
+                employeeName: `${selectedEmp.first_name} ${selectedEmp.last_name}`,
+                department: selectedEmp.department || ''
+            }));
+        }
+    } else {
+        setCreditForm((prev) => ({ ...prev, [name]: value }));
+    }
   };
 
-  const handleSaveCredit = () => {
-    const newId = Date.now();
-    const newEmployeeId = `EMP${(leaveData.length + 1).toString().padStart(3, '0')}`;
-    const newCredit = {
-      id: newId,
-      employeeId: newEmployeeId,
-      employeeName: creditForm.employeeName,
-      department: creditForm.department,
-      date: creditForm.date,
-      totalCredits: parseInt(creditForm.credits, 10) || 0,
-    };
+  const handleSaveCredit = async () => {
+    try {
+        await leaveApi.addOrUpdateCredit({
+            employeeId: creditForm.employeeId,
+            creditType: creditForm.creditType,
+            balance: parseInt(creditForm.credits, 10)
+        });
 
-    console.log("Saved Leave Credit:", newCredit);
-    setLeaveData((prev) => [...prev, newCredit]);
-    setIsModalOpen(false);
-    setCreditForm({
-      employeeName: "",
-      department: "",
-      credits: "",
-      date: new Date().toISOString().split("T")[0],
-    });
-    setSuccessMessage("Leave credit added successfully!");
+        setSuccessMessage("Leave credit updated successfully!");
+        setIsModalOpen(false);
+        setCreditForm({
+            employeeId: "",
+            employeeName: "",
+            department: "",
+            creditType: "Vacation",
+            credits: "",
+        });
+        await fetchData();
+    } catch (err) {
+        console.error("Failed to save credit:", err);
+        setError("Failed to save credit.");
+    }
   };
 
-  const { totalPages, startIndex, endIndex, currentItems } = paginationData;
+  const { startIndex, endIndex, currentItems } = paginationData;
 
-  if (isLoading) {
+  if (isLoading && loadingType === "data") {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-50">
         <div className="text-center">
@@ -287,137 +328,98 @@ export default function LeaveCredit() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-neutral-100 to-stone-100 rounded-xl p-6 mx-auto w-full max-w-[95vw] text-gray-800">
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-neutral-100 to-stone-50 rounded-xl shadow-xl p-7 w-full overflow-hidden text-gray-800">
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <div>
           <h2 className="text-2xl font-bold text-gray-800">Leave Credits</h2>
-          <p className="text-sm text-gray-800 mt-1">Employee leave management</p>
+          <p className="text-sm text-gray-800 mt-1">Manage employee leave balances</p>
         </div>
         <div className="flex items-center gap-3">
           <button
             onClick={handleRefresh}
             disabled={isLoading}
-            className="text-[#274b46] hover:text-gray-800 transition-colors disabled:opacity-50"
+            className="text-gray-600 hover:text-gray-800 transition-colors disabled:opacity-50"
             title="Refresh data"
             aria-label="Refresh data"
           >
             <RefreshCw className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
           </button>
-          <span className="text-sm text-gray-800 bg-[#F8F9FA] px-4 py-2 border border-gray-300 rounded-lg shadow-md">
+          <span className="text-sm text-gray-800 bg-[#F8F9FA] px-4 py-2 border-[2px] border-[#274b46] rounded-lg shadow-sm">
             Date today: <span className="text-gray-800 font-semibold">{today}</span>
           </span>
         </div>
       </div>
 
-      <hr className="mb-6 border-[1px] border-[#274b46]" />
+      <hr className="mb-6 border-[#274b46]" />
 
-      {/* Error Message */}
+      {/* Messages */}
       {error && (
-        <div className="bg-red-50 border-l-4 border-red-500 text-red-700 px-4 py-3 rounded mb-4 flex items-start gap-3 animate-slide-down" role="alert" aria-live="assertive">
-          <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
-          <div className="flex-1">
+        <div className="bg-red-50 border-l-4 border-red-500 text-red-700 px-4 py-3 rounded mb-4 flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 mt-0.5" />
+          <div>
             <p className="font-medium">Error</p>
             <p className="text-sm">{error}</p>
           </div>
-          <button
-            onClick={() => setError(null)}
-            className="text-red-700 hover:text-red-900"
-            aria-label="Dismiss error"
-          >
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
         </div>
       )}
 
-      {/* Success Message */}
       {successMessage && (
-        <div className="bg-green-50 border-l-4 border-[#274b46] text-green-700 px-4 py-3 rounded mb-4 flex items-start gap-3 animate-slide-down" role="alert" aria-live="polite">
-          <Check className="w-5 h-5 flex-shrink-0 mt-0.5" />
-          <div className="flex-1">
+        <div className="bg-green-50 border-l-4 border-[#274b46] text-green-700 px-4 py-3 rounded mb-4 flex items-start gap-3">
+          <Check className="w-5 h-5 mt-0.5" />
+          <div>
             <p className="font-medium">Success</p>
             <p className="text-sm">{successMessage}</p>
           </div>
-          <button
-            onClick={() => setSuccessMessage(null)}
-            className="text-green-700 hover:text-green-900"
-            aria-label="Dismiss success message"
-          >
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
         </div>
       )}
 
       {/* Search and Actions */}
-      <div className="flex justify-between items-center mb-6 bg-[#F8F9FA] p-4 rounded-lg shadow-md">
-        {/* Search */}
+      <div className="flex justify-between items-center mb-6 bg-[#274b46] p-4 rounded-lg shadow-md">
         <div className="relative w-80">
           <Search className="absolute left-3 top-2.5 w-4 h-4 text-[#274b46]" />
           <input
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search by name, ID, department..."
+            placeholder="Search..."
             disabled={isLoading}
-            className="pl-10 pr-4 py-2 bg-[#F8F9FA] border border-gray-300 rounded-lg shadow-md w-full text-sm focus:outline-none focus:ring-2 focus:ring-gray-200"
-            aria-label="Search employees"
+            className="pl-10 pr-4 py-2 bg-[#F8F9FA] border border-gray-300 rounded-lg shadow-md w-full text-sm focus:outline-none"
           />
         </div>
 
-        {/* Action Buttons */}
         <div className="flex items-center gap-4">
-          {searchTerm && (
-            <div className="text-sm text-gray-800">
-              Found <span className="font-semibold text-gray-800">{filteredData.length}</span> result{filteredData.length !== 1 ? 's' : ''}
-            </div>
-          )}
           <button
             onClick={() => setIsModalOpen(true)}
-            className="bg-[#F8F9FA] border border-gray-300 text-gray-800 font-semibold px-4 py-2 rounded-lg text-sm transition-all hover:bg-[#FFFFFF] active:scale-95 shadow-md flex items-center gap-2"
+            className="bg-[#F8F9FA] border border-gray-300 text-gray-800 font-semibold px-4 py-2 rounded-lg text-sm hover:bg-gray-50 transition-all shadow-md flex items-center gap-2"
           >
             <Plus size={18} />
-            Add Credits
+            Add/Update Credit
           </button>
         </div>
       </div>
 
-      {/* Export Section */}
+      {/* Export */}
       <div className="flex justify-between items-center mb-4">
         <div className="flex items-center space-x-3">
-          <span className="text-sm font-semibold text-gray-800">Export Options:</span>
-          <button
-            onClick={handleExportCSV}
-            disabled={isLoading || filteredData.length === 0}
-            className="text-green-700 flex items-center text-sm font-medium space-x-1 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
-            aria-label="Export to CSV"
-          >
-            <Download className="w-4 h-4" />
-            <span>CSV</span>
+          <span className="text-sm font-semibold text-gray-800">Export:</span>
+          <button onClick={handleExportCSV} disabled={isLoading || filteredData.length === 0} className="text-green-700 text-sm hover:underline flex items-center gap-1">
+            <Download className="w-4 h-4" /> CSV
           </button>
-          <button
-            onClick={handleExportPDF}
-            disabled={isLoading || filteredData.length === 0}
-            className="text-red-700 flex items-center text-sm font-medium space-x-1 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
-            aria-label="Export to PDF"
-          >
-            <FileText className="w-4 h-4" />
-            <span>PDF</span>
+          <button onClick={handleExportPDF} disabled={isLoading || filteredData.length === 0} className="text-red-700 text-sm hover:underline flex items-center gap-1">
+            <FileText className="w-4 h-4" /> PDF
           </button>
         </div>
       </div>
 
       {/* Table */}
       <div className="flex-1 overflow-hidden rounded-xl bg-[#F8F9FA] p-1">
-        <div className="overflow-x-auto bg-gray-50 rounded-lg">
+        <div className="overflow-x-auto bg-[#F8F9FA] rounded-lg">
           <table className="w-full">
             <thead className="bg-[#274b46] text-[#F8F9FA]">
               <tr>
-                {["Employee ID", "Employee Name", "Department", "Date", "Total Credits"].map((header) => (
-                  <th key={header} className="px-6 py-4 text-left text-sm font-bold  tracking-wide whitespace-nowrap">
+                {["Employee ID", "Employee Name", "Department", "Credit Type", "Balance"].map((header) => (
+                  <th key={header} className="px-6 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap">
                     {header}
                   </th>
                 ))}
@@ -426,26 +428,18 @@ export default function LeaveCredit() {
             <tbody className="divide-y divide-slate-100">
               {currentItems.length ? (
                 currentItems.map((item) => (
-                  <tr key={item.id} className="hover:bg-[#34645c]  transition-colors">
+                  <tr key={`${item.employeeId}-${item.creditType}`} className="hover:bg-[#34645c] transition-colors">
                     <td className="px-6 py-4 text-sm text-gray-800">{item.employeeId}</td>
-                    <td className="px-6 py-4 text-sm text-gray-800">{item.employeeName}</td>
+                    <td className="px-6 py-4 text-sm text-gray-800 font-medium">{item.employeeName}</td>
                     <td className="px-6 py-4 text-sm text-gray-800">{item.department}</td>
-                    <td className="px-6 py-4 text-sm text-gray-800">{item.date}</td>
-                    <td className="px-6 py-4 text-sm font-semibold text-gray-800">{item.totalCredits}</td>
+                    <td className="px-6 py-4 text-sm text-gray-800">{item.creditType}</td>
+                    <td className="px-6 py-4 text-sm font-semibold text-gray-800">{item.balance}</td>
                   </tr>
                 ))
               ) : (
                 <tr>
                   <td colSpan="5" className="px-6 py-12 text-center">
-                    <div className="flex flex-col items-center justify-center text-gray-500">
-                      <Search className="w-12 h-12 mb-3 opacity-50" />
-                      <p className="text-lg font-medium">No records found</p>
-                      <p className="text-sm mt-1">
-                        {debouncedSearchTerm
-                          ? "Try adjusting your filters or search terms" 
-                          : "No data available"}
-                      </p>
-                    </div>
+                    <p className="text-gray-500">No records found</p>
                   </td>
                 </tr>
               )}
@@ -458,40 +452,26 @@ export default function LeaveCredit() {
       {!isLoading && filteredData.length > 0 && (
         <div className="flex justify-between items-center mt-6">
           <div className="text-sm text-gray-800">
-            Showing <span className="font-semibold text-gray-800">{startIndex + 1}–{Math.min(endIndex, filteredData.length)}</span> of <span className="font-semibold text-gray-800">{filteredData.length}</span> records
+            Showing {startIndex + 1}–{Math.min(endIndex, filteredData.length)} of {filteredData.length}
           </div>
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={handlePrevPage}
-              disabled={currentPage === 1 || isLoading}
-              className="px-4 py-2 bg-#F8F9FA border border-gray-300 rounded-lg shadow-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-all text-sm font-medium text-gray-800"
-              aria-label="Previous page"
-            >
-              Previous
-            </button>
-            <span className="text-sm px-4 py-2 bg-gray-50 text-gray-800 rounded-lg font-semibold">
-              Page {currentPage} of {totalPages}
-            </span>
-            <button
-              onClick={handleNextPage}
-              disabled={currentPage === totalPages || totalPages === 0 || isLoading}
-              className="px-4 py-2 bg-[#F8F9FA] border border-gray-300 rounded-lg shadow-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-all text-sm font-medium text-gray-800"
-              aria-label="Next page"
-            >
-              Next
-            </button>
+          <div className="flex gap-2">
+            <button onClick={handlePrevPage} disabled={currentPage === 1} className="px-4 py-2 border rounded-lg">Previous</button>
+            <button onClick={handleNextPage} disabled={currentPage === paginationData.totalPages} className="px-4 py-2 border rounded-lg">Next</button>
           </div>
         </div>
       )}
 
-      {/* Add Credit Modal */}
+      {/* Modal */}
       <AddCreditModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSave={handleSaveCredit}
         formData={creditForm}
         onChange={handleModalChange}
+        employees={employees}
       />
     </div>
   );
 }
+
+export default LeaveCredit;

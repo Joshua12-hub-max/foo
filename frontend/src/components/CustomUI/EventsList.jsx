@@ -1,28 +1,39 @@
-import React, { memo, useMemo } from "react";
-import { Calendar } from "lucide-react";
+import { memo, useMemo } from "react";
+import { Calendar, Clock, Star } from "lucide-react";
+import { getEventStyles } from '../Custom/CalendarComponents/shared/utils/calendarItemUtils.js';
 
 /* -------------------- Memoized Event Item -------------------- */
-const EventItem = memo(({ title, date, type }) => {
-  const badgeClass = useMemo(() => {
-    return type === "holiday"
-      ? "bg-purple-100 text-purple-700"
-      : "bg-blue-100 text-blue-700";
-  }, [type]);
+const EventItem = memo(({ title, date, type, priority }) => {
+  const dateObj = new Date(date);
+  const day = dateObj.getDate();
+  const month = dateObj.toLocaleString('default', { month: 'short' });
+
+  const eventConfig = useMemo(() => {
+    return getEventStyles(type, title, priority);
+  }, [type, title, priority]);
 
   return (
-    <div className="flex items-center justify-between p-2 bg-gray-50 rounded hover:bg-gray-100 transition-colors">
-      <div className="flex items-center space-x-2">
-        <Calendar className="w-3 h-3 text-gray-800 flex-shrink-0" />
-        <div>
-          <p className="text-xs font-medium text-slate-800">{title}</p>
-          <p className="text-xs text-gray-500">{date}</p>
+    <div className="group flex items-center gap-4 p-3 bg-white border border-gray-100 rounded-xl hover:shadow-md transition-all duration-300 hover:border-gray-200">
+      {/* Calendar Leaf Date */}
+      <div className={`flex flex-col items-center justify-center w-12 h-12 rounded-lg border ${eventConfig.bgColor} ${eventConfig.borderColor} ${eventConfig.textColor}`}>
+        <span className="text-[10px] font-bold uppercase tracking-wider">{month}</span>
+        <span className="text-lg font-bold leading-none">{day}</span>
+      </div>
+
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center justify-between mb-1">
+          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide ${eventConfig.badgeBg} ${eventConfig.badgeText}`}>
+            {type}
+          </span>
+        </div>
+        <h5 className="text-sm font-semibold text-gray-800 truncate group-hover:text-[#34645c] transition-colors">
+          {title}
+        </h5>
+        <div className="flex items-center gap-1 text-xs text-gray-500 mt-0.5">
+          <Clock className="w-3 h-3" />
+          <span>All Day</span>
         </div>
       </div>
-      <span
-        className={`px-2 py-0.5 text-xs font-medium rounded-full capitalize ${badgeClass}`}
-      >
-        {type}
-      </span>
     </div>
   );
 });
@@ -32,28 +43,32 @@ EventItem.displayName = "EventItem";
 function EventsList({ events = [] }) {
   if (!events.length) {
     return (
-      <div>
-        <h4 className="text-md font-medium text-slate-700 mb-4 flex items-center gap-2">
-          <Calendar className="w-4 h-4 text-gray-800" /> Events & Holidays
-        </h4>
-        <p className="text-sm text-gray-500 italic">No upcoming events or holidays.</p>
+      <div className="flex flex-col items-center justify-center py-12 text-center bg-gray-50 rounded-xl border border-dashed border-gray-200">
+        <div className="bg-white p-3 rounded-full shadow-sm mb-3">
+          <Calendar className="w-6 h-6 text-gray-400" />
+        </div>
+        <h4 className="text-sm font-medium text-gray-900">No Upcoming Events</h4>
+        <p className="text-xs text-gray-500 mt-1">Enjoy your day!</p>
       </div>
     );
   }
 
   return (
-    <div>
-      <h4 className="text-md font-medium text-slate-700 mb-4 flex items-center gap-2">
-        <Calendar className="w-4 h-4 text-gray-800" /> Events & Holidays
-      </h4>
-
-      <div className="space-y-2">
-        {events.map((event) => (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between mb-4">
+        <h4 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+          <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+          Events and Holidays
+        </h4>
+      </div>
+      <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+        {events.map((event, index) => (
           <EventItem
-            key={event.id}
+            key={event.id ? `${event.id}-${index}` : `event-${index}`}
             title={event.title}
             date={event.date}
             type={event.type}
+            priority={event.priority}
           />
         ))}
       </div>

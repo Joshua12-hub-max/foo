@@ -33,6 +33,14 @@ export const attendanceApi = {
             throw error;
         }
     },
+    getRawLogs: async () => {
+        try {
+            const response = await api.get('/attendance/raw-logs');
+            return response;
+        } catch (error) {
+            throw error;
+        }
+    },
     getTodayStatus: async () => {
         try {
             const response = await api.get('/attendance/today-status');

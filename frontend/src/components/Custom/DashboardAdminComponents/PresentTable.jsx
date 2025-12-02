@@ -12,7 +12,6 @@ export default function PresentTable({ onClose, employees = [] }) {
   const filteredEmployees = useMemo(() => {
     const query = searchQuery.toLowerCase();
     if (!query) return employees;
-    
     return employees.filter(emp =>
       emp.name.toLowerCase().includes(query) ||
       emp.id.toLowerCase().includes(query) ||
@@ -26,7 +25,6 @@ export default function PresentTable({ onClose, employees = [] }) {
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
     const endIndex = startIndex + ITEMS_PER_PAGE;
     const currentEmployees = filteredEmployees.slice(startIndex, endIndex);
-    
     return { totalPages, startIndex, endIndex, currentEmployees };
   }, [filteredEmployees, currentPage]);
 
@@ -42,8 +40,6 @@ export default function PresentTable({ onClose, employees = [] }) {
   const handleNextPage = useCallback(() => {
     setCurrentPage(prev => Math.min(prev + 1, paginationData.totalPages));
   }, [paginationData.totalPages]);
-
-
 
   const { totalPages, startIndex, endIndex, currentEmployees } = paginationData;
 
@@ -84,15 +80,13 @@ export default function PresentTable({ onClose, employees = [] }) {
         )}
       </div>
 
-
-
       {/* Modern Table */}
       <div className="flex-1 overflow-hidden rounded-xl bg-white p-1">
         <div className="overflow-x-auto bg-gray-50 rounded-lg">
           <table className="w-full min-w-[1000px]">
             <thead className="bg-[#274b46] text-[#F8F9FA]">
               <tr>
-                {["Status", "Department", "Employee ID", "Name", "Time In", "Time Out", "Date"].map((header) => (
+                {[ "Status", "Department", "Employee ID", "Name", "Time In", "Time Out", "Date"].map(header => (
                   <th key={header} className="px-6 py-4 text-left text-sm font-bold tracking-wide">
                     {header}
                   </th>
@@ -101,10 +95,10 @@ export default function PresentTable({ onClose, employees = [] }) {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {currentEmployees.length ? (
-                currentEmployees.map((employee) => (
+                currentEmployees.map(employee => (
                   <tr key={employee.id} className="hover:bg-[#34645c] transition-colors">
                     <td className="px-6 py-4">
-                      <span className="bg-green-100 text-green-800 px-3 py-1 text-sm font-medium inline-block" style={{borderRadius: '20px'}}>
+                      <span className="bg-green-100 text-green-800 px-3 py-1 text-sm font-medium inline-block" style={{ borderRadius: '20px' }}>
                         {employee.status}
                       </span>
                     </td>
@@ -144,7 +138,7 @@ export default function PresentTable({ onClose, employees = [] }) {
             <button
               onClick={handlePrevPage}
               disabled={currentPage === 1}
-              className="px-4 py-2 bg-[#F8F9FA] border border-gray-300 rounded-lg shadow-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-all text-sm font-medium text-gray-800"
+              className="px-4 py-2 text-sm font-medium text-gray-800 rounded-lg glass-button disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Previous
             </button>
@@ -154,7 +148,7 @@ export default function PresentTable({ onClose, employees = [] }) {
             <button
               onClick={handleNextPage}
               disabled={currentPage === totalPages || totalPages === 0}
-              className="px-4 py-2 bg-[#F8F9FA] border border-gray-300 rounded-lg shadow-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-all text-sm font-medium text-gray-800"
+              className="px-4 py-2 text-sm font-medium text-gray-800 rounded-lg glass-button disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Next
             </button>

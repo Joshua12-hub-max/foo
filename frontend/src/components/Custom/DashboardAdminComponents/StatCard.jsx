@@ -17,16 +17,16 @@ export default function StatCard({ title, data, onClick }) {
   return (
     <button
       onClick={handleClick}
-      className="bg-[#34645c] p-5 rounded-lg border border-[#F8F9FA] shadow-[8px_0_10px_#274b46] hover:shadow-[0_0_10px_#305d56] transition"
+      className="bg-[#F8F9FA] p-5 rounded-lg border border-gray-200 shadow-md hover:shadow-xl hover:scale-[1.02] transition-all duration-300"
     >
       <div className="flex justify-between items-center mb-3">
-        <div className={`p-3 rounded-lg ${colorMap[title]}`}>
-          <CheckSquare className="w-5 h-5 text-[#F8F9FA]" />
+        <div className={`p-3 rounded-lg ${colorMap[title]} shadow-sm`}>
+          <CheckSquare className="w-5 h-5 text-white" />
         </div>
-        <span className="text-xs text-[#F8F9FA]">View details</span>
+        <span className="text-xs text-[#274b46] font-medium opacity-80">View details</span>
       </div>
-      <h3 className="text-sm font-medium text-[#F8F9FA]">{title}</h3>
-      <p className="text-2xl font-bold text-[#F8F9FA]">{data.length}</p>
+      <h3 className="text-sm font-bold text-[#274b46] tracking-wide">{title}</h3>
+      <p className="text-3xl font-bold text-[#274b46] mt-2">{data.length}</p>
     </button>
   );
 }

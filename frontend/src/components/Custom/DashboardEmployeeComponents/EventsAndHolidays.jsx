@@ -1,24 +1,50 @@
+import { useState, useEffect } from 'react';
 import { Calendar } from 'lucide-react';
+import { eventApi } from '../../../api/eventApi';
+import { holidays } from '../../../utils/holidays';
+import EventsList from '../../CustomUI/EventsList';
 
 export default function EventsAndHolidays() {
-  return (
-    <div className="bg-[#F8F9FA] rounded-lg shadow-md border border-[#34645c] min-h-[600px] flex flex-col p-4">
-      
-      {/* Header */}
-      <div className="bg-[#274b46] rounded-lg px-6 py-3 flex items-center justify-between shadow-md mb-4">
-        <h3 className="text-sm font-semibold text-[#F8F9FA] flex items-center gap-2">
-          <Calendar className="w-4 h-4 text-[#F8F9FA]" />
-          Events & Holidays
-        </h3>
-      </div>
+  const [events, setEvents] = useState([]);
 
-      {/* Content */}
-      <div className="flex-1 flex items-center justify-center p-6">
-        <div className="text-center">
-          <Calendar className="w-8 h-8 text-[#34645c] mx-auto mb-3" />
-          <p className="text-sm text-[#34645c]">No upcoming events</p>
-        </div>
-      </div>
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        // Fetch Events from API
+        const eventResponse = await eventApi.getEvents();
+        const apiEvents = (eventResponse.data && eventResponse.data.events) ? eventResponse.data.events : [];
+
+        // Get current year holidays
+        const currentYear = new Date().getFullYear();
+        const holidayEvents = holidays.map(h => ({
+            id: `holiday-${h.id}-${currentYear}`,
+            title: h.title,
+            date: new Date(currentYear, h.month, h.day).toISOString().split('T')[0],
+            type: h.type,
+            priority: 'medium',
+            isHoliday: true
+        }));
+
+        // Combine API events and holidays
+        const combinedEvents = [...apiEvents, ...holidayEvents].sort((a, b) => new Date(a.date) - new Date(b.date));
+
+        // Filter for upcoming events
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const upcomingEvents = combinedEvents.filter(e => new Date(e.date) >= today);
+
+        setEvents(upcomingEvents.slice(0, 5)); // Show top 5 upcoming
+      } catch (error) {
+        console.error("Failed to fetch events:", error);
+      }
+    };
+
+    fetchEvents();
+  }, []);
+
+  return (
+    <div className="bg-[#F8F9FA] rounded-lg shadow-md border border-gray-200 p-6">
+      <EventsList events={events} />
     </div>
   );
 }

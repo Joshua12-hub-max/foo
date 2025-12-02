@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { IdCardLanyard, FileLock } from "lucide-react";
 import AuthLayout from "../components/Custom/Auth/AuthLayout";
-import api from "../api/axios";
+import { useAuth } from "../hooks/useAuth";
 
 // Ito ang pangunahing bahagi para sa pahina ng pag-login.
 export default function Login() {
@@ -13,37 +13,16 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [role, setRole] = useState("");
   const navigate = useNavigate(); // Ginagamit para sa pag-redirect ng mga user.
+  const { login } = useAuth();
 
   // Ang 'useEffect' ay tumatakbo kapag nag-mount ang component. Sinusuri nito kung ang user ay naka-log in na.
   useEffect(() => {
-    // Sinusuri ang lokal na imbakan at imbakan ng session para sa data ng gumagamit at token ng pag-access.
-    const existingUser = localStorage.getItem("user");
-    const accessToken = sessionStorage.getItem("accessToken");
-    
-    // Kung ang user at token ay umiiral, sinusubukan nitong i-parse ang data ng user at i-redirect batay sa papel.
-    if (existingUser && accessToken) {
-      try {
-        const userData = JSON.parse(existingUser);
-        const role = userData.role.toLowerCase();
-        if (role === "hr" || role === "admin") {
-          navigate("/admin-dashboard", { replace: true });
-        } else if (role === "employee") {
-          navigate("/employee-dashboard", { replace: true });
-        }
-      } catch (error) {
-        console.error("Error sa pag-parse ng data ng user:", error);
-        // Nililinis ang imbakan kung may error.
-        localStorage.removeItem("user");
-        sessionStorage.removeItem("accessToken");
-      }
-    }
-
     // Awtomatikong pinupunan ang employee ID mula sa huling pagpaparehistro.
     const lastUser = localStorage.getItem("lastRegisteredUser");
     if (lastUser) {
       try {
         const user = JSON.parse(lastUser);
-        setForm((prev) => ({ ...prev, employeeId: user.employeeId }));
+        setForm((prev) => ({ ...prev, employeeId: user.email || "" }));
         setRole(user.role);
         // Nililinis pagkatapos gamitin upang maiwasan ang pagkalito.
         localStorage.removeItem("lastRegisteredUser");
@@ -52,7 +31,7 @@ export default function Login() {
         localStorage.removeItem("lastRegisteredUser");
       }
     }
-  }, [navigate]);
+  }, []);
 
   // Pinangangasiwaan ang mga pagbabago sa mga input field.
   const handleChange = (e) => {
@@ -68,15 +47,22 @@ export default function Login() {
     if (!form.employeeId.trim() || !form.password.trim()) {
       setError("Pakipunan ang lahat ng mga patlang.");
       return;
+    }
 
-      // Bine-validate ang data ng tugon.
-      if (!accessToken || !user.employeeId || !user.role) {
+    setLoading(true);
+    setError("");
+
+    try {
+      const user = await login({
+        identifier: form.employeeId.trim(),
+        password: form.password
+      });
+
+      if (!user || !user.employeeId || !user.role) {
         throw new Error("Di-wastong tugon mula sa server");
       }
 
-      // Iniimbak ang data ng user at token.
       localStorage.setItem("user", JSON.stringify(user));
-      sessionStorage.setItem("accessToken", accessToken);
 
       // Nagre-redirect batay sa papel ng user.
       const role = user.role.toLowerCase();
@@ -90,10 +76,6 @@ export default function Login() {
     } catch (err) {
       console.error("Error sa pag-login:", err);
       
-      // Nililinis ang anumang bahagyang data sa error.
-      localStorage.removeItem("user");
-      sessionStorage.removeItem("accessToken");
-
       // Pinangangasiwaan ang iba't ibang mga sitwasyon ng error.
       if (err.response) {
         // Tumugon ang server na may error.
@@ -138,7 +120,7 @@ export default function Login() {
       {/* Ang login form mismo */}
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="text-sm text-gray-700 mb-1 block">Employee ID</label>
+          <label className="text-sm text-gray-700 mb-1 block">Employee ID or Email</label>
           <div className="relative">
             <IdCardLanyard className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={17} />
             <input
@@ -147,7 +129,7 @@ export default function Login() {
               value={form.employeeId}
               onChange={handleChange}
               className="w-full pl-10 pr-3 py-2 border-[2px] border-gray-300 rounded-[15px] shadow-md bg-white focus:ring focus:ring-gray-100 focus:outline-none"
-              placeholder="Ilagay ang iyong Employee ID"
+              placeholder="Enter your ID or Email"
               disabled={loading}
               required
             />
@@ -164,7 +146,7 @@ export default function Login() {
               value={form.password}
               onChange={handleChange}
               className="w-full pl-10 pr-3 py-2 border-[2px] border-gray-300 rounded-[15px] shadow-md bg-white focus:ring focus:ring-gray-100 focus:outline-none"
-              placeholder="Ilagay ang iyong password"
+              placeholder="Enter your password"
               disabled={loading}
               required
             />
