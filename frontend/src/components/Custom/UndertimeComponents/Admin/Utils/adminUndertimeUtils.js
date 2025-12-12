@@ -1,4 +1,21 @@
 /**
+ * Format date to readable format (e.g., "December 5, 2025")
+ */
+export const formatDate = (dateString) => {
+  if (!dateString) return 'N/A';
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  } catch (error) {
+    return dateString;
+  }
+};
+
+/**
  * Map API response data to component format
  */
 export const mapUndertimeData = (apiData) => {
@@ -7,7 +24,7 @@ export const mapUndertimeData = (apiData) => {
     employeeId: item.employee_id || 'N/A',
     employeeName: item.employee_name || 'N/A',
     department: item.department || 'N/A',
-    date: item.date,
+    date: formatDate(item.date),
     timeOut: item.time_out || 'N/A',
     reason: item.reason || '-',
     status: item.status || 'Pending',
@@ -15,7 +32,8 @@ export const mapUndertimeData = (apiData) => {
     reviewedAt: item.reviewed_at,
     reviewedBy: item.reviewed_by,
     rejectionReason: item.rejection_reason,
-    createdAt: item.created_at
+    createdAt: item.created_at,
+    attachment_path: item.attachment_path || null
   }));
 };
 
@@ -33,6 +51,13 @@ export const filterUndertimeData = (data, filters, searchQuery) => {
   // Apply employee filter
   if (filters.employee) {
     filteredData = filteredData.filter((item) => item.employeeName === filters.employee);
+  }
+
+  // Apply status filter
+  if (filters.status) {
+    filteredData = filteredData.filter((item) => 
+      item.status.toLowerCase() === filters.status.toLowerCase()
+    );
   }
 
   // Apply date range filters

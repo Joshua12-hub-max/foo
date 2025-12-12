@@ -64,9 +64,15 @@ const EmployeeSchedule = () => {
 
   // Handler for applying filters
   const handleApply = useCallback(() => {
+    // Check if at least one filter is selected
+    const hasFilters = filters.fromDateTime || filters.toDateTime;
+    if (!hasFilters) {
+      setError("Please select at least one filter before applying.");
+      return;
+    }
     resetPage();
     setSuccessMessage("Filters applied successfully!");
-  }, [resetPage]);
+  }, [resetPage, filters, setError]);
 
   // Handler for clearing filters
   const handleClearFilters = useCallback(() => {
@@ -153,11 +159,10 @@ const EmployeeSchedule = () => {
         onExportPDF={handlePDFExport}
       />
 
-      {/* Table Section */}
+      {/* Table Section - View Only (Employees cannot edit/delete schedules) */}
       <Table 
         isLoading={dataLoading} 
         paginatedData={paginatedData}
-        onEdit={null}
       />
 
       {/* Pagination Section */}

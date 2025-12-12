@@ -54,11 +54,5 @@ export const useExport = () => {
     }
   }, []);
 
-  return {
-    isExporting,
-    exportType,
-    exportError,
-    handleExportCSV,
-    handleExportPDF
-  };
+  return { isExporting, exportType, exportError, handleExportCSV, handleExportPDF};
 };

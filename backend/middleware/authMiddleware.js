@@ -26,3 +26,24 @@ export const verifyAdmin = (req, res, next) => {
     }
   });
 };
+
+// Alias for verifyToken - used by SPMS routes
+export const authenticateToken = verifyToken;
+
+// Role-based access control middleware
+export const requireRole = (allowedRoles) => {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "You are not authenticated" });
+    }
+    
+    const userRole = req.user.role?.toLowerCase();
+    const roles = allowedRoles.map(r => r.toLowerCase());
+    
+    if (roles.includes(userRole)) {
+      next();
+    } else {
+      res.status(403).json({ message: "You do not have permission to perform this action" });
+    }
+  };
+};

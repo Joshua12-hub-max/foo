@@ -3,25 +3,23 @@
  * Displays all employee attendance records with full details
  */
 export const ADMIN_ATTENDANCE_HEADERS = [
-  "department",
-  "employee_id",
-  "employee_name",
-  "present",
-  "absent",
-  "late",
-  "wfh",
-  "undertime",
-  "date",
-  "overtime",
-  "on_leave",
-  "lunch_break_in",
-  "lunch_break_out",
-  "total_hours",
-  "time_in",
-  "time_out",
-  "total_work",
-  "daily_status",
-  "notes"
+  "Department",
+  "Employee ID",
+  "Employee Name",
+  "Present",
+  "Absent",
+  "Late",
+  "Undertime",
+  "Date",
+  "On Leave",
+  "Lunch In",
+  "Lunch Out",
+  "Total Hours",
+  "Time In",
+  "Time Out",
+  "Total Work",
+  "Status",
+  "Notes"
 ];
 
 /**
@@ -29,25 +27,23 @@ export const ADMIN_ATTENDANCE_HEADERS = [
  * Employees can see their own attendance history
  */
 export const EMPLOYEE_ATTENDANCE_HEADERS = [
-  "department",
-  "employee_id",
-  "employee_name",
-  "present",
-  "absent",
-  "late",
-  "wfh",
-  "undertime",
-  "date",
-  "overtime",
-  "on_leave",
-  "lunch_break_in",
-  "lunch_break_out",
-  "total_hours",
-  "time_in",
-  "time_out",
-  "total_work",
-  "daily_status",
-  "notes"
+  "Department",
+  "Employee ID",
+  "Employee Name",
+  "Present",
+  "Absent",
+  "Late",
+  "Undertime",
+  "Date",
+  "On Leave",
+  "Lunch In",
+  "Lunch Out",
+  "Total Hours",
+  "Time In",
+  "Time Out",
+  "Total Work",
+  "Status",
+  "Notes"
 ];
 
 // Items per page for pagination

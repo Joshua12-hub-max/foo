@@ -86,9 +86,16 @@ export const useBiometricsLogs = () => {
   }, []);
 
   const handleApply = useCallback(() => {
+    // Check if at least one filter is selected
+    const hasFilters = filters.department || filters.employee || filters.fromDate || filters.toDate;
+    if (!hasFilters) {
+      setError("Please select at least one filter before applying.");
+      setTimeout(() => setError(null), 3000);
+      return;
+    }
     setSuccessMessage("Filters applied!");
     setTimeout(() => setSuccessMessage(null), 3000);
-  }, []);
+  }, [filters]);
 
   // Derived Data
   const uniqueDepartments = useMemo(() => [...new Set(biometricsData.map(item => item.department))].sort(), [biometricsData]);

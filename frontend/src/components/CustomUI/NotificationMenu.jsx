@@ -1,175 +1,46 @@
-import { useState, useRef, useEffect, useCallback, useMemo, memo } from "react";
-import { Bell, X, Eye, FileEdit, CheckCircle, XCircle, UserPlus } from "lucide-react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { Bell, X, Check, AlertCircle, FileText, Calendar, Clock, RefreshCw } from "lucide-react";
 import { notificationApi } from "../../api/notificationApi";
-import { formatDistanceToNow } from 'date-fns';
 
-// Notification type configurations
-const notificationTypeConfig = {
-  dtr_correction: {
-    icon: FileEdit,
-    color: 'text-[#535C91]',
-    bgColor: 'bg-[#535C91]/10',
-  },
-  dtr_approval: {
-    icon: CheckCircle,
-    color: 'text-[#79B791]',
-    bgColor: 'bg-[#79B791]/10',
-  },
-  dtr_rejection: {
-    icon: XCircle,
-    color: 'text-[#7A0000]',
-    bgColor: 'bg-[#7A0000]/10',
-  },
-  undertime_request: {
-    icon: FileEdit,
-    color: 'text-[#4B4376]',
-    bgColor: 'bg-[#4B4376]/10',
-  },
-  undertime_approval: {
-    icon: CheckCircle,
-    color: 'text-[#79B791]',
-    bgColor: 'bg-[#79B791]/10',
-  },
-  undertime_rejection: {
-    icon: XCircle,
-    color: 'text-[#7A0000]',
-    bgColor: 'bg-[#7A0000]/10',
-  },
-  leave_request: {
-    icon: FileEdit,
-    color: 'text-[#A27B5C]',
-    bgColor: 'bg-[#A27B5C]/10',
-  },
-  leave_approval: {
-    icon: CheckCircle,
-    color: 'text-[#79B791]',
-    bgColor: 'bg-[#79B791]/10',
-  },
-  leave_rejection: {
-    icon: XCircle,
-    color: 'text-[#7A0000]',
-    bgColor: 'bg-[#7A0000]/10',
-  },
-  leave_process: {
-    icon: CheckCircle,
-    color: 'text-[#535C91]',
-    bgColor: 'bg-[#535C91]/10',
-  },
-  leave_finalize: {
-    icon: CheckCircle,
-    color: 'text-[#9290C3]',
-    bgColor: 'bg-[#9290C3]/10',
-  },
-  schedule_assigned: {
-    icon: FileEdit,
-    color: 'text-[#535C91]',
-    bgColor: 'bg-[#535C91]/10',
-  }
+// Get icon and color based on notification type
+const getNotificationStyle = (type) => {
+  const styles = {
+    leave_request: { icon: Calendar, color: 'text-amber-600', bg: 'bg-amber-50' },
+    leave_approval: { icon: Check, color: 'text-green-600', bg: 'bg-green-50' },
+    leave_rejection: { icon: X, color: 'text-red-600', bg: 'bg-red-50' },
+    leave_process: { icon: FileText, color: 'text-blue-600', bg: 'bg-blue-50' },
+    leave_finalize: { icon: Check, color: 'text-green-600', bg: 'bg-green-50' },
+    dtr_correction: { icon: Clock, color: 'text-purple-600', bg: 'bg-purple-50' },
+    dtr_approval: { icon: Check, color: 'text-green-600', bg: 'bg-green-50' },
+    dtr_rejection: { icon: X, color: 'text-red-600', bg: 'bg-red-50' },
+    undertime_request: { icon: Clock, color: 'text-orange-600', bg: 'bg-orange-50' },
+    undertime_approval: { icon: Check, color: 'text-green-600', bg: 'bg-green-50' },
+    undertime_rejection: { icon: X, color: 'text-red-600', bg: 'bg-red-50' },
+    schedule_assigned: { icon: Calendar, color: 'text-blue-600', bg: 'bg-blue-50' },
+  };
+  return styles[type] || { icon: Bell, color: 'text-gray-600', bg: 'bg-gray-50' };
 };
 
-// Memoized Notification Item Component
-const NotificationItem = memo(({ notification, onDelete, onMarkAsRead }) => {
-  const { notification_id, title, message, status, type, created_at } = notification;
+// Format relative time
+const formatTimeAgo = (dateString) => {
+  if (!dateString) return '';
+  try {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
 
-  const typeConfig = notificationTypeConfig[type] || {
-    icon: Bell,
-    color: 'text-gray-600',
-    bgColor: 'bg-gray-50',
-  };
-
-  const Icon = typeConfig.icon;
-  const isUnread = status === 'unread';
-  const timeAgo = created_at ? formatDistanceToNow(new Date(created_at), { addSuffix: true }) : '';
-
-  const handleClick = useCallback(() => {
-    if (isUnread) {
-      onMarkAsRead(notification_id);
-    }
-  }, [notification_id, isUnread, onMarkAsRead]);
-
-  const handleDelete = useCallback((e) => {
-    e.stopPropagation();
-    onDelete(notification_id);
-  }, [notification_id, onDelete]);
-
-  return (
-    <div 
-      onClick={handleClick}
-      className={`group flex items-center gap-3 p-4 border rounded-2xl hover:shadow-sm transition-all cursor-pointer ${
-        isUnread ? 'bg-white border-gray-300' : 'bg-gray-50 border-gray-200'
-      }`}
-    >
-      {/* Type Icon */}
-      <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${typeConfig.bgColor}`}>
-        <Icon className={`w-5 h-5 ${typeConfig.color}`} />
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <p className="text-sm font-medium text-black truncate">
-            {title}
-          </p>
-          {isUnread && (
-            <span className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0"></span>
-          )}
-        </div>
-        <p className="text-sm text-slate-500 truncate">
-          {message}
-        </p>
-      </div>
-
-      {/* Time & Close */}
-      <div className="flex items-center gap-2 flex-shrink-0">
-        <span className="text-xs text-slate-400 whitespace-nowrap">{timeAgo}</span>
-        <button
-          onClick={handleDelete}
-          className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-gray-100 rounded-full"
-          aria-label="Delete notification"
-        >
-          <X className="w-4 h-4 text-gray-400" />
-        </button>
-      </div>
-    </div>
-  );
-});
-
-NotificationItem.displayName = "NotificationItem";
-
-// Memoized Empty State
-const EmptyState = memo(() => (
-  <div className="px-5 py-8 text-center">
-    <Bell className="w-12 h-12 text-[#274b46] mx-auto mb-3" />
-    <p className="text-sm text-[#274b46] font-semibold mb-1">All caught up!</p>
-    <p className="text-xs text-[#274b46] mt-1">No new notifications</p>
-  </div>
-));
-
-EmptyState.displayName = "EmptyState";
-
-// Memoized Badge Component
-const NotificationBadge = memo(({ count }) => (
-  <div className="absolute top-1 right-1 flex items-center justify-center">
-    <span className="absolute w-3 h-3 bg-red-500 rounded-full animate-pulse" />
-    <span className="relative w-5 h-5 flex items-center justify-center">
-      <span className="text-xs font-bold text-white bg-red-500 rounded-full w-full h-full flex items-center justify-center">
-        {count > 9 ? "9+" : count}
-      </span>
-    </span>
-  </div>
-));
-
-NotificationBadge.displayName = "NotificationBadge";
-
-// Memoized Loading State
-const LoadingState = memo(() => (
-  <div className="px-5 py-8 text-center">
-    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#274b46] mx-auto"></div>
-    <p className="text-sm text-[#274b46] mt-3">Loading notifications...</p>
-  </div>
-));
-
-LoadingState.displayName = "LoadingState";
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  } catch {
+    return '';
+  }
+};
 
 export default function NotificationMenu() {
   const [isOpen, setIsOpen] = useState(false);
@@ -177,183 +48,248 @@ export default function NotificationMenu() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
-
   const menuRef = useRef(null);
 
-  // Fetch notifications
+  // Fetch notifications from API
   const fetchNotifications = useCallback(async () => {
     setIsLoading(true);
     setError(null);
-    
     try {
       const response = await notificationApi.getNotifications({ limit: 20, offset: 0 });
-      setNotifications(response.data.notifications || []);
-      setUnreadCount(response.data.unread_count || 0);
+      const data = response.data || response;
+      setNotifications(Array.isArray(data.notifications) ? data.notifications : []);
+      setUnreadCount(typeof data.unread_count === 'number' ? data.unread_count : 0);
     } catch (err) {
-      console.error('Error fetching notifications:', err);
-      setError('Failed to load notifications');
+      console.error('Notification fetch error:', err);
+      setError('Unable to load notifications');
       setNotifications([]);
+      setUnreadCount(0);
     } finally {
       setIsLoading(false);
     }
   }, []);
 
-  // Fetch unread count only
+  // Fetch just the unread count for polling
   const fetchUnreadCount = useCallback(async () => {
     try {
       const response = await notificationApi.getUnreadCount();
-      setUnreadCount(response.data.unread_count || 0);
+      const data = response.data || response;
+      setUnreadCount(typeof data.unread_count === 'number' ? data.unread_count : 0);
     } catch (err) {
-      console.error('Error fetching unread count:', err);
+      console.error('Unread count fetch error:', err);
     }
   }, []);
+
+  // Mark notification as read
+  const handleMarkAsRead = useCallback(async (id) => {
+    try {
+      await notificationApi.markAsRead(id);
+      setNotifications(prev => prev.map(n => 
+        n.notification_id === id ? { ...n, status: 'read' } : n
+      ));
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    } catch (err) {
+      console.error('Mark as read error:', err);
+    }
+  }, []);
+
+  // Delete notification
+  const handleDelete = useCallback(async (id) => {
+    try {
+      const notification = notifications.find(n => n.notification_id === id);
+      await notificationApi.deleteNotification(id);
+      setNotifications(prev => prev.filter(n => n.notification_id !== id));
+      if (notification?.status === 'unread') {
+        setUnreadCount(prev => Math.max(0, prev - 1));
+      }
+    } catch (err) {
+      console.error('Delete notification error:', err);
+    }
+  }, [notifications]);
+
+  // Mark all as read
+  const handleMarkAllAsRead = useCallback(async () => {
+    try {
+      const unreadNotifications = notifications.filter(n => n.status === 'unread');
+      await Promise.all(unreadNotifications.map(n => notificationApi.markAsRead(n.notification_id)));
+      setNotifications(prev => prev.map(n => ({ ...n, status: 'read' })));
+      setUnreadCount(0);
+    } catch (err) {
+      console.error('Mark all as read error:', err);
+    }
+  }, [notifications]);
 
   // Initial fetch and polling
   useEffect(() => {
     fetchNotifications();
-    
-    // Poll for new notifications every 30 seconds
-    const pollInterval = setInterval(() => {
-      fetchUnreadCount();
-    }, 30000);
-    
+    const pollInterval = setInterval(fetchUnreadCount, 30000);
     return () => clearInterval(pollInterval);
   }, [fetchNotifications, fetchUnreadCount]);
 
   // Refresh when menu opens
   useEffect(() => {
-    if (isOpen) {
-      fetchNotifications();
-    }
+    if (isOpen) fetchNotifications();
   }, [isOpen, fetchNotifications]);
 
-  // Memoized calculations
-  const totalCount = useMemo(
-    () => notifications.length,
-    [notifications.length]
-  );
-
-  // Optimized callbacks
-  const toggleDropdown = useCallback(() => {
-    setIsOpen((prev) => !prev);
-  }, []);
-
-  const markAsRead = useCallback(async (id) => {
-    try {
-      await notificationApi.markAsRead(id);
-      
-      // Update local state
-      setNotifications((prev) =>
-        prev.map((n) => (n.notification_id === id ? { ...n, status: 'read' } : n))
-      );
-      setUnreadCount((prev) => Math.max(0, prev - 1));
-    } catch (err) {
-      console.error('Error marking notification as read:', err);
-    }
-  }, []);
-
-  const deleteNotification = useCallback(async (id) => {
-    try {
-      await notificationApi.deleteNotification(id);
-      
-      // Update local state
-      const notification = notifications.find(n => n.notification_id === id);
-      setNotifications((prev) => prev.filter((n) => n.notification_id !== id));
-      
-      // Update unread count if it was unread
-      if (notification && notification.status === 'unread') {
-        setUnreadCount((prev) => Math.max(0, prev - 1));
-      }
-    } catch (err) {
-      console.error('Error deleting notification:', err);
-    }
-  }, [notifications]);
-
-  const viewAllNotifications = useCallback(() => {
-    setIsOpen(false);
-    // Navigate to notifications page
-    window.location.href = '/notifications';
-  }, []);
-
-  // Optimized click outside handler
+  // Click outside to close
   useEffect(() => {
     if (!isOpen) return;
-
     const handleClickOutside = (e) => {
       if (menuRef.current && !menuRef.current.contains(e.target)) {
         setIsOpen(false);
       }
     };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isOpen]);
 
   return (
     <div className="relative" ref={menuRef}>
+      {/* Bell Button */}
       <button
-        onClick={toggleDropdown}
-        className="relative p-2 hover:bg-gray-100 rounded-full transition-all hover:scale-110"
-        aria-label="Toggle notifications menu"
+        onClick={() => setIsOpen(!isOpen)}
+        className="relative p-2 hover:bg-gray-100 rounded-full transition-colors"
+        aria-label="Notifications"
       >
         <Bell className="w-6 h-6 text-slate-700" />
-        {unreadCount > 0 && <NotificationBadge count={unreadCount} />}
+        {unreadCount > 0 && (
+          <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold text-white bg-red-500 rounded-full px-1">
+            {unreadCount > 99 ? '99+' : unreadCount}
+          </span>
+        )}
       </button>
 
+      {/* Dropdown Menu */}
       {isOpen && (
-        <div className="fixed top-16 right-6 w-96 bg-white border border-gray-200 rounded-3xl shadow-lg z-50 overflow-hidden animate-in slide-in-from-top-2 duration-300">
+        <div className="absolute top-12 right-0 w-80 sm:w-96 bg-white border border-gray-200 rounded-xl shadow-xl z-50 overflow-hidden">
           {/* Header */}
-          <div className="px-6 py-4 bg-[#274b46]">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg">
-                <Eye className="w-5 h-5 text-white" />
+          <div className="bg-gray-200 shadow-md px-4 py-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Bell className="w-5 h-5 text-gray-700" />
+                <h3 className="text-base font-semibold text-gray-700">Notifications</h3>
               </div>
-              <div>
-                <h4 className="text-lg font-bold text-white">Notifications</h4>
-                <p className="text-xs text-gray-200">
-                  {unreadCount > 0 ? `${unreadCount} unread` : 'All caught up'}
-                </p>
+              <div className="flex items-center gap-2">
+                {unreadCount > 0 && (
+                  <button
+                    onClick={handleMarkAllAsRead}
+                    className="text-xs text-gray-600 hover:text-gray-800 transition-colors"
+                  >
+                    Mark all read
+                  </button>
+                )}
+                <button
+                  onClick={fetchNotifications}
+                  className="p-1 hover:bg-gray-300 rounded-full transition-colors"
+                  title="Refresh"
+                >
+                  <RefreshCw className={`w-4 h-4 text-gray-700 ${isLoading ? 'animate-spin' : ''}`} />
+                </button>
               </div>
             </div>
+            <p className="text-xs text-gray-500 mt-1">
+              {unreadCount > 0 ? `${unreadCount} unread notification${unreadCount > 1 ? 's' : ''}` : 'All caught up!'}
+            </p>
           </div>
 
           {/* Notification List */}
-          <div className="max-h-96 overflow-y-auto space-y-3 p-4">
+          <div className="max-h-80 overflow-y-auto">
             {isLoading ? (
-              <LoadingState />
+              <div className="py-8 text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-2 border-gray-400 border-t-transparent mx-auto mb-2" />
+                <p className="text-sm text-gray-500">Loading...</p>
+              </div>
             ) : error ? (
-              <div className="px-5 py-8 text-center">
-                <p className="text-sm text-red-600">{error}</p>
+              <div className="py-8 text-center">
+                <AlertCircle className="w-10 h-10 text-red-400 mx-auto mb-2" />
+                <p className="text-sm text-red-600 mb-2">{error}</p>
                 <button
                   onClick={fetchNotifications}
-                  className="mt-2 text-sm text-[#274b46] underline"
+                  className="text-sm text-gray-600 hover:underline"
                 >
                   Try again
                 </button>
               </div>
-            ) : totalCount > 0 ? (
-              notifications.map((notification, index) => (
-                <NotificationItem
-                  key={notification.notification_id}
-                  notification={notification}
-                  onDelete={deleteNotification}
-                  onMarkAsRead={markAsRead}
-                />
-              ))
+            ) : notifications.length === 0 ? (
+              <div className="py-8 text-center">
+                <Bell className="w-10 h-10 text-gray-300 mx-auto mb-2" />
+                <p className="text-sm text-gray-500">No notifications yet</p>
+              </div>
             ) : (
-              <EmptyState />
+              <div className="divide-y divide-gray-100">
+                {notifications.map((notification) => {
+                  const style = getNotificationStyle(notification.type);
+                  const IconComponent = style.icon;
+                  const isUnread = notification.status === 'unread';
+
+                  return (
+                    <div
+                      key={notification.notification_id}
+                      onClick={() => isUnread && handleMarkAsRead(notification.notification_id)}
+                      className={`group flex items-start gap-3 p-3 hover:bg-gray-50 cursor-pointer transition-colors ${
+                        isUnread ? 'bg-blue-50/30' : ''
+                      }`}
+                    >
+                      {/* Icon */}
+                      <div className={`flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center ${style.bg}`}>
+                        <IconComponent className={`w-4 h-4 ${style.color}`} />
+                      </div>
+
+                      {/* Content */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className={`text-sm truncate ${isUnread ? 'font-semibold text-gray-900' : 'font-medium text-gray-700'}`}>
+                            {notification.sender_name?.trim() || notification.title || 'Notification'}
+                          </p>
+                          {isUnread && (
+                            <span className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" />
+                          )}
+                          {/* Status Badge */}
+                          {notification.type?.includes('request') && !notification.type?.includes('approved') && !notification.type?.includes('rejected') && !notification.type?.includes('approval') && !notification.type?.includes('rejection') && (
+                            <span className="px-1.5 py-0.5 text-[10px] font-medium bg-amber-100 text-amber-700 rounded">Pending</span>
+                          )}
+                          {(notification.type?.includes('approved') || notification.type?.includes('approval')) && (
+                            <span className="px-1.5 py-0.5 text-[10px] font-medium bg-green-100 text-green-700 rounded">Approved</span>
+                          )}
+                          {(notification.type?.includes('rejected') || notification.type?.includes('rejection')) && (
+                            <span className="px-1.5 py-0.5 text-[10px] font-medium bg-red-100 text-red-700 rounded">Rejected</span>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-600 truncate mt-0.5">
+                          {notification.sender_name?.trim() ? notification.title : null}
+                        </p>
+                        <p className="text-xs text-gray-500 truncate">
+                          {notification.message || 'No details'}
+                        </p>
+                        <p className="text-[10px] text-gray-400 mt-1">
+                          {formatTimeAgo(notification.created_at)}
+                        </p>
+                      </div>
+
+                      {/* Delete Button */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(notification.notification_id);
+                        }}
+                        className="opacity-0 group-hover:opacity-100 p-1 hover:bg-gray-200 rounded transition-all"
+                        title="Delete"
+                      >
+                        <X className="w-4 h-4 text-gray-400" />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </div>
 
           {/* Footer */}
-          {totalCount > 0 && (
-            <div className="px-6 py-3 border-t border-gray-200 text-center bg-gray-50 rounded-b-3xl">
-              <button 
-                onClick={viewAllNotifications}
-                className="text-sm font-semibold text-gray-600 hover:text-black transition-colors"
-              >
-                View all notifications
-              </button>
+          {notifications.length > 0 && (
+            <div className="border-t border-gray-100 px-4 py-2 bg-gray-50">
+              <p className="text-xs text-center text-gray-500">
+                Showing {notifications.length} notification{notifications.length > 1 ? 's' : ''}
+              </p>
             </div>
           )}
         </div>

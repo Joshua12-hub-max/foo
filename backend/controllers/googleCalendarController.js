@@ -46,6 +46,7 @@ export const handleGoogleCallback = async (req, res) => {
   if (!code) {
     return res.status(400).json({ message: 'Authorization code is required' });
   }
+  
 
   try {
     const oauth2Client = getOAuth2Client();

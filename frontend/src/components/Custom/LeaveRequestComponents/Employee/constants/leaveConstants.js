@@ -27,12 +27,11 @@ export const LEAVE_STATUS = {
 export const LEAVE_TABLE_HEADERS = [
   'Status',
   'Department',
+  'Request ID',
   'Employee ID',
-  'Name',
   'Leave Type',
   'From Date',
   'To Date',
-  'Duration',
   'Actions'
 ];
 

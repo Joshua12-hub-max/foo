@@ -4,7 +4,7 @@ export const BiometricsTable = ({ currentItems, isLoading }) => (
   <div className="flex-1 overflow-hidden rounded-xl bg-[#F8F9FA] p-1">
     <div className="overflow-x-auto bg-gray-50 rounded-lg">
       <table className="w-full min-w-[1000px]">
-        <thead className="bg-[#274b46] text-[#F8F9FA]">
+        <thead className="bg-gray-200 shadow-md text-gray-700">
           <tr>
             {["Department", "Employee ID", "Employee Name", "Date", "Time", "Action", "Status"].map((header) => (
               <th key={header} className="px-6 py-4 text-left text-sm font-bold tracking-wide">{header}</th>

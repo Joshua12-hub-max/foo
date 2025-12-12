@@ -176,3 +176,18 @@ CREATE TABLE IF NOT EXISTS notifications (
   status ENUM('read', 'unread') DEFAULT 'unread',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- 13. Leave Credit Requests (Employee applications for leave credits)
+CREATE TABLE IF NOT EXISTS leave_credit_requests (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  employee_id VARCHAR(50) NOT NULL,
+  credit_type VARCHAR(100) NOT NULL,
+  requested_amount DECIMAL(5,2) NOT NULL,
+  reason TEXT NOT NULL,
+  status ENUM('Pending', 'Approved', 'Rejected') DEFAULT 'Pending',
+  admin_remarks TEXT,
+  approved_by VARCHAR(50),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+

@@ -77,7 +77,9 @@ export default function EmployeeCalendar() {
 
             // Fetch Employee Schedule
             const scheduleResponse = await scheduleApi.getMySchedule();
+            console.log('📅 [EmployeeCalendar] Schedule API Response:', scheduleResponse.data);
             if (scheduleResponse.data && scheduleResponse.data.schedule) {
+                console.log('📅 [EmployeeCalendar] Setting schedules:', scheduleResponse.data.schedule);
                 setSchedules(scheduleResponse.data.schedule);
             }
 
@@ -88,13 +90,15 @@ export default function EmployeeCalendar() {
     fetchData();
   }, [user]); // Re-fetch when user changes
 
+
   // Calendar data processing
   const calendarData = useCalendarData({
     currentDate,
     events, 
     showHolidays,
     holidays,
-    announcements // Pass announcements to useCalendarData
+    announcements,
+    schedules // Pass schedules to useCalendarData
   });
   const { month, day, year, dayName, displayedEvents } = calendarData;
 

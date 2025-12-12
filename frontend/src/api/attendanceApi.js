@@ -48,5 +48,21 @@ export const attendanceApi = {
         } catch (error) {
             throw error;
         }
+    },
+    getDashboardStats: async () => {
+        try {
+            const response = await api.get('/attendance/dashboard-stats');
+            return response;
+        } catch (error) {
+            throw error;
+        }
+    },
+    getTardinessReport: async (params) => {
+        try {
+            const response = await api.get('/attendance/report/tardiness', { params });
+            return response;
+        } catch (error) {
+            throw error;
+        }
     }
 };

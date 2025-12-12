@@ -1,11 +1,14 @@
 import express from 'express';
-import { getAllRequests, approveRequest, rejectRequest, applyUndertime } from '../controllers/undertimeController.js';
+import { getAllRequests, approveRequest, rejectRequest, applyUndertime, getMyRequests, cancelRequest } from '../controllers/undertimeController.js';
 import { verifyToken, verifyAdmin } from '../middleware/authMiddleware.js';
+import { uploadUndertime } from '../middleware/uploadMiddleware.js';
 
 const router = express.Router();
 
-// Employee Route
-router.post('/apply', verifyToken, applyUndertime);
+// Employee Routes
+router.post('/apply', verifyToken, uploadUndertime.single('attachment'), applyUndertime);
+router.get('/my-requests', verifyToken, getMyRequests);
+router.put('/:id/cancel', verifyToken, cancelRequest);
 
 // Admin Routes
 router.get('/all', verifyAdmin, getAllRequests);

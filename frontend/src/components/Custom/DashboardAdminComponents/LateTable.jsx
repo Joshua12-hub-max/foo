@@ -6,8 +6,6 @@ const ITEMS_PER_PAGE = 10;
 export default function LateTable({ onClose, employees = [] }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const [successMessage, setSuccessMessage] = useState(null);
-  const [error, setError] = useState(null);
 
   const filteredEmployees = useMemo(() => {
     const query = searchQuery.toLowerCase();
@@ -87,7 +85,7 @@ export default function LateTable({ onClose, employees = [] }) {
       <div className="flex-1 overflow-hidden rounded-xl bg-white p-1">
         <div className="overflow-x-auto bg-gray-50 rounded-lg">
           <table className="w-full min-w-[1000px]">
-            <thead className="bg-[#274b46] text-[#F8F9FA]">
+            <thead className="bg-gray-200 shadow-md text-gray-700">
               <tr>
                 {["Status", "Department", "Employee ID", "Name", "Time In", "Minutes Late", "Date"].map((header) => (
                   <th key={header} className="px-6 py-4 text-left text-sm font-bold tracking-wide">
@@ -99,7 +97,7 @@ export default function LateTable({ onClose, employees = [] }) {
             <tbody className="divide-y divide-slate-100">
               {currentEmployees.length ? (
                 currentEmployees.map((employee) => (
-                  <tr key={employee.id} className="hover:bg-[#34645c] transition-colors">
+                  <tr key={employee.id} className="hover:bg-[#F8F9FA] transition-colors">
                     <td className="px-6 py-4">
                       <span className="bg-amber-100 text-amber-800 px-3 py-1 text-sm font-medium inline-block" style={{borderRadius: '20px'}}>
                         {employee.status}
@@ -141,7 +139,7 @@ export default function LateTable({ onClose, employees = [] }) {
             <button
               onClick={handlePrevPage}
               disabled={currentPage === 1}
-              className="px-4 py-2 bg-[#F8F9FA] border border-gray-300 rounded-lg shadow-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-all text-sm font-medium text-gray-800"
+              className="px-4 py-2 bg-gray-200 border border-gray-200 rounded-lg shadow-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-200 transition-all text-sm font-medium text-gray-800"
             >
               Previous
             </button>
@@ -151,7 +149,7 @@ export default function LateTable({ onClose, employees = [] }) {
             <button
               onClick={handleNextPage}
               disabled={currentPage === totalPages || totalPages === 0}
-              className="px-4 py-2 bg-[#F8F9FA] border border-gray-300 rounded-lg shadow-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-all text-sm font-medium text-gray-800"
+              className="px-6 py-2 bg-gray-200 border border-gray-200 rounded-lg shadow-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-200 transition-all text-sm font-medium text-gray-800"
             >
               Next
             </button>

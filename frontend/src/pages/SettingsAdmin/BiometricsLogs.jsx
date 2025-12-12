@@ -6,31 +6,13 @@ import { BiometricsTable } from "../../components/Custom/BiometricsLogsComponent
 import { AdminDTRPagination } from "../../components/Custom/DailyTimeRecordComponents/Admin/Components/AdminDTRPagination"; // Reusing pagination
 
 const BiometricsLogsUI = () => {
-  const {
-    today,
-    sidebarOpen,
-    filters,
-    searchQuery, // Not used in search bar component yet, but available
-    currentPage,
-    isLoading,
-    error,
-    successMessage,
-    filteredData,
-    paginationData,
-    uniqueDepartments,
-    uniqueEmployees,
-    setError,
-    setSuccessMessage,
-    handleFilterChange,
-    handleApply,
-    handleClear,
-    handleRefresh,
-    handlePrevPage,
-    handleNextPage
-  } = useBiometricsLogs();
+  const {today,sidebarOpen,filters,searchQuery,currentPage,isLoading,error,
+    successMessage,filteredData,paginationData,uniqueDepartments,uniqueEmployees,
+    setError,setSuccessMessage,handleFilterChange,handleApply,handleClear,
+    handleRefresh,handlePrevPage,handleNextPage} = useBiometricsLogs();
 
   const { totalPages, startIndex, endIndex, currentItems } = paginationData;
-
+      
   return (
     <div className={`min-h-screen flex flex-col bg-gradient-to-br from-neutral-100 to-stone-100 rounded-xl shadow-xl p-7 w-full overflow-hidden text-gray-800 transition-all duration-300 ${sidebarOpen ? 'max-w-[1400px] xl:max-w-[77vw]' : 'max-w-[1600px] xl:max-w-[88vw]'}`}>
       

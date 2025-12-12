@@ -9,10 +9,20 @@ export const useAdminUndertime = () => {
   const outletContext = useOutletContext?.() || { sidebarOpen: true };
   const { sidebarOpen = true } = outletContext;
 
-  // State management
-  const [filters, setFilters] = useState({
+  // State management - using pendingFilters and appliedFilters pattern
+  // Pending filters - what user is inputting (not applied yet)
+  const [pendingFilters, setPendingFilters] = useState({
     department: "",
     employee: "",
+    status: "",
+    fromDate: "",
+    toDate: "",
+  });
+  // Applied filters - what is actually being used for filtering
+  const [appliedFilters, setAppliedFilters] = useState({
+    department: "",
+    employee: "",
+    status: "",
     fromDate: "",
     toDate: "",
   });
@@ -35,9 +45,10 @@ export const useAdminUndertime = () => {
   const uniqueDepartments = useMemo(() => getUniqueDepartments(undertimeData), [undertimeData]);
   const uniqueEmployees = useMemo(() => getUniqueEmployees(undertimeData), [undertimeData]);
   
+  // Uses appliedFilters instead of immediate filters
   const filteredData = useMemo(
-    () => filterUndertimeData(undertimeData, filters, debouncedSearchQuery),
-    [filters, debouncedSearchQuery, undertimeData]
+    () => filterUndertimeData(undertimeData, appliedFilters, debouncedSearchQuery),
+    [appliedFilters, debouncedSearchQuery, undertimeData]
   );
 
   const paginationData = useMemo(
@@ -104,16 +115,25 @@ export const useAdminUndertime = () => {
 
   // Event handlers
   const handleFilterChange = useCallback((field, value) => {
-    setFilters((prev) => ({ ...prev, [field]: value }));
+    setPendingFilters((prev) => ({ ...prev, [field]: value }));
   }, []);
 
+  // Apply the pending filters to actually filter the data
   const handleApply = useCallback(() => {
-    console.log("Filters applied:", JSON.stringify(filters, null, 2));
+    // Check if at least one filter is selected
+    const hasFilters = pendingFilters.department || pendingFilters.employee || pendingFilters.status || pendingFilters.fromDate || pendingFilters.toDate;
+    if (!hasFilters) {
+      setError("Please select at least one filter before applying.");
+      return;
+    }
+    setAppliedFilters({ ...pendingFilters });
     setSuccessMessage(MESSAGES.FILTERS_APPLIED);
-  }, [filters]);
+  }, [pendingFilters]);
 
+  // Clear both pending and applied filters
   const handleClear = useCallback(() => {
-    setFilters({ department: "", employee: "", fromDate: "", toDate: "" });
+    setPendingFilters({ department: "", employee: "", status: "", fromDate: "", toDate: "" });
+    setAppliedFilters({ department: "", employee: "", status: "", fromDate: "", toDate: "" });
     setSearchQuery("");
     setSuccessMessage(MESSAGES.FILTERS_CLEARED);
   }, []);
@@ -239,13 +259,14 @@ export const useAdminUndertime = () => {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [filters, debouncedSearchQuery]);
+  }, [appliedFilters, debouncedSearchQuery]);
 
   return {
     // Data
     today,
     sidebarOpen,
-    filters,
+    filters: pendingFilters,  // For input fields
+    appliedFilters,           // For checking what's currently applied
     searchQuery,
     debouncedSearchQuery,
     currentPage,

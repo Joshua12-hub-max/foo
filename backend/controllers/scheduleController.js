@@ -1,12 +1,10 @@
 import db from '../db/connection.js';
-import { createNotification } from './notificationController.js';
+import { createNotification, notifyAdmins } from './notificationController.js';
 
 export const getMySchedule = async (req, res) => {
   try {
     // Token payload usually has 'employeeId' (camelCase)
     const employeeId = req.user.employeeId || req.user.employee_id || req.user.id;
-    
-    console.log(`📅 [getMySchedule] Fetching schedule for employeeId: ${employeeId}`);
 
     const [schedules] = await db.query(`
       SELECT 
@@ -32,7 +30,6 @@ export const getMySchedule = async (req, res) => {
 
     res.status(200).json({ schedule: formattedSchedules });
   } catch (err) {
-    console.error(err);
     res.status(500).json({ message: "Something went wrong!" });
   }
 };
@@ -68,21 +65,18 @@ export const getAllSchedules = async (req, res) => {
 
     res.status(200).json({ schedules: formattedSchedules });
   } catch (err) {
-    console.error(err);
     res.status(500).json({ message: "Something went wrong!" });
   }
 };
 
 export const createSchedule = async (req, res) => {
   try {
-    const { employee_id, startDate, startTime, endTime, repeat, scheduleName } = req.body;
+    const { employee_id, startDate, startTime, endTime, repeat, scheduleName, title } = req.body;
 
-    // Default title if not provided
-    const schedule_title = scheduleName || 'Regular Shift';
+    // Default title if not provided. Prefer 'title' (frontend) or 'scheduleName'
+    const schedule_title = title || scheduleName || 'Regular Shift';
     // endDate should be passed from frontend or defaulted
-    const endDate = req.body.endDate || startDate; 
-
-    console.log('Creating schedule with data:', { employee_id, startDate, endDate, startTime, endTime, repeat, schedule_title });
+    const endDate = req.body.endDate || startDate;
 
     // Validate required fields
     if (!employee_id) {
@@ -124,8 +118,6 @@ export const createSchedule = async (req, res) => {
       daysToSchedule = [days[start.getUTCDay()]];
     }
 
-    console.log('Days to schedule:', daysToSchedule);
-
     for (const day of daysToSchedule) {
       try {
         const [existing] = await db.query(
@@ -134,44 +126,58 @@ export const createSchedule = async (req, res) => {
         );
 
         if (existing.length > 0) {
-          console.log(`Updating existing schedule for ${day}, ID: ${existing[0].id}`);
           await db.query(
             "UPDATE schedules SET start_time = ?, end_time = ?, is_rest_day = FALSE, schedule_title = ?, start_date = ?, end_date = ?, repeat_pattern = ? WHERE id = ?",
             [startTime, endTime, schedule_title, startDate, endDate, repeat, existing[0].id]
           );
         } else {
-          console.log(`Creating new schedule for ${day}`);
           await db.query(
             "INSERT INTO schedules (employee_id, day_of_week, start_time, end_time, is_rest_day, schedule_title, start_date, end_date, repeat_pattern) VALUES (?, ?, ?, ?, FALSE, ?, ?, ?, ?)",
             [employee_id, day, startTime, endTime, schedule_title, startDate, endDate, repeat]
           );
         }
       } catch (dbError) {
-        console.error(`Error processing schedule for ${day}:`, dbError);
         throw dbError;
       }
     }
 
     // Notify Employee
     try {
-      const adminId = req.user ? (req.user.employee_id || req.user.id) : 'Admin';
+      const adminId = req.user ? (req.user.employeeId || req.user.employee_id || req.user.id) : 'Admin';
+      
+      // Get employee name for notification message
+      const [employeeInfo] = await db.query(
+        "SELECT first_name, last_name FROM authentication WHERE employee_id = ?",
+        [employee_id]
+      );
+      const employeeName = employeeInfo.length > 0 
+        ? `${employeeInfo[0].first_name} ${employeeInfo[0].last_name}`
+        : employee_id;
+
+      // Notify the employee about their new schedule
       await createNotification({
         recipientId: employee_id,
         senderId: adminId,
         title: "New Schedule Assigned",
-        message: `You have been assigned a new schedule (${repeat}) starting from ${startDate} at ${startTime} - ${endTime}.`,
+        message: `You have been assigned a new schedule (${repeat || 'single day'}) starting from ${startDate} at ${startTime} - ${endTime}.`,
         type: "schedule_assigned",
         referenceId: null
       });
+
+      // Notify all admins about the schedule creation
+      await notifyAdmins({
+        senderId: adminId,
+        title: "Schedule Created",
+        message: `A new schedule has been assigned to ${employeeName} (${repeat || 'single day'}) from ${startDate}: ${startTime} - ${endTime}.`,
+        type: "schedule_created",
+        referenceId: null
+      });
     } catch (notificationError) {
-      console.error('Failed to create notification:', notificationError);
       // Don't fail the entire request if notification fails
     }
 
-    console.log('Schedule created successfully');
     res.status(201).json({ message: "Schedule created/updated successfully" });
   } catch (err) {
-    console.error('Error creating schedule:', err);
     const errorMessage = err.message || "Failed to create schedule";
     res.status(500).json({ message: errorMessage });
   }
@@ -180,14 +186,66 @@ export const createSchedule = async (req, res) => {
 export const updateSchedule = async (req, res) => {
   try {
     const { id } = req.params;
-    const { employee_id, day_of_week, start_time, end_time, is_rest_day } = req.body;
-    await db.query(
-      "UPDATE schedules SET employee_id = ?, day_of_week = ?, start_time = ?, end_time = ?, is_rest_day = ? WHERE id = ?",
-      [employee_id, day_of_week, start_time, end_time, is_rest_day, id]
+    const { 
+      employee_id, 
+      day_of_week, 
+      start_time, 
+      end_time, 
+      is_rest_day,
+      schedule_title,
+      start_date,
+      end_date,
+      repeat_pattern
+    } = req.body;
+    
+    // Get the current schedule to find employee_id for notification
+    const [currentSchedule] = await db.query(
+      "SELECT employee_id FROM schedules WHERE id = ?",
+      [id]
     );
+
+    // Build dynamic update query based on provided fields
+    const updates = [];
+    const values = [];
+    
+    if (employee_id !== undefined) { updates.push('employee_id = ?'); values.push(employee_id); }
+    if (day_of_week !== undefined) { updates.push('day_of_week = ?'); values.push(day_of_week); }
+    if (start_time !== undefined) { updates.push('start_time = ?'); values.push(start_time); }
+    if (end_time !== undefined) { updates.push('end_time = ?'); values.push(end_time); }
+    if (is_rest_day !== undefined) { updates.push('is_rest_day = ?'); values.push(is_rest_day); }
+    if (schedule_title !== undefined) { updates.push('schedule_title = ?'); values.push(schedule_title); }
+    if (start_date !== undefined) { updates.push('start_date = ?'); values.push(start_date); }
+    if (end_date !== undefined) { updates.push('end_date = ?'); values.push(end_date); }
+    if (repeat_pattern !== undefined) { updates.push('repeat_pattern = ?'); values.push(repeat_pattern); }
+    
+    if (updates.length === 0) {
+      return res.status(400).json({ message: "No fields to update" });
+    }
+    
+    values.push(id);
+    await db.query(`UPDATE schedules SET ${updates.join(', ')} WHERE id = ?`, values);
+    
+    // Notify the employee about their updated schedule
+    if (currentSchedule.length > 0) {
+      try {
+        const targetEmployeeId = employee_id || currentSchedule[0].employee_id;
+        const adminId = req.user ? (req.user.employeeId || req.user.employee_id || req.user.id) : 'Admin';
+        
+        await createNotification({
+          recipientId: targetEmployeeId,
+          senderId: adminId,
+          title: "Schedule Updated",
+          message: `Your schedule has been updated. Please check your calendar for the latest changes.`,
+          type: "schedule_updated",
+          referenceId: null
+        });
+      } catch (notificationError) {
+        // Silent fail for notification
+      }
+    }
+    
     res.status(200).json({ message: "Schedule updated" });
   } catch (err) {
-    console.error(err);
     res.status(500).json({ message: "Something went wrong!" });
   }
 };
@@ -196,19 +254,36 @@ export const deleteSchedule = async (req, res) => {
   const { id } = req.params;
 
   try {
-    // Check if schedule exists
+    // Check if schedule exists and get employee_id for notification
     const [existing] = await db.query('SELECT * FROM schedules WHERE id = ?', [id]);
     
     if (existing.length === 0) {
       return res.status(404).json({ message: 'Schedule not found' });
     }
 
+    const deletedSchedule = existing[0];
+    
     // Delete the schedule
     await db.query('DELETE FROM schedules WHERE id = ?', [id]);
     
+    // Notify the employee about their deleted schedule
+    try {
+      const adminId = req.user ? (req.user.employeeId || req.user.employee_id || req.user.id) : 'Admin';
+      
+      await createNotification({
+        recipientId: deletedSchedule.employee_id,
+        senderId: adminId,
+        title: "Schedule Removed",
+        message: `Your schedule "${deletedSchedule.schedule_title || 'Regular Shift'}" for ${deletedSchedule.day_of_week} has been removed.`,
+        type: "schedule_deleted",
+        referenceId: null
+      });
+    } catch (notificationError) {
+      // Don't fail the deletion if notification fails
+    }
+    
     res.status(200).json({ message: 'Schedule deleted successfully' });
   } catch (error) {
-    console.error('Error deleting schedule:', error);
     res.status(500).json({ message: 'Failed to delete schedule' });
   }
 };

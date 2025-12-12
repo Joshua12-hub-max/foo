@@ -10,7 +10,7 @@ export const useScheduleData = () => {
     setIsLoading(true);
     setError(null);
     try {
-
+      const response = await scheduleApi.getMySchedule();
       setData(response.data.schedule || []);
     } catch (err) {
       setError("Failed to load your schedule. Please try again.");

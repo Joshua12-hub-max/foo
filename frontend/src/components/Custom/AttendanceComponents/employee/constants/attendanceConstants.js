@@ -1,7 +1,3 @@
-/**
- * Table headers for admin attendance view
- * Displays all employee attendance records with full details
- */
 export const ADMIN_ATTENDANCE_HEADERS = [
   "department",
   "employee_id",
@@ -24,10 +20,7 @@ export const ADMIN_ATTENDANCE_HEADERS = [
   "notes"
 ];
 
-/**
- * Table headers for employee attendance view
- * Employees can see their own attendance history
- */
+
 export const EMPLOYEE_ATTENDANCE_HEADERS = [
   "department",
   "employee_id",

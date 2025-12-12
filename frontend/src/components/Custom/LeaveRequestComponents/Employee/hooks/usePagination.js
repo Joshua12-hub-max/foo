@@ -4,7 +4,7 @@ import { PAGE_SIZE } from '../constants/leaveConstants';
 /**
  * Custom hook for pagination logic
  */
-export const usePagination = (data) => {
+export const usePagination = (data = []) => {
   const [currentPage, setCurrentPage] = useState(1);
 
   const paginationData = useMemo(() => {

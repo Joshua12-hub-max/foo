@@ -1,9 +1,11 @@
-import { useState, useCallback, useMemo, memo } from 'react';
+import { useState, useCallback, useMemo, memo, useEffect } from 'react';
 import { Calendar, Bell, LayoutDashboard, BarChart3 } from 'lucide-react';
 import ScheduleSection from '../DashboardEmployeeComponents/ScheduleSection';
 import EventsAndHolidays from '../DashboardEmployeeComponents/EventsAndHolidays';
 import AnnouncementSection from '../DashboardEmployeeComponents/AnnouncementSection';
 import { PerformancePieChart } from '../../CustomUI';
+import { fetchReviews, getAdjectivalRating } from '../../../api/performanceApi';
+import { useAuth } from '../../../hooks/useAuth';
 
 // Memoized Tab Button Component
 const TabButton = memo(({ tab, isActive, isLoading, onClick }) => {
@@ -59,21 +61,58 @@ LoadingOverlay.displayName = 'LoadingOverlay';
 export default function EmployeeCombinedSection() {
   const [activeTab, setActiveTab] = useState('analytics');
   const [isLoading, setIsLoading] = useState(false);
+  const { user } = useAuth();
+  
+  // Performance evaluation state - real data from API
+  const [performanceData, setPerformanceData] = useState(null);
+  const [performanceLoading, setPerformanceLoading] = useState(true);
+
+  // Fetch employee's own performance reviews
+  useEffect(() => {
+    const fetchMyPerformance = async () => {
+      if (!user?.id) return;
+      
+      try {
+        setPerformanceLoading(true);
+        const response = await fetchReviews({ employee_id: user.id });
+        
+        if (response.success && response.reviews) {
+          // Calculate rating distribution from the employee's reviews
+          const distribution = {
+            outstanding: 0,
+            exceedsExpectations: 0,
+            meetsExpectations: 0,
+            needsImprovement: 0,
+            poorPerformance: 0
+          };
+          
+          response.reviews.forEach(review => {
+            const score = review.total_score || review.supervisor_rating_score || review.self_rating_score;
+            if (score !== null && score !== undefined) {
+              if (score >= 4.5) distribution.outstanding++;
+              else if (score >= 3.5) distribution.exceedsExpectations++;
+              else if (score >= 2.5) distribution.meetsExpectations++;
+              else if (score >= 1.5) distribution.needsImprovement++;
+              else distribution.poorPerformance++;
+            }
+          });
+          
+          setPerformanceData(distribution);
+        }
+      } catch (error) {
+        console.error("Failed to fetch my performance data:", error);
+        setPerformanceData(null);
+      } finally {
+        setPerformanceLoading(false);
+      }
+    };
+
+    fetchMyPerformance();
+  }, [user?.id]);
 
   const tabs = useMemo(() => [
     { id: 'analytics', label: 'Analytics & Updates', icon: BarChart3 },
     { id: 'schedule', label: 'Schedule & Events', icon: Calendar },
-  ], []);
-
-  // Mock performance data for the employee
-  const performanceData = useMemo(() => [
-    {
-      outstanding: 2,
-      exceedsExpectations: 5,
-      meetsExpectations: 8,
-      needsImprovement: 1,
-      poorPerformance: 0,
-    }
   ], []);
 
   // Memoized tab change handler
@@ -99,11 +138,11 @@ export default function EmployeeCombinedSection() {
   const analyticsContent = useMemo(() => (
     <>
       <Card title="My Performance Evaluation">
-        <PerformancePieChart reportData={performanceData} />
+        <PerformancePieChart reportData={performanceData} isLoading={performanceLoading} />
       </Card>
       <AnnouncementSection />
     </>
-  ), [performanceData]);
+  ), [performanceData, performanceLoading]);
 
   return (
     <div className="bg-gray-50/50 rounded-3xl p-8 relative transition-all duration-500">

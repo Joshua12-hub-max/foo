@@ -4,28 +4,7 @@ import EventsList from './EventsList';
 import { DAYS_FULL } from '../constants/calendarConstants';
 import { isSameDay } from '../utils/dateUtils';
 
-/**
- * Drawer Sidebar Component
- * Right drawer with mini calendar and events list
- */
-const DrawerSidebar = ({
-  isOpen,
-  onClose,
-  currentDate,
-  today,
-  month,
-  year,
-  onDateClick,
-  onPrevMonth,
-  onNextMonth,
-  displayedEvents,
-  hours,
-  onEventClick,
-  showHolidays,
-  holidays,
-  announcements = [],
-  schedules = [] // Accept schedules prop
-}) => {
+const DrawerSidebar = ({isOpen,onClose,currentDate,today,month,year,onDateClick,onPrevMonth,onNextMonth,displayedEvents,hours,onEventClick,showHolidays,holidays,announcements = [],schedules = []}) => {
   
   // Filter and format announcements for the current date
   const todaysAnnouncements = announcements.filter(a => {
@@ -48,10 +27,9 @@ const DrawerSidebar = ({
       if (a.start_time) {
           time = a.start_time;
       }
-      
-      let color = 'bg-yellow-100 border-yellow-300 text-yellow-800';
-      if (a.priority === 'high') color = 'bg-orange-100 border-orange-300 text-orange-800';
-      if (a.priority === 'urgent') color = 'bg-red-100 border-red-300 text-red-800';
+            let color = 'bg-gray-200 border-gray-300 text-gray-700';
+       if (a.priority === 'high') color = 'bg-gray-200 border-gray-300 text-gray-700';
+       if (a.priority === 'urgent') color = 'bg-red-50 border-red-400 text-red-800';
 
       return {
           id: `announcement-${a.id}`,
@@ -64,24 +42,23 @@ const DrawerSidebar = ({
       };
   });
 
-  // Filter schedules for the current date
-  const todaysSchedules = schedules.filter(s => {
-    // Schedules are generated in combineCalendarItems with a 'date' property
-    // We need to compare this generated date with the currentDate
-    const scheduleDate = new Date(s.date);
-    return isSameDay(scheduleDate, currentDate);
+  // Filter schedules from displayedEvents for the current date
+  const todaysSchedules = displayedEvents.filter(item => {
+    if (item.type !== 'schedule' && !item.isSchedule) return false;
+    const itemDate = new Date(item.date);
+    return isSameDay(itemDate, currentDate);
   }).map(s => ({
     ...s,
-    id: `schedule-sidebar-${s.id}`, // Ensure unique ID for sidebar display
-    title: s.title, // Use the title generated in combineCalendarItems
-    description: `From ${s.start_time} to ${s.end_time}. ${s.is_rest_day ? 'Rest Day' : 'Work Day'}`,
-    time: s.time, // Use the time from the schedule item
-    type: 'schedule', // Explicitly set type for styling
-    isSchedule: true,
-    date: currentDate.toISOString().split('T')[0]
+    id: `schedule-sidebar-${s.id}`,
+    description: `${s.time} - ${s.endTime || 'End'}`,
   }));
 
-  const allEvents = [...displayedEvents, ...todaysAnnouncements, ...todaysSchedules];
+  // Filter out schedules from displayedEvents to avoid duplicates (they'll be added back separately)
+  const eventsWithoutSchedules = displayedEvents.filter(item => 
+    item.type !== 'schedule' && !item.isSchedule
+  );
+
+  const allEvents = [...eventsWithoutSchedules, ...todaysAnnouncements, ...todaysSchedules];
 
   return (
     <>

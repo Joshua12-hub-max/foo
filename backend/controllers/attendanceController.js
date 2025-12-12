@@ -193,3 +193,180 @@ export const getRawLogs = async (req, res) => {
     handleError(res, err, 'getRawLogs');
   }
 };
+
+/**
+ * Get dashboard statistics for today's attendance
+ * Returns counts and employee lists for Present, Absent, Late, On-Leave
+ */
+export const getDashboardStats = async (req, res) => {
+  try {
+    // Use local date instead of UTC to match database dates
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    
+    // Get all active employees (excluding admins)
+    const [allEmployees] = await db.query(`
+      SELECT employee_id, first_name, last_name, department 
+      FROM authentication 
+      WHERE role != 'admin'
+    `);
+    
+    // Get today's DTR records
+    const [dtrRecords] = await db.query(`
+      SELECT dtr.*, a.first_name, a.last_name, a.department
+      FROM daily_time_records dtr
+      JOIN authentication a ON dtr.employee_id = a.employee_id
+      WHERE DATE(dtr.date) = DATE(?)
+    `, [todayStr]);
+    
+    // Get approved leaves for today - use DATE() for proper comparison
+    const [leaves] = await db.query(`
+      SELECT lr.*, a.first_name, a.last_name, a.department
+      FROM leave_requests lr
+      JOIN authentication a ON lr.employee_id = a.employee_id
+      WHERE lr.status = 'Approved' 
+      AND DATE(?) >= DATE(lr.start_date) 
+      AND DATE(?) <= DATE(lr.end_date)
+    `, [todayStr, todayStr]);
+    
+    // Create lookup maps for quick access
+    const dtrMap = new Map(dtrRecords.map(r => [r.employee_id, r]));
+    const onLeaveEmployeeIds = new Set(leaves.map(l => l.employee_id));
+    
+    // Format time helper
+    const formatTime = (dateTime) => {
+      if (!dateTime) return '-';
+      const date = new Date(dateTime);
+      return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+    };
+    
+    // Categorize employees
+    const presentList = [];
+    const lateList = [];
+    const absentList = [];
+    
+    allEmployees.forEach(emp => {
+      const employeeId = emp.employee_id;
+      const name = `${emp.first_name} ${emp.last_name}`;
+      
+      // Skip if on leave
+      if (onLeaveEmployeeIds.has(employeeId)) {
+        return;
+      }
+      
+      const dtr = dtrMap.get(employeeId);
+      
+      if (dtr) {
+        const record = {
+          id: employeeId,
+          name: name,
+          department: emp.department || '-',
+          status: dtr.status,
+          timeIn: formatTime(dtr.time_in),
+          timeOut: formatTime(dtr.time_out),
+          date: todayStr,
+          minutesLate: dtr.late_minutes || 0
+        };
+        
+        if (dtr.status === 'Late') {
+          lateList.push(record);
+          presentList.push(record); // Late employees are also present
+        } else if (dtr.status === 'Present') {
+          presentList.push(record);
+        }
+      } else {
+        // No DTR record = Absent
+        absentList.push({
+          id: employeeId,
+          name: name,
+          department: emp.department || '-',
+          status: 'Absent',
+          reason: 'No clock-in recorded',
+          date: todayStr
+        });
+      }
+    });
+    
+    // Calculate counts
+    const counts = {
+      present: presentList.length,
+      late: lateList.length,
+      absent: absentList.length,
+      onLeave: leaves.length,
+      hired: allEmployees.length
+    };
+    
+    return res.status(200).json({
+      success: true,
+      data: {
+        counts,
+        lists: {
+          present: presentList,
+          absent: absentList,
+          late: lateList,
+          onLeave: leaves.map(l => ({
+            id: l.employee_id,
+            name: `${l.first_name} ${l.last_name}`,
+            department: l.department || '-',
+            leaveType: l.leave_type,
+            startDate: l.start_date,
+            endDate: l.end_date
+          }))
+        }
+      }
+    });
+  } catch (err) {
+    handleError(res, err, 'getDashboardStats');
+  }
+};
+
+/**
+ * Get Tardiness Report
+ * Returns aggregated late minutes and count per employee for a date range
+ */
+export const getTardinessReport = async (req, res) => {
+  try {
+    const { startDate, endDate, department } = req.query;
+    
+    // Default to current month if not specified
+    const now = new Date();
+    const start = startDate || new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+    const end = endDate || now.toISOString().split('T')[0];
+    
+    let query = `
+      SELECT 
+        dtr.employee_id,
+        a.first_name,
+        a.last_name,
+        a.department,
+        SUM(dtr.late_minutes) as total_late_minutes,
+        COUNT(CASE WHEN dtr.late_minutes > 0 THEN 1 END) as total_late_occurrences,
+        COUNT(dtr.id) as days_present
+      FROM daily_time_records dtr
+      JOIN authentication a ON dtr.employee_id = a.employee_id
+      WHERE dtr.date BETWEEN ? AND ?
+    `;
+    
+    const params = [start, end];
+    
+    if (department && department !== 'All Departments') {
+      query += ` AND a.department = ?`;
+      params.push(department);
+    }
+    
+    query += ` GROUP BY dtr.employee_id, a.first_name, a.last_name, a.department
+               HAVING total_late_minutes > 0
+               ORDER BY total_late_minutes DESC`;
+               
+    const [report] = await db.query(query, params);
+    
+    return res.status(200).json({
+      success: true,
+      range: { start, end },
+      data: report
+    });
+    
+  } catch (err) {
+    handleError(res, err, 'getTardinessReport');
+  }
+};

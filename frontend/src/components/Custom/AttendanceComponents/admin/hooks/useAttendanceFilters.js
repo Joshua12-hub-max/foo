@@ -3,6 +3,7 @@ import { useState, useMemo } from 'react';
 export const useAttendanceFilters = (data) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [dateRange, setDateRange] = useState({ from: '', to: '' });
+  const [status, setStatus] = useState('');
 
   const filteredData = useMemo(() => {
     if (!data) return [];
@@ -29,9 +30,23 @@ export const useAttendanceFilters = (data) => {
         matchesDate = itemDate >= fromDate && itemDate <= toDate;
       }
 
-      return matchesSearch && matchesDate;
+      // Status filter
+      let matchesStatus = true;
+      if (status) {
+        if (status === 'Absent') {
+          matchesStatus = item.daily_status === 'Absent' || item.status === 'Absent' || item.absent === 'Yes';
+        } else if (status === 'Late') {
+          matchesStatus = (item.late > 0) || (item.late_minutes > 0);
+        } else if (status === 'Leave') {
+          matchesStatus = item.daily_status === 'Leave' || item.status === 'Leave' || item.on_leave === 'Yes';
+        } else if (status === 'Undertime') {
+           matchesStatus = (item.undertime > 0) || (item.undertime_minutes > 0);
+        }
+      }
+
+      return matchesSearch && matchesDate && matchesStatus;
     });
-  }, [data, searchQuery, dateRange]);
+  }, [data, searchQuery, dateRange, status]);
 
   const handleSearchChange = (e) => setSearchQuery(e.target.value);
   
@@ -39,17 +54,24 @@ export const useAttendanceFilters = (data) => {
     setDateRange(prev => ({ ...prev, [field]: value }));
   };
 
+  const handleStatusChange = (value) => {
+    setStatus(value);
+  };
+
   const clearFilters = () => {
     setSearchQuery('');
     setDateRange({ from: '', to: '' });
+    setStatus('');
   };
 
   return {
     searchQuery,
     dateRange,
+    status,
     filteredData,
     handleSearchChange,
     handleDateRangeChange,
+    handleStatusChange,
     clearFilters
   };
 };

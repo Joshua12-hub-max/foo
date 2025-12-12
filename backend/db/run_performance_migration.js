@@ -12,27 +12,50 @@ async function runMigration() {
     try {
         // Create connection
         connection = await mysql.createConnection({
-            host: 'localhost',
-            user: 'root',
-            password: '', // Add your MySQL password here if needed
-            database: 'chrmo_db',
+            host: process.env.DB_HOST || 'localhost',
+            user: process.env.DB_USER || 'root',
+            password: process.env.DB_PASSWORD || '', 
+            database: process.env.DB_NAME || 'chrmo_db',
             multipleStatements: true
         });
 
         console.log('Connected to database');
 
-        // Read the SQL file
+        // 1. Add Columns to Authentication Table
+        const columnsToAdd = [
+            { name: 'job_title', type: 'VARCHAR(100)' },
+            { name: 'employment_status', type: "ENUM('Active', 'Probationary', 'Terminated', 'Resigned', 'On Leave') DEFAULT 'Active'" },
+            { name: 'date_hired', type: 'DATE' },
+            { name: 'manager_id', type: 'INT' }
+        ];
+
+        for (const col of columnsToAdd) {
+            const [rows] = await connection.query(
+                `SELECT * FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'authentication' AND COLUMN_NAME = ?`,
+                ['chrmo_db', col.name]
+            );
+
+            if (rows.length === 0) {
+                console.log(`Adding column: ${col.name}`);
+                await connection.query(`ALTER TABLE authentication ADD COLUMN ${col.name} ${col.type}`);
+                
+                // Add FK for manager_id specifically
+                if (col.name === 'manager_id') {
+                     await connection.query(`ALTER TABLE authentication ADD CONSTRAINT fk_manager FOREIGN KEY (manager_id) REFERENCES authentication(id) ON DELETE SET NULL`);
+                }
+            } else {
+                console.log(`Column ${col.name} already exists.`);
+            }
+        }
+
+        // 2. Run SQL for new tables
         const sqlFile = path.join(__dirname, 'add_performance_schema.sql');
         const sql = fs.readFileSync(sqlFile, 'utf8');
 
-        console.log('Running migration...');
-        // console.log(sql); 
-
-        // Execute the SQL
+        console.log('Creating performance tables...');
         await connection.query(sql);
 
         console.log('Migration completed successfully!');
-        console.log('Added performance tables and updated authentication table.');
 
     } catch (error) {
         console.error('Error running migration:', error);

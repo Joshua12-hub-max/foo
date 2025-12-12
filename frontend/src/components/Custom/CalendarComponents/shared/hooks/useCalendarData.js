@@ -10,19 +10,27 @@ import { combineCalendarItems, sortCalendarItemsByTime } from '../utils/calendar
  * @param {boolean} params.showHolidays - Whether to show holidays
  * @param {Array} params.holidays - Holidays data
  * @param {Array} params.announcements - Announcements data
+ * @param {Array} params.schedules - Schedules data
  * @returns {Object} Processed calendar data
  */
-export const useCalendarData = ({ currentDate, events, showHolidays, holidays, announcements }) => {
+export const useCalendarData = ({ currentDate, events, showHolidays, holidays, announcements, schedules = [] }) => {
   // Format current date
   const formattedDate = useMemo(
     () => formatDate(currentDate),
     [currentDate]
   );
 
-  // Combine events with holidays and announcements and sort
+  // Log schedules being processed
+  console.log('📅 [useCalendarData] Schedules received:', schedules?.length || 0, schedules);
+
+  // Combine events with holidays, announcements, and schedules then sort
   const displayedEvents = useMemo(
-    () => combineCalendarItems(events, holidays, showHolidays, announcements, currentDate),
-    [events, holidays, showHolidays, announcements, currentDate]
+    () => {
+      const result = combineCalendarItems(events, holidays, showHolidays, announcements, currentDate, schedules);
+      console.log('📅 [useCalendarData] displayedEvents generated:', result.length, result.filter(e => e.isSchedule));
+      return result;
+    },
+    [events, holidays, showHolidays, announcements, currentDate, schedules]
   );
 
   // Sorted events (without holidays and announcements - original intent of sortedEvents, re-evaluate if needed)
@@ -40,3 +48,4 @@ export const useCalendarData = ({ currentDate, events, showHolidays, holidays, a
     sortedEvents
   };
 };
+

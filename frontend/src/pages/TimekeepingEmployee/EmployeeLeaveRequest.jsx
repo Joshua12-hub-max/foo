@@ -1,13 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
-import { Clock, CheckCircle, AlertCircle } from 'lucide-react';
-
+import { AlertCircle } from 'lucide-react';
 // API
 import { leaveApi } from '../../api/leaveApi';
-
 // Components
-import SubmitLeaveRequestModal from '../../components/Custom/LeaveRequestComponents/Employee/components/Modals/SubmitLeaveRequestModal';
-import FinalizeModal from '../../components/Custom/LeaveRequestComponents/Employee/components/Modals/Finalize';
+import SubmitLeaveRequestModal from '../../components/Custom/LeaveRequestComponents/Employee/Modals/SubmitLeaveRequestModal';
+import FinalizeModal from '../../components/Custom/LeaveRequestComponents/Employee/Modals/Finalize';
 import Header from '../../components/Custom/LeaveRequestComponents/Employee/components/Header';
 import LoadingSpinner from '../../components/Custom/LeaveRequestComponents/Employee/components/LoadingSpinner';
 import ErrorAlert from '../../components/Custom/LeaveRequestComponents/Employee/components/ErrorAlert';
@@ -24,27 +22,6 @@ import { useFilters } from '../../components/Custom/LeaveRequestComponents/Emplo
 import { usePagination } from '../../components/Custom/LeaveRequestComponents/Employee/hooks/usePagination';
 import { useExport } from '../../components/Custom/LeaveRequestComponents/Employee/hooks/useExport';
 
-const LeaveCreditsSummary = ({ credits }) => {
-    if (!credits || credits.length === 0) return null;
-
-    return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            {credits.map((credit) => (
-                <div key={credit.credit_type} className="bg-white p-4 rounded-lg shadow-md border-l-4 border-[#274b46] flex items-center justify-between">
-                    <div>
-                        <h3 className="text-gray-500 text-xs font-semibold uppercase tracking-wider">{credit.credit_type}</h3>
-                        <span className="text-2xl font-bold text-gray-800">{credit.balance}</span>
-                        <span className="text-gray-400 text-sm ml-1">days</span>
-                    </div>
-                    <div className="bg-green-100 p-2 rounded-full">
-                        <Clock className="w-5 h-5 text-green-700" />
-                    </div>
-                </div>
-            ))}
-        </div>
-    );
-};
-
 const LeaveRequest = () => {
   const outletContext = useOutletContext?.() || { sidebarOpen: true };
   const { sidebarOpen = true } = outletContext;
@@ -59,47 +36,30 @@ const LeaveRequest = () => {
   const [credits, setCredits] = useState([]);
 
   // Custom hooks
-  const { data, isLoading, error: dataError, refetch } = useLeaveData();
-  const { 
-    filters, 
-    searchQuery, 
-    debouncedSearchQuery,
-    filteredData, 
-    handleFilterChange, 
-    handleSearchChange, 
-    handleClear 
-  } = useFilters(data);
-  const { 
-    currentPage, 
-    totalPages, 
-    startIndex, 
-    endIndex, 
-    currentItems, 
-    handlePrevPage, 
-    handleNextPage,
-    resetPage 
-  } = usePagination(filteredData);
-  const { 
-    isExporting, 
-    exportError,
-    handleExportCSV, 
-    handleExportPDF 
-  } = useExport();
+  const { leaves: data, loading: isLoading, error: dataError, refreshLeaves: refetch } = useLeaveData();
+  
+  const { filters, appliedFilters, searchQuery, debouncedSearchQuery, filteredData, handleFilterChange, handleApplyFilters, handleSearchChange, handleClear } = useFilters(data);
+  
+  const { currentPage, totalPages, startIndex, endIndex, currentItems, handlePrevPage, handleNextPage, resetPage } = usePagination(filteredData);
+  
+  const { isExporting, exportError, handleExportCSV, handleExportPDF } = useExport();
 
-  // Fetch Credits
+  // Fetch Credits on mount
   useEffect(() => {
-      const fetchCredits = async () => {
-          try {
-              const res = await leaveApi.getMyCredits();
-              if (res.data && res.data.credits) {
-                  setCredits(res.data.credits);
-              }
-          } catch (err) {
-              console.error("Failed to fetch credits:", err);
-          }
-      };
-      fetchCredits();
-  }, [successMessage]); // Refresh credits when a request is submitted/finalized (though usually updates on approval)
+    const fetchCredits = async () => {
+      try {
+        const res = await leaveApi.getMyCredits();
+        console.log('📋 Credits API response:', res.data);
+        if (res.data && res.data.credits) {
+          console.log('📋 Setting credits:', res.data.credits);
+          setCredits(res.data.credits);
+        }
+      } catch (err) {
+        console.error("Failed to fetch credits:", err);
+      }
+    };
+    fetchCredits();
+  }, []);
 
   // Auto-dismiss messages
   useEffect(() => {
@@ -118,10 +78,10 @@ const LeaveRequest = () => {
     }
   }, [successMessage]);
 
-  // Reset page when filters change
+  // Reset page when applied filters change
   useEffect(() => {
     resetPage();
-  }, [filters, debouncedSearchQuery, resetPage]);
+  }, [appliedFilters, debouncedSearchQuery, resetPage]);
 
   // Handle submit modal
   const handleSubmitRequest = () => {
@@ -153,14 +113,10 @@ const LeaveRequest = () => {
       {/* Header */}
       <Header 
         onRefresh={refetch}
-        onNewRequest={() => setIsSubmitModalOpen(true)}
         isLoading={isLoading || isExporting}
       />
 
       <hr className="mb-6 border-[#274b46]" />
-
-      {/* Leave Credits Summary */}
-      <LeaveCreditsSummary credits={credits} />
 
       {/* Alerts */}
       <ErrorAlert 
@@ -176,8 +132,11 @@ const LeaveRequest = () => {
       <Filters 
         filters={filters}
         onFilterChange={handleFilterChange}
+        onApplyFilters={handleApplyFilters}
         onClear={handleClear}
+        onNewRequest={() => setIsSubmitModalOpen(true)}
         isLoading={isLoading || isExporting}
+        hasCredits={credits.length > 0 && credits.some(c => parseFloat(c.balance) > 0)}
       />
 
       {/* Search */}
@@ -221,6 +180,7 @@ const LeaveRequest = () => {
         isOpen={isSubmitModalOpen}
         onSubmit={handleSubmitRequest}
         onClose={() => setIsSubmitModalOpen(false)}
+        credits={credits}
       />
 
       {/* Finalize Modal */}

@@ -23,7 +23,13 @@ export default function Sidebar({ isOpen, navItems, onLogout, onSectionChange })
   };
 
   return (
-    <aside className={`scrollbar-[#274b46] scrollbar-thin bg-[#274b46] text-[#F8F9FA] p-4 shadow-sm mb-6 flex flex-col justify-between shadow-lg transition-all duration-300 z-40 min-h-screen sticky top-0 overflow-y-auto ${sidebarOpen ? 'w-70' : 'w-30'}`}>
+    <aside 
+      className={`bg-gradient-to-r from-slate-950 to-green-900 text-[#F8F9FA] p-4 shadow-sm mb-6 flex flex-col justify-between shadow-lg transition-all duration-300 z-40 min-h-screen sticky top-0 overflow-y-auto ${sidebarOpen ? 'w-70' : 'w-30'}`}
+      style={{
+        scrollbarWidth: 'none',
+        msOverflowStyle: 'none'
+      }}
+    >
       <div className="flex flex-col">
         <div className={`border-b border-[#F8F9FA] flex flex-col items-center justify-center flex-shrink-0 py-6 transition-all duration-300 ${
               sidebarOpen ? 'px-6' : 'px-2'}`}>
@@ -59,10 +65,10 @@ export default function Sidebar({ isOpen, navItems, onLogout, onSectionChange })
                   to={item.path}
                   onClick={mainOnClick}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm transition-colors ${
-                    active && !hasChildren ? 'bg-[#34645c] shadow-md font-semibold' : 'hover:bg-[#34645c] hover:bg-opacity-50'
+                    active && !hasChildren ? 'bg-green-950 shadow-md font-semibold' : 'hover:bg-green-950 hover:bg-opacity-70'
                   }`}
                 >
-                  <Icon className={`w-5 h-5 flex-shrink-0 ${active && !hasChildren ? 'text-white' : ''}`} />
+                  <Icon className={`w-5 h-5 flex-shrink-0 ${active && !hasChildren ? 'text-[#F8F9FA]' : ''}`} />
                   {sidebarOpen && <span className="flex-1 text-left">{item.name}</span>}
                   {sidebarOpen && hasChildren && (
                     isOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />
@@ -89,8 +95,8 @@ export default function Sidebar({ isOpen, navItems, onLogout, onSectionChange })
                           onClick={childOnClick}
                           className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm transition-colors ${
                             childActive 
-                                ? 'bg-[#34645c] text-white font-medium shadow-sm' 
-                                : 'text-slate-300 hover:bg-[#34645c] hover:bg-opacity-50'
+                                ? 'bg-green-950 text-white font-medium shadow-sm' 
+                                : 'text-[#F8F9FA] hover:bg-green-950 hover:bg-opacity-70'
                             }`}
                         >
                           <span>{child.name}</span>
@@ -105,10 +111,10 @@ export default function Sidebar({ isOpen, navItems, onLogout, onSectionChange })
         </nav>
       </div>
 
-      <div className="p-4 border-t border-[#305d56] flex-shrink-0">
+      <div className="p-4 border-t border-green-950 flex-shrink-0">
         <button
           onClick={onLogout}
-          className="w-full flex items-center justify-center gap-2 py-2 text-[#F8F9FA] font-semibold bg-[#305d56] rounded-md shadow-md "
+          className="w-full flex items-center justify-center gap-2 py-2 text-[#F8F9FA] font-semibold bg-green-950 hover:bg-green-900 rounded-md shadow-md transition-colors"
         >
           <LogOut className="w-4 h-4 flex-shrink-0" />
           {sidebarOpen && 'Logout'}

@@ -1,5 +1,3 @@
-import React from 'react';
-
 const Pagination = ({ currentPage, totalPages, totalRecords, pageSize, isLoading, onPageChange }) => {
   const startRecord = ((currentPage - 1) * pageSize) + 1;
   const endRecord = Math.min(currentPage * pageSize, totalRecords);
@@ -13,7 +11,7 @@ const Pagination = ({ currentPage, totalPages, totalRecords, pageSize, isLoading
         <button
           onClick={() => onPageChange("prev")}
           disabled={currentPage === 1 || isLoading}
-          className="px-4 py-2 bg-white border border-gray-300 rounded-lg shadow-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-all text-sm font-medium text-gray-800"
+          className="px-4 py-2 bg-gray-200 border border-gray-200 rounded-lg shadow-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-200 transition-all text-sm font-medium text-gray-800"
           aria-label="Previous page"
         >
           Previous
@@ -24,7 +22,7 @@ const Pagination = ({ currentPage, totalPages, totalRecords, pageSize, isLoading
         <button
           onClick={() => onPageChange("next")}
           disabled={currentPage === totalPages || isLoading}
-          className="px-4 py-2 bg-white border border-gray-300 rounded-lg shadow-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-all text-sm font-medium text-gray-800"
+          className="px-6 py-2 bg-gray-200 border border-gray-200 rounded-lg shadow-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-200 transition-all text-sm font-medium text-gray-800"
           aria-label="Next page"
         >
           Next

@@ -1,11 +1,7 @@
 import { RefreshCw } from 'lucide-react';
 
 const AttendanceHeader = ({ title, subtitle, onRefresh, isLoading }) => {
-  const today = new Date().toLocaleDateString('en-US', { 
-    month: 'short', 
-    day: 'numeric', 
-    year: 'numeric' 
-  });
+  const today = new Date().toLocaleDateString('en-US', {  month: 'short',   day: 'numeric',  year: 'numeric' });
 
   return (
     <div className="flex justify-between items-center mb-6">

@@ -2,21 +2,21 @@ import { useState } from "react";
 import { useOutletContext } from 'react-router-dom';
 
 //Modals
-import { ViewModal } from "../../components/Custom/DTRCorrectionHR/components/Modals/View";
-import { EditModal } from "../../components/Custom/DTRCorrectionHR/components/Modals/Edit";
+import { ViewModal } from "../../components/Custom/DTRcorrectionsComponents/Admin/Modals/View";
+import { EditModal } from "../../components/Custom/DTRcorrectionsComponents/Admin/Modals/Edit";
 
 //Components
-import { LoadingSpinner } from "../../components/Custom/DTRCorrectionHR/components/DTRCorrectionLoadingSpinner";
-import DTRHeader from "../../components/Custom/DTRCorrectionHR/components/DTRCorrectionHeader";
-import { Notification } from "../../components/Custom/DTRCorrectionHR/components/DTRCorrectionNotification";
-import { AdvancedFilters } from "../../components/Custom/DTRCorrectionHR/components/DTRCorrectionFilter";
-import { SearchBar } from "../../components/Custom/DTRCorrectionHR/components/DTRCorrectionSearchBar";
-import { DTRTable } from "../../components/Custom/DTRCorrectionHR/components/DTRCorrectionTable";
-import { Pagination } from "../../components/Custom/DTRCorrectionHR/components/DTRCorrectionPagination";
-// Temporary comment to force re-compilation
+import { LoadingSpinner } from "../../components/Custom/DTRcorrectionsComponents/Admin/Components/DTRCorrectionLoadingSpinner";
+import DTRHeader from "../../components/Custom/DTRcorrectionsComponents/Admin/Components/DTRCorrectionHeader";
+import { Notification } from "../../components/Custom/DTRcorrectionsComponents/Admin/Components/DTRCorrectionNotification";
+import { AdvancedFilters } from "../../components/Custom/DTRcorrectionsComponents/Admin/Components/DTRCorrectionFilter";
+import { SearchBar } from "../../components/Custom/DTRcorrectionsComponents/Admin/Components/DTRCorrectionSearchBar";
+import { DTRTable } from "../../components/Custom/DTRcorrectionsComponents/Admin/Components/DTRCorrectionTable";
+import { Pagination } from "../../components/Custom/DTRcorrectionsComponents/Admin/Components/DTRCorrectionPagination";
 
 //Hooks
-import { useDTRCorrection } from "../../components/Custom/DTRCorrectionHR/Hooks/useDTRCorrection";
+import { useDTRCorrection } from "../../components/Custom/DTRcorrectionsComponents/Admin/Hooks/useDTRCorrection";
+
 
 export default function DTRCorrection() {
   const outletContext = useOutletContext?.() || { sidebarOpen: true };

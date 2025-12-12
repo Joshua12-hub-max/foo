@@ -1,6 +1,6 @@
-import { RefreshCw, Plus } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 
-export const EmployeeUndertimeHeader = ({ today, handleRefresh, isLoading, handleOpenSubmitModal }) => {
+export const EmployeeUndertimeHeader = ({ today, handleRefresh, isLoading }) => {
   return (
     <>
       <div className="flex justify-between items-center mb-6">
@@ -9,14 +9,6 @@ export const EmployeeUndertimeHeader = ({ today, handleRefresh, isLoading, handl
           <p className="text-sm text-gray-800 mt-1">Submit and track your undertime requests</p>
         </div>
         <div className="flex items-center gap-3">
-          <button
-            onClick={handleOpenSubmitModal}
-            className="flex items-center gap-2 px-4 py-2 glass-button glass-button-primary text-white rounded-lg"
-            title="Submit new request"
-          >
-            <Plus className="w-4 h-4" />
-            <span>New Request</span>
-          </button>
           <button
             onClick={handleRefresh}
             disabled={isLoading}

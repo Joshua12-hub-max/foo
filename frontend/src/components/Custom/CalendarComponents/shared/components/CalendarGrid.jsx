@@ -4,10 +4,7 @@ import { getHolidaysForDay, getEventStyles, filterEventsByDate } from '../utils/
 import DroppableCell from './DroppableCell';
 import DraggableEvent from './DraggableEvent';
 
-/**
- * Calendar Grid Component
- * Main month view with days and events
- */
+
 const CalendarGrid = ({ currentDate, today, onDateClick, showHolidays, holidays, announcements = [], events = [], schedules = [], displayedEvents = [], onEventDrop }) => {
   const { daysInMonth, startingDayOfWeek } = getDaysInMonth(currentDate);
   const cells = [];
@@ -36,18 +33,21 @@ const CalendarGrid = ({ currentDate, today, onDateClick, showHolidays, holidays,
       <DroppableCell key={d} date={currentDayDate} onDrop={onEventDrop}>
         <div
           className={`aspect-square border rounded-lg p-2 cursor-pointer hover:bg-gray-50 transition-all flex flex-col overflow-hidden ${
-            isTodayCell && isSelected
-              ? CALENDAR_STYLES.TODAY_SELECTED
-              : isTodayCell
-              ? 'bg-gray-100 border-gray-300'
+            isTodayCell
+              ? 'bg-white border-2 border-gray-400'
               : isSelected
-              ? 'bg-gray-300 border-gray-500'
+              ? 'bg-gray-100 border-gray-400'
               : 'border-gray-300'
           }`}
           onClick={() => onDateClick(currentDayDate)}
         >
-          <div className={`text-sm font-semibold mb-1 ${
-            isTodayCell ? 'text-[#F8F9FA]' : isSelected ? 'text-gray-900' : 'text-gray-700'
+          {/* Day Number - Enhanced Typography */}
+          <div className={`text-base font-bold mb-1 ${
+            isTodayCell 
+              ? 'w-8 h-8 rounded-full bg-gray-400 text-white flex items-center justify-center shadow-md' 
+              : isSelected 
+                ? 'text-gray-900' 
+                : 'text-gray-700'
           }`}>
             {d}
           </div>
@@ -58,21 +58,27 @@ const CalendarGrid = ({ currentDate, today, onDateClick, showHolidays, holidays,
               
               if (item.type === 'holiday' || item.isHoliday) {
                 return (
-                  <div key={`h-${idx}`} className={`text-[10px] px-1 rounded truncate ${styles.badgeBg} ${styles.badgeText}`}>
+                  <div key={`h-${idx}`} className={`text-[11px] font-medium px-2 py-0.5 rounded-md truncate ${styles.badgeBg} ${styles.badgeText} shadow-sm`}>
                     {item.title}
                   </div>
                 );
               } else if (item.type === 'announcement' || item.isAnnouncement) { 
                 return (
-                  <div key={`a-${idx}`} className={`text-[10px] px-1 rounded truncate ${styles.badgeBg} ${styles.badgeText}`}>
+                  <div key={`a-${idx}`} className={`text-[11px] font-medium px-2 py-0.5 rounded-md truncate ${styles.badgeBg} ${styles.badgeText} shadow-sm`}>
                     {item.title}
                   </div>
                 );
-              } else { // Regular Event
+              } else if (item.type === 'schedule' || item.isSchedule) {
+                return (
+                  <div key={`s-${idx}`} className={`text-[11px] font-medium px-2 py-0.5 rounded-md truncate ${styles.badgeBg} ${styles.badgeText} shadow-sm`}>
+                    {item.title}
+                  </div>
+                );
+              } else { // Regular Event - Uses DARK_NAVY from palette
                 return (
                   <DraggableEvent key={`e-${item.id}-${idx}`} event={item}>
                     <div 
-                      className="text-[10px] px-1 rounded truncate bg-blue-100 text-blue-800 border border-blue-200 cursor-move hover:bg-blue-200 transition-colors"
+                      className={`text-[11px] font-medium px-2 py-0.5 rounded-md truncate ${styles.badgeBg} ${styles.badgeText} cursor-move hover:opacity-80 transition-all shadow-sm`}
                       title={item.title}
                     >
                       {item.title}
@@ -83,7 +89,7 @@ const CalendarGrid = ({ currentDate, today, onDateClick, showHolidays, holidays,
             })}
             
             {allDayItems.length > maxItems && (
-              <div className="text-[9px] text-gray-500 font-medium pl-1">
+              <div className="text-[10px] text-gray-500 font-semibold pl-1 italic">
                 +{allDayItems.length - maxItems} more
               </div>
             )}
@@ -95,13 +101,18 @@ const CalendarGrid = ({ currentDate, today, onDateClick, showHolidays, holidays,
 
   return (
     <div>
-      <div className="grid grid-cols-7 gap-2 mb-2">
+      {/* Day Headers - Enhanced Typography */}
+      <div className="grid grid-cols-7 gap-2 mb-3">
         {DAYS_SHORT.map((d, i) => (
-          <div key={i} className="text-center text-xs font-semibold text-gray-600">
+          <div 
+            key={i} 
+            className="text-center py-2 text-sm font-bold text-gray-700 bg-gray-100 rounded-lg tracking-wide uppercase"
+          >
             {d}
           </div>
         ))}
       </div>
+      {/* Calendar Grid */}
       <div className="grid grid-cols-7 gap-2">{cells}</div>
     </div>
   );

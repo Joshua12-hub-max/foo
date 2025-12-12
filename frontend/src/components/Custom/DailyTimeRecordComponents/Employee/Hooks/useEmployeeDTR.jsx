@@ -89,8 +89,14 @@ export const useEmployeeDTR = () => {
   }, []);
 
   const handleApply = useCallback(() => {
+    // Check if at least one filter is selected
+    const hasFilters = filters.fromDate || filters.toDate;
+    if (!hasFilters) {
+      setError("Please select at least one filter before applying.");
+      return;
+    }
     setSuccessMessage(MESSAGES.FILTERS_APPLIED);
-  }, []);
+  }, [filters]);
 
   const handleClear = useCallback(() => {
     setFilters({ fromDate: "", toDate: "" });

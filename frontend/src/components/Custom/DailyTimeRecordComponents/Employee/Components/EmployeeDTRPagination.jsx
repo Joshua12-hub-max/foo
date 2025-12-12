@@ -1,13 +1,4 @@
-export const EmployeeDTRPagination = ({ 
-  startIndex, 
-  endIndex, 
-  totalRecords, 
-  currentPage, 
-  totalPages,
-  handlePrevPage,
-  handleNextPage,
-  isLoading 
-}) => {
+export const EmployeeDTRPagination = ({ startIndex, endIndex, totalRecords, currentPage, totalPages, handlePrevPage, handleNextPage, isLoading }) => {
   return (
     <div className="flex justify-between items-center mt-6">
       <div className="text-sm text-gray-800">
@@ -17,7 +8,7 @@ export const EmployeeDTRPagination = ({
         <button
           onClick={handlePrevPage}
           disabled={currentPage === 1 || isLoading}
-          className="px-4 py-2 bg-[#F8F9FA] border border-gray-300 rounded-lg shadow-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-all text-sm font-medium text-gray-800"
+          className="px-6 py-2 bg-[#F8F9FA] border border-gray-200 rounded-lg shadow-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-200 transition-all text-sm font-medium text-gray-800"
           aria-label="Previous page"
         >
           Previous
@@ -28,7 +19,7 @@ export const EmployeeDTRPagination = ({
         <button
           onClick={handleNextPage}
           disabled={currentPage === totalPages || totalPages === 0 || isLoading}
-          className="px-4 py-2 bg-[#F8F9FA] border border-gray-300 rounded-lg shadow-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-all text-sm font-medium text-gray-800"
+          className="px-6 py-2 bg-[#F8F9FA] border border-gray-200 rounded-lg shadow-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-all text-sm font-medium text-gray-800"
           aria-label="Next page"
         >
           Next

@@ -15,7 +15,7 @@ const EventDetailsModal = ({ event, onClose, hours, month, day, dayName, onEdit,
       onClick={onClose}
     >
       <div 
-        className="bg-[#F8F9FA] rounded-lg shadow-xl p-6 w-96" 
+        className="bg-white rounded-lg shadow-xl p-6 w-96 border border-gray-200" 
         onClick={(e) => e.stopPropagation()}
       >
         <h3 className="text-xl font-bold text-gray-900 mb-4">{event.title}</h3>
@@ -46,14 +46,14 @@ const EventDetailsModal = ({ event, onClose, hours, month, day, dayName, onEdit,
             <>
               <button
                 onClick={() => onEdit(event)}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg shadow-md hover:text-green-800 transition-colors flex items-center justify-center gap-2"
               >
                 <Edit className="w-4 h-4" />
                 Edit
               </button>
               <button
                 onClick={() => onDelete(event)}
-                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center gap-2"
+                className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg shadow-md hover:text-red-800 transition-colors flex items-center justify-center gap-2"
               >
                 <Trash2 className="w-4 h-4" />
                 Delete
@@ -62,7 +62,7 @@ const EventDetailsModal = ({ event, onClose, hours, month, day, dayName, onEdit,
           )}
           <button
             onClick={onClose}
-            className={`${canModify ? 'flex-1' : 'w-full'} px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors`}
+            className={`${canModify ? 'flex-1' : 'w-full'} px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:text-red-800 transition-colors`}
           >
             Close
           </button>

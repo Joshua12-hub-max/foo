@@ -14,6 +14,20 @@ export default function StatCard({ title, data, onClick }) {
     onClick({ title, data });
   }, [onClick, title, data]);
 
+  // Handle both array data (with .length) and number/string data
+  const displayValue = useMemo(() => {
+    if (Array.isArray(data)) {
+      return data.length;
+    }
+    if (typeof data === 'number') {
+      return data;
+    }
+    if (typeof data === 'string') {
+      return data;
+    }
+    return 0;
+  }, [data]);
+
   return (
     <button
       onClick={handleClick}
@@ -26,7 +40,7 @@ export default function StatCard({ title, data, onClick }) {
         <span className="text-xs text-[#274b46] font-medium opacity-80">View details</span>
       </div>
       <h3 className="text-sm font-bold text-[#274b46] tracking-wide">{title}</h3>
-      <p className="text-3xl font-bold text-[#274b46] mt-2">{data.length}</p>
+      <p className="text-3xl font-bold text-[#274b46] mt-2">{displayValue}</p>
     </button>
   );
 }

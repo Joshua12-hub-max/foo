@@ -12,7 +12,8 @@ export const mapUndertimeData = (apiData) => {
     reviewedAt: item.reviewed_at,
     reviewedBy: item.reviewed_by,
     rejectionReason: item.rejection_reason,
-    createdAt: item.created_at
+    createdAt: item.created_at,
+    attachment_path: item.attachment_path || null
   }));
 };
 
@@ -29,6 +30,13 @@ export const filterUndertimeData = (data, filters, searchQuery) => {
 
   if (filters.toDate) {
     filteredData = filteredData.filter((item) => item.date <= filters.toDate);
+  }
+
+  // Apply status filter
+  if (filters.status) {
+    filteredData = filteredData.filter((item) => 
+      item.status.toLowerCase() === filters.status.toLowerCase()
+    );
   }
 
   // Apply search query

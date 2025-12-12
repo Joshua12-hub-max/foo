@@ -20,10 +20,12 @@ const EmployeeAttendance = () => {
   // 2. Filter Data
   const { 
     searchQuery,
-    dateRange, 
+    dateRange,
+    status,
     filteredData, 
     handleSearchChange,
-    handleDateRangeChange, 
+    handleDateRangeChange,
+    handleStatusChange,
     clearFilters 
   } = useAttendanceFilters(data);
 
@@ -34,7 +36,7 @@ const EmployeeAttendance = () => {
     <div className={`min-h-screen flex flex-col bg-gradient-to-br from-neutral-100 to-stone-50 rounded-xl shadow-xl p-7 w-full overflow-hidden text-gray-800 transition-all duration-300 ${!sidebarOpen ? 'max-w-[1600px] xl:max-w-[88vw]' : 'max-w-[1400px] xl:max-w-[77vw]'}`}>
       
       <AttendanceHeader 
-        title="My Attendance History" 
+        title="Attendance History" 
         subtitle="View your daily time records"
         onRefresh={refetch}
         isLoading={isLoading}
@@ -51,6 +53,8 @@ const EmployeeAttendance = () => {
       <AttendanceFilters 
         dateRange={dateRange}
         onDateRangeChange={handleDateRangeChange}
+        status={status}
+        onStatusChange={handleStatusChange}
         onClear={clearFilters}
         onApply={() => {}}
         showDepartmentFilter={false}

@@ -1,8 +1,17 @@
-import { Search } from 'lucide-react';
+import { useState } from 'react';
+import { Search, Eye } from 'lucide-react';
 import { LEAVE_TABLE_HEADERS, STATUS_STYLES } from '../constants/leaveConstants';
-import { calculateDuration } from '../utils/dateTimeUtils';
+import LeaveDetailsModal from '../Modals/LeaveDetailsModal';
 
-export const Table = ({ data, searchQuery, filters, onFinalize }) => {
+export const Table = ({ data, searchQuery, filters }) => {
+  const [selectedLeave, setSelectedLeave] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const handleViewDetails = (leave) => {
+    setSelectedLeave(leave);
+    setIsModalOpen(true);
+  };
+  
   const getStatusBadge = (status) => {
     return STATUS_STYLES[status] || 'bg-gray-100 text-gray-800';
   };
@@ -13,7 +22,7 @@ export const Table = ({ data, searchQuery, filters, onFinalize }) => {
     <div className="flex-1 overflow-hidden rounded-xl bg-[#F8F9FA] p-1">
       <div className="overflow-x-auto bg-[#F8F9FA] rounded-lg">
         <table className="w-full min-w-[1400px]">
-          <thead className="bg-[#274b46] text-[#F8F9FA]">
+          <thead className="bg-gray-200 shadow-md text-gray-700">
             <tr>
               {LEAVE_TABLE_HEADERS.map((header) => (
                 <th key={header} className="px-6 py-4 text-left text-sm font-bold tracking-wide">
@@ -22,10 +31,10 @@ export const Table = ({ data, searchQuery, filters, onFinalize }) => {
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-slate-100 shadow-md">
             {data.length ? (
               data.map((item) => (
-                <tr key={item.id} className="hover:bg-[#34645c] transition-colors">
+                <tr key={item.id} className="hover:bg-[#F8F9FA] hover:shadow-xl transition-colors">
                   <td className="px-6 py-4">
                     <span 
                       className={`${getStatusBadge(item.status)} px-3 py-1 text-sm font-medium inline-block`} 
@@ -36,30 +45,30 @@ export const Table = ({ data, searchQuery, filters, onFinalize }) => {
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-800">{item.department}</td>
                   <td className="px-6 py-4 text-sm text-gray-800">{item.id}</td>
-                  <td className="px-6 py-4 text-sm text-gray-800">{item.name}</td>
+                  <td className="px-6 py-4 text-sm text-gray-800">{item.employee_id}</td>
                   <td className="px-6 py-4 text-sm text-gray-800">{item.leaveType}</td>
-                  <td className="px-6 py-4 text-sm text-gray-800">{item.fromDate}</td>
-                  <td className="px-6 py-4 text-sm text-gray-800">{item.toDate}</td>
                   <td className="px-6 py-4 text-sm text-gray-800">
-                    {calculateDuration(item.fromDate, item.toDate)}
+                    {new Date(item.fromDate).toLocaleDateString()}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-800">
-                    {item.status === 'Processing' ? (
-                      <button 
-                        onClick={() => onFinalize(item)}
-                        className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded-md text-xs font-semibold transition-colors"
+                    {new Date(item.toDate).toLocaleDateString()}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-800">
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleViewDetails(item)}
+                        className="bg-blue-100 hover:bg-blue-200 text-blue-700 p-1.5 rounded-md transition-colors"
+                        title="View Details"
                       >
-                        Finalize
+                        <Eye size={16} />
                       </button>
-                    ) : (
-                      <span className="text-gray-400 text-xs italic">No action</span>
-                    )}
+                    </div>
                   </td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan="9" className="px-6 py-12 text-center">
+                <td colSpan="10" className="px-6 py-12 text-center">
                   <div className="flex flex-col items-center justify-center text-gray-500">
                     <Search className="w-12 h-12 mb-3 opacity-50" />
                     <p className="text-lg font-medium">No records found</p>
@@ -75,6 +84,12 @@ export const Table = ({ data, searchQuery, filters, onFinalize }) => {
           </tbody>
         </table>
       </div>
+
+      <LeaveDetailsModal 
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        leaveRequest={selectedLeave}
+      />
     </div>
   );
 };

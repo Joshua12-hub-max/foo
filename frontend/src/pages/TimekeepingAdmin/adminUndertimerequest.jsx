@@ -17,10 +17,7 @@ const UndertimeRequests = () => {
     getStatusBadge } = useAdminUndertime();
 
   const { totalPages, startIndex, endIndex, currentItems } = paginationData;
-
-  if (isLoading && loadingType === "data") {
-    return <AdminUndertimeLoadingSpinner loadingType={loadingType} />;
-  }
+  if (isLoading && loadingType === "data") { return <AdminUndertimeLoadingSpinner loadingType={loadingType} />;}
 
   return (
     <div className={`min-h-screen flex flex-col bg-gradient-to-br from-neutral-100 to-stone-100 rounded-xl shadow-xl p-7 w-full overflow-hidden text-gray-800 transition-all duration-300 ${sidebarOpen ? 'max-w-[1400px] xl:max-w-[77vw]' : 'max-w-[1600px] xl:max-w-[88vw]'}`}>
@@ -58,19 +55,21 @@ const UndertimeRequests = () => {
         uniqueEmployees={uniqueEmployees}
       />
 
-      <AdminUndertimeSearchBar 
-        searchQuery={searchQuery}
-        handleSearchChange={handleSearchChange}
-        filteredDataLength={filteredData.length}
-        isLoading={isLoading}
-      />
+      <div className="flex flex-col gap-4 mb-6">
+        <AdminUndertimeSearchBar 
+          searchQuery={searchQuery}
+          handleSearchChange={handleSearchChange}
+          filteredDataLength={filteredData.length}
+          isLoading={isLoading}
+        />
 
-      <AdminUndertimeExportButtons 
-        handleExportCSV={handleExportCSV}
-        handleExportPDF={handleExportPDF}
-        isLoading={isLoading}
-        filteredDataLength={filteredData.length}
-      />
+        <AdminUndertimeExportButtons 
+          handleExportCSV={handleExportCSV}
+          handleExportPDF={handleExportPDF}
+          isLoading={isLoading}
+          filteredDataLength={filteredData.length}
+        />
+      </div>
 
       <AdminUndertimeTable 
         currentItems={currentItems}

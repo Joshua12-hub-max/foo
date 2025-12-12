@@ -1,4 +1,4 @@
-import { FileText, Edit2, Trash2 } from "lucide-react";
+import { FileText, SquarePen, Trash2 } from "lucide-react";
 import { SCHEDULE_TABLE_HEADERS } from "../constants/scheduleConstants";
 import { formatDate, formatTime } from "../utils/formatUtils";
 
@@ -12,7 +12,7 @@ const Table = ({ isLoading, paginatedData, onEdit, onDelete }) => (
     ) : (
       <div className="overflow-x-auto bg-gray-50 rounded-lg">
         <table className="w-full min-w-[1200px]">
-          <thead className="bg-[#274b46] text-[#F8F9FA]">
+          <thead className="bg-gray-200 shadow-md text-gray-700">
             <tr>
               {SCHEDULE_TABLE_HEADERS.map((header) => (
                 <th key={header.key} className="px-6 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap">
@@ -37,7 +37,7 @@ const Table = ({ isLoading, paginatedData, onEdit, onDelete }) => (
               </tr>
             ) : (
               paginatedData.map((item, i) => (
-                <tr key={i} className="hover:bg-[#e8f4f2] transition-colors">
+                <tr key={i} className="hover:bg-[#F8F9FA] hover:shadow-xl transition-colors">
                   <td className="px-6 py-4 text-sm font-medium text-gray-800 whitespace-nowrap">{item.employeeName}</td>
                   <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">{item.scheduleName}</td>
                   <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">{formatDate(item.startDate)}</td>
@@ -51,7 +51,7 @@ const Table = ({ isLoading, paginatedData, onEdit, onDelete }) => (
                       className="p-2 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
                       title="Edit schedule"
                     >
-                      <Edit2 className="w-4 h-4" />
+                      <SquarePen className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => onDelete(item)}

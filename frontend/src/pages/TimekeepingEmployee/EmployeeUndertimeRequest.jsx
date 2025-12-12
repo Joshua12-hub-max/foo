@@ -8,7 +8,7 @@ import { EmployeeUndertimeLoadingSpinner } from "../../components/Custom/Underti
 import { SubmitUndertimeModal } from "../../components/Custom/UndertimeComponents/Employee/Modals/SubmitUndertimeModal";
 
 const EmployeeUndertimeRequest = () => {
-  const { today, filters, searchQuery, debouncedSearchQuery, currentPage, isLoading, loadingType, error, successMessage, filteredData, paginationData, isSubmitModalOpen,
+  const { today, filters, searchQuery, debouncedSearchQuery, currentPage, isLoading, loadingType, error, successMessage, filteredData, paginationData, isSubmitModalOpen, employeeInfo,
     setError, setSuccessMessage, handleFilterChange, handleApply, handleClear, handleSearchChange, handleRefresh, handlePrevPage, handleNextPage, handleExportCSV, handleExportPDF, 
     handleSubmitRequest, handleCancelRequest, handleOpenSubmitModal, handleCloseSubmitModal, getStatusBadge } = useEmployeeUndertime();
 
@@ -24,7 +24,6 @@ const EmployeeUndertimeRequest = () => {
         today={today}
         handleRefresh={handleRefresh}
         isLoading={isLoading}
-        handleOpenSubmitModal={handleOpenSubmitModal}
       />
 
       {/* Error Message */}
@@ -50,6 +49,7 @@ const EmployeeUndertimeRequest = () => {
         handleFilterChange={handleFilterChange}
         handleApply={handleApply}
         handleClear={handleClear}
+        onNewRequest={handleOpenSubmitModal}
         isLoading={isLoading}
       />
 
@@ -65,6 +65,7 @@ const EmployeeUndertimeRequest = () => {
         filteredDataLength={filteredData.length}
         searchQuery={searchQuery}
         handleSearchChange={handleSearchChange}
+        employeeInfo={employeeInfo}
       />
 
       {!isLoading && filteredData.length > 0 && (

@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
-import { getEmployees, startFingerprintEnrollment, checkEnrollmentStatus } from '../../api/employeeApi';
+import { fetchEmployees, startFingerprintEnrollment, checkEnrollmentStatus } from '../../api/employeeApi';
 import { register } from '../../Service/Auth';
 import { CheckCircle, XCircle, UserPlus, X } from 'lucide-react';
 
@@ -145,11 +145,13 @@ const BiometricsEnrollment = () => {
   const [statusMessage, setStatusMessage] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
 
-  const fetchEmployees = async () => {
+  const loadEmployees = async () => {
     setIsLoading(true);
     try {
-      const employeeData = await getEmployees();
-      setEmployees(employeeData);
+      const response = await fetchEmployees();
+      if (response.success && response.employees) {
+          setEmployees(response.employees);
+      }
       setError('');
     } catch (err) {
       setError('Failed to load employees. Please try again.');
@@ -160,7 +162,7 @@ const BiometricsEnrollment = () => {
   };
 
   useEffect(() => {
-    fetchEmployees();
+    loadEmployees();
   }, []);
 
   // Check status when employee is selected
@@ -293,3 +295,5 @@ const BiometricsEnrollment = () => {
     </div>
   );
 };
+
+export default BiometricsEnrollment;

@@ -1,9 +1,10 @@
 import { useState, useCallback, useMemo, memo, useEffect } from 'react';
 import { BarChart3, Bell, LayoutDashboard } from 'lucide-react';
-import { SystemPerformanceChart, PerformancePieChart, AnnouncementsList, EventsList } from "../../CustomUI";
+import { PerformancePieChart, AnnouncementsList, EventsList, HolidaysList } from "../../CustomUI";
 import { holidays } from "../../../utils/holidays";
 import { announcementApi } from '../../../api/announcementApi';
 import { eventApi } from '../../../api/eventApi';
+import { fetchRatingDistribution } from '../../../api/performanceApi';
 
 // Memoized Tab Button Component
 const TabButton = memo(({ tab, isActive, isLoading, onClick }) => {
@@ -61,6 +62,11 @@ export default function CombinedSection() {
   const [isLoading, setIsLoading] = useState(false);
   const [announcements, setAnnouncements] = useState([]);
   const [events, setEvents] = useState([]);
+  const [upcomingHolidays, setUpcomingHolidays] = useState([]);
+  
+  // Performance evaluation state - real data from API
+  const [performanceData, setPerformanceData] = useState(null);
+  const [performanceLoading, setPerformanceLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -75,48 +81,60 @@ export default function CombinedSection() {
             setAnnouncements(formattedAnnouncements);
         }
 
-        // Fetch Events and Combine with Holidays
+        // Fetch Events (API events only, not holidays)
         const eventResponse = await eventApi.getEvents();
         const apiEvents = (eventResponse.data && eventResponse.data.events) ? eventResponse.data.events : [];
         
-        // Get current year holidays
+        // Get current year holidays separately
         const currentYear = new Date().getFullYear();
         const holidayEvents = holidays.map(h => ({
             id: `holiday-${h.id}-${currentYear}`,
             title: h.title,
             date: new Date(currentYear, h.month, h.day).toISOString().split('T')[0],
             type: h.type,
-            priority: 'medium', // Default priority for display
             isHoliday: true
         }));
 
-        // Combine and sort
-        const combinedEvents = [...apiEvents, ...holidayEvents].sort((a, b) => new Date(a.date) - new Date(b.date));
-        
-        // Filter for upcoming events (optional, but good for dashboard)
+        // Filter for upcoming dates
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        const upcomingEvents = combinedEvents.filter(e => new Date(e.date) >= today);
+        
+        // Filter and set events (only API events)
+        const upcomingApiEvents = apiEvents
+          .filter(e => new Date(e.date || e.start_date) >= today)
+          .sort((a, b) => new Date(a.date || a.start_date) - new Date(b.date || b.start_date));
+        setEvents(upcomingApiEvents.slice(0, 10));
 
-        setEvents(upcomingEvents.slice(0, 10)); // Show top 10 upcoming
+        // Filter and set holidays
+        const upcomingHolidayList = holidayEvents
+          .filter(h => new Date(h.date) >= today)
+          .sort((a, b) => new Date(a.date) - new Date(b.date));
+        setUpcomingHolidays(upcomingHolidayList.slice(0, 10));
 
       } catch (error) {
         console.error("Failed to fetch dashboard data:", error);
       }
     };
 
-    fetchData();
-  }, []);
+    // Fetch performance rating distribution
+    const fetchPerformanceData = async () => {
+      try {
+        setPerformanceLoading(true);
+        const response = await fetchRatingDistribution();
+        if (response.success && response.distribution) {
+          setPerformanceData(response.distribution);
+        }
+      } catch (error) {
+        console.error("Failed to fetch performance data:", error);
+        setPerformanceData(null);
+      } finally {
+        setPerformanceLoading(false);
+      }
+    };
 
-  const performanceData = useMemo(() => [
-    {
-      outstanding: 5,
-      exceedsExpectations: 25,
-      meetsExpectations: 50,
-      needsImprovement: 15,
-      poorPerformance: 5,
-    }
-  ], []);
+    fetchData();
+    fetchPerformanceData();
+  }, []);
 
   const tabs = useMemo(() => [
     { id: 'charts', label: 'Analytics Overview', icon: BarChart3 },
@@ -135,22 +153,25 @@ export default function CombinedSection() {
     });
   }, [activeTab]);
 
-  // Memoized content rendering
+  // Memoized content rendering - Performance Pie Chart first, Holidays beside it
   const chartContent = useMemo(() => (
     <>
-      <ChartCard title="System Performance">
-        <SystemPerformanceChart />
-      </ChartCard>
       <ChartCard title="Performance Evaluation">
-        <PerformancePieChart reportData={performanceData} />
+        <PerformancePieChart reportData={performanceData} isLoading={performanceLoading} />
+      </ChartCard>
+      <ChartCard title="Upcoming Holidays">
+        <HolidaysList holidays={upcomingHolidays} />
       </ChartCard>
     </>
-  ), [performanceData]);
+  ), [performanceData, performanceLoading, upcomingHolidays]);
 
+  // Announcements and Events together
   const announcementContent = useMemo(() => (
     <>
       <AnnouncementsList announcements={announcements} />
-      <EventsList events={events} />
+      <ChartCard title="Upcoming Events">
+        <EventsList events={events} />
+      </ChartCard>
     </>
   ), [announcements, events]);
 

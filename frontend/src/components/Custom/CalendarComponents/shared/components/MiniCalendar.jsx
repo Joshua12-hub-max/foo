@@ -4,21 +4,8 @@ import { DAYS_SHORT, CALENDAR_STYLES } from '../constants/calendarConstants';
 import { getDaysInMonth, getPreviousMonth, isToday } from '../utils/dateUtils';
 import { getHolidaysForDay } from '../utils/eventUtils';
 
-/**
- * Mini Calendar Component
- * Compact calendar for sidebar
- */
-const MiniCalendar = ({ 
-  currentDate,
-  today,
-  month,
-  year,
-  onDateClick,
-  onPrevMonth,
-  onNextMonth,
-  showHolidays,
-  holidays
-}) => {
+
+const MiniCalendar = ({ currentDate, today, month, year, onDateClick, onPrevMonth, onNextMonth, showHolidays, holidays }) => {
   const calendarDays = useMemo(() => {
     const { daysInMonth, startingDayOfWeek } = getDaysInMonth(currentDate);
     const prevMonth = getPreviousMonth(currentDate);
@@ -79,14 +66,14 @@ const MiniCalendar = ({
         <div className="flex gap-1">
           <button
             onClick={onPrevMonth}
-            className="p-1 hover:bg-[#274b46] rounded transition-colors"
+            className="p-1 hover:bg-gray-200 rounded transition-colors"
             aria-label="Previous month"
           >
             <ChevronLeft className="w-4 h-4 text-gray-700" />
           </button>
           <button
             onClick={onNextMonth}
-            className="p-1 hover:bg-[#274b46] rounded transition-colors"
+            className="p-1 hover:bg-gray-200 rounded transition-colors"
             aria-label="Next month"
           >
             <ChevronRight className="w-4 h-4 text-gray-700" />

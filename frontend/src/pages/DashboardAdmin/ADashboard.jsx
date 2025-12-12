@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
-import api from "../../api/axios";
+import { attendanceApi } from "../../api/attendanceApi";
 
 // Dashboard Components
 import Sidebar from "../../components/Custom/DashboardAdminComponents/Sidebar";
@@ -18,10 +18,10 @@ import HiredTable from "../../components/Custom/DashboardAdminComponents/HiredTa
 import NotificationMenu from '../../components/CustomUI/NotificationMenu';
 
 // Icons
-import {LayoutDashboard, Clock, Users, Building2, Briefcase, DollarSign,Award, FileText, Settings,} from "lucide-react";
+import {LayoutDashboard, Clock, Users, Building2, Briefcase, DollarSign, Award, FileText, Settings} from "lucide-react";
 
 // Dashboard Home Component
-const DashboardHome = ({ user, statsCards, handleStatCardClick, activeTable, setActiveTable }) => (
+const DashboardHome = ({ user, statsCards, handleStatCardClick, activeTable, setActiveTable, employeeLists }) => (
   <>
     <WelcomeBanner user={user} />
     <div className="relative mb-8">
@@ -37,9 +37,9 @@ const DashboardHome = ({ user, statsCards, handleStatCardClick, activeTable, set
       </div>
       {activeTable && (
         <div className="absolute inset-0 bg-[#F8F9FA] p-6 rounded-lg shadow-md border border-gray-100 z-10 h-[32rem] overflow-y-auto">
-          {activeTable === "Present" && <PresentTable onClose={() => setActiveTable(null)} />}
-          {activeTable === "Absent" && <AbsentTable onClose={() => setActiveTable(null)} />}
-          {activeTable === "Late" && <LateTable onClose={() => setActiveTable(null)} />}
+          {activeTable === "Present" && <PresentTable onClose={() => setActiveTable(null)} employees={employeeLists.present} />}
+          {activeTable === "Absent" && <AbsentTable onClose={() => setActiveTable(null)} employees={employeeLists.absent} />}
+          {activeTable === "Late" && <LateTable onClose={() => setActiveTable(null)} employees={employeeLists.late} />}
           {activeTable === "Leave" && <LeaveTable onClose={() => setActiveTable(null)} />}
           {activeTable === "Hired" && <HiredTable onClose={() => setActiveTable(null)} />}
         </div>
@@ -102,40 +102,114 @@ export default function HDashboard() {
         name: "Employee Management",
         icon: Users,
         children: [
-          { name: "Role Based Control ", action: "rbac" },
+          { name: "Departments", action: "departments" },
+          { name: "Plantilla", action: "plantilla" },
+          { name: "Employees", action: "employees" },
         ],
       },
-      { name: "Department", icon: Building2 },
-      { name: "Recruitment", icon: Briefcase },
+      { 
+        name: "Recruitment", 
+        icon: Briefcase,
+        children: [
+          { name: "Job Postings", action: "recruitment/jobs" },
+        ]
+      },
       { name: "Payroll", icon: DollarSign },
-      { name: "Performance Evaluation", icon: Award },
-      { name: "Reports", icon: FileText },
+      {
+        name: "Performance Evaluation",
+        icon: Award,
+        children: [
+          { name: "Dashboard", action: "performance-reviews" },
+          { name: "Criteria", action: "performance-criteria" },
+          { name: "Cycles", action: "performance/cycles" },
+          { name: "Draft Reviews", action: "performance/drafts" },
+          { name: "Coaching Log", action: "coaching-log" },
+          { name: "Development Plans", action: "development-plans" },
+          { name: "Training Needs", action: "training-needs" },
+          // SPMS Full Compliance
+          { name: "OPCR", action: "opcr" },
+          { name: "IPCR", action: "ipcr" },
+          { name: "Appeals", action: "appeals" },
+          { name: "PMT Dashboard", action: "pmt" },
+          { name: "Notices", action: "performance-notices" },
+
+        ],
+      },
+      { name: "Reports", icon: FileText, children: [
+          { name: "Department Attendance", action: "department-attendance-reports" },
+          { name: "Tardiness Report", action: "tardiness-report" },
+        ],
+      },
       {
         name: "Settings",
         icon: Settings,
         children: [
-          { name: "Department Profile", action: "profile-settings" },
           { name: "User Profile", action: "account-settings" },
-          { name: "Biometrics Logs", action: "biometrics-logs" },
           { name: "Biometrics Monitor", action: "biometrics-monitor" },
           { name: "Biometrics Enrollment", action: "biometrics-enrollment" },
-          { name: "Company Policies", action: "company-policies" },
         ],
       },
     ],
     []
   );
 
-  // Stats cards configuration
+  // Stats state for real data
+  const [stats, setStats] = useState({
+    present: 0,
+    absent: 0,
+    late: 0,
+    leave: 0,
+    hired: 0
+  });
+
+  // Employee lists for tables
+  const [employeeLists, setEmployeeLists] = useState({
+    present: [],
+    absent: [],
+    late: [],
+    onLeave: []
+  });
+
+  // Fetch real data on mount
+  useEffect(() => {
+    const loadStats = async () => {
+      try {
+        const response = await attendanceApi.getDashboardStats();
+        const data = response.data?.data;
+        
+        if (data) {
+          setStats({
+            present: data.counts.present || 0,
+            late: data.counts.late || 0,
+            leave: data.counts.onLeave || 0,
+            absent: data.counts.absent || 0,
+            hired: data.counts.hired || 0
+          });
+          
+          setEmployeeLists({
+            present: data.lists.present || [],
+            absent: data.lists.absent || [],
+            late: data.lists.late || [],
+            onLeave: data.lists.onLeave || []
+          });
+        }
+      } catch (error) {
+        console.error("Failed to load dashboard stats:", error?.message || String(error));
+      }
+    };
+    loadStats();
+  }, []);
+
+  // Stats cards configuration with real data
   const statsCards = useMemo(
     () => [
-      { title: "Present", data: [] },
-      { title: "Absent", data: [] },
-      { title: "Late", data: [] },
-      { title: "On-Leave", data: [] },
-      { title: "Hired", data: [] },
+      { title: "Present", data: stats.present },
+      { title: "Absent", data: stats.absent },
+      { title: "Late", data: stats.late },
+      { title: "On-Leave", data: stats.leave },
+      { title: "Hired", data: stats.hired },
     ],
-    []
+    [stats]
   );
 
   // Handle stat card click
@@ -178,6 +252,7 @@ export default function HDashboard() {
               handleStatCardClick={handleStatCardClick}
               activeTable={activeTable}
               setActiveTable={setActiveTable}
+              employeeLists={employeeLists}
             />
           ) : (
             /* Nested Route Content via Outlet */

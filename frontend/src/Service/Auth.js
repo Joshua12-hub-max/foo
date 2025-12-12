@@ -3,32 +3,22 @@ import axios from "axios";
 const api = axios.create({
     baseURL: `${import.meta.env.VITE_API_URL || "http://localhost:5000/api"}/auth`,
     withCredentials: true,
-    headers: {
-        "Content-Type": "application/json",
-    }
+    headers: { "Content-Type": "application/json",}
 });
 
-// Request Interceptors
-// Request Interceptors
-api.interceptors.request.use(
-    (config) => {
-        return config;
-    },
-    (error) => {
-        return Promise.reject(error);
-    }
-);
+api.interceptors.request.use((config) => {
+    return config;
+}, (error) => {
+    return Promise.reject(error);
+});
 
 // Response Interceptors
-api.interceptors.response.use(
-    (response) => response,
-    (error) => {
-        if (error.response?.status === 401) {
-            // Optional: Redirect to login or clear user state if needed
-        }
-        return Promise.reject(error);
+api.interceptors.response.use((response) => response,(error) => {
+    if (error.response?.status === 401) {
+        // Optional: Redirect to login or clear user state if needed
     }
-);
+    return Promise.reject(error);
+});
 
 export const register = (data) => api.post("/register", data);
 export const login = (data) => api.post("/login", data);

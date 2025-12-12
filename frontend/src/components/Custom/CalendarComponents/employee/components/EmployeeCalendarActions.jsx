@@ -1,9 +1,4 @@
-import { Menu, CalendarDays } from 'lucide-react';
-
-/**
- * Employee Calendar Actions
- * Action buttons specific to employee calendar (Show Schedule toggle + Menu button)
- */
+import { Menu } from 'lucide-react';
 const EmployeeCalendarActions = ({ onOpenDrawer }) => {
   return (
     <>

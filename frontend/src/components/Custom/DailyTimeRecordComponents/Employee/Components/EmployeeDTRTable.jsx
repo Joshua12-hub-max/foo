@@ -13,7 +13,7 @@ export const EmployeeDTRTable = ({
     <div className="flex-1 overflow-hidden rounded-xl bg-[#F8F9FA] p-1">
       <div className="overflow-x-auto bg-gray-50 rounded-lg">
         <table className="w-full min-w-[800px]">
-          <thead className="bg-[#274b46] text-[#F8F9FA]">
+          <thead className="bg-gray-200 shadow-md text-gray-700">
             <tr>
               {TABLE_HEADERS.map((header) => (
                 <th key={header} className="px-6 py-4 text-left text-sm font-bold tracking-wide">
@@ -25,7 +25,7 @@ export const EmployeeDTRTable = ({
           <tbody className="divide-y divide-slate-100">
             {currentItems.length ? (
               currentItems.map((item) => (
-                <tr key={item.id} className="hover:bg-[#34645c] transition-colors">
+                <tr key={item.id} className="hover:bg-[#F8F9FA] hover:shadow-xl transition-colors">
                   <td className="px-6 py-4 text-sm text-gray-800">{item.date}</td>
                   <td className="px-6 py-4 text-sm text-gray-800">{item.timeIn}</td>
                   <td className="px-6 py-4 text-sm text-gray-800">{item.timeOut}</td>

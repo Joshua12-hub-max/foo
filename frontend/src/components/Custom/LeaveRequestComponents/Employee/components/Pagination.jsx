@@ -1,15 +1,5 @@
-export const Pagination = ({ 
-  currentPage, 
-  totalPages, 
-  startIndex, 
-  endIndex, 
-  totalItems,
-  onPrevPage, 
-  onNextPage,
-  isLoading 
-}) => {
+const Pagination = ({  currentPage, totalPages, startIndex, endIndex, totalItems, onPrevPage, onNextPage, isLoading }) => {
   if (totalItems === 0) return null;
-
   return (
     <div className="flex justify-between items-center mt-6">
       <div className="text-sm text-gray-800">
@@ -20,7 +10,7 @@ export const Pagination = ({
         <button
           onClick={onPrevPage}
           disabled={currentPage === 1 || isLoading}
-          className="px-4 py-2 bg-[#F8F9FA] border border-gray-300 rounded-lg shadow-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-all text-sm font-medium text-gray-800"
+          className="px-4 py-2 bg-gray-200 border border-gray-200 rounded-lg shadow-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-200 transition-all text-sm font-medium text-gray-800"
           aria-label="Previous page"
         >
           Previous
@@ -31,7 +21,7 @@ export const Pagination = ({
         <button
           onClick={onNextPage}
           disabled={currentPage === totalPages || totalPages === 0 || isLoading}
-          className="px-4 py-2 bg-[#F8F9FA] border border-gray-300 rounded-lg shadow-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-all text-sm font-medium text-gray-800"
+          className="px-6 py-2 bg-gray-200 border border-gray-200 rounded-lg shadow-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-200 transition-all text-sm font-medium text-gray-800"
           aria-label="Next page"
         >
           Next

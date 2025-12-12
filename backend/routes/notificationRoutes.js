@@ -3,7 +3,9 @@ import {
   getNotifications, 
   getUnreadCount, 
   markAsRead, 
-  deleteNotification 
+  deleteNotification,
+  getNotificationHistory,
+  exportNotificationsPDF
 } from '../controllers/notificationController.js';
 import { verifyToken } from '../middleware/authMiddleware.js';
 
@@ -14,6 +16,8 @@ router.use(verifyToken);
 
 router.get('/', getNotifications);
 router.get('/unread-count', getUnreadCount);
+router.get('/history', getNotificationHistory);
+router.get('/export-pdf', exportNotificationsPDF);
 router.put('/:id/read', markAsRead);
 router.delete('/:id', deleteNotification);
 

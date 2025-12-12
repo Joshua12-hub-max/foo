@@ -1,25 +1,26 @@
-import { useState, useRef, useCallback, memo, useMemo } from "react";
-import { Menu, Search, User, Camera, X, Check } from "lucide-react";
+import { useState, useCallback, memo, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
+import { Menu, Search, User, Camera } from "lucide-react";
 import EmployeeNotificationMenu from "../../CustomUI/EmployeeNotificationMenu";
+import { useAuth } from "../../../hooks/useAuth";
 
 /* -------------------- Memoized Components -------------------- */
 const ProfilePicture = memo(
-  ({ hasProfilePicture, user, isHovered, onImageError, onMouseEnter, onMouseLeave, onClick }) => (
+  ({ hasProfilePicture, user, isHovered, onMouseEnter, onMouseLeave, onClick }) => (
     <div
       className="relative w-12 h-12 rounded-full overflow-hidden flex-shrink-0 cursor-pointer group transition-transform hover:scale-105"
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
       onClick={onClick}
       role="button"
-      aria-label="Change profile picture"
+      aria-label="Go to profile settings"
       tabIndex={0}
     >
       {hasProfilePicture ? (
         <img
-          src={user.profilePicture}
+          src={user.avatar || user.profilePicture}
           alt={`${user.name}'s profile`}
           className="w-full h-full object-cover transition-all group-hover:brightness-75"
-          onError={onImageError}
           loading="lazy"
         />
       ) : (
@@ -41,7 +42,7 @@ ProfilePicture.displayName = "ProfilePicture";
 const UserInfo = memo(({ name, role }) => (
   <div className="text-right">
     <p className="text-sm font-semibold text-slate-800 leading-tight">{name}</p>
-    <p className="text-xs text-gray-500 mt-0.5">{role || "Employee"}</p>
+    <p className="text-xs text-gray-500 mt-0.5 capitalize">{role || "Employee"}</p>
   </div>
 ));
 UserInfo.displayName = "UserInfo";
@@ -72,26 +73,21 @@ export default function Header({
   onToggleSidebar,
   searchQuery,
   setSearchQuery,
-  user: initialUser,
-  onProfilePictureChange,
 }) {
-  const [user, setUser] = useState(initialUser || { name: "Employee", role: "Employee" });
-  const [imageError, setImageError] = useState(false);
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [isHovered, setIsHovered] = useState(false);
-  const [previewImage, setPreviewImage] = useState(null);
-  const fileInputRef = useRef(null);
 
-  const hasProfilePicture = useMemo(() => user?.profilePicture && !imageError, [user, imageError]);
-
-  const handleFileChange = useCallback((e) => {
-    // Implement file change logic if needed for employee
-  }, []);
+  // Check if user has a profile picture - depends on both avatar and profilePicture fields
+  const hasProfilePicture = useMemo(() => {
+    const avatarUrl = user?.avatar || user?.profilePicture;
+    return !!avatarUrl;
+  }, [user?.avatar, user?.profilePicture]);
 
   const handleProfileClick = useCallback(() => {
-     // Optional: Allow employee to change profile pic
-  }, []);
+     navigate('/employee-dashboard/profile');
+  }, [navigate]);
 
-  const handleImageError = useCallback(() => setImageError(true), []);
   const handleMouseEnter = useCallback(() => setIsHovered(true), []);
   const handleMouseLeave = useCallback(() => setIsHovered(false), []);
 
@@ -117,9 +113,8 @@ export default function Header({
         <div className="flex items-center gap-3">
           <ProfilePicture
             hasProfilePicture={hasProfilePicture}
-            user={user}
+            user={user || {}}
             isHovered={isHovered}
-            onImageError={handleImageError}
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
             onClick={handleProfileClick}

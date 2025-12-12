@@ -34,16 +34,16 @@ export const EVENT_COLORS = [
 
 // Calendar cell styling states
 export const CALENDAR_STYLES = {
-  TODAY: 'bg-[#274b46] text-[#F8F9FA] border-gray-700',
-  SELECTED: 'bg-[#274b46] text-gray-900 border-gray-400',
-  TODAY_SELECTED: 'bg-[#274b46] border-gray-400',
-  DEFAULT: 'border-[#274b46] text-gray-700 hover:border-gray-400 hover:bg-gray-100',
+  TODAY: 'bg-gray-400 text-white border-gray-400',
+  SELECTED: 'bg-gray-400 text-gray-900 border-gray-400',
+  TODAY_SELECTED: 'bg-gray-400 border-gray-400',
+  DEFAULT: 'border-gray-300 text-gray-700 hover:border-gray-400 hover:bg-gray-100',
   PREVIOUS_MONTH: 'text-gray-400'
 };
 
 // Theme colors
 export const THEME = {
-  PRIMARY: '#274b46',
+  PRIMARY: '#6b7280',
   PRIMARY_DARK: '#305d56',
   LIGHT: '#F8F9FA',
   TEXT_PRIMARY: 'text-gray-800',

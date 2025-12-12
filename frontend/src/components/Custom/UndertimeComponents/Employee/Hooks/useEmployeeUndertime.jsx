@@ -6,8 +6,12 @@ import { ITEMS_PER_PAGE, MESSAGES, DELAYS, EXPORT_HEADERS, STATUS_STYLES } from 
 export const useEmployeeUndertime = () => {
   const today = useMemo(() => new Date().toLocaleDateString("en-US"), []);
 
-  // State management
-  const [filters, setFilters] = useState({ fromDate: "",toDate: "",});
+  // State management - using pendingFilters and appliedFilters pattern
+  // Pending filters - what user is inputting (not applied yet)
+  const [pendingFilters, setPendingFilters] = useState({ fromDate: "", toDate: "", status: "" });
+  // Applied filters - what is actually being used for filtering
+  const [appliedFilters, setAppliedFilters] = useState({ fromDate: "", toDate: "", status: "" });
+  
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -21,10 +25,10 @@ export const useEmployeeUndertime = () => {
 
   const searchTimeoutRef = useRef(null);
 
-  // Derived data
+  // Derived data - uses appliedFilters instead of filters
   const filteredData = useMemo(
-    () => filterUndertimeData(undertimeData, filters, debouncedSearchQuery),
-    [filters, debouncedSearchQuery, undertimeData]
+    () => filterUndertimeData(undertimeData, appliedFilters, debouncedSearchQuery),
+    [appliedFilters, debouncedSearchQuery, undertimeData]
   );
 
   const paginationData = useMemo(
@@ -67,6 +71,7 @@ export const useEmployeeUndertime = () => {
     } catch (err) {
       console.error("Error submitting request:", err);
       setError(MESSAGES.ERROR_SUBMIT);
+      throw err; // Re-throw so modal can catch and display specific error
     } finally {
       setIsLoading(false);
       setLoadingType("");
@@ -91,16 +96,25 @@ export const useEmployeeUndertime = () => {
 
   // Event handlers
   const handleFilterChange = useCallback((field, value) => {
-    setFilters((prev) => ({ ...prev, [field]: value }));
+    setPendingFilters((prev) => ({ ...prev, [field]: value }));
   }, []);
 
+  // Apply the pending filters to actually filter the data
   const handleApply = useCallback(() => {
-    console.log("Filters applied:", JSON.stringify(filters, null, 2));
+    // Check if at least one filter is selected
+    const hasFilters = pendingFilters.fromDate || pendingFilters.toDate || pendingFilters.status;
+    if (!hasFilters) {
+      setError("Please select at least one filter before applying.");
+      return;
+    }
+    setAppliedFilters({ ...pendingFilters });
     setSuccessMessage(MESSAGES.FILTERS_APPLIED);
-  }, [filters]);
+  }, [pendingFilters]);
 
+  // Clear both pending and applied filters
   const handleClear = useCallback(() => {
-    setFilters({ fromDate: "", toDate: "" });
+    setPendingFilters({ fromDate: "", toDate: "", status: "" });
+    setAppliedFilters({ fromDate: "", toDate: "", status: "" });
     setSearchQuery("");
     setSuccessMessage(MESSAGES.FILTERS_CLEARED);
   }, []);
@@ -214,12 +228,13 @@ export const useEmployeeUndertime = () => {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [filters, debouncedSearchQuery]);
+  }, [appliedFilters, debouncedSearchQuery]);
 
   return {
     // Data
     today,
-    filters,
+    filters: pendingFilters,  // For input fields
+    appliedFilters,           // For checking what's currently applied
     searchQuery,
     debouncedSearchQuery,
     currentPage,

@@ -1,21 +1,21 @@
-import { Calendar, Clock, X, User } from "lucide-react";
+import { Clock, X, User } from "lucide-react";
 import { useEffect, useState } from "react";
-import { getEmployees } from "@/api/employeeApi";
+import { fetchEmployees } from "@/api/employeeApi";
 
 export default function ScheduleModal({ show, newSchedule, setNewSchedule, onClose, onCreate,}) {
   const [employees, setEmployees] = useState([]);
 
   useEffect(() => {
     if (show) {
-      const fetchEmployees = async () => {
+      const loadEmployees = async () => {
         try {
-          const data = await getEmployees();
-          setEmployees(data);
+          const data = await fetchEmployees();
+          setEmployees(data.employees || []);
         } catch (err) {
           console.error(err);
         }
       };
-      fetchEmployees();
+      loadEmployees();
     }
   }, [show]);
   
@@ -23,37 +23,24 @@ export default function ScheduleModal({ show, newSchedule, setNewSchedule, onClo
   return (
     <div className="fixed inset-0 bg-black/30 flex items-start justify-center z-50 p-4">
       {/* Modal Card */}
-      <div className="bg-white rounded-xl border-2 border-gray-200 w-full max-w-md shadow-xl mt-20">
+      <div className="bg-white rounded-lg border border-gray-200 w-full max-w-md shadow-xl mt-16 relative">
         
         {/* Header */}
-          <div className="bg-[#274b46] rounded-t-xl px-6 py-4 flex items-start gap-4 shadow-sm relative">
-            <div className="flex items-center gap-2 z-10">
-              <div className="w-8 h-8 flex items-center justify-center">
-                <Calendar className="w-4 h-4 text-[#F8F9FA]" />
-              </div>
-              <div>
-                <h2 className="text-sm font-semibold text-white">
-                  Create Employee Schedule
-                </h2>
-                <p className="text-xs text-white mt-1">Record Information</p>
-              </div>
-            </div>
-
-            {/* Close Button */}
-            <button
-              type="button"
-              onClick={onClose}
-              className="absolute top-4 right-4 text-white hover:text-gray-200 transition-colors"
-              aria-label="Close modal"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
+        <div className="bg-gray-200 px-4 py-4 flex justify-between items-center">
+          <h2 className="text-base font-bold text-gray-800">Create Employee Schedule</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 transition-colors"
+            aria-label="Close modal"
+          >
+            <X className="w-5 h-5 text-red-800" />
+          </button>
+        </div>
           
-        {/* Scrollable Content */}
-        <div className="max-h-[70vh] overflow-y-auto">
-          <div className="p-6 space-y-3">
-            <div className="bg-[#F8F9FA] border-2 border-gray-200 rounded-xl p-4 shadow-md hover:shadow-lg transition-shadow">
+        {/* Content */}
+        <div className="p-4 space-y-3">
+          <div>
 
               {/* Employee Selection */}
               <div>
@@ -65,7 +52,7 @@ export default function ScheduleModal({ show, newSchedule, setNewSchedule, onClo
                   onChange={(e) =>
                     setNewSchedule({ ...newSchedule, employee_id: e.target.value })
                   }
-                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-md focus:outline-none focus:border-green-500 text-sm"
+                  className="w-full px-3 py-2 border-2 border-gray-200 rounded-md shadow-md focus:outline-none focus:border-gray-200 text-sm"
                 >
                   <option value="">Select an employee...</option>
                   {employees.map((emp) => (
@@ -87,7 +74,7 @@ export default function ScheduleModal({ show, newSchedule, setNewSchedule, onClo
                   onChange={(e) =>
                     setNewSchedule({ ...newSchedule, title: e.target.value })
                   }
-                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-md focus:outline-none focus:border-green-500 text-sm"
+                  className="w-full px-3 py-2 border-2 border-gray-200 rounded-md shadow-md focus:outline-none focus:border-gray-200 text-sm"
                   placeholder="Enter schedule title"
                 />
               </div>
@@ -107,7 +94,7 @@ export default function ScheduleModal({ show, newSchedule, setNewSchedule, onClo
                         startDate: e.target.value,
                       })
                     }
-                    className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-green-500 text-sm"
+                    className="w-full px-3 py-2 border-2 border-gray-200 rounded-md shadow-md focus:outline-none focus:border-gray-200 text-sm"
                   />
                 </div>
 
@@ -124,7 +111,7 @@ export default function ScheduleModal({ show, newSchedule, setNewSchedule, onClo
                         endDate: e.target.value,
                       })
                     }
-                    className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-green-500 text-sm"
+                    className="w-full px-3 py-2 border-2 border-gray-200 rounded-md shadow-md focus:outline-none focus:border-gray-200 text-sm"
                   />
                 </div>
               </div>
@@ -143,7 +130,7 @@ export default function ScheduleModal({ show, newSchedule, setNewSchedule, onClo
                         startTime: e.target.value,
                       })
                     }
-                    className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-green-500 text-sm"
+                    className="w-full px-3 py-2 border-2 border-gray-200 rounded-md shadow-md focus:outline-none focus:border-gray-200 text-sm"
                   />
                 </div>
 
@@ -160,7 +147,7 @@ export default function ScheduleModal({ show, newSchedule, setNewSchedule, onClo
                         endTime: e.target.value,
                       })
                     }
-                    className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-green-500 text-sm"
+                    className="w-full px-3 py-2 border-2 border-gray-200 rounded-md shadow-md focus:outline-none focus:border-gray-200 text-sm"
                   />
                 </div>    
               </div>
@@ -179,7 +166,7 @@ export default function ScheduleModal({ show, newSchedule, setNewSchedule, onClo
                       repeat: e.target.value,
                     })
                   }
-                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-green-500 text-sm"
+                  className="w-full px-3 py-2 border-2 border-gray-200 rounded-md shadow-md focus:outline-none focus:border-gray-200 text-sm"
                 >
                   <option value="none">Does not repeat</option>
                   <option value="daily">Daily</option>
@@ -189,7 +176,7 @@ export default function ScheduleModal({ show, newSchedule, setNewSchedule, onClo
               </div>
 
               {/* Description */}
-              <div className="mt-3">
+              <div className="mt-4">
                 <label className="block text-xs font-semibold text-gray-700 mb-1">
                   Description
                 </label>
@@ -201,11 +188,10 @@ export default function ScheduleModal({ show, newSchedule, setNewSchedule, onClo
                       description: e.target.value,
                     })
                   }
-                  className="w-full px-3 py-1 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-green-500 h-20 resize-none text-sm"
+                  className="w-full px-3 py-1 border-2 border-gray-200 rounded-md shadow-md focus:outline-none focus:border-gray-200 h-20 resize-none text-sm"
                   placeholder="Add description (optional)"
                 />
               </div>
-            </div>
           </div>
         </div>
 
@@ -213,14 +199,14 @@ export default function ScheduleModal({ show, newSchedule, setNewSchedule, onClo
         <div className="flex gap-3 px-6 pb-6">
           <button
             onClick={onClose}
-            className="flex-1 px-3 py-2 text-xs font-semibold text-gray-700 border-2 border-gray-200 rounded-lg shadow-md hover:bg-gray-200"
+            className="flex-1 px-3 py-2 text-xs font-medium text-gray-700 bg-gray-200 rounded-md shadow-md hover:text-red-800"
           >
             Cancel
           </button>
 
           <button
             onClick={onCreate}
-            className="flex-1 px-3 py-2 bg-F8F8F8 text-xs font-semibold text-gray-700 border-2 border-gray-200 rounded-lg shadow-md hover:bg-gray-200"
+            className="flex-1 px-3 py-2 bg-gray-200 text-xs font-medium text-gray-700 border-2 border-gray-200 rounded-md shadow-md hover:text-green-800"
           >
             Create Schedule
           </button>

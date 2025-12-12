@@ -9,11 +9,7 @@ const StatusBadge = ({ status }) => {
     Absent: 'bg-red-100 text-red-800 border-red-200',
   };
   
-  const icons = {
-    Present: CheckCircle,
-    Late: Clock,
-    Absent: XCircle
-  };
+  const icons = {Present: CheckCircle,Late: Clock,Absent: XCircle};
 
   const Icon = icons[status] || User;
 
@@ -122,7 +118,7 @@ export default function BiometricsMonitor() {
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-50/50">
+            <thead className="bg-gray-200 shadow-md text-gray-700">
               <tr>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Time</th>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Employee</th>

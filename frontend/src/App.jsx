@@ -27,16 +27,62 @@ const BiometricsMonitor = lazy(() => import("./pages/TimekeepingAdmin/Biometrics
 //Settings Admin Pages
 const BiometricsLogsUI = lazy(() => import("./pages/SettingsAdmin/BiometricsLogs"));
 const BiometricsEnrollment = lazy(() => import("./pages/SettingsAdmin/BiometricsEnrollment"));
+const DepartmentList = lazy(() => import("./pages/EmployeeManagement/Departments/DepartmentList"));
+const DepartmentDetail = lazy(() => import("./pages/EmployeeManagement/Departments/DepartmentDetail"));
+const EmployeeList = lazy(() => import("./pages/EmployeeManagement/Employees/EmployeeList"));
+const PerformanceCriteria = lazy(() => import("./pages/PerformanceManagement/PerformanceCriteria"));
+const PerformanceEvaluationDashboard = lazy(() => import("./pages/PerformanceManagement/PerformanceEvaluationDashboard"));
+const ReviewCycles = lazy(() => import("./pages/PerformanceManagement/ReviewCycles"));
+const ReviewForm = lazy(() => import("./pages/PerformanceManagement/ReviewForm"));
+const DraftReviews = lazy(() => import("./pages/PerformanceManagement/DraftReviews"));
+const CoachingLog = lazy(() => import("./pages/PerformanceManagement/CoachingLog"));
+const DevelopmentPlan = lazy(() => import("./pages/PerformanceManagement/DevelopmentPlan"));
+const TrainingNeeds = lazy(() => import("./pages/PerformanceManagement/TrainingNeeds"));
+
+// SPMS Full Compliance Pages (CSC MC 6-2012)
+const OPCRManagement = lazy(() => import("./pages/PerformanceManagement/OPCRManagement"));
+const IPCRManagement = lazy(() => import("./pages/PerformanceManagement/IPCRManagement"));
+const IPCRDetail = lazy(() => import("./pages/PerformanceManagement/IPCRDetail"));
+const Appeals = lazy(() => import("./pages/PerformanceManagement/Appeals"));
+const PMTDashboard = lazy(() => import("./pages/PerformanceManagement/PMTDashboard"));
+const PerformanceNotices = lazy(() => import("./pages/PerformanceManagement/PerformanceNotices"));
+
+const EmployeeProfile = lazy(() => import("./pages/EmployeeManagement/Employees/EmployeeProfile"));
+const EmployeeMemos = lazy(() => import("./pages/EmployeeManagement/EmployeeMemos"));
+const PlantillaManagement = lazy(() => import("./pages/EmployeeManagement/PlantillaManagement"));
+
+// Recruitment Pages
+const JobPosting = lazy(() => import("./pages/Recruitment/JobPosting"));
+
+// Reports Admin Pages
+const DepartmentAttendanceReports = lazy(() => import("./pages/ReportsAdmin/DepartmentAttendanceReports"));
+const TardinessReport = lazy(() => import("./pages/ReportsAdmin/TardinessReport"));
+
+// Public Career Pages
+const Careers = lazy(() => import("./pages/Public/Careers"));
+const JobDetail = lazy(() => import("./pages/Public/JobDetail"));
+
 
 
 // Lazy load employeeTimekeepingpages
 const AttendanceEM = lazy(() => import("./pages/TimekeepingEmployee/EmployeeAttendance"));
 const EmployeeCalendar = lazy(() => import("./pages/TimekeepingEmployee/EmployeeCalendar")); 
 const LeaveRequest = lazy(() => import("./pages/TimekeepingEmployee/EmployeeLeaveRequest"));
+const EmployeeLeavecredit = lazy(() => import("./pages/TimekeepingEmployee/EmployeeLeavecredit"));
 const EmployeeDailyTimeRecord = lazy(() => import("./pages/TimekeepingEmployee/EmployeeDailyTimeRecord"));
 const EmployeeDtrcorrections = lazy(() => import("./pages/TimekeepingEmployee/EmployeedtrCorrection"));
 const EmployeeUndertimeRequest = lazy(() => import("./pages/TimekeepingEmployee/EmployeeUndertimeRequest"));
 const EmployeeSchedule = lazy(() => import("./pages/TimekeepingEmployee/EmployeeSchedule"));
+const EmployeeDepartment = lazy(() => import("./pages/TimekeepingEmployee/EmployeeDepartment"));
+const EmployeeIPCRManagement = lazy(() => import("./pages/PerformanceManagement/EmployeeIPCRManagement"));
+const EmployeeIPCRDetail = lazy(() => import("./pages/PerformanceManagement/EmployeeIPCRDetail"));
+const EmployeePerformanceReviews = lazy(() => import("./pages/PerformanceManagement/EmployeePerformanceReviews"));
+const EmployeeCoachingLog = lazy(() => import("./pages/PerformanceManagement/EmployeeCoachingLog"));
+const EmployeeDevelopmentPlan = lazy(() => import("./pages/PerformanceManagement/EmployeeDevelopmentPlan"));
+const EmployeeTrainingNeeds = lazy(() => import("./pages/PerformanceManagement/EmployeeTrainingNeeds"));
+const MyProfile = lazy(() => import("./pages/Settings/MyProfile"));
+const EmployeeNotificationHistory = lazy(() => import("./pages/TimekeepingEmployee/NotificationHistory"));
+const EmployeeMyMemos = lazy(() => import("./pages/TimekeepingEmployee/EmployeeMemos"));
 // Loading fallback component
 
 
@@ -114,6 +160,24 @@ export default function App() {
             } 
           />
 
+        {/* Public Career Pages - Accessible by everyone */}
+        <Route
+          path="/careers"
+          element={
+            <Suspense fallback={<PageLoader />}>
+              <Careers />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/careers/job/:id"
+          element={
+            <Suspense fallback={<PageLoader />}>
+              <JobDetail />
+            </Suspense>
+          }
+        />
+
         {/* Public routes */}
         <Route
           path="/login"
@@ -171,9 +235,11 @@ export default function App() {
           path="/admin-dashboard"
           element={
             <ProtectedRoute allowedRoles={["admin", "hr"]}>
-              <Suspense fallback={<PageLoader />}>
-                <AdminDashboard />
-              </Suspense>
+              <ErrorBoundary>
+                <Suspense fallback={<PageLoader />}>
+                  <AdminDashboard />
+                </Suspense>
+              </ErrorBoundary>
             </ProtectedRoute>
           }
         >
@@ -268,6 +334,210 @@ export default function App() {
               </Suspense>
             }
           />
+          <Route
+            path="departments"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <DepartmentList />
+              </Suspense>
+            }
+          />
+          <Route
+            path="departments/:id"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <DepartmentDetail />
+              </Suspense>
+            }
+          />
+          <Route
+            path="employees"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <EmployeeList />
+              </Suspense>
+            }
+          />
+          <Route
+            path="employee-memos"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <EmployeeMemos />
+              </Suspense>
+            }
+          />
+          <Route
+            path="plantilla"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <PlantillaManagement />
+              </Suspense>
+            }
+          />
+          <Route
+            path="recruitment/jobs"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <JobPosting />
+              </Suspense>
+            }
+          />
+
+          <Route
+            path="performance-criteria"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <PerformanceCriteria />
+              </Suspense>
+            }
+          />
+          <Route
+            path="performance-reviews"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <PerformanceEvaluationDashboard />
+              </Suspense>
+            }
+          />
+          <Route
+            path="performance/cycles"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <ReviewCycles />
+              </Suspense>
+            }
+          />
+          <Route
+            path="performance/reviews/new"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <ReviewForm />
+              </Suspense>
+            }
+          />
+          <Route
+            path="performance/reviews/:id"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <ReviewForm />
+              </Suspense>
+            }
+          />
+          <Route
+            path="performance/drafts"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <DraftReviews />
+              </Suspense>
+            }
+          />
+          <Route
+            path="coaching-log"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <CoachingLog />
+              </Suspense>
+            }
+          />
+          <Route
+            path="development-plans"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <DevelopmentPlan />
+              </Suspense>
+            }
+          />
+          <Route
+            path="training-needs"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <TrainingNeeds />
+              </Suspense>
+            }
+          />
+
+          <Route
+            path="employees/:id/profile"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <EmployeeProfile />
+              </Suspense>
+            }
+          />
+          <Route
+            path="profile"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <MyProfile />
+              </Suspense>
+            }
+          />
+          <Route
+            path="department-attendance-reports"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <DepartmentAttendanceReports />
+              </Suspense>
+            }
+          />
+          <Route
+            path="tardiness-report"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <TardinessReport />
+              </Suspense>
+            }
+          />
+          {/* SPMS Full Compliance Routes */}
+          <Route
+            path="opcr"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <OPCRManagement />
+              </Suspense>
+            }
+          />
+          <Route
+            path="ipcr"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <IPCRManagement />
+              </Suspense>
+            }
+          />
+          <Route
+            path="ipcr/:id"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <IPCRDetail />
+              </Suspense>
+            }
+          />
+          <Route
+            path="appeals"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <Appeals />
+              </Suspense>
+            }
+          />
+          <Route
+            path="pmt"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <PMTDashboard />
+              </Suspense>
+            }
+          />
+          <Route
+            path="performance-notices"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <PerformanceNotices />
+              </Suspense>
+            }
+          />
+
         </Route>
 
         {/* Protected routes - Employee Dashboard */}
@@ -323,6 +593,14 @@ export default function App() {
             }
           />
           <Route
+            path="leave-credit"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <EmployeeLeavecredit />
+              </Suspense>
+            }
+          />
+          <Route
             path="undertime-request"
             element={
               <Suspense fallback={<PageLoader />}>
@@ -338,6 +616,87 @@ export default function App() {
               </Suspense>
             }
           />
+          <Route
+            path="ipcr"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <EmployeeIPCRManagement />
+              </Suspense>
+            }
+          />
+          <Route
+            path="ipcr/:id"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <EmployeeIPCRDetail />
+              </Suspense>
+            }
+          />
+          <Route
+            path="performance"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <EmployeePerformanceReviews />
+              </Suspense>
+            }
+          />
+          <Route
+            path="my-coaching"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <EmployeeCoachingLog />
+              </Suspense>
+            }
+          />
+          <Route
+            path="my-development-plans"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <EmployeeDevelopmentPlan />
+              </Suspense>
+            }
+          />
+          <Route
+            path="my-training"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <EmployeeTrainingNeeds />
+              </Suspense>
+            }
+          />
+          <Route
+            path="profile"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <MyProfile />
+              </Suspense>
+            }
+          />
+          <Route
+            path="notification-history"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <EmployeeNotificationHistory />
+              </Suspense>
+            }
+          />
+          <Route
+            path="my-department"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <EmployeeDepartment />
+              </Suspense>
+            }
+          />
+          <Route
+            path="my-memos"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <EmployeeMyMemos />
+              </Suspense>
+            }
+          />
+
         </Route>
 
         {/* Fallback */}

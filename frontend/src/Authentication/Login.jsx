@@ -1,51 +1,51 @@
-// Ito ang mga kinakailangang pag-import mula sa React at iba pang mga aklatan.
+// Required imports from React and other libraries.
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { IdCardLanyard, FileLock } from "lucide-react";
 import AuthLayout from "../components/Custom/Auth/AuthLayout";
 import { useAuth } from "../hooks/useAuth";
 
-// Ito ang pangunahing bahagi para sa pahina ng pag-login.
+// Main component for the login page.
 export default function Login() {
-  // Pinamamahalaan ng 'useState' ang estado ng form, mga error, at katayuan sa pag-load.
+  // 'useState' manages form state, errors, and loading status.
   const [form, setForm] = useState({ employeeId: "", password: "" });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [role, setRole] = useState("");
-  const navigate = useNavigate(); // Ginagamit para sa pag-redirect ng mga user.
+  const navigate = useNavigate(); // Used to redirect users.
   const { login } = useAuth();
 
-  // Ang 'useEffect' ay tumatakbo kapag nag-mount ang component. Sinusuri nito kung ang user ay naka-log in na.
+  // 'useEffect' runs when the component mounts. It checks if the user is already logged in.
   useEffect(() => {
-    // Awtomatikong pinupunan ang employee ID mula sa huling pagpaparehistro.
+    // Automatically populates the employee ID from the last registration.
     const lastUser = localStorage.getItem("lastRegisteredUser");
     if (lastUser) {
       try {
         const user = JSON.parse(lastUser);
         setForm((prev) => ({ ...prev, employeeId: user.email || "" }));
         setRole(user.role);
-        // Nililinis pagkatapos gamitin upang maiwasan ang pagkalito.
+        // Clears after use to avoid confusion.
         localStorage.removeItem("lastRegisteredUser");
       } catch (error) {
-        console.error("Error sa pag-parse ng huling user:", error);
+        console.error("Error parsing last user:", error);
         localStorage.removeItem("lastRegisteredUser");
       }
     }
   }, []);
 
-  // Pinangangasiwaan ang mga pagbabago sa mga input field.
+  // Handles changes in input fields.
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
     setError("");
   };
 
-  // Pinangangasiwaan ang pagsusumite ng form.
+  // Handles form submission.
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Bine-validate kung ang mga input ay napunan.
+    // Validates if inputs are filled.
     if (!form.employeeId.trim() || !form.password.trim()) {
-      setError("Pakipunan ang lahat ng mga patlang.");
+      setError("Please fill in all fields.");
       return;
     }
 
@@ -58,55 +58,53 @@ export default function Login() {
         password: form.password
       });
 
-      if (!user || !user.employeeId || !user.role) {
-        throw new Error("Di-wastong tugon mula sa server");
+      if (!user || !user.role) {
+        throw new Error("Invalid user data received");
       }
 
-      localStorage.setItem("user", JSON.stringify(user));
-
-      // Nagre-redirect batay sa papel ng user.
+      // Redirects based on user role.
       const role = user.role.toLowerCase();
       if (role === "hr" || role === "admin") {
         navigate("/admin-dashboard", { replace: true });
       } else if (role === "employee") {
         navigate("/employee-dashboard", { replace: true });
       } else {
-        throw new Error("Di-wastong papel ng user");
+        throw new Error("Invalid user role");
       }
     } catch (err) {
-      console.error("Error sa pag-login:", err);
+      console.error("Login error:", err);
       
-      // Pinangangasiwaan ang iba't ibang mga sitwasyon ng error.
+      // Handles different error scenarios.
       if (err.response) {
-        // Tumugon ang server na may error.
-        setError(err.response.data?.message || "Nabigo ang pag-login. Pakisubukang muli.");
+        // Server responded with an error.
+        setError(err.response.data?.message || "Login failed. Please try again.");
       } else if (err.request) {
-        // Ginawa ang kahilingan ngunit walang tugon.
-        setError("Hindi makakonekta sa server. Pakisuri ang iyong koneksyon.");
+        // Request was made but no response received.
+        setError("Unable to connect to server. Please check your connection.");
       } else {
-        // Iba pang mga error.
-        setError(err.message || "Isang hindi inaasahang error ang naganap.");
+        // Other errors.
+        setError(err.message || "An unexpected error occurred.");
       }
     } finally {
-      // Tinitiyak na ang pag-load ay naka-set sa false pagkatapos ng pagtatangka.
+      // Ensures loading is set to false after attempt.
       setLoading(false);
     }
   };
 
-  // Nagre-render ng login form UI.
+  // Renders the login form UI.
   return (
     <AuthLayout title="Welcome Back!">
-      {/* Nagpapakita ng mensahe ng error kung mayroon man */}
+      {/* Displays error message if any */}
       {error && (
         <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
           {error}
         </div>
       )}
 
-      {/* Nagpapakita ng papel ng user kung magagamit */}
+      {/* Displays user role if available */}
       {role && (
         <div className="flex items-center justify-center gap-2 mb-5 py-2 px-4 rounded-[10px] border-[2px] border-gray-200 text-sm font-medium text-gray-900 shadow-md">
-          <span className="opacity-80">Nagla-log in bilang:</span>
+          <span className="opacity-80">Logging in as:</span>
           <span
             className={`capitalize px-3 py-[3px] rounded-md shadow-md font-semibold text-gray-900 ${
               role.toLowerCase() === "admin" || role.toLowerCase() === "hr" ? "bg-gray-200" : "bg-gray-100"
@@ -117,7 +115,7 @@ export default function Login() {
         </div>
       )}
 
-      {/* Ang login form mismo */}
+      {/* The login form itself */}
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="text-sm text-gray-700 mb-1 block">Employee ID or Email</label>
@@ -153,21 +151,21 @@ export default function Login() {
           </div>
         </div>
 
-        {/* Pindutan para sa pagsusumite */}
+        {/* Submit button */}
         <button
           type="submit"
           disabled={loading}
           className="w-full bg-gradient-to-r from-slate-950 to-green-700 text-white py-2 rounded-[10px] font-semibold hover:from-slate-700 hover:to-green-500 transition disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {loading ? "Nagla-log in..." : "Mag-login"}
+          {loading ? "Logging in..." : "Login"}
         </button>
       </form>
 
-      {/* Link para sa pagpaparehistro */}
+      {/* Link for registration */}
       <p className="text-center mt-5 text-gray-700 text-sm">
-        Wala ka pang account?{" "}
+        Don't have an account?{" "}
         <Link to="/register" className="font-semibold text-black hover:underline">
-          Magrehistro dito
+          Register here
         </Link>
       </p>
     </AuthLayout>

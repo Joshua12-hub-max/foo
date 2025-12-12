@@ -58,7 +58,7 @@ function EventsList({ events = [] }) {
       <div className="flex items-center justify-between mb-4">
         <h4 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
           <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-          Events and Holidays
+          Upcoming Events
         </h4>
       </div>
       <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">

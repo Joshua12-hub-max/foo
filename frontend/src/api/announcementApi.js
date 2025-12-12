@@ -16,5 +16,22 @@ export const announcementApi = {
         } catch (error) {
             throw error;
         }
+    },
+    updateAnnouncement: async (id, data) => {
+        try {
+            const response = await api.put(`/announcement/${id}`, data);
+            return response;
+        } catch (error) {
+            throw error;
+        }
+    },
+    deleteAnnouncement: async (id) => {
+        try {
+            const response = await api.delete(`/announcement/${id}`);
+            return response;
+        } catch (error) {
+            throw error;
+        }
     }
 };
+

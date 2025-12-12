@@ -10,14 +10,14 @@ export default function WelcomeBanner({ user }) {
   });
 
   return (
-    <div className="flex justify-between items-center bg-[#274b46] text-[#F8F9FA] rounded-md p-2 shadow-sm mb-6">
+    <div className="flex justify-between items-center bg-gray-200 shadow-md text-gray-700 rounded-md p-2 mb-6">
       <div className="flex items-center gap-3">
-        <TrendingUp className="w-6 h-6 text-[#F8F9FA]" />
+        <TrendingUp className="w-6 h-6 text-gray-700" />
         <div>
           <h2 className="text-lg font-semibold">
             Welcome, {user?.name || "Admin"}
           </h2>
-          <p className="text-xs text-[#F8F9FA]">{formattedDate}</p>
+          <p className="text-xs text-gray-500">{formattedDate}</p>
         </div>
       </div>
 

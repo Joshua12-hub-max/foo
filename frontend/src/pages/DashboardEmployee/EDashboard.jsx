@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 
 import { useNavigate, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
-import { LayoutDashboard, CheckSquare, Clock, FileText, User, Calendar as CalendarIcon } from 'lucide-react';
+import { LayoutDashboard, CheckSquare, Clock, FileText, User, Calendar as CalendarIcon, Settings, Building2 } from 'lucide-react';
 import Sidebar from "../../components/Custom/DashboardEmployeeComponents/Sidebar";
 import Header from "../../components/Custom/DashboardEmployeeComponents/Header";
 import WelcomeBanner from "../../components/Custom/DashboardEmployeeComponents/WelcomeBanner";
@@ -83,7 +83,7 @@ export default function EmployeeDashboard() {
           });
           
           // Simple calculation (logic might need adjustment based on actual API response structure)
-          const logs = logsRes.data || [];
+          const logs = logsRes.data?.data || [];
           const present = logs.filter(l => l.status === 'Present').length;
           const late = logs.filter(l => l.status === 'Late').length;
           // Absent logic might be complex (missing logs vs status='Absent'), assuming API returns it or we rely on just present/late for now.
@@ -91,7 +91,7 @@ export default function EmployeeDashboard() {
 
           // Fetch leaves
           const leavesRes = await leaveApi.getMyLeaves();
-          const leaves = leavesRes.data || [];
+          const leaves = leavesRes.data?.leaves || [];
           
           const leaveBalance = leaves.length; 
 
@@ -128,6 +128,7 @@ export default function EmployeeDashboard() {
 
   const NAV_ITEMS = useMemo(() => [
     { name: 'Dashboard', icon: LayoutDashboard, action: 'dashboard' },
+    { name: 'My Department', icon: Building2, action: 'my-department' },
     { 
       name: 'Timekeeping',
       icon: CheckSquare,
@@ -137,14 +138,33 @@ export default function EmployeeDashboard() {
         { name: 'Daily Time Record', action: 'daily-time-record' },
         { name: 'DTR Corrections', action: 'dtr-corrections' },
         { name: 'Leave Request', action: 'leave-request' },
-        { name: 'Leave Forms', action: 'leave-forms' },
+        { name: 'Leave Credit', action: 'leave-credit' },
         { name: 'Schedule', action: 'schedule' },
         { name: 'Undertime Request', action: 'undertime-request' },
       ],
     },
-    { name: 'Performance', icon: Clock, action: 'performance' },
-    { name: 'Reports', icon: FileText, action: 'reports' },
-    { name: 'Profile', icon: User, action: 'profile' },
+    { 
+      name: 'Performance',
+      icon: Clock,
+      children: [
+        { name: 'My Reviews', action: 'performance' },
+        { name: 'My Coaching', action: 'my-coaching' },
+        { name: 'My Development Plans', action: 'my-development-plans' },
+        { name: 'My Training', action: 'my-training' },
+      ],
+    },
+    { name: 'Reports', icon: FileText, children: [
+        { name: 'My Memos', action: 'my-memos' },
+        { name: 'Notification History', action: 'notification-history' },
+      ],
+    },
+    { 
+      name: 'Settings',
+      icon: Settings,
+      children: [
+        { name: 'Profile', action: 'profile' },
+      ],
+    },
   ], []);
 
   const toggleSidebar = useCallback(() => setSidebarOpen(!sidebarOpen), [sidebarOpen]);

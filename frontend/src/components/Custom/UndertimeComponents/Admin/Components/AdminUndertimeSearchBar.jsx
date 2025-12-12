@@ -7,7 +7,7 @@ export const AdminUndertimeSearchBar = ({
   isLoading 
 }) => {
   return (
-    <div className="flex justify-between items-center mb-6">
+    <div className="flex justify-between items-center">
       <div className="relative w-80">
         <Search className="absolute left-3 top-2.5 w-4 h-4 text-[#274b46]" />
         <input
@@ -16,7 +16,7 @@ export const AdminUndertimeSearchBar = ({
           onChange={handleSearchChange}
           placeholder="Search by name, ID, department, or reason..."
           disabled={isLoading}
-          className="pl-10 pr-4 py-2 bg-[#F8F9FA] border border-gray-300 rounded-lg w-full text-sm"
+          className="pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-md shadow-sm w-full text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-gray-300 focus:border-gray-300 transition-all disabled:opacity-50"
           aria-label="Search undertime requests"  
         />
       </div>

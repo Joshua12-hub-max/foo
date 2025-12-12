@@ -402,25 +402,15 @@ export const resetPassword = async (req, res) => {
 
 export const getMe = async (req, res) => {
   try {
-    // User is already attached to req by verifyToken middleware (which we need to ensure is used)
-    // If not using middleware yet, we'd verify token here. 
-    // But typically getMe is protected.
-    // For now, let's extract from header if not in req.user
+    // User is attached to req by verifyToken middleware
+    const userId = req.user?.id;
     
-    let userId;
-    if (req.user) {
-      userId = req.user.id;
-    } else {
-       // Fallback manual verification if middleware isn't set up globally yet
-       const token = req.headers.authorization?.split(" ")[1];
-       if (!token) return res.status(401).json({ message: "Not authenticated" });
-       
-       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-       userId = decoded.id;
+    if (!userId) {
+      return res.status(401).json({ success: false, message: "Not authenticated" });
     }
 
     const [users] = await db.query(
-      "SELECT id, first_name, last_name, email, role, department, employee_id, avatar_url FROM authentication WHERE id = ?", 
+      "SELECT id, first_name, last_name, email, role, department, employee_id, avatar_url, job_title, date_hired, employment_status FROM authentication WHERE id = ?", 
       [userId]
     );
 
@@ -439,7 +429,10 @@ export const getMe = async (req, res) => {
         role: user.role,
         department: user.department,
         employeeId: user.employee_id,
-        avatar: user.avatar_url
+        avatar: user.avatar_url,
+        jobTitle: user.job_title,
+        dateHired: user.date_hired,
+        employmentStatus: user.employment_status
       }
     });
 
@@ -531,7 +524,7 @@ export const login = async (req, res) => {
     export const getUsers = async (req, res) => {
       try {
         const [users] = await db.query(
-          "SELECT id, employee_id, first_name, last_name, department FROM authentication ORDER BY last_name ASC"
+          "SELECT id, employee_id, first_name, last_name, email, department, job_title, employment_status, role, avatar_url FROM authentication ORDER BY last_name ASC"
         );
     
         return res.status(200).json({
@@ -549,7 +542,106 @@ export const login = async (req, res) => {
         });
       }
     };
+
+    export const getUserById = async (req, res) => {
+      const { id } = req.params;
+      try {
+        const [users] = await db.query(
+          "SELECT id, employee_id, first_name, last_name, email, department, job_title, employment_status, date_hired, manager_id, role, avatar_url FROM authentication WHERE id = ?",
+          [id]
+        );
+
+        if (users.length === 0) {
+          return res.status(404).json({ success: false, message: "User not found" });
+        }
+
+        const user = users[0];
+        
+        // Fetch Manager Name if manager_id exists
+        let supervisor = null;
+        if (user.manager_id) {
+            const [managers] = await db.query("SELECT first_name, last_name FROM authentication WHERE id = ?", [user.manager_id]);
+            if (managers.length > 0) {
+                supervisor = `${managers[0].first_name} ${managers[0].last_name}`;
+            }
+        }
+
+        return res.status(200).json({
+          success: true,
+          data: {
+            ...user,
+            supervisor
+          }
+        });
+
+      } catch (err) {
+        console.error("Get User By ID Error:", err);
+        return res.status(500).json({ success: false, message: "Failed to fetch user details" });
+      }
+    };
     
+
+export const updateProfile = async (req, res) => {
+  try {
+    // verifyToken middleware attaches user to req
+    const userId = req.user ? req.user.id : null;
+    
+    if (!userId) {
+        return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+
+    const { first_name, last_name, email } = req.body;
+    const file = req.file;
+
+    let avatarUrl;
+    if (file) {
+      // Assuming server is running on the same host/port and serves /uploads
+      // We store the relative path. The frontend should prepend API URL if needed, 
+      // or we store full URL. Usually storing relative is safer for migrations.
+      // However, the getMe returns 'avatar_url' directly.
+      // Let's store relative path: /uploads/avatars/filename
+      avatarUrl = `http://localhost:5000/uploads/avatars/${file.filename}`; // Hardcoded for now, or use process.env.API_URL
+    }
+
+    const updates = [];
+    const params = [];
+
+    if (first_name) { updates.push("first_name = ?"); params.push(first_name); }
+    if (last_name) { updates.push("last_name = ?"); params.push(last_name); }
+    if (email) { updates.push("email = ?"); params.push(email); }
+    if (avatarUrl) { updates.push("avatar_url = ?"); params.push(avatarUrl); }
+
+    if (updates.length === 0) {
+      return res.status(400).json({ success: false, message: "No changes provided" });
+    }
+
+    params.push(userId);
+    
+    await db.query(`UPDATE authentication SET ${updates.join(", ")} WHERE id = ?`, params);
+
+    // Fetch updated user
+    const [users] = await db.query("SELECT * FROM authentication WHERE id = ?", [userId]);
+    const user = users[0];
+
+    res.json({
+      success: true, 
+      message: "Profile updated successfully",
+      data: {
+        id: user.id,
+        name: `${user.first_name} ${user.last_name}`,
+        email: user.email,
+        role: user.role,
+        department: user.department,
+        employeeId: user.employee_id,
+        avatar: user.avatar_url
+      }
+    });
+
+  } catch (error) {
+    console.error("Update Profile Error:", error);
+    res.status(500).json({ success: false, message: "Failed to update profile" });
+  }
+};
 
 export const logout = (req, res) => {
   res.clearCookie('accessToken', {

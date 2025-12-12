@@ -48,8 +48,18 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   };
 
+  // Update user profile (for syncing changes across app)
+  const updateProfile = (updates) => {
+    setUser(prev => ({
+      ...prev,
+      ...updates
+    }));
+  };
+
   const value = {
     user,
+    setUser,
+    updateProfile,
     role: user?.role,
     department: user?.department,
     loading,

@@ -11,18 +11,20 @@ import { HOURS_12, EVENT_COLORS } from '../../components/Custom/CalendarComponen
 import CalendarHeader from '../../components/Custom/CalendarComponents/shared/components/CalendarHeader';
 import CalendarControls from '../../components/Custom/CalendarComponents/shared/components/CalendarControls';
 import CalendarGrid from '../../components/Custom/CalendarComponents/shared/components/CalendarGrid';
-import AgendaView from '../../components/Custom/CalendarComponents/shared/components/AgendaView';
+import AdminAgendaView from '../../components/Custom/CalendarComponents/admin/components/AdminAgendaView';
 import DrawerSidebar from '../../components/Custom/CalendarComponents/shared/components/DrawerSidebar';
 import EventDetailsModal from '../../components/Custom/CalendarComponents/shared/Modals/EventDetailsModal';
 import ConfirmDeleteModal from '../../components/Custom/CalendarComponents/shared/Modals/ConfirmDeleteModal';
 import AdminCalendarActions from '../../components/Custom/CalendarComponents/AdminCalendarActions';
-import { Plus, Calendar as CalendarIcon, Clock, RefreshCw, List } from 'lucide-react';
 import { eventApi } from '../../api/eventApi';
-import { getEmployees } from '../../api/employeeApi';
+import { fetchEmployees } from '../../api/employeeApi';
+import { fetchDepartments } from '../../api/departmentApi';
 import AddEventModal from '../../components/Custom/CalendarComponents/admin/Modals/AddEventModal';
 import EditEventModal from '../../components/Custom/CalendarComponents/admin/Modals/EditEventModal';
 import ScheduleModal from '../../components/Custom/CalendarComponents/admin/Modals/ScheduleModal';
 import CreateAnnouncementModal from '../../components/Custom/CalendarComponents/admin/Modals/CreateAnnouncementModal';
+import EditAnnouncementModal from '../../components/Custom/CalendarComponents/admin/Modals/EditAnnouncementModal';
+import EditScheduleModal from '../../components/Custom/CalendarComponents/admin/Modals/EditScheduleModal';
 
 // Utilities
 import { holidays } from '../../utils/holidays';
@@ -30,20 +32,24 @@ import { getRandomEventColor } from '../../components/Custom/CalendarComponents/
 import { scheduleApi } from '../../api/scheduleApi';
 import { announcementApi } from '../../api/announcementApi';
 
+const convertTo24Hour = (timeStr) => {
+  if (!timeStr) return 9;
+  // Handle case where timeStr is already a number
+  if (typeof timeStr === 'number') return timeStr;
+  // Handle case where timeStr is a string but not in AM/PM format
+  if (typeof timeStr !== 'string' || timeStr.length < 3) return 9;
+  const period = timeStr.slice(-2).toUpperCase();
+  let hour = parseInt(timeStr.slice(0, -2));
+  if (isNaN(hour)) return 9;
+  if (period === 'PM' && hour !== 12) hour += 12;
+  if (period === 'AM' && hour === 12) hour = 0;
+  return hour;
+};
+
 export default function AdminCalendar() {
   // Calendar state management
   const calendarState = useCalendarState();
-  const { 
-    today, 
-    currentDate, 
-    setCurrentDate,
-    isDrawerOpen, 
-    setIsDrawerOpen,
-    showHolidays, 
-    setShowHolidays,
-    showEventDetails, 
-    setShowEventDetails
-  } = calendarState;
+  const { today, currentDate, setCurrentDate, isDrawerOpen, setIsDrawerOpen, showHolidays, setShowHolidays, showEventDetails, setShowEventDetails } = calendarState;
 
   // Navigation handlers
   const navigation = useCalendarNav({ setCurrentDate });
@@ -53,6 +59,7 @@ export default function AdminCalendar() {
   const [announcements, setAnnouncements] = useState([]);
   const [schedules, setSchedules] = useState([]);
   const [employees, setEmployees] = useState([]);
+  const [departments, setDepartments] = useState([]);
 
   // Fetch Data
   const fetchData = useCallback(async () => {
@@ -78,9 +85,19 @@ export default function AdminCalendar() {
         }
 
         // Fetch employees for filters
-        const employeeResponse = await getEmployees();
-        if (employeeResponse.data && employeeResponse.data.employees) {
-            setEmployees(employeeResponse.data.employees);
+        const employeeResponse = await fetchEmployees();
+        if (employeeResponse.success && employeeResponse.employees) {
+            setEmployees(employeeResponse.employees);
+        }
+
+        // Fetch departments for event modal
+        try {
+          const deptResponse = await fetchDepartments();
+          if (deptResponse.departments) {
+            setDepartments(deptResponse.departments);
+          }
+        } catch (deptError) {
+          console.error("Failed to fetch departments:", deptError);
         }
       } catch (error) {
         console.error("Failed to fetch data:", error);
@@ -98,61 +115,51 @@ export default function AdminCalendar() {
   const [showAnnouncementModal, setShowAnnouncementModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [eventToEdit, setEventToEdit] = useState(null);
+  const [announcementToEdit, setAnnouncementToEdit] = useState(null);
+  const [scheduleToEdit, setScheduleToEdit] = useState(null);
+  const [showEditAnnouncement, setShowEditAnnouncement] = useState(false);
+  const [showEditSchedule, setShowEditSchedule] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
+  const [deleteType, setDeleteType] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
   // View state
   const [currentView, setCurrentView] = useState('month');
 
   // Form states
-  const [newEvent, setNewEvent] = useState({ title: '', time: 9, date: '' });
-  const [newSchedule, setNewSchedule] = useState({
-    title: '', 
-    employee_id: '',
-    startDate: '', 
-    endDate: '', 
-    startTime: '09:00', 
-    endTime: '17:00', 
-    description: '', 
-    repeat: 'none'
-  });
+  const [newEvent, setNewEvent] = useState({ title: '', time: 9, date: '', startDate: '', endDate: '', department: '', description: '' });
+  const [newSchedule, setNewSchedule] = useState({ title: '', employee_id: '', startDate: '', endDate: '', startTime: '09:00', endTime: '17:00', description: '', repeat: 'none' });
 
   // Calendar data processing
-  const calendarData = useCalendarData({
-    currentDate,
-    events,
-    showHolidays,
-    holidays,
-    announcements
-  });
+  const calendarData = useCalendarData({ currentDate, events, showHolidays, holidays, announcements });
   const { month, day, year, dayName, displayedEvents } = calendarData;
 
   // Event handlers
   const handleAddEventClick = useCallback((time = 9) => {
-    setNewEvent({ title: '', time, date: currentDate.toISOString().split('T')[0] });
+    const todayStr = currentDate.toISOString().split('T')[0];
+    setNewEvent({ title: '', time, date: todayStr, startDate: todayStr, endDate: todayStr, department: '', description: '' });
     setShowAddEvent(true);
   }, [currentDate]);
 
   const handleAddEvent = useCallback(async () => {
-    if (newEvent.title.trim() && newEvent.date) {
+    const startDate = newEvent.startDate || newEvent.date;
+    if (newEvent.title.trim() && startDate) {
       try {
-          await eventApi.createEvent({
-              ...newEvent,
-              time: parseInt(newEvent.time),
-          });
+          await eventApi.createEvent({title: newEvent.title, start_date: startDate, end_date: newEvent.endDate || startDate, date: startDate, time: convertTo24Hour(newEvent.time), department: newEvent.department || null, description: newEvent.description || null,});
           
           // Refresh data
           await fetchData();
           
-          setNewEvent({ title: '', time: 9, date: '' });
+          setNewEvent({ title: '', time: 9, date: '', startDate: '', endDate: '', department: '' });
           setShowAddEvent(false);
           alert("Event created successfully!");
       } catch (error) {
           console.error("Failed to create event:", error);
-          alert("Failed to create event.");
+          const errorMessage = error.response?.data?.error || error.message || "Failed to create event.";
+          alert(`Failed to create event: ${errorMessage}`);
       }
     } else {
-        alert("Please fill in the Event Title and Date.");
+        alert("Please fill in the Event Title and Start Date.");
     }
   }, [newEvent, fetchData]);
 
@@ -164,16 +171,7 @@ export default function AdminCalendar() {
         // Refresh data
         await fetchData(); 
 
-        setNewSchedule({ 
-          title: '', 
-          employee_id: '',
-          startDate: '', 
-          endDate: '', 
-          startTime: '09:00', 
-          endTime: '17:00', 
-          description: '', 
-          repeat: 'none' 
-        });
+        setNewSchedule({ title: '', employee_id: '', startDate: '', endDate: '', startTime: '09:00', endTime: '17:00', description: '', repeat: 'none' });
         setShowScheduleModal(false);
         alert("Schedule created successfully!");
       } catch (error) {
@@ -225,9 +223,64 @@ export default function AdminCalendar() {
     }
   }, [eventToEdit, fetchData]);
 
-  // Delete event/schedule handler
+  // Edit announcement handler
+  const handleEditAnnouncement = useCallback((announcement) => {
+    setAnnouncementToEdit(announcement);
+    setShowEditAnnouncement(true);
+  }, []);
+
+  // Update announcement handler
+  const handleUpdateAnnouncement = useCallback(async (id, updatedData) => {
+    try {
+      await announcementApi.updateAnnouncement(id, updatedData);
+      await fetchData();
+      setShowEditAnnouncement(false);
+      setAnnouncementToEdit(null);
+      alert('Announcement updated successfully!');
+    } catch (error) {
+      console.error('Failed to update announcement:', error);
+      alert('Failed to update announcement. Please try again.');
+    }
+  }, [fetchData]);
+
+  // Delete announcement handler
+  const handleDeleteAnnouncement = useCallback((item) => {
+    setItemToDelete(item);
+    setDeleteType('announcement');
+    setShowDeleteConfirm(true);
+  }, []);
+
+  // Edit schedule handler
+  const handleEditSchedule = useCallback((schedule) => {
+    setScheduleToEdit(schedule);
+    setShowEditSchedule(true);
+  }, []);
+
+  // Update schedule handler
+  const handleUpdateSchedule = useCallback(async (id, updatedData) => {
+    try {
+      await scheduleApi.updateSchedule(id, updatedData);
+      await fetchData();
+      setShowEditSchedule(false);
+      setScheduleToEdit(null);
+      alert('Schedule updated successfully!');
+    } catch (error) {
+      console.error('Failed to update schedule:', error);
+      alert('Failed to update schedule. Please try again.');
+    }
+  }, [fetchData]);
+
+  // Delete schedule handler
+  const handleDeleteSchedule = useCallback((item) => {
+    setItemToDelete(item);
+    setDeleteType('schedule');
+    setShowDeleteConfirm(true);
+  }, []);
+
+  // Delete event handler
   const handleDeleteClick = useCallback((item) => {
     setItemToDelete(item);
+    setDeleteType('event');
     setShowEventDetails(null);
     setShowDeleteConfirm(true);
   }, []);
@@ -238,12 +291,12 @@ export default function AdminCalendar() {
     setIsDeleting(true);
     try {
       if (itemToDelete.id) {
-        // Check if it's a schedule or event
-        if (itemToDelete.day_of_week) {
-          // It's a schedule
+        // Delete based on type
+        if (deleteType === 'announcement') {
+          await announcementApi.deleteAnnouncement(itemToDelete.id);
+        } else if (deleteType === 'schedule') {
           await scheduleApi.deleteSchedule(itemToDelete.id);
         } else {
-          // It's an event
           await eventApi.deleteEvent(itemToDelete.id);
         }
         await fetchData(); // Refresh data
@@ -251,6 +304,7 @@ export default function AdminCalendar() {
       }
       setShowDeleteConfirm(false);
       setItemToDelete(null);
+      setDeleteType(null);
     } catch (error) {
       console.error("Failed to delete:", error);
       alert("Failed to delete. Please try again.");
@@ -317,10 +371,19 @@ export default function AdminCalendar() {
             />
           )}
           {currentView === 'agenda' && (
-            <AgendaView
+            <AdminAgendaView
               events={events}
               announcements={announcements}
-              onEventClick={setShowEventDetails}
+              schedules={schedules}
+              onAddEvent={() => handleAddEventClick(9)}
+              onEditEvent={handleEditEvent}
+              onDeleteEvent={handleDeleteClick}
+              onAddAnnouncement={() => setShowAnnouncementModal(true)}
+              onEditAnnouncement={handleEditAnnouncement}
+              onDeleteAnnouncement={handleDeleteAnnouncement}
+              onAddSchedule={() => setShowScheduleModal(true)}
+              onEditSchedule={handleEditSchedule}
+              onDeleteSchedule={handleDeleteSchedule}
             />
           )}
         </div>
@@ -368,6 +431,7 @@ export default function AdminCalendar() {
         onClose={() => setShowAddEvent(false)}
         onAdd={handleAddEvent}
         hours={HOURS_12}
+        departments={departments}
       />
 
       {/* Schedule Modal */}
@@ -397,6 +461,29 @@ export default function AdminCalendar() {
         }}
         onUpdate={handleUpdateEvent}
         hours={HOURS_12}
+        departments={departments}
+      />
+
+      {/* Edit Announcement Modal */}
+      <EditAnnouncementModal
+        show={showEditAnnouncement}
+        announcement={announcementToEdit}
+        onClose={() => {
+          setShowEditAnnouncement(false);
+          setAnnouncementToEdit(null);
+        }}
+        onUpdate={handleUpdateAnnouncement}
+      />
+
+      {/* Edit Schedule Modal */}
+      <EditScheduleModal
+        show={showEditSchedule}
+        schedule={scheduleToEdit}
+        onClose={() => {
+          setShowEditSchedule(false);
+          setScheduleToEdit(null);
+        }}
+        onUpdate={handleUpdateSchedule}
       />
 
       {/* Confirm Delete Modal */}

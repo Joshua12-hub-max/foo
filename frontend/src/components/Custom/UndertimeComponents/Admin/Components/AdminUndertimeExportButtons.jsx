@@ -7,7 +7,7 @@ export const AdminUndertimeExportButtons = ({
   filteredDataLength 
 }) => {
   return (
-    <div className="flex justify-between items-center mb-4">
+    <div className="flex justify-between items-center">
       <div className="flex items-center space-x-3">
         <span className="text-sm font-semibold text-gray-800">Export Options:</span>
         <button

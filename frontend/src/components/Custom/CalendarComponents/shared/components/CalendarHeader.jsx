@@ -4,8 +4,8 @@
  */
 const CalendarHeader = ({ month, year }) => {
   return (
-    <div className="bg-[#274b46] border-b border-[#305d56] px-6 py-4 shadow-sm">
-      <h1 className="text-xl-md font-bold text-[#F8F9FA]">
+    <div className="bg-gray-200 shadow-md px-6 py-4">
+      <h1 className="text-xl font-bold text-gray-700">
         {month} {year}
       </h1>
     </div>

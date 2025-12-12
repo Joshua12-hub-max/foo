@@ -92,5 +92,54 @@ export const leaveApi = {
         } catch (error) {
             throw error;
         }
+    },
+
+    // ============ LEAVE CREDIT REQUESTS ============
+    
+    // Employee applies for leave credit
+    applyForCredit: async (data) => {
+        try {
+            const response = await api.post('/leave/credit-requests/apply', data);
+            return response;
+        } catch (error) {
+            throw error;
+        }
+    },
+    // Employee gets their credit requests
+    getMyCreditRequests: async () => {
+        try {
+            const response = await api.get('/leave/credit-requests/my-requests');
+            return response;
+        } catch (error) {
+            throw error;
+        }
+    },
+    // Admin gets all credit requests
+    getAllCreditRequests: async () => {
+        try {
+            const response = await api.get('/leave/credit-requests/all');
+            return response;
+        } catch (error) {
+            throw error;
+        }
+    },
+    // Admin approves credit request
+    approveCreditRequest: async (id, remarks) => {
+        try {
+            const response = await api.put(`/leave/credit-requests/${id}/approve`, { remarks });
+            return response;
+        } catch (error) {
+            throw error;
+        }
+    },
+    // Admin rejects credit request
+    rejectCreditRequest: async (id, remarks) => {
+        try {
+            const response = await api.put(`/leave/credit-requests/${id}/reject`, { remarks });
+            return response;
+        } catch (error) {
+            throw error;
+        }
     }
 };
+

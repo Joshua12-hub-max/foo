@@ -30,7 +30,7 @@ const AttendanceTable = ({ data, headers, isLoading, pagination }) => {
     <div className="flex flex-col gap-4">
       <div className="overflow-x-auto bg-gray-50 rounded-lg scrollbar-bg-white">
         <table className="w-full min-w-[1200px]">
-          <thead className="bg-[#274b46] text-[#F8F9FA]">
+          <thead className="bg-gray-200 shadow-md text-gray-700">
             <tr>
               {headers.map((header, index) => (
                 <th key={index} className="px-6 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap">
@@ -41,7 +41,7 @@ const AttendanceTable = ({ data, headers, isLoading, pagination }) => {
           </thead>
           <tbody className="divide-y divide-slate-100">
             {data.map((row) => (
-              <tr key={row.id} className="hover:bg-gray-50 transition-colors">
+              <tr key={row.id} className="hover:bg-[#F8F9FA] hover:shadow-xl transition-colors">
                 {/* Department */}
                 <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">
                   {row.department}
@@ -72,11 +72,6 @@ const AttendanceTable = ({ data, headers, isLoading, pagination }) => {
                   {row.late}
                 </td>
 
-                {/* WFH */}
-                <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">
-                  {row.wfh}
-                </td>
-
                 {/* Undertime */}
                 <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">
                   {row.undertime}
@@ -85,11 +80,6 @@ const AttendanceTable = ({ data, headers, isLoading, pagination }) => {
                 {/* Date */}
                 <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">
                   {formatDate(row.date)}
-                </td>
-
-                {/* Overtime */}
-                <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">
-                  {row.overtime}
                 </td>
 
                 {/* On Leave */}
@@ -154,7 +144,7 @@ const AttendanceTable = ({ data, headers, isLoading, pagination }) => {
             <button
               onClick={pagination.prevPage}
               disabled={pagination.currentPage === 1}
-              className="px-4 py-2 bg-white border border-gray-300 rounded-lg shadow-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-all text-sm font-medium text-gray-800"
+              className="px-4 py-2 bg-gray-200 border border-gray-200 rounded-lg shadow-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-200 transition-all text-sm font-medium text-gray-800"
             >
               Previous
             </button>
@@ -164,7 +154,7 @@ const AttendanceTable = ({ data, headers, isLoading, pagination }) => {
             <button
               onClick={pagination.nextPage}
               disabled={pagination.currentPage === pagination.totalPages}
-              className="px-4 py-2 bg-white border border-gray-300 rounded-lg shadow-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-all text-sm font-medium text-gray-800"
+              className="px-6 py-2 bg-gray-200 border border-gray-200 rounded-lg shadow-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-200 transition-all text-sm font-medium text-gray-800"
             >
               Next
             </button>

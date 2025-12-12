@@ -1,36 +1,23 @@
 import { useMemo, useState } from "react";
 
-const mockReportData = [
-  {
-    outstanding: 5,
-    exceedsExpectations: 15,
-    meetsExpectations: 50,
-    needsImprovement: 10,
-    poorPerformance: 5,
-  }
-];
-
-export default function PerformancePieChart({ reportData = mockReportData }) {
+export default function PerformancePieChart({ reportData = [], isLoading = false }) {
   const [hoveredIndex, setHoveredIndex] = useState(null);
 
+  // Transform data - accepts either array format or single object
   const chartData = useMemo(() => {
-    if (!reportData.length) return [];
-
-    const totals = reportData.reduce((acc, curr) => {
-      acc.outstanding += curr.outstanding || 0;
-      acc.exceedsExpectations += curr.exceedsExpectations || 0;
-      acc.meetsExpectations += curr.meetsExpectations || 0;
-      acc.needsImprovement += curr.needsImprovement || 0;
-      acc.poorPerformance += curr.poorPerformance || 0;
-      return acc;
-    }, { outstanding: 0, exceedsExpectations: 0, meetsExpectations: 0, needsImprovement: 0, poorPerformance: 0 });
+    // Handle empty or invalid data
+    if (!reportData || (Array.isArray(reportData) && !reportData.length)) return [];
+    
+    // Get the data object (supports both array and object input)
+    const data = Array.isArray(reportData) ? reportData[0] : reportData;
+    if (!data) return [];
 
     return [
-      { label: 'Outstanding', value: totals.outstanding, color: '#79B791' }, // Matching StatCard Present color
-      { label: 'Exceeds Expectations', value: totals.exceedsExpectations, color: '#2C497F' }, // Matching StatCard On-Leave color
-      { label: 'Meets Expectations', value: totals.meetsExpectations, color: '#778797' }, // Matching StatCard Hired color
-      { label: 'Needs Improvement', value: totals.needsImprovement, color: '#CF9033' }, // Matching StatCard Late color
-      { label: 'Poor Performance', value: totals.poorPerformance, color: '#7A0000' }, // Matching StatCard Absent color
+      { label: 'Outstanding', value: data.outstanding || 0, color: '#79B791' },
+      { label: 'Exceeds Expectations', value: data.exceedsExpectations || 0, color: '#2C497F' },
+      { label: 'Meets Expectations', value: data.meetsExpectations || 0, color: '#778797' },
+      { label: 'Needs Improvement', value: data.needsImprovement || 0, color: '#CF9033' },
+      { label: 'Poor Performance', value: data.poorPerformance || 0, color: '#7A0000' },
     ].filter(item => item.value > 0);
   }, [reportData]);
 
@@ -79,10 +66,24 @@ export default function PerformancePieChart({ reportData = mockReportData }) {
     });
   }, [chartData, totalValue]);
 
-  if (!reportData.length || totalValue === 0) {
+  // Loading state
+  if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[300px] text-gray-400">
-        <p>No performance data available</p>
+      <div className="flex flex-col items-center justify-center min-h-[300px]">
+        <div className="animate-spin rounded-full h-10 w-10 border-3 border-gray-200 border-t-gray-600"></div>
+        <p className="text-sm text-gray-500 mt-3">Loading performance data...</p>
+      </div>
+    );
+  }
+
+  // Empty state - no performance reviews yet
+  if (totalValue === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[300px] text-center">
+        <h4 className="text-sm font-semibold text-gray-700 mb-1">No Performance Data</h4>
+        <p className="text-xs text-gray-500 max-w-[200px]">
+          Performance evaluation data will appear here once reviews are completed.
+        </p>
       </div>
     );
   }

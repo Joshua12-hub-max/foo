@@ -16,7 +16,7 @@ export const EmployeeDTRSearchBar = ({
           onChange={handleSearchChange}
           placeholder="Search by date, status, or remarks..."
           disabled={isLoading}
-          className="pl-10 pr-4 py-2 bg-[#F8F9FA] border border-gray-300 rounded-lg w-full text-sm"
+          className="pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-md shadow-sm w-full text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-gray-300 focus:border-gray-300 transition-all disabled:opacity-50"
           aria-label="Search DTR records"  
         />
       </div>

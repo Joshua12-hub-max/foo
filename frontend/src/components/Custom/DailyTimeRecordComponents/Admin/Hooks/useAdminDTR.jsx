@@ -10,12 +10,7 @@ export const useAdminDTR = () => {
   const { sidebarOpen = true } = outletContext;
 
   // State management
-  const [filters, setFilters] = useState({
-    department: "",
-    employee: "",
-    fromDate: "",
-    toDate: "",
-  });
+  const [filters, setFilters] = useState({  department: "", employee: "", fromDate: "", toDate: "", });
 
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
@@ -60,11 +55,23 @@ export const useAdminDTR = () => {
             const end = new Date(item.time_out);
             hoursWorked = ((end - start) / (1000 * 60 * 60)).toFixed(2);
           }
+          
+          // Format date to readable format (e.g., "Dec 8, 2025")
+          let formattedDate = item.date;
+          if (item.date) {
+            const dateObj = new Date(item.date);
+            formattedDate = dateObj.toLocaleDateString('en-US', { 
+              month: 'short', 
+              day: 'numeric', 
+              year: 'numeric' 
+            });
+          }
+          
           return {
             id: item.employee_id,
             name: item.employee_name || `${item.first_name || ''} ${item.last_name || ''}`.trim(),
             department: item.department || 'N/A',
-            date: item.date,
+            date: formattedDate,
             timeIn: item.time_in ? new Date(item.time_in).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--',
             timeOut: item.time_out ? new Date(item.time_out).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--',
             hoursWorked: hoursWorked,
@@ -89,7 +96,6 @@ export const useAdminDTR = () => {
   }, []);
 
   const handleApply = useCallback(() => {
-    console.log("Filters applied:", JSON.stringify(filters, null, 2));
     setSuccessMessage(MESSAGES.FILTERS_APPLIED);
   }, [filters]);
 

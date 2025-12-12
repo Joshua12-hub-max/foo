@@ -3,12 +3,10 @@ import { Download } from 'lucide-react';
 
 const AttendanceExport = ({ data, title }) => {
   const handleExportCSV = () => {
-    console.log("Exporting CSV:", data);
     alert("CSV Export coming soon!");
   };
 
   const handleExportPDF = () => {
-    console.log("Exporting PDF:", data);
     alert("PDF Export coming soon!");
   };
 

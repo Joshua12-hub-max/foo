@@ -5,7 +5,7 @@ export const EmployeeDTRHeader = ({ today, handleRefresh, isLoading, employeeInf
     <>
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h2 className="text-2xl font-bold text-gray-800">My Daily Time Record</h2>
+          <h2 className="text-2xl font-bold text-gray-800">Daily Time Record</h2>
           <p className="text-sm text-gray-800 mt-1">
             {employeeInfo ? `${employeeInfo.name} - ${employeeInfo.department}` : 'View your time attendance records'}
           </p>

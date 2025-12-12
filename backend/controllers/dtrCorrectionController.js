@@ -19,7 +19,17 @@ export const createCorrection = async (req, res) => {
       [employee_id, date_time, in_time || null, out_time || null, corrected_time_in || null, corrected_time_out || null, reason]
     );
 
-    // Notify Admins
+    // Notify Employee of submission (pending)
+    await createNotification({
+      recipientId: employee_id,
+      senderId: null,
+      title: "DTR Correction Submitted",
+      message: `Your DTR correction request for ${date_time} has been submitted and is pending review.`,
+      type: "dtr_correction_pending",
+      referenceId: result.insertId
+    });
+
+    // Notify Admins of new request (pending)
     await notifyAdmins({
       senderId: employee_id,
       title: "DTR Correction Request",
@@ -96,15 +106,35 @@ export const approveCorrection = async (req, res) => {
         status = 'Present' -- Ensure status is Present if they corrected it
     `, [correction.employee_id, correction.date_time, correction.corrected_time_in, correction.corrected_time_out]);
 
-    // Notify Employee
-    await createNotification({
-      recipientId: correction.employee_id,
-      senderId: approved_by,
-      title: "DTR Correction Approved",
-      message: `Your DTR correction for ${correction.date_time} has been approved.`,
-      type: "dtr_approval",
-      referenceId: id
-    });
+    // Delete old pending notifications and create approved notifications
+    try {
+      // Delete ALL pending notifications for this request
+      await db.query(
+        "DELETE FROM notifications WHERE reference_id = ? AND type IN ('dtr_correction_pending', 'dtr_correction')",
+        [id]
+      );
+
+      // Notify Employee of approval
+      await createNotification({
+        recipientId: correction.employee_id,
+        senderId: approved_by,
+        title: "DTR Correction Approved",
+        message: `Your DTR correction for ${correction.date_time} has been approved.`,
+        type: "dtr_correction_approved",
+        referenceId: id
+      });
+
+      // Update admin notifications to approved
+      await notifyAdmins({
+        senderId: correction.employee_id,
+        title: "DTR Correction Approved",
+        message: `DTR correction for ${correction.date_time} by ${correction.employee_id} has been approved.`,
+        type: "dtr_correction_approved",
+        referenceId: id
+      });
+    } catch (notifyErr) {
+      console.error('Notification error:', notifyErr.message);
+    }
 
     await connection.commit();
     res.status(200).json({ message: "Correction approved and DTR updated successfully" });
@@ -131,14 +161,32 @@ export const rejectCorrection = async (req, res) => {
     // Get employee ID
     const [rows] = await db.query("SELECT employee_id, date_time FROM dtr_corrections WHERE id = ?", [id]);
     if (rows.length > 0) {
-       await createNotification({
-         recipientId: rows[0].employee_id,
-         senderId: approved_by,
-         title: "DTR Correction Rejected",
-         message: `Your DTR correction for ${rows[0].date_time} was rejected. Reason: ${reason}`,
-         type: "dtr_rejection",
-         referenceId: id
-       });
+      // Delete old pending notifications and create rejected notifications
+      try {
+        await db.query(
+          "DELETE FROM notifications WHERE reference_id = ? AND type IN ('dtr_correction_pending', 'dtr_correction')",
+          [id]
+        );
+
+        await createNotification({
+          recipientId: rows[0].employee_id,
+          senderId: approved_by,
+          title: "DTR Correction Rejected",
+          message: `Your DTR correction for ${rows[0].date_time} was rejected. Reason: ${reason}`,
+          type: "dtr_correction_rejected",
+          referenceId: id
+        });
+
+        await notifyAdmins({
+          senderId: rows[0].employee_id,
+          title: "DTR Correction Rejected",
+          message: `DTR correction for ${rows[0].date_time} by ${rows[0].employee_id} has been rejected.`,
+          type: "dtr_correction_rejected",
+          referenceId: id
+        });
+      } catch (notifyErr) {
+        console.error('Notification error:', notifyErr.message);
+      }
     }
 
     res.status(200).json({ message: "Correction rejected" });
