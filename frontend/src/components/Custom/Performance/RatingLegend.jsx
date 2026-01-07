@@ -1,5 +1,4 @@
 import React from 'react';
-import { HelpCircle, Star, CheckCircle, AlertCircle, XCircle, MinusCircle } from 'lucide-react';
 import { CSC_RATING_SCALE } from '../../../api/performanceApi';
 
 /**
@@ -7,17 +6,6 @@ import { CSC_RATING_SCALE } from '../../../api/performanceApi';
  * Provides transparency by showing what each rating means
  */
 const RatingLegend = ({ compact = false, showHeader = true }) => {
-  const getIcon = (score) => {
-    switch (score) {
-      case 5: return <Star className="text-green-600" size={16} />;
-      case 4: return <CheckCircle className="text-blue-600" size={16} />;
-      case 3: return <MinusCircle className="text-yellow-600" size={16} />;
-      case 2: return <AlertCircle className="text-orange-600" size={16} />;
-      case 1: return <XCircle className="text-red-600" size={16} />;
-      default: return null;
-    }
-  };
-
   const getColor = (score) => {
     switch (score) {
       case 5: return 'bg-green-50 border-green-200 text-green-800';
@@ -35,7 +23,7 @@ const RatingLegend = ({ compact = false, showHeader = true }) => {
         {CSC_RATING_SCALE.map((item) => (
           <div
             key={item.score}
-            className={`flex items-center gap-1 px-2 py-1 rounded-full border ${getColor(item.score)}`}
+            className={`flex items-center gap-1 px-2 py-1 rounded-sm border ${getColor(item.score)}`}
             title={item.description}
           >
             <span className="font-bold">{item.score}</span>
@@ -47,22 +35,20 @@ const RatingLegend = ({ compact = false, showHeader = true }) => {
   }
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+    <div className="bg-white rounded-sm border border-gray-200 overflow-hidden">
       {showHeader && (
-        <div className="flex items-center gap-2 px-4 py-3 bg-gray-50 border-b border-gray-200">
-          <HelpCircle size={18} className="text-blue-600" />
-          <h4 className="font-bold text-gray-700 text-sm uppercase tracking-wide">CSC Performance Rating Scale</h4>
+        <div className="flex items-center gap-2 px-4 py-3 bg-[#F8F9FA] border-b border-gray-200">
+          <h4 className="font-bold text-gray-800 text-[10px] uppercase tracking-widest">CSC PERFORMANCE RATING SCALE</h4>
         </div>
       )}
       <div className="divide-y divide-gray-100">
         {CSC_RATING_SCALE.map((item) => (
           <div key={item.score} className="flex items-start gap-4 px-4 py-3 hover:bg-gray-50 transition-colors">
-            <div className={`flex items-center justify-center w-10 h-10 rounded-lg font-bold text-lg border ${getColor(item.score)}`}>
+            <div className={`flex items-center justify-center w-8 h-8 rounded-sm font-bold text-sm border ${getColor(item.score)}`}>
               {item.score}
             </div>
             <div className="flex-1">
               <div className="flex items-center gap-2">
-                {getIcon(item.score)}
                 <span className="font-bold text-gray-800">{item.label}</span>
               </div>
               <p className="text-sm text-gray-500 mt-1">{item.description}</p>

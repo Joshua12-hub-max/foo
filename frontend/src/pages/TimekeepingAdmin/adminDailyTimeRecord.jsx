@@ -1,12 +1,12 @@
-import { useAdminDTR } from "../../components/Custom/DailyTimeRecordComponents/Admin/Hooks/useAdminDTR";
-import { AdminDTRHeader } from "../../components/Custom/DailyTimeRecordComponents/Admin/Components/AdminDTRHeader";
-import { AdminDTRNotification } from "../../components/Custom/DailyTimeRecordComponents/Admin/Components/AdminDTRNotification";
-import { AdminDTRFilters } from "../../components/Custom/DailyTimeRecordComponents/Admin/Components/AdminDTRFilters";
-import { AdminDTRSearchBar } from "../../components/Custom/DailyTimeRecordComponents/Admin/Components/AdminDTRSearchBar";
-import { AdminDTRExportButtons } from "../../components/Custom/DailyTimeRecordComponents/Admin/Components/AdminDTRExportButtons";
-import { AdminDTRTable } from "../../components/Custom/DailyTimeRecordComponents/Admin/Components/AdminDTRTable";
-import { AdminDTRPagination } from "../../components/Custom/DailyTimeRecordComponents/Admin/Components/AdminDTRPagination";
-import { AdminDTRLoadingSpinner } from "../../components/Custom/DailyTimeRecordComponents/Admin/Components/AdminDTRLoadingSpinner";
+import { useAdminDTR } from "@components/Custom/Timekeeping/DailyTimeRecordComponents/Admin/Hooks/useAdminDTR";
+import { AdminDTRHeader } from "@components/Custom/Timekeeping/DailyTimeRecordComponents/Admin/Components/AdminDTRHeader";
+import { AdminDTRNotification } from "@components/Custom/Timekeeping/DailyTimeRecordComponents/Admin/Components/AdminDTRNotification";
+import { AdminDTRFilters } from "@components/Custom/Timekeeping/DailyTimeRecordComponents/Admin/Components/AdminDTRFilters";
+import { AdminDTRSearchBar } from "@components/Custom/Timekeeping/DailyTimeRecordComponents/Admin/Components/AdminDTRSearchBar";
+import { AdminDTRExportButtons } from "@components/Custom/Timekeeping/DailyTimeRecordComponents/Admin/Components/AdminDTRExportButtons";
+import { AdminDTRTable } from "@components/Custom/Timekeeping/DailyTimeRecordComponents/Admin/Components/AdminDTRTable";
+import { AdminDTRPagination } from "@components/Custom/Timekeeping/DailyTimeRecordComponents/Admin/Components/AdminDTRPagination";
+import { AdminDTRLoadingSpinner } from "@components/Custom/Timekeeping/DailyTimeRecordComponents/Admin/Components/AdminDTRLoadingSpinner";
 
 const DailyTimeRecord = () => {
   const { today, sidebarOpen, filters, searchQuery, debouncedSearchQuery, currentPage, isLoading, loadingType, error, successMessage, filteredData, paginationData, uniqueDepartments, uniqueEmployees,

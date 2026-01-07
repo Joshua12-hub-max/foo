@@ -1,32 +1,21 @@
-/**
- * TabNavigation Component
- * Tab navigation for pending/completed reviews
- */
+import React from 'react';
 
-const TabNavigation = ({
-  activeTab,
-  onTabChange,
-  pendingCount,
-  completedCount
-}) => {
-  const tabs = [
-    { id: 'pending', label: 'Pending', count: pendingCount },
-    { id: 'completed', label: 'Completed', count: completedCount }
-  ];
-
+const TabNavigation = ({ tabs, activeTab, onTabChange }) => {
   return (
-    <div className="flex gap-2 border-b border-gray-300 mb-6">
-      {tabs.map(tab => (
+    <div className="flex space-x-1 bg-gray-200/50 p-1 rounded-xl mb-6 border border-gray-200">
+      {tabs.map((tab) => (
         <button
           key={tab.id}
           onClick={() => onTabChange(tab.id)}
-          className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
-            activeTab === tab.id 
-              ? 'border-gray-800 text-gray-800' 
-              : 'border-transparent text-gray-500 hover:text-gray-700'
-          }`}
+          className={`
+            flex-1 py-2.5 px-4 rounded-lg text-sm font-bold transition-all duration-200
+            ${activeTab === tab.id 
+              ? 'bg-white text-gray-800 shadow-sm border border-gray-200' 
+              : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'
+            }
+          `}
         >
-          {tab.label} ({tab.count})
+          {tab.label}
         </button>
       ))}
     </div>

@@ -1,3 +1,0 @@
-ALTER TABLE authentication MODIFY password_hash VARCHAR(255) NULL;
-ALTER TABLE authentication ADD COLUMN google_id VARCHAR(255) UNIQUE DEFAULT NULL;
-ALTER TABLE authentication ADD COLUMN avatar_url VARCHAR(500) DEFAULT NULL;

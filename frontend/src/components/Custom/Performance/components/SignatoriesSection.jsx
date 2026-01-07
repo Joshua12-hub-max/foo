@@ -9,11 +9,13 @@ const SignatoriesSection = ({
   approvingAuthority = 'Head of Office'
 }) => {
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 mt-8">
-      <h3 className="text-sm font-bold text-gray-400 uppercase mb-8 text-center tracking-widest">
-        Signatories
-      </h3>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+    <div className="bg-white rounded-sm shadow-sm border border-gray-200 overflow-hidden mt-8">
+      <div className="bg-[#F8F9FA] px-6 py-4 border-b border-gray-200 text-center">
+        <h3 className="font-bold text-gray-800 uppercase tracking-widest text-[10px]">
+          SIGNATORIES
+        </h3>
+      </div>
+      <div className="p-8 grid grid-cols-1 md:grid-cols-3 gap-12">
         {/* Ratee */}
         <div className="text-center space-y-2">
           <div className="h-12 border-b border-gray-300"></div>

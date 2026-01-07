@@ -2,20 +2,20 @@ import { useState } from "react";
 import { useOutletContext } from 'react-router-dom';
 
 //Modals
-import { ViewModal } from "../../components/Custom/DTRcorrectionsComponents/Admin/Modals/View";
-import { EditModal } from "../../components/Custom/DTRcorrectionsComponents/Admin/Modals/Edit";
+import { ViewModal } from "@components/Custom/Timekeeping/DTRcorrectionsComponents/Admin/Modals/View";
+import { EditModal } from "@components/Custom/Timekeeping/DTRcorrectionsComponents/Admin/Modals/Edit";
 
 //Components
-import { LoadingSpinner } from "../../components/Custom/DTRcorrectionsComponents/Admin/Components/DTRCorrectionLoadingSpinner";
-import DTRHeader from "../../components/Custom/DTRcorrectionsComponents/Admin/Components/DTRCorrectionHeader";
-import { Notification } from "../../components/Custom/DTRcorrectionsComponents/Admin/Components/DTRCorrectionNotification";
-import { AdvancedFilters } from "../../components/Custom/DTRcorrectionsComponents/Admin/Components/DTRCorrectionFilter";
-import { SearchBar } from "../../components/Custom/DTRcorrectionsComponents/Admin/Components/DTRCorrectionSearchBar";
-import { DTRTable } from "../../components/Custom/DTRcorrectionsComponents/Admin/Components/DTRCorrectionTable";
-import { Pagination } from "../../components/Custom/DTRcorrectionsComponents/Admin/Components/DTRCorrectionPagination";
+import { LoadingSpinner } from "@components/Custom/Timekeeping/DTRcorrectionsComponents/Admin/Components/DTRCorrectionLoadingSpinner";
+import DTRHeader from "@components/Custom/Timekeeping/DTRcorrectionsComponents/Admin/Components/DTRCorrectionHeader";
+import { Notification } from "@components/Custom/Timekeeping/DTRcorrectionsComponents/Admin/Components/DTRCorrectionNotification";
+import { AdvancedFilters } from "@components/Custom/Timekeeping/DTRcorrectionsComponents/Admin/Components/DTRCorrectionFilter";
+import { SearchBar } from "@components/Custom/Timekeeping/DTRcorrectionsComponents/Admin/Components/DTRCorrectionSearchBar";
+import { DTRTable } from "@components/Custom/Timekeeping/DTRcorrectionsComponents/Admin/Components/DTRCorrectionTable";
+import { Pagination } from "@components/Custom/Timekeeping/DTRcorrectionsComponents/Admin/Components/DTRCorrectionPagination";
 
 //Hooks
-import { useDTRCorrection } from "../../components/Custom/DTRcorrectionsComponents/Admin/Hooks/useDTRCorrection";
+import { useDTRCorrection } from "@components/Custom/Timekeeping/DTRcorrectionsComponents/Admin/Hooks/useDTRCorrection";
 
 
 export default function DTRCorrection() {
@@ -48,7 +48,7 @@ export default function DTRCorrection() {
         isLoading={isLoading}
       />
 
-      <hr className="mb-6 border-[1px] border-[#274b46]" />
+      <hr className="mb-6 border-[1px] border-gray-200" />
 
       {/* Notifications */}
       {error && (

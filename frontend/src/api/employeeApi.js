@@ -32,21 +32,39 @@ export const addEmployee = async (formData) => {
   }
 };
 
-export const updateEmployee = async (id, formData) => {
-  try {
-    const response = await axios.put(`/employees/${id}`, formData);
-    return { success: true, message: 'Employee updated successfully', data: response.data };
-  } catch (error) {
-    return { success: false, message: error.response?.data?.message || 'Failed to update employee' };
-  }
-};
-
 export const deleteEmployee = async (id) => {
   try {
     const response = await axios.delete(`/employees/${id}`);
     return { success: true, message: response.data.message };
   } catch (error) {
       return { success: false, message: error.response?.data?.message || 'Failed to delete employee' };
+  }
+};
+
+export const updateEmployee = async (id, formData) => {
+  try {
+    const response = await axios.put(`/employees/${id}`, formData);
+    return { success: true, message: response.data.message };
+  } catch (error) {
+    return { success: false, message: error.response?.data?.message || 'Failed to update employee' };
+  }
+};
+
+// Revert employee status (Admin only) - For reversing memo effects
+export const revertEmployeeStatus = async (id, newStatus = 'Active', reason = '') => {
+  try {
+    const response = await axios.patch(`/employees/${id}/revert-status`, { 
+      new_status: newStatus, 
+      reason 
+    });
+    return { 
+      success: true, 
+      message: response.data.message,
+      previousStatus: response.data.previousStatus,
+      newStatus: response.data.newStatus
+    };
+  } catch (error) {
+    return { success: false, message: error.response?.data?.message || 'Failed to revert employee status' };
   }
 };
 
@@ -157,32 +175,7 @@ export const deleteEmployeeContact = async (employeeId, contactId) => {
 // EMPLOYEE DOCUMENTS
 // ==========================================
 
-export const fetchEmployeeDocuments = async (employeeId) => {
-  try {
-    const response = await axios.get(`/employees/${employeeId}/documents`);
-    return { success: true, documents: response.data.documents };
-  } catch (error) {
-    return { success: false, documents: [] };
-  }
-};
 
-export const addEmployeeDocument = async (employeeId, documentData) => {
-  try {
-    const response = await axios.post(`/employees/${employeeId}/documents`, documentData);
-    return { success: true, message: 'Document added', documentId: response.data.documentId };
-  } catch (error) {
-    return { success: false, message: error.response?.data?.message || 'Failed to add document' };
-  }
-};
-
-export const deleteEmployeeDocument = async (employeeId, documentId) => {
-  try {
-    await axios.delete(`/employees/${employeeId}/documents/${documentId}`);
-    return { success: true };
-  } catch (error) {
-    return { success: false, message: error.response?.data?.message || 'Failed to delete document' };
-  }
-};
 
 
 //utility functions

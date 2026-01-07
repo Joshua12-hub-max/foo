@@ -27,7 +27,29 @@ const notifyDepartmentEmployees = async ({ senderId, title, message, type, refer
 
 export const getEvents = async (req, res) => {
   try {
-    const [events] = await db.query('SELECT * FROM events ORDER BY date ASC');
+    const user = req.user;
+    const isAdminOrHr = ['admin', 'hr'].includes(user.role?.toLowerCase());
+
+    // Base query - only show events where end_date is today or in the future
+    let query = 'SELECT * FROM events WHERE (end_date >= CURDATE() OR end_date IS NULL)';
+    let params = [];
+
+    if (!isAdminOrHr) {
+      // Non-admins only see company-wide events OR their department's events
+      // We need to find the user's department first
+      const [userRecords] = await db.query('SELECT department FROM authentication WHERE id = ?', [user.id]);
+      const userDept = userRecords[0]?.department;
+
+      query += ' AND (department IS NULL OR department = "All Departments"';
+      if (userDept) {
+        query += ' OR department = ?';
+        params.push(userDept);
+      }
+      query += ')';
+    }
+
+    query += ' ORDER BY date ASC';
+    const [events] = await db.query(query, params);
     res.status(200).json({ events });
   } catch (error) {
     console.error('Error fetching events:', error);

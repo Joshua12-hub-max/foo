@@ -88,23 +88,23 @@ const EvaluationTable = ({ employees, loading }) => {
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="w-full text-left border-collapse">
+      <div className="overflow-x-auto bg-gray-50 rounded-lg">
+        <table className="w-full text-left min-w-[1200px]">
           <thead className="bg-gray-200 shadow-md text-gray-700">
-            <tr className="text-xs uppercase tracking-wider">
-              <th className="px-6 py-4 font-semibold">Employee</th>
-              <th className="px-6 py-4 font-semibold">Department</th>
-              <th className="px-6 py-4 font-semibold">Score</th>
-              <th className="px-6 py-4 font-semibold">Last Evaluation</th>
-              <th className="px-6 py-4 font-semibold">Status</th>
-              <th className="px-6 py-4 font-semibold text-right">Action</th>
+            <tr>
+              <th className="px-6 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap">Employee</th>
+              <th className="px-6 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap">Department</th>
+              <th className="px-6 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap">Score</th>
+              <th className="px-6 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap">Last Evaluation</th>
+              <th className="px-6 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap">Status</th>
+              <th className="px-6 py-4 text-right text-sm font-bold tracking-wide whitespace-nowrap">Action</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
+          <tbody className="divide-y divide-slate-100">
             {paginatedEmployees.map((employee) => {
                const statusConfig = getStatusConfig(employee.status);
                return (
-              <tr key={employee.id} className="hover:bg-gray-50 transition-colors group">
+              <tr key={employee.id} className="hover:bg-[#F8F9FA] hover:shadow-xl transition-colors group">
                 <td className="px-6 py-4">
                    <div className="flex items-center gap-3">
                       {employee.avatar_url ? (
@@ -173,45 +173,29 @@ const EvaluationTable = ({ employees, loading }) => {
         </table>
       </div>
 
-      {/* Pagination */}
+      {/* Pagination - DTR Style */}
       {totalPages > 1 && (
-        <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between bg-gray-50">
-          <p className="text-sm text-gray-500">
-            Showing {startIndex + 1} to {Math.min(endIndex, employees.length)} of {employees.length} employees
-          </p>
-          <div className="flex items-center gap-2">
+        <div className="flex justify-between items-center mt-6 p-6 border-t border-gray-100 bg-white">
+          <div className="text-sm text-gray-800">
+            Showing <span className="font-semibold text-gray-800">{startIndex + 1}–{Math.min(endIndex, employees.length)}</span> of <span className="font-semibold text-gray-800">{employees.length}</span> records
+          </div>
+          <div className="flex items-center space-x-2">
             <button
               onClick={() => handlePageChange(currentPage - 1)}
               disabled={currentPage === 1}
-              className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 bg-gray-200 border border-gray-200 rounded-lg shadow-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-200 transition-all text-sm font-medium text-gray-800"
             >
-              <ChevronLeft size={18} />
+              Previous
             </button>
-            
-            {getPageNumbers().map((page, index) => (
-              page === '...' ? (
-                <span key={`ellipsis-${index}`} className="px-2 text-gray-400">...</span>
-              ) : (
-                <button
-                  key={page}
-                  onClick={() => handlePageChange(page)}
-                  className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
-                    currentPage === page
-                      ? 'bg-gray-800 text-white'
-                      : 'text-gray-600 hover:bg-gray-100'
-                  }`}
-                >
-                  {page}
-                </button>
-              )
-            ))}
-            
+            <span className="text-sm px-4 py-2 bg-gray-50 text-gray-800 rounded-lg font-semibold">
+              Page {currentPage} of {totalPages}
+            </span>
             <button
               onClick={() => handlePageChange(currentPage + 1)}
               disabled={currentPage === totalPages}
-              className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-6 py-2 bg-gray-200 border border-gray-200 rounded-lg shadow-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-200 transition-all text-sm font-medium text-gray-800"
             >
-              <ChevronRight size={18} />
+              Next
             </button>
           </div>
         </div>

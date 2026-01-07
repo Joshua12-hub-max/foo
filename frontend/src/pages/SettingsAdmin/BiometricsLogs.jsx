@@ -1,9 +1,11 @@
-import { useBiometricsLogs } from "../../components/Custom/BiometricsLogsComponents/useBiometricsLogs";
-import { BiometricsHeader } from "../../components/Custom/BiometricsLogsComponents/BiometricsHeader";
-import { BiometricsNotification } from "../../components/Custom/BiometricsLogsComponents/BiometricsNotification";
-import { BiometricsFilters } from "../../components/Custom/BiometricsLogsComponents/BiometricsFilters";
-import { BiometricsTable } from "../../components/Custom/BiometricsLogsComponents/BiometricsTable";
-import { AdminDTRPagination } from "../../components/Custom/DailyTimeRecordComponents/Admin/Components/AdminDTRPagination"; // Reusing pagination
+import { 
+  useBiometricsLogs, 
+  BiometricsHeader, 
+  BiometricsNotification, 
+  BiometricsFilters, 
+  BiometricsTable 
+} from "@components/Custom/Settings/Biometrics/Logs";
+import { AdminDTRPagination } from "@components/Custom/Timekeeping/DailyTimeRecordComponents/Admin/Components/AdminDTRPagination"; // Reusing pagination
 
 const BiometricsLogsUI = () => {
   const {today,sidebarOpen,filters,searchQuery,currentPage,isLoading,error,
@@ -14,13 +16,15 @@ const BiometricsLogsUI = () => {
   const { totalPages, startIndex, endIndex, currentItems } = paginationData;
       
   return (
-    <div className={`min-h-screen flex flex-col bg-gradient-to-br from-neutral-100 to-stone-100 rounded-xl shadow-xl p-7 w-full overflow-hidden text-gray-800 transition-all duration-300 ${sidebarOpen ? 'max-w-[1400px] xl:max-w-[77vw]' : 'max-w-[1600px] xl:max-w-[88vw]'}`}>
+    <div className={`min-h-screen flex flex-col bg-gradient-to-br from-neutral-100 to-stone-50 rounded-xl shadow-xl p-7 w-full overflow-hidden text-gray-800 transition-all duration-300 ${sidebarOpen ? 'max-w-[1400px] xl:max-w-[77vw]' : 'max-w-[1600px] xl:max-w-[88vw]'}`}>
       
       <BiometricsHeader 
         today={today} 
         handleRefresh={handleRefresh} 
         isLoading={isLoading} 
       />
+
+      <hr className="mb-6 h-px bg-gray-200 border-0" />
 
       {error && (
         <BiometricsNotification 

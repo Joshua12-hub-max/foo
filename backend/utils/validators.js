@@ -1,6 +1,6 @@
 /**
  * Performance Module Validation Utilities
- * Provides consistent input validation across SPMS controllers
+ * Provides consistent input validation across performance management controllers
  */
 
 /**
@@ -150,15 +150,7 @@ export const handleError = (res, error, operation = 'Operation') => {
   });
 };
 
-/**
- * Common SPMS status values
- */
-export const SPMS_STATUS = {
-  IPCR: ['Draft', 'Committed', 'For Rating', 'Rated', 'Acknowledged', 'Approved', 'Final'],
-  DEVELOPMENT_PLAN: ['Draft', 'Pending Approval', 'Active', 'Completed', 'Cancelled'],
-  COACHING: ['Scheduled', 'Completed', 'Cancelled', 'Rescheduled'],
-  TRAINING: ['Recommended', 'Approved', 'Scheduled', 'Completed', 'Cancelled']
-};
+
 
 /**
  * Validate user has required role

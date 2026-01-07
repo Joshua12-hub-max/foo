@@ -7,7 +7,7 @@ const ConfirmDialog = ({ isOpen, onClose, onConfirm, title, message, confirmText
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+      <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -22,10 +22,10 @@ const ConfirmDialog = ({ isOpen, onClose, onConfirm, title, message, confirmText
             <p className="text-gray-500 text-sm">{message}</p>
           </div>
           
-          <div className="flex border-t border-gray-100">
+          <div className="flex border-t border-gray-200">
             <button
               onClick={onClose}
-              className="flex-1 py-3 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors border-r border-gray-100"
+              className="flex-1 py-3 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors border-r border-gray-200"
             >
               {cancelText}
             </button>
@@ -37,7 +37,7 @@ const ConfirmDialog = ({ isOpen, onClose, onConfirm, title, message, confirmText
               className={`flex-1 py-3 text-sm font-bold transition-colors ${
                 isDestructive 
                   ? 'text-red-600 hover:bg-red-50' 
-                  : 'text-green-600 hover:bg-green-50'
+                  : 'text-gray-700 hover:bg-gray-100'
               }`}
             >
               {confirmText}

@@ -1,8 +1,3 @@
-/**
- * Performance Evaluation Constants
- * Centralized configuration for performance management module
- */
-
 import { UI_COLORS, STATUS_GREEN, STATUS_AMBER, STATUS_RED, SLATE_BLUE, DEEP_NAVY } from '../../../../utils/colorPalette';
 
 // CSC Rating Scale (Civil Service Commission MC 6-2012)
@@ -60,6 +55,8 @@ export const INITIAL_REVIEW_FORM = {
   strengths: '',
   improvements: '',
   goals: '',
+  training_recommendations: '',
+  action_plan: '',
   additional_comments: ''
 };
 

@@ -2,29 +2,29 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useOutletContext } from 'react-router-dom';
 
 // Import Utils
-import { getTodayDate } from '../../components/Custom/ScheduleAdminComponents/admin/utils/dateTimeUtils';
+import { getTodayDate } from '@components/Custom/Timekeeping/ScheduleAdminComponents/admin/utils/dateTimeUtils';
 
 // Import Hooks
-import { useScheduleData } from '../../components/Custom/ScheduleAdminComponents/admin/hooks/useScheduleData';
-import { useFilters } from '../../components/Custom/ScheduleAdminComponents/admin/hooks/useFilters';
-import { usePagination } from '../../components/Custom/ScheduleAdminComponents/admin/hooks/usePagination';
-import { useExport } from '../../components/Custom/ScheduleAdminComponents/admin/hooks/useExport';
+import { useScheduleData } from '@components/Custom/Timekeeping/ScheduleAdminComponents/admin/hooks/useScheduleData';
+import { useFilters } from '@components/Custom/Timekeeping/ScheduleAdminComponents/admin/hooks/useFilters';
+import { usePagination } from '@components/Custom/Timekeeping/ScheduleAdminComponents/admin/hooks/usePagination';
+import { useExport } from '@components/Custom/Timekeeping/ScheduleAdminComponents/admin/hooks/useExport';
 
 // Import Constants
-import { PAGE_SIZE } from '../../components/Custom/ScheduleAdminComponents/admin/constants/scheduleConstants';
+import { PAGE_SIZE } from '@components/Custom/Timekeeping/ScheduleAdminComponents/admin/constants/scheduleConstants';
 
 // Import Components
-import LoadingSpinner from '../../components/Custom/ScheduleAdminComponents/admin/components/LoadingSpinner';
-import ErrorAlert from '../../components/Custom/ScheduleAdminComponents/admin/components/ErrorAlert';
-import SuccessAlert from '../../components/Custom/ScheduleAdminComponents/admin/components/SuccessAlert';
-import Header from '../../components/Custom/ScheduleAdminComponents/admin/components/Header';
-import Filters from '../../components/Custom/ScheduleAdminComponents/admin/components/Filters';
-import ExportOptions from '../../components/Custom/ScheduleAdminComponents/admin/components/ExportOptions';
-import Table from '../../components/Custom/ScheduleAdminComponents/admin/components/Table';
-import Pagination from '../../components/Custom/ScheduleAdminComponents/admin/components/Pagination';
+import LoadingSpinner from '@components/Custom/Timekeeping/ScheduleAdminComponents/admin/components/LoadingSpinner';
+import ErrorAlert from '@components/Custom/Timekeeping/ScheduleAdminComponents/admin/components/ErrorAlert';
+import SuccessAlert from '@components/Custom/Timekeeping/ScheduleAdminComponents/admin/components/SuccessAlert';
+import Header from '@components/Custom/Timekeeping/ScheduleAdminComponents/admin/components/Header';
+import Filters from '@components/Custom/Timekeeping/ScheduleAdminComponents/admin/components/Filters';
+import ExportOptions from '@components/Custom/Timekeeping/ScheduleAdminComponents/admin/components/ExportOptions';
+import Table from '@components/Custom/Timekeeping/ScheduleAdminComponents/admin/components/Table';
+import Pagination from '@components/Custom/Timekeeping/ScheduleAdminComponents/admin/components/Pagination';
 
 // Import API
-import { scheduleApi } from '../../api/scheduleApi';
+import { scheduleApi } from '@api';
 
 // Import Icons
 import { X, Clock, Calendar, User } from 'lucide-react';
@@ -196,7 +196,7 @@ const Schedule = () => {
       {/* Header Section */}
       <Header today={today} isLoading={isLoading} onRefresh={handleRefresh} />
 
-      <hr className="mb-6 border-[1px] border-[#274b46]" />
+      <hr className="mb-6 border-[1px] border-gray-200" />
 
       {/* Alert Messages */}
       <ErrorAlert error={error || exportError} onDismiss={() => {
@@ -252,7 +252,7 @@ const Schedule = () => {
       {showEditModal && selectedSchedule && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl border-2 border-gray-200 w-full max-w-md shadow-xl">
-            <div className="bg-gray-200 shadow-md p-3 flex justify-between items-center rounded-t-xl">
+            <div className="bg-gray-200 p-3 flex justify-between items-center rounded-t-xl border-b border-gray-300">
               <h2 className="text-lg font-bold text-gray-800">Edit Schedule</h2>
               <button onClick={() => setShowEditModal(false)} className="text-gray-400 hover:text-gray-600">
                 <X className="w-5 h-5 text-red-800" />
@@ -266,7 +266,7 @@ const Schedule = () => {
                   type="text"
                   value={editForm.title}
                   onChange={(e) => setEditForm({...editForm, title: e.target.value})}
-                  className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-md shadow-md text-sm focus:outline-none focus:border-gray-200"
+                  className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-200"
                 />
               </div>
               
@@ -277,7 +277,7 @@ const Schedule = () => {
                     type="date"
                     value={editForm.startDate?.split('T')[0] || ''}
                     onChange={(e) => setEditForm({...editForm, startDate: e.target.value})}
-                    className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-md shadow-md text-sm focus:outline-none focus:border-gray-200"
+                    className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-200"
                   />
                 </div>
                 <div>
@@ -286,7 +286,7 @@ const Schedule = () => {
                     type="date"
                     value={editForm.endDate?.split('T')[0] || ''}
                     onChange={(e) => setEditForm({...editForm, endDate: e.target.value})}
-                    className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-md shadow-md text-sm focus:outline-none focus:border-gray-200"
+                    className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-200"
                   />
                 </div>
               </div>
@@ -298,7 +298,7 @@ const Schedule = () => {
                     type="time"
                     value={editForm.startTime}
                     onChange={(e) => setEditForm({...editForm, startTime: e.target.value})}
-                    className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-md shadow-md text-sm focus:outline-none focus:border-gray-200"
+                    className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-200"
                   />
                 </div>
                 <div>
@@ -307,7 +307,7 @@ const Schedule = () => {
                     type="time"
                     value={editForm.endTime}
                     onChange={(e) => setEditForm({...editForm, endTime: e.target.value})}
-                    className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-md shadow-md text-sm focus:outline-none focus:border-gray-200"
+                    className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-200"
                   />
                 </div>
               </div>
@@ -317,7 +317,7 @@ const Schedule = () => {
                 <select
                   value={editForm.repeat}
                   onChange={(e) => setEditForm({...editForm, repeat: e.target.value})}
-                  className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-md shadow-md text-sm focus:outline-none focus:border-gray-200"
+                  className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-200"
                 >
                   <option value="none">Does not repeat</option>
                   <option value="daily">Daily (Mon-Fri)</option>

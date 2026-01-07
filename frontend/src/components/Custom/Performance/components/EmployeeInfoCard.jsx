@@ -17,11 +17,11 @@ const EmployeeInfoCard = ({
   const selectedCycle = cycles.find(c => c.id == formData.review_cycle_id);
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+    <div className="bg-white rounded-sm shadow-sm border border-gray-200 overflow-hidden">
       {/* Header */}
-      <div className="px-6 py-3 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
-        <h3 className="font-bold text-gray-700 uppercase text-sm">Employee Information</h3>
-        <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${getStatusColor(formData.status)}`}>
+      <div className="px-6 py-3 bg-[#F8F9FA] border-b border-gray-200 flex justify-between items-center">
+        <h3 className="font-bold text-gray-800 text-sm">Employee Information</h3>
+        <span className={`px-3 py-1 rounded-sm text-xs font-bold ${getStatusColor(formData.status)}`}>
           {formData.status}
         </span>
       </div>
@@ -30,7 +30,7 @@ const EmployeeInfoCard = ({
       <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {/* Employee Name */}
         <div className="space-y-1">
-          <label className="text-xs font-bold text-gray-400 uppercase">Employee Name</label>
+          <label className="text-sm font-medium text-gray-500">Employee Name</label>
           {isNew ? (
             <select
               value={formData.employee_id}
@@ -53,7 +53,7 @@ const EmployeeInfoCard = ({
 
         {/* Position */}
         <div className="space-y-1">
-          <label className="text-xs font-bold text-gray-400 uppercase">Position / Title</label>
+          <label className="text-sm font-medium text-gray-500">Position / Title</label>
           <div className="font-medium text-gray-700">
             {formData.employee_job_title || selectedEmployee?.job_title || 'N/A'}
           </div>
@@ -61,7 +61,7 @@ const EmployeeInfoCard = ({
 
         {/* Department */}
         <div className="space-y-1">
-          <label className="text-xs font-bold text-gray-400 uppercase">Department / Office</label>
+          <label className="text-sm font-medium text-gray-500">Department / Office</label>
           <div className="font-medium text-gray-700">
             {formData.employee_department || selectedEmployee?.department || 'N/A'}
           </div>
@@ -69,7 +69,7 @@ const EmployeeInfoCard = ({
 
         {/* Review Period */}
         <div className="space-y-1">
-          <label className="text-xs font-bold text-gray-400 uppercase">Review Period</label>
+          <label className="text-sm font-medium text-gray-500">Review Period</label>
           {isNew ? (
             <select
               value={formData.review_cycle_id}

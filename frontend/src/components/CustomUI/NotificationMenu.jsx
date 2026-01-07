@@ -17,6 +17,9 @@ const getNotificationStyle = (type) => {
     undertime_approval: { icon: Check, color: 'text-green-600', bg: 'bg-green-50' },
     undertime_rejection: { icon: X, color: 'text-red-600', bg: 'bg-red-50' },
     schedule_assigned: { icon: Calendar, color: 'text-blue-600', bg: 'bg-blue-50' },
+    // Memo notifications
+    memo_received: { icon: FileText, color: 'text-red-600', bg: 'bg-red-50' },
+    memo_acknowledged: { icon: Check, color: 'text-green-600', bg: 'bg-green-50' },
   };
   return styles[type] || { icon: Bell, color: 'text-gray-600', bg: 'bg-gray-50' };
 };

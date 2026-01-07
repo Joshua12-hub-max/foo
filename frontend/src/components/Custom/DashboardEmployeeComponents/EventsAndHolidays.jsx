@@ -43,7 +43,7 @@ export default function EventsAndHolidays() {
   }, []);
 
   return (
-    <div className="bg-[#F8F9FA] rounded-lg shadow-md border border-gray-200 p-6">
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 hover:shadow-md transition-all duration-300">
       <EventsList events={events} />
     </div>
   );

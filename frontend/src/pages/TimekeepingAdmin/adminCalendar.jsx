@@ -3,48 +3,31 @@ import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 
 // Shared hooks and components
-import { useCalendarState } from '../../components/Custom/CalendarComponents/shared/hooks/useCalendarState';
-import { useCalendarNav } from '../../components/Custom/CalendarComponents/shared/hooks/useCalendarNav';
-import { useCalendarData } from '../../components/Custom/CalendarComponents/shared/hooks/useCalendarData';
-import { HOURS_12, EVENT_COLORS } from '../../components/Custom/CalendarComponents/shared/constants/calendarConstants';
+import { useCalendarState } from '@components/Custom/CalendarComponents/shared/hooks/useCalendarState';
+import { useCalendarNav } from '@components/Custom/CalendarComponents/shared/hooks/useCalendarNav';
+import { useCalendarData } from '@components/Custom/CalendarComponents/shared/hooks/useCalendarData';
+import { HOURS_12, EVENT_COLORS } from '@components/Custom/CalendarComponents/shared/constants/calendarConstants';
 
-import CalendarHeader from '../../components/Custom/CalendarComponents/shared/components/CalendarHeader';
-import CalendarControls from '../../components/Custom/CalendarComponents/shared/components/CalendarControls';
-import CalendarGrid from '../../components/Custom/CalendarComponents/shared/components/CalendarGrid';
-import AdminAgendaView from '../../components/Custom/CalendarComponents/admin/components/AdminAgendaView';
-import DrawerSidebar from '../../components/Custom/CalendarComponents/shared/components/DrawerSidebar';
-import EventDetailsModal from '../../components/Custom/CalendarComponents/shared/Modals/EventDetailsModal';
-import ConfirmDeleteModal from '../../components/Custom/CalendarComponents/shared/Modals/ConfirmDeleteModal';
-import AdminCalendarActions from '../../components/Custom/CalendarComponents/AdminCalendarActions';
-import { eventApi } from '../../api/eventApi';
-import { fetchEmployees } from '../../api/employeeApi';
-import { fetchDepartments } from '../../api/departmentApi';
-import AddEventModal from '../../components/Custom/CalendarComponents/admin/Modals/AddEventModal';
-import EditEventModal from '../../components/Custom/CalendarComponents/admin/Modals/EditEventModal';
-import ScheduleModal from '../../components/Custom/CalendarComponents/admin/Modals/ScheduleModal';
-import CreateAnnouncementModal from '../../components/Custom/CalendarComponents/admin/Modals/CreateAnnouncementModal';
-import EditAnnouncementModal from '../../components/Custom/CalendarComponents/admin/Modals/EditAnnouncementModal';
-import EditScheduleModal from '../../components/Custom/CalendarComponents/admin/Modals/EditScheduleModal';
+import CalendarHeader from '@components/Custom/CalendarComponents/shared/components/CalendarHeader';
+import CalendarControls from '@components/Custom/CalendarComponents/shared/components/CalendarControls';
+import CalendarGrid from '@components/Custom/CalendarComponents/shared/components/CalendarGrid';
+import AdminAgendaView from '@components/Custom/CalendarComponents/admin/components/AdminAgendaView';
+import DrawerSidebar from '@components/Custom/CalendarComponents/shared/components/DrawerSidebar';
+import EventDetailsModal from '@components/Custom/CalendarComponents/shared/Modals/EventDetailsModal';
+import ConfirmDeleteModal from '@components/Custom/CalendarComponents/shared/Modals/ConfirmDeleteModal';
+import AdminCalendarActions from '@components/Custom/CalendarComponents/AdminCalendarActions';
+import { eventApi, fetchEmployees, fetchDepartments, scheduleApi, announcementApi } from '@api';
+import AddEventModal from '@components/Custom/CalendarComponents/admin/Modals/AddEventModal';
+import EditEventModal from '@components/Custom/CalendarComponents/admin/Modals/EditEventModal';
+import ScheduleModal from '@components/Custom/CalendarComponents/admin/Modals/ScheduleModal';
+import CreateAnnouncementModal from '@components/Custom/CalendarComponents/admin/Modals/CreateAnnouncementModal';
+import EditAnnouncementModal from '@components/Custom/CalendarComponents/admin/Modals/EditAnnouncementModal';
+import EditScheduleModal from '@components/Custom/CalendarComponents/admin/Modals/EditScheduleModal';
+import { ToastNotification, useNotification } from '@components/Custom/EmployeeManagement/Admin';
 
 // Utilities
-import { holidays } from '../../utils/holidays';
-import { getRandomEventColor } from '../../components/Custom/CalendarComponents/shared/utils/eventUtils';
-import { scheduleApi } from '../../api/scheduleApi';
-import { announcementApi } from '../../api/announcementApi';
-
-const convertTo24Hour = (timeStr) => {
-  if (!timeStr) return 9;
-  // Handle case where timeStr is already a number
-  if (typeof timeStr === 'number') return timeStr;
-  // Handle case where timeStr is a string but not in AM/PM format
-  if (typeof timeStr !== 'string' || timeStr.length < 3) return 9;
-  const period = timeStr.slice(-2).toUpperCase();
-  let hour = parseInt(timeStr.slice(0, -2));
-  if (isNaN(hour)) return 9;
-  if (period === 'PM' && hour !== 12) hour += 12;
-  if (period === 'AM' && hour === 12) hour = 0;
-  return hour;
-};
+import { holidays } from '@utils';
+import { getRandomEventColor, convertTo24Hour } from '@components/Custom/CalendarComponents/shared/utils/eventUtils';
 
 export default function AdminCalendar() {
   // Calendar state management
@@ -60,6 +43,9 @@ export default function AdminCalendar() {
   const [schedules, setSchedules] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [departments, setDepartments] = useState([]);
+  
+  // Toast notification hook
+  const { notification, showNotification } = useNotification();;
 
   // Fetch Data
   const fetchData = useCallback(async () => {
@@ -147,58 +133,55 @@ export default function AdminCalendar() {
       try {
           await eventApi.createEvent({title: newEvent.title, start_date: startDate, end_date: newEvent.endDate || startDate, date: startDate, time: convertTo24Hour(newEvent.time), department: newEvent.department || null, description: newEvent.description || null,});
           
-          // Refresh data
           await fetchData();
           
           setNewEvent({ title: '', time: 9, date: '', startDate: '', endDate: '', department: '' });
           setShowAddEvent(false);
-          alert("Event created successfully!");
+          showNotification("Event created successfully!", "success");
       } catch (error) {
           console.error("Failed to create event:", error);
           const errorMessage = error.response?.data?.error || error.message || "Failed to create event.";
-          alert(`Failed to create event: ${errorMessage}`);
+          showNotification(`Failed to create event: ${errorMessage}`, "error");
       }
     } else {
-        alert("Please fill in the Event Title and Start Date.");
+        showNotification("Please fill in the Event Title and Start Date.", "error");
     }
-  }, [newEvent, fetchData]);
+  }, [newEvent, fetchData, showNotification]);
 
   const handleCreateSchedule = useCallback(async () => {
     if (newSchedule.employee_id && newSchedule.startDate && newSchedule.endDate && newSchedule.startTime && newSchedule.endTime) {
       try {
         await scheduleApi.createSchedule(newSchedule);
-        
-        // Refresh data
         await fetchData(); 
 
         setNewSchedule({ title: '', employee_id: '', startDate: '', endDate: '', startTime: '09:00', endTime: '17:00', description: '', repeat: 'none' });
         setShowScheduleModal(false);
-        alert("Schedule created successfully!");
+        showNotification("Schedule created successfully!", "success");
       } catch (error) {
         console.error("Failed to create schedule:", error);
-        alert("Failed to create schedule. Please try again.");
+        showNotification("Failed to create schedule. Please try again.", "error");
       }
     } else {
-      alert("Please fill in all required fields (Employee, Start/End Date, Start/End Time).");
+      showNotification("Please fill in all required fields (Employee, Start/End Date, Start/End Time).", "error");
     }
-  }, [newSchedule]);
+  }, [newSchedule, fetchData, showNotification]);
 
   const handleCreateAnnouncement = useCallback(async (announcementData) => {
       if (announcementData.title && announcementData.content) {
         try {
             await announcementApi.createAnnouncement(announcementData);
-            await fetchData(); // Refresh to show new announcement
+            await fetchData();
             setShowAnnouncementModal(false);
-            alert("Announcement created successfully!");
+            showNotification("Announcement created successfully!", "success");
         } catch (error) {
             console.error("Failed to create announcement:", error);
             const errorMessage = error.response?.data?.message || error.message || "Failed to create announcement.";
-            alert(`Error: ${errorMessage}`);
+            showNotification(`Error: ${errorMessage}`, "error");
         }
       } else {
-          alert("Please fill in the Title and Content.");
+          showNotification("Please fill in the Title and Content.", "error");
       }
-  }, [fetchData]);
+  }, [fetchData, showNotification]);
 
   // Edit event handler
   const handleEditEvent = useCallback((event) => {
@@ -207,21 +190,20 @@ export default function AdminCalendar() {
     setShowEditEvent(true);
   }, []);
 
-  // Update event handler
   const handleUpdateEvent = useCallback(async (updatedData) => {
     if (!eventToEdit) return;
 
     try {
       await eventApi.updateEvent(eventToEdit.id, updatedData);
-      await fetchData(); // Refresh data
+      await fetchData();
       setShowEditEvent(false);
       setEventToEdit(null);
-      alert("Event updated successfully!");
+      showNotification("Event updated successfully!", "success");
     } catch (error) {
       console.error("Failed to update event:", error);
-      alert("Failed to update event. Please try again.");
+      showNotification("Failed to update event. Please try again.", "error");
     }
-  }, [eventToEdit, fetchData]);
+  }, [eventToEdit, fetchData, showNotification]);
 
   // Edit announcement handler
   const handleEditAnnouncement = useCallback((announcement) => {
@@ -229,19 +211,18 @@ export default function AdminCalendar() {
     setShowEditAnnouncement(true);
   }, []);
 
-  // Update announcement handler
   const handleUpdateAnnouncement = useCallback(async (id, updatedData) => {
     try {
       await announcementApi.updateAnnouncement(id, updatedData);
       await fetchData();
       setShowEditAnnouncement(false);
       setAnnouncementToEdit(null);
-      alert('Announcement updated successfully!');
+      showNotification('Announcement updated successfully!', 'success');
     } catch (error) {
       console.error('Failed to update announcement:', error);
-      alert('Failed to update announcement. Please try again.');
+      showNotification('Failed to update announcement. Please try again.', 'error');
     }
-  }, [fetchData]);
+  }, [fetchData, showNotification]);
 
   // Delete announcement handler
   const handleDeleteAnnouncement = useCallback((item) => {
@@ -256,19 +237,18 @@ export default function AdminCalendar() {
     setShowEditSchedule(true);
   }, []);
 
-  // Update schedule handler
   const handleUpdateSchedule = useCallback(async (id, updatedData) => {
     try {
       await scheduleApi.updateSchedule(id, updatedData);
       await fetchData();
       setShowEditSchedule(false);
       setScheduleToEdit(null);
-      alert('Schedule updated successfully!');
+      showNotification('Schedule updated successfully!', 'success');
     } catch (error) {
       console.error('Failed to update schedule:', error);
-      alert('Failed to update schedule. Please try again.');
+      showNotification('Failed to update schedule. Please try again.', 'error');
     }
-  }, [fetchData]);
+  }, [fetchData, showNotification]);
 
   // Delete schedule handler
   const handleDeleteSchedule = useCallback((item) => {
@@ -291,7 +271,6 @@ export default function AdminCalendar() {
     setIsDeleting(true);
     try {
       if (itemToDelete.id) {
-        // Delete based on type
         if (deleteType === 'announcement') {
           await announcementApi.deleteAnnouncement(itemToDelete.id);
         } else if (deleteType === 'schedule') {
@@ -299,35 +278,37 @@ export default function AdminCalendar() {
         } else {
           await eventApi.deleteEvent(itemToDelete.id);
         }
-        await fetchData(); // Refresh data
-        alert("Deleted successfully!");
+        await fetchData();
+        showNotification("Deleted successfully!", "success");
       }
       setShowDeleteConfirm(false);
       setItemToDelete(null);
       setDeleteType(null);
     } catch (error) {
       console.error("Failed to delete:", error);
-      alert("Failed to delete. Please try again.");
+      showNotification("Failed to delete. Please try again.", "error");
     } finally {
       setIsDeleting(false);
     }
-  }, [itemToDelete, fetchData]);
+  }, [itemToDelete, fetchData, deleteType, showNotification]);
 
-  // Handle event drop for drag and drop
   const handleEventDrop = useCallback(async (event, newDate) => {
     try {
       const formattedDate = newDate.toISOString().split('T')[0];
       await eventApi.updateEvent(event.id, { ...event, date: formattedDate });
-      await fetchData(); // Refresh calendar
-      alert(`Event "${event.title}" moved to ${formattedDate}`);
+      await fetchData();
+      showNotification(`Event "${event.title}" moved to ${formattedDate}`, "success");
     } catch (error) {
       console.error('Failed to move event:', error);
-      alert('Failed to move event. Please try again.');
+      showNotification('Failed to move event. Please try again.', 'error');
     }
-  }, [fetchData]);
+  }, [fetchData, showNotification]);
 
   return (
     <DndProvider backend={HTML5Backend}>
+      {/* Toast Notification */}
+      <ToastNotification notification={notification} />
+      
       <div className="flex h-screen bg-[#274b46] overflow-hidden">
       {/* MAIN CALENDAR AREA */}
       <div className="flex-1 flex flex-col">

@@ -77,7 +77,7 @@ const FormHeader = ({ image, title, subtitle }) => (
  * @param {boolean} showBranding - Toggle branding section (default: true)
  * @param {string} leftBgGradient - Custom left section gradient (optional)
  */
-export default function AuthLayout({children, title, subtitle, image, showQuotes = true, showBranding = true, leftBgGradient = "from-slate-950 to-green-800"}) {
+export default function AuthLayout({children, title, subtitle, image, showQuotes = true, showBranding = true, leftBgGradient = "from-gray-950 to-gray-900"}) {
   const [currentQuote, setCurrentQuote] = useState(0);
   const [fadeIn, setFadeIn] = useState(true);
   const [quotes, setQuotes] = useState([]);
@@ -86,7 +86,7 @@ export default function AuthLayout({children, title, subtitle, image, showQuotes
   // Load quotes dynamically to avoid bundling huge JSON into initial chunk
   useEffect(() => {
     let mounted = true;
-    import("../../../data/quotes.json")
+    import("@/data/quotes_small.json")
       .then((m) => {
         if (mounted) setQuotes(m.default || m);
       })

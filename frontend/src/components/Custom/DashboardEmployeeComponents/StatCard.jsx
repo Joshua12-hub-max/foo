@@ -1,32 +1,39 @@
 import { useMemo, useCallback } from 'react';
-import { CheckSquare } from 'lucide-react';
 
-export default function StatCard({ title, data, onClick }) {
+export default function StatCard({ title, data, value, onClick }) {
+  // Unified gray-based color scheme
   const colorMap = useMemo(() => ({
-    'Present Days': 'bg-[#79B791]',
-    'Absent Days': 'bg-[#7A0000]',
-    'Late Arrivals': 'bg-[#CF9033]',
-    'Reports Filed': 'bg-[#2C497F]',
-    'Leave Balance': 'bg-[#778797]',
+    'Present Days': 'bg-gray-800',
+    'Absent Days': 'bg-gray-700',
+    'Late Arrivals': 'bg-gray-600',
+    'Reports Filed': 'bg-gray-500',
+    'Leave Balance': 'bg-gray-900',
   }), []);
 
   const handleClick = useCallback(() => {
-    onClick({ title, data });
+    onClick?.({ title, data });
   }, [onClick, title, data]);
 
+  const Container = onClick ? 'button' : 'div';
+
   return (
-    <button
-      onClick={handleClick}
-      className="bg-[#F8F9FA] p-5 rounded-lg border border-gray-200 shadow-md hover:shadow-xl hover:scale-[1.02] transition-all duration-300"
+    <Container
+      onClick={onClick ? handleClick : undefined}
+      className={`bg-white p-4 rounded-lg border border-gray-200 shadow-sm transition-all duration-200 ${
+        onClick ? 'hover:shadow-md hover:border-gray-300 cursor-pointer text-left w-full' : ''
+      }`}
     >
-      <div className="flex justify-between items-center mb-3">
-        <div className={`p-3 rounded-lg ${colorMap[title]} shadow-sm`}>
-          <CheckSquare className="w-5 h-5 text-white" />
+      <div className="flex items-center justify-between mb-2">
+        <div className={`w-8 h-8 ${colorMap[title] || 'bg-gray-700'} rounded-lg flex items-center justify-center`}>
         </div>
-        <span className="text-xs text-[#274b46] font-medium opacity-80">View details</span>
+        {onClick && (
+          <span className="text-[10px] text-gray-400 font-medium uppercase tracking-wide">View</span>
+        )}
       </div>
-      <h3 className="text-sm font-bold text-[#274b46] tracking-wide">{title}</h3>
-      <p className="text-3xl font-bold text-[#274b46] mt-2">{data.length}</p>
-    </button>
+      <p className="text-2xl font-bold text-gray-900">
+        {value !== undefined ? value : data?.length || 0}
+      </p>
+      <h3 className="text-xs font-semibold text-gray-500 mt-1">{title}</h3>
+    </Container>
   );
 }

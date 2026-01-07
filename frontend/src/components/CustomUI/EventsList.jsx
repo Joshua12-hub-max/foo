@@ -26,7 +26,7 @@ const EventItem = memo(({ title, date, type, priority }) => {
             {type}
           </span>
         </div>
-        <h5 className="text-sm font-semibold text-gray-800 truncate group-hover:text-[#34645c] transition-colors">
+        <h5 className="text-sm font-semibold text-gray-800 truncate group-hover:text-blue-950 transition-colors">
           {title}
         </h5>
         <div className="flex items-center gap-1 text-xs text-gray-500 mt-0.5">
@@ -57,7 +57,7 @@ function EventsList({ events = [] }) {
     <div className="space-y-3">
       <div className="flex items-center justify-between mb-4">
         <h4 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-          <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+          <Star className="w-4 h-4 text-amber-900 fill-amber-900" />
           Upcoming Events
         </h4>
       </div>

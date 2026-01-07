@@ -1,15 +1,15 @@
 import { useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
-import { ADMIN_ATTENDANCE_HEADERS } from '../../components/Custom/AttendanceComponents/admin/constants/attendanceConstants';
-import { useAttendanceData } from '../../components/Custom/AttendanceComponents/admin/hooks/useAttendanceData';
-import { useAttendanceFilters } from '../../components/Custom/AttendanceComponents/admin/hooks/useAttendanceFilters';
-import { useAttendancePagination } from '../../components/Custom/AttendanceComponents/admin/hooks/useAttendancePagination';
+import { ADMIN_ATTENDANCE_HEADERS } from '@components/Custom/Timekeeping/AttendanceComponents/admin/constants/attendanceConstants';
+import { useAttendanceData } from '@components/Custom/Timekeeping/AttendanceComponents/admin/hooks/useAttendanceData';
+import { useAttendanceFilters } from '@components/Custom/Timekeeping/AttendanceComponents/admin/hooks/useAttendanceFilters';
+import { useAttendancePagination } from '@components/Custom/Timekeeping/AttendanceComponents/admin/hooks/useAttendancePagination';
 
-import AttendanceHeader from '../../components/Custom/AttendanceComponents/admin/components/AttendanceHeader';
-import AttendanceFilters from '../../components/Custom/AttendanceComponents/admin/components/AttendanceFilters';
-import AttendanceSearch from '../../components/Custom/AttendanceComponents/admin/components/AttendanceSearch';
-import AttendanceExport from '../../components/Custom/AttendanceComponents/admin/components/AttendanceExport';
-import AttendanceTable from '../../components/Custom/AttendanceComponents/admin/components/AttendanceTable';
+import AttendanceHeader from '@components/Custom/Timekeeping/AttendanceComponents/admin/components/AttendanceHeader';
+import AttendanceFilters from '@components/Custom/Timekeeping/AttendanceComponents/admin/components/AttendanceFilters';
+import AttendanceSearch from '@components/Custom/Timekeeping/AttendanceComponents/admin/components/AttendanceSearch';
+import AttendanceExport from '@components/Custom/Timekeeping/AttendanceComponents/admin/components/AttendanceExport';
+import AttendanceTable from '@components/Custom/Timekeeping/AttendanceComponents/admin/components/AttendanceTable';
 
 const AdminAttendance = () => {
   const outletContext = useOutletContext?.() || { sidebarOpen: true };
@@ -45,7 +45,7 @@ const AdminAttendance = () => {
         isLoading={isLoading}
       />
 
-      <hr className="mb-6 border-[1px] border-[#274b46]" />
+      <hr className="mb-6 border-[1px] border-gray-200" />
 
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">

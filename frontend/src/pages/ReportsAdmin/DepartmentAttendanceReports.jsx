@@ -1,155 +1,82 @@
-import { useState, useCallback } from 'react';
-import { AlertCircle, CheckCircle } from 'lucide-react';
-import { useDepartmentReports } from '../../components/Custom/DepartmentReportsComponents/hooks/useDepartmentReports';
-import { DepartmentReportsHeader } from '../../components/Custom/DepartmentReportsComponents/DepartmentReportsHeader';
-import { DepartmentReportsFilters } from '../../components/Custom/DepartmentReportsComponents/DepartmentReportsFilters';
-import { DepartmentReportsExportButtons } from '../../components/Custom/DepartmentReportsComponents/DepartmentReportsExportButtons';
-import { DepartmentReportsSummaryTable } from '../../components/Custom/DepartmentReportsComponents/DepartmentReportsSummaryTable';
-import { DepartmentReportDetailModal } from '../../components/Custom/DepartmentReportsComponents/DepartmentReportDetailModal';
-import { exportToExcel, exportToPDF } from '../../components/Custom/DepartmentReportsComponents/utils/departmentReportsExport';
+import { useDepartmentReports } from '@components/Custom/EmployeeManagement/Admin/DepartmentReports/hooks/useDepartmentReports';
+import { useDepartmentExport } from '@components/Custom/EmployeeManagement/Admin/DepartmentReports/hooks/useDepartmentExport';
+import { DepartmentReportsHeader } from '@components/Custom/EmployeeManagement/Admin/DepartmentReports/DepartmentReportsHeader';
+import { DepartmentReportsFilters } from '@components/Custom/EmployeeManagement/Admin/DepartmentReports/DepartmentReportsFilters';
+import { DepartmentReportsExportButtons } from '@components/Custom/EmployeeManagement/Admin/DepartmentReports/DepartmentReportsExportButtons';
+import { DepartmentReportsSummaryTable } from '@components/Custom/EmployeeManagement/Admin/DepartmentReports/DepartmentReportsSummaryTable';
+import { DepartmentReportDetailModal } from '@components/Custom/EmployeeManagement/Admin/DepartmentReports/DepartmentReportDetailModal';
+import { ReportNotification } from '@components/Custom/EmployeeManagement/Admin/DepartmentReports/ReportNotification';
 
-/**
- * Department Attendance Reports Page
- * Centralized attendance records grouped by department for export to accountants
- */
 const DepartmentAttendanceReports = () => {
-  const {
-    today,
-    sidebarOpen,
-    departments,
-    summaryData,
-    detailData,
-    isLoading,
-    isLoadingDetails,
-    error,
-    successMessage,
-    filters,
-    meta,
-    selectedDepartment,
-    detailFilters,
-    detailMeta,
-    setError,
-    setSuccessMessage,
-    handleFilterChange,
-    handleApply,
-    handleClear,
-    handleRefresh,
-    handleDepartmentSelect,
-    handleCloseDetail,
-    handleDetailFilterChange,
-    handleDetailPageChange,
-    getExportData
-  } = useDepartmentReports();
+  const reports = useDepartmentReports();
+  
+  const { 
+    isExporting, 
+    handleExportCSV, 
+    handleExportPDF 
+  } = useDepartmentExport({
+    getExportData: reports.getExportData,
+    filters: reports.filters,
+    setError: reports.setError,
+    setSuccessMessage: reports.setSuccessMessage
+  });
 
-  const [isExporting, setIsExporting] = useState(false);
-
-  // Export to Excel
-  const handleExportCSV = useCallback(async () => {
-    setIsExporting(true);
-    setError(null);
-    try {
-      const exportData = await getExportData();
-      if (exportData.success) {
-        const dateRange = `${filters.fromDate}_to_${filters.toDate}`;
-        exportToExcel(exportData, `department_attendance_${dateRange}`);
-        setSuccessMessage('Excel file downloaded successfully');
-        setTimeout(() => setSuccessMessage(null), 3000);
-      }
-    } catch (err) {
-      setError('Failed to generate Excel export');
-    } finally {
-      setIsExporting(false);
-    }
-  }, [getExportData, filters, setError, setSuccessMessage]);
-
-  // Export to PDF
-  const handleExportPDF = useCallback(async () => {
-    setIsExporting(true);
-    setError(null);
-    try {
-      const exportData = await getExportData();
-      if (exportData.success) {
-        const dateRange = `${filters.fromDate}_to_${filters.toDate}`;
-        exportToPDF(exportData, `department_attendance_${dateRange}`);
-        setSuccessMessage('PDF downloaded successfully');
-        setTimeout(() => setSuccessMessage(null), 3000);
-      }
-    } catch (err) {
-      setError('Failed to generate PDF export');
-    } finally {
-      setIsExporting(false);
-    }
-  }, [getExportData, filters, setError, setSuccessMessage]);
+  const isPageLoading = reports.isLoading || isExporting;
 
   return (
-    <div className={`min-h-screen flex flex-col bg-gradient-to-br from-neutral-100 to-stone-100 rounded-xl shadow-xl p-7 w-full overflow-hidden text-gray-800 transition-all duration-300 ${sidebarOpen ? 'max-w-[1400px] xl:max-w-[77vw]' : 'max-w-[1600px] xl:max-w-[88vw]'}`}>
+    <div className={`min-h-screen flex flex-col bg-gradient-to-br from-neutral-100 to-stone-50 rounded-xl shadow-xl p-7 w-full overflow-hidden text-gray-800 transition-all duration-300 ${reports.sidebarOpen ? 'max-w-[1400px] xl:max-w-[77vw]' : 'max-w-[1600px] xl:max-w-[88vw]'}`}>
       
-      {/* Header */}
       <DepartmentReportsHeader 
-        today={today}
-        handleRefresh={handleRefresh}
-        isLoading={isLoading || isExporting}
+        today={reports.today}
+        handleRefresh={reports.handleRefresh}
+        isLoading={isPageLoading}
       />
 
-      {/* Error Notification */}
-      {error && (
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <AlertCircle className="w-5 h-5" />
-            <span>{error}</span>
-          </div>
-          <button onClick={() => setError(null)} className="text-red-500 hover:text-red-700 text-xl">&times;</button>
-        </div>
-      )}
+      <ReportNotification 
+        type="error" 
+        message={reports.error} 
+        onClose={() => reports.setError(null)} 
+      />
 
-      {/* Success Notification */}
-      {successMessage && (
-        <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg text-green-700 flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <CheckCircle className="w-5 h-5" />
-            <span>{successMessage}</span>
-          </div>
-          <button onClick={() => setSuccessMessage(null)} className="text-green-500 hover:text-green-700 text-xl">&times;</button>
-        </div>
-      )}
+      <ReportNotification 
+        type="success" 
+        message={reports.successMessage} 
+        onClose={() => reports.setSuccessMessage(null)} 
+      />
 
-      {/* Filters */}
       <DepartmentReportsFilters
-        filters={filters}
-        handleFilterChange={handleFilterChange}
-        handleApply={handleApply}
-        handleClear={handleClear}
-        isLoading={isLoading}
-        departments={departments}
+        filters={reports.filters}
+        handleFilterChange={reports.handleFilterChange}
+        handleApply={reports.handleApply}
+        handleClear={reports.handleClear}
+        isLoading={reports.isLoading}
+        departments={reports.departments}
       />
 
-      {/* Export Buttons */}
       <DepartmentReportsExportButtons
         handleExportCSV={handleExportCSV}
         handleExportPDF={handleExportPDF}
-        isLoading={isLoading || isExporting}
-        dataLength={summaryData.length}
+        isLoading={isPageLoading}
+        dataLength={reports.summaryData.length}
       />
 
-      {/* Summary Table */}
       <DepartmentReportsSummaryTable
-        data={summaryData}
-        isLoading={isLoading}
-        onDepartmentClick={handleDepartmentSelect}
-        meta={meta}
+        data={reports.summaryData}
+        isLoading={reports.isLoading}
+        onDepartmentClick={reports.handleDepartmentSelect}
+        meta={reports.meta}
       />
 
-      {/* Detail Modal */}
       <DepartmentReportDetailModal
-        isOpen={!!selectedDepartment}
-        department={selectedDepartment}
-        data={detailData}
-        isLoading={isLoadingDetails}
-        filters={detailFilters}
-        meta={detailMeta}
-        onClose={handleCloseDetail}
-        onFilterChange={handleDetailFilterChange}
-        onPageChange={handleDetailPageChange}
+        isOpen={!!reports.selectedDepartment}
+        department={reports.selectedDepartment}
+        data={reports.detailData}
+        isLoading={reports.isLoadingDetails}
+        filters={reports.detailFilters}
+        meta={reports.detailMeta}
+        onClose={reports.handleCloseDetail}
+        onFilterChange={reports.handleDetailFilterChange}
+        onPageChange={reports.handleDetailPageChange}
       />
     </div>
   );

@@ -3,6 +3,9 @@ import { createNotification, notifyAdmins } from './notificationController.js';
 
 export const getMySchedule = async (req, res) => {
   try {
+    // Auto-remove expired schedules (past end_date and end_time)
+    await db.query("DELETE FROM schedules WHERE end_date < CURDATE() OR (end_date = CURDATE() AND end_time < CURTIME())");
+
     // Token payload usually has 'employeeId' (camelCase)
     const employeeId = req.user.employeeId || req.user.employee_id || req.user.id;
 
@@ -36,6 +39,9 @@ export const getMySchedule = async (req, res) => {
 
 export const getAllSchedules = async (req, res) => {
   try {
+    // Auto-remove expired schedules
+    await db.query("DELETE FROM schedules WHERE end_date < CURDATE() OR (end_date = CURDATE() AND end_time < CURTIME())");
+    
     const [schedules] = await db.query(`
       SELECT 
         s.employee_id, s.schedule_title, s.start_time, s.end_time, s.start_date, s.end_date, s.repeat_pattern, s.is_rest_day,
@@ -92,6 +98,10 @@ export const createSchedule = async (req, res) => {
       return res.status(400).json({ message: "End time is required" });
     }
 
+    // Sanitize Time Format to HH:MM:SS
+    const formattedStartTime = startTime.length > 8 ? startTime.substring(0, 8) : startTime;
+    const formattedEndTime = endTime.length > 8 ? endTime.substring(0, 8) : endTime;
+
     // Validate employee exists
     const [employeeCheck] = await db.query(
       "SELECT employee_id FROM authentication WHERE employee_id = ?",
@@ -128,12 +138,12 @@ export const createSchedule = async (req, res) => {
         if (existing.length > 0) {
           await db.query(
             "UPDATE schedules SET start_time = ?, end_time = ?, is_rest_day = FALSE, schedule_title = ?, start_date = ?, end_date = ?, repeat_pattern = ? WHERE id = ?",
-            [startTime, endTime, schedule_title, startDate, endDate, repeat, existing[0].id]
+            [formattedStartTime, formattedEndTime, schedule_title, startDate, endDate, repeat, existing[0].id]
           );
         } else {
           await db.query(
             "INSERT INTO schedules (employee_id, day_of_week, start_time, end_time, is_rest_day, schedule_title, start_date, end_date, repeat_pattern) VALUES (?, ?, ?, ?, FALSE, ?, ?, ?, ?)",
-            [employee_id, day, startTime, endTime, schedule_title, startDate, endDate, repeat]
+            [employee_id, day, formattedStartTime, formattedEndTime, schedule_title, startDate, endDate, repeat]
           );
         }
       } catch (dbError) {

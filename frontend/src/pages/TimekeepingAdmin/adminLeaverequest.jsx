@@ -2,15 +2,15 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useOutletContext } from 'react-router-dom';
 
 // Hooks
-import { useAdminLeaveData, useAdminLeaveFilters, usePagination, useExport } from '../../components/Custom/LeaveRequestComponents/Admin/hooks';
+import { useAdminLeaveData, useAdminLeaveFilters, usePagination, useExport } from '@components/Custom/Timekeeping/LeaveRequestComponents/Admin/hooks';
 
 // Components
-import { Header,Filters,SearchBar,ExportOptions,Table,Pagination,LoadingSpinner,ErrorAlert,SuccessAlert} from '../../components/Custom/LeaveRequestComponents/Admin/components';
+import { Header,Filters,SearchBar,ExportOptions,Table,Pagination,LoadingSpinner,ErrorAlert,SuccessAlert} from '@components/Custom/Timekeeping/LeaveRequestComponents/Admin/components';
 
 // Modals
-import ApproveModal from '../../components/Custom/LeaveRequestComponents/Admin/Modals/Approve';
-import RejectModal from '../../components/Custom/LeaveRequestComponents/Admin/Modals/Reject';
-import ProcessModal from '../../components/Custom/LeaveRequestComponents/Admin/Modals/Process';
+import ApproveModal from '@components/Custom/Timekeeping/LeaveRequestComponents/Admin/Modals/Approve';
+import RejectModal from '@components/Custom/Timekeeping/LeaveRequestComponents/Admin/Modals/Reject';
+import ProcessModal from '@components/Custom/Timekeeping/LeaveRequestComponents/Admin/Modals/Process';
 
 const AdminLeaveRequest = () => {
   const today = useMemo(() => new Date().toLocaleDateString('en-US'), []);
@@ -107,6 +107,8 @@ const AdminLeaveRequest = () => {
         isLoading={loading || isExporting}
         today={today}
       />
+
+      <hr className="mb-6 h-px bg-gray-200 border-0" />
 
       {/* Alerts */}
       <ErrorAlert message={currentError} />

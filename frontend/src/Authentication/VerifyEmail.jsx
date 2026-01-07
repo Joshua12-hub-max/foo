@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
-import AuthLayout from '../components/Custom/Auth/AuthLayout';
+import AuthLayout from '@components/Custom/Auth/AuthLayout';
 
 export default function VerifyEmail() {
   const [searchParams] = useSearchParams();

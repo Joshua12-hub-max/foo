@@ -6,13 +6,13 @@ const AnnouncementItem = memo(({ title, date, priority }) => {
   const priorityConfig = useMemo(() => {
     switch (priority) {
       case "high":
-        return { color: "bg-[#7A0000]/10 text-[#7A0000] border-[#7A0000]/20", icon: AlertCircle };
+        return { color: "bg-red-950/10 text-red-950 border-red-950/20", icon: AlertCircle };
       case "medium":
-        return { color: "bg-[#CF9033]/10 text-[#CF9033] border-[#CF9033]/20", icon: Bell };
+        return { color: "bg-amber-900/10 text-amber-900 border-amber-900/20", icon: Bell };
       case "low":
-        return { color: "bg-[#79B791]/10 text-[#79B791] border-[#79B791]/20", icon: Calendar };
+        return { color: "bg-gray-100 text-gray-800 border-gray-200", icon: Calendar };
       default:
-        return { color: "bg-[#778797]/10 text-[#778797] border-[#778797]/20", icon: Calendar };
+        return { color: "bg-slate-900/10 text-slate-900 border-slate-900/20", icon: Calendar };
     }
   }, [priority]);
 
@@ -24,7 +24,7 @@ const AnnouncementItem = memo(({ title, date, priority }) => {
         <Icon className="w-5 h-5" />
       </div>
       <div className="flex-1 min-w-0">
-        <h5 className="text-sm font-semibold text-gray-800 mb-1 group-hover:text-[#34645c] transition-colors truncate">
+        <h5 className="text-sm font-semibold text-gray-800 mb-1 group-hover:text-blue-950 transition-colors truncate">
           {title}
         </h5>
         <div className="flex items-center gap-2 text-xs text-gray-500">

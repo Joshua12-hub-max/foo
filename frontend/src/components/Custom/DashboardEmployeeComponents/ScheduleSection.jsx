@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { CalendarCheck, Clock } from 'lucide-react';
-import { scheduleApi } from '../../../api/scheduleApi';
+import { scheduleApi } from '@api/scheduleApi';
 
 export default function ScheduleSection() {
   const [schedule, setSchedule] = useState(null);
@@ -70,9 +70,9 @@ export default function ScheduleSection() {
   };
 
   return (
-    <div className="bg-[#F8F9FA] rounded-lg shadow-md border border-gray-200 p-4">
-      <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-        <CalendarCheck className="w-4 h-4 text-[#535C91]" />
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 hover:shadow-md transition-all duration-300">
+      <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+        <div className="w-1 h-6 bg-gray-800 rounded-full"></div>
         Today's Schedule
       </h3>
       

@@ -30,24 +30,9 @@ const TabButton = memo(({ tab, isActive, isLoading, onClick }) => {
 
 TabButton.displayName = 'TabButton';
 
-// Memoized Chart Card Component
-const ChartCard = memo(({ title, children, className = "" }) => (
-  <div className={`bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-all duration-300 ${className}`}>
-    {title && (
-      <h4 className="text-lg font-semibold text-gray-800 mb-6 flex items-center gap-2">
-        <div className="w-1 h-6 bg-gray-700 rounded-full"></div>
-        {title}
-      </h4>
-    )}
-    {children}
-  </div>
-));
-
-ChartCard.displayName = 'ChartCard';
-
 // Memoized Loading Overlay
 const LoadingOverlay = memo(() => (
-  <div className="absolute inset-0 flex items-center justify-center bg-white/60 backdrop-blur-[2px] rounded-2xl z-20 transition-all duration-300">
+  <div className="absolute inset-0 flex items-center justify-center bg-white/60 rounded-2xl z-20 transition-all duration-300">
     <div className="flex flex-col items-center gap-3 bg-white p-6 rounded-2xl shadow-xl border border-gray-100">
       <div className="animate-spin rounded-full h-8 w-8 border-3 border-gray-100 border-t-blue-600"></div>
       <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Loading Data...</p>
@@ -153,25 +138,27 @@ export default function CombinedSection() {
     });
   }, [activeTab]);
 
-  // Memoized content rendering - Performance Pie Chart first, Holidays beside it
+  // Memoized content rendering - No card wrappers, just content directly
   const chartContent = useMemo(() => (
     <>
-      <ChartCard title="Performance Evaluation">
+      <div className="mb-6">
         <PerformancePieChart reportData={performanceData} isLoading={performanceLoading} />
-      </ChartCard>
-      <ChartCard title="Upcoming Holidays">
+      </div>
+      <div className="mb-6">
         <HolidaysList holidays={upcomingHolidays} />
-      </ChartCard>
+      </div>
     </>
   ), [performanceData, performanceLoading, upcomingHolidays]);
 
-  // Announcements and Events together
+  // Announcements and Events together - No card wrappers
   const announcementContent = useMemo(() => (
     <>
-      <AnnouncementsList announcements={announcements} />
-      <ChartCard title="Upcoming Events">
+      <div className="mb-6">
+        <AnnouncementsList announcements={announcements} />
+      </div>
+      <div className="mb-6">
         <EventsList events={events} />
-      </ChartCard>
+      </div>
     </>
   ), [announcements, events]);
 
@@ -188,7 +175,7 @@ export default function CombinedSection() {
         </div>
 
         {/* Enhanced Tabs */}
-        <div className="bg-gray-200/50 p-1.5 rounded-2xl flex gap-2 backdrop-blur-sm">
+        <div className="bg-gray-200/50 p-1.5 rounded-2xl flex gap-2">
           {tabs.map((tab) => (
             <TabButton
               key={tab.id}

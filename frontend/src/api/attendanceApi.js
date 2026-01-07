@@ -41,9 +41,9 @@ export const attendanceApi = {
             throw error;
         }
     },
-    getTodayStatus: async () => {
+    getTodayStatus: async (params) => {
         try {
-            const response = await api.get('/attendance/today-status');
+            const response = await api.get('/attendance/today-status', { params });
             return response;
         } catch (error) {
             throw error;
@@ -52,14 +52,6 @@ export const attendanceApi = {
     getDashboardStats: async () => {
         try {
             const response = await api.get('/attendance/dashboard-stats');
-            return response;
-        } catch (error) {
-            throw error;
-        }
-    },
-    getTardinessReport: async (params) => {
-        try {
-            const response = await api.get('/attendance/report/tardiness', { params });
             return response;
         } catch (error) {
             throw error;

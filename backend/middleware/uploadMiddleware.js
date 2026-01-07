@@ -37,11 +37,14 @@ const createUploader = (subfolder) => {
 
     const fileFilter = (req, file, cb) => {
         const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel'];
+        const allowedExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.pdf', '.xlsx', '.xls'];
 
-        if (allowedTypes.includes(file.mimetype)) {
+        const ext = path.extname(file.originalname).toLowerCase();
+
+        if (allowedTypes.includes(file.mimetype) && allowedExtensions.includes(ext)) {
             cb(null, true);
         } else {
-            cb(new Error('Invalid file type. Only Images, PDFs, and Excel files are allowed.'), false);
+            cb(new Error('Invalid file type or extension. Only Images, PDFs, and Excel files are allowed.'), false);
         }
     };
 

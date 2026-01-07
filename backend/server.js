@@ -5,8 +5,9 @@ import cookieParser from "cookie-parser";
 import helmet from 'helmet';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import cron from 'node-cron';
 import authRoutes from './routes/authRoutes.js';
-import notificationRoutes from './routes/notificationRoutes.js';
+
 import dtrRoutes from './routes/dtrRoutes.js';
 import dtrCorrectionRoutes from './routes/dtrCorrectionRoutes.js';
 import attendanceRoutes from './routes/attendanceRoutes.js';
@@ -19,20 +20,16 @@ import eventRoutes from './routes/eventRoutes.js';
 import performanceRoutes from './routes/performanceRoutes.js';
 import departmentRoutes from './routes/departmentRoutes.js';
 import employeeRoutes from './routes/employeeRoutes.js';
-import spmsRoutes from './routes/spmsRoutes.js';
-import spmsMonitoringRoutes from './routes/spmsMonitoringRoutes.js';
-// SPMS Full Compliance Routes (CSC MC 6-2012)
-import opcrRoutes from './routes/opcrRoutes.js';
-import appealsRoutes from './routes/appealsRoutes.js';
-import pmtRoutes from './routes/pmtRoutes.js';
-import noticesRoutes from './routes/noticesRoutes.js';
 import memoRoutes from './routes/memoRoutes.js';
 import departmentReportsRoutes from './routes/departmentReportsRoutes.js';
 import plantillaRoutes from './routes/plantillaRoutes.js';
 import recruitmentRoutes from './routes/recruitmentRoutes.js';
+import notificationRoutes from './routes/notificationRoutes.js';
+import emailTemplateRoutes from './routes/emailTemplateRoutes.js';
 
 dotenv.config();
 import { initBiometrics } from './services/biometricService.js';
+import { checkForNewApplications } from './services/emailReceiverService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -41,6 +38,20 @@ const app = express();
 
 // Initialize Biometrics Service
 initBiometrics();
+
+// Initialize Email Application Checker (runs every 5 minutes)
+cron.schedule('*/5 * * * *', async () => {
+    console.log('[CRON] Checking for email applications...');
+    try {
+        const result = await checkForNewApplications();
+        if (result.processed > 0) {
+            console.log(`[CRON] Processed ${result.processed} new application(s) from email`);
+        }
+    } catch (err) {
+        console.error('[CRON] Email check failed:', err.message);
+    }
+});
+console.log('Email application checker scheduled (every 5 minutes)');
 
 // Middleware
 app.use(helmet({
@@ -64,7 +75,7 @@ app.use('/uploads', (req, res, next) => {
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/employees', employeeRoutes);
-app.use('/api/notifications', notificationRoutes);
+
 app.use('/api/dtr', dtrRoutes);
 app.use('/api/dtr-corrections', dtrCorrectionRoutes);
 app.use('/api/attendance', attendanceRoutes);
@@ -76,17 +87,12 @@ app.use('/api/announcement', announcementRoutes);
 app.use('/api/event', eventRoutes);
 app.use('/api/performance', performanceRoutes);
 app.use('/api/departments', departmentRoutes);
-app.use('/api/spms', spmsRoutes);
-app.use('/api/spms', spmsMonitoringRoutes);
-// SPMS Full Compliance Routes
-app.use('/api/opcr', opcrRoutes);
-app.use('/api/appeals', appealsRoutes);
-app.use('/api/pmt', pmtRoutes);
-app.use('/api/performance-notices', noticesRoutes);
 app.use('/api/memos', memoRoutes);
 app.use('/api/department-reports', departmentReportsRoutes);
 app.use('/api/plantilla', plantillaRoutes);
 app.use('/api/recruitment', recruitmentRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/email-templates', emailTemplateRoutes);
 
 // Root route
 app.get("/", (req, res) => {

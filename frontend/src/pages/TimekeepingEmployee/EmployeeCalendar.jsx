@@ -1,26 +1,24 @@
 import { useState, useEffect } from 'react';
 
 // Shared hooks and components
-import { useCalendarState } from '../../components/Custom/CalendarComponents/shared/hooks/useCalendarState';
-import { useCalendarNav } from '../../components/Custom/CalendarComponents/shared/hooks/useCalendarNav';
-import { useCalendarData } from '../../components/Custom/CalendarComponents/shared/hooks/useCalendarData';
-import { HOURS_12, EVENT_COLORS } from '../../components/Custom/CalendarComponents/shared/constants/calendarConstants';
+import { useCalendarState } from '@components/Custom/CalendarComponents/shared/hooks/useCalendarState';
+import { useCalendarNav } from '@components/Custom/CalendarComponents/shared/hooks/useCalendarNav';
+import { useCalendarData } from '@components/Custom/CalendarComponents/shared/hooks/useCalendarData';
+import { HOURS_12, EVENT_COLORS } from '@components/Custom/CalendarComponents/shared/constants/calendarConstants';
 
-import CalendarHeader from '../../components/Custom/CalendarComponents/shared/components/CalendarHeader';
-import CalendarControls from '../../components/Custom/CalendarComponents/shared/components/CalendarControls';
-import CalendarGrid from '../../components/Custom/CalendarComponents/shared/components/CalendarGrid';
-import EventDetailsModal from '../../components/Custom/CalendarComponents/shared/Modals/EventDetailsModal';
-import DrawerSidebar from '../../components/Custom/CalendarComponents/shared/components/DrawerSidebar';
+import CalendarHeader from '@components/Custom/CalendarComponents/shared/components/CalendarHeader';
+import CalendarControls from '@components/Custom/CalendarComponents/shared/components/CalendarControls';
+import CalendarGrid from '@components/Custom/CalendarComponents/shared/components/CalendarGrid';
+import EventDetailsModal from '@components/Custom/CalendarComponents/shared/Modals/EventDetailsModal';
+import DrawerSidebar from '@components/Custom/CalendarComponents/shared/components/DrawerSidebar';
 
 // Employee-specific components
-import EmployeeCalendarActions from '../../components/Custom/CalendarComponents/employee/components/EmployeeCalendarActions';
+import EmployeeCalendarActions from '@components/Custom/CalendarComponents/employee/components/EmployeeCalendarActions';
 
 // Utilities
-import { holidays } from '../../utils/holidays';
-import { announcementApi } from '../../api/announcementApi';
-import { eventApi } from '../../api/eventApi';
-import { scheduleApi } from '../../api/scheduleApi'; // Import scheduleApi
-import { getRandomEventColor } from '../../components/Custom/CalendarComponents/shared/utils/eventUtils';
+import { holidays } from '@utils';
+import { announcementApi, eventApi, scheduleApi } from '@api';
+import { getRandomEventColor } from '@components/Custom/CalendarComponents/shared/utils/eventUtils';
 
 export default function EmployeeCalendar() {
   // Calendar state management

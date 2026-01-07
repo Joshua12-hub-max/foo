@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { User, Mail, Lock, Briefcase, Building2, AlertCircle, Loader2 } from "lucide-react";
-import AuthLayout from "../components/Custom/Auth/AuthLayout";
-import { register } from "../Service/Auth";
-import { useAuth } from "../hooks/useAuth"; // Import useAuth for googleLogin
+import AuthLayout from "@components/Custom/Auth/AuthLayout";
+import { register } from "@/Service/Auth";
+import { useAuth } from "@hooks/useAuth"; // Import useAuth for googleLogin
 import { GoogleLogin } from '@react-oauth/google';
 
 export default function Register() {
@@ -233,6 +233,12 @@ export default function Register() {
             Sign in instead
           </Link>
         </p>
+
+        <div className="mt-4 text-center border-t border-gray-100 pt-4">
+          <Link to="/careers" className="text-sm text-blue-600 hover:text-blue-800 hover:underline inline-flex items-center gap-1">
+            Looking for a job? View Open Positions
+          </Link>
+        </div>
       </div>
     </AuthLayout>
   );

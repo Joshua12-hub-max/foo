@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Search, MapPin, Briefcase, ArrowRight } from 'lucide-react';
-import { recruitmentApi } from '../../api/recruitmentApi';
+import { recruitmentApi } from '@api/recruitmentApi';
 import { useNavigate } from 'react-router-dom';
 
 const Careers = () => {

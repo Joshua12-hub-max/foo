@@ -5,26 +5,17 @@ const EvaluationSummary = ({ stats }) => {
     {
       title: 'Total Employees',
       value: stats.total_employees || 0,
-      icon: Users,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-50',
-      borderColor: 'border-blue-100'
+      icon: Users
     },
     {
       title: 'Pending Evaluations',
       value: stats.pending_evaluations || 0,
-      icon: Clock,
-      color: 'text-yellow-600',
-      bgColor: 'bg-yellow-50',
-      borderColor: 'border-yellow-100'
+      icon: Clock
     },
     {
       title: 'Overdue',
       value: stats.overdue_evaluations || 0,
-      icon: AlertCircle,
-      color: 'text-red-600',
-      bgColor: 'bg-red-50',
-      borderColor: 'border-red-100'
+      icon: AlertCircle
     }
   ];
 
@@ -33,10 +24,13 @@ const EvaluationSummary = ({ stats }) => {
       {cards.map((card, index) => (
         <div 
           key={index} 
-          className={`bg-white p-6 rounded-xl shadow-sm border ${card.borderColor} flex flex-col items-center justify-center text-center`}
+          className="bg-white p-6 rounded-xl border border-gray-200 hover:border-gray-300 transition-all group border-l-4 border-gray-300"
         >
-          <h3 className="text-gray-500 text-sm font-medium mb-2">{card.title}</h3>
-          <p className={`text-4xl font-bold ${card.color}`}>{card.value}</p>
+          <div className="flex justify-between items-start mb-2">
+            <h3 className="text-gray-500 text-xs font-bold uppercase tracking-wider">{card.title}</h3>
+            {card.icon && <card.icon size={20} className="text-gray-400" />}
+          </div>
+          <p className="text-3xl font-bold text-gray-800">{card.value}</p>
         </div>
       ))}
     </div>

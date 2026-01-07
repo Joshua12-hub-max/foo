@@ -11,16 +11,28 @@ const handleError = (res, error, context) => {
   });
 };
 
+// Helper to get local date string (YYYY-MM-DD) for shifts calculation
+const getLocalDate = () => {
+    return new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Manila',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    }).format(new Date());
+};
+
 export const clockIn = async (req, res) => {
-  const { employeeId, time } = req.body;
+  // Security: Use authenticated user's ID, not the body's
+  const employeeId = req.user.employeeId; 
 
   if (!employeeId) {
-    return res.status(400).json({ success: false, message: "Employee ID is required.", data: null });
+    return res.status(400).json({ success: false, message: "User not authenticated or missing Employee ID.", data: null });
   }
 
   try {
-    const scanTime = time ? new Date(time) : new Date();
-    const dateStr = scanTime.toISOString().split('T')[0];
+    // Security: Use server time, ignore client time
+    const scanTime = new Date();
+    const dateStr = getLocalDate();
 
     // 1. Log the raw event
     await db.query(
@@ -43,15 +55,17 @@ export const clockIn = async (req, res) => {
 };
 
 export const clockOut = async (req, res) => {
-  const { employeeId, time } = req.body;
+  // Security: Use authenticated user's ID
+  const employeeId = req.user.employeeId;
 
   if (!employeeId) {
-    return res.status(400).json({ success: false, message: "Employee ID is required.", data: null });
+    return res.status(400).json({ success: false, message: "User not authenticated or missing Employee ID.", data: null });
   }
 
   try {
-    const scanTime = time ? new Date(time) : new Date();
-    const dateStr = scanTime.toISOString().split('T')[0];
+    // Security: Use server time
+    const scanTime = new Date();
+    const dateStr = getLocalDate();
     
     // 1. Log the raw event
     await db.query(
@@ -74,34 +88,58 @@ export const clockOut = async (req, res) => {
 };
 
 export const getLogs = async (req, res) => {
-  const employeeId = req.query.employeeId || req.query.id;
+  // Security: Determine access level
+  const user = req.user;
+  const isAdminOrHr = ['admin', 'hr'].includes(user.role?.toLowerCase());
+  
+  // If admin/hr, use query param, otherwise force own ID
+  let targetEmployeeId = isAdminOrHr ? (req.query.employeeId || req.query.id) : user.employeeId;
+
+  // Pagination & Filtering
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 50;
+  const offset = (page - 1) * limit;
+  const startDate = req.query.startDate;
+  const endDate = req.query.endDate;
 
   try {
     let query;
+    let countQuery;
     let params = [];
+    let whereClauses = [];
 
-    if (employeeId) {
-      query = `
-        SELECT dtr.*, a.first_name, a.last_name, a.department 
-        FROM daily_time_records dtr
-        JOIN authentication a ON dtr.employee_id = a.employee_id
-        WHERE dtr.employee_id = ? 
-        ORDER BY dtr.date DESC LIMIT 50
-      `;
-      params = [employeeId];
-    } else {
-      // Admin view: fetch all logs
-      query = `
-        SELECT dtr.*, a.first_name, a.last_name, a.department 
-        FROM daily_time_records dtr
-        JOIN authentication a ON dtr.employee_id = a.employee_id
-        ORDER BY dtr.date DESC LIMIT 200
-      `;
+    if (targetEmployeeId) {
+      whereClauses.push("dtr.employee_id = ?");
+      params.push(targetEmployeeId);
     }
 
-    const [logs] = await db.query(query, params);
+    if (startDate && endDate) {
+      whereClauses.push("dtr.date BETWEEN ? AND ?");
+      params.push(startDate, endDate);
+    }
+
+    const whereString = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
+
+    query = `
+      SELECT dtr.*, a.first_name, a.last_name, a.department 
+      FROM daily_time_records dtr
+      JOIN authentication a ON dtr.employee_id = a.employee_id
+      ${whereString}
+      ORDER BY dtr.date DESC 
+      LIMIT ? OFFSET ?
+    `;
     
-    // Transform data if necessary or return as is
+    countQuery = `
+      SELECT COUNT(*) as total 
+      FROM daily_time_records dtr
+      ${whereString}
+    `;
+
+    const [logs] = await db.query(query, [...params, limit, offset]);
+    const [countResult] = await db.query(countQuery, params);
+    const total = countResult[0].total;
+
+    // Transform data
     const formattedLogs = logs.map(log => ({
       ...log,
       employee_name: `${log.first_name} ${log.last_name}`
@@ -110,7 +148,13 @@ export const getLogs = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: formattedLogs.length > 0 ? "Logs retrieved successfully." : "No logs found.",
-      data: formattedLogs
+      data: formattedLogs,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit)
+      }
     });
 
   } catch (err) {
@@ -139,14 +183,21 @@ export const getRecentActivity = async (req, res) => {
 };
 
 export const getTodayStatus = async (req, res) => {
-  const { employeeId } = req.query;
+  let { employeeId } = req.query;
+  const user = req.user;
+  const isAdminOrHr = ['admin', 'hr'].includes(user.role?.toLowerCase());
+
+  // Security: Non-admins can only see their own status
+  if (!isAdminOrHr) {
+    employeeId = user.employeeId;
+  }
 
   if (!employeeId) {
     return res.status(400).json({ success: false, message: "Employee ID is required.", data: null });
   }
     
   try {
-    const date = new Date().toISOString().split('T')[0];
+    const date = getLocalDate();
 
     const [dtr] = await db.query(
         "SELECT status, time_in, time_out FROM daily_time_records WHERE employee_id = ? AND date = ?",
@@ -200,23 +251,29 @@ export const getRawLogs = async (req, res) => {
  */
 export const getDashboardStats = async (req, res) => {
   try {
-    // Use local date instead of UTC to match database dates
+    const todayStr = getLocalDate();
     const now = new Date();
-    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     
-    // Get all active employees (excluding admins)
+    // Get current day name (e.g., 'Monday')
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const dayName = days[now.getDay()];
+
+    // Get all active employees (excluding admins) with their schedule for today
     const [allEmployees] = await db.query(`
-      SELECT employee_id, first_name, last_name, department 
-      FROM authentication 
-      WHERE role != 'admin'
-    `);
+      SELECT a.employee_id, a.first_name, a.last_name, a.department, a.job_title, a.date_hired, a.employment_status,
+             s.is_rest_day, s.start_time, s.end_time
+      FROM authentication a
+      LEFT JOIN schedules s ON a.employee_id = s.employee_id AND s.day_of_week = ?
+      WHERE a.role != 'admin'
+      ORDER BY a.date_hired DESC
+    `, [dayName]);
     
     // Get today's DTR records
     const [dtrRecords] = await db.query(`
       SELECT dtr.*, a.first_name, a.last_name, a.department
       FROM daily_time_records dtr
       JOIN authentication a ON dtr.employee_id = a.employee_id
-      WHERE DATE(dtr.date) = DATE(?)
+      WHERE DATE(dtr.date) = ?
     `, [todayStr]);
     
     // Get approved leaves for today - use DATE() for proper comparison
@@ -239,15 +296,32 @@ export const getDashboardStats = async (req, res) => {
       const date = new Date(dateTime);
       return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
     };
+
+    // Format date helper
+    const formatDate = (dateString) => {
+        if (!dateString) return '-';
+        return new Date(dateString).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+    };
     
     // Categorize employees
     const presentList = [];
     const lateList = [];
     const absentList = [];
+    const hiredList = []; // New Hired List
     
     allEmployees.forEach(emp => {
       const employeeId = emp.employee_id;
       const name = `${emp.first_name} ${emp.last_name}`;
+
+      // Populate Hired List
+      hiredList.push({
+        id: employeeId,
+        name: name,
+        department: emp.department || '-',
+        position: emp.job_title || '-',
+        status: emp.employment_status || 'Active',
+        hireDate: formatDate(emp.date_hired)
+      });
       
       // Skip if on leave
       if (onLeaveEmployeeIds.has(employeeId)) {
@@ -275,15 +349,20 @@ export const getDashboardStats = async (req, res) => {
           presentList.push(record);
         }
       } else {
-        // No DTR record = Absent
-        absentList.push({
-          id: employeeId,
-          name: name,
-          department: emp.department || '-',
-          status: 'Absent',
-          reason: 'No clock-in recorded',
-          date: todayStr
-        });
+        // No DTR record: Check if they were expected to work
+        // If it's a rest day OR they have no schedule record at all for this day, we don't count them as 'Absent'
+        // (Assuming no schedule = not scheduled to work)
+        if (emp.is_rest_day === 0) { // 0 in MySQL is false, explicitly scheduled to work
+          absentList.push({
+            id: employeeId,
+            name: name,
+            department: emp.department || '-',
+            status: 'Absent',
+            reason: 'No clock-in recorded',
+            date: todayStr
+          });
+        }
+        // If is_rest_day is 1 or null (no schedule), they are not counted as Absent.
       }
     });
     
@@ -304,6 +383,7 @@ export const getDashboardStats = async (req, res) => {
           present: presentList,
           absent: absentList,
           late: lateList,
+          hired: hiredList,
           onLeave: leaves.map(l => ({
             id: l.employee_id,
             name: `${l.first_name} ${l.last_name}`,
@@ -317,56 +397,5 @@ export const getDashboardStats = async (req, res) => {
     });
   } catch (err) {
     handleError(res, err, 'getDashboardStats');
-  }
-};
-
-/**
- * Get Tardiness Report
- * Returns aggregated late minutes and count per employee for a date range
- */
-export const getTardinessReport = async (req, res) => {
-  try {
-    const { startDate, endDate, department } = req.query;
-    
-    // Default to current month if not specified
-    const now = new Date();
-    const start = startDate || new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-    const end = endDate || now.toISOString().split('T')[0];
-    
-    let query = `
-      SELECT 
-        dtr.employee_id,
-        a.first_name,
-        a.last_name,
-        a.department,
-        SUM(dtr.late_minutes) as total_late_minutes,
-        COUNT(CASE WHEN dtr.late_minutes > 0 THEN 1 END) as total_late_occurrences,
-        COUNT(dtr.id) as days_present
-      FROM daily_time_records dtr
-      JOIN authentication a ON dtr.employee_id = a.employee_id
-      WHERE dtr.date BETWEEN ? AND ?
-    `;
-    
-    const params = [start, end];
-    
-    if (department && department !== 'All Departments') {
-      query += ` AND a.department = ?`;
-      params.push(department);
-    }
-    
-    query += ` GROUP BY dtr.employee_id, a.first_name, a.last_name, a.department
-               HAVING total_late_minutes > 0
-               ORDER BY total_late_minutes DESC`;
-               
-    const [report] = await db.query(query, params);
-    
-    return res.status(200).json({
-      success: true,
-      range: { start, end },
-      data: report
-    });
-    
-  } catch (err) {
-    handleError(res, err, 'getTardinessReport');
   }
 };

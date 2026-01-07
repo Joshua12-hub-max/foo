@@ -24,8 +24,8 @@ export const getEvaluationSummary = async (req, res) => {
   try {
     const stats = await getStats();
 
-    // Get list of employees with their latest review status
-    // This is a bit complex query, needing a LEFT JOIN on the latest review
+    // Get list of employees with their latest review status and calculated score
+    // Calculate score from items if stored score is 0/NULL
     const query = `
       SELECT 
         e.id, 
@@ -37,8 +37,14 @@ export const getEvaluationSummary = async (req, res) => {
         pr.id as review_id,
         pr.status,
         pr.updated_at as last_evaluation_date,
-        COALESCE(pr.total_score, pr.supervisor_rating_score, pr.self_rating_score) as score,
-        e.employee_id
+        COALESCE(pr.total_score, pr.supervisor_rating_score, pr.self_rating_score) as stored_score,
+        e.employee_id,
+        (
+          SELECT ROUND(SUM(pri.score * COALESCE(pc.weight, pri.weight, 1)) / NULLIF(SUM(COALESCE(pc.weight, pri.weight, 1)), 0), 2)
+          FROM performance_review_items pri
+          LEFT JOIN performance_criteria pc ON pri.criteria_id = pc.id
+          WHERE pri.review_id = pr.id
+        ) as calculated_score
       FROM authentication e
       LEFT JOIN performance_reviews pr ON e.id = pr.employee_id 
         AND pr.id = (SELECT MAX(id) FROM performance_reviews WHERE employee_id = e.id)
@@ -48,7 +54,7 @@ export const getEvaluationSummary = async (req, res) => {
     
     const [employees] = await db.query(query);
 
-    // Format employees
+    // Format employees - use calculated_score if stored_score is 0 or NULL
     const formattedEmployees = employees.map(emp => ({
       id: emp.id,
       name: `${emp.first_name} ${emp.last_name}`,
@@ -61,7 +67,9 @@ export const getEvaluationSummary = async (req, res) => {
       review_id: emp.review_id,
       status: emp.status || 'Not Started',
       last_evaluation_date: emp.last_evaluation_date,
-      score: emp.score
+      score: (emp.stored_score && parseFloat(emp.stored_score) > 0) 
+        ? emp.stored_score 
+        : (emp.calculated_score || null)
     }));
 
     res.json({
@@ -75,6 +83,7 @@ export const getEvaluationSummary = async (req, res) => {
     res.status(500).json({ success: false, message: "Failed to fetch summary" });
   }
 };
+
 
 // Get rating distribution for pie chart (counts employees by rating category)
 export const getRatingDistribution = async (req, res) => {
@@ -147,7 +156,7 @@ export const getReviewCycles = async (req, res) => {
 
 export const getReviews = async (req, res) => {
   try {
-    let { employee_id, cycle_id } = req.query;
+    let { employee_id, cycle_id, status, department } = req.query;
     const user = req.user; // Attached by verifyToken middleware
 
     // Security: Non-admins can only view their own reviews
@@ -160,10 +169,13 @@ export const getReviews = async (req, res) => {
       SELECT pr.*, 
              COALESCE(pr.total_score, pr.supervisor_rating_score, pr.self_rating_score) as total_score,
              reviewer.first_name as reviewer_first_name, reviewer.last_name as reviewer_last_name,
-             emp.first_name as emp_first_name, emp.last_name as emp_last_name
+             emp.first_name as emp_first_name, emp.last_name as emp_last_name,
+             emp.department as department,
+             prc.title as cycle_title
       FROM performance_reviews pr
-      JOIN authentication emp ON pr.employee_id = emp.id
-      JOIN authentication reviewer ON pr.reviewer_id = reviewer.id
+      LEFT JOIN authentication emp ON pr.employee_id = emp.id
+      LEFT JOIN authentication reviewer ON pr.reviewer_id = reviewer.id
+      LEFT JOIN performance_review_cycles prc ON pr.review_cycle_id = prc.id
       WHERE 1=1
     `;
     const params = [];
@@ -173,13 +185,22 @@ export const getReviews = async (req, res) => {
       params.push(employee_id);
     }
     if (cycle_id) {
-      query += " AND pr.cycle_id = ?";
+      query += " AND pr.review_cycle_id = ?";
       params.push(cycle_id);
+    }
+    if (status) {
+      query += " AND pr.status = ?";
+      params.push(status);
+    }
+    if (department && department !== 'All') {
+      query += " AND emp.department = ?";
+      params.push(department);
     }
 
     query += " ORDER BY pr.created_at DESC";
 
     const [reviews] = await db.query(query, params);
+    
     res.json({ success: true, reviews });
   } catch (error) {
     console.error("Get Reviews Error:", error);
@@ -211,25 +232,27 @@ export const getReview = async (req, res) => {
 
     // Security Check (allow admin, hr, the employee, or the reviewer)
     if (user.role !== 'admin' && user.role !== 'hr') {
-        if (review.employee_id !== user.id && review.reviewer_id !== user.id) {
+        if (review.employee_id != user.id && review.reviewer_id != user.id) {
             return res.status(403).json({ success: false, message: "Unauthorized access to this review" });
         }
     }
 
     // Get items with full criteria info (including weight and category)
-    const [items] = await db.query(`
+    // Get items (Standard CSC Mode)
+    const [cscItems] = await db.query(`
       SELECT pri.*, 
-             pc.title as criteria_title, 
-             pc.description as criteria_description, 
-             pc.max_score,
-             pc.weight,
-             pc.category,
+             COALESCE(pri.criteria_title, pc.title) as criteria_title, 
+             COALESCE(pri.criteria_description, pc.description) as criteria_description, 
+             COALESCE(pri.max_score, pc.max_score) as max_score,
+             COALESCE(pri.weight, pc.weight) as weight,
+             COALESCE(pri.category, pc.category) as category,
              pc.criteria_type
       FROM performance_review_items pri
-      JOIN performance_criteria pc ON pri.criteria_id = pc.id
+      LEFT JOIN performance_criteria pc ON pri.criteria_id = pc.id
       WHERE pri.review_id = ?
-      ORDER BY pc.category, pc.id
+      ORDER BY COALESCE(pri.category, pc.category), pri.id
     `, [id]);
+    const items = cscItems;
 
     review.items = items;
 
@@ -252,15 +275,19 @@ export const acknowledgeReview = async (req, res) => {
         }
         const review = reviews[0];
 
-        if (review.employee_id !== user.id) {
+        if (review.employee_id != user.id) {
             return res.status(403).json({ success: false, message: "You can only acknowledge your own reviews" });
         }
 
-        if (review.status !== 'Submitted') {
-             return res.status(400).json({ success: false, message: "Review must be submitted before acknowledgement" });
+        if (review.disagreed) {
+            return res.status(400).json({ success: false, message: "Cannot acknowledge a review you have disagreed with. Please resolve the disagreement first." });
         }
 
         await db.query("UPDATE performance_reviews SET status = 'Acknowledged' WHERE id = ?", [id]);
+        
+        // Log audit
+        await logAudit(id, 'acknowledged', user.id, {});
+
         res.json({ success: true, message: "Review acknowledged successfully" });
 
     } catch (error) {
@@ -303,37 +330,56 @@ export const createReview = async (req, res) => {
       periodEnd = sixMonthsLater.toISOString().split('T')[0];
     }
 
-    // Check if exists (only if cycle is specified)
+    console.log("=== createReview: About to check for duplicates ===", { employee_id, cycleId });
+
+    // Check if exists - return existing ID instead of 409 error
     if (cycleId) {
       const [existing] = await db.query(
-        "SELECT * FROM performance_reviews WHERE employee_id = ? AND (cycle_id = ? OR review_cycle_id = ?)", 
-        [employee_id, cycleId, cycleId]
+        "SELECT id, status FROM performance_reviews WHERE employee_id = ? AND review_cycle_id = ?", 
+        [employee_id, cycleId]
       );
       if (existing.length > 0) {
-          return res.status(409).json({ success: false, message: "Review already exists for this cycle" });
+        // Return the existing review ID so the frontend can use it
+        return res.status(200).json({ success: true, message: "Review already exists", reviewId: existing[0].id, existing: true });
       }
     }
 
-    // Insert review - use review_cycle_id as the canonical column
+    // Also check without cycle - if there's any draft review for this employee, return that
+    const [existingDraft] = await db.query(
+      "SELECT id FROM performance_reviews WHERE employee_id = ? AND status = 'Draft' ORDER BY created_at DESC LIMIT 1",
+      [employee_id]
+    );
+    if (existingDraft.length > 0) {
+      return res.status(200).json({ success: true, message: "Draft review exists", reviewId: existingDraft[0].id, existing: true });
+    }
+
+    // Create the review
     const [result] = await db.query(
       `INSERT INTO performance_reviews 
-      (employee_id, reviewer_id, review_cycle_id, review_period_start, review_period_end, status) 
-      VALUES (?, ?, ?, ?, ?, 'Draft')`,
+       (employee_id, reviewer_id, review_cycle_id, review_period_start, review_period_end, status, created_at) 
+       VALUES (?, ?, ?, ?, ?, 'Draft', NOW())`,
       [employee_id, reviewer_id, cycleId, periodStart, periodEnd]
     );
 
     const reviewId = result.insertId;
 
     // Initialize items based on active criteria
-    const [criteria] = await db.query("SELECT id FROM performance_criteria WHERE is_active = TRUE OR is_active IS NULL");
+    const [criteria] = await db.query("SELECT * FROM performance_criteria WHERE is_active = TRUE OR is_active IS NULL");
+    console.log("=== createReview: Found criteria ===", criteria.length);
+    
     if (criteria.length > 0) {
       for (const c of criteria) {
         await db.query(
-          "INSERT INTO performance_review_items (review_id, criteria_id, score) VALUES (?, ?, 0)",
-          [reviewId, c.id]
+          `INSERT INTO performance_review_items 
+           (review_id, criteria_id, score, criteria_title, criteria_description, weight, max_score, category) 
+           VALUES (?, ?, 0, ?, ?, ?, ?, ?)`,
+          [reviewId, c.id, c.title, c.description, c.weight || 1, c.max_score || 5, c.category || 'General']
         );
       }
     }
+
+    // Audit log for transparency
+    await logAudit(reviewId, 'created', req.user.id, { employee_id, reviewer_id, cycle_id: cycleId });
 
     res.status(201).json({ success: true, message: "Review initialized", reviewId });
   } catch (error) {
@@ -345,59 +391,159 @@ export const createReview = async (req, res) => {
 
 
 
+// Helper to calculate total score from items
+const calculateReviewScore = async (reviewId) => {
+    const [items] = await db.query(
+      `SELECT pri.score, COALESCE(pc.weight, pri.weight, 1) as weight 
+       FROM performance_review_items pri 
+       LEFT JOIN performance_criteria pc ON pri.criteria_id = pc.id 
+       WHERE pri.review_id = ?`,
+      [reviewId]
+    );
+
+    let totalScore = 0;
+    if (items.length > 0) {
+      let totalWeightedScore = 0;
+      let totalWeight = 0;
+      
+      items.forEach(item => {
+        const weight = parseFloat(item.weight) || 1;
+        const score = parseFloat(item.score) || 0;
+        totalWeightedScore += score * weight;
+        totalWeight += weight;
+      });
+      
+      totalScore = totalWeight > 0 ? (totalWeightedScore / totalWeight).toFixed(2) : 0;
+    }
+    
+    return totalScore;
+};
+
 export const updateReview = async (req, res) => {
   const { id } = req.params;
-  const { items, overall_feedback, total_score, strengths, improvements, goals, additional_comments } = req.body;
+  const { items, overall_feedback, strengths, improvements, additional_comments } = req.body;
+  const user = req.user;
 
   try {
-    // Build overall_feedback from structured fields if provided
-    let feedbackJson = overall_feedback;
-    if (strengths || improvements || goals || additional_comments) {
-      feedbackJson = JSON.stringify({
-        strengths: strengths || '',
-        improvements: improvements || '',
-        goals: goals || '',
-        additional_comments: additional_comments || ''
-      });
+    // Check if review exists and get ownership info
+    const [reviews] = await db.query("SELECT * FROM performance_reviews WHERE id = ?", [id]);
+    if (reviews.length === 0) {
+      return res.status(404).json({ success: false, message: "Review not found" });
     }
+    const review = reviews[0];
+
+    // Security: Only Admin, HR, or the assigned Reviewer can use this generic update.
+    // Employees must use submitSelfRating for their parts, but we might allow them to save draft items if status is Draft.
+    const isReviewer = ['admin', 'hr'].includes(user.role.toLowerCase()) || review.reviewer_id == user.id;
+    const isEmployee = review.employee_id == user.id;
+    
+    if (!isReviewer && !isEmployee) {
+       return res.status(403).json({ success: false, message: "Unauthorized: You cannot edit this review." });
+    }
+    
+    // Employee can only edit if Draft or Self-Rated
+    if (isEmployee && !isReviewer && !['Draft', 'Self-Rated'].includes(review.status)) {
+        return res.status(403).json({ success: false, message: "Cannot edit review in current status." });
+    }
+
+    // Handle overall_feedback
+    // 1. If overall_feedback is sent as a string (JSON), use it.
+    // 2. If not, but legacy fields are present, construct it.
+    // 3. If neither, keep existing or ignore.
+    let feedbackJson = overall_feedback;
+    
+    if (overall_feedback === undefined || overall_feedback === null) {
+         if (strengths || improvements || additional_comments) {
+             // We have legacy fields but no JSON blob.
+             // Try to preserve existing JSON structure if possible, or create new.
+             let existingFeedback = {};
+             try { existingFeedback = JSON.parse(review.overall_feedback || '{}'); } catch(e) {}
+             
+             if (strengths) existingFeedback.strengths = strengths;
+             if (improvements) existingFeedback.improvements = improvements;
+             if (additional_comments) existingFeedback.additional_comments = additional_comments;
+             
+             feedbackJson = JSON.stringify(existingFeedback);
+         } else {
+             // No feedback changes
+             feedbackJson = review.overall_feedback; 
+         }
+    }
+
+    // Update or insert items
+    if (items && Array.isArray(items)) {
+      // 1. Handle Deletions: Identify IDs from frontend
+      const incomingIds = items
+        .filter(i => i.id && (typeof i.id === 'number' || (typeof i.id === 'string' && !i.id.startsWith('temp')))) 
+        .map(i => i.id);
+        
+      // Get all current items for this review
+      const [existingItems] = await db.query("SELECT id FROM performance_review_items WHERE review_id = ?", [id]);
+      const existingIds = existingItems.map(i => i.id);
+      
+      const idsToDelete = existingIds.filter(eid => !incomingIds.includes(eid));
+      
+      if (idsToDelete.length > 0) {
+          const placeholders = idsToDelete.map(() => '?').join(',');
+          await db.query(`DELETE FROM performance_review_items WHERE id IN (${placeholders})`, idsToDelete);
+      }
+
+      // 2. Loop through incoming items to Update or Insert
+      for (const item of items) {
+        // Prepare values
+        const score = parseFloat(item.score) || 0;
+        const q_score = parseFloat(item.q_score) || null;
+        const e_score = parseFloat(item.e_score) || null;
+        const t_score = parseFloat(item.t_score) || null;
+        const weight = parseFloat(item.weight) || 1;
+        const max_score = parseFloat(item.max_score) || 5;
+        
+        if (item.id && (typeof item.id === 'number' || !item.id.toString().startsWith('temp'))) {
+            // Update existing item
+             await db.query(
+            `UPDATE performance_review_items 
+             SET score = ?, q_score = ?, e_score = ?, t_score = ?, comment = ?,
+                 criteria_title = ?, criteria_description = ?, weight = ?, max_score = ?, category = ?,
+                 self_score = ?, actual_accomplishments = ?
+             WHERE id = ? AND review_id = ?`,
+            [
+                score, q_score, e_score, t_score, item.comment || '',
+                item.criteria_title, item.criteria_description, weight, max_score, item.category,
+                item.self_score || 0, item.actual_accomplishments || '',
+                item.id, id
+            ]
+          );
+        } else {
+            // Insert new item
+           await db.query(
+            `INSERT INTO performance_review_items 
+             (review_id, criteria_id, score, q_score, e_score, t_score, comment, criteria_title, criteria_description, weight, max_score, category, self_score, actual_accomplishments) 
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+                id, item.criteria_id || null, score, q_score, e_score, t_score, item.comment || '',
+                item.criteria_title, item.criteria_description, weight, max_score, item.category,
+                item.self_score || 0, item.actual_accomplishments || ''
+            ]
+          );
+        }
+      }
+    }
+
+    // Recalculate total score
+    const totalScore = await calculateReviewScore(id);
 
     // Update review details
     await db.query(
       `UPDATE performance_reviews 
        SET overall_feedback = ?, total_score = ?, updated_at = NOW() 
        WHERE id = ?`,
-      [feedbackJson, total_score, id]
+      [feedbackJson, totalScore, id]
     );
 
-    // Update or insert items
-    if (items && Array.isArray(items)) {
-      for (const item of items) {
-        // Check if item exists by review_id + criteria_id
-        const [existing] = await db.query(
-          "SELECT id FROM performance_review_items WHERE review_id = ? AND criteria_id = ?",
-          [id, item.criteria_id]
-        );
+    // Audit log for transparency
+    await logAudit(id, 'updated', req.user.id, { items_updated: items?.length || 0 });
 
-        if (existing.length > 0) {
-          // Update existing item
-          await db.query(
-            `UPDATE performance_review_items 
-             SET score = ?, comment = ? 
-             WHERE review_id = ? AND criteria_id = ?`,
-            [item.score || 0, item.comment || '', id, item.criteria_id]
-          );
-        } else {
-          // Insert new item
-          await db.query(
-            `INSERT INTO performance_review_items (review_id, criteria_id, score, comment) 
-             VALUES (?, ?, ?, ?)`,
-            [id, item.criteria_id, item.score || 0, item.comment || '']
-          );
-        }
-      }
-    }
-
-    res.json({ success: true, message: "Review updated successfully" });
+    res.json({ success: true, message: "Review updated successfully", total_score: totalScore });
   } catch (error) {
     console.error("Update Review Error:", error);
     res.status(500).json({ success: false, message: "Failed to update review: " + error.message });
@@ -409,10 +555,11 @@ export const submitReview = async (req, res) => {
   const { id } = req.params;
   try {
     // Calculate total score from review items before submitting
+    // Use LEFT JOIN to include items without criteria_id, fallback to item's own weight
     const [items] = await db.query(
-      `SELECT pri.score, pc.weight 
+      `SELECT pri.score, COALESCE(pc.weight, pri.weight, 1) as weight 
        FROM performance_review_items pri 
-       JOIN performance_criteria pc ON pri.criteria_id = pc.id 
+       LEFT JOIN performance_criteria pc ON pri.criteria_id = pc.id 
        WHERE pri.review_id = ?`,
       [id]
     );
@@ -463,7 +610,7 @@ export const deleteReview = async (req, res) => {
     }
 
     // Security: Only admin/hr or the reviewer can delete
-    if (!['admin', 'hr'].includes(user.role.toLowerCase()) && review.reviewer_id !== user.id) {
+    if (!['admin', 'hr'].includes(user.role.toLowerCase()) && review.reviewer_id != user.id) {
       return res.status(403).json({ success: false, message: "Unauthorized to delete this review" });
     }
 
@@ -483,7 +630,23 @@ export const deleteReview = async (req, res) => {
 // --- Criteria Management ---
 export const getCriteria = async (req, res) => {
   try {
-    const [criteria] = await db.query("SELECT * FROM performance_criteria ORDER BY created_at ASC");
+    const { criteria_type, is_active } = req.query;
+    
+    let query = "SELECT * FROM performance_criteria WHERE 1=1";
+    const params = [];
+
+    if (criteria_type) {
+      query += " AND criteria_type = ?";
+      params.push(criteria_type);
+    }
+    if (is_active !== undefined) {
+      query += " AND is_active = ?";
+      params.push(is_active === 'true' || is_active === true);
+    }
+
+    query += " ORDER BY category, created_at ASC";
+
+    const [criteria] = await db.query(query, params);
     res.json({ success: true, criteria });
   } catch (error) {
     console.error("Get Criteria Error:", error);
@@ -534,6 +697,19 @@ export const deleteCriteria = async (req, res) => {
 // --- Cycle Management ---
 export const createReviewCycle = async (req, res) => {
   const { title, description, start_date, end_date } = req.body;
+
+  // Input validation
+  if (!title || !start_date || !end_date) {
+    return res.status(400).json({ success: false, message: "Title, start date, and end date are required" });
+  }
+
+  // Date validation
+  const startDateObj = new Date(start_date);
+  const endDateObj = new Date(end_date);
+  if (endDateObj <= startDateObj) {
+    return res.status(400).json({ success: false, message: "End date must be after start date" });
+  }
+
   try {
     await db.query(
       "INSERT INTO performance_review_cycles (title, description, start_date, end_date) VALUES (?, ?, ?, ?)",
@@ -592,94 +768,75 @@ const logAudit = async (reviewId, action, actorId, details = null) => {
     }
 };
 
-// Get employee's pending reviews (for self-rating)
-export const getMyPendingReviews = async (req, res) => {
-    const user = req.user;
-    try {
-        const query = `
-            SELECT pr.*, 
-                   pc.title as cycle_title,
-                   reviewer.first_name as reviewer_first_name, 
-                   reviewer.last_name as reviewer_last_name
-            FROM performance_reviews pr
-            LEFT JOIN performance_cycles pc ON pr.cycle_id = pc.id
-            JOIN authentication reviewer ON pr.reviewer_id = reviewer.id
-            WHERE pr.employee_id = ? 
-            AND pr.status IN ('Draft', 'Self-Rated', 'Submitted')
-            ORDER BY pr.created_at DESC
-        `;
-        const [reviews] = await db.query(query, [user.id]);
-        res.json({ success: true, reviews });
-    } catch (error) {
-        console.error("Get My Pending Reviews Error:", error);
-        res.status(500).json({ success: false, message: "Failed to fetch pending reviews" });
-    }
-};
 
-// Submit self-rating (Employee)
+
+// Submit employee self-rating
 export const submitSelfRating = async (req, res) => {
     const { id } = req.params;
-    const { items, employee_remarks } = req.body;
+    const { items, employee_remarks, isDraft } = req.body;
     const user = req.user;
 
     try {
-        // Verify the employee owns this review
         const [reviews] = await db.query("SELECT * FROM performance_reviews WHERE id = ?", [id]);
         if (reviews.length === 0) {
             return res.status(404).json({ success: false, message: "Review not found" });
         }
         const review = reviews[0];
 
-        if (review.employee_id !== user.id) {
-            return res.status(403).json({ success: false, message: "You can only self-rate your own reviews" });
+        // Security: Ensure the acting user is the employee
+        if (review.employee_id != user.id) {
+            return res.status(403).json({ success: false, message: "Unauthorized: You are not the assigned employee for this review." });
         }
 
-        if (!['Draft', 'Self-Rated'].includes(review.status)) {
-            return res.status(400).json({ success: false, message: "Self-rating can only be done when status is Draft or Self-Rated" });
-        }
-
-        // Calculate self-rating score
-        let totalWeightedScore = 0;
+        // Update items
+        let totalSelfScore = 0;
         let totalWeight = 0;
 
         if (items && Array.isArray(items)) {
             for (const item of items) {
-                // Update self-rating fields
-                await db.query(
-                    `UPDATE performance_review_items 
-                     SET self_score = ?, actual_accomplishments = ? 
-                     WHERE review_id = ? AND criteria_id = ?`,
-                    [item.self_score, item.actual_accomplishments || '', id, item.criteria_id]
-                );
+                // Update item
+                if (item.id) {
+                    await db.query(
+                        `UPDATE performance_review_items SET self_score = ?, actual_accomplishments = ? WHERE id = ? AND review_id = ?`,
+                        [item.self_score || 0, item.actual_accomplishments || '', item.id, id]
+                    );
+                } else if (item.criteria_id) {
+                    await db.query(
+                         `UPDATE performance_review_items SET self_score = ?, actual_accomplishments = ? WHERE review_id = ? AND criteria_id = ?`,
+                        [item.self_score || 0, item.actual_accomplishments || '', id, item.criteria_id]
+                    );
+                }
                 
-                // Get weight for this criteria
-                const [criteria] = await db.query("SELECT weight FROM performance_criteria WHERE id = ?", [item.criteria_id]);
-                const weight = criteria[0]?.weight || 1;
-                totalWeightedScore += (parseFloat(item.self_score) || 0) * weight;
+                // Calculate score on the fly
+                const weight = parseFloat(item.weight) || 1;
+                const score = parseFloat(item.self_score) || 0;
+                totalSelfScore += score * weight;
                 totalWeight += weight;
             }
         }
 
-        const selfRatingScore = totalWeight > 0 ? (totalWeightedScore / totalWeight).toFixed(2) : 0;
+        const calculatedSelfScore = totalWeight > 0 ? (totalSelfScore / totalWeight).toFixed(2) : 0;
+        const newStatus = isDraft ? 'Draft' : 'Self-Rated';
 
         // Update review
         await db.query(
             `UPDATE performance_reviews 
-             SET self_rating_score = ?, self_rating_status = 'submitted', 
-                 employee_remarks = ?, status = 'Self-Rated'
+             SET self_rating_score = ?, employee_remarks = ?, 
+                 status = ?, updated_at = NOW()
              WHERE id = ?`,
-            [selfRatingScore, employee_remarks || '', id]
+            [calculatedSelfScore, employee_remarks || '', newStatus, id]
         );
 
         // Log audit
-        await logAudit(id, 'self_rated', user.id, { self_rating_score: selfRatingScore });
+        await logAudit(id, isDraft ? 'self_rating_draft' : 'self_rated', user.id, { self_rating_score: calculatedSelfScore });
 
-        res.json({ success: true, message: "Self-rating submitted successfully", self_rating_score: selfRatingScore });
+        res.json({ success: true, message: isDraft ? "Draft saved successfully" : "Self-rating submitted successfully", self_rating_score: calculatedSelfScore });
     } catch (error) {
-        console.error("Submit Self-Rating Error:", error);
-        res.status(500).json({ success: false, message: "Failed to submit self-rating" });
+        console.error("Submit Self Rating Error:", error);
+        res.status(500).json({ success: false, message: "Failed to submit self rating" });
     }
 };
+
 
 // Submit supervisor rating (Admin/HR/Supervisor)
 export const submitSupervisorRating = async (req, res) => {
@@ -699,25 +856,31 @@ export const submitSupervisorRating = async (req, res) => {
         }
         const review = reviews[0];
 
-        // Calculate supervisor rating score
-        let totalWeightedScore = 0;
-        let totalWeight = 0;
+        // Security: Ensure the acting supervisor is actually the assigned reviewer (or Admin/HR)
+        if (review.reviewer_id != user.id && !['admin', 'hr'].includes(user.role.toLowerCase())) {
+            return res.status(403).json({ success: false, message: "Unauthorized: You are not the assigned reviewer for this employee." });
+        }
 
+        // Update items first
         if (items && Array.isArray(items)) {
             for (const item of items) {
-                await db.query(
-                    `UPDATE performance_review_items SET score = ?, comment = ? WHERE review_id = ? AND criteria_id = ?`,
-                    [item.score, item.comment || '', id, item.criteria_id]
-                );
-                
-                const [criteria] = await db.query("SELECT weight FROM performance_criteria WHERE id = ?", [item.criteria_id]);
-                const weight = criteria[0]?.weight || 1;
-                totalWeightedScore += (parseFloat(item.score) || 0) * weight;
-                totalWeight += weight;
+                // Update item
+                if (item.id) {
+                    await db.query(
+                        `UPDATE performance_review_items SET score = ?, q_score = ?, e_score = ?, t_score = ?, comment = ? WHERE id = ? AND review_id = ?`,
+                        [item.score, item.q_score || null, item.e_score || null, item.t_score || null, item.comment || '', item.id, id]
+                    );
+                } else if (item.criteria_id) {
+                    await db.query(
+                        `UPDATE performance_review_items SET score = ?, q_score = ?, e_score = ?, t_score = ?, comment = ? WHERE review_id = ? AND criteria_id = ?`,
+                        [item.score, item.q_score || null, item.e_score || null, item.t_score || null, item.comment || '', id, item.criteria_id]
+                    );
+                }
             }
         }
 
-        const supervisorRatingScore = totalWeight > 0 ? (totalWeightedScore / totalWeight).toFixed(2) : 0;
+        // Calculate score using the standard helper
+        const supervisorRatingScore = await calculateReviewScore(id);
 
         // Update review
         await db.query(
@@ -781,79 +944,9 @@ export const approveReview = async (req, res) => {
     }
 };
 
-// Get review audit history (Transparency)
-export const getReviewHistory = async (req, res) => {
-    const { id } = req.params;
-    const user = req.user;
 
-    try {
-        // Verify access
-        const [reviews] = await db.query("SELECT * FROM performance_reviews WHERE id = ?", [id]);
-        if (reviews.length === 0) {
-            return res.status(404).json({ success: false, message: "Review not found" });
-        }
-        const review = reviews[0];
 
-        // Allow access if admin/hr, the employee, or the reviewer
-        if (!['admin', 'hr'].includes(user.role.toLowerCase()) && 
-            review.employee_id !== user.id && 
-            review.reviewer_id !== user.id) {
-            return res.status(403).json({ success: false, message: "Unauthorized access" });
-        }
 
-        const [history] = await db.query(`
-            SELECT pal.*, 
-                   a.first_name as actor_first_name, 
-                   a.last_name as actor_last_name,
-                   a.role as actor_role
-            FROM performance_audit_log pal
-            JOIN authentication a ON pal.actor_id = a.id
-            WHERE pal.review_id = ?
-            ORDER BY pal.created_at DESC
-        `, [id]);
-
-        res.json({ success: true, history });
-    } catch (error) {
-        console.error("Get Review History Error:", error);
-        res.status(500).json({ success: false, message: "Failed to fetch review history" });
-    }
-};
-
-// Disagree with rating (Employee transparency feature)
-export const disagreeWithRating = async (req, res) => {
-    const { id } = req.params;
-    const { disagree_remarks } = req.body;
-    const user = req.user;
-
-    try {
-        const [reviews] = await db.query("SELECT * FROM performance_reviews WHERE id = ?", [id]);
-        if (reviews.length === 0) {
-            return res.status(404).json({ success: false, message: "Review not found" });
-        }
-        const review = reviews[0];
-
-        if (review.employee_id !== user.id) {
-            return res.status(403).json({ success: false, message: "You can only disagree with your own reviews" });
-        }
-
-        if (!['Submitted', 'Acknowledged'].includes(review.status)) {
-            return res.status(400).json({ success: false, message: "Can only disagree after review is submitted" });
-        }
-
-        await db.query(
-            `UPDATE performance_reviews SET disagreed = TRUE, disagree_remarks = ? WHERE id = ?`,
-            [disagree_remarks || '', id]
-        );
-
-        // Log audit
-        await logAudit(id, 'disagreed', user.id, { disagree_remarks });
-
-        res.json({ success: true, message: "Disagreement recorded. HR will review your concerns." });
-    } catch (error) {
-        console.error("Disagree With Rating Error:", error);
-        res.status(500).json({ success: false, message: "Failed to record disagreement" });
-    }
-};
 
 // Finalize review (Final step after approval)
 export const finalizeReview = async (req, res) => {
@@ -885,3 +978,95 @@ export const finalizeReview = async (req, res) => {
         res.status(500).json({ success: false, message: "Failed to finalize review" });
     }
 };
+
+// --- Granular Item Management (For Immediate Persistence) ---
+
+export const addItemToReview = async (req, res) => {
+    const { review_id, criteria_id, criteria_title, criteria_description, weight, max_score, category } = req.body;
+    
+    try {
+        const [result] = await db.query(
+            `INSERT INTO performance_review_items 
+             (review_id, criteria_id, score, comment, criteria_title, criteria_description, weight, max_score, category, self_score, actual_accomplishments) 
+             VALUES (?, ?, 0, '', ?, ?, ?, ?, ?, 0, '')`,
+            [review_id, criteria_id || null, criteria_title, criteria_description, weight || 1, max_score || 5, category || 'General']
+        );
+        
+        // Recalculate total score for the review
+        const totalScore = await calculateReviewScore(review_id);
+        await db.query("UPDATE performance_reviews SET total_score = ? WHERE id = ?", [totalScore, review_id]);
+
+        res.status(201).json({ success: true, message: "Item added", itemId: result.insertId, total_score: totalScore });
+    } catch (error) {
+        console.error("Add Item Error:", error);
+        res.status(500).json({ success: false, message: "Failed to add item" });
+    }
+};
+
+export const updateReviewItem = async (req, res) => {
+    const { id } = req.params;
+    const { 
+        score, comment, self_score, actual_accomplishments, q_score, e_score, t_score,
+        criteria_title, criteria_description, category, weight, max_score 
+    } = req.body;
+    
+    try {
+        // Get review_id first to recalculate later
+        const [items] = await db.query("SELECT review_id FROM performance_review_items WHERE id = ?", [id]);
+        if (items.length === 0) return res.status(404).json({ success: false, message: "Item not found" });
+        const reviewId = items[0].review_id;
+
+        await db.query(
+            `UPDATE performance_review_items 
+             SET score = COALESCE(?, score), 
+                 comment = COALESCE(?, comment), 
+                 self_score = COALESCE(?, self_score), 
+                 actual_accomplishments = COALESCE(?, actual_accomplishments),
+                 q_score = COALESCE(?, q_score),
+                 e_score = COALESCE(?, e_score),
+                 t_score = COALESCE(?, t_score),
+                 criteria_title = COALESCE(?, criteria_title),
+                 criteria_description = COALESCE(?, criteria_description),
+                 category = COALESCE(?, category),
+                 weight = COALESCE(?, weight),
+                 max_score = COALESCE(?, max_score)
+             WHERE id = ?`,
+            [score, comment, self_score, actual_accomplishments, q_score, e_score, t_score,
+             criteria_title, criteria_description, category, weight, max_score, id]
+        );
+
+        // Recalculate total score
+        const totalScore = await calculateReviewScore(reviewId);
+        await db.query("UPDATE performance_reviews SET total_score = ? WHERE id = ?", [totalScore, reviewId]);
+
+        res.json({ success: true, message: "Item updated", total_score: totalScore });
+    } catch (error) {
+        console.error("Update Item Error:", error);
+        res.status(500).json({ success: false, message: "Failed to update item" });
+    }
+};
+
+export const deleteReviewItem = async (req, res) => {
+    const { id } = req.params;
+    
+    try {
+        // Get review_id first
+        const [items] = await db.query("SELECT review_id FROM performance_review_items WHERE id = ?", [id]);
+        if (items.length === 0) return res.status(404).json({ success: false, message: "Item not found" });
+        const reviewId = items[0].review_id;
+
+        await db.query("DELETE FROM performance_review_items WHERE id = ?", [id]);
+
+        // Recalculate total score
+        const totalScore = await calculateReviewScore(reviewId);
+        await db.query("UPDATE performance_reviews SET total_score = ? WHERE id = ?", [totalScore, reviewId]);
+
+        res.json({ success: true, message: "Item deleted", total_score: totalScore });
+    } catch (error) {
+        console.error("Delete Item Error:", error);
+        res.status(500).json({ success: false, message: "Failed to delete item" });
+    }
+};
+
+
+

@@ -4,8 +4,9 @@ import {
     getAllEmployees, 
     getEmployeeById, 
     createEmployee, 
-    updateEmployee, 
+    updateEmployee,
     deleteEmployee,
+    revertEmployeeStatus,
     // Skills
     getEmployeeSkills,
     addEmployeeSkill,
@@ -17,11 +18,7 @@ import {
     // Emergency Contacts
     getEmployeeContacts,
     addEmployeeContact,
-    deleteEmployeeContact,
-    // Documents
-    getEmployeeDocuments,
-    addEmployeeDocument,
-    deleteEmployeeDocument
+    deleteEmployeeContact
 } from '../controllers/employeeController.js';
 import { verifyToken, verifyAdmin } from '../middleware/authMiddleware.js';
 
@@ -34,6 +31,7 @@ router.get('/', verifyToken, getAllEmployees);
 router.get('/:id', verifyToken, getEmployeeById);
 router.post('/', verifyToken, verifyAdmin, createEmployee);
 router.put('/:id', verifyToken, verifyAdmin, updateEmployee);
+router.patch('/:id/revert-status', verifyToken, verifyAdmin, revertEmployeeStatus);
 router.delete('/:id', verifyToken, verifyAdmin, deleteEmployee);
 
 // ==========================================
@@ -57,11 +55,6 @@ router.get('/:id/contacts', verifyToken, getEmployeeContacts);
 router.post('/:id/contacts', verifyToken, verifyAdmin, addEmployeeContact);
 router.delete('/:id/contacts/:contactId', verifyToken, verifyAdmin, deleteEmployeeContact);
 
-// ==========================================
-// EMPLOYEE DOCUMENTS
-// ==========================================
-router.get('/:id/documents', verifyToken, getEmployeeDocuments);
-router.post('/:id/documents', verifyToken, verifyAdmin, addEmployeeDocument);
-router.delete('/:id/documents/:documentId', verifyToken, verifyAdmin, deleteEmployeeDocument);
+
 
 export default router;

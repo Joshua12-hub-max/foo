@@ -9,8 +9,26 @@ import {
 } from '../api/performanceApi';
 import { useAuth } from './useAuth';
 
-const useEmployeeReviews = () => {
+/**
+ * Custom hook for employee performance reviews
+ * @param {Object} options - Hook options
+ * @param {Function} options.showNotification - Optional callback for notifications (message, type)
+ */
+const useEmployeeReviews = ({ showNotification } = {}) => {
   const { user } = useAuth();
+  
+  // Notification helper - falls back to console if no callback provided
+  const notify = (message, type = 'success') => {
+    if (showNotification) {
+      showNotification(message, type);
+    } else {
+      if (type === 'error') {
+        console.error('[Review]', message);
+      } else {
+        console.log('[Review]', message);
+      }
+    }
+  };
   
   // Core state
   const [reviews, setReviews] = useState([]);
@@ -80,14 +98,13 @@ const useEmployeeReviews = () => {
           ...review,
           strengths: parsedFeedback.strengths,
           improvements: parsedFeedback.improvements,
-          goals: parsedFeedback.goals,
           additional_comments: parsedFeedback.additional_comments
         });
         setIsDetailOpen(true);
       }
     } catch (err) {
       console.error(err);
-      alert("Failed to load review details.");
+      notify("Failed to load review details.", "error");
     }
   }, []);
 
@@ -106,7 +123,7 @@ const useEmployeeReviews = () => {
       }
     } catch (err) {
       console.error(err);
-      alert("Failed to load review for self-rating.");
+      notify("Failed to load review for self-rating.", "error");
     }
   }, []);
 
@@ -114,10 +131,9 @@ const useEmployeeReviews = () => {
   const handleSubmitSelfRating = useCallback(async () => {
     if (!selectedReview) return;
     
-    // Validate all items have scores
     const incomplete = selfRatingItems.filter(item => !item.self_score || item.self_score === 0);
     if (incomplete.length > 0) {
-      alert("Please provide a self-rating for all criteria.");
+      notify("Please provide a self-rating for all criteria.", "error");
       return;
     }
 
@@ -135,14 +151,14 @@ const useEmployeeReviews = () => {
       });
 
       if (response.success) {
-        alert(`Self-rating submitted successfully! Your average score: ${response.self_rating_score}`);
+        notify(`Self-rating submitted successfully! Your average score: ${response.self_rating_score}`, "success");
         setIsSelfRatingOpen(false);
         setSelfRemarks('');
         loadReviews();
       }
     } catch (err) {
       console.error(err);
-      alert(err.response?.data?.message || "Failed to submit self-rating.");
+      notify(err.response?.data?.message || "Failed to submit self-rating.", "error");
     } finally {
       setSaving(false);
     }
@@ -154,33 +170,32 @@ const useEmployeeReviews = () => {
     if (window.confirm("Are you sure you want to acknowledge this review? This confirms you have discussed it with your supervisor.")) {
       try {
         await acknowledgeReview(selectedReview.id);
-        alert("Review acknowledged successfully.");
+        notify("Review acknowledged successfully.", "success");
         setIsDetailOpen(false);
         loadReviews();
       } catch (err) {
         console.error(err);
-        alert("Failed to acknowledge review.");
+        notify("Failed to acknowledge review.", "error");
       }
     }
   }, [selectedReview, loadReviews]);
 
-  // Disagree with rating
   const handleDisagree = useCallback(async () => {
     if (!selectedReview || !disagreeRemarks.trim()) {
-      alert("Please provide your reason for disagreement.");
+      notify("Please provide your reason for disagreement.", "error");
       return;
     }
 
     try {
       setSaving(true);
       await disagreeWithRating(selectedReview.id, disagreeRemarks);
-      alert("Your disagreement has been recorded. HR will review your concerns.");
+      notify("Your disagreement has been recorded. HR will review your concerns.", "success");
       setIsDisagreeOpen(false);
       setDisagreeRemarks('');
       loadReviews();
     } catch (err) {
       console.error(err);
-      alert("Failed to record disagreement.");
+      notify("Failed to record disagreement.", "error");
     } finally {
       setSaving(false);
     }

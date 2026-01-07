@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, Search, Filter, FileText, CheckCircle, Clock, AlertCircle, ChevronRight } from 'lucide-react';
-import { fetchReviews, fetchReviewCycles } from '../../api/performanceApi';
+import { fetchReviews, fetchReviewCycles } from '@api';
 import { useNavigate } from 'react-router-dom';
 
 const PerformanceReviews = () => {
@@ -67,9 +67,8 @@ const PerformanceReviews = () => {
         </div>
         <button
           onClick={() => navigate('/admin/performance/reviews/new')}
-          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:shadow-lg transition-all"
+          className="flex items-center gap-2 px-4 py-2 bg-[#F8F9FA] text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-100 hover:border-gray-300 transition-all font-medium"
         >
-          <Plus size={20} />
           <span>New Review</span>
         </button>
       </div>
@@ -120,7 +119,7 @@ const PerformanceReviews = () => {
       ) : (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
           <table className="w-full text-left">
-            <thead className="bg-gray-200 shadow-md text-gray-700">
+            <thead className="bg-gray-200 text-gray-700 border-b border-gray-300">
               <tr>
                 <th className="px-6 py-4 font-semibold text-gray-600 text-sm">Employee</th>
                 <th className="px-6 py-4 font-semibold text-gray-600 text-sm">Review Cycle</th>
@@ -160,7 +159,7 @@ const PerformanceReviews = () => {
                   <td className="px-6 py-4">
                     <button 
                       onClick={() => navigate(`/admin/performance/reviews/${review.id}`)}
-                      className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                      className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
                     >
                       <ChevronRight size={18} />
                     </button>

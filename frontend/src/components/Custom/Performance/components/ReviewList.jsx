@@ -1,31 +1,31 @@
 /**
  * ReviewList Component
- * Displays a CRUD table of reviews instead of cards
+ * Displays a CRUD table of reviews with Master Design aesthetics
  */
 
-import { FileText, Eye, Edit3 } from 'lucide-react';
+import { FileText, Eye, Edit3, ArrowRight } from 'lucide-react';
 
-// Status badge styles
+// Minimalist status styling
 const getStatusBadge = (status) => {
   const styles = {
-    pending_self_rating: 'bg-yellow-100 text-yellow-700',
-    pending_acknowledgment: 'bg-blue-100 text-blue-700',
-    acknowledged: 'bg-green-100 text-green-700',
-    disputed: 'bg-red-100 text-red-700',
-    draft: 'bg-gray-100 text-gray-600',
+    pending_self_rating: 'bg-black text-white border border-black',
+    pending_acknowledgment: 'bg-gray-900 text-white border border-gray-900',
+    acknowledged: 'bg-white text-gray-800 border border-gray-300',
+    disputed: 'bg-white text-gray-800 border border-gray-300 dashed',
+    draft: 'bg-gray-50 text-gray-400 border border-gray-100',
   };
-  return styles[status] || 'bg-gray-100 text-gray-600';
+  return styles[status] || 'bg-gray-50 text-gray-500 border border-gray-100';
 };
 
 const formatStatus = (status) => {
   const labels = {
-    pending_self_rating: 'Needs Self-Rating',
-    pending_acknowledgment: 'Pending Acknowledgment',
-    acknowledged: 'Acknowledged',
-    disputed: 'Disputed',
+    pending_self_rating: 'Self Rating Required',
+    pending_acknowledgment: 'Acknowledgment Pending',
+    acknowledged: 'Completed',
+    disputed: 'Under Review',
     draft: 'Draft',
   };
-  return labels[status] || status;
+  return labels[status] || status.replace(/_/g, ' ');
 };
 
 const formatDate = (dateStr) => {
@@ -49,14 +49,16 @@ const ReviewList = ({
 }) => {
   if (reviews.length === 0) {
     return (
-      <div className="text-center py-12 bg-white rounded-xl shadow-sm border border-gray-100">
-        <FileText className="mx-auto h-12 w-12 text-gray-300" />
-        <h3 className="mt-2 text-sm font-medium text-gray-900">
-          {activeTab === 'pending' ? 'No pending reviews' : 'No completed reviews'}
+      <div className="flex flex-col items-center justify-center py-16 px-4 bg-gray-50/50 rounded-xl border-2 border-dashed border-gray-200 text-center">
+        <div className="p-4 bg-white rounded-full text-gray-300 shadow-sm mb-4">
+            <FileText size={32} />
+        </div>
+        <h3 className="text-gray-900 font-bold text-lg tracking-tight mb-1">
+          {activeTab === 'pending' ? 'All Caught Up' : 'No History Yet'}
         </h3>
-        <p className="mt-1 text-sm text-gray-500">
+        <p className="text-sm text-gray-500 max-w-sm mx-auto">
           {activeTab === 'pending' 
-            ? 'You have no evaluations requiring action.' 
+            ? 'You have no pending performance evaluations.' 
             : "You haven't completed any evaluations yet."}
         </p>
       </div>
@@ -64,76 +66,65 @@ const ReviewList = ({
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="bg-gray-200 text-gray-600 text-xs uppercase tracking-wide shadow-sm">
-              <th className="px-6 py-3 text-left font-semibold">Status</th>
-              <th className="px-6 py-3 text-left font-semibold">Review Period</th>
-              <th className="px-6 py-3 text-left font-semibold">Reviewer</th>
-              <th className="px-6 py-3 text-left font-semibold">Type</th>
-              <th className="px-6 py-3 text-left font-semibold">Score</th>
-              <th className="px-6 py-3 text-left font-semibold">Date</th>
-              <th className="px-6 py-3 text-center font-semibold">Actions</th>
+            <tr className="border-b border-gray-100 bg-gray-50/50">
+              <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-gray-400">Status</th>
+              <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-gray-400">Period</th>
+              <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-gray-400">Reviewer</th>
+              <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-gray-400">Score</th>
+              <th className="px-6 py-4 text-right text-[10px] font-black uppercase tracking-widest text-gray-400">Action</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {reviews.map((review) => (
-              <tr key={review.id} className="hover:bg-gray-50 transition-colors">
+              <tr 
+                key={review.id} 
+                className="group hover:bg-gray-50 transition-all cursor-pointer"
+                onClick={() => onViewDetails(review)}
+              >
                 <td className="px-6 py-4">
-                  <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${getStatusBadge(review.status)}`}>
+                  <span className={`inline-flex items-center px-2.5 py-1 rounded text-[10px] uppercase font-bold tracking-wider ${getStatusBadge(review.status)}`}>
                     {formatStatus(review.status)}
                   </span>
                 </td>
                 <td className="px-6 py-4">
-                  <span className="text-sm text-gray-800 font-medium">
-                    {review.review_period || review.cycle_name || 'N/A'}
-                  </span>
+                  <div>
+                      <span className="block text-sm font-bold text-gray-900">
+                        {review.review_period || review.cycle_name || 'Annual Review'}
+                      </span>
+                      <span className="text-xs text-gray-400 font-medium">{formatDate(review.created_at)}</span>
+                  </div>
                 </td>
                 <td className="px-6 py-4">
-                  <span className="text-sm text-gray-600">
-                    {review.reviewer_name || 'Not assigned'}
-                  </span>
-                </td>
-                <td className="px-6 py-4">
-                  <span className="text-sm text-gray-600 capitalize">
-                    {review.review_type || 'Annual'}
+                  <span className="text-sm font-medium text-gray-600">
+                    {review.reviewer_name || '—'}
                   </span>
                 </td>
                 <td className="px-6 py-4">
                   {review.final_score ? (
-                    <span className="text-sm font-semibold text-gray-800">
-                      {parseFloat(review.final_score).toFixed(2)}
-                    </span>
+                    <div className="flex items-center gap-2">
+                        <span className="text-lg font-black text-gray-900">{parseFloat(review.final_score).toFixed(2)}</span>
+                    </div>
                   ) : (
-                    <span className="text-sm text-gray-400">—</span>
+                    <span className="text-xs text-gray-400 font-medium italic">Pending</span>
                   )}
                 </td>
-                <td className="px-6 py-4">
-                  <span className="text-sm text-gray-500">
-                    {formatDate(review.created_at)}
-                  </span>
-                </td>
-                <td className="px-6 py-4">
-                  <div className="flex items-center justify-center gap-2">
-                    <button
-                      onClick={() => onViewDetails(review)}
-                      className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-                      title="View Details"
-                    >
-                      <Eye size={16} />
-                    </button>
-                    {review.status === 'pending_self_rating' && (
+                <td className="px-6 py-4 text-right">
+                    {review.status === 'pending_self_rating' ? (
                       <button
-                        onClick={() => onStartSelfRating(review)}
-                        className="p-2 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
-                        title="Self-Rate"
+                        onClick={(e) => { e.stopPropagation(); onStartSelfRating(review); }}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-black text-white text-xs font-bold uppercase tracking-wider rounded-lg hover:bg-gray-800 transition-all shadow-lg shadow-gray-200"
                       >
-                        <Edit3 size={16} />
+                        <Edit3 size={14} /> Start Rating
                       </button>
+                    ) : (
+                      <div className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-white border border-gray-200 text-gray-300 group-hover:border-gray-300 group-hover:text-gray-900 transition-all">
+                        <ArrowRight size={16} />
+                      </div>
                     )}
-                  </div>
                 </td>
               </tr>
             ))}

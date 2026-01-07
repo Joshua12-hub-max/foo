@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Lock, ArrowLeft, Loader2, CheckCircle } from "lucide-react";
-import AuthLayout from "../components/Custom/Auth/AuthLayout";
-import { resetPassword } from "../Service/Auth";
+import AuthLayout from "@components/Custom/Auth/AuthLayout";
+import { resetPassword } from "@/Service/Auth";
 
 export default function ResetPassword() {
   const [searchParams] = useSearchParams();

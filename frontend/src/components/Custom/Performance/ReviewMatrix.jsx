@@ -1,206 +1,292 @@
-import { CheckCircle2, AlertCircle, AlertTriangle } from 'lucide-react';
-import { UI_COLORS, STATUS_GREEN, STATUS_AMBER, STATUS_RED, SLATE_BLUE } from '../../../utils/colorPalette';
+import { useState } from 'react';
+import { MessageSquare, Plus, SquarePen, Trash2, TrendingUp, AlertCircle, Info, Star } from 'lucide-react';
+import EditCriteriaModal from './Admin/Modals/EditCriteriaModal';
+import DeleteConfirmationModal from './Admin/Modals/DeleteConfirmationModal';
+import { motion, AnimatePresence } from 'framer-motion';
+
+// --- Sub-components for better organization ---
+
+const CustomSelect = ({ value, onChange, label, disabled }) => (
+  <div className="flex flex-col gap-1 flex-1 p-1 rounded border border-transparent hover:border-gray-200 transition-colors">
+    <label className="text-[10px] font-medium text-gray-500 text-center">{label}</label>
+    <div className="relative">
+        <select
+        value={value || 0}
+        onChange={onChange}
+        disabled={disabled}
+        className={`w-full py-0.5 text-center font-bold text-xs bg-transparent border-b border-gray-200 focus:border-gray-800 outline-none transition-all cursor-pointer appearance-none ${disabled ? 'text-gray-300 cursor-not-allowed' : 'text-gray-900 hover:bg-gray-50'}`}
+        style={{ textAlignLast: 'center' }}
+        >
+        <option value="0">-</option>
+        {[5, 4, 3, 2, 1].map(num => (
+            <option key={num} value={num}>{num}</option>
+        ))}
+        </select>
+    </div>
+  </div>
+);
+
+// Individual Item Component
+const ReviewItem = ({ item, onScoreChange, onCommentChange, onSelfScoreChange, onAccomplishmentChange, onQETChange, readOnly, showSelfRating, isSelfRatingMode }) => {
+  const diff = Math.abs((item.self_score || 0) - (item.score || 0));
+  const hasDiscrepancy = showSelfRating && diff >= 2 && item.score > 0;
+
+  return (
+    <motion.div 
+      layout
+      className={`group relative bg-white rounded-lg border transition-all duration-300 overflow-hidden ${hasDiscrepancy ? 'border-gray-300 ring-1 ring-gray-100' : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'}`}
+    >
+
+      <div className="flex flex-col md:flex-row">
+        
+        {/* Left: Content & Inputs */}
+        <div className="flex-1 p-4 pl-6 space-y-3">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-xs font-medium text-gray-500 border border-gray-200 px-1.5 py-0.5 rounded">
+                 {Math.round(item.weight)}% Weight
+              </span>
+              {hasDiscrepancy && (
+                <span className="flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">
+                  <AlertCircle size={10} /> Discrepancy
+                </span>
+              )}
+            </div>
+            <h4 className="text-sm font-bold text-gray-900 leading-tight">{item.criteria_title}</h4>
+            <p className="text-[11px] text-gray-500 mt-1 leading-relaxed line-clamp-2 hover:line-clamp-none transition-all">{item.criteria_description}</p>
+          </div>
+
+          <div className="pt-1">
+             <label className="flex items-center gap-1.5 text-xs font-medium text-gray-500 mb-1">
+                <MessageSquare size={10} />
+                {isSelfRatingMode ? "Your Accomplishments" : "Remarks"}
+             </label>
+             
+             {isSelfRatingMode ? (
+                <textarea
+                  value={item.actual_accomplishments || ''}
+                  onChange={(e) => onAccomplishmentChange?.(item.criteria_id, e.target.value)}
+                  placeholder="Describe your specific accomplishments..."
+                  className="w-full p-2 bg-gray-50 hover:bg-gray-50/80 focus:bg-white border border-gray-100 hover:border-gray-200 focus:border-gray-300 rounded text-xs transition-all outline-none min-h-[60px] resize-none focus:ring-1 focus:ring-gray-100 placeholder:text-gray-300 text-gray-700"
+                />
+             ) : !readOnly ? (
+                <textarea
+                  value={item.comment || ''}
+                  onChange={(e) => onCommentChange?.(item.criteria_id, e.target.value)}
+                  placeholder="Enter remarks..."
+                  className="w-full p-2 bg-gray-50 hover:bg-gray-50/80 focus:bg-white border border-gray-100 hover:border-gray-200 focus:border-gray-300 rounded text-xs transition-all outline-none min-h-[60px] resize-none focus:ring-1 focus:ring-gray-100 placeholder:text-gray-300 text-gray-700"
+                />
+             ) : (
+                <div className="p-2 bg-gray-50/50 rounded text-xs text-gray-600 italic border border-gray-100 min-h-[40px]">
+                   {item.actual_accomplishments || item.comment || <span className="text-gray-400 not-italic">No remarks.</span>}
+                </div>
+             )}
+          </div>
+        </div>
+
+        {/* Right: Rating Panel */}
+        <div className="md:w-[260px] bg-gray-50/30 border-t md:border-t-0 md:border-l border-gray-100 p-4 flex flex-col justify-center space-y-4">
+            
+            {showSelfRating && (
+              <div className="bg-white p-2 rounded border border-gray-100 shadow-sm flex items-center gap-3">
+                 <div className="flex-1">
+                    <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-medium text-gray-500">Self Rating</span>
+                        {isSelfRatingMode && <span className="text-[10px] font-bold text-white bg-gray-900 px-1 py-px rounded-[2px]">REQ</span>}
+                    </div>
+                    {isSelfRatingMode ? (
+                        <div className="relative">
+                           <select 
+                             value={item.self_score || 0}
+                             onChange={(e) => onSelfScoreChange?.(item.criteria_id, parseInt(e.target.value))}
+                             className="w-full py-1 pl-2 font-bold text-gray-700 bg-gray-50 border border-gray-200 rounded focus:border-gray-400 outline-none appearance-none cursor-pointer text-xs"
+                           >
+                              <option value="0">Rate...</option>
+                              {[5,4,3,2,1].map(n => <option key={n} value={n}>{n} - {n===5?'Outstanding':n===4?'Very Sat':n===3?'Satisfactory':n===2?'Unsatisfactory':'Poor'}</option>)}
+                           </select>
+                        </div>
+                      ) : (
+                         <div className="text-[10px] text-gray-400 italic">Rated:</div>
+                      )}
+                 </div>
+                 <div className="w-8 h-8 flex items-center justify-center rounded font-bold text-sm border border-gray-200 bg-gray-50 text-gray-700">
+                    {item.self_score || '-'}
+                 </div>
+              </div>
+            )}
+
+            <div>
+               <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-medium text-gray-500 flex items-center gap-1"><Star size={10} className="text-gray-400" /> Supervisor</span>
+               </div>
+               
+               {(!readOnly && !isSelfRatingMode) ? (
+                  <div className="flex gap-1.5 mb-3">
+                     <CustomSelect label="Q" value={item.q_score} onChange={(e) => onQETChange?.(item.criteria_id, 'q_score', e.target.value)} />
+                     <CustomSelect label="E" value={item.e_score} onChange={(e) => onQETChange?.(item.criteria_id, 'e_score', e.target.value)} />
+                     <CustomSelect label="T" value={item.t_score} onChange={(e) => onQETChange?.(item.criteria_id, 't_score', e.target.value)} />
+                  </div>
+               ) : (
+                 <div className="grid grid-cols-3 gap-1.5 mb-3">
+                    {[
+                        { l:'Q', v: item.q_score },
+                        { l:'E', v: item.e_score },
+                        { l:'T', v: item.t_score }
+                    ].map(metric => (
+                        <div key={metric.l} className="bg-white py-1 px-1 rounded border border-gray-100 text-center shadow-sm">
+                            <span className="block text-[8px] font-bold text-gray-400">{metric.l}</span>
+                            <span className="block font-bold text-gray-700 text-xs">{metric.v || '-'}</span>
+                        </div>
+                    ))}
+                 </div>
+               )}
+               
+               {/* Final Score Display */}
+               <div className="flex items-center justify-between bg-white py-1.5 px-3 rounded border border-gray-200">
+                   <span className="text-xs font-bold text-gray-500">Avg</span>
+                   <span className="text-lg font-black text-gray-900">
+                       {Number(item.score).toFixed(2)}
+                   </span>
+               </div>
+            </div>
+
+        </div>
+      </div>
+    </motion.div>
+  );
+};
 
 
-const ReviewMatrix = ({ 
-  items, 
-  onScoreChange, 
-  onCommentChange, 
-  onSelfScoreChange, // For employee self-rating
-  onAccomplishmentChange, // For employee actual accomplishments
-  readOnly = false,
-  showSelfRating = false, // Toggle to show self-rating column
-  isSelfRatingMode = false // True when employee is doing self-rating
-}) => {
+// --- Main ReviewMatrix Component ---
+
+const ReviewMatrix = ({ items, onScoreChange, onCommentChange, onSelfScoreChange, onAccomplishmentChange, readOnly = false, showSelfRating = false, isSelfRatingMode = false, finalScore = null, onAddItem, onEditItem, onDeleteItem, onQETChange }) => {
+  const [showModal, setShowModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [editingItem, setEditingItem] = useState(null);
+  const [deletingItem, setDeletingItem] = useState(null);
+
+  // Constants
+  const categoryOrder = ['Strategic Priorities', 'Core Functions', 'Support Functions', 'Core Competencies', 'Leadership Competencies', 'Functional Competencies', 'General'];
+
+  // Handlers
+  const openAddModal = () => { setEditingItem(null); setShowModal(true); };
+  const openEditModal = (item) => {
+    setEditingItem({ ...item, title: item.criteria_title, description: item.criteria_description });
+    setShowModal(true);
+  };
+
+  const handleSaveModal = (formData) => {
+    const processedData = { ...formData, criteria_title: formData.title, criteria_description: formData.description };
+    if (editingItem) onEditItem && onEditItem({ ...editingItem, ...processedData });
+    else onAddItem && onAddItem({ ...processedData, id: Date.now(), score: 0, self_score: 0 });
+    setShowModal(false);
+    setEditingItem(null);
+  };
+
+  const handleDeleteClick = (item) => { setDeletingItem(item); setShowDeleteModal(true); };
+  const handleDeleteConfirm = () => {
+    if (deletingItem) {
+      onDeleteItem && onDeleteItem(deletingItem.id || deletingItem.criteria_id);
+      setShowDeleteModal(false);
+      setDeletingItem(null);
+    }
+  };
   
-  // Group items by category
+  // Data Processing
   const groupedItems = items.reduce((acc, item) => {
-    const category = item.category || 'General';
-    if (!acc[category]) acc[category] = [];
-    acc[category].push(item);
+    const cat = item.category || 'General';
+    if (!acc[cat]) acc[cat] = [];
+    acc[cat].push(item);
     return acc;
   }, {});
 
-  // Order categories: Strategic -> Core -> Support -> General
-  const categoryOrder = ['Strategic Priorities', 'Core Functions', 'Support Functions', 'General'];
   const sortedCategories = Object.keys(groupedItems).sort((a, b) => {
-    const indexA = categoryOrder.indexOf(a);
-    const indexB = categoryOrder.indexOf(b);
-    if (indexA !== -1 && indexB !== -1) return indexA - indexB;
-    if (indexA !== -1) return -1;
-    if (indexB !== -1) return 1;
+    const idxA = categoryOrder.indexOf(a);
+    const idxB = categoryOrder.indexOf(b);
+    if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+    if (idxA !== -1) return -1;
+    if (idxB !== -1) return 1;
     return a.localeCompare(b);
   });
 
-  const getRatingDescription = (score) => {
-    if (score === 5) return "Outstanding - Exceeded targets by 130%+, no errors, ahead of time.";
-    if (score === 4) return "Very Satisfactory - Exceeded targets by 115-129%, minor errors, on time.";
-    if (score === 3) return "Satisfactory - Met targets (100-114%), acceptable errors, on time.";
-    if (score === 2) return "Unsatisfactory - Met 51-99% of targets, major errors, delays.";
-    if (score === 1) return "Poor - Met <50% of targets, excessive errors, significant delays.";
-    return "Rate the actual accomplishment against the success indicator.";
-  };
-
-  const getScoreColor = (score) => {
-    if (score >= 4) return 'bg-green-100 text-green-700 border-green-200';
-    if (score >= 3) return 'bg-blue-100 text-blue-700 border-blue-200';
-    if (score >= 2) return 'bg-yellow-100 text-yellow-700 border-yellow-200';
-    return 'bg-red-100 text-red-700 border-red-200';
-  };
-
-  // Check if there's a significant discrepancy between self and supervisor rating
-  const hasDiscrepancy = (selfScore, supervisorScore) => {
-    if (!selfScore || !supervisorScore) return false;
-    return Math.abs(selfScore - supervisorScore) >= 2;
-  };
+  if (items.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center p-10 border-2 border-dashed border-gray-200 rounded-lg bg-gray-50/20 text-center space-y-3">
+         <div className="p-3 bg-gray-50 rounded-full text-gray-400"><Info size={24} /></div>
+         <div>
+            <h3 className="font-bold text-gray-800 text-sm">No Rating Criteria</h3>
+            <p className="text-xs text-gray-500">There are no performance items to evaluate yet.</p>
+         </div>
+         {!readOnly && onAddItem && (
+            <button onClick={openAddModal} className="mt-2 px-4 py-2 bg-gray-900 text-white rounded font-bold text-xs shadow hover:bg-gray-800 transition-all flex items-center gap-2">
+                <Plus size={14} /> Add First Criteria
+            </button>
+         )}
+         <EditCriteriaModal isOpen={showModal} onClose={() => setShowModal(false)} onSubmit={handleSaveModal} initialData={editingItem} />
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 max-w-5xl mx-auto">
       {sortedCategories.map(category => (
-        <div key={category} className="border rounded-xl overflow-hidden shadow-sm bg-white">
-          <div className="px-6 py-4 border-b flex justify-between items-center" style={{ backgroundColor: UI_COLORS.HEADER_BG }}>
-            <h3 className="font-bold text-white text-lg uppercase tracking-wide">{category}</h3>
-            <span className="text-blue-100 text-xs font-medium px-2 py-1 rounded border border-blue-400">
-               Weight: {groupedItems[category].reduce((sum, item) => sum + parseFloat(item.weight || 0), 0).toFixed(0)}%
-            </span>
+        <div key={category} className="space-y-4">
+          {/* Category Header */}
+          <div className="flex items-end justify-between border-b border-gray-200 pb-2">
+             <div className="flex items-center gap-2">
+                <h3 className="text-sm font-bold text-gray-900">{category}</h3>
+                <span className="px-1.5 py-0.5 rounded-full bg-gray-100 text-xs font-medium text-gray-500 border border-gray-200">{groupedItems[category].length}</span>
+             </div>
+             <div className="bg-white px-2 py-0.5 rounded border border-gray-200 shadow-sm">
+                <span className="text-xs font-medium text-gray-500">Weight: </span>
+                <span className="text-xs font-bold text-gray-800">{groupedItems[category].reduce((sum, item) => sum + parseFloat(item.weight || 0), 0).toFixed(0)}%</span>
+             </div>
           </div>
           
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead className="bg-gray-200 shadow-md text-gray-700">
-                <tr>
-                  <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase">MFO / Success Indicators</th>
-                  <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase">Actual Accomplishments</th>
-                  {showSelfRating && (
-                    <th className="px-4 py-3 text-xs font-bold text-blue-600 uppercase text-center bg-blue-50">
-                      Self-Rating
-                    </th>
-                  )}
-                  <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase text-center">
-                    {showSelfRating ? 'Supervisor Rating' : 'Supervisor Rating'}
-                  </th>
-                  {showSelfRating && (
-                    <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase w-16 text-center">Diff</th>
-                  )}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {groupedItems[category].map((item, idx) => {
-                  const discrepancy = hasDiscrepancy(item.self_score, item.score);
-                  
-                  return (
-                    <tr key={item.id || idx} className={`hover:bg-gray-50 transition-colors ${discrepancy ? 'bg-yellow-50/50' : ''}`}>
-                      <td className="px-4 py-4 align-top w-1/4">
-                        <div className="font-bold text-gray-800 mb-1">{item.criteria_title}</div>
-                        <div className="text-sm text-gray-500 leading-relaxed">{item.criteria_description}</div>
-                        <div className="mt-2 text-xs text-gray-400">Max: {item.max_score} • Weight: {item.weight}%</div>
-                      </td>
-                      
-                      <td className="px-4 py-4 align-top w-1/4">
-                        {isSelfRatingMode ? (
-                          <textarea
-                            value={item.actual_accomplishments || ''}
-                            onChange={(e) => onAccomplishmentChange?.(item.criteria_id, e.target.value)}
-                            placeholder="Describe your actual accomplishments..."
-                            className="w-full p-3 text-sm border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none min-h-[80px] resize-y bg-blue-50/50"
-                          />
-                        ) : readOnly ? (
-                          <div className="text-sm text-gray-800 whitespace-pre-wrap bg-gray-50 p-3 rounded border border-gray-100 min-h-[60px]">
-                            {item.actual_accomplishments || item.comment || "No accomplishments recorded."}
-                          </div>
-                        ) : (
-                          <textarea
-                            value={item.comment || ''}
-                            onChange={(e) => onCommentChange(item.criteria_id, e.target.value)}
-                            placeholder="Describe actual output/accomplishments vs targets..."
-                            className="w-full p-3 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none min-h-[80px] resize-y"
-                          />
-                        )}
-                      </td>
-
-                      {/* Self-Rating Column */}
-                      {showSelfRating && (
-                        <td className="px-4 py-4 align-top text-center bg-blue-50/30">
-                          {isSelfRatingMode ? (
-                            <select
-                              value={item.self_score || 0}
-                              onChange={(e) => onSelfScoreChange?.(item.criteria_id, parseInt(e.target.value))}
-                              className="w-full p-2.5 text-center font-bold border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white cursor-pointer"
-                            >
-                              <option value="0" disabled>-</option>
-                              <option value="5">5 - Outstanding</option>
-                              <option value="4">4 - Very Satisfactory</option>
-                              <option value="3">3 - Satisfactory</option>
-                              <option value="2">2 - Unsatisfactory</option>
-                              <option value="1">1 - Poor</option>
-                            </select>
-                          ) : (
-                            <div className={`w-10 h-10 mx-auto rounded-full flex items-center justify-center font-bold text-lg border ${
-                              item.self_score && parseFloat(item.self_score) > 0 ? getScoreColor(parseFloat(item.self_score)) : 'bg-gray-100 text-gray-400 border-gray-200'
-                            }`}>
-                              {item.self_score && parseFloat(item.self_score) > 0 ? parseFloat(item.self_score) : '-'}
-                            </div>
-                          )}
-                        </td>
-                      )}
-
-                      {/* Supervisor Rating Column */}
-                      <td className="px-4 py-4 align-top text-center">
-                        {readOnly || isSelfRatingMode ? (
-                          <div className={`w-10 h-10 mx-auto rounded-full flex items-center justify-center font-bold text-lg border ${
-                            item.score && parseFloat(item.score) > 0 ? getScoreColor(parseFloat(item.score)) : 'bg-gray-100 text-gray-400 border-gray-200'
-                          }`}>
-                            {item.score && parseFloat(item.score) > 0 ? parseFloat(item.score) : '-'}
-                          </div>
-                        ) : (
-                          <select
-                            value={item.score || 0}
-                            onChange={(e) => onScoreChange(item.criteria_id, parseInt(e.target.value))}
-                            className="w-full p-2.5 text-center font-bold border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white cursor-pointer"
-                          >
-                            <option value="0" disabled>-</option>
-                            <option value="5">5 - Outstanding</option>
-                            <option value="4">4 - Very Satisfactory</option>
-                            <option value="3">3 - Satisfactory</option>
-                            <option value="2">2 - Unsatisfactory</option>
-                            <option value="1">1 - Poor</option>
-                          </select>
-                        )}
-                      </td>
-
-                      {/* Discrepancy Indicator */}
-                      {showSelfRating && (
-                        <td className="px-4 py-4 align-top text-center">
-                          {discrepancy ? (
-                            <div className="flex flex-col items-center" title="Significant discrepancy between self-rating and supervisor rating">
-                              <AlertTriangle className="text-yellow-500" size={20} />
-                              <span className="text-xs text-yellow-600 font-medium">
-                                {Math.abs(item.self_score - item.score)}
-                              </span>
-                            </div>
-                          ) : item.self_score && item.score ? (
-                            <CheckCircle2 className="text-green-500 mx-auto" size={18} />
-                          ) : null}
-                        </td>
-                      )}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+          <div className="space-y-3">
+            <AnimatePresence>
+            {groupedItems[category].map((item, idx) => (
+               <ReviewItem 
+                 key={item.id || item.criteria_id || idx}
+                 item={item}
+                 onAccomplishmentChange={onAccomplishmentChange}
+                 onCommentChange={onCommentChange}
+                 onSelfScoreChange={onSelfScoreChange}
+                 onQETChange={onQETChange}
+                 readOnly={readOnly}
+                 showSelfRating={showSelfRating}
+                 isSelfRatingMode={isSelfRatingMode}
+               />
+            ))}
+            </AnimatePresence>
           </div>
         </div>
       ))}
-      
-      {items.length === 0 && (
-        <div className="p-12 text-center border-2 border-dashed border-gray-200 rounded-xl text-gray-400">
-          <AlertCircle className="mx-auto mb-3 text-gray-300" size={48} />
-          <p>No performance criteria found for this evaluation.</p>
-        </div>
+
+      {finalScore !== null && (
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="mt-10 pt-6 border-t border-gray-100">
+             <div className="rounded-xl bg-gray-900 text-white shadow-lg p-6 flex flex-col sm:flex-row items-center justify-between gap-6">
+                 <div className="text-center sm:text-left">
+                     <h2 className="text-lg font-bold text-white mb-0.5">Overall Performance</h2>
+                     <p className="text-xs text-gray-400">Weighted average score</p>
+                 </div>
+                 
+                 <div className="flex items-center gap-6 bg-gray-800 p-2 pr-6 rounded-lg border border-gray-700">
+                     <div className="bg-white text-gray-900 px-4 py-2 rounded-md shadow-sm min-w-[80px] text-center">
+                         <span className="block text-2xl font-black leading-none">{Number(finalScore).toFixed(2)}</span>
+                     </div>
+                     <div>
+                          <span className="block text-xs font-medium text-gray-500 mb-0.5">Rating</span>
+                          <span className="text-lg font-bold text-white">
+                              {Number(finalScore) >= 4.5 ? "Outstanding" : Number(finalScore) >= 3.5 ? "Very Satisfactory" : Number(finalScore) >= 2.5 ? "Satisfactory" : Number(finalScore) >= 1.5 ? "Unsatisfactory" : "Poor"}
+                          </span>
+                     </div>
+                 </div>
+             </div>
+          </motion.div>
       )}
     </div>
   );
 };
 
 export default ReviewMatrix;
-

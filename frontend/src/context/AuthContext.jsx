@@ -1,5 +1,5 @@
 import { createContext, useState, useEffect } from 'react';
-import { login as loginApi, googleLogin as googleLoginApi, getCurrentUser, resendVerification } from '../Service/Auth';
+import { login as loginApi, googleLogin as googleLoginApi, getCurrentUser, resendVerification, logout as logoutApi } from '../Service/Auth';
 
 export const AuthContext = createContext();
 
@@ -41,7 +41,7 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
-        await import('../Service/Auth').then(module => module.logout());
+        await logoutApi();
     } catch (e) {
         console.error("Logout failed", e);
     }

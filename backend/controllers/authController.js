@@ -106,13 +106,13 @@ export const googleLogin = async (req, res) => {
 };
 
 export const register = async (req, res) => {
-  const { name, email, role, department, password } = req.body; // Removed employeeId from destructuring
+  const { name, email, department, password, role } = req.body; // Include role in destructuring
 
-  // 1. Validate input (employeeId is now optional for manual registration)
-  if (!name || !email || !role || !department || !password) {
+  // 1. Validate input
+  if (!name || !email || !department || !password) {
     return res.status(400).json({ 
       success: false, 
-      message: "Name, email, role, department, and password are required.", 
+      message: "Name, email, department, and password are required.", 
       data: null 
     });
   }
@@ -127,30 +127,42 @@ export const register = async (req, res) => {
     });
   }
 
-  try {
-    // Auto-generate employeeId if not provided (for manual registration)
-    const autoEmployeeId = `EMP-${Date.now().toString().slice(-6)}${Math.floor(Math.random() * 100)}`; // Simple unique ID
+  // Validate Password Strength
+  if (password.length < 8) {
+    return res.status(400).json({
+      success: false,
+      message: "Password must be at least 8 characters long.",
+      data: null
+    });
+  }
 
-    // 2. Check if user already exists (using auto-generated employeeId or email)
+  try {
+    // Determine role (default to 'employee' if not provided or invalid)
+    let assignedRole = 'employee';
+    if (role && ['admin', 'hr', 'employee'].includes(role.toLowerCase())) {
+      assignedRole = role.toLowerCase();
+    }
+
+    // Auto-generate employeeId
+    const autoEmployeeId = `EMP-${Date.now().toString().slice(-6)}${Math.floor(Math.random() * 100)}`;
+
+    // 2. Check if user already exists
     const [existingUser] = await db.query(
       "SELECT * FROM authentication WHERE employee_id = ? OR email = ?",
-      [autoEmployeeId, email] // Use autoEmployeeId for check
+      [autoEmployeeId, email]
     );
 
     if (existingUser.length > 0) {
-      // This might indicate a collision with the auto-generated ID, or email already exists.
-      // For simplicity, if autoEmployeeId collides, we can retry, but for now, we'll just report email exists if that's the case.
-      // More robust solution would be to ensure autoEmployeeId uniqueness or retry generation.
       if (existingUser[0].email === email) {
         return res.status(409).json({
           success: false,
-          message: "Email already exists.", // More specific message
+          message: "Email already exists.",
           data: null
         });
       } else {
         return res.status(409).json({
           success: false,
-          message: "Could not generate a unique employee ID. Please try again.", // Or retry logic
+          message: "Could not generate a unique employee ID. Please try again.",
           data: null
         });
       }
@@ -167,10 +179,10 @@ export const register = async (req, res) => {
     // 4. Generate Verification Token
     const verificationToken = crypto.randomBytes(32).toString('hex');
 
-    // 5. Insert user into database (is_verified = FALSE)
+    // 5. Insert user into database
     await db.query(
       "INSERT INTO authentication (first_name, last_name, email, role, department, employee_id, password_hash, is_verified, verification_token) VALUES (?, ?, ?, ?, ?, ?, ?, FALSE, ?)",
-      [first_name, last_name, email, role, department, autoEmployeeId, hashedPassword, verificationToken] // Use autoEmployeeId here
+      [first_name, last_name, email, assignedRole, department, autoEmployeeId, hashedPassword, verificationToken]
     );
 
     // 6. Send Verification Email
@@ -410,7 +422,7 @@ export const getMe = async (req, res) => {
     }
 
     const [users] = await db.query(
-      "SELECT id, first_name, last_name, email, role, department, employee_id, avatar_url, job_title, date_hired, employment_status FROM authentication WHERE id = ?", 
+      "SELECT * FROM authentication WHERE id = ?", 
       [userId]
     );
 
@@ -425,14 +437,40 @@ export const getMe = async (req, res) => {
       data: {
         id: user.id,
         name: `${user.first_name} ${user.last_name}`,
+        first_name: user.first_name,
+        last_name: user.last_name,
         email: user.email,
+        phone_number: user.phone_number,
         role: user.role,
         department: user.department,
         employeeId: user.employee_id,
         avatar: user.avatar_url,
+        
+        // Employment Details
         jobTitle: user.job_title,
+        positionTitle: user.position_title,
+        itemNumber: user.item_number,
+        salaryGrade: user.salary_grade,
+        stepIncrement: user.step_increment,
         dateHired: user.date_hired,
-        employmentStatus: user.employment_status
+        employmentStatus: user.employment_status,
+        
+        // Personal Info
+        birth_date: user.birth_date,
+        gender: user.gender,
+        civil_status: user.civil_status,
+        nationality: user.nationality,
+        blood_type: user.blood_type,
+        permanent_address: user.permanent_address,
+        emergency_contact: user.emergency_contact,
+        emergency_contact_number: user.emergency_contact_number,
+
+        // Government IDs
+        sss_number: user.sss_number,
+        gsis_number: user.gsis_number,
+        philhealth_number: user.philhealth_number,
+        pagibig_number: user.pagibig_number,
+        tin_number: user.tin_number
       }
     });
 
@@ -583,32 +621,61 @@ export const login = async (req, res) => {
 
 export const updateProfile = async (req, res) => {
   try {
-    // verifyToken middleware attaches user to req
     const userId = req.user ? req.user.id : null;
     
     if (!userId) {
         return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
-    const { first_name, last_name, email } = req.body;
+    const { 
+      first_name, last_name, email, phone_number,
+      birth_date, gender, civil_status, nationality, blood_type,
+      height_cm, weight_kg, address,
+      permanent_address, emergency_contact, emergency_contact_number,
+      sss_number, gsis_number, philhealth_number, pagibig_number, tin_number
+    } = req.body;
     const file = req.file;
 
     let avatarUrl;
     if (file) {
-      // Assuming server is running on the same host/port and serves /uploads
-      // We store the relative path. The frontend should prepend API URL if needed, 
-      // or we store full URL. Usually storing relative is safer for migrations.
-      // However, the getMe returns 'avatar_url' directly.
-      // Let's store relative path: /uploads/avatars/filename
-      avatarUrl = `http://localhost:5000/uploads/avatars/${file.filename}`; // Hardcoded for now, or use process.env.API_URL
+      avatarUrl = `http://localhost:5000/uploads/avatars/${file.filename}`;
     }
 
     const updates = [];
     const params = [];
 
+    // Personal Info
     if (first_name) { updates.push("first_name = ?"); params.push(first_name); }
     if (last_name) { updates.push("last_name = ?"); params.push(last_name); }
-    if (email) { updates.push("email = ?"); params.push(email); }
+    if (email) { 
+        updates.push("email = ?"); 
+        params.push(email);
+        // If email is changed, force re-verification
+        updates.push("is_verified = FALSE");
+        // Also clear any existing token to be safe
+        updates.push("verification_token = NULL");
+    }
+    if (phone_number !== undefined) { updates.push("phone_number = ?"); params.push(phone_number); }
+    if (birth_date !== undefined) { updates.push("birth_date = ?"); params.push(birth_date || null); }
+    if (gender !== undefined) { updates.push("gender = ?"); params.push(gender); }
+    if (civil_status !== undefined) { updates.push("civil_status = ?"); params.push(civil_status); }
+    if (nationality !== undefined) { updates.push("nationality = ?"); params.push(nationality); }
+    if (blood_type !== undefined) { updates.push("blood_type = ?"); params.push(blood_type); }
+    if (height_cm !== undefined) { updates.push("height_cm = ?"); params.push(height_cm); }
+    if (weight_kg !== undefined) { updates.push("weight_kg = ?"); params.push(weight_kg); }
+    if (address !== undefined) { updates.push("address = ?"); params.push(address); }
+    if (permanent_address !== undefined) { updates.push("permanent_address = ?"); params.push(permanent_address); }
+    if (emergency_contact !== undefined) { updates.push("emergency_contact = ?"); params.push(emergency_contact); }
+    if (emergency_contact_number !== undefined) { updates.push("emergency_contact_number = ?"); params.push(emergency_contact_number); }
+    
+    // Government IDs
+    if (sss_number !== undefined) { updates.push("sss_number = ?"); params.push(sss_number); }
+    if (gsis_number !== undefined) { updates.push("gsis_number = ?"); params.push(gsis_number); }
+    if (philhealth_number !== undefined) { updates.push("philhealth_number = ?"); params.push(philhealth_number); }
+    if (pagibig_number !== undefined) { updates.push("pagibig_number = ?"); params.push(pagibig_number); }
+    if (tin_number !== undefined) { updates.push("tin_number = ?"); params.push(tin_number); }
+    
+    // Avatar
     if (avatarUrl) { updates.push("avatar_url = ?"); params.push(avatarUrl); }
 
     if (updates.length === 0) {
@@ -633,7 +700,12 @@ export const updateProfile = async (req, res) => {
         role: user.role,
         department: user.department,
         employeeId: user.employee_id,
-        avatar: user.avatar_url
+        avatar: user.avatar_url,
+        jobTitle: user.job_title,
+        positionTitle: user.position_title,
+        itemNumber: user.item_number,
+        salaryGrade: user.salary_grade,
+        stepIncrement: user.step_increment
       }
     });
 

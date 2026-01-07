@@ -1,6 +1,37 @@
 import { getDaysInMonth, isSameDay } from './dateUtils'; 
 
 /**
+ * Convert AM/PM time string to 24-hour integer
+ * @param {string|number} timeStr - Time string like "9AM" or "1PM"
+ * @returns {number} - 24-hour integer (0-23)
+ */
+export const convertTo24Hour = (timeStr) => {
+  if (!timeStr) return 9;
+  if (typeof timeStr === 'number') return timeStr;
+  if (typeof timeStr !== 'string' || timeStr.length < 3) return 9;
+  
+  const period = timeStr.slice(-2).toUpperCase();
+  let hour = parseInt(timeStr.slice(0, -2));
+  
+  if (isNaN(hour)) return 9;
+  if (period === 'PM' && hour !== 12) hour += 12;
+  if (period === 'AM' && hour === 12) hour = 0;
+  return hour;
+};
+
+/**
+ * Convert 24-hour integer to AM/PM string
+ * @param {number} hour24 - 24-hour integer (0-23)
+ * @returns {string} - AM/PM string like "9AM"
+ */
+export const formatHour12 = (hour24) => {
+  if (hour24 === undefined || hour24 === null) return '9AM';
+  const hour = hour24 % 12 || 12;
+  const period = hour24 < 12 ? 'AM' : 'PM';
+  return `${hour}${period}`;
+};
+
+/**
  * Filter events for a specific date
  * @param {Array} events - Array of events
  * @param {Date} date - Date to filter for

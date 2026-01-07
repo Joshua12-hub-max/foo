@@ -3,7 +3,9 @@ import { createNotification, notifyAdmins } from './notificationController.js';
 
 export const applyLeave = async (req, res) => {
   try {
-    const { employeeId, leaveType, startDate, endDate, reason, withPay, duration } = req.body;
+    const { leaveType, startDate, endDate, reason, withPay, duration } = req.body;
+    // Security: Force employeeId from the authenticated user token
+    const employeeId = req.user.employeeId || req.user.employee_id || req.user.id;
 
     // Validate required fields
     if (!employeeId || !leaveType || !startDate || !endDate || !reason) {

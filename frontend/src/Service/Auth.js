@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const api = axios.create({
-    baseURL: `${import.meta.env.VITE_API_URL || "http://localhost:5000/api"}/auth`,
+    baseURL: `${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/auth`,
     withCredentials: true,
     headers: { "Content-Type": "application/json",}
 });
@@ -39,9 +39,17 @@ export const resetPassword = async (token, newPassword) => {
   return response.data;
 };
 
+// ... existing exports
 export const getCurrentUser = async () => {
     const response = await api.get("/me");
     return response.data.data;
+};
+
+export const updateProfile = async (formData) => {
+    const response = await api.post("/profile", formData, {
+        headers: { "Content-Type": "multipart/form-data" }
+    });
+    return response.data;
 };
 
 export default api;

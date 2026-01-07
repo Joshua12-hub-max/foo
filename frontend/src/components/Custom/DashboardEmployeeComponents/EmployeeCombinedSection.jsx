@@ -4,7 +4,7 @@ import ScheduleSection from '../DashboardEmployeeComponents/ScheduleSection';
 import EventsAndHolidays from '../DashboardEmployeeComponents/EventsAndHolidays';
 import AnnouncementSection from '../DashboardEmployeeComponents/AnnouncementSection';
 import { PerformancePieChart } from '../../CustomUI';
-import { fetchReviews, getAdjectivalRating } from '../../../api/performanceApi';
+import { fetchReviews } from '../../../api/performanceApi';
 import { useAuth } from '../../../hooks/useAuth';
 
 // Memoized Tab Button Component
@@ -31,24 +31,9 @@ const TabButton = memo(({ tab, isActive, isLoading, onClick }) => {
 
 TabButton.displayName = 'TabButton';
 
-// Memoized Card Component
-const Card = memo(({ title, children, className = "" }) => (
-  <div className={`bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-all duration-300 ${className}`}>
-     {title && (
-      <h4 className="text-lg font-semibold text-gray-800 mb-6 flex items-center gap-2">
-        <div className="w-1 h-6 bg-gray-700 rounded-full"></div>
-        {title}
-      </h4>
-    )}
-    {children}
-  </div>
-));
-
-Card.displayName = 'Card';
-
 // Memoized Loading Overlay
 const LoadingOverlay = memo(() => (
-  <div className="absolute inset-0 flex items-center justify-center bg-white/60 backdrop-blur-[2px] rounded-2xl z-20 transition-all duration-300">
+  <div className="absolute inset-0 flex items-center justify-center bg-white/60 rounded-2xl z-20 transition-all duration-300">
     <div className="flex flex-col items-center gap-3 bg-white p-6 rounded-2xl shadow-xl border border-gray-100">
       <div className="animate-spin rounded-full h-8 w-8 border-3 border-gray-100 border-t-blue-600"></div>
       <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Loading...</p>
@@ -77,31 +62,11 @@ export default function EmployeeCombinedSection() {
         const response = await fetchReviews({ employee_id: user.id });
         
         if (response.success && response.reviews) {
-          // Calculate rating distribution from the employee's reviews
-          const distribution = {
-            outstanding: 0,
-            exceedsExpectations: 0,
-            meetsExpectations: 0,
-            needsImprovement: 0,
-            poorPerformance: 0
-          };
-          
-          response.reviews.forEach(review => {
-            const score = review.total_score || review.supervisor_rating_score || review.self_rating_score;
-            if (score !== null && score !== undefined) {
-              if (score >= 4.5) distribution.outstanding++;
-              else if (score >= 3.5) distribution.exceedsExpectations++;
-              else if (score >= 2.5) distribution.meetsExpectations++;
-              else if (score >= 1.5) distribution.needsImprovement++;
-              else distribution.poorPerformance++;
-            }
-          });
-          
-          setPerformanceData(distribution);
+            setPerformanceData(response.reviews);
         }
       } catch (error) {
         console.error("Failed to fetch my performance data:", error);
-        setPerformanceData(null);
+        setPerformanceData([]);
       } finally {
         setPerformanceLoading(false);
       }
@@ -109,6 +74,37 @@ export default function EmployeeCombinedSection() {
 
     fetchMyPerformance();
   }, [user?.id]);
+
+  // Calculate distribution from reviews
+  const distribution = useMemo(() => {
+      if (!performanceData || !Array.isArray(performanceData)) return null;
+
+      const dist = {
+        outstanding: 0,
+        exceedsExpectations: 0,
+        meetsExpectations: 0,
+        needsImprovement: 0,
+        poorPerformance: 0
+      };
+
+      performanceData.forEach(review => {
+        // Prioritize total_score, then fallbacks
+        const score = review.total_score !== undefined ? review.total_score : 
+                      (review.supervisor_rating_score !== undefined ? review.supervisor_rating_score : review.self_rating_score);
+        
+        if (score !== null && score !== undefined) {
+             const numericScore = Number(score);
+             // Standard rounding for adjectival rating
+             if (numericScore >= 4.5) dist.outstanding++;
+             else if (numericScore >= 3.5) dist.exceedsExpectations++;
+             else if (numericScore >= 2.5) dist.meetsExpectations++;
+             else if (numericScore >= 1.5) dist.needsImprovement++;
+             else dist.poorPerformance++;
+        }
+      });
+      
+      return dist;
+  }, [performanceData]);
 
   const tabs = useMemo(() => [
     { id: 'analytics', label: 'Analytics & Updates', icon: BarChart3 },
@@ -127,22 +123,28 @@ export default function EmployeeCombinedSection() {
     });
   }, [activeTab]);
 
-  // Memoized content rendering
+  // Memoized content rendering - No card wrappers, just content directly
   const scheduleContent = useMemo(() => (
     <>
-      <ScheduleSection />
-      <EventsAndHolidays />
+      <div className="mb-6">
+        <ScheduleSection />
+      </div>
+      <div className="mb-6">
+        <EventsAndHolidays />
+      </div>
     </>
   ), []);
 
   const analyticsContent = useMemo(() => (
     <>
-      <Card title="My Performance Evaluation">
-        <PerformancePieChart reportData={performanceData} isLoading={performanceLoading} />
-      </Card>
-      <AnnouncementSection />
+      <div className="mb-6">
+        <PerformancePieChart reportData={distribution} isLoading={performanceLoading} />
+      </div>
+      <div className="mb-6">
+        <AnnouncementSection />
+      </div>
     </>
-  ), [performanceData, performanceLoading]);
+  ), [distribution, performanceLoading]);
 
   return (
     <div className="bg-gray-50/50 rounded-3xl p-8 relative transition-all duration-500">
@@ -157,7 +159,7 @@ export default function EmployeeCombinedSection() {
         </div>
 
         {/* Enhanced Tabs */}
-        <div className="bg-gray-200/50 p-1.5 rounded-2xl flex gap-2 backdrop-blur-sm">
+        <div className="bg-gray-200/50 p-1.5 rounded-2xl flex gap-2">
           {tabs.map((tab) => (
             <TabButton
               key={tab.id}

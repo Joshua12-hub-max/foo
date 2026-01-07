@@ -26,7 +26,7 @@ const HolidayItem = memo(({ title, date, type }) => {
             {type}
           </span>
         </div>
-        <h5 className="text-sm font-semibold text-gray-800 truncate group-hover:text-[#34645c] transition-colors">
+        <h5 className="text-sm font-semibold text-gray-800 truncate group-hover:text-blue-950 transition-colors">
           {title}
         </h5>
         <div className="flex items-center gap-1 text-xs text-gray-500 mt-0.5">
@@ -57,7 +57,7 @@ function HolidaysList({ holidays = [] }) {
     <div className="space-y-3">
       <div className="flex items-center justify-between mb-4">
         <h4 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-          <Gift className="w-4 h-4 text-red-500" />
+          <Gift className="w-4 h-4 text-red-950" />
           Upcoming Holidays
         </h4>
       </div>

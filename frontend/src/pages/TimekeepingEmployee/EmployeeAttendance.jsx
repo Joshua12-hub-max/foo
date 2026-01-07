@@ -1,14 +1,14 @@
 import { useOutletContext } from 'react-router-dom';
-import { EMPLOYEE_ATTENDANCE_HEADERS } from '../../components/Custom/AttendanceComponents/admin/constants/attendanceConstants';
-import { useAttendanceData } from '../../components/Custom/AttendanceComponents/admin/hooks/useAttendanceData';
-import { useAttendanceFilters } from '../../components/Custom/AttendanceComponents/admin/hooks/useAttendanceFilters';
-import { useAttendancePagination } from '../../components/Custom/AttendanceComponents/admin/hooks/useAttendancePagination';
+import { EMPLOYEE_ATTENDANCE_HEADERS } from '@components/Custom/Timekeeping/AttendanceComponents/admin/constants/attendanceConstants';
+import { useAttendanceData } from '@components/Custom/Timekeeping/AttendanceComponents/admin/hooks/useAttendanceData';
+import { useAttendanceFilters } from '@components/Custom/Timekeeping/AttendanceComponents/admin/hooks/useAttendanceFilters';
+import { useAttendancePagination } from '@components/Custom/Timekeeping/AttendanceComponents/admin/hooks/useAttendancePagination';
 
-import AttendanceHeader from '../../components/Custom/AttendanceComponents/employee/components/AttendanceHeader';
-import AttendanceFilters from '../../components/Custom/AttendanceComponents/employee/components/AttendanceFilters';
-import AttendanceSearch from '../../components/Custom/AttendanceComponents/employee/components/AttendanceSearch';
-import AttendanceExport from '../../components/Custom/AttendanceComponents/employee/components/AttendanceExport';
-import AttendanceTable from '../../components/Custom/AttendanceComponents/employee/components/AttendanceTable';
+import AttendanceHeader from '@components/Custom/Timekeeping/AttendanceComponents/employee/components/AttendanceHeader';
+import AttendanceFilters from '@components/Custom/Timekeeping/AttendanceComponents/employee/components/AttendanceFilters';
+import AttendanceSearch from '@components/Custom/Timekeeping/AttendanceComponents/employee/components/AttendanceSearch';
+import AttendanceExport from '@components/Custom/Timekeeping/AttendanceComponents/employee/components/AttendanceExport';
+import AttendanceTable from '@components/Custom/Timekeeping/AttendanceComponents/employee/components/AttendanceTable';
 
 const EmployeeAttendance = () => {
   const outletContext = useOutletContext?.() || { sidebarOpen: true };
@@ -42,7 +42,7 @@ const EmployeeAttendance = () => {
         isLoading={isLoading}
       />
 
-      <hr className="mb-6 border-[1px] border-[#274b46]" />
+      <hr className="mb-6 border-[1px] border-gray-200" />
 
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
@@ -69,7 +69,7 @@ const EmployeeAttendance = () => {
 
       <AttendanceExport 
         data={filteredData}
-        title="My Attendance"
+        title="Attendance"
       />
 
       <AttendanceTable 

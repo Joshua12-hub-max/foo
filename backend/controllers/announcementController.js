@@ -3,7 +3,10 @@ import { notifyAllUsers } from './notificationController.js';
 
 export const getAnnouncements = async (req, res) => {
   try {
-    const [announcements] = await db.query('SELECT * FROM announcements ORDER BY created_at DESC');
+    // Only return announcements from the last 7 days
+    const [announcements] = await db.query(
+      'SELECT * FROM announcements WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) ORDER BY created_at DESC'
+    );
     res.status(200).json({ announcements });
   } catch (error) {
     console.error('Error fetching announcements:', error);
@@ -29,9 +32,9 @@ export const createAnnouncement = async (req, res) => {
     // Send notifications to ALL users (employees + admins)
     try {
       const adminId = req.user ? (req.user.employeeId || req.user.employee_id || req.user.id) : 'System';
-      const priorityText = priority === 'urgent' ? '🚨 URGENT: ' : priority === 'high' ? '⚠️ ' : '';
+      const priorityText = priority === 'urgent' ? ' URGENT: ' : priority === 'high' ? '⚠️ ' : '';
       
-      console.log('📢 Sending announcement notifications to all users...');
+      console.log('Sending announcement notifications to all users...');
       await notifyAllUsers({
         senderId: adminId,
         title: `${priorityText}New Announcement`,
@@ -39,7 +42,7 @@ export const createAnnouncement = async (req, res) => {
         type: "announcement_created",
         referenceId: result.insertId
       });
-      console.log('📢 Announcement notifications sent successfully');
+      console.log('Announcement notifications sent successfully');
     } catch (notificationError) {
       console.error('Failed to send announcement notifications:', notificationError);
     }

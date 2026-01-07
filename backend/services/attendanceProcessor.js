@@ -27,8 +27,10 @@ export const processDailyAttendance = async (employeeId, dateStr) => {
         if (outLogs.length > 0) timeOut = outLogs[outLogs.length - 1].scan_time; // Latest OUT
 
         // 3. Get Schedule to calculate Late / Undertime
-        // Convert dateStr to Day Name (e.g., "Monday")
-        const dateObj = new Date(dateStr);
+        // Use a more robust way to get Day Name from YYYY-MM-DD
+        const dateParts = dateStr.split('-').map(Number);
+        // month is 0-indexed in Date constructor
+        const dateObj = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
         const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
         const dayName = days[dateObj.getDay()];
 
@@ -44,10 +46,14 @@ export const processDailyAttendance = async (employeeId, dateStr) => {
         if (schedules.length > 0 && !schedules[0].is_rest_day) {
             const schedule = schedules[0];
             
-            // Construct Schedule Date Objects for comparison
-            // Note: schedule.start_time is usually "HH:MM:SS" string
-            const scheduleStart = new Date(`${dateStr}T${schedule.start_time}`);
-            const scheduleEnd = new Date(`${dateStr}T${schedule.end_time}`);
+            // Construct Schedule Date Objects using local components
+            const scheduleStart = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
+            const [startH, startM, startS] = schedule.start_time.split(':').map(Number);
+            scheduleStart.setHours(startH, startM, startS || 0);
+
+            const scheduleEnd = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
+            const [endH, endM, endS] = schedule.end_time.split(':').map(Number);
+            scheduleEnd.setHours(endH, endM, endS || 0);
 
             // Calculate Late
             if (timeIn && timeIn > scheduleStart) {

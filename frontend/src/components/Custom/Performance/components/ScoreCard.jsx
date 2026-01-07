@@ -9,17 +9,19 @@ const ScoreCard = ({ score }) => {
   const ratingInfo = getAdjectivalRating(score);
 
   return (
-    <div className="bg-gradient-to-br from-gray-800 to-slate-800 rounded-xl shadow-lg text-white p-8 flex flex-col justify-center items-center text-center">
-      <h3 className="text-gray-200 text-sm font-bold uppercase tracking-widest mb-2">
-        Final Numerical Rating
-      </h3>
-      <div className="text-6xl font-bold mb-2">{score}</div>
-      <div className="text-xl font-medium px-4 py-1 rounded-full bg-white/10 backdrop-blur-sm border border-white/20">
-        {ratingInfo.rating}
+    <div className="bg-white rounded-sm shadow-sm border border-gray-100 p-8 flex flex-col justify-center items-center text-center relative overflow-hidden group aspect-square">
+      <div className="relative z-10">
+        <h3 className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mb-4">
+          FINAL NUMERICAL RATING
+        </h3>
+        <div className="text-6xl font-black text-gray-800 mb-3">{score}</div>
+        <div className="inline-block px-4 py-1.5 rounded-sm bg-blue-50 text-blue-700 text-sm font-bold border border-blue-100 shadow-sm">
+          {ratingInfo.rating}
+        </div>
+        <p className="text-[11px] text-gray-400 mt-6 max-w-xs leading-relaxed font-medium">
+          Weighted average of all performance criteria assessed in this period.
+        </p>
       </div>
-      <p className="text-xs text-gray-300 mt-6 max-w-xs leading-relaxed">
-        This score represents the weighted average of all performance criteria assessed in this period.
-      </p>
     </div>
   );
 };

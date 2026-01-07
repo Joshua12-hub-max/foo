@@ -1,13 +1,13 @@
-import { useAdminLeaveCredit } from '../../components/Custom/LeaveCreditComponents/Admin/Hooks/useAdminLeaveCredit';
-import { AdminLeaveCreditHeader } from '../../components/Custom/LeaveCreditComponents/Admin/Components/AdminLeaveCreditHeader';
-import { AdminLeaveCreditTabs } from '../../components/Custom/LeaveCreditComponents/Admin/Components/AdminLeaveCreditTabs';
-import { AdminLeaveCreditNotification } from '../../components/Custom/LeaveCreditComponents/Admin/Components/AdminLeaveCreditNotification';
-import { AdminLeaveCreditSearchBar } from '../../components/Custom/LeaveCreditComponents/Admin/Components/AdminLeaveCreditSearchBar';
-import { AdminLeaveCreditTable } from '../../components/Custom/LeaveCreditComponents/Admin/Components/AdminLeaveCreditTable';
-import { AdminLeaveCreditPagination } from '../../components/Custom/LeaveCreditComponents/Admin/Components/AdminLeaveCreditPagination';
-import { AdminLeaveCreditLoadingSpinner } from '../../components/Custom/LeaveCreditComponents/Admin/Components/AdminLeaveCreditLoadingSpinner';
-import AddCreditModal from '../../components/Custom/LeaveCreditComponents/Admin/Modal/AddCreditModal';
-import { ActionModal } from '../../components/Custom/LeaveCreditComponents/Admin/Modal/ActionModal';
+import { useAdminLeaveCredit } from '@components/Custom/Timekeeping/LeaveCreditComponents/Admin/Hooks/useAdminLeaveCredit';
+import { AdminLeaveCreditHeader } from '@components/Custom/Timekeeping/LeaveCreditComponents/Admin/Components/AdminLeaveCreditHeader';
+import { AdminLeaveCreditTabs } from '@components/Custom/Timekeeping/LeaveCreditComponents/Admin/Components/AdminLeaveCreditTabs';
+import { AdminLeaveCreditNotification } from '@components/Custom/Timekeeping/LeaveCreditComponents/Admin/Components/AdminLeaveCreditNotification';
+import { AdminLeaveCreditSearchBar } from '@components/Custom/Timekeeping/LeaveCreditComponents/Admin/Components/AdminLeaveCreditSearchBar';
+import { AdminLeaveCreditTable } from '@components/Custom/Timekeeping/LeaveCreditComponents/Admin/Components/AdminLeaveCreditTable';
+import { AdminLeaveCreditPagination } from '@components/Custom/Timekeeping/LeaveCreditComponents/Admin/Components/AdminLeaveCreditPagination';
+import { AdminLeaveCreditLoadingSpinner } from '@components/Custom/Timekeeping/LeaveCreditComponents/Admin/Components/AdminLeaveCreditLoadingSpinner';
+import AddCreditModal from '@components/Custom/Timekeeping/LeaveCreditComponents/Admin/Modal/AddCreditModal';
+import { ActionModal } from '@components/Custom/Timekeeping/LeaveCreditComponents/Admin/Modal/ActionModal';
 
 const LeaveCredit = () => {
   const { today, activeTab, setActiveTab, rawCredits, employees, searchTerm, setSearchTerm, isLoading, loadingType, error, successMessage, isModalOpen, actionModal,

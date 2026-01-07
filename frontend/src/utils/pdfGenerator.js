@@ -1,8 +1,13 @@
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+// Dynamic imports - jsPDF loaded on-demand to reduce initial bundle size
 
-export const generateLeaveRequestPDF = (leaveRequest) => {
+export const generateLeaveRequestPDF = async (leaveRequest) => {
   try {
+    // Dynamic imports - load jsPDF and autotable only when user generates PDF
+    const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+      import('jspdf'),
+      import('jspdf-autotable')
+    ]);
+    
     const doc = new jsPDF();
 
     // Add Logo (Placeholder or Text)
@@ -101,8 +106,14 @@ export const generateLeaveRequestPDF = (leaveRequest) => {
 };
 
 // Undertime Request PDF Generator
-export const generateUndertimeRequestPDF = (undertimeRequest) => {
+export const generateUndertimeRequestPDF = async (undertimeRequest) => {
   try {
+    // Dynamic imports - load jsPDF and autotable only when user generates PDF
+    const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+      import('jspdf'),
+      import('jspdf-autotable')
+    ]);
+    
     const doc = new jsPDF();
 
     // Add Logo (Placeholder or Text)

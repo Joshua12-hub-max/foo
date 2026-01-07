@@ -2,25 +2,25 @@ import { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { AlertCircle } from 'lucide-react';
 // API
-import { leaveApi } from '../../api/leaveApi';
+import { leaveApi } from '@api';
 // Components
-import SubmitLeaveRequestModal from '../../components/Custom/LeaveRequestComponents/Employee/Modals/SubmitLeaveRequestModal';
-import FinalizeModal from '../../components/Custom/LeaveRequestComponents/Employee/Modals/Finalize';
-import Header from '../../components/Custom/LeaveRequestComponents/Employee/components/Header';
-import LoadingSpinner from '../../components/Custom/LeaveRequestComponents/Employee/components/LoadingSpinner';
-import ErrorAlert from '../../components/Custom/LeaveRequestComponents/Employee/components/ErrorAlert';
-import SuccessAlert from '../../components/Custom/LeaveRequestComponents/Employee/components/SuccessAlert';
-import Filters from '../../components/Custom/LeaveRequestComponents/Employee/components/Filters';
-import SearchBar from '../../components/Custom/LeaveRequestComponents/Employee/components/SearchBar';
-import ExportOptions from '../../components/Custom/LeaveRequestComponents/Employee/components/ExportOptions';
-import Table from '../../components/Custom/LeaveRequestComponents/Employee/components/Table';
-import Pagination from '../../components/Custom/LeaveRequestComponents/Employee/components/Pagination';
+import SubmitLeaveRequestModal from '@components/Custom/Timekeeping/LeaveRequestComponents/Employee/Modals/SubmitLeaveRequestModal';
+import FinalizeModal from '@components/Custom/Timekeeping/LeaveRequestComponents/Employee/Modals/Finalize';
+import Header from '@components/Custom/Timekeeping/LeaveRequestComponents/Employee/components/Header';
+import LoadingSpinner from '@components/Custom/Timekeeping/LeaveRequestComponents/Employee/components/LoadingSpinner';
+import ErrorAlert from '@components/Custom/Timekeeping/LeaveRequestComponents/Employee/components/ErrorAlert';
+import SuccessAlert from '@components/Custom/Timekeeping/LeaveRequestComponents/Employee/components/SuccessAlert';
+import Filters from '@components/Custom/Timekeeping/LeaveRequestComponents/Employee/components/Filters';
+import SearchBar from '@components/Custom/Timekeeping/LeaveRequestComponents/Employee/components/SearchBar';
+import ExportOptions from '@components/Custom/Timekeeping/LeaveRequestComponents/Employee/components/ExportOptions';
+import Table from '@components/Custom/Timekeeping/LeaveRequestComponents/Employee/components/Table';
+import Pagination from '@components/Custom/Timekeeping/LeaveRequestComponents/Employee/components/Pagination';
 
 // Hooks
-import { useLeaveData } from '../../components/Custom/LeaveRequestComponents/Employee/hooks/useLeaveData';
-import { useFilters } from '../../components/Custom/LeaveRequestComponents/Employee/hooks/useFilters';
-import { usePagination } from '../../components/Custom/LeaveRequestComponents/Employee/hooks/usePagination';
-import { useExport } from '../../components/Custom/LeaveRequestComponents/Employee/hooks/useExport';
+import { useLeaveData } from '@components/Custom/Timekeeping/LeaveRequestComponents/Employee/hooks/useLeaveData';
+import { useFilters } from '@components/Custom/Timekeeping/LeaveRequestComponents/Employee/hooks/useFilters';
+import { usePagination } from '@components/Custom/Timekeeping/LeaveRequestComponents/Employee/hooks/usePagination';
+import { useExport } from '@components/Custom/Timekeeping/LeaveRequestComponents/Employee/hooks/useExport';
 
 const LeaveRequest = () => {
   const outletContext = useOutletContext?.() || { sidebarOpen: true };
@@ -116,7 +116,7 @@ const LeaveRequest = () => {
         isLoading={isLoading || isExporting}
       />
 
-      <hr className="mb-6 border-[#274b46]" />
+      <hr className="mb-6 h-px bg-gray-200 border-0" />
 
       {/* Alerts */}
       <ErrorAlert 

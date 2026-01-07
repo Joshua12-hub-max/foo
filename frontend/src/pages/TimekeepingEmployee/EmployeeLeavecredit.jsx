@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { useEmployeeLeaveCredit } from '../../components/Custom/LeaveCreditComponents/Employee/Hooks/useEmployeeLeaveCredit';
-import { EmployeeLeaveCreditHeader } from '../../components/Custom/LeaveCreditComponents/Employee/Components/EmployeeLeaveCreditHeader';
-import { EmployeeLeaveCreditNotification } from '../../components/Custom/LeaveCreditComponents/Employee/Components/EmployeeLeaveCreditNotification';
-import { EmployeeLeaveCreditBalances } from '../../components/Custom/LeaveCreditComponents/Employee/Components/EmployeeLeaveCreditBalances';
-import { EmployeeLeaveCreditRequests } from '../../components/Custom/LeaveCreditComponents/Employee/Components/EmployeeLeaveCreditRequests';
-import { EmployeeLeaveCreditLoadingSpinner } from '../../components/Custom/LeaveCreditComponents/Employee/Components/EmployeeLeaveCreditLoadingSpinner';
-import { RequestCreditModal } from '../../components/Custom/LeaveCreditComponents/Employee/Modals/RequestCreditModal';
+import { useEmployeeLeaveCredit } from '@components/Custom/Timekeeping/LeaveCreditComponents/Employee/Hooks/useEmployeeLeaveCredit';
+import { EmployeeLeaveCreditHeader } from '@components/Custom/Timekeeping/LeaveCreditComponents/Employee/Components/EmployeeLeaveCreditHeader';
+import { EmployeeLeaveCreditNotification } from '@components/Custom/Timekeeping/LeaveCreditComponents/Employee/Components/EmployeeLeaveCreditNotification';
+import { EmployeeLeaveCreditBalances } from '@components/Custom/Timekeeping/LeaveCreditComponents/Employee/Components/EmployeeLeaveCreditBalances';
+import { EmployeeLeaveCreditRequests } from '@components/Custom/Timekeeping/LeaveCreditComponents/Employee/Components/EmployeeLeaveCreditRequests';
+import { EmployeeLeaveCreditLoadingSpinner } from '@components/Custom/Timekeeping/LeaveCreditComponents/Employee/Components/EmployeeLeaveCreditLoadingSpinner';
+import { RequestCreditModal } from '@components/Custom/Timekeeping/LeaveCreditComponents/Employee/Modals/RequestCreditModal';
 
 const EmployeeLeavecredit = () => {
   const { credits, requests, isLoading, error, success, isModalOpen, formData, isSubmitting, 

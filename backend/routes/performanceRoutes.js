@@ -28,18 +28,16 @@ router.post('/reviews/:id/submit', verifyToken, performanceController.submitRevi
 router.delete('/reviews/:id', verifyToken, performanceController.deleteReview);
 router.post('/reviews/:id/acknowledge', verifyToken, performanceController.acknowledgeReview);
 
-// CSC-Compliant Routes - Employee Self-Rating
-router.get('/my-reviews', verifyToken, performanceController.getMyPendingReviews);
-router.post('/reviews/:id/self-rating', verifyToken, performanceController.submitSelfRating);
-
 // CSC-Compliant Routes - Supervisor & Approval Workflow
+router.post('/reviews/:id/self-rating', verifyToken, performanceController.submitSelfRating);
 router.post('/reviews/:id/supervisor-rating', verifyToken, performanceController.submitSupervisorRating);
 router.post('/reviews/:id/approve', verifyToken, performanceController.approveReview);
 router.post('/reviews/:id/finalize', verifyToken, performanceController.finalizeReview);
 
-// CSC-Compliant Routes - Transparency & Audit
-router.get('/reviews/:id/history', verifyToken, performanceController.getReviewHistory);
-router.post('/reviews/:id/disagree', verifyToken, performanceController.disagreeWithRating);
+router.post('/items', verifyToken, performanceController.addItemToReview);
+router.put('/items/:id', verifyToken, performanceController.updateReviewItem);
+router.delete('/items/:id', verifyToken, performanceController.deleteReviewItem);
 
 export default router;
+
 

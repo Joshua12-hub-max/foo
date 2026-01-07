@@ -1,293 +1,116 @@
-
-import { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
-import { fetchEmployees, startFingerprintEnrollment, checkEnrollmentStatus } from '../../api/employeeApi';
-import { register } from '../../Service/Auth';
-import { CheckCircle, XCircle, UserPlus, X } from 'lucide-react';
-
-// Internal Modal Component for Adding Employees
-const AddEmployeeModal = ({ isOpen, onClose, onSuccess }) => {
-  const [form, setForm] = useState({
-    name: '',
-    email: '',
-    role: 'employee',
-    department: '',
-    employeeId: '',
-    password: ''
-  });
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-
-  if (!isOpen) return null;
-
-  const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-    setError('');
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
-
-    try {
-      await register(form);
-      onSuccess();
-      onClose();
-      setForm({ name: '', email: '', role: 'employee', department: '', employeeId: '', password: '' });
-    } catch (err) {
-      console.error(err);
-      setError(err.response?.data?.message || "Failed to create employee.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 relative animate-in fade-in zoom-in duration-200">
-        <button 
-          onClick={onClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
-        >
-          <X size={20} />
-        </button>
-        
-        <h2 className="text-xl font-bold text-[#274b46] mb-4 flex items-center gap-2">
-          <UserPlus size={24} />
-          Add New Employee
-        </h2>
-        
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-            <input 
-              type="text" name="name" required 
-              value={form.name} onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#274b46] focus:border-transparent outline-none"
-              placeholder="e.g. John Doe"
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-            <input 
-              type="email" name="email" required 
-              value={form.email} onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#274b46] focus:border-transparent outline-none"
-              placeholder="john@company.com"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
-              <input 
-                type="text" name="department" required 
-                value={form.department} onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#274b46] focus:border-transparent outline-none"
-                placeholder="IT"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Employee ID</label>
-              <input 
-                type="text" name="employeeId" required 
-                value={form.employeeId} onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#274b46] focus:border-transparent outline-none"
-                placeholder="EMP-001"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Temporary Password
-            </label>
-            <input 
-              type="password" name="password" required 
-              value={form.password} onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#274b46] focus:border-transparent outline-none"
-              placeholder="••••••••"
-            />
-          </div>
-
-          {error && <p className="text-red-600 text-sm bg-red-50 p-2 rounded">{error}</p>}
-
-          <div className="flex justify-end gap-3 mt-6">
-            <button 
-              type="button" onClick={onClose}
-              className="px-4 py-2 text-gray-600 font-medium hover:bg-gray-50 rounded-lg transition-colors"
-            >
-              Cancel
-            </button>
-            <button 
-              type="submit" disabled={loading}
-              className="px-4 py-2 bg-[#274b46] text-white font-medium rounded-lg hover:bg-[#1e3a36] transition-colors disabled:opacity-50"
-            >
-              {loading ? 'Creating...' : 'Create Employee'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-};
+import { CheckCircle, XCircle } from 'lucide-react';
+import { useEnrollment, AddEmployeeModal } from '@components/Custom/Settings/Biometrics/Enrollment';
 
 const BiometricsEnrollment = () => {
   const { sidebarOpen } = useOutletContext?.() || { sidebarOpen: true };
   
-  const [employees, setEmployees] = useState([]);
-  const [selectedEmployee, setSelectedEmployee] = useState('');
-  const [isEnrolled, setIsEnrolled] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [statusMessage, setStatusMessage] = useState('');
-  const [showAddModal, setShowAddModal] = useState(false);
-
-  const loadEmployees = async () => {
-    setIsLoading(true);
-    try {
-      const response = await fetchEmployees();
-      if (response.success && response.employees) {
-          setEmployees(response.employees);
-      }
-      setError('');
-    } catch (err) {
-      setError('Failed to load employees. Please try again.');
-      console.error(err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadEmployees();
-  }, []);
-
-  // Check status when employee is selected
-  useEffect(() => {
-    const checkStatus = async () => {
-        if (!selectedEmployee) {
-            setIsEnrolled(null);
-            return;
-        }
-        try {
-            const result = await checkEnrollmentStatus(selectedEmployee);
-            setIsEnrolled(result.isEnrolled);
-        } catch (e) {
-            console.error(e);
-        }
-    };
-    checkStatus();
-  }, [selectedEmployee]);
-
-  const handleEnrollClick = async () => {
-    if (!selectedEmployee) {
-      setError('Please select an employee first.');
-      return;
-    }
-
-    setIsLoading(true);
-    setError('');
-    setStatusMessage('');
-
-    try {
-      const result = await startFingerprintEnrollment(selectedEmployee);
-      setStatusMessage(result.message + ' Please place your finger on the scanner now.');
-    } catch (err) {
-      setError(err.toString());
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const { employees, selectedEmployee, isEnrolled, isLoading, error, statusMessage, showAddModal,
+    setSelectedEmployee, setShowAddModal, setError, setStatusMessage, handleEnrollClick, loadEmployees } = useEnrollment();
 
   return (
-    <div className={`min-h-screen flex flex-col bg-gradient-to-br from-neutral-100 to-stone-50 rounded-xl shadow-xl p-7 w-full overflow-hidden text-gray-800 transition-all duration-300 ${!sidebarOpen ? 'max-w-[1600px] xl:max-w-[88vw]' : 'max-w-[1400px] xl:max-w-[77vw]'}`}>
+    <div className={`p-4 flex flex-col items-center justify-center min-h-[80vh] transition-all duration-300 ${!sidebarOpen ? 'max-w-[1600px] xl:max-w-[88vw]' : 'max-w-[1400px] xl:max-w-[77vw]'}`}>
       
-      <div className="mb-6 flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-[#274b46]">Biometrics Enrollment</h1>
-          <p className="text-gray-500">Enroll new fingerprints for employees.</p>
-        </div>
-        <button 
-          onClick={() => setShowAddModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-[#274b46] text-white rounded-lg hover:bg-[#1e3a36] transition-colors shadow-sm"
-        >
-          <UserPlus size={18} />
-          Add New Employee
-        </button>
-      </div>
-
-      <hr className="mb-6 border-[1px] border-[#274b46]" />
-
-      <div className="bg-white p-6 rounded-lg shadow-md max-w-lg mx-auto">
-        <div className="mb-4">
-          <label htmlFor="employee-select" className="block text-sm font-medium text-gray-700 mb-2">
-            Select Employee
-          </label>
-          <select
-            id="employee-select"
-            value={selectedEmployee}
-            onChange={(e) => setSelectedEmployee(e.target.value)}
-            className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-            disabled={isLoading}
+      {/* Compact Enrollment Card */}
+      <div className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden animate-in fade-in zoom-in-95 duration-300">
+        {/* Header */}
+        <div className="bg-gray-50 px-6 py-5 border-b border-gray-100 flex justify-between items-center">
+          <div>
+            <h1 className="text-lg font-bold text-gray-900">Fingerprint Enrollment</h1>
+            <p className="text-xs text-gray-500 font-medium">Register employee biometrics</p>
+          </div>
+          <button 
+            onClick={() => setShowAddModal(true)}
+            className="text-[11px] font-bold text-gray-700 hover:text-gray-900 bg-white border border-gray-200 px-3.5 py-2 rounded-xl shadow-sm hover:shadow-md transition-all active:scale-95"
           >
-            <option value="">-- Please choose an employee --</option>
-            {employees.map(emp => (
-              <option key={emp.id} value={emp.employee_id}>
-                {emp.last_name}, {emp.first_name} ({emp.employee_id})
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {selectedEmployee && (
-            <div className="mb-6 flex items-center gap-2">
-                <span className="text-sm font-medium text-gray-600">Enrollment Status:</span>
-                {isEnrolled === true ? (
-                    <span className="flex items-center gap-1 text-green-600 font-bold text-sm">
-                        <CheckCircle className="w-4 h-4" /> Enrolled
-                    </span>
-                ) : isEnrolled === false ? (
-                    <span className="flex items-center gap-1 text-gray-500 text-sm">
-                        <XCircle className="w-4 h-4" /> Not Enrolled
-                    </span>
-                ) : (
-                    <span className="text-gray-400 text-sm">Checking...</span>
-                )}
-            </div>
-        )}
-
-        <div className="flex items-center justify-end">
-          <button
-            onClick={handleEnrollClick}
-            disabled={isLoading || !selectedEmployee}
-            className="px-6 py-2 bg-[#274b46] text-white font-semibold rounded-lg shadow-md hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#274b46] disabled:bg-gray-400 disabled:cursor-not-allowed"
-          >
-            {isLoading ? 'Processing...' : (isEnrolled ? 'Re-Enroll Fingerprint' : 'Enroll Fingerprint')}
+            + New Employee
           </button>
         </div>
 
-        {error && (
-            <div className="mt-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-                <p className="font-bold">Error</p>
-                <p>{error}</p>
+        <div className="p-7 space-y-6">
+          {/* Main Selection */}
+          <div className="space-y-2">
+            <label htmlFor="employee-select" className="block text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">
+              Select Employee to Enroll
+            </label>
+            <div className="relative">
+              <select
+                id="employee-select"
+                value={selectedEmployee}
+                onChange={(e) => setSelectedEmployee(e.target.value)}
+                className="block w-full px-5 py-4 bg-gray-50 border-2 border-gray-100 rounded-2xl text-gray-800 text-sm font-bold focus:outline-none focus:border-gray-300 focus:bg-white transition-all appearance-none shadow-inner"
+                disabled={isLoading}
+              >
+                <option value="">-- Choose an employee --</option>
+                {employees.map(emp => (
+                  <option key={emp.id} value={emp.employee_id}>
+                    {emp.last_name}, {emp.first_name} ({emp.employee_id})
+                  </option>
+                ))}
+              </select>
+              <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+              </div>
             </div>
-        )}
-        {statusMessage && (
-            <div className="mt-4 bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-lg">
-                <p className="font-bold">Status</p>
-                <p>{statusMessage}</p>
+          </div>
+
+          {/* Status Indicator Banner */}
+          <div className={`rounded-2xl p-5 border transition-all duration-300 ${
+            !selectedEmployee ? 'bg-gray-50/50 border-gray-100 text-gray-400' :
+            isEnrolled ? 'bg-green-50/50 border-green-100' :
+            'bg-gray-50 border-gray-200'
+          }`}>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-gray-500">Current Status</span>
+              {selectedEmployee ? (
+                isEnrolled ? (
+                  <span className="flex items-center gap-1.5 text-green-700 font-bold text-xs bg-green-100/80 px-3 py-1.5 rounded-xl shadow-sm">
+                      <CheckCircle className="w-3.5 h-3.5" /> Enrolled
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1.5 text-gray-600 font-bold text-xs bg-gray-200/80 px-3 py-1.5 rounded-xl shadow-sm">
+                      <XCircle className="w-3.5 h-3.5" /> Not Enrolled
+                  </span>
+                )
+              ) : (
+                <span className="text-xs font-medium text-gray-400">No selection</span>
+              )}
             </div>
-        )}
+          </div>
+
+          {/* Main Action Button */}
+          <button
+            onClick={handleEnrollClick}
+            disabled={isLoading || !selectedEmployee}
+            className="w-full py-4 bg-gray-900 text-white text-sm font-bold rounded-2xl shadow-xl hover:bg-gray-800 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:hover:scale-100 mt-2"
+          >
+            {isLoading ? (
+              <div className="flex items-center justify-center gap-2">
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <span>Processing Mapper...</span>
+              </div>
+            ) : (isEnrolled ? 'Re-Enroll Fingerprint' : 'Start Enrollment')}
+          </button>
+
+          {/* Feedback Messages */}
+          {error && (
+            <div className="bg-red-50 border border-red-100 text-red-600 px-4 py-3.5 rounded-xl text-[11px] font-bold text-center animate-in fade-in slide-in-from-top-2">
+              {error}
+            </div>
+          )}
+          {statusMessage && (
+            <div className="bg-blue-50 border border-blue-100 text-blue-700 px-4 py-3.5 rounded-xl text-[11px] font-bold text-center animate-in fade-in slide-in-from-top-2">
+              {statusMessage}
+            </div>
+          )}
+        </div>
       </div>
 
       <AddEmployeeModal 
         isOpen={showAddModal} 
         onClose={() => setShowAddModal(false)}
         onSuccess={() => {
-            fetchEmployees();
+            loadEmployees();
             setStatusMessage('Employee created successfully! Select them from the list to enroll.');
         }}
       />

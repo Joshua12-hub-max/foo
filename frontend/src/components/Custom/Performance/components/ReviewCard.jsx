@@ -1,22 +1,13 @@
-/**
- * ReviewCard Component
- * Displays a single performance review card with status, ratings, and actions
- */
-
 import { motion } from 'framer-motion';
 import { FileText, Calendar, User, Edit3 } from 'lucide-react';
 import { getStatusColor } from '../constants/performanceConstants';
 
-const ReviewCard = ({
-  review,
-  onViewDetails,
-  onStartSelfRating
-}) => {
+const ReviewCard = ({review, onViewDetails, onStartSelfRating}) => {
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md hover:border-gray-300 transition-all"
+      className="bg-white p-6 rounded-sm shadow-sm border border-gray-100 hover:shadow-md hover:border-gray-300 transition-all"
     >
       <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
         {/* Left Section - Review Info */}
@@ -42,7 +33,7 @@ const ReviewCard = ({
         {/* Right Section - Status, Ratings, Actions */}
         <div className="flex flex-col items-end gap-3">
           {/* Status Badge */}
-          <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide border ${getStatusColor(review.status)}`}>
+          <span className={`px-3 py-1 rounded-sm text-xs font-bold uppercase tracking-wide border ${getStatusColor(review.status)}`}>
             {review.status}
           </span>
           
@@ -69,7 +60,7 @@ const ReviewCard = ({
             {review.status === 'Draft' && (
               <button
                 onClick={() => onStartSelfRating(review)}
-                className="flex items-center gap-1 px-3 py-1.5 bg-gray-800 text-white rounded-lg text-sm font-medium hover:bg-gray-700 transition-colors"
+                className="flex items-center gap-1 px-3 py-1.5 bg-gray-800 text-white rounded-sm text-sm font-medium hover:bg-gray-700 transition-colors"
               >
                 <Edit3 size={14} />
                 Self-Rate
@@ -77,7 +68,7 @@ const ReviewCard = ({
             )}
             <button
               onClick={() => onViewDetails(review.id)}
-              className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+              className="px-3 py-1.5 border border-gray-200 rounded-sm text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
             >
               View Details
             </button>

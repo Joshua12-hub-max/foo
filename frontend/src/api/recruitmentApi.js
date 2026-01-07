@@ -50,6 +50,38 @@ export const recruitmentApi = {
             throw error;
         }
     },
+    postJobToTelegram: async (id) => {
+        try {
+            const response = await api.post(`/recruitment/jobs/${id}/telegram`);
+            return response;
+        } catch (error) {
+            throw error;
+        }
+    },
+    postJobToLinkedIn: async (id) => {
+        try {
+            const response = await api.post(`/recruitment/jobs/${id}/linkedin`);
+            return response;
+        } catch (error) {
+            throw error;
+        }
+    },
+    postJobToFacebook: async (id) => {
+        try {
+            const response = await api.post(`/recruitment/jobs/${id}/facebook`);
+            return response;
+        } catch (error) {
+            throw error;
+        }
+    },
+    testFacebookConnection: async () => {
+        try {
+            const response = await api.get('/recruitment/facebook/test');
+            return response;
+        } catch (error) {
+            throw error;
+        }
+    },
 
     // Applicants
     getApplicants: async (params) => {
@@ -73,6 +105,50 @@ export const recruitmentApi = {
     updateApplicantStage: async (id, data) => {
         try {
             const response = await api.put(`/recruitment/applicants/${id}/stage`, data);
+            return response;
+        } catch (error) {
+            throw error;
+        }
+    },
+    
+    // Email Applications
+    checkEmails: async () => {
+        try {
+            const response = await api.post('/recruitment/check-emails');
+            return response;
+        } catch (error) {
+            throw error;
+        }
+    },
+
+    // Interviewer Management
+    getInterviewers: async () => {
+        try {
+            const response = await api.get('/recruitment/interviewers');
+            return response;
+        } catch (error) {
+            throw error;
+        }
+    },
+    assignInterviewer: async (applicantId, interviewerId) => {
+        try {
+            const response = await api.put(`/recruitment/applicants/${applicantId}/assign-interviewer`, { interviewerId });
+            return response;
+        } catch (error) {
+            throw error;
+        }
+    },
+    updateStage: async (applicantId, data) => {
+        try {
+            const response = await api.put(`/recruitment/applicants/${applicantId}/stage`, data);
+            return response;
+        } catch (error) {
+            throw error;
+        }
+    },
+    getApplicantStats: async () => {
+        try {
+            const response = await api.get('/recruitment/applicant-stats');
             return response;
         } catch (error) {
             throw error;

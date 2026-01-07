@@ -1,8 +1,8 @@
 import { useState, useCallback, memo, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Menu, Search, User, Camera } from "lucide-react";
-import EmployeeNotificationMenu from "../../CustomUI/EmployeeNotificationMenu";
-import { useAuth } from "../../../hooks/useAuth";
+import EmployeeNotificationMenu from "@components/CustomUI/EmployeeNotificationMenu";
+import { useAuth } from "@hooks/useAuth";
 
 /* -------------------- Memoized Components -------------------- */
 const ProfilePicture = memo(
@@ -100,7 +100,7 @@ export default function Header({
           className="p-2 rounded hover:bg-gray-100 transition-colors"
           aria-label="Toggle sidebar"
         >
-          <Menu className="w-5 h-5 text-[#274b46]" />
+          <Menu className="w-5 h-5 text-gray-700" />
         </button>
 
         <SearchBar searchQuery={searchQuery} setSearchQuery={setSearchQuery} />

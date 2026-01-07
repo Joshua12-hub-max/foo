@@ -2,8 +2,8 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { IdCardLanyard, FileLock } from "lucide-react";
-import AuthLayout from "../components/Custom/Auth/AuthLayout";
-import { useAuth } from "../hooks/useAuth";
+import AuthLayout from "@components/Custom/Auth/AuthLayout";
+import { useAuth } from "@hooks/useAuth";
 
 // Main component for the login page.
 export default function Login() {
@@ -155,7 +155,7 @@ export default function Login() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-gradient-to-r from-slate-950 to-green-700 text-white py-2 rounded-[10px] font-semibold hover:from-slate-700 hover:to-green-500 transition disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full bg-gray-900 text-white py-2 rounded-[10px] font-bold hover:bg-gray-800 transition disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
         >
           {loading ? "Logging in..." : "Login"}
         </button>
@@ -168,6 +168,12 @@ export default function Login() {
           Register here
         </Link>
       </p>
+      
+      <div className="mt-4 text-center">
+        <Link to="/careers" className="text-sm text-blue-600 hover:text-blue-800 hover:underline flex items-center justify-center gap-1">
+          View Open Positions
+        </Link>
+      </div>
     </AuthLayout>
   );
 }

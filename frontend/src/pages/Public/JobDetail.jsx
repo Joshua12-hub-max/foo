@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { recruitmentApi } from '../../api/recruitmentApi';
+import { recruitmentApi } from '@api/recruitmentApi';
 import { MapPin, Briefcase, DollarSign, ArrowLeft, Upload, CheckCircle, AlertCircle } from 'lucide-react';
+import { ToastNotification, useNotification } from '@components/Custom/EmployeeManagement/Admin';
 
 const JobDetail = () => {
   const { id } = useParams();
@@ -20,6 +21,9 @@ const JobDetail = () => {
     phone_number: '',
     resume: null
   });
+  
+  // Toast notification hook
+  const { notification, showNotification } = useNotification();
 
   useEffect(() => {
     const loadJob = async () => {
@@ -58,7 +62,7 @@ const JobDetail = () => {
       setSuccess(true);
       window.scrollTo(0, 0);
     } catch (err) {
-      alert("Failed to submit application. Please try again.");
+      showNotification("Failed to submit application. Please try again.", "error");
     } finally {
       setApplying(false);
     }
@@ -89,6 +93,9 @@ const JobDetail = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-gray-800 pb-12">
+      {/* Toast Notification */}
+      <ToastNotification notification={notification} />
+      
       {/* Header Image / Color */}
       <div className="h-48 bg-gradient-to-r from-blue-900 to-indigo-800"></div>
       

@@ -121,11 +121,6 @@ export const finalizeReview = async (id) => {
     return response.data;
 };
 
-// Get review audit history
-export const getReviewHistory = async (id) => {
-    const response = await axios.get(`/performance/reviews/${id}/history`);
-    return response.data;
-};
 
 // Disagree with rating
 export const disagreeWithRating = async (id, remarks) => {
@@ -150,3 +145,31 @@ export const CSC_RATING_SCALE = [
     { score: 2, label: "Unsatisfactory", description: "Failed to meet expectations, critical goals not met." },
     { score: 1, label: "Poor", description: "Consistently below expectations, significant improvement needed." }
 ];
+
+// Fetch goals for a specific employee
+export const fetchEmployeeGoals = async (employeeId) => {
+    try {
+      // Reusing reviews endpoint filtering by employee
+      const response = await axios.get(`/performance/reviews?employee_id=${employeeId}`);
+      return { success: true, goals: response.data.reviews || [] };
+    } catch (error) {
+      return { success: false, goals: [] };
+    }
+};
+
+
+// Item Management (Immediate)
+export const addItem = async (data) => {
+    const response = await axios.post('/performance/items', data);
+    return response.data;
+};
+
+export const updateItem = async (id, data) => {
+    const response = await axios.put(`/performance/items/${id}`, data);
+    return response.data;
+};
+
+export const deleteItem = async (id) => {
+    const response = await axios.delete(`/performance/items/${id}`);
+    return response.data;
+};

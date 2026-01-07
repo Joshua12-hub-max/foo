@@ -1,26 +1,26 @@
 import { useState, useEffect, useCallback } from 'react';
 
 // Import Utils
-import { getTodayDate } from '../../components/Custom/ScheduleAdminComponents/Employee/utils/dateTimeUtils';
+import { getTodayDate } from '@components/Custom/Timekeeping/ScheduleAdminComponents/Employee/utils/dateTimeUtils';
 
 // Import Hooks
-import { useScheduleData } from '../../components/Custom/ScheduleAdminComponents/Employee/hooks/useScheduleData';
-import { useFilters } from '../../components/Custom/ScheduleAdminComponents/Employee/hooks/useFilters';
-import { usePagination } from '../../components/Custom/ScheduleAdminComponents/Employee/hooks/usePagination';
-import { useExport } from '../../components/Custom/ScheduleAdminComponents/Employee/hooks/useExport';
+import { useScheduleData } from '@components/Custom/Timekeeping/ScheduleAdminComponents/Employee/hooks/useScheduleData';
+import { useFilters } from '@components/Custom/Timekeeping/ScheduleAdminComponents/Employee/hooks/useFilters';
+import { usePagination } from '@components/Custom/Timekeeping/ScheduleAdminComponents/Employee/hooks/usePagination';
+import { useExport } from '@components/Custom/Timekeeping/ScheduleAdminComponents/Employee/hooks/useExport';
 
 // Import Constants
-import { PAGE_SIZE } from '../../components/Custom/ScheduleAdminComponents/Employee/constants/scheduleConstants';
+import { PAGE_SIZE } from '@components/Custom/Timekeeping/ScheduleAdminComponents/Employee/constants/scheduleConstants';
 
 // Import Components
-import LoadingSpinner from '../../components/Custom/ScheduleAdminComponents/Employee/components/LoadingSpinner';
-import ErrorAlert from '../../components/Custom/ScheduleAdminComponents/Employee/components/ErrorAlert';
-import SuccessAlert from '../../components/Custom/ScheduleAdminComponents/Employee/components/SuccessAlert';
-import Header from '../../components/Custom/ScheduleAdminComponents/Employee/components/Header';
-import Filters from '../../components/Custom/ScheduleAdminComponents/Employee/components/Filters';
-import ExportOptions from '../../components/Custom/ScheduleAdminComponents/Employee/components/ExportOptions';
-import Table from '../../components/Custom/ScheduleAdminComponents/Employee/components/Table';
-import Pagination from '../../components/Custom/ScheduleAdminComponents/Employee/components/Pagination';
+import LoadingSpinner from '@components/Custom/Timekeeping/ScheduleAdminComponents/Employee/components/LoadingSpinner';
+import ErrorAlert from '@components/Custom/Timekeeping/ScheduleAdminComponents/Employee/components/ErrorAlert';
+import SuccessAlert from '@components/Custom/Timekeeping/ScheduleAdminComponents/Employee/components/SuccessAlert';
+import Header from '@components/Custom/Timekeeping/ScheduleAdminComponents/Employee/components/Header';
+import Filters from '@components/Custom/Timekeeping/ScheduleAdminComponents/Employee/components/Filters';
+import ExportOptions from '@components/Custom/Timekeeping/ScheduleAdminComponents/Employee/components/ExportOptions';
+import Table from '@components/Custom/Timekeeping/ScheduleAdminComponents/Employee/components/Table';
+import Pagination from '@components/Custom/Timekeeping/ScheduleAdminComponents/Employee/components/Pagination';
 
 // Constants
 const AUTO_DISMISS_ERROR = 5000;
@@ -116,7 +116,7 @@ const EmployeeSchedule = () => {
       {/* Header Section */}
       <Header today={today} isLoading={isLoading} onRefresh={handleRefresh} />
 
-      <hr className="mb-6 border-[1px] border-[#274b46]" />
+      <hr className="mb-6 border-[1px] border-gray-200" />
 
       {/* Alert Messages */}
       <ErrorAlert 

@@ -189,41 +189,41 @@ export const getEventStyles = (type, title, priority) => {
     const p = priority?.toLowerCase();
     switch (p) {
       case "high":
-        // High priority → STATUS_RED #7A0000
-        return { textColor: "text-[#7A0000]", badgeBg: "bg-[#7A0000]/10", badgeText: "text-[#7A0000]", borderColor: "border-none", bgColor: "bg-[#F2F2F2]" };
+        // High priority → Deep Red
+        return { textColor: "text-red-950", badgeBg: "bg-red-950/10", badgeText: "text-red-950", borderColor: "border-red-950/20", bgColor: "bg-white" };
       case "urgent":
-        // Urgent → DARK_NAVY #1B1A55
-        return { textColor: "text-[#1B1A55]", badgeBg: "bg-[#1B1A55]/10", badgeText: "text-[#1B1A55]", borderColor: "border-none", bgColor: "bg-[#F2F2F2]" };
+        // Urgent → Deep Navy
+        return { textColor: "text-blue-950", badgeBg: "bg-blue-950/10", badgeText: "text-blue-950", borderColor: "border-blue-950/20", bgColor: "bg-white" };
       default:
-        // Normal/Low → STATUS_GREEN #79B791 with stronger visibility
-        return { textColor: "text-[#2E7D4A]", badgeBg: "bg-[#79B791]/20", badgeText: "text-[#2E7D4A]", borderColor: "border-none", bgColor: "bg-[#F2F2F2]" };
+        // Normal/Low → Deep Emerald
+        return { textColor: "text-gray-900", badgeBg: "bg-gray-100", badgeText: "text-gray-900", borderColor: "border-gray-200", bgColor: "bg-white" };
     }
   }
 
-  // 2. Holiday type-based colors (Different colors for each type)
+  // 2. Holiday type-based colors
   const holidayType = type?.toLowerCase();
 
-  // Regular Holiday → Rose Pink #AE445A
+  // Regular Holiday → Deep Burgundy
   if (holidayType === "regular holiday" || holidayType === "holiday") {
-    return { textColor: "text-[#AE445A]", badgeBg: "bg-[#AE445A]/10", badgeText: "text-[#AE445A]", borderColor: "border-none", bgColor: "bg-[#F2F2F2]" };
+    return { textColor: "text-red-950", badgeBg: "bg-red-950/10", badgeText: "text-red-950", borderColor: "border-red-950/20", bgColor: "bg-white" };
   }
 
-  // Special Non-Working Holiday → Deep Purple #2E294E
+  // Special Non-Working Holiday → Deep Indigo
   if (holidayType === "special non-working" || holidayType === "non-working holiday") {
-    return { textColor: "text-[#2E294E]", badgeBg: "bg-[#2E294E]/10", badgeText: "text-[#2E294E]", borderColor: "border-none", bgColor: "bg-[#F2F2F2]" };
+    return { textColor: "text-indigo-950", badgeBg: "bg-indigo-950/10", badgeText: "text-indigo-950", borderColor: "border-indigo-950/20", bgColor: "bg-white" };
   }
 
-  // Special Holiday / Working Holiday → Warm Brown #A27B5C
+  // Special Holiday / Working Holiday → Deep Amber
   if (holidayType === "special holiday" || holidayType === "working holiday") {
-    return { textColor: "text-[#A27B5C]", badgeBg: "bg-[#A27B5C]/10", badgeText: "text-[#A27B5C]", borderColor: "border-none", bgColor: "bg-[#F2F2F2]" };
+    return { textColor: "text-amber-900", badgeBg: "bg-amber-900/10", badgeText: "text-amber-900", borderColor: "border-amber-900/20", bgColor: "bg-white" };
   }
 
-  // 3. Schedule Type → Slate Blue #535C91
+  // 3. Schedule Type → Deep Slate
   if (type === "schedule") {
-    return { textColor: "text-[#535C91]", badgeBg: "bg-[#535C91]/10", badgeText: "text-[#535C91]", borderColor: "border-none", bgColor: "bg-[#F2F2F2]" };
+    return { textColor: "text-slate-900", badgeBg: "bg-slate-900/10", badgeText: "text-slate-900", borderColor: "border-slate-900/20", bgColor: "bg-white" };
   }
 
-  // 4. Default / Event → STATUS_AMBER #CF9033
-  return { textColor: "text-[#CF9033]", badgeBg: "bg-[#CF9033]/10", badgeText: "text-[#CF9033]", borderColor: "border-none", bgColor: "bg-[#F2F2F2]" };
+  // 4. Default / Event → Deep Gray
+  return { textColor: "text-gray-900", badgeBg: "bg-gray-900/10", badgeText: "text-gray-900", borderColor: "border-gray-900/20", bgColor: "bg-white" };
 };
 

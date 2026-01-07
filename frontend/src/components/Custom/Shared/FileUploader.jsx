@@ -89,13 +89,13 @@ const FileUploader = ({ onUpload, acceptedTypes = "image/*,application/pdf", max
 
         <div className="flex flex-col items-center text-center space-y-3">
           <div className="p-3 bg-white rounded-full shadow-sm">
-            <Upload className="text-green-600" size={24} />
+            <Upload className="text-gray-600" size={24} />
           </div>
           <div>
             <p className="text-sm font-medium text-gray-700">
               <span 
                 onClick={() => inputRef.current.click()}
-                className="text-green-600 hover:text-green-700 cursor-pointer hover:underline"
+                className="text-gray-600 hover:text-gray-800 cursor-pointer hover:underline"
               >
                 Click to upload
               </span>

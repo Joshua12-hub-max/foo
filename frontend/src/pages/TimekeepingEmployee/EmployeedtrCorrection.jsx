@@ -1,17 +1,17 @@
 import { useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
-import EditDailyTimeRecordsModal from "../../components/Custom/DTRcorrectionsComponents/Employee/Modals/edit";
-import ViewDailyTimeRecordsModal from "../../components/Custom/DTRcorrectionsComponents/Employee/Modals/view";
-import DTRCorrectionRequestModal from "../../components/Custom/DTRcorrectionsComponents/Employee/Modals/DTRCorrectionRequestModal";
-import { useEmployeeDTRCorrection } from "../../components/Custom/DTRcorrectionsComponents/Employee/hooks/useEmployeeDTRCorrection";
-import { EmployeeDTRHeader } from "../../components/Custom/DTRcorrectionsComponents/Employee/components/EmployeeDTRHeader";
-import { EmployeeDTRNotification } from "../../components/Custom/DTRcorrectionsComponents/Employee/components/EmployeeDTRNotification";
-import { EmployeeDTRFilters } from "../../components/Custom/DTRcorrectionsComponents/Employee/components/EmployeeDTRFilters";
-import { EmployeeDTRSearchBar } from "../../components/Custom/DTRcorrectionsComponents/Employee/components/EmployeeDTRSearchBar";
-import { EmployeeDTRExportButtons } from "../../components/Custom/DTRcorrectionsComponents/Employee/components/EmployeeDTRExportButtons";
-import { EmployeeDTRTable } from "../../components/Custom/DTRcorrectionsComponents/Employee/components/EmployeeDTRTable";
-import { EmployeeDTRPagination } from "../../components/Custom/DTRcorrectionsComponents/Employee/components/EmployeeDTRPagination";
-import { EmployeeDTRLoadingSpinner } from "../../components/Custom/DTRcorrectionsComponents/Employee/components/EmployeeDTRLoadingSpinner";
+import EditDailyTimeRecordsModal from "@components/Custom/Timekeeping/DTRcorrectionsComponents/Employee/Modals/edit";
+import ViewDailyTimeRecordsModal from "@components/Custom/Timekeeping/DTRcorrectionsComponents/Employee/Modals/view";
+import DTRCorrectionRequestModal from "@components/Custom/Timekeeping/DTRcorrectionsComponents/Employee/Modals/DTRCorrectionRequestModal";
+import { useEmployeeDTRCorrection } from "@components/Custom/Timekeeping/DTRcorrectionsComponents/Employee/hooks/useEmployeeDTRCorrection";
+import { EmployeeDTRHeader } from "@components/Custom/Timekeeping/DTRcorrectionsComponents/Employee/components/EmployeeDTRHeader";
+import { EmployeeDTRNotification } from "@components/Custom/Timekeeping/DTRcorrectionsComponents/Employee/components/EmployeeDTRNotification";
+import { EmployeeDTRFilters } from "@components/Custom/Timekeeping/DTRcorrectionsComponents/Employee/components/EmployeeDTRFilters";
+import { EmployeeDTRSearchBar } from "@components/Custom/Timekeeping/DTRcorrectionsComponents/Employee/components/EmployeeDTRSearchBar";
+import { EmployeeDTRExportButtons } from "@components/Custom/Timekeeping/DTRcorrectionsComponents/Employee/components/EmployeeDTRExportButtons";
+import { EmployeeDTRTable } from "@components/Custom/Timekeeping/DTRcorrectionsComponents/Employee/components/EmployeeDTRTable";
+import { EmployeeDTRPagination } from "@components/Custom/Timekeeping/DTRcorrectionsComponents/Employee/components/EmployeeDTRPagination";
+import { EmployeeDTRLoadingSpinner } from "@components/Custom/Timekeeping/DTRcorrectionsComponents/Employee/components/EmployeeDTRLoadingSpinner";
 
 const EmployeeDtrcorrections = () => {
   const outletContext = useOutletContext?.() || { sidebarOpen: true };

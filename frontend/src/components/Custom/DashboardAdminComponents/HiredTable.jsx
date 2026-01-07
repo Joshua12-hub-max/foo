@@ -1,22 +1,19 @@
 import { useState, useMemo, useCallback } from 'react';
-import { Search } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 
 const ITEMS_PER_PAGE = 10;
 
 export default function HiredTable({ onClose, employees = [] }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
- 
+
   const filteredEmployees = useMemo(() => {
     const query = searchQuery.toLowerCase();
     if (!query) return employees;
-    
     return employees.filter(emp =>
-      emp.name.toLowerCase().includes(query) ||
-      emp.id.toLowerCase().includes(query) ||
-      emp.department.toLowerCase().includes(query) ||
-      emp.position?.toLowerCase().includes(query) ||
-      emp.status.toLowerCase().includes(query)
+      emp.name?.toLowerCase().includes(query) ||
+      emp.id?.toLowerCase().includes(query) ||
+      emp.department?.toLowerCase().includes(query)
     );
   }, [searchQuery, employees]);
 
@@ -25,7 +22,6 @@ export default function HiredTable({ onClose, employees = [] }) {
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
     const endIndex = startIndex + ITEMS_PER_PAGE;
     const currentEmployees = filteredEmployees.slice(startIndex, endIndex);
-    
     return { totalPages, startIndex, endIndex, currentEmployees };
   }, [filteredEmployees, currentPage]);
 
@@ -34,122 +30,88 @@ export default function HiredTable({ onClose, employees = [] }) {
     setCurrentPage(1);
   }, []);
 
-  const handlePrevPage = useCallback(() => {
-    setCurrentPage(prev => Math.max(prev - 1, 1));
-  }, []);
-
-  const handleNextPage = useCallback(() => {
-    setCurrentPage(prev => Math.min(prev + 1, paginationData.totalPages));
-  }, [paginationData.totalPages]);
-
   const { totalPages, startIndex, endIndex, currentEmployees } = paginationData;
 
   return (
     <div className="h-full flex flex-col">
-      {/* Header */}
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-800">Recently Hired Employees</h2>
-          <p className="text-sm text-gray-800 mt-1">New employees recently onboarded</p>
-        </div>
-        <button
-          onClick={onClose}
-          className="text-[#274b46] hover:text-[#34645c] text-2xl leading-none"
-        >
-          ✕
+      {/* Compact Header */}
+      <div className="flex justify-between items-center mb-3">
+        <h2 className="text-base font-bold text-gray-800">Recently Hired</h2>
+        <button onClick={onClose} className="p-1 text-gray-400 hover:text-gray-600 rounded">
+          <X size={18} />
         </button>
       </div>
 
-      <hr className="mb-6 border-[1px] border-[#274b46]" />
-
-
-      {/* Search */}
-      <div className="flex justify-between items-center mb-6">
-        <div className="relative w-80">
-          <Search className="absolute left-3 top-2.5 w-4 h-4 text-[#274b46]" />
+      {/* Compact Search */}
+      <div className="flex items-center gap-3 mb-3">
+        <div className="relative flex-1 max-w-xs">
+          <Search className="absolute left-2.5 top-2 w-4 h-4 text-gray-400" />
           <input
             type="text"
-            placeholder="Search by name, ID, or department..."
+            placeholder="Search..."
             value={searchQuery}
             onChange={handleSearchChange}
-            className="pl-10 pr-4 py-2 bg-[#F8F9FA] border border-gray-300 rounded-lg w-full text-sm focus:ring-2 focus:ring-[#274b46] focus:border-[#274b46] transition-all"
+            className="pl-8 pr-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg w-full text-sm focus:ring-1 focus:ring-gray-400 outline-none"
           />
         </div>
         {searchQuery && (
-          <div className="text-sm text-gray-600">
-            Found <span className="font-semibold text-gray-800">{filteredEmployees.length}</span> result{filteredEmployees.length !== 1 ? 's' : ''}
-          </div>
+          <span className="text-xs text-gray-500">{filteredEmployees.length} found</span>
         )}
       </div>
 
-      {/* Modern Table */}
-      <div className="flex-1 overflow-hidden rounded-xl bg-white p-1">
-        <div className="overflow-x-auto bg-gray-50 rounded-lg">
-          <table className="w-full min-w-[1000px]">
-            <thead className="bg-gray-200 shadow-md text-gray-700">
-              <tr>
-                {["Status", "Department", "Employee ID", "Name", "Position", "Hire Date"].map((header) => (
-                  <th key={header} className="px-6 py-4 text-left text-sm font-bold uppercase tracking-wide">
-                    {header}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {currentEmployees.length ? (
-                currentEmployees.map((employee) => (
-                  <tr key={employee.id} className="hover:bg-[#F8F9FA] transition-colors">
-                    <td className="px-6 py-4">
-                      <span className="bg-green-100 text-green-800 px-3 py-1 text-sm font-medium inline-block" style={{borderRadius: '20px'}}>
-                        {employee.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-800">{employee.department}</td>
-                    <td className="px-6 py-4 text-sm text-gray-800">{employee.id}</td>
-                    <td className="px-6 py-4 text-sm text-gray-800">{employee.name}</td>
-                    <td className="px-6 py-4 text-sm text-gray-800">{employee.position || '-'}</td>
-                    <td className="px-6 py-4 text-sm text-gray-800">{employee.hireDate}</td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan="6" className="px-6 py-12 text-center">
-                    <div className="flex flex-col items-center justify-center text-gray-500">
-                      <Search className="w-12 h-12 mb-3 opacity-50" />
-                      <p className="text-lg font-medium">No records found</p>
-                      <p className="text-sm mt-1">
-                        {searchQuery ? "Try adjusting your search terms" : "No data available"}
-                      </p>
-                    </div>
-                  </td>
+      {/* Compact Table */}
+      <div className="flex-1 overflow-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-gray-100 text-xs font-semibold text-gray-600 uppercase sticky top-0">
+            <tr>
+              <th className="px-3 py-2 text-left">ID</th>
+              <th className="px-3 py-2 text-left">Name</th>
+              <th className="px-3 py-2 text-left">Department</th>
+              <th className="px-3 py-2 text-left">Position</th>
+              <th className="px-3 py-2 text-left">Date Hired</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {currentEmployees.length ? (
+              currentEmployees.map(employee => (
+                <tr key={employee.id} className="hover:bg-gray-50">
+                  <td className="px-3 py-2 text-gray-600 font-mono text-xs">{employee.id}</td>
+                  <td className="px-3 py-2 text-gray-800 font-medium">{employee.name}</td>
+                  <td className="px-3 py-2 text-gray-600">{employee.department}</td>
+                  <td className="px-3 py-2 text-gray-600">{employee.position || employee.job_title || '-'}</td>
+                  <td className="px-3 py-2 text-gray-600">{employee.date_hired || employee.dateHired || '-'}</td>
                 </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="5" className="px-3 py-8 text-center text-gray-400 text-sm">
+                  {searchQuery ? 'No matching records' : 'No data available'}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </div>
 
-      {/* Pagination */}
-      {filteredEmployees.length > 0 && (
-        <div className="flex justify-between items-center mt-6">
-          <div className="text-sm text-gray-800">
-            Showing <span className="font-semibold text-gray-800">{startIndex + 1}–{Math.min(endIndex, filteredEmployees.length)}</span> of <span className="font-semibold text-gray-800">{filteredEmployees.length}</span> records
-          </div>
-          <div className="flex items-center space-x-2">
+      {/* Compact Pagination */}
+      {filteredEmployees.length > ITEMS_PER_PAGE && (
+        <div className="flex justify-between items-center mt-3 pt-3 border-t border-gray-100">
+          <span className="text-xs text-gray-500">
+            {startIndex + 1}–{Math.min(endIndex, filteredEmployees.length)} of {filteredEmployees.length}
+          </span>
+          <div className="flex gap-1">
             <button
-              onClick={handlePrevPage}
+              onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
               disabled={currentPage === 1}
-              className="px-6 py-2 bg-gray-200 border border-gray-200 rounded-lg shadow-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-200 transition-all text-sm font-medium text-gray-800"
+              className="px-2 py-1 text-xs bg-gray-100 rounded disabled:opacity-50"
             >
-              Previous
+              Prev
             </button>
-            <span className="text-sm px-4 py-2 bg-gray-50 text-gray-800 rounded-lg font-semibold">
-              Page {currentPage} of {totalPages}
-            </span>
+            <span className="px-2 py-1 text-xs">{currentPage}/{totalPages}</span>
             <button
-              onClick={handleNextPage}
-              disabled={currentPage === totalPages || totalPages === 0}
-              className="px-6 py-2 bg-gray-200 border border-gray-200 rounded-lg shadow-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-200 transition-all text-sm font-medium text-gray-800"
+              onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
+              disabled={currentPage === totalPages}
+              className="px-2 py-1 text-xs bg-gray-100 rounded disabled:opacity-50"
             >
               Next
             </button>
