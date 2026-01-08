@@ -1,12 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
-import {
-  getExcelInstance,
-  isExcelLibraryLoaded,
-  EXCEL_STYLES,
-  downloadWorkbook,
-  applyHeaderStyle,
-  applyBorders
-} from '@/Service/ExcelExport.service';
+import { createWorkbook, downloadExcel, EXCEL_STYLES, applyHeaderStyle } from '@/utils/excel';
 
 /**
  * useExcel Hook - Dynamic Import Hook for Excel exports
@@ -42,21 +35,11 @@ export const useExcel = () => {
   const isLoading = isLoadingLibrary || isProcessing;
 
   /**
-   * Preload the Excel library (optional - for background loading)
+   * Preload the Excel library (no-op with static import, library is always loaded)
    */
   const preloadLibrary = useCallback(async () => {
-    if (libraryReadyRef.current) return;
-
-    try {
-      setIsLoadingLibrary(true);
-      setError(null);
-      await getExcelInstance();
-      libraryReadyRef.current = true;
-    } catch (err) {
-      setError(err.message || 'Failed to preload Excel library');
-    } finally {
-      setIsLoadingLibrary(false);
-    }
+    // With static import, ExcelJS is always loaded
+    libraryReadyRef.current = true;
   }, []);
 
   /**
@@ -83,19 +66,14 @@ export const useExcel = () => {
     try {
       setError(null);
 
-      // Step 1: Load library if not cached
-      if (!libraryReadyRef.current) {
-        setIsLoadingLibrary(true);
-      }
-
-      const ExcelJS = await getExcelInstance();
+      // Step 1: Mark library as ready (static import means it's always loaded)
       libraryReadyRef.current = true;
       setIsLoadingLibrary(false);
 
       // Step 2: Process data
       setIsProcessing(true);
 
-      const workbook = new ExcelJS.Workbook();
+      const workbook = createWorkbook();
       const worksheet = workbook.addWorksheet(sheetName);
 
       // Set up columns

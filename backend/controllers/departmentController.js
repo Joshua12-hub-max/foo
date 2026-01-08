@@ -1,5 +1,17 @@
 import db from '../db/connection.js';
 
+// Get public department list (for registration - no auth required)
+export const getPublicDepartments = async (req, res) => {
+  try {
+    const query = `SELECT id, name FROM departments ORDER BY name ASC`;
+    const [departments] = await db.query(query);
+    res.status(200).json({ success: true, departments });
+  } catch (error) {
+    console.error('Get Public Departments Error:', error);
+    res.status(500).json({ success: false, message: "Failed to fetch departments" });
+  }
+};
+
 // Get all departments with employee count
 export const getDepartments = async (req, res) => {
   try {

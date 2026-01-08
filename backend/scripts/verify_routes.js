@@ -11,7 +11,7 @@ function getExports(filePath) {
   if (!fs.existsSync(filePath)) return [];
   const content = fs.readFileSync(filePath, 'utf8');
   const exports = [];
-  
+
   // Regex for "export const functionName ="
   const constMatch = content.matchAll(/export\s+const\s+(\w+)\s*=/g);
   for (const match of constMatch) exports.push(match[1]);
@@ -37,13 +37,13 @@ function verifyRoutes() {
 
   files.forEach(file => {
     if (!file.endsWith('.js')) return;
-    
+
     const routePath = path.join(routesDir, file);
     const content = fs.readFileSync(routePath, 'utf8');
-    
+
     // Parse imports: import { X, Y } from '../controllers/Z.js'
     const importRegex = /import\s+\{([^}]+)\}\s+from\s+['"]\.\.\/controllers\/([^'"]+)['"]/g;
-    
+
     for (const match of content.matchAll(importRegex)) {
       // Clean imports: Remove comments and whitespace
       const rawImports = match[1]
@@ -65,7 +65,7 @@ function verifyRoutes() {
       }
 
       const availableExports = getExports(controllerPath);
-      
+
       imports.forEach(imp => {
         if (imp && !availableExports.includes(imp)) {
           console.error(`ERROR: ${file} imports '${imp}' which is NOT exported by ${controllerFile}`);
@@ -77,9 +77,9 @@ function verifyRoutes() {
   });
 
   if (!hasErrors) {
-    console.log('✅ All route imports verified successfully.');
+    console.log('All route imports verified successfully.');
   } else {
-    console.log('❌ Route verification failed with errors.');
+    console.log('Route verification failed with errors.');
   }
 }
 

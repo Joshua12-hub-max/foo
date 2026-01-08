@@ -1,11 +1,9 @@
 /**
  * Centralized Excel Export Utility
  * 
- * Uses ExcelJS with dynamic import via ExcelExport.service.js.
- * Library is loaded on-demand and cached for session reuse.
+ * Uses static import of ExcelJS for reliable Vite bundling.
  * 
  * @example
- * // From any module:
  * import { exportToExcel } from '@/utils/excelExport';
  * 
  * exportToExcel({
@@ -15,19 +13,11 @@
  *     { header: 'Date', key: 'date', width: 15 },
  *   ],
  *   filename: 'MyReport',
- *   sheetName: 'Data',
- *   title: 'My Report Title',
- *   subtitle: 'Period: Jan 2024'
+ *   title: 'My Report Title'
  * });
  */
 
-import {
-  getExcelInstance,
-  EXCEL_STYLES,
-  downloadWorkbook,
-  applyHeaderStyle,
-  applyBorders
-} from '@/Service/ExcelExport.service';
+import { createWorkbook, downloadExcel, EXCEL_STYLES, applyHeaderStyle } from '@/utils/excel';
 
 /**
  * Export data to Excel with professional formatting
@@ -52,10 +42,7 @@ export const exportToExcel = async (options) => {
   } = options;
 
   try {
-    // Get cached ExcelJS instance from service (on-demand loaded)
-    const ExcelJS = await getExcelInstance();
-    
-    const workbook = new ExcelJS.Workbook();
+    const workbook = createWorkbook();
     const worksheet = workbook.addWorksheet(sheetName);
 
     // Set up columns
@@ -195,10 +182,7 @@ export const exportToExcelWithGroups = async (options) => {
   } = options;
 
   try {
-    // Get cached ExcelJS instance from service (on-demand loaded)
-    const ExcelJS = await getExcelInstance();
-    
-    const workbook = new ExcelJS.Workbook();
+    const workbook = createWorkbook();
     const worksheet = workbook.addWorksheet(sheetName);
 
     // Set up columns

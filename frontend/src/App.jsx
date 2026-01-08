@@ -5,7 +5,7 @@ import ErrorBoundary from "@components/ErrorBoundary";
 //lazy load authentication
 const Login = lazy(() => import("./Authentication/Login"));
 const Register = lazy(() => import("./Authentication/Register"));
-const VerifyEmail = lazy(() => import("./Authentication/VerifyEmail"));
+const VerifyAccount = lazy(() => import("./Authentication/VerifyAccount"));
 const ForgotPassword = lazy(() => import("./Authentication/ForgotPassword"));
 const ResetPassword = lazy(() => import("./Authentication/ResetPassword"));
 
@@ -149,7 +149,7 @@ export default function App() {
             } 
           />
 
-        {/* Public Career Pages - Accessible by everyone */}
+        {/* Public Career Pages - Accessible by everyone 
         <Route
           path="/careers"
           element={
@@ -166,6 +166,7 @@ export default function App() {
             </Suspense>
           }
         />
+        */}
 
         {/* Public routes */}
         <Route
@@ -189,11 +190,11 @@ export default function App() {
           }
         />
         <Route
-          path="/verify-email"
+          path="/verify-account"
           element={
             <PublicRoute>
               <Suspense fallback={<PageLoader />}>
-                <VerifyEmail />
+                <VerifyAccount />
               </Suspense>
             </PublicRoute>
           }

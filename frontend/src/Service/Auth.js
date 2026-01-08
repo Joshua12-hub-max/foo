@@ -45,10 +45,35 @@ export const getCurrentUser = async () => {
     return response.data.data;
 };
 
+export const enableTwoFactor = async () => {
+    const response = await api.post("/2fa/enable");
+    return response.data;
+};
+
+export const disableTwoFactor = async () => {
+    const response = await api.post("/2fa/disable");
+    return response.data;
+};
+
+export const verifyTwoFactorOTP = async (identifier, otp) => {
+    const response = await api.post("/2fa/verify", { identifier, otp });
+    return response.data;
+};
+
+export const resendTwoFactorOTP = async (identifier) => {
+    const response = await api.post("/2fa/resend", { identifier });
+    return response.data;
+};
+
 export const updateProfile = async (formData) => {
     const response = await api.post("/profile", formData, {
         headers: { "Content-Type": "multipart/form-data" }
     });
+    return response.data;
+};
+
+export const verifyRegistrationOTP = async (email, otp) => {
+    const response = await api.post("/verify-registration", { email, otp });
     return response.data;
 };
 

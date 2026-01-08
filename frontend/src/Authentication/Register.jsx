@@ -1,10 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { User, Mail, Lock, Briefcase, Building2, AlertCircle, Loader2 } from "lucide-react";
 import AuthLayout from "@components/Custom/Auth/AuthLayout";
 import { register } from "@/Service/Auth";
-import { useAuth } from "@hooks/useAuth"; // Import useAuth for googleLogin
-import { GoogleLogin } from '@react-oauth/google';
+import axios from "@/api/axios";
 
 export default function Register() {
   const [form, setForm] = useState({
@@ -17,8 +16,26 @@ export default function Register() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [departments, setDepartments] = useState([]);
+  const [departmentsLoading, setDepartmentsLoading] = useState(true);
   const navigate = useNavigate();
-  const { googleLogin } = useAuth();
+
+  // Fetch departments on mount
+  useEffect(() => {
+    const fetchDepartments = async () => {
+      try {
+        const response = await axios.get('/departments/public');
+        if (response.data.success) {
+          setDepartments(response.data.departments);
+        }
+      } catch (err) {
+        console.error('Failed to fetch departments:', err);
+      } finally {
+        setDepartmentsLoading(false);
+      }
+    };
+    fetchDepartments();
+  }, []);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -32,36 +49,18 @@ export default function Register() {
     setSuccess("");
 
     try {
-      const response = await register(form);
       setSuccess(response.data.message || "Registration successful! Please check your email.");
       
       // Store for login pre-fill
       localStorage.setItem("lastRegisteredUser", JSON.stringify({ email: form.email, role: form.role }));
       
-      // Optional: Redirect after delay
-      // setTimeout(() => navigate("/login"), 3000);
+      // Redirect to verification page
+      setTimeout(() => {
+          navigate("/verify-account", { state: { email: form.email } });
+      }, 1500);
     } catch (err) {
       console.error("Registration error:", err);
       setError(err.response?.data?.message || "Registration failed. Please try again.");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleGoogleSuccess = async (credentialResponse) => {
-    setIsSubmitting(true);
-    setError("");
-    try {
-      const user = await googleLogin(credentialResponse.credential);
-      // Redirect based on role
-      if (user.role === "admin" || user.role === "hr") {
-        navigate("/admin-dashboard", { replace: true });
-      } else {
-        navigate("/employee-dashboard", { replace: true });
-      }
-    } catch (err) {
-      console.error("Google Login Error:", err);
-      setError("Google Sign-In failed. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -161,12 +160,12 @@ export default function Register() {
                     onChange={handleChange}
                     className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-xl bg-gray-50 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all appearance-none text-sm"
                     required
+                    disabled={departmentsLoading}
                 >
-                    <option value="">Select Department</option>
-                    <option value="IT">IT</option>
-                    <option value="HR">HR</option>
-                    <option value="Finance">Finance</option>
-                    <option value="Operations">Operations</option>
+                    <option value="">{departmentsLoading ? 'Loading...' : 'Select Department'}</option>
+                    {departments.map((dept) => (
+                        <option key={dept.id} value={dept.name}>{dept.name}</option>
+                    ))}
                 </select>
                 </div>
             </div>
@@ -205,27 +204,6 @@ export default function Register() {
             )}
           </button>
         </form>
-
-        <div className="relative">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-gray-200"></div>
-          </div>
-          <div className="relative flex justify-center text-sm">
-            <span className="px-2 bg-white text-gray-500">Or continue with</span>
-          </div>
-        </div>
-
-        <div className="flex justify-center">
-            <GoogleLogin
-                onSuccess={handleGoogleSuccess}
-                onError={() => setError("Google Sign-In failed")}
-                theme="outline"
-                shape="pill"
-                size="large"
-                width="350"
-                text="signup_with"
-            />
-        </div>
 
         <p className="text-center text-sm text-gray-600">
           Already have an account?{" "}

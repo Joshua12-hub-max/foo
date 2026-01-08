@@ -137,6 +137,7 @@ export const useProfile = () => {
     handleChange,
     handleAvatarChange,
     handleSubmit,
-    handleCancel
+    handleCancel,
+    setProfile // Expose setProfile to allow local updates
   };
 };

@@ -1,3 +1,5 @@
+import { createWorkbook, downloadExcel } from '@/utils/excel';
+
 const formatDate = (dateStr) => {
   if (!dateStr) return '-';
   const date = new Date(dateStr);
@@ -19,11 +21,9 @@ const formatMinutes = (minutes) => {
 
 export const exportToExcel = async (exportData, filename = 'Department_Attendance_Report') => {
   try {
-    const ExcelJS = await import('exceljs');
-    
     const { data, grandTotals, meta } = exportData;
     
-    const workbook = new ExcelJS.Workbook();
+    const workbook = createWorkbook();
     const worksheet = workbook.addWorksheet('AttendanceSummary');
 
     worksheet.columns = [

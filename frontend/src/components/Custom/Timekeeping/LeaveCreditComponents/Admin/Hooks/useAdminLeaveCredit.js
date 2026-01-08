@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { leaveApi } from "@api";
 import { fetchEmployees } from "@api";
 import { ITEMS_PER_PAGE } from '../Constants/adminLeaveCredit.constants';
+import { createWorkbook, downloadExcel } from '@/utils/excel';
 
 export const useAdminLeaveCredit = () => {
   const today = useMemo(() => {
@@ -118,8 +119,7 @@ export const useAdminLeaveCredit = () => {
   const handleExportCSV = useCallback(async () => {
     if (filteredData.length === 0) { setError("No data to export."); return; }
     try {
-      const ExcelJS = await import('exceljs');
-      const workbook = new ExcelJS.Workbook();
+      const workbook = createWorkbook();
       const worksheet = workbook.addWorksheet('LeaveCredits');
 
       // Define Columns

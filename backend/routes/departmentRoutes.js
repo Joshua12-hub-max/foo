@@ -4,6 +4,9 @@ import { verifyToken, verifyAdmin } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
+// Public route for registration (no auth required)
+router.get('/public', departmentController.getPublicDepartments);
+
 // Department Read (any authenticated user can view)
 router.get('/', verifyToken, departmentController.getDepartments);
 router.get('/:id', verifyToken, departmentController.getDepartmentById);

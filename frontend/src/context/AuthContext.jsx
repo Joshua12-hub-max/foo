@@ -9,10 +9,21 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     const initAuth = async () => {
+      // optimization: only check auth if we think we are logged in
+      const mightBeLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+
+      if (!mightBeLoggedIn) {
+          setLoading(false);
+          return;
+      }
+
       try {
         const response = await getCurrentUser();
         setUser(response); 
       } catch (error) {
+         // If check fails (e.g. cookie expired), clear the flag
+         localStorage.removeItem('isLoggedIn');
+         
         // Silent failure is expected if no cookie
         if (error.response?.status !== 401) {
              console.error("Failed to fetch user:", error);
@@ -27,15 +38,37 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (credentials) => {
     const response = await loginApi(credentials);
+    
+    // Check for 2FA challenge
+    if (response.data.requires2FA) {
+      return { 
+        requires2FA: true, 
+        identifier: response.data.identifier, // Actual email for OTP verification
+        maskedEmail: response.data.maskedEmail // For display
+      };
+    }
+
     const userData = response.data.data;
     setUser(userData);
+    localStorage.setItem('isLoggedIn', 'true');
     return userData;
   };
 
   const googleLogin = async (credential) => {
     const response = await googleLoginApi({ credential });
+    
+    // Check for 2FA challenge (Strict Google Login)
+    if (response.data.requires2FA) {
+      return { 
+        requires2FA: true, 
+        identifier: response.data.identifier, // Actual email for OTP verification
+        maskedEmail: response.data.maskedEmail // For display
+      };
+    }
+
     const userData = response.data.data;
     setUser(userData);
+    localStorage.setItem('isLoggedIn', 'true');
     return userData;
   };
 
@@ -45,6 +78,7 @@ export const AuthProvider = ({ children }) => {
     } catch (e) {
         console.error("Logout failed", e);
     }
+    localStorage.removeItem('isLoggedIn');
     setUser(null);
   };
 

@@ -66,10 +66,10 @@ const runMigration = async () => {
             console.log('- Could not clean junk records:', err.message);
         }
 
-        console.log('\n✅ Migration completed successfully!');
+        console.log('\n Migration completed successfully!');
         process.exit(0);
     } catch (error) {
-        console.error('❌ Migration failed:', error);
+        console.error('Migration failed:', error);
         process.exit(1);
     }
 };

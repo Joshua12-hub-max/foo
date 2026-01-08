@@ -35,68 +35,60 @@ export const googleLogin = async (req, res) => {
     // 2. Check if user exists
     const [users] = await db.query("SELECT * FROM authentication WHERE email = ?", [email]);
     
-    let user;
-
     if (users.length === 0) {
-      // 3. Create new user
-      // Auto-generate Employee ID
-      const autoEmployeeId = `G-${Date.now().toString().slice(-6)}`;
-      
-      // Default department and role for new Google users (or handle as pending)
-      const defaultRole = 'employee'; 
-      const defaultDepartment = 'General';
-
-      const [result] = await db.query(
-        "INSERT INTO authentication (first_name, last_name, email, role, department, employee_id, google_id, avatar_url, is_verified) VALUES (?, ?, ?, ?, ?, ?, ?, ?, TRUE)",
-        [firstName, lastName, email, defaultRole, defaultDepartment, autoEmployeeId, googleId, avatar]
-      );
-      
-      user = {
-        id: result.insertId,
-        first_name: firstName,
-        last_name: lastName,
-        email: email,
-        role: defaultRole,
-        department: defaultDepartment,
-        employee_id: autoEmployeeId,
-        is_verified: true
-      };
-      
-    } else {
-      user = users[0];
-      // Update google_id if not present (link account)
-      if (!user.google_id) {
-        await db.query("UPDATE authentication SET google_id = ?, avatar_url = ?, is_verified = TRUE WHERE id = ?", [googleId, avatar, user.id]);
-      }
+      // STRICT MODE: Reject new users
+      return res.status(403).json({ 
+        success: false, 
+        message: "Account not found. Please register manually via the Employee Portal." 
+      });
     }
 
-    // 4. Generate JWT
-    const token = jwt.sign(
-      { id: user.id, employeeId: user.employee_id, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: "1d" }
+    const user = users[0];
+
+    // Link Google ID if missing
+    if (!user.google_id) {
+       await db.query("UPDATE authentication SET google_id = ?, avatar_url = ? WHERE id = ?", [googleId, avatar, user.id]);
+    }
+
+    // 3. Enforce OTP for Google Login (Security Requirement)
+    // Generate OTP
+    const otp = crypto.randomInt(100000, 999999).toString();
+    const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    await db.query(
+        "UPDATE authentication SET two_factor_otp = ?, two_factor_otp_expires = ? WHERE id = ?",
+        [otp, otpExpires, user.id]
     );
 
-    // 5. Send Response WITH COOKIE
-    res.cookie('accessToken', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 24 * 60 * 60 * 1000 // 1 day
-    });
+    // Send OTP Email
+    const mailOptions = {
+        from: process.env.EMAIL_USER,
+        to: user.email,
+        subject: 'Google Login Verification - NEBR',
+        html: `
+            <h1>Login Verification</h1>
+            <p>Hi ${user.first_name},</p>
+            <p>You are attempting to login via Google.</p>
+            <p>Your Verification Code is:</p>
+            <h2 style="font-size: 24px; font-weight: bold; letter-spacing: 5px;">${otp}</h2>
+            <p>This code expires in 10 minutes.</p>
+        `
+    };
 
-    res.status(200).json({
-      success: true,
-      message: "Google login successful",
-      data: {
-        id: user.id,
-        name: `${user.first_name} ${user.last_name}`,
-        email: user.email,
-        role: user.role,
-        department: user.department,
-        employeeId: user.employee_id,
-        avatar: avatar
-      }
+    try {
+          await transporter.sendMail(mailOptions);
+    } catch (emailErr) {
+        console.error("Failed to send Google 2FA OTP:", emailErr);
+        return res.status(500).json({ success: false, message: "Failed to send verification code." });
+    }
+
+    // Return requires2FA response
+    return res.status(200).json({
+        success: true,
+        requires2FA: true,
+        message: "Verification code sent to email",
+        identifier: user.email, // Actual email for OTP verification
+        maskedEmail: user.email.replace(/(.{2})(.*)(?=@)/, (gp1, gp2, gp3) => gp2 + "*".repeat(gp3.length)) // For display
     });
 
   } catch (error) {
@@ -106,7 +98,7 @@ export const googleLogin = async (req, res) => {
 };
 
 export const register = async (req, res) => {
-  const { name, email, department, password, role } = req.body; // Include role in destructuring
+  const { name, email, department, password, role } = req.body;
 
   // 1. Validate input
   if (!name || !email || !department || !password) {
@@ -137,7 +129,7 @@ export const register = async (req, res) => {
   }
 
   try {
-    // Determine role (default to 'employee' if not provided or invalid)
+    // Determine role
     let assignedRole = 'employee';
     if (role && ['admin', 'hr', 'employee'].includes(role.toLowerCase())) {
       assignedRole = role.toLowerCase();
@@ -176,19 +168,16 @@ export const register = async (req, res) => {
     const first_name = nameParts[0];
     const last_name = nameParts.length > 1 ? nameParts.slice(1).join(" ") : "";
 
-    // 4. Generate Verification Token
-    const verificationToken = crypto.randomBytes(32).toString('hex');
-
+    // 4. Generate Verification OTP (instead of Token Link)
+    const verificationOTP = crypto.randomInt(100000, 999999).toString();
+    
     // 5. Insert user into database
     await db.query(
       "INSERT INTO authentication (first_name, last_name, email, role, department, employee_id, password_hash, is_verified, verification_token) VALUES (?, ?, ?, ?, ?, ?, ?, FALSE, ?)",
-      [first_name, last_name, email, assignedRole, department, autoEmployeeId, hashedPassword, verificationToken]
+      [first_name, last_name, email, assignedRole, department, autoEmployeeId, hashedPassword, verificationOTP]
     );
 
-    // 6. Send Verification Email
-    // 6. Send Verification Email
-    const verificationLink = `${process.env.API_URL}/api/auth/verify-email?token=${verificationToken}`;
-    
+    // 6. Send Verification Email with OTP
     const mailOptions = {
       from: process.env.EMAIL_USER,
       to: email,
@@ -196,8 +185,8 @@ export const register = async (req, res) => {
       html: `
         <h1>Email Verification</h1>
         <p>Hi ${first_name},</p>
-        <p>Please verify your email by clicking the link below:</p>
-        <a href="${verificationLink}">Verify Email</a>
+        <p>Thank you for registering. Please use the code below to verify your email address:</p>
+        <h2 style="font-size: 24px; font-weight: bold; letter-spacing: 5px;">${verificationOTP}</h2>
         <p>If you didn't request this, please ignore this email.</p>
       `
     };
@@ -207,10 +196,8 @@ export const register = async (req, res) => {
         throw new Error("Email credentials are not configured.");
       }
       await transporter.sendMail(mailOptions);
-      console.log(`Verification email sent to ${email}`);
     } catch (emailErr) {
       console.error('Failed to send email:', emailErr);
-      // We still return success for user creation, but warn about email
       return res.status(201).json({ 
         success: true, 
         message: "User created, but failed to send verification email. Please contact support.",
@@ -220,8 +207,8 @@ export const register = async (req, res) => {
 
     return res.status(201).json({ 
       success: true, 
-      message: "User created! Please check your email to verify your account.",
-      data: null 
+      message: "Registration successful! Please check your email for the verification code.",
+      data: { email: email } 
     });
 
   } catch (err) {
@@ -234,35 +221,36 @@ export const register = async (req, res) => {
   }
 };
 
-export const verifyEmail = async (req, res) => {
-  const { token } = req.query;
+export const verifyRegistrationOTP = async (req, res) => {
+  const { email, otp } = req.body;
 
-  if (!token) {
-    return res.status(400).send("<h1>Invalid Link</h1>");
+  if (!email || !otp) {
+    return res.status(400).json({ success: false, message: "Email and OTP are required." });
   }
 
   try {
-    const [users] = await db.query("SELECT * FROM authentication WHERE verification_token = ?", [token]);
+    const [users] = await db.query("SELECT * FROM authentication WHERE email = ? AND verification_token = ?", [email, otp]);
 
     if (users.length === 0) {
-      return res.status(400).send("<h1>Invalid or Expired Token</h1>");
+      return res.status(400).json({ success: false, message: "Invalid OTP or Email." });
     }
 
     const user = users[0];
+
+    if (user.is_verified) {
+       return res.status(400).json({ success: false, message: "User is already verified." });
+    }
 
     await db.query(
       "UPDATE authentication SET is_verified = TRUE, verification_token = NULL WHERE id = ?",
       [user.id]
     );
 
-    // Redirect to frontend success page
-    // Assuming frontend runs on port 5173 by default in Vite
-    // Redirect to frontend success page
-    res.redirect(`${process.env.CLIENT_URL}/verify-email?status=success`);
+    return res.status(200).json({ success: true, message: "Email verified successfully. You can now login." });
 
   } catch (err) {
     console.error("Verification Error:", err);
-    res.status(500).send("<h1>Server Error</h1>");
+    return res.status(500).json({ success: false, message: "Server Error" });
   }
 };
 
@@ -286,12 +274,10 @@ export const resendVerificationEmail = async (req, res) => {
       return res.status(400).json({ success: false, message: "Email is already verified." });
     }
 
-    // Generate NEW Verification Token
-    const verificationToken = crypto.randomBytes(32).toString('hex');
+    // Generate NEW Verification OTP
+    const verificationOTP = crypto.randomInt(100000, 999999).toString();
 
-    await db.query("UPDATE authentication SET verification_token = ? WHERE id = ?", [verificationToken, user.id]);
-
-    const verificationLink = `${process.env.API_URL}/api/auth/verify-email?token=${verificationToken}`;
+    await db.query("UPDATE authentication SET verification_token = ? WHERE id = ?", [verificationOTP, user.id]);
 
     const mailOptions = {
       from: process.env.EMAIL_USER,
@@ -300,10 +286,9 @@ export const resendVerificationEmail = async (req, res) => {
       html: `
         <h1>Email Verification</h1>
         <p>Hi ${user.first_name},</p>
-        <p>You requested to resend your verification email.</p>
-        <p>Please verify your email by clicking the link below:</p>
-        <a href="${verificationLink}">Verify Email</a>
-        <p>If you didn't request this, please ignore this email.</p>
+        <p>You requested a new verification code.</p>
+        <p>Your Verification Code is:</p>
+        <h2 style="font-size: 24px; font-weight: bold; letter-spacing: 5px;">${verificationOTP}</h2>
       `
     };
 
@@ -313,11 +298,11 @@ export const resendVerificationEmail = async (req, res) => {
 
     await transporter.sendMail(mailOptions);
 
-    return res.status(200).json({ success: true, message: "Verification email resent successfully." });
+    return res.status(200).json({ success: true, message: "Verification code resent successfully." });
 
   } catch (error) {
     console.error("Resend Verification Error:", error);
-    return res.status(500).json({ success: false, message: "Failed to resend verification email." });
+    return res.status(500).json({ success: false, message: "Failed to resend verification code." });
   }
 };
 
@@ -470,7 +455,10 @@ export const getMe = async (req, res) => {
         gsis_number: user.gsis_number,
         philhealth_number: user.philhealth_number,
         pagibig_number: user.pagibig_number,
-        tin_number: user.tin_number
+        tin_number: user.tin_number,
+
+        // Security
+        twoFactorEnabled: !!user.two_factor_enabled
       }
     });
 
@@ -520,14 +508,58 @@ export const login = async (req, res) => {
       return res.status(401).json({ success: false, message: "Invalid Credentials", data: null });
     }
 
-    // 4. Generate token
+    // 4. CHECK FOR 2FA
+    if (user.two_factor_enabled) {
+        // Generate OTP
+        const otp = crypto.randomInt(100000, 999999).toString();
+        const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+        await db.query(
+            "UPDATE authentication SET two_factor_otp = ?, two_factor_otp_expires = ? WHERE id = ?",
+            [otp, otpExpires, user.id]
+        );
+
+        // Send OTP Email
+        const mailOptions = {
+            from: process.env.EMAIL_USER,
+            to: user.email,
+            subject: 'Your Login OTP - NEBR',
+            html: `
+                <h1>Login Verification</h1>
+                <p>Hi ${user.first_name},</p>
+                <p>Your One-Time Password (OTP) for login is:</p>
+                <h2 style="font-size: 24px; font-weight: bold; letter-spacing: 5px;">${otp}</h2>
+                <p>This code expires in 10 minutes.</p>
+                <p>If you did not attempt to login, please secure your account immediately.</p>
+            `
+        };
+
+        try {
+             await transporter.sendMail(mailOptions);
+        } catch (emailErr) {
+            console.error("Failed to send 2FA OTP:", emailErr);
+            return res.status(500).json({ success: false, message: "Failed to send 2FA code." });
+        }
+
+        // Return special response for 2FA
+        return res.status(200).json({
+            success: true,
+            requires2FA: true,
+            message: "2FA Verification Required",
+            identifier: user.email, // Actual email for OTP verification
+            maskedEmail: user.email.replace(/(.{2})(.*)(?=@)/, (gp1, gp2, gp3) => gp2 + "*".repeat(gp3.length)) // For display
+        });
+    }
+
+
+    // 5. Generate token (Normal flow if 2FA disabled)
     const token = jwt.sign(
       { id: user.id, employeeId: user.employee_id, role: user.role },
       process.env.JWT_SECRET,
       { expiresIn: "1d" }
     );
 
-    // 5. Send Response WITH COOKIE
+    // 6. Send Response WITH COOKIE
     res.cookie('accessToken', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -535,7 +567,7 @@ export const login = async (req, res) => {
       maxAge: 24 * 60 * 60 * 1000 // 1 day
     });
 
-    // 6. Send Response
+    // 7. Send Response
     return res.status(200).json({
       success: true,
       message: "Login successful!",
@@ -558,65 +590,208 @@ export const login = async (req, res) => {
     });
   }
 };
-    
-    export const getUsers = async (req, res) => {
-      try {
-        const [users] = await db.query(
-          "SELECT id, employee_id, first_name, last_name, email, department, job_title, employment_status, role, avatar_url FROM authentication ORDER BY last_name ASC"
-        );
-    
-        return res.status(200).json({
-          success: true,
-          message: "Users retrieved successfully.",
-          data: users
-        });
-    
-      } catch (err) {
-        console.error("Get Users Error:", err);
-        return res.status(500).json({
-          success: false,
-          message: "An unexpected error occurred while fetching users.",
-          data: null
-        });
-      }
-    };
 
-    export const getUserById = async (req, res) => {
-      const { id } = req.params;
-      try {
+export const verifyTwoFactorOTP = async (req, res) => {
+    const { identifier, otp } = req.body;
+
+    if (!identifier || !otp) {
+        return res.status(400).json({ success: false, message: "Identifier and OTP are required." });
+    }
+
+    try {
         const [users] = await db.query(
-          "SELECT id, employee_id, first_name, last_name, email, department, job_title, employment_status, date_hired, manager_id, role, avatar_url FROM authentication WHERE id = ?",
-          [id]
+            "SELECT * FROM authentication WHERE employee_id = ? OR email = ?",
+            [identifier, identifier]
         );
 
         if (users.length === 0) {
-          return res.status(404).json({ success: false, message: "User not found" });
+            return res.status(401).json({ success: false, message: "User not found." });
         }
 
         const user = users[0];
-        
-        // Fetch Manager Name if manager_id exists
-        let supervisor = null;
-        if (user.manager_id) {
-            const [managers] = await db.query("SELECT first_name, last_name FROM authentication WHERE id = ?", [user.manager_id]);
-            if (managers.length > 0) {
-                supervisor = `${managers[0].first_name} ${managers[0].last_name}`;
-            }
+
+        if (!user.two_factor_otp || !user.two_factor_otp_expires) {
+             return res.status(400).json({ success: false, message: "No OTP request found. Please login again." });
         }
 
-        return res.status(200).json({
-          success: true,
-          data: {
-            ...user,
-            supervisor
-          }
+        if (new Date() > new Date(user.two_factor_otp_expires)) {
+            return res.status(400).json({ success: false, message: "OTP has expired. Please login again." });
+        }
+
+        if (user.two_factor_otp !== otp) {
+            return res.status(400).json({ success: false, message: "Invalid OTP." });
+        }
+
+        // Clear OTP
+        await db.query("UPDATE authentication SET two_factor_otp = NULL, two_factor_otp_expires = NULL WHERE id = ?", [user.id]);
+
+        // Generate Token
+        const token = jwt.sign(
+            { id: user.id, employeeId: user.employee_id, role: user.role },
+            process.env.JWT_SECRET,
+            { expiresIn: "1d" }
+        );
+
+        res.cookie('accessToken', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: 24 * 60 * 60 * 1000 
         });
 
-      } catch (err) {
-        console.error("Get User By ID Error:", err);
-        return res.status(500).json({ success: false, message: "Failed to fetch user details" });
+        return res.status(200).json({
+            success: true,
+            message: "Login successful!",
+            data: {
+                id: user.id,
+                name: `${user.first_name} ${user.last_name}`,
+                email: user.email,
+                role: user.role,
+                department: user.department,
+                employeeId: user.employee_id
+            }
+        });
+
+    } catch (err) {
+        console.error("2FA Verify Error:", err);
+        return res.status(500).json({ success: false, message: "Verification failed." });
+    }
+};
+
+export const enableTwoFactor = async (req, res) => {
+    const userId = req.user.id; // From verifyToken middleware
+    
+    try {
+        await db.query("UPDATE authentication SET two_factor_enabled = TRUE WHERE id = ?", [userId]);
+        return res.status(200).json({ success: true, message: "Two-factor authentication enabled." });
+    } catch (err) {
+        console.error("Enable 2FA Error:", err);
+        return res.status(500).json({ success: false, message: "Failed to enable 2FA." });
+    }
+};
+
+export const disableTwoFactor = async (req, res) => {
+    const userId = req.user.id;
+    
+    try {
+        await db.query("UPDATE authentication SET two_factor_enabled = FALSE WHERE id = ?", [userId]);
+        return res.status(200).json({ success: true, message: "Two-factor authentication disabled." });
+    } catch (err) {
+         console.error("Disable 2FA Error:", err);
+        return res.status(500).json({ success: false, message: "Failed to disable 2FA." });
+    }
+};
+
+export const resendTwoFactorOTP = async (req, res) => {
+     const { identifier } = req.body;
+
+     if (!identifier) {
+        return res.status(400).json({ success: false, message: "Identifier is required." });
+     }
+
+     try {
+        const [users] = await db.query(
+            "SELECT * FROM authentication WHERE employee_id = ? OR email = ?",
+            [identifier, identifier]
+        );
+
+        if (users.length === 0) {
+             return res.status(404).json({ success: false, message: "User not found." });
+        }
+        const user = users[0];
+
+         // Generate New OTP
+        const otp = crypto.randomInt(100000, 999999).toString();
+        const otpExpires = new Date(Date.now() + 10 * 60 * 1000);
+
+        await db.query(
+            "UPDATE authentication SET two_factor_otp = ?, two_factor_otp_expires = ? WHERE id = ?",
+            [otp, otpExpires, user.id]
+        );
+
+         // Send OTP Email
+        const mailOptions = {
+            from: process.env.EMAIL_USER,
+            to: user.email,
+            subject: 'New Login OTP - NEBR',
+            html: `
+                <h1>Login Verification</h1>
+                <p>Hi ${user.first_name},</p>
+                <p>You requested a new One-Time Password (OTP) for login:</p>
+                <h2 style="font-size: 24px; font-weight: bold; letter-spacing: 5px;">${otp}</h2>
+                <p>This code expires in 10 minutes.</p>
+            `
+        };
+
+        await transporter.sendMail(mailOptions);
+        return res.status(200).json({ success: true, message: "OTP resent successfully." });
+
+     } catch (err) {
+        console.error("Resend OTP Error:", err);
+        return res.status(500).json({ success: false, message: "Failed to resend OTP." });
+     }
+};
+
+
+export const getUsers = async (req, res) => {
+  try {
+    const [users] = await db.query(
+      "SELECT id, employee_id, first_name, last_name, email, department, job_title, employment_status, role, avatar_url, two_factor_enabled FROM authentication ORDER BY last_name ASC"
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Users retrieved successfully.",
+      data: users
+    });
+
+  } catch (err) {
+    console.error("Get Users Error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "An unexpected error occurred while fetching users.",
+      data: null
+    });
+  }
+};
+
+
+export const getUserById = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const [users] = await db.query(
+      "SELECT id, employee_id, first_name, last_name, email, department, job_title, employment_status, date_hired, manager_id, role, avatar_url, two_factor_enabled FROM authentication WHERE id = ?",
+      [id]
+    );
+
+    if (users.length === 0) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    const user = users[0];
+    
+    // Fetch Manager Name if manager_id exists
+    let supervisor = null;
+    if (user.manager_id) {
+        const [managers] = await db.query("SELECT first_name, last_name FROM authentication WHERE id = ?", [user.manager_id]);
+        if (managers.length > 0) {
+            supervisor = `${managers[0].first_name} ${managers[0].last_name}`;
+        }
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        ...user,
+        supervisor
       }
-    };
+    });
+
+  } catch (err) {
+    console.error("Get User By ID Error:", err);
+    return res.status(500).json({ success: false, message: "Failed to fetch user details" });
+  }
+};
     
 
 export const updateProfile = async (req, res) => {

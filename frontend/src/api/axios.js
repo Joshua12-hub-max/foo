@@ -27,12 +27,20 @@ api.interceptors.response.use(
         const status = error.response?.status;
         const message = error.response?.data?.message || error.message;
         
-        // Log error with clear context
+        // Log error with clear context (suppress for auth checks)
         if (status === 401) {
-            console.warn("[Auth] Session expired or not authenticated:", message);
+            const isAuthCheck = error.config.url?.includes('/auth/me');
+            if (!isAuthCheck) {
+                console.warn("[Auth] Session expired or not authenticated:", message);
+            }
             localStorage.removeItem("user");
-            // Redirect to login page
-            if (window.location.pathname !== '/login') {
+            
+            // List of public paths where we shouldn't redirect to login on 401
+            const publicPaths = ['/login', '/register', '/forgot-password', '/reset-password'];
+            const isPublicPath = publicPaths.some(path => window.location.pathname.startsWith(path));
+
+            // Redirect to login page ONLY if we are not already on a public page
+            if (!isPublicPath) {
                 window.location.href = "/login";
             }
         } else if (status === 403) {

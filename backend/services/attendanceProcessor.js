@@ -1,9 +1,9 @@
 import db from '../db/connection.js';
 
 /**
- * Core logic to process attendance logs into a Daily Time Record.
- * Calculates Late, Undertime, and updates the status.
- * Call this function whenever a new log is inserted.
+ * Para sa Core logic to process attendance logs into a Daily Time Record.
+ * Para sa Calculates Late, Undertime, and updates the status.
+ * Para sa Call this function whenever a new log is inserted.
  */
 export const processDailyAttendance = async (employeeId, dateStr) => {
     try {
@@ -15,7 +15,7 @@ export const processDailyAttendance = async (employeeId, dateStr) => {
 
         if (logs.length === 0) return;
 
-        // 2. Determine Time In and Time Out
+        // 2. to Determine Time In and Time Out
         // Rule: First IN is Time In. Last OUT is Time Out.
         let timeIn = null;
         let timeOut = null;
@@ -45,7 +45,7 @@ export const processDailyAttendance = async (employeeId, dateStr) => {
 
         if (schedules.length > 0 && !schedules[0].is_rest_day) {
             const schedule = schedules[0];
-            
+
             // Construct Schedule Date Objects using local components
             const scheduleStart = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
             const [startH, startM, startS] = schedule.start_time.split(':').map(Number);

@@ -2,7 +2,7 @@ import rateLimit from 'express-rate-limit';
 
 export const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10, // limit each IP to 10 requests per windowMs for sensitive auth routes
+  max: 10,
   message: {
     success: false,
     message: "Too many login/register attempts from this IP, please try again after 15 minutes"

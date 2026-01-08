@@ -17,7 +17,8 @@ let loadingPromise = null;
 
 /**
  * Get the ExcelJS library instance (lazy loaded, session cached)
- * @returns {Promise<typeof import('exceljs')>}
+ * Returns an object with Workbook constructor
+ * @returns {Promise<{Workbook: typeof import('exceljs').Workbook}>}
  */
 export const getExcelInstance = async () => {
   try {
@@ -32,10 +33,14 @@ export const getExcelInstance = async () => {
     }
 
     // Start loading and cache the promise
+    // Using fallback for proper ESM compatibility with Vite
     loadingPromise = import('exceljs').then((module) => {
-      excelJSInstance = module;
+      // Get default export with fallback - handles both ESM and CJS
+      const ExcelJS = module.default || module;
+      // Cache as the full ExcelJS object for compatibility
+      excelJSInstance = ExcelJS;
       loadingPromise = null;
-      return module;
+      return excelJSInstance;
     });
 
     return loadingPromise;

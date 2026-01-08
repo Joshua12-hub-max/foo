@@ -27,7 +27,8 @@ export default function MyProfile() {
     handleChange,
     handleAvatarChange,
     handleSubmit,
-    handleCancel
+    handleCancel,
+    setProfile
   } = useProfile();
 
   if (loading) {
@@ -81,6 +82,7 @@ export default function MyProfile() {
         formData={formData}
         handleChange={handleChange}
         setIsEditing={setIsEditing}
+        setProfile={setProfile}
       />
     </div>
   );

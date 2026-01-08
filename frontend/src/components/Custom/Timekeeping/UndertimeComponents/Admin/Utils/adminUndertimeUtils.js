@@ -1,6 +1,8 @@
 /**
  * Format date to readable format (e.g., "December 5, 2025")
  */
+import { createWorkbook, downloadExcel } from '@/utils/excel';
+
 export const formatDate = (dateString) => {
   if (!dateString) return 'N/A';
   try {
@@ -169,8 +171,7 @@ export const generatePDFContent = (data, headers, today) => {
  */
 export const exportToCSV = async (data, headers, filename) => {
   try {
-    const ExcelJS = await import('exceljs');
-    const workbook = new ExcelJS.Workbook();
+    const workbook = createWorkbook();
     const worksheet = workbook.addWorksheet('UndertimeRequests');
 
     // Define Columns

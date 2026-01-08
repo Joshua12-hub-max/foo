@@ -1,6 +1,8 @@
 /**
  * Map API response data to component format
  */
+import { createWorkbook, downloadExcel } from '@/utils/excel';
+
 export const mapEmployeePerformanceData = (apiData) => {
   return apiData.map(item => ({
     id: item.id,
@@ -115,8 +117,7 @@ export const generatePDFContent = (data, headers, today) => {
  */
 export const exportToCSV = async (data, headers, filename) => {
   try {
-    const ExcelJS = await import('exceljs');
-    const workbook = new ExcelJS.Workbook();
+    const workbook = createWorkbook();
     const worksheet = workbook.addWorksheet('PerformanceReviews');
 
     // Define Columns
