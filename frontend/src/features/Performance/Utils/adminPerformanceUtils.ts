@@ -5,6 +5,7 @@
 
 export interface PerformanceTableItem {
   id: string | number;
+  systemId: number; // Added for backend operations (integer PK)
   reviewId?: string | number;
   status: string;
   name: string;
@@ -18,6 +19,7 @@ export interface PerformanceTableItem {
 export const mapPerformanceData = (apiData: any[]): PerformanceTableItem[] => {
   return apiData.map(item => ({
     id: item.employee_id || item.id,
+    systemId: item.id, // Ensure we capture the integer PK
     name: item.name || `${item.first_name || ''} ${item.last_name || ''}`.trim(),
     department: item.department || 'N/A',
     jobTitle: item.job_title || 'N/A',

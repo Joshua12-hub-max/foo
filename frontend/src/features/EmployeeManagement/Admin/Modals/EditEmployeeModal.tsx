@@ -191,7 +191,7 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col border border-gray-100 animate-in fade-in zoom-in duration-200">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col border border-gray-100 animate-in fade-in zoom-in duration-200">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 z-10">
           <h3 className="text-xl font-bold text-gray-900">Edit Employee</h3>
@@ -206,12 +206,12 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
           {/* Required Information */}
           <div className="space-y-2">
             <p className="text-xs font-bold text-gray-600">Required Information</p>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-6">
               <div>
                 <label className="text-xs font-semibold text-gray-700 mb-1 block">First Name <span className="text-red-400">*</span></label>
                 <input 
                   {...register('first_name')}
-                  className={`w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 ${errors.first_name ? 'border-red-500' : ''}`}
+                  className={`w-full px-3 py-2 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 ${errors.first_name ? 'border-red-500' : ''}`}
                 />
                  {errors.first_name && <p className="text-[10px] text-red-500">{errors.first_name.message}</p>}
               </div>
@@ -219,7 +219,7 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
                 <label className="text-xs font-semibold text-gray-700 mb-1 block">Last Name <span className="text-red-400">*</span></label>
                 <input 
                   {...register('last_name')}
-                  className={`w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 ${errors.last_name ? 'border-red-500' : ''}`}
+                  className={`w-full px-3 py-2 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 ${errors.last_name ? 'border-red-500' : ''}`}
                 />
                 {errors.last_name && <p className="text-[10px] text-red-500">{errors.last_name.message}</p>}
               </div>
@@ -230,17 +230,17 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
                 <input 
                   type="email"
                   {...register('email')}
-                  className={`w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 ${errors.email ? 'border-red-500' : ''}`}
+                  className={`w-full px-3 py-2 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 ${errors.email ? 'border-red-500' : ''}`}
                 />
                 {errors.email && <p className="text-[10px] text-red-500">{errors.email.message}</p>}
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-6">
               <div>
                  <label className="text-xs font-semibold text-gray-700 mb-1 block">Department <span className="text-red-400">*</span></label>
                  <select 
                     {...register('department')}
-                    className={`w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 ${errors.department ? 'border-red-500' : ''}`}
+                    className={`w-full px-3 py-2 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 ${errors.department ? 'border-red-500' : ''}`}
                  >
                     <option value="">Select...</option>
                     {departments.map(d => (<option key={d.id} value={d.name}>{d.name}</option>))}
@@ -251,7 +251,7 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
                 <label className="text-xs font-semibold text-gray-700 mb-1 block">System Role <span className="text-red-400">*</span></label>
                 <select 
                    {...register('role')}
-                   className={`w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200 ${errors.role ? 'border-red-500' : ''}`}
+                   className={`w-full px-3 py-2 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200 ${errors.role ? 'border-red-500' : ''}`}
                 >
                     {ROLE_OPTIONS.map(opt => (<option key={opt.value} value={opt.value as any}>{opt.label}</option>))}
                 </select>
@@ -263,7 +263,7 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
                  <label className="text-xs font-semibold text-gray-700 mb-1 block">Employment Status</label>
                  <select 
                     {...register('employment_status')}
-                    className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200"
+                    className="w-full px-3 py-2 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200"
                  >
                     {EMPLOYMENT_STATUS_OPTIONS.map(opt => (<option key={opt.value} value={opt.value}>{opt.label}</option>))}
                  </select>
@@ -272,7 +272,7 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
 
           {/* Employment Details - Collapsible */}
            <CollapsibleSection title="Employment Details" isOpen={openSections.employment} onToggle={() => toggleSection('employment')}>
-             <div className="bg-gray-50 p-2 rounded-lg border border-gray-200 mb-2">
+             <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-6">
                <label className="text-xs font-semibold text-gray-800 mb-1 block flex items-center gap-1">
                  <FileText size={12} className="text-gray-500" /> Plantilla Item
                </label>
@@ -319,7 +319,7 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
              </div>
              <div>
                 <label className="text-xs font-semibold text-gray-700 mb-1 block">Station</label>
-                <input {...register('station')} className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200" />
+                <input {...register('station')} className="w-full px-3 py-2 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200" />
              </div>
            </CollapsibleSection>
  

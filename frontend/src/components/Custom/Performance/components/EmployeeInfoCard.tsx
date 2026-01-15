@@ -66,7 +66,7 @@ const EmployeeInfoCard: React.FC<EmployeeInfoCardProps> = ({
             <select
               value={formData.employee_id}
               onChange={(e) => onEmployeeChange(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded bg-white focus:ring-2 focus:ring-gray-300 outline-none"
+              className="w-full p-2 border border-gray-300 rounded bg-white focus:ring-2 focus:ring-gray-300 outline-none text-sm"
             >
               <option value="">-- Select Employee --</option>
               {employees.map(emp => (
@@ -105,7 +105,7 @@ const EmployeeInfoCard: React.FC<EmployeeInfoCardProps> = ({
             <select
               value={formData.review_cycle_id}
               onChange={(e) => onCycleChange(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded bg-white focus:ring-2 focus:ring-gray-300 outline-none"
+              className="w-full p-2 border border-gray-300 rounded bg-white focus:ring-2 focus:ring-gray-300 outline-none text-sm"
             >
               <option value="">-- Select Cycle --</option>
               {cycles.map(c => (

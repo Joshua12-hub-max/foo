@@ -1,10 +1,15 @@
-import db from '../db/connection';
+import db from '../db/connection.js';
+import { RowDataPacket } from 'mysql2/promise';
+
+interface ColumnRow extends RowDataPacket {
+  Field: string;
+}
 
 const runMigration = async () => {
   try {
     console.log("Adding new application fields to recruitment_applicants table...");
     
-    const [columns] = await db.query("SHOW COLUMNS FROM recruitment_applicants");
+    const [columns] = await db.query<ColumnRow[]>("SHOW COLUMNS FROM recruitment_applicants");
     const columnNames = columns.map(c => c.Field);
 
     const fields = [
@@ -23,8 +28,6 @@ const runMigration = async () => {
         }
     }
 
-    // Make resume_path nullable if it isn't already (MySQL doesn't easily show nullable in simple SHOW COLUMNS without parsing, 
-    // but MODIFY COLUMN is safe to run to ensure it is nullable)
     await db.query("ALTER TABLE recruitment_applicants MODIFY COLUMN resume_path VARCHAR(255) NULL");
     console.log("Ensured resume_path is nullable.");
 

@@ -29,9 +29,12 @@ export const PerformanceTable: React.FC<PerformanceTableProps> = ({
   const navigate = useNavigate();
   const hasActiveFilters = debouncedSearchQuery || Object.values(filters).some(v => v && v !== 'All Status');
 
-  const handleView = (reviewId: string | number | undefined) => {
-    if (reviewId) {
-        navigate(`/admin-dashboard/performance/reviews/${reviewId}`);
+  const handleView = (item: PerformanceTableItem) => {
+    if (item.reviewId) {
+        navigate(`/admin-dashboard/performance/reviews/${item.reviewId}`);
+    } else {
+        // Use systemId (integer PK) for new creation to match backend expectation
+        navigate(`/admin-dashboard/performance/reviews/new?employeeId=${item.systemId}`);
     }
   };
   
@@ -75,7 +78,7 @@ export const PerformanceTable: React.FC<PerformanceTableProps> = ({
                 <tr 
                     key={`${item.id}-${item.reviewId || 'new'}`} 
                     className="hover:bg-[#F8F9FA] hover:shadow-xl transition-colors cursor-pointer group"
-                    onClick={() => handleView(item.reviewId)}
+                    onClick={() => handleView(item)}
                 >
                   <td className="px-6 py-4">
                     <span className={`${getBadgeStyle(item.status)} px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded inline-block`}>
