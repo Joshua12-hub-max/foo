@@ -34,6 +34,10 @@ export const ForgotPasswordSchema = z.object({
   email: z.string().email("Invalid email format")
 });
 
+export const ResendOTPSchema = z.object({
+  identifier: z.string().min(1, "Identifier is required")
+});
+
 export const ResetPasswordSchema = z.object({
   token: z.string().min(1, "Token is required"),
   newPassword: z.string().min(8, "Password must be at least 8 characters"),
@@ -47,5 +51,6 @@ export type LoginInput = z.infer<typeof LoginSchema>;
 export type RegisterInput = z.infer<typeof RegisterSchema>;
 export type VerifyOTPInput = z.infer<typeof VerifyOTPSchema>;
 export type EmailVerifyInput = z.infer<typeof EmailVerifySchema>;
+export type ResendOTPInput = z.infer<typeof ResendOTPSchema>;
 export type ForgotPasswordInput = z.infer<typeof ForgotPasswordSchema>;
 export type ResetPasswordInput = z.infer<typeof ResetPasswordSchema>;

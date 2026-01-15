@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { FileSpreadsheet, FileText, Loader2 } from 'lucide-react';
 import { useToastStore } from '@/stores';
 import { exportAttendanceToExcel } from './utils/attendanceExcelExport';
-import { AttendanceRecord } from '../hooks/useAttendanceData';
+import { AttendanceRecord } from '../../hooks/Admin/useAttendanceData';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 

@@ -1,5 +1,5 @@
 import ExcelJS from 'exceljs';
-import { AttendanceRecord } from '../hooks/useAttendanceData';
+import { AttendanceRecord } from '../../../hooks/Admin/useAttendanceData';
 
 interface ExportOptions {
   title?: string;

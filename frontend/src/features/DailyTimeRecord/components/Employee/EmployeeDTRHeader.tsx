@@ -1,6 +1,6 @@
 import React from "react";
 import { RefreshCw } from "lucide-react";
-import { EmployeeInfo } from "../Utils/employeeDTRUtils";
+import { EmployeeInfo } from "../../Utils/employeeDTRUtils";
 
 interface EmployeeDTRHeaderProps {
   today: string;

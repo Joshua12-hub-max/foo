@@ -3,7 +3,7 @@ import { X, Save, Clock, AlertCircle } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { dtrEditSchema, DtrEditSchema } from '@/schemas/dtr';
-import { DTRRecord } from '../Utils/adminDTRUtils';
+import { DTRRecord } from '../../Utils/adminDTRUtils';
 
 interface AdminDTREditModalProps {
   isOpen: boolean;

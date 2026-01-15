@@ -11,10 +11,10 @@ interface AddEmployeeModalProps {
 interface RegisterFormState {
   name: string;
   email: string;
-  role: string;
+  role: 'admin' | 'hr' | 'employee';
   department: string;
-  employeeId: string;
   password: string;
+  confirmPassword: string;
 }
 
 const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({ isOpen, onClose, onSuccess }) => {
@@ -23,8 +23,8 @@ const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({ isOpen, onClose, on
     email: '',
     role: 'employee',
     department: '',
-    employeeId: '',
-    password: ''
+    password: '',
+    confirmPassword: ''
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -45,7 +45,7 @@ const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({ isOpen, onClose, on
       await register(form);
       onSuccess();
       onClose();
-      setForm({ name: '', email: '', role: 'employee', department: '', employeeId: '', password: '' });
+      setForm({ name: '', email: '', role: 'employee', department: '', password: '', confirmPassword: '' });
     } catch (err: any) {
       console.error(err);
       setError(err.response?.data?.message || "Failed to create employee.");
@@ -101,12 +101,12 @@ const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({ isOpen, onClose, on
               />
             </div>
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Employee ID</label>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Confirm Password</label>
               <input 
-                type="text" name="employeeId" required 
-                value={form.employeeId} onChange={handleChange}
+                type="password" name="confirmPassword" required 
+                value={form.confirmPassword} onChange={handleChange}
                 className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-100 rounded-xl text-gray-800 text-sm focus:outline-none focus:border-gray-300 transition-all shadow-sm"
-                placeholder="EMP-001"
+                placeholder="••••••••"
               />
             </div>
           </div>

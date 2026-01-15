@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { leaveApi } from "@/api/leaveApi";
 import { EmployeeLeaveRequest } from '@/components/Custom/Timekeeping/LeaveRequestComponents/Employee/types';
 
@@ -60,7 +60,7 @@ export const useLeaveData = (initialFilters?: any) => {
       };
     },
     staleTime: 1000 * 60 * 5, // 5 minutes
-    keepPreviousData: true
+    placeholderData: keepPreviousData
   });
 
   const refreshLeaves = async () => {

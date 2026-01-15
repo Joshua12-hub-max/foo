@@ -1,4 +1,5 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { leaveApi } from "@api";
 import { AdminLeaveRequest } from '@/components/Custom/Timekeeping/LeaveRequestComponents/Admin/types';
 
@@ -63,7 +64,7 @@ export const useAdminLeaveData = (initialFilters?: any) => {
       };
     },
     staleTime: 1000 * 60 * 5, // 5 minutes
-    keepPreviousData: true // Keep data while fetching next page for smoother transition
+    placeholderData: keepPreviousData // Keep data while fetching next page for smoother transition
   });
 
   const refreshLeaves = async () => {

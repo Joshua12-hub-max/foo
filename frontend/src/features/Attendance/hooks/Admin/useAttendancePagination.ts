@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { PAGE_SIZE } from '../constants/attendanceConstants';
+import { PAGE_SIZE } from '../../components/Admin/constants/attendanceConstants';
 import { AttendanceRecord } from './useAttendanceData';
 
 export const useAttendancePagination = (data: AttendanceRecord[]) => {

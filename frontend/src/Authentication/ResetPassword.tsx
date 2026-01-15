@@ -35,7 +35,7 @@ export default function ResetPassword() {
     setError("");
 
     try {
-      await resetPassword(token, password);
+      await resetPassword({ token, newPassword: password, confirmNewPassword: confirmPassword });
       setIsSuccess(true);
       setTimeout(() => navigate("/login"), 3000);
     } catch (err: any) {

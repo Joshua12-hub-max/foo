@@ -1,5 +1,5 @@
 import React from "react";
-import { EmployeeDTRFilters as IEmployeeDTRFilters } from "../Utils/employeeDTRUtils";
+import { EmployeeDTRFilters as IEmployeeDTRFilters } from "../../Utils/employeeDTRUtils";
 
 interface EmployeeDTRFiltersProps {
   filters: IEmployeeDTRFilters;
