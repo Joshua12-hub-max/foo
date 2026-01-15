@@ -94,6 +94,7 @@ export default function Register() {
                 </div>
                 <input
                     type="text"
+                    autoComplete="name"
                     {...register("name")}
                     className={`block w-full pl-10 pr-3 py-2 border rounded-xl bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm ${errors.name ? 'border-red-500' : 'border-gray-300'}`}
                     placeholder="John Doe"
@@ -110,6 +111,7 @@ export default function Register() {
                 </div>
                 <input
                     type="email"
+                    autoComplete="email"
                     {...register("email")}
                     className={`block w-full pl-10 pr-3 py-2 border rounded-xl bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm ${errors.email ? 'border-red-500' : 'border-gray-300'}`}
                     placeholder="john@example.com"
@@ -169,6 +171,7 @@ export default function Register() {
                 </div>
                 <input
                     type="password"
+                    autoComplete="new-password"
                     {...register("password")}
                     className={`block w-full pl-10 pr-3 py-2 border rounded-xl bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm ${errors.password ? 'border-red-500' : 'border-gray-300'}`}
                     placeholder="Create a strong password"
@@ -185,6 +188,7 @@ export default function Register() {
                 </div>
                 <input
                     type="password"
+                    autoComplete="new-password"
                     {...register("confirmPassword")}
                     className={`block w-full pl-10 pr-3 py-2 border rounded-xl bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm ${errors.confirmPassword ? 'border-red-500' : 'border-gray-300'}`}
                     placeholder="Confirm your password"

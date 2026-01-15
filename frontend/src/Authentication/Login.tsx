@@ -222,6 +222,7 @@ export default function Login() {
                 <IdCardLanyard className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={17} />
                 <input
                 type="text"
+                autoComplete="username"
                 {...register("identifier")}
                 className={`w-full pl-10 pr-3 py-2 border-[2px] rounded-[15px] shadow-md bg-white focus:ring focus:ring-gray-100 focus:outline-none ${errors.identifier ? 'border-red-500' : 'border-gray-300'}`}
                 placeholder="Enter your ID or Email"
@@ -237,6 +238,7 @@ export default function Login() {
                 <FileLock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={17} />
                 <input
                 type="password"
+                autoComplete="current-password"
                 {...register("password")}
                 className={`w-full pl-10 pr-3 py-2 border-[2px] rounded-[15px] shadow-md bg-white focus:ring focus:ring-gray-100 focus:outline-none ${errors.password ? 'border-red-500' : 'border-gray-300'}`}
                 placeholder="Enter your password"

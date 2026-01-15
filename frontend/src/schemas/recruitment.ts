@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+
 export const jobApplicationSchema = z.object({
   first_name: z.string().min(1, 'First name is required'),
   last_name: z.string().min(1, 'Last name is required'),
@@ -9,11 +10,23 @@ export const jobApplicationSchema = z.object({
   education: z.string().min(1, 'Education overview is required'),
   experience: z.string().min(1, 'Experience summary is required'),
   skills: z.string().min(1, 'Skills are required'),
-  // File validation is tricky with Zod usually done manually or with custom refinement, 
-  // but we can set it to any() or custom check.
-  // For RHF, file input is often handled via `watch` or `register` with validation.
-  // We'll treat it as optional here since logic handled mostly manually or separate.
-  resume: z.any().optional(),
+  resume: z.any().optional(), // File validation handling remains client-side specific for now
 });
 
 export type JobApplicationSchema = z.infer<typeof jobApplicationSchema>;
+
+// Public Job Schema for type safety in public views
+export interface PublicJob {
+    id: number | string;
+    title: string;
+    department: string;
+    location?: string;
+    employment_type?: string;
+    salary_range?: string;
+    posted_at?: string;
+    created_at?: string;
+    job_description: string;
+    requirements: string;
+    status: string;
+}
+

@@ -1,37 +1,14 @@
-import React, { useState, useEffect } from 'react';
-import { Search, MapPin, Briefcase, Clock, Filter, AlertCircle } from 'lucide-react';
-import { recruitmentApi } from '@api/recruitmentApi';
-import { useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Search, MapPin, Briefcase, Clock } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 import PublicLayout from '@components/Public/PublicLayout';
 import { motion } from 'framer-motion';
-import { Job } from '@/types';
+import { usePublicJobs } from '@/features/Recruitment/hooks/usePublicJobs';
 
 const Jobs = () => {
   const navigate = useNavigate();
-  const [jobs, setJobs] = useState<Job[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-
-  useEffect(() => {
-    const loadJobs = async () => {
-      try {
-        const res = await recruitmentApi.getJobs({ public_view: true });
-        if (res.data.success) {
-          setJobs(res.data.jobs);
-        }
-      } catch (err) {
-        console.error("Failed to load jobs");
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadJobs();
-  }, []);
-
-  const filteredJobs = jobs.filter(j => 
-    j.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    j.department.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const { filteredJobs, isLoading } = usePublicJobs(searchTerm);
 
   return (
     <PublicLayout>
@@ -76,7 +53,7 @@ const Jobs = () => {
 
       <div className="max-w-5xl mx-auto px-6 py-12 -mt-8 relative z-20">
           <div className="space-y-4">
-            {loading ? (
+            {isLoading ? (
                  <div className="space-y-4">
                     {[1, 2, 3].map(i => (
                         <div key={i} className="h-32 bg-white rounded-2xl border border-slate-200 animate-pulse"></div>
@@ -98,15 +75,17 @@ const Jobs = () => {
             ) : (
               <div className="grid gap-4">
                 {filteredJobs.map((job, index) => (
-                  <motion.div 
+                  <Link 
                     key={job.id} 
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.05 }}
-                    onClick={() => navigate(`/careers/job/${job.id}`)}
-                    className="group bg-white border border-slate-200 p-6 md:p-8 rounded-2xl cursor-pointer shadow-sm hover:shadow-lg hover:border-slate-300 transition-all duration-300 relative overflow-hidden"
+                    to={`/careers/job/${job.id}`}
+                    className="block group bg-white border border-slate-200 p-6 md:p-8 rounded-2xl shadow-sm hover:shadow-lg hover:border-slate-300 transition-all duration-300 relative overflow-hidden"
                   >
-                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                     <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.05 }}
+                        className="flex flex-col md:flex-row md:items-center justify-between gap-6"
+                     >
                          <div className="space-y-4">
                             <div>
                                 <h3 className="text-xl font-bold text-slate-900 group-hover:text-blue-700 transition-colors">
@@ -117,10 +96,10 @@ const Jobs = () => {
                             
                             <div className="flex flex-wrap gap-2">
                                 <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-50 text-slate-600 rounded-lg text-xs font-semibold border border-slate-200 group-hover:bg-white group-hover:border-slate-300 transition-colors">
-                                    <MapPin size={12} /> {job.location || 'City Hall'}
+                                    <MapPin size={12} /> {job.location}
                                 </span>
                                 <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-50 text-slate-600 rounded-lg text-xs font-semibold border border-slate-200 group-hover:bg-white group-hover:border-slate-300 transition-colors">
-                                    <Clock size={12} /> {job.employment_type || 'Full Time'}
+                                    <Clock size={12} /> {job.employment_type}
                                 </span>
                                 <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-50 text-slate-600 rounded-lg text-xs font-semibold border border-slate-200 group-hover:bg-white group-hover:border-slate-300 transition-colors">
                                     <Briefcase size={12} /> {job.salary_range}
@@ -133,8 +112,8 @@ const Jobs = () => {
                                 View Details
                             </span>
                          </div>
-                     </div>
-                  </motion.div>
+                     </motion.div>
+                  </Link>
                 ))}
               </div>
             )}

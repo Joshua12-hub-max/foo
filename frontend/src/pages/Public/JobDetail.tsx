@@ -1,13 +1,12 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery, useMutation } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { recruitmentApi } from '@api/recruitmentApi';
 import { ArrowLeft, CheckCircle, Upload, MapPin, Clock, Calendar, DollarSign, ChevronRight } from 'lucide-react';
 import { useToastStore } from '@/stores';
 import PublicLayout from '@components/Public/PublicLayout';
 import { jobApplicationSchema, JobApplicationSchema } from '@/schemas/recruitment';
+import { usePublicJobDetail, useJobApplication } from '@/features/Recruitment/hooks/usePublicJobs';
 
 const JobDetail = () => {
   const { id } = useParams();
@@ -18,50 +17,31 @@ const JobDetail = () => {
   const [showForm, setShowForm] = useState(false);
   const [success, setSuccess] = useState(false);
 
-  // Fetch Job
-  const { data: job, isLoading, error } = useQuery({
-    queryKey: ['job', id],
-    queryFn: async () => {
-      const res = await recruitmentApi.getJob(id);
-      if (res.data.success) {
-         document.title = `${res.data.job.title} - Careers`;
-         return res.data.job;
-      }
-      throw new Error("Job not found");
-    },
-    enabled: !!id,
-    retry: 1
-  });
+  // Fetch Job using custom hook
+  const { data: job, isLoading, error } = usePublicJobDetail(id);
 
   // Form
   const { register, handleSubmit, formState: { errors, isSubmitting }, setValue, watch } = useForm<JobApplicationSchema>({
     resolver: zodResolver(jobApplicationSchema)
   });
 
-  // Mutation
-  const mutation = useMutation({
-    mutationFn: async (data: JobApplicationSchema) => {
-       const formData = new FormData();
-       formData.append('job_id', id || '');
-       Object.keys(data).forEach(key => {
-          if (data[key] !== null) formData.append(key, data[key]);
-       });
-       return await recruitmentApi.applyJob(formData);
-    },
-    onSuccess: () => {
+  // Mutation using custom hook
+  const mutation = useJobApplication(
+    () => {
       setSuccess(true);
       window.scrollTo(0, 0);
     },
-    onError: () => {
-      showToast("Failed to submit application. Please try again.", "error");
+    (err) => {
+        console.error(err);
+        showToast("Failed to submit application. Please try again.", "error");
     }
-  });
+  );
 
   const onSubmit = (data: JobApplicationSchema) => {
-    mutation.mutate(data);
+    if (id) {
+        mutation.mutate({ id, data });
+    }
   };
-
-
 
   const scrollToForm = () => {
      setShowForm(true);
@@ -88,18 +68,22 @@ const JobDetail = () => {
   if (error || !job) return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-white p-6 text-center">
         <h2 className="text-xl font-bold text-slate-900 mb-2">Unavailable</h2>
+        <p className="text-slate-500 mb-6">The job you are looking for is no longer available.</p>
         <button onClick={() => navigate('/careers')} className="text-slate-600 hover:text-slate-900 underline">
           Back to listings
         </button>
     </div>
   );
 
+  // Helper to ensure title sync if needed, though React Query handles data.
+  if (job) {
+    document.title = `${job.title} - Careers`;
+  }
+
   return (
     <PublicLayout>
       <div className="min-h-screen bg-white font-sans text-slate-900 pb-20 pt-24 lg:pt-32">
 
-        
-        {/* ... (Hero and Grid remain same) */}
         <div className="max-w-7xl mx-auto px-6">
            <button 
              onClick={() => navigate('/careers/jobs')} 
@@ -122,15 +106,15 @@ const JobDetail = () => {
                        <div className="flex flex-wrap gap-x-8 gap-y-4 text-slate-500 text-sm font-medium">
                            <div className="flex items-center gap-2">
                              <MapPin size={16} />
-                             <span>{job.location || 'Meycauayan City Hall'}</span>
+                             <span>{job.location}</span>
                            </div>
                            <div className="flex items-center gap-2">
                              <Clock size={16} />
-                             <span>{job.employment_type || 'Full Time'}</span>
+                             <span>{job.employment_type}</span>
                            </div>
                            <div className="flex items-center gap-2">
                              <DollarSign size={16} />
-                             <span>{job.salary_range || 'Competitive'}</span>
+                             <span>{job.salary_range}</span>
                            </div>
                            <div className="flex items-center gap-2">
                              <Calendar size={16} />
@@ -179,8 +163,8 @@ const JobDetail = () => {
 
                         <div className="mt-8 pt-8 border-t border-slate-200">
                            <p className="text-xs text-slate-400 font-medium uppercase tracking-wider mb-4">Questions?</p>
-                           <a href="mailto:hr@meycauayan.gov.ph" className="text-slate-900 font-semibold hover:underline">
-                              capstone682@gmail.com
+                           <a href="mailto:capstone682@gmail.com" className="text-slate-900 font-semibold hover:underline">
+                               capstone682@gmail.com
                            </a>
                         </div>
                    </div>

@@ -15,6 +15,10 @@ export default defineConfig({
     tailwindcss(),
     tsconfigPaths()
   ],
+  server: {
+    port: 5173,
+    strictPort: true, // Forces app to crash if 5173 is taken, preventing silent port switches that break Google Auth
+  },
   // Exclude large libraries from pre-bundling - they load on-demand only
   optimizeDeps: {
     exclude: ['jspdf', 'jspdf-autotable']
