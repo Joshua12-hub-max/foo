@@ -1,0 +1,35 @@
+import { z } from 'zod';
+
+export const GetDTRSchema = z.object({
+  query: z.object({
+    employeeId: z.string().optional(),
+    startDate: z.string().optional(),
+    endDate: z.string().optional(),
+    page: z.coerce.number().int().min(1).default(1),
+    limit: z.coerce.number().int().min(1).default(100),
+  }),
+});
+
+export const UpdateDTRSchema = z.object({
+  params: z.object({
+    id: z.string().min(1, 'ID is required'),
+  }),
+  body: z.object({
+    time_in: z.string().max(100).nullable().optional(),
+    time_out: z.string().max(100).nullable().optional(),
+    status: z.string().min(1, 'Status is required'),
+    late_minutes: z.preprocess((val) => {
+        if (typeof val === 'string' && val === '') return 0;
+        if (typeof val === 'string') return parseInt(val, 10);
+        return val;
+    }, z.number().nonnegative().default(0)),
+    undertime_minutes: z.preprocess((val) => {
+        if (typeof val === 'string' && val === '') return 0;
+        if (typeof val === 'string') return parseInt(val, 10);
+        return val;
+    }, z.number().nonnegative().default(0)),
+  }),
+});
+
+export type GetDTRInput = z.infer<typeof GetDTRSchema>;
+export type UpdateDTRInput = z.infer<typeof UpdateDTRSchema>;

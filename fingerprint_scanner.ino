@@ -72,10 +72,10 @@ void loop() {
 void serialEvent() {
   while (Serial.available()) {
     char inChar = (char)Serial.read();
+    inputString += inChar;
     if (inChar == '\n') {
       stringComplete = true;
-    } else {
-      inputString += inChar;
+      return; // Stop reading to allow main loop to process this line
     }
   }
 }
@@ -161,7 +161,7 @@ int getFingerprintIDez() {
   uint8_t p = finger.getImage();
   if (p != FINGERPRINT_OK)  return -1;
 
-  p = finger.image2Tz();
+  p = finger.image2Tz(1); // Modified: Added slot 1
   if (p != FINGERPRINT_OK)  return -1;
 
   p = finger.fingerSearch();

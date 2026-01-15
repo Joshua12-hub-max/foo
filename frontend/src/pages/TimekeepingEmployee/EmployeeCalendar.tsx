@@ -1,0 +1,135 @@
+import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import {
+  useCalendarState,
+  useCalendarNav,
+  useCalendarData,
+  HOURS_12,
+  EVENT_COLORS,
+  CalendarHeader,
+  CalendarControls,
+  CalendarGrid,
+  EventDetailsModal,
+  DrawerSidebar,
+  getRandomEventColor
+} from '@components/Custom/CalendarComponents/shared';
+
+import { EmployeeCalendarActions } from '@components/Custom/CalendarComponents/employee/components';
+import { holidays } from '@utils';
+import { announcementApi, eventApi } from '@api';
+
+export default function EmployeeCalendar() {
+  // Calendar state management
+  const calendarState = useCalendarState();
+  const {
+    today,
+    currentDate,
+    setCurrentDate,
+    isDrawerOpen,
+    setIsDrawerOpen,
+    showHolidays,
+    setShowHolidays,
+    showEventDetails,
+    setShowEventDetails
+  } = calendarState;
+
+  // Navigation handlers
+  const navigation = useCalendarNav({ setCurrentDate });
+
+  // Events query
+  const { data: events = [] } = useQuery({
+    queryKey: ['events'],
+    queryFn: async () => {
+      const response = await eventApi.getEvents();
+      return response.data?.events?.map((e: any) => ({
+        ...e,
+        color: getRandomEventColor(EVENT_COLORS)
+      })) || [];
+    }
+  });
+
+  // Announcements query
+  const { data: announcements = [] } = useQuery({
+    queryKey: ['announcements'],
+    queryFn: async () => {
+      const response = await announcementApi.getAnnouncements();
+      return response.data?.announcements || [];
+    }
+  });
+
+  // Calendar data processing
+  const calendarData = useCalendarData({
+    currentDate,
+    events,
+    showHolidays,
+    holidays,
+    announcements
+  });
+  const { month, day, year, dayName, displayedEvents } = calendarData;
+
+  return (
+    <div className="flex h-screen bg-[#274b46] overflow-hidden">
+      {/* MAIN CALENDAR AREA */}
+      <div className="flex-1 flex flex-col">
+        <CalendarHeader month={month} year={year} />
+
+        <CalendarControls
+          onPrevMonth={navigation.handlePrevMonth}
+          onNextMonth={navigation.handleNextMonth}
+          onToday={navigation.handleToday}
+          showHolidays={showHolidays}
+          onToggleHolidays={() => setShowHolidays(!showHolidays)}
+          actions={
+            <EmployeeCalendarActions
+              onOpenDrawer={() => setIsDrawerOpen(true)}
+            />
+          }
+        />
+
+        {/* Calendar Body */}
+        <div className="flex-1 overflow-auto p-8 bg-[#F8F9FA]">
+          <CalendarGrid
+            currentDate={currentDate}
+            today={today}
+            onDateClick={navigation.handleDateClick}
+            showHolidays={showHolidays}
+            holidays={holidays}
+            announcements={announcements}
+            displayedEvents={displayedEvents}
+          />
+        </div>
+      </div>
+
+      {/* DRAWER SIDEBAR */}
+      <DrawerSidebar
+        isOpen={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+        currentDate={currentDate}
+        today={today}
+        month={month}
+        year={year}
+        onDateClick={navigation.handleDateClick}
+        onPrevMonth={navigation.handlePrevMonth}
+        onNextMonth={navigation.handleNextMonth}
+        displayedEvents={displayedEvents}
+        hours={HOURS_12}
+        onEventClick={setShowEventDetails}
+        showHolidays={showHolidays}
+        holidays={holidays}
+        announcements={announcements}
+      />
+
+      {/* Event Details Modal */}
+      {showEventDetails && (
+        <EventDetailsModal
+          event={showEventDetails}
+          onClose={() => setShowEventDetails(null)}
+          hours={HOURS_12}
+          month={month}
+          day={day}
+          dayName={dayName}
+        />
+      )}
+    </div>
+  );
+}

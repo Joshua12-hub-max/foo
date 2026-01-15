@@ -1,0 +1,13 @@
+export { default as AddEmployeeToDepartment } from './AddEmployeeToDepartment';
+export { default as ColleaguesTable } from './ColleaguesTable';
+export { default as DepartmentDeleteModal } from './DepartmentDeleteModal';
+export { default as DepartmentEmployeeTable } from './DepartmentEmployeeTable';
+export { default as DepartmentFormModal } from './DepartmentFormModal';
+export { default as DepartmentHeader } from './DepartmentHeader';
+export { default as DepartmentModal } from './DepartmentModal';
+export { default as DepartmentSearch } from './DepartmentSearch';
+export { default as DepartmentStats } from './DepartmentStats';
+export { default as DepartmentTable } from './DepartmentTable';
+export { default as EditProfileModal } from './EditProfileModal';
+export { default as EmployeeDepartmentHeader } from './EmployeeDepartmentHeader';
+export { default as RemoveEmployeeModal } from './RemoveEmployeeModal';

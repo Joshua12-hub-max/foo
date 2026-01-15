@@ -1,0 +1,107 @@
+import axios from './axios';
+
+interface DepartmentResponse {
+  success: boolean;
+  departments?: any[];
+  department?: any;
+  employees?: any[];
+  message?: string;
+  [key: string]: any;
+}
+
+export const fetchDepartments = async (): Promise<DepartmentResponse> => {
+  try {
+    const response = await axios.get('/departments');
+    return response.data;
+  } catch (error) {
+    return { success: false, departments: [] };
+  }
+};
+
+export const fetchDepartmentById = async (id: string | number): Promise<DepartmentResponse> => {
+  try {
+    const response = await axios.get(`/departments/${id}`);
+    return response.data;
+  } catch (error) {
+    return { success: false, department: null, employees: [] };
+  }
+};
+
+// Alias for fetchDepartmentById - returns department with employees
+export const fetchDepartmentEmployees = async (id: string | number): Promise<DepartmentResponse> => {
+  try {
+    const response = await axios.get(`/departments/${id}`);
+    return response.data;
+  } catch (error) {
+    return { success: false, department: null, employees: [] };
+  }
+};
+
+export const addDepartment = async (formData: any): Promise<DepartmentResponse> => {
+  try {
+    const response = await axios.post('/departments', formData);
+    return response.data;
+  } catch (error: any) {
+    return { success: false, message: error.response?.data?.message || 'Failed to add department' };
+  }
+};
+
+export const updateDepartment = async (id: string | number, formData: any): Promise<DepartmentResponse> => {
+  try {
+    const response = await axios.put(`/departments/${id}`, formData);
+    return response.data;
+  } catch (error: any) {
+    return { success: false, message: error.response?.data?.message || 'Failed to update department' };
+  }
+};
+
+export const deleteDepartment = async (id: string | number): Promise<DepartmentResponse> => {
+  try {
+    const response = await axios.delete(`/departments/${id}`);
+    return response.data;
+  } catch (error: any) {
+    return { success: false, message: error.response?.data?.message || 'Failed to delete department' };
+  }
+};
+
+// Get employees available to add to a department (not already in it)
+export const fetchAvailableEmployees = async (departmentId: string | number, searchTerm: string = ''): Promise<DepartmentResponse> => {
+  try {
+    const url = searchTerm 
+      ? `/departments/${departmentId}/available-employees?search=${encodeURIComponent(searchTerm)}`
+      : `/departments/${departmentId}/available-employees`;
+    const response = await axios.get(url);
+    return response.data;
+  } catch (error) {
+    return { success: false, employees: [] };
+  }
+};
+
+// Assign an employee to a department
+export const assignEmployeeToDepartment = async (departmentId: string | number, employeeId: string | number): Promise<DepartmentResponse> => {
+  try {
+    const response = await axios.post(`/departments/${departmentId}/assign-employee`, { employeeId });
+    return response.data;
+  } catch (error: any) {
+    return { success: false, message: error.response?.data?.message || 'Failed to assign employee' };
+  }
+};
+
+// Remove an employee from a department
+export const removeEmployeeFromDepartment = async (departmentId: string | number, employeeId: string | number): Promise<DepartmentResponse> => {
+  try {
+    const response = await axios.delete(`/departments/${departmentId}/employees/${employeeId}`);
+    return response.data;
+  } catch (error: any) {
+    return { success: false, message: error.response?.data?.message || 'Failed to remove employee' };
+  }
+};
+
+export const fetchPublicDepartments = async (): Promise<DepartmentResponse> => {
+    try {
+        const response = await axios.get('/departments/public');
+        return response.data;
+    } catch (error) {
+        return { success: false, departments: [], message: 'Failed to fetch departments' };
+    }
+};

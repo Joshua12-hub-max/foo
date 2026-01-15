@@ -1,0 +1,268 @@
+/**
+ * useMemoManagement Hook
+ * Custom hook for managing employee memos in Admin Portal
+ * Optimized with useMemo and useCallback for performance
+ */
+
+import { useState, useEffect, useCallback, useMemo, FormEvent } from 'react';
+// @ts-ignore
+import { fetchMemos, createMemo, updateMemo, deleteMemo } from '@api/memoApi';
+// @ts-ignore
+import { fetchEmployees } from '@api/employeeApi';
+import { INITIAL_FORM_DATA, INITIAL_FILTERS, MemoFormData, MemoFilters } from '../Constants/memoConstants';
+
+export interface Memo {
+  id: number;
+  employee_id: string | number;
+  employee_name: string;
+  author_name?: string;
+  memo_number: string;
+  memo_type: string;
+  subject: string;
+  content: string;
+  priority: string;
+  status: string;
+  effective_date?: string;
+  acknowledgment_required: boolean;
+  acknowledged_at?: string;
+  created_at: string;
+}
+
+export interface Employee {
+  id: number;
+  first_name: string;
+  last_name: string;
+}
+
+export interface EmployeeOption {
+  value: number;
+  label: string;
+}
+
+export interface UseMemoManagementReturn {
+  memos: Memo[];
+  employees: Employee[];
+  employeeOptions: EmployeeOption[];
+  loading: boolean;
+  error: string | null;
+  saving: boolean;
+  filters: MemoFilters;
+  handleFilterChange: (key: string, value: string) => void;
+  handleSearch: () => void;
+  handleClearFilters: () => void;
+  isFormOpen: boolean;
+  isViewOpen: boolean;
+  isDeleteOpen: boolean;
+  selectedMemo: Memo | null;
+  formData: MemoFormData;
+  handleFormChange: (key: string, value: string | boolean) => void;
+  loadData: (currentFilters?: Partial<MemoFilters>) => Promise<void>;
+  openCreateForm: () => void;
+  openEditForm: (memo: Memo) => void;
+  openViewModal: (memo: Memo) => void;
+  openDeleteModal: (memo: Memo) => void;
+  closeFormModal: () => void;
+  closeViewModal: () => void;
+  closeDeleteModal: () => void;
+  handleSubmit: (e: FormEvent) => Promise<void>;
+  handleDelete: () => Promise<void>;
+}
+
+export const useMemoManagement = (): UseMemoManagementReturn => {
+  // Data state
+  const [memos, setMemos] = useState<Memo[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  // Filter state
+  const [filters, setFilters] = useState<MemoFilters>(INITIAL_FILTERS);
+
+  // Modal states
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isViewOpen, setIsViewOpen] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [selectedMemo, setSelectedMemo] = useState<Memo | null>(null);
+
+  // Form data
+  const [formData, setFormData] = useState<MemoFormData>(INITIAL_FORM_DATA);
+
+  // Load data function - memoized with useCallback
+  const loadData = useCallback(async (currentFilters: Partial<MemoFilters> = {}) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const [memosRes, employeesRes] = await Promise.all([
+        fetchMemos(currentFilters),
+        fetchEmployees()
+      ]);
+      setMemos(memosRes.memos || []);
+      setEmployees((employeesRes.employees || employeesRes || []) as Employee[]);
+    } catch (err) {
+      setError('Failed to load data');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Initial load
+  useEffect(() => {
+    loadData({});
+  }, [loadData]);
+
+  // Apply filters - memoized
+  const handleSearch = useCallback(() => {
+    loadData(filters);
+  }, [filters, loadData]);
+
+  // Filter change handler - memoized
+  const handleFilterChange = useCallback((key: string, value: string) => {
+    setFilters(prev => ({ ...prev, [key]: value }));
+  }, []);
+
+  // Clear filters - memoized
+  const handleClearFilters = useCallback(() => {
+    setFilters(INITIAL_FILTERS);
+    loadData({});
+  }, [loadData]);
+
+  // Open create form - memoized
+  const openCreateForm = useCallback(() => {
+    setSelectedMemo(null);
+    setFormData(INITIAL_FORM_DATA);
+    setIsFormOpen(true);
+  }, []);
+
+  // Open edit form - memoized
+  const openEditForm = useCallback((memo: Memo) => {
+    setSelectedMemo(memo);
+    setFormData({
+      employee_id: String(memo.employee_id),
+      memo_type: memo.memo_type,
+      subject: memo.subject,
+      content: memo.content,
+      priority: memo.priority,
+      effective_date: memo.effective_date ? memo.effective_date.split('T')[0] : '',
+      acknowledgment_required: memo.acknowledgment_required,
+      status: memo.status
+    });
+    setIsFormOpen(true);
+  }, []);
+
+  // Open view modal - memoized
+  const openViewModal = useCallback((memo: Memo) => {
+    setSelectedMemo(memo);
+    setIsViewOpen(true);
+  }, []);
+
+  // Open delete modal - memoized
+  const openDeleteModal = useCallback((memo: Memo) => {
+    setSelectedMemo(memo);
+    setIsDeleteOpen(true);
+  }, []);
+
+  // Close form modal - memoized
+  const closeFormModal = useCallback(() => {
+    setIsFormOpen(false);
+    setSelectedMemo(null);
+  }, []);
+
+  // Close view modal - memoized
+  const closeViewModal = useCallback(() => {
+    setIsViewOpen(false);
+    setSelectedMemo(null);
+  }, []);
+
+  // Close delete modal - memoized
+  const closeDeleteModal = useCallback(() => {
+    setIsDeleteOpen(false);
+    setSelectedMemo(null);
+  }, []);
+
+  // Form data change handler - memoized
+  const handleFormChange = useCallback((key: string, value: string | boolean) => {
+    setFormData(prev => ({ ...prev, [key]: value }));
+  }, []);
+
+  // Submit form - memoized
+  const handleSubmit = useCallback(async (e: FormEvent) => {
+    e.preventDefault();
+    try {
+      setSaving(true);
+      if (selectedMemo) {
+        await updateMemo(selectedMemo.id, formData);
+      } else {
+        await createMemo(formData);
+      }
+      setIsFormOpen(false);
+      loadData(filters);
+    } catch (err) {
+      setError('Failed to save memo');
+    } finally {
+      setSaving(false);
+    }
+  }, [selectedMemo, formData, filters, loadData]);
+
+  // Delete memo - memoized
+  const handleDelete = useCallback(async () => {
+    try {
+      setSaving(true);
+      await deleteMemo(selectedMemo!.id);
+      setIsDeleteOpen(false);
+      loadData(filters);
+    } catch (err) {
+      setError('Failed to delete memo');
+    } finally {
+      setSaving(false);
+    }
+  }, [selectedMemo, filters, loadData]);
+
+  // Memoized employee options for select dropdown
+  const employeeOptions = useMemo<EmployeeOption[]>(() => {
+    return employees.map(emp => ({
+      value: emp.id,
+      label: `${emp.first_name} ${emp.last_name}`
+    }));
+  }, [employees]);
+
+  return {
+    // Data
+    memos,
+    employees,
+    employeeOptions,
+    loading,
+    error,
+    saving,
+
+    // Filters
+    filters,
+    handleFilterChange,
+    handleSearch,
+    handleClearFilters,
+
+    // Modal states
+    isFormOpen,
+    isViewOpen,
+    isDeleteOpen,
+    selectedMemo,
+
+    // Form
+    formData,
+    handleFormChange,
+
+    // Actions
+    loadData,
+    openCreateForm,
+    openEditForm,
+    openViewModal,
+    openDeleteModal,
+    closeFormModal,
+    closeViewModal,
+    closeDeleteModal,
+    handleSubmit,
+    handleDelete
+  };
+};
+
+export default useMemoManagement;

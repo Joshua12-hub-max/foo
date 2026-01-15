@@ -1,0 +1,303 @@
+import { Request, Response, NextFunction } from 'express';
+import jwt from 'jsonwebtoken';
+import type { JwtPayload, AuthenticatedRequest, UserRole } from '../types/index.js';
+
+// ============================================================================
+// Type Definitions
+// ============================================================================
+
+/**
+ * Middleware function type for Express
+ */
+type MiddlewareFunction = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => void;
+
+/**
+ * Error response structure for authentication failures
+ */
+interface AuthErrorResponse {
+  message: string;
+  code: 'NO_TOKEN' | 'INVALID_TOKEN' | 'EXPIRED_TOKEN' | 'SERVER_ERROR' | 'FORBIDDEN';
+}
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+/**
+ * Type guard to check if decoded token is a valid JwtPayload
+ */
+const isValidJwtPayload = (decoded: unknown): decoded is JwtPayload => {
+  if (typeof decoded !== 'object' || decoded === null) {
+    return false;
+  }
+
+  const payload = decoded as Record<string, unknown>;
+  
+  return (
+    typeof payload.id === 'number' &&
+    typeof payload.employeeId === 'string' &&
+    typeof payload.role === 'string'
+  );
+};
+
+/**
+ * Get user-friendly error message from JWT error
+ */
+const getJwtErrorResponse = (error: Error): AuthErrorResponse => {
+  // Check error name since jsonwebtoken doesn't export error classes in ESM
+  if (error.name === 'TokenExpiredError') {
+    return { message: 'Token has expired. Please log in again.', code: 'EXPIRED_TOKEN' };
+  }
+  
+  if (error.name === 'NotBeforeError') {
+    return { message: 'Token is not yet active.', code: 'INVALID_TOKEN' };
+  }
+  
+  if (error.name === 'JsonWebTokenError') {
+    return { message: 'Invalid token. Please log in again.', code: 'INVALID_TOKEN' };
+  }
+  
+  return { message: 'Authentication error occurred.', code: 'SERVER_ERROR' };
+};
+
+/**
+ * Safely get JWT secret from environment
+ */
+const getJwtSecret = (): string | null => {
+  const secret = process.env.JWT_SECRET;
+  return secret && secret.length > 0 ? secret : null;
+};
+
+// ============================================================================
+// Middleware Functions
+// ============================================================================
+
+/**
+ * Verify JWT token from cookies and attach user to request.
+ * Uses try-catch for robust error handling.
+ */
+export const verifyToken: MiddlewareFunction = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): void => {
+  try {
+    const token = req.cookies?.accessToken as string | undefined;
+
+    if (!token) {
+      res.status(401).json({ 
+        message: 'Authentication required. Please log in.',
+        code: 'NO_TOKEN'
+      } satisfies AuthErrorResponse);
+      return;
+    }
+
+    const secret = getJwtSecret();
+    if (!secret) {
+      console.error('[AUTH] JWT_SECRET is not configured in environment variables.');
+      res.status(500).json({ 
+        message: 'Server configuration error. Please contact administrator.',
+        code: 'SERVER_ERROR'
+      } satisfies AuthErrorResponse);
+      return;
+    }
+
+    jwt.verify(token, secret, (err, decoded) => {
+      try {
+        if (err) {
+          const errorResponse = getJwtErrorResponse(err);
+          const statusCode = errorResponse.code === 'EXPIRED_TOKEN' ? 401 : 403;
+          res.status(statusCode).json(errorResponse);
+          return;
+        }
+
+        if (!isValidJwtPayload(decoded)) {
+          console.error('[AUTH] Decoded token has invalid structure:', decoded);
+          res.status(403).json({ 
+            message: 'Token payload is invalid.',
+            code: 'INVALID_TOKEN'
+          } satisfies AuthErrorResponse);
+          return;
+        }
+
+        // Attach strongly-typed user to request
+        (req as AuthenticatedRequest).user = decoded;
+        next();
+      } catch (callbackError) {
+        console.error('[AUTH] Error in JWT verify callback:', callbackError);
+        res.status(500).json({ 
+          message: 'Internal authentication error.',
+          code: 'SERVER_ERROR'
+        } satisfies AuthErrorResponse);
+      }
+    });
+  } catch (error) {
+    console.error('[AUTH] Unexpected error in verifyToken:', error);
+    res.status(500).json({ 
+      message: 'Internal server error during authentication.',
+      code: 'SERVER_ERROR'
+    } satisfies AuthErrorResponse);
+  }
+};
+
+/**
+ * Verify token and check for admin/hr role.
+ * Combines verifyToken with role checking for privileged routes.
+ */
+export const verifyAdmin: MiddlewareFunction = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): void => {
+  try {
+    verifyToken(req, res, () => {
+      try {
+        const authReq = req as AuthenticatedRequest;
+        const userRole = authReq.user?.role?.toLowerCase() as UserRole | undefined;
+        
+        if (!userRole) {
+          res.status(403).json({ 
+            message: 'User role not found.',
+            code: 'FORBIDDEN'
+          } satisfies AuthErrorResponse);
+          return;
+        }
+        
+        const adminRoles: UserRole[] = ['admin', 'hr'];
+        
+        if (adminRoles.includes(userRole)) {
+          next();
+        } else {
+          res.status(403).json({ 
+            message: 'Access denied. Admin or HR privileges required.',
+            code: 'FORBIDDEN'
+          } satisfies AuthErrorResponse);
+        }
+      } catch (roleCheckError) {
+        console.error('[AUTH] Error in role check:', roleCheckError);
+        res.status(500).json({ 
+          message: 'Error checking user permissions.',
+          code: 'SERVER_ERROR'
+        } satisfies AuthErrorResponse);
+      }
+    });
+  } catch (error) {
+    console.error('[AUTH] Unexpected error in verifyAdmin:', error);
+    res.status(500).json({ 
+      message: 'Internal server error.',
+      code: 'SERVER_ERROR'
+    } satisfies AuthErrorResponse);
+  }
+};
+
+/**
+ * Alias for verifyToken - used by SPMS routes for compatibility.
+ */
+export const authenticateToken = verifyToken;
+
+/**
+ * Role-based access control middleware factory.
+ * Creates a middleware that only allows access to users with specified roles.
+ * 
+ * @param allowedRoles - Array of roles that can access the route
+ * @returns Middleware function that checks user role
+ * 
+ * @example
+ * router.get('/admin-only', verifyToken, requireRole(['admin']), controller);
+ * router.get('/hr-or-admin', verifyToken, requireRole(['admin', 'hr']), controller);
+ */
+export const requireRole = (allowedRoles: readonly UserRole[]): MiddlewareFunction => {
+  // Validate input at middleware creation time
+  if (!Array.isArray(allowedRoles) || allowedRoles.length === 0) {
+    throw new Error('[AUTH] requireRole: allowedRoles must be a non-empty array');
+  }
+
+  // Pre-normalize roles for performance
+  const normalizedRoles = new Set(allowedRoles.map(role => role.toLowerCase()));
+
+  return (req: Request, res: Response, next: NextFunction): void => {
+    try {
+      const authReq = req as AuthenticatedRequest;
+      
+      // Check if user was attached by verifyToken middleware
+      if (!authReq.user) {
+        res.status(401).json({ 
+          message: 'Authentication required. Please ensure verifyToken middleware is applied first.',
+          code: 'NO_TOKEN'
+        } satisfies AuthErrorResponse);
+        return;
+      }
+
+      const userRole = authReq.user.role?.toLowerCase();
+      
+      if (!userRole) {
+        res.status(403).json({ 
+          message: 'User role is not defined.',
+          code: 'FORBIDDEN'
+        } satisfies AuthErrorResponse);
+        return;
+      }
+
+      if (normalizedRoles.has(userRole)) {
+        next();
+      } else {
+        res.status(403).json({ 
+          message: `Access denied. Required role(s): ${allowedRoles.join(', ')}.`,
+          code: 'FORBIDDEN'
+        } satisfies AuthErrorResponse);
+      }
+    } catch (error) {
+      console.error('[AUTH] Unexpected error in requireRole:', error);
+      res.status(500).json({ 
+        message: 'Error verifying user permissions.',
+        code: 'SERVER_ERROR'
+      } satisfies AuthErrorResponse);
+    }
+  };
+};
+
+/**
+ * Optional authentication - attaches user if token exists, but doesn't require it.
+ * Useful for routes that behave differently for authenticated vs anonymous users.
+ */
+export const optionalAuth: MiddlewareFunction = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): void => {
+  try {
+    const token = req.cookies?.accessToken as string | undefined;
+
+    if (!token) {
+      // No token - continue without user attached
+      next();
+      return;
+    }
+
+    const secret = getJwtSecret();
+    if (!secret) {
+      // No secret configured - continue without user
+      next();
+      return;
+    }
+
+    jwt.verify(token, secret, (err, decoded) => {
+      try {
+        if (!err && isValidJwtPayload(decoded)) {
+          (req as AuthenticatedRequest).user = decoded;
+        }
+        // Continue regardless of token validity
+        next();
+      } catch {
+        next();
+      }
+    });
+  } catch {
+    // On any error, continue without authentication
+    next();
+  }
+};
