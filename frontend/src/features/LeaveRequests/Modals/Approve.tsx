@@ -70,7 +70,7 @@ const ApproveModal: React.FC<ApproveModalProps> = ({
     if (isNaN(start.getTime()) || isNaN(end.getTime())) return 0;
 
     let count = 0;
-    let curDate = new Date(start);
+    const curDate = new Date(start);
     while (curDate <= end) {
       const day = curDate.getDay();
       if (day !== 0 && day !== 6) count++;

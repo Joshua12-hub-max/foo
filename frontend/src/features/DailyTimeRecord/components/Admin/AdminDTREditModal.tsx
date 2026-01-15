@@ -34,7 +34,7 @@ export const AdminDTREditModal: React.FC<AdminDTREditModalProps> = ({
     if (!timeStr || timeStr === '--:--' || timeStr === '-') return '';
     try {
       const [time, period] = timeStr.split(' ');
-      let [hours, minutes] = time.split(':');
+      const [hours, minutes] = time.split(':');
       let h = parseInt(hours);
       
       if (period === 'PM' && h !== 12) h += 12;

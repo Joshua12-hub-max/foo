@@ -128,7 +128,7 @@ export const allocateDefaultCredits = async (employeeId: string) => {
 // ============================================================================
 
 // ... imports
-import { applyLeaveSchema, rejectLeaveSchema } from '../schemas/leaveSchema.js';
+import { applyLeaveSchema, rejectLeaveSchema, creditUpdateSchema } from '../schemas/leaveSchema.js';
 
 // ... existing code ...
 

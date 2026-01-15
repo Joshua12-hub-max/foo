@@ -510,7 +510,7 @@ export const usePerformanceReview = () => {
     setSaving(true);
     try {
         // Unify creation logic: Always ensure ID exists first
-        let reviewId = await ensureReviewExists();
+        const reviewId = await ensureReviewExists();
         
         if (!reviewId) {
             // Should be handled by ensureReviewExists notification, but safety check

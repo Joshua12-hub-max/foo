@@ -195,7 +195,7 @@ export const exportAttendanceToExcel = async (
     applyHeaderStyle(headerRow);
 
     // Group data by department if requested
-    let sortedData = [...data];
+    const sortedData = [...data];
     if (groupByDepartment) {
       sortedData.sort((a, b) => {
         const deptA = a.department_name || a.department || '';

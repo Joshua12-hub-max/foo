@@ -86,7 +86,7 @@ export const useExport = () => {
       const today = new Date().toLocaleDateString('en-US');
       const headers = ['ID', 'Employee Name', 'Dept', 'Type', 'From', 'To', 'Days', 'Status'];
       
-      let htmlContent = `
+      const htmlContent = `
         <!DOCTYPE html>
         <html>
         <head>

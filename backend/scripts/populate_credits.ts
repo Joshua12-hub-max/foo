@@ -1,4 +1,5 @@
 import db from '../db/connection.js';
+import { RowDataPacket } from 'mysql2/promise';
 
 const DEFAULT_CREDITS = [
   { type: 'Vacation Leave', balance: 15 },
@@ -6,12 +7,22 @@ const DEFAULT_CREDITS = [
   { type: 'Special Privilege Leave', balance: 3 },
 ];
 
+interface EmployeeRow extends RowDataPacket {
+  employee_id: string;
+  first_name: string;
+  last_name: string;
+}
+
+interface CreditRow extends RowDataPacket {
+  balance: number;
+}
+
 async function populateCredits() {
   try {
     console.log('🔄 Starting credit population...');
 
     // 1. Fetch all existing employees
-    const [employees] = await db.query('SELECT employee_id, first_name, last_name FROM authentication');
+    const [employees] = await db.query<EmployeeRow[]>('SELECT employee_id, first_name, last_name FROM authentication');
     console.log(`Found ${employees.length} employees.`);
 
     for (const emp of employees) {
@@ -19,7 +30,7 @@ async function populateCredits() {
       
       for (const credit of DEFAULT_CREDITS) {
         // Check if exists
-        const [existing] = await db.query(
+        const [existing] = await db.query<CreditRow[]>(
           'SELECT * FROM leave_credits WHERE employee_id = ? AND credit_type = ?',
           [emp.employee_id, credit.type]
         );

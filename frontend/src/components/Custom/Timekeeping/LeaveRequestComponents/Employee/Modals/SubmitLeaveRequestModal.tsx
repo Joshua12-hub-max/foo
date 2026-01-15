@@ -61,7 +61,7 @@ export const SubmitLeaveRequestModal: React.FC<SubmitLeaveRequestModalProps> = (
     }
 
     let count = 0;
-    let curDate = new Date(start);
+    const curDate = new Date(start);
     
     while (curDate <= end) {
       const dayOfWeek = curDate.getDay();

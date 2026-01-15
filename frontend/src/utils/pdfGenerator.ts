@@ -68,7 +68,7 @@ export const generateLeaveRequestPDF = async (leaveRequest: LeaveRequest): Promi
     });
 
     // Approval Section
-    let finalY = (doc as any).lastAutoTable.finalY + 20;
+    const finalY = (doc as any).lastAutoTable.finalY + 20;
 
     doc.setFontSize(14);
     doc.text('Approval Status', 20, finalY);
