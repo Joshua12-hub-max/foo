@@ -5,6 +5,7 @@ import axios from 'axios';
 import PDFDocument from 'pdfkit';
 import * as ics from 'ics';
 import { getTemplateForStage, replaceVariables } from '../utils/emailHelpers.js';
+import { generateGoogleMeetLink } from '../services/meetingService.js';
 import type { RowDataPacket, ResultSetHeader } from 'mysql2/promise';
 import type { AuthenticatedRequest } from '../types/index.js';
 
@@ -14,11 +15,35 @@ interface UserRow extends RowDataPacket { id: number; first_name: string; last_n
 interface StatsRow extends RowDataPacket { total: number; pending: number; screening: number; interviewing: number; hired: number; rejected: number; }
 
 const sendEmailNotification = async (to: string, subject: string, html: string, attachments: object[] = []): Promise<void> => {
-  try { const transporter = nodemailer.createTransport({ service: 'gmail', auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS } }); await transporter.sendMail({ from: process.env.EMAIL_USER || '"HR Recruitment" <no-reply@company.com>', to, subject, html, attachments }); console.log(`Email sent to ${to}: ${subject}`); } catch (error) { console.error('Failed to send email:', error); }
+  console.log(`Attempting to send email to: ${to}`);
+  console.log(`Subject: ${subject}`);
+  console.log(`Using EMAIL_USER: ${process.env.EMAIL_USER}`);
+  try { 
+    const transporter = nodemailer.createTransport({ 
+      service: 'gmail', 
+      auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS } 
+    }); 
+    const result = await transporter.sendMail({ 
+      from: process.env.EMAIL_USER || '"HR Recruitment" <no-reply@company.com>', 
+      to, 
+      subject, 
+      html, 
+      attachments 
+    }); 
+    console.log(`Email sent successfully to ${to}: ${subject}`);
+    console.log(`Message ID: ${result.messageId}`);
+  } catch (error) { 
+    console.error('Failed to send email:', error); 
+  }
 };
 
 export const createJob = async (req: Request, res: Response): Promise<void> => {
-  try { const authReq = req as AuthenticatedRequest; const { title, department, job_description, requirements, salary_range, location, employment_type, application_email, status } = req.body; if (!title || !department || !job_description || !application_email) { res.status(400).json({ success: false, message: 'Missing required fields' }); return; } await db.query(`INSERT INTO recruitment_jobs (title, department, job_description, requirements, salary_range, location, employment_type, application_email, status, posted_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`, [title, department, job_description, requirements, salary_range, location, employment_type || 'Full-time', application_email, status || 'Open', authReq.user.id]); res.status(201).json({ success: true, message: 'Job posted successfully' }); } catch (error) { console.error(error); res.status(500).json({ success: false, message: 'Failed to create job' }); }
+  try { const authReq = req as AuthenticatedRequest; const { title, department, job_description, requirements, salary_range, location, employment_type, application_email, status } = req.body; if (!title || !department || !job_description || !application_email) { res.status(400).json({ success: false, message: 'Missing required fields' }); return; } 
+  
+  const jobStatus = status || 'Open';
+  const postedAt = jobStatus === 'Open' ? new Date() : null;
+
+  await db.query(`INSERT INTO recruitment_jobs (title, department, job_description, requirements, salary_range, location, employment_type, application_email, status, posted_by, posted_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`, [title, department, job_description, requirements, salary_range, location, employment_type || 'Full-time', application_email, jobStatus, authReq.user.id, postedAt]); res.status(201).json({ success: true, message: 'Job posted successfully' }); } catch (error) { console.error(error); res.status(500).json({ success: false, message: 'Failed to create job' }); }
 };
 
 export const getJobs = async (req: Request, res: Response): Promise<void> => {
@@ -49,13 +74,112 @@ export const getApplicants = async (req: Request, res: Response): Promise<void> 
 };
 
 export const updateApplicantStage = async (req: Request, res: Response): Promise<void> => {
-  try { const { id } = req.params; const { stage, interview_date, interview_link, notes, interview_platform } = req.body; let query = 'UPDATE recruitment_applicants SET stage = ?'; const params: (string | null)[] = [stage]; if (interview_date) { query += ', interview_date = ?'; params.push(interview_date); } if (interview_link) { query += ', interview_link = ?'; params.push(interview_link); } if (notes) { query += ', interview_notes = ?'; params.push(notes); } if (stage === 'Hired') { query += ', hired_date = NOW()'; } query += ' WHERE id = ?'; params.push(id); await db.query(query, params); const [apps] = await db.query<ApplicantRow[]>('SELECT * FROM recruitment_applicants WHERE id = ?', [id]); const applicant = apps[0]; if (applicant) { const matchedStage = stage === 'Reviewed' ? 'Screening' : stage; try { const template = await getTemplateForStage(db, matchedStage); if (template) { const variables = { applicant_first_name: applicant.first_name, applicant_last_name: applicant.last_name, job_title: applicant.job_title || 'the position', interview_date: interview_date ? new Date(interview_date).toLocaleString() : 'TBD', interview_link: interview_link || '#', interview_platform: interview_platform || 'Online', interview_notes: notes || '' }; const subject = replaceVariables(template.subject_template, variables); const body = replaceVariables(template.body_template, variables); const attachments: { filename: string; content: string; contentType: string }[] = []; if ((matchedStage === 'Initial Interview' || matchedStage === 'Final Interview') && interview_date) { try { const dateObj = new Date(interview_date); const event: ics.EventAttributes = { start: [dateObj.getFullYear(), dateObj.getMonth() + 1, dateObj.getDate(), dateObj.getHours(), dateObj.getMinutes()], duration: { minutes: 60 }, title: `Interview: ${applicant.job_title} - ${applicant.first_name}`, description: `Interview for ${applicant.job_title}. Platform: ${interview_platform}. Link: ${interview_link}`, location: interview_platform === 'Online' ? interview_link : 'Office', url: interview_link, status: 'CONFIRMED', busyStatus: 'BUSY', organizer: { name: 'Recruitment Team', email: process.env.EMAIL_USER || '' }, attendees: [{ name: `${applicant.first_name} ${applicant.last_name}`, email: applicant.email, rsvp: true }] }; const { error, value } = ics.createEvent(event); if (!error && value) { attachments.push({ filename: 'invite.ics', content: value, contentType: 'text/calendar' }); } } catch (icsErr) { console.error('ICS Error', icsErr); } } await sendEmailNotification(applicant.email, subject, body, attachments); } } catch (emailErr) { console.error('Email error:', emailErr); } } res.json({ success: true, message: 'Applicant stage updated' }); } catch (error) { console.error(error); res.status(500).json({ success: false, message: 'Failed to update stage' }); }
+  try {
+    const { id } = req.params;
+    const { stage, interview_date, interview_link, notes, interview_platform } = req.body;
+    
+    console.log('updateApplicantStage called');
+    console.log('Params:', { id, stage, interview_date, interview_link, interview_platform });
+    
+    let query = 'UPDATE recruitment_applicants SET stage = ?';
+    const params: (string | null)[] = [stage];
+    if (interview_date) { query += ', interview_date = ?'; params.push(interview_date); }
+    if (interview_link) { query += ', interview_link = ?'; params.push(interview_link); }
+    if (notes) { query += ', interview_notes = ?'; params.push(notes); }
+    if (stage === 'Hired') { query += ', hired_date = NOW()'; }
+    query += ' WHERE id = ?';
+    params.push(id);
+    
+    await db.query(query, params);
+    console.log('Database updated successfully');
+    
+    const [apps] = await db.query<ApplicantRow[]>('SELECT * FROM recruitment_applicants WHERE id = ?', [id]);
+    const applicant = apps[0];
+    
+    if (applicant) {
+      console.log('Applicant found:', { email: applicant.email, first_name: applicant.first_name });
+      const matchedStage = stage === 'Reviewed' ? 'Screening' : stage;
+      console.log('Looking for template for stage:', matchedStage);
+      
+      try {
+        const template = await getTemplateForStage(db, matchedStage);
+        console.log('Template found:', template ? 'YES' : 'NO');
+        
+        if (template) {
+          const variables = {
+            applicant_first_name: applicant.first_name,
+            applicant_last_name: applicant.last_name,
+            job_title: applicant.job_title || 'the position',
+            interview_date: interview_date ? new Date(interview_date).toLocaleString() : 'TBD',
+            interview_link: interview_link || '#',
+            interview_platform: interview_platform || 'Online',
+            interview_notes: notes || ''
+          };
+          
+          const subject = replaceVariables(template.subject_template, variables);
+          const body = replaceVariables(template.body_template, variables);
+          console.log('Email subject:', subject);
+          
+          const attachments: { filename: string; content: string; contentType: string }[] = [];
+          
+          if ((matchedStage === 'Initial Interview' || matchedStage === 'Final Interview') && interview_date) {
+            try {
+              const dateObj = new Date(interview_date);
+              const event: ics.EventAttributes = {
+                start: [dateObj.getFullYear(), dateObj.getMonth() + 1, dateObj.getDate(), dateObj.getHours(), dateObj.getMinutes()],
+                duration: { minutes: 60 },
+                title: `Interview: ${applicant.job_title} - ${applicant.first_name}`,
+                description: `Interview for ${applicant.job_title}. Platform: ${interview_platform}. Link: ${interview_link}`,
+                location: interview_platform === 'Online' ? interview_link : 'Office',
+                url: interview_link,
+                status: 'CONFIRMED',
+                busyStatus: 'BUSY',
+                organizer: { name: 'Recruitment Team', email: process.env.EMAIL_USER || '' },
+                attendees: [{ name: `${applicant.first_name} ${applicant.last_name}`, email: applicant.email, rsvp: true }]
+              };
+              const { error, value } = ics.createEvent(event);
+              if (!error && value) {
+                attachments.push({ filename: 'invite.ics', content: value, contentType: 'text/calendar' });
+                console.log('ICS attachment created');
+              }
+            } catch (icsErr) {
+              console.error('ICS Error', icsErr);
+            }
+          }
+          
+          console.log('Calling sendEmailNotification...');
+          await sendEmailNotification(applicant.email, subject, body, attachments);
+        } else {
+          console.log('No template found for stage:', matchedStage);
+        }
+      } catch (emailErr) {
+        console.error('Email error:', emailErr);
+      }
+    } else {
+      console.log('Applicant not found for id:', id);
+    }
+    
+    res.json({ success: true, message: 'Applicant stage updated' });
+  } catch (error) {
+    console.error('updateApplicantStage error:', error);
+    res.status(500).json({ success: false, message: 'Failed to update stage' });
+  }
 };
 
 export const deleteJob = async (req: Request, res: Response): Promise<void> => { try { const { id } = req.params; await db.query('DELETE FROM recruitment_jobs WHERE id = ?', [id]); res.json({ success: true, message: 'Job deleted' }); } catch (error) { res.status(500).json({ success: false, message: 'Failed to delete job' }); } };
 
 export const updateJob = async (req: Request, res: Response): Promise<void> => {
-  try { const { id } = req.params; const { title, department, job_description, requirements, salary_range, location, status, employment_type, application_email } = req.body; await db.query(`UPDATE recruitment_jobs SET title = ?, department = ?, job_description = ?, requirements = ?, salary_range = ?, location = ?, status = ?, employment_type = ?, application_email = ?, updated_at = NOW() WHERE id = ?`, [title, department, job_description, requirements, salary_range, location, status, employment_type || 'Full-time', application_email, id]); res.json({ success: true, message: 'Job updated successfully' }); } catch (error) { console.error(error); res.status(500).json({ success: false, message: 'Failed to update job' }); }
+  try { const { id } = req.params; const { title, department, job_description, requirements, salary_range, location, status, employment_type, application_email } = req.body; 
+  
+  let setClause = `title = ?, department = ?, job_description = ?, requirements = ?, salary_range = ?, location = ?, status = ?, employment_type = ?, application_email = ?, updated_at = NOW()`;
+  const params: any[] = [title, department, job_description, requirements, salary_range, location, status, employment_type || 'Full-time', application_email];
+  
+  if (status === 'Open') {
+    setClause += `, posted_at = COALESCE(posted_at, NOW())`;
+  }
+
+  await db.query(`UPDATE recruitment_jobs SET ${setClause} WHERE id = ?`, [...params, id]); 
+  res.json({ success: true, message: 'Job updated successfully' }); } catch (error) { console.error(error); res.status(500).json({ success: false, message: 'Failed to update job' }); }
 };
 
 export const generateJobFeed = async (req: Request, res: Response): Promise<void> => {
@@ -73,3 +197,92 @@ export const generateOfferLetter = async (req: Request, res: Response): Promise<
 };
 
 export const assignInterviewer = async (req: Request, res: Response): Promise<void> => { const { applicantId } = req.params; const { interviewerId } = req.body; await db.query(`UPDATE recruitment_applicants SET interviewer_id = ?, stage = 'Screening' WHERE id = ?`, [interviewerId, applicantId]); res.json({ message: 'Assigned' }); };
+
+export const generateMeetingLink = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const authReq = req as AuthenticatedRequest;
+    
+    // Validate request body with Zod
+    const { generateMeetingLinkSchema } = await import('../schemas/recruitmentSchema.js');
+    const parseResult = generateMeetingLinkSchema.safeParse(req.body);
+    
+    if (!parseResult.success) {
+      res.status(400).json({ 
+        success: false, 
+        message: 'Validation failed',
+        errors: parseResult.error.flatten().fieldErrors
+      });
+      return;
+    }
+    
+    const { applicantId, date, duration } = parseResult.data;
+
+    // Get applicant details
+    const [applicants] = await db.query<ApplicantRow[]>(
+      `SELECT a.*, j.title as job_title FROM recruitment_applicants a 
+       LEFT JOIN recruitment_jobs j ON a.job_id = j.id WHERE a.id = ?`,
+      [applicantId]
+    );
+
+    if (applicants.length === 0) {
+      res.status(404).json({ success: false, message: 'Applicant not found' });
+      return;
+    }
+
+    const applicant = applicants[0];
+    const interviewDate = new Date(date);
+
+    const result = await generateGoogleMeetLink({
+      userId: authReq.user.id,
+      title: `Interview: ${applicant.job_title || 'Position'} - ${applicant.first_name} ${applicant.last_name}`,
+      startTime: interviewDate,
+      duration: duration,
+      description: `Interview for ${applicant.job_title || 'the position'} with ${applicant.first_name} ${applicant.last_name}`,
+      attendeeEmail: applicant.email,
+      attendeeName: `${applicant.first_name} ${applicant.last_name}`
+    });
+
+    if (!result.success) {
+      res.status(400).json({ success: false, message: result.error });
+      return;
+    }
+
+    res.json({
+      success: true,
+      meetingLink: result.meetingLink,
+      meetingId: result.meetingId
+    });
+  } catch (error) {
+    console.error('Error generating meeting link:', error);
+    res.status(500).json({ success: false, message: 'Failed to generate meeting link' });
+  }
+};
+
+export const saveInterviewNotes = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { saveInterviewNotesSchema } = await import('../schemas/recruitmentSchema.js');
+    const parseResult = saveInterviewNotesSchema.safeParse(req.body);
+
+    if (!parseResult.success) {
+      res.status(400).json({
+        success: false,
+        message: 'Validation failed',
+        errors: parseResult.error.flatten().fieldErrors
+      });
+      return;
+    }
+
+    const { applicantId, notes } = parseResult.data;
+
+    // Use interview_notes column
+    await db.query(
+      `UPDATE recruitment_applicants SET interview_notes = ? WHERE id = ?`,
+      [notes || '', applicantId]
+    );
+
+    res.json({ success: true, message: 'Interview notes saved successfully' });
+  } catch (error) {
+    console.error('Error saving interview notes:', error);
+    res.status(500).json({ success: false, message: 'Failed to save interview notes' });
+  }
+};

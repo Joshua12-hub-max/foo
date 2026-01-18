@@ -1,12 +1,5 @@
 import { recruitmentApi } from '@/api/recruitmentApi';
-
-interface ScheduleData {
-  date: string;
-  time: string;
-  link?: string;
-  platform?: string;
-  notes?: string;
-}
+import type { ScheduleInterviewFormData } from '@/schemas/recruitmentSchema';
 
 const useApplicantActions = (
   fetchData: (isBackground?: boolean) => void, 
@@ -17,9 +10,9 @@ const useApplicantActions = (
     applicantId: number, 
     interviewerId: number, 
     onSuccess?: () => void
-  ) => {
+  ): Promise<void> => {
     try {
-      await (recruitmentApi as any).assignInterviewer(applicantId, interviewerId);
+      await recruitmentApi.assignInterviewer(applicantId, interviewerId);
       showNotification('Interviewer assigned successfully', 'success');
       if (onSuccess) onSuccess();
       fetchData(true); // Background refresh
@@ -31,12 +24,12 @@ const useApplicantActions = (
 
   const handleScheduleInterview = async (
     applicantId: number, 
-    scheduleData: ScheduleData, 
+    scheduleData: ScheduleInterviewFormData, 
     onSuccess?: () => void
-  ) => {
+  ): Promise<void> => {
     try {
       const dateTime = `${scheduleData.date}T${scheduleData.time}`;
-      await (recruitmentApi as any).updateStage(applicantId, {
+      await recruitmentApi.updateStage(applicantId, {
         stage: 'Initial Interview',
         interview_date: dateTime,
         interview_link: scheduleData.link,

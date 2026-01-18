@@ -55,6 +55,19 @@ const BiometricsEnrollment = () => {
             </div>
           </div>
 
+          {/* Employee ID Display */}
+          {selectedEmployee && (
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">
+                Employee ID
+              </label>
+              <div className="px-5 py-4 bg-gray-900 text-white rounded-2xl text-lg font-bold tracking-wider text-center shadow-lg">
+                {selectedEmployee}
+              </div>
+              <p className="text-[10px] text-gray-400 text-center">This ID will be linked to the fingerprint</p>
+            </div>
+          )}
+
           {/* Status Indicator Banner */}
           <div className={`rounded-2xl p-5 border transition-all duration-300 ${
             !selectedEmployee ? 'bg-gray-50/50 border-gray-100 text-gray-400' :

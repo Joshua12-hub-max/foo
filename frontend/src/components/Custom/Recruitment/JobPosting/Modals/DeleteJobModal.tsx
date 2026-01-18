@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertTriangle, X, Trash2 } from 'lucide-react';
+import { X, Trash2 } from 'lucide-react';
 import { Job } from '@/types';
 
 interface DeleteJobModalProps {

@@ -1,5 +1,5 @@
 import React from 'react';
-import { User, UserPlus, Video, FileText, Mail, Globe } from 'lucide-react';
+import { User, UserPlus, Video, FileText, Mail, Globe, VideoIcon } from 'lucide-react';
 import LoadingOverlay from '@/components/Custom/Shared/LoadingOverlay';
 import TableSkeleton from '@/components/Custom/Shared/TableSkeleton';
 import { Applicant } from '../Hooks/useApplicantData';
@@ -10,6 +10,7 @@ interface ApplicantTableProps {
   filteredApplicants: Applicant[];
   onAssign: (applicant: Applicant) => void;
   onSchedule: (applicant: Applicant) => void;
+  onJoinInterview?: (applicant: Applicant) => void;
 }
 
 const ApplicantTable: React.FC<ApplicantTableProps> = ({ 
@@ -17,7 +18,8 @@ const ApplicantTable: React.FC<ApplicantTableProps> = ({
   isRefetching, 
   filteredApplicants, 
   onAssign, 
-  onSchedule 
+  onSchedule,
+  onJoinInterview
 }) => {
 
   const formatDate = (dateString: string | undefined): string => {
@@ -43,6 +45,10 @@ const ApplicantTable: React.FC<ApplicantTableProps> = ({
       case 'Rejected': return 'bg-red-100 text-red-700';
       default: return 'bg-gray-100 text-gray-700';
     }
+  };
+
+  const hasScheduledInterview = (app: Applicant): boolean => {
+    return !!(app.interview_link && (app.stage === 'Initial Interview' || app.stage === 'Final Interview'));
   };
 
   if (loading) return <TableSkeleton rows={10} cols={5} />;
@@ -111,6 +117,18 @@ const ApplicantTable: React.FC<ApplicantTableProps> = ({
                                 title="Schedule Interview"
                             >
                                 <Video size={16} />
+                            </button>
+                        )}
+
+                         {/* Join Interview Button - NEW */}
+                         {hasScheduledInterview(app) && onJoinInterview && (
+                            <button 
+                                onClick={() => onJoinInterview(app)}
+                                className="flex items-center gap-1 px-2 py-1 bg-green-500 hover:bg-green-600 text-white rounded-lg text-xs font-medium transition-colors"
+                                title="Join Interview"
+                            >
+                                <VideoIcon size={14} />
+                                Join
                             </button>
                         )}
 

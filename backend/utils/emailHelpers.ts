@@ -6,9 +6,9 @@ import type { Pool, RowDataPacket } from 'mysql2/promise';
 interface EmailTemplate extends RowDataPacket {
   id: number;
   stage_name: string;
-  subject: string;
-  body: string;
-  created_at: Date;
+  subject_template: string;
+  body_template: string;
+  available_variables?: string;
   updated_at: Date;
 }
 

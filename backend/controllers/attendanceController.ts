@@ -363,6 +363,27 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<vo
       AND DATE(?) <= DATE(lr.end_date)
     `, [todayStr, todayStr]);
 
+    // Fetch HIRED APPLICANTS from recruitment (not all employees)
+    interface HiredApplicantRow extends RowDataPacket {
+      id: number;
+      first_name: string;
+      last_name: string;
+      email: string;
+      job_title?: string;
+      department_name?: string;
+      created_at: Date;
+      hired_date?: Date;
+    }
+
+    const [hiredApplicants] = await db.query<HiredApplicantRow[]>(`
+      SELECT ra.id, ra.first_name, ra.last_name, ra.email, ra.created_at, ra.hired_date,
+             rj.title as job_title, rj.department as department_name
+      FROM recruitment_applicants ra
+      LEFT JOIN recruitment_jobs rj ON ra.job_id = rj.id
+      WHERE ra.stage = 'Hired'
+      ORDER BY ra.hired_date DESC, ra.created_at DESC
+    `);
+
     const dtrMap = new Map(dtrRecords.map((r) => [r.employee_id, r]));
     const onLeaveEmployeeIds = new Set(leaves.map((l) => l.employee_id));
 
@@ -388,15 +409,6 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<vo
     allEmployees.forEach((emp) => {
       const employeeId = emp.employee_id;
       const name = `${emp.first_name} ${emp.last_name}`;
-
-      hiredList.push({
-        id: employeeId,
-        name,
-        department: emp.department || '-',
-        position: emp.job_title || '-',
-        status: emp.employment_status || 'Active',
-        hireDate: formatDate(emp.date_hired)
-      });
 
       if (onLeaveEmployeeIds.has(employeeId)) return;
 
@@ -442,13 +454,19 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<vo
           late: lateList.length,
           absent: absentList.length,
           onLeave: leaves.length,
-          hired: allEmployees.length
+          hired: hiredApplicants.length
         },
         lists: {
           present: presentList,
           absent: absentList,
           late: lateList,
-          hired: hiredList,
+          hired: hiredApplicants.map((a) => ({
+            id: `EMP-${a.id}`,
+            name: `${a.first_name} ${a.last_name}`,
+            department: a.department_name || '-',
+            position: a.job_title || '-',
+            date_hired: formatDate(a.hired_date || a.created_at)
+          })),
           onLeave: leaves.map((l) => ({
             id: l.employee_id,
             name: `${l.first_name} ${l.last_name}`,

@@ -217,7 +217,7 @@ export default function Login() {
         {/* The login form itself */}
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div>
-            <label className="text-sm text-gray-700 mb-1 block">Employee ID or Email</label>
+            <label className="text-sm text-gray-700 mb-1 block">Email or Employee ID</label>
             <div className="relative">
                 <IdCardLanyard className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={17} />
                 <input
@@ -225,7 +225,7 @@ export default function Login() {
                 autoComplete="username"
                 {...register("identifier")}
                 className={`w-full pl-10 pr-3 py-2 border-[2px] rounded-[15px] shadow-md bg-white focus:ring focus:ring-gray-100 focus:outline-none ${errors.identifier ? 'border-red-500' : 'border-gray-300'}`}
-                placeholder="Enter your ID or Email"
+                placeholder="Enter email or Employee ID (e.g. IT-001)"
                 disabled={loading}
                 />
             </div>

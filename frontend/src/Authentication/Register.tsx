@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { User, Mail, Lock, Briefcase, Building2, AlertCircle, Loader2 } from "lucide-react";
+import { User, Mail, Lock, Building2, AlertCircle, Loader2, IdCard } from "lucide-react";
 import AuthLayout from "@components/Custom/Auth/AuthLayout";
 import { register as registerApi } from "@/Service/Auth";
 import { fetchPublicDepartments } from "@/api/departmentApi";
@@ -21,11 +21,10 @@ export default function Register() {
   } = useForm<RegisterInput>({
     resolver: zodResolver(RegisterSchema) as any,
     defaultValues: {
+      employee_id: "",
       name: "",
       email: "",
       password: "",
-      confirmPassword: "",
-      role: "employee",
       department: ""
     }
   });
@@ -46,7 +45,7 @@ export default function Register() {
       setSuccessMessage(response.data.message || "Registration successful! Please check your email.");
       
       // Store for login pre-fill
-      localStorage.setItem("lastRegisteredUser", JSON.stringify({ email: variables.email, role: variables.role }));
+      localStorage.setItem("lastRegisteredUser", JSON.stringify({ email: variables.email }));
       
       // Redirect to verification page
       setTimeout(() => {
@@ -60,7 +59,7 @@ export default function Register() {
 
   const onSubmit = (data: RegisterInput) => {
     setSuccessMessage("");
-    registerMutation.mutate(data);
+    registerMutation.mutate({ ...data, role: 'employee' });
   };
 
   return (
@@ -85,6 +84,23 @@ export default function Register() {
         )}
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
+          {/* Employee ID */}
+          <div>
+            <label className="text-xs font-medium text-gray-700 mb-0.5 block">Employee ID</label>
+            <div className="relative group">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <IdCard className="h-5 w-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
+              </div>
+              <input
+                type="text"
+                {...register("employee_id")}
+                className={`block w-full pl-10 pr-3 py-2 border rounded-xl bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm ${errors.employee_id ? 'border-red-500' : 'border-gray-300'}`}
+                placeholder="e.g. IT-001"
+              />
+            </div>
+            {errors.employee_id && <p className="text-red-500 text-xs mt-1 ml-1">{errors.employee_id.message}</p>}
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
                 <label className="text-xs font-medium text-gray-700 mb-0.5 block">Full Name</label>
@@ -97,7 +113,7 @@ export default function Register() {
                     autoComplete="name"
                     {...register("name")}
                     className={`block w-full pl-10 pr-3 py-2 border rounded-xl bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm ${errors.name ? 'border-red-500' : 'border-gray-300'}`}
-                    placeholder="John Doe"
+                    placeholder="Juan Dela Cruz"
                 />
                 </div>
                 {errors.name && <p className="text-red-500 text-xs mt-1 ml-1">{errors.name.message}</p>}
@@ -114,7 +130,7 @@ export default function Register() {
                     autoComplete="email"
                     {...register("email")}
                     className={`block w-full pl-10 pr-3 py-2 border rounded-xl bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm ${errors.email ? 'border-red-500' : 'border-gray-300'}`}
-                    placeholder="john@example.com"
+                    placeholder="juan@example.com"
                 />
                 </div>
                 {errors.email && <p className="text-red-500 text-xs mt-1 ml-1">{errors.email.message}</p>}
@@ -122,25 +138,6 @@ export default function Register() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div>
-                <label className="text-xs font-medium text-gray-700 mb-0.5 block">Role</label>
-                <div className="relative group">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Briefcase className="h-5 w-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
-                </div>
-                <select
-                    {...register("role")}
-                    className={`block w-full pl-10 pr-3 py-2 border rounded-xl bg-gray-50 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all appearance-none text-sm ${errors.role ? 'border-red-500' : 'border-gray-300'}`}
-                >
-                    <option value="">Select Role</option>
-                    <option value="employee">Employee</option>
-                    <option value="admin">Admin</option>
-                    <option value="hr">HR</option>
-                </select>
-                </div>
-                {errors.role && <p className="text-red-500 text-xs mt-1 ml-1">{errors.role.message}</p>}
-            </div>
-
             <div>
                 <label className="text-xs font-medium text-gray-700 mb-0.5 block">Department</label>
                 <div className="relative group">
@@ -160,10 +157,8 @@ export default function Register() {
                 </div>
                 {errors.department && <p className="text-red-500 text-xs mt-1 ml-1">{errors.department.message}</p>}
             </div>
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-             <div>
+            <div>
                 <label className="text-xs font-medium text-gray-700 mb-0.5 block">Password</label>
                 <div className="relative group">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -174,28 +169,11 @@ export default function Register() {
                     autoComplete="new-password"
                     {...register("password")}
                     className={`block w-full pl-10 pr-3 py-2 border rounded-xl bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm ${errors.password ? 'border-red-500' : 'border-gray-300'}`}
-                    placeholder="Create a strong password"
+                    placeholder="••••••••"
                 />
                 </div>
                 {errors.password && <p className="text-red-500 text-xs mt-1 ml-1">{errors.password.message}</p>}
-             </div>
-             
-             <div>
-                <label className="text-xs font-medium text-gray-700 mb-0.5 block">Confirm Password</label>
-                <div className="relative group">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Lock className="h-5 w-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
-                </div>
-                <input
-                    type="password"
-                    autoComplete="new-password"
-                    {...register("confirmPassword")}
-                    className={`block w-full pl-10 pr-3 py-2 border rounded-xl bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm ${errors.confirmPassword ? 'border-red-500' : 'border-gray-300'}`}
-                    placeholder="Confirm your password"
-                />
-                </div>
-                {errors.confirmPassword && <p className="text-red-500 text-xs mt-1 ml-1">{errors.confirmPassword.message}</p>}
-             </div>
+            </div>
           </div>
 
           <button

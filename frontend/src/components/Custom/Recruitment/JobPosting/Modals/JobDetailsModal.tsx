@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, MapPin, Briefcase, DollarSign, Calendar, Clock, Edit, Trash2, SquarePen } from 'lucide-react';
+import { X, MapPin, DollarSign, Calendar, Clock, SquarePen } from 'lucide-react';
 import { Job } from '@/types';
 
 interface JobDetailsModalProps {

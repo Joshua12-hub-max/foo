@@ -1,20 +1,17 @@
 import { z } from 'zod';
 
 export const LoginSchema = z.object({
-  identifier: z.string().min(1, "Employee ID or Email is required"),
+  identifier: z.string().min(1, "Email or Employee ID is required"),
   password: z.string().min(1, "Password is required")
 });
 
 export const RegisterSchema = z.object({
+  employee_id: z.string().min(1, "Employee ID is required"),
   name: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Invalid email format"),
   department: z.string().min(1, "Department is required"),
   password: z.string().min(8, "Password must be at least 8 characters"),
-  confirmPassword: z.string().min(1, "Confirm Password is required"),
   role: z.enum(['admin', 'hr', 'employee']).default('employee')
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ["confirmPassword"],
 });
 
 export const VerifyOTPSchema = z.object({

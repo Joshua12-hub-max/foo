@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import logo from '../../assets/meycauayan-logo.png';
+import logo from '@/assets/meycauayan-logo.png';
 import { Menu, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -25,7 +25,7 @@ const PublicHeader = () => {
     { name: 'Home', path: '/careers', exact: true },
     { name: 'About', path: '/careers/about' },
     { name: 'Jobs', path: '/careers/jobs' },
-    { name: 'Contact', path: '/careers/contact' },
+    { name: 'Contact Us', path: '/careers/contact' },
   ];
 
   const checkActive = (link: typeof navLinks[0]) => {

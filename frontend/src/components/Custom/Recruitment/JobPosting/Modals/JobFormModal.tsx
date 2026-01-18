@@ -43,11 +43,11 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
         <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto">
           {/* Job Title */}
           <div>
-            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Job Title <span className="text-red-500">*</span></label>
+            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Job Title <span className="text-red-500"></span></label>
             <input 
               type="text" 
               required
-              placeholder="e.g. Software Engineer"
+              placeholder=""
               className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-400 focus:outline-none transition-all bg-gray-50"
               value={formData.title || ''}
               onChange={e => handleFormChange('title', e.target.value)}
@@ -57,22 +57,22 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
           {/* Department & Location */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Department <span className="text-red-500">*</span></label>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Department <span className="text-red-500"></span></label>
               <input 
                 type="text" 
                 required
-                placeholder="e.g. IT Department"
+                placeholder=""
                 className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-400 focus:outline-none transition-all bg-gray-50"
                 value={formData.department || ''}
                 onChange={e => handleFormChange('department', e.target.value)}
               />
             </div>
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Location <span className="text-red-500">*</span></label>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Location <span className="text-red-500"></span></label>
               <input 
                 type="text" 
                 required
-                placeholder="e.g. Main Office"
+                placeholder=""
                 className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-400 focus:outline-none transition-all bg-gray-50"
                 value={formData.location || ''}
                 onChange={e => handleFormChange('location', e.target.value)}
@@ -114,7 +114,7 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
               <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Salary Range</label>
               <input 
                 type="text" 
-                placeholder="e.g. ₱25,000 - ₱35,000"
+                placeholder=""
                 className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-400 focus:outline-none transition-all bg-gray-50"
                 value={formData.salary_range || ''}
                 onChange={e => handleFormChange('salary_range', e.target.value)}
@@ -125,7 +125,7 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
               <input 
                 type="email" 
                 required
-                placeholder="e.g. hr@company.com"
+                placeholder=""
                 className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-400 focus:outline-none transition-all bg-gray-50"
                 value={formData.application_email || ''}
                 onChange={e => handleFormChange('application_email', e.target.value)}
@@ -139,7 +139,7 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
             <textarea 
               required
               rows={4}
-              placeholder="Describe the role and responsibilities..."
+              placeholder=""
               className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-400 focus:outline-none transition-all resize-none bg-gray-50"
               value={formData.job_description || ''}
               onChange={e => handleFormChange('job_description', e.target.value)}
@@ -151,7 +151,7 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
             <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Requirements</label>
             <textarea 
               rows={3}
-              placeholder="List qualifications and requirements..."
+              placeholder=""
               className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-400 focus:outline-none transition-all resize-none bg-gray-50"
               value={formData.requirements || ''}
               onChange={e => handleFormChange('requirements', e.target.value)}

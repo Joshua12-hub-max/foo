@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import cookieParser from "cookie-parser";
 import helmet from 'helmet';
+import crypto from 'crypto';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import cron from 'node-cron';
@@ -25,6 +26,8 @@ import plantillaRoutes from './routes/plantillaRoutes.js';
 import recruitmentRoutes from './routes/recruitmentRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import emailTemplateRoutes from './routes/emailTemplateRoutes.js';
+import googleCalendarRoutes from './routes/googleCalendarRoutes.js';
+import zoomRoutes from './routes/zoomRoutes.js';
 
 dotenv.config();
 import { initBiometrics } from './services/biometricService.js';
@@ -54,10 +57,28 @@ cron.schedule('*/5 * * * *', async () => {
 console.log('Email application checker scheduled (every 5 minutes)');
 
 // Middleware
-app.use(helmet({
-  crossOriginResourcePolicy: { policy: "cross-origin" }, // Allow cross-origin image loading
-  crossOriginEmbedderPolicy: false // Disable to allow loading cross-origin images
-}));
+
+// Generate a cryptographic nonce for each request (for secure inline scripts)
+app.use((req, res, next) => {
+  res.locals.nonce = crypto.randomBytes(16).toString('base64');
+  next();
+});
+
+// Configure Helmet with CSP that trusts only nonce-tagged inline scripts
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+    crossOriginEmbedderPolicy: false,
+    crossOriginOpenerPolicy: { policy: "unsafe-none" },
+    contentSecurityPolicy: {
+      useDefaults: true,
+      directives: {
+        'script-src': ["'self'", (req, res) => `'nonce-${(res as express.Response).locals.nonce}'`],
+        'img-src': ["'self'", "https:", "data:"],
+      },
+    },
+  })
+);
 app.use(cors({
   origin: ["http://localhost:5173", "http://localhost:5174"],
   credentials: true
@@ -92,6 +113,8 @@ app.use('/api/plantilla', plantillaRoutes);
 app.use('/api/recruitment', recruitmentRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/email-templates', emailTemplateRoutes);
+app.use('/api/google-calendar', googleCalendarRoutes);
+app.use('/api/zoom', zoomRoutes);
 
 // Root route
 app.get("/", (req, res) => {

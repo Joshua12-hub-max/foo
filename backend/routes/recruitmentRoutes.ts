@@ -37,6 +37,12 @@ router.put('/applicants/:applicantId/assign-interviewer', verifyAdmin, recruitme
 router.post('/applicants/:applicantId/offer-letter', verifyAdmin, recruitmentController.generateOfferLetter);
 router.get('/applicant-stats', verifyAdmin, recruitmentController.getApplicantStats);
 
+// Meeting Link Generation
+router.post('/generate-meeting-link', verifyAdmin, recruitmentController.generateMeetingLink);
+
+// Interview Notes
+router.post('/applicants/:id/interview-notes', verifyAdmin, recruitmentController.saveInterviewNotes);
+
 
 
 export default router;

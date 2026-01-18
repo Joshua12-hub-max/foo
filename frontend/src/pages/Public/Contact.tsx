@@ -1,6 +1,5 @@
 import PublicLayout from '@components/Public/PublicLayout';
 import { Mail, Phone, MapPin, Send } from 'lucide-react';
-import { motion } from 'framer-motion';
 
 const Contact = () => {
   return (

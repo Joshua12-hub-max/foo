@@ -159,5 +159,24 @@ export const recruitmentApi = {
         } catch (error) {
             throw error;
         }
+    },
+
+    // Meeting Link Generation
+    generateMeetingLink: async (applicantId: number, date: string, duration?: number): Promise<AxiosResponse<{
+        success: boolean;
+        meetingLink?: string;
+        meetingId?: string;
+        message?: string;
+    }>> => {
+        try {
+            const response = await api.post('/recruitment/generate-meeting-link', {
+                applicantId,
+                date,
+                duration: duration || 60
+            });
+            return response;
+        } catch (error) {
+            throw error;
+        }
     }
 };

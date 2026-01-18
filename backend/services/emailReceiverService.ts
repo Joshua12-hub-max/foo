@@ -9,18 +9,12 @@ import type { RowDataPacket } from 'mysql2/promise';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-/**
- * Email check result
- */
 interface EmailCheckResult {
   success: boolean;
   message: string;
   processed: number;
 }
 
-/**
- * Applicant data for database insert
- */
 interface ApplicantData {
   job_id: number | null;
   first_name: string;

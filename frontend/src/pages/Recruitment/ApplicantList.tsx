@@ -4,16 +4,9 @@ import { useUIStore } from '@/stores';
 import { useToastStore } from '@/stores';
 import { useApplicantData, useApplicantFilters, useApplicantActions, Applicant } from '@applicant/Hooks';
 import { AssignInterviewerModal, ScheduleInterviewModal } from '@applicant/Modals';
-import { ApplicantTabs, ApplicantFilters, ApplicantTable } from '@applicant/Components';
+import { ApplicantTabs, ApplicantFilters, ApplicantTable, InterviewPanel } from '@applicant/Components';
 import Pagination from '@/components/CustomUI/Pagination';
-
-interface ScheduleData {
-  date: string;
-  time: string;
-  platform: string;
-  link: string;
-  notes: string;
-}
+import type { ScheduleInterviewFormData } from '@/schemas/recruitmentSchema';
 
 const ApplicantList = () => {
   const sidebarOpen = useUIStore((state) => state.sidebarOpen);
@@ -38,13 +31,9 @@ const ApplicantList = () => {
   const [selectedApplicant, setSelectedApplicant] = useState<Applicant | null>(null);
   const [selectedInterviewer, setSelectedInterviewer] = useState<string>('');
   
-  const [scheduleData, setScheduleData] = useState<ScheduleData>({
-    date: '',
-    time: '',
-    platform: 'Google Meet',
-    link: '',
-    notes: ''
-  });
+  // Interview State
+  const [showInterview, setShowInterview] = useState<boolean>(false);
+  const [interviewApplicant, setInterviewApplicant] = useState<Applicant | null>(null);
 
   const onAssignClick = (applicant: Applicant): void => {
     setSelectedApplicant(applicant);
@@ -56,15 +45,44 @@ const ApplicantList = () => {
     setShowScheduleModal(true);
   };
 
+  const onJoinInterview = (applicant: Applicant): void => {
+    if (applicant.interview_link) {
+      setInterviewApplicant(applicant);
+      setShowInterview(true);
+    } else {
+      showNotification('No interview link available. Please schedule an interview first.', 'error');
+    }
+  };
+
   const onConfirmAssign = (): void => {
     if (!selectedApplicant) return;
     handleAssignInterviewer(Number(selectedApplicant.id), Number(selectedInterviewer), () => setShowAssignModal(false));
   };
 
-  const onConfirmSchedule = (): void => {
+  const onConfirmSchedule = (data: ScheduleInterviewFormData): void => {
     if (!selectedApplicant) return;
-    handleScheduleInterview(Number(selectedApplicant.id), scheduleData, () => setShowScheduleModal(false));
+    handleScheduleInterview(Number(selectedApplicant.id), data, () => setShowScheduleModal(false));
   };
+
+  // Show interview panel if active
+  if (showInterview && interviewApplicant) {
+    return (
+      <InterviewPanel
+        roomName={interviewApplicant.interview_link?.split('/').pop() || 'interview'}
+        displayName="Interviewer"
+        applicantId={interviewApplicant.id}
+        applicantName={`${interviewApplicant.first_name} ${interviewApplicant.last_name}`}
+        applicantEmail={interviewApplicant.email}
+        jobTitle={interviewApplicant.job_title}
+        interviewLink={interviewApplicant.interview_link}
+        resumePath={interviewApplicant.resume_path}
+        onClose={() => {
+          setShowInterview(false);
+          setInterviewApplicant(null);
+        }}
+      />
+    );
+  }
 
   return (
     <div className={`min-h-screen flex flex-col bg-gradient-to-br from-neutral-100 to-stone-50 rounded-xl shadow-xl p-7 w-full overflow-hidden text-gray-800 transition-all duration-300 ${sidebarOpen ? 'max-w-[1400px] xl:max-w-[77vw]' : 'max-w-[1600px] xl:max-w-[88vw]'}`}>
@@ -94,6 +112,7 @@ const ApplicantList = () => {
         filteredApplicants={currentItems}
         onAssign={onAssignClick}
         onSchedule={onScheduleClick}
+        onJoinInterview={onJoinInterview}
       />
 
       <Pagination 
@@ -120,8 +139,6 @@ const ApplicantList = () => {
         onClose={() => setShowScheduleModal(false)}
         onConfirm={onConfirmSchedule}
         selectedApplicant={selectedApplicant}
-        scheduleData={scheduleData}
-        setScheduleData={setScheduleData}
       />
 
     </div>

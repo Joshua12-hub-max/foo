@@ -1,11 +1,12 @@
 import { z } from 'zod';
 
 export const LoginSchema = z.object({
-  identifier: z.string().min(1, "Employee ID or Email is required"),
+  identifier: z.string().min(1, "Email or Employee ID is required"),
   password: z.string().min(1, "Password is required")
 });
 
 export const RegisterSchema = z.object({
+  employee_id: z.string().min(1, "Employee ID is required").optional(),
   name: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Invalid email format"),
   department: z.string().min(1, "Department is required"),

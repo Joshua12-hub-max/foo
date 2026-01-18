@@ -85,6 +85,11 @@ interface ProfileUpdateRequest {
   tin_number?: string;
 }
 
+interface FingerprintRow extends RowDataPacket {
+  fingerprint_id: number;
+  employee_id: string;
+}
+
 // ============================================================================
 // Helper Functions
 // ============================================================================
@@ -170,8 +175,22 @@ export const googleLogin = async (req: Request, res: Response): Promise<void> =>
 
     const user = users[0];
 
-    // BIOMETRIC ENFORCEMENT REMOVED
-    console.log('Google Login proceeded - Biometric check skipped');
+    // BIOMETRIC ENFORCEMENT: Check if employee is enrolled
+    if (user.role !== 'admin') {
+      const [fingerprint] = await db.query<FingerprintRow[]>(
+        'SELECT fingerprint_id FROM fingerprints WHERE employee_id = ?',
+        [user.employee_id]
+      );
+
+      if (fingerprint.length === 0) {
+        res.status(403).json({
+          success: false,
+          message: 'Access Denied: You are not yet registered in the biometric system. Please contact your HR Administrator to complete your enrollment.',
+          code: 'BIOMETRIC_NOT_ENROLLED'
+        });
+        return;
+      }
+    }
 
     // Link Google ID if missing
     if (!user.google_id) {
@@ -214,20 +233,20 @@ export const googleLogin = async (req: Request, res: Response): Promise<void> =>
 export const register = async (req: Request, res: Response): Promise<void> => {
   try {
     const validatedData = RegisterSchema.parse(req.body);
-    const { name, email, department, password, role } = validatedData;
+    const { employee_id, name, email, department, password, role } = validatedData;
     // Determine role
     let assignedRole = 'employee';
     if (role && ['admin', 'hr', 'employee'].includes(role.toLowerCase())) {
       assignedRole = role.toLowerCase();
     }
 
-    // Auto-generate employeeId
-    const autoEmployeeId = `EMP-${Date.now().toString().slice(-6)}${Math.floor(Math.random() * 100)}`;
+    // Use provided employee_id or auto-generate
+    const employeeId = employee_id || `EMP-${Date.now().toString().slice(-6)}${Math.floor(Math.random() * 100)}`;
 
     // Check if user already exists
     const [existingUser] = await db.query<UserRow[]>(
       'SELECT * FROM authentication WHERE employee_id = ? OR email = ?',
-      [autoEmployeeId, email]
+      [employeeId, email]
     );
 
     if (existingUser.length > 0) {
@@ -253,11 +272,11 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     // Insert user into database
     await db.query(
       'INSERT INTO authentication (first_name, last_name, email, role, department, employee_id, password_hash, is_verified, verification_token) VALUES (?, ?, ?, ?, ?, ?, ?, FALSE, ?)',
-      [first_name, last_name, email, assignedRole, department, autoEmployeeId, hashedPassword, verificationOTP]
+      [first_name, last_name, email, assignedRole, department, employeeId, hashedPassword, verificationOTP]
     );
 
     // AUTO-ALLOCATION: Assign default leave credits
-    await allocateDefaultCredits(autoEmployeeId);
+    await allocateDefaultCredits(employeeId);
 
     // Send Verification Email
     try {
@@ -516,8 +535,23 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // BIOMETRIC ENFORCEMENT REMOVED
-    console.log('Login proceeded - Biometric check skipped for ' + user.email);
+    // BIOMETRIC ENFORCEMENT: Check if employee is enrolled
+    if (user.role !== 'admin') {
+      const [fingerprint] = await db.query<FingerprintRow[]>(
+        'SELECT fingerprint_id FROM fingerprints WHERE employee_id = ?',
+        [user.employee_id]
+      );
+
+      if (fingerprint.length === 0) {
+        res.status(403).json({
+          success: false,
+          message: 'Access Denied: You are not yet registered in the biometric system. Please contact your HR Administrator to complete your enrollment.',
+          code: 'BIOMETRIC_NOT_ENROLLED',
+          data: null
+        });
+        return;
+      }
+    }
 
     const isPasswordCorrect = await bcrypt.compare(password, user.password_hash);
 

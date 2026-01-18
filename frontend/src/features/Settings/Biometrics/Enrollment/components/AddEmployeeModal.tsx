@@ -9,22 +9,20 @@ interface AddEmployeeModalProps {
 }
 
 interface RegisterFormState {
+  employeeId: string;
   name: string;
-  email: string;
-  role: 'admin' | 'hr' | 'employee';
   department: string;
+  email: string;
   password: string;
-  confirmPassword: string;
 }
 
 const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({ isOpen, onClose, onSuccess }) => {
   const [form, setForm] = useState<RegisterFormState>({
+    employeeId: '',
     name: '',
-    email: '',
-    role: 'employee',
     department: '',
-    password: '',
-    confirmPassword: ''
+    email: '',
+    password: ''
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -42,10 +40,10 @@ const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({ isOpen, onClose, on
     setError('');
 
     try {
-      await register(form);
+      await register({ ...form, employee_id: form.employeeId, role: 'employee' });
       onSuccess();
       onClose();
-      setForm({ name: '', email: '', role: 'employee', department: '', password: '', confirmPassword: '' });
+      setForm({ employeeId: '', name: '', department: '', email: '', password: '' });
     } catch (err: any) {
       console.error(err);
       setError(err.response?.data?.message || "Failed to create employee.");
@@ -71,12 +69,32 @@ const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({ isOpen, onClose, on
         
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
+            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Employee ID</label>
+            <input 
+              type="text" name="employeeId" required 
+              value={form.employeeId} onChange={handleChange}
+              className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-100 rounded-xl text-gray-800 text-sm focus:outline-none focus:border-gray-300 transition-all"
+              placeholder="e.g. IT-001"
+            />
+          </div>
+
+          <div>
             <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Full Name</label>
             <input 
               type="text" name="name" required 
               value={form.name} onChange={handleChange}
-              className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-100 rounded-xl text-gray-800 text-sm focus:outline-none focus:border-gray-300 transition-all shadow-sm"
-              placeholder="e.g. John Doe"
+              className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-100 rounded-xl text-gray-800 text-sm focus:outline-none focus:border-gray-300 transition-all"
+              placeholder="e.g. Juan Dela Cruz"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Department</label>
+            <input 
+              type="text" name="department" required 
+              value={form.department} onChange={handleChange}
+              className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-100 rounded-xl text-gray-800 text-sm focus:outline-none focus:border-gray-300 transition-all"
+              placeholder="e.g. IT, HR, Accounting"
             />
           </div>
           
@@ -85,40 +103,17 @@ const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({ isOpen, onClose, on
             <input 
               type="email" name="email" required 
               value={form.email} onChange={handleChange}
-              className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-100 rounded-xl text-gray-800 text-sm focus:outline-none focus:border-gray-300 transition-all shadow-sm"
-              placeholder="john@company.com"
+              className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-100 rounded-xl text-gray-800 text-sm focus:outline-none focus:border-gray-300 transition-all"
+              placeholder="juan@municipality.gov.ph"
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Department</label>
-              <input 
-                type="text" name="department" required 
-                value={form.department} onChange={handleChange}
-                className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-100 rounded-xl text-gray-800 text-sm focus:outline-none focus:border-gray-300 transition-all shadow-sm"
-                placeholder="IT"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Confirm Password</label>
-              <input 
-                type="password" name="confirmPassword" required 
-                value={form.confirmPassword} onChange={handleChange}
-                className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-100 rounded-xl text-gray-800 text-sm focus:outline-none focus:border-gray-300 transition-all shadow-sm"
-                placeholder="••••••••"
-              />
-            </div>
-          </div>
-
           <div>
-            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
-              Temporary Password
-            </label>
+            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Password</label>
             <input 
               type="password" name="password" required 
               value={form.password} onChange={handleChange}
-              className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-100 rounded-xl text-gray-800 text-sm focus:outline-none focus:border-gray-300 transition-all shadow-sm"
+              className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-100 rounded-xl text-gray-800 text-sm focus:outline-none focus:border-gray-300 transition-all"
               placeholder="••••••••"
             />
           </div>
@@ -128,13 +123,13 @@ const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({ isOpen, onClose, on
           <div className="flex justify-end gap-3 pt-4">
             <button 
               type="button" onClick={onClose}
-              className="flex-1 px-4 py-3 bg-white border border-gray-200 text-gray-700 font-bold text-sm rounded-xl hover:bg-gray-50 transition-all shadow-sm"
+              className="flex-1 px-4 py-3 bg-white border border-gray-200 text-gray-700 font-bold text-sm rounded-xl hover:bg-gray-50 transition-all"
             >
               Cancel
             </button>
             <button 
               type="submit" disabled={loading}
-              className="flex-1 px-4 py-3 bg-gray-900 text-white font-bold text-sm rounded-xl hover:bg-gray-800 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 shadow-lg"
+              className="flex-1 px-4 py-3 bg-gray-900 text-white font-bold text-sm rounded-xl hover:bg-gray-800 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
             >
               {loading ? 'Creating...' : 'Create Employee'}
             </button>
