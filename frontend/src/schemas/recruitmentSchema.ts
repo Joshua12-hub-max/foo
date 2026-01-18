@@ -4,9 +4,7 @@ import { z } from 'zod';
 export const scheduleInterviewSchema = z.object({
   date: z.string().min(1, 'Date is required'),
   time: z.string().min(1, 'Time is required'),
-  platform: z.enum(['Jitsi Meet', 'Google Meet', 'Zoom', 'Other'], {
-    errorMap: () => ({ message: 'Please select a platform' })
-  }),
+  platform: z.enum(['Jitsi Meet', 'Google Meet', 'Zoom', 'Other']),
   link: z.string().url('Please enter a valid meeting URL'),
   notes: z.string().optional()
 });
@@ -17,7 +15,7 @@ export const generateMeetingLinkResponseSchema = z.object({
   meetingLink: z.string().optional(),
   meetingId: z.string().optional(),
   message: z.string().optional(),
-  errors: z.record(z.array(z.string())).optional()
+  errors: z.record(z.string(), z.array(z.string())).optional()
 });
 
 // Save Interview Notes Schema
