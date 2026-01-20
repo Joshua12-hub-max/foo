@@ -41,6 +41,7 @@ export const LEAVE_TABLE_HEADERS = [
   'Request ID',
   'Employee ID',
   'Leave Type',
+  'Payment',
   'From Date',
   'To Date',
   'Actions'

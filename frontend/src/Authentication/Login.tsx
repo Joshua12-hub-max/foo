@@ -225,7 +225,7 @@ export default function Login() {
                 autoComplete="username"
                 {...register("identifier")}
                 className={`w-full pl-10 pr-3 py-2 border-[2px] rounded-[15px] shadow-md bg-white focus:ring focus:ring-gray-100 focus:outline-none ${errors.identifier ? 'border-red-500' : 'border-gray-300'}`}
-                placeholder="Enter email or Employee ID (e.g. IT-001)"
+                placeholder=""
                 disabled={loading}
                 />
             </div>
@@ -241,7 +241,7 @@ export default function Login() {
                 autoComplete="current-password"
                 {...register("password")}
                 className={`w-full pl-10 pr-3 py-2 border-[2px] rounded-[15px] shadow-md bg-white focus:ring focus:ring-gray-100 focus:outline-none ${errors.password ? 'border-red-500' : 'border-gray-300'}`}
-                placeholder="Enter your password"
+                placeholder=""
                 disabled={loading}
                 />
             </div>

@@ -80,7 +80,8 @@ export const useAdminDTR = () => {
             };
         });
     },
-    initialData: [],
+    staleTime: 0,
+    refetchOnMount: true,
   });
 
   const error = queryError ? (queryError as Error).message : errorLocal;

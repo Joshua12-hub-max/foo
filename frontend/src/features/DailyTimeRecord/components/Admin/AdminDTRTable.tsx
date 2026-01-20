@@ -1,6 +1,6 @@
 import React from "react";
-import { Search, Edit } from "lucide-react";
-import { TABLE_HEADERS } from "../../Constants/adminDTR.constant";
+import { Edit } from "lucide-react";
+import { TABLE_COLUMNS, TableColumn } from "../../Constants/adminDTR.constant";
 import { DTRRecord, DTRFilters } from "../../Utils/adminDTRUtils";
 
 interface AdminDTRTableProps {
@@ -10,6 +10,37 @@ interface AdminDTRTableProps {
   filters: DTRFilters;
   onEdit: (item: DTRRecord) => void;
 }
+
+// Helper to get alignment class
+const getAlignClass = (align: TableColumn['align']): string => {
+  switch (align) {
+    case 'center': return 'text-center';
+    case 'right': return 'text-right';
+    default: return 'text-left';
+  }
+};
+
+// Type-safe cell renderer
+const renderCell = (
+  item: DTRRecord, 
+  column: TableColumn, 
+  getStatusBadge: (status: string) => string
+): React.ReactNode => {
+  const value = item[column.key];
+  
+  // Special rendering for status column
+  if (column.key === 'status') {
+    return (
+      <span 
+        className={`${getStatusBadge(String(value))} px-3 py-1 text-sm font-medium inline-block rounded-full`}
+      >
+        {String(value)}
+      </span>
+    );
+  }
+  
+  return String(value ?? '-');
+};
 
 export const AdminDTRTable: React.FC<AdminDTRTableProps> = ({ 
   currentItems,  
@@ -26,37 +57,32 @@ export const AdminDTRTable: React.FC<AdminDTRTableProps> = ({
         <table className="w-full min-w-[1200px]">
           <thead className="bg-gray-200 shadow-md text-gray-700">
             <tr>
-              {TABLE_HEADERS.map((header) => (
-                <th key={header} className="px-6 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap">
-                  {header}
+              {TABLE_COLUMNS.map((column) => (
+                <th 
+                  key={column.key} 
+                  className={`px-6 py-4 ${getAlignClass(column.align)} text-sm font-bold tracking-wide whitespace-nowrap`}
+                >
+                  {column.header}
                 </th>
               ))}
-              <th className="px-6 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap">
+              <th className="px-6 py-4 text-center text-sm font-bold tracking-wide whitespace-nowrap">
                 Actions
               </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {currentItems.length ? (
+            {currentItems.length > 0 ? (
               currentItems.map((item) => (
                 <tr key={item.id} className="hover:bg-[#F8F9FA] hover:shadow-xl transition-colors">
-                  <td className="px-6 py-4">
-                    <span 
-                      className={`${getStatusBadge(item.status)} px-3 py-1 text-sm font-medium inline-block`} 
-                      style={{borderRadius: '20px'}}
+                  {TABLE_COLUMNS.map((column) => (
+                    <td 
+                      key={column.key} 
+                      className={`px-6 py-4 text-sm text-gray-800 whitespace-nowrap ${getAlignClass(column.align)}`}
                     >
-                      {item.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-800">{item.employeeId}</td>
-                  <td className="px-6 py-4 text-sm text-gray-800">{item.name}</td>
-                  <td className="px-6 py-4 text-sm text-gray-800">{item.department}</td>
-                  <td className="px-6 py-4 text-sm text-gray-800">{item.date}</td>
-                  <td className="px-6 py-4 text-sm text-gray-800">{item.timeIn}</td>
-                  <td className="px-6 py-4 text-sm text-gray-800">{item.timeOut}</td>
-                  <td className="px-6 py-4 text-sm text-gray-800">{item.hoursWorked}</td>
-                  <td className="px-6 py-4 text-sm text-gray-800">{item.remarks}</td>
-                  <td className="px-6 py-4 text-sm text-gray-800">
+                      {renderCell(item, column, getStatusBadge)}
+                    </td>
+                  ))}
+                  <td className="px-6 py-4 text-sm text-gray-800 text-center whitespace-nowrap">
                     <button
                       onClick={() => onEdit(item)}
                       className="p-2 text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
@@ -69,7 +95,7 @@ export const AdminDTRTable: React.FC<AdminDTRTableProps> = ({
               ))
             ) : (
               <tr>
-                <td colSpan={TABLE_HEADERS.length} className="px-6 py-12 text-center">
+                <td colSpan={TABLE_COLUMNS.length + 1} className="px-6 py-12 text-center">
                   <div className="flex flex-col items-center justify-center text-gray-500">
                     <p className="text-lg font-medium">No records found</p>
                     <p className="text-sm mt-1">
@@ -87,3 +113,4 @@ export const AdminDTRTable: React.FC<AdminDTRTableProps> = ({
     </div>
   );
 };
+

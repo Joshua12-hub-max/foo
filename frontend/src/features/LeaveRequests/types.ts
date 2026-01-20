@@ -6,6 +6,8 @@ export interface LeaveCredit {
   department: string;
   credit_type: string;
   balance: number;
+  days_used_with_pay: number;
+  days_used_without_pay: number;
 }
 
 export interface AdminLeaveRequest {

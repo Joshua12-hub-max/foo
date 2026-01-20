@@ -1,16 +1,26 @@
 export const ITEMS_PER_PAGE = 10;
 
-export const TABLE_HEADERS = [
-  'Status',
-  'Employee ID',
-  'Employee Name',
-  'Department',
-  'Date',
-  'Time In',
-  'Time Out',
-  'Hours Worked',
-  'Remarks'
-];
+// Type-safe column configuration for DTR table
+export interface TableColumn {
+  header: string;
+  key: 'status' | 'employeeId' | 'name' | 'department' | 'date' | 'timeIn' | 'timeOut' | 'hoursWorked' | 'remarks';
+  align?: 'left' | 'center' | 'right';
+}
+
+export const TABLE_COLUMNS: readonly TableColumn[] = [
+  { header: 'Status', key: 'status', align: 'left' },
+  { header: 'Employee ID', key: 'employeeId', align: 'left' },
+  { header: 'Employee Name', key: 'name', align: 'left' },
+  { header: 'Department', key: 'department', align: 'left' },
+  { header: 'Date', key: 'date', align: 'center' },
+  { header: 'Time In', key: 'timeIn', align: 'center' },
+  { header: 'Time Out', key: 'timeOut', align: 'center' },
+  { header: 'Hours Worked', key: 'hoursWorked', align: 'center' },
+  { header: 'Remarks', key: 'remarks', align: 'left' }
+] as const;
+
+// Derived headers for backward compatibility
+export const TABLE_HEADERS = TABLE_COLUMNS.map(col => col.header);
 
 export const EXPORT_HEADERS = TABLE_HEADERS;
 

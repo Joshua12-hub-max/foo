@@ -95,7 +95,7 @@ export default function Register() {
                 type="text"
                 {...register("employee_id")}
                 className={`block w-full pl-10 pr-3 py-2 border rounded-xl bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm ${errors.employee_id ? 'border-red-500' : 'border-gray-300'}`}
-                placeholder="e.g. IT-001"
+                placeholder=""
               />
             </div>
             {errors.employee_id && <p className="text-red-500 text-xs mt-1 ml-1">{errors.employee_id.message}</p>}
@@ -113,7 +113,7 @@ export default function Register() {
                     autoComplete="name"
                     {...register("name")}
                     className={`block w-full pl-10 pr-3 py-2 border rounded-xl bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm ${errors.name ? 'border-red-500' : 'border-gray-300'}`}
-                    placeholder="Juan Dela Cruz"
+                    placeholder=""
                 />
                 </div>
                 {errors.name && <p className="text-red-500 text-xs mt-1 ml-1">{errors.name.message}</p>}
@@ -130,7 +130,7 @@ export default function Register() {
                     autoComplete="email"
                     {...register("email")}
                     className={`block w-full pl-10 pr-3 py-2 border rounded-xl bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm ${errors.email ? 'border-red-500' : 'border-gray-300'}`}
-                    placeholder="juan@example.com"
+                    placeholder=""
                 />
                 </div>
                 {errors.email && <p className="text-red-500 text-xs mt-1 ml-1">{errors.email.message}</p>}
@@ -169,7 +169,7 @@ export default function Register() {
                     autoComplete="new-password"
                     {...register("password")}
                     className={`block w-full pl-10 pr-3 py-2 border rounded-xl bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm ${errors.password ? 'border-red-500' : 'border-gray-300'}`}
-                    placeholder="••••••••"
+                    placeholder=""
                 />
                 </div>
                 {errors.password && <p className="text-red-500 text-xs mt-1 ml-1">{errors.password.message}</p>}

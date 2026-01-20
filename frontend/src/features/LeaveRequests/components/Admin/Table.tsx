@@ -33,10 +33,10 @@ const Table: React.FC<TableProps> = ({ data, onOpenApprove, onOpenReject, onOpen
   return (
     <div className="flex-1 overflow-hidden rounded-xl bg-[#F8F9FA] p-1">
       <div className="overflow-x-auto bg-[#F8F9FA] rounded-lg">
-        <table className="w-full min-w-[1400px]">
+        <table className="w-full min-w-[1500px]">
           <thead className="bg-gray-200 shadow-md text-gray-700">
             <tr>
-              {['Status', 'Department', 'Employee ID', 'Employee Name', 'Leave Type', 'From Date', 'To Date', 'Credits', 'Actions'].map((header) => (
+              {['Status', 'Department', 'Employee ID', 'Employee Name', 'Leave Type', 'Payment', 'From Date', 'To Date', 'Credits', 'Actions'].map((header) => (
                 <th key={header} className="px-6 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap">
                   {header}
                 </th>
@@ -55,12 +55,23 @@ const Table: React.FC<TableProps> = ({ data, onOpenApprove, onOpenReject, onOpen
                       {item.status}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-800">{item.department || 'N/A'}</td>
-                  <td className="px-6 py-4 text-sm text-gray-800">{item.employee_id || 'N/A'}</td>
-                  <td className="px-6 py-4 text-sm text-gray-800">{item.name || item.employee_id || 'Unknown'}</td>
-                  <td className="px-6 py-4 text-sm text-gray-800">{item.leaveType || 'N/A'}</td>
-                  <td className="px-6 py-4 text-sm text-gray-800">{new Date(item.fromDate).toLocaleDateString()}</td>
-                  <td className="px-6 py-4 text-sm text-gray-800">{new Date(item.toDate).toLocaleDateString()}</td>
+                  <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">{item.department || 'N/A'}</td>
+                  <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">{item.employee_id || 'N/A'}</td>
+                  <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">{item.name || item.employee_id || 'Unknown'}</td>
+                  <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">{item.leaveType || 'N/A'}</td>
+                  <td className="px-6 py-4">
+                    <span
+                      className={`px-2.5 py-1 text-xs font-semibold rounded-full whitespace-nowrap ${
+                        item.with_pay 
+                          ? 'bg-green-100 text-green-700 border border-green-200' 
+                          : 'bg-gray-100 text-gray-600 border border-gray-200'
+                      }`}
+                    >
+                      {item.with_pay ? 'With Pay' : 'Without Pay'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">{new Date(item.fromDate).toLocaleDateString()}</td>
+                  <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">{new Date(item.toDate).toLocaleDateString()}</td>
                   <td className="px-6 py-4">
                     <span className={`font-semibold ${
                       (item.current_balance || 0) > 0 ? 'text-teal-600' : 'text-gray-400'
@@ -102,7 +113,7 @@ const Table: React.FC<TableProps> = ({ data, onOpenApprove, onOpenReject, onOpen
               ))
             ) : (
               <tr>
-                <td colSpan={9} className="px-6 py-12 text-center text-gray-500">
+                <td colSpan={10} className="px-6 py-12 text-center text-gray-500">
                   No records found
                 </td>
               </tr>

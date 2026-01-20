@@ -51,14 +51,25 @@ export const Table: React.FC<TableProps> = ({ data, searchQuery, filters }) => {
                       {item.status}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-800">{item.department}</td>
-                  <td className="px-6 py-4 text-sm text-gray-800">{item.id}</td>
-                  <td className="px-6 py-4 text-sm text-gray-800">{item.employee_id}</td>
-                  <td className="px-6 py-4 text-sm text-gray-800">{item.leaveType}</td>
-                  <td className="px-6 py-4 text-sm text-gray-800">
+                  <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">{item.department}</td>
+                  <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">{item.id}</td>
+                  <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">{item.employee_id}</td>
+                  <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">{item.leaveType}</td>
+                  <td className="px-6 py-4">
+                    <span
+                      className={`px-2.5 py-1 text-xs font-semibold rounded-full whitespace-nowrap ${
+                        item.with_pay 
+                          ? 'bg-green-100 text-green-700 border border-green-200' 
+                          : 'bg-gray-100 text-gray-600 border border-gray-200'
+                      }`}
+                    >
+                      {item.with_pay ? 'With Pay' : 'Without Pay'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">
                     {new Date(item.fromDate).toLocaleDateString()}
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-800">
+                  <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">
                     {new Date(item.toDate).toLocaleDateString()}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-800">

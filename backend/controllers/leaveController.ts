@@ -736,7 +736,7 @@ export const getAllEmployeeCredits = async (req: Request, res: Response): Promis
     const offset = (page - 1) * limit;
 
     let whereClause = 'WHERE 1=1';
-    const queryParams: any[] = [];
+    const queryParams: (string | number)[] = [];
 
     if (search) {
       whereClause += `
@@ -761,15 +761,29 @@ export const getAllEmployeeCredits = async (req: Request, res: Response): Promis
     const totalItems = countResult[0].total;
     const totalPages = Math.ceil(totalItems / limit);
 
-    // Fetch Paginated Data
-    const [credits] = await db.query<LeaveCreditRow[]>(`
+    // Fetch Paginated Data with Leave Usage Stats
+    const [credits] = await db.query<RowDataPacket[]>(`
       SELECT 
         lc.*, 
         COALESCE(a.first_name, '') as first_name, 
         COALESCE(a.last_name, '') as last_name, 
-        COALESCE(a.department, 'N/A') as department 
+        COALESCE(a.department, 'N/A') as department,
+        COALESCE(usage_stats.days_used_with_pay, 0) as days_used_with_pay,
+        COALESCE(usage_stats.days_used_without_pay, 0) as days_used_without_pay
       FROM leave_credits lc
       LEFT JOIN authentication a ON lc.employee_id = a.employee_id
+      LEFT JOIN (
+        SELECT 
+          lr.employee_id,
+          lr.leave_type,
+          SUM(CASE WHEN lr.with_pay = 1 AND lr.status = 'Approved' 
+            THEN DATEDIFF(lr.end_date, lr.start_date) + 1 ELSE 0 END) as days_used_with_pay,
+          SUM(CASE WHEN lr.with_pay = 0 AND lr.status = 'Approved' 
+            THEN DATEDIFF(lr.end_date, lr.start_date) + 1 ELSE 0 END) as days_used_without_pay
+        FROM leave_requests lr
+        WHERE lr.status = 'Approved'
+        GROUP BY lr.employee_id, lr.leave_type
+      ) usage_stats ON lc.employee_id = usage_stats.employee_id AND lc.credit_type = usage_stats.leave_type
       ${whereClause}
       ORDER BY a.last_name, a.first_name, lc.credit_type
       LIMIT ? OFFSET ?

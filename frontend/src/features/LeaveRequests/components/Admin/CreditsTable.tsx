@@ -67,13 +67,14 @@ const CreditsTable = ({
               <th className="px-6 py-4">Department</th>
               <th className="px-6 py-4">Credit Type</th>
               <th className="px-6 py-4">Balance</th>
+              <th className="px-6 py-4">Usage</th>
               <th className="px-6 py-4 text-right">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
             {loading ? (
               <tr>
-                <td colSpan={5} className="px-6 py-12 text-center text-gray-400">
+                <td colSpan={6} className="px-6 py-12 text-center text-gray-400">
                   <div className="flex items-center justify-center gap-2">
                     <Loader2 className="w-5 h-5 animate-spin text-gray-500" />
                     Loading credits...
@@ -82,7 +83,7 @@ const CreditsTable = ({
               </tr>
             ) : credits.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-6 py-12 text-center text-gray-400">
+                <td colSpan={6} className="px-6 py-12 text-center text-gray-400">
                   <div className="flex flex-col items-center gap-2">
                     No credit records found
                   </div>
@@ -101,9 +102,9 @@ const CreditsTable = ({
                     <div className="text-xs text-gray-500">{credit.employee_id || 'N/A'}</div>
                   </div>
                 </td>
-                <td className="px-6 py-4 text-gray-600">{credit.department || '-'}</td>
+                <td className="px-6 py-4 text-gray-600 whitespace-nowrap">{credit.department || '-'}</td>
                 <td className="px-6 py-4">
-                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium ${
+                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium whitespace-nowrap ${
                     credit.credit_type === 'Vacation Leave' ? 'bg-blue-50 text-blue-700 border border-blue-100' :
                     credit.credit_type === 'Sick Leave' ? 'bg-amber-50 text-amber-700 border border-amber-100' :
                     'bg-gray-50 text-gray-700 border border-gray-100'
@@ -115,6 +116,28 @@ const CreditsTable = ({
                   <span className={`font-semibold ${credit.balance > 0 ? 'text-teal-600' : 'text-red-500'}`}>
                     {credit.balance}
                   </span>
+                </td>
+                <td className="px-6 py-4">
+                  <div className="flex flex-col gap-1">
+                    {(credit.days_used_with_pay > 0 || credit.days_used_without_pay > 0) ? (
+                      <>
+                        {credit.days_used_with_pay > 0 && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded bg-green-50 text-green-700 border border-green-200 whitespace-nowrap">
+                            <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                            {credit.days_used_with_pay}d Paid
+                          </span>
+                        )}
+                        {credit.days_used_without_pay > 0 && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded bg-gray-50 text-gray-600 border border-gray-200 whitespace-nowrap">
+                            <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />
+                            {credit.days_used_without_pay}d Unpaid
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      <span className="text-xs text-gray-400">No usage</span>
+                    )}
+                  </div>
                 </td>
                 <td className="px-6 py-4 text-right">
                   <div className="flex items-center justify-end gap-2">
