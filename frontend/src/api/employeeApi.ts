@@ -16,6 +16,7 @@ interface EmployeeResponse {
   educationId?: string | number;
   contacts?: any[];
   contactId?: string | number;
+  fieldId?: string | number;
   departments?: string[];
   jobTitles?: string[];
   isEnrolled?: boolean;
@@ -193,6 +194,38 @@ export const deleteEmployeeContact = async (employeeId: string | number, contact
   }
 };
 
+
+// ==========================================
+// EMPLOYEE CUSTOM FIELDS
+// ==========================================
+
+export const addEmployeeCustomField = async (employeeId: string | number, fieldData: any): Promise<EmployeeResponse> => {
+  try {
+    const response = await axios.post(`/employees/${employeeId}/custom-fields`, fieldData);
+    return { success: true, message: 'Custom field added', fieldId: response.data.fieldId };
+  } catch (error: any) {
+    return { success: false, message: error.response?.data?.message || 'Failed to add custom field' };
+  }
+};
+
+export const updateEmployeeCustomField = async (employeeId: string | number, fieldId: string | number, fieldData: any): Promise<EmployeeResponse> => {
+  try {
+    const response = await axios.put(`/employees/${employeeId}/custom-fields/${fieldId}`, fieldData);
+    return { success: true, message: 'Custom field updated' };
+  } catch (error: any) {
+    return { success: false, message: error.response?.data?.message || 'Failed to update custom field' };
+  }
+};
+
+export const deleteEmployeeCustomField = async (employeeId: string | number, fieldId: string | number): Promise<EmployeeResponse> => {
+  try {
+    await axios.delete(`/employees/${employeeId}/custom-fields/${fieldId}`);
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, message: error.response?.data?.message || 'Failed to delete custom field' };
+  }
+};
+
 // ==========================================
 // EMPLOYEE DOCUMENTS
 // ==========================================
@@ -255,6 +288,9 @@ export const employeeApi = {
     fetchEmployeeContacts,
     addEmployeeContact,
     deleteEmployeeContact,
+    addEmployeeCustomField,
+    updateEmployeeCustomField,
+    deleteEmployeeCustomField,
     fetchEmployeeOptions,
     startFingerprintEnrollment,
     checkEnrollmentStatus

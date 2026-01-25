@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
-import EmployeeProfileView from '@features/EmployeeManagement/Employee/Portal/Profile/EmployeeProfileView';
+import EditableProfileView from '@features/EmployeeManagement/Employee/Portal/Profile/EditableProfileView';
 import { useEmployeeProfile } from '@features/EmployeeManagement/Employee/Portal/Profile/useEmployeeProfile';
 
 interface MyProfilePageProps {
@@ -24,7 +24,7 @@ const MyProfilePage: React.FC<MyProfilePageProps> = ({ hideHeader = false }) => 
         </button>
       )}
 
-      <EmployeeProfileView 
+      <EditableProfileView 
         profile={profile as any}
         loading={loading}
         error={error || undefined}

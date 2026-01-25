@@ -64,7 +64,7 @@ const LeaveRequest = lazy(() => import("./pages/TimekeepingEmployee/EmployeeLeav
 const EmployeeDepartment = lazy(() => import("./pages/EmployeeManagementEmployee/MyDepartmentPage"));
 const EmployeeMyProfile = lazy(() => import("./pages/EmployeeManagementEmployee/MyProfilePage"));
 const MyProfile = lazy(() => import("./pages/Settings/MyProfile"));
-const EmployeeOrganizationalHub = lazy(() => import("./pages/EmployeeManagementEmployee/OrganizationalHubPage"));
+
 
 const EmployeeMyMemos = lazy(() => import("./pages/EmployeeManagementEmployee/MyMemosPage"));
 const EmployeeReviews = lazy(() => import("./pages/PerformanceManagement/EmployeeReviews"));
@@ -94,7 +94,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
     return <Navigate to="/login" replace />;
   }
 
-  const userRole = user.role.toLowerCase();
+  const userRole = user?.role?.toLowerCase() || '';
   const normalizedAllowedRoles = allowedRoles ? allowedRoles.map(r => r.toLowerCase()) : [];
 
   if (allowedRoles && !normalizedAllowedRoles.includes(userRole)) {
@@ -118,7 +118,7 @@ const PublicRoute = ({ children }) => {
   if (loading) return <PageLoader />;
 
   if (user) {
-    const userRole = user.role.toLowerCase();
+    const userRole = user?.role?.toLowerCase() || '';
     if (userRole === "employee") return <Navigate to="/employee-dashboard" replace />;
     if (userRole === "admin" || userRole === "hr") return <Navigate to="/admin-dashboard" replace />;
   }
@@ -488,14 +488,7 @@ export default function App() {
           }
         >
           {/* Nested employee routes */}
-          <Route
-            path="management"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <EmployeeOrganizationalHub />
-              </Suspense>
-            }
-          />
+
           <Route
             path="calendar"
             element={

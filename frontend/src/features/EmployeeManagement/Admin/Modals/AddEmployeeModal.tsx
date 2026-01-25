@@ -319,17 +319,6 @@ const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm text-gray-600 mb-1 block flex items-center gap-1">
-                    <CreditCard size={14} className="text-gray-400" /> SSS Number
-                  </label>
-                  <input 
-                    type="text" 
-                    {...register('sss_number')}
-                    className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm" 
-                    placeholder="XX-XXXXXXX-X"
-                  />
-                </div>
-                <div>
-                  <label className="text-sm text-gray-600 mb-1 block flex items-center gap-1">
                     <CreditCard size={14} className="text-gray-400" /> GSIS Number
                   </label>
                   <input 
@@ -339,9 +328,6 @@ const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
                     placeholder="GSIS ID"
                   />
                 </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm text-gray-600 mb-1 block">PhilHealth Number</label>
                   <input 
@@ -351,6 +337,9 @@ const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
                     placeholder="XX-XXXXXXXXX-X"
                   />
                 </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm text-gray-600 mb-1 block">Pag-IBIG Number</label>
                   <input 
@@ -360,16 +349,15 @@ const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
                     placeholder="XXXX-XXXX-XXXX"
                   />
                 </div>
-              </div>
-
-              <div>
-                <label className="text-sm text-gray-600 mb-1 block">TIN (Tax Identification Number)</label>
-                <input 
-                  type="text" 
-                  {...register('tin_number')}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm" 
-                  placeholder="XXX-XXX-XXX-XXX"
-                />
+                <div>
+                  <label className="text-sm text-gray-600 mb-1 block">TIN</label>
+                  <input 
+                    type="text" 
+                    {...register('tin_number')}
+                    className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm" 
+                    placeholder="XXX-XXX-XXX-XXX"
+                  />
+                </div>
               </div>
             </>
           )}

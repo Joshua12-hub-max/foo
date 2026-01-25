@@ -141,7 +141,6 @@ const LeaveRequest = () => {
         onDismiss={() => setSuccessMessage(null)} 
       />
 
-
       {/* Filters */}
       <Filters 
         filters={filters}
@@ -153,7 +152,7 @@ const LeaveRequest = () => {
         hasCredits={credits.length > 0 && credits.some((c: any) => parseFloat(c.balance) > 0)}
       />
 
-      {/* Search and Credits Row */}
+      {/* Search, Credits, and Create Button Row */}
       <div className="flex items-center justify-between gap-4 mb-6">
         {/* Search Bar */}
         <div className="relative flex-1 max-w-md">
@@ -165,19 +164,34 @@ const LeaveRequest = () => {
            />
         </div>
 
-        {/* Credit Cards */}
-        <div className="flex items-center gap-2">
-          {credits.map((credit: any, idx: number) => (
-            <div 
-              key={idx} 
-              className="bg-white px-3 py-2 rounded-lg border border-gray-300 shadow-sm flex items-center gap-2"
-            >
-              <span className="text-xs font-medium text-gray-500">{credit.credit_type}:</span>
-              <span className={`text-sm font-bold ${parseFloat(credit.balance) > 0 ? 'text-gray-800' : 'text-gray-400'}`}>
-                {parseFloat(credit.balance).toFixed(1)}
-              </span>
+        {/* Right Side: Credits + Create Button */}
+        <div className="flex items-center gap-4">
+            {/* Credit Cards */}
+            <div className="flex items-center gap-2">
+              {credits.map((credit: any, idx: number) => (
+                <div 
+                  key={idx} 
+                  className="bg-white px-3 py-2 rounded-lg border border-gray-300 shadow-sm flex items-center gap-2"
+                >
+                  <span className="text-xs font-medium text-gray-500">{credit.credit_type}:</span>
+                  <span className={`text-sm font-bold ${parseFloat(credit.balance) > 0 ? 'text-gray-800' : 'text-gray-400'}`}>
+                    {parseFloat(credit.balance).toFixed(1)}
+                  </span>
+                </div>
+              ))}
             </div>
-          ))}
+
+            {/* Create New Request Button */}
+            <button
+              onClick={() => setIsSubmitModalOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-lg font-medium shadow-md hover:bg-gray-800 transition-all active:scale-95 whitespace-nowrap text-sm"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M5 12h14"></path>
+                <path d="M12 5v14"></path>
+              </svg>
+              New Request
+            </button>
         </div>
       </div>
 

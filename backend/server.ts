@@ -29,6 +29,13 @@ import emailTemplateRoutes from './routes/emailTemplateRoutes.js';
 import googleCalendarRoutes from './routes/googleCalendarRoutes.js';
 import zoomRoutes from './routes/zoomRoutes.js';
 
+// Plantilla Compliance Routes
+import qualificationStandardsRoutes from './routes/qualificationStandardsRoutes.js';
+import nepotismRoutes from './routes/nepotismRoutes.js';
+import stepIncrementRoutes from './routes/stepIncrementRoutes.js';
+import budgetAllocationRoutes from './routes/budgetAllocationRoutes.js';
+
+
 dotenv.config();
 import { initBiometrics } from './services/biometricService.js';
 import { checkForNewApplications } from './services/emailReceiverService.js';
@@ -115,6 +122,13 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/email-templates', emailTemplateRoutes);
 app.use('/api/google-calendar', googleCalendarRoutes);
 app.use('/api/zoom', zoomRoutes);
+
+// Plantilla Compliance APIs
+app.use('/api/qualification-standards', qualificationStandardsRoutes);
+app.use('/api/nepotism', nepotismRoutes);
+app.use('/api/step-increment', stepIncrementRoutes);
+app.use('/api/budget-allocation', budgetAllocationRoutes);
+
 
 // Root route
 app.get("/", (req, res) => {

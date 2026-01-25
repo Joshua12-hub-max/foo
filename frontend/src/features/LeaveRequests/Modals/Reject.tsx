@@ -28,14 +28,14 @@ const RejectModal: React.FC<RejectModalProps> = ({
   const { register, handleSubmit, reset, formState: { errors } } = useForm<RejectionSchema>({
     resolver: zodResolver(rejectionSchema),
     defaultValues: {
-      remarks: ''
+      reason: ''
     }
   });
 
   const rejectMutation = useMutation({
     mutationFn: async (data: RejectionSchema) => {
         if (!request) return;
-        await (leaveApi as any).rejectLeave(request.id, data.remarks);
+        await leaveApi.rejectLeave(Number(request.id), { reason: data.reason });
     },
     onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ['admin-leaves'] });
@@ -124,16 +124,16 @@ const RejectModal: React.FC<RejectModalProps> = ({
             <div>
               <label className="block text-sm font-semibold text-gray-900 mb-2">Rejection Reason <span className="text-red-500">*</span></label>
               <textarea
-                {...register('remarks')}
+                {...register('reason')}
                 placeholder="Provide reason for rejection..."
-                className={`w-full border rounded-xl px-4 py-3 text-sm focus:ring-4 focus:outline-none resize-none transition-all placeholder:text-gray-400 ${errors.remarks ? 'border-red-500 focus:ring-red-50 focus:border-red-500' : 'border-gray-200 focus:ring-red-50 focus:border-red-500'}`}
+                className={`w-full border rounded-xl px-4 py-3 text-sm focus:ring-4 focus:outline-none resize-none transition-all placeholder:text-gray-400 ${errors.reason ? 'border-red-500 focus:ring-red-50 focus:border-red-500' : 'border-gray-200 focus:ring-red-50 focus:border-red-500'}`}
                 aria-label="Description"
                 rows={3}
               />
-              {errors.remarks && (
+              {errors.reason && (
                 <div className="flex items-center gap-1.5 mt-2 text-red-500 text-xs">
                     <AlertCircle className="w-3.5 h-3.5" />
-                    <p>{errors.remarks.message}</p>
+                    <p>{errors.reason.message}</p>
                 </div>
               )}
             </div>

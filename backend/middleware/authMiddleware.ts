@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import type { JwtPayload, AuthenticatedRequest, UserRole } from '../types/index.js';
+import type { JwtPayload, AuthenticatedRequest, UserRole, UserRow } from '../types/index.js';
+import db from '../db/connection.js';
 
 // ============================================================================
 // Type Definitions
@@ -20,7 +21,7 @@ type MiddlewareFunction = (
  */
 interface AuthErrorResponse {
   message: string;
-  code: 'NO_TOKEN' | 'INVALID_TOKEN' | 'EXPIRED_TOKEN' | 'SERVER_ERROR' | 'FORBIDDEN';
+  code: 'NO_TOKEN' | 'INVALID_TOKEN' | 'EXPIRED_TOKEN' | 'SERVER_ERROR' | 'FORBIDDEN' | 'ACCOUNT_SUSPENDED';
 }
 
 // ============================================================================
@@ -84,7 +85,7 @@ export const verifyToken: MiddlewareFunction = (
   req: Request,
   res: Response,
   next: NextFunction
-): void => {
+) => {
   try {
     const token = req.cookies?.accessToken as string | undefined;
 
@@ -152,7 +153,7 @@ export const verifyAdmin: MiddlewareFunction = (
   req: Request,
   res: Response,
   next: NextFunction
-): void => {
+) => {
   try {
     verifyToken(req, res, () => {
       try {
@@ -195,6 +196,49 @@ export const verifyAdmin: MiddlewareFunction = (
 };
 
 /**
+ * Verify if user is Admin, HR, or the owner of the resource
+ */
+export const verifyOwnerOrAdmin: MiddlewareFunction = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    verifyToken(req, res, () => {
+      try {
+        const authReq = req as AuthenticatedRequest;
+        const user = authReq.user;
+        
+        if (!user) {
+           res.status(401).json({ message: 'Authentication required', code: 'NO_TOKEN' });
+           return;
+        }
+
+        const userRole = user.role?.toLowerCase();
+        const isAdmin = ['admin', 'hr'].includes(userRole || '');
+        const targetId = parseInt(req.params.id);
+        const isOwner = user.id === targetId;
+
+        if (isAdmin || isOwner) {
+          next();
+        } else {
+          res.status(403).json({ 
+            message: 'Access denied. You can only modify your own profile.',
+            code: 'FORBIDDEN'
+          });
+        }
+      } catch (error) {
+        console.error('[AUTH] Error in verifyOwnerOrAdmin:', error);
+        res.status(500).json({ message: 'Error checking permissions', code: 'SERVER_ERROR' });
+      }
+    });
+  } catch (error) {
+    console.error('[AUTH] Unexpected error in verifyOwnerOrAdmin:', error);
+    res.status(500).json({ message: 'Internal server error', code: 'SERVER_ERROR' });
+  }
+};
+
+/**
  * Alias for verifyToken - used by SPMS routes for compatibility.
  */
 export const authenticateToken = verifyToken;
@@ -202,13 +246,6 @@ export const authenticateToken = verifyToken;
 /**
  * Role-based access control middleware factory.
  * Creates a middleware that only allows access to users with specified roles.
- * 
- * @param allowedRoles - Array of roles that can access the route
- * @returns Middleware function that checks user role
- * 
- * @example
- * router.get('/admin-only', verifyToken, requireRole(['admin']), controller);
- * router.get('/hr-or-admin', verifyToken, requireRole(['admin', 'hr']), controller);
  */
 export const requireRole = (allowedRoles: readonly UserRole[]): MiddlewareFunction => {
   // Validate input at middleware creation time
@@ -299,5 +336,44 @@ export const optionalAuth: MiddlewareFunction = (
   } catch {
     // On any error, continue without authentication
     next();
+  }
+};
+
+/**
+ * Middleware to restrict access for "Suspended" employees.
+ * Blocks write operations or specific requests.
+ */
+export const restrictSuspended: MiddlewareFunction = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const authReq = req as AuthenticatedRequest;
+    if (!authReq.user) {
+       res.status(401).json({ message: 'Authentication required', code: 'NO_TOKEN' });
+       return;
+    }
+
+    const userId = authReq.user.id;
+
+    // Check status from DB for real-time enforcement
+    const [users] = await db.query<UserRow[]>('SELECT employment_status FROM authentication WHERE id = ?', [userId]);
+
+    if (users.length > 0) {
+      const status = users[0].employment_status;
+      if (status === 'Suspended') {
+         res.status(403).json({
+          message: 'Action Restricted: Your account is currently under SUSPENSION. You cannot perform this action.',
+          code: 'ACCOUNT_SUSPENDED'
+        });
+        return;
+      }
+    }
+    
+    next();
+  } catch (error) {
+    console.error('[AUTH] Suspension check failed:', error);
+    res.status(500).json({ message: 'Server error checking account status.', code: 'SERVER_ERROR' });
   }
 };

@@ -1,13 +1,53 @@
+/**
+ * NEBR - Biometrics API (Frontend)
+ *
+ * API functions for biometrics features using axios
+ */
+
 import api from './axios';
 import { AxiosResponse } from 'axios';
-import { StartEnrollmentValues, EnrollmentStatusResponse } from '../schemas/biometricsSchema';
+import {
+  StartEnrollmentValues,
+  EnrollmentStatusResponse,
+  DeviceStatusResponse,
+  StartEnrollmentResponse
+} from '../schemas/biometricsSchema';
 
 export const biometricsApi = {
-  startEnrollment: async (data: StartEnrollmentValues): Promise<AxiosResponse<{ success: boolean; message: string }>> => {
-    return await api.post('/biometrics/enroll/start', data);
+  /**
+   * Start fingerprint enrollment for an employee
+   */
+  startEnrollment: async (
+    data: StartEnrollmentValues
+  ): Promise<AxiosResponse<StartEnrollmentResponse>> => {
+    try {
+      return await api.post('/biometrics/enroll/start', data);
+    } catch (error) {
+      throw error;
+    }
   },
 
-  getEnrollmentStatus: async (employeeId: string): Promise<AxiosResponse<EnrollmentStatusResponse>> => {
-    return await api.get(`/biometrics/enroll/status/${employeeId}`);
+  /**
+   * Get enrollment status for an employee
+   */
+  getEnrollmentStatus: async (
+    employeeId: string
+  ): Promise<AxiosResponse<EnrollmentStatusResponse>> => {
+    try {
+      return await api.get(`/biometrics/enroll/status/${employeeId}`);
+    } catch (error) {
+      throw error;
+    }
   },
+
+  /**
+   * Get device connection status
+   */
+  getDeviceStatus: async (): Promise<AxiosResponse<DeviceStatusResponse>> => {
+    try {
+      return await api.get('/biometrics/device/status');
+    } catch (error) {
+      throw error;
+    }
+  }
 };

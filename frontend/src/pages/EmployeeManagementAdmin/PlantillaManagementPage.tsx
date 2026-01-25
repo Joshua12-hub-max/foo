@@ -7,6 +7,10 @@ import PlantillaTable from '@features/EmployeeManagement/Admin/Plantilla/compone
 import PlantillaFormModal from '@features/EmployeeManagement/Admin/Plantilla/components/PlantillaFormModal';
 import { AssignModal, VacateModal, HistoryModal, GuideModal } from '@features/EmployeeManagement/Admin/Plantilla/components/PlantillaModals';
 
+// Lazy load Compliance Components to prevent circular dependencies
+const QualificationStandardsPage = React.lazy(() => import('./QualificationStandardsPage'));
+const StepIncrementDashboard = React.lazy(() => import('@/components/Custom/Compliance/StepIncrementDashboard'));
+
 interface OutletContext {
   sidebarOpen?: boolean;
 }
@@ -18,8 +22,6 @@ interface PlantillaManagementProps {
 export interface PlantillaManagementRef {
   openAddModal: () => void;
 }
-// Local Position interface removed
-
 
 interface FormData {
   item_number: string;
@@ -31,9 +33,12 @@ interface FormData {
   is_vacant: boolean;
 }
 
+type TabType = 'positions' | 'qualifications' | 'step-increment' | 'budget' | 'reports';
+
 const PlantillaManagement = forwardRef<PlantillaManagementRef, PlantillaManagementProps>(({ hideHeader = false }, ref) => {
     const sidebarOpen = useUIStore((state) => state.sidebarOpen);
     const [isGuideOpen, setIsGuideOpen] = useState<boolean>(false);
+    const [activeTab, setActiveTab] = useState<TabType>('positions');
 
     const {
         // State
@@ -73,106 +78,181 @@ const PlantillaManagement = forwardRef<PlantillaManagementRef, PlantillaManageme
         setIsVacateModalOpen(true);
     }, [setCurrentPosition, setVacateReason, setIsVacateModalOpen]);
 
+    const tabs = [
+        { id: 'positions' as TabType, label: 'Positions' },
+        { id: 'qualifications' as TabType, label: 'Qualification Standards' },
+        { id: 'step-increment' as TabType, label: 'Step Increment' },
+        { id: 'budget' as TabType, label: 'Budget Tracking' },
+        { id: 'reports' as TabType, label: 'Compliance Reports' },
+    ];
+
     return (
         <div className="w-full">
-            {/* Header Section - Modernized */}
+            {/* Header Section */}
             {!hideHeader && (
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
                     <div>
-                        <h2 className="text-xl font-bold text-gray-800">Plantilla Management</h2>
-                        <p className="text-sm text-gray-500">Track and manage organizational positions and vacancies</p>
+                        <h2 className="text-2xl font-bold text-gray-900">Plantilla Management System</h2>
+                        <p className="text-sm text-gray-600 mt-1">100% CSC/DBM/COA Compliant Position & Personnel Management</p>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3">
                         <button 
-                            className="bg-white hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-xl flex items-center gap-2 border border-gray-200 shadow-sm transition-all text-sm font-semibold"
+                            className="px-5 py-2.5 bg-white hover:bg-gray-50 text-gray-700 rounded-lg border border-gray-300 transition-all text-sm font-semibold"
                             onClick={() => setIsGuideOpen(true)}
                         >
-                            Guide
+                            View Guide
                         </button>
-                        <button 
-                            className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-5 py-2.5 rounded-xl flex items-center gap-2 shadow-sm transition-all active:scale-95 text-sm font-semibold"
-                            onClick={handleOpenCreate}
-                        >
-                            <Plus size={18} />
-                            New Position
-                        </button>
+                        {activeTab === 'positions' && (
+                            <button 
+                                className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-5 py-2.5 rounded-xl flex items-center gap-2 shadow-sm transition-all active:scale-95 text-sm font-semibold"
+                                onClick={handleOpenCreate}
+                            >
+                                <Plus size={18} />
+                                Add New Position
+                            </button>
+                        )}
                     </div>
                 </div>
             )}
 
-            <div className={hideHeader ? "" : "bg-white rounded-2xl shadow-sm border border-gray-100 p-6"}>
-                <PlantillaHeader 
-                    sidebarOpen={sidebarOpen}
-                    onOpenGuide={() => setIsGuideOpen(true)}
-                    onOpenCreate={handleOpenCreate}
-                    searchTerm={searchTerm}
-                    setSearchTerm={setSearchTerm}
-                    selectedDept={selectedDept}
-                    setSelectedDept={setSelectedDept}
-                    departments={departments}
-                    hideHeader={true} // Add this prop to hide the title/buttons in PlantillaHeader
-                />
+            {/* Tabs Navigation */}
+            <div className="bg-gray-100 p-1 rounded-xl mb-6 inline-flex gap-1 w-fit">
+                <div className="flex overflow-x-auto gap-1">
+                    {tabs.map((tab) => {
+                        const isActive = activeTab === tab.id;
+                        return (
+                            <button
+                                key={tab.id}
+                                onClick={() => setActiveTab(tab.id)}
+                                className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
+                                    isActive
+                                        ? 'text-gray-900 bg-white shadow-sm'
+                                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                                }`}
+                            >
+                                {tab.label}
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
 
+            {/* Tab Content */}
+            <div className="bg-white rounded-lg border border-gray-200 p-6">
+                {activeTab === 'positions' && (
+                    <>
+                        <PlantillaHeader 
+                            departments={departments}
+                            selectedDept={selectedDept}
+                            setSelectedDept={setSelectedDept}
+                            searchTerm={searchTerm}
+                            setSearchTerm={setSearchTerm}
+                            summary={summary}
+                            onCreateNew={handleOpenCreate}
+                            hideHeader={true}
+                        />
 
-            <PlantillaTable 
-                loading={loading}
-                error={error}
-                positions={filteredPositions}
-                onOpenAssign={openAssignModal}
-                onOpenVacate={handleOpenVacate}
-                onViewHistory={fetchHistory}
-                onOpenEdit={handleOpenEdit}
-                onDelete={handleDelete}
-            />
+                        <PlantillaTable 
+                            positions={filteredPositions}
+                            loading={loading}
+                            onEdit={handleOpenEdit}
+                            onDelete={handleDelete}
+                            onAssign={openAssignModal}
+                            onVacate={handleOpenVacate}
+                            onViewHistory={fetchHistory}
+                        />
+                    </>
+                )}
 
+                {activeTab === 'qualifications' && (
+                    <React.Suspense fallback={
+                        <div className="flex items-center justify-center h-64">
+                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-600"></div>
+                        </div>
+                    }>
+                        <QualificationStandardsPage />
+                    </React.Suspense>
+                )}
+
+                {activeTab === 'step-increment' && (
+                    <React.Suspense fallback={
+                        <div className="flex items-center justify-center h-64">
+                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-600"></div>
+                        </div>
+                    }>
+                        <StepIncrementDashboard />
+                    </React.Suspense>
+                )}
+
+                {activeTab === 'budget' && (
+                    <div className="text-center py-16">
+                        <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-orange-100 to-orange-200 mb-4">
+                            <span className="text-3xl font-bold text-orange-700">₱</span>
+                        </div>
+                        <h3 className="text-xl font-bold text-gray-900 mb-2">Budget Tracking Module</h3>
+                        <p className="text-gray-600 max-w-md mx-auto">
+                            Track department budget allocations, utilization rates, and remaining balances. 
+                            Backend APIs are ready for integration.
+                        </p>
+                        <div className="mt-6 text-sm text-gray-500">Coming Soon</div>
+                    </div>
+                )}
+
+                {activeTab === 'reports' && (
+                    <div className="text-center py-16">
+                        <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-purple-100 to-purple-200 mb-4">
+                            <span className="text-3xl font-bold text-purple-700">📋</span>
+                        </div>
+                        <h3 className="text-xl font-bold text-gray-900 mb-2">Compliance Reports</h3>
+                        <p className="text-gray-600 max-w-md mx-auto">
+                            Generate CSC Form 9 (Publication Request), CS Form 33 (Appointment), 
+                            RAI (Report on Appointments Issued), and PSI-POP reports in official formats.
+                        </p>
+                        <div className="mt-6 text-sm text-gray-500">Coming Soon</div>
+                    </div>
+                )}
+            </div>
+
+            {/* Modals */}
             <PlantillaFormModal 
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
-                mode={modalMode as any}
-                initialData={currentPosition ? {
-                    item_number: currentPosition.item_number,
-                    position_title: currentPosition.position_title,
-                    salary_grade: Number(currentPosition.salary_grade),
-                    step_increment: currentPosition.step_increment,
-                    department: currentPosition.department,
-                    monthly_salary: Number(currentPosition.monthly_salary || 0),
-                    is_vacant: Boolean(currentPosition.is_vacant)
-                } : undefined}
-                departments={departments}
+                mode={modalMode}
+                position={currentPosition}
                 onSubmit={handleCreateOrUpdate}
+                departments={departments}
             />
 
             <AssignModal 
                 isOpen={isAssignModalOpen}
                 onClose={() => setIsAssignModalOpen(false)}
-                currentPosition={currentPosition}
-                availableEmployees={availableEmployees as any}
-                onSuccess={() => {
-                    // Refetch is handled by query invalidation in modals
-                }}
+                position={currentPosition}
+                availableEmployees={availableEmployees}
+                selectedEmployee={selectedEmployee}
+                setSelectedEmployee={setSelectedEmployee}
+                onAssign={handleAssign}
             />
 
             <VacateModal 
                 isOpen={isVacateModalOpen}
                 onClose={() => setIsVacateModalOpen(false)}
-                currentPosition={currentPosition}
-                onSuccess={() => {
-                   // Refetch is handled by query invalidation in modals
-                }}
+                position={currentPosition}
+                vacateReason={vacateReason}
+                setVacateReason={setVacateReason}
+                onVacate={handleVacate}
             />
 
             <HistoryModal 
                 isOpen={isHistoryModalOpen}
                 onClose={() => setIsHistoryModalOpen(false)}
-                currentPosition={currentPosition}
-                positionHistory={positionHistory}
+                position={currentPosition}
+                history={positionHistory}
             />
 
             <GuideModal 
                 isOpen={isGuideOpen}
                 onClose={() => setIsGuideOpen(false)}
             />
-            </div>
         </div>
     );
 });

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authenticateToken, requireRole } from '../middleware/authMiddleware.js';
+import { authenticateToken, requireRole, restrictSuspended } from '../middleware/authMiddleware.js';
 import {
   getAllMemos,
   getMyMemos,
@@ -23,6 +23,6 @@ router.put('/:id', authenticateToken, requireRole(['admin', 'hr']), updateMemo);
 router.delete('/:id', authenticateToken, requireRole(['admin', 'hr']), deleteMemo);
 
 // Employee acknowledgment
-router.post('/:id/acknowledge', authenticateToken, acknowledgeMemo);
+router.post('/:id/acknowledge', authenticateToken, restrictSuspended, acknowledgeMemo);
 
 export default router;

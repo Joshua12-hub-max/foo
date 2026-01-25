@@ -42,10 +42,10 @@ export const attendanceApi = {
 
         return await api.get('/attendance/logs', { params: queryParams });
     },
-    getRecentActivity: async (): Promise<AxiosResponse> => {
+    getRecentActivity: async (): Promise<AxiosResponse<AttendanceLogResponse>> => {
         return await api.get('/attendance/recent-activity');
     },
-    getRawLogs: async (): Promise<AxiosResponse> => {
+    getRawLogs: async (): Promise<AxiosResponse<AttendanceLogResponse>> => {
         return await api.get('/attendance/raw-logs');
     },
     getTodayStatus: async (employeeId?: string): Promise<AxiosResponse<AttendanceActionResponse>> => {

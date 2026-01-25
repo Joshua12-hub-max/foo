@@ -21,11 +21,14 @@ export default function LeaveTable({ onClose }: LeaveTableProps) {
         setLoading(true);
         setError(null);
         const response = await leaveApi.getAllLeaves();
-        if (response.data?.leaves) {
+        // Handle both old (leaves) and new (applications) response formats
+        const resData = response.data as any;
+        const leavesData = resData?.applications || resData?.leaves || [];
+        if (leavesData.length > 0) {
           const today = new Date();
           today.setHours(0, 0, 0, 0);
           
-          const approvedLeaves = response.data.leaves
+          const approvedLeaves = leavesData
             .filter((leave: any) => {
               if (leave.status !== 'Approved') return false;
               const startDate = new Date(leave.start_date);

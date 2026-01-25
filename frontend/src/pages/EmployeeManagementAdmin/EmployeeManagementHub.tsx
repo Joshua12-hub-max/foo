@@ -3,7 +3,6 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useUIStore } from '@/stores';
 import { Plus } from 'lucide-react';
 
-import EmployeeList, { EmployeeListRef } from '@/pages/EmployeeManagementAdmin/EmployeeDirectoryPage';
 import DepartmentList, { DepartmentListRef } from '@/pages/EmployeeManagementAdmin/DepartmentListPage';
 import PlantillaManagement, { PlantillaManagementRef } from '@/pages/EmployeeManagementAdmin/PlantillaManagementPage';
 import EmployeeMemos, { AdminMemoPageRef } from '@/pages/EmployeeManagementAdmin/AdminMemoPage';
@@ -23,7 +22,6 @@ const EmployeeManagementHub: React.FC = () => {
     const sidebarOpen = useUIStore((state) => state.sidebarOpen);
 
     // Refs for calling child functions
-    const employeeRef = useRef<EmployeeListRef>(null);
     const departmentRef = useRef<DepartmentListRef>(null);
     const plantillaRef = useRef<PlantillaManagementRef>(null);
     const memoRef = useRef<AdminMemoPageRef>(null);
@@ -31,12 +29,12 @@ const EmployeeManagementHub: React.FC = () => {
     // Get active tab from URL hash or default to 'departments'
     const [activeTab, setActiveTab] = useState<string>(() => {
         const hash = location.hash.replace('#', '');
-        return ['departments', 'employees', 'plantilla', 'memos'].includes(hash) ? hash : 'departments';
+        return ['departments', 'plantilla', 'memos'].includes(hash) ? hash : 'departments';
     });
 
     useEffect(() => {
         const hash = location.hash.replace('#', '');
-        if (['departments', 'employees', 'plantilla', 'memos'].includes(hash)) {
+        if (['departments', 'plantilla', 'memos'].includes(hash)) {
             setActiveTab(hash);
         }
     }, [location.hash]);
@@ -47,9 +45,7 @@ const EmployeeManagementHub: React.FC = () => {
     };
 
     const handleAddClick = (): void => {
-        if (activeTab === 'employees' && employeeRef.current) {
-            employeeRef.current.openAddModal();
-        } else if (activeTab === 'departments' && departmentRef.current) {
+        if (activeTab === 'departments' && departmentRef.current) {
             departmentRef.current.openAddModal();
         } else if (activeTab === 'plantilla' && plantillaRef.current) {
             plantillaRef.current.openAddModal();
@@ -60,14 +56,12 @@ const EmployeeManagementHub: React.FC = () => {
 
     const tabs: Tab[] = [
         { id: 'departments', label: 'Departments' },
-        { id: 'employees', label: 'Employees' },
         { id: 'plantilla', label: 'Plantilla' },
         { id: 'memos', label: 'Memos' }
     ];
 
     const getAddButtonLabel = (): string => {
         switch (activeTab) {
-            case 'employees': return 'Onboard Member';
             case 'departments': return 'Add Department';
             case 'plantilla': return 'New Position';
             case 'memos': return 'New Memo';
@@ -116,7 +110,6 @@ const EmployeeManagementHub: React.FC = () => {
             {/* Content Area */}
             <div className="w-full">
                 {activeTab === 'departments' && <DepartmentList ref={departmentRef} hideHeader={true} />}
-                {activeTab === 'employees' && <EmployeeList ref={employeeRef} hideHeader={true} />}
                 {activeTab === 'plantilla' && <PlantillaManagement ref={plantillaRef} hideHeader={true} />}
                 {activeTab === 'memos' && <EmployeeMemos ref={memoRef} hideHeader={true} />}
             </div>

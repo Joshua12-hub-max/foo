@@ -92,6 +92,7 @@ export default function Login() {
 
   // Handles form submission via RHF
   const onSubmit = (data: LoginInput) => {
+    console.log("Submitting Login:", { identifier: data.identifier, password: data.password });
     loginMutation.mutate(
       { identifier: data.identifier.trim(), password: data.password },
       {

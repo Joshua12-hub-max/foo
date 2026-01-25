@@ -1,3 +1,12 @@
+/**
+ * Leave Request Types for Features
+ * Re-exports from centralized types with additional UI-specific types
+ */
+
+// Re-export all types from central location
+export * from '@/types/leave.types';
+
+// Legacy type aliases for backward compatibility
 export interface LeaveCredit {
   id: number;
   employee_id: string;
@@ -8,6 +17,9 @@ export interface LeaveCredit {
   balance: number;
   days_used_with_pay: number;
   days_used_without_pay: number;
+  // New CSC fields
+  year?: number;
+  updated_at?: string;
 }
 
 export interface AdminLeaveRequest {
@@ -29,6 +41,12 @@ export interface AdminLeaveRequest {
   start_date: string;
   end_date: string;
   current_balance?: number;
+  // New CSC fields
+  working_days?: number;
+  actual_payment_status?: string;
+  days_with_pay?: number;
+  days_without_pay?: number;
+  cross_charged_from?: string | null;
 }
 
 export interface LeaveFilters {
@@ -55,6 +73,11 @@ export interface EmployeeLeaveRequest {
   start_date?: string;
   end_date?: string;
   leave_type?: string;
+  // New CSC fields
+  working_days?: number;
+  actual_payment_status?: string;
+  days_with_pay?: number;
+  days_without_pay?: number;
 }
 
 export interface EmployeeLeaveFilters {

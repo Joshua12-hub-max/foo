@@ -8,27 +8,17 @@ import {
   useProfile 
 } from '@settings/Profile';
 
+import MyMemosPage from '@pages/EmployeeManagementEmployee/MyMemosPage';
+
 export default function MyProfile() {
   const sidebarOpen = useUIStore((state) => state.sidebarOpen);
-  
+  const [activeTab, setActiveTab] = React.useState<'info' | 'memos'>('info');
+
   const {
-    user,
-    profile,
-    loading,
-    saving,
-    error,
-    success,
-    isEditing,
-    formData,
-    avatarPreview,
-    setIsEditing,
-    setError,
-    setSuccess,
-    handleChange,
-    handleAvatarChange,
-    handleSubmit,
-    handleCancel,
-    setProfile
+    user, profile, loading, saving, error, success,
+    isEditing, formData, avatarPreview, setIsEditing,
+    setError, setSuccess, handleChange, handleAvatarChange,
+    handleSubmit, handleCancel, setProfile
   } = useProfile();
 
   if (loading) {
@@ -51,39 +41,73 @@ export default function MyProfile() {
         handleCancel={handleCancel}
         handleSubmit={handleSubmit}
         saving={saving}
+        hideEdit={activeTab === 'memos'} // Hide Edit button on Memos tab
       />
 
-      {/* Alerts */}
-      {success && (
-        <div className="mb-6 flex items-center gap-3 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-xl animate-in fade-in slide-in-from-top-2">
-          <Check size={18} />
-          <span className="text-sm font-medium">{success}</span>
+      {/* Navigation Tabs */}
+      <div className="flex items-center gap-6 border-b border-gray-100 mb-6">
+        <button
+          onClick={() => { setActiveTab('info'); }}
+          className={`pb-3 text-sm font-bold tracking-wide transition-all border-b-2 ${
+            activeTab === 'info' 
+              ? 'text-navy-900 border-navy-900' 
+              : 'text-gray-400 border-transparent hover:text-navy-700'
+          }`}
+        >
+          PERSONAL INFORMATION
+        </button>
+        <button
+          onClick={() => { setActiveTab('memos'); setIsEditing(false); }}
+          className={`pb-3 text-sm font-bold tracking-wide transition-all border-b-2 ${
+            activeTab === 'memos' 
+              ? 'text-navy-900 border-navy-900' 
+              : 'text-gray-400 border-transparent hover:text-navy-700'
+          }`}
+        >
+          MY MEMOS
+        </button>
+      </div>
+
+      {activeTab === 'info' ? (
+        <>
+          {/* Alerts */}
+          {success && (
+            <div className="mb-6 flex items-center gap-3 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-xl animate-in fade-in slide-in-from-top-2">
+              <Check size={18} />
+              <span className="text-sm font-medium">{success}</span>
+            </div>
+          )}
+          {error && (
+            <div className="mb-6 flex items-center gap-3 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl animate-in fade-in slide-in-from-top-2">
+              <X size={18} />
+              <span className="text-sm font-medium">{error}</span>
+            </div>
+          )}
+
+          <ProfileAvatar 
+            profile={profile}
+            formData={formData}
+            isEditing={isEditing}
+            avatarPreview={avatarPreview}
+            handleAvatarChange={handleAvatarChange}
+          />
+
+          <InformationGrid 
+            profile={profile}
+            user={user}
+            isEditing={isEditing}
+            formData={formData}
+            handleChange={handleChange}
+            setIsEditing={setIsEditing}
+            setProfile={setProfile}
+          />
+        </>
+      ) : (
+        /* Memos Tab Content */
+        <div className="min-h-[500px]">
+           <MyMemosPage hideHeader={false} />
         </div>
       )}
-      {error && (
-        <div className="mb-6 flex items-center gap-3 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl animate-in fade-in slide-in-from-top-2">
-          <X size={18} />
-          <span className="text-sm font-medium">{error}</span>
-        </div>
-      )}
-
-      <ProfileAvatar 
-        profile={profile}
-        formData={formData}
-        isEditing={isEditing}
-        avatarPreview={avatarPreview}
-        handleAvatarChange={handleAvatarChange}
-      />
-
-      <InformationGrid 
-        profile={profile}
-        user={user}
-        isEditing={isEditing}
-        formData={formData}
-        handleChange={handleChange}
-        setIsEditing={setIsEditing}
-        setProfile={setProfile}
-      />
     </div>
   );
 }

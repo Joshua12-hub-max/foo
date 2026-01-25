@@ -4,13 +4,14 @@ export interface AttendanceHeader {
 }
 
 export const ADMIN_ATTENDANCE_HEADERS: AttendanceHeader[] = [
-  { key: 'employee', label: 'Employee' },
+  { key: 'status', label: 'Status' },
+  { key: 'employeeId', label: 'Employee ID' },
+  { key: 'employeeName', label: 'Employee Name' },
   { key: 'date', label: 'Date' },
   { key: 'timeIn', label: 'Time In' },
   { key: 'timeOut', label: 'Time Out' },
   { key: 'late', label: 'Late' },
   { key: 'undertime', label: 'Undertime' },
-  { key: 'status', label: 'Status' },
 ];
 
 export const EMPLOYEE_ATTENDANCE_HEADERS: AttendanceHeader[] = [

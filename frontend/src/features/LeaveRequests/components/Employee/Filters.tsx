@@ -89,15 +89,8 @@ export const Filters: React.FC<FiltersProps> = ({
           >
              Clear
           </button>
-          <button
-            onClick={onNewRequest}
-            disabled={isLoading}
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium shadow-md transition-all bg-gray-200 text-gray-700 hover:bg-gray-300 disabled:opacity-50 whitespace-nowrap"
-            aria-label="New Request"
-          >
-            <Plus className="w-4 h-4" />
-            New
-          </button>
+          
+          {/* New Request Button Removed from Filters - Moving to dedicated section */}
         </div>
       </div>
     </div>

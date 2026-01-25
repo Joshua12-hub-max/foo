@@ -7,6 +7,7 @@ interface ProfileHeaderProps {
   handleCancel: () => void;
   handleSubmit: () => void;
   saving: boolean;
+  hideEdit?: boolean;
 }
 
 const ProfileHeader: React.FC<ProfileHeaderProps> = ({ 
@@ -14,7 +15,8 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
   setIsEditing, 
   handleCancel, 
   handleSubmit, 
-  saving 
+  saving,
+  hideEdit
 }) => {
   return (
     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
@@ -24,13 +26,15 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
       </div>
       <div className="flex gap-2">
         {!isEditing ? (
-          <button
-            onClick={() => setIsEditing(true)}
-            className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-xl text-sm font-semibold transition-all flex items-center gap-2"
-          >
-            <SquarePen size={16} />
-            Edit Profile
-          </button>
+          !hideEdit && (
+            <button
+              onClick={() => setIsEditing(true)}
+              className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-xl text-sm font-semibold transition-all flex items-center gap-2"
+            >
+              <SquarePen size={16} />
+              Edit Profile
+            </button>
+          )
         ) : (
           <>
             <button

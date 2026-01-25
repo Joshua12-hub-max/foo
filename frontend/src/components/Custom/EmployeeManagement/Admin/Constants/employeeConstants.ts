@@ -117,6 +117,20 @@ export const EDUCATION_TYPES: SelectOption[] = [
   { value: 'Training', label: 'Training' }
 ];
 
+// Eligibility type options (CSC Plantilla Required)
+export const ELIGIBILITY_TYPE_OPTIONS: SelectOption[] = [
+  { value: 'CS Professional', label: 'CS Professional' },
+  { value: 'CS Sub-Professional', label: 'CS Sub-Professional' },
+  { value: 'RA 1080 (CPA)', label: 'RA 1080 (CPA)' },
+  { value: 'RA 1080 (LET)', label: 'RA 1080 (LET)' },
+  { value: 'RA 544 (CE)', label: 'RA 544 (Registered Civil Engineer)' },
+  { value: 'RA 382 (ME)', label: 'RA 382 (Registered Mechanical Engineer)' },
+  { value: 'RA 9292 (EE)', label: 'RA 9292 (Registered Electrical Engineer)' },
+  { value: 'Bar Passer', label: 'Bar Passer' },
+  { value: 'PRC License', label: 'PRC License (Other)' },
+  { value: 'None', label: 'None Required' }
+];
+
 // Document types
 export const DOCUMENT_TYPES: SelectOption[] = [
   { value: 'Contract', label: 'Contract' },
@@ -143,7 +157,6 @@ export interface AddEmployeeForm {
   nationality: string;
   phone_number: string;
   address: string;
-  sss_number: string;
   philhealth_number: string;
   pagibig_number: string;
   tin_number: string;
@@ -153,6 +166,16 @@ export interface AddEmployeeForm {
   appointment_type: string;
   station: string;
   position_title: string;
+  // Plantilla-required eligibility fields
+  eligibility_type: string;
+  eligibility_number: string;
+  eligibility_date: string;
+  highest_education: string;
+  years_of_experience: number;
+  // Social Media
+  facebook_url: string;
+  linkedin_url: string;
+  twitter_handle: string;
 }
 
 export interface EditEmployeeForm extends AddEmployeeForm {
@@ -191,7 +214,6 @@ export const DEFAULT_ADD_FORM: AddEmployeeForm = {
   nationality: 'Filipino',
   phone_number: '',
   address: '',
-  sss_number: '',
   philhealth_number: '',
   pagibig_number: '',
   tin_number: '',
@@ -200,7 +222,17 @@ export const DEFAULT_ADD_FORM: AddEmployeeForm = {
   step_increment: 1,
   appointment_type: '',
   station: '',
-  position_title: ''
+  position_title: '',
+  // Plantilla-required eligibility fields
+  eligibility_type: '',
+  eligibility_number: '',
+  eligibility_date: '',
+  highest_education: '',
+  years_of_experience: 0,
+  // Social Media
+  facebook_url: '',
+  linkedin_url: '',
+  twitter_handle: ''
 };
 
 // Default form values for editing employees
@@ -221,7 +253,6 @@ export const DEFAULT_EDIT_FORM: EditEmployeeForm = {
   phone_number: '',
   address: '',
   permanent_address: '',
-  sss_number: '',
   philhealth_number: '',
   pagibig_number: '',
   tin_number: '',
@@ -231,7 +262,17 @@ export const DEFAULT_EDIT_FORM: EditEmployeeForm = {
   appointment_type: '',
   station: '',
   position_title: '',
-  supervisor: ''
+  supervisor: '',
+  // Plantilla-required eligibility fields
+  eligibility_type: '',
+  eligibility_number: '',
+  eligibility_date: '',
+  highest_education: '',
+  years_of_experience: 0,
+  // Social Media
+  facebook_url: '',
+  linkedin_url: '',
+  twitter_handle: ''
 };
 
 // Default form values for profile editing

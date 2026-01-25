@@ -1,11 +1,21 @@
 import { Request, Response } from 'express';
 import db from '../db/connection.js';
-import { sendCommandToDevice } from '../services/biometricService.js';
 import type { RowDataPacket } from 'mysql2/promise';
-import { StartEnrollmentSchema, GetEnrollmentStatusSchema } from '../schemas/biometricsSchema.js';
+import {
+  StartEnrollmentSchema,
+  GetEnrollmentStatusSchema,
+  type StartEnrollmentInput,
+  type GetEnrollmentStatusInput
+} from '../schemas/biometricsSchema.js';
+import {
+  isDeviceConnected,
+  getConnectedDevices,
+  startEnrollment as startEnrollmentService,
+  isEnrollmentInProgress
+} from '../services/biometricService.js';
 
 // ============================================================================
-// Interfaces
+// Interfaces & Helper Types
 // ============================================================================
 
 interface EmployeeRow extends RowDataPacket {
@@ -32,64 +42,71 @@ const handleError = (res: Response, error: Error, context: string): void => {
 };
 
 // ============================================================================
-// Controllers
+// Admin Controllers (Authenticated)
 // ============================================================================
 
 /**
  * Start enrollment mode for a specific employee
+ * POST /api/biometrics/enroll/start
  */
-export const startEnrollment = async (req: Request, res: Response): Promise<void> => {
-  const validation = StartEnrollmentSchema.safeParse(req.body);
-
-  if (!validation.success) {
-    res.status(400).json({ 
-        success: false, 
-        message: 'Invalid request data.', 
-        errors: validation.error.format() 
-    });
-    return;
-  }
-
-  const { employeeId } = validation.data;
-  console.log(`Starting enrollment for employee: ${employeeId}`);
-
+export const startEnrollment = async (
+  req: Request<{}, {}, StartEnrollmentInput>, 
+  res: Response
+): Promise<void> => {
   try {
-    // Fetch Employee Details
+    const validation = StartEnrollmentSchema.safeParse(req.body);
+
+    if (!validation.success) {
+      res.status(400).json({
+        success: false,
+        message: 'Invalid request data.',
+        errors: validation.error.format()
+      });
+      return;
+    }
+
+    const { employeeId, name, department } = validation.data;
+
+    console.log(`[BIOMETRICS] Start enrollment request for: ${employeeId}`);
+
+    // Check if device is connected
+    if (!isDeviceConnected()) {
+      res.status(503).json({
+        success: false,
+        message: 'No biometric device connected. Please ensure Arduino is connected via USB.'
+      });
+      return;
+    }
+
+    // Try to get employee info from database
     const [employee] = await db.query<EmployeeRow[]>(
       'SELECT first_name, last_name, department FROM authentication WHERE employee_id = ?',
       [employeeId]
     );
 
-    if (employee.length === 0) {
-      res.status(404).json({ success: false, message: 'Employee not found.' });
+    let fullName = name || 'Pending Registration';
+    let dept = department || 'N/A';
+
+    if (employee.length > 0) {
+      fullName = `${employee[0].first_name} ${employee[0].last_name}`;
+      dept = employee[0].department || dept;
+    }
+
+    // Start enrollment via service
+    const result = await startEnrollmentService(employeeId, fullName, dept);
+
+    if (!result.success) {
+      res.status(409).json({
+        success: false,
+        message: result.message
+      });
       return;
     }
-
-    const { first_name, last_name, department } = employee[0];
-    const fullName = `${first_name} ${last_name}`;
-
-    // Find a free Fingerprint ID (1-127)
-    const [existingFingerprints] = await db.query<FingerprintRow[]>('SELECT fingerprint_id FROM fingerprints');
-    const usedIds = new Set(existingFingerprints.map((f) => f.fingerprint_id));
-
-    let newFingerprintId = 1;
-    while (usedIds.has(newFingerprintId) && newFingerprintId <= 127) {
-      newFingerprintId++;
-    }
-
-    if (newFingerprintId > 127) {
-      res.status(500).json({ success: false, message: 'Fingerprint memory is full (Max 127).' });
-      return;
-    }
-
-    // Send Command to Arduino
-    // Format: "1\n<FINGERPRINT_ID>\n<NAME>\n<EMPLOYEE_ID>\n<DEPARTMENT>"
-    const commandSequence = `1\n${newFingerprintId}\n${fullName}\n${employeeId}\n${department || 'N/A'}`;
-    sendCommandToDevice(commandSequence);
 
     res.status(200).json({
       success: true,
-      message: `Enrollment started for ID ${newFingerprintId}. Please place finger on the scanner.`
+      message: result.message,
+      fingerprintId: result.fingerprintId
     });
   } catch (err) {
     handleError(res, err as Error, 'startEnrollment');
@@ -98,22 +115,27 @@ export const startEnrollment = async (req: Request, res: Response): Promise<void
 
 /**
  * Check enrollment status for an employee
+ * GET /api/biometrics/enroll/status/:employeeId
  */
-export const getEnrollmentStatus = async (req: Request, res: Response): Promise<void> => {
-  const validation = GetEnrollmentStatusSchema.safeParse(req);
+export const getEnrollmentStatus = async (
+  req: Request<GetEnrollmentStatusInput['params']>, 
+  res: Response
+): Promise<void> => {
+  try {
+    // Validate params
+    const validation = GetEnrollmentStatusSchema.safeParse({ params: req.params });
 
-  if (!validation.success) {
+    if (!validation.success) {
       res.status(400).json({
-          success: false,
-          message: 'Invalid parameters',
-          errors: validation.error.format()
+        success: false,
+        message: 'Invalid parameters',
+        errors: validation.error.format()
       });
       return;
-  }
+    }
 
-  const { employeeId } = validation.data.params;
+    const { employeeId } = validation.data.params;
 
-  try {
     const [fingerprint] = await db.query<FingerprintRow[]>(
       'SELECT fingerprint_id FROM fingerprints WHERE employee_id = ?',
       [employeeId]
@@ -121,9 +143,36 @@ export const getEnrollmentStatus = async (req: Request, res: Response): Promise<
 
     res.status(200).json({
       success: true,
-      isEnrolled: fingerprint.length > 0
+      isEnrolled: fingerprint.length > 0,
+      fingerprintId: fingerprint.length > 0 ? fingerprint[0].fingerprint_id : null
     });
   } catch (err) {
     handleError(res, err as Error, 'getEnrollmentStatus');
+  }
+};
+
+/**
+ * Get device connection status
+ * GET /api/biometrics/device/status
+ */
+export const getDeviceStatus = async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const connected = isDeviceConnected();
+    const devices = getConnectedDevices();
+    const enrollmentInProgress = isEnrollmentInProgress();
+
+    res.status(200).json({
+      success: true,
+      connected,
+      enrollmentInProgress,
+      devices: devices.map(d => ({
+        deviceId: d.deviceId,
+        ip: d.ip, // Will be 'SERIAL'
+        sensorConnected: d.sensorConnected,
+        lastSeen: d.lastHeartbeat.toISOString()
+      }))
+    });
+  } catch (err) {
+    handleError(res, err as Error, 'getDeviceStatus');
   }
 };

@@ -84,6 +84,8 @@ const AdminAttendance = () => {
       <AttendanceExport 
         data={logs}
         title="Attendance Records"
+        dateRange={{ startDate: queryParams.startDate || '', endDate: queryParams.endDate || '' }}
+        filters={queryParams}
       />
 
       <AttendanceTable 

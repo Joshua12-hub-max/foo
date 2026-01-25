@@ -48,7 +48,7 @@ const BrandingSection = () => (
       className="w-56 h-56 mx-auto object-contain mb-4 transition-transform duration-300 hover:scale-105"
     />
     <h2 className="text-3xl font-extrabold text-slate-50 mb-2 tracking-wide drop-shadow-lg">
-      City Human Resources Department Office
+      City Human Resources Management Office
     </h2>
     <p className="text-lg leading-relaxed text-slate-300">
       A centralized{" "}
@@ -102,7 +102,7 @@ export default function AuthLayout({
   image,
   showQuotes = true,
   showBranding = true,
-  leftBgGradient = "from-gray-950 to-gray-900"
+  leftBgGradient = "from-slate-950 to-slate-900"
 }: AuthLayoutProps) {
   const [currentQuote, setCurrentQuote] = useState(0);
   const [fadeIn, setFadeIn] = useState(true);
@@ -167,9 +167,9 @@ export default function AuthLayout({
   }, [showQuotes, hasQuotes]);
 
   return (
-    <div className="min-h-screen flex bg-slate-900 text-slate-100">
+    <div className="min-h-screen flex bg-gradient-to-r from-slate-950 to-green-900 text-slate-100">
       {/* Left Section - Hero/Branding */}
-      <div className={`hidden md:flex relative w-3/4 bg-gradient-to-r ${leftBgGradient} items-center justify-center p-12 shadow-inner overflow-hidden`}>
+      <div className={`hidden md:flex relative w-3/4 bg-gradient-to-r from-slate-950 to-green-900 items-center justify-center p-12 shadow-inner overflow-hidden`}>
         {showBranding && <BrandingSection />}
         
         {/* Rotating Quote */}

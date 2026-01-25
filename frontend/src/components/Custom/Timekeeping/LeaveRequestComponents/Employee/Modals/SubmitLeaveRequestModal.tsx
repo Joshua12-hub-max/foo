@@ -247,16 +247,45 @@ export const SubmitLeaveRequestModal: React.FC<SubmitLeaveRequestModalProps> = (
               </div>
             )}
 
-            {/* Warning for insufficient credits */}
-            {isPaid && !hasSufficientCredits && duration > 0 && (
-              <div className="flex items-start gap-2 bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-sm">
-                <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-medium">Insufficient Credits</p>
-                  <p className="text-xs mt-0.5">
-                    You need {duration} days but only have {availableCredit || 0} days available.
-                    Consider requesting unpaid leave or reducing the duration.
-                  </p>
+            {/* Payment Breakdown - 100% Automated Transparency */}
+            {duration > 0 && leaveType && !creditInfo?.isSpecialLeave && (
+              <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                <h4 className="text-xs font-semibold text-gray-700 uppercase tracking-wider mb-2">Payment Breakdown (Automated)</h4>
+                
+                <div className="space-y-2">
+                  {/* Paid Portion */}
+                  <div className="flex justify-between items-center text-sm">
+                    <div className="flex items-center gap-2">
+                       <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+                       <span className="text-gray-600">With Pay (Credits)</span>
+                    </div>
+                    <span className="font-medium text-emerald-700">
+                      {Math.min(duration, (creditInfo?.totalAvailable || 0))} days
+                    </span>
+                  </div>
+
+                  {/* Unpaid Portion */}
+                  {duration > (creditInfo?.totalAvailable || 0) && (
+                    <div className="flex justify-between items-center text-sm">
+                      <div className="flex items-center gap-2">
+                         <div className="w-2 h-2 rounded-full bg-amber-500"></div>
+                         <span className="text-gray-600">Without Pay (LWOP)</span>
+                      </div>
+                      <span className="font-bold text-amber-700">
+                        {(duration - (creditInfo?.totalAvailable || 0)).toFixed(1)} days
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Summary Footer */}
+                  <div className="pt-2 mt-1 border-t border-gray-200 flex justify-between items-center text-xs text-gray-500">
+                     <span>Based on your {availableCredit} available credits</span>
+                     {duration > (creditInfo?.totalAvailable || 0) ? (
+                        <span className="text-amber-600 font-medium">Insufficient credits • Auto-LWOP applied</span>
+                     ) : (
+                        <span className="text-emerald-600 font-medium">Fully covered by credits</span>
+                     )}
+                  </div>
                 </div>
               </div>
             )}
@@ -284,8 +313,8 @@ export const SubmitLeaveRequestModal: React.FC<SubmitLeaveRequestModalProps> = (
               </FormInput>
             </div>
 
-            {/* Leave Type & Paid Leave - Grid Layout */}
-            <div className="grid grid-cols-2 gap-4">
+            {/* Leave Type - Full Width */}
+            <div className="grid grid-cols-1">
               <FormInput label="Leave Type" error={errors.leaveType?.message} required>
                 <select
                   {...register('leaveType')}
@@ -299,28 +328,6 @@ export const SubmitLeaveRequestModal: React.FC<SubmitLeaveRequestModalProps> = (
                   ))}
                 </select>
               </FormInput>
-
-              {/* Paid Leave Toggle - Compact */}
-              <div className="flex flex-col">
-                <label className="text-sm font-semibold text-gray-700 mb-1">Paid Leave</label>
-                <div className="flex items-center gap-2 p-2 bg-gray-50 border border-gray-200 rounded-lg h-[42px]">
-                  <span className={`text-xs ${!isPaid ? 'font-semibold text-gray-800' : 'text-gray-500'}`}>
-                    No
-                  </span>
-                  <label className="relative inline-block w-10 h-5 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      {...register('isPaid')}
-                      className="sr-only peer"
-                    />
-                    <div className="w-10 h-5 bg-gray-300 rounded-full peer peer-checked:bg-blue-600 transition-colors"></div>
-                    <div className="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-5"></div>
-                  </label>
-                  <span className={`text-xs ${isPaid ? 'font-semibold text-gray-800' : 'text-gray-500'}`}>
-                    Yes
-                  </span>
-                </div>
-              </div>
             </div>
 
             {/* Start & End Date - Grid Layout */}
@@ -344,7 +351,7 @@ export const SubmitLeaveRequestModal: React.FC<SubmitLeaveRequestModalProps> = (
             <div className="p-3 bg-blue-50 border border-blue-100 rounded-lg">
               <p className="text-sm text-blue-800">
                 <span className="font-semibold">Duration:</span> {duration} {duration === 1 ? 'day' : 'days'}
-                {isPaid && availableCredit !== null && (
+                {availableCredit !== null && (
                   <span className="ml-2">
                     • <span className="font-semibold">Available Credits:</span> {availableCredit} days
                   </span>
@@ -396,7 +403,7 @@ export const SubmitLeaveRequestModal: React.FC<SubmitLeaveRequestModalProps> = (
           <button
             type="submit"
             form="leave-request-form"
-            disabled={submitMutation.isPending || (isPaid && !hasSufficientCredits && duration > 0)}
+            disabled={submitMutation.isPending}
             className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-gray-900 rounded-lg hover:bg-gray-800 transition-all shadow-lg shadow-gray-900/20 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {submitMutation.isPending ? 'Submitting...' : 'Submit Request'}

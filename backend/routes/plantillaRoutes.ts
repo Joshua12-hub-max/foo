@@ -29,4 +29,7 @@ router.post('/:id/vacate', verifyAdmin, plantillaController.vacatePosition);
 // History
 router.get('/:id/history', verifyToken, plantillaController.getPositionHistory);
 
+// Abolish position
+router.post('/:id/abolish', verifyAdmin, plantillaController.abolishPosition);
+
 export default router;

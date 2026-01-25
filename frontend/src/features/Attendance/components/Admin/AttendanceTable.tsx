@@ -77,12 +77,24 @@ const AttendanceTable: React.FC<AttendanceTableProps> = memo(({ data, headers, i
             {data.map((row) => (
               <tr key={row.id || `${row.employee_id}-${row.date}`} className="hover:bg-[#F8F9FA] hover:shadow-xl transition-colors">
                 
-                {/* Employee */}
+                {/* Status - First Column */}
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <span className={`px-3 py-1 text-xs font-semibold rounded-full ${getStatusColor(row.status || 'Present', STATUS_STYLES)}`}>
+                    {row.status || 'Present'}
+                  </span>
+                </td>
+
+                {/* Employee ID - Separate Column */}
+                <td className="px-6 py-4 text-sm font-medium text-gray-700 whitespace-nowrap">
+                  {row.employee_id}
+                </td>
+
+                {/* Employee Name - Separate Column */}
                 <td className="px-6 py-4">
-                    <div className="flex flex-col">
-                        <span className="text-sm font-medium text-gray-900">{row.employee_name}</span>
-                        <span className="text-xs text-gray-500">{row.department} • {row.employee_id}</span>
-                    </div>
+                  <div className="flex flex-col">
+                    <span className="text-sm font-medium text-gray-900">{row.employee_name}</span>
+                    <span className="text-xs text-gray-500">{row.department}</span>
+                  </div>
                 </td>
 
                 {/* Date */}
@@ -108,13 +120,6 @@ const AttendanceTable: React.FC<AttendanceTableProps> = memo(({ data, headers, i
                 {/* Undertime */}
                 <td className="px-6 py-4 text-sm text-orange-600 whitespace-nowrap">
                   {row.undertime_minutes > 0 ? `${row.undertime_minutes} min` : '-'}
-                </td>
-
-                {/* Status */}
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`px-3 py-1 text-xs font-semibold rounded-full ${getStatusColor(row.status || 'Present', STATUS_STYLES)}`}>
-                    {row.status || 'Present'}
-                  </span>
                 </td>
 
               </tr>

@@ -20,8 +20,7 @@ export const CreateEmployeeSchema = z.object({
   address: z.string().optional().nullable(),
   permanent_address: z.string().optional().nullable(),
   
-  // Government IDs
-  sss_number: z.string().optional().nullable(),
+  // Government IDs (No SSS for government - GSIS only)
   philhealth_number: z.string().optional().nullable(),
   pagibig_number: z.string().optional().nullable(),
   tin_number: z.string().optional().nullable(),
@@ -34,6 +33,18 @@ export const CreateEmployeeSchema = z.object({
   station: z.string().optional().nullable(),
   position_title: z.string().optional().nullable(),
   item_number: z.string().optional().nullable(),
+  
+  // Plantilla-required Eligibility Fields
+  eligibility_type: z.string().optional().nullable(),
+  eligibility_number: z.string().optional().nullable(),
+  eligibility_date: z.string().optional().nullable(),
+  highest_education: z.string().optional().nullable(),
+  years_of_experience: z.number().optional().nullable(),
+  
+  // Social Media
+  facebook_url: z.string().optional().nullable(),
+  linkedin_url: z.string().optional().nullable(),
+  twitter_handle: z.string().optional().nullable(),
 });
 
 export const UpdateEmployeeSchema = CreateEmployeeSchema.partial();
@@ -69,6 +80,14 @@ export const RevertStatusSchema = z.object({
     new_status: z.string().min(1, "Status is required"),
     reason: z.string().optional()
 });
+
+export const AddCustomFieldSchema = z.object({
+  section: z.string().min(1, "Section is required"),
+  field_name: z.string().min(1, "Field name is required"),
+  field_value: z.string().optional().nullable() // Can be null/empty
+});
+
+export const UpdateCustomFieldSchema = AddCustomFieldSchema.partial();
 
 export type CreateEmployeeInput = z.infer<typeof CreateEmployeeSchema>;
 export type UpdateEmployeeInput = z.infer<typeof UpdateEmployeeSchema>;

@@ -17,7 +17,7 @@ import {
   verifyTwoFactorOTP,
   resendTwoFactorOTP
 } from '../controllers/authController.js';
-import { verifyToken, verifyAdmin } from '../middleware/authMiddleware.js';
+import { verifyToken, verifyAdmin, restrictSuspended } from '../middleware/authMiddleware.js';
 import { uploadAvatar } from '../middleware/uploadMiddleware.js';
 import { authLimiter } from '../middleware/rateLimitMiddleware.js';
 
@@ -34,7 +34,7 @@ router.get('/users', verifyToken, verifyAdmin, getUsers);
 router.get('/users/:id', verifyToken, getUserById);
 router.post('/verify-registration', authLimiter, verifyRegistrationOTP);
 router.get('/me', verifyToken, getMe);
-router.post('/profile', verifyToken, uploadAvatar.single('avatar'), updateProfile);
+router.post('/profile', verifyToken, restrictSuspended, uploadAvatar.single('avatar'), updateProfile);
 router.post('/resend-verification', authLimiter, resendVerificationEmail);
 router.post('/forgot-password', authLimiter, forgotPassword);
 router.post('/reset-password', authLimiter, resetPassword);

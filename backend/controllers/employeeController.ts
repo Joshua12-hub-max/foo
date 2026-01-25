@@ -9,7 +9,9 @@ import {
   RevertStatusSchema,
   AddSkillSchema,
   AddEducationSchema,
-  AddContactSchema 
+  AddContactSchema,
+  AddCustomFieldSchema,
+  UpdateCustomFieldSchema
 } from '../schemas/employeeSchema.js';
 
 // ============================================================================
@@ -87,6 +89,14 @@ interface ContactRow extends RowDataPacket {
 interface DepartmentRow extends RowDataPacket {
   id: number;
   name: string;
+}
+
+interface CustomFieldRow extends RowDataPacket {
+  id: number;
+  employee_id: number;
+  section: string;
+  field_name: string;
+  field_value: string;
 }
 
 interface PlantillaRow extends RowDataPacket {
@@ -182,18 +192,20 @@ export const getEmployeeById = async (req: Request, res: Response): Promise<void
     const isAdmin = ['admin', 'hr'].includes(requester.role?.toLowerCase());
 
     if (!isSelf && !isAdmin) {
-      delete employee.sss_number;
-      delete employee.gsis_number;
-      delete employee.philhealth_number;
-      delete employee.pagibig_number;
-      delete employee.tin_number;
-      delete employee.phone_number;
-      delete employee.address;
-      delete employee.permanent_address;
-      delete employee.birth_date;
-      delete employee.emergency_contact;
-      delete employee.emergency_contact_number;
+      res.status(403).json({ success: false, message: 'Access Denied: You can only view your own profile.' });
+      return;
     }
+
+    // Only remove sensitive fields if it IS self (optional, self usually sees everything except maybe hash)
+    // Actually, self should see everything.
+    // If we want to hide sensitive from SELF? No, usually self needs to edit it.
+    // So we just delete system fields.
+
+    // Remove sensitive fields (hashes/tokens) always
+    delete employee.password_hash;
+    delete employee.verification_token;
+    delete employee.reset_password_token;
+    delete employee.reset_password_expires;
 
     // Fetch related data
     const [skills] = await db.query<SkillRow[]>(
@@ -209,6 +221,11 @@ export const getEmployeeById = async (req: Request, res: Response): Promise<void
       [id]
     );
 
+    const [customFields] = await db.query<CustomFieldRow[]>(
+      'SELECT * FROM employee_custom_fields WHERE employee_id = ?',
+      [id]
+    );
+
     // Filter contacts for non-admins
     const finalContacts = !isSelf && !isAdmin ? [] : emergencyContacts;
 
@@ -218,7 +235,8 @@ export const getEmployeeById = async (req: Request, res: Response): Promise<void
         ...employee,
         skills,
         education,
-        emergencyContacts: finalContacts
+        emergencyContacts: finalContacts,
+        customFields
       }
     });
   } catch (error) {
@@ -235,7 +253,7 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
       employment_status, employee_id, password,
       birth_date, gender, civil_status, nationality,
       phone_number, address, permanent_address,
-      sss_number, philhealth_number, pagibig_number, tin_number, gsis_number,
+      philhealth_number, pagibig_number, tin_number, gsis_number,
       salary_grade, step_increment, appointment_type, station, position_title,
       item_number
     } = validatedData;
@@ -289,15 +307,15 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
        (first_name, last_name, email, department, job_title, role, employment_status, 
         employee_id, password_hash, is_verified,
         birth_date, gender, civil_status, nationality, phone_number, address, permanent_address,
-        sss_number, philhealth_number, pagibig_number, tin_number, gsis_number,
+        philhealth_number, pagibig_number, tin_number, gsis_number,
         salary_grade, step_increment, appointment_type, station, position_title, item_number) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         first_name, last_name, email, department, job_title || 'N/A', role,
         employment_status || 'Active', finalEmployeeId, hashedPassword,
         birth_date || null, gender || null, civil_status || null, nationality || 'Filipino',
         phone_number || null, address || null, permanent_address || null,
-        sss_number || null, philhealth_number || null, pagibig_number || null,
+        philhealth_number || null, pagibig_number || null,
         tin_number || null, gsis_number || null,
         salary_grade || null, step_increment || 1, appointment_type || null,
         station || null, position_title || null, finalItemNumber
@@ -600,5 +618,82 @@ export const deleteEmployeeContact = async (req: Request, res: Response): Promis
     res.json({ success: true, message: 'Contact deleted' });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Failed to delete contact' });
+  }
+};
+
+
+// ============================================================================
+// EMPLOYEE CUSTOM FIELDS
+// ============================================================================
+
+export const addEmployeeCustomField = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { section, field_name, field_value } = AddCustomFieldSchema.parse(req.body);
+
+    const [result] = await db.query<ResultSetHeader>(
+      `INSERT INTO employee_custom_fields (employee_id, section, field_name, field_value)
+       VALUES (?, ?, ?, ?)`,
+      [id, section, field_name, field_value || '']
+    );
+
+    res.status(201).json({ success: true, message: 'Custom field added', fieldId: result.insertId });
+  } catch (error) {
+    console.error('Add custom field error:', error);
+    res.status(500).json({ success: false, message: 'Failed to add custom field' });
+  }
+};
+
+export const updateEmployeeCustomField = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id, fieldId } = req.params;
+    const updates = UpdateCustomFieldSchema.parse(req.body);
+
+    if (Object.keys(updates).length === 0) {
+        res.status(400).json({ success: false, message: 'No fields to update' });
+        return;
+    }
+
+    const setClauses: string[] = [];
+    const params: (string | number | null)[] = [];
+
+    if (updates.field_value !== undefined) {
+        setClauses.push('field_value = ?');
+        params.push(updates.field_value);
+    }
+    if (updates.field_name !== undefined) {
+        setClauses.push('field_name = ?');
+        params.push(updates.field_name);
+    }
+    
+    // Safety check
+    if (setClauses.length === 0) {
+         res.json({ success: true, message: 'No changes made' });
+         return;
+    }
+
+    params.push(fieldId);
+    params.push(id);
+
+    await db.query(
+      `UPDATE employee_custom_fields SET ${setClauses.join(', ')} WHERE id = ? AND employee_id = ?`,
+      params
+    );
+
+    res.json({ success: true, message: 'Custom field updated' });
+  } catch (error) {
+    console.error('Update custom field error:', error);
+    res.status(500).json({ success: false, message: 'Failed to update custom field' });
+  }
+};
+
+export const deleteEmployeeCustomField = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id, fieldId } = req.params;
+    await db.query('DELETE FROM employee_custom_fields WHERE id = ? AND employee_id = ?', [fieldId, id]);
+    res.json({ success: true, message: 'Custom field deleted' });
+  } catch (error) {
+    console.error('Delete custom field error:', error);
+    res.status(500).json({ success: false, message: 'Failed to delete custom field' });
   }
 };

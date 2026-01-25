@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { 
   User, Mail, Phone, MapPin, Briefcase, Hash, CreditCard, 
   Calendar, Flag, AlertCircle, Shield, CheckCircle,
-  GraduationCap, Award, Heart, Ruler, Scale, Building, UserCheck, Clock, ToggleLeft, ToggleRight, Loader2
+  GraduationCap, Award, Heart, Ruler, Scale, Building, UserCheck, Clock, ToggleLeft, ToggleRight, Loader2,
+  Facebook, Linkedin, Twitter
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -65,7 +66,6 @@ interface Profile {
   first_day_of_service?: string;
   supervisor?: string;
   role?: string;
-  sss_number?: string;
   gsis_number?: string;
   philhealth_number?: string;
   pagibig_number?: string;
@@ -76,6 +76,16 @@ interface Profile {
   education?: Education[];
   skills?: Skill[];
   emergencyContacts?: EmergencyContact[];
+  // Plantilla-required eligibility fields
+  eligibility_type?: string;
+  eligibility_number?: string;
+  eligibility_date?: string;
+  highest_education?: string;
+  years_of_experience?: number;
+  // Social Media
+  facebook_url?: string;
+  linkedin_url?: string;
+  twitter_handle?: string;
 }
 
 interface DataFieldProps {
@@ -285,11 +295,19 @@ const MasterProfileView: React.FC<EmployeeProfileViewProps> = ({ profile, loadin
 
         {/* GOVERNMENT IDS */}
         <Section title="Government Identification" icon={Shield}>
-          <DataField label="SSS No." value={profile.sss_number} />
           <DataField label="GSIS No." value={profile.gsis_number} />
           <DataField label="PhilHealth No." value={profile.philhealth_number} />
           <DataField label="Pag-IBIG No." value={profile.pagibig_number} />
           <DataField label="TIN" value={profile.tin_number} />
+        </Section>
+
+        {/* ELIGIBILITY & QUALIFICATIONS (Plantilla Required) */}
+        <Section title="Eligibility & Qualifications" icon={Award}>
+          <DataField label="Eligibility Type" value={profile.eligibility_type} />
+          <DataField label="Eligibility No." value={profile.eligibility_number} icon={Hash} />
+          <DataField label="Eligibility Date" value={formatDate(profile.eligibility_date)} icon={Calendar} />
+          <DataField label="Highest Education" value={profile.highest_education} icon={GraduationCap} />
+          <DataField label="Years of Experience" value={profile.years_of_experience} />
         </Section>
 
          {/* EDUCATION */}
@@ -353,6 +371,13 @@ const MasterProfileView: React.FC<EmployeeProfileViewProps> = ({ profile, loadin
                <DataField label="Emerg. Number" value={profile.emergency_contact_number} icon={Phone} />
              </>
           )}
+        </Section>
+
+        {/* SOCIAL MEDIA */}
+        <Section title="Social Media" icon={User} columns="grid-cols-1 md:grid-cols-3">
+          <DataField label="Facebook" value={profile.facebook_url} icon={Facebook} />
+          <DataField label="LinkedIn" value={profile.linkedin_url} icon={Linkedin} />
+          <DataField label="Twitter/X" value={profile.twitter_handle ? `@${profile.twitter_handle}` : undefined} icon={Twitter} />
         </Section>
 
       </div>

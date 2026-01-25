@@ -150,3 +150,55 @@ export const getSalarySchedule = async (req: Request, res: Response): Promise<vo
     res.json({ success: true, monthly_salary: result[0].monthly_salary });
   } catch (error) { res.status(500).json({ success: false, message: 'Failed to fetch salary schedule' }); }
 };
+
+/**
+ * Abolish a position
+ * POST /api/plantilla/:id/abolish
+ */
+export const abolishPosition = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const authReq = req as AuthenticatedRequest;
+    const { id } = req.params;
+    const { abolishment_ordinance, abolishment_date, reason } = req.body;
+
+    if (!abolishment_ordinance || !abolishment_date) {
+      res.status(400).json({ success: false, message: 'Abolishment ordinance and date are required' });
+      return;
+    }
+
+    // Get position details
+    const [position] = await db.query<PositionRow[]>('SELECT * FROM plantilla_positions WHERE id = ?', [id]);
+    if (position.length === 0) {
+      res.status(404).json({ success: false, message: 'Position not found' });
+      return;
+    }
+
+    // Check if position is filled
+    if (!position[0].is_vacant) {
+      res.status(400).json({ success: false, message: 'Cannot abolish a filled position. Please vacate the position first.' });
+      return;
+    }
+
+    // Update position status
+    await db.query(
+      `UPDATE plantilla_positions 
+       SET status = 'Abolished', abolishment_ordinance = ?, abolishment_date = ?
+       WHERE id = ?`,
+      [abolishment_ordinance, abolishment_date, id]
+    );
+
+    // Log audit
+    await logAudit(
+      parseInt(id),
+      'abolished',
+      authReq.user.id,
+      { status: 'Active', abolishment_ordinance: null },
+      { status: 'Abolished', abolishment_ordinance, abolishment_date, reason }
+    );
+
+    res.json({ success: true, message: 'Position abolished successfully' });
+  } catch (error) {
+    console.error('Abolish Position Error:', error);
+    res.status(500).json({ success: false, message: 'Failed to abolish position' });
+  }
+};

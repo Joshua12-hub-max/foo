@@ -3,6 +3,9 @@ import { FileSpreadsheet, FileText, Loader2 } from 'lucide-react';
 import { useToastStore } from '@/stores';
 import { exportAttendanceToExcel } from './utils/attendanceExcelExport';
 import { AttendanceRecord } from '../../hooks/Admin/useAttendanceData';
+import { attendanceApi } from '@/api/attendanceApi';
+import { employeeApi } from '@/api/employeeApi';
+import { AttendanceQueryValues } from '@/schemas/attendanceSchema';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -10,6 +13,7 @@ interface AttendanceExportProps {
   data: AttendanceRecord[];
   title: string;
   dateRange?: { startDate: string; endDate: string };
+  filters?: AttendanceQueryValues;
 }
 
 /**
@@ -68,21 +72,113 @@ const formatMinutes = (value: string | number): string => {
   return `${remainingMins}m`;
 };
 
-const AttendanceExport: React.FC<AttendanceExportProps> = ({ data, title, dateRange }) => {
+const AttendanceExport: React.FC<AttendanceExportProps> = ({ data, title, dateRange, filters }) => {
   const showToast = useToastStore((state) => state.showToast);
   const showNotification = (message: string, type: 'success' | 'error') => showToast(message, type);
   const [isExporting, setIsExporting] = useState(false);
   const [groupByDepartment, setGroupByDepartment] = useState(false);
   
-  const handleExportExcel = async () => {
-    if (data.length === 0) {
-      showNotification("No data to export", "error");
-      return;
-    }
+  const fetchAllData = async (): Promise<AttendanceRecord[]> => {
+    if (!filters || !filters.startDate || !filters.endDate) return data;
 
+    try {
+      // 1. Fetch all matching LOGS
+      const logsResponse = await attendanceApi.getLogs({
+        ...filters,
+        page: 1,
+        limit: 100000 
+      });
+
+      // 2. Fetch all EMPLOYEES for the target department
+      const departmentFilter = filters.department || 'All Departments';
+      const employeesResponse = await employeeApi.fetchEmployees(departmentFilter);
+
+      if (logsResponse.data.success && Array.isArray(logsResponse.data.data) && employeesResponse.success && Array.isArray(employeesResponse.employees)) {
+        
+        const logs = logsResponse.data.data;
+        const employees = employeesResponse?.employees || [];
+        const fullRecords: AttendanceRecord[] = [];
+
+        // 3. Generate Date Range
+        const start = new Date(filters.startDate);
+        const end = new Date(filters.endDate);
+        const dateArray: string[] = [];
+        
+        // Clone start to avoid modifying it in loop
+        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+            dateArray.push(d.toISOString().split('T')[0]);
+        }
+
+        // 4. Cross-Reference: Day x Employee
+        // Create a lookup map for existing logs: "YYYY-MM-DD_EmployeeID" -> Record
+        const logMap = new Map<string, AttendanceRecord>();
+        logs.forEach(log => {
+             // Handle potential date format issues
+            const logDate = new Date(log.date).toISOString().split('T')[0];
+            const key = `${logDate}_${log.employee_id}`;
+            logMap.set(key, log);
+        });
+
+        // Loop through every day (descending to match typical view)
+        dateArray.reverse().forEach(dateStr => {
+            employees.forEach((emp: any) => {
+                const empId = emp.employee_id || emp.id;
+                const key = `${dateStr}_${empId}`;
+                const existingLog = logMap.get(key);
+
+                if (existingLog) {
+                    fullRecords.push(existingLog);
+                } else {
+                    // GENERATE ABSENT RECORD
+                    // Check if today is future? (Optional: don't show absent for future dates)
+                    const isFuture = new Date(dateStr) > new Date();
+
+                    if (!isFuture) {
+                         const firstName = emp.first_name || emp.firstName || '';
+                         const lastName = emp.last_name || emp.lastName || '';
+                         
+                         fullRecords.push({
+                            id: `gen-${Math.random()}`, // Temp ID
+                            employee_id: empId,
+                            name: `${firstName} ${lastName}`.trim() || `Employee ${empId}`,
+                            date: dateStr,
+                            time_in: '-',
+                            time_out: '-',
+                            status: 'Absent', // Default to absent if no log
+                            late: 0,
+                            undertime: 0,
+                            department: emp.department || 'N/A'
+                        } as unknown as AttendanceRecord);
+                    }
+                }
+            });
+        });
+
+        return fullRecords;
+
+      } else {
+        // Fallback if APIs fail
+        console.warn("Could not fetch full datasets for gap filling, using raw logs only.");
+        return logsResponse.data.success ? logsResponse.data.data : data; 
+      }
+    } catch (error) {
+      console.error("Error fetching full export data:", error);
+      throw error; // Let caller handle
+    }
+  };
+
+  const handleExportExcel = async () => {
     setIsExporting(true);
     try {
-      await exportAttendanceToExcel(data, {
+      const exportData = await fetchAllData();
+      
+      if (exportData.length === 0) {
+        showNotification("No data to export", "error");
+        setIsExporting(false);
+        return;
+      }
+
+      await exportAttendanceToExcel(exportData, {
         title,
         dateRange,
         groupByDepartment
@@ -96,13 +192,17 @@ const AttendanceExport: React.FC<AttendanceExportProps> = ({ data, title, dateRa
     }
   };
 
-  const handleExportPDF = () => {
-    if (data.length === 0) {
-      showNotification("No data to export", "error");
-      return;
-    }
-
+  const handleExportPDF = async () => {
+    setIsExporting(true);
     try {
+      const exportData = await fetchAllData();
+
+      if (exportData.length === 0) {
+        showNotification("No data to export", "error");
+        setIsExporting(false);
+        return;
+      }
+
       const doc = new jsPDF('landscape');
       
       // Title
@@ -117,10 +217,10 @@ const AttendanceExport: React.FC<AttendanceExportProps> = ({ data, title, dateRa
         ? `Period: ${formatDate(dateRange.startDate)} - ${formatDate(dateRange.endDate)}`
         : `Generated: ${new Date().toLocaleDateString('en-PH')}`;
       doc.text(dateText, 14, 22);
-      doc.text(`Total Records: ${data.length}`, 14, 28);
+      doc.text(`Total Records: ${exportData.length}`, 14, 28);
 
       // Table data
-      const tableData = data.map(record => [
+      const tableData = exportData.map(record => [
         getEmployeeName(record),
         formatDate(record.date),
         formatTime(record.time_in),
@@ -153,6 +253,8 @@ const AttendanceExport: React.FC<AttendanceExportProps> = ({ data, title, dateRa
     } catch (error) {
       console.error('PDF Export error:', error);
       showNotification("Failed to export PDF", "error");
+    } finally {
+        setIsExporting(false);
     }
   };
 
@@ -176,7 +278,7 @@ const AttendanceExport: React.FC<AttendanceExportProps> = ({ data, title, dateRa
       {/* Excel Export Button - DARK GREEN */}
       <button
         onClick={handleExportExcel}
-        disabled={isExporting || data.length === 0}
+        disabled={isExporting || (!filters && data.length === 0)}
         className="flex items-center gap-1.5 text-sm font-semibold transition-colors hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed"
         style={{ color: '#166534' }}
       >
@@ -185,27 +287,30 @@ const AttendanceExport: React.FC<AttendanceExportProps> = ({ data, title, dateRa
         ) : (
           <FileSpreadsheet size={16} />
         )}
-        <span>{isExporting ? 'Exporting...' : 'Excel'}</span>
+        <span>{isExporting ? 'Generating Report...' : 'Excel'}</span>
       </button>
 
       {/* PDF Export Button - DARK RED */}
       <button
         onClick={handleExportPDF}
-        disabled={data.length === 0}
+        disabled={isExporting || (!filters && data.length === 0)}
         className="flex items-center gap-1.5 text-sm font-semibold transition-colors hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed"
         style={{ color: '#991B1B' }}
       >
-        <FileText size={16} />
-        <span>PDF</span>
+        {isExporting ? (
+            <Loader2 size={16} className="animate-spin" />
+        ) : (
+            <FileText size={16} />
+        )}
+        <span>{isExporting ? 'Generating...' : 'PDF'}</span>
       </button>
 
       {/* Record count */}
       <span className="text-xs text-gray-500 ml-auto">
-        {data.length} {data.length === 1 ? 'record' : 'records'} available
+        {!filters && `${data.length} ${data.length === 1 ? 'record' : 'records'} visible`}
       </span>
     </div>
   );
 };
 
 export default AttendanceExport;
-

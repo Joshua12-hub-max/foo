@@ -133,7 +133,11 @@ export type EmploymentStatus =
   | 'contractual'
   | 'casual'
   | 'job_order'
-  | 'consultant';
+  | 'consultant'
+  | 'Terminated'
+  | 'Suspended'
+  | 'Resigned'
+  | 'Active';
 
 export type LeaveType =
   | 'vacation'

@@ -175,6 +175,16 @@ export const googleLogin = async (req: Request, res: Response): Promise<void> =>
 
     const user = users[0];
 
+    // CHECK TERMINATION STATUS
+    if (user.employment_status === 'Terminated') {
+      res.status(403).json({
+        success: false,
+        message: 'Access Denied: Your account has been terminated. Please contact HR.',
+        data: null
+      });
+      return;
+    }
+
     // BIOMETRIC ENFORCEMENT: Check if employee is enrolled
     if (user.role !== 'admin') {
       const [fingerprint] = await db.query<FingerprintRow[]>(
@@ -514,22 +524,38 @@ export const getMe = async (req: Request, res: Response): Promise<void> => {
 export const login = async (req: Request, res: Response): Promise<void> => {
   try {
     const { identifier, password } = LoginSchema.parse(req.body);
+    console.log(`[LOGIN ATTEMPT] Identifier: ${identifier}`);
+
     const [users] = await db.query<UserRow[]>(
       'SELECT * FROM authentication WHERE employee_id = ? OR email = ?',
       [identifier, identifier]
     );
 
     if (users.length === 0) {
+      console.log(`[LOGIN FAIL] User not found for identifier: ${identifier}`);
       res.status(401).json({ success: false, message: 'Invalid Credentials', data: null });
       return;
     }
 
     const user = users[0];
+    console.log(`[LOGIN FOUND] User: ${user.email} | Role: ${user.role} | Verified: ${user.is_verified}`);
 
     if (!user.is_verified) {
+      console.log(`[LOGIN FAIL] User not verified`);
       res.status(403).json({
         success: false,
         message: 'Email not verified. Please check your email.',
+        data: null
+      });
+      return;
+    }
+
+    // CHECK TERMINATION STATUS
+    if (user.employment_status === 'Terminated') {
+      console.log(`[LOGIN FAIL] User is Terminated: ${user.email}`);
+      res.status(403).json({
+        success: false,
+        message: 'Access Denied: Your account has been terminated. Please contact HR.',
         data: null
       });
       return;
@@ -543,6 +569,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       );
 
       if (fingerprint.length === 0) {
+        console.log(`[LOGIN FAIL] Biometric not enrolled for: ${user.employee_id}`);
         res.status(403).json({
           success: false,
           message: 'Access Denied: You are not yet registered in the biometric system. Please contact your HR Administrator to complete your enrollment.',
@@ -551,17 +578,20 @@ export const login = async (req: Request, res: Response): Promise<void> => {
         });
         return;
       }
+      console.log(`[LOGIN SUCCESS] Biometric enrollment verification passed.`);
     }
 
     const isPasswordCorrect = await bcrypt.compare(password, user.password_hash);
 
     if (!isPasswordCorrect) {
+      console.log(`[LOGIN FAIL] Password mismatch for ${user.email}`);
       res.status(401).json({ success: false, message: 'Invalid Credentials', data: null });
       return;
     }
 
     // Check for 2FA
     if (user.two_factor_enabled) {
+      console.log(`[LOGIN 2FA] 2FA required for ${user.email}`);
       const otp = generateOTP();
       const otpExpires = new Date(Date.now() + 10 * 60 * 1000);
 
@@ -607,6 +637,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       maxAge: 24 * 60 * 60 * 1000
     });
 
+    console.log(`[LOGIN SUCCESS] Token generated for ${user.email}`);
     res.status(200).json({
       success: true,
       message: 'Login successful!',
@@ -849,14 +880,26 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
     const updates: string[] = [];
     const params: (string | number | null)[] = [];
 
+    // Fetch current user to compare email
+    const [currentUserResult] = await db.query<UserRow[]>('SELECT email, is_verified FROM authentication WHERE id = ?', [userId]);
+    const currentUser = currentUserResult[0];
+
     // Personal Info
     if (first_name) { updates.push('first_name = ?'); params.push(first_name); }
     if (last_name) { updates.push('last_name = ?'); params.push(last_name); }
-    if (email) {
+    
+    // Only reset verification if email CHANGED
+    if (email && email !== currentUser.email) {
       updates.push('email = ?');
       params.push(email);
       updates.push('is_verified = FALSE');
       updates.push('verification_token = NULL');
+    } else if (email) {
+      // Email was sent but didn't change, just update it (redundant but harmless) or ignore
+      // updates.push('email = ?'); params.push(email); 
+      // Actually if it matches, no need to update, but no harm either unless strict uniqueness affects itself? 
+      // Uniqueness check typically excludes self.
+      // Let's just NOT add it if it matches, to be safe.
     }
     if (phone_number !== undefined) { updates.push('phone_number = ?'); params.push(phone_number); }
     if (birth_date !== undefined) { updates.push('birth_date = ?'); params.push(birth_date || null); }

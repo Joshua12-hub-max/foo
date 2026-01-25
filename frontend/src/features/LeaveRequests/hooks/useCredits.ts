@@ -20,7 +20,7 @@ export const useCredits = () => {
   const creditsQuery = usePaginatedQuery({
     queryKey: ['leave-credits', page, limit, search],
     queryFn: async () => {
-      const res = await leaveApi.getAllEmployeeCredits({ page, limit, search });
+      const res = await leaveApi.getAllCredits({ page, limit, search });
       return {
         data: res.data?.credits || [],
         pagination: res.data?.pagination || { page: 1, limit: 10, totalPages: 1, totalItems: 0 }
@@ -40,7 +40,7 @@ export const useCredits = () => {
   // Update or Add Credit mutation
   const updateCreditMutation = useMutation({
     mutationFn: async ({ employeeId, creditType, balance }: { employeeId: string; creditType: string; balance: number }) => {
-      const res = await leaveApi.updateEmployeeCredit(employeeId, creditType, balance);
+      const res = await leaveApi.updateCredit(employeeId, { creditType: creditType as any, balance });
       return res.data;
     },
     onSuccess: () => {
@@ -55,7 +55,7 @@ export const useCredits = () => {
   // Delete Credit mutation
   const deleteCreditMutation = useMutation({
     mutationFn: async ({ employeeId, creditType }: { employeeId: string; creditType: string }) => {
-      const res = await leaveApi.deleteEmployeeCredit(employeeId, creditType);
+      const res = await leaveApi.deleteCredit(employeeId, creditType);
       return res.data;
     },
     onSuccess: () => {

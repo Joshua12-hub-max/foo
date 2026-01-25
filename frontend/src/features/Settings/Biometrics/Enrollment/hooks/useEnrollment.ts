@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { fetchEmployees, startFingerprintEnrollment, checkEnrollmentStatus } from '@/api/employeeApi';
+import { fetchEmployees } from '@/api/employeeApi';
+  import { useStartEnrollment, useEnrollmentStatus } from '../../Monitor/hooks/useBiometricsQuery';
 
 interface Employee {
   id: number;
@@ -10,19 +11,24 @@ interface Employee {
   department_name?: string;
 }
 
-export const useEnrollment = () => {
+  export const useEnrollment = () => {
+
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [selectedEmployee, setSelectedEmployee] = useState('');
-  const [isEnrolled, setIsEnrolled] = useState<boolean | null>(null);
+  const [statusMessage, setStatusMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [statusMessage, setStatusMessage] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
 
+  const startEnrollment = useStartEnrollment();
+  const { data: enrollmentStatus } = useEnrollmentStatus(selectedEmployee || null);
+  const isEnrolled = enrollmentStatus?.isEnrolled || false;
+
+  // We keep this for the employee list logic which wasn't replaced yet
   const loadEmployees = async () => {
     setIsLoading(true);
     try {
-      const response = await (fetchEmployees as any)();
+      const response = await fetchEmployees();
       if (response.success && response.employees) {
           setEmployees(response.employees);
       }
@@ -35,58 +41,52 @@ export const useEnrollment = () => {
     }
   };
 
-  useEffect(() => {
-    loadEmployees();
-  }, []);
-
-  useEffect(() => {
-    const checkStatus = async () => {
-        if (!selectedEmployee) {
-            setIsEnrolled(null);
-            return;
-        }
-        try {
-            const result = await (checkEnrollmentStatus as any)(selectedEmployee);
-            setIsEnrolled(result.isEnrolled);
-        } catch (e) {
-            console.error(e);
-        }
-    };
-    checkStatus();
-  }, [selectedEmployee]);
-
   const handleEnrollClick = async () => {
-    if (!selectedEmployee) {
-      setError('Please select an employee first.');
-      return;
-    }
-
+    if (!selectedEmployee) return;
+    
     setIsLoading(true);
-    setError('');
     setStatusMessage('');
+    setError('');
 
     try {
-      const result = await (startFingerprintEnrollment as any)(selectedEmployee);
-      setStatusMessage(result.message + ' Please place your finger on the scanner now.');
+      const employee = employees.find(e => (e as any).employee_id === selectedEmployee);
+      const name = employee ? `${employee.first_name} ${employee.last_name}` : undefined;
+      const department = employee ? employee.department_name : undefined;
+
+      const result = await startEnrollment.mutateAsync({
+        employeeId: selectedEmployee,
+        name,
+        department
+      });
+
+      if (result.success) {
+        setStatusMessage(result.message);
+      } else {
+        setError(result.message);
+      }
     } catch (err: any) {
-      setError(err.toString());
+       setError(err.response?.data?.message || 'Enrollment failed');
     } finally {
       setIsLoading(false);
     }
   };
 
+  useEffect(() => {
+    loadEmployees();
+  }, []);
+
   return {
     employees,
     selectedEmployee,
+    setSelectedEmployee,
     isEnrolled,
-    isLoading,
+    isLoading: isLoading || startEnrollment.isPending,
     error,
     statusMessage,
+    setStatusMessage,
     showAddModal,
-    setSelectedEmployee,
     setShowAddModal,
     setError,
-    setStatusMessage,
     handleEnrollClick,
     loadEmployees
   };

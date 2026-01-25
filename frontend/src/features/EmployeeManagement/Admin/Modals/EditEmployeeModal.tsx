@@ -15,7 +15,8 @@ import {
   CIVIL_STATUS_OPTIONS,
   SALARY_GRADE_OPTIONS,
   BLOOD_TYPE_OPTIONS,
-  NATIONALITY_OPTIONS
+  NATIONALITY_OPTIONS,
+  ELIGIBILITY_TYPE_OPTIONS
 } from '../constants/employeeConstants';
 
 interface Department {
@@ -78,6 +79,8 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
   const [openSections, setOpenSections] = useState({
     personal: false,
     government: false,
+    eligibility: false,
+    socialMedia: false,
     employment: true
   });
   const [vacantPositions, setVacantPositions] = useState<Position[]>([]);
@@ -131,12 +134,21 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
         nationality: employee.nationality || 'Filipino',
         phone_number: employee.phone_number || '',
         permanent_address: employee.permanent_address || '',
-        sss_number: employee.sss_number || '',
         gsis_number: employee.gsis_number || '',
         philhealth_number: employee.philhealth_number || '',
         pagibig_number: employee.pagibig_number || '',
         tin_number: employee.tin_number || '',
         address: employee.address || '',
+        // Plantilla-required eligibility fields
+        eligibility_type: employee.eligibility_type || '',
+        eligibility_number: employee.eligibility_number || '',
+        eligibility_date: employee.eligibility_date ? new Date(employee.eligibility_date).toISOString().split('T')[0] : null,
+        highest_education: employee.highest_education || '',
+        years_of_experience: employee.years_of_experience || 0,
+        // Social Media
+        facebook_url: employee.facebook_url || '',
+        linkedin_url: employee.linkedin_url || '',
+        twitter_handle: employee.twitter_handle || '',
       });
     }
   }, [isOpen, employee, reset]); 
@@ -368,27 +380,72 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
            <CollapsibleSection title="Government IDs" isOpen={openSections.government} onToggle={() => toggleSection('government')}>
              <div className="grid grid-cols-2 gap-2">
                <div>
-                  <label className="text-xs font-semibold text-gray-700 mb-1 block">SSS Number</label>
-                  <input type="text" {...register('sss_number')} className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200" />
-               </div>
-               <div>
                   <label className="text-xs font-semibold text-gray-700 mb-1 block">GSIS Number</label>
                   <input type="text" {...register('gsis_number')} className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200" />
                </div>
-             </div>
-             <div className="grid grid-cols-2 gap-2">
                <div>
                   <label className="text-xs font-semibold text-gray-700 mb-1 block">PhilHealth</label>
                   <input type="text" {...register('philhealth_number')} className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200" />
                </div>
+             </div>
+             <div className="grid grid-cols-2 gap-2">
                <div>
                   <label className="text-xs font-semibold text-gray-700 mb-1 block">Pag-IBIG</label>
                   <input type="text" {...register('pagibig_number')} className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200" />
                </div>
+               <div>
+                  <label className="text-xs font-semibold text-gray-700 mb-1 block">TIN</label>
+                  <input type="text" {...register('tin_number')} className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200" />
+               </div>
+             </div>
+           </CollapsibleSection>
+
+           {/* Eligibility & Qualifications - Collapsible (Plantilla Required) */}
+           <CollapsibleSection title="Eligibility & Qualifications (Plantilla Required)" isOpen={openSections.eligibility} onToggle={() => toggleSection('eligibility')}>
+             <div className="grid grid-cols-2 gap-2">
+               <div>
+                  <label className="text-xs font-semibold text-gray-700 mb-1 block">Eligibility Type</label>
+                  <select {...register('eligibility_type')} className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200">
+                     <option value="">Select...</option>
+                     {ELIGIBILITY_TYPE_OPTIONS.map(opt => (<option key={opt.value} value={opt.value}>{opt.label}</option>))}
+                  </select>
+               </div>
+               <div>
+                  <label className="text-xs font-semibold text-gray-700 mb-1 block">Eligibility Number</label>
+                  <input type="text" {...register('eligibility_number')} placeholder="License/Eligibility No." className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200" />
+               </div>
+             </div>
+             <div className="grid grid-cols-2 gap-2">
+               <div>
+                  <label className="text-xs font-semibold text-gray-700 mb-1 block">Eligibility Date</label>
+                  <input type="date" {...register('eligibility_date')} className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200" />
+               </div>
+               <div>
+                  <label className="text-xs font-semibold text-gray-700 mb-1 block">Years of Experience</label>
+                  <input type="number" {...register('years_of_experience')} min="0" className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200" />
+               </div>
              </div>
              <div>
-                <label className="text-xs font-semibold text-gray-700 mb-1 block">TIN</label>
-                <input type="text" {...register('tin_number')} className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200" />
+                <label className="text-xs font-semibold text-gray-700 mb-1 block">Highest Education</label>
+                <input type="text" {...register('highest_education')} placeholder="e.g., Bachelor of Science in Accountancy" className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200" />
+             </div>
+           </CollapsibleSection>
+
+           {/* Social Media - Collapsible */}
+           <CollapsibleSection title="Social Media" isOpen={openSections.socialMedia} onToggle={() => toggleSection('socialMedia')}>
+             <div className="grid grid-cols-1 gap-2">
+               <div>
+                  <label className="text-xs font-semibold text-gray-700 mb-1 block">Facebook URL</label>
+                  <input type="url" {...register('facebook_url')} placeholder="https://facebook.com/username" className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200" />
+               </div>
+               <div>
+                  <label className="text-xs font-semibold text-gray-700 mb-1 block">LinkedIn URL</label>
+                  <input type="url" {...register('linkedin_url')} placeholder="https://linkedin.com/in/username" className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200" />
+               </div>
+               <div>
+                  <label className="text-xs font-semibold text-gray-700 mb-1 block">Twitter/X Handle</label>
+                  <input type="text" {...register('twitter_handle')} placeholder="username (without @)" className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200" />
+               </div>
              </div>
            </CollapsibleSection>
         </form>

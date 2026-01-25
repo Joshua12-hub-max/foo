@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate, Outlet, useLocation } from "react-router-dom";
 
 import { useAuth } from "@hooks/useAuth";
-import { LayoutDashboard, CheckSquare, Clock, FileText, User, Calendar as CalendarIcon, Settings, Building2, Award } from 'lucide-react';
+import { LayoutDashboard, CheckSquare, Clock, FileText, User as UserIcon, Calendar as CalendarIcon, Settings, Award } from 'lucide-react';
 import Sidebar from "@components/Custom/DashboardEmployeeComponents/Sidebar";
 import Header from "@components/Custom/DashboardEmployeeComponents/Header";
 import WelcomeBanner from "@components/Custom/DashboardEmployeeComponents/WelcomeBanner";
@@ -18,17 +18,10 @@ import { attendanceApi } from "@api/attendanceApi";
 import { leaveApi } from "@api/leaveApi"; 
 import ClockInWidget from "@components/Custom/DashboardEmployeeComponents/ClockInWidget";
 
-interface User {
-  id: number;
-  email: string;
-  first_name?: string;
-  last_name?: string;
-  name?: string;
-  role?: string;
-  department_id?: number;
-  department_name?: string;
-  avatar?: string;
-}
+import { User } from '@/types';
+
+// Local interface removed, using global User type
+// interface User { ... }
 
 interface StatCardData {
   title: string;
@@ -138,8 +131,11 @@ export default function EmployeeDashboard(): React.ReactElement {
           const creditsRes = await leaveApi.getMyCredits();
           const credits = creditsRes.data?.credits || [];
           
-          // Sum up all balances
-          const leaveBalance = credits.reduce((sum: number, credit: { balance: string }) => sum + (parseFloat(credit.balance) || 0), 0);
+          // Sum up all balances (handle both string and number for compatibility)
+          const leaveBalance = credits.reduce((sum: number, credit: { balance: string | number }) => {
+            const balance = typeof credit.balance === 'string' ? parseFloat(credit.balance) : credit.balance;
+            return sum + (balance || 0);
+          }, 0);
 
           setStats({
               present,
@@ -181,7 +177,6 @@ export default function EmployeeDashboard(): React.ReactElement {
         { name: 'Leave Request', action: 'leave-request' },
       ],
     },
-    { name: 'Employee Management', icon: Building2, action: 'management' },
     { name: 'Performance Evaluation', icon: Award, action: 'performance' },
     { 
       name: 'Settings',
@@ -226,6 +221,23 @@ export default function EmployeeDashboard(): React.ReactElement {
             searchQuery=""
             setSearchQuery={() => {}}
         />
+
+        {/* SUSPENSION WARNING BANNER */}
+        {user?.completion_status === 'Suspended' || user?.employment_status === 'Suspended' || user?.status === 'Suspended' ? (
+          <div className="bg-red-600 text-white px-6 py-4 mx-7 mt-6 rounded-xl shadow-lg border-l-8 border-red-800 flex items-start gap-4 animate-pulse">
+            <div className="bg-white/20 p-2 rounded-full">
+               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            </div>
+            <div>
+              <h3 className="text-lg font-black uppercase tracking-wider">Account Suspended</h3>
+              <p className="text-red-100 font-medium mt-1">
+                Your account is currently under suspension. You have limited access to the portal. 
+                You cannot submit requests, update your profile, or perform administrative actions. 
+                Please contact HR for more information.
+              </p>
+            </div>
+          </div>
+        ) : null}
 
         <main className="p-7 overflow-y-auto relative">
           {isDashboardHome ? (

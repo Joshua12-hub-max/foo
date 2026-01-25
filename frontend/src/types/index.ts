@@ -13,6 +13,9 @@ export interface User {
   name?: string;
   employeeId?: string | number;
   employee_id?: string | number;
+  employment_status?: string;
+  status?: string;
+  completion_status?: string;
 }
 
 export interface ApiResponse<T = unknown> {
