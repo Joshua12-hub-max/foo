@@ -277,7 +277,7 @@ const BudgetTrackingDashboard: React.FC<BudgetDashboardProps> = ({ selectedDeptN
                                     ))}
                                 </Pie>
                                 <Tooltip 
-                                    formatter={(value: number) => [`₱${value.toLocaleString()}`, 'Amount']}
+                                    formatter={(value: any) => [`₱${Number(value || 0).toLocaleString()}`, 'Amount']}
                                     contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                                 />
                             </PieChart>
