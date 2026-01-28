@@ -1,0 +1,276 @@
+import React, { useState, memo, useMemo } from 'react';
+import { 
+  TrendingUp, Wallet, CheckCircle, Calculator, 
+  Plus, Edit2, RotateCw, AlertTriangle, Search
+} from 'lucide-react';
+import { useBudget } from '../hooks/useBudget';
+import BudgetAllocationModal from './BudgetAllocationModal';
+import type { BudgetAllocation, DepartmentBudget } from '@/api/complianceApi';
+import type { BudgetAllocationFormData } from '@/schemas/compliance';
+
+interface BudgetDashboardProps {
+  departments: string[];
+}
+
+const BudgetDashboard: React.FC<BudgetDashboardProps> = memo(({ departments }) => {
+  const currentYear = new Date().getFullYear();
+  const {
+    year, setYear, loading, summary, departmentBudgets, 
+    allocations, createAllocation, updateAllocation, recalculate, refresh
+  } = useBudget(currentYear);
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedAllocation, setSelectedAllocation] = useState<BudgetAllocation | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+
+  // Filtered department list based on search
+  const filteredDepartments = useMemo(() => {
+    return departmentBudgets.filter(db => 
+      db.department.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [departmentBudgets, searchTerm]);
+
+  const handleOpenAdd = () => {
+    setSelectedAllocation(null);
+    setIsModalOpen(true);
+  };
+
+  const handleOpenEdit = (deptName: string) => {
+    const existing = allocations.find(a => a.department === deptName);
+    if (existing) {
+      setSelectedAllocation(existing);
+      setIsModalOpen(true);
+    } else {
+      // If no allocation exists yet for this dept, we skip or handle as add
+      setSelectedAllocation(null);
+      setIsModalOpen(true);
+    }
+  };
+
+  const handleSubmit = async (data: BudgetAllocationFormData) => {
+    try {
+      if (selectedAllocation) {
+        await updateAllocation(selectedAllocation.id, {
+          total_budget: data.total_budget,
+          notes: data.notes
+        });
+      } else {
+        await createAllocation(data);
+      }
+      setIsModalOpen(false);
+    } catch (error) {
+      // Error handled by hook toast
+    }
+  };
+
+  const formatPHP = (amount: number) => {
+    return new Intl.NumberFormat('en-PH', {
+      style: 'currency',
+      currency: 'PHP',
+    }).format(amount);
+  };
+
+  return (
+    <div className="space-y-6 animate-in fade-in duration-500">
+      {/* Top Action Bar */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="flex items-center gap-3 bg-gray-100 p-1 rounded-lg">
+          {[currentYear - 1, currentYear, currentYear + 1].map((y) => (
+            <button
+              key={y}
+              onClick={() => setYear(y)}
+              className={`px-4 py-1.5 rounded-md text-sm font-bold transition-all ${
+                year === y 
+                  ? 'bg-white text-indigo-600 shadow-sm' 
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              FY {y}
+            </button>
+          ))}
+        </div>
+        
+        <div className="flex items-center gap-2">
+            <button 
+                onClick={refresh}
+                className="p-2 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+                title="Refresh Data"
+            >
+                <RotateCw size={20} className={loading ? 'animate-spin' : ''} />
+            </button>
+            <button
+              onClick={handleOpenAdd}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-xl flex items-center gap-2 shadow-md transition-all active:scale-95 text-sm font-bold"
+            >
+              <Plus size={18} />
+              Set Department Budget
+            </button>
+        </div>
+      </div>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <SummaryCard 
+          label="Total Allocated" 
+          value={formatPHP(summary?.total_allocated || 0)} 
+          icon={<Wallet className="text-blue-600" size={20} />}
+          bg="bg-blue-50"
+          border="border-blue-100"
+        />
+        <SummaryCard 
+          label="Total Utilized" 
+          value={formatPHP(summary?.total_utilized || 0)} 
+          icon={<TrendingUp className="text-emerald-600" size={20} />}
+          bg="bg-emerald-50"
+          border="border-emerald-100"
+        />
+        <SummaryCard 
+          label="Remaining Balance" 
+          value={formatPHP(summary?.total_remaining || 0)} 
+          icon={<CheckCircle className="text-indigo-600" size={20} />}
+          bg="bg-indigo-50"
+          border="border-indigo-100"
+        />
+        <SummaryCard 
+          label="Avg. Utilization" 
+          value={`${(summary?.avg_utilization_rate || 0).toFixed(2)}%`} 
+          icon={<Calculator className="text-amber-600" size={20} />}
+          bg="bg-amber-50"
+          border="border-amber-100"
+        />
+      </div>
+
+      {/* Department Table */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="p-4 border-b border-gray-50 flex items-center justify-between bg-gray-50/50">
+            <h3 className="font-bold text-gray-800 flex items-center gap-2">
+                Departmental Budget Breakdown
+                <span className="text-xs font-medium text-gray-400 bg-gray-200 px-2 py-0.5 rounded-full">
+                    {filteredDepartments.length} Departments
+                </span>
+            </h3>
+            <div className="relative w-64">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
+                <input 
+                    type="text"
+                    placeholder="Search department..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full pl-9 pr-4 py-1.5 bg-white border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500/20 outline-none"
+                />
+            </div>
+        </div>
+        
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-gray-50/30">
+                <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Department</th>
+                <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Allocation</th>
+                <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Utilized (Annual)</th>
+                <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Utilization %</th>
+                <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {filteredDepartments.map((dept) => (
+                <tr key={dept.department} className="hover:bg-gray-50/50 transition-colors group">
+                  <td className="px-6 py-4">
+                    <div className="font-bold text-gray-700">{dept.department}</div>
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <div className="font-bold text-gray-900">{formatPHP(dept.total_budget)}</div>
+                    {dept.total_budget === 0 && (
+                        <div className="text-[10px] text-amber-600 flex items-center justify-end gap-1">
+                            <AlertTriangle size={10} /> Not Set
+                        </div>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <div className="font-medium text-gray-600">{formatPHP(dept.utilized_budget)}</div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center flex-col gap-1">
+                        <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden max-w-[100px]">
+                            <div 
+                                className={`h-full rounded-full transition-all duration-1000 ${
+                                    dept.utilization_rate > 90 ? 'bg-red-500' : 
+                                    dept.utilization_rate > 70 ? 'bg-amber-500' : 'bg-emerald-500'
+                                }`}
+                                style={{ width: `${Math.min(dept.utilization_rate, 100)}%` }}
+                            />
+                        </div>
+                        <span className={`text-[10px] font-bold ${
+                            dept.utilization_rate > 90 ? 'text-red-600' : 
+                            dept.utilization_rate > 70 ? 'text-amber-600' : 'text-emerald-600'
+                        }`}>
+                            {dept.utilization_rate.toFixed(1)}%
+                        </span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => recalculate(year, dept.department)}
+                          className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+                          title="Recalculate Utilization"
+                        >
+                          <RotateCw size={16} />
+                        </button>
+                        <button
+                          onClick={() => handleOpenEdit(dept.department)}
+                          className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+                          title="Adjust Budget"
+                        >
+                          <Edit2 size={16} />
+                        </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {filteredDepartments.length === 0 && (
+                  <tr>
+                      <td colSpan={5} className="px-6 py-12 text-center">
+                          <div className="text-gray-400 font-medium">No department allocations found for FY {year}</div>
+                      </td>
+                  </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Allocation Modal */}
+      <BudgetAllocationModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSubmit={handleSubmit}
+        initialData={selectedAllocation}
+        departments={departments}
+        year={year}
+      />
+    </div>
+  );
+});
+
+// Helper Components
+const SummaryCard = ({ label, value, icon, bg, border }: { 
+  label: string; value: string; icon: React.ReactNode; bg: string; border: string 
+}) => (
+  <div className={`${bg} ${border} border p-5 rounded-2xl shadow-sm transition-transform hover:scale-[1.02]`}>
+    <div className="flex justify-between items-start mb-3">
+        <div className="p-2 bg-white rounded-xl shadow-sm border border-black/5">
+            {icon}
+        </div>
+        <div className="bg-white/50 px-2 py-0.5 rounded-full border border-black/5 text-[10px] font-black text-gray-400">
+            FY2026
+        </div>
+    </div>
+    <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{label}</div>
+    <div className="text-xl font-black text-slate-900 tracking-tight">{value}</div>
+  </div>
+);
+
+BudgetDashboard.displayName = 'BudgetDashboard';
+
+export default BudgetDashboard;

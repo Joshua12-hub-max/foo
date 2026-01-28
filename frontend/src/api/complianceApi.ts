@@ -107,9 +107,78 @@ export interface BudgetAllocation {
   utilized_budget: number;
   remaining_budget: number;
   utilization_rate: number;
-  notes?: string;
+  notes: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface BudgetSummary {
+  total_allocated: number;
+  total_utilized: number;
+  total_remaining: number;
+  avg_utilization_rate: number;
+  department_count: number;
+}
+
+export interface DepartmentBudget {
+  department: string;
+  total_budget: number;
+  utilized_budget: number;
+  remaining_budget: number;
+  utilization_rate: number;
+}
+
+export interface Form9Row {
+  item_number: string;
+  position_title: string;
+  salary_grade: number;
+  monthly_salary: number;
+  education: string;
+  training: number;
+  experience: number;
+  eligibility: string;
+  competency: string;
+  assignment: string;
+}
+
+export interface RAIRow {
+  employee_name: string;
+  position_title: string;
+  item_number: string;
+  salary_grade: number;
+  monthly_salary: number;
+  date_issued: string;
+  status: string;
+  nature_of_appointment: string;
+  department: string;
+}
+
+export interface PSIPOPRow {
+  item_number: string;
+  position_title: string;
+  salary_grade: number;
+  step_increment: number;
+  monthly_salary: number;
+  department: string;
+  is_vacant: boolean;
+  incumbent_name: string | null;
+  employee_id: string | null;
+  position_status: string;
+}
+
+export interface Form33Data {
+  item_number: string;
+  position_title: string;
+  salary_grade: number;
+  monthly_salary: number;
+  department: string;
+  first_name: string;
+  last_name: string;
+  middle_name: string | null;
+  employee_id: string;
+  date_of_signing: string;
+  status: string;
+  nature_of_appointment: string;
 }
 
 // ==================== QUALIFICATION STANDARDS API ====================
@@ -276,7 +345,7 @@ export const budgetAllocationApi = {
     }
   },
 
-  getSummary: async (year: number): Promise<AxiosResponse<{ success: boolean; summary: any; by_department: any[] }>> => {
+  getSummary: async (year: number): Promise<AxiosResponse<{ success: boolean; summary: BudgetSummary; by_department: DepartmentBudget[] }>> => {
     try {
       return await api.get('/budget-allocation/summary', { params: { year } });
     } catch (error) {
@@ -317,10 +386,47 @@ export const budgetAllocationApi = {
   }
 };
 
+// ==================== REPORTS API ====================
+
+export const reportsApi = {
+  getForm9: async (params?: { department?: string }): Promise<AxiosResponse<{ success: boolean; data: Form9Row[]; meta: any }>> => {
+    try {
+      return await api.get('/reports/form9', { params });
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  getForm33: async (position_id: number): Promise<AxiosResponse<{ success: boolean; data: Form33Data; meta: any }>> => {
+    try {
+      return await api.get('/reports/form33', { params: { position_id } });
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  getRAI: async (params?: { start_date?: string; end_date?: string }): Promise<AxiosResponse<{ success: boolean; data: RAIRow[]; meta: any }>> => {
+    try {
+      return await api.get('/reports/rai', { params });
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  getPSIPOP: async (): Promise<AxiosResponse<{ success: boolean; data: PSIPOPRow[]; meta: any }>> => {
+    try {
+      return await api.get('/reports/psipop');
+    } catch (error) {
+      throw error;
+    }
+  }
+};
+
 // Export all APIs
 export const complianceApi = {
   qualificationStandards: qualificationStandardsApi,
   nepotism: nepotismApi,
   stepIncrement: stepIncrementApi,
-  budgetAllocation: budgetAllocationApi
+  budgetAllocation: budgetAllocationApi,
+  reports: reportsApi
 };

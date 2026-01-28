@@ -1,78 +1,140 @@
+import { Mail, Phone, MapPin, MessageCircle, Clock, Send, ShieldCheck, Zap } from 'lucide-react';
 import PublicLayout from '@components/Public/PublicLayout';
-import { Mail, Phone, MapPin, Send } from 'lucide-react';
+import { useChatStore } from '@/stores/chatStore';
+import { motion } from 'framer-motion';
+import mapVisual from '@/assets/meycauayan-map.png';
+import contactHero from '@/assets/contact-hero.png';
 
 const Contact = () => {
+  const openChat = useChatStore((state) => state.openChat);
+
   return (
     <PublicLayout>
-      <div className="max-w-7xl mx-auto px-6 py-20">
-        <div className="text-center mb-16">
-            <h1 className="text-4xl md:text-5xl font-bold mb-6 text-slate-900">Get in Touch</h1>
-            <p className="text-xl text-slate-600 max-w-2xl mx-auto">
-                Have questions about openings or the application process? We're here to help.
-            </p>
+        {/* Background Decorative Elements - Master Balance */}
+        <div className="absolute top-0 left-0 right-0 h-[600px] -z-10 overflow-hidden pointer-events-none">
+            <div className="absolute top-[-5%] left-[-5%] w-[400px] h-[400px] bg-green-500/5 rounded-full blur-[100px] mix-blend-multiply opacity-10"></div>
+            <div className="absolute bottom-0 right-[-5%] w-[300px] h-[300px] bg-slate-200/20 rounded-full blur-[100px] mix-blend-multiply opacity-10"></div>
         </div>
-        
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {/* Info Cards */}
-             <div className="space-y-6 lg:col-span-1">
-                <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/50">
-                    <Mail className="text-slate-900 mb-6" size={32} strokeWidth={1.5} />
-                    <h3 className="font-bold text-xl text-slate-900 mb-2">Email Us</h3>
-                    <p className="text-slate-500 mb-4 text-sm">Our friendly team is here to help.</p>
-                    <a href="mailto:hr@lgu-meycauayan.gov.ph" className="text-slate-900 font-semibold hover:underline border-b border-slate-300 pb-0.5">hr@lgu-meycauayan.gov.ph</a>
-                </div>
 
-                <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/50">
-                    <MapPin className="text-slate-900 mb-6" size={32} strokeWidth={1.5} />
-                    <h3 className="font-bold text-xl text-slate-900 mb-2">Visit Us</h3>
-                    <p className="text-slate-500 mb-4 text-sm">Come say hello at our office HQ.</p>
-                    <p className="text-slate-900 font-medium">City Hall Complex, Meycauayan City, Bulacan</p>
+      <div className="max-w-6xl mx-auto px-6 pt-4 md:pt-8 pb-16">
+        {/* Header - Compact 100% Balance with Conceptual Visual */}
+        <div className="flex flex-col lg:flex-row items-center gap-10 mb-12">
+            <div className="flex-1 text-center lg:text-left">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-slate-900 border border-white/5 text-white text-[9px] font-black tracking-[0.2em] mb-4 uppercase">
+                    Communication Link
                 </div>
+                <h1 className="text-4xl md:text-5xl font-black text-slate-950 mb-4 tracking-tighter leading-none">
+                  Get in <span className="text-green-600">Touch</span>
+                </h1>
+                <p className="text-slate-500 text-sm md:text-base font-semibold max-w-xl mx-auto lg:mx-0 leading-relaxed">
+                  Connect with our human resource administrative terminal for inquiries regarding the recruitment protocol. High-priority response guaranteed.
+                </p>
+            </div>
+            
+            <motion.div 
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="hidden lg:block w-64 h-64 relative group"
+            >
+                <div className="absolute inset-0 bg-green-500/10 rounded-full blur-3xl group-hover:bg-green-500/20 transition-colors duration-700"></div>
+                <img 
+                    src={contactHero} 
+                    alt="Communication Support" 
+                    className="w-full h-full object-contain relative z-10 transition-transform duration-700 group-hover:scale-110" 
+                />
+            </motion.div>
+        </div>
 
-                 <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/50">
-                    <Phone className="text-slate-900 mb-6" size={32} strokeWidth={1.5} />
-                    <h3 className="font-bold text-xl text-slate-900 mb-2">Call Us</h3>
-                    <p className="text-slate-500 mb-4 text-sm">Mon-Fri from 8am to 5pm.</p>
-                    <p className="text-slate-900 font-medium">(044) 123-4567 loc. 101</p>
+        {/* Master 3-Column Info Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-12">
+            {[
+                {
+                    icon: <Mail className="text-green-600" size={20} />,
+                    label: "Email Interface",
+                    value: "hr@lgu-meycauayan.gov.ph",
+                    desc: "Official digital transmission channel."
+                },
+                {
+                    icon: <Phone className="text-green-600" size={20} />,
+                    label: "Voice Channel",
+                    value: "(044) 123-4567",
+                    desc: "Direct administrative line."
+                },
+                {
+                    icon: <MapPin className="text-green-600" size={20} />,
+                    label: "Physical Terminal",
+                    value: "Meycauayan City Hall",
+                    desc: "Brgy. Saluysoy, MacArthur Highway, City of Meycauayan, Bulacan",
+                    image: mapVisual
+                }
+            ].map((item, i) => (
+                <div key={i} className="bg-white p-6 rounded-2xl border border-slate-100 shadow-premium hover:shadow-premium-hover transition-all duration-500 group overflow-hidden flex flex-col">
+                    <div className="w-10 h-10 bg-slate-50 rounded-lg flex items-center justify-center mb-4 group-hover:bg-green-500 group-hover:text-white transition-all duration-500">
+                        {item.icon}
+                    </div>
+                    <p className="text-[10px] font-black text-slate-400 tracking-widest uppercase mb-1">{item.label}</p>
+                    <p className="text-[15px] font-bold text-slate-950 mb-1 tracking-tight">{item.value}</p>
+                    <p className="text-[11px] font-semibold text-slate-400 mb-4">{item.desc}</p>
+                    
+                    {item.image && (
+                        <div className="mt-auto h-32 -mx-6 -mb-6 bg-slate-50 overflow-hidden group-hover:h-40 transition-all duration-700 relative">
+                           <img 
+                                src={item.image} 
+                                alt="Map Location" 
+                                className="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all duration-700" 
+                           />
+                           <div className="absolute inset-0 bg-gradient-to-t from-white/20 to-transparent"></div>
+                        </div>
+                    )}
+                </div>
+            ))}
+        </div>
+
+        {/* Live Chat CTA - Premium Design Integration */}
+        <div className="bg-slate-950 rounded-[2rem] p-8 md:p-12 relative overflow-hidden shadow-2xl">
+            {/* Subtle Patterns */}
+            <div className="absolute top-0 right-0 w-64 h-64 bg-green-500/10 rounded-full blur-[80px] -mr-32 -mt-32"></div>
+            <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full blur-[60px] -ml-24 -mb-24"></div>
+            
+            <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
+                <div className="text-center md:text-left space-y-3">
+                    <div className="flex items-center justify-center md:justify-start gap-2 text-green-400 font-bold text-[10px] tracking-[0.2em] uppercase">
+                        <Zap size={14} fill="currentColor" />
+                        Instant Synchronization
+                    </div>
+                    <h2 className="text-3xl md:text-4xl font-black text-white tracking-tighter leading-none">
+                        Live Protocol Support
+                    </h2>
+                    <p className="text-white/40 text-sm md:text-base font-semibold max-w-md">
+                        Transmit your inquiries directly to our administrative team for a real-time resolution protocol.
+                    </p>
+                </div>
+                
+                <div className="flex flex-col items-center gap-4">
+                    <button 
+                        onClick={openChat}
+                        className="group bg-white text-slate-950 px-8 py-4 rounded-xl font-black text-[14px] tracking-tight transition-all shadow-xl shadow-green-500/10 flex items-center gap-3 active:scale-95 hover:bg-green-500 hover:text-white"
+                    >
+                        <MessageCircle size={18} className="transition-transform group-hover:rotate-12" />
+                        Execute Live Chat
+                    </button>
+                    <div className="flex items-center gap-2 text-white/30 text-[10px] font-bold tracking-widest uppercase">
+                        <ShieldCheck size={12} />
+                        Secured Terminal
+                    </div>
                 </div>
             </div>
+        </div>
 
-            {/* Contact Form */}
-            <div className="lg:col-span-2">
-                <div className="bg-white p-8 md:p-12 rounded-[2.5rem] border border-slate-200 shadow-2xl shadow-slate-200/50">
-                    <div className="mb-8">
-                        <h2 className="text-2xl font-bold text-slate-900">Send us a message</h2>
-                        <p className="text-slate-500 mt-2">We'll get back to you within 24 hours.</p>
-                    </div>
-
-                    <form className="space-y-6">
-                        <div className="grid md:grid-cols-2 gap-6">
-                            <div className="space-y-2">
-                                <label className="text-sm font-semibold text-slate-700 ml-1">First Name</label>
-                                <input type="text" className="w-full px-5 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all" placeholder="John" />
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-sm font-semibold text-slate-700 ml-1">Last Name</label>
-                                <input type="text" className="w-full px-5 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all" placeholder="Doe" />
-                            </div>
-                        </div>
-
-                        <div className="space-y-2">
-                            <label className="text-sm font-semibold text-slate-700 ml-1">Email</label>
-                             <input type="email" className="w-full px-5 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all" placeholder="john@example.com" />
-                        </div>
-
-                         <div className="space-y-2">
-                            <label className="text-sm font-semibold text-slate-700 ml-1">Message</label>
-                            <textarea rows={6} className="w-full px-5 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all resize-none" placeholder="How can we help you?"></textarea>
-                        </div>
-
-                        <button className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-4 rounded-xl transition-all flex items-center justify-center gap-2 group shadow-lg shadow-slate-900/20">
-                            Send Message
-                            <Send size={18} className="group-hover:translate-x-1 transition-transform" />
-                        </button>
-                    </form>
-                </div>
+        {/* Operating Hours - Master Footer Note */}
+        <div className="mt-12 text-center text-slate-400 text-[11px] font-bold flex flex-col md:flex-row items-center justify-center gap-2 md:gap-6 uppercase tracking-widest">
+            <div className="flex items-center gap-2">
+                <Clock size={12} className="opacity-40" />
+                Mon - Fri: 08:00 - 17:00
+            </div>
+            <div className="hidden md:block w-1 h-1 bg-slate-200 rounded-full"></div>
+            <div className="flex items-center gap-2">
+                Response Target: <span className="text-green-600 font-black">{'<'} 30 Minutes</span>
             </div>
         </div>
       </div>

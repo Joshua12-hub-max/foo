@@ -4,7 +4,7 @@ import { useUIStore } from '@/stores';
 import { useToastStore } from '@/stores';
 import { useApplicantData, useApplicantFilters, useApplicantActions, Applicant } from '@applicant/Hooks';
 import { AssignInterviewerModal, ScheduleInterviewModal } from '@applicant/Modals';
-import { ApplicantTabs, ApplicantFilters, ApplicantTable, InterviewPanel } from '@applicant/Components';
+import { ApplicantTabs, ApplicantFilters, ApplicantTable, InterviewPanel, PublicInquiries, LiveSupportChat } from '@applicant/Components';
 import Pagination from '@/components/CustomUI/Pagination';
 import type { ScheduleInterviewFormData } from '@/schemas/recruitmentSchema';
 
@@ -99,29 +99,37 @@ const ApplicantList = () => {
 
       <ApplicantTabs activeTab={activeTab} setActiveTab={setActiveTab} />
       
-      <ApplicantFilters 
-        searchTerm={searchTerm} 
-        setSearchTerm={setSearchTerm} 
-        sourceFilter={sourceFilter} 
-        setSourceFilter={setSourceFilter} 
-      />
+      {activeTab !== 'Inquiries' && activeTab !== 'Chat' ? (
+        <>
+          <ApplicantFilters 
+            searchTerm={searchTerm} 
+            setSearchTerm={setSearchTerm} 
+            sourceFilter={sourceFilter} 
+            setSourceFilter={setSourceFilter} 
+          />
 
-      <ApplicantTable 
-        loading={loading}
-        isRefetching={isRefetching}
-        filteredApplicants={currentItems}
-        onAssign={onAssignClick}
-        onSchedule={onScheduleClick}
-        onJoinInterview={onJoinInterview}
-      />
+          <ApplicantTable 
+            loading={loading}
+            isRefetching={isRefetching}
+            filteredApplicants={currentItems}
+            onAssign={onAssignClick}
+            onSchedule={onScheduleClick}
+            onJoinInterview={onJoinInterview}
+          />
 
-      <Pagination 
-        currentPage={currentPage}
-        itemsPerPage={10}
-        totalItems={filteredApplicants.length}
-        onPageChange={setCurrentPage}
-        totalPages={totalPages}
-      />
+          <Pagination 
+            currentPage={currentPage}
+            itemsPerPage={10}
+            totalItems={filteredApplicants.length}
+            onPageChange={setCurrentPage}
+            totalPages={totalPages}
+          />
+        </>
+      ) : activeTab === 'Inquiries' ? (
+        <PublicInquiries />
+      ) : (
+        <LiveSupportChat />
+      )}
 
       {/* Modals */}
       <AssignInterviewerModal 

@@ -1,8 +1,8 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Applicant } from './useApplicantData';
 
-export type ActiveTab = 'All' | 'Pending' | 'Reviewed' | 'Interview' | 'Hired';
-export type SourceFilter = 'All' | string;
+export type ActiveTab = 'All' | 'Pending' | 'Reviewed' | 'Interview' | 'Hired' | 'Inquiries' | 'Chat';
+export type SourceFilter = 'All' | 'Web' | 'Email';
 
 const useApplicantFilters = (applicants: Applicant[], itemsPerPage = 10) => {
   const [searchTerm, setSearchTerm] = useState('');

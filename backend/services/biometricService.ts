@@ -94,11 +94,12 @@ class BiometricService {
 
       // Look for common Arduino manufacturers or just try the first available COM port that isn't strict system
       const arduinoPort = ports.find(p => 
-        p.manufacturer?.includes('Arduino') || 
-        p.manufacturer?.includes('wch.cn') || // CH340
-        p.manufacturer?.includes('Silicon Labs') || // CP210x
-        p.manufacturer?.includes('FTDI') ||
-        p.manufacturer?.includes('Microsoft') // Generic Windows Drivers
+        p.manufacturer?.toLowerCase().includes('arduino') || 
+        p.manufacturer?.toLowerCase().includes('wch.cn') || // CH340
+        p.manufacturer?.toLowerCase().includes('silicon labs') || // CP210x
+        p.manufacturer?.toLowerCase().includes('ftdi') ||
+        p.manufacturer?.toLowerCase().includes('microsoft') || // Generic Windows Drivers
+        (p as any).friendlyName?.toLowerCase().includes('usb serial device')
       );
 
       if (arduinoPort) {
@@ -154,6 +155,27 @@ class BiometricService {
     const line = data.trim();
     if (!line) return;
 
+    // Log all incoming data for debugging
+    if (line.startsWith('DEBUG:')) {
+      console.log(`📡 [ARDUINO-DEBUG] ${line}`);
+      return;
+    }
+    
+    if (line.startsWith('SCAN_FAIL:')) {
+      console.log(`⚠️ [BIOMETRIC] ${line}`);
+      return;
+    }
+    
+    if (line.startsWith('STORE_FAIL:')) {
+      console.log(`❌ [BIOMETRIC] Template store failed: ${line}`);
+      return;
+    }
+    
+    if (line.startsWith('TEMPLATE_COUNT:')) {
+      console.log(`📊 [BIOMETRIC] ${line}`);
+      return;
+    }
+
     console.log(`📥 [ARDUINO] ${line}`);
 
     if (line.startsWith('SCAN:')) {
@@ -184,6 +206,8 @@ class BiometricService {
       const reason = line.split(':')[1] || 'Unknown';
       console.log(`❌ [BIOMETRIC] Enrollment failed: ${reason}`);
       this.pendingEnrollment = null;
+    } else if (line !== 'READY') {
+      console.log(`💡 [BIOMETRIC] Unhandled message: ${line}`);
     }
   }
 
@@ -220,13 +244,15 @@ class BiometricService {
       );
 
       if (rows.length === 0) {
-        console.log(`❓ [BIOMETRIC] Unknown scan ID: ${fingerprintId} - Not linked to any employee.`);
+        console.warn(`❓ [BIOMETRIC] Unknown scan ID: ${fingerprintId} - Not linked to any employee.`);
         // Allow immediate retry if they want to enroll it
         this.lastScanMap.delete(fingerprintId);
         return;
       }
 
       const employeeId = rows[0].employee_id;
+      console.log(`🔍 [BIOMETRIC] Match found: ID ${fingerprintId} -> Employee ${employeeId}`);
+      
       const now = new Date();
       
       // FIX: used to be toISOString() which is UTC. We want Local Time (System Time).
@@ -407,6 +433,68 @@ class BiometricService {
     };
   }
 
+  // ============================================================================
+  // Template Parsing Helpers
+  // ============================================================================
+  
+  private parseTemplatePackets(hexData: string): Buffer | null {
+    // The stored template matches the R307/R305 data packet format:
+    // [Header 2B][Addr 4B][PID 1B][Len 2B][Data...][Sum 2B]
+    // We need to extract just the Data portions to reconstruct the 512-byte template.
+    
+    try {
+      const buffer = Buffer.from(hexData, 'hex');
+      let offset = 0;
+      const extractedData: number[] = [];
+      
+      while (offset < buffer.length - 8) { // Minimum packet remaining
+        // Check Header EF 01
+        if (buffer[offset] !== 0xEF || buffer[offset+1] !== 0x01) {
+          offset++;
+          continue;
+        }
+        
+        // Skip Header(2) + Addr(4) = 6 bytes
+        // PID is at offset + 6
+        // Length is at offset + 7 (High) and + 8 (Low)
+        const len = (buffer[offset+7] << 8) | buffer[offset+8];
+        const dataLen = len - 2; // Length includes checksum (2 bytes)
+        
+        // Data starts at offset + 9
+        const dataStart = offset + 9;
+        
+        for (let i = 0; i < dataLen; i++) {
+          if (dataStart + i < buffer.length) {
+            extractedData.push(buffer[dataStart + i]);
+          }
+        }
+        
+        // Move to next packet
+        // Packet size = 9 header/meta + dataLen + 2 checksum? 
+        // Actually Packet overhead = Header(2)+Addr(4)+PID(1)+Len(2)+Sum(2) = 11 bytes + Data
+        // But Len DOES include Sum. So Len = DataLen + 2.
+        // Total jump = 9 + Len.
+        offset += (9 + len);
+      }
+      
+      if (extractedData.length !== 512) {
+        console.warn(`⚠️ [BIOMETRIC] Parsed template length mismatch: ${extractedData.length} (Expected 512)`);
+        // If it's close, maybe it's fine? No, must be exact for R307.
+        // If it's > 512, truncate. If < 512, pad?
+        if (extractedData.length > 512) {
+           return Buffer.from(extractedData.slice(0, 512));
+        }
+        return null;
+      }
+      
+      return Buffer.from(extractedData);
+      
+    } catch (err) {
+      console.error('Error parsing template hex:', err);
+      return null;
+    }
+  }
+
   public async syncTemplatesToDevice(): Promise<void> {
     if (!this.isConnected) return;
     
@@ -421,16 +509,75 @@ class BiometricService {
       }
 
       console.log(`[BIOMETRIC] Syncing ${rows.length} templates to device...`);
+      
+      // Clear device first to ensure consistency with DB
+      this.sendCommand('DELETE_ALL');
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
       for (const row of rows) {
-        // Send as STORE_TEMPLATE:ID:HEX
-        this.sendCommand(`STORE_TEMPLATE:${row.fingerprint_id}:${(row as any).template}`);
-        // Small delay between commands to not flood Arduino
-        await new Promise(resolve => setTimeout(resolve, 500));
+        const hexTemplate = (row as any).template;
+        if (!hexTemplate || hexTemplate.length < 100) continue;
+        
+        const rawData = this.parseTemplatePackets(hexTemplate);
+        if (!rawData) {
+           console.error(`❌ [BIOMETRIC] Failed to parse template for ID ${row.fingerprint_id}. Skipping.`);
+           continue;
+        }
+
+        console.log(`[BIOMETRIC] Uploading ID ${row.fingerprint_id} (${rawData.length} bytes)...`);
+        
+        // 1. Send Upload Command
+        this.sendCommand(`UPLOAD:${row.fingerprint_id}`);
+        
+        // 2. Wait for READY_FOR_DATA
+        // We need a temporary one-time listener or promise
+        const ready = await this.waitForSerialMessage('READY_FOR_DATA', 2000);
+        
+        if (!ready) {
+           console.error(`❌ [BIOMETRIC] Device did not acknowledge upload for ID ${row.fingerprint_id}`);
+           continue;
+        }
+        
+        // 3. Send Raw Data
+        if (this.port) {
+           this.port.write(rawData);
+           this.port.drain(); // Wait for OS buffer to flush
+        }
+        
+        // 4. Wait for confirmation (STORE_SUCCESS or STORE_FAIL)
+        await new Promise(resolve => setTimeout(resolve, 1500)); // Give Arduino time to write to flash
       }
       console.log('[BIOMETRIC] Sync complete.');
     } catch (err) {
       console.error('❌ [BIOMETRIC] Sync error:', err);
     }
+  }
+  
+  private waitForSerialMessage(prefix: string, timeoutMs: number): Promise<boolean> {
+     return new Promise((resolve) => {
+        if (!this.parser) { resolve(false); return; }
+        
+        let solved = false;
+        const handler = (data: string) => {
+           if (data.trim().startsWith(prefix)) {
+              if (!solved) {
+                 solved = true;
+                 resolve(true);
+                 this.parser?.removeListener('data', handler);
+              }
+           }
+        };
+        
+        this.parser.on('data', handler);
+        
+        setTimeout(() => {
+           if (!solved) {
+              solved = true;
+              this.parser?.removeListener('data', handler);
+              resolve(false);
+           }
+        }, timeoutMs);
+     });
   }
 
   public async sendCommandToDevice(cmd: string) {

@@ -1,15 +1,7 @@
-// Imports updated
-import React, { memo, ChangeEvent, useState } from 'react';
-import { X, Loader } from 'lucide-react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-// @ts-ignore
-// @ts-ignore
-import { assignEmployee, vacatePosition } from '@/api/plantillaApi';
-import { useToastStore } from '@/stores';
-// @ts-ignore
-import { Position } from '../hooks/usePlantilla';
-
-// Local Position interface removed
+// Imports corrected
+import React, { memo, ChangeEvent } from 'react';
+import { X, FileText } from 'lucide-react';
+import { Position } from '@/api/plantillaApi';
 
 interface Employee {
   id: number;
@@ -29,43 +21,31 @@ interface HistoryRecord {
 interface AssignModalProps {
   isOpen: boolean;
   onClose: () => void;
-  currentPosition?: Position;
+  position: Position | null;
   availableEmployees: Employee[];
-  onSuccess?: () => void;
+  selectedEmployee: string;
+  setSelectedEmployee: (val: string) => void;
+  onAssign: () => void;
 }
 
-export const AssignModal: React.FC<AssignModalProps> = memo(({ isOpen, onClose, currentPosition, availableEmployees, onSuccess }) => {
-    const [selectedEmployee, setSelectedEmployee] = useState('');
-    const queryClient = useQueryClient();
-    const showToast = useToastStore((state) => state.showToast);
+export const AssignModal: React.FC<AssignModalProps> = memo(({ 
+    isOpen, 
+    onClose, 
+    position, 
+    availableEmployees, 
+    selectedEmployee, 
+    setSelectedEmployee, 
+    onAssign
+}) => {
+    if (!isOpen) return null;
 
-    const assignMutation = useMutation({
-        mutationFn: async () => {
-             if (currentPosition && selectedEmployee) {
-                 await assignEmployee(currentPosition.id, parseInt(selectedEmployee));
-             }
-        },
-        onSuccess: () => {
-             showToast('Employee assigned successfully', 'success');
-             queryClient.invalidateQueries({ queryKey: ['plantilla'] });
-             onClose();
-             setSelectedEmployee('');
-             if (onSuccess) onSuccess();
-        },
-        onError: (error: any) => {
-             console.error('Failed to assign employee', error);
-             showToast(error.response?.data?.message || 'Failed to assign employee', 'error');
-        }
-    });
-
-    const handleAssign = () => {
+    const handleAssignClick = () => {
         if (!selectedEmployee) return;
-        assignMutation.mutate();
+        onAssign();
     };
 
-    if (!isOpen) return null;
     return (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl border-2 border-gray-200 w-full max-w-md shadow-xl p-6">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-lg font-bold text-gray-800">Assign Employee</h2>
@@ -75,7 +55,7 @@ export const AssignModal: React.FC<AssignModalProps> = memo(({ isOpen, onClose, 
             </div>
             <div>
               <p className="text-sm text-gray-600 mb-4">
-                Assign an employee to: <strong>{currentPosition?.position_title}</strong>
+                Assign an employee to: <strong>{position?.position_title}</strong>
               </p>
               <div className="mb-4">
                 <label className="block text-xs font-semibold text-gray-700 mb-1">Select Employee</label>
@@ -100,12 +80,11 @@ export const AssignModal: React.FC<AssignModalProps> = memo(({ isOpen, onClose, 
                   Cancel
                 </button>
                 <button 
-                  onClick={handleAssign}
-                  disabled={assignMutation.isPending || !selectedEmployee}
+                  onClick={handleAssignClick}
+                  disabled={!selectedEmployee}
                   className="flex-1 px-4 py-2 text-sm font-semibold text-white bg-gray-900 rounded-lg shadow-md hover:bg-gray-800 flex items-center justify-center gap-2 disabled:opacity-50"
                 >
-                  {assignMutation.isPending && <Loader className="animate-spin" size={16} />}
-                  {assignMutation.isPending ? 'Assigning...' : 'Assign'}
+                  Confirm Assign
                 </button>
               </div>
             </div>
@@ -119,41 +98,28 @@ AssignModal.displayName = 'AssignModal';
 interface VacateModalProps {
   isOpen: boolean;
   onClose: () => void;
-  currentPosition?: Position;
-  onSuccess?: () => void;
+  position: Position | null;
+  vacateReason: string;
+  setVacateReason: (val: string) => void;
+  onVacate: () => void;
 }
 
-export const VacateModal: React.FC<VacateModalProps> = memo(({ isOpen, onClose, currentPosition, onSuccess }) => {
-    const [vacateReason, setVacateReason] = useState('');
-    const queryClient = useQueryClient();
-    const showToast = useToastStore((state) => state.showToast);
+export const VacateModal: React.FC<VacateModalProps> = memo(({ 
+    isOpen, 
+    onClose, 
+    position, 
+    vacateReason, 
+    setVacateReason, 
+    onVacate
+}) => {
+    if (!isOpen) return null;
 
-    const vacateMutation = useMutation({
-        mutationFn: async () => {
-             if (currentPosition) {
-                 await vacatePosition(currentPosition.id, vacateReason);
-             }
-        },
-        onSuccess: () => {
-             showToast('Position vacated successfully', 'success');
-             queryClient.invalidateQueries({ queryKey: ['plantilla'] });
-             onClose();
-             setVacateReason('');
-             if (onSuccess) onSuccess();
-        },
-        onError: (error: any) => {
-             console.error('Failed to vacate position', error);
-             showToast(error.response?.data?.message || 'Failed to vacate position', 'error');
-        }
-    });
-
-    const handleVacate = () => {
-        vacateMutation.mutate();
+    const handleVacateClick = () => {
+        onVacate();
     };
 
-    if (!isOpen) return null;
     return (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl border-2 border-gray-200 w-full max-w-md shadow-xl p-6">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-lg font-bold text-gray-800">Vacate Position</h2>
@@ -163,8 +129,8 @@ export const VacateModal: React.FC<VacateModalProps> = memo(({ isOpen, onClose, 
             </div>
             <div>
               <p className="text-sm text-gray-600 mb-4">
-                Vacating: <strong>{currentPosition?.position_title}</strong><br/>
-                Current Incumbent: <strong>{currentPosition?.incumbent_name}</strong>
+                Vacating: <strong>{position?.position_title}</strong><br/>
+                Current Incumbent: <strong>{position?.incumbent_name}</strong>
               </p>
               <div className="mb-4">
                 <label className="block text-xs font-semibold text-gray-700 mb-1">Reason (Optional)</label>
@@ -184,12 +150,10 @@ export const VacateModal: React.FC<VacateModalProps> = memo(({ isOpen, onClose, 
                   Cancel
                 </button>
                 <button 
-                  onClick={handleVacate}
-                  disabled={vacateMutation.isPending}
-                  className="flex-1 px-4 py-2 text-sm font-semibold text-white bg-amber-600 rounded-lg shadow-md hover:bg-amber-700 flex items-center justify-center gap-2 disabled:opacity-50"
+                  onClick={handleVacateClick}
+                  className="flex-1 px-4 py-2 text-sm font-semibold text-white bg-amber-600 rounded-lg shadow-md hover:bg-amber-700 flex items-center justify-center gap-2] disabled:opacity-50"
                 >
-                  {vacateMutation.isPending && <Loader className="animate-spin" size={16} />}
-                  {vacateMutation.isPending ? 'Vacating...' : 'Vacate'}
+                  Confirm Vacate
                 </button>
               </div>
             </div>
@@ -203,11 +167,12 @@ VacateModal.displayName = 'VacateModal';
 interface HistoryModalProps {
   isOpen: boolean;
   onClose: () => void;
-  currentPosition?: Position;
-  positionHistory: HistoryRecord[];
+  position: Position | null;
+  history: HistoryRecord[];
+  onPreviewForm33?: (id: number) => void;
 }
 
-export const HistoryModal: React.FC<HistoryModalProps> = memo(({ isOpen, onClose, currentPosition, positionHistory }) => {
+export const HistoryModal: React.FC<HistoryModalProps> = memo(({ isOpen, onClose, position, history, onPreviewForm33 }) => {
     if (!isOpen) return null;
 
     const formatDate = (date: string | null | undefined): string => {
@@ -216,7 +181,7 @@ export const HistoryModal: React.FC<HistoryModalProps> = memo(({ isOpen, onClose
     };
 
     return (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl border-2 border-gray-200 w-full max-w-md shadow-xl p-6">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-lg font-bold text-gray-800">Position History</h2>
@@ -225,12 +190,24 @@ export const HistoryModal: React.FC<HistoryModalProps> = memo(({ isOpen, onClose
               </button>
             </div>
             <div className="max-h-96 overflow-y-auto text-gray-800">
-              <p className="text-sm text-gray-600 mb-4">
-                <strong>{currentPosition?.position_title}</strong> ({currentPosition?.item_number})
-              </p>
-              {positionHistory.length > 0 ? (
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <p className="text-sm text-gray-600 font-bold uppercase tracking-wider">{position?.item_number}</p>
+                  <p className="text-sm font-black text-gray-900 leading-tight">{position?.position_title}</p>
+                </div>
+                {position && !position.is_vacant && onPreviewForm33 && (
+                    <button 
+                        onClick={() => position && onPreviewForm33(position.id)}
+                        className="bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-lg text-[10px] font-black hover:bg-indigo-100 transition-colors flex items-center gap-1.5 shadow-sm border border-indigo-100"
+                    >
+                        <FileText size={14} /> VIEW CS FORM 33
+                    </button>
+                )}
+              </div>
+
+              {history.length > 0 ? (
                 <div className="space-y-3">
-                  {positionHistory.map((h) => (
+                  {history.map((h) => (
                     <div key={h.id} className="bg-gray-50 rounded-lg p-3 border border-gray-200">
                       <p className="font-medium text-gray-800">{h.employee_name}</p>
                       <p className="text-sm text-gray-600">
@@ -259,7 +236,7 @@ interface GuideModalProps {
 export const GuideModal: React.FC<GuideModalProps> = memo(({ isOpen, onClose }) => {
     if (!isOpen) return null;
     return (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl border-2 border-gray-200 w-full max-w-md shadow-xl max-h-[85vh] flex flex-col p-6">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-lg font-bold text-gray-800">Real-Life Plantilla Guide</h2>

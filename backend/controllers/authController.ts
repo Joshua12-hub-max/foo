@@ -229,10 +229,12 @@ export const googleLogin = async (req: Request, res: Response): Promise<void> =>
 
     res.status(200).json({
       success: true,
-      requires2FA: true,
       message: 'Verification code sent to email',
-      identifier: user.email,
-      maskedEmail: maskEmail(user.email)
+      data: {
+        requires2FA: true,
+        identifier: user.email,
+        maskedEmail: maskEmail(user.email)
+      }
     });
   } catch (error) {
     console.error('Google Auth Error:', error);
@@ -610,10 +612,12 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 
       res.status(200).json({
         success: true,
-        requires2FA: true,
         message: '2FA Verification Required',
-        identifier: user.email,
-        maskedEmail: maskEmail(user.email)
+        data: {
+          requires2FA: true,
+          identifier: user.email,
+          maskedEmail: maskEmail(user.email)
+        }
       });
       return;
     }

@@ -4,10 +4,10 @@ import { LogOut, ChevronDown, ChevronRight, LucideIcon } from 'lucide-react';
 
 interface NavItem {
   name: string;
-  icon: LucideIcon;
+  icon?: LucideIcon;
   path?: string;
   action?: string;
-  children?: NavItem[]; // Keep recursive flexibility or define strict type
+  children?: NavItem[];
 }
 
 interface SidebarProps {
@@ -89,7 +89,7 @@ export default function Sidebar({ sidebarOpen, navItems, handleLogout, onSection
                     : 'text-gray-400 hover:bg-slate-800/50 hover:text-white'
                   }`}
                 >
-                  <Icon className={`w-5 h-5 flex-shrink-0 transition-colors duration-200 ${active && !hasChildren ? 'text-white' : 'text-gray-500 group-hover:text-white'}`} />
+                  {Icon && <Icon className={`w-5 h-5 flex-shrink-0 transition-colors duration-200 ${active && !hasChildren ? 'text-white' : 'text-gray-500 group-hover:text-white'}`} />}
                   {sidebarOpen && <span className="flex-1 text-left tracking-tight">{item.name}</span>}
                   {sidebarOpen && hasChildren && (
                     isOpen ? <ChevronDown className="w-4 h-4 opacity-50" /> : <ChevronRight className="w-4 h-4 opacity-50" />

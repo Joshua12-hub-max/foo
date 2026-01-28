@@ -5,9 +5,10 @@ export const CreateEmployeeSchema = z.object({
   last_name: z.string().min(1, "Last name is required"),
   email: z.string().email("Invalid email format"),
   department: z.string().min(1, "Department is required"),
+  department_id: z.coerce.number().optional().nullable(),
   job_title: z.string().optional(),
   role: z.enum(['admin', 'hr', 'employee']),
-  employment_status: z.string().optional().default("Active"),
+  employment_status: z.string().default("Active"),
   employee_id: z.string().optional(),
   password: z.string().optional(),
   
@@ -32,6 +33,7 @@ export const CreateEmployeeSchema = z.object({
   appointment_type: z.string().optional().nullable(),
   station: z.string().optional().nullable(),
   position_title: z.string().optional().nullable(),
+  position_id: z.coerce.number().optional().nullable(),
   item_number: z.string().optional().nullable(),
   
   // Plantilla-required Eligibility Fields

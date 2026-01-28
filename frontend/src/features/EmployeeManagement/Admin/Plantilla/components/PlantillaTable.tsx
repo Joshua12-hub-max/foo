@@ -1,36 +1,27 @@
 import React, { memo } from 'react';
 import { SquarePen, Trash2, UserPlus, UserMinus, History } from 'lucide-react';
 
-interface Position {
-  id: number;
-  item_number: string;
-  position_title: string;
-  salary_grade: string;
-  step_increment?: number;
-  department?: string;
-  incumbent_name?: string;
-  is_vacant: boolean;
-}
+import { type Position } from '@api/plantillaApi';
 
 interface PlantillaTableProps {
   loading: boolean;
-  error: string | null;
+  error?: string | null;
   positions: Position[];
-  onOpenAssign: (pos: Position) => void;
-  onOpenVacate: (pos: Position) => void;
+  onAssign: (pos: Position) => void;
+  onVacate: (pos: Position) => void;
   onViewHistory: (pos: Position) => void;
-  onOpenEdit: (pos: Position) => void;
+  onEdit: (pos: Position) => void;
   onDelete: (id: number) => void;
 }
 
 const PlantillaTable: React.FC<PlantillaTableProps> = ({ 
     loading, 
-    error, 
+    error = null, 
     positions, 
-    onOpenAssign, 
-    onOpenVacate, 
+    onAssign, 
+    onVacate, 
     onViewHistory, 
-    onOpenEdit, 
+    onEdit, 
     onDelete 
 }) => {
     return (
@@ -79,7 +70,7 @@ const PlantillaTable: React.FC<PlantillaTableProps> = ({
                         <div className="flex justify-center gap-1">
                             {pos.is_vacant ? (
                             <button 
-                                onClick={() => onOpenAssign(pos)}
+                                onClick={() => onAssign(pos)}
                                 className="text-gray-600 hover:text-gray-800 p-1.5 rounded hover:bg-gray-100 transition"
                                 title="Assign Employee"
                             >
@@ -87,7 +78,7 @@ const PlantillaTable: React.FC<PlantillaTableProps> = ({
                             </button>
                             ) : (
                             <button 
-                                onClick={() => onOpenVacate(pos)}
+                                onClick={() => onVacate(pos)}
                                 className="text-amber-600 hover:text-amber-800 p-1.5 rounded hover:bg-amber-50 transition"
                                 title="Vacate Position"
                             >
@@ -102,7 +93,7 @@ const PlantillaTable: React.FC<PlantillaTableProps> = ({
                             <History size={16} />
                             </button>
                             <button 
-                            onClick={() => onOpenEdit(pos)}
+                            onClick={() => onEdit(pos)}
                             className="text-blue-600 hover:text-blue-800 p-1.5 rounded hover:bg-blue-50 transition"
                             title="Edit"
                             >

@@ -126,7 +126,7 @@ const InterviewPanel: React.FC<InterviewPanelProps> = ({
           {/* APPLICANT CARD */}
           <div className="relative group">
             <div className="absolute -inset-0.5 bg-gray-900/20 rounded-2xl opacity-20 group-hover:opacity-40 transition duration-500"></div>
-            <div className="relative bg-slate-800/80 backdrop-blur-sm rounded-xl p-5 border border-gray-900/50">
+            <div className="relative bg-slate-800/80 rounded-xl p-5 border border-gray-900/50">
               <div className="flex items-start gap-4">
                 <div className="w-14 h-14 rounded-full bg-gradient-to-br from-slate-700 to-slate-600 p-0.5 shadow-inner">
                   <div className="w-full h-full rounded-full bg-slate-800 flex items-center justify-center overflow-hidden">
@@ -160,7 +160,7 @@ const InterviewPanel: React.FC<InterviewPanelProps> = ({
                 className="w-full group relative overflow-hidden rounded-xl bg-[#F8F9FC] p-px shadow-xl shadow-gray-900/40 transition-all hover:scale-[1.02] active:scale-[0.98]"
               >
                 <div className="relative h-14 w-full bg-transparent flex items-center justify-center gap-3 rounded-xl transition-all group-hover:bg-white/5">
-                  <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm">
+                  <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center overflow-hidden">
                     <Video size={16} className="text-gray-950" />
                   </div>
                   <span className="font-bold text-gray-950 text-lg">Start Video Call</span>
@@ -252,7 +252,7 @@ const InterviewPanel: React.FC<InterviewPanelProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-slate-800 bg-slate-900/50 backdrop-blur">
+        <div className="p-4 border-t border-slate-800 bg-slate-900/50">
           <button
             onClick={endInterview}
             className="w-full py-3.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 hover:text-rose-400 border border-rose-500/20 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all"
@@ -268,7 +268,7 @@ const InterviewPanel: React.FC<InterviewPanelProps> = ({
         <div className="absolute inset-0 bg-[url('https://optimizely.com/img/backgrounds/grid.svg')] opacity-[0.03] pointer-events-none"></div>
         
         {/* Notes Header */}
-        <div className="h-16 px-8 bg-white/80 backdrop-blur-md border-b border-gray-200/60 sticky top-0 flex items-center justify-between z-10 supports-[backdrop-filter]:bg-white/60">
+        <div className="h-16 px-8 bg-white/80 border-b border-gray-200/60 sticky top-0 flex items-center justify-between z-10">
           <div className="flex items-center gap-3">
             <h3 className="p-2 font-bold text-lg text-gray-800">Interview Notes</h3>
             {isDirty && <span className="text-xs text-amber-500 font-medium px-2 py-0.5 bg-amber-50 rounded-full border border-amber-200">Unsaved Changes</span>}

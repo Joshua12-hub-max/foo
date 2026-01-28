@@ -4,12 +4,6 @@ export const CreateEmployeeSchema = z.object({
   first_name: z.string().min(1, "First name is required"),
   last_name: z.string().min(1, "Last name is required"),
   email: z.string().email("Invalid email format"),
-  department: z.string().min(1, "Department is required"),
-  job_title: z.string().optional(),
-  role: z.enum(['admin', 'hr', 'employee']),
-  employment_status: z.string().optional().default("Active"),
-  employee_id: z.string().optional(), // Can be auto-generated
-  password: z.string().optional(), // Can be auto-generated
   
   // Personal Info
   birth_date: z.string().optional().nullable(),

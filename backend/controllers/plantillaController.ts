@@ -5,7 +5,7 @@ import type { AuthenticatedRequest } from '../types/index.js';
 
 interface PositionRow extends RowDataPacket {
   id: number; item_number: string; position_title: string; salary_grade: number; step_increment: number;
-  department?: string; is_vacant: boolean; incumbent_id?: number; monthly_salary?: number;
+  department_id?: number; department_name?: string; is_vacant: boolean; incumbent_id?: number; monthly_salary?: number;
   incumbent_first_name?: string; incumbent_last_name?: string; filled_date?: string; vacated_date?: string;
 }
 interface EmployeeRow extends RowDataPacket { id: number; first_name: string; last_name: string; employee_id: string; department?: string; item_number?: string; }
@@ -21,10 +21,16 @@ const logAudit = async (positionId: number, action: string, actorId: number, old
 
 export const getPlantilla = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { department, is_vacant } = req.query;
-    let query = `SELECT p.*, a.first_name as incumbent_first_name, a.last_name as incumbent_last_name, a.employee_id as incumbent_employee_id FROM plantilla_positions p LEFT JOIN authentication a ON p.incumbent_id = a.id WHERE 1=1`;
+    const { department_id, is_vacant } = req.query;
+    let query = `
+      SELECT p.*, d.name as department_name, a.first_name as incumbent_first_name, a.last_name as incumbent_last_name, a.employee_id as incumbent_employee_id 
+      FROM plantilla_positions p 
+      LEFT JOIN departments d ON p.department_id = d.id 
+      LEFT JOIN authentication a ON p.incumbent_id = a.id 
+      WHERE 1=1
+    `;
     const params: (string | number)[] = [];
-    if (department && department !== 'All') { query += ' AND p.department = ?'; params.push(department as string); }
+    if (department_id && department_id !== 'All') { query += ' AND p.department_id = ?'; params.push(Number(department_id)); }
     if (is_vacant !== undefined) { query += ' AND p.is_vacant = ?'; params.push(is_vacant === 'true' || is_vacant === '1' ? 1 : 0); }
     query += ' ORDER BY p.item_number ASC';
     const [positions] = await db.query<PositionRow[]>(query, params);
@@ -44,11 +50,14 @@ export const getPlantillaSummary = async (req: Request, res: Response): Promise<
 export const createPosition = async (req: Request, res: Response): Promise<void> => {
   try {
     const authReq = req as AuthenticatedRequest;
-    const { item_number, position_title, salary_grade, step_increment, department, monthly_salary } = req.body;
-    if (!item_number || !position_title || !salary_grade) { res.status(400).json({ success: false, message: 'Item number, position title, and salary grade are required' }); return; }
+    const { item_number, position_title, salary_grade, step_increment, department_id, monthly_salary } = req.body;
+    if (!item_number || !position_title || !salary_grade || !department_id) { res.status(400).json({ success: false, message: 'Item number, position title, salary grade, and department are required' }); return; }
     if (salary_grade < 1 || salary_grade > 33) { res.status(400).json({ success: false, message: 'Salary grade must be between 1 and 33' }); return; }
-    const [result] = await db.query<ResultSetHeader>(`INSERT INTO plantilla_positions (item_number, position_title, salary_grade, step_increment, department, monthly_salary) VALUES (?, ?, ?, ?, ?, ?)`, [item_number, position_title, salary_grade, step_increment || 1, department, monthly_salary || null]);
-    await logAudit(result.insertId, 'created', authReq.user.id, null, { item_number, position_title, salary_grade, step_increment, department, monthly_salary });
+    const [result] = await db.query<ResultSetHeader>(
+      `INSERT INTO plantilla_positions (item_number, position_title, salary_grade, step_increment, department_id, department, monthly_salary) VALUES (?, ?, ?, ?, ?, (SELECT name FROM departments WHERE id = ?), ?)`, 
+      [item_number, position_title, salary_grade, step_increment || 1, department_id, department_id, monthly_salary || null]
+    );
+    await logAudit(result.insertId, 'created', authReq.user.id, null, { item_number, position_title, salary_grade, step_increment, department_id, monthly_salary });
     res.status(201).json({ success: true, message: 'Position created successfully', id: result.insertId });
   } catch (error: unknown) {
     const err = error as { code?: string };
@@ -60,11 +69,14 @@ export const createPosition = async (req: Request, res: Response): Promise<void>
 export const updatePosition = async (req: Request, res: Response): Promise<void> => {
   try {
     const authReq = req as AuthenticatedRequest; const { id } = req.params;
-    const { item_number, position_title, salary_grade, step_increment, department, is_vacant, monthly_salary } = req.body;
+    const { item_number, position_title, salary_grade, step_increment, department_id, is_vacant, monthly_salary } = req.body;
     const [oldData] = await db.query<PositionRow[]>('SELECT * FROM plantilla_positions WHERE id = ?', [id]);
     if (oldData.length === 0) { res.status(404).json({ success: false, message: 'Position not found' }); return; }
-    await db.query(`UPDATE plantilla_positions SET item_number = ?, position_title = ?, salary_grade = ?, step_increment = ?, department = ?, is_vacant = ?, monthly_salary = ? WHERE id = ?`, [item_number, position_title, salary_grade, step_increment, department, is_vacant, monthly_salary, id]);
-    await logAudit(parseInt(id), 'updated', authReq.user.id, oldData[0], { item_number, position_title, salary_grade, step_increment, department, is_vacant, monthly_salary });
+    await db.query(
+      `UPDATE plantilla_positions SET item_number = ?, position_title = ?, salary_grade = ?, step_increment = ?, department_id = ?, department = (SELECT name FROM departments WHERE id = ?), is_vacant = ?, monthly_salary = ? WHERE id = ?`, 
+      [item_number, position_title, salary_grade, step_increment, department_id, department_id, is_vacant, monthly_salary, id]
+    );
+    await logAudit(parseInt(id), 'updated', authReq.user.id, oldData[0], { item_number, position_title, salary_grade, step_increment, department_id, is_vacant, monthly_salary });
     res.json({ success: true, message: 'Position updated successfully' });
   } catch (error) { res.status(500).json({ success: false, message: 'Failed to update position' }); }
 };
@@ -93,7 +105,12 @@ export const assignEmployee = async (req: Request, res: Response): Promise<void>
     if (employee.length === 0) { res.status(404).json({ success: false, message: 'Employee not found' }); return; }
     const assignDate = start_date || new Date().toISOString().split('T')[0];
     await db.query(`UPDATE plantilla_positions SET incumbent_id = ?, is_vacant = 0, filled_date = ?, vacated_date = NULL WHERE id = ?`, [employee_id, assignDate, id]);
-    try { await db.query(`UPDATE authentication SET job_title = ?, \`position_title\` = ?, item_number = ?, salary_grade = ?, step_increment = ? WHERE id = ?`, [position[0].position_title, position[0].position_title, position[0].item_number, position[0].salary_grade, position[0].step_increment, employee_id]); } catch (syncError) { console.error('Profile sync error:', syncError); }
+    try { 
+      await db.query(
+        `UPDATE authentication SET job_title = ?, \`position_title\` = ?, item_number = ?, position_id = ?, department_id = ?, department = ?, salary_grade = ?, step_increment = ? WHERE id = ?`, 
+        [position[0].position_title, position[0].position_title, position[0].item_number, id, position[0].department_id, position[0].department, position[0].salary_grade, position[0].step_increment, employee_id]
+      ); 
+    } catch (syncError) { console.error('Profile sync error:', syncError); }
     await db.query(`INSERT INTO plantilla_position_history (position_id, employee_id, employee_name, position_title, start_date) VALUES (?, ?, ?, ?, ?)`, [id, employee_id, `${employee[0].first_name} ${employee[0].last_name}`, position[0].position_title, assignDate]);
     await logAudit(parseInt(id), 'assigned', authReq.user.id, { is_vacant: 1, incumbent_id: null }, { is_vacant: 0, incumbent_id: employee_id, employee_name: `${employee[0].first_name} ${employee[0].last_name}` });
     res.json({ success: true, message: 'Employee assigned successfully' });
@@ -110,7 +127,7 @@ export const vacatePosition = async (req: Request, res: Response): Promise<void>
     const vacateDate = end_date || new Date().toISOString().split('T')[0];
     await db.query(`UPDATE plantilla_position_history SET end_date = ?, reason = ? WHERE position_id = ? AND employee_id = ? AND end_date IS NULL`, [vacateDate, reason || 'Position vacated', id, position[0].incumbent_id]);
     await db.query(`UPDATE plantilla_positions SET incumbent_id = NULL, is_vacant = 1, vacated_date = ? WHERE id = ?`, [vacateDate, id]);
-    try { await db.query(`UPDATE authentication SET job_title = 'Unassigned', \`position_title\` = NULL, item_number = NULL WHERE id = ?`, [position[0].incumbent_id]); } catch (syncError) { console.error('Profile sync error:', syncError); }
+    try { await db.query(`UPDATE authentication SET job_title = 'Unassigned', \`position_title\` = NULL, item_number = NULL, position_id = NULL WHERE id = ?`, [position[0].incumbent_id]); } catch (syncError) { console.error('Profile sync error:', syncError); }
     await logAudit(parseInt(id), 'vacated', authReq.user.id, { is_vacant: 0, incumbent_id: position[0].incumbent_id }, { is_vacant: 1, incumbent_id: null, reason });
     res.json({ success: true, message: 'Position vacated successfully' });
   } catch (error) { res.status(500).json({ success: false, message: 'Failed to vacate position' }); }

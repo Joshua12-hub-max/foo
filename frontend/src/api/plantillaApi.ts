@@ -1,9 +1,27 @@
 import api from './axios';
 import { AxiosResponse } from 'axios';
 
+export interface Position {
+  id: number;
+  item_number: string;
+  position_title: string;
+  salary_grade: number;
+  step_increment: number;
+  department: string;
+  department_id?: number;
+  department_name?: string;
+  monthly_salary?: string | number;
+  is_vacant: boolean;
+  incumbent_name?: string;
+  incumbent_id?: number;
+  status?: 'Active' | 'Inactive';
+  created_at?: string;
+  updated_at?: string;
+}
+
 export const plantillaApi = {
     // Get all positions with incumbent details
-    getPositions: async (params: any): Promise<AxiosResponse> => {
+    getPositions: async (params: { department_id?: number | string; department?: string; is_vacant?: boolean; search?: string }): Promise<AxiosResponse<{ success: boolean; positions: Position[] }>> => {
         try {
             const response = await api.get('/plantilla', { params });
             return response;
@@ -13,7 +31,7 @@ export const plantillaApi = {
     },
 
     // Get summary statistics
-    getSummary: async (): Promise<AxiosResponse> => {
+    getSummary: async (): Promise<AxiosResponse<{ success: boolean; summary: any }>> => {
         try {
             const response = await api.get('/plantilla/summary');
             return response;
@@ -23,7 +41,7 @@ export const plantillaApi = {
     },
 
     // Create position
-    createPosition: async (data: any): Promise<AxiosResponse> => {
+    createPosition: async (data: Omit<Position, 'id'>): Promise<AxiosResponse<{ success: boolean; id: number }>> => {
         try {
             const response = await api.post('/plantilla', data);
             return response;
@@ -33,7 +51,7 @@ export const plantillaApi = {
     },
 
     // Update position
-    updatePosition: async (id: string | number, data: any): Promise<AxiosResponse> => {
+    updatePosition: async (id: string | number, data: Partial<Position>): Promise<AxiosResponse<{ success: boolean }>> => {
         try {
             const response = await api.put(`/plantilla/${id}`, data);
             return response;
@@ -53,7 +71,7 @@ export const plantillaApi = {
     },
 
     // Assign employee to position
-    assignEmployee: async (positionId: string | number, data: any): Promise<AxiosResponse> => {
+    assignEmployee: async (positionId: string | number, data: { employee_id: number; start_date: string }): Promise<AxiosResponse<{ success: boolean }>> => {
         try {
             const response = await api.post(`/plantilla/${positionId}/assign`, data);
             return response;
@@ -63,7 +81,7 @@ export const plantillaApi = {
     },
 
     // Vacate position
-    vacatePosition: async (positionId: string | number, data: any): Promise<AxiosResponse> => {
+    vacatePosition: async (positionId: string | number, data: { reason: string }): Promise<AxiosResponse<{ success: boolean }>> => {
         try {
             const response = await api.post(`/plantilla/${positionId}/vacate`, data);
             return response;

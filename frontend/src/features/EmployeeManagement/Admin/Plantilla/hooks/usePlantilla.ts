@@ -1,27 +1,16 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 // @ts-ignore
-import { plantillaApi } from '@api/plantillaApi';
+import { plantillaApi, type Position } from '@api/plantillaApi';
+export type { Position }; // Re-export for legacy code support
 // @ts-ignore
 import { fetchEmployeeOptions } from '@api/employeeApi';
 import { INITIAL_SUMMARY, PlantillaSummary } from '../constants/plantillaConstants';
 import { PlantillaSchema } from '@/schemas/plantilla';
 
-export interface Position {
-  id: number;
-  item_number: string;
-  position_title: string;
-  salary_grade: string;
-  step_increment: number;
-  department: string;
-  monthly_salary?: string | number;
-  is_vacant: boolean;
-  incumbent_name?: string;
-  incumbent_id?: number;
-}
-
 export interface Employee {
   id: number;
+  employee_id: string;
   first_name: string;
   last_name: string;
 }
@@ -42,7 +31,7 @@ export interface UsePlantillaReturn {
   positions: Position[];
   loading: boolean;
   error: string | null;
-  departments: string[];
+  departments: { id: number; name: string }[];
   summary: PlantillaSummary;
   selectedDept: string;
   setSelectedDept: React.Dispatch<React.SetStateAction<string>>;
@@ -50,8 +39,8 @@ export interface UsePlantillaReturn {
   setSearchTerm: React.Dispatch<React.SetStateAction<string>>;
   isModalOpen: boolean;
   setIsModalOpen: React.Dispatch<React.SetStateAction<boolean>>;
-  modalMode: string;
-  setModalMode: React.Dispatch<React.SetStateAction<string>>;
+  modalMode: 'create' | 'edit';
+  setModalMode: React.Dispatch<React.SetStateAction<'create' | 'edit'>>;
   currentPosition: Position | null;
   setCurrentPosition: React.Dispatch<React.SetStateAction<Position | null>>;
   // formData removed
@@ -102,7 +91,7 @@ export const usePlantilla = ({ showNotification }: UsePlantillaOptions = {}): Us
   
     // Modal state
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [modalMode, setModalMode] = useState('create');
+    const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
     const [currentPosition, setCurrentPosition] = useState<Position | null>(null);
     
     // Assign modal state
@@ -115,11 +104,13 @@ export const usePlantilla = ({ showNotification }: UsePlantillaOptions = {}): Us
   
     // Vacate modal state
     const [isVacateModalOpen, setIsVacateModalOpen] = useState(false);
+    const [vacateReason, setVacateReason] = useState('');
+    const [selectedEmployee, setSelectedEmployee] = useState('');
     const { data: positionsData, isLoading: positionsLoading, error: positionsError, refetch: refetchPositions } = useQuery({
         queryKey: ['plantilla', selectedDept],
         queryFn: async () => {
             const response = await plantillaApi.getPositions({ 
-                department: selectedDept !== 'All' ? selectedDept : undefined 
+                department_id: selectedDept !== 'All' ? selectedDept : undefined
             });
             return response.data.positions;
         },
@@ -139,7 +130,7 @@ export const usePlantilla = ({ showNotification }: UsePlantillaOptions = {}): Us
         queryKey: ['departments-options'],
         queryFn: async () => {
             const options = await fetchEmployeeOptions();
-            return options.departments || [];
+            return (options.departments || []) as { id: number; name: string }[];
         },
         initialData: []
     });
@@ -159,11 +150,19 @@ export const usePlantilla = ({ showNotification }: UsePlantillaOptions = {}): Us
 
     const handleCreateOrUpdate = useCallback(async (data: PlantillaSchema) => {
         try {
+          const payload = {
+            ...data,
+            salary_grade: String(data.salary_grade),
+            monthly_salary: data.monthly_salary ? String(data.monthly_salary) : undefined,
+            department_id: data.department_id,
+            status: 'Active' as const
+          };
+
           if (modalMode === 'create') {
-            await plantillaApi.createPosition(data);
+            await plantillaApi.createPosition(data as Omit<Position, 'id'>);
           } else {
             if (!currentPosition?.id) throw new Error("No position selected for update");
-            await plantillaApi.updatePosition(currentPosition.id, data);
+            await plantillaApi.updatePosition(currentPosition.id, data as Partial<Position>);
           }
           setIsModalOpen(false);
           refetchPositions();
@@ -174,7 +173,36 @@ export const usePlantilla = ({ showNotification }: UsePlantillaOptions = {}): Us
         }
     }, [modalMode, currentPosition, refetchPositions, refetchSummary]);
 
-    // handleAssign and handleVacate are removed from hook as they are handled in modals now
+    const handleAssign = useCallback(async () => {
+        if (!currentPosition || !selectedEmployee) return;
+        try {
+            await plantillaApi.assignEmployee(currentPosition.id, {
+                employee_id: parseInt(selectedEmployee),
+                start_date: new Date().toISOString().split('T')[0]
+            });
+            setIsAssignModalOpen(false);
+            setSelectedEmployee('');
+            refetchPositions();
+            refetchSummary();
+            notify("Employee assigned successfully");
+        } catch (err: any) {
+            notify(err.response?.data?.message || "Failed to assign employee", "error");
+        }
+    }, [currentPosition, selectedEmployee, refetchPositions, refetchSummary]);
+
+    const handleVacate = useCallback(async () => {
+        if (!currentPosition) return;
+        try {
+            await plantillaApi.vacatePosition(currentPosition.id, { reason: vacateReason });
+            setIsVacateModalOpen(false);
+            setVacateReason('');
+            refetchPositions();
+            refetchSummary();
+            notify("Position vacated successfully");
+        } catch (err: any) {
+            notify(err.response?.data?.message || "Failed to vacate position", "error");
+        }
+    }, [currentPosition, vacateReason, refetchPositions, refetchSummary]);
 
     const fetchHistory = useCallback(async (position: Position) => {
         setCurrentPosition(position);
@@ -202,7 +230,9 @@ export const usePlantilla = ({ showNotification }: UsePlantillaOptions = {}): Us
     const filteredPositions = useMemo(() => 
         (positionsData || []).filter((p: Position) => 
           p.position_title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          p.item_number.toLowerCase().includes(searchTerm.toLowerCase())
+          p.item_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (p.incumbent_name && p.incumbent_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+          (p.department && p.department.toLowerCase().includes(searchTerm.toLowerCase()))
         ), [positionsData, searchTerm]
     );
 
@@ -216,16 +246,15 @@ export const usePlantilla = ({ showNotification }: UsePlantillaOptions = {}): Us
         selectedDept, setSelectedDept, searchTerm, setSearchTerm,
         isModalOpen, setIsModalOpen, modalMode, setModalMode, currentPosition, setCurrentPosition,
         isAssignModalOpen, setIsAssignModalOpen, availableEmployees, 
-        selectedEmployee: '', setSelectedEmployee: (_: React.SetStateAction<string>) => {}, // Deprecated shim
+        selectedEmployee, setSelectedEmployee,
         isHistoryModalOpen, setIsHistoryModalOpen, positionHistory,
         isVacateModalOpen, setIsVacateModalOpen, 
-        vacateReason: '', setVacateReason: (_: React.SetStateAction<string>) => {}, // Deprecated shim
+        vacateReason, setVacateReason,
         filteredPositions,
         
         // Actions
         handleDelete, handleCreateOrUpdate, 
-        handleAssign: async () => {}, // Deprecated shim
-        handleVacate: async () => {}, // Deprecated shim
+        handleAssign, handleVacate,
         fetchHistory, openAssignModal,
         refetch: () => { refetchPositions(); refetchSummary(); }
     };

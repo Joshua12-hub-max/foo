@@ -20,14 +20,7 @@ interface Department {
   name: string;
 }
 
-interface Position {
-  id: number | string;
-  item_number: string;
-  position_title: string;
-  salary_grade: string;
-  step_increment?: number;
-  department?: string;
-}
+import { Position } from '@/api/plantillaApi';
 
 interface AddEmployeeModalProps {
   isOpen: boolean;
@@ -77,9 +70,10 @@ const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
         onClose();
         if (onSuccess) onSuccess();
     },
-    onError: (error: any) => {
-        console.error('Failed to add employee', error);
-        showToast(error.message || 'Failed to add employee', 'error');
+    onError: (error: unknown) => {
+        const err = error as any;
+        console.error('Failed to add employee', err);
+        showToast(err.message || 'Failed to add employee', 'error');
     }
   });
 
@@ -109,16 +103,18 @@ const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
       const position = vacantPositions.find(p => p.item_number === itemNo);
       if (position) {
         setValue('position_title', position.position_title || '');
-        setValue('salary_grade', parserSalaryGrade(position.salary_grade));
+        const sg = parserSalaryGrade(position.salary_grade);
+        if (sg !== undefined) setValue('salary_grade', sg);
         setValue('step_increment', position.step_increment || 1);
         if (position.department) setValue('department', position.department);
       }
     }
   };
 
-  const parserSalaryGrade = (sg: string | number | undefined) => {
-      if(!sg) return undefined;
-      return Number(sg);
+  const parserSalaryGrade = (sg: string | number | undefined): number | undefined => {
+      if(sg === undefined || sg === null) return undefined;
+      const num = Number(sg);
+      return isNaN(num) ? undefined : num;
   }
 
   if (!isOpen) return null;
@@ -225,8 +221,8 @@ const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
                      {...register('role')}
                     className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm" 
                   >
-                    {ROLE_OPTIONS.map((option: { value: string; label: string }) => (
-                      <option key={option.value} value={option.value as any}>{option.label}</option>
+                    {ROLE_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>{option.label}</option>
                     ))}
                   </select>
                    {errors.role && <p className="text-red-500 text-xs mt-1">{errors.role.message}</p>}

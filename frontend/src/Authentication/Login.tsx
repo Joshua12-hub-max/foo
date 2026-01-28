@@ -14,7 +14,10 @@ import OTPInput from "./OTPInput";
 import { GoogleLogin } from '@react-oauth/google';
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { LoginSchema, LoginInput } from "@/schemas/authSchema";
+import { LoginSchema, LoginInput, VerifyOTPInput, ResendOTPInput } from "@/schemas/authSchema";
+import { ApiResponse, User } from "@/types";
+import { AxiosResponse } from "axios";
+import { CredentialResponse } from "@react-oauth/google";
 
 // Main component for the login page.
 export default function Login() {
@@ -96,20 +99,16 @@ export default function Login() {
     loginMutation.mutate(
       { identifier: data.identifier.trim(), password: data.password },
       {
-        onSuccess: (response: any) => {
-             // response is the Axios response object or the data returned by loginApi?
-             // Service/Auth.ts login returns api.post(...). 
-             // api.post returns AxiosResponse.
-             // So response.data is the payload.
-             
+        onSuccess: (response: AxiosResponse<ApiResponse<{ requires2FA?: boolean; maskedEmail?: string; identifier?: string } | User>>) => {
              const payload = response.data;
+             const authData = payload.data as { requires2FA?: boolean; maskedEmail?: string; identifier?: string };
 
-             if (payload.requires2FA) {
-                setMaskedEmail(payload.maskedEmail);
-                setAuthIdentifier(payload.identifier);
+             if (authData?.requires2FA) {
+                setMaskedEmail(authData.maskedEmail || "");
+                setAuthIdentifier(authData.identifier || "");
                 setShowOTP(true);
-             } else {
-                handleLoginSuccess(payload.data);
+             } else if (payload.data) {
+                handleLoginSuccess(payload.data as User);
              }
         },
         onError: (err) => {
@@ -119,16 +118,19 @@ export default function Login() {
     );
   };
 
-  const handleGoogleSuccess = (credentialResponse: any) => {
+  const handleGoogleSuccess = (credentialResponse: CredentialResponse) => {
+     if (!credentialResponse.credential) return;
      googleLoginMutation.mutate(credentialResponse.credential, {
-        onSuccess: (response: any) => {
+        onSuccess: (response: AxiosResponse<ApiResponse<{ requires2FA?: boolean; maskedEmail?: string; identifier?: string } | User>>) => {
             const payload = response.data;
-             if (payload.requires2FA) {
-                setMaskedEmail(payload.maskedEmail);
-                setAuthIdentifier(payload.identifier);
+            const authData = payload.data as { requires2FA?: boolean; maskedEmail?: string; identifier?: string };
+
+             if (authData?.requires2FA) {
+                setMaskedEmail(authData.maskedEmail || "");
+                setAuthIdentifier(authData.identifier || "");
                 setShowOTP(true);
-             } else {
-                handleLoginSuccess(payload.data);
+             } else if (payload.data) {
+                handleLoginSuccess(payload.data as User);
              }
         }
      });
@@ -141,10 +143,7 @@ export default function Login() {
       verify2FAMutation.mutate(
         { identifier: authIdentifier, otp },
         {
-            onSuccess: (response: any) => {
-                 // Verify2FA service returns response.data directly? 
-                 // Let's check Service/Auth.ts: `return response.data;`
-                 // So 'response' here IS the payload { success: true, data: user }
+            onSuccess: (response: ApiResponse<User>) => {
                  handleLoginSuccess(response.data);
             }
         }
@@ -164,9 +163,8 @@ export default function Login() {
       );
   };
 
-  const handleLoginSuccess = (user: any) => {
+  const handleLoginSuccess = (user: User) => {
       if (!user || !user.role) {
-         // Should hopefully be caught by types but runtime check remains
          console.error("Invalid user data", user);
          return;
       }
@@ -182,8 +180,9 @@ export default function Login() {
   };
 
   // Helper to extract error message from error object (Axios error usually)
-  const getErrorMessage = (err: any) => {
-      return err?.response?.data?.message || err?.message || "An error occurred";
+  const getErrorMessage = (err: unknown) => {
+      const error = err as any; // Cast to access potential axios structure
+      return error?.response?.data?.message || error?.message || "An error occurred";
   };
 
   const displayedError = error ? getErrorMessage(loginMutation.error || googleLoginMutation.error) : "";

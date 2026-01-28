@@ -43,7 +43,7 @@ const EditCreditModal = ({ isOpen, onClose, onSubmit, credit, isSubmitting }: Ed
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/50 backdrop-blur-sm" onClick={onClose}>
+    <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/50" onClick={onClose}>
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div className="bg-gray-50 p-4 border-b border-gray-100 flex justify-between items-center">

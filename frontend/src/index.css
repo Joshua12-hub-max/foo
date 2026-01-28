@@ -1,5 +1,5 @@
-/* Import Inter font from Google Fonts */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+/* Import Inter font from Google Fonts with full range of weights */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
 @import "tailwindcss";
 
@@ -12,8 +12,18 @@
     font-family: var(--font-sans), sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    @apply text-slate-950 bg-white selection:bg-green-100 selection:text-green-900;
   }
 }
+
+/* Master Design Tokens */
+:root {
+  --shadow-premium: 0 10px 40px -10px rgba(0, 0, 0, 0.08);
+  --shadow-premium-hover: 0 20px 50px -12px rgba(0, 0, 0, 0.12);
+}
+
+.shadow-premium { box-shadow: var(--shadow-premium); }
+.shadow-premium-hover { box-shadow: var(--shadow-premium-hover); }
 
 /* Hide scrollbar but keep scroll functionality */
 .scrollbar-hide {

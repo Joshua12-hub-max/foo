@@ -17,18 +17,27 @@ interface EmployeeResponse {
   contacts?: any[];
   contactId?: string | number;
   fieldId?: string | number;
-  departments?: string[];
+  departments?: { id: number; name: string }[] | string[];
   jobTitles?: string[];
   isEnrolled?: boolean;
 }
 
 
 //Employee CRUD
-export const fetchEmployees = async (department: string | null = null): Promise<EmployeeResponse> => {
+export const fetchEmployees = async (deptParams: { department?: string | null, department_id?: number | null } = {}): Promise<EmployeeResponse> => {
   try {
-    const url = department && department !== 'All Departments' 
-        ? `/employees?department=${encodeURIComponent(department)}` 
-        : '/employees';
+    const { department, department_id } = deptParams;
+    let url = '/employees';
+    const params = new URLSearchParams();
+    
+    if (department_id) {
+      params.append('department_id', department_id.toString());
+    } else if (department && department !== 'All Departments') {
+      params.append('department', department);
+    }
+    
+    const queryString = params.toString();
+    if (queryString) url += `?${queryString}`;
     
     const response = await axios.get(url);
     return { success: true, employees: response.data.employees };
@@ -237,16 +246,16 @@ export const deleteEmployeeCustomField = async (employeeId: string | number, fie
 export const fetchEmployeeOptions = async (): Promise<EmployeeResponse> => {
     try {
         const response = await axios.get('/departments');
-        const departments = response.data.departments.map((d: any) => d.name);
+        const departments = response.data.departments; // Expecting { id, name }[]
         return {
             success: true,
-            departments: departments.length > 0 ? departments : ['General'],
+            departments: departments.length > 0 ? departments : [{ id: 0, name: 'General' }],
             jobTitles: ['Developer', 'Manager', 'Accountant', 'Specialist', 'Analyst', 'Clerk', 'Officer', 'HR Officer']
         };
     } catch (e) {
          return {
             success: true,
-            departments: ['Engineering', 'Human Resources', 'Finance', 'Marketing', 'Operations', 'General', 'IT', 'Admin'],
+            departments: [{ id: 0, name: 'General' }], // Fallback
             jobTitles: ['Developer', 'Manager', 'Accountant', 'Specialist', 'Analyst', 'Clerk', 'Officer']
         };
     }

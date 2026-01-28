@@ -25,6 +25,7 @@ interface EmployeeRow extends RowDataPacket {
   last_name: string;
   email: string;
   department: string;
+  department_id?: number;
   job_title?: string;
   employment_status?: string;
   role: string;
@@ -50,6 +51,7 @@ interface EmployeeRow extends RowDataPacket {
   permanent_address?: string;
   emergency_contact?: string;
   emergency_contact_number?: string;
+  position_id?: number;
   manager_id?: number;
 }
 
@@ -102,37 +104,10 @@ interface CustomFieldRow extends RowDataPacket {
 interface PlantillaRow extends RowDataPacket {
   id: number;
   item_number: string;
+  position_title: string;
+  salary_grade: number;
+  step_increment: number;
   is_vacant: boolean;
-}
-
-interface CreateEmployeeRequest {
-  first_name: string;
-  last_name: string;
-  email: string;
-  department: string;
-  job_title?: string;
-  role: string;
-  employment_status?: string;
-  employee_id?: string;
-  password?: string;
-  birth_date?: string;
-  gender?: string;
-  civil_status?: string;
-  nationality?: string;
-  phone_number?: string;
-  address?: string;
-  permanent_address?: string;
-  sss_number?: string;
-  philhealth_number?: string;
-  pagibig_number?: string;
-  tin_number?: string;
-  gsis_number?: string;
-  salary_grade?: number;
-  step_increment?: number;
-  appointment_type?: string;
-  station?: string;
-  position_title?: string;
-  item_number?: string;
 }
 
 // ============================================================================
@@ -141,15 +116,18 @@ interface CreateEmployeeRequest {
 
 export const getAllEmployees = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { department } = req.query;
-    let query = `SELECT id, employee_id, first_name, last_name, email, department, 
+    const { department, department_id } = req.query;
+    let query = `SELECT id, employee_id, first_name, last_name, email, department, department_id, 
                  job_title, employment_status, role, avatar_url, date_hired, 
-                 position_title, station, appointment_type, item_number,
+                 position_title, position_id, station, appointment_type, item_number,
                  birth_date, gender 
                  FROM authentication`;
-    const params: string[] = [];
+    const params: (string | number)[] = [];
 
-    if (department && department !== 'All Departments') {
+    if (department_id) {
+      query += ' WHERE department_id = ?';
+      params.push(Number(department_id));
+    } else if (department && department !== 'All Departments') {
       query += ' WHERE department = ?';
       params.push(department as string);
     }
@@ -179,12 +157,6 @@ export const getEmployeeById = async (req: Request, res: Response): Promise<void
 
     const employee = { ...employees[0] } as Partial<EmployeeRow>;
 
-    // Remove sensitive fields
-    delete employee.password_hash;
-    delete employee.verification_token;
-    delete employee.reset_password_token;
-    delete employee.reset_password_expires;
-
     // Security: PII Filtering
     const authReq = req as AuthenticatedRequest;
     const requester = authReq.user;
@@ -196,12 +168,7 @@ export const getEmployeeById = async (req: Request, res: Response): Promise<void
       return;
     }
 
-    // Only remove sensitive fields if it IS self (optional, self usually sees everything except maybe hash)
-    // Actually, self should see everything.
-    // If we want to hide sensitive from SELF? No, usually self needs to edit it.
-    // So we just delete system fields.
-
-    // Remove sensitive fields (hashes/tokens) always
+    // Remove sensitive fields always
     delete employee.password_hash;
     delete employee.verification_token;
     delete employee.reset_password_token;
@@ -249,23 +216,39 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
   try {
     const validatedData = CreateEmployeeSchema.parse(req.body);
     const {
-      first_name, last_name, email, department, job_title, role,
+      first_name, last_name, email, department, department_id, job_title, role,
       employment_status, employee_id, password,
       birth_date, gender, civil_status, nationality,
       phone_number, address, permanent_address,
       philhealth_number, pagibig_number, tin_number, gsis_number,
       salary_grade, step_increment, appointment_type, station, position_title,
-      item_number
+      item_number, position_id
     } = validatedData;
 
     // Validate department
-    const [deptExists] = await db.query<DepartmentRow[]>(
-      'SELECT id FROM departments WHERE name = ?',
-      [department]
-    );
-    if (deptExists.length === 0) {
-      res.status(400).json({ success: false, message: 'Invalid department' });
-      return;
+    let finalDeptId = department_id;
+    let finalDeptName = department;
+
+    if (finalDeptId) {
+      const [deptExists] = await db.query<DepartmentRow[]>(
+        'SELECT name FROM departments WHERE id = ?',
+        [finalDeptId]
+      );
+      if (deptExists.length === 0) {
+        res.status(400).json({ success: false, message: 'Invalid department ID' });
+        return;
+      }
+      finalDeptName = deptExists[0].name;
+    } else if (finalDeptName) {
+      const [deptExists] = await db.query<DepartmentRow[]>(
+        'SELECT id FROM departments WHERE name = ?',
+        [finalDeptName]
+      );
+      if (deptExists.length === 0) {
+        res.status(400).json({ success: false, message: 'Invalid department' });
+        return;
+      }
+      finalDeptId = deptExists[0].id;
     }
 
     // Check uniqueness
@@ -287,8 +270,23 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
     const hashedPassword = await bcrypt.hash(passwordToHash, salt);
 
     // Handle Plantilla
-    const finalItemNumber = item_number || null;
-    if (finalItemNumber && finalItemNumber !== 'N/A') {
+    let finalItemNumber = item_number || null;
+    let finalPosId = position_id || null;
+
+    if (finalPosId) {
+      const [plantilla] = await db.query<PlantillaRow[]>(
+        'SELECT id, item_number, is_vacant FROM plantilla_positions WHERE id = ?',
+        [finalPosId]
+      );
+      if (plantilla.length > 0) {
+        if (!plantilla[0].is_vacant) {
+          res.status(409).json({ success: false, message: `Plantilla Item ${plantilla[0].item_number} is already filled.` });
+          return;
+        }
+        finalItemNumber = plantilla[0].item_number;
+        await db.query('UPDATE plantilla_positions SET is_vacant = FALSE WHERE id = ?', [finalPosId]);
+      }
+    } else if (finalItemNumber && finalItemNumber !== 'N/A') {
       const [plantilla] = await db.query<PlantillaRow[]>(
         'SELECT id, is_vacant FROM plantilla_positions WHERE item_number = ?',
         [finalItemNumber]
@@ -298,29 +296,37 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
           res.status(409).json({ success: false, message: `Plantilla Item ${finalItemNumber} is already filled.` });
           return;
         }
-        await db.query('UPDATE plantilla_positions SET is_vacant = FALSE WHERE item_number = ?', [finalItemNumber]);
+        finalPosId = plantilla[0].id;
+        await db.query('UPDATE plantilla_positions SET is_vacant = FALSE WHERE id = ?', [finalPosId]);
       }
     }
 
     await db.query(
       `INSERT INTO authentication 
-       (first_name, last_name, email, department, job_title, role, employment_status, 
+       (first_name, last_name, email, department, department_id, job_title, role, employment_status, 
         employee_id, password_hash, is_verified,
         birth_date, gender, civil_status, nationality, phone_number, address, permanent_address,
         philhealth_number, pagibig_number, tin_number, gsis_number,
-        salary_grade, step_increment, appointment_type, station, position_title, item_number) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        salary_grade, step_increment, appointment_type, station, position_title, item_number, position_id) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        first_name, last_name, email, department, job_title || 'N/A', role,
+        first_name, last_name, email, finalDeptName, finalDeptId, job_title || 'N/A', role,
         employment_status || 'Active', finalEmployeeId, hashedPassword,
         birth_date || null, gender || null, civil_status || null, nationality || 'Filipino',
         phone_number || null, address || null, permanent_address || null,
         philhealth_number || null, pagibig_number || null,
         tin_number || null, gsis_number || null,
         salary_grade || null, step_increment || 1, appointment_type || null,
-        station || null, position_title || null, finalItemNumber
+        station || null, position_title || null, finalItemNumber, finalPosId
       ]
     );
+
+    const [newEmpResult] = await db.query<ResultSetHeader>('SELECT LAST_INSERT_ID() as id');
+    const newEmployeeIdNum = (newEmpResult as any)[0]?.id || newEmpResult.insertId;
+    
+    if (finalPosId && newEmployeeIdNum) {
+       await db.query('UPDATE plantilla_positions SET incumbent_id = ? WHERE id = ?', [newEmployeeIdNum, finalPosId]);
+    }
 
     res.status(201).json({ success: true, message: 'Employee created successfully', employeeId: finalEmployeeId });
   } catch (error) {
@@ -340,15 +346,19 @@ export const deleteEmployee = async (req: Request, res: Response): Promise<void>
     }
 
     const [emp] = await db.query<EmployeeRow[]>(
-      'SELECT item_number FROM authentication WHERE id = ?',
+      'SELECT item_number, position_id FROM authentication WHERE id = ?',
       [id]
     );
 
     await db.query('DELETE FROM authentication WHERE id = ?', [id]);
 
     // Free up plantilla item
-    if (emp.length > 0 && emp[0].item_number && emp[0].item_number !== 'N/A') {
-      await db.query('UPDATE plantilla_positions SET is_vacant = TRUE WHERE item_number = ?', [emp[0].item_number]);
+    if (emp.length > 0) {
+      if (emp[0].position_id) {
+        await db.query('UPDATE plantilla_positions SET is_vacant = TRUE, incumbent_id = NULL WHERE id = ?', [emp[0].position_id]);
+      } else if (emp[0].item_number && emp[0].item_number !== 'N/A') {
+        await db.query('UPDATE plantilla_positions SET is_vacant = TRUE, incumbent_id = NULL WHERE item_number = ?', [emp[0].item_number]);
+      }
     }
 
     res.json({ success: true, message: 'Employee deleted successfully' });
@@ -372,18 +382,18 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
     const currentEmployee = existing[0];
 
     const allowedFields = [
-      'first_name', 'last_name', 'email', 'department', 'job_title', 'role',
+      'first_name', 'last_name', 'email', 'department', 'department_id', 'job_title', 'role',
       'employment_status', 'employee_id', 'birth_date', 'gender', 'civil_status',
       'nationality', 'phone_number', 'address', 'permanent_address',
       'sss_number', 'philhealth_number', 'pagibig_number', 'tin_number', 'gsis_number',
       'salary_grade', 'step_increment', 'appointment_type', 'station', 'position_title',
-      'item_number', 'date_hired', 'avatar_url'
+      'item_number', 'position_id', 'date_hired', 'avatar_url'
     ];
 
     const setClauses: string[] = [];
     const params: (string | number | null)[] = [];
 
-    // Filter updates based on schema + logic (though Schema typically handles structure, key validation is good)
+    // Filter updates based on schema + logic
     for (const [key, value] of Object.entries(updates)) {
         if (allowedFields.includes(key) && value !== undefined) {
              setClauses.push(`${key} = ?`);
@@ -391,32 +401,48 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
         }
     }
 
-    if (setClauses.length === 0) {
-      res.status(400).json({ success: false, message: 'No valid fields to update' });
-      return;
+    // Handle department sync if department_id changed
+    if (updates.department_id && updates.department_id !== currentEmployee.department_id) {
+       const [dept] = await db.query<DepartmentRow[]>('SELECT name FROM departments WHERE id = ?', [updates.department_id]);
+       if (dept.length > 0) {
+          setClauses.push('department = ?');
+          params.push(dept[0].name);
+       }
     }
 
     // Handle plantilla changes
-    const newItemNumber = updates.item_number as string | undefined;
-    const oldItemNumber = currentEmployee.item_number;
+    const newPosId = updates.position_id;
+    const oldPosId = currentEmployee.position_id;
 
-    if (newItemNumber !== undefined && newItemNumber !== oldItemNumber) {
-      if (oldItemNumber && oldItemNumber !== 'N/A') {
-        await db.query('UPDATE plantilla_positions SET is_vacant = TRUE WHERE item_number = ?', [oldItemNumber]);
+    if (newPosId !== undefined && newPosId !== oldPosId) {
+      if (oldPosId) {
+        await db.query('UPDATE plantilla_positions SET is_vacant = TRUE, incumbent_id = NULL WHERE id = ?', [oldPosId]);
       }
-      if (newItemNumber && newItemNumber !== 'N/A') {
+      if (newPosId) {
         const [plantilla] = await db.query<PlantillaRow[]>(
-          'SELECT id, is_vacant FROM plantilla_positions WHERE item_number = ?',
-          [newItemNumber]
+          'SELECT id, is_vacant, item_number, position_title, salary_grade, step_increment FROM plantilla_positions WHERE id = ?',
+          [newPosId]
         );
         if (plantilla.length > 0) {
           if (!plantilla[0].is_vacant) {
-            res.status(409).json({ success: false, message: `Plantilla Item ${newItemNumber} is already filled.` });
+            res.status(409).json({ success: false, message: `Plantilla Item ${plantilla[0].item_number} is already filled.` });
             return;
           }
-          await db.query('UPDATE plantilla_positions SET is_vacant = FALSE WHERE item_number = ?', [newItemNumber]);
+          await db.query('UPDATE plantilla_positions SET is_vacant = FALSE, incumbent_id = ? WHERE id = ?', [id, newPosId]);
+          
+          if (updates.item_number === undefined) { setClauses.push('item_number = ?'); params.push(plantilla[0].item_number); }
+          if (updates.position_title === undefined) { setClauses.push('position_title = ?'); params.push(plantilla[0].position_title); }
+          if (updates.salary_grade === undefined) { setClauses.push('salary_grade = ?'); params.push(plantilla[0].salary_grade); }
         }
+      } else {
+          if (updates.item_number === undefined) { setClauses.push('item_number = NULL'); }
+          if (updates.position_title === undefined) { setClauses.push('position_title = NULL'); }
       }
+    }
+
+    if (setClauses.length === 0) {
+      res.status(400).json({ success: false, message: 'No valid fields to update' });
+      return;
     }
 
     // Email uniqueness
@@ -467,8 +493,6 @@ export const revertEmployeeStatus = async (req: Request, res: Response): Promise
     const oldStatus = existing[0].employment_status;
 
     await db.query('UPDATE authentication SET employment_status = ? WHERE id = ?', [new_status, id]);
-
-    console.log(`[Admin Action] Employee ${id} status reverted from '${oldStatus}' to '${new_status}'. Reason: ${reason || 'Not specified'}`);
 
     res.json({
       success: true,
@@ -666,7 +690,6 @@ export const updateEmployeeCustomField = async (req: Request, res: Response): Pr
         params.push(updates.field_name);
     }
     
-    // Safety check
     if (setClauses.length === 0) {
          res.json({ success: true, message: 'No changes made' });
          return;

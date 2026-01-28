@@ -1,24 +1,11 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
-// @ts-ignore
-import { plantillaApi } from '@api/plantillaApi';
-// @ts-ignore
+import { plantillaApi, Position } from '@api/plantillaApi';
 import { fetchEmployeeOptions } from '@api/employeeApi';
 import { INITIAL_SUMMARY, PlantillaSummary } from '../constants/plantillaConstants';
 import { PlantillaSchema } from '@/schemas/plantilla';
 
-export interface Position {
-  id: number;
-  item_number: string;
-  position_title: string;
-  salary_grade: string;
-  step_increment: number;
-  department: string;
-  monthly_salary?: string | number;
-  is_vacant: boolean;
-  incumbent_name?: string;
-  incumbent_id?: number;
-}
+// Position interface imported from plantillaApi
 
 export interface Employee {
   id: number;
@@ -152,25 +139,27 @@ export const usePlantilla = ({ showNotification }: UsePlantillaOptions = {}): Us
           refetchPositions();
           refetchSummary();
           notify("Position deleted successfully");
-        } catch (err: any) {
-          notify(err.response?.data?.message || "Failed to delete position", "error");
+        } catch (err: unknown) {
+          const error = err as any;
+          notify(error.response?.data?.message || "Failed to delete position", "error");
         }
     }, [refetchPositions, refetchSummary]);
 
     const handleCreateOrUpdate = useCallback(async (data: PlantillaSchema) => {
         try {
           if (modalMode === 'create') {
-            await plantillaApi.createPosition(data);
+            await plantillaApi.createPosition(data as Omit<Position, 'id'>);
           } else {
             if (!currentPosition?.id) throw new Error("No position selected for update");
-            await plantillaApi.updatePosition(currentPosition.id, data);
+            await plantillaApi.updatePosition(currentPosition.id, data as Partial<Position>);
           }
           setIsModalOpen(false);
           refetchPositions();
           refetchSummary();
           notify(modalMode === 'create' ? "Position created successfully" : "Position updated successfully");
-        } catch (err: any) {
-          notify(err.response?.data?.message || "Operation failed", "error");
+        } catch (err: unknown) {
+          const error = err as any;
+          notify(error.response?.data?.message || "Operation failed", "error");
         }
     }, [modalMode, currentPosition, refetchPositions, refetchSummary]);
 

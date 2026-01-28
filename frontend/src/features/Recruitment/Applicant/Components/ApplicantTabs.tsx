@@ -6,7 +6,7 @@ interface ApplicantTabsProps {
   setActiveTab: (tab: ActiveTab) => void;
 }
 
-const TABS: ActiveTab[] = ['All', 'Pending', 'Reviewed', 'Interview', 'Hired'];
+const TABS: ActiveTab[] = ['All', 'Pending', 'Reviewed', 'Interview', 'Hired', 'Inquiries', 'Chat'];
 
 const ApplicantTabs: React.FC<ApplicantTabsProps> = ({ activeTab, setActiveTab }) => {
   return (

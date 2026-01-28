@@ -20,7 +20,7 @@ import HiredTable from "@components/Custom/DashboardAdminComponents/HiredTable";
 // Icons
 import { 
   LayoutDashboard, Clock, Users, Briefcase, 
-  Award, Settings, LucideIcon
+  Award, Settings, Mail, MessageCircle, LucideIcon
 } from "lucide-react";
 
 // --- Interfaces ---
@@ -64,9 +64,9 @@ export interface EmployeeLists {
 
 export interface NavItem {
   name: string;
-  icon: LucideIcon;
-  action: string; // Action is now required for consistency
-  children?: { name: string; action: string }[];
+  icon?: LucideIcon;
+  action: string; 
+  children?: NavItem[];
 }
 
 interface DashboardHomeProps {
@@ -109,7 +109,7 @@ const DashboardHome: React.FC<DashboardHomeProps> = React.memo(({
 
         {/* Overlay Tables with smooth transitions */}
         {activeTable && (
-          <div className="absolute inset-0 top-0 bg-white/95 backdrop-blur-md p-6 rounded-2xl shadow-2xl border border-gray-100 z-20 h-[34rem] overflow-y-auto animate-in fade-in zoom-in duration-200">
+          <div className="absolute inset-0 top-0 bg-white/95 p-6 rounded-2xl shadow-2xl border border-gray-100 z-20 h-[34rem] overflow-y-auto animate-in fade-in zoom-in duration-200">
             <div className="flex justify-between items-center mb-4 sticky top-0 bg-white/10 py-2">
               <h3 className="text-lg font-bold text-gray-900">{activeTable} Employees</h3>
             </div>

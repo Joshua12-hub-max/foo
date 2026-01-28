@@ -7,13 +7,17 @@ import PlantillaTable from '@features/EmployeeManagement/Admin/Plantilla/compone
 import PlantillaFormModal from '@features/EmployeeManagement/Admin/Plantilla/components/PlantillaFormModal';
 import { AssignModal, VacateModal, HistoryModal, GuideModal } from '@features/EmployeeManagement/Admin/Plantilla/components/PlantillaModals';
 
-// Lazy load Compliance Components to prevent circular dependencies
-const QualificationStandardsPage = React.lazy(() => import('./QualificationStandardsPage'));
+const BudgetTrackingDashboard = React.lazy(() => import('@/components/Custom/Compliance/BudgetTrackingDashboard'));
+const ComplianceReportsDashboard = React.lazy(() => import('@/components/Custom/Compliance/ComplianceReportsDashboard'));
 const StepIncrementDashboard = React.lazy(() => import('@/components/Custom/Compliance/StepIncrementDashboard'));
+const QualificationStandardsPage = React.lazy(() => import('@/pages/EmployeeManagementAdmin/QualificationStandardsPage'));
 
 interface OutletContext {
   sidebarOpen?: boolean;
 }
+// ... (rest of props interfaces)
+
+// ... inside component return ...
 
 interface PlantillaManagementProps {
   hideHeader?: boolean;
@@ -185,31 +189,27 @@ const PlantillaManagement = forwardRef<PlantillaManagementRef, PlantillaManageme
                 )}
 
                 {activeTab === 'budget' && (
-                    <div className="text-center py-16">
-                        <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-orange-100 to-orange-200 mb-4">
-                            <span className="text-3xl font-bold text-orange-700">₱</span>
+                    <React.Suspense fallback={
+                        <div className="flex items-center justify-center h-64">
+                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-600"></div>
                         </div>
-                        <h3 className="text-xl font-bold text-gray-900 mb-2">Budget Tracking Module</h3>
-                        <p className="text-gray-600 max-w-md mx-auto">
-                            Track department budget allocations, utilization rates, and remaining balances. 
-                            Backend APIs are ready for integration.
-                        </p>
-                        <div className="mt-6 text-sm text-gray-500">Coming Soon</div>
-                    </div>
+                    }>
+                        <BudgetTrackingDashboard selectedDeptName={
+                            selectedDept === 'All' 
+                                ? 'All' 
+                                : departments.find(d => String(d.id) === String(selectedDept))?.name || 'All'
+                        } />
+                    </React.Suspense>
                 )}
 
                 {activeTab === 'reports' && (
-                    <div className="text-center py-16">
-                        <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-purple-100 to-purple-200 mb-4">
-                            <span className="text-3xl font-bold text-purple-700">📋</span>
+                    <React.Suspense fallback={
+                        <div className="flex items-center justify-center h-64">
+                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-600"></div>
                         </div>
-                        <h3 className="text-xl font-bold text-gray-900 mb-2">Compliance Reports</h3>
-                        <p className="text-gray-600 max-w-md mx-auto">
-                            Generate CSC Form 9 (Publication Request), CS Form 33 (Appointment), 
-                            RAI (Report on Appointments Issued), and PSI-POP reports in official formats.
-                        </p>
-                        <div className="mt-6 text-sm text-gray-500">Coming Soon</div>
-                    </div>
+                    }>
+                        <ComplianceReportsDashboard />
+                    </React.Suspense>
                 )}
             </div>
 

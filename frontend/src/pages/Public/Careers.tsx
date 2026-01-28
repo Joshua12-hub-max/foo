@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { Search, MapPin, Briefcase, Clock } from 'lucide-react';
+import { Search, MapPin, Briefcase, Clock, ChevronRight } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import PublicLayout from '@components/Public/PublicLayout';
 import { motion } from 'framer-motion';
 import { usePublicJobs } from '@/features/Recruitment/hooks/usePublicJobs';
+import heroVisual from '@/assets/career-hero.png';
 
 const Jobs = () => {
   const navigate = useNavigate();
@@ -12,107 +13,136 @@ const Jobs = () => {
 
   return (
     <PublicLayout>
-      <div className="bg-slate-900 text-white py-16 px-6 relative overflow-hidden">
-          {/* Abstract Background pattern */}
-          <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-blue-500 via-slate-900 to-slate-900"></div>
-          
-          <div className="max-w-4xl mx-auto relative z-10 text-center">
-              <motion.h1 
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="text-3xl md:text-5xl font-bold mb-6 tracking-tight"
-              >
-                  Find Your Next Role
-              </motion.h1>
-              <motion.p 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.1 }}
-                className="text-slate-400 text-lg mb-8 max-w-xl mx-auto"
-              >
-                  Browse open positions and join a team dedicated to serving the community.
-              </motion.p>
-              
+      {/* Hero Section - Refined for Master Design */}
+      <div className="bg-slate-950 text-white pt-16 pb-20 px-6 relative overflow-hidden">
+          {/* Conceptual Visual Background - Master Balance */}
+          <div className="absolute right-0 top-0 bottom-0 w-1/2 hidden lg:block opacity-20 pointer-events-none">
+              <img 
+                  src={heroVisual} 
+                  alt="" 
+                  className="w-full h-full object-cover mix-blend-luminosity"
+              />
+              <div className="absolute inset-0 bg-gradient-to-l from-transparent via-slate-950/50 to-slate-950"></div>
+          </div>
+
+          <div className="max-w-6xl mx-auto relative z-10 flex flex-col lg:flex-row items-center gap-12">
+              <div className="flex-1 text-center lg:text-left">
+                  <div
+                    className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-green-500/10 border border-green-500/20 text-green-400 text-[9px] font-black tracking-[0.2em] mb-5 uppercase"
+                  >
+                    Available Roles
+                  </div>
+                  <h1 
+                    className="text-4xl md:text-6xl font-black mb-6 tracking-tighter leading-none"
+                  >
+                      Find Your Next <br/> <span className="text-green-400">Great Opportunity</span>
+                  </h1>
+                  <p 
+                    className="text-white/40 text-base md:text-lg font-semibold mb-10 max-w-xl mx-auto lg:mx-0 leading-normal"
+                  >
+                      Integrated recruitment protocol for the City of Meycauayan. <br className="hidden md:block" /> Browse open positions across all departments.
+                  </p>
+                  
+                  <div 
+                    className="relative max-w-lg mx-auto lg:mx-0 group"
+                  >
+                    <div className="absolute inset-y-0 left-5 flex items-center text-white/30 group-focus-within:text-green-400 transition-colors">
+                        <Search size={20} />
+                    </div>
+                    <input 
+                        type="text" 
+                        placeholder="Search roles or departments..." 
+                        className="w-full pl-14 pr-7 py-4 bg-white/5 border border-white/10 rounded-2xl text-white placeholder:text-white/20 focus:outline-none focus:bg-white/10 focus:border-green-400/30 transition-all shadow-2xl font-semibold text-base"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                  </div>
+              </div>
+
+              {/* Decorative Visual Card - Master Balance */}
               <motion.div 
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-                className="relative max-w-2xl mx-auto"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="hidden lg:block w-[400px] h-[300px] rounded-[2.5rem] overflow-hidden border border-white/10 relative group shadow-2xl"
               >
-                <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                <input 
-                    type="text" 
-                    placeholder="Search for job titles, departments..." 
-                    className="w-full pl-14 pr-4 py-4 bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl text-white placeholder:text-gray-400 focus:outline-none focus:bg-white/20 focus:border-white/30 transition-all shadow-xl"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                />
+                  <img 
+                      src={heroVisual} 
+                      alt="Career Growth" 
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent"></div>
+                  <div className="absolute bottom-6 left-8 right-8">
+                      <p className="text-[10px] font-black text-green-400 uppercase tracking-widest mb-1">Career Propulsion</p>
+                      <p className="text-sm font-bold text-white tracking-tight">Advance your professional journey with the City of Meycauayan</p>
+                  </div>
               </motion.div>
           </div>
+          
+          {/* Subtle Glow */}
+          <div className="absolute bottom-[-50%] left-[-20%] w-[400px] h-[400px] bg-green-500/5 rounded-full blur-[120px]"></div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-6 py-12 -mt-8 relative z-20">
-          <div className="space-y-4">
+      <div className="max-w-5xl mx-auto px-6 py-10 -mt-6 relative z-20">
+          <div className="space-y-3.5">
             {isLoading ? (
-                 <div className="space-y-4">
+                 <div className="space-y-3.5">
                     {[1, 2, 3].map(i => (
-                        <div key={i} className="h-32 bg-white rounded-2xl border border-slate-200 animate-pulse"></div>
+                        <div key={i} className="h-28 bg-white rounded-2xl border border-slate-50 animate-pulse"></div>
                     ))}
                  </div>
             ) : filteredJobs.length === 0 ? (
-              <div className="py-24 text-center max-w-2xl mx-auto">
-                <h3 className="text-2xl font-bold text-slate-900 mb-3 tracking-tight">No open positions found</h3>
-                <p className="text-slate-500 text-lg">We couldn't find any jobs matching your search.</p>
+              <div className="py-16 text-center bg-white rounded-2xl border border-slate-100 shadow-premium">
+                <h3 className="text-2xl font-black text-slate-950 mb-2 tracking-tight">Zero Matches</h3>
+                <p className="text-slate-400 text-sm font-semibold">No open positions matching your search parameters.</p>
                 {searchTerm && (
                     <button 
                         onClick={() => setSearchTerm('')}
-                        className="mt-6 text-blue-600 font-semibold hover:text-blue-800 hover:underline transition-colors"
+                        className="mt-6 px-6 py-2.5 bg-slate-950 text-white rounded-xl font-bold text-[11px] tracking-tight hover:bg-slate-900 transition-all active:scale-95"
                     >
-                        Clear search filters
+                         Reset Filters
                     </button>
                 )}
               </div>
             ) : (
-              <div className="grid gap-4">
-                {filteredJobs.map((job, index) => (
+              <div className="grid gap-3.5">
+                {filteredJobs.map((job) => (
                   <Link 
                     key={job.id} 
                     to={`/careers/job/${job.id}`}
-                    className="block group bg-white border border-slate-200 p-6 md:p-8 rounded-2xl shadow-sm hover:shadow-lg hover:border-slate-300 transition-all duration-300 relative overflow-hidden"
+                    className="group bg-white border border-slate-100 p-5 md:px-8 md:py-6 rounded-2xl shadow-premium hover:shadow-premium-hover hover:border-green-100 transition-all duration-500 relative overflow-hidden block"
                   >
-                     <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: index * 0.05 }}
-                        className="flex flex-col md:flex-row md:items-center justify-between gap-6"
+                     <div
+                        className="flex flex-col md:flex-row md:items-center justify-between gap-5"
                      >
-                         <div className="space-y-4">
+                         <div className="space-y-3 flex-1">
                             <div>
-                                <h3 className="text-xl font-bold text-slate-900 group-hover:text-blue-700 transition-colors">
+                                <h3 className="text-xl md:text-2xl font-bold text-slate-950 group-hover:text-green-600 transition-colors tracking-tight leading-none mb-1.5">
                                     {job.title}
                                 </h3>
-                                <div className="text-sm font-medium text-slate-500 mt-1">{job.department}</div>
+                                <div className="text-[10px] font-bold text-slate-400 tracking-[0.1em] flex items-center gap-2 uppercase">
+                                    {job.department}
+                                </div>
                             </div>
                             
                             <div className="flex flex-wrap gap-2">
-                                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-50 text-slate-600 rounded-lg text-xs font-semibold border border-slate-200 group-hover:bg-white group-hover:border-slate-300 transition-colors">
-                                    <MapPin size={12} /> {job.location}
-                                </span>
-                                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-50 text-slate-600 rounded-lg text-xs font-semibold border border-slate-200 group-hover:bg-white group-hover:border-slate-300 transition-colors">
-                                    <Clock size={12} /> {job.employment_type}
-                                </span>
-                                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-50 text-slate-600 rounded-lg text-xs font-semibold border border-slate-200 group-hover:bg-white group-hover:border-slate-300 transition-colors">
-                                    <Briefcase size={12} /> {job.salary_range}
-                                </span>
+                                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 text-slate-600 rounded-lg text-[10px] font-bold border border-slate-100 group-hover:bg-white group-hover:border-green-50 transition-colors">
+                                    <MapPin size={12} className="opacity-40" />
+                                    {job.location}
+                                </div>
+                                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 text-slate-600 rounded-lg text-[10px] font-bold border border-slate-100 group-hover:bg-white group-hover:border-green-50 transition-colors">
+                                    <Clock size={12} className="opacity-40" />
+                                    {job.employment_type}
+                                </div>
                             </div>
                          </div>
 
                          <div className="md:self-center shrink-0">
-                            <span className="inline-flex items-center justify-center px-6 py-3 rounded-xl bg-slate-100 text-slate-900 font-bold text-sm group-hover:bg-slate-900 group-hover:text-white transition-all">
-                                View Details
+                            <span className="inline-flex items-center justify-center gap-2 px-7 py-3 rounded-xl bg-slate-950 text-white font-bold text-[13px] tracking-tight group-hover:bg-green-600 transition-all shadow-lg active:scale-95">
+                                View Role
+                                <ChevronRight size={16} className="opacity-50 transition-transform group-hover:translate-x-0.5" />
                             </span>
                          </div>
-                     </motion.div>
+                     </div>
                   </Link>
                 ))}
               </div>

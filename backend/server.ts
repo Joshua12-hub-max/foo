@@ -34,6 +34,9 @@ import qualificationStandardsRoutes from './routes/qualificationStandardsRoutes.
 import nepotismRoutes from './routes/nepotismRoutes.js';
 import stepIncrementRoutes from './routes/stepIncrementRoutes.js';
 import budgetAllocationRoutes from './routes/budgetAllocationRoutes.js';
+import reportRoutes from './routes/reportRoutes.js';
+import inquiryRoutes from './routes/inquiryRoutes.js';
+import chatRoutes from './routes/chatRoutes.js';
 
 
 dotenv.config();
@@ -128,6 +131,9 @@ app.use('/api/qualification-standards', qualificationStandardsRoutes);
 app.use('/api/nepotism', nepotismRoutes);
 app.use('/api/step-increment', stepIncrementRoutes);
 app.use('/api/budget-allocation', budgetAllocationRoutes);
+app.use('/api/reports', reportRoutes);
+app.use('/api/inquiries', inquiryRoutes);
+app.use('/api/chat', chatRoutes);
 
 
 // Root route

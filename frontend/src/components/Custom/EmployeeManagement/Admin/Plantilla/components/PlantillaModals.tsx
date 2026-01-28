@@ -2,12 +2,8 @@
 import React, { memo, ChangeEvent, useState } from 'react';
 import { X, Loader } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-// @ts-ignore
-// @ts-ignore
-import { assignEmployee, vacatePosition } from '@/api/plantillaApi';
+import { assignEmployee, vacatePosition, Position } from '@/api/plantillaApi';
 import { useToastStore } from '@/stores';
-// @ts-ignore
-import { Position } from '../hooks/usePlantilla';
 
 // Local Position interface removed
 
@@ -42,7 +38,10 @@ export const AssignModal: React.FC<AssignModalProps> = memo(({ isOpen, onClose, 
     const assignMutation = useMutation({
         mutationFn: async () => {
              if (currentPosition && selectedEmployee) {
-                 await assignEmployee(currentPosition.id, parseInt(selectedEmployee));
+                 await assignEmployee(currentPosition.id, { 
+                    employee_id: parseInt(selectedEmployee),
+                    start_date: new Date().toISOString().split('T')[0] // Default to today
+                 });
              }
         },
         onSuccess: () => {
@@ -52,9 +51,10 @@ export const AssignModal: React.FC<AssignModalProps> = memo(({ isOpen, onClose, 
              setSelectedEmployee('');
              if (onSuccess) onSuccess();
         },
-        onError: (error: any) => {
-             console.error('Failed to assign employee', error);
-             showToast(error.response?.data?.message || 'Failed to assign employee', 'error');
+        onError: (error: unknown) => {
+             const err = error as any;
+             console.error('Failed to assign employee', err);
+             showToast(err.response?.data?.message || 'Failed to assign employee', 'error');
         }
     });
 
@@ -131,7 +131,7 @@ export const VacateModal: React.FC<VacateModalProps> = memo(({ isOpen, onClose, 
     const vacateMutation = useMutation({
         mutationFn: async () => {
              if (currentPosition) {
-                 await vacatePosition(currentPosition.id, vacateReason);
+                 await vacatePosition(currentPosition.id, { reason: vacateReason });
              }
         },
         onSuccess: () => {
@@ -141,9 +141,10 @@ export const VacateModal: React.FC<VacateModalProps> = memo(({ isOpen, onClose, 
              setVacateReason('');
              if (onSuccess) onSuccess();
         },
-        onError: (error: any) => {
-             console.error('Failed to vacate position', error);
-             showToast(error.response?.data?.message || 'Failed to vacate position', 'error');
+        onError: (error: unknown) => {
+             const err = error as any;
+             console.error('Failed to vacate position', err);
+             showToast(err.response?.data?.message || 'Failed to vacate position', 'error');
         }
     });
 

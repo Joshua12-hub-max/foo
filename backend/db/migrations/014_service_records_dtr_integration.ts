@@ -1,22 +1,10 @@
-/**
- * Migration 014: Service Records & DTR-Leave Integration
- * 
- * Creates:
- * - service_records table for career history tracking
- * - Adds salary_deduction column to lwop_summary
- * 
- * Purpose:
- * - Track leaves and LWOP for Service Record (retirement calculation)
- * - Support DTR override when leave is approved
- */
 
 import db from '../connection.ts';
 
 const migration = async (): Promise<void> => {
-  console.log('🚀 Starting Service Records & DTR Integration Migration...');
+  console.log(' Starting Service Records & DTR Integration Migration...');
 
   try {
-    // 1. Create service_records table for career history
     await db.query(`
       CREATE TABLE IF NOT EXISTS service_records (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -49,7 +37,7 @@ const migration = async (): Promise<void> => {
         INDEX idx_event_date (event_date)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
-    console.log('✅ Created service_records table');
+    console.log('Created service_records table');
 
     // 2. Add salary_deduction column to lwop_summary if not exists
     try {
@@ -57,10 +45,10 @@ const migration = async (): Promise<void> => {
         ALTER TABLE lwop_summary 
         ADD COLUMN salary_deduction DECIMAL(12,2) DEFAULT 0 AFTER total_lwop_days
       `);
-      console.log('✅ Added salary_deduction column to lwop_summary');
+      console.log('Added salary_deduction column to lwop_summary');
     } catch (alterError: any) {
       if (alterError.code === 'ER_DUP_FIELDNAME') {
-        console.log('ℹ️ salary_deduction column already exists in lwop_summary');
+        console.log('salary_deduction column already exists in lwop_summary');
       } else {
         throw alterError;
       }
@@ -87,7 +75,7 @@ const migration = async (): Promise<void> => {
         INDEX idx_employee (employee_id)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
-    console.log('✅ Created tardiness_summary table');
+    console.log('Created tardiness_summary table');
 
     // 4. Add leave_override column to daily_time_record if needed
     try {
@@ -104,13 +92,13 @@ const migration = async (): Promise<void> => {
             ALTER TABLE daily_time_record 
             MODIFY COLUMN status ENUM('Present', 'Absent', 'Late', 'On Leave', 'LWOP', 'Holiday', 'Rest Day', 'Undertime') DEFAULT 'Absent'
           `);
-          console.log('✅ Updated daily_time_record status enum to include On Leave and LWOP');
+          console.log('Updated daily_time_record status enum to include On Leave and LWOP');
         } else {
-          console.log('ℹ️ daily_time_record status already includes On Leave');
+          console.log('daily_time_record status already includes On Leave');
         }
       }
     } catch (enumError: any) {
-      console.log('ℹ️ Could not update daily_time_record enum:', enumError.message);
+      console.log('Could not update daily_time_record enum:', enumError.message);
     }
 
     // 5. Add leave_application_id reference to daily_time_record
@@ -120,18 +108,18 @@ const migration = async (): Promise<void> => {
         ADD COLUMN leave_application_id INT NULL AFTER status,
         ADD COLUMN leave_type VARCHAR(50) NULL AFTER leave_application_id
       `);
-      console.log('✅ Added leave reference columns to daily_time_record');
+      console.log('Added leave reference columns to daily_time_record');
     } catch (columnError: any) {
       if (columnError.code === 'ER_DUP_FIELDNAME') {
-        console.log('ℹ️ Leave reference columns already exist in daily_time_record');
+        console.log('Leave reference columns already exist in daily_time_record');
       } else {
-        console.log('ℹ️ Could not add leave columns:', columnError.message);
+        console.log('Could not add leave columns:', columnError.message);
       }
     }
 
-    console.log('🎉 Service Records & DTR Integration Migration completed successfully!');
+    console.log('Service Records & DTR Integration Migration completed successfully!');
   } catch (error) {
-    console.error('❌ Migration failed:', error);
+    console.error('Migration failed:', error);
     throw error;
   }
 };

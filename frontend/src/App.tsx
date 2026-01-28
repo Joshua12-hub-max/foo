@@ -84,7 +84,13 @@ import ToastContainer from "@/components/Global/ToastContainer";
 import { Toaster } from "react-hot-toast";
 
 /** ProtectedRoute — restricts access to allowed roles */
-const ProtectedRoute = ({ children, allowedRoles }) => {
+/** ProtectedRoute — restricts access to allowed roles */
+interface ProtectedRouteProps {
+  children: React.ReactNode;
+  allowedRoles?: string[];
+}
+
+const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
   const { user, loading } = useAuth();
 
   if (loading) return <PageLoader />;
@@ -112,7 +118,11 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 };
 
 /** PublicRoute — redirects logged-in users to their dashboard */
-const PublicRoute = ({ children }) => {
+interface PublicRouteProps {
+  children: React.ReactNode;
+}
+
+const PublicRoute = ({ children }: PublicRouteProps) => {
   const { user, loading } = useAuth();
 
   if (loading) return <PageLoader />;
@@ -473,7 +483,6 @@ export default function App() {
               </Suspense>
             }
           />
-
         </Route>
 
         {/* Protected routes - Employee Dashboard */}

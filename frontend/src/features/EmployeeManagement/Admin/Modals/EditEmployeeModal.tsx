@@ -24,14 +24,7 @@ interface Department {
   name: string;
 }
 
-interface Position {
-  id: number | string;
-  item_number: string;
-  position_title: string;
-  salary_grade: string;
-  step_increment?: number;
-  department?: string;
-}
+import { Position } from '@/api/plantillaApi';
 
 // Broad interface for incoming employee data
 interface Employee extends Record<string, any> {
@@ -105,9 +98,10 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
         if (onSuccess) onSuccess();
         onClose();
     },
-    onError: (error: any) => {
-        console.error('Failed to update employee', error);
-        showToast(error.message || 'Failed to update employee', 'error');
+    onError: (error: unknown) => {
+        const err = error as any;
+        console.error('Failed to update employee', err);
+        showToast(err.message || 'Failed to update employee', 'error');
     }
   });
 
@@ -146,9 +140,8 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
         highest_education: employee.highest_education || '',
         years_of_experience: employee.years_of_experience || 0,
         // Social Media
-        facebook_url: employee.facebook_url || '',
-        linkedin_url: employee.linkedin_url || '',
-        twitter_handle: employee.twitter_handle || '',
+        department_id: employee.department_id,
+        position_id: employee.position_id
       });
     }
   }, [isOpen, employee, reset]); 
@@ -158,14 +151,15 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
       const res = await plantillaApi.getPositions({ is_vacant: true });
       let positions: Position[] = res.data.success ? res.data.positions : [];
       if (employee?.item_number) {
-         const currentPos: Position = {
-             id: 'current',
-             item_number: employee.item_number,
-             position_title: employee.position_title || '',
-             salary_grade: String(employee.salary_grade || ''),
-             step_increment: employee.step_increment,
-             department: employee.department
-         };
+          const currentPos: Position = {
+              id: 0,
+              item_number: employee.item_number,
+              position_title: employee.position_title || '',
+              salary_grade: Number(employee.salary_grade || 0), // number
+              step_increment: employee.step_increment,
+              department: employee.department,
+              is_vacant: false
+          };
          // Add current position if not in list
          if (!positions.find(p => p.item_number === employee.item_number)) {
              positions = [currentPos, ...positions];
@@ -184,10 +178,17 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
       const position = vacantPositions.find(p => p.item_number === itemNo);
       if (position) {
         setValue('position_title', position.position_title);
+        setValue('position_id', position.id);
         setValue('salary_grade', Number(position.salary_grade));
         setValue('step_increment', position.step_increment || 1);
-        if (position.department) setValue('department', position.department);
+        if (position.department) {
+             setValue('department', position.department);
+             const dept = departments.find(d => d.name === position.department);
+             if (dept) setValue('department_id', dept.id);
+        }
       }
+    } else {
+        setValue('position_id', null);
     }
   };
 
@@ -265,7 +266,7 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
                    {...register('role')}
                    className={`w-full px-3 py-2 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200 ${errors.role ? 'border-red-500' : ''}`}
                 >
-                    {ROLE_OPTIONS.map(opt => (<option key={opt.value} value={opt.value as any}>{opt.label}</option>))}
+                    {ROLE_OPTIONS.map(opt => (<option key={opt.value} value={opt.value}>{opt.label}</option>))}
                 </select>
                 {errors.role && <p className="text-[10px] text-red-500">{errors.role.message}</p>}
               </div>

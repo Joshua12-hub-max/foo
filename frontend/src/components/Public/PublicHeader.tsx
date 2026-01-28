@@ -1,25 +1,25 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import logo from '@/assets/meycauayan-logo.png';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, LogIn } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useAuth } from "@hooks/useAuth";
 
 const PublicHeader = () => {
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // Handle scroll effect for glassmorphism
+  // Handle scroll effect
   useEffect(() => {
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 10);
+      setIsScrolled(window.scrollY > 20);
     };
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
-
-  const isActive = (path: string) => location.pathname === path;
 
   const navLinks = [
     { name: 'Home', path: '/careers', exact: true },
@@ -36,69 +36,81 @@ const PublicHeader = () => {
   return (
     <>
       <nav 
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 border-b border-transparent ${
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
           isScrolled 
-            ? 'bg-white/80 backdrop-blur-md border-slate-200/60 shadow-sm py-2' 
-            : 'bg-white/0 py-4'
+            ? 'bg-slate-950/98 backdrop-blur-md border-b border-white/5 py-2' 
+            : 'bg-white border-b border-slate-50 py-3.5'
         }`}
       >
-        <div className="max-w-7xl mx-auto px-6 h-16 flex justify-between items-center">
-          {/* Logo */}
+        <div className="max-w-7xl mx-auto px-6 h-12 flex justify-between items-center">
+          {/* Logo Section */}
           <div 
-              className="flex items-center gap-3 cursor-pointer group" 
+              className="flex items-center gap-3.5 cursor-pointer group" 
               onClick={() => navigate('/careers')}
           >
-              <motion.img 
-                whileHover={{ rotate: 5 }}
-                src={logo} 
-                alt="Meycauayan Logo" 
-                className="w-10 h-10 object-contain drop-shadow-sm" 
-              />
+              <div className="relative">
+                <img 
+                    src={logo} 
+                    alt="Meycauayan Logo" 
+                    className="w-11 h-11 object-contain transition-transform duration-500 group-hover:scale-105 relative z-10" 
+                />
+                <div className={`absolute inset-0 blur-xl rounded-full transition-opacity duration-500 opacity-0 group-hover:opacity-100 ${isScrolled ? 'bg-indigo-500/20' : 'bg-slate-400/10'}`}></div>
+              </div>
               <div className="flex flex-col">
-                  <span className="font-bold text-sm md:text-base text-slate-900 leading-tight">
-                    City Human Resource Management Office
+                  <span className={`font-black text-lg leading-none tracking-tight transition-colors ${isScrolled ? 'text-white' : 'text-slate-950'}`}>
+                    CHRM Services
                   </span>
-                  <span className="text-[10px] md:text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                    Meycauayan City, Bulacan
+                  <span className={`text-[9px] font-bold tracking-[0.2em] transition-colors mt-0.5 ${isScrolled ? 'text-indigo-400/80' : 'text-slate-500'}`}>
+                    CITY OF MEYCAUAYAN
                   </span>
               </div>
           </div>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-2">
-              <div className="flex bg-slate-100/50 p-1 rounded-full border border-slate-200/50 backdrop-blur-sm mr-4">
+          <div className="hidden md:flex items-center gap-10">
+              <div className="flex items-center gap-8">
                 {navLinks.map((link) => (
                     <button
                         key={link.path}
                         onClick={() => navigate(link.path)}
-                        className={`px-5 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
+                        className={`relative py-1 text-[15px] font-semibold tracking-tight transition-all duration-300 ${
                             checkActive(link)
-                            ? 'bg-white text-blue-600 shadow-sm ring-1 ring-slate-100' 
-                            : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200/50'
+                            ? (isScrolled ? 'text-white' : 'text-slate-950')
+                            : (isScrolled ? 'text-white/40 hover:text-white' : 'text-slate-400 hover:text-slate-950')
                         }`}
                     >
                         {link.name}
+                        {checkActive(link) && (
+                            <motion.div 
+                                layoutId="nav-underline-master"
+                                className={`absolute -bottom-1 left-0 right-0 h-0.5 rounded-full ${isScrolled ? 'bg-indigo-400' : 'bg-slate-950'}`}
+                            />
+                        )}
                     </button>
                 ))}
               </div>
               
-              <motion.button 
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => navigate('/login')} 
-                  className="bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold px-6 py-2.5 rounded-full transition-all shadow-lg shadow-slate-900/10"
+              <button 
+                  onClick={() => user ? logout() : navigate('/login')} 
+                  className={`group px-7 py-2.5 rounded-xl font-bold text-[14px] tracking-tight transition-all active:scale-95 flex items-center gap-2.5 relative overflow-hidden ${
+                    isScrolled 
+                      ? 'bg-white text-slate-950 shadow-lg' 
+                      : 'bg-slate-950 text-white shadow-xl shadow-slate-950/10'
+                  }`}
               >
-                  Employee Login
-              </motion.button>
+                  <LogIn size={16} className="transition-transform group-hover:translate-x-0.5" />
+                  <span>{user ? 'Sign Out' : 'Employee Access'}</span>
+                  <div className={`absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity bg-gradient-to-r from-transparent via-white to-transparent -translate-x-full group-hover:translate-x-full duration-700`}></div>
+              </button>
           </div>
 
           {/* Mobile Menu Button */}
           <div className="md:hidden">
             <button 
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+              className={`p-2.5 rounded-xl transition-all ${isScrolled ? 'bg-white/10 text-white' : 'bg-slate-50 text-slate-900 border border-slate-100'}`}
             >
-              {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+              {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
           </div>
         </div>
@@ -107,43 +119,48 @@ const PublicHeader = () => {
       {/* Mobile Menu Dropdown */}
       <AnimatePresence>
         {mobileMenuOpen && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="md:hidden fixed top-[64px] left-0 right-0 bg-white border-b border-slate-200 z-40 overflow-hidden shadow-xl"
-          >
-            <div className="p-4 flex flex-col gap-2">
-              {navLinks.map((link) => (
-                <button
-                  key={link.path}
-                  onClick={() => {
-                    navigate(link.path);
-                    setMobileMenuOpen(false);
-                  }}
-                  className={`w-full text-left px-4 py-3 rounded-xl font-medium transition-colors ${
-                     checkActive(link)
-                      ? 'bg-blue-50 text-blue-600'
-                      : 'text-slate-600 hover:bg-slate-50'
-                  }`}
-                >
-                  {link.name}
-                </button>
-              ))}
-              <div className="h-px bg-slate-100 my-2"></div>
-              <button 
-                onClick={() => navigate('/login')}
-                className="w-full bg-slate-900 text-white font-bold py-3 rounded-xl"
-              >
-                Employee Login
-              </button>
-            </div>
-          </motion.div>
+            <motion.div 
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="md:hidden fixed inset-x-4 top-20 bg-slate-950/98 backdrop-blur-2xl rounded-2xl border border-white/10 z-50 p-6 shadow-2xl overflow-hidden"
+            >
+                <div className="flex flex-col gap-1.5 relative z-10">
+                  {navLinks.map((link) => (
+                      <button
+                      key={link.path}
+                      onClick={() => {
+                          navigate(link.path);
+                          setMobileMenuOpen(false);
+                      }}
+                      className={`w-full text-left px-5 py-3.5 rounded-xl font-semibold text-[15px] tracking-tight transition-all ${
+                          checkActive(link)
+                          ? 'bg-white/10 text-white'
+                          : 'text-white/60 hover:text-white hover:bg-white/5'
+                      }`}
+                      >
+                      {link.name}
+                      </button>
+                  ))}
+                  <div className="h-px bg-white/5 my-3"></div>
+                  <button 
+                      onClick={() => {
+                        user ? logout() : navigate('/login');
+                        setMobileMenuOpen(false);
+                      }}
+                      className="w-full bg-white text-slate-950 font-bold py-4 rounded-xl tracking-tight text-[15px] flex items-center justify-center gap-2.5 active:scale-95 transition-all"
+                  >
+                      <LogIn size={18} />
+                      {user ? 'Sign Out' : 'Employee Access'}
+                  </button>
+                </div>
+                <div className="absolute top-[-50%] right-[-20%] w-[200px] h-[200px] bg-indigo-500/5 rounded-full blur-[80px]"></div>
+            </motion.div>
         )}
       </AnimatePresence>
       
-      {/* Spacer to prevent content overlap with fixed header */}
-      <div className="h-24"></div>
+      {/* Dynamic Spacer */}
+      <div className="h-24 md:h-28"></div>
     </>
   );
 };

@@ -8,6 +8,7 @@ export interface User {
   department_name?: string;
   department?: string; 
   position?: string;
+  position_id?: number;
   avatar?: string;
   profilePicture?: string;
   name?: string;
@@ -60,6 +61,7 @@ export interface Employee {
   department_id?: number;
   position?: string;
   job_title?: string;
+  position_id?: number;
   employee_id?: string | number;
   avatar_url?: string;
   status?: string;

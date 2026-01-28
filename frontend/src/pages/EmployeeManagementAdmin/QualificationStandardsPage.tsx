@@ -9,11 +9,20 @@ import {
 } from '@/hooks/useQualificationStandards';
 import { qualificationStandardSchema, type QualificationStandardFormData } from '@/schemas/compliance';
 import type { QualificationStandard } from '@/api/complianceApi';
+import ConfirmDialog from '@/components/Custom/Shared/ConfirmDialog';
 
-export const QualificationStandardsPage: React.FC = () => {
+interface QualificationStandardsPageProps {
+  hideHeader?: boolean;
+}
+
+export const QualificationStandardsPage: React.FC<QualificationStandardsPageProps> = ({ hideHeader = false }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingQS, setEditingQS] = useState<QualificationStandard | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+
+  // Delete Confirmation State
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [standardToDelete, setStandardToDelete] = useState<number | null>(null);
 
   const { data: standards, isLoading } = useQualificationStandards();
   const createQS = useCreateQualificationStandard();
@@ -26,7 +35,7 @@ export const QualificationStandardsPage: React.FC = () => {
     reset,
     formState: { errors },
   } = useForm<QualificationStandardFormData>({
-    resolver: zodResolver(qualificationStandardSchema),
+    resolver: zodResolver(qualificationStandardSchema) as any,
   });
 
   const filteredStandards = standards?.filter(qs =>
@@ -74,9 +83,16 @@ export const QualificationStandardsPage: React.FC = () => {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this qualification standard?')) return;
+    setStandardToDelete(id);
+    setIsDeleteModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!standardToDelete) return;
     try {
-      await deleteQS.mutateAsync(id);
+      await deleteQS.mutateAsync(standardToDelete);
+      setIsDeleteModalOpen(false);
+      setStandardToDelete(null);
     } catch (error) {
       console.error('Failed to delete QS:', error);
     }
@@ -85,18 +101,20 @@ export const QualificationStandardsPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-start">
-        <div>
-          <h3 className="text-xl font-bold text-gray-900">Qualification Standards Library</h3>
-          <p className="text-sm text-gray-500 mt-1">Manage position requirements and validate employee qualifications</p>
+      {!hideHeader && (
+        <div className="flex justify-between items-start">
+          <div>
+            <h3 className="text-xl font-bold text-gray-900">Qualification Standards Library</h3>
+            <p className="text-sm text-gray-500 mt-1">Manage position requirements and validate employee qualifications</p>
+          </div>
+          <button
+            onClick={() => handleOpenModal()}
+            className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-5 py-2.5 rounded-xl flex items-center gap-2 shadow-sm transition-all active:scale-95 text-sm font-semibold"
+          >
+            Add Standard
+          </button>
         </div>
-        <button
-          onClick={() => handleOpenModal()}
-          className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-5 py-2.5 rounded-xl flex items-center gap-2 shadow-sm transition-all active:scale-95 text-sm font-semibold"
-        >
-          Add Standard
-        </button>
-      </div>
+      )}
 
       {/* Search */}
       <div className="relative">
@@ -207,7 +225,7 @@ export const QualificationStandardsPage: React.FC = () => {
 
       {/* Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl max-w-md w-full shadow-2xl border border-gray-100 overflow-hidden animate-in fade-in zoom-in duration-200">
             <div className="flex items-center justify-between px-6 py-4 bg-gray-50 border-b border-gray-100">
               <h2 className="text-lg font-bold text-gray-900">
@@ -324,6 +342,20 @@ export const QualificationStandardsPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmDialog
+        isOpen={isDeleteModalOpen}
+        onClose={() => {
+          setIsDeleteModalOpen(false);
+          setStandardToDelete(null);
+        }}
+        onConfirm={confirmDelete}
+        title="Delete Qualification Standard"
+        message="Are you sure you want to delete this standard? This action cannot be undone and may affect position validation."
+        confirmText="Delete Standard"
+        isDestructive
+      />
     </div>
   );
 };

@@ -6,10 +6,10 @@ export async function up() {
       ALTER TABLE recruitment_applicants 
       ADD COLUMN hired_date DATETIME DEFAULT NULL
     `);
-    console.log('✅ Added hired_date column to recruitment_applicants');
+    console.log('Added hired_date column to recruitment_applicants');
   } catch (error) {
     if (error.code === 'ER_DUP_FIELDNAME') {
-      console.log('⏩ hired_date column already exists, skipping');
+      console.log('hired_date column already exists, skipping');
     } else {
       throw error;
     }
@@ -22,7 +22,7 @@ export async function down() {
       ALTER TABLE recruitment_applicants 
       DROP COLUMN hired_date
     `);
-    console.log('✅ Removed hired_date column from recruitment_applicants');
+    console.log('Removed hired_date column from recruitment_applicants');
   } catch (error) {
     console.error('Error removing hired_date column:', error);
     throw error;

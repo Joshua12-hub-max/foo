@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import db from '../db/connection.js';
 import type { RowDataPacket, ResultSetHeader } from 'mysql2/promise';
 import type { AuthenticatedRequest } from '../types/index.js';
+import { calculateAttendanceScore } from '../services/attendanceRatingService.js';
 
 interface ReviewRow extends RowDataPacket { id: number; employee_id: number; reviewer_id?: number; review_cycle_id?: number; status: string; total_score?: number; self_rating_score?: number; supervisor_rating_score?: number; final_rating_score?: number; overall_feedback?: string; review_period_start?: string; review_period_end?: string; approved_by?: number; disagreed?: boolean; employee_remarks?: string; supervisor_remarks?: string; head_remarks?: string; }
 interface EmployeeRow extends RowDataPacket { id: number; first_name: string; last_name: string; department?: string; job_title?: string; avatar_url?: string; employee_id: string; }
@@ -44,7 +45,26 @@ export const getReviews = async (req: Request, res: Response): Promise<void> => 
 
 export const getReview = async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params; const authReq = req as AuthenticatedRequest;
-  try { const [reviews] = await db.query<ReviewRow[]>(`SELECT pr.*, emp.first_name as employee_first_name, emp.last_name as employee_last_name, emp.department as employee_department, emp.job_title as employee_job_title, reviewer.first_name as reviewer_first_name, reviewer.last_name as reviewer_last_name FROM performance_reviews pr LEFT JOIN authentication emp ON pr.employee_id = emp.id LEFT JOIN authentication reviewer ON pr.reviewer_id = reviewer.id WHERE pr.id = ?`, [id]); if (reviews.length === 0) { res.status(404).json({ success: false, message: 'Review not found' }); return; } const review = reviews[0]; if (authReq.user.role !== 'admin' && authReq.user.role !== 'hr') { if (review.employee_id != authReq.user.id && review.reviewer_id != authReq.user.id) { res.status(403).json({ success: false, message: 'Unauthorized access to this review' }); return; } } const [items] = await db.query<ItemRow[]>(`SELECT pri.*, COALESCE(pri.criteria_title, pc.title) as criteria_title, COALESCE(pri.criteria_description, pc.description) as criteria_description, COALESCE(pri.max_score, pc.max_score) as max_score, COALESCE(pri.weight, pc.weight) as weight, COALESCE(pri.category, pc.category) as category, pc.criteria_type FROM performance_review_items pri LEFT JOIN performance_criteria pc ON pri.criteria_id = pc.id WHERE pri.review_id = ? ORDER BY COALESCE(pri.category, pc.category), pri.id`, [id]); (review as ReviewRow & { items: ItemRow[] }).items = items; res.json({ success: true, review }); } catch (error) { res.status(500).json({ success: false, message: 'Failed to fetch review' }); }
+  try { const [reviews] = await db.query<ReviewRow[]>(`SELECT pr.*, emp.first_name as employee_first_name, emp.last_name as employee_last_name, emp.department as employee_department, emp.job_title as employee_job_title, reviewer.first_name as reviewer_first_name, reviewer.last_name as reviewer_last_name FROM performance_reviews pr LEFT JOIN authentication emp ON pr.employee_id = emp.id LEFT JOIN authentication reviewer ON pr.reviewer_id = reviewer.id WHERE pr.id = ?`, [id]); if (reviews.length === 0) { res.status(404).json({ success: false, message: 'Review not found' }); return; } const review = reviews[0]; if (authReq.user.role !== 'admin' && authReq.user.role !== 'hr') { if (review.employee_id != authReq.user.id && review.reviewer_id != authReq.user.id) { res.status(403).json({ success: false, message: 'Unauthorized access to this review' }); return; } } 
+  
+  // Auto-calculate Attendance Score
+  if (review.review_period_start && review.review_period_end) {
+      const attendanceScore = await calculateAttendanceScore(review.employee_id, review.review_period_start, review.review_period_end);
+      // Update any item with "Attendance" or "Punctuality" in title
+      await db.query(`
+        UPDATE performance_review_items 
+        SET t_score = ?, 
+            score = (COALESCE(q_score, 0) + COALESCE(e_score, 0) + ?) / 3 
+        WHERE review_id = ? 
+        AND (criteria_title LIKE '%Attendance%' OR criteria_title LIKE '%Punctuality%')
+      `, [attendanceScore.score, attendanceScore.score, id]);
+      
+      // Update total score for the review
+      const newTotalScore = await calculateReviewScore(parseInt(id));
+      await db.query('UPDATE performance_reviews SET total_score = ? WHERE id = ?', [newTotalScore, id]);
+  }
+
+  const [items] = await db.query<ItemRow[]>(`SELECT pri.*, COALESCE(pri.criteria_title, pc.title) as criteria_title, COALESCE(pri.criteria_description, pc.description) as criteria_description, COALESCE(pri.max_score, pc.max_score) as max_score, COALESCE(pri.weight, pc.weight) as weight, COALESCE(pri.category, pc.category) as category, pc.criteria_type FROM performance_review_items pri LEFT JOIN performance_criteria pc ON pri.criteria_id = pc.id WHERE pri.review_id = ? ORDER BY COALESCE(pri.category, pc.category), pri.id`, [id]); (review as ReviewRow & { items: ItemRow[] }).items = items; res.json({ success: true, review }); } catch (error) { res.status(500).json({ success: false, message: 'Failed to fetch review' }); }
 };
 
 export const acknowledgeReview = async (req: Request, res: Response): Promise<void> => {

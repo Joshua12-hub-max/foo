@@ -145,7 +145,12 @@ const ReviewItem: React.FC<ReviewItemProps> = ({ item, onScoreChange, onCommentC
                   <div className="flex gap-1.5 mb-3">
                      <CustomSelect label="Q" value={item.q_score} onChange={(e) => onQETChange?.(id, 'q_score', e.target.value)} />
                      <CustomSelect label="E" value={item.e_score} onChange={(e) => onQETChange?.(id, 'e_score', e.target.value)} />
-                     <CustomSelect label="T" value={item.t_score} onChange={(e) => onQETChange?.(id, 't_score', e.target.value)} />
+                     <CustomSelect 
+                        label="T" 
+                        value={item.t_score} 
+                        onChange={(e) => onQETChange?.(id, 't_score', e.target.value)} 
+                        disabled={(item.criteria_title || item.title || '').toLowerCase().includes('attendance') || (item.criteria_title || item.title || '').toLowerCase().includes('punctuality')}
+                     />
                   </div>
                ) : (
                  <div className="grid grid-cols-3 gap-1.5 mb-3">
