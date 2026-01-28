@@ -1,63 +1,60 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { X } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { performanceCriteriaSchema, PerformanceCriteriaSchema } from '@/schemas/performanceSchema';
 import { PerformanceItem } from '../../types';
 
 interface EditCriteriaModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: any) => void;
+  onSubmit: (data: PerformanceCriteriaSchema) => void;
   initialData?: PerformanceItem | null;
 }
 
-interface FormDataState {
-  section: string;
-  category: string;
-  title: string;
-  description: string;
-  weight: string | number;
-  max_score: string | number;
-}
-
 const EditCriteriaModal: React.FC<EditCriteriaModalProps> = ({ isOpen, onClose, onSubmit, initialData }) => {
-  const [formData, setFormData] = useState<FormDataState>({
-    section: 'Performance',
-    category: 'Strategic Priorities',
-    title: '',
-    description: '',
-    weight: '',
-    max_score: 5
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<PerformanceCriteriaSchema>({
+    resolver: zodResolver(performanceCriteriaSchema),
+    defaultValues: {
+      section: 'Performance',
+      category: 'Strategic Priorities',
+      title: '',
+      description: '',
+      weight: 0,
+      max_score: 5,
+    },
   });
 
   useEffect(() => {
     if (initialData) {
-      setFormData({
-        section: (initialData.section as string) || 'Performance',
-        category: initialData.category || 'Strategic Priorities',
+      reset({
+        section: (initialData.section as 'Performance' | 'Competency') || 'Performance',
+        category: (initialData.category as 'Strategic Priorities' | 'Core Functions' | 'Support Functions' | 'General') || 'Strategic Priorities',
         title: initialData.title || initialData.criteria_title || '',
         description: initialData.description || initialData.criteria_description || '',
-        weight: initialData.weight || '',
-        max_score: initialData.max_score || 5
+        weight: Number(initialData.weight) || 0,
+        max_score: Number(initialData.max_score) || 5,
       });
     } else {
-      setFormData({
+      reset({
         section: 'Performance',
         category: 'Strategic Priorities',
         title: '',
         description: '',
-        weight: '',
-        max_score: 5
+        weight: 0,
+        max_score: 5,
       });
     }
-  }, [initialData, isOpen]);
+  }, [initialData, isOpen, reset]);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const onFormSubmit = (data: PerformanceCriteriaSchema) => {
     try {
-      onSubmit({
-        ...formData,
-        weight: parseFloat(formData.weight.toString()),
-        max_score: parseInt(formData.max_score.toString())
-      });
+      onSubmit(data);
     } catch (error) {
       console.error('Error submitting criteria:', error);
     }
@@ -83,7 +80,7 @@ const EditCriteriaModal: React.FC<EditCriteriaModalProps> = ({ isOpen, onClose, 
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+        <form onSubmit={handleSubmit((data) => onFormSubmit(data))} className="flex flex-col flex-1 overflow-hidden">
           <div className="p-6 space-y-4 overflow-y-auto flex-1">
             {/* Title (MFO / PAP) */}
             <div>
@@ -92,12 +89,11 @@ const EditCriteriaModal: React.FC<EditCriteriaModalProps> = ({ isOpen, onClose, 
               </label>
               <input
                 type="text"
-                required
-                value={formData.title}
-                onChange={(e) => setFormData({...formData, title: e.target.value})}
+                {...register('title')}
                 placeholder="e.g. Strategic Planning"
                 className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100 transition-all text-gray-900"
               />
+              {errors.title && <p className="text-red-500 text-xs mt-1">{errors.title.message}</p>}
             </div>
 
             {/* Category */}
@@ -107,8 +103,7 @@ const EditCriteriaModal: React.FC<EditCriteriaModalProps> = ({ isOpen, onClose, 
               </label>
               <div className="relative">
                 <select
-                  value={formData.category}
-                  onChange={(e) => setFormData({...formData, category: e.target.value})}
+                  {...register('category')}
                   className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100 transition-all appearance-none text-gray-900 cursor-pointer"
                 >
                   <option value="Strategic Priorities">Strategic Priorities</option>
@@ -120,6 +115,7 @@ const EditCriteriaModal: React.FC<EditCriteriaModalProps> = ({ isOpen, onClose, 
                   <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg>
                 </div>
               </div>
+              {errors.category && <p className="text-red-500 text-xs mt-1">{errors.category.message}</p>}
             </div>
             
             {/* Success Indicators */}
@@ -129,8 +125,7 @@ const EditCriteriaModal: React.FC<EditCriteriaModalProps> = ({ isOpen, onClose, 
               </label>
               <textarea
                 rows={4}
-                value={formData.description}
-                onChange={(e) => setFormData({...formData, description: e.target.value})}
+                {...register('description')}
                 placeholder="e.g. 100% of plans submitted on time..."
                 className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100 transition-all resize-none text-gray-900"
               />
@@ -148,14 +143,14 @@ const EditCriteriaModal: React.FC<EditCriteriaModalProps> = ({ isOpen, onClose, 
                     step="1"
                     min="1"
                     max="100"
-                    value={formData.weight}
-                    onChange={(e) => setFormData({...formData, weight: e.target.value})}
+                    {...register('weight', { valueAsNumber: true })}
                     className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100 transition-all text-gray-900"
                   />
                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-400 text-xs font-bold">
                     %
                   </div>
                 </div>
+                {errors.weight && <p className="text-red-500 text-xs mt-1">{errors.weight.message}</p>}
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-900 mb-1.5">
@@ -165,10 +160,10 @@ const EditCriteriaModal: React.FC<EditCriteriaModalProps> = ({ isOpen, onClose, 
                   type="number"
                   min="1"
                   max="5"
-                  value={formData.max_score}
-                  onChange={(e) => setFormData({...formData, max_score: e.target.value})}
+                  {...register('max_score', { valueAsNumber: true })}
                   className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100 transition-all text-gray-900"
                 />
+                {errors.max_score && <p className="text-red-500 text-xs mt-1">{errors.max_score.message}</p>}
               </div>
             </div>
           </div>

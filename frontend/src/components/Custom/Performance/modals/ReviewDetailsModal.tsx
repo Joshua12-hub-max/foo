@@ -83,7 +83,7 @@ const ReviewDetailsModal: React.FC<ReviewDetailsModalProps> = ({
               )}
               <div className="bg-gray-50 p-5 rounded-xl border border-gray-100 text-center">
                 <p className="text-xs font-bold text-gray-500 uppercase mb-2 tracking-wider">Supervisor Rating</p>
-                <p className="text-4xl font-extrabold text-gray-900 mb-1">{selectedReview.total_score || '-'}</p>
+                <p className="text-4xl font-extrabold text-gray-900 mb-1">{selectedReview.total_score ? `${((parseFloat(String(selectedReview.total_score)) / 5) * 100).toFixed(0)}%` : '-'}</p>
                 {selectedReview.total_score && (
                   <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${supervisorRatingInfo?.color ? supervisorRatingInfo.color.replace('text-', 'bg-').replace('600', '100').replace('700', '100') + ' ' + supervisorRatingInfo.color : 'bg-gray-100 text-gray-800'}`}>
                     {supervisorRatingInfo?.rating}

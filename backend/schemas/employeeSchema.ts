@@ -5,12 +5,16 @@ export const CreateEmployeeSchema = z.object({
   last_name: z.string().min(1, "Last name is required"),
   email: z.string().email("Invalid email format"),
   
-  // Department & Role
+  // Job Order & Regularization Fields
   department: z.string().optional().nullable(),
   department_id: z.number().optional().nullable(),
   job_title: z.string().optional().nullable(),
   role: z.string().default("employee"),
-  employment_status: z.string().optional().nullable(),
+  employment_status: z.enum(['Active', 'Inactive', 'Terminated', 'Resigned', 'On Leave']).default('Active'),
+  employment_type: z.enum(['Regular', 'Probationary', 'Job Order', 'Contractual']).default('Probationary'),
+  contract_end_date: z.string().optional().nullable(), // Required if Job Order
+  regularization_date: z.string().optional().nullable(), // Auto-calc or manual
+  is_regular: z.boolean().default(false),
   employee_id: z.string().optional().nullable(),
   password: z.string().optional().nullable(),
   position_id: z.number().optional().nullable(),
@@ -37,6 +41,7 @@ export const CreateEmployeeSchema = z.object({
   station: z.string().optional().nullable(),
   position_title: z.string().optional().nullable(),
   item_number: z.string().optional().nullable(),
+  date_hired: z.string().optional().nullable(),
   
   // Plantilla-required Eligibility Fields
   eligibility_type: z.string().optional().nullable(),

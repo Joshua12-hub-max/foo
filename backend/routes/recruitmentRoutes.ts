@@ -1,16 +1,33 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { verifyAdmin } from '../middleware/authMiddleware.js';
 import { uploadResume } from '../middleware/uploadMiddleware.js';
 import * as recruitmentController from '../controllers/recruitmentController.js';
 import { manualCheckEmails } from '../services/emailReceiverService.js';
+import multer from 'multer';
 
 const router: Router = Router();
+
+// Multer error handler wrapper
+const handleMulterError = (err: Error, req: Request, res: Response, next: NextFunction): void => {
+  if (err instanceof multer.MulterError) {
+    res.status(400).json({ success: false, message: `Upload error: ${err.message}` });
+    return;
+  } else if (err) {
+    res.status(400).json({ success: false, message: err.message });
+    return;
+  }
+  next();
+};
 
 // Public Routes
 router.get('/jobs', recruitmentController.getJobs);
 router.get('/jobs/:id', recruitmentController.getJob);
 router.get('/feed', recruitmentController.generateJobFeed);
-router.post('/apply', uploadResume.single('resume'), recruitmentController.applyJob);
+router.post('/apply', 
+  uploadResume.single('resume'), 
+  handleMulterError,
+  recruitmentController.applyJob
+);
 
 // Admin Routes
 router.post('/jobs', verifyAdmin, recruitmentController.createJob);

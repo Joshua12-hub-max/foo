@@ -68,7 +68,7 @@ const ReviewCard: React.FC<ReviewCardProps> = ({review, onViewDetails, onStartSe
               {review.total_score && (
                 <div>
                   <span className="text-xs text-gray-800 uppercase font-bold">Supervisor</span>
-                  <p className="text-lg font-bold text-gray-800">{review.total_score}</p>
+                  <p className="text-lg font-bold text-gray-800">{review.total_score ? `${((parseFloat(String(review.total_score)) / 5) * 100).toFixed(0)}%` : '-'}</p>
                 </div>
               )}
             </div>

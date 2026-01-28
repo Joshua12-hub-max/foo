@@ -19,6 +19,21 @@ export interface Position {
   updated_at?: string;
 }
 
+export interface PlantillaSummary {
+  total: number;
+  filled: number;
+  vacant: number;
+  vacancy_rate: number;
+}
+
+export interface AuditLogParams {
+  page?: number;
+  limit?: number;
+  action?: string;
+  date_from?: string;
+  date_to?: string;
+}
+
 export const plantillaApi = {
     // Get all positions with incumbent details
     getPositions: async (params: { department_id?: number | string; department?: string; is_vacant?: boolean; search?: string }): Promise<AxiosResponse<{ success: boolean; positions: Position[] }>> => {
@@ -31,7 +46,7 @@ export const plantillaApi = {
     },
 
     // Get summary statistics
-    getSummary: async (): Promise<AxiosResponse<{ success: boolean; summary: any }>> => {
+    getSummary: async (): Promise<AxiosResponse<{ success: boolean; summary: PlantillaSummary }>> => {
         try {
             const response = await api.get('/plantilla/summary');
             return response;
@@ -101,7 +116,7 @@ export const plantillaApi = {
     },
 
     // Get audit log
-    getAuditLog: async (params: any): Promise<AxiosResponse> => {
+    getAuditLog: async (params: AuditLogParams): Promise<AxiosResponse> => {
         try {
             const response = await api.get('/plantilla/audit-log', { params });
             return response;

@@ -301,23 +301,36 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
       }
     }
 
+    // Auto-calculate Regularization Date for Probationary
+    let finalRegularizationDate = null;
+    if (validatedData.employment_type === 'Probationary' && !validatedData.regularization_date) {
+        const hireDate = new Date(validatedData.date_hired || Date.now());
+        hireDate.setMonth(hireDate.getMonth() + 6);
+        finalRegularizationDate = hireDate; // Will be formatted by MySQL driver
+    } else if (validatedData.regularization_date) {
+        finalRegularizationDate = validatedData.regularization_date;
+    }
+
     await db.query(
       `INSERT INTO authentication 
-       (first_name, last_name, email, department, department_id, job_title, role, employment_status, 
+       (first_name, last_name, email, department, department_id, job_title, role, employment_status, employment_type,
         employee_id, password_hash, is_verified,
         birth_date, gender, civil_status, nationality, phone_number, address, permanent_address,
         philhealth_number, pagibig_number, tin_number, gsis_number,
-        salary_grade, step_increment, appointment_type, station, position_title, item_number, position_id) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        salary_grade, step_increment, appointment_type, station, position_title, item_number, position_id,
+        contract_end_date, regularization_date, is_regular) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         first_name, last_name, email, finalDeptName, finalDeptId, job_title || 'N/A', role,
-        employment_status || 'Active', finalEmployeeId, hashedPassword,
+        employment_status || 'Active', validatedData.employment_type || 'Probationary',
+        finalEmployeeId, hashedPassword,
         birth_date || null, gender || null, civil_status || null, nationality || 'Filipino',
         phone_number || null, address || null, permanent_address || null,
         philhealth_number || null, pagibig_number || null,
         tin_number || null, gsis_number || null,
         salary_grade || null, step_increment || 1, appointment_type || null,
-        station || null, position_title || null, finalItemNumber, finalPosId
+        station || null, position_title || null, finalItemNumber, finalPosId,
+        validatedData.contract_end_date || null, finalRegularizationDate, validatedData.is_regular || false
       ]
     );
 
@@ -387,7 +400,8 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
       'nationality', 'phone_number', 'address', 'permanent_address',
       'sss_number', 'philhealth_number', 'pagibig_number', 'tin_number', 'gsis_number',
       'salary_grade', 'step_increment', 'appointment_type', 'station', 'position_title',
-      'item_number', 'position_id', 'date_hired', 'avatar_url'
+      'item_number', 'position_id', 'date_hired', 'avatar_url',
+      'contract_end_date', 'regularization_date', 'is_regular', 'employment_type'
     ];
 
     const setClauses: string[] = [];

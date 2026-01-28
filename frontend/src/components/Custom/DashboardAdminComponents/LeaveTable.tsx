@@ -120,16 +120,16 @@ export default function LeaveTable({ onClose }: LeaveTableProps) {
         )}
       </div>
 
-      {/* Compact Table */}
-      <div className="flex-1 overflow-auto">
+      {/* Styled Table matching PlantillaTable */}
+      <div className="flex-1 overflow-auto rounded-lg border border-gray-100">
         <table className="w-full text-sm">
-          <thead className="bg-gray-100 text-xs font-semibold text-gray-600 uppercase sticky top-0">
+          <thead className="bg-gray-100 text-gray-700 sticky top-0 z-10">
             <tr>
-              <th className="px-3 py-2 text-left">ID</th>
-              <th className="px-3 py-2 text-left">Name</th>
-              <th className="px-3 py-2 text-left">Department</th>
-              <th className="px-3 py-2 text-left">Type</th>
-              <th className="px-3 py-2 text-left">Period</th>
+              <th className="px-4 py-3 text-left font-semibold">ID</th>
+              <th className="px-4 py-3 text-left font-semibold">Name</th>
+              <th className="px-4 py-3 text-left font-semibold">Department</th>
+              <th className="px-4 py-3 text-left font-semibold">Type</th>
+              <th className="px-4 py-3 text-left font-semibold">Period</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -139,16 +139,16 @@ export default function LeaveTable({ onClose }: LeaveTableProps) {
                 const end = new Date(emp.endDateRaw);
                 const duration = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
                 return (
-                  <tr key={emp.id} className="hover:bg-gray-50">
-                    <td className="px-3 py-2 text-gray-600 font-mono text-xs">{emp.employeeId}</td>
-                    <td className="px-3 py-2 text-gray-800 font-medium">{emp.name}</td>
-                    <td className="px-3 py-2 text-gray-600">{emp.department}</td>
-                    <td className="px-3 py-2">
-                      <span className="bg-blue-100 text-blue-700 px-2 py-0.5 text-xs font-semibold rounded">
+                  <tr key={emp.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-4 py-3 text-gray-600 font-medium">{emp.employeeId}</td>
+                    <td className="px-4 py-3 text-gray-800 font-medium">{emp.name}</td>
+                    <td className="px-4 py-3 text-gray-600">{emp.department}</td>
+                    <td className="px-4 py-3">
+                      <span className="bg-blue-100 text-blue-700 px-2 py-1 text-xs font-semibold rounded-full">
                         {emp.leaveType}
                       </span>
                     </td>
-                    <td className="px-3 py-2 text-gray-600 text-xs">
+                    <td className="px-4 py-3 text-gray-600 text-sm">
                       {emp.startDate} - {emp.endDate} ({duration}d)
                     </td>
                   </tr>
@@ -156,7 +156,7 @@ export default function LeaveTable({ onClose }: LeaveTableProps) {
               })
             ) : (
               <tr>
-                <td colSpan={5} className="px-3 py-8 text-center text-gray-400 text-sm">
+                <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
                   <Calendar className="w-8 h-8 mx-auto mb-2 opacity-50" />
                   {searchQuery ? 'No matching records' : 'No employees on leave today'}
                 </td>

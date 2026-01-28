@@ -4,6 +4,7 @@ import { useNavigate, Outlet, useLocation } from "react-router-dom";
 // Standardizing Aliased Imports
 import { useAuth } from "@hooks/useAuth";
 import { attendanceApi } from "@api/attendanceApi";
+import { useUIStore } from "@/stores/uiStore";
 
 // Dashboard Components
 import Sidebar from "@components/Custom/DashboardAdminComponents/Sidebar";
@@ -16,6 +17,9 @@ import AbsentTable from "@components/Custom/DashboardAdminComponents/AbsentTable
 import LateTable from "@components/Custom/DashboardAdminComponents/LateTable";
 import LeaveTable from "@components/Custom/DashboardAdminComponents/LeaveTable";
 import HiredTable from "@components/Custom/DashboardAdminComponents/HiredTable";
+
+import ExpiringContractsWidget from "../../features/Dashboard/components/ExpiringContractsWidget";
+import RegularizationWidget from "../../features/Dashboard/components/RegularizationWidget";
 
 // Icons
 import { 
@@ -122,6 +126,12 @@ const DashboardHome: React.FC<DashboardHomeProps> = React.memo(({
         )}
       </div>
 
+      {/* Alerts Section */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <ExpiringContractsWidget />
+        <RegularizationWidget />
+      </div>
+
       <CombinedSection />
     </div>
   );
@@ -136,7 +146,20 @@ export default function HDashboard(): React.ReactElement {
 
   // --- State Management ---
   const [searchQuery, setSearchQuery] = useState<string>("");
-  const [sidebarOpen, setSidebarOpen] = useState<boolean>(true);
+  
+  // Use Global UI Store for Sidebar Sync
+  const sidebarOpen = useUIStore((state: any) => state.sidebarOpen);
+  const setSidebarOpenStore = useUIStore((state: any) => state.setSidebarOpen);
+  
+  // Wrapper to match React.Dispatch<React.SetStateAction<boolean>> signature for Header
+  const setSidebarOpen = useCallback((value: boolean | ((prev: boolean) => boolean)) => {
+      if (typeof value === 'function') {
+          setSidebarOpenStore(value(sidebarOpen));
+      } else {
+          setSidebarOpenStore(value);
+      }
+  }, [sidebarOpen, setSidebarOpenStore]);
+
   const [activeTable, setActiveTable] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   

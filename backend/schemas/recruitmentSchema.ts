@@ -49,9 +49,43 @@ export const saveInterviewNotesSchema = z.object({
   duration: z.number().optional(), // in minutes
 });
 
+// Create Job Schema
+export const createJobSchema = z.object({
+  title: z.string().min(1, 'Job title is required'),
+  department: z.string().min(1, 'Department is required'),
+  job_description: z.string().min(10, 'Job description must be at least 10 characters'),
+  requirements: z.string().optional(),
+  salary_range: z.string().optional(),
+  location: z.string().min(1, 'Location is required'),
+  employment_type: z.enum(['Full-time', 'Part-time', 'Contract', 'Internship', 'Temporary']).default('Full-time'),
+  application_email: z.string().email('Invalid email address'),
+  status: z.enum(['Open', 'Closed', 'Draft']).default('Open')
+});
+
+// Update Job Schema (Partial)
+export const updateJobSchema = createJobSchema.partial().extend({
+  // No additional fields, just makes everything optional for PATCH/flexible updates
+});
+
+// Apply for Job Schema
+export const applyJobSchema = z.object({
+  job_id: z.string().or(z.number()).transform(val => String(val)),
+  first_name: z.string().min(1, 'First name is required'),
+  last_name: z.string().min(1, 'Last name is required'),
+  email: z.string().email('Invalid email address'),
+  phone_number: z.string().optional(),
+  address: z.string().optional(),
+  education: z.string().optional(),
+  experience: z.string().optional(),
+  skills: z.string().optional()
+});
+
 // Type exports
 export type ScheduleInterviewData = z.infer<typeof scheduleInterviewSchema>;
 export type GenerateMeetingLinkRequest = z.infer<typeof generateMeetingLinkSchema>;
 export type GenerateMeetingLinkResponse = z.infer<typeof generateMeetingLinkResponseSchema>;
 export type UpdateApplicantStageData = z.infer<typeof updateApplicantStageSchema>;
 export type SaveInterviewNotesData = z.infer<typeof saveInterviewNotesSchema>;
+export type CreateJobData = z.infer<typeof createJobSchema>;
+export type UpdateJobData = z.infer<typeof updateJobSchema>;
+export type ApplyJobData = z.infer<typeof applyJobSchema>;

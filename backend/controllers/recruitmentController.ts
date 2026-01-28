@@ -38,7 +38,22 @@ const sendEmailNotification = async (to: string, subject: string, html: string, 
 };
 
 export const createJob = async (req: Request, res: Response): Promise<void> => {
-  try { const authReq = req as AuthenticatedRequest; const { title, department, job_description, requirements, salary_range, location, employment_type, application_email, status } = req.body; if (!title || !department || !job_description || !application_email) { res.status(400).json({ success: false, message: 'Missing required fields' }); return; } 
+  try { 
+    const authReq = req as AuthenticatedRequest;
+    
+    const { createJobSchema } = await import('../schemas/recruitmentSchema.js');
+    const parseResult = createJobSchema.safeParse(req.body);
+    
+    if (!parseResult.success) {
+      res.status(400).json({ 
+        success: false, 
+        message: 'Validation failed',
+        errors: parseResult.error.flatten().fieldErrors 
+      });
+      return;
+    }
+
+    const { title, department, job_description, requirements, salary_range, location, employment_type, application_email, status } = parseResult.data; 
   
   const jobStatus = status || 'Open';
   const postedAt = jobStatus === 'Open' ? new Date() : null;
@@ -56,16 +71,32 @@ export const getJob = async (req: Request, res: Response): Promise<void> => {
 
 export const applyJob = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { job_id, first_name, last_name, email, phone_number, address, education, experience, skills } = req.body;
+    const { applyJobSchema } = await import('../schemas/recruitmentSchema.js');
+    const parseResult = applyJobSchema.safeParse(req.body);
+
+    if (!parseResult.success) {
+       res.status(400).json({ 
+         success: false, 
+         message: 'Validation failed', 
+         errors: parseResult.error.flatten().fieldErrors 
+       });
+       return;
+    }
+
+    const { job_id, first_name, last_name, email, phone_number, address, education, experience, skills } = parseResult.data;
+    
     const resume_path = req.file ? req.file.filename : null;
 
-    await db.query(`INSERT INTO recruitment_applicants (job_id, first_name, last_name, email, phone_number, address, education, experience, skills, resume_path, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`, 
-    [job_id, first_name, last_name, email, phone_number, address, education, experience, skills, resume_path]);
+    await db.query(
+      `INSERT INTO recruitment_applicants (job_id, first_name, last_name, email, phone_number, address, education, experience, skills, resume_path, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`, 
+      [job_id, first_name, last_name, email, phone_number, address, education, experience, skills, resume_path]
+    );
 
     res.status(201).json({ success: true, message: 'Application submitted successfully' });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ success: false, message: 'Failed to submit application' });
+    const err = error instanceof Error ? error : new Error('Unknown error');
+    console.error('Error in applyJob:', err.message);
+    res.status(500).json({ success: false, message: 'Failed to submit application', error: err.message });
   }
 };
 
@@ -76,7 +107,21 @@ export const getApplicants = async (req: Request, res: Response): Promise<void> 
 export const updateApplicantStage = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const { stage, interview_date, interview_link, notes, interview_platform } = req.body;
+    
+    // Validate request body with Zod
+    const { updateApplicantStageSchema } = await import('../schemas/recruitmentSchema.js');
+    const parseResult = updateApplicantStageSchema.safeParse(req.body);
+    
+    if (!parseResult.success) {
+      res.status(400).json({
+        success: false,
+        message: 'Validation failed',
+        errors: parseResult.error.flatten().fieldErrors
+      });
+      return;
+    }
+    
+    const { stage, interview_date, interview_link, notes, interview_platform } = parseResult.data;
     
     console.log('updateApplicantStage called');
     console.log('Params:', { id, stage, interview_date, interview_link, interview_platform });
@@ -98,7 +143,7 @@ export const updateApplicantStage = async (req: Request, res: Response): Promise
     
     if (applicant) {
       console.log('Applicant found:', { email: applicant.email, first_name: applicant.first_name });
-      const matchedStage = stage === 'Reviewed' ? 'Screening' : stage;
+      const matchedStage = stage;
       console.log('Looking for template for stage:', matchedStage);
       
       try {
@@ -130,7 +175,7 @@ export const updateApplicantStage = async (req: Request, res: Response): Promise
                 duration: { minutes: 60 },
                 title: `Interview: ${applicant.job_title} - ${applicant.first_name}`,
                 description: `Interview for ${applicant.job_title}. Platform: ${interview_platform}. Link: ${interview_link}`,
-                location: interview_platform === 'Online' ? interview_link : 'Office',
+                location: interview_platform ? interview_link : 'Office',
                 url: interview_link,
                 status: 'CONFIRMED',
                 busyStatus: 'BUSY',
@@ -169,7 +214,22 @@ export const updateApplicantStage = async (req: Request, res: Response): Promise
 export const deleteJob = async (req: Request, res: Response): Promise<void> => { try { const { id } = req.params; await db.query('DELETE FROM recruitment_jobs WHERE id = ?', [id]); res.json({ success: true, message: 'Job deleted' }); } catch (error) { res.status(500).json({ success: false, message: 'Failed to delete job' }); } };
 
 export const updateJob = async (req: Request, res: Response): Promise<void> => {
-  try { const { id } = req.params; const { title, department, job_description, requirements, salary_range, location, status, employment_type, application_email } = req.body; 
+  try { 
+    const { id } = req.params; 
+    
+    const { updateJobSchema } = await import('../schemas/recruitmentSchema.js');
+    const parseResult = updateJobSchema.safeParse(req.body);
+
+    if (!parseResult.success) {
+      res.status(400).json({ 
+        success: false, 
+        message: 'Validation failed', 
+        errors: parseResult.error.flatten().fieldErrors 
+      });
+      return;
+    }
+
+    const { title, department, job_description, requirements, salary_range, location, status, employment_type, application_email } = parseResult.data; 
   
   let setClause = `title = ?, department = ?, job_description = ?, requirements = ?, salary_range = ?, location = ?, status = ?, employment_type = ?, application_email = ?, updated_at = NOW()`;
   const params: any[] = [title, department, job_description, requirements, salary_range, location, status, employment_type || 'Full-time', application_email];

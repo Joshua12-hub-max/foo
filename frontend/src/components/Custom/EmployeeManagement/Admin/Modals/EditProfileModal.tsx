@@ -1,7 +1,21 @@
 import React, { useState, useEffect, ChangeEvent } from 'react';
 import { X, User, Mail, Camera, Save } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 // @ts-ignore
 import { updateMyProfile } from '@api/employeeApi';
+
+// Local schema for this modal
+const EditProfileFormSchema = z.object({
+  first_name: z.string().min(1, 'First name is required'),
+  last_name: z.string().min(1, 'Last name is required'),
+  email: z.string().email('Invalid email format'),
+  phone_number: z.string(),
+  address: z.string(),
+});
+
+type EditProfileFormInput = z.infer<typeof EditProfileFormSchema>;
 
 interface Profile {
   first_name?: string;
@@ -10,14 +24,6 @@ interface Profile {
   phone_number?: string;
   address?: string;
   avatar_url?: string;
-}
-
-interface FormData {
-  first_name: string;
-  last_name: string;
-  email: string;
-  phone_number: string;
-  address: string;
 }
 
 interface EditProfileModalProps {
@@ -34,34 +40,43 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
   profile,
   onSave
 }) => {
-  const [formData, setFormData] = useState<FormData>({
-    first_name: '',
-    last_name: '',
-    email: '',
-    phone_number: '',
-    address: ''
-  });
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const {
+    register,
+    handleSubmit,
+    reset,
+    watch,
+    formState: { errors },
+  } = useForm<EditProfileFormInput>({
+    resolver: zodResolver(EditProfileFormSchema),
+    defaultValues: {
+      first_name: '',
+      last_name: '',
+      email: '',
+      phone_number: '',
+      address: '',
+    },
+  });
+
+  const firstName = watch('first_name');
+  const lastName = watch('last_name');
+
   useEffect(() => {
     if (profile && isOpen) {
-      setFormData({
+      reset({
         first_name: profile.first_name || '',
         last_name: profile.last_name || '',
         email: profile.email || '',
         phone_number: profile.phone_number || '',
-        address: profile.address || ''
+        address: profile.address || '',
       });
       setAvatarPreview(profile.avatar_url || null);
     }
-  }, [profile, isOpen]);
-
-  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
-    setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
-  };
+  }, [profile, isOpen, reset]);
 
   const handleAvatarChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -71,21 +86,20 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const onFormSubmit = async (data: EditProfileFormInput) => {
     setLoading(true);
     setError(null);
 
     try {
-      const data = new FormData();
-      data.append('first_name', formData.first_name);
-      data.append('last_name', formData.last_name);
-      data.append('email', formData.email);
+      const formData = new FormData();
+      formData.append('first_name', data.first_name);
+      formData.append('last_name', data.last_name);
+      formData.append('email', data.email);
       if (avatarFile) {
-        data.append('avatar', avatarFile);
+        formData.append('avatar', avatarFile);
       }
 
-      const result = await updateMyProfile(data);
+      const result = await updateMyProfile(formData);
       
       if (result.success) {
         onSave(result.data);
@@ -114,7 +128,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-4">
           {/* Avatar */}
           <div className="flex justify-center">
             <div className="relative">
@@ -123,7 +137,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
                   <img src={avatarPreview} alt="Avatar" className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-600 text-xl font-bold">
-                    {formData.first_name?.[0]}{formData.last_name?.[0]}
+                    {firstName?.[0]}{lastName?.[0]}
                   </div>
                 )}
               </div>
@@ -149,12 +163,10 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
               </label>
               <input
                 type="text"
-                name="first_name"
-                value={formData.first_name}
-                onChange={handleChange}
+                {...register('first_name')}
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-300 text-sm"
-                required
               />
+              {errors.first_name && <p className="text-red-500 text-xs mt-1">{errors.first_name.message}</p>}
             </div>
             <div>
               <label className="text-sm text-gray-600 mb-1 block flex items-center gap-1">
@@ -162,12 +174,10 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
               </label>
               <input
                 type="text"
-                name="last_name"
-                value={formData.last_name}
-                onChange={handleChange}
+                {...register('last_name')}
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-300 text-sm"
-                required
               />
+              {errors.last_name && <p className="text-red-500 text-xs mt-1">{errors.last_name.message}</p>}
             </div>
           </div>
 
@@ -177,12 +187,10 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
             </label>
             <input
               type="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
+              {...register('email')}
               className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-300 text-sm"
-              required
             />
+            {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>}
           </div>
 
           {/* Actions */}

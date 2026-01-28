@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Calendar, SquarePen, CheckCircle, Trash2, X, Clock, AlertCircle } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { reviewCycleSchema, ReviewCycleSchema } from '@/schemas/performanceSchema';
 import { fetchReviewCycles, createReviewCycle, updateReviewCycle, deleteReviewCycle } from '@/api/performanceApi';
 import { useToastStore } from '@/stores';
+import { AxiosError } from 'axios';
 
 interface ReviewCycle {
   id: string | number;
@@ -17,11 +21,8 @@ interface CyclesResponse {
   cycles: ReviewCycle[];
 }
 
-interface FormDataState {
-  title: string;
-  description: string;
-  start_date: string;
-  end_date: string;
+interface ApiErrorResponse {
+  message?: string;
 }
 
 const ReviewCyclesContent: React.FC = () => {
@@ -29,11 +30,24 @@ const ReviewCyclesContent: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [editingCycle, setEditingCycle] = useState<ReviewCycle | null>(null); 
-  const [formData, setFormData] = useState<FormDataState>({title: '', description: '', start_date: '', end_date: ''});
   
-  // Toast notification hook
   const showToast = useToastStore((state) => state.showToast);
   const showNotification = (message: string, type: 'success' | 'error') => showToast(message, type);
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<ReviewCycleSchema>({
+    resolver: zodResolver(reviewCycleSchema),
+    defaultValues: {
+      title: '',
+      description: '',
+      start_date: '',
+      end_date: '',
+    },
+  });
 
   const loadCycles = async () => {
     try {
@@ -56,18 +70,18 @@ const ReviewCyclesContent: React.FC = () => {
   const closeModal = () => {
     setIsModalOpen(false);
     setEditingCycle(null);
-    setFormData({ title: '', description: '', start_date: '', end_date: '' });
+    reset({ title: '', description: '', start_date: '', end_date: '' });
   };
 
   const handleNewCycle = () => {
     setEditingCycle(null);
-    setFormData({ title: '', description: '', start_date: '', end_date: '' });
+    reset({ title: '', description: '', start_date: '', end_date: '' });
     setIsModalOpen(true);
   };
 
   const handleEditCycle = (cycle: ReviewCycle) => {
     setEditingCycle(cycle);
-    setFormData({
+    reset({
       title: cycle.title || '',
       description: cycle.description || '',
       start_date: cycle.start_date ? cycle.start_date.split('T')[0] : '',
@@ -76,19 +90,19 @@ const ReviewCyclesContent: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const onFormSubmit = async (data: ReviewCycleSchema) => {
     try {
       if (editingCycle) {
-        await updateReviewCycle(editingCycle.id, formData);
+        await updateReviewCycle(editingCycle.id, data);
       } else {
-        await createReviewCycle(formData);
+        await createReviewCycle(data);
       }
       closeModal();
       loadCycles();
-    } catch (err: any) {
+    } catch (err) {
+      const axiosErr = err as AxiosError<ApiErrorResponse>;
       console.error("Failed to save cycle", err);
-      showNotification(err.response?.data?.message || "Failed to save cycle", "error");
+      showNotification(axiosErr.response?.data?.message || "Failed to save cycle", "error");
     }
   };
 
@@ -99,9 +113,10 @@ const ReviewCyclesContent: React.FC = () => {
     try {
       await deleteReviewCycle(cycleId);
       loadCycles();
-    } catch (err: any) {
+    } catch (err) {
+      const axiosErr = err as AxiosError<ApiErrorResponse>;
       console.error("Failed to delete cycle", err);
-      showNotification(err.response?.data?.message || "Failed to delete cycle", "error");
+      showNotification(axiosErr.response?.data?.message || "Failed to delete cycle", "error");
     }
   };
 
@@ -117,9 +132,6 @@ const ReviewCyclesContent: React.FC = () => {
 
   return (
     <div className="flex flex-col gap-8">
-      {/* Toast Notification */}
-
-      
       {/* Header Actions */}
       <div className="flex justify-between items-end">
         <div>
@@ -166,7 +178,6 @@ const ReviewCyclesContent: React.FC = () => {
                 animate={{ opacity: 1, y: 0 }}
                 className="group relative bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden"
               >
-                {/* Gradient Strip */}
                 <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-gray-200 via-gray-300 to-gray-100 group-hover:from-gray-800 group-hover:to-gray-600 transition-colors duration-500"></div>
                 
                 <div className="p-6 pl-8">
@@ -242,26 +253,24 @@ const ReviewCyclesContent: React.FC = () => {
                 </button>
               </div>
               
-              <form onSubmit={handleSubmit} className="p-8 space-y-6">
+              <form onSubmit={handleSubmit(onFormSubmit)} className="p-8 space-y-6">
                 <div className="space-y-4">
                     <div>
                         <label className="block text-sm font-semibold text-gray-700 mb-2">Cycle Title</label>
                         <input
                         type="text"
-                        required
-                        value={formData.title}
-                        onChange={(e) => setFormData({...formData, title: e.target.value})}
+                        {...register('title')}
                         className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none transition-all placeholder:text-gray-400"
                         placeholder="e.g. Annual Review 2025"
                         />
+                        {errors.title && <p className="text-red-500 text-xs mt-1">{errors.title.message}</p>}
                     </div>
                     
                     <div>
                         <label className="block text-sm font-semibold text-gray-700 mb-2">Description</label>
                         <textarea
                         rows={3}
-                        value={formData.description}
-                        onChange={(e) => setFormData({...formData, description: e.target.value})}
+                        {...register('description')}
                         className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none resize-none transition-all placeholder:text-gray-400"
                         placeholder="Briefly describe the purpose of this review cycle..."
                         />
@@ -272,21 +281,19 @@ const ReviewCyclesContent: React.FC = () => {
                         <label className="block text-sm font-semibold text-gray-700 mb-2">Start Date</label>
                         <input
                             type="date"
-                            required
-                            value={formData.start_date}
-                            onChange={(e) => setFormData({...formData, start_date: e.target.value})}
+                            {...register('start_date')}
                             className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none transition-all text-gray-600"
                         />
+                        {errors.start_date && <p className="text-red-500 text-xs mt-1">{errors.start_date.message}</p>}
                         </div>
                         <div>
                         <label className="block text-sm font-semibold text-gray-700 mb-2">End Date</label>
                         <input
                             type="date"
-                            required
-                            value={formData.end_date}
-                            onChange={(e) => setFormData({...formData, end_date: e.target.value})}
+                            {...register('end_date')}
                             className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none transition-all text-gray-600"
                         />
+                        {errors.end_date && <p className="text-red-500 text-xs mt-1">{errors.end_date.message}</p>}
                         </div>
                     </div>
                 </div>

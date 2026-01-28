@@ -86,9 +86,7 @@ export const recruitmentApi = {
     },
     applyJob: async (formData: FormData): Promise<AxiosResponse> => {
         try {
-            const response = await api.post('/recruitment/apply', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' }
-            });
+            const response = await api.post('/recruitment/apply', formData);
             return response;
         } catch (error) {
             throw error;

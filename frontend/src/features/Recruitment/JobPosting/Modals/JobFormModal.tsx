@@ -1,6 +1,8 @@
-import React from 'react';
-import { X } from 'lucide-react';
-import { JobFormData } from '@/types';
+import React, { useEffect } from 'react';
+import { X, Loader2 } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { jobSchema, JobSchema } from '@/schemas/jobSchema';
 
 const EMPLOYMENT_TYPES = ['Full-time', 'Part-time', 'Contractual', 'Job Order'];
 const JOB_STATUSES = ['Open', 'Closed', 'On Hold'];
@@ -9,9 +11,8 @@ interface JobFormModalProps {
   isOpen: boolean;
   onClose: () => void;
   isEditing: boolean;
-  formData: JobFormData;
-  handleFormChange: (field: keyof JobFormData, value: any) => void;
-  handleSubmit: (e: React.FormEvent) => void;
+  initialData?: any; // Using any for flexibility with legacy data, but will cast to Schema
+  onSubmit: (data: JobSchema) => void;
   saving: boolean;
 }
 
@@ -19,11 +20,60 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
   isOpen, 
   onClose, 
   isEditing, 
-  formData, 
-  handleFormChange, 
-  handleSubmit, 
+  initialData, 
+  onSubmit, 
   saving 
 }) => {
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors }
+  } = useForm<JobSchema>({
+    resolver: zodResolver(jobSchema),
+    defaultValues: {
+      title: '',
+      department: '',
+      location: '',
+      employment_type: 'Full-time',
+      status: 'Open',
+      salary_range: '',
+      application_email: '',
+      job_description: '',
+      requirements: ''
+    }
+  });
+
+  useEffect(() => {
+    if (isOpen) {
+      if (initialData) {
+        reset({
+            title: initialData.title || '',
+            department: initialData.department || '',
+            location: initialData.location || '',
+            employment_type: initialData.employment_type || 'Full-time',
+            status: initialData.status || 'Open',
+            salary_range: initialData.salary_range || '',
+            application_email: initialData.application_email || '',
+            job_description: initialData.job_description || '',
+            requirements: initialData.requirements || ''
+        } as JobSchema);
+      } else {
+        reset({
+            title: '',
+            department: '',
+            location: '',
+            employment_type: 'Full-time',
+            status: 'Open',
+            salary_range: '',
+            application_email: '',
+            job_description: '',
+            requirements: ''
+        });
+      }
+    }
+  }, [isOpen, initialData, reset]);
+
   if (!isOpen) return null;
 
   return (
@@ -40,18 +90,17 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
           </button>
         </div>
         
-        <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto">
+        <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-5 overflow-y-auto">
           {/* Job Title */}
           <div>
             <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Job Title <span className="text-red-500">*</span></label>
             <input 
               type="text" 
-              required
               placeholder="e.g. Software Engineer"
-              className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-400 focus:outline-none transition-all bg-gray-50"
-              value={formData.title || ''}
-              onChange={e => handleFormChange('title', e.target.value)}
+              className={`w-full border ${errors.title ? 'border-red-500 ring-2 ring-red-200' : 'border-gray-200'} rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-400 focus:outline-none transition-all bg-gray-50`}
+              {...register('title')}
             />
+            {errors.title && <p className="text-red-500 text-xs mt-1 ml-1">{errors.title.message}</p>}
           </div>
 
           {/* Department & Location */}
@@ -60,23 +109,21 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
               <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Department <span className="text-red-500">*</span></label>
               <input 
                 type="text" 
-                required
                 placeholder="e.g. IT Department"
-                className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-400 focus:outline-none transition-all bg-gray-50"
-                value={formData.department || ''}
-                onChange={e => handleFormChange('department', e.target.value)}
+                className={`w-full border ${errors.department ? 'border-red-500 ring-2 ring-red-200' : 'border-gray-200'} rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-400 focus:outline-none transition-all bg-gray-50`}
+                {...register('department')}
               />
+              {errors.department && <p className="text-red-500 text-xs mt-1 ml-1">{errors.department.message}</p>}
             </div>
             <div>
               <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Location <span className="text-red-500">*</span></label>
               <input 
                 type="text" 
-                required
                 placeholder="e.g. Main Office"
-                className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-400 focus:outline-none transition-all bg-gray-50"
-                value={formData.location || ''}
-                onChange={e => handleFormChange('location', e.target.value)}
+                className={`w-full border ${errors.location ? 'border-red-500 ring-2 ring-red-200' : 'border-gray-200'} rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-400 focus:outline-none transition-all bg-gray-50`}
+                {...register('location')}
               />
+               {errors.location && <p className="text-red-500 text-xs mt-1 ml-1">{errors.location.message}</p>}
             </div>
           </div>
 
@@ -86,20 +133,19 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
               <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Employment Type</label>
               <select 
                 className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-400 focus:outline-none transition-all bg-gray-50 cursor-pointer"
-                value={formData.employment_type || 'Full-time'}
-                onChange={e => handleFormChange('employment_type', e.target.value)}
+                {...register('employment_type')}
               >
                 {EMPLOYMENT_TYPES.map(type => (
                   <option key={type} value={type}>{type}</option>
                 ))}
               </select>
+               {errors.employment_type && <p className="text-red-500 text-xs mt-1 ml-1">{errors.employment_type.message}</p>}
             </div>
             <div>
               <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Status</label>
               <select 
                 className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-400 focus:outline-none transition-all bg-gray-50 cursor-pointer"
-                value={formData.status || 'Open'}
-                onChange={e => handleFormChange('status', e.target.value)}
+                {...register('status')}
               >
                 {JOB_STATUSES.map(status => (
                   <option key={status} value={status}>{status}</option>
@@ -116,20 +162,18 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
                 type="text" 
                 placeholder="e.g. ₱25,000 - ₱35,000"
                 className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-400 focus:outline-none transition-all bg-gray-50"
-                value={formData.salary_range || ''}
-                onChange={e => handleFormChange('salary_range', e.target.value)}
+                {...register('salary_range')}
               />
             </div>
             <div>
               <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Application Email <span className="text-red-500">*</span></label>
               <input 
                 type="email" 
-                required
                 placeholder="e.g. hr@company.com"
-                className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-400 focus:outline-none transition-all bg-gray-50"
-                value={formData.application_email || ''}
-                onChange={e => handleFormChange('application_email', e.target.value)}
+                className={`w-full border ${errors.application_email ? 'border-red-500 ring-2 ring-red-200' : 'border-gray-200'} rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-400 focus:outline-none transition-all bg-gray-50`}
+                {...register('application_email')}
               />
+              {errors.application_email && <p className="text-red-500 text-xs mt-1 ml-1">{errors.application_email.message}</p>}
             </div>
           </div>
 
@@ -137,13 +181,12 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
           <div>
             <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Job Description <span className="text-red-500">*</span></label>
             <textarea 
-              required
               rows={4}
               placeholder="Describe the role and responsibilities..."
-              className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-400 focus:outline-none transition-all resize-none bg-gray-50"
-              value={formData.job_description || ''}
-              onChange={e => handleFormChange('job_description', e.target.value)}
+              className={`w-full border ${errors.job_description ? 'border-red-500 ring-2 ring-red-200' : 'border-gray-200'} rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-400 focus:outline-none transition-all resize-none bg-gray-50`}
+              {...register('job_description')}
             />
+            {errors.job_description && <p className="text-red-500 text-xs mt-1 ml-1">{errors.job_description.message}</p>}
           </div>
 
           {/* Requirements */}
@@ -153,8 +196,7 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
               rows={3}
               placeholder="List qualifications and requirements..."
               className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-400 focus:outline-none transition-all resize-none bg-gray-50"
-              value={formData.requirements || ''}
-              onChange={e => handleFormChange('requirements', e.target.value)}
+              {...register('requirements')}
             />
           </div>
         </form>
@@ -170,13 +212,13 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
               Cancel
             </button>
             <button 
-              onClick={handleSubmit} 
+              onClick={handleSubmit(onSubmit)} 
               className="px-4 py-2 text-sm font-bold text-white bg-gray-900 rounded-lg hover:bg-gray-800 transition-all shadow-md disabled:opacity-50 flex items-center justify-center gap-2"
               disabled={saving}
             >
               {saving ? (
                 <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <Loader2 className="w-4 h-4 animate-spin" />
                   Saving...
                 </>
               ) : (

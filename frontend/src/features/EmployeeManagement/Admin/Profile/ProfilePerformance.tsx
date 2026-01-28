@@ -152,7 +152,7 @@ const ProfilePerformance: React.FC<ProfilePerformanceProps> = ({ profile }) => {
                 
                 <div className="flex items-center gap-6">
                   <div className="text-right">
-                    <p className="text-lg font-black text-emerald-800">{review.total_score || '-'}<span className="text-[10px] font-black text-gray-300 uppercase ml-0.5">/ 5.0</span></p>
+                    <p className="text-lg font-black text-emerald-800">{review.total_score ? `${((parseFloat(String(review.total_score)) / 5) * 100).toFixed(0)}%` : '-'}</p>
                     <p className={`text-[9px] font-black uppercase tracking-widest ${
                       review.status === 'Completed' ? 'text-emerald-600' : 'text-amber-600'
                     }`}>

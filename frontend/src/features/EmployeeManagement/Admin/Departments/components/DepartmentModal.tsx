@@ -1,68 +1,69 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Save, Building, User, DollarSign, MapPin, FileText, FolderTree } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { DepartmentModalSchema, DepartmentModalInput } from '@/schemas/departmentSchema';
 
 interface Department {
   id: number;
   name: string;
 }
 
-interface FormData {
-  name: string;
-  description: string;
-  head_of_department: string;
-  parent_department_id: string;
-  location: string;
-  budget: number | string;
-}
-
-interface InitialData extends FormData {
+interface InitialData extends DepartmentModalInput {
   id?: number;
 }
 
 interface DepartmentModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: FormData) => void;
+  onSubmit: (data: DepartmentModalInput) => void;
   initialData?: InitialData;
   departments?: Department[];
 }
 
 const DepartmentModal: React.FC<DepartmentModalProps> = ({ isOpen, onClose, onSubmit, initialData, departments = [] }) => {
-  const [formData, setFormData] = useState<FormData>({
-    name: '',
-    description: '',
-    head_of_department: '',
-    parent_department_id: '',
-    location: '',
-    budget: 0
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<DepartmentModalInput>({
+    resolver: zodResolver(DepartmentModalSchema),
+    defaultValues: {
+      name: '',
+      description: '',
+      head_of_department: '',
+      parent_department_id: '',
+      location: '',
+      budget: 0,
+    },
   });
 
   useEffect(() => {
     if (initialData) {
-      setFormData({
+      reset({
         name: initialData.name || '',
         description: initialData.description || '',
         head_of_department: initialData.head_of_department || '',
         parent_department_id: initialData.parent_department_id || '',
         location: initialData.location || '',
-        budget: initialData.budget || 0
+        budget: Number(initialData.budget) || 0,
       });
     } else {
-      setFormData({
+      reset({
         name: '',
         description: '',
         head_of_department: '',
         parent_department_id: '',
         location: '',
-        budget: 0
+        budget: 0,
       });
     }
-  }, [initialData, isOpen]);
+  }, [initialData, isOpen, reset]);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSubmit(formData);
+  const onFormSubmit = (data: DepartmentModalInput) => {
+    onSubmit(data);
   };
 
   if (!isOpen) return null;
@@ -85,7 +86,7 @@ const DepartmentModal: React.FC<DepartmentModalProps> = ({ isOpen, onClose, onSu
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          <form onSubmit={handleSubmit(onFormSubmit)} className="p-6 space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Name */}
               <div className="md:col-span-2">
@@ -94,13 +95,12 @@ const DepartmentModal: React.FC<DepartmentModalProps> = ({ isOpen, onClose, onSu
                   <Building className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                   <input
                     type="text"
-                    required
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    {...register('name')}
                     className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
                     placeholder="e.g. Engineering"
                   />
                 </div>
+                {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name.message}</p>}
               </div>
 
               {/* Head of Department */}
@@ -110,8 +110,7 @@ const DepartmentModal: React.FC<DepartmentModalProps> = ({ isOpen, onClose, onSu
                   <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                   <input
                     type="text"
-                    value={formData.head_of_department}
-                    onChange={(e) => setFormData({ ...formData, head_of_department: e.target.value })}
+                    {...register('head_of_department')}
                     className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
                     placeholder="e.g. John Doe"
                   />
@@ -124,13 +123,12 @@ const DepartmentModal: React.FC<DepartmentModalProps> = ({ isOpen, onClose, onSu
                 <div className="relative">
                   <FolderTree className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                   <select
-                    value={formData.parent_department_id}
-                    onChange={(e) => setFormData({ ...formData, parent_department_id: e.target.value })}
+                    {...register('parent_department_id')}
                     className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none bg-white appearance-none"
                   >
                     <option value="">None (Top Level)</option>
                     {departments
-                      .filter(d => d.id !== initialData?.id) // Prevent selecting self as parent
+                      .filter(d => d.id !== initialData?.id)
                       .map(dept => (
                         <option key={dept.id} value={dept.id}>{dept.name}</option>
                       ))
@@ -146,8 +144,7 @@ const DepartmentModal: React.FC<DepartmentModalProps> = ({ isOpen, onClose, onSu
                   <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                   <input
                     type="text"
-                    value={formData.location}
-                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                    {...register('location')}
                     className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
                     placeholder="e.g. Building A, Floor 2"
                   />
@@ -163,8 +160,7 @@ const DepartmentModal: React.FC<DepartmentModalProps> = ({ isOpen, onClose, onSu
                     type="number"
                     min="0"
                     step="0.01"
-                    value={formData.budget}
-                    onChange={(e) => setFormData({ ...formData, budget: e.target.value })}
+                    {...register('budget', { valueAsNumber: true })}
                     className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
                     placeholder="0.00"
                   />
@@ -178,8 +174,7 @@ const DepartmentModal: React.FC<DepartmentModalProps> = ({ isOpen, onClose, onSu
                   <FileText className="absolute left-3 top-3 text-gray-400" size={18} />
                   <textarea
                     rows={3}
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    {...register('description')}
                     className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none resize-none"
                     placeholder="Brief description of the department..."
                   />

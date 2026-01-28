@@ -1,49 +1,47 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { X } from 'lucide-react';
-import { useToastStore } from '@/stores';
-
-interface AssessmentData {
-  title: string;
-  description: string;
-}
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { assessmentSchema, AssessmentSchema } from '@/schemas/performanceSchema';
 
 interface EditAssessmentModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: AssessmentData) => void;
-  initialData?: AssessmentData | null;
+  onSubmit: (data: AssessmentSchema) => void;
+  initialData?: AssessmentSchema | null;
   title?: string;
 }
 
 const EditAssessmentModal: React.FC<EditAssessmentModalProps> = ({ isOpen, onClose, onSubmit, initialData, title }) => {
-  const [formData, setFormData] = useState<AssessmentData>({
-    title: '',
-    description: ''
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<AssessmentSchema>({
+    resolver: zodResolver(assessmentSchema),
+    defaultValues: {
+      title: '',
+      description: '',
+    },
   });
-  const showToast = useToastStore((state) => state.showToast);
-  const showNotification = (message: string, type: 'success' | 'error') => showToast(message, type);
 
   useEffect(() => {
     if (initialData) {
-      setFormData({
+      reset({
         title: initialData.title || '',
-        description: initialData.description || ''
+        description: initialData.description || '',
       });
     } else {
-      setFormData({
+      reset({
         title: '',
-        description: ''
+        description: '',
       });
     }
-  }, [initialData, isOpen]);
+  }, [initialData, isOpen, reset]);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.title.trim()) {
-      showNotification('Title is required', 'error');
-      return;
-    }
-    onSubmit(formData);
+  const onFormSubmit = (data: AssessmentSchema) => {
+    onSubmit(data);
   };
 
   if (!isOpen) return null;
@@ -71,7 +69,7 @@ const EditAssessmentModal: React.FC<EditAssessmentModalProps> = ({ isOpen, onClo
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit(onFormSubmit)}>
           <div className="p-6 space-y-4">
             {/* Title */}
             <div>
@@ -80,12 +78,11 @@ const EditAssessmentModal: React.FC<EditAssessmentModalProps> = ({ isOpen, onClo
               </label>
               <input
                 type="text"
-                required
-                value={formData.title}
-                onChange={(e) => setFormData({...formData, title: e.target.value})}
+                {...register('title')}
                 placeholder="e.g. STRENGTHS, AREAS FOR IMPROVEMENT"
                 className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100 transition-all text-gray-900 placeholder:text-gray-400"
               />
+              {errors.title && <p className="text-red-500 text-xs mt-1">{errors.title.message}</p>}
             </div>
             
             {/* Description */}
@@ -95,8 +92,7 @@ const EditAssessmentModal: React.FC<EditAssessmentModalProps> = ({ isOpen, onClo
               </label>
               <textarea
                 rows={4}
-                value={formData.description}
-                onChange={(e) => setFormData({...formData, description: e.target.value})}
+                {...register('description')}
                 placeholder="Enter placeholder text shown to the user..."
                 className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100 transition-all resize-none text-gray-900 placeholder:text-gray-400"
               />

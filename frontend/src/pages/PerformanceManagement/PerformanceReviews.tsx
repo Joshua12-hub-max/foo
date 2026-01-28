@@ -148,8 +148,7 @@ const PerformanceReviews = () => {
                     {review.reviewer_first} {review.reviewer_last}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="font-bold text-gray-800">{review.total_score != null && review.total_score !== '' ? parseFloat(review.total_score).toFixed(2) : '-'}</span>
-                    <span className="text-sm text-gray-500"> / 5</span>
+                    <span className="font-bold text-gray-800">{review.total_score != null && review.total_score !== '' ? `${((parseFloat(review.total_score) / 5) * 100).toFixed(0)}%` : '-'}</span>
                   </td>
                   <td className="px-6 py-4">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(review.status)}`}>

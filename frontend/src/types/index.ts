@@ -165,8 +165,8 @@ export interface JobFormData {
   employment_type: string;
   status: string; // JobStatus | string
   job_description: string;
-  requirements: string;
-  salary_range: string;
+  requirements?: string;
+  salary_range?: string;
   application_email: string;
 }
 

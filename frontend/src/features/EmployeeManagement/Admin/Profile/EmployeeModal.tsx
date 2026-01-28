@@ -1,24 +1,15 @@
-import React, { useState, useEffect, ChangeEvent, FormEvent } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, User, Mail, Briefcase, Calendar, Shield, Building } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { EmployeeModalSchema, EmployeeModalInput } from '@/schemas/employeeSchema';
 // @ts-ignore
 import { fetchDepartments } from '@api/departmentApi';
 
 interface Department {
   id: number;
   name: string;
-}
-
-interface FormData {
-  first_name: string;
-  last_name: string;
-  email: string;
-  password: string;
-  role: string;
-  department: string;
-  job_title: string;
-  employment_status: string;
-  date_hired: string;
 }
 
 interface InitialData {
@@ -29,25 +20,50 @@ interface InitialData {
   department?: string;
   job_title?: string;
   employment_status?: string;
+  employment_type?: string;
   date_hired?: string;
+  contract_end_date?: string;
+  regularization_date?: string;
 }
 
 interface EmployeeModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: FormData) => void;
+  onSubmit: (data: EmployeeModalInput) => void;
   initialData?: InitialData;
 }
 
 const EmployeeModal: React.FC<EmployeeModalProps> = ({ isOpen, onClose, onSubmit, initialData }) => {
   const [departments, setDepartments] = useState<Department[]>([]);
-  const [formData, setFormData] = useState<FormData>({ first_name: '', last_name: '', email: '', password: '', role: 'employee', department: '', job_title: '', employment_status: 'Active', date_hired: '' });
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<EmployeeModalInput>({
+    resolver: zodResolver(EmployeeModalSchema),
+    defaultValues: {
+      first_name: '',
+      last_name: '',
+      email: '',
+      password: '',
+      role: 'employee',
+      department: '',
+      job_title: '',
+      employment_status: 'Active',
+      employment_type: 'Probationary',
+      date_hired: '',
+      contract_end_date: '',
+      regularization_date: '',
+    },
+  });
 
   useEffect(() => {
     const loadDepts = async () => {
       try {
         const data = await fetchDepartments();
-        if (data.success) setDepartments(data.departments);
+        if (data.success) setDepartments((data.departments as Department[]) || []);
       } catch (err) {
         // Error handled silently
       }
@@ -57,20 +73,37 @@ const EmployeeModal: React.FC<EmployeeModalProps> = ({ isOpen, onClose, onSubmit
 
   useEffect(() => {
     if (initialData) {
-      setFormData({ first_name: initialData.first_name || '', last_name: initialData.last_name || '', email: initialData.email || '', role: initialData.role || 'employee', department: initialData.department || '', job_title: initialData.job_title || '', employment_status: initialData.employment_status || 'Active', date_hired: initialData.date_hired ? initialData.date_hired.split('T')[0] : '', password: '' });
+      reset({
+        first_name: initialData.first_name || '',
+        last_name: initialData.last_name || '',
+        email: initialData.email || '',
+        role: (initialData.role as 'admin' | 'hr' | 'employee') || 'employee',
+        department: initialData.department || '',
+        job_title: initialData.job_title || '',
+        employment_status: (initialData.employment_status as 'Active' | 'Inactive' | 'Terminated' | 'Resigned') || 'Active',
+        employment_type: (initialData.employment_type as 'Regular' | 'Probationary' | 'Job Order' | 'Contractual') || 'Probationary',
+        date_hired: initialData.date_hired ? initialData.date_hired.split('T')[0] : '',
+        contract_end_date: initialData.contract_end_date ? initialData.contract_end_date.split('T')[0] : '',
+        regularization_date: initialData.regularization_date ? initialData.regularization_date.split('T')[0] : '',
+        password: '',
+      });
     } else {
-      setFormData({ first_name: '', last_name: '', email: '', password: '', role: 'employee', department: '', job_title: '', employment_status: 'Active', date_hired: '' });
+      reset({
+        first_name: '',
+        last_name: '',
+        email: '',
+        password: '',
+        role: 'employee',
+        department: '',
+        job_title: '',
+        employment_status: 'Active',
+        date_hired: '',
+      });
     }
-  }, [initialData, isOpen]);
+  }, [initialData, isOpen, reset]);
 
-  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleSubmit = (e: FormEvent) => {
-    e.preventDefault();
-    onSubmit(formData);
+  const onFormSubmit = (data: EmployeeModalInput) => {
+    onSubmit(data);
   };
 
   if (!isOpen) return null;
@@ -93,7 +126,7 @@ const EmployeeModal: React.FC<EmployeeModalProps> = ({ isOpen, onClose, onSubmit
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          <form onSubmit={handleSubmit(onFormSubmit)} className="p-6 space-y-6">
             {/* Personal Info */}
             <div className="space-y-4">
               <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Personal Information</h3>
@@ -104,13 +137,11 @@ const EmployeeModal: React.FC<EmployeeModalProps> = ({ isOpen, onClose, onSubmit
                     <User className="absolute left-3 top-2.5 text-gray-400" size={18} />
                     <input
                       type="text"
-                      name="first_name"
-                      value={formData.first_name}
-                      onChange={handleChange}
-                      required
+                      {...register('first_name')}
                       className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent outline-none"
                     />
                   </div>
+                  {errors.first_name && <p className="text-red-500 text-xs mt-1">{errors.first_name.message}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
@@ -118,13 +149,11 @@ const EmployeeModal: React.FC<EmployeeModalProps> = ({ isOpen, onClose, onSubmit
                     <User className="absolute left-3 top-2.5 text-gray-400" size={18} />
                     <input
                       type="text"
-                      name="last_name"
-                      value={formData.last_name}
-                      onChange={handleChange}
-                      required
+                      {...register('last_name')}
                       className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent outline-none"
                     />
                   </div>
+                  {errors.last_name && <p className="text-red-500 text-xs mt-1">{errors.last_name.message}</p>}
                 </div>
               </div>
               
@@ -134,13 +163,11 @@ const EmployeeModal: React.FC<EmployeeModalProps> = ({ isOpen, onClose, onSubmit
                   <Mail className="absolute left-3 top-2.5 text-gray-400" size={18} />
                   <input
                     type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    required
+                    {...register('email')}
                     className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent outline-none"
                   />
                 </div>
+                {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>}
               </div>
 
               {!initialData && (
@@ -148,10 +175,7 @@ const EmployeeModal: React.FC<EmployeeModalProps> = ({ isOpen, onClose, onSubmit
                   <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
                   <input
                     type="password"
-                    name="password"
-                    value={formData.password}
-                    onChange={handleChange}
-                    required
+                    {...register('password')}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent outline-none"
                     placeholder="Initial password"
                   />
@@ -168,9 +192,7 @@ const EmployeeModal: React.FC<EmployeeModalProps> = ({ isOpen, onClose, onSubmit
                   <div className="relative">
                     <Building className="absolute left-3 top-2.5 text-gray-400" size={18} />
                     <select
-                      name="department"
-                      value={formData.department}
-                      onChange={handleChange}
+                      {...register('department')}
                       className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent outline-none appearance-none bg-white"
                     >
                       <option value="">Select Department</option>
@@ -186,9 +208,7 @@ const EmployeeModal: React.FC<EmployeeModalProps> = ({ isOpen, onClose, onSubmit
                     <Briefcase className="absolute left-3 top-2.5 text-gray-400" size={18} />
                     <input
                       type="text"
-                      name="job_title"
-                      value={formData.job_title}
-                      onChange={handleChange}
+                      {...register('job_title')}
                       className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent outline-none"
                     />
                   </div>
@@ -201,9 +221,7 @@ const EmployeeModal: React.FC<EmployeeModalProps> = ({ isOpen, onClose, onSubmit
                   <div className="relative">
                     <Shield className="absolute left-3 top-2.5 text-gray-400" size={18} />
                     <select
-                      name="role"
-                      value={formData.role}
-                      onChange={handleChange}
+                      {...register('role')}
                       className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent outline-none appearance-none bg-white"
                     >
                       <option value="employee">Employee</option>
@@ -211,13 +229,12 @@ const EmployeeModal: React.FC<EmployeeModalProps> = ({ isOpen, onClose, onSubmit
                       <option value="admin">Admin</option>
                     </select>
                   </div>
+                  {errors.role && <p className="text-red-500 text-xs mt-1">{errors.role.message}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
                   <select
-                    name="employment_status"
-                    value={formData.employment_status}
-                    onChange={handleChange}
+                    {...register('employment_status')}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent outline-none bg-white"
                   >
                     <option value="Active">Active</option>
@@ -232,14 +249,53 @@ const EmployeeModal: React.FC<EmployeeModalProps> = ({ isOpen, onClose, onSubmit
                     <Calendar className="absolute left-3 top-2.5 text-gray-400" size={18} />
                     <input
                       type="date"
-                      name="date_hired"
-                      value={formData.date_hired}
-                      onChange={handleChange}
+                      {...register('date_hired')}
                       className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent outline-none"
                     />
                   </div>
                 </div>
               </div>
+            </div>
+
+            {/* Employment Details */}
+            <div className="space-y-4 pt-4 border-t border-gray-100">
+                <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Employment Details</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Employment Type</label>
+                      <select
+                        {...register('employment_type')}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent outline-none bg-white"
+                      >
+                        <option value="Regular">Regular</option>
+                        <option value="Probationary">Probationary</option>
+                        <option value="Job Order">Job Order</option>
+                        <option value="Contractual">Contractual</option>
+                      </select>
+                    </div>
+                    
+                    {/* Conditional Dates */}
+                    <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">Contract End</label>
+                          <input
+                            type="date"
+                            {...register('contract_end_date')}
+                            className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-500 outline-none"
+                            placeholder="For JO/Contract"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">Regularization</label>
+                          <input
+                            type="date"
+                            {...register('regularization_date')}
+                            className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-500 outline-none"
+                            placeholder="For Probationary"
+                          />
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div className="flex justify-end gap-3 pt-6 border-t border-gray-100">

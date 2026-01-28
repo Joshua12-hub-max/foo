@@ -22,10 +22,12 @@ const ALLOWED_MIME_TYPES: string[] = [
   'image/webp',
   'application/pdf',
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  'application/vnd.ms-excel'
+  'application/vnd.ms-excel',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 ];
 
-const ALLOWED_EXTENSIONS: string[] = ['.jpg', '.jpeg', '.png', '.webp', '.pdf', '.xlsx', '.xls'];
+const ALLOWED_EXTENSIONS: string[] = ['.jpg', '.jpeg', '.png', '.webp', '.pdf', '.xlsx', '.xls', '.doc', '.docx'];
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
@@ -63,7 +65,7 @@ const createUploader = (subfolder: string): Multer => {
     if (ALLOWED_MIME_TYPES.includes(file.mimetype) && ALLOWED_EXTENSIONS.includes(ext)) {
       cb(null, true);
     } else {
-      cb(new Error('Invalid file type or extension. Only Images, PDFs, and Excel files are allowed.'));
+      cb(new Error('Invalid file type or extension. Only Images, PDFs, Word documents, and Excel files are allowed.'));
     }
   };
 

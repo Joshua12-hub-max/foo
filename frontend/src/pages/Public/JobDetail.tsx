@@ -31,8 +31,8 @@ const JobDetail = () => {
       setSuccess(true);
       window.scrollTo(0, 0);
     },
-    (err: any) => {
-        console.error(err);
+    (err: Error) => {
+        console.error(err.message);
         showToast("Failed to submit application. Please try again.", "error");
     }
   );
@@ -256,6 +256,14 @@ const JobDetail = () => {
                                 rows={3}
                                 className={`w-full px-4 py-3 bg-slate-50 border ${errors.experience ? 'border-red-500' : 'border-slate-100'} rounded-xl focus:bg-white focus:border-slate-950 outline-none transition-all resize-none font-semibold text-[14px]`} placeholder="Previous Roles / Responsibilities..." />
                                 {errors.experience && <p className="text-red-500 text-[9px] font-bold mt-1 ml-1">{errors.experience.message}</p>}
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <label className="text-[9px] font-black text-slate-400 tracking-[0.15em] ml-1 uppercase">Competency Matrix (Skills)</label>
+                                <textarea {...register('skills')}
+                                rows={2}
+                                className={`w-full px-4 py-3 bg-slate-50 border ${errors.skills ? 'border-red-500' : 'border-slate-100'} rounded-xl focus:bg-white focus:border-slate-950 outline-none transition-all resize-none font-semibold text-[14px]`} placeholder="List your key skills..." />
+                                {errors.skills && <p className="text-red-500 text-[9px] font-bold mt-1 ml-1">{errors.skills.message}</p>}
                             </div>
 
                             <div className="space-y-1.5">

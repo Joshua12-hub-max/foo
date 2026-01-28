@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { AxiosError } from 'axios';
 // @ts-ignore
 import { plantillaApi, type Position } from '@api/plantillaApi';
 export type { Position }; // Re-export for legacy code support
@@ -7,6 +8,10 @@ export type { Position }; // Re-export for legacy code support
 import { fetchEmployeeOptions } from '@api/employeeApi';
 import { INITIAL_SUMMARY, PlantillaSummary } from '../constants/plantillaConstants';
 import { PlantillaSchema } from '@/schemas/plantilla';
+
+interface ApiErrorResponse {
+  message?: string;
+}
 
 export interface Employee {
   id: number;
@@ -143,8 +148,9 @@ export const usePlantilla = ({ showNotification }: UsePlantillaOptions = {}): Us
           refetchPositions();
           refetchSummary();
           notify("Position deleted successfully");
-        } catch (err: any) {
-          notify(err.response?.data?.message || "Failed to delete position", "error");
+        } catch (err) {
+          const axiosErr = err as AxiosError<ApiErrorResponse>;
+          notify(axiosErr.response?.data?.message || "Failed to delete position", "error");
         }
     }, [refetchPositions, refetchSummary]);
 
@@ -168,8 +174,9 @@ export const usePlantilla = ({ showNotification }: UsePlantillaOptions = {}): Us
           refetchPositions();
           refetchSummary();
           notify(modalMode === 'create' ? "Position created successfully" : "Position updated successfully");
-        } catch (err: any) {
-          notify(err.response?.data?.message || "Operation failed", "error");
+        } catch (err) {
+          const axiosErr = err as AxiosError<ApiErrorResponse>;
+          notify(axiosErr.response?.data?.message || "Operation failed", "error");
         }
     }, [modalMode, currentPosition, refetchPositions, refetchSummary]);
 
@@ -185,8 +192,9 @@ export const usePlantilla = ({ showNotification }: UsePlantillaOptions = {}): Us
             refetchPositions();
             refetchSummary();
             notify("Employee assigned successfully");
-        } catch (err: any) {
-            notify(err.response?.data?.message || "Failed to assign employee", "error");
+        } catch (err) {
+            const axiosErr = err as AxiosError<ApiErrorResponse>;
+            notify(axiosErr.response?.data?.message || "Failed to assign employee", "error");
         }
     }, [currentPosition, selectedEmployee, refetchPositions, refetchSummary]);
 
@@ -199,8 +207,9 @@ export const usePlantilla = ({ showNotification }: UsePlantillaOptions = {}): Us
             refetchPositions();
             refetchSummary();
             notify("Position vacated successfully");
-        } catch (err: any) {
-            notify(err.response?.data?.message || "Failed to vacate position", "error");
+        } catch (err) {
+            const axiosErr = err as AxiosError<ApiErrorResponse>;
+            notify(axiosErr.response?.data?.message || "Failed to vacate position", "error");
         }
     }, [currentPosition, vacateReason, refetchPositions, refetchSummary]);
 

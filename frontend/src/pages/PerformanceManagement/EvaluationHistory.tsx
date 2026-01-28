@@ -295,7 +295,7 @@ const EvaluationHistory = () => {
                     </td>
                     <td className="px-6 py-4 text-center">
                       <div className="inline-block py-1 px-3 bg-white rounded-lg border border-gray-100 shadow-sm font-bold text-gray-800 text-sm">
-                        {review.total_score ? parseFloat(review.total_score).toFixed(2) : '-'}
+                        {review.total_score ? `${((parseFloat(review.total_score) / 5) * 100).toFixed(0)}%` : '-'}
                       </div>
                     </td>
                     <td className="px-6 py-4">

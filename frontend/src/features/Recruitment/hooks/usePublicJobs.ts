@@ -46,7 +46,7 @@ export const usePublicJobDetail = (id: string | undefined) => {
     });
 };
 
-export const useJobApplication = (onSuccess?: () => void, onError?: (error: any) => void) => {
+export const useJobApplication = (onSuccess?: () => void, onError?: (error: Error) => void) => {
     return useMutation({
         mutationFn: async ({ id, data }: { id: string; data: JobApplicationSchema }) => {
             const formData = new FormData();
@@ -62,6 +62,6 @@ export const useJobApplication = (onSuccess?: () => void, onError?: (error: any)
             return await recruitmentApi.applyJob(formData);
         },
         onSuccess,
-        onError
+        onError: (error: Error) => onError?.(error)
     });
 };

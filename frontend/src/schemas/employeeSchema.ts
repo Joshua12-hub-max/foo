@@ -9,6 +9,10 @@ export const CreateEmployeeSchema = z.object({
   job_title: z.string().optional(),
   role: z.enum(['admin', 'hr', 'employee']),
   employment_status: z.string().default("Active"),
+  employment_type: z.enum(['Regular', 'Probationary', 'Job Order', 'Contractual']).default('Probationary'),
+  contract_end_date: z.string().optional().nullable(),
+  regularization_date: z.string().optional().nullable(),
+  is_regular: z.boolean().default(false),
   employee_id: z.string().optional(),
   password: z.string().optional(),
   
@@ -35,6 +39,7 @@ export const CreateEmployeeSchema = z.object({
   position_title: z.string().optional().nullable(),
   position_id: z.coerce.number().optional().nullable(),
   item_number: z.string().optional().nullable(),
+  date_hired: z.string().optional().nullable(),
   
   // Plantilla-required Eligibility Fields
   eligibility_type: z.string().optional().nullable(),
@@ -64,8 +69,8 @@ export const AddEducationSchema = z.object({
   field_of_study: z.string().optional().nullable(),
   start_date: z.string().optional().nullable(),
   end_date: z.string().optional().nullable(),
-  is_current: z.boolean().default(false),
-  type: z.string().default("Education"),
+  is_current: z.boolean(),
+  type: z.string(),
   description: z.string().optional().nullable()
 });
 
@@ -90,3 +95,22 @@ export type AddSkillInput = z.infer<typeof AddSkillSchema>;
 export type AddEducationInput = z.infer<typeof AddEducationSchema>;
 export type AddContactInput = z.infer<typeof AddContactSchema>;
 export type AddCustomFieldInput = z.infer<typeof AddCustomFieldSchema>;
+
+// Simplified schema for EmployeeModal form
+export const EmployeeModalSchema = z.object({
+  first_name: z.string().min(1, "First name is required"),
+  last_name: z.string().min(1, "Last name is required"),
+  email: z.string().email("Invalid email format"),
+  password: z.string().optional(),
+  role: z.enum(['admin', 'hr', 'employee']),
+  department: z.string(),
+  job_title: z.string(),
+  employment_status: z.enum(['Active', 'Inactive', 'Terminated', 'Resigned']),
+  employment_type: z.enum(['Regular', 'Probationary', 'Job Order', 'Contractual']),
+  date_hired: z.string(),
+  contract_end_date: z.string().optional(),
+  regularization_date: z.string().optional(),
+});
+
+export type EmployeeModalInput = z.infer<typeof EmployeeModalSchema>;
+

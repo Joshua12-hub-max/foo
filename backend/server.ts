@@ -48,8 +48,13 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
+import { initCronJobs } from './jobs/employmentChecks.js';
+
 // Initialize Biometrics Service
 initBiometrics();
+
+// Initialize Employment Cron Jobs
+initCronJobs();
 
 // Initialize Email Application Checker (runs every 5 minutes)
 cron.schedule('*/5 * * * *', async () => {

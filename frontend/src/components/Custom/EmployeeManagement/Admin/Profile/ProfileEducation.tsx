@@ -1,5 +1,8 @@
-import React, { useState, FormEvent, ChangeEvent } from 'react';
+import React, { useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { AddEducationSchema, AddEducationInput } from '@/schemas/employeeSchema';
 // @ts-ignore
 import { addEmployeeEducation, deleteEmployeeEducation } from '@api/employeeApi';
 
@@ -24,42 +27,35 @@ interface ProfileEducationProps {
   onUpdate: () => void;
 }
 
-interface FormData {
-  institution: string;
-  degree: string;
-  field_of_study: string;
-  start_date: string;
-  end_date: string;
-  is_current: boolean;
-  type: string;
-}
-
 const ProfileEducation: React.FC<ProfileEducationProps> = ({ profile, onUpdate }) => {
   const [isAdding, setIsAdding] = useState(false);
-  const [formData, setFormData] = useState<FormData>({
-    institution: '',
-    degree: '',
-    field_of_study: '',
-    start_date: '',
-    end_date: '',
-    is_current: false,
-    type: 'Education'
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    watch,
+    formState: { errors },
+  } = useForm<AddEducationInput>({
+    resolver: zodResolver(AddEducationSchema),
+    defaultValues: {
+      institution: '',
+      degree: '',
+      field_of_study: '',
+      start_date: '',
+      end_date: '',
+      is_current: false,
+      type: 'Education',
+    },
   });
 
-  const handleAdd = async (e: FormEvent) => {
-    e.preventDefault();
+  const isCurrent = watch('is_current');
+
+  const onFormSubmit = async (data: AddEducationInput) => {
     try {
-      await addEmployeeEducation(profile.id, formData);
+      await addEmployeeEducation(profile.id, data);
       setIsAdding(false);
-      setFormData({
-        institution: '',
-        degree: '',
-        field_of_study: '',
-        start_date: '',
-        end_date: '',
-        is_current: false,
-        type: 'Education'
-      });
+      reset();
       onUpdate();
     } catch (err) {
       // Error handled silently
@@ -93,7 +89,7 @@ const ProfileEducation: React.FC<ProfileEducationProps> = ({ profile, onUpdate }
       {/* Add Form */}
       {isAdding && (
         <form
-          onSubmit={handleAdd}
+          onSubmit={handleSubmit(onFormSubmit)}
           className="bg-[#F8F9FA] p-4 rounded-xl border border-gray-200 overflow-hidden"
         >
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -101,19 +97,16 @@ const ProfileEducation: React.FC<ProfileEducationProps> = ({ profile, onUpdate }
               <label className="block text-[10px] font-black text-gray-400 uppercase mb-1">Institution / Issuer</label>
               <input
                 type="text"
-                required
-                value={formData.institution}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => setFormData({...formData, institution: e.target.value})}
+                {...register('institution')}
                 className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-gray-500 outline-none"
               />
+              {errors.institution && <p className="text-red-500 text-xs mt-1">{errors.institution.message}</p>}
             </div>
             <div>
               <label className="block text-[10px] font-black text-gray-400 uppercase mb-1">Degree / Certificate Name</label>
               <input
                 type="text"
-                required
-                value={formData.degree}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => setFormData({...formData, degree: e.target.value})}
+                {...register('degree')}
                 className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-gray-500 outline-none"
               />
             </div>
@@ -121,8 +114,7 @@ const ProfileEducation: React.FC<ProfileEducationProps> = ({ profile, onUpdate }
               <label className="block text-[10px] font-black text-gray-400 uppercase mb-1">Field of Study</label>
               <input
                 type="text"
-                value={formData.field_of_study}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => setFormData({...formData, field_of_study: e.target.value})}
+                {...register('field_of_study')}
                 className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-gray-500 outline-none"
               />
             </div>
@@ -130,8 +122,7 @@ const ProfileEducation: React.FC<ProfileEducationProps> = ({ profile, onUpdate }
               <label className="block text-[10px] font-black text-gray-400 uppercase mb-1">Start Date</label>
               <input
                 type="date"
-                value={formData.start_date}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => setFormData({...formData, start_date: e.target.value})}
+                {...register('start_date')}
                 className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-gray-500 outline-none"
               />
             </div>
@@ -139,9 +130,8 @@ const ProfileEducation: React.FC<ProfileEducationProps> = ({ profile, onUpdate }
               <label className="block text-[10px] font-black text-gray-400 uppercase mb-1">End Date</label>
               <input
                 type="date"
-                value={formData.end_date}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => setFormData({...formData, end_date: e.target.value})}
-                disabled={formData.is_current}
+                {...register('end_date')}
+                disabled={isCurrent}
                 className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-gray-500 outline-none disabled:bg-gray-100"
               />
             </div>
@@ -149,8 +139,7 @@ const ProfileEducation: React.FC<ProfileEducationProps> = ({ profile, onUpdate }
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
-                  checked={formData.is_current}
-                  onChange={(e: ChangeEvent<HTMLInputElement>) => setFormData({...formData, is_current: e.target.checked})}
+                  {...register('is_current')}
                   className="w-4 h-4 text-emerald-600 rounded focus:ring-gray-500"
                 />
                 <span className="text-xs font-bold text-gray-700 uppercase">Currently studying here</span>
@@ -158,8 +147,7 @@ const ProfileEducation: React.FC<ProfileEducationProps> = ({ profile, onUpdate }
               <div className="flex-grow">
                 <label className="block text-[10px] font-black text-gray-400 uppercase mb-1">Type</label>
                 <select
-                  value={formData.type}
-                  onChange={(e: ChangeEvent<HTMLSelectElement>) => setFormData({...formData, type: e.target.value})}
+                  {...register('type')}
                   className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-gray-500 outline-none bg-white font-bold"
                 >
                   <option value="Education">Education</option>
@@ -172,7 +160,7 @@ const ProfileEducation: React.FC<ProfileEducationProps> = ({ profile, onUpdate }
           <div className="flex justify-end gap-2 mt-6 pt-4 border-t border-gray-200">
             <button
               type="button"
-              onClick={() => setIsAdding(false)}
+              onClick={() => { setIsAdding(false); reset(); }}
               className="px-3 py-1.5 text-[10px] font-black uppercase text-gray-500 hover:text-gray-800"
             >
               Cancel
