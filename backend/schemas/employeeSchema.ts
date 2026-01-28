@@ -5,6 +5,16 @@ export const CreateEmployeeSchema = z.object({
   last_name: z.string().min(1, "Last name is required"),
   email: z.string().email("Invalid email format"),
   
+  // Department & Role
+  department: z.string().optional().nullable(),
+  department_id: z.number().optional().nullable(),
+  job_title: z.string().optional().nullable(),
+  role: z.string().default("employee"),
+  employment_status: z.string().optional().nullable(),
+  employee_id: z.string().optional().nullable(),
+  password: z.string().optional().nullable(),
+  position_id: z.number().optional().nullable(),
+  
   // Personal Info
   birth_date: z.string().optional().nullable(),
   gender: z.string().optional().nullable(),
@@ -22,7 +32,7 @@ export const CreateEmployeeSchema = z.object({
   
   // Employment Details
   salary_grade: z.number().optional().nullable(),
-  step_increment: z.number().optional().nullable(), // Using number as per controller
+  step_increment: z.number().optional().nullable(),
   appointment_type: z.string().optional().nullable(),
   station: z.string().optional().nullable(),
   position_title: z.string().optional().nullable(),

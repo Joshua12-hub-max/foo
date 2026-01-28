@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { useForm, SubmitHandler } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { X, Loader } from 'lucide-react';
 import { plantillaApi, type Position } from '@api/plantillaApi';
@@ -24,12 +24,12 @@ const PlantillaFormModal: React.FC<PlantillaFormModalProps> = ({
   onSubmit, 
   isProcessing = false 
 }) => {
-  const { register, handleSubmit, formState: { errors }, reset, watch, setValue } = useForm<PlantillaSchema>({
+  const form = useForm<PlantillaSchema>({
     resolver: zodResolver(plantillaSchema),
     defaultValues: {
       item_number: '',
       position_title: '',
-      salary_grade: 0,
+      salary_grade: 1,
       step_increment: 1,
       monthly_salary: 0,
       department_id: 0, 
@@ -37,6 +37,8 @@ const PlantillaFormModal: React.FC<PlantillaFormModalProps> = ({
       is_vacant: true
     }
   });
+
+  const { register, handleSubmit, formState: { errors }, reset, watch, setValue } = form;
 
   const salaryGrade = watch('salary_grade');
   const stepIncrement = watch('step_increment');
@@ -101,7 +103,7 @@ const PlantillaFormModal: React.FC<PlantillaFormModalProps> = ({
     return () => { isMounted = false; };
   }, [salaryGrade, stepIncrement, isOpen, setValue]);
 
-  const onFormSubmit: SubmitHandler<PlantillaSchema> = async (data) => {
+  const onFormSubmit = async (data: PlantillaSchema) => {
     // Ensure numeric types are strictly numbers before sending
     const formattedData: PlantillaSchema = {
         ...data,

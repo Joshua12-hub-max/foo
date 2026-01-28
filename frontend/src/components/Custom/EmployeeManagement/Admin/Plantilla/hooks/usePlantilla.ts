@@ -29,7 +29,7 @@ export interface UsePlantillaReturn {
   positions: Position[];
   loading: boolean;
   error: string | null;
-  departments: string[];
+  departments: { id: number; name: string }[];
   summary: PlantillaSummary;
   selectedDept: string;
   setSelectedDept: React.Dispatch<React.SetStateAction<string>>;
@@ -126,9 +126,9 @@ export const usePlantilla = ({ showNotification }: UsePlantillaOptions = {}): Us
         queryKey: ['departments-options'],
         queryFn: async () => {
             const options = await fetchEmployeeOptions();
-            return options.departments || [];
+            return (options.departments || []) as { id: number; name: string }[];
         },
-        initialData: []
+        initialData: [] as { id: number; name: string }[]
     });
     
     // Actions

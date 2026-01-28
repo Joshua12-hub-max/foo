@@ -91,7 +91,7 @@ const AttendanceExport: React.FC<AttendanceExportProps> = ({ data, title, dateRa
 
       // 2. Fetch all EMPLOYEES for the target department
       const departmentFilter = filters.department || 'All Departments';
-      const employeesResponse = await employeeApi.fetchEmployees(departmentFilter);
+      const employeesResponse = await employeeApi.fetchEmployees({ department: departmentFilter });
 
       if (logsResponse.data.success && Array.isArray(logsResponse.data.data) && employeesResponse.success && Array.isArray(employeesResponse.employees)) {
         
