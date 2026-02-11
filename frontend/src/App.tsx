@@ -39,7 +39,9 @@ const EvaluationHistory = lazy(() => import("./pages/PerformanceManagement/Evalu
 const EmployeeProfile = lazy(() => import("./pages/EmployeeManagementAdmin/EmployeeProfilePage"));
 const EmployeeMemos = lazy(() => import("./pages/EmployeeManagementAdmin/AdminMemoPage"));
 const PlantillaManagement = lazy(() => import("./pages/EmployeeManagementAdmin/PlantillaManagementPage"));
+const OrgChart = lazy(() => import("./pages/EmployeeManagementAdmin/OrgChartPage"));
 const CentralizedManagement = lazy(() => import("./pages/EmployeeManagementAdmin/EmployeeManagementHub"));
+const CompensationDashboard = lazy(() => import("./components/Custom/Compliance/CompensationDashboard"));
 
 // Recruitment Pages
 const JobPosting = lazy(() => import("./pages/Recruitment/JobPosting"));
@@ -386,10 +388,26 @@ export default function App() {
             }
           />
           <Route
+            path="org-chart"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <OrgChart />
+              </Suspense>
+            }
+          />
+          <Route
             path="management"
             element={
               <Suspense fallback={<PageLoader />}>
                 <CentralizedManagement />
+              </Suspense>
+            }
+          />
+          <Route
+            path="compensation"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <CompensationDashboard />
               </Suspense>
             }
           />

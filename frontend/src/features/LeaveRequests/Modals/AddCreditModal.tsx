@@ -70,8 +70,8 @@ const AddCreditModal = ({ isOpen, onClose, onSubmit, employees, isLoadingEmploye
                 className={`w-full border ${errors.employee_id ? 'border-red-300' : 'border-gray-200'} rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-600/20 focus:border-gray-600 outline-none transition-all`}
               >
                 <option value="">Select an employee...</option>
-                {employees.map(emp => (
-                  <option key={emp.employee_id} value={emp.employee_id}>
+                {employees.map((emp, index) => (
+                  <option key={`${emp.employee_id}-${index}`} value={emp.employee_id}>
                     {emp.first_name} {emp.last_name} ({emp.employee_id})
                   </option>
                 ))}

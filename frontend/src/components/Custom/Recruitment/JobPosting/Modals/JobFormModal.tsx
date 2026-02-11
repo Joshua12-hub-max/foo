@@ -146,7 +146,93 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
             />
           </div>
 
-          {/* Requirements */}
+
+          {/* Qualification Requirements */}
+          <div>
+            <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 ml-1 border-b border-gray-100 pb-1">Qualification Requirements</h3>
+            <div className="space-y-4">
+               <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Office Name</label>
+                    <input 
+                      type="text" 
+                      placeholder="e.g. CITY HUMAN RESOURCE..."
+                      className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-400 focus:outline-none transition-all bg-gray-50"
+                      value={formData.office_name || ''}
+                      onChange={e => handleFormChange('office_name', e.target.value)}
+                    />
+                  </div>
+                   <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Submission Address</label>
+                    <input 
+                      type="text" 
+                      placeholder="e.g. ATTY. HENRY R. VILLARICA..."
+                      className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-400 focus:outline-none transition-all bg-gray-50"
+                      value={formData.submission_address || ''}
+                      onChange={e => handleFormChange('submission_address', e.target.value)}
+                    />
+                  </div>
+               </div>
+
+               <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Education</label>
+                  <input 
+                    type="text" 
+                    placeholder="e.g. Bachelor's Degree..."
+                    className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-400 focus:outline-none transition-all bg-gray-50"
+                    value={formData.education || ''}
+                    onChange={e => handleFormChange('education', e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Experience</label>
+                  <input 
+                    type="text" 
+                    placeholder="e.g. 1 year of relevant experience..."
+                    className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-400 focus:outline-none transition-all bg-gray-50"
+                    value={formData.experience || ''}
+                    onChange={e => handleFormChange('experience', e.target.value)}
+                  />
+                </div>
+              </div>
+
+               <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Training</label>
+                  <input 
+                    type="text" 
+                    placeholder="e.g. 4 hours of relevant training..."
+                    className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-400 focus:outline-none transition-all bg-gray-50"
+                    value={formData.training || ''}
+                    onChange={e => handleFormChange('training', e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Eligibility</label>
+                  <input 
+                    type="text" 
+                    placeholder="e.g. CS Professional..."
+                    className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-400 focus:outline-none transition-all bg-gray-50"
+                    value={formData.eligibility || ''}
+                    onChange={e => handleFormChange('eligibility', e.target.value)}
+                  />
+                </div>
+              </div>
+               
+               <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Other Qualifications</label>
+                  <input 
+                    type="text" 
+                    placeholder=""
+                    className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-400 focus:outline-none transition-all bg-gray-50"
+                    value={formData.other_qualifications || ''}
+                    onChange={e => handleFormChange('other_qualifications', e.target.value)}
+                  />
+                </div>
+            </div>
+          </div>
+
           <div>
             <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Requirements</label>
             <textarea 

@@ -39,7 +39,8 @@ export const useAdminLeaveData = (initialFilters?: any) => {
       };
       const res = await (leaveApi as any).getAllLeaves(params);
       
-      const leaves = res.data.leaves.map((l: any) => {
+      const rawLeaves = res?.data?.applications;
+      const leaves = Array.isArray(rawLeaves) ? rawLeaves.map((l: any) => {
         // Build employee name with fallbacks
         const firstName = l.first_name || '';
         const lastName = l.last_name || '';
@@ -66,7 +67,7 @@ export const useAdminLeaveData = (initialFilters?: any) => {
           end_date: l.end_date,
           current_balance: l.current_balance
         };
-      });
+      }) : [];
 
       return {
         leaves,

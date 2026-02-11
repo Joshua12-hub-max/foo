@@ -1,68 +1,21 @@
 import { Request, Response } from "express";
-import db from "../db/connection.js";
+import { db } from "../db/index.js";
+import { 
+  attendanceLogs, 
+  dailyTimeRecords, 
+  authentication, 
+  schedules, 
+  leaveApplications, // Updated from leaveRequests
+  recruitmentApplicants, 
+  recruitmentJobs 
+} from "../db/schema.js";
+import { eq, and, sql, desc, between, ne } from "drizzle-orm";
 import { processDailyAttendance } from "../services/attendanceProcessor.js";
-import type { RowDataPacket } from "mysql2/promise";
 import type { AuthenticatedRequest } from "../types/index.js";
 import {
   GetLogsSchema,
   GetTodayStatusSchema,
 } from "../schemas/attendanceSchema.js";
-
-// ============================================================================
-// Interfaces
-// ============================================================================
-
-interface DTRRow extends RowDataPacket {
-  employee_id: string;
-  date: Date;
-  time_in?: Date;
-  time_out?: Date;
-  status: string;
-  late_minutes: number;
-  undertime_minutes: number;
-  first_name?: string;
-  last_name?: string;
-  department?: string;
-  updated_at: Date;
-}
-
-interface EmployeeWithSchedule extends RowDataPacket {
-  employee_id: string;
-  first_name: string;
-  last_name: string;
-  department?: string;
-  job_title?: string;
-  date_hired?: Date;
-  employment_status?: string;
-  is_rest_day?: number;
-  start_time?: string;
-  end_time?: string;
-}
-
-interface LeaveRow extends RowDataPacket {
-  employee_id: string;
-  first_name: string;
-  last_name: string;
-  department?: string;
-  leave_type: string;
-  start_date: Date;
-  end_date: Date;
-}
-
-interface AttendanceLogRow extends RowDataPacket {
-  id: number;
-  employee_id: string;
-  scan_time: Date;
-  type: "IN" | "OUT";
-  source: string;
-  first_name?: string;
-  last_name?: string;
-  department?: string;
-}
-
-interface CountRow extends RowDataPacket {
-  total: number;
-}
 
 // ============================================================================
 // Helpers
@@ -86,7 +39,7 @@ const getLocalDate = (): string => {
   }).format(new Date());
 };
 
-const formatTime = (dateTime: Date | null | undefined): string => {
+const formatTime = (dateTime: string | null | undefined): string => {
   if (!dateTime) return "-";
   const date = new Date(dateTime);
   return date.toLocaleTimeString("en-US", {
@@ -96,7 +49,7 @@ const formatTime = (dateTime: Date | null | undefined): string => {
   });
 };
 
-const formatDate = (dateString: Date | string | null | undefined): string => {
+const formatDate = (dateString: string | null | undefined): string => {
   if (!dateString) return "-";
   return new Date(dateString).toLocaleDateString("en-US", {
     year: "numeric",
@@ -114,24 +67,23 @@ export const clockIn = async (req: Request, res: Response): Promise<void> => {
   const employeeId = authReq.user.employeeId;
 
   if (!employeeId) {
-    res
-      .status(400)
-      .json({
-        success: false,
-        message: "User not authenticated or missing Employee ID.",
-        data: null,
-      });
+    res.status(400).json({
+      success: false,
+      message: "User not authenticated or missing Employee ID.",
+      data: null,
+    });
     return;
   }
 
   try {
     const scanTime = new Date();
-    const dateStr = getLocalDate();
+    await db.insert(attendanceLogs).values({
+      employeeId,
+      scanTime: scanTime.toISOString(),
+      type: 'IN',
+      source: 'WEB'
+    });
 
-    await db.query(
-      "INSERT INTO attendance_logs (employee_id, scan_time, type, source) VALUES (?, ?, 'IN', 'WEB')",
-      [employeeId, scanTime],
-    );
     res.status(201).json({
       success: true,
       message: "Clock in successful.",
@@ -147,13 +99,11 @@ export const clockOut = async (req: Request, res: Response): Promise<void> => {
   const employeeId = authReq.user.employeeId;
 
   if (!employeeId) {
-    res
-      .status(400)
-      .json({
-        success: false,
-        message: "User not authenticated or missing Employee ID.",
-        data: null,
-      });
+    res.status(400).json({
+      success: false,
+      message: "User not authenticated or missing Employee ID.",
+      data: null,
+    });
     return;
   }
 
@@ -161,10 +111,12 @@ export const clockOut = async (req: Request, res: Response): Promise<void> => {
     const scanTime = new Date();
     const dateStr = getLocalDate();
 
-    await db.query(
-      "INSERT INTO attendance_logs (employee_id, scan_time, type, source) VALUES (?, ?, 'OUT', 'WEB')",
-      [employeeId, scanTime],
-    );
+    await db.insert(attendanceLogs).values({
+      employeeId,
+      scanTime: scanTime.toISOString(),
+      type: 'OUT',
+      source: 'WEB'
+    });
 
     await processDailyAttendance(employeeId, dateStr);
 
@@ -199,67 +151,63 @@ export const getLogs = async (req: Request, res: Response): Promise<void> => {
     ? query.employeeId || query.id
     : user.employeeId;
 
-  const page = query.page;
-  const limit = query.limit;
+  const page = query.page || 1;
+  const limit = query.limit || 10;
   const offset = (page - 1) * limit;
   const startDate = query.startDate;
   const endDate = query.endDate;
 
   try {
-    const whereClauses: string[] = [];
-    const params: (string | number)[] = [];
-
+    const whereConditions = [];
     if (targetEmployeeId) {
-      whereClauses.push("dtr.employee_id = ?");
-      params.push(targetEmployeeId);
+      whereConditions.push(eq(dailyTimeRecords.employeeId, targetEmployeeId));
     }
-
     if (startDate && endDate) {
-      whereClauses.push("dtr.date BETWEEN ? AND ?");
-      params.push(startDate, endDate);
+      whereConditions.push(between(dailyTimeRecords.date, startDate, endDate));
     }
 
-    const whereString =
-      whereClauses.length > 0 ? `WHERE ${whereClauses.join(" AND ")}` : "";
+    const whereClause = whereConditions.length > 0 ? and(...whereConditions) : undefined;
 
-    const queryStr = `
-      SELECT dtr.*, a.first_name, a.last_name, a.department
-      FROM daily_time_records dtr
-      LEFT JOIN authentication a ON dtr.employee_id = a.employee_id
-      ${whereString}
-      ORDER BY dtr.date DESC
-      LIMIT ? OFFSET ?
-    `;
+    const logs = await db.select({
+      id: dailyTimeRecords.id,
+      employeeId: dailyTimeRecords.employeeId,
+      date: dailyTimeRecords.date,
+      timeIn: dailyTimeRecords.timeIn,
+      timeOut: dailyTimeRecords.timeOut,
+      lateMinutes: dailyTimeRecords.lateMinutes,
+      undertimeMinutes: dailyTimeRecords.undertimeMinutes,
+      overtimeMinutes: dailyTimeRecords.overtimeMinutes,
+      status: dailyTimeRecords.status,
+      first_name: authentication.firstName,
+      last_name: authentication.lastName,
+      department: authentication.department
+    })
+    .from(dailyTimeRecords)
+    .leftJoin(authentication, eq(dailyTimeRecords.employeeId, authentication.employeeId))
+    .where(whereClause)
+    .orderBy(desc(dailyTimeRecords.date))
+    .limit(limit)
+    .offset(offset);
 
-    const countQuery = `
-      SELECT COUNT(*) as total
-      FROM daily_time_records dtr
-      ${whereString}
-    `;
+    const [countResult] = await db.select({
+      total: sql<number>`count(*)`
+    })
+    .from(dailyTimeRecords)
+    .where(whereClause);
 
-    const [logs] = await db.query<DTRRow[]>(queryStr, [
-      ...params,
-      limit,
-      offset,
-    ]);
-    const [countResult] = await db.query<CountRow[]>(countQuery, params);
-    const total = countResult[0].total;
+    const total = Number(countResult.total || 0);
 
     const formattedLogs = logs.map((log) => ({
       ...log,
       department: log.department || "N/A",
-      employee_name:
-        log.first_name && log.last_name
+      employee_name: log.first_name && log.last_name
           ? `${log.first_name} ${log.last_name}`
           : "Unknown Employee",
     }));
 
     res.status(200).json({
       success: true,
-      message:
-        formattedLogs.length > 0
-          ? "Logs retrieved successfully."
-          : "No logs found.",
+      message: formattedLogs.length > 0 ? "Logs retrieved successfully." : "No logs found.",
       data: formattedLogs,
       pagination: { total, page, limit, totalPages: Math.ceil(total / limit) },
     });
@@ -268,23 +216,29 @@ export const getLogs = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-export const getRecentActivity = async (
-  req: Request,
-  res: Response,
-): Promise<void> => {
+export const getRecentActivity = async (_req: Request, res: Response): Promise<void> => {
   try {
-    const [logs] = await db.query<DTRRow[]>(`
-      SELECT dtr.*, a.first_name, a.last_name, a.department
-      FROM daily_time_records dtr
-      LEFT JOIN authentication a ON dtr.employee_id = a.employee_id
-      ORDER BY dtr.updated_at DESC LIMIT 20
-    `);
+    const logs = await db.select({
+      id: dailyTimeRecords.id,
+      employeeId: dailyTimeRecords.employeeId,
+      date: dailyTimeRecords.date,
+      timeIn: dailyTimeRecords.timeIn,
+      timeOut: dailyTimeRecords.timeOut,
+      status: dailyTimeRecords.status,
+      updatedAt: dailyTimeRecords.updatedAt,
+      firstName: authentication.firstName,
+      lastName: authentication.lastName,
+      department: authentication.department
+    })
+    .from(dailyTimeRecords)
+    .leftJoin(authentication, eq(dailyTimeRecords.employeeId, authentication.employeeId))
+    .orderBy(desc(dailyTimeRecords.updatedAt))
+    .limit(20);
 
     const formattedLogs = logs.map((log) => ({
       ...log,
-      name:
-        log.first_name && log.last_name
-          ? `${log.first_name} ${log.last_name}`
+      name: log.firstName && log.lastName
+          ? `${log.firstName} ${log.lastName}`
           : "Unknown Employee",
       department: log.department || "N/A",
     }));
@@ -295,10 +249,7 @@ export const getRecentActivity = async (
   }
 };
 
-export const getTodayStatus = async (
-  req: Request,
-  res: Response,
-): Promise<void> => {
+export const getTodayStatus = async (req: Request, res: Response): Promise<void> => {
   const validation = GetTodayStatusSchema.safeParse(req);
 
   if (!validation.success) {
@@ -316,37 +267,37 @@ export const getTodayStatus = async (
   const isAdminOrHr = ["admin", "hr"].includes(user.role?.toLowerCase());
 
   let employeeId = query.employeeId;
-
   if (!isAdminOrHr || !employeeId) {
     employeeId = user.employeeId;
   }
 
   if (!employeeId) {
-    res
-      .status(400)
-      .json({
-        success: false,
-        message: "Employee ID is required.",
-        data: null,
-      });
+    res.status(400).json({
+      success: false,
+      message: "Employee ID is required.",
+      data: null,
+    });
     return;
   }
 
   try {
-    const date = getLocalDate();
-    const [dtr] = await db.query<DTRRow[]>(
-      "SELECT status, time_in, time_out FROM daily_time_records WHERE employee_id = ? AND date = ?",
-      [employeeId, date],
-    );
+    const today = getLocalDate();
+    const dtr = await db.query.dailyTimeRecords.findFirst({
+      where: and(
+        eq(dailyTimeRecords.employeeId, employeeId),
+        eq(dailyTimeRecords.date, today)
+      ),
+      columns: { status: true, timeIn: true, timeOut: true }
+    });
 
-    if (dtr.length > 0) {
+    if (dtr) {
       res.status(200).json({
         success: true,
         message: "Today's status retrieved successfully.",
         data: {
-          status: dtr[0].status,
-          timeIn: dtr[0].time_in,
-          timeOut: dtr[0].time_out,
+          status: dtr.status,
+          timeIn: dtr.timeIn,
+          timeOut: dtr.timeOut,
         },
       });
     } else {
@@ -361,18 +312,22 @@ export const getTodayStatus = async (
   }
 };
 
-export const getRawLogs = async (
-  req: Request,
-  res: Response,
-): Promise<void> => {
+export const getRawLogs = async (_req: Request, res: Response): Promise<void> => {
   try {
-    const [logs] = await db.query<AttendanceLogRow[]>(`
-      SELECT al.*, a.first_name, a.last_name, a.department
-      FROM attendance_logs al
-      LEFT JOIN authentication a ON al.employee_id = a.employee_id
-      ORDER BY al.scan_time DESC
-      LIMIT 500
-    `);
+    const logs = await db.select({
+      id: attendanceLogs.id,
+      employee_id: attendanceLogs.employeeId,
+      scan_time: attendanceLogs.scanTime,
+      type: attendanceLogs.type,
+      source: attendanceLogs.source,
+      first_name: authentication.firstName,
+      last_name: authentication.lastName,
+      department: authentication.department
+    })
+    .from(attendanceLogs)
+    .leftJoin(authentication, eq(attendanceLogs.employeeId, authentication.employeeId))
+    .orderBy(desc(attendanceLogs.scanTime))
+    .limit(500);
 
     res.status(200).json({ success: true, data: logs });
   } catch (err) {
@@ -380,81 +335,81 @@ export const getRawLogs = async (
   }
 };
 
-export const getDashboardStats = async (
-  req: Request,
-  res: Response,
-): Promise<void> => {
+export const getDashboardStats = async (_req: Request, res: Response): Promise<void> => {
   try {
     const todayStr = getLocalDate();
     const now = new Date();
-    const days = [
-      "Sunday",
-      "Monday",
-      "Tuesday",
-      "Wednesday",
-      "Thursday",
-      "Friday",
-      "Saturday",
-    ];
+    const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
     const dayName = days[now.getDay()];
 
-    const [allEmployees] = await db.query<EmployeeWithSchedule[]>(
-      `
-      SELECT a.employee_id, a.first_name, a.last_name, a.department, a.job_title, a.date_hired, a.employment_status,
-             s.is_rest_day, s.start_time, s.end_time
-      FROM authentication a
-      LEFT JOIN schedules s ON a.employee_id = s.employee_id AND s.day_of_week = ?
-      WHERE a.role != 'admin'
-      ORDER BY a.date_hired DESC
-    `,
-      [dayName],
-    );
+    const allEmployees = await db.select({
+      employeeId: authentication.employeeId,
+      firstName: authentication.firstName,
+      lastName: authentication.lastName,
+      department: authentication.department,
+      jobTitle: authentication.jobTitle,
+      dateHired: authentication.dateHired,
+      employmentStatus: authentication.employmentStatus,
+      isRestDay: schedules.isRestDay,
+      startTime: schedules.startTime,
+      endTime: schedules.endTime
+    })
+    .from(authentication)
+    .leftJoin(schedules, and(
+      eq(authentication.employeeId, schedules.employeeId),
+      eq(schedules.dayOfWeek, dayName)
+    ))
+    .where(ne(authentication.role, 'admin'))
+    .orderBy(desc(authentication.dateHired));
 
-    const [dtrRecords] = await db.query<DTRRow[]>(
-      `
-      SELECT dtr.*, a.first_name, a.last_name, a.department
-      FROM daily_time_records dtr
-      JOIN authentication a ON dtr.employee_id = a.employee_id
-      WHERE DATE(dtr.date) = ?
-    `,
-      [todayStr],
-    );
+    const dtrRecords = await db.select({
+      employeeId: dailyTimeRecords.employeeId,
+      status: dailyTimeRecords.status,
+      timeIn: dailyTimeRecords.timeIn,
+      timeOut: dailyTimeRecords.timeOut,
+      lateMinutes: dailyTimeRecords.lateMinutes,
+      firstName: authentication.firstName,
+      lastName: authentication.lastName,
+      department: authentication.department
+    })
+    .from(dailyTimeRecords)
+    .innerJoin(authentication, eq(dailyTimeRecords.employeeId, authentication.employeeId))
+    .where(eq(dailyTimeRecords.date, todayStr));
 
-    const [leaves] = await db.query<LeaveRow[]>(
-      `
-      SELECT lr.*, a.first_name, a.last_name, a.department
-      FROM leave_requests lr
-      JOIN authentication a ON lr.employee_id = a.employee_id
-      WHERE lr.status = 'Approved'
-      AND DATE(?) >= DATE(lr.start_date)
-      AND DATE(?) <= DATE(lr.end_date)
-    `,
-      [todayStr, todayStr],
-    );
+    const leaves = await db.select({
+      employeeId: leaveApplications.employeeId,
+      firstName: authentication.firstName,
+      lastName: authentication.lastName,
+      department: authentication.department,
+      leaveType: leaveApplications.leaveType,
+      startDate: leaveApplications.startDate,
+      endDate: leaveApplications.endDate
+    })
+    .from(leaveApplications)
+    .innerJoin(authentication, eq(leaveApplications.employeeId, authentication.employeeId))
+    .where(and(
+      eq(leaveApplications.status, 'Approved'),
+      sql`DATE(${todayStr}) >= DATE(${leaveApplications.startDate})`,
+      sql`DATE(${todayStr}) <= DATE(${leaveApplications.endDate})`
+    ));
 
-    // Fetch HIRED APPLICANTS from recruitment (not all employees)
-    interface HiredApplicantRow extends RowDataPacket {
-      id: number;
-      first_name: string;
-      last_name: string;
-      email: string;
-      job_title?: string;
-      department_name?: string;
-      created_at: Date;
-      hired_date?: Date;
-    }
+    const hiredApplicants = await db.select({
+      id: recruitmentApplicants.id,
+      firstName: recruitmentApplicants.firstName,
+      lastName: recruitmentApplicants.lastName,
+      email: recruitmentApplicants.email,
+      createdAt: recruitmentApplicants.createdAt,
+      hiredDate: recruitmentApplicants.hiredDate,
+      jobTitle: recruitmentJobs.title,
+      departmentName: recruitmentJobs.department
+    })
+    .from(recruitmentApplicants)
+    .leftJoin(recruitmentJobs, eq(recruitmentApplicants.jobId, recruitmentJobs.id))
+    .where(eq(recruitmentApplicants.stage, 'Hired'))
+    .orderBy(desc(recruitmentApplicants.hiredDate), desc(recruitmentApplicants.createdAt));
 
-    const [hiredApplicants] = await db.query<HiredApplicantRow[]>(`
-      SELECT ra.id, ra.first_name, ra.last_name, ra.email, ra.created_at, ra.hired_date,
-             rj.title as job_title, rj.department as department_name
-      FROM recruitment_applicants ra
-      LEFT JOIN recruitment_jobs rj ON ra.job_id = rj.id
-      WHERE ra.stage = 'Hired'
-      ORDER BY ra.hired_date DESC, ra.created_at DESC
-    `);
-
-    const dtrMap = new Map(dtrRecords.map((r) => [r.employee_id, r]));
-    const onLeaveEmployeeIds = new Set(leaves.map((l) => l.employee_id));
+    const dtrMap = new Map(dtrRecords.map((r) => [r.employeeId, r]));
+    const onLeaveEmployeeIds = new Set(leaves.map((l) => l.employeeId));
 
     interface StatusRecord {
       id: string;
@@ -473,11 +428,10 @@ export const getDashboardStats = async (
     const presentList: StatusRecord[] = [];
     const lateList: StatusRecord[] = [];
     const absentList: StatusRecord[] = [];
-    const hiredList: StatusRecord[] = [];
 
     allEmployees.forEach((emp) => {
-      const employeeId = emp.employee_id;
-      const name = `${emp.first_name} ${emp.last_name}`;
+      const employeeId = emp.employeeId;
+      const name = `${emp.firstName} ${emp.lastName}`;
 
       if (onLeaveEmployeeIds.has(employeeId)) return;
 
@@ -488,11 +442,11 @@ export const getDashboardStats = async (
           id: employeeId,
           name,
           department: emp.department || "-",
-          status: dtr.status,
-          timeIn: formatTime(dtr.time_in),
-          timeOut: formatTime(dtr.time_out),
+          status: dtr.status || "Present",
+          timeIn: formatTime(dtr.timeIn),
+          timeOut: formatTime(dtr.timeOut),
           date: todayStr,
-          minutesLate: dtr.late_minutes || 0,
+          minutesLate: dtr.lateMinutes || 0,
         };
 
         if (dtr.status === "Late") {
@@ -502,7 +456,7 @@ export const getDashboardStats = async (
           presentList.push(record);
         }
       } else {
-        if (emp.is_rest_day === 0) {
+        if (emp.isRestDay === 0) {
           absentList.push({
             id: employeeId,
             name,
@@ -531,18 +485,18 @@ export const getDashboardStats = async (
           late: lateList,
           hired: hiredApplicants.map((a) => ({
             id: `EMP-${a.id}`,
-            name: `${a.first_name} ${a.last_name}`,
-            department: a.department_name || "-",
-            position: a.job_title || "-",
-            date_hired: formatDate(a.hired_date || a.created_at),
+            name: `${a.firstName} ${a.lastName}`,
+            department: a.departmentName || "-",
+            position: a.jobTitle || "-",
+            date_hired: formatDate(a.hiredDate || a.createdAt),
           })),
           onLeave: leaves.map((l) => ({
-            id: l.employee_id,
-            name: `${l.first_name} ${l.last_name}`,
+            id: l.employeeId,
+            name: `${l.firstName} ${l.lastName}`,
             department: l.department || "-",
-            leaveType: l.leave_type,
-            startDate: l.start_date,
-            endDate: l.end_date,
+            leaveType: l.leaveType,
+            startDate: l.startDate,
+            endDate: l.endDate,
           })),
         },
       },

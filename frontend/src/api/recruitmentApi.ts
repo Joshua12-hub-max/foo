@@ -4,7 +4,7 @@ import { JobFormData, Job } from '@/types';
 
 export const recruitmentApi = {
     // Jobs
-    getJobs: async (params: { page?: number; search?: string; status?: string; public_view?: boolean; [key: string]: any }): Promise<AxiosResponse<{ success: boolean; data: any; jobs: Job[]; message?: string }>> => {
+    getJobs: async (params: Record<string, unknown> & { page?: number; search?: string; status?: string; public_view?: boolean }): Promise<AxiosResponse<{ success: boolean; data: unknown; jobs: Job[]; message?: string }>> => {
         try {
             const response = await api.get('/recruitment/jobs', { params });
             return response;
@@ -20,7 +20,7 @@ export const recruitmentApi = {
             throw error;
         }
     },
-    createJob: async (data: JobFormData): Promise<AxiosResponse> => {
+    createJob: async (data: JobFormData | FormData): Promise<AxiosResponse> => {
         try {
             const response = await api.post('/recruitment/jobs', data);
             return response;
@@ -36,7 +36,7 @@ export const recruitmentApi = {
             throw error;
         }
     },
-    updateJob: async (id: string | number, data: JobFormData): Promise<AxiosResponse> => {
+    updateJob: async (id: string | number, data: JobFormData | FormData): Promise<AxiosResponse> => {
         try {
             const response = await api.put(`/recruitment/jobs/${id}`, data);
             return response;

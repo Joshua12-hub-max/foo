@@ -1,8 +1,9 @@
 import React, { forwardRef, useImperativeHandle } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUIStore } from '@/stores';
-import { RefreshCw } from 'lucide-react';
-import { useDepartments, DepartmentSearch, DepartmentTable, DepartmentFormModal, DepartmentDeleteModal } from '@features/EmployeeManagement/Admin/Departments';
+import { RefreshCw, Plus } from 'lucide-react';
+import { useDepartments, DepartmentSearch, DepartmentTable, DepartmentFormModal, DepartmentDeleteModal, RemoveEmployeeModal } from '@features/EmployeeManagement/Admin/Departments';
+import { useState } from 'react';
 
 interface OutletContext {
   sidebarOpen?: boolean;
@@ -40,6 +41,21 @@ const DepartmentList = forwardRef<DepartmentListRef, DepartmentListProps>(({ hid
     handleModalClose, 
     refresh 
   } = useDepartments();
+  
+  // Remove Employee Modal State
+  const [removeModalOpen, setRemoveModalOpen] = useState(false);
+  const [employeeToRemove, setEmployeeToRemove] = useState<any>(null);
+  const [removeDeptId, setRemoveDeptId] = useState<number | null>(null);
+
+  const handleRemoveEmployeeClick = (employee: any, deptId: number) => {
+    setEmployeeToRemove(employee);
+    setRemoveDeptId(deptId);
+    setRemoveModalOpen(true);
+  };
+
+  const handleRemoveEmployeeSuccess = () => {
+    refresh && refresh();
+  };
 
   // Expose modal trigger to parent
   useImperativeHandle(ref, () => ({
@@ -65,9 +81,10 @@ const DepartmentList = forwardRef<DepartmentListRef, DepartmentListProps>(({ hid
                     <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
                 </button>
                 <button 
-                    className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-5 py-2.5 rounded-xl flex items-center gap-2 shadow-sm transition-all active:scale-95 text-sm font-semibold"
+                    className="bg-white hover:bg-gray-50 text-gray-900 border border-gray-300 px-5 py-2.5 rounded-lg flex items-center gap-2 shadow-sm transition-all active:scale-95 text-sm font-bold"
                     onClick={handleAdd}
                 >
+                    <Plus size={18} />
                     Add Department
                 </button>
             </div>
@@ -91,6 +108,7 @@ const DepartmentList = forwardRef<DepartmentListRef, DepartmentListProps>(({ hid
         loading={loading}
         onEdit={handleEdit}
         onDelete={handleDeleteClick}
+        onRemoveEmployee={handleRemoveEmployeeClick}
       />
 
       {/* Add/Edit Modal */}
@@ -113,8 +131,23 @@ const DepartmentList = forwardRef<DepartmentListRef, DepartmentListProps>(({ hid
             // refresh handled by query invalidation or manual refresh
             refresh && refresh();
         }}
-        department={departmentToDelete}
+        department={departmentToDelete || undefined}
       />
+
+      {/* Remove Employee Modal */}
+      {removeDeptId && (
+        <RemoveEmployeeModal
+          isOpen={removeModalOpen}
+          onClose={() => {
+            setRemoveModalOpen(false);
+            setEmployeeToRemove(null);
+            setRemoveDeptId(null);
+          }}
+          departmentId={removeDeptId}
+          employee={employeeToRemove || undefined}
+          onSuccess={handleRemoveEmployeeSuccess}
+        />
+      )}
       </div>
     </div>
   );

@@ -1,18 +1,19 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
+import { User } from '@/types';
 
 interface EmployeeState {
   viewMode: 'grid' | 'list';
   searchTerm: string;
   departmentFilter: string;
-  selectedEmployee: any | null; // Replace 'any' with Employee type if available
+  selectedEmployee: User | null;
 }
 
 interface EmployeeActions {
   setViewMode: (mode: 'grid' | 'list') => void;
   setSearchTerm: (term: string) => void;
   setDepartmentFilter: (dept: string) => void;
-  setSelectedEmployee: (employee: any | null) => void;
+  setSelectedEmployee: (employee: User | null) => void;
   resetFilters: () => void;
 }
 

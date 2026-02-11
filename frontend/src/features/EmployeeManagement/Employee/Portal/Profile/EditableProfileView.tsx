@@ -3,7 +3,7 @@ import {
   User, Mail, Phone, MapPin, Briefcase, Hash, CreditCard, 
   Calendar, Flag, AlertCircle, Shield, CheckCircle,
   GraduationCap, Award, Heart, Ruler, Scale, Building, UserCheck, Clock, ToggleLeft, ToggleRight, Loader2,
-  Facebook, Linkedin, Twitter, Pencil, X, Check, Plus, Trash2
+  Pencil, X, Check, Plus, Trash2, Facebook, Linkedin, Twitter
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { employeeApi } from '@/api/employeeApi';
@@ -61,8 +61,8 @@ interface Profile {
   civil_status?: string;
   nationality?: string;
   blood_type?: string;
-  height_cm?: string;
-  weight_kg?: string;
+  height_m?: number | string;
+  weight_kg?: number | string;
   permanent_address?: string;
   address?: string;
   item_number?: string;
@@ -92,6 +92,7 @@ interface Profile {
   eligibility_type?: string;
   eligibility_number?: string;
   eligibility_date?: string;
+
   highest_education?: string;
   years_of_experience?: number;
   facebook_url?: string;
@@ -99,6 +100,19 @@ interface Profile {
 
   twitter_handle?: string;
   customFields?: CustomField[];
+
+  // New PDS Fields
+  place_of_birth?: string;
+  citizenship?: string;
+  citizenship_type?: string;
+  dual_citizenship_country?: string;
+  residential_address?: string;
+  residential_zip_code?: string;
+  permanent_zip_code?: string;
+  telephone_no?: string;
+  mobile_no?: string;
+  agency_employee_no?: string;
+  agencyEmployeeNo?: string;
 }
 
 interface EditableDataFieldProps {
@@ -111,6 +125,8 @@ interface EditableDataFieldProps {
   editable?: boolean;
   inputType?: 'text' | 'date' | 'number' | 'email' | 'tel' | 'url' | 'select' | 'textarea';
   options?: { value: string; label: string }[];
+  step?: string | number;
+  placeholder?: string;
   onSave: (fieldName: string, value: string | number) => Promise<void>;
 }
 
@@ -141,6 +157,8 @@ const EditableDataField: React.FC<EditableDataFieldProps> = ({
   editable = true,
   inputType = 'text',
   options = [],
+  step,
+  placeholder,
   onSave
 }) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -251,6 +269,8 @@ const EditableDataField: React.FC<EditableDataFieldProps> = ({
               onBlur={handleSave}
               className="flex-1 text-sm font-bold text-gray-700 border border-gray-300 rounded px-1.5 py-0.5 focus:outline-none focus:border-gray-500 min-w-0"
               autoFocus
+              step={step}
+              placeholder={placeholder}
             />
           )}
           {/* Small save/cancel icons */}
@@ -444,12 +464,12 @@ interface AddCardProps {
 const AddCard: React.FC<AddCardProps> = ({ label, onClick }) => (
   <button
     onClick={onClick}
-    className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-md p-4 bg-gray-50 hover:bg-gray-100 hover:border-gray-400 transition-all cursor-pointer group min-h-[80px]"
+    className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-4 bg-white hover:bg-gray-50 hover:border-gray-400 transition-all cursor-pointer group min-h-[80px]"
   >
-    <div className="w-8 h-8 rounded-full bg-gray-200 group-hover:bg-gray-300 flex items-center justify-center mb-2 transition-colors">
-      <Plus size={16} className="text-gray-500 group-hover:text-gray-700" />
+    <div className="w-8 h-8 rounded-full bg-white border border-gray-200 shadow-sm group-hover:border-gray-300 flex items-center justify-center mb-2 transition-colors">
+      <Plus size={16} className="text-gray-500 group-hover:text-gray-900" />
     </div>
-    <span className="text-xs font-medium text-gray-500 group-hover:text-gray-700">{label}</span>
+    <span className="text-xs font-bold text-gray-500 group-hover:text-gray-900">{label}</span>
   </button>
 );
 
@@ -634,14 +654,33 @@ const EditableProfileView: React.FC<EmployeeProfileViewProps> = ({ profile, load
         <Section title="Personal Information" icon={User}>
           <EditableDataField label="First Name" value={profile.first_name} fieldName="first_name" onSave={handleFieldSave} />
           <EditableDataField label="Last Name" value={profile.last_name} fieldName="last_name" onSave={handleFieldSave} />
-          <EditableDataField label="Birth Date" value={profile.birth_date?.split('T')[0]} fieldName="birth_date" icon={Calendar} inputType="date" onSave={handleFieldSave} />
+          <EditableDataField 
+            label="Birth Date" 
+            value={profile.birth_date ? (typeof profile.birth_date === 'string' ? profile.birth_date.split('T')[0] : new Date(profile.birth_date).toISOString().split('T')[0]) : ''} 
+            fieldName="birth_date" 
+            icon={Calendar} 
+            inputType="date" 
+            onSave={handleFieldSave} 
+          />
+          <EditableDataField label="Place of Birth" value={profile.place_of_birth} fieldName="place_of_birth" icon={MapPin} onSave={handleFieldSave} />
           <EditableDataField label="Gender" value={profile.gender} fieldName="gender" inputType="select" options={genderOptions} onSave={handleFieldSave} />
           <EditableDataField label="Civil Status" value={profile.civil_status} fieldName="civil_status" inputType="select" options={civilStatusOptions} onSave={handleFieldSave} />
           <EditableDataField label="Nationality" value={profile.nationality} fieldName="nationality" icon={Flag} onSave={handleFieldSave} />
+          <EditableDataField label="Citizenship" value={profile.citizenship} fieldName="citizenship" icon={Flag} inputType="select" options={[{value: 'Filipino', label: 'Filipino'}, {value: 'Dual Citizenship', label: 'Dual Citizenship'}]} onSave={handleFieldSave} />
+          <EditableDataField label="Citizenship Type" value={profile.citizenship_type} fieldName="citizenship_type" inputType="select" options={[{value: 'By Birth', label: 'By Birth'}, {value: 'By Naturalization', label: 'By Naturalization'}]} onSave={handleFieldSave} />
+          {profile.citizenship === 'Dual Citizenship' && (
+              <EditableDataField label="Dual Citizenship Country" value={profile.dual_citizenship_country} fieldName="dual_citizenship_country" icon={Flag} onSave={handleFieldSave} />
+          )}
           <EditableDataField label="Blood Type" value={profile.blood_type} fieldName="blood_type" inputType="select" options={bloodTypeOptions} onSave={handleFieldSave} />
-          <EditableDataField label="Height (cm)" value={profile.height_cm} fieldName="height_cm" icon={Ruler} inputType="number" onSave={handleFieldSave} />
-          <EditableDataField label="Weight (kg)" value={profile.weight_kg} fieldName="weight_kg" icon={Scale} inputType="number" onSave={handleFieldSave} />
-          <EditableDataField label="Address" value={profile.permanent_address || profile.address} fieldName="permanent_address" fullWidth icon={MapPin} inputType="textarea" onSave={handleFieldSave} />
+          <EditableDataField label="Height (m)" value={profile.height_m} fieldName="height_m" icon={Ruler} inputType="number" step="0.01" placeholder="e.g. 1.70" onSave={handleFieldSave} />
+          <EditableDataField label="Weight (kg)" value={profile.weight_kg} fieldName="weight_kg" icon={Scale} inputType="number" step="0.01" placeholder="e.g. 65.5" onSave={handleFieldSave} />
+          
+          <EditableDataField label="Residential Address" value={profile.residential_address} fieldName="residential_address" fullWidth icon={MapPin} inputType="textarea" onSave={handleFieldSave} />
+          <EditableDataField label="Residential ZIP" value={profile.residential_zip_code} fieldName="residential_zip_code" icon={MapPin} onSave={handleFieldSave} />
+          
+          <EditableDataField label="Permanent Address" value={profile.permanent_address} fieldName="permanent_address" fullWidth icon={MapPin} inputType="textarea" onSave={handleFieldSave} />
+          <EditableDataField label="Permanent ZIP" value={profile.permanent_zip_code} fieldName="permanent_zip_code" icon={MapPin} onSave={handleFieldSave} />
+          
           {renderCustomFields("Personal Information")}
           <AddCard label="Add Card" onClick={() => openCustomFieldModal("Personal Information")} />
         </Section>
@@ -650,14 +689,14 @@ const EditableProfileView: React.FC<EmployeeProfileViewProps> = ({ profile, load
         <Section title="Employment Record" icon={Briefcase}>
           <DataField label="Employee ID" value={profile.employee_id || profile.employeeId} icon={Hash} highlight />
           <EditableDataField label="Position Title" value={profile.position_title || profile.job_title} fieldName="position_title" highlight onSave={handleFieldSave} />
-          <EditableDataField label="Item Number" value={profile.item_number || profile.itemNumber} fieldName="item_number" icon={Hash} onSave={handleFieldSave} />
+          <EditableDataField label="Item Number" value={profile.item_number} fieldName="item_number" icon={Hash} onSave={handleFieldSave} />
+          <EditableDataField label="Agency Employee No." value={profile.agency_employee_no} fieldName="agency_employee_no" icon={Hash} onSave={handleFieldSave} />
           <DataField label="Department" value={profile.department} icon={Building} />
           <EditableDataField label="Salary Grade" value={profile.salary_grade || profile.salaryGrade} fieldName="salary_grade" icon={CreditCard} inputType="number" onSave={handleFieldSave} />
           <EditableDataField label="Step Increment" value={profile.step_increment || profile.stepIncrement} fieldName="step_increment" icon={Hash} inputType="number" onSave={handleFieldSave} />
           <EditableDataField label="Appointment Type" value={profile.appointment_type} fieldName="appointment_type" onSave={handleFieldSave} />
           <DataField label="Employment Status" value={profile.employment_status || profile.employmentStatus} />
           <EditableDataField label="Station" value={profile.station} fieldName="station" icon={Building} onSave={handleFieldSave} />
-          <EditableDataField label="Office Address" value={profile.office_address} fieldName="office_address" icon={MapPin} inputType="textarea" onSave={handleFieldSave} />
           <DataField label="Date Hired" value={formatDate(profile.date_hired || profile.dateHired)} icon={Calendar} />
           <DataField label="First Day of Service" value={formatDate(profile.first_day_of_service)} icon={Clock} />
           <DataField label="Supervisor" value={profile.supervisor} icon={UserCheck} />
@@ -729,7 +768,8 @@ const EditableProfileView: React.FC<EmployeeProfileViewProps> = ({ profile, load
 
         {/* CONTACT & EMERGENCY */}
         <Section title="Contact & Emergency" icon={Phone}>
-          <EditableDataField label="Mobile Number" value={profile.phone_number} fieldName="phone_number" icon={Phone} inputType="tel" onSave={handleFieldSave} />
+          <EditableDataField label="Mobile Number" value={profile.phone_number || profile.mobile_no} fieldName="phone_number" icon={Phone} inputType="tel" onSave={handleFieldSave} />
+          <EditableDataField label="Telephone No." value={profile.telephone_no} fieldName="telephone_no" icon={Phone} inputType="tel" onSave={handleFieldSave} />
           <EditableDataField label="Official Email" value={profile.email} fieldName="email" icon={Mail} inputType="email" onSave={handleFieldSave} />
         </Section>
 

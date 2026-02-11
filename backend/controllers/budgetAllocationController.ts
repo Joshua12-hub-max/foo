@@ -1,24 +1,11 @@
 import { Request, Response } from 'express';
-import db from '../db/connection.js';
-import type { RowDataPacket, ResultSetHeader } from 'mysql2/promise';
-import type { AuthenticatedRequest } from '../types/index.js';
+import { db } from '../db/index.js';
+import { budgetAllocation, plantillaPositions } from '../db/schema.js';
+import { eq, and, desc, asc, sql, count, sum, avg } from 'drizzle-orm';
 import {
   BudgetAllocationSchema,
   UpdateBudgetAllocationSchema
 } from '../schemas/plantillaComplianceSchema.js';
-
-interface BudgetRow extends RowDataPacket {
-  id: number;
-  year: number;
-  department: string;
-  total_budget: number;
-  utilized_budget: number;
-  remaining_budget: number;
-  utilization_rate: number;
-  notes?: string;
-  created_at: Date;
-  updated_at: Date;
-}
 
 /**
  * Get all budget allocations
@@ -28,22 +15,18 @@ export const getBudgetAllocations = async (req: Request, res: Response): Promise
   try {
     const { year, department } = req.query;
 
-    let query = 'SELECT * FROM budget_allocation WHERE 1=1';
-    const params: (string | number)[] = [];
-
+    const conditions = [];
     if (year) {
-      query += ' AND year = ?';
-      params.push(parseInt(year as string));
+      conditions.push(eq(budgetAllocation.year, parseInt(year as string)));
     }
-
     if (department) {
-      query += ' AND department = ?';
-      params.push(department as string);
+      conditions.push(eq(budgetAllocation.department, department as string));
     }
 
-    query += ' ORDER BY year DESC, department ASC';
-
-    const [allocations] = await db.query<BudgetRow[]>(query, params);
+    const allocations = await db.select()
+      .from(budgetAllocation)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(desc(budgetAllocation.year), asc(budgetAllocation.department));
 
     res.json({
       success: true,
@@ -67,12 +50,14 @@ export const createBudgetAllocation = async (req: Request, res: Response): Promi
     const validatedData = BudgetAllocationSchema.parse(req.body);
 
     // Check if allocation already exists for this year/department
-    const [existing] = await db.query<BudgetRow[]>(
-      'SELECT id FROM budget_allocation WHERE year = ? AND department = ?',
-      [validatedData.year, validatedData.department]
-    );
+    const existing = await db.query.budgetAllocation.findFirst({
+      where: and(
+        eq(budgetAllocation.year, validatedData.year),
+        eq(budgetAllocation.department, validatedData.department)
+      )
+    });
 
-    if (existing.length > 0) {
+    if (existing) {
       res.status(409).json({
         success: false,
         message: 'Budget allocation for this year and department already exists'
@@ -80,11 +65,12 @@ export const createBudgetAllocation = async (req: Request, res: Response): Promi
       return;
     }
 
-    const [result] = await db.query<ResultSetHeader>(
-      `INSERT INTO budget_allocation (year, department, total_budget, notes)
-       VALUES (?, ?, ?, ?)`,
-      [validatedData.year, validatedData.department, validatedData.total_budget, validatedData.notes || null]
-    );
+    const [result] = await db.insert(budgetAllocation).values({
+      year: validatedData.year,
+      department: validatedData.department,
+      totalBudget: String(validatedData.totalBudget),
+      notes: validatedData.notes || null
+    });
 
     res.status(201).json({
       success: true,
@@ -119,12 +105,11 @@ export const updateBudgetAllocation = async (req: Request, res: Response): Promi
     const { id } = req.params;
     const validatedData = UpdateBudgetAllocationSchema.parse(req.body);
 
-    const [existing] = await db.query<BudgetRow[]>(
-      'SELECT id FROM budget_allocation WHERE id = ?',
-      [id]
-    );
+    const existing = await db.query.budgetAllocation.findFirst({
+      where: eq(budgetAllocation.id, Number(id))
+    });
 
-    if (existing.length === 0) {
+    if (!existing) {
       res.status(404).json({
         success: false,
         message: 'Budget allocation not found'
@@ -132,20 +117,15 @@ export const updateBudgetAllocation = async (req: Request, res: Response): Promi
       return;
     }
 
-    const updates: string[] = [];
-    const values: any[] = [];
-
-    if (validatedData.total_budget !== undefined) {
-      updates.push('total_budget = ?');
-      values.push(validatedData.total_budget);
+    const updateData: any = {};
+    if (validatedData.totalBudget !== undefined) {
+      updateData.totalBudget = String(validatedData.totalBudget);
     }
-
     if (validatedData.notes !== undefined) {
-      updates.push('notes = ?');
-      values.push(validatedData.notes);
+      updateData.notes = validatedData.notes;
     }
 
-    if (updates.length === 0) {
+    if (Object.keys(updateData).length === 0) {
       res.status(400).json({
         success: false,
         message: 'No fields to update'
@@ -153,12 +133,9 @@ export const updateBudgetAllocation = async (req: Request, res: Response): Promi
       return;
     }
 
-    values.push(id);
-
-    await db.query(
-      `UPDATE budget_allocation SET ${updates.join(', ')} WHERE id = ?`,
-      values
-    );
+    await db.update(budgetAllocation)
+      .set(updateData)
+      .where(eq(budgetAllocation.id, Number(id)));
 
     res.json({
       success: true,
@@ -200,33 +177,39 @@ export const recalculateBudgetUtilization = async (req: Request, res: Response):
     }
 
     // Calculate total utilized budget from filled positions
-    const [positions] = await db.query<RowDataPacket[]>(
-      `SELECT SUM(monthly_salary * 12) as annual_budget
-       FROM plantilla_positions
-       WHERE department = ? AND is_vacant = 0 AND status = 'Active'`,
-      [department]
-    );
+    // Formula: monthly_salary * 12
+    const [result] = await db.select({
+      annualBudget: sum(sql`${plantillaPositions.monthlySalary} * 12`)
+    })
+    .from(plantillaPositions)
+    .where(and(
+      eq(plantillaPositions.department, department),
+      eq(plantillaPositions.isVacant, 0),
+      eq(plantillaPositions.status, 'Active')
+    ));
 
-    const utilizedBudget = positions[0]?.annual_budget || 0;
+    const utilizedBudget = Number(result?.annualBudget || 0);
 
     // Update budget allocation
-    await db.query(
-      `UPDATE budget_allocation 
-       SET utilized_budget = ?
-       WHERE year = ? AND department = ?`,
-      [utilizedBudget, year, department]
-    );
+    await db.update(budgetAllocation)
+      .set({ utilizedBudget: String(utilizedBudget) })
+      .where(and(
+        eq(budgetAllocation.year, year),
+        eq(budgetAllocation.department, department)
+      ));
 
     // Get updated allocation
-    const [updated] = await db.query<BudgetRow[]>(
-      'SELECT * FROM budget_allocation WHERE year = ? AND department = ?',
-      [year, department]
-    );
+    const updated = await db.query.budgetAllocation.findFirst({
+      where: and(
+        eq(budgetAllocation.year, year),
+        eq(budgetAllocation.department, department)
+      )
+    });
 
     res.json({
       success: true,
       message: 'Budget utilization recalculated successfully',
-      allocation: updated[0]
+      allocation: updated
     });
   } catch (error) {
     console.error('Recalculate Budget Error:', error);
@@ -253,35 +236,31 @@ export const getBudgetSummary = async (req: Request, res: Response): Promise<voi
       return;
     }
 
-    const [summary] = await db.query<RowDataPacket[]>(
-      `SELECT 
-         SUM(total_budget) as total_allocated,
-         SUM(utilized_budget) as total_utilized,
-         SUM(remaining_budget) as total_remaining,
-         AVG(utilization_rate) as avg_utilization_rate,
-         COUNT(*) as department_count
-       FROM budget_allocation
-       WHERE year = ?`,
-      [year]
-    );
+    const [summary] = await db.select({
+      totalAllocated: sum(budgetAllocation.totalBudget),
+      totalUtilized: sum(budgetAllocation.utilizedBudget),
+      totalRemaining: sum(budgetAllocation.remainingBudget),
+      avgUtilizationRate: avg(budgetAllocation.utilizationRate),
+      departmentCount: count()
+    })
+    .from(budgetAllocation)
+    .where(eq(budgetAllocation.year, parseInt(year as string)));
 
-    const [byDepartment] = await db.query<RowDataPacket[]>(
-      `SELECT 
-         department,
-         total_budget,
-         utilized_budget,
-         remaining_budget,
-         utilization_rate
-       FROM budget_allocation
-       WHERE year = ?
-       ORDER BY utilization_rate DESC`,
-      [year]
-    );
+    const byDepartment = await db.select({
+      department: budgetAllocation.department,
+      totalBudget: budgetAllocation.totalBudget,
+      utilizedBudget: budgetAllocation.utilizedBudget,
+      remainingBudget: budgetAllocation.remainingBudget,
+      utilizationRate: budgetAllocation.utilizationRate
+    })
+    .from(budgetAllocation)
+    .where(eq(budgetAllocation.year, parseInt(year as string)))
+    .orderBy(desc(budgetAllocation.utilizationRate));
 
     res.json({
       success: true,
-      summary: summary[0],
-      by_department: byDepartment
+      summary,
+      byDepartment: byDepartment
     });
   } catch (error) {
     console.error('Get Budget Summary Error:', error);

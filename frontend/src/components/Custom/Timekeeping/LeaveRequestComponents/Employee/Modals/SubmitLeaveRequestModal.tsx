@@ -92,8 +92,8 @@ export const SubmitLeaveRequestModal: React.FC<SubmitLeaveRequestModalProps> = (
       // Partial match fallback
       if (!credit) {
         credit = credits.find(c => 
-          c.credit_type.toLowerCase().includes(type.toLowerCase().replace(' leave', '')) ||
-          type.toLowerCase().includes(c.credit_type.toLowerCase())
+          c?.credit_type?.toLowerCase()?.includes(type.toLowerCase().replace(' leave', '')) ||
+          type.toLowerCase().includes(c?.credit_type?.toLowerCase() || '')
         );
       }
       return credit ? parseFloat(String(credit.balance)) : 0;
@@ -150,7 +150,7 @@ export const SubmitLeaveRequestModal: React.FC<SubmitLeaveRequestModalProps> = (
       formData.append('leaveType', data.leaveType);
       formData.append('startDate', data.startDate);
       formData.append('endDate', data.endDate);
-      formData.append('reason', data.description);
+      formData.append('reason', data.description || '');
       formData.append('withPay', String(data.isPaid));
       formData.append('duration', String(duration)); // Send duration for backend to deduct
 
@@ -185,9 +185,9 @@ export const SubmitLeaveRequestModal: React.FC<SubmitLeaveRequestModalProps> = (
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 transition-all" onClick={handleClose}>
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 transition-all duration-300" onClick={handleClose}>
       <div 
-        className="bg-white rounded-xl shadow-2xl w-full max-w-md border border-gray-100 overflow-hidden animate-in fade-in zoom-in duration-200 flex flex-col max-h-[90vh]"
+        className="bg-white/95 backdrop-blur-md rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] w-full max-w-md border border-white/20 overflow-hidden animate-in fade-in zoom-in duration-300 flex flex-col max-h-[90vh]"
         onClick={e => e.stopPropagation()}
       >
         <ModalHeader onClose={handleClose} />
@@ -379,12 +379,28 @@ export const SubmitLeaveRequestModal: React.FC<SubmitLeaveRequestModalProps> = (
               name="attachment"
               control={control}
               render={({ field: { onChange, value } }) => (
-                <FileUpload
-                  file={value}
-                  onFileChange={(file: File) => onChange(file)}
-                  onRemove={() => onChange(null)}
-                  error={errors.attachment?.message as string}
-                />
+                <div className="space-y-1">
+                  <div className="flex justify-between items-center">
+                    <label className="text-sm font-medium text-gray-700">Supporting Document</label>
+                    <span className={`text-xs ${
+                      leaveType === 'Sick Leave' && duration > 5 
+                        ? 'text-red-500 font-medium' 
+                        : 'text-gray-400'
+                    }`}>
+                      {leaveType === 'Sick Leave' && duration > 5 
+                        ? 'Required (Medical Certificate)' 
+                        : leaveType === 'Sick Leave' 
+                        ? 'Optional (Required if > 5 days)'
+                        : 'Optional'}
+                    </span>
+                  </div>
+                  <FileUpload
+                    file={value}
+                    onFileChange={(file: File) => onChange(file)}
+                    onRemove={() => onChange(null)}
+                    error={errors.attachment?.message as string}
+                  />
+                </div>
               )}
             />
           </form>

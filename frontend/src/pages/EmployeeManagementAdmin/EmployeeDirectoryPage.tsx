@@ -104,7 +104,7 @@ const EmployeeList = forwardRef<EmployeeListRef, EmployeeListProps>(({ hideHeade
             <p className="text-sm text-gray-500">Manage and oversee your organization's members</p>
           </div>
           <button 
-            className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-5 py-2.5 rounded-xl flex items-center gap-2 shadow-sm transition-all active:scale-95 text-sm font-semibold"
+            className="bg-white hover:bg-gray-50 text-gray-900 border border-gray-300 px-5 py-2.5 rounded-lg flex items-center gap-2 shadow-sm transition-all active:scale-95 text-sm font-bold"
             onClick={() => setShowAddModal(true)}
           >
             <Plus size={18} />

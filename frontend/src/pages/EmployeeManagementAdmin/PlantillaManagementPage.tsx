@@ -5,6 +5,7 @@ import { usePlantilla, Position } from '@features/EmployeeManagement/Admin/Plant
 import PlantillaHeader from '@features/EmployeeManagement/Admin/Plantilla/components/PlantillaHeader';
 import PlantillaTable from '@features/EmployeeManagement/Admin/Plantilla/components/PlantillaTable';
 import PlantillaFormModal from '@features/EmployeeManagement/Admin/Plantilla/components/PlantillaFormModal';
+import AppointmentFormModal from '@features/EmployeeManagement/Admin/Plantilla/components/AppointmentFormModal';
 import { AssignModal, VacateModal, HistoryModal, GuideModal } from '@features/EmployeeManagement/Admin/Plantilla/components/PlantillaModals';
 
 const BudgetTrackingDashboard = React.lazy(() => import('@/components/Custom/Compliance/BudgetTrackingDashboard'));
@@ -15,9 +16,7 @@ const QualificationStandardsPage = React.lazy(() => import('@/pages/EmployeeMana
 interface OutletContext {
   sidebarOpen?: boolean;
 }
-// ... (rest of props interfaces)
 
-// ... inside component return ...
 
 interface PlantillaManagementProps {
   hideHeader?: boolean;
@@ -56,7 +55,8 @@ const PlantillaManagement = forwardRef<PlantillaManagementRef, PlantillaManageme
         filteredPositions,
 
         // Actions
-        handleDelete, handleCreateOrUpdate, handleAssign, handleVacate, fetchHistory, openAssignModal
+        handleDelete, handleCreateOrUpdate, handleAssign, handleVacate, fetchHistory, openAssignModal, openAppointmentModal,
+        isAppointmentModalOpen, setIsAppointmentModalOpen
     } = usePlantilla();
 
     const handleOpenCreate = useCallback((): void => {
@@ -108,11 +108,11 @@ const PlantillaManagement = forwardRef<PlantillaManagementRef, PlantillaManageme
                         </button>
                         {activeTab === 'positions' && (
                             <button 
-                                className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-5 py-2.5 rounded-xl flex items-center gap-2 shadow-sm transition-all active:scale-95 text-sm font-semibold"
+                                className="bg-white hover:bg-gray-50 text-gray-900 border border-gray-300 px-5 py-2.5 rounded-lg flex items-center gap-2 shadow-sm transition-all active:scale-95 text-sm font-bold"
                                 onClick={handleOpenCreate}
                             >
                                 <Plus size={18} />
-                                Add New Position
+                                New Position
                             </button>
                         )}
                     </div>
@@ -154,6 +154,24 @@ const PlantillaManagement = forwardRef<PlantillaManagementRef, PlantillaManageme
                             summary={summary}
                             onCreateNew={handleOpenCreate}
                             hideHeader={true}
+                            onPrint={() => {
+                                import('@features/EmployeeManagement/Admin/Plantilla/components/print/csc_compliance_generator')
+                                    .then(({ generateCSCCompliantReport }) => {
+                                        const deptName = selectedDept === 'All' 
+                                            ? 'All Departments' 
+                                            : departments.find(d => String(d.id) === String(selectedDept))?.name || 'Unknown';
+                                        generateCSCCompliantReport(filteredPositions, deptName);
+                                    });
+                            }}
+                            onExportExcel={() => {
+                                import('@features/EmployeeManagement/Admin/Plantilla/components/print/csc_excel_generator')
+                                    .then(({ generateCSCExcelReport }) => {
+                                        const deptName = selectedDept === 'All' 
+                                            ? 'All Departments' 
+                                            : departments.find(d => String(d.id) === String(selectedDept))?.name || 'Unknown';
+                                        generateCSCExcelReport(filteredPositions, deptName);
+                                    });
+                            }}
                         />
 
                         <PlantillaTable 
@@ -164,6 +182,7 @@ const PlantillaManagement = forwardRef<PlantillaManagementRef, PlantillaManageme
                             onAssign={openAssignModal}
                             onVacate={handleOpenVacate}
                             onViewHistory={fetchHistory}
+                            onPrintAppointment={openAppointmentModal}
                         />
                     </>
                 )}
@@ -249,7 +268,13 @@ const PlantillaManagement = forwardRef<PlantillaManagementRef, PlantillaManageme
                 history={positionHistory}
             />
 
-            <GuideModal 
+            <AppointmentFormModal 
+                isOpen={isAppointmentModalOpen}
+                onClose={() => setIsAppointmentModalOpen(false)}
+                position={currentPosition}
+            />
+
+            <GuideModal  
                 isOpen={isGuideOpen}
                 onClose={() => setIsGuideOpen(false)}
             />

@@ -13,7 +13,7 @@ interface Department {
   id: number;
   name: string;
   description?: string;
-  head_of_department?: string;
+  headOfDepartment?: string;
 }
 
 interface Employee {
@@ -103,7 +103,7 @@ const DepartmentDetail: React.FC = () => {
             loadData();
             closeDeleteConfirm();
         }}
-        employee={deleteConfirm}
+        employee={deleteConfirm || undefined}
       />
 
       {/* Header - Compact Version */}
@@ -131,7 +131,7 @@ const DepartmentDetail: React.FC = () => {
           <div className="flex gap-8 mt-3 pt-3 border-t border-gray-100">
             <div>
               <p className="text-[10px] text-gray-500">Department Head</p>
-              <p className="text-xs font-medium text-gray-800">{department.head_of_department || 'Not Assigned'}</p>
+              <p className="text-xs font-medium text-gray-800">{department.headOfDepartment || 'Not Assigned'}</p>
             </div>
             <div>
               <p className="text-[10px] text-gray-500">Department ID</p>
@@ -150,7 +150,7 @@ const DepartmentDetail: React.FC = () => {
           </div>
           <button
             onClick={openAddEmployeeModal}
-            className="flex items-center gap-2 px-3 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg transition-colors text-sm font-medium"
+            className="bg-white hover:bg-gray-50 text-gray-900 border border-gray-300 px-5 py-2.5 rounded-lg flex items-center gap-2 shadow-sm transition-all active:scale-95 text-sm font-bold"
           >
             <UserPlus size={16} />
             <span>Add Employee</span>

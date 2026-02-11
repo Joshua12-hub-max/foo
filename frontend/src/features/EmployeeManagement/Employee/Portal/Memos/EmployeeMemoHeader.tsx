@@ -22,7 +22,7 @@ const EmployeeMemoHeader: React.FC<EmployeeMemoHeaderProps> = memo(({ onRefresh,
       </div>
       <button
         onClick={onRefresh}
-        className="p-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg transition-colors"
+        className="p-2 bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 rounded-lg shadow-sm transition-all"
         aria-label="Refresh memos"
       >
         <RefreshCw size={18} className={isLoading ? 'animate-spin' : ''} />

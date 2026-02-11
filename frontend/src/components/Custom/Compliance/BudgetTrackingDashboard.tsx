@@ -1,8 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import axios from 'axios';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, TooltipProps } from 'recharts';
-import { Wallet, TrendingUp, AlertCircle, CheckCircle, ChevronLeft, ChevronRight, Plus, Pencil } from 'lucide-react';
+import api from '@/api/axios';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import { AlertCircle, CheckCircle, ChevronLeft, ChevronRight, Plus, Pencil } from 'lucide-react';
 
 const BudgetFormModal = React.lazy(() => import('@/components/Custom/Compliance/BudgetFormModal'));
 
@@ -11,12 +11,12 @@ interface BudgetAllocation {
     id: number;
     year: number;
     department: string;
-    total_budget: number | string;
-    utilized_budget: number | string;
-    remaining_budget: number | string;
-    utilization_rate: number | string;
+    totalBudget: number | string;
+    utilizedBudget: number | string;
+    remainingBudget: number | string;
+    utilizationRate: number | string;
     notes?: string;
-    updated_at: string;
+    updatedAt: string;
 }
 
 interface BudgetDashboardProps {
@@ -57,9 +57,8 @@ const BudgetTrackingDashboard: React.FC<BudgetDashboardProps> = ({ selectedDeptN
                 params.department = selectedDeptName;
             }
 
-            const response = await axios.get('http://localhost:5000/api/budget-allocation', { 
-                params,
-                withCredentials: true 
+            const response = await api.get('/budget-allocation', { 
+                params
             });
             return response.data.allocations || [];
         }
@@ -69,7 +68,7 @@ const BudgetTrackingDashboard: React.FC<BudgetDashboardProps> = ({ selectedDeptN
     const { data: departments = [] } = useQuery<{id: number, name: string}[]>({
         queryKey: ['departments-simple'],
         queryFn: async () => {
-             const response = await axios.get('http://localhost:5000/api/departments', { withCredentials: true });
+             const response = await api.get('/departments');
              return response.data.departments || [];
         }
     });
@@ -87,9 +86,9 @@ const BudgetTrackingDashboard: React.FC<BudgetDashboardProps> = ({ selectedDeptN
         
         // Calculate totals for "All" view
         const totalSummary = budgetData.reduce((acc, curr) => ({
-            total: acc.total + Number(curr.total_budget || 0),
-            utilized: acc.utilized + Number(curr.utilized_budget || 0),
-            remaining: acc.remaining + Number(curr.remaining_budget || 0),
+            total: acc.total + Number(curr.totalBudget || 0),
+            utilized: acc.utilized + Number(curr.utilizedBudget || 0),
+            remaining: acc.remaining + Number(curr.remainingBudget || 0),
         }), { total: 0, utilized: 0, remaining: 0 });
 
         return { 
@@ -101,11 +100,11 @@ const BudgetTrackingDashboard: React.FC<BudgetDashboardProps> = ({ selectedDeptN
     const displayData: BudgetSummary = useMemo(() => {
         if (selectedDeptName !== 'All' && activeBudget) {
             return { 
-                total: Number(activeBudget.total_budget), 
-                utilized: Number(activeBudget.utilized_budget), 
-                remaining: Number(activeBudget.remaining_budget),
+                total: Number(activeBudget.totalBudget), 
+                utilized: Number(activeBudget.utilizedBudget), 
+                remaining: Number(activeBudget.remainingBudget),
                 dept: activeBudget.department,
-                rate: Number(activeBudget.utilization_rate)
+                rate: Number(activeBudget.utilizationRate)
             };
         }
         return {
@@ -148,10 +147,10 @@ const BudgetTrackingDashboard: React.FC<BudgetDashboardProps> = ({ selectedDeptN
         setIsProcessing(true);
         try {
             if (modalMode === 'create') {
-                await axios.post('http://localhost:5000/api/budget-allocation', data, { withCredentials: true });
+                await api.post('/budget-allocation', data);
             } else {
                 if (!selectedBudget?.id) return;
-                await axios.put(`http://localhost:5000/api/budget-allocation/${selectedBudget.id}`, data, { withCredentials: true });
+                await api.put(`/budget-allocation/${selectedBudget.id}`, data);
             }
             // Success
             setIsModalOpen(false);
@@ -187,7 +186,6 @@ const BudgetTrackingDashboard: React.FC<BudgetDashboardProps> = ({ selectedDeptN
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
                     <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                        <Wallet className="text-blue-600" />
                         Budget Tracking ({currentYear})
                     </h3>
                     <p className="text-sm text-gray-600">
@@ -258,8 +256,8 @@ const BudgetTrackingDashboard: React.FC<BudgetDashboardProps> = ({ selectedDeptN
                 {/* Chart */}
                 <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm lg:col-span-1 flex flex-col items-center justify-center">
                     <h4 className="text-sm font-bold text-gray-800 w-full mb-6 border-b border-gray-100 pb-2">Utilization Breakdown</h4>
-                    <div className="h-64 w-full relative">
-                        <ResponsiveContainer width="100%" height="100%">
+                    <div className="h-64 w-full relative" style={{ width: '100%', height: '256px' }}>
+                        <ResponsiveContainer width="100%" height="100%" minWidth={200} minHeight={200}>
                             <PieChart>
                                 <Pie
                                     data={chartData}
@@ -320,21 +318,21 @@ const BudgetTrackingDashboard: React.FC<BudgetDashboardProps> = ({ selectedDeptN
                                             {item.department}
                                         </td>
                                         <td className="px-6 py-4 text-right tabular-nums text-gray-600">
-                                            ₱{Number(item.total_budget).toLocaleString()}
+                                            ₱{Number(item.totalBudget).toLocaleString()}
                                         </td>
                                         <td className="px-6 py-4 text-right tabular-nums text-red-600 font-medium">
-                                            ₱{Number(item.utilized_budget).toLocaleString()}
+                                            ₱{Number(item.utilizedBudget).toLocaleString()}
                                         </td>
                                         <td className="px-6 py-4 text-right tabular-nums text-green-600 font-medium">
-                                            ₱{Number(item.remaining_budget).toLocaleString()}
+                                            ₱{Number(item.remainingBudget).toLocaleString()}
                                         </td>
                                         <td className="px-6 py-4 text-center">
                                             <span className={`px-2.5 py-1 rounded-full text-xs font-bold inline-block min-w-[3.5rem] text-center ${
-                                                Number(item.utilization_rate) > 90 ? 'bg-red-100 text-red-700' : 
-                                                Number(item.utilization_rate) > 70 ? 'bg-amber-100 text-amber-700' : 
+                                                Number(item.utilizationRate) > 90 ? 'bg-red-100 text-red-700' : 
+                                                Number(item.utilizationRate) > 70 ? 'bg-amber-100 text-amber-700' : 
                                                 'bg-green-100 text-green-700'
                                             }`}>
-                                                {Number(item.utilization_rate).toFixed(1)}%
+                                                {Number(item.utilizationRate).toFixed(1)}%
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 text-center">

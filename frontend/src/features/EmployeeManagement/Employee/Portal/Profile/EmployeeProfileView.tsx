@@ -48,10 +48,19 @@ interface Profile {
   civil_status?: string;
   nationality?: string;
   blood_type?: string;
-  height_cm?: string;
-  weight_kg?: string;
+  height_m?: number;
+  weight_kg?: number;
+  place_of_birth?: string;
+  citizenship?: string;
+  citizenship_type?: string;
+  dual_citizenship_country?: string;
+  residential_address?: string;
+  residential_zip_code?: string;
   permanent_address?: string;
+  permanent_zip_code?: string;
   address?: string;
+  telephone_no?: string;
+  mobile_no?: string;
   item_number?: string;
   itemNumber?: string;
   salary_grade?: string;
@@ -70,6 +79,7 @@ interface Profile {
   philhealth_number?: string;
   pagibig_number?: string;
   tin_number?: string;
+  agency_employee_no?: string;
   phone_number?: string;
   emergency_contact?: string;
   emergency_contact_number?: string;
@@ -261,18 +271,35 @@ const MasterProfileView: React.FC<EmployeeProfileViewProps> = ({ profile, loadin
       {/* 2. DENSE DATA GRID */}
       <div className="p-6">
         
-        {/* PERSONAL INFORMATION */}
-        <Section title="Personal Information" icon={User}>
+        {/* PERSONAL INFORMATION (PDS Part I) */}
+        <Section title="Personal Information (PDS Part I)" icon={User}>
           <DataField label="First Name" value={profile.first_name} />
           <DataField label="Last Name" value={profile.last_name} />
           <DataField label="Birth Date" value={formatDate(profile.birth_date)} icon={Calendar} />
+          <DataField label="Place of Birth" value={profile.place_of_birth} />
           <DataField label="Gender" value={profile.gender} />
           <DataField label="Civil Status" value={profile.civil_status} />
           <DataField label="Nationality" value={profile.nationality} icon={Flag} />
+          <DataField label="Citizenship" value={
+            profile.citizenship_type === 'Dual Citizenship' 
+              ? `${profile.citizenship} (${profile.dual_citizenship_country})` 
+              : profile.citizenship
+          } icon={Flag} />
+          
           <DataField label="Blood Type" value={profile.blood_type} />
-          <DataField label="Height (cm)" value={profile.height_cm} icon={Ruler} />
+          <DataField label="Height (m)" value={profile.height_m} icon={Ruler} />
           <DataField label="Weight (kg)" value={profile.weight_kg} icon={Scale} />
-          <DataField label="Address" value={profile.permanent_address || profile.address} fullWidth icon={MapPin} />
+          
+          <DataField label="Residential Address" value={
+            [profile.residential_address, profile.residential_zip_code].filter(Boolean).join(', ')
+          } fullWidth icon={MapPin} />
+          
+          <DataField label="Permanent Address" value={
+            [profile.permanent_address, profile.permanent_zip_code].filter(Boolean).join(', ')
+          } fullWidth icon={MapPin} />
+
+          <DataField label="Telephone No." value={profile.telephone_no} icon={Phone} />
+          <DataField label="Mobile No." value={profile.mobile_no || profile.phone_number} icon={Phone} />
         </Section>
 
         {/* EMPLOYMENT RECORD */}

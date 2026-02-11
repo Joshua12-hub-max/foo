@@ -86,9 +86,9 @@ const ProfileSkills: React.FC<ProfileSkillsProps> = ({ profile, onUpdate }) => {
         <h2 className="text-sm font-black text-gray-700 uppercase tracking-wider">Skills & Competencies</h2>
         <button
           onClick={() => setIsAdding(true)}
-          className="flex items-center gap-2 px-4 py-1.5 bg-gray-200 text-gray-700 rounded-lg text-xs font-black uppercase border border-gray-300 shadow-sm hover:bg-gray-300 transition-all"
+          className="bg-white hover:bg-gray-50 text-gray-900 border border-gray-300 px-5 py-2.5 rounded-lg flex items-center gap-2 shadow-sm transition-all active:scale-95 text-sm font-bold"
         >
-          <Plus size={14} />
+          <Plus size={16} />
           <span>Add Skill</span>
         </button>
       </div>

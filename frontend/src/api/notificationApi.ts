@@ -2,7 +2,7 @@ import api from './axios';
 import { AxiosResponse } from 'axios';
 
 export const notificationApi = {
-    getNotifications: async (params: any): Promise<AxiosResponse> => {
+    getNotifications: async (params: Record<string, unknown>): Promise<AxiosResponse> => {
         try {
             const response = await api.get('/notifications', { params });
             return response;

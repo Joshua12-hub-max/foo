@@ -3,8 +3,8 @@ import { useQuery } from '@tanstack/react-query';
 import { useUIStore } from '@/stores';
 import { useAttendanceLogs } from '../../features/Attendance/hooks/useAttendance';
 import { useBiometricsStore } from '@/stores/biometricsStore';
-import { fetchDepartments } from '@api/departmentApi';
-import { fetchEmployees } from '@api/employeeApi';
+import { useFilterOptions } from '@/hooks/useFilterOptions';
+
 
 import { 
   BiometricsHeader, 
@@ -33,31 +33,8 @@ const BiometricsLogsUI = () => {
   const paginationData = data?.data?.pagination;
 
   // 2. Fetch Filter Options
-  const { data: filterOptions, isLoading: loadingFilters } = useQuery({
-    queryKey: ['biometrics-filters'],
-    queryFn: async () => {
-      const [deptRes, empRes] = await Promise.all([
-        fetchDepartments(),
-        fetchEmployees()
-      ]);
-      
-      const uniqueDepts = deptRes.success && deptRes.departments 
-        ? Array.from(new Set(deptRes.departments.map((d: any) => d.name).filter(Boolean)))
-        : [];
-      
-       const emps = empRes.success && empRes.employees
-        ? empRes.employees.map((e: any) => ({
-            id: e.employee_id || e.id,
-            name: e.name || `${e.first_name} ${e.last_name}`
-          })).filter((e: any) => e.id && e.name)
-        : [];
+  const { data: filterOptions, isLoading: loadingFilters } = useFilterOptions();
 
-      const uniqueEmps = Array.from(new Map(emps.map((item: any) => [item.id, item])).values());
-
-      return { departments: uniqueDepts as string[], employees: uniqueEmps as {id: string, name: string}[] };
-    },
-    initialData: { departments: [], employees: [] }
-  });
 
   // 3. Map Data for Table
   const tableData = logs.map((log: any) => ({

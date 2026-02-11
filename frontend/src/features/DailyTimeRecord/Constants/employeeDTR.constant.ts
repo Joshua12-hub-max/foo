@@ -5,8 +5,7 @@ export const TABLE_HEADERS = [
   'Time In',
   'Time Out',
   'Hours Worked',
-  'Status',
-  'Remarks'
+  'Status'
 ];
 
 export const EXPORT_HEADERS = TABLE_HEADERS;

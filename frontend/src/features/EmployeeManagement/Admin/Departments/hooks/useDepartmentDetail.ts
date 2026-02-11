@@ -13,7 +13,7 @@ export interface Department {
   id: number;
   name: string;
   description?: string;
-  head_of_department?: string;
+  headOfDepartment?: string;
   employee_count?: number;
 }
 
@@ -66,12 +66,14 @@ export const useDepartmentDetail = (): UseDepartmentDetailReturn => {
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
+      if (!id) return;
+      
       const [deptData, empData] = await Promise.all([
         fetchDepartmentById(id),
         fetchDepartmentEmployees(id)
       ]);
       
-      if (deptData.success) setDepartment(deptData.department);
+      if (deptData.success && deptData.department) setDepartment(deptData.department);
       if (empData.success) setEmployees(empData.employees || []);
     } catch (err) {
       // Silently handle
@@ -101,6 +103,7 @@ export const useDepartmentDetail = (): UseDepartmentDetailReturn => {
   const handleRemoveEmployee = useCallback(async (employeeId: number) => {
     try {
       setIsProcessing(true);
+      if (!id) return;
       const result = await removeEmployeeFromDepartment(id, employeeId);
       if (result.success) {
         await loadData();

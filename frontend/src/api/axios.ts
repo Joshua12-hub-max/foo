@@ -26,7 +26,7 @@ api.interceptors.request.use(
 // Response Interceptors
 api.interceptors.response.use(
     (response: AxiosResponse) => response,
-    (error: AxiosError<any>) => {
+    (error: AxiosError<{ message?: string }>) => {
         const status = error.response?.status;
         const message = error.response?.data?.message || error.message;
         

@@ -34,7 +34,7 @@ export const useCreateBudgetAllocation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: { year: number; department: string; total_budget: number; notes?: string }) => {
+    mutationFn: async (data: { year: number; department: string; totalBudget: number; notes?: string }) => {
       const response = await budgetAllocationApi.create(data);
       return response.data;
     },
@@ -52,7 +52,7 @@ export const useUpdateBudgetAllocation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, data }: { id: number; data: { total_budget?: number; notes?: string } }) => {
+    mutationFn: async ({ id, data }: { id: number; data: { totalBudget?: number; notes?: string } }) => {
       const response = await budgetAllocationApi.update(id, data);
       return response.data;
     },

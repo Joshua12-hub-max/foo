@@ -2,15 +2,15 @@ import { STATUS_BADGE_STYLES, PRIORITY_BADGE_STYLES } from '../Constants/memoCon
 
 export interface Memo {
   id: number;
-  memo_number: string;
-  memo_type: string;
+  memoNumber: string;
+  memoType: string;
   subject: string;
   content: string;
   priority: string;
   status: string;
-  created_at: string;
-  acknowledged_at?: string;
-  acknowledgment_required?: boolean;
+  createdAt: string;
+  acknowledgedAt?: string;
+  acknowledgmentRequired?: boolean;
 }
 
 /**
@@ -52,10 +52,10 @@ export const getPriorityBadge = (priority: string): string => {
  * @returns CSS class string
  */
 export const getEmployeeStatusBadge = (memo: Memo): string => {
-  if (memo.acknowledged_at) {
+  if (memo.acknowledgedAt) {
     return 'bg-green-100 text-green-700';
   }
-  if (memo.acknowledgment_required) {
+  if (memo.acknowledgmentRequired) {
     return 'bg-yellow-100 text-yellow-700';
   }
   return 'bg-blue-100 text-blue-700';
@@ -67,7 +67,7 @@ export const getEmployeeStatusBadge = (memo: Memo): string => {
  * @returns Status text
  */
 export const getEmployeeStatusText = (memo: Memo): string => {
-  if (memo.acknowledged_at) return 'Acknowledged';
-  if (memo.acknowledgment_required) return 'Pending Acknowledgment';
+  if (memo.acknowledgedAt) return 'Acknowledged';
+  if (memo.acknowledgmentRequired) return 'Pending Acknowledgment';
   return memo.status;
 };

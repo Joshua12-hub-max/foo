@@ -57,9 +57,11 @@ export const createJobSchema = z.object({
   requirements: z.string().optional(),
   salary_range: z.string().optional(),
   location: z.string().min(1, 'Location is required'),
-  employment_type: z.enum(['Full-time', 'Part-time', 'Contract', 'Internship', 'Temporary']).default('Full-time'),
+  employment_type: z.enum(['Full-time', 'Part-time', 'Contractual', 'Job Order', 'Coterminous', 'Temporary', 'Probationary', 'Casual', 'Permanent']).default('Full-time'),
   application_email: z.string().email('Invalid email address'),
-  status: z.enum(['Open', 'Closed', 'Draft']).default('Open')
+  status: z.enum(['Open', 'Closed', 'On Hold']).default('Open'),
+  
+
 });
 
 // Update Job Schema (Partial)

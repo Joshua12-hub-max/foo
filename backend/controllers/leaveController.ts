@@ -12,39 +12,39 @@
  */
 
 import { Request, Response } from 'express';
-import db from '../db/connection.js';
+import { db } from '../db/index.js';
+import { 
+  holidays, 
+  leaveBalances, 
+  leaveLedger, 
+  lwopSummary, 
+  serviceRecords, 
+  tardinessSummary, 
+  leaveApplications, 
+  dailyTimeRecords, 
+  authentication 
+} from '../db/schema.js';
+import { eq, and, between, ne, or, sql, desc, lt } from 'drizzle-orm';
 import { createNotification, notifyAdmins } from './notificationController.js';
-import type { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 import type { AuthenticatedRequest } from '../types/index.js';
 import {
-  type LeaveType,
   type CreditType,
-  type ApplicationStatus,
+  type LeaveType,
   type PaymentStatus,
   type TransactionType,
-  type LeaveBalanceRow,
-  type LeaveLedgerRow,
-  type LeaveApplicationRow,
-  type HolidayRow,
-  type LWOPSummaryRow,
   MONTHLY_VL_ACCRUAL,
   MONTHLY_SL_ACCRUAL,
-  SPL_ANNUAL,
-  FORCED_LEAVE_ANNUAL,
-  WORKING_DAYS_PER_MONTH,
   SPECIAL_LEAVES_NO_DEDUCTION,
   CROSS_CHARGE_MAP,
   LEAVE_TO_CREDIT_MAP,
   VL_ADVANCE_FILING_DAYS,
-  SL_MEDICAL_CERT_THRESHOLD,
+  WORKING_DAYS_PER_MONTH
 } from '../types/leave.types.js';
 import {
   applyLeaveSchema,
   rejectLeaveSchema,
   creditUpdateSchema,
-  creditAdjustmentSchema,
   accrueCreditsSchema,
-  monetizationRequestSchema,
   validateVLAdvanceFiling,
   requiresMedicalCertificate,
 } from '../schemas/leaveSchema.js';
@@ -58,11 +58,14 @@ import {
  */
 const getHolidaysInRange = async (startDate: string, endDate: string): Promise<string[]> => {
   try {
-    const [rows] = await db.query<HolidayRow[]>(
-      `SELECT DATE_FORMAT(date, '%Y-%m-%d') as date FROM holidays 
-       WHERE date BETWEEN ? AND ? AND type != 'Special Working'`,
-      [startDate, endDate]
-    );
+    const rows = await db.select({
+      date: holidays.date
+    }).from(holidays)
+    .where(and(
+      between(holidays.date, startDate, endDate),
+      ne(holidays.type, 'Special Working')
+    ));
+    
     return rows.map(r => r.date);
   } catch (error) {
     console.error('Error fetching holidays:', error);
@@ -75,8 +78,8 @@ const getHolidaysInRange = async (startDate: string, endDate: string): Promise<s
  * Excludes weekends (Sat/Sun) and holidays
  */
 const calculateWorkingDays = async (startDate: string, endDate: string): Promise<number> => {
-  const holidays = await getHolidaysInRange(startDate, endDate);
-  const holidaySet = new Set(holidays);
+  const holidaysList = await getHolidaysInRange(startDate, endDate);
+  const holidaySet = new Set(holidaysList);
 
   let count = 0;
   const curDate = new Date(startDate);
@@ -111,12 +114,14 @@ const getEmployeeBalance = async (
 ): Promise<number> => {
   try {
     const targetYear = year || getCurrentYear();
-    const [rows] = await db.query<LeaveBalanceRow[]>(
-      `SELECT balance FROM leave_balances 
-       WHERE employee_id = ? AND credit_type = ? AND year = ?`,
-      [employeeId, creditType, targetYear]
-    );
-    return rows.length > 0 ? Number(rows[0].balance) : 0;
+    const row = await db.query.leaveBalances.findFirst({
+      where: and(
+        eq(leaveBalances.employeeId, employeeId),
+        eq(leaveBalances.creditType, creditType),
+        eq(leaveBalances.year, targetYear)
+      )
+    });
+    return row ? Number(row.balance) : 0;
   } catch (error) {
     console.error('Error getting balance:', error);
     return 0;
@@ -141,25 +146,35 @@ const updateBalance = async (
   try {
     // Get current balance
     const currentBalance = await getEmployeeBalance(employeeId, creditType, year);
-    const newBalance = Number((currentBalance + amount).toFixed(3));
+    const newBalance = Number((currentBalance + amount).toFixed(3)).toString();
 
     // Update or insert balance
-    await db.query(
-      `INSERT INTO leave_balances (employee_id, credit_type, balance, year)
-       VALUES (?, ?, ?, ?)
-       ON DUPLICATE KEY UPDATE balance = ?, updated_at = CURRENT_TIMESTAMP`,
-      [employeeId, creditType, newBalance, year, newBalance]
-    );
+    await db.insert(leaveBalances).values({
+      employeeId,
+      creditType,
+      balance: newBalance,
+      year
+    }).onDuplicateKeyUpdate({
+      set: {
+        balance: newBalance,
+        updatedAt: sql`CURRENT_TIMESTAMP`
+      }
+    });
 
     // Create ledger entry
-    await db.query(
-      `INSERT INTO leave_ledger 
-       (employee_id, credit_type, transaction_type, amount, balance_after, reference_id, reference_type, remarks, created_by)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [employeeId, creditType, transactionType, amount, newBalance, referenceId, referenceType, remarks, createdBy]
-    );
+    await db.insert(leaveLedger).values({
+      employeeId,
+      creditType,
+      transactionType,
+      amount: amount.toString(),
+      balanceAfter: newBalance,
+      referenceId,
+      referenceType,
+      remarks,
+      createdBy
+    });
 
-    return { success: true, newBalance };
+    return { success: true, newBalance: Number(newBalance) };
   } catch (error) {
     console.error('Error updating balance:', error);
     return { success: false, newBalance: 0 };
@@ -174,24 +189,30 @@ const updateLWOPSummary = async (employeeId: string, lwopDays: number): Promise<
 
   try {
     // Get cumulative from previous years
-    const [prevRows] = await db.query<LWOPSummaryRow[]>(
-      `SELECT cumulative_lwop_days FROM lwop_summary 
-       WHERE employee_id = ? AND year < ?
-       ORDER BY year DESC LIMIT 1`,
-      [employeeId, year]
-    );
+    const prevRow = await db.query.lwopSummary.findFirst({
+      where: and(
+        eq(lwopSummary.employeeId, employeeId),
+        lt(lwopSummary.year, year)
+      ),
+      orderBy: [desc(lwopSummary.year)]
+    });
 
-    const prevCumulative = prevRows.length > 0 ? Number(prevRows[0].cumulative_lwop_days) : 0;
+    const prevCumulative = prevRow ? Number(prevRow.cumulativeLwopDays) : 0;
+    const totalDays = lwopDays.toString();
+    const cumulativeDays = (prevCumulative + lwopDays).toString();
 
-    await db.query(
-      `INSERT INTO lwop_summary (employee_id, year, total_lwop_days, cumulative_lwop_days)
-       VALUES (?, ?, ?, ?)
-       ON DUPLICATE KEY UPDATE 
-         total_lwop_days = total_lwop_days + ?,
-         cumulative_lwop_days = cumulative_lwop_days + ?,
-         updated_at = CURRENT_TIMESTAMP`,
-      [employeeId, year, lwopDays, prevCumulative + lwopDays, lwopDays, lwopDays]
-    );
+    await db.insert(lwopSummary).values({
+      employeeId,
+      year,
+      totalLwopDays: totalDays,
+      cumulativeLwopDays: cumulativeDays
+    }).onDuplicateKeyUpdate({
+      set: {
+        totalLwopDays: sql`total_lwop_days + ${totalDays}`,
+        cumulativeLwopDays: sql`cumulative_lwop_days + ${totalDays}`,
+        updatedAt: sql`CURRENT_TIMESTAMP`
+      }
+    });
   } catch (error) {
     console.error('Error updating LWOP summary:', error);
   }
@@ -215,12 +236,19 @@ const logToServiceRecord = async (
   processedBy: string
 ): Promise<void> => {
   try {
-    await db.query(
-      `INSERT INTO service_records 
-       (employee_id, event_type, event_date, end_date, leave_type, days_count, is_with_pay, remarks, reference_id, reference_type, processed_by)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [employeeId, eventType, eventDate, endDate, leaveType, daysCount, isWithPay, remarks, referenceId, referenceType, processedBy]
-    );
+    await db.insert(serviceRecords).values({
+      employeeId,
+      eventType,
+      eventDate,
+      endDate,
+      leaveType,
+      daysCount: daysCount.toString(),
+      isWithPay: isWithPay ? 1 : 0,
+      remarks,
+      referenceId,
+      referenceType,
+      processedBy
+    });
     console.log(`✅ Logged ${eventType} to service record for ${employeeId}`);
   } catch (error) {
     console.error('Error logging to service record:', error);
@@ -239,19 +267,19 @@ const calculateTardinessDeduction = async (
 ): Promise<{ daysEquivalent: number; deductedFromVL: number; chargedAsLWOP: number }> => {
   try {
     // Get tardiness summary for the month
-    const [tardiness] = await db.query<RowDataPacket[]>(
-      `SELECT total_late_minutes, total_undertime_minutes 
-       FROM tardiness_summary 
-       WHERE employee_id = ? AND year = ? AND month = ?`,
-      [employeeId, year, month]
-    );
+    const tardiness = await db.query.tardinessSummary.findFirst({
+      where: and(
+        eq(tardinessSummary.employeeId, employeeId),
+        eq(tardinessSummary.year, year),
+        eq(tardinessSummary.month, month)
+      )
+    });
 
-    if (tardiness.length === 0) {
+    if (!tardiness) {
       return { daysEquivalent: 0, deductedFromVL: 0, chargedAsLWOP: 0 };
     }
 
-    const row = tardiness[0];
-    const totalMinutes = (row.total_late_minutes || 0) + (row.total_undertime_minutes || 0);
+    const totalMinutes = (tardiness.totalLateMinutes || 0) + (tardiness.totalUndertimeMinutes || 0);
     const daysEquivalent = totalMinutes / 480; // 480 mins = 8 hours = 1 day
 
     if (daysEquivalent <= 0) {
@@ -302,12 +330,18 @@ const calculateTardinessDeduction = async (
     }
 
     // Update tardiness_summary with results
-    await db.query(
-      `UPDATE tardiness_summary 
-       SET deducted_from_vl = ?, charged_as_lwop = ?, processed_at = CURRENT_TIMESTAMP, processed_by = 'SYSTEM'
-       WHERE employee_id = ? AND year = ? AND month = ?`,
-      [deductedFromVL, chargedAsLWOP, employeeId, year, month]
-    );
+    await db.update(tardinessSummary)
+      .set({ 
+        deductedFromVl: deductedFromVL.toString(), 
+        chargedAsLwop: chargedAsLWOP.toString(), 
+        processedAt: sql`CURRENT_TIMESTAMP`, 
+        processedBy: 'SYSTEM'
+      })
+      .where(and(
+        eq(tardinessSummary.employeeId, employeeId),
+        eq(tardinessSummary.year, year),
+        eq(tardinessSummary.month, month)
+      ));
 
     return { daysEquivalent, deductedFromVL, chargedAsLWOP };
   } catch (error) {
@@ -366,8 +400,8 @@ export const applyLeave = async (req: Request, res: Response): Promise<void> => 
     const needsMedCert = leaveType === 'Sick Leave' && requiresMedicalCertificate(workingDays);
 
     // Validate attachment
-    if (!req.file) {
-      res.status(400).json({ message: 'Supporting document is required. Please upload a file.' });
+    if (needsMedCert && !req.file) {
+      res.status(400).json({ message: 'Medical certificate is required for Sick Leave exceeding 5 days.' });
       return;
     }
 
@@ -447,27 +481,21 @@ export const applyLeave = async (req: Request, res: Response): Promise<void> => 
     const attachmentPath = req.file ? `leaves/${req.file.filename}` : null;
 
     // Insert application
-    const [result] = await db.query<ResultSetHeader>(
-      `INSERT INTO leave_applications 
-       (employee_id, leave_type, start_date, end_date, working_days, is_with_pay, 
-        actual_payment_status, days_with_pay, days_without_pay, cross_charged_from, 
-        reason, attachment_path, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending')`,
-      [
-        employeeId,
-        leaveType,
-        startDate,
-        endDate,
-        workingDays,
-        isWithPay,
-        actualPaymentStatus,
-        daysWithPay,
-        daysWithoutPay,
-        crossChargedFrom,
-        reason,
-        attachmentPath,
-      ]
-    );
+    const [result] = await db.insert(leaveApplications).values({
+      employeeId: String(employeeId),
+      leaveType: leaveType as LeaveType,
+      startDate,
+      endDate,
+      workingDays: workingDays.toString(),
+      isWithPay: isWithPay ? 1 : 0,
+      actualPaymentStatus,
+      daysWithPay: daysWithPay.toString(),
+      daysWithoutPay: daysWithoutPay.toString(),
+      crossChargedFrom,
+      reason,
+      attachmentPath,
+      status: 'Pending'
+    });
 
     // Create notifications
     try {
@@ -514,7 +542,7 @@ export const applyLeave = async (req: Request, res: Response): Promise<void> => 
 export const getMyLeaves = async (req: Request, res: Response): Promise<void> => {
   try {
     const authReq = req as AuthenticatedRequest;
-    const employeeId = authReq.user.employeeId || authReq.user.id;
+    const employeeId = String(authReq.user.employeeId || authReq.user.id);
 
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
@@ -522,41 +550,52 @@ export const getMyLeaves = async (req: Request, res: Response): Promise<void> =>
     const status = (req.query.status as string) || '';
     const offset = (page - 1) * limit;
 
-    let whereClause = 'WHERE la.employee_id = ?';
-    const queryParams: (string | number)[] = [employeeId];
-
+    const conditions = [eq(leaveApplications.employeeId, employeeId)];
     if (search) {
-      whereClause += ' AND (la.leave_type LIKE ? OR la.reason LIKE ?)';
-      const searchTerm = `%${search}%`;
-      queryParams.push(searchTerm, searchTerm);
+      conditions.push(or(
+        sql`${leaveApplications.leaveType} LIKE ${`%${search}%`}`,
+        sql`${leaveApplications.reason} LIKE ${`%${search}%`}`
+      )!);
+    }
+    if (status) {
+      conditions.push(eq(leaveApplications.status, status as any));
     }
 
-    if (status) {
-      whereClause += ' AND la.status = ?';
-      queryParams.push(status);
-    }
+    const where = and(...conditions);
 
     // Count total
-    const [countResult] = await db.query<RowDataPacket[]>(
-      `SELECT COUNT(*) as total FROM leave_applications la ${whereClause}`,
-      queryParams
-    );
-    const totalItems = countResult[0].total;
+    const [countResult] = await db.select({ total: sql<number>`count(*)` })
+      .from(leaveApplications)
+      .where(where);
+    const totalItems = Number(countResult.total);
     const totalPages = Math.ceil(totalItems / limit);
 
     // Fetch applications
-    const [applications] = await db.query<LeaveApplicationRow[]>(
-      `SELECT la.*, a.first_name, a.last_name, a.department
-       FROM leave_applications la
-       LEFT JOIN authentication a ON la.employee_id = a.employee_id
-       ${whereClause}
-       ORDER BY la.created_at DESC
-       LIMIT ? OFFSET ?`,
-      [...queryParams, limit, offset]
-    );
+    const leaves = await db.select({
+      id: leaveApplications.id,
+      employee_id: leaveApplications.employeeId,
+      leave_type: leaveApplications.leaveType,
+      start_date: leaveApplications.startDate,
+      end_date: leaveApplications.endDate,
+      working_days: leaveApplications.workingDays,
+      status: leaveApplications.status,
+      reason: leaveApplications.reason,
+      created_at: leaveApplications.createdAt,
+      first_name: authentication.firstName,
+      last_name: authentication.lastName,
+      department: authentication.department,
+      with_pay: leaveApplications.isWithPay,
+      attachment_path: leaveApplications.attachmentPath
+    })
+    .from(leaveApplications)
+    .leftJoin(authentication, eq(leaveApplications.employeeId, authentication.employeeId))
+    .where(where)
+    .orderBy(desc(leaveApplications.createdAt))
+    .limit(limit)
+    .offset(offset);
 
     res.status(200).json({
-      applications,
+      leaves,
       pagination: { page, limit, totalItems, totalPages },
     });
   } catch (err) {
@@ -577,52 +616,83 @@ export const getAllLeaves = async (req: Request, res: Response): Promise<void> =
     const status = (req.query.status as string) || '';
     const offset = (page - 1) * limit;
 
-    let whereClause = 'WHERE 1=1';
-    const queryParams: (string | number)[] = [];
-
+    const conditions = [];
     if (search) {
-      whereClause += ` AND (la.leave_type LIKE ? OR a.first_name LIKE ? OR a.last_name LIKE ?)`;
-      const searchTerm = `%${search}%`;
-      queryParams.push(searchTerm, searchTerm, searchTerm);
+      conditions.push(or(
+        sql`${leaveApplications.leaveType} LIKE ${`%${search}%`}`,
+        sql`${authentication.firstName} LIKE ${`%${search}%`}`,
+        sql`${authentication.lastName} LIKE ${`%${search}%`}`
+      )!);
     }
-
     if (department) {
-      whereClause += ' AND a.department = ?';
-      queryParams.push(department);
+      conditions.push(eq(authentication.department, department));
+    }
+    if (status) {
+      conditions.push(eq(leaveApplications.status, status as any));
+    }
+    
+    // New Filters
+    const startDate = (req.query.startDate as string) || '';
+    const endDate = (req.query.endDate as string) || '';
+    const employeeId = (req.query.employeeId as string) || ''; // Can be name or ID
+
+    if (startDate) {
+      conditions.push(gte(leaveApplications.startDate, startDate));
+    }
+    if (endDate) {
+      conditions.push(lte(leaveApplications.endDate, endDate));
+    }
+    if (employeeId) {
+       // Check if it matches ID or Name (since frontend sends Name often)
+       conditions.push(or(
+         eq(leaveApplications.employeeId, employeeId),
+         sql`${authentication.firstName} LIKE ${`%${employeeId}%`}`,
+         sql`${authentication.lastName} LIKE ${`%${employeeId}%`}`
+       )!);
     }
 
-    if (status) {
-      whereClause += ' AND la.status = ?';
-      queryParams.push(status);
-    }
+    const where = conditions.length > 0 ? and(...conditions) : undefined;
 
     // Count total
-    const [countResult] = await db.query<RowDataPacket[]>(
-      `SELECT COUNT(*) as total 
-       FROM leave_applications la
-       LEFT JOIN authentication a ON la.employee_id = a.employee_id
-       ${whereClause}`,
-      queryParams
-    );
-    const totalItems = countResult[0].total;
+    const [countResult] = await db.select({ total: sql<number>`count(*)` })
+      .from(leaveApplications)
+      .leftJoin(authentication, eq(leaveApplications.employeeId, authentication.employeeId))
+      .where(where);
+    const totalItems = Number(countResult.total);
     const totalPages = Math.ceil(totalItems / limit);
 
     // Fetch applications
-    const [applications] = await db.query<LeaveApplicationRow[]>(
-      `SELECT la.*, 
-              COALESCE(a.first_name, '') as first_name,
-              COALESCE(a.last_name, '') as last_name,
-              COALESCE(a.department, 'N/A') as department
-       FROM leave_applications la
-       LEFT JOIN authentication a ON la.employee_id = a.employee_id
-       ${whereClause}
-       ORDER BY la.created_at DESC
-       LIMIT ? OFFSET ?`,
-      [...queryParams, limit, offset]
-    );
+    const applications = await db.select({
+      id: leaveApplications.id,
+      employee_id: leaveApplications.employeeId,
+      leave_type: leaveApplications.leaveType,
+      start_date: leaveApplications.startDate,
+      end_date: leaveApplications.endDate,
+      working_days: leaveApplications.workingDays,
+      status: leaveApplications.status,
+      created_at: leaveApplications.createdAt,
+      with_pay: leaveApplications.isWithPay, 
+      first_name: sql<string>`COALESCE(${authentication.firstName}, '')`,
+      last_name: sql<string>`COALESCE(${authentication.lastName}, '')`,
+      department: sql<string>`COALESCE(${authentication.department}, 'N/A')`,
+      current_balance: sql<number>`COALESCE(${leaveBalances.balance}, 0)`
+    })
+    .from(leaveApplications)
+    .leftJoin(authentication, eq(leaveApplications.employeeId, authentication.employeeId))
+    .leftJoin(leaveBalances, and(
+      eq(leaveBalances.employeeId, leaveApplications.employeeId),
+      eq(leaveBalances.creditType, leaveApplications.leaveType),
+      // Match year of application start date
+      eq(leaveBalances.year, sql`YEAR(${leaveApplications.startDate})`)
+    ))
+    .where(where)
+    .orderBy(desc(leaveApplications.createdAt))
+    .limit(limit)
+    .offset(offset);
 
     res.status(200).json({
-      applications,
+      leaves: applications,
+      applications, // Keep for backward compatibility if any other part uses it
       pagination: { page, limit, totalItems, totalPages },
     });
   } catch (err) {
@@ -641,19 +711,19 @@ export const processLeave = async (req: Request, res: Response): Promise<void> =
     const adminId = authReq.user ? String(authReq.user.employeeId || authReq.user.id) : 'Admin';
     const adminFormPath = req.file ? `leaves/${req.file.filename}` : null;
 
-    await db.query(
-      `UPDATE leave_applications SET status = 'Processing', admin_form_path = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-      [adminFormPath, id]
-    );
+    await db.update(leaveApplications)
+      .set({ status: 'Processing', adminFormPath, updatedAt: sql`CURRENT_TIMESTAMP` })
+      .where(eq(leaveApplications.id, parseInt(id)));
 
     // Notify employee
-    const [rows] = await db.query<LeaveApplicationRow[]>(
-      'SELECT employee_id FROM leave_applications WHERE id = ?',
-      [id]
-    );
-    if (rows.length > 0) {
+    const application = await db.query.leaveApplications.findFirst({
+      where: eq(leaveApplications.id, parseInt(id)),
+      columns: { employeeId: true }
+    });
+
+    if (application) {
       await createNotification({
-        recipientId: rows[0].employee_id,
+        recipientId: application.employeeId,
         senderId: adminId,
         title: 'Leave Request Processing',
         message: 'Your leave request is being processed. Please check for the admin form.',
@@ -679,18 +749,19 @@ export const finalizeLeave = async (req: Request, res: Response): Promise<void> 
     const employeeId = authReq.user ? String(authReq.user.employeeId || authReq.user.id) : null;
     const finalPath = req.file ? `leaves/${req.file.filename}` : null;
 
-    await db.query(
-      `UPDATE leave_applications SET status = 'Finalizing', final_attachment_path = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-      [finalPath, id]
-    );
+    await db.update(leaveApplications)
+      .set({ status: 'Finalizing', finalAttachmentPath: finalPath, updatedAt: sql`CURRENT_TIMESTAMP` })
+      .where(eq(leaveApplications.id, parseInt(id)));
 
-    await notifyAdmins({
-      senderId: employeeId,
-      title: 'Leave Request Finalized',
-      message: `Employee ${employeeId} has uploaded the signed leave form.`,
-      type: 'leave_finalize',
-      referenceId: parseInt(id),
-    });
+    if (employeeId) {
+      await notifyAdmins({
+        senderId: employeeId,
+        title: 'Leave Request Finalized',
+        message: `Employee ${employeeId} has uploaded the signed leave form.`,
+        type: 'leave_finalize',
+        referenceId: parseInt(id),
+      });
+    }
 
     res.status(200).json({ message: 'Final form submitted' });
   } catch (err) {
@@ -709,65 +780,67 @@ export const approveLeave = async (req: Request, res: Response): Promise<void> =
     const approvedBy = authReq.user ? String(authReq.user.employeeId || authReq.user.id) : 'Admin';
 
     // Get application details
-    const [rows] = await db.query<LeaveApplicationRow[]>(
-      'SELECT * FROM leave_applications WHERE id = ?',
-      [id]
-    );
+    const application = await db.query.leaveApplications.findFirst({
+      where: eq(leaveApplications.id, parseInt(id))
+    });
 
-    if (rows.length === 0) {
+    if (!application) {
       res.status(404).json({ message: 'Application not found' });
       return;
     }
 
-    const application = rows[0];
-    const isSpecialLeave = SPECIAL_LEAVES_NO_DEDUCTION.includes(application.leave_type);
+    const isSpecialLeave = SPECIAL_LEAVES_NO_DEDUCTION.includes(application.leaveType);
 
     // Deduct credits if WITH_PAY and not special leave
-    if ((application.actual_payment_status === 'WITH_PAY' || application.actual_payment_status === 'PARTIAL') && !isSpecialLeave) {
-      const primaryCreditType = LEAVE_TO_CREDIT_MAP[application.leave_type] as CreditType || 'Vacation Leave';
+    if ((application.actualPaymentStatus === 'WITH_PAY' || application.actualPaymentStatus === 'PARTIAL') && !isSpecialLeave) {
+      const primaryCreditType = LEAVE_TO_CREDIT_MAP[application.leaveType] as CreditType || 'Vacation Leave';
       
-      if (application.cross_charged_from) {
+      if (application.crossChargedFrom) {
         // Cross-charging: deduct from fallback credit type
         await updateBalance(
-          application.employee_id,
-          application.cross_charged_from as CreditType,
-          -Number(application.days_with_pay),
+          application.employeeId,
+          application.crossChargedFrom as CreditType,
+          -Number(application.daysWithPay),
           'DEDUCTION',
           parseInt(id),
           'leave_application',
-          `${application.leave_type} cross-charged from ${application.cross_charged_from}`,
+          `${application.leaveType} cross-charged from ${application.crossChargedFrom}`,
           approvedBy
         );
       } else {
         // Normal deduction
         await updateBalance(
-          application.employee_id,
+          application.employeeId,
           primaryCreditType,
-          -Number(application.days_with_pay),
+          -Number(application.daysWithPay),
           'DEDUCTION',
           parseInt(id),
           'leave_application',
-          `${application.leave_type} approved`,
+          `${application.leaveType} approved`,
           approvedBy
         );
       }
     }
 
     // Track LWOP for service record
-    if (application.days_without_pay > 0) {
-      await updateLWOPSummary(application.employee_id, Number(application.days_without_pay));
+    if (Number(application.daysWithoutPay) > 0) {
+      await updateLWOPSummary(application.employeeId, Number(application.daysWithoutPay));
     }
 
     // Update application status
-    await db.query(
-      `UPDATE leave_applications SET status = 'Approved', approved_by = ?, approved_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-      [approvedBy, id]
-    );
+    await db.update(leaveApplications)
+      .set({ 
+        status: 'Approved', 
+        approvedBy, 
+        approvedAt: sql`CURRENT_TIMESTAMP`, 
+        updatedAt: sql`CURRENT_TIMESTAMP` 
+      })
+      .where(eq(leaveApplications.id, parseInt(id)));
 
     // Update DTR records
     try {
-      const startDate = new Date(application.start_date);
-      const endDate = new Date(application.end_date);
+      const startDate = new Date(application.startDate);
+      const endDate = new Date(application.endDate);
       const currentDate = new Date(startDate);
 
       while (currentDate <= endDate) {
@@ -775,12 +848,16 @@ export const approveLeave = async (req: Request, res: Response): Promise<void> =
         const dayOfWeek = currentDate.getDay();
 
         if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-          await db.query(
-            `INSERT INTO daily_time_records (employee_id, date, time_in, time_out, late_minutes, undertime_minutes, status)
-             VALUES (?, ?, NULL, NULL, 0, 0, 'Leave')
-             ON DUPLICATE KEY UPDATE status = 'Leave', updated_at = CURRENT_TIMESTAMP`,
-            [application.employee_id, dateStr]
-          );
+          await db.insert(dailyTimeRecords).values({
+            employeeId: application.employeeId,
+            date: dateStr,
+            status: 'Leave'
+          }).onDuplicateKeyUpdate({
+            set: {
+              status: 'Leave',
+              updatedAt: sql`CURRENT_TIMESTAMP`
+            }
+          });
         }
         currentDate.setDate(currentDate.getDate() + 1);
       }
@@ -789,16 +866,16 @@ export const approveLeave = async (req: Request, res: Response): Promise<void> =
     }
 
     // Log to Service Record (career history)
-    const eventType = application.days_without_pay > 0 ? 'LWOP' : 'Leave';
+    const eventType = Number(application.daysWithoutPay) > 0 ? 'LWOP' : 'Leave';
     await logToServiceRecord(
-      application.employee_id,
+      application.employeeId,
       eventType as any,
-      String(application.start_date).split('T')[0],
-      String(application.end_date).split('T')[0],
-      application.leave_type,
-      Number(application.working_days),
-      application.actual_payment_status !== 'WITHOUT_PAY',
-      `${application.leave_type} - ${application.actual_payment_status}`,
+      String(application.startDate).split('T')[0],
+      String(application.endDate).split('T')[0],
+      application.leaveType,
+      Number(application.workingDays),
+      application.actualPaymentStatus !== 'WITHOUT_PAY',
+      `${application.leaveType} - ${application.actualPaymentStatus}`,
       parseInt(id),
       'leave_application',
       approvedBy
@@ -806,10 +883,10 @@ export const approveLeave = async (req: Request, res: Response): Promise<void> =
 
     // Notify employee
     await createNotification({
-      recipientId: application.employee_id,
+      recipientId: application.employeeId,
       senderId: approvedBy,
       title: 'Leave Request Approved',
-      message: `Your ${application.leave_type} request from ${application.start_date} to ${application.end_date} has been approved.`,
+      message: `Your ${application.leaveType} request from ${application.startDate} to ${application.endDate} has been approved.`,
       type: 'leave_request_approved',
       referenceId: parseInt(id),
     });
@@ -843,22 +920,27 @@ export const rejectLeave = async (req: Request, res: Response): Promise<void> =>
 
     const { reason } = validation.data;
 
-    await db.query(
-      `UPDATE leave_applications SET status = 'Rejected', rejection_reason = ?, approved_by = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-      [reason, approvedBy, id]
-    );
+    await db.update(leaveApplications)
+      .set({ 
+        status: 'Rejected', 
+        rejectionReason: reason, 
+        approvedBy, 
+        updatedAt: sql`CURRENT_TIMESTAMP` 
+      })
+      .where(eq(leaveApplications.id, parseInt(id)));
 
     // Notify employee
-    const [rows] = await db.query<LeaveApplicationRow[]>(
-      'SELECT employee_id, start_date, end_date FROM leave_applications WHERE id = ?',
-      [id]
-    );
-    if (rows.length > 0) {
+    const application = await db.query.leaveApplications.findFirst({
+      where: eq(leaveApplications.id, parseInt(id)),
+      columns: { employeeId: true, startDate: true, endDate: true }
+    });
+
+    if (application) {
       await createNotification({
-        recipientId: rows[0].employee_id,
+        recipientId: application.employeeId,
         senderId: approvedBy,
         title: 'Leave Request Rejected',
-        message: `Your leave request for ${rows[0].start_date} to ${rows[0].end_date} has been rejected. Reason: ${reason}`,
+        message: `Your leave request for ${application.startDate} to ${application.endDate} has been rejected. Reason: ${reason}`,
         type: 'leave_request_rejected',
         referenceId: parseInt(id),
       });
@@ -881,16 +963,26 @@ export const rejectLeave = async (req: Request, res: Response): Promise<void> =>
 export const getMyCredits = async (req: Request, res: Response): Promise<void> => {
   try {
     const authReq = req as AuthenticatedRequest;
-    const employeeId = authReq.user.employeeId || authReq.user.id;
+    const employeeId = String(authReq.user.employeeId || authReq.user.id);
     const year = parseInt(req.query.year as string) || getCurrentYear();
 
-    const [credits] = await db.query<LeaveBalanceRow[]>(
-      `SELECT lb.*, a.first_name, a.last_name, a.department
-       FROM leave_balances lb
-       LEFT JOIN authentication a ON lb.employee_id = a.employee_id
-       WHERE lb.employee_id = ? AND lb.year = ?`,
-      [employeeId, year]
-    );
+    const credits = await db.select({
+      id: leaveBalances.id,
+      employeeId: leaveBalances.employeeId,
+      creditType: leaveBalances.creditType,
+      balance: leaveBalances.balance,
+      year: leaveBalances.year,
+      updatedAt: leaveBalances.updatedAt,
+      firstName: authentication.firstName,
+      lastName: authentication.lastName,
+      department: authentication.department
+    })
+    .from(leaveBalances)
+    .leftJoin(authentication, eq(leaveBalances.employeeId, authentication.employeeId))
+    .where(and(
+      eq(leaveBalances.employeeId, employeeId),
+      eq(leaveBalances.year, year)
+    ));
 
     res.status(200).json({ credits, year });
   } catch (err) {
@@ -907,13 +999,23 @@ export const getEmployeeCredits = async (req: Request, res: Response): Promise<v
     const { employeeId } = req.params;
     const year = parseInt(req.query.year as string) || getCurrentYear();
 
-    const [credits] = await db.query<LeaveBalanceRow[]>(
-      `SELECT lb.*, a.first_name, a.last_name, a.department
-       FROM leave_balances lb
-       LEFT JOIN authentication a ON lb.employee_id = a.employee_id
-       WHERE lb.employee_id = ? AND lb.year = ?`,
-      [employeeId, year]
-    );
+    const credits = await db.select({
+      id: leaveBalances.id,
+      employeeId: leaveBalances.employeeId,
+      creditType: leaveBalances.creditType,
+      balance: leaveBalances.balance,
+      year: leaveBalances.year,
+      updatedAt: leaveBalances.updatedAt,
+      firstName: authentication.firstName,
+      lastName: authentication.lastName,
+      department: authentication.department
+    })
+    .from(leaveBalances)
+    .leftJoin(authentication, eq(leaveBalances.employeeId, authentication.employeeId))
+    .where(and(
+      eq(leaveBalances.employeeId, employeeId),
+      eq(leaveBalances.year, year)
+    ));
 
     res.status(200).json({ credits, year });
   } catch (err) {
@@ -933,39 +1035,45 @@ export const getAllEmployeeCredits = async (req: Request, res: Response): Promis
     const year = parseInt(req.query.year as string) || getCurrentYear();
     const offset = (page - 1) * limit;
 
-    let whereClause = 'WHERE lb.year = ?';
-    const queryParams: (string | number)[] = [year];
-
+    const conditions = [eq(leaveBalances.year, year)];
     if (search) {
-      whereClause += ` AND (a.first_name LIKE ? OR a.last_name LIKE ? OR lb.employee_id LIKE ?)`;
-      const searchTerm = `%${search}%`;
-      queryParams.push(searchTerm, searchTerm, searchTerm);
+      conditions.push(or(
+        sql`${authentication.firstName} LIKE ${`%${search}%`}`,
+        sql`${authentication.lastName} LIKE ${`%${search}%`}`,
+        sql`${leaveBalances.employeeId} LIKE ${`%${search}%`}`
+      )!);
     }
 
+    const where = and(...conditions);
+
     // Count total
-    const [countResult] = await db.query<RowDataPacket[]>(
-      `SELECT COUNT(*) as total
-       FROM leave_balances lb
-       LEFT JOIN authentication a ON lb.employee_id = a.employee_id
-       ${whereClause}`,
-      queryParams
-    );
-    const totalItems = countResult[0].total;
+    const [countResult] = await db.select({ total: sql<number>`count(*)` })
+      .from(leaveBalances)
+      .leftJoin(authentication, eq(leaveBalances.employeeId, authentication.employeeId))
+      .where(where);
+    const totalItems = Number(countResult.total);
     const totalPages = Math.ceil(totalItems / limit);
 
     // Fetch credits
-    const [credits] = await db.query<RowDataPacket[]>(
-      `SELECT lb.*, 
-              COALESCE(a.first_name, '') as first_name,
-              COALESCE(a.last_name, '') as last_name,
-              COALESCE(a.department, 'N/A') as department
-       FROM leave_balances lb
-       LEFT JOIN authentication a ON lb.employee_id = a.employee_id
-       ${whereClause}
-       ORDER BY a.last_name, a.first_name, lb.credit_type
-       LIMIT ? OFFSET ?`,
-      [...queryParams, limit, offset]
-    );
+    const credits = await db.select({
+      id: leaveBalances.id,
+      employee_id: leaveBalances.employeeId,
+      credit_type: leaveBalances.creditType,
+      balance: leaveBalances.balance,
+      year: leaveBalances.year,
+      updated_at: leaveBalances.updatedAt,
+      first_name: sql<string>`COALESCE(${authentication.firstName}, '')`,
+      last_name: sql<string>`COALESCE(${authentication.lastName}, '')`,
+      department: sql<string>`COALESCE(${authentication.department}, 'N/A')`,
+      days_used_with_pay: sql<number>`0`,
+      days_used_without_pay: sql<number>`0`
+    })
+    .from(leaveBalances)
+    .leftJoin(authentication, eq(leaveBalances.employeeId, authentication.employeeId))
+    .where(where)
+    .orderBy(authentication.lastName, authentication.firstName, leaveBalances.creditType)
+    .limit(limit)
+    .offset(offset);
 
     res.status(200).json({
       credits,
@@ -1045,10 +1153,12 @@ export const deleteEmployeeCredit = async (req: Request, res: Response): Promise
       return;
     }
 
-    await db.query(
-      'DELETE FROM leave_balances WHERE employee_id = ? AND credit_type = ? AND year = ?',
-      [employeeId, creditType, year]
-    );
+    await db.delete(leaveBalances)
+      .where(and(
+        eq(leaveBalances.employeeId, employeeId),
+        eq(leaveBalances.creditType, creditType as any),
+        eq(leaveBalances.year, year)
+      ));
 
     res.status(200).json({ message: 'Credit record deleted' });
   } catch (err) {
@@ -1083,19 +1193,16 @@ export const accrueMonthlyCredits = async (req: Request, res: Response): Promise
     const { month, year, employeeIds } = validation.data;
 
     // Get employees to accrue (regular employees only)
-    let employees: { employee_id: string }[];
+    const conditions = [ne(authentication.role, 'admin')];
     if (employeeIds && employeeIds.length > 0) {
-      const [rows] = await db.query<RowDataPacket[]>(
-        `SELECT employee_id FROM authentication WHERE employee_id IN (?) AND role != 'admin'`,
-        [employeeIds]
-      );
-      employees = rows as { employee_id: string }[];
-    } else {
-      const [rows] = await db.query<RowDataPacket[]>(
-        `SELECT employee_id FROM authentication WHERE role != 'admin'`
-      );
-      employees = rows as { employee_id: string }[];
+      conditions.push(sql`${authentication.employeeId} IN (${employeeIds})`);
     }
+
+    const employees = await db.select({
+      employeeId: authentication.employeeId
+    })
+    .from(authentication)
+    .where(and(...conditions));
 
     let accruedCount = 0;
     const remarks = `Monthly accrual for ${month}/${year}`;
@@ -1103,7 +1210,7 @@ export const accrueMonthlyCredits = async (req: Request, res: Response): Promise
     for (const employee of employees) {
       // Accrue VL
       await updateBalance(
-        employee.employee_id,
+        employee.employeeId,
         'Vacation Leave',
         MONTHLY_VL_ACCRUAL,
         'ACCRUAL',
@@ -1115,7 +1222,7 @@ export const accrueMonthlyCredits = async (req: Request, res: Response): Promise
 
       // Accrue SL
       await updateBalance(
-        employee.employee_id,
+        employee.employeeId,
         'Sick Leave',
         MONTHLY_SL_ACCRUAL,
         'ACCRUAL',
@@ -1186,33 +1293,33 @@ export const allocateDefaultCredits = async (employeeId: string): Promise<void> 
 export const getMyLedger = async (req: Request, res: Response): Promise<void> => {
   try {
     const authReq = req as AuthenticatedRequest;
-    const employeeId = authReq.user.employeeId || authReq.user.id;
+    const employeeId = String(authReq.user.employeeId || authReq.user.id);
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 20;
     const creditType = (req.query.creditType as string) || '';
     const offset = (page - 1) * limit;
 
-    let whereClause = 'WHERE employee_id = ?';
-    const queryParams: (string | number)[] = [employeeId];
-
+    const conditions = [eq(leaveLedger.employeeId, employeeId)];
     if (creditType) {
-      whereClause += ' AND credit_type = ?';
-      queryParams.push(creditType);
+      conditions.push(eq(leaveLedger.creditType, creditType as any));
     }
 
+    const where = and(...conditions);
+
     // Count total
-    const [countResult] = await db.query<RowDataPacket[]>(
-      `SELECT COUNT(*) as total FROM leave_ledger ${whereClause}`,
-      queryParams
-    );
-    const totalItems = countResult[0].total;
+    const [countResult] = await db.select({ total: sql<number>`count(*)` })
+      .from(leaveLedger)
+      .where(where);
+    const totalItems = Number(countResult.total);
     const totalPages = Math.ceil(totalItems / limit);
 
     // Fetch ledger entries
-    const [entries] = await db.query<LeaveLedgerRow[]>(
-      `SELECT * FROM leave_ledger ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
-      [...queryParams, limit, offset]
-    );
+    const entries = await db.select()
+      .from(leaveLedger)
+      .where(where)
+      .orderBy(desc(leaveLedger.createdAt))
+      .limit(limit)
+      .offset(offset);
 
     res.status(200).json({
       entries,
@@ -1235,27 +1342,27 @@ export const getEmployeeLedger = async (req: Request, res: Response): Promise<vo
     const creditType = (req.query.creditType as string) || '';
     const offset = (page - 1) * limit;
 
-    let whereClause = 'WHERE employee_id = ?';
-    const queryParams: (string | number)[] = [employeeId];
-
+    const conditions = [eq(leaveLedger.employeeId, employeeId)];
     if (creditType) {
-      whereClause += ' AND credit_type = ?';
-      queryParams.push(creditType);
+      conditions.push(eq(leaveLedger.creditType, creditType as any));
     }
 
+    const where = and(...conditions);
+
     // Count total
-    const [countResult] = await db.query<RowDataPacket[]>(
-      `SELECT COUNT(*) as total FROM leave_ledger ${whereClause}`,
-      queryParams
-    );
-    const totalItems = countResult[0].total;
+    const [countResult] = await db.select({ total: sql<number>`count(*)` })
+      .from(leaveLedger)
+      .where(where);
+    const totalItems = Number(countResult.total);
     const totalPages = Math.ceil(totalItems / limit);
 
     // Fetch ledger entries
-    const [entries] = await db.query<LeaveLedgerRow[]>(
-      `SELECT * FROM leave_ledger ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
-      [...queryParams, limit, offset]
-    );
+    const entries = await db.select()
+      .from(leaveLedger)
+      .where(where)
+      .orderBy(desc(leaveLedger.createdAt))
+      .limit(limit)
+      .offset(offset);
 
     res.status(200).json({
       entries,
@@ -1278,12 +1385,12 @@ export const getHolidays = async (req: Request, res: Response): Promise<void> =>
   try {
     const year = parseInt(req.query.year as string) || getCurrentYear();
 
-    const [holidays] = await db.query<HolidayRow[]>(
-      'SELECT * FROM holidays WHERE year = ? ORDER BY date',
-      [year]
-    );
+    const result = await db.select()
+      .from(holidays)
+      .where(eq(holidays.year, year))
+      .orderBy(holidays.date);
 
-    res.status(200).json({ holidays, year });
+    res.status(200).json({ holidays: result, year });
   } catch (err) {
     console.error('getHolidays error:', err);
     res.status(500).json({ message: 'Something went wrong!' });
@@ -1304,10 +1411,17 @@ export const addHoliday = async (req: Request, res: Response): Promise<void> => 
 
     const year = new Date(date).getFullYear();
 
-    await db.query(
-      'INSERT INTO holidays (name, date, type, year) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE name = ?, type = ?',
-      [name, date, type, year, name, type]
-    );
+    await db.insert(holidays).values({
+      name,
+      date,
+      type: type as any,
+      year
+    }).onDuplicateKeyUpdate({
+      set: {
+        name,
+        type: type as any
+      }
+    });
 
     res.status(201).json({ message: 'Holiday added successfully' });
   } catch (err) {
@@ -1323,7 +1437,7 @@ export const deleteHoliday = async (req: Request, res: Response): Promise<void> 
   try {
     const { id } = req.params;
 
-    await db.query('DELETE FROM holidays WHERE id = ?', [id]);
+    await db.delete(holidays).where(eq(holidays.id, parseInt(id)));
 
     res.status(200).json({ message: 'Holiday deleted' });
   } catch (err) {
@@ -1343,10 +1457,10 @@ export const getLWOPSummary = async (req: Request, res: Response): Promise<void>
   try {
     const { employeeId } = req.params;
 
-    const [summary] = await db.query<LWOPSummaryRow[]>(
-      'SELECT * FROM lwop_summary WHERE employee_id = ? ORDER BY year DESC',
-      [employeeId]
-    );
+    const summary = await db.select()
+      .from(lwopSummary)
+      .where(eq(lwopSummary.employeeId, employeeId))
+      .orderBy(desc(lwopSummary.year));
 
     res.status(200).json({ summary });
   } catch (err) {
@@ -1375,22 +1489,24 @@ export const getServiceRecord = async (req: Request, res: Response): Promise<voi
   try {
     const { employeeId } = req.params;
 
-    const [records] = await db.query<RowDataPacket[]>(
-      `SELECT * FROM service_records WHERE employee_id = ? ORDER BY event_date DESC`,
-      [employeeId]
-    );
+    const records = await db.select()
+      .from(serviceRecords)
+      .where(eq(serviceRecords.employeeId, employeeId))
+      .orderBy(desc(serviceRecords.eventDate));
 
     // Calculate total LWOP days for retirement impact
-    const [lwopTotal] = await db.query<RowDataPacket[]>(
-      `SELECT SUM(days_count) as total_lwop_days 
-       FROM service_records 
-       WHERE employee_id = ? AND event_type = 'LWOP'`,
-      [employeeId]
-    );
+    const [lwopTotal] = await db.select({ 
+      totalLwopDays: sql<number>`SUM(${serviceRecords.daysCount})` 
+    })
+    .from(serviceRecords)
+    .where(and(
+      eq(serviceRecords.employeeId, employeeId),
+      eq(serviceRecords.eventType, 'LWOP')
+    ));
 
     res.status(200).json({ 
       records,
-      totalLWOPDays: lwopTotal[0]?.total_lwop_days || 0
+      totalLWOPDays: lwopTotal?.totalLwopDays || 0
     });
   } catch (err) {
     console.error('getServiceRecord error:', err);
@@ -1413,12 +1529,20 @@ export const processMonthlyTardiness = async (req: Request, res: Response): Prom
     const targetYear = year || new Date().getFullYear();
 
     // Get all employees with tardiness for the month
-    const [employees] = await db.query<RowDataPacket[]>(
-      `SELECT DISTINCT employee_id FROM tardiness_summary 
-       WHERE year = ? AND month = ? AND processed_at IS NULL
-       ${employeeIds ? 'AND employee_id IN (?)' : ''}`,
-      employeeIds ? [targetYear, targetMonth, employeeIds] : [targetYear, targetMonth]
-    );
+    const conditions = [
+      eq(tardinessSummary.year, targetYear),
+      eq(tardinessSummary.month, targetMonth),
+      sql`processed_at IS NULL`
+    ];
+    if (employeeIds && employeeIds.length > 0) {
+      conditions.push(sql`${tardinessSummary.employeeId} IN (${employeeIds})`);
+    }
+
+    const employees = await db.select({
+      employeeId: tardinessSummary.employeeId
+    })
+    .from(tardinessSummary)
+    .where(and(...conditions));
 
     const results: Array<{
       employeeId: string;
@@ -1428,11 +1552,11 @@ export const processMonthlyTardiness = async (req: Request, res: Response): Prom
     }> = [];
 
     for (const emp of employees) {
-      const result = await calculateTardinessDeduction(emp.employee_id, targetYear, targetMonth);
+      const result = await calculateTardinessDeduction(emp.employeeId, targetYear, targetMonth);
       
       if (result.daysEquivalent > 0) {
         results.push({
-          employeeId: emp.employee_id,
+          employeeId: emp.employeeId,
           ...result
         });
       }
@@ -1460,23 +1584,26 @@ export const getTotalLWOPForRetirement = async (req: Request, res: Response): Pr
     const { employeeId } = req.params;
 
     // From LWOP Summary table
-    const [lwopSummary] = await db.query<RowDataPacket[]>(
-      `SELECT SUM(total_lwop_days) as total_lwop_days, MAX(cumulative_lwop_days) as cumulative
-       FROM lwop_summary WHERE employee_id = ?`,
-      [employeeId]
-    );
+    const [lwopTotalSum] = await db.select({
+      totalLwopDays: sql<number>`SUM(${lwopSummary.totalLwopDays})`,
+      maxCumulative: sql<number>`MAX(${lwopSummary.cumulativeLwopDays})`
+    })
+    .from(lwopSummary)
+    .where(eq(lwopSummary.employeeId, employeeId));
 
     // From Service Records (LWOP events)
-    const [serviceRecords] = await db.query<RowDataPacket[]>(
-      `SELECT SUM(days_count) as service_record_lwop 
-       FROM service_records 
-       WHERE employee_id = ? AND event_type = 'LWOP'`,
-      [employeeId]
-    );
+    const [serviceRecordsTotal] = await db.select({
+      serviceRecordLwop: sql<number>`SUM(${serviceRecords.daysCount})`
+    })
+    .from(serviceRecords)
+    .where(and(
+      eq(serviceRecords.employeeId, employeeId),
+      eq(serviceRecords.eventType, 'LWOP')
+    ));
 
     const totalDays = Math.max(
-      lwopSummary[0]?.cumulative || 0,
-      serviceRecords[0]?.service_record_lwop || 0
+      lwopTotalSum?.maxCumulative || 0,
+      serviceRecordsTotal?.serviceRecordLwop || 0
     );
 
     // Calculate impact: 365 LWOP days = 1 year extension before retirement

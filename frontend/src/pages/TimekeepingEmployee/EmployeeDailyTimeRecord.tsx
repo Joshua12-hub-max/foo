@@ -1,4 +1,4 @@
-import React from 'react';
+import { useState } from 'react';
 import { useUIStore } from '@/stores';
 import { useEmployeeDTR } from "@features/DailyTimeRecord/hooks/Employee/useEmployeeDTR";
 import { EmployeeDTRHeader } from "@features/DailyTimeRecord/components/Employee/EmployeeDTRHeader";
@@ -9,6 +9,8 @@ import { EmployeeDTRExportButtons } from "@features/DailyTimeRecord/components/E
 import { EmployeeDTRTable } from "@features/DailyTimeRecord/components/Employee/EmployeeDTRTable";
 import { EmployeeDTRPagination } from "@features/DailyTimeRecord/components/Employee/EmployeeDTRPagination";
 import { EmployeeDTRLoadingSpinner } from "@features/DailyTimeRecord/components/Employee/EmployeeDTRLoadingSpinner";
+import { DTRCorrectionModal } from "@features/DailyTimeRecord/components/Employee/DTRCorrectionModal";
+import { EmployeeDTRRecord } from "@features/DailyTimeRecord/Utils/employeeDTRUtils";
 
 const EmployeeDailyTimeRecord = () => {
   const { today, filters, searchQuery, debouncedSearchQuery, currentPage, isLoading, loadingType, error, successMessage, employeeInfo, filteredData, paginationData, 
@@ -18,6 +20,20 @@ const EmployeeDailyTimeRecord = () => {
   const sidebarOpen = useUIStore((state) => state.sidebarOpen);
 
   const { totalPages, startIndex, endIndex, currentItems } = paginationData;
+
+  // Correction Modal State
+  const [isCorrectionModalOpen, setIsCorrectionModalOpen] = useState(false);
+  const [selectedRecord, setSelectedRecord] = useState<EmployeeDTRRecord | null>(null);
+
+  const handleRequestCorrection = (record: EmployeeDTRRecord) => {
+    setSelectedRecord(record);
+    setIsCorrectionModalOpen(true);
+  };
+
+  const handleCorrectionSuccess = () => {
+    handleRefresh();
+    setSuccessMessage("Correction request submitted successfully.");
+  };
 
   if (isLoading && loadingType === "data") {
     return <EmployeeDTRLoadingSpinner loadingType={loadingType} />;
@@ -79,6 +95,7 @@ const EmployeeDailyTimeRecord = () => {
         getStatusBadge={getStatusBadge}
         debouncedSearchQuery={debouncedSearchQuery}
         filters={filters}
+        onRequestCorrection={handleRequestCorrection}
       />
 
       {!isLoading && filteredData.length > 0 && (
@@ -93,6 +110,13 @@ const EmployeeDailyTimeRecord = () => {
           isLoading={isLoading}
         />
       )}
+
+      <DTRCorrectionModal 
+        isOpen={isCorrectionModalOpen}
+        onClose={() => setIsCorrectionModalOpen(false)}
+        record={selectedRecord}
+        onSuccess={handleCorrectionSuccess}
+      />
     </div>
   );
 };

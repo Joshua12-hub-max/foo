@@ -18,23 +18,15 @@
 
 import { SerialPort } from 'serialport';
 import { ReadlineParser } from '@serialport/parser-readline';
-import db from '../db/connection.js';
+import { db } from '../db/index.js';
+import { fingerprints, attendanceLogs, authentication } from '../db/schema.js';
+import { eq, desc, and, sql } from 'drizzle-orm';
 import { processDailyAttendance } from './attendanceProcessor.js';
 import { MAX_FINGERPRINT_ID } from '../constants/biometrics.js';
-import type { RowDataPacket } from 'mysql2/promise';
 
 // ============================================================================
 // Interfaces
 // ============================================================================
-
-interface FingerprintRow extends RowDataPacket {
-  employee_id: string;
-  fingerprint_id: number;
-}
-
-interface AttendanceLogRow extends RowDataPacket {
-  type: 'IN' | 'OUT';
-}
 
 interface EnrollmentRequest {
   fingerprintId: number;
@@ -69,8 +61,8 @@ class BiometricService {
   // ============================================================================
 
   private async getNextFingerprintId(): Promise<number> {
-    const [allFingerprints] = await db.query<FingerprintRow[]>('SELECT fingerprint_id FROM fingerprints');
-    const usedIds = new Set(allFingerprints.map(f => f.fingerprint_id));
+    const allFingerprints = await db.select({ fingerprintId: fingerprints.fingerprintId }).from(fingerprints);
+    const usedIds = new Set(allFingerprints.map(f => f.fingerprintId));
     
     let id = 1;
     while (usedIds.has(id) && id <= MAX_FINGERPRINT_ID) {
@@ -121,17 +113,17 @@ class BiometricService {
       this.parser = this.port.pipe(new ReadlineParser({ delimiter: '\r\n' }));
 
       this.port.on('open', () => {
-        console.log(`✅ [BIOMETRIC] Connected to ${path}`);
+        console.log(`[BIOMETRIC] Connected to ${path}`);
         this.isConnected = true;
         // Wait for Arduino reset
         setTimeout(async () => {
-          console.log('✅ [BIOMETRIC] Ready for commands');
+          console.log('[BIOMETRIC] Ready for commands');
           await this.syncTemplatesToDevice();
         }, 3000);
       });
 
       this.port.on('close', () => {
-        console.log('❌ [BIOMETRIC] Connection closed');
+        console.log('[BIOMETRIC] Connection closed');
         this.isConnected = false;
         this.port = null;
         this.parser = null;
@@ -139,14 +131,14 @@ class BiometricService {
       });
 
       this.port.on('error', (err) => {
-        console.error('❌ [BIOMETRIC] Serial error:', err);
+        console.error('[BIOMETRIC] Serial error:', err);
         if (this.port && this.port.isOpen) this.port.close();
       });
 
       this.parser?.on('data', this.handleSerialData);
 
     } catch (err) {
-      console.error(`❌ [BIOMETRIC] Failed to open ${path}:`, err);
+      console.error(`[BIOMETRIC] Failed to open ${path}:`, err);
       setTimeout(() => this.initialize(), this.AUTO_RECONNECT_INTERVAL);
     }
   }
@@ -157,26 +149,26 @@ class BiometricService {
 
     // Log all incoming data for debugging
     if (line.startsWith('DEBUG:')) {
-      console.log(`📡 [ARDUINO-DEBUG] ${line}`);
+      console.log(`[ARDUINO-DEBUG] ${line}`);
       return;
     }
     
     if (line.startsWith('SCAN_FAIL:')) {
-      console.log(`⚠️ [BIOMETRIC] ${line}`);
+      console.log(`[BIOMETRIC] ${line}`);
       return;
     }
     
     if (line.startsWith('STORE_FAIL:')) {
-      console.log(`❌ [BIOMETRIC] Template store failed: ${line}`);
+      console.log(`[BIOMETRIC] Template store failed: ${line}`);
       return;
     }
     
     if (line.startsWith('TEMPLATE_COUNT:')) {
-      console.log(`📊 [BIOMETRIC] ${line}`);
+      console.log(`[BIOMETRIC] ${line}`);
       return;
     }
 
-    console.log(`📥 [ARDUINO] ${line}`);
+    console.log(`[ARDUINO] ${line}`);
 
     if (line.startsWith('SCAN:')) {
       // Format: SCAN:ID:CONFIDENCE
@@ -204,19 +196,19 @@ class BiometricService {
     } else if (line.startsWith('ENROLL_FAIL:')) {
       // Format: ENROLL_FAIL:REASON
       const reason = line.split(':')[1] || 'Unknown';
-      console.log(`❌ [BIOMETRIC] Enrollment failed: ${reason}`);
+      console.log(`[BIOMETRIC] Enrollment failed: ${reason}`);
       this.pendingEnrollment = null;
     } else if (line !== 'READY') {
-      console.log(`💡 [BIOMETRIC] Unhandled message: ${line}`);
+      console.log(`[BIOMETRIC] Unhandled message: ${line}`);
     }
   }
 
   private sendCommand(cmd: string): boolean {
     if (!this.port || !this.port.isOpen) {
-      console.warn('⚠️ [BIOMETRIC] Cannot send command: Device disconnected');
+      console.warn('[BIOMETRIC] Cannot send command: Device disconnected');
       return false;
     }
-    console.log(`📤 [ARDUINO] Sending: ${cmd}`);
+    console.log(`[ARDUINO] Sending: ${cmd}`);
     this.port.write(cmd + '\n');
     return true;
   }
@@ -230,7 +222,7 @@ class BiometricService {
     const lastScan = this.lastScanMap.get(fingerprintId) || 0;
 
     if (nowMs - lastScan < this.SCAN_COOLDOWN_MS) {
-      console.log(`⏳ [BIOMETRIC] Scan ignored (Cooldown): ID ${fingerprintId}`);
+      console.log(`[BIOMETRIC] Scan ignored (Cooldown): ID ${fingerprintId}`);
       return;
     }
 
@@ -238,20 +230,20 @@ class BiometricService {
     this.lastScanMap.set(fingerprintId, nowMs);
 
     try {
-      const [rows] = await db.query<FingerprintRow[]>(
-        'SELECT employee_id FROM fingerprints WHERE fingerprint_id = ?',
-        [fingerprintId]
-      );
+      const fingerprint = await db.query.fingerprints.findFirst({
+        where: eq(fingerprints.fingerprintId, fingerprintId),
+        columns: { employeeId: true }
+      });
 
-      if (rows.length === 0) {
-        console.warn(`❓ [BIOMETRIC] Unknown scan ID: ${fingerprintId} - Not linked to any employee.`);
+      if (!fingerprint) {
+        console.warn(`[BIOMETRIC] Unknown scan ID: ${fingerprintId} - Not linked to any employee.`);
         // Allow immediate retry if they want to enroll it
         this.lastScanMap.delete(fingerprintId);
         return;
       }
 
-      const employeeId = rows[0].employee_id;
-      console.log(`🔍 [BIOMETRIC] Match found: ID ${fingerprintId} -> Employee ${employeeId}`);
+      const employeeId = fingerprint.employeeId;
+      console.log(`[BIOMETRIC] Match found: ID ${fingerprintId} -> Employee ${employeeId}`);
       
       const now = new Date();
       
@@ -260,30 +252,41 @@ class BiometricService {
       const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
       // Determine IN vs OUT
-      const [lastLog] = await db.query<AttendanceLogRow[]>(
-        `SELECT type FROM attendance_logs 
-         WHERE employee_id = ? AND DATE(scan_time) = ? 
-         ORDER BY scan_time DESC LIMIT 1`,
-        [employeeId, today]
-      );
+      const lastLog = await db.query.attendanceLogs.findFirst({
+        where: and(
+          eq(attendanceLogs.employeeId, employeeId),
+          eq(sql`DATE(${attendanceLogs.scanTime})`, today)
+        ),
+        orderBy: desc(attendanceLogs.scanTime)
+      });
 
       let mkType: 'IN' | 'OUT' = 'IN';
-      if (lastLog.length > 0) {
-        mkType = lastLog[0].type === 'IN' ? 'OUT' : 'IN';
+      if (lastLog) {
+        mkType = lastLog.type === 'IN' ? 'OUT' : 'IN';
       }
 
-      await db.query(
-        'INSERT INTO attendance_logs (employee_id, scan_time, type, source) VALUES (?, ?, ?, ?)',
-        [employeeId, now, mkType, 'BIOMETRIC']
-      );
+      // Format YYYY-MM-DD HH:mm:ss for MySQL DATETIME
+      const mysqlScanTime = now.getFullYear() + '-' +
+        String(now.getMonth() + 1).padStart(2, '0') + '-' +
+        String(now.getDate()).padStart(2, '0') + ' ' +
+        String(now.getHours()).padStart(2, '0') + ':' +
+        String(now.getMinutes()).padStart(2, '0') + ':' +
+        String(now.getSeconds()).padStart(2, '0');
 
-      console.log(`✅ [BIOMETRIC] Logged ${mkType} for ${employeeId} (Conf: ${confidence})`);
+      await db.insert(attendanceLogs).values({
+        employeeId,
+        scanTime: mysqlScanTime,
+        type: mkType,
+        source: 'BIOMETRIC'
+      });
+
+      console.log(`[BIOMETRIC] Logged ${mkType} for ${employeeId} (Conf: ${confidence}) at ${mysqlScanTime}`);
 
       // Trigger daily processor
       await processDailyAttendance(employeeId, today);
 
     } catch (err) {
-      console.error('❌ [BIOMETRIC] Scan error:', err);
+      console.error('[BIOMETRIC] Scan error:', err);
       // Reset cooldown on error so they can try again immediately if it was a system glitch
       this.lastScanMap.delete(fingerprintId);
     }
@@ -291,42 +294,42 @@ class BiometricService {
 
   private async processEnrollSuccess(fingerprintId: number) {
     if (!this.pendingEnrollment) {
-      console.warn(`⚠️ [BIOMETRIC] Received enroll success for ID ${fingerprintId} but no enrollment pending`);
+      console.warn(`[BIOMETRIC] Received enroll success for ID ${fingerprintId} but no enrollment pending`);
       return;
     }
 
     if (this.pendingEnrollment.fingerprintId !== fingerprintId) {
-      console.warn(`⚠️ [BIOMETRIC] ID Mismatch! Pending: ${this.pendingEnrollment.fingerprintId}, Recv: ${fingerprintId}`);
+      console.warn(`[BIOMETRIC] ID Mismatch! Pending: ${this.pendingEnrollment.fingerprintId}, Recv: ${fingerprintId}`);
       return;
     }
 
     try {
-      await db.query(
-        `INSERT INTO fingerprints (fingerprint_id, employee_id) 
-         VALUES (?, ?) 
-         ON DUPLICATE KEY UPDATE employee_id = ?`,
-        [fingerprintId, this.pendingEnrollment.employeeId, this.pendingEnrollment.employeeId]
-      );
-      console.log(`✅ [BIOMETRIC] Enrollment recorded for ${this.pendingEnrollment.employeeId} (ID ${fingerprintId}). Waiting for template...`);
+      await db.insert(fingerprints).values({
+        fingerprintId: fingerprintId,
+        employeeId: this.pendingEnrollment.employeeId
+      }).onDuplicateKeyUpdate({
+        set: { employeeId: this.pendingEnrollment.employeeId }
+      });
+
+      console.log(`[BIOMETRIC] Enrollment recorded for ${this.pendingEnrollment.employeeId} (ID ${fingerprintId}). Waiting for template...`);
       // DO NOT NULLIFY pendingEnrollment YET, wait for TEMPLATE
     } catch (err) {
-      console.error('❌ [BIOMETRIC] DB Error on enroll:', err);
+      console.error('[BIOMETRIC] DB Error on enroll:', err);
     }
   }
 
   private async processTemplateData(fingerprintId: number, hexData: string) {
     try {
-      await db.query(
-        'UPDATE fingerprints SET template = ? WHERE fingerprint_id = ?',
-        [hexData, fingerprintId]
-      );
+      await db.update(fingerprints)
+        .set({ template: hexData })
+        .where(eq(fingerprints.fingerprintId, fingerprintId));
       
       const empId = this.pendingEnrollment?.employeeId || 'Unknown';
-      console.log(`✅ [BIOMETRIC] Fingerprint template stored for ${empId} (ID ${fingerprintId})`);
+      console.log(`[BIOMETRIC] Fingerprint template stored for ${empId} (ID ${fingerprintId})`);
       
       this.pendingEnrollment = null; // Finally clear it
     } catch (err) {
-      console.error('❌ [BIOMETRIC] DB Error on template:', err);
+      console.error('[BIOMETRIC] DB Error on template:', err);
     }
   }
 
@@ -348,14 +351,14 @@ class BiometricService {
 
     try {
       // Check existing
-      const [existing] = await db.query<FingerprintRow[]>(
-        'SELECT fingerprint_id FROM fingerprints WHERE employee_id = ?', 
-        [employeeId]
-      );
+      const existing = await db.query.fingerprints.findFirst({
+        where: eq(fingerprints.employeeId, employeeId),
+        columns: { fingerprintId: true }
+      });
 
       let targetId: number;
-      if (existing.length > 0) {
-        targetId = existing[0].fingerprint_id;
+      if (existing) {
+        targetId = existing.fingerprintId;
         console.log(`[BIOMETRIC] Re-enrolling ID ${targetId} for ${employeeId}`);
       } else {
         targetId = await this.getNextFingerprintId();
@@ -385,26 +388,26 @@ class BiometricService {
       };
 
     } catch (err) {
-      console.error('❌ [BIOMETRIC] Start enroll error:', err);
+      console.error('[BIOMETRIC] Start enroll error:', err);
       return { success: false, message: 'Server error' };
     }
   }
 
   public async deleteFingerprint(fingerprintId: number): Promise<void> {
     try {
-      await db.query('DELETE FROM fingerprints WHERE fingerprint_id = ?', [fingerprintId]);
+      await db.delete(fingerprints).where(eq(fingerprints.fingerprintId, fingerprintId));
       this.sendCommand(`DELETE:${fingerprintId}`);
     } catch (err) {
-      console.error('❌ Error deleting fingerprint:', err);
+      console.error('Error deleting fingerprint:', err);
     }
   }
 
   public async clearAllFingerprints(): Promise<void> {
     try {
-      await db.query('DELETE FROM fingerprints');
+      await db.delete(fingerprints);
       this.sendCommand('DELETE_ALL');
     } catch (err) {
-      console.error('❌ Error clearing all fingerprints:', err);
+      console.error('Error clearing all fingerprints:', err);
     }
   }
 
@@ -478,7 +481,7 @@ class BiometricService {
       }
       
       if (extractedData.length !== 512) {
-        console.warn(`⚠️ [BIOMETRIC] Parsed template length mismatch: ${extractedData.length} (Expected 512)`);
+        console.warn(`[BIOMETRIC] Parsed template length mismatch: ${extractedData.length} (Expected 512)`);
         // If it's close, maybe it's fine? No, must be exact for R307.
         // If it's > 512, truncate. If < 512, pad?
         if (extractedData.length > 512) {
@@ -499,9 +502,12 @@ class BiometricService {
     if (!this.isConnected) return;
     
     try {
-      const [rows] = await db.query<FingerprintRow[]>(
-        'SELECT fingerprint_id, template FROM fingerprints WHERE template IS NOT NULL'
-      );
+      const rows = await db.select({
+        fingerprintId: fingerprints.fingerprintId,
+        template: fingerprints.template
+      })
+      .from(fingerprints)
+      .where(sql`${fingerprints.template} IS NOT NULL`);
       
       if (rows.length === 0) {
         console.log('[BIOMETRIC] No templates to sync.');
@@ -515,26 +521,26 @@ class BiometricService {
       await new Promise(resolve => setTimeout(resolve, 2000));
 
       for (const row of rows) {
-        const hexTemplate = (row as any).template;
+        const hexTemplate = row.template;
         if (!hexTemplate || hexTemplate.length < 100) continue;
         
         const rawData = this.parseTemplatePackets(hexTemplate);
         if (!rawData) {
-           console.error(`❌ [BIOMETRIC] Failed to parse template for ID ${row.fingerprint_id}. Skipping.`);
+           console.error(`[BIOMETRIC] Failed to parse template for ID ${row.fingerprintId}. Skipping.`);
            continue;
         }
 
-        console.log(`[BIOMETRIC] Uploading ID ${row.fingerprint_id} (${rawData.length} bytes)...`);
+        console.log(`[BIOMETRIC] Uploading ID ${row.fingerprintId} (${rawData.length} bytes)...`);
         
         // 1. Send Upload Command
-        this.sendCommand(`UPLOAD:${row.fingerprint_id}`);
+        this.sendCommand(`UPLOAD:${row.fingerprintId}`);
         
         // 2. Wait for READY_FOR_DATA
         // We need a temporary one-time listener or promise
         const ready = await this.waitForSerialMessage('READY_FOR_DATA', 2000);
         
         if (!ready) {
-           console.error(`❌ [BIOMETRIC] Device did not acknowledge upload for ID ${row.fingerprint_id}`);
+           console.error(`[BIOMETRIC] Device did not acknowledge upload for ID ${row.fingerprintId}`);
            continue;
         }
         
@@ -549,7 +555,7 @@ class BiometricService {
       }
       console.log('[BIOMETRIC] Sync complete.');
     } catch (err) {
-      console.error('❌ [BIOMETRIC] Sync error:', err);
+      console.error('[BIOMETRIC] Sync error:', err);
     }
   }
   

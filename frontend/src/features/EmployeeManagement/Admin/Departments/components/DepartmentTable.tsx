@@ -11,7 +11,7 @@ import { fetchDepartmentEmployees } from '@api/departmentApi';
 interface Department {
   id: number;
   name: string;
-  head_of_department?: string;
+  headOfDepartment?: string;
   employee_count?: number;
   description?: string;
 }
@@ -21,9 +21,10 @@ interface DepartmentTableProps {
   loading: boolean;
   onEdit: (dept: Department) => void;
   onDelete: (dept: Department) => void;
+  onRemoveEmployee: (employee: any, deptId: number) => void;
 }
 
-const DepartmentTable: React.FC<DepartmentTableProps> = memo(({ departments, loading, onEdit, onDelete }) => {
+const DepartmentTable: React.FC<DepartmentTableProps> = memo(({ departments, loading, onEdit, onDelete, onRemoveEmployee }) => {
   const navigate = useNavigate();
   const [expandedRows, setExpandedRows] = useState<Record<number, boolean>>({});
   const [departmentEmployees, setDepartmentEmployees] = useState<Record<number, any[]>>({});
@@ -107,7 +108,7 @@ const DepartmentTable: React.FC<DepartmentTableProps> = memo(({ departments, loa
                                 <div className="text-sm font-medium text-gray-800">{dept.name}</div>
                             </td>
                             <td className="px-6 py-4 text-sm text-gray-700 font-medium">
-                                {dept.head_of_department || <span className="text-gray-400 italic">Not Assigned</span>}
+                                {dept.headOfDepartment || <span className="text-gray-400 italic">Not Assigned</span>}
                             </td>
                             <td className="px-6 py-4">
                                 <div className="flex items-center gap-2">
@@ -186,7 +187,7 @@ const DepartmentTable: React.FC<DepartmentTableProps> = memo(({ departments, loa
                                                             employees={employees}
                                                             onViewEmployee={navigateToEmployee}
                                                             onEditEmployee={navigateToEmployee}
-                                                            onRemoveEmployee={() => {}} // Not editable from this view for simplicity
+                                                            onRemoveEmployee={(employee) => onRemoveEmployee(employee, dept.id)}
                                                         />
                                                     </tbody>
                                                 </table>

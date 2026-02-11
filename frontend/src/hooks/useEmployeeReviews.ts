@@ -8,6 +8,8 @@ import {
 } from '@/api/performanceApi';
 import { useAuth } from '@/hooks/useAuth';
 
+import { InternalReview, ReviewItem } from '@/types/performance';
+
 interface UseEmployeeReviewsOptions {
   showNotification?: (message: string, type: 'success' | 'error' | 'info' | 'warning') => void;
 }
@@ -32,13 +34,13 @@ const useEmployeeReviews = ({ showNotification }: UseEmployeeReviewsOptions = {}
   };
   
   // Core state
-  const [reviews, setReviews] = useState<any[]>([]);
+  const [reviews, setReviews] = useState<InternalReview[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   
   // Selected review state
-  const [selectedReview, setSelectedReview] = useState<any>(null);
+  const [selectedReview, setSelectedReview] = useState<InternalReview | null>(null);
   
   // Modal states
   const [isDetailOpen, setIsDetailOpen] = useState(false);
@@ -46,7 +48,7 @@ const useEmployeeReviews = ({ showNotification }: UseEmployeeReviewsOptions = {}
   const [isDisagreeOpen, setIsDisagreeOpen] = useState(false);
   
   // Form states
-  const [selfRatingItems, setSelfRatingItems] = useState<any[]>([]);
+  const [selfRatingItems, setSelfRatingItems] = useState<ReviewItem[]>([]);
   const [selfRemarks, setSelfRemarks] = useState('');
   const [disagreeRemarks, setDisagreeRemarks] = useState('');
   
@@ -85,10 +87,10 @@ const useEmployeeReviews = ({ showNotification }: UseEmployeeReviewsOptions = {}
         const review = response.review;
         
         // Parse JSON feedback
-        let parsedFeedback: any = {};
+        let parsedFeedback: Record<string, unknown> = {};
         try {
           parsedFeedback = JSON.parse(review.overall_feedback || '{}');
-          if (typeof parsedFeedback !== 'object') {
+          if (typeof parsedFeedback !== 'object' || parsedFeedback === null) {
             parsedFeedback = { additional_comments: review.overall_feedback };
           }
         } catch (e) {
@@ -97,9 +99,7 @@ const useEmployeeReviews = ({ showNotification }: UseEmployeeReviewsOptions = {}
 
         setSelectedReview({
           ...review,
-          strengths: parsedFeedback.strengths,
-          improvements: parsedFeedback.improvements,
-          additional_comments: parsedFeedback.additional_comments
+          additional_comments: (parsedFeedback.additional_comments as string) || (review.additional_comments as string)
         });
         setIsDetailOpen(true);
       }
@@ -110,12 +110,12 @@ const useEmployeeReviews = ({ showNotification }: UseEmployeeReviewsOptions = {}
   }, []);
 
   // Start self-rating process
-  const handleStartSelfRating = useCallback(async (review: any) => {
+  const handleStartSelfRating = useCallback(async (review: InternalReview) => {
     try {
       const response = await getReview(review.id);
       if (response.success) {
         setSelectedReview(response.review);
-        setSelfRatingItems(response.review.items?.map((item: any) => ({
+        setSelfRatingItems(response.review.items?.map((item: ReviewItem) => ({
           ...item,
           self_score: item.self_score || 0,
           actual_accomplishments: item.actual_accomplishments || ''
@@ -157,9 +157,10 @@ const useEmployeeReviews = ({ showNotification }: UseEmployeeReviewsOptions = {}
         setSelfRemarks('');
         loadReviews();
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      notify(err.response?.data?.message || "Failed to submit self-rating.", "error");
+      const message = (err as { response?: { data?: { message?: string } } }).response?.data?.message || "Failed to submit self-rating.";
+      notify(message, "error");
     } finally {
       setSaving(false);
     }

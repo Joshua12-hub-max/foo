@@ -146,7 +146,7 @@ const getZoomAccessToken = async (): Promise<string> => {
 /**
  * Check if Zoom is configured
  */
-export const getZoomStatus = async (req: Request, res: Response): Promise<void> => {
+export const getZoomStatus = async (_req: Request, res: Response): Promise<void> => {
   try {
     const config = validateZoomConfig();
     
@@ -181,7 +181,6 @@ export const getZoomStatus = async (req: Request, res: Response): Promise<void> 
  * Create a Zoom meeting
  */
 export const createZoomMeeting = async (req: Request, res: Response): Promise<void> => {
-  const authReq = req as AuthenticatedRequest;
   const { topic, startTime, duration = 60, applicantName } = req.body as CreateMeetingRequestBody;
 
   if (!topic || !startTime) {

@@ -180,9 +180,12 @@ export default function Login() {
   };
 
   // Helper to extract error message from error object (Axios error usually)
-  const getErrorMessage = (err: unknown) => {
-      const error = err as any; // Cast to access potential axios structure
-      return error?.response?.data?.message || error?.message || "An error occurred";
+  const getErrorMessage = (error: unknown) => {
+      if (error && typeof error === 'object' && 'response' in error) {
+          const axiosError = error as { response?: { data?: { message?: string } } };
+          return axiosError.response?.data?.message || "An error occurred";
+      }
+      return (error as Error)?.message || "An error occurred";
   };
 
   const displayedError = error ? getErrorMessage(loginMutation.error || googleLoginMutation.error) : "";

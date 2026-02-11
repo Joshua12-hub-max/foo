@@ -30,16 +30,10 @@ const EditCreditModal = React.lazy(() => import('@features/LeaveRequests/Modals/
 // Assuming ConfirmDeleteModal is default export in its file or handled via module
 const ConfirmDeleteModal = React.lazy(() => import('@components/Custom/CalendarComponents/shared/Modals').then(module => ({ default: module.ConfirmDeleteModal })));
 
-// ... existing code ...
-
-// Within render, wrap modals in Suspense
-// ...
-// This tool call only replaces the IMPORTS. I need another one for the JSX wrapping if I can't do it all at once comfortably or if the file is too big.
-// Actually, let's just do imports first.
 
 // API
-import { fetchDepartments } from '@api/departmentApi';
-import { fetchEmployees } from '@api/employeeApi';
+// API
+import { useFilterOptions } from '@/hooks/useFilterOptions';
 import { AddCreditInput, CreditUpdateInput } from '@/schemas/creditsSchema';
 
 const AdminLeaveRequest = () => {
@@ -61,33 +55,11 @@ const AdminLeaveRequest = () => {
   const [editCredit, setEditCredit] = useState<{isOpen: boolean, data: any}>({ isOpen: false, data: null });
   const [deleteCredit, setDeleteCredit] = useState<{isOpen: boolean, data: any}>({ isOpen: false, data: null });
 
-  // Filter Data State
-  const [departmentOptions, setDepartmentOptions] = useState<string[]>([]);
-  const [employeeOptions, setEmployeeOptions] = useState<string[]>([]);
+  // Fetch Filter Options using Centralized Hook
+  const { data: filterOptions, isLoading: loadingFilters } = useFilterOptions();
+  const departmentOptions = filterOptions.departments;
+  const employeeOptions = filterOptions.employees.map(e => e.name);
 
-  // Fetch Filter Data
-  useEffect(() => {
-    const fetchFilterData = async () => {
-      try {
-        const [deptRes, empRes] = await Promise.all([
-          fetchDepartments(),
-          fetchEmployees()
-        ]);
-        
-        if (deptRes.success && deptRes.departments) {
-          setDepartmentOptions(deptRes.departments.map((d: any) => d.name).sort());
-        }
-
-        if (empRes.success && empRes.employees) {
-          const names = empRes.employees.map((e: any) => `${e.first_name} ${e.last_name}`).sort();
-          setEmployeeOptions(names);
-        }
-      } catch (err) {
-        console.error("Failed to fetch filter options", err);
-      }
-    };
-    fetchFilterData();
-  }, []);
 
   // Custom hooks
   // Note: useAdminLeaveData now manages state internally (page, limit, filters)

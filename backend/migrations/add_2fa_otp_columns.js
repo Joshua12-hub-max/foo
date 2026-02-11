@@ -1,4 +1,4 @@
-import db from '../db/connection.js';
+import db from '../db/index.js';
 
 const runMigration = async () => {
   try {

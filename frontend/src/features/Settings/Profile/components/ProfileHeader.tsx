@@ -29,9 +29,9 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
           !hideEdit && (
             <button
               onClick={() => setIsEditing(true)}
-              className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-xl text-sm font-semibold transition-all flex items-center gap-2"
+              className="bg-white hover:bg-gray-50 text-gray-900 border border-gray-300 px-5 py-2.5 rounded-lg flex items-center gap-2 shadow-sm transition-all active:scale-95 text-sm font-bold"
             >
-              <SquarePen size={16} />
+              <SquarePen size={18} />
               Edit Profile
             </button>
           )
@@ -39,7 +39,7 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
           <>
             <button
               onClick={handleCancel}
-              className="px-4 py-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl text-sm font-semibold transition-all"
+              className="px-4 py-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 rounded-lg text-sm font-bold shadow-sm transition-all"
             >
               Cancel
             </button>

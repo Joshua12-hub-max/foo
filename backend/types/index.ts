@@ -128,16 +128,15 @@ export interface UserRow extends BaseRow {
 export type UserRole = 'admin' | 'hr' | 'employee';
 
 export type EmploymentStatus = 
-  | 'regular'
-  | 'probationary'
-  | 'contractual'
-  | 'casual'
-  | 'job_order'
-  | 'consultant'
+  | 'Active'
+  | 'Probationary'
   | 'Terminated'
-  | 'Suspended'
   | 'Resigned'
-  | 'Active';
+  | 'On Leave'
+  | 'Suspended'
+  | 'Verbal Warning'
+  | 'Written Warning'
+  | 'Show Cause';
 
 export type LeaveType =
   | 'vacation'
@@ -171,22 +170,111 @@ export type AttendanceStatus =
   | 'on_leave'
   | 'holiday';
 
-export type MemoType = 'general' | 'disciplinary' | 'commendation' | 'policy';
+export type MemoType = 
+  | 'Verbal Warning'
+  | 'Written Warning'
+  | 'Suspension Notice'
+  | 'Termination Notice'
+  | 'Show Cause';
 
-export type MemoStatus = 'draft' | 'published' | 'archived';
+export type MemoStatus = 
+  | 'Draft'
+  | 'Sent'
+  | 'Acknowledged'
+  | 'Archived';
 
-export type ApplicantStatus =
-  | 'new'
-  | 'screening'
-  | 'interview'
-  | 'evaluation'
-  | 'reference'
-  | 'offer'
-  | 'hired'
-  | 'rejected'
-  | 'withdrawn';
+export type MemoPriority = 
+  | 'Low'
+  | 'Normal'
+  | 'High'
+  | 'Urgent';
+
+export type Gender = 'Male' | 'Female';
+
+export type CivilStatus = 
+  | 'Single'
+  | 'Married'
+  | 'Widowed'
+  | 'Separated'
+  | 'Annulled';
+
+export type AppointmentType = 
+  | 'Permanent'
+  | 'Contractual'
+  | 'Casual'
+  | 'Job Order'
+  | 'Coterminous'
+  | 'Temporary';
+
+export type CitizenshipType = 'By Birth' | 'By Naturalization';
+
+
 
 export type PerformanceRatingScale = 1 | 2 | 3 | 4 | 5;
+
+export type EmploymentType = 
+  | 'Full-time'
+  | 'Part-time'
+  | 'Contractual'
+  | 'Job Order'
+  | 'Coterminous'
+  | 'Temporary'
+  | 'Probationary'
+  | 'Casual'
+  | 'Permanent';
+
+export type JobStatus = 
+  | 'Open'
+  | 'Closed'
+  | 'On Hold';
+
+export type ApplicantStage = 
+  | 'Applied'
+  | 'Screening'
+  | 'Initial Interview'
+  | 'Final Interview'
+  | 'Offer'
+  | 'Hired'
+  | 'Rejected';
+
+export type ApplicantStatus = 
+  | 'Applied'
+  | 'Screening'
+  | 'Interview'
+  | 'Offer'
+  | 'Hired'
+  | 'Rejected';
+
+export type ApplicantSource = 'web' | 'email';
+
+export type InterviewPlatform = 'Google Meet' | 'Zoom' | 'Other';
+
+export type ReviewCycleStatus = 
+  | 'Draft'
+  | 'Active'
+  | 'Completed'
+  | 'Archived';
+
+export type RatingPeriod = 
+  | '1st_sem'
+  | '2nd_sem'
+  | 'annual';
+
+export type ReviewStatus = 
+  | 'Draft'
+  | 'Self-Rated'
+  | 'Submitted'
+  | 'Acknowledged'
+  | 'Approved'
+  | 'Finalized';
+
+export type SelfRatingStatus = 
+  | 'pending'
+  | 'submitted';
+
+export type EvaluationMode = 
+  | 'CSC'
+  | 'IPCR';
 
 // ============================================================================
 // Request Body Types
@@ -322,3 +410,9 @@ export type PartialBy<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
  * Make specific properties required
  */
 export type RequiredBy<T, K extends keyof T> = T & Required<Pick<T, K>>;
+
+export type PerformanceCriteriaType = 
+  | 'core_function'
+  | 'support_function'
+  | 'core_competency'
+  | 'organizational_competency';

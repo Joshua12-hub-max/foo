@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Clock, LogIn, LogOut, CheckCircle } from 'lucide-react';
 import { attendanceApi } from '../../../api/attendanceApi';
 import { useAuth } from '../../../hooks/useAuth';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 interface ClockInWidgetProps {
   onStatusChange?: () => void;
@@ -14,62 +15,53 @@ interface Times {
 
 const ClockInWidget = ({ onStatusChange }: ClockInWidgetProps) => {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [status, setStatus] = useState<'loading' | 'in' | 'out' | 'completed'>('loading');
-  const [times, setTimes] = useState<Times>({ in: null, out: null });
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  useEffect(() => {
-    const fetchStatus = async () => {
-      if (!user) return;
-      try {
-        const response = await attendanceApi.getTodayStatus(user.id.toString());
-        if (response.data?.success) {
-          const { timeIn, timeOut } = response.data.data;
-          setTimes({ in: timeIn, out: timeOut });
-          if (timeIn && timeOut) setStatus('completed');
-          else if (timeIn) setStatus('in');
-          else setStatus('out');
-        }
-      } catch (err) {
-        console.error("Error fetching today's status:", err);
-        setError('Failed to load status');
-      }
-    };
-    fetchStatus();
-  }, [user]);
+  const { data: statusData, isLoading: isStatusLoading } = useQuery({
+    queryKey: ['todayStatus', user?.id],
+    queryFn: async () => {
+      if (!user) return null;
+      const response = await attendanceApi.getTodayStatus(user.id.toString());
+      return response.data;
+    },
+    enabled: !!user,
+  });
 
-  const handleClockAction = async (action: 'in' | 'out') => {
-    setIsLoading(true);
-    setError(null);
-    try {
+  const clockMutation = useMutation({
+    mutationFn: async (action: 'in' | 'out') => {
       const response = action === 'in' 
         ? await attendanceApi.clockIn() 
         : await attendanceApi.clockOut();
-      
-      if (response.data?.success) {
-        setStatus(action === 'in' ? 'in' : 'completed');
-        if (action === 'in') {
-          setTimes(prev => ({ ...prev, in: response.data.data.timeIn }));
-        } else {
-          setTimes(prev => ({ ...prev, out: response.data.data.timeOut }));
-        }
+      return response.data;
+    },
+    onSuccess: (data) => {
+      if (data?.success) {
+        queryClient.invalidateQueries({ queryKey: ['todayStatus'] });
         onStatusChange?.();
-      } else {
-        setError(response.data.message || 'Action failed');
       }
-    } catch (err) {
-      console.error(`Error clocking ${action}:`, err);
-      setError(`Failed to clock ${action}`);
-    } finally {
-      setIsLoading(false);
     }
+  });
+
+  const times = useMemo(() => ({
+    in: statusData?.data?.timeIn || null,
+    out: statusData?.data?.timeOut || null
+  }), [statusData]);
+
+  const status = useMemo(() => {
+    if (isStatusLoading) return 'loading';
+    if (times.in && times.out) return 'completed';
+    if (times.in) return 'in';
+    return 'out';
+  }, [isStatusLoading, times]);
+
+  const handleClockAction = (action: 'in' | 'out') => {
+    clockMutation.mutate(action);
   };
 
   const formatTime = (dateString: string | null) => {
@@ -96,7 +88,7 @@ const ClockInWidget = ({ onStatusChange }: ClockInWidgetProps) => {
           <span>In: <span className="font-semibold text-gray-800">{formatTime(times.in)}</span></span>
           <span>Out: <span className="font-semibold text-gray-800">{formatTime(times.out)}</span></span>
         </div>
-        {error && <p className="text-red-500 text-xs">{error}</p>}
+        {clockMutation.isError && <p className="text-red-500 text-xs">Error performing action</p>}
       </div>
 
       <div>
@@ -105,20 +97,20 @@ const ClockInWidget = ({ onStatusChange }: ClockInWidgetProps) => {
         ) : status === 'out' ? (
           <button
             onClick={() => handleClockAction('in')}
-            disabled={isLoading}
+            disabled={clockMutation.isPending}
             className="flex items-center gap-1.5 bg-gray-900 hover:bg-gray-800 text-white px-4 py-2 rounded-lg text-sm font-semibold disabled:opacity-50 transition-all"
           >
             <LogIn className="w-4 h-4" />
-            {isLoading ? '...' : 'Time In'}
+            {clockMutation.isPending ? '...' : 'Time In'}
           </button>
         ) : status === 'in' ? (
           <button
             onClick={() => handleClockAction('out')}
-            disabled={isLoading}
+            disabled={clockMutation.isPending}
             className="flex items-center gap-1.5 bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-semibold disabled:opacity-50 transition-all"
           >
             <LogOut className="w-4 h-4" />
-            {isLoading ? '...' : 'Time Out'}
+            {clockMutation.isPending ? '...' : 'Time Out'}
           </button>
         ) : (
           <div className="flex items-center gap-1.5 bg-green-100 text-green-700 px-3 py-2 rounded-lg text-sm font-semibold">

@@ -1,27 +1,10 @@
 import { Request, Response } from 'express';
-import db from '../db/connection.js';
-import type { RowDataPacket } from 'mysql2/promise';
-import { GetDTRSchema, UpdateDTRSchema } from '../schemas/dtrSchema.js';
-
-// ============================================================================
-// Interfaces
-// ============================================================================
-
-interface DTRRow extends RowDataPacket {
-  id: number;
-  employee_id: string;
-  date: Date;
-  time_in?: Date;
-  time_out?: Date;
-  late_minutes: number;
-  undertime_minutes: number;
-  status: string;
-  created_at: Date;
-  updated_at: Date;
-  first_name?: string;
-  last_name?: string;
-  department?: string;
-}
+import { ResultSetHeader } from 'mysql2';
+import { db } from '../db/index.js';
+import { dailyTimeRecords, authentication, dtrCorrections } from '../db/schema.js';
+import { eq, and, desc, gte, lte, count } from 'drizzle-orm';
+import { GetDTRSchema, UpdateDTRSchema, RequestCorrectionSchema } from '../schemas/dtrSchema.js';
+import { AuthenticatedRequest } from '../types/index.js';
 
 // ============================================================================
 // Controllers
@@ -44,61 +27,53 @@ export const getAllRecords = async (req: Request, res: Response): Promise<void> 
     const offset = (page - 1) * limit;
 
     try {
-        let queryStr = `
-            SELECT dtr.*, 
-                   auth.first_name, 
-                   auth.last_name, 
-                   auth.department 
-            FROM daily_time_records dtr
-            LEFT JOIN authentication auth ON dtr.employee_id = auth.employee_id
-            WHERE 1=1
-        `;
-        const queryParams: any[] = [];
+        const conditions = [];
 
         // 2. Dynamic Filtering
         if (employeeId) {
-            queryStr += ' AND dtr.employee_id = ?';
-            queryParams.push(employeeId);
+            conditions.push(eq(dailyTimeRecords.employeeId, employeeId));
         }
 
         if (startDate && endDate) {
-            queryStr += ' AND dtr.date BETWEEN ? AND ?';
-            queryParams.push(startDate, endDate);
+            conditions.push(and(
+                gte(dailyTimeRecords.date, startDate),
+                lte(dailyTimeRecords.date, endDate)
+            ));
         } else if (startDate) {
-            queryStr += ' AND dtr.date >= ?';
-            queryParams.push(startDate);
+            conditions.push(gte(dailyTimeRecords.date, startDate));
         } else if (endDate) {
-            queryStr += ' AND dtr.date <= ?';
-            queryParams.push(endDate);
+            conditions.push(lte(dailyTimeRecords.date, endDate));
         }
 
-        // 3. Sorting and Pagination
-        queryStr += ' ORDER BY dtr.date DESC, dtr.time_in DESC LIMIT ? OFFSET ?';
-        queryParams.push(limit, offset);
+        // 3. Main Query
+        const records = await db.select({
+            id: dailyTimeRecords.id,
+            employee_id: dailyTimeRecords.employeeId,
+            date: dailyTimeRecords.date,
+            time_in: dailyTimeRecords.timeIn,
+            time_out: dailyTimeRecords.timeOut,
+            late_minutes: dailyTimeRecords.lateMinutes,
+            undertime_minutes: dailyTimeRecords.undertimeMinutes,
+            status: dailyTimeRecords.status,
+            created_at: dailyTimeRecords.createdAt,
+            updated_at: dailyTimeRecords.updatedAt,
+            first_name: authentication.firstName,
+            last_name: authentication.lastName,
+            department: authentication.department
+        })
+        .from(dailyTimeRecords)
+        .leftJoin(authentication, eq(dailyTimeRecords.employeeId, authentication.employeeId))
+        .where(conditions.length > 0 ? and(...conditions) : undefined)
+        .orderBy(desc(dailyTimeRecords.date), desc(dailyTimeRecords.timeIn))
+        .limit(limit)
+        .offset(offset);
 
-        // 4. Count Total for Pagination
-        let countQueryStr = 'SELECT COUNT(*) as total FROM daily_time_records dtr WHERE 1=1';
-        const countParams: any[] = [];
-
-        if (employeeId) {
-            countQueryStr += ' AND dtr.employee_id = ?';
-            countParams.push(employeeId);
-        }
-
-        if (startDate && endDate) {
-            countQueryStr += ' AND dtr.date BETWEEN ? AND ?';
-            countParams.push(startDate, endDate);
-        } else if (startDate) {
-            countQueryStr += ' AND dtr.date >= ?';
-            countParams.push(startDate);
-        } else if (endDate) {
-            countQueryStr += ' AND dtr.date <= ?';
-            countParams.push(endDate);
-        }
-
-        const [records] = await db.query<DTRRow[]>(queryStr, queryParams);
-        const [countResult] = await db.query<RowDataPacket[]>(countQueryStr, countParams);
-        const total = countResult[0].total;
+        // 4. Count Total
+        const [countResult] = await db.select({ total: count() })
+            .from(dailyTimeRecords)
+            .where(conditions.length > 0 ? and(...conditions) : undefined);
+            
+        const total = countResult.total;
 
         res.status(200).json({
             success: true,
@@ -133,20 +108,29 @@ export const updateRecord = async (req: Request, res: Response): Promise<void> =
   const { time_in, time_out, status, late_minutes, undertime_minutes } = validation.data.body;
 
   try {
-    const [result] = await db.query(
-      `UPDATE daily_time_records 
-       SET time_in = ?, 
-           time_out = ?, 
-           status = ?, 
-           late_minutes = ?, 
-           undertime_minutes = ?, 
-           updated_at = NOW() 
-       WHERE id = ?`,
-      [time_in, time_out, status, late_minutes, undertime_minutes, id]
-    );
+    const result = await db.update(dailyTimeRecords)
+      .set({
+        timeIn: time_in,
+        timeOut: time_out,
+        status,
+        lateMinutes: late_minutes,
+        undertimeMinutes: undertime_minutes,
+        updatedAt: new Date().toISOString()
+      })
+      .where(eq(dailyTimeRecords.id, Number(id)));
 
-    // Check if any row was affected
-    if ((result as any).affectedRows === 0) {
+    // Drizzle doesn't return affectedRows directly in all drivers like mysql2, 
+    // but the promise resolution implies success. 
+    // For strict "not found" checks, we can check result[0].affectedRows if using mysql driver directly, 
+    // or fetch first. But update returns a ResultSetHeader in mysql2 driver used by Drizzle.
+    
+    // Type assertion for MySQL driver result structure if needed, or just assume success if no error.
+    // result is [ResultSetHeader, FieldPacket[]] in mysql2 driver for execute, but Drizzle abstracts it.
+    // Drizzle's MySqlUpdate result is [ResultSetHeader].
+    
+    const updateResult = result[0] as unknown as ResultSetHeader;
+    
+    if (updateResult.affectedRows === 0) {
         res.status(404).json({ success: false, message: 'Record not found.' });
         return;
     }
@@ -155,5 +139,48 @@ export const updateRecord = async (req: Request, res: Response): Promise<void> =
   } catch (err) {
     console.error('Update DTR record error:', err);
     res.status(500).json({ success: false, message: 'Failed to update record' });
+  }
+};
+
+export const requestCorrection = async (req: Request, res: Response): Promise<void> => {
+  const authReq = req as AuthenticatedRequest;
+  const employeeId = authReq.user.employeeId;
+
+  if (!employeeId) {
+    res.status(401).json({ success: false, message: 'Unauthorized. Missing Employee ID.' });
+    return;
+  }
+
+  const validation = RequestCorrectionSchema.safeParse(req);
+  if (!validation.success) {
+    res.status(400).json({ 
+      success: false, 
+      message: 'Validation Error', 
+      errors: validation.error.format() 
+    });
+    return;
+  }
+
+  const { date, originalTimeIn, originalTimeOut, correctedTimeIn, correctedTimeOut, reason } = validation.data.body;
+
+  try {
+    await db.insert(dtrCorrections).values({
+      employeeId,
+      dateTime: date,
+      originalTimeIn,
+      originalTimeOut,
+      correctedTimeIn,
+      correctedTimeOut,
+      reason,
+      status: 'Pending'
+    });
+
+    res.status(201).json({ 
+      success: true, 
+      message: 'Correction request submitted successfully. Waiting for Admin approval.' 
+    });
+  } catch (err) {
+    console.error('Request DTR correction error:', err);
+    res.status(500).json({ success: false, message: 'Failed to submit correction request' });
   }
 };

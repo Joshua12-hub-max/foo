@@ -7,14 +7,14 @@ import { toast } from 'react-hot-toast';
 export const qualificationStandardsKeys = {
   all: ['qualification-standards'] as const,
   lists: () => [...qualificationStandardsKeys.all, 'list'] as const,
-  list: (filters: any) => [...qualificationStandardsKeys.lists(), filters] as const,
+  list: (filters: Record<string, unknown>) => [...qualificationStandardsKeys.lists(), filters] as const,
   details: () => [...qualificationStandardsKeys.all, 'detail'] as const,
   detail: (id: number) => [...qualificationStandardsKeys.details(), id] as const,
 };
 
 // ==================== QUERIES ====================
 
-export const useQualificationStandards = (params?: { position_title?: string; salary_grade?: number; is_active?: boolean }) => {
+export const useQualificationStandards = (params?: { positionTitle?: string; salaryGrade?: number; isActive?: boolean }) => {
   return useQuery({
     queryKey: qualificationStandardsKeys.list(params || {}),
     queryFn: async () => {
@@ -37,8 +37,8 @@ export const useQualificationStandard = (id: number) => {
 
 export const useValidateQualifications = () => {
   return useMutation({
-    mutationFn: async ({ employee_id, position_id }: { employee_id: number; position_id: number }) => {
-      const response = await qualificationStandardsApi.validate(employee_id, position_id);
+    mutationFn: async ({ employeeId, positionId }: { employeeId: number; positionId: number }) => {
+      const response = await qualificationStandardsApi.validate(employeeId, positionId);
       return response.data;
     },
   });
@@ -58,8 +58,9 @@ export const useCreateQualificationStandard = () => {
       queryClient.invalidateQueries({ queryKey: qualificationStandardsKeys.lists() });
       toast.success('Qualification standard created successfully');
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to create qualification standard');
+    onError: (error: unknown) => {
+      const message = (error as { response?: { data?: { message?: string } } }).response?.data?.message || 'Failed to create qualification standard';
+      toast.error(message);
     },
   });
 };
@@ -77,8 +78,9 @@ export const useUpdateQualificationStandard = () => {
       queryClient.invalidateQueries({ queryKey: qualificationStandardsKeys.detail(variables.id) });
       toast.success('Qualification standard updated successfully');
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to update qualification standard');
+    onError: (error: unknown) => {
+      const message = (error as { response?: { data?: { message?: string } } }).response?.data?.message || 'Failed to update qualification standard';
+      toast.error(message);
     },
   });
 };
@@ -95,8 +97,9 @@ export const useDeleteQualificationStandard = () => {
       queryClient.invalidateQueries({ queryKey: qualificationStandardsKeys.lists() });
       toast.success('Qualification standard deleted successfully');
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to delete qualification standard');
+    onError: (error: unknown) => {
+      const message = (error as { response?: { data?: { message?: string } } }).response?.data?.message || 'Failed to delete qualification standard';
+      toast.error(message);
     },
   });
 };

@@ -1,22 +1,10 @@
 import { Request, Response } from 'express';
-import db from '../db/connection.js';
+import { db } from '../db/index.js';
+import { schedules, authentication } from '../db/schema.js';
+import { eq, sql } from 'drizzle-orm';
 import { scheduleSchema, updateScheduleSchema } from '../schemas/scheduleSchema.js';
-import type { RowDataPacket, ResultSetHeader } from 'mysql2/promise';
 import type { AuthenticatedRequest } from '../types/index.js';
 import { createNotification } from './notificationController.js';
-
-interface ScheduleRow extends RowDataPacket {
-  id: number;
-  employee_id: string;
-  day_of_week: string;
-  start_time: string;
-  end_time: string;
-  is_rest_day: boolean;
-  // Metadata for Calendar display
-  first_name?: string;
-  last_name?: string;
-  department?: string;
-}
 
 const DAYS_OF_WEEK = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -59,20 +47,24 @@ const convertTo24Hour = (time12h: string): string => {
   }
 };
 
-export const getSchedules = async (req: Request, res: Response) => {
+export const getSchedules = async (_req: Request, res: Response) => {
   try {
-    const [schedules] = await db.query<ScheduleRow[]>(`
-      SELECT 
-        s.*, 
-        a.first_name, 
-        a.last_name, 
-        CONCAT(a.first_name, ' ', a.last_name) as employee_name,
-        a.department 
-      FROM schedules s
-      LEFT JOIN authentication a ON s.employee_id = a.employee_id
-    `);
+    const result = await db.select({
+      id: schedules.id,
+      employee_id: schedules.employeeId,
+      day_of_week: schedules.dayOfWeek,
+      start_time: schedules.startTime,
+      end_time: schedules.endTime,
+      is_rest_day: schedules.isRestDay,
+      first_name: authentication.firstName,
+      last_name: authentication.lastName,
+      employee_name: sql<string>`CONCAT(${authentication.firstName}, ' ', ${authentication.lastName})`,
+      department: authentication.department
+    })
+    .from(schedules)
+    .leftJoin(authentication, eq(schedules.employeeId, authentication.employeeId));
     
-    res.json({ schedules });
+    res.json({ schedules: result });
   } catch (error) {
     console.error('Get Schedules Error:', error);
     res.status(500).json({ message: 'Failed to fetch schedules' });
@@ -94,7 +86,7 @@ export const createSchedule = async (req: Request, res: Response): Promise<void>
       return;
     }
 
-    const { employee_id, start_date, end_date, start_time, end_time, repeat, is_rest_day, title } = validation.data;
+    const { employee_id, start_date, start_time, end_time, repeat, is_rest_day, title } = validation.data;
     
     const daysToSet = [];
     
@@ -112,18 +104,22 @@ export const createSchedule = async (req: Request, res: Response): Promise<void>
 
     const queries = daysToSet.map(day => {
       // Convert 12-hour format to 24-hour format for MySQL TIME column
-      const startTime24 = convertTo24Hour(start_time);
-      const endTime24 = convertTo24Hour(end_time);
+      const startTime24 = convertTo24Hour(start_time || '');
+      const endTime24 = convertTo24Hour(end_time || '');
       
-      return db.query(
-        `INSERT INTO schedules (employee_id, day_of_week, start_time, end_time, is_rest_day)
-         VALUES (?, ?, ?, ?, ?)
-         ON DUPLICATE KEY UPDATE 
-         start_time = VALUES(start_time),
-         end_time = VALUES(end_time),
-         is_rest_day = VALUES(is_rest_day)`,
-         [employee_id, day, startTime24, endTime24, is_rest_day || false]
-      );
+      return db.insert(schedules).values({
+        employeeId: employee_id,
+        dayOfWeek: day,
+        startTime: startTime24,
+        endTime: endTime24,
+        isRestDay: is_rest_day ? 1 : 0
+      }).onDuplicateKeyUpdate({
+        set: {
+          startTime: startTime24,
+          endTime: endTime24,
+          isRestDay: is_rest_day ? 1 : 0
+        }
+      });
     });
 
     await Promise.all(queries);
@@ -160,11 +156,12 @@ export const updateSchedule = async (req: Request, res: Response): Promise<void>
         }
     
         const { start_time, end_time } = validation.data;
+        const startTime24 = convertTo24Hour(start_time || '');
+        const endTime24 = convertTo24Hour(end_time || '');
         
-        await db.query(
-            'UPDATE schedules SET start_time = ?, end_time = ? WHERE id = ?',
-            [start_time, end_time, id]
-        );
+        await db.update(schedules)
+            .set({ startTime: startTime24, endTime: endTime24 })
+            .where(eq(schedules.id, Number(id)));
 
         res.json({ message: 'Schedule updated successfully' });
     } catch (error) {
@@ -176,7 +173,7 @@ export const updateSchedule = async (req: Request, res: Response): Promise<void>
 export const deleteSchedule = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
-        await db.query('DELETE FROM schedules WHERE id = ?', [id]);
+        await db.delete(schedules).where(eq(schedules.id, Number(id)));
         res.json({ message: 'Schedule deleted successfully' });
     } catch (error) {
         console.error('Delete Schedule Error:', error);

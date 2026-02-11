@@ -1,5 +1,5 @@
 import React from 'react';
-import { ExternalLink, SquarePen, Trash2 } from 'lucide-react';
+import { SquarePen, Trash2 } from 'lucide-react';
 import TableSkeleton from '@components/Custom/Shared/TableSkeleton';
 import { Job } from '@/types';
 

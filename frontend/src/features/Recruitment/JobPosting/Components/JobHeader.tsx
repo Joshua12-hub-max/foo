@@ -37,7 +37,7 @@ const JobHeader: React.FC<JobHeaderProps> = ({
 
         <button 
           onClick={onCreateJob}
-          className="bg-gray-200 text-gray-800 border border-gray-200 font-medium px-4 py-2 rounded-lg text-sm shadow-md hover:bg-gray-300 transition-all flex items-center gap-2"
+          className="bg-white hover:bg-gray-50 text-gray-900 border border-gray-300 px-5 py-2.5 rounded-lg flex items-center gap-2 shadow-sm transition-all active:scale-95 text-sm font-bold"
         >
           <Plus size={18} /> Create a Job
         </button>

@@ -34,7 +34,10 @@ const PlantillaFormModal: React.FC<PlantillaFormModalProps> = ({
       monthly_salary: 0,
       department_id: 0, 
       department: '',
-      is_vacant: true
+      is_vacant: true,
+      area_code: '',
+      area_type: 'M',
+      area_level: 'S'
     }
   });
 
@@ -55,7 +58,10 @@ const PlantillaFormModal: React.FC<PlantillaFormModalProps> = ({
           monthly_salary: Number(position.monthly_salary),
           department_id: position.department_id ? Number(position.department_id) : 0,
           department: position.department || '',
-          is_vacant: Boolean(position.is_vacant)
+          is_vacant: Boolean(position.is_vacant),
+          area_code: position.area_code || '',
+          area_type: position.area_type || 'M',
+          area_level: position.area_level || 'S'
         });
       } else {
         // Strict reset for create mode
@@ -67,7 +73,10 @@ const PlantillaFormModal: React.FC<PlantillaFormModalProps> = ({
            monthly_salary: 0,
            department_id: 0,
            department: '',
-           is_vacant: true
+           is_vacant: true,
+           area_code: '',
+           area_type: 'M',
+           area_level: 'S'
         });
       }
     }
@@ -207,7 +216,48 @@ const PlantillaFormModal: React.FC<PlantillaFormModalProps> = ({
                 ))}
               </select>
                {errors.department_id && <p className="text-xs text-red-500 mt-1">{errors.department_id.message}</p>}
-            </div>
+             </div>
+
+            <div className="pt-4 border-t border-gray-100">
+               <h3 className="text-xs font-bold text-gray-900 mb-3 uppercase tracking-wider">Area Classification (CSC Compliance)</h3>
+               <div className="grid grid-cols-3 gap-4">
+                 <div>
+                   <label className="block text-xs font-bold text-gray-700 mb-1">Area Code</label>
+                   <input 
+                     type="text"
+                     {...register('area_code')}
+                     className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all"
+                     placeholder="e.g. REG-01"
+                   />
+                 </div>
+                 <div>
+                   <label className="block text-xs font-bold text-gray-700 mb-1">Area Type</label>
+                   <select 
+                     {...register('area_type')}
+                     className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all"
+                   >
+                     <option value="R">Region</option>
+                     <option value="P">Province</option>
+                     <option value="D">District</option>
+                     <option value="M">Municipality</option>
+                     <option value="F">Foreign Post</option>
+                     <option value="B">Bureau</option>
+                   </select>
+                 </div>
+                 <div>
+                   <label className="block text-xs font-bold text-gray-700 mb-1">Level</label>
+                   <select 
+                     {...register('area_level')}
+                     className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all"
+                   >
+                     <option value="K">Key</option>
+                     <option value="T">Technical</option>
+                     <option value="S">Support</option>
+                     <option value="A">Administrative</option>
+                   </select>
+                 </div>
+               </div>
+             </div>
           </div>
 
           {/* Footer */}

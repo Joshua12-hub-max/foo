@@ -19,8 +19,9 @@ export const useStartEnrollment = () => {
         onSuccess: (data) => {
             showToast(data.data.message || 'Enrollment started. Check device.', 'success');
         },
-        onError: (error: any) => {
-            showToast(error.response?.data?.message || 'Failed to start enrollment', 'error');
+        onError: (error: unknown) => {
+            const message = (error as { response?: { data?: { message?: string } } }).response?.data?.message || 'Failed to start enrollment';
+            showToast(message, 'error');
         }
     });
 };

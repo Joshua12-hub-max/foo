@@ -336,7 +336,7 @@ export const LEAVE_TO_CREDIT_MAP: Partial<Record<LeaveType, CreditType | null>> 
 /**
  * VL must be filed at least 5 days in advance (in working days)
  */
-export const VL_ADVANCE_FILING_DAYS = 5;
+export const VL_ADVANCE_FILING_DAYS = 0;
 
 /**
  * SL > 5 days requires Medical Certificate

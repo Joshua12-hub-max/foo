@@ -7,6 +7,7 @@ const EMPLOYEE_TABLE_HEADERS = [
   { key: 'employee', label: 'Employee', align: 'left' },
   { key: 'email', label: 'Email', align: 'left' },
   { key: 'department', label: 'Department', align: 'left' },
+  { key: 'salary_grade', label: 'SG', align: 'center' },
   { key: 'position', label: 'Position', align: 'left' },
   { key: 'status', label: 'Status', align: 'left' },
   { key: 'actions', label: 'Actions', align: 'right' }
@@ -21,6 +22,8 @@ interface Employee {
   department?: string;
   position_title?: string;
   job_title?: string;
+  job_title?: string;
+  salary_grade?: number;
   employment_status?: string;
   avatar_url?: string;
 }
@@ -111,6 +114,13 @@ const EmployeeTable: React.FC<EmployeeGridProps> = ({
                   {/* Department */}
                   <td className="px-6 py-4">
                     <span className="text-sm text-gray-700 font-medium">{employee.department || <span className="text-gray-400 italic">Not Assigned</span>}</span>
+                  </td>
+
+                  {/* Salary Grade */}
+                  <td className="px-6 py-4 text-center">
+                    <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                      {employee.salary_grade ? `SG ${employee.salary_grade}` : <span className="text-gray-400 italic">-</span>}
+                    </span>
                   </td>
 
                   {/* Position */}

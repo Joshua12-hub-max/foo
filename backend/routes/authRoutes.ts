@@ -16,7 +16,7 @@ import {
   disableTwoFactor,
   verifyTwoFactorOTP,
   resendTwoFactorOTP
-} from '../controllers/authController.js';
+} from '../controllers/auth.controller.js';
 import { verifyToken, verifyAdmin, restrictSuspended } from '../middleware/authMiddleware.js';
 import { uploadAvatar } from '../middleware/uploadMiddleware.js';
 import { authLimiter } from '../middleware/rateLimitMiddleware.js';

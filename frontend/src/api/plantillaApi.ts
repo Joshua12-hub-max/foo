@@ -17,6 +17,16 @@ export interface Position {
   status?: 'Active' | 'Inactive';
   created_at?: string;
   updated_at?: string;
+  area_code?: string;
+  area_type?: 'R' | 'P' | 'D' | 'M' | 'F' | 'B';
+  area_level?: 'K' | 'T' | 'S' | 'A';
+  // Incumbent Details for Form 5
+  birth_date?: string;
+  date_hired?: string;
+  gender?: string;
+  eligibility?: string;
+  original_appointment_date?: string;
+  last_promotion_date?: string;
 }
 
 export interface PlantillaSummary {
@@ -32,6 +42,24 @@ export interface AuditLogParams {
   action?: string;
   date_from?: string;
   date_to?: string;
+}
+
+export interface CreateTrancheParams {
+  name: string;
+  tranche_number: number;
+  circular_number: string;
+  effective_date: string;
+}
+
+export interface Tranche {
+  id: number;
+  tranche_number: number;
+  name: string;
+  circular_number: string;
+  effective_date: string;
+  date_issued: string;
+  applicable_to: string;
+  is_active: boolean;
 }
 
 export const plantillaApi = {
@@ -145,8 +173,110 @@ export const plantillaApi = {
         } catch (error) {
             throw error;
         }
+    },
+
+    // Get full salary schedule (all grades and steps)
+    getFullSalarySchedule: async (tranche?: number): Promise<AxiosResponse<{ success: boolean; schedule: Array<{ salaryGrade: number; step: number; monthlySalary: number }> }>> => {
+        try {
+            const response = await api.get('/plantilla/salary-schedule', {
+                params: tranche ? { tranche } : {}
+            });
+            return response;
+        } catch (error) {
+            throw error;
+        }
+    },
+
+    // Get all tranches
+    getTranches: async (): Promise<AxiosResponse<{ success: boolean; tranches: Tranche[] }>> => {
+        try {
+            const response = await api.get('/plantilla/tranches');
+            return response;
+        } catch (error) {
+            throw error;
+        }
+    },
+
+    // Get active tranche
+    getActiveTranche: async (): Promise<AxiosResponse<{ success: boolean; tranche: Tranche | null }>> => {
+        try {
+            const response = await api.get('/plantilla/tranches/active');
+            return response;
+        } catch (error) {
+            throw error;
+        }
+    },
+
+    // Set active tranche
+    setActiveTranche: async (id: number): Promise<AxiosResponse> => {
+        try {
+            const response = await api.put(`/plantilla/tranches/${id}/activate`);
+            return response;
+        } catch (error) {
+            throw error;
+        }
+    },
+
+    // Upload salary schedule
+    uploadSalarySchedule: async (data: { tranche: number; salaryData: Array<{ salary_grade: number; step: number; monthly_salary: number }> }): Promise<AxiosResponse> => {
+        try {
+            const response = await api.post('/plantilla/salary-schedule/upload', data);
+            return response;
+        } catch (error) {
+            throw error;
+        }
+    },
+
+    // Get tranche allowances
+    getTrancheAllowances: async (trancheId: number): Promise<AxiosResponse<{ success: boolean; allowances: TrancheAllowance[] }>> => {
+        try {
+            const response = await api.get(`/plantilla/tranches/${trancheId}/allowances`);
+            return response;
+        } catch (error) {
+            throw error;
+        }
+    },
+
+    // Copy allowances from another tranche
+    copyTrancheAllowances: async (targetTrancheId: number, sourceTrancheId: number): Promise<AxiosResponse<{ success: boolean; message: string }>> => {
+        try {
+            const response = await api.post(`/plantilla/tranches/${targetTrancheId}/allowances/copy`, {
+                source_tranche_id: sourceTrancheId
+            });
+            return response;
+        } catch (error) {
+            throw error;
+        }
+    },
+
+    // Update specific allowance
+    updateTrancheAllowance: async (id: number, data: Partial<TrancheAllowance>): Promise<AxiosResponse<{ success: boolean; message: string }>> => {
+        try {
+            const response = await api.put(`/plantilla/tranches/allowances/${id}`, data);
+            return response;
+        } catch (error) {
+            throw error;
+        }
     }
 };
+
+export interface AllowanceRate {
+  id: number;
+  condition_key: string;
+  amount: number;
+  value_type: 'FIXED' | 'PERCENTAGE';
+}
+
+export interface TrancheAllowance {
+  id: number;
+  tranche_id: number;
+  name: string;
+  description?: string;
+  amount?: number;
+  is_matrix: boolean;
+  category: 'Monthly' | 'Annual' | 'Bonus';
+  rates?: AllowanceRate[];
+}
 
 export const {
     getPositions,
@@ -159,5 +289,13 @@ export const {
     getPositionHistory,
     getAuditLog,
     getAvailableEmployees,
-    getSalarySchedule
+    getSalarySchedule,
+    getFullSalarySchedule,
+    getTranches,
+    getActiveTranche,
+    setActiveTranche,
+    uploadSalarySchedule,
+    getTrancheAllowances,
+    copyTrancheAllowances,
+    updateTrancheAllowance
 } = plantillaApi;

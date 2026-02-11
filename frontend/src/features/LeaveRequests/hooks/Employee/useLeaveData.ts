@@ -49,19 +49,20 @@ export const useLeaveData = (initialFilters?: any) => {
       };
       
       const response = await (leaveApi as any).getMyLeaves(params);
+      const rawLeaves = response.data?.leaves || response.data?.applications || [];
       
-      const leaves = (response.data?.leaves || []).map((l: any) => ({
+      const leaves = rawLeaves.map((l: any) => ({
         id: l.id,
-        employee_id: l.employee_id,
-        leaveType: l.leave_type,
-        fromDate: l.start_date,
-        toDate: l.end_date,
+        employee_id: l.employee_id || l.employeeId,
+        leaveType: l.leave_type || l.leaveType,
+        fromDate: l.start_date || l.startDate,
+        toDate: l.end_date || l.endDate,
         reason: l.reason,
         status: l.status,
-        with_pay: l.with_pay,
-        attachment_path: l.attachment_path,
+        with_pay: l.with_pay !== undefined ? l.with_pay : l.isWithPay,
+        attachment_path: l.attachment_path || l.attachmentPath,
         department: l.department || 'N/A',
-        name: `${l.first_name || ''} ${l.last_name || ''}`.trim() || 'N/A'
+        name: `${l.first_name || l.firstName || ''} ${l.last_name || l.lastName || ''}`.trim() || 'N/A'
       }));
 
       return {

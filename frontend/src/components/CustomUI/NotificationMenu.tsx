@@ -52,13 +52,14 @@ const formatTimeAgo = (dateString?: string) => {
 };
 
 interface NotificationItem {
-  notification_id: string | number;
+  notificationId: string | number;
   type: string;
   title: string;
   message: string;
   status: 'read' | 'unread';
-  created_at: string;
-  sender_name?: string;
+  createdAt: string;
+  senderId?: string;
+  referenceId?: number;
 }
 
 export default function NotificationMenu() {
@@ -104,7 +105,7 @@ export default function NotificationMenu() {
     try {
       await notificationApi.markAsRead(id);
       setNotifications(prev => prev.map(n => 
-        n.notification_id === id ? { ...n, status: 'read' } : n
+        n.notificationId === id ? { ...n, status: 'read' } : n
       ));
       setUnreadCount(prev => Math.max(0, prev - 1));
     } catch (err) {
@@ -115,9 +116,9 @@ export default function NotificationMenu() {
   // Delete notification
   const handleDelete = useCallback(async (id: string | number) => {
     try {
-      const notification = notifications.find(n => n.notification_id === id);
+      const notification = notifications.find(n => n.notificationId === id);
       await notificationApi.deleteNotification(id);
-      setNotifications(prev => prev.filter(n => n.notification_id !== id));
+      setNotifications(prev => prev.filter(n => n.notificationId !== id));
       if (notification?.status === 'unread') {
         setUnreadCount(prev => Math.max(0, prev - 1));
       }
@@ -130,7 +131,7 @@ export default function NotificationMenu() {
   const handleMarkAllAsRead = useCallback(async () => {
     try {
       const unreadNotifications = notifications.filter(n => n.status === 'unread');
-      await Promise.all(unreadNotifications.map(n => notificationApi.markAsRead(n.notification_id)));
+      await Promise.all(unreadNotifications.map(n => notificationApi.markAsRead(n.notificationId)));
       setNotifications(prev => prev.map(n => ({ ...n, status: 'read' })));
       setUnreadCount(0);
     } catch (err) {
@@ -243,8 +244,8 @@ export default function NotificationMenu() {
 
                   return (
                     <div
-                      key={notification.notification_id}
-                      onClick={() => isUnread && handleMarkAsRead(notification.notification_id)}
+                      key={notification.notificationId}
+                      onClick={() => isUnread && handleMarkAsRead(notification.notificationId)}
                       className={`group flex items-start gap-3 p-3 hover:bg-gray-50 cursor-pointer transition-colors ${
                         isUnread ? 'bg-blue-50/30' : ''
                       }`}
@@ -258,7 +259,7 @@ export default function NotificationMenu() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <p className={`text-sm truncate ${isUnread ? 'font-semibold text-gray-900' : 'font-medium text-gray-700'}`}>
-                            {notification.sender_name?.trim() || notification.title || 'Notification'}
+                            {notification.title || 'Notification'}
                           </p>
                           {isUnread && (
                             <span className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" />
@@ -274,16 +275,13 @@ export default function NotificationMenu() {
                             <span className="px-1.5 py-0.5 text-[10px] font-medium bg-red-100 text-red-700 rounded">Rejected</span>
                           )}
                         </div>
-                        {notification.sender_name?.trim() && (
+                        {notification.senderId && (
                           <p className="text-xs text-gray-600 truncate mt-0.5">
-                            {notification.title}
+                            {notification.message}
                           </p>
                         )}
-                        <p className="text-xs text-gray-500 truncate">
-                          {notification.message || 'No details'}
-                        </p>
                         <p className="text-[10px] text-gray-400 mt-1">
-                          {formatTimeAgo(notification.created_at)}
+                          {formatTimeAgo(notification.createdAt)}
                         </p>
                       </div>
 
@@ -291,7 +289,7 @@ export default function NotificationMenu() {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleDelete(notification.notification_id);
+                          handleDelete(notification.notificationId);
                         }}
                         className="opacity-0 group-hover:opacity-100 p-1 hover:bg-gray-200 rounded transition-all"
                         title="Delete"

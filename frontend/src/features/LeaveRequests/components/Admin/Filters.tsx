@@ -44,7 +44,7 @@ const Filters: React.FC<FiltersProps> = ({
             className="w-full bg-[#F8F9FA] border border-gray-200 rounded-lg shadow-sm px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200 focus:border-gray-200 hover:border-gray-200 transition-all appearance-none cursor-pointer"
           >
             <option value="">Employee</option>
-            {uniqueEmployees.map((emp) => (
+            {Array.from(new Set(uniqueEmployees)).map((emp) => (
               <option key={emp} value={emp}>
                 {emp}
               </option>

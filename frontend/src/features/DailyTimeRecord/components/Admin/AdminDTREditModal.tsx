@@ -97,22 +97,28 @@ export const AdminDTREditModal: React.FC<AdminDTREditModalProps> = ({
   if (!isOpen || !record) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 transition-all" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 transition-all duration-300" onClick={onClose}>
       <div 
-        className="bg-white rounded-xl shadow-2xl w-full max-w-md border border-gray-100 overflow-hidden animate-in fade-in zoom-in duration-200"
+        className="bg-white/95 backdrop-blur-md rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] w-full max-w-md border border-white/20 overflow-hidden animate-in fade-in zoom-in duration-300"
         onClick={(e) => e.stopPropagation()}
       >
         
         {/* Header */}
-        <div className="flex justify-between items-center px-6 py-5 bg-white">
-          <h3 className="text-xl font-bold text-gray-900">Correct Time Record</h3>
-          <button 
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
-          >
-            <X size={20} />
-          </button>
-        </div>
+        <div className="flex items-center justify-between px-6 py-4 shrink-0 border-b border-gray-100">
+            <div className="flex items-center gap-2">
+              <div className="bg-slate-50 p-2 rounded-lg">
+                <Clock className="w-5 h-5 text-slate-600" />
+              </div>
+              <h2 className="text-xl font-bold text-gray-900">Correct Time Record</h2>
+            </div>
+            <button 
+              type="button"
+              onClick={onClose} 
+              className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-full hover:bg-gray-100"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
 
         {/* Body */}
         <form onSubmit={handleSubmit(onSubmit)}>

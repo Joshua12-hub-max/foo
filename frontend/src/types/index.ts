@@ -156,6 +156,9 @@ export interface Job {
   application_email?: string;
   created_at?: string;
   posted_at?: string;
+
+
+  attachment_path?: string;
 }
 
 export interface JobFormData {
@@ -168,6 +171,9 @@ export interface JobFormData {
   requirements?: string;
   salary_range?: string;
   application_email: string;
+
+
+  attachment_path?: string;
 }
 
 export interface JobApplication {
@@ -193,6 +199,38 @@ export interface JobApplicationForm {
   experience: string;
   skills: string;
   resume: File | null;
+}
+
+export interface Skill {
+  id: number;
+  employee_id: number;
+  skill_name: string;
+  proficiency_level: string;
+}
+
+export interface Education {
+  id: number;
+  employee_id: number;
+  institution: string;
+  degree: string;
+  field_of_study: string;
+  start_date: string;
+  end_date: string;
+}
+
+export interface EmergencyContact {
+  id: number;
+  employee_id: number;
+  name: string;
+  relationship: string;
+  phone_number: string;
+}
+
+export interface CustomField {
+  id: number;
+  employee_id: number;
+  field_name: string;
+  field_value: string;
 }
 
 export const INITIAL_APPLICATION_STATE: JobApplicationForm = {

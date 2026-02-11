@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { X, Loader2 } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { X, Loader2, Upload } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { jobSchema, JobSchema } from '@/schemas/jobSchema';
@@ -12,7 +12,7 @@ interface JobFormModalProps {
   onClose: () => void;
   isEditing: boolean;
   initialData?: any; // Using any for flexibility with legacy data, but will cast to Schema
-  onSubmit: (data: JobSchema) => void;
+  onSubmit: (data: JobSchema | FormData) => void;
   saving: boolean;
 }
 
@@ -24,6 +24,8 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
   onSubmit, 
   saving 
 }) => {
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
   const {
     register,
     handleSubmit,
@@ -40,7 +42,8 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
       salary_range: '',
       application_email: '',
       job_description: '',
-      requirements: ''
+      requirements: '',
+
     }
   });
 
@@ -56,7 +59,8 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
             salary_range: initialData.salary_range || '',
             application_email: initialData.application_email || '',
             job_description: initialData.job_description || '',
-            requirements: initialData.requirements || ''
+            requirements: initialData.requirements || '',
+
         } as JobSchema);
       } else {
         reset({
@@ -68,7 +72,8 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
             salary_range: '',
             application_email: '',
             job_description: '',
-            requirements: ''
+            requirements: '',
+
         });
       }
     }
@@ -90,7 +95,61 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
           </button>
         </div>
         
-        <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-5 overflow-y-auto">
+        
+        <form onSubmit={handleSubmit((data) => {
+          if (selectedFile) {
+            const formData = new FormData();
+            Object.entries(data).forEach(([key, value]) => {
+              if (value !== null && value !== undefined) {
+                 formData.append(key, value as string);
+              }
+            });
+            formData.append('file', selectedFile);
+            onSubmit(formData);
+          } else {
+            onSubmit(data);
+          }
+        })} className="p-6 space-y-5 overflow-y-auto">
+          {/* File Upload */}
+          <div>
+            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Qualification Document (Upload)</label>
+            <div className="flex items-center gap-2">
+              <label 
+                  htmlFor="file-upload" 
+                  className="cursor-pointer flex items-center gap-2 px-4 py-2 border border-blue-200 bg-blue-50 text-blue-700 rounded-lg text-sm font-semibold hover:bg-blue-100 transition-colors w-full justify-center"
+              >
+                  <Upload size={16} />
+                  {selectedFile ? selectedFile.name : "Choose File (PDF/Word)"}
+              </label>
+              <input 
+                  id="file-upload"
+                  type="file" 
+                  accept=".pdf,.doc,.docx"
+                  className="hidden"
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files[0]) {
+                      setSelectedFile(e.target.files[0]);
+                    }
+                  }}
+              />
+              {selectedFile && (
+                <button 
+                  type="button" 
+                  onClick={() => setSelectedFile(null)} 
+                  className="p-2 text-red-500 hover:bg-red-50 rounded-full"
+                  title="Remove file"
+                >
+                  <X size={16} />
+                </button>
+              )}
+            </div>
+            {initialData?.attachment_path && !selectedFile && (
+                <p className="text-xs text-green-600 mt-1 ml-1 flex items-center gap-1">
+                    Existing file attached (Upload new to replace)
+                </p>
+            )}
+          </div>
+
           {/* Job Title */}
           <div>
             <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Job Title <span className="text-red-500">*</span></label>
@@ -189,6 +248,9 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
             {errors.job_description && <p className="text-red-500 text-xs mt-1 ml-1">{errors.job_description.message}</p>}
           </div>
 
+
+
+
           {/* Requirements */}
           <div>
             <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Requirements</label>
@@ -212,7 +274,23 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
               Cancel
             </button>
             <button 
-              onClick={handleSubmit(onSubmit)} 
+              onClick={handleSubmit((data) => {
+                if (selectedFile) {
+                  const formData = new FormData();
+                  // Append all form fields
+                  Object.keys(data).forEach(key => {
+                    const value = (data as any)[key];
+                    if (value !== undefined && value !== null) {
+                        formData.append(key, value);
+                    }
+                  });
+                  // Append file
+                  formData.append('file', selectedFile);
+                  onSubmit(formData);
+                } else {
+                  onSubmit(data);
+                }
+              })} 
               className="px-4 py-2 text-sm font-bold text-white bg-gray-900 rounded-lg hover:bg-gray-800 transition-all shadow-md disabled:opacity-50 flex items-center justify-center gap-2"
               disabled={saving}
             >

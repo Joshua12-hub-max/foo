@@ -9,7 +9,10 @@ export const jobSchema = z.object({
   salary_range: z.string().optional(),
   application_email: z.string().min(1, 'Email is required').email('Invalid email address'),
   job_description: z.string().min(10, 'Description must be at least 10 characters'),
-  requirements: z.string().optional()
+  requirements: z.string().optional(),
+
+
+  attachment_path: z.any().optional() // Using any for File object or string path
 });
 
 export type JobSchema = z.infer<typeof jobSchema>;

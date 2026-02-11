@@ -13,6 +13,7 @@ export interface Employee {
   department?: string;
   role?: string;
   employment_status?: string;
+  salary_grade?: number;
   [key: string]: unknown;
 }
 

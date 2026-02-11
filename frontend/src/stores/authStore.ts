@@ -74,11 +74,14 @@ export const useAuthStore = create<AuthStore>()(
              try {
                  const user = await getCurrentUser();
                  get().setUser(user);
-             } catch (error: any) {
+             } catch (error: unknown) {
                  console.error("Failed to fetch user:", error);
                  // If 401, clear user
-                 if (error.response?.status === 401) {
-                     localStorage.removeItem('isLoggedIn');
+                 if (error && typeof error === 'object' && 'response' in error) {
+                     const err = error as { response?: { status?: number } };
+                     if (err.response?.status === 401) {
+                         localStorage.removeItem('isLoggedIn');
+                     }
                  }
                  get().setUser(null);
              } finally {

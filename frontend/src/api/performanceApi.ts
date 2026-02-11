@@ -1,89 +1,96 @@
 import axios from './axios';
+import { ApiResponse } from '@/types';
+import { 
+  InternalReview, 
+  ReviewCycle, 
+  PerformanceCriteria, 
+  ReviewItem 
+} from '@/types/performance';
 
-export const fetchEvaluationSummary = async (): Promise<any> => {
+export const fetchEvaluationSummary = async (): Promise<ApiResponse<any>> => {
   const response = await axios.get('/performance/summary');
   return response.data;
 };
 
-export const fetchRatingDistribution = async (): Promise<any> => {
+export const fetchRatingDistribution = async (): Promise<ApiResponse<any>> => {
   const response = await axios.get('/performance/rating-distribution');
   return response.data;
 };
 
-export const fetchReviewCycles = async (): Promise<any> => {
+export const fetchReviewCycles = async (): Promise<ApiResponse<{ cycles: ReviewCycle[] }>> => {
   const response = await axios.get('/performance/cycles');
   return response.data;
 };
 
-export const fetchReviews = async (filters: any = {}): Promise<any> => {
-  const params = new URLSearchParams(filters).toString();
+export const fetchReviews = async (filters: Record<string, unknown> = {}): Promise<ApiResponse<{ reviews: InternalReview[] }>> => {
+  const params = new URLSearchParams(filters as Record<string, string>).toString();
   const response = await axios.get(`/performance/reviews?${params}`);
   return response.data;
 };
 
-export const getReview = async (id: string | number): Promise<any> => {
+export const getReview = async (id: string | number): Promise<ApiResponse<{ review: InternalReview }>> => {
   const response = await axios.get(`/performance/reviews/${id}`);
   return response.data;
 };
 
-export const createReview = async (data: any): Promise<any> => {
+export const createReview = async (data: Partial<InternalReview>): Promise<ApiResponse<{ success: boolean; reviewId: number }>> => {
   const response = await axios.post('/performance/reviews', data);
   return response.data;
 };
 
-export const updateReview = async (id: string | number, data: any): Promise<any> => {
+export const updateReview = async (id: string | number, data: Partial<InternalReview>): Promise<ApiResponse<{ success: boolean }>> => {
   const response = await axios.put(`/performance/reviews/${id}`, data);
   return response.data;
 };
 
-export const submitReview = async (id: string | number): Promise<any> => {
+export const submitReview = async (id: string | number): Promise<ApiResponse<{ success: boolean }>> => {
   const response = await axios.post(`/performance/reviews/${id}/submit`);
   return response.data;
 };
 
-export const deleteReview = async (id: string | number): Promise<any> => {
+export const deleteReview = async (id: string | number): Promise<ApiResponse<{ success: boolean }>> => {
   const response = await axios.delete(`/performance/reviews/${id}`);
   return response.data;
 };
 
-export const acknowledgeReview = async (id: string | number): Promise<any> => {
+export const acknowledgeReview = async (id: string | number): Promise<ApiResponse<{ success: boolean }>> => {
   const response = await axios.post(`/performance/reviews/${id}/acknowledge`);
   return response.data;
 };
 
 export const fetchReviewById = getReview;
 
-export const fetchCriteria = async (): Promise<any> => {
+export const fetchCriteria = async (): Promise<ApiResponse<{ criteria: PerformanceCriteria[] }>> => {
     const response = await axios.get('/performance/criteria');
     return response.data;
 };
 
-export const addCriteria = async (data: any): Promise<any> => {
+export const addCriteria = async (data: Partial<PerformanceCriteria>): Promise<ApiResponse<{ success: boolean }>> => {
     const response = await axios.post('/performance/criteria', data);
     return response.data;
 };
 
-export const updateCriteria = async (id: string | number, data: any): Promise<any> => {
+export const updateCriteria = async (id: string | number, data: Partial<PerformanceCriteria>): Promise<ApiResponse<{ success: boolean }>> => {
     const response = await axios.put(`/performance/criteria/${id}`, data);
     return response.data;
 };
 
-export const deleteCriteria = async (id: string | number): Promise<any> => {
+export const deleteCriteria = async (id: string | number): Promise<ApiResponse<{ success: boolean }>> => {
     const response = await axios.delete(`/performance/criteria/${id}`);
     return response.data;
 };
 
-export const createReviewCycle = async (data: any): Promise<any> => {
+export const createReviewCycle = async (data: Partial<ReviewCycle>): Promise<ApiResponse<{ success: boolean }>> => {
     const response = await axios.post('/performance/cycles', data);
     return response.data;
 };
 
-export const updateReviewCycle = async (id: string | number, data: any): Promise<any> => {
+export const updateReviewCycle = async (id: string | number, data: Partial<ReviewCycle>): Promise<ApiResponse<{ success: boolean }>> => {
     const response = await axios.put(`/performance/cycles/${id}`, data);
     return response.data;
 };
 
-export const deleteReviewCycle = async (id: string | number): Promise<any> => {
+export const deleteReviewCycle = async (id: string | number): Promise<ApiResponse<{ success: boolean }>> => {
     const response = await axios.delete(`/performance/cycles/${id}`);
     return response.data;
 };
@@ -92,38 +99,38 @@ export const deleteReviewCycle = async (id: string | number): Promise<any> => {
 // #CSC-COMPLIANT PERFORMANCE EVALUATION APIs
 
 // Get employee's pending reviews for self-rating
-export const getMyPendingReviews = async (): Promise<any> => {
+export const getMyPendingReviews = async (): Promise<ApiResponse<{ reviews: InternalReview[] }>> => {
     const response = await axios.get('/performance/my-reviews');
     return response.data;
 };
 
 // Submit employee self-rating
-export const submitSelfRating = async (id: string | number, data: any): Promise<any> => {
+export const submitSelfRating = async (id: string | number, data: any): Promise<ApiResponse<{ success: boolean }>> => {
     const response = await axios.post(`/performance/reviews/${id}/self-rating`, data);
     return response.data;
 };
 
 // Submit supervisor rating
-export const submitSupervisorRating = async (id: string | number, data: any): Promise<any> => {
+export const submitSupervisorRating = async (id: string | number, data: any): Promise<ApiResponse<{ success: boolean }>> => {
     const response = await axios.post(`/performance/reviews/${id}/supervisor-rating`, data);
     return response.data;
 };
 
 // Approve review (Head of Office)
-export const approveReview = async (id: string | number, data: any): Promise<any> => {
+export const approveReview = async (id: string | number, data: any): Promise<ApiResponse<{ success: boolean }>> => {
     const response = await axios.post(`/performance/reviews/${id}/approve`, data);
     return response.data;
 };
 
 // Finalize review
-export const finalizeReview = async (id: string | number): Promise<any> => {
+export const finalizeReview = async (id: string | number): Promise<ApiResponse<{ success: boolean }>> => {
     const response = await axios.post(`/performance/reviews/${id}/finalize`);
     return response.data;
 };
 
 
 // Disagree with rating
-export const disagreeWithRating = async (id: string | number, remarks: string): Promise<any> => {
+export const disagreeWithRating = async (id: string | number, remarks: string): Promise<ApiResponse<{ success: boolean }>> => {
     const response = await axios.post(`/performance/reviews/${id}/disagree`, { disagree_remarks: remarks });
     return response.data;
 };
@@ -147,7 +154,7 @@ export const CSC_RATING_SCALE = [
 ];
 
 // Fetch goals for a specific employee
-export const fetchEmployeeGoals = async (employeeId: string | number): Promise<any> => {
+export const fetchEmployeeGoals = async (employeeId: string | number): Promise<{ success: boolean; goals: InternalReview[] }> => {
     try {
       // Reusing reviews endpoint filtering by employee
       const response = await axios.get(`/performance/reviews?employee_id=${employeeId}`);
@@ -159,17 +166,17 @@ export const fetchEmployeeGoals = async (employeeId: string | number): Promise<a
 
 
 // Item Management (Immediate)
-export const addItem = async (data: any): Promise<any> => {
+export const addItem = async (data: Partial<ReviewItem>): Promise<ApiResponse<{ success: boolean; itemId: number }>> => {
     const response = await axios.post('/performance/items', data);
     return response.data;
 };
 
-export const updateItem = async (id: string | number, data: any): Promise<any> => {
+export const updateItem = async (id: string | number, data: Partial<ReviewItem>): Promise<ApiResponse<{ success: boolean }>> => {
     const response = await axios.put(`/performance/items/${id}`, data);
     return response.data;
 };
 
-export const deleteItem = async (id: string | number): Promise<any> => {
+export const deleteItem = async (id: string | number): Promise<ApiResponse<{ success: boolean }>> => {
     const response = await axios.delete(`/performance/items/${id}`);
     return response.data;
 };

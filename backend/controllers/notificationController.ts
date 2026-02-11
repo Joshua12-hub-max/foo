@@ -1,31 +1,8 @@
 import { Request, Response } from 'express';
-import db from '../db/connection.js';
-import type { RowDataPacket, ResultSetHeader } from 'mysql2/promise';
+import { db } from '../db/index.js';
+import { notifications, authentication } from '../db/schema.js';
+import { eq, and, desc, sql, inArray } from 'drizzle-orm';
 import type { AuthenticatedRequest } from '../types/index.js';
-
-// ============================================================================
-// Interfaces
-// ============================================================================
-
-interface NotificationRow extends RowDataPacket {
-  notification_id: number;
-  recipient_id: string;
-  sender_id?: string;
-  title: string;
-  message: string;
-  type: string;
-  reference_id?: number;
-  status: 'read' | 'unread';
-  created_at: Date;
-}
-
-interface AdminRow extends RowDataPacket {
-  employee_id: string;
-}
-
-interface CountRow extends RowDataPacket {
-  count: number;
-}
 
 interface CreateNotificationParams {
   recipientId: string;
@@ -52,10 +29,15 @@ export const createNotification = async ({
   referenceId
 }: CreateNotificationParams): Promise<number> => {
   try {
-    const [result] = await db.query<ResultSetHeader>(
-      "INSERT INTO notifications (recipient_id, sender_id, title, message, type, reference_id, status) VALUES (?, ?, ?, ?, ?, ?, 'unread')",
-      [recipientId, senderId || null, title, message, type, referenceId || null]
-    );
+    const [result] = await db.insert(notifications).values({
+      recipientId,
+      senderId: senderId || null,
+      title,
+      message,
+      type,
+      referenceId: referenceId || null,
+      status: 'unread'
+    });
     return result.insertId;
   } catch (error) {
     console.error('Error in createNotification:', error);
@@ -74,13 +56,13 @@ export const notifyAdmins = async ({
   referenceId
 }: Omit<CreateNotificationParams, 'recipientId'>): Promise<void> => {
   try {
-    const [admins] = await db.query<AdminRow[]>(
-      "SELECT employee_id FROM authentication WHERE role IN ('admin', 'hr', 'supervisor')"
-    );
+    const admins = await db.select({ employeeId: authentication.employeeId })
+      .from(authentication)
+      .where(inArray(authentication.role, ['admin', 'hr', 'supervisor']));
 
     const notificationPromises = admins.map((admin) =>
       createNotification({
-        recipientId: admin.employee_id,
+        recipientId: admin.employeeId,
         senderId,
         title,
         message,
@@ -106,11 +88,12 @@ export const notifyAllUsers = async ({
   referenceId
 }: Omit<CreateNotificationParams, 'recipientId'>): Promise<void> => {
   try {
-    const [users] = await db.query<AdminRow[]>('SELECT employee_id FROM authentication');
+    const users = await db.select({ employeeId: authentication.employeeId })
+      .from(authentication);
 
     const notificationPromises = users.map((user) =>
       createNotification({
-        recipientId: user.employee_id,
+        recipientId: user.employeeId,
         senderId,
         title,
         message,
@@ -134,20 +117,23 @@ export const getNotifications = async (req: Request, res: Response): Promise<voi
     const authReq = req as AuthenticatedRequest;
     const employeeId = authReq.user.employeeId || authReq.user.id;
 
-    const [notifications] = await db.query<NotificationRow[]>(
-      'SELECT * FROM notifications WHERE recipient_id = ? ORDER BY created_at DESC LIMIT 50',
-      [employeeId]
-    );
+    const notifs = await db.select()
+      .from(notifications)
+      .where(eq(notifications.recipientId, String(employeeId)))
+      .orderBy(desc(notifications.createdAt))
+      .limit(50);
 
-    const [countResult] = await db.query<CountRow[]>(
-      "SELECT COUNT(*) as count FROM notifications WHERE recipient_id = ? AND status = 'unread'",
-      [employeeId]
-    );
+    const [countResult] = await db.select({ count: sql<number>`count(*)` })
+      .from(notifications)
+      .where(and(
+        eq(notifications.recipientId, String(employeeId)),
+        eq(notifications.status, 'unread')
+      ));
 
     res.status(200).json({
       success: true,
-      notifications,
-      unread_count: countResult[0].count
+      notifications: notifs,
+      unread_count: countResult.count
     });
   } catch (error) {
     console.error('Error fetching notifications:', error);
@@ -160,12 +146,14 @@ export const getUnreadCount = async (req: Request, res: Response): Promise<void>
     const authReq = req as AuthenticatedRequest;
     const employeeId = authReq.user.employeeId || authReq.user.id;
 
-    const [result] = await db.query<CountRow[]>(
-      "SELECT COUNT(*) as count FROM notifications WHERE recipient_id = ? AND status = 'unread'",
-      [employeeId]
-    );
+    const [result] = await db.select({ count: sql<number>`count(*)` })
+      .from(notifications)
+      .where(and(
+        eq(notifications.recipientId, String(employeeId)),
+        eq(notifications.status, 'unread')
+      ));
 
-    res.status(200).json({ success: true, unread_count: result[0].count });
+    res.status(200).json({ success: true, unread_count: result.count });
   } catch (error) {
     console.error('Error fetching unread count:', error);
     res.status(500).json({ success: false, message: 'Failed to fetch unread count' });
@@ -175,7 +163,9 @@ export const getUnreadCount = async (req: Request, res: Response): Promise<void>
 export const markAsRead = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    await db.query("UPDATE notifications SET status = 'read' WHERE notification_id = ?", [id]);
+    await db.update(notifications)
+      .set({ status: 'read' })
+      .where(eq(notifications.notificationId, Number(id)));
     res.status(200).json({ message: 'Notification marked as read' });
   } catch (error) {
     console.error('Error marking notification as read:', error);
@@ -186,7 +176,7 @@ export const markAsRead = async (req: Request, res: Response): Promise<void> => 
 export const deleteNotification = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    await db.query('DELETE FROM notifications WHERE notification_id = ?', [id]);
+    await db.delete(notifications).where(eq(notifications.notificationId, Number(id)));
     res.status(200).json({ message: 'Notification deleted' });
   } catch (error) {
     console.error('Error deleting notification:', error);

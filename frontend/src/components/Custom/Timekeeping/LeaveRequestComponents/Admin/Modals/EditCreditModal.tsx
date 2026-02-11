@@ -43,19 +43,28 @@ const EditCreditModal = ({ isOpen, onClose, onSubmit, credit, isSubmitting }: Ed
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/50" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 transition-all duration-300" onClick={onClose}>
+      <div 
+        className="bg-white/95 backdrop-blur-md rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] w-full max-w-md border border-white/20 overflow-hidden animate-in fade-in zoom-in duration-300"
+        onClick={e => e.stopPropagation()}
+      >
         {/* Header */}
-        <div className="bg-gray-50 p-4 border-b border-gray-100 flex justify-between items-center">
-          <h2 className="text-lg font-semibold text-gray-800">Edit Leave Credit</h2>
-          <button 
-            onClick={onClose}
-            disabled={isSubmitting}
-            className="text-gray-400 hover:text-gray-600 transition-colors p-1 hover:bg-gray-100 rounded-full"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+        <div className="flex items-center justify-between px-6 py-4 shrink-0 border-b border-gray-100">
+            <div className="flex items-center gap-2">
+              <div className="bg-teal-50 p-2 rounded-lg">
+                <Loader2 className="w-5 h-5 text-teal-600" />
+              </div>
+              <h2 className="text-xl font-bold text-gray-900">Edit Leave Credit</h2>
+            </div>
+            <button 
+              type="button"
+              onClick={onClose} 
+              disabled={isSubmitting}
+              className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-full hover:bg-gray-100"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
 
         {/* Body */}
         <form onSubmit={handleSubmit(handleFormSubmit)} className="p-6 space-y-4">

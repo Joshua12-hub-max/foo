@@ -16,7 +16,7 @@ export const LEAVE_TYPES = [
   'Special Privilege Leave',
   'Wellness Leave',           // CSC 2025/2026 Memo - 5 days
   'Forced/Mandatory Leave',
-  'Official Business',
+
   'Other'
 ] as const;
 

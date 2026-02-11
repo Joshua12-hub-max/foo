@@ -10,16 +10,16 @@ import { formatDate, getStatusBadge, getPriorityBadge } from '../Shared/memoUtil
 
 interface Memo {
   id: number;
-  memo_number: string;
-  memo_type: string;
-  employee_name: string;
-  author_name?: string;
+  memoNumber: string;
+  memoType: string;
+  employeeName: string;
+  authorName?: string;
   subject: string;
   content: string;
   priority: string;
   status: string;
-  created_at: string;
-  acknowledged_at?: string;
+  createdAt: string;
+  acknowledgedAt?: string;
 }
 
 interface MemoViewModalProps {
@@ -60,19 +60,19 @@ const MemoViewModal: React.FC<MemoViewModalProps> = memo(({ isOpen, onClose, mem
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-0.5">Memo Number</label>
-                <p className="text-sm font-bold text-gray-900">{memo.memo_number}</p>
+                <p className="text-sm font-bold text-gray-900">{memo.memoNumber}</p>
               </div>
               <div>
                 <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-0.5">Type</label>
-                <p className="text-sm font-bold text-gray-900">{memo.memo_type}</p>
+                <p className="text-sm font-bold text-gray-900">{memo.memoType}</p>
               </div>
               <div>
                 <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-0.5">Employee</label>
-                <p className="text-sm font-medium text-gray-900">{memo.employee_name}</p>
+                <p className="text-sm font-medium text-gray-900">{memo.employeeName}</p>
               </div>
               <div>
                 <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-0.5">Author</label>
-                <p className="text-sm font-medium text-gray-900">{memo.author_name}</p>
+                <p className="text-sm font-medium text-gray-900">{memo.authorName}</p>
               </div>
               <div>
                 <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-0.5">Subject</label>
@@ -91,12 +91,12 @@ const MemoViewModal: React.FC<MemoViewModalProps> = memo(({ isOpen, onClose, mem
           <div className="grid grid-cols-2 gap-4 pt-2 border-t border-gray-100">
             <div>
               <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">Created</label>
-              <p className="text-xs text-gray-700 font-medium">{formatDate(memo.created_at)}</p>
+              <p className="text-xs text-gray-700 font-medium">{formatDate(memo.createdAt)}</p>
             </div>
-            {memo.acknowledged_at && (
+            {memo.acknowledgedAt && (
               <div className="text-right">
                 <label className="text-[10px] font-bold text-green-600 uppercase tracking-wider block">Acknowledged</label>
-                <p className="text-xs text-green-700 font-bold">{formatDate(memo.acknowledged_at)}</p>
+                <p className="text-xs text-green-700 font-bold">{formatDate(memo.acknowledgedAt)}</p>
               </div>
             )}
           </div>

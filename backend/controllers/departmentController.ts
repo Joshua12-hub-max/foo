@@ -1,42 +1,36 @@
 import { Request, Response } from 'express';
-import db from '../db/connection.js';
-import type { RowDataPacket, ResultSetHeader, PoolConnection } from 'mysql2/promise';
+import { ResultSetHeader } from 'mysql2';
+import { db } from '../db/index.js';
+import { departments, authentication } from '../db/schema.js';
+import { eq, asc, sql, or, isNull, ne, and, like, getTableColumns } from 'drizzle-orm';
 
-interface DepartmentRow extends RowDataPacket {
-  id: number;
-  name: string;
-  description?: string;
-  head_of_department?: string;
-  employee_count?: number;
-}
-
-interface EmployeeRow extends RowDataPacket {
-  id: number;
-  employee_id: string;
-  first_name: string;
-  last_name: string;
-  email?: string;
-  department?: string;
-}
-
-export const getPublicDepartments = async (req: Request, res: Response): Promise<void> => {
+export const getPublicDepartments = async (_req: Request, res: Response): Promise<void> => {
   try {
-    const [departments] = await db.query<DepartmentRow[]>('SELECT id, name FROM departments ORDER BY name ASC');
-    res.status(200).json({ success: true, departments });
+    const result = await db
+      .select({ id: departments.id, name: departments.name })
+      .from(departments)
+      .orderBy(asc(departments.name));
+      
+    res.status(200).json({ success: true, departments: result });
   } catch (error) {
     console.error('Get Public Departments Error:', error);
     res.status(500).json({ success: false, message: 'Failed to fetch departments' });
   }
 };
 
-export const getDepartments = async (req: Request, res: Response): Promise<void> => {
+export const getDepartments = async (_req: Request, res: Response): Promise<void> => {
   try {
-    const [departments] = await db.query<DepartmentRow[]>(`
-      SELECT d.*, (SELECT COUNT(*) FROM authentication WHERE department = d.name) as employee_count 
-      FROM departments d ORDER BY d.name ASC
-    `);
-    res.status(200).json({ success: true, departments });
+    // Using a subquery for employee count
+    const result = await db.select({
+      ...getTableColumns(departments),
+      employee_count: sql<number>`(SELECT COUNT(*) FROM ${authentication} WHERE ${authentication.department} = ${departments.name})`
+    })
+    .from(departments)
+    .orderBy(asc(departments.name));
+
+    res.status(200).json({ success: true, departments: result });
   } catch (error) {
+    console.error('Get Departments Error:', error);
     res.status(500).json({ success: false, message: 'Failed to fetch departments' });
   }
 };
@@ -44,15 +38,31 @@ export const getDepartments = async (req: Request, res: Response): Promise<void>
 export const getDepartmentById = async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params;
   try {
-    const [depts] = await db.query<DepartmentRow[]>('SELECT * FROM departments WHERE id = ?', [id]);
-    if (depts.length === 0) { res.status(404).json({ success: false, message: 'Department not found' }); return; }
+    const dept = await db.query.departments.findFirst({
+      where: eq(departments.id, Number(id))
+    });
+
+    if (!dept) { 
+      res.status(404).json({ success: false, message: 'Department not found' }); 
+      return; 
+    }
     
-    const [employees] = await db.query<EmployeeRow[]>(
-      'SELECT id, first_name, last_name, email, job_title, avatar_url, employment_status, date_hired FROM authentication WHERE department = ?',
-      [depts[0].name]
-    );
-    res.status(200).json({ success: true, department: depts[0], employees });
+    const employees = await db.select({
+      id: authentication.id,
+      first_name: authentication.firstName,
+      last_name: authentication.lastName,
+      email: authentication.email,
+      job_title: authentication.jobTitle,
+      avatar_url: authentication.avatarUrl,
+      employment_status: authentication.employmentStatus,
+      date_hired: authentication.dateHired
+    })
+    .from(authentication)
+    .where(eq(authentication.department, dept.name));
+
+    res.status(200).json({ success: true, department: dept, employees });
   } catch (error) {
+    console.error('Get Department By ID Error:', error);
     res.status(500).json({ success: false, message: 'Failed to fetch department details' });
   }
 };
@@ -62,22 +72,44 @@ export const getAvailableEmployees = async (req: Request, res: Response): Promis
   const { search } = req.query;
   
   try {
-    const [depts] = await db.query<DepartmentRow[]>('SELECT name FROM departments WHERE id = ?', [id]);
-    if (depts.length === 0) { res.status(404).json({ success: false, message: 'Department not found' }); return; }
+    const dept = await db.query.departments.findFirst({
+      where: eq(departments.id, Number(id)),
+      columns: { name: true }
+    });
 
-    let query = 'SELECT id, employee_id, first_name, last_name, email, job_title, department, avatar_url FROM authentication WHERE (department IS NULL OR department != ?)';
-    const params: string[] = [depts[0].name];
-
-    if (search && String(search).trim()) {
-      query += ' AND (first_name LIKE ? OR last_name LIKE ? OR email LIKE ? OR employee_id LIKE ?)';
-      const searchTerm = `%${String(search).trim()}%`;
-      params.push(searchTerm, searchTerm, searchTerm, searchTerm);
+    if (!dept) { 
+      res.status(404).json({ success: false, message: 'Department not found' }); 
+      return; 
     }
-    query += ' ORDER BY last_name ASC LIMIT 20';
 
-    const [employees] = await db.query<EmployeeRow[]>(query, params);
+    const whereClause = and(
+      or(isNull(authentication.department), ne(authentication.department, dept.name)),
+      search ? or(
+        like(authentication.firstName, `%${search}%`),
+        like(authentication.lastName, `%${search}%`),
+        like(authentication.email, `%${search}%`),
+        like(authentication.employeeId, `%${search}%`)
+      ) : undefined
+    );
+
+    const employees = await db.select({
+      id: authentication.id,
+      employee_id: authentication.employeeId,
+      first_name: authentication.firstName,
+      last_name: authentication.lastName,
+      email: authentication.email,
+      job_title: authentication.jobTitle,
+      department: authentication.department,
+      avatar_url: authentication.avatarUrl
+    })
+    .from(authentication)
+    .where(whereClause)
+    .orderBy(asc(authentication.lastName))
+    .limit(20);
+
     res.status(200).json({ success: true, employees });
   } catch (error) {
+    console.error('Get Available Employees Error:', error);
     res.status(500).json({ success: false, message: 'Failed to fetch available employees' });
   }
 };
@@ -88,14 +120,32 @@ export const assignEmployeeToDepartment = async (req: Request, res: Response): P
   if (!employeeId) { res.status(400).json({ success: false, message: 'Employee ID is required' }); return; }
 
   try {
-    const [depts] = await db.query<DepartmentRow[]>('SELECT name FROM departments WHERE id = ?', [id]);
-    if (depts.length === 0) { res.status(404).json({ success: false, message: 'Department not found' }); return; }
+    const dept = await db.query.departments.findFirst({
+      where: eq(departments.id, Number(id)),
+      columns: { name: true }
+    });
 
-    const [result] = await db.query<ResultSetHeader>('UPDATE authentication SET department = ? WHERE id = ?', [depts[0].name, employeeId]);
-    if (result.affectedRows === 0) { res.status(404).json({ success: false, message: 'Employee not found' }); return; }
+    if (!dept) { res.status(404).json({ success: false, message: 'Department not found' }); return; }
+
+    const result = await db.update(authentication)
+      .set({ department: dept.name, departmentId: Number(id) })
+      .where(eq(authentication.id, employeeId));
+
+    // Drizzle update result doesn't have affectedRows directly in all drivers, but mysql2 does in [ResultSetHeader]
+    // However, Drizzle's `run` or `execute` returns [ResultSetHeader]
+    // db.update returns Promise<[ResultSetHeader]>
+    
+    // Check if user existed by trying to select first? Or just assume success if no error?
+    // The previous code checked affectedRows.
+    // In Drizzle mysql2: result is [ResultSetHeader, FieldPacket[]]
+    const updateResult = result[0] as unknown as ResultSetHeader;
+    const affectedRows = updateResult.affectedRows;
+
+    if (affectedRows === 0) { res.status(404).json({ success: false, message: 'Employee not found' }); return; }
 
     res.status(200).json({ success: true, message: 'Employee assigned to department successfully' });
   } catch (error) {
+    console.error('Assign Employee Error:', error);
     res.status(500).json({ success: false, message: 'Failed to assign employee to department' });
   }
 };
@@ -103,10 +153,17 @@ export const assignEmployeeToDepartment = async (req: Request, res: Response): P
 export const removeEmployeeFromDepartment = async (req: Request, res: Response): Promise<void> => {
   const { employeeId } = req.params;
   try {
-    const [result] = await db.query<ResultSetHeader>('UPDATE authentication SET department = NULL WHERE id = ?', [employeeId]);
-    if (result.affectedRows === 0) { res.status(404).json({ success: false, message: 'Employee not found' }); return; }
+    const result = await db.update(authentication)
+      .set({ department: null, departmentId: null })
+      .where(eq(authentication.id, Number(employeeId)));
+
+    const deleteResult = result[0] as unknown as ResultSetHeader;
+    const affectedRows = deleteResult.affectedRows;
+    if (affectedRows === 0) { res.status(404).json({ success: false, message: 'Employee not found' }); return; }
+    
     res.status(200).json({ success: true, message: 'Employee removed from department' });
   } catch (error) {
+    console.error('Remove Employee Error:', error);
     res.status(500).json({ success: false, message: 'Failed to remove employee from department' });
   }
 };
@@ -116,12 +173,21 @@ export const createDepartment = async (req: Request, res: Response): Promise<voi
   if (!name) { res.status(400).json({ success: false, message: 'Department name is required' }); return; }
 
   try {
-    const [existing] = await db.query<DepartmentRow[]>('SELECT * FROM departments WHERE name = ?', [name]);
-    if (existing.length > 0) { res.status(409).json({ success: false, message: 'Department already exists' }); return; }
+    const existing = await db.query.departments.findFirst({
+      where: eq(departments.name, name)
+    });
+    
+    if (existing) { res.status(409).json({ success: false, message: 'Department already exists' }); return; }
 
-    await db.query('INSERT INTO departments (name, description, head_of_department) VALUES (?, ?, ?)', [name, description, head_of_department]);
+    await db.insert(departments).values({
+      name,
+      description,
+      headOfDepartment: head_of_department
+    });
+
     res.status(201).json({ success: true, message: 'Department created successfully' });
   } catch (error) {
+    console.error('Create Department Error:', error);
     res.status(500).json({ success: false, message: 'Failed to create department' });
   }
 };
@@ -129,47 +195,66 @@ export const createDepartment = async (req: Request, res: Response): Promise<voi
 export const updateDepartment = async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params;
   const { name, description, head_of_department } = req.body;
-  const connection = await db.getConnection() as PoolConnection;
 
   try {
-    await connection.beginTransaction();
-    const [currentDept] = await connection.query<DepartmentRow[]>('SELECT name FROM departments WHERE id = ?', [id]);
-    if (currentDept.length === 0) { await connection.rollback(); res.status(404).json({ success: false, message: 'Department not found' }); return; }
-    const oldName = currentDept[0].name;
+    await db.transaction(async (tx) => {
+      const currentDept = await tx.query.departments.findFirst({
+        where: eq(departments.id, Number(id))
+      });
+      
+      if (!currentDept) { 
+        throw new Error('DEPARTMENT_NOT_FOUND');
+      }
+      
+      const oldName = currentDept.name;
 
-    if (name && name !== oldName) {
-      const [existing] = await connection.query<DepartmentRow[]>('SELECT * FROM departments WHERE name = ? AND id != ?', [name, id]);
-      if (existing.length > 0) { await connection.rollback(); res.status(409).json({ success: false, message: 'Department name already taken' }); return; }
-    }
+      if (name && name !== oldName) {
+        const existing = await tx.query.departments.findFirst({
+          where: and(eq(departments.name, name), ne(departments.id, Number(id)))
+        });
+        if (existing) { throw new Error('DEPARTMENT_NAME_TAKEN'); }
+      }
 
-    const updates: string[] = [];
-    const params: (string | number)[] = [];
-    if (name) { updates.push('name = ?'); params.push(name); }
-    if (description) { updates.push('description = ?'); params.push(description); }
-    if (head_of_department) { updates.push('head_of_department = ?'); params.push(head_of_department); }
+      const updates: any = {};
+      if (name) updates.name = name;
+      if (description) updates.description = description;
+      if (head_of_department) updates.headOfDepartment = head_of_department;
 
-    if (updates.length === 0) { await connection.rollback(); res.status(400).json({ success: false, message: 'No changes provided' }); return; }
-    params.push(parseInt(id));
-    await connection.query(`UPDATE departments SET ${updates.join(', ')} WHERE id = ?`, params);
+      if (Object.keys(updates).length > 0) {
+        await tx.update(departments)
+          .set(updates)
+          .where(eq(departments.id, Number(id)));
+      }
 
-    if (name && name !== oldName) { await connection.query('UPDATE authentication SET department = ? WHERE department = ?', [name, oldName]); }
+      if (name && name !== oldName) {
+        await tx.update(authentication)
+          .set({ department: name })
+          .where(eq(authentication.department, oldName));
+      }
+    });
 
-    await connection.commit();
     res.status(200).json({ success: true, message: 'Department updated successfully' });
-  } catch (error) {
-    await connection.rollback();
+  } catch (error: any) {
+    console.error('Update Department Error:', error);
+    if (error.message === 'DEPARTMENT_NOT_FOUND') {
+      res.status(404).json({ success: false, message: 'Department not found' });
+      return;
+    }
+    if (error.message === 'DEPARTMENT_NAME_TAKEN') {
+      res.status(409).json({ success: false, message: 'Department name already taken' });
+      return;
+    }
     res.status(500).json({ success: false, message: 'Failed to update department' });
-  } finally {
-    connection.release();
   }
 };
 
 export const deleteDepartment = async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params;
   try {
-    await db.query('DELETE FROM departments WHERE id = ?', [id]);
+    await db.delete(departments).where(eq(departments.id, Number(id)));
     res.status(200).json({ success: true, message: 'Department deleted successfully' });
   } catch (error) {
+    console.error('Delete Department Error:', error);
     res.status(500).json({ success: false, message: 'Failed to delete department' });
   }
 };

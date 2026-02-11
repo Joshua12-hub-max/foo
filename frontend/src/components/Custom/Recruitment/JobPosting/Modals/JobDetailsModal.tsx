@@ -1,6 +1,7 @@
 import React from 'react';
 import { X, MapPin, DollarSign, Calendar, Clock, SquarePen } from 'lucide-react';
 import { Job } from '@/types';
+import { JobVacancyAnnouncement } from '../Components';
 
 interface JobDetailsModalProps {
   isOpen: boolean;
@@ -15,6 +16,9 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
   selectedJob, 
   onEdit 
 }) => {
+
+  const [showAnnouncement, setShowAnnouncement] = React.useState(false);
+
   if (!isOpen || !selectedJob) return null;
 
   const getStatusBadgeColor = (status: string) => {
@@ -35,10 +39,17 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
     });
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-gray-900/40 transition-opacity" onClick={onClose} />
-      <div className="relative bg-white rounded-xl shadow-xl w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col animate-in fade-in zoom-in duration-200">
+  const ModalContent = () => {
+    if (showAnnouncement) {
+      return (
+        <React.Suspense fallback={<div className="p-10 text-center">Loading preview...</div>}>
+           <JobVacancyAnnouncement job={selectedJob} onClose={() => setShowAnnouncement(false)} />
+        </React.Suspense>
+      );
+    }
+    
+    return (
+      <>
         {/* Clean Header */}
         <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-white z-10">
           <h2 className="text-lg font-bold text-gray-800">Job Details</h2>
@@ -98,29 +109,61 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
               </div>
             </div>
           )}
+
+           {/* Added Fields Summary */}
+           {(selectedJob.education || selectedJob.experience || selectedJob.training || selectedJob.eligibility) && (
+              <div>
+                  <h4 className="font-bold text-gray-800 mb-2 text-sm uppercase tracking-wide">Qualifications</h4>
+                  <div className="text-sm text-gray-600 bg-gray-50/50 p-4 rounded-lg border border-gray-100 grid grid-cols-2 gap-2">
+                      {selectedJob.education && <p><span className="font-semibold">Education:</span> {selectedJob.education}</p>}
+                      {selectedJob.experience && <p><span className="font-semibold">Experience:</span> {selectedJob.experience}</p>}
+                      {selectedJob.training && <p><span className="font-semibold">Training:</span> {selectedJob.training}</p>}
+                      {selectedJob.eligibility && <p><span className="font-semibold">Eligibility:</span> {selectedJob.eligibility}</p>}
+                  </div>
+              </div>
+           )}
+
         </div>
 
         {/* Action Buttons */}
-        <div className="flex gap-3 px-6 py-4 border-t border-gray-100 bg-gray-50 z-10">
+        <div className="flex flex-col gap-3 px-6 py-4 border-t border-gray-100 bg-gray-50 z-10">
             <button 
-              onClick={onClose}
-              className="px-4 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 hover:text-gray-900 transition-all shadow-sm flex-1"
+                onClick={() => setShowAnnouncement(true)}
+                className="w-full px-4 py-2 text-sm font-bold text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-all shadow-sm flex items-center justify-center gap-2"
             >
-              Close
+                View Announcement Form
             </button>
-            <button 
-              onClick={() => {
-                onClose();
-                onEdit(selectedJob);
-              }}
-              className="px-4 py-2 text-sm font-bold text-white bg-gray-900 rounded-lg hover:bg-gray-800 transition-all shadow-md flex items-center justify-center gap-2 flex-1"
-            >
-              <SquarePen size={16} /> Edit Job
-            </button>
+            <div className="flex gap-3">
+                <button 
+                onClick={onClose}
+                className="px-4 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 hover:text-gray-900 transition-all shadow-sm flex-1"
+                >
+                Close
+                </button>
+                <button 
+                onClick={() => {
+                    onClose();
+                    onEdit(selectedJob);
+                }}
+                className="px-4 py-2 text-sm font-bold text-white bg-gray-900 rounded-lg hover:bg-gray-800 transition-all shadow-md flex items-center justify-center gap-2 flex-1"
+                >
+                <SquarePen size={16} /> Edit Job
+                </button>
+            </div>
         </div>
+      </>
+    );
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-gray-900/40 transition-opacity" onClick={onClose} />
+      <div className={`relative bg-white rounded-xl shadow-xl w-full overflow-hidden flex flex-col animate-in fade-in zoom-in duration-200 ${showAnnouncement ? 'max-w-6xl h-[95vh]' : 'max-w-md max-h-[90vh]'}`}>
+         <ModalContent />
       </div>
     </div>
   );
 };
+
 
 export default JobDetailsModal;

@@ -1,9 +1,21 @@
 import axios from './axios';
+import { ApiResponse } from '../types';
 
-//Employee Memo API
+export interface Memo {
+  id: number;
+  title: string;
+  memo_number: string;
+  type: string;
+  priority: string;
+  status: string;
+  created_at: string;
+  employee_id: number;
+  employee_name?: string;
+  reviewer_name?: string;
+}
 
 // Fetch all memos with filters
-export const fetchMemos = async (params: any = {}): Promise<any> => {
+export const fetchMemos = async (params: Record<string, unknown> = {}): Promise<ApiResponse<{ memos: Memo[] }>> => {
   try {
     const response = await axios.get('/memos', { params });
     return response.data;
@@ -13,7 +25,7 @@ export const fetchMemos = async (params: any = {}): Promise<any> => {
 };
 
 // Fetch my memos (for employees)
-export const fetchMyMemos = async (): Promise<any> => {
+export const fetchMyMemos = async (): Promise<ApiResponse<{ memos: Memo[] }>> => {
   try {
     const response = await axios.get('/memos/my');
     return response.data;
@@ -23,7 +35,7 @@ export const fetchMyMemos = async (): Promise<any> => {
 };
 
 // Fetch single memo
-export const fetchMemoById = async (id: string | number): Promise<any> => {
+export const fetchMemoById = async (id: string | number): Promise<ApiResponse<{ memo: Memo }>> => {
   try {
     const response = await axios.get(`/memos/${id}`);
     return response.data;
@@ -33,7 +45,7 @@ export const fetchMemoById = async (id: string | number): Promise<any> => {
 };
 
 // Create memo
-export const createMemo = async (data: any): Promise<any> => {
+export const createMemo = async (data: Partial<Memo>): Promise<ApiResponse<{ success: boolean; id: number }>> => {
   try {
     const response = await axios.post('/memos', data);
     return response.data;
@@ -43,7 +55,7 @@ export const createMemo = async (data: any): Promise<any> => {
 };
 
 // Update memo
-export const updateMemo = async (id: string | number, data: any): Promise<any> => {
+export const updateMemo = async (id: string | number, data: Partial<Memo>): Promise<ApiResponse<{ success: boolean }>> => {
   try {
     const response = await axios.put(`/memos/${id}`, data);
     return response.data;
@@ -53,7 +65,7 @@ export const updateMemo = async (id: string | number, data: any): Promise<any> =
 };
 
 // Delete memo
-export const deleteMemo = async (id: string | number): Promise<any> => {
+export const deleteMemo = async (id: string | number): Promise<ApiResponse<{ success: boolean }>> => {
   try {
     const response = await axios.delete(`/memos/${id}`);
     return response.data;
@@ -63,7 +75,7 @@ export const deleteMemo = async (id: string | number): Promise<any> => {
 };
 
 // Acknowledge memo
-export const acknowledgeMemo = async (id: string | number): Promise<any> => {
+export const acknowledgeMemo = async (id: string | number): Promise<ApiResponse<{ success: boolean }>> => {
   try {
     const response = await axios.post(`/memos/${id}/acknowledge`);
     return response.data;

@@ -1,20 +1,22 @@
 import axios from './axios';
 import { ApiResponse } from '../types';
 
+import { Employee, Skill, Education, EmergencyContact, CustomField } from '../types';
+
 interface EmployeeResponse {
   success: boolean;
-  employees?: any[];
-  profile?: any;
+  employees?: Employee[];
+  profile?: Employee;
   message?: string;
   id?: string | number;
-  data?: any;
+  data?: unknown;
   previousStatus?: string;
   newStatus?: string;
-  skills?: any[];
+  skills?: Skill[];
   skillId?: string | number;
-  education?: any[];
+  education?: Education[];
   educationId?: string | number;
-  contacts?: any[];
+  contacts?: EmergencyContact[];
   contactId?: string | number;
   fieldId?: string | number;
   departments?: { id: number; name: string }[] | string[];
@@ -51,16 +53,17 @@ export const fetchEmployeeProfile = async (id: string | number): Promise<Employe
     const response = await axios.get(`/employees/${id}`);
     return { success: true, profile: response.data.employee };
   } catch (error) {
-    return { success: false, profile: null };
+    return { success: false, profile: undefined };
   }
 };
 
-export const addEmployee = async (formData: FormData | any): Promise<EmployeeResponse> => {
+export const addEmployee = async (formData: FormData): Promise<EmployeeResponse> => {
   try {
     const response = await axios.post('/employees', formData);
     return { success: true, message: response.data.message, id: response.data.employeeId };
-  } catch (error: any) {
-    return { success: false, message: error.response?.data?.message || 'Failed to add employee' };
+  } catch (error: unknown) {
+    const message = (error as { response?: { data?: { message?: string } } }).response?.data?.message || 'Failed to add employee';
+    return { success: false, message };
   }
 };
 
@@ -73,12 +76,13 @@ export const deleteEmployee = async (id: string | number): Promise<EmployeeRespo
   }
 };
 
-export const updateEmployee = async (id: string | number, formData: FormData | any): Promise<EmployeeResponse> => {
+export const updateEmployee = async (id: string | number, formData: FormData): Promise<EmployeeResponse> => {
   try {
     const response = await axios.put(`/employees/${id}`, formData);
     return { success: true, message: response.data.message };
-  } catch (error: any) {
-    return { success: false, message: error.response?.data?.message || 'Failed to update employee' };
+  } catch (error: unknown) {
+    const message = (error as { response?: { data?: { message?: string } } }).response?.data?.message || 'Failed to update employee';
+    return { success: false, message };
   }
 };
 

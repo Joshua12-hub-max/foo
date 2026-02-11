@@ -286,21 +286,29 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
           {/* Employment Details - Collapsible */}
            <CollapsibleSection title="Employment Details" isOpen={openSections.employment} onToggle={() => toggleSection('employment')}>
              <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-6">
-               <label className="text-xs font-semibold text-gray-800 mb-1 block flex items-center gap-1">
-                 <FileText size={12} className="text-gray-500" /> Plantilla Item
-               </label>
-               <select 
-                 className="w-full px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-100 bg-white" 
-                 {...register('item_number')}
-                 onChange={handlePlantillaChange}
-               >
-                 <option value="">Select position...</option>
-                 {vacantPositions.map(pos => (
-                   <option key={pos.id} value={pos.item_number}>
-                     {pos.item_number} - {pos.position_title} (SG-{pos.salary_grade})
-                   </option>
-                 ))}
-               </select>
+               <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label className="text-xs font-semibold text-gray-800 mb-1 block flex items-center gap-1">
+                        <FileText size={12} className="text-gray-500" /> Plantilla Item
+                    </label>
+                    <select 
+                        className="w-full px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-100 bg-white" 
+                        {...register('item_number')}
+                        onChange={handlePlantillaChange}
+                    >
+                        <option value="">Select position...</option>
+                        {vacantPositions.map(pos => (
+                        <option key={pos.id} value={pos.item_number}>
+                            {pos.item_number} - {pos.position_title} (SG-{pos.salary_grade})
+                        </option>
+                        ))}
+                    </select>
+                  </div>
+                   <div>
+                       <label className="text-xs font-semibold text-gray-700 mb-1 block">Agency Employee No.</label>
+                       <input type="text" {...register('agency_employee_no')} className="w-full px-2.5 py-1.5 text-sm bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-100" />
+                   </div>
+               </div>
              </div>
              <div className="grid grid-cols-2 gap-2">
                <div>
@@ -335,7 +343,7 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
                 <input {...register('station')} className="w-full px-3 py-2 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200" />
              </div>
            </CollapsibleSection>
- 
+
            {/* Personal Information - Collapsible */}
            <CollapsibleSection title="Personal Information" isOpen={openSections.personal} onToggle={() => toggleSection('personal')}>
              <div className="grid grid-cols-2 gap-2">
@@ -351,6 +359,32 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
                  </select>
                </div>
              </div>
+             
+             {/* New PDS Field Group 1 */}
+             <div className="grid grid-cols-2 gap-2">
+                <div>
+                   <label className="text-xs font-semibold text-gray-700 mb-1 block">Place of Birth</label>
+                   <input type="text" {...register('place_of_birth')} className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200" />
+                </div>
+                <div>
+                   <label className="text-xs font-semibold text-gray-700 mb-1 block">Blood Type</label>
+                   <select {...register('blood_type')} className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200">
+                        <option value="">Select...</option>
+                        {BLOOD_TYPE_OPTIONS.map(opt => (<option key={opt.value} value={opt.value}>{opt.label}</option>))}
+                   </select>
+                </div>
+             </div>
+             <div className="grid grid-cols-2 gap-2">
+                <div>
+                   <label className="text-xs font-semibold text-gray-700 mb-1 block">Height (m)</label>
+                   <input type="number" step="0.01" {...register('height_m', { valueAsNumber: true })} className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200" />
+                </div>
+                <div>
+                   <label className="text-xs font-semibold text-gray-700 mb-1 block">Weight (kg)</label>
+                   <input type="number" step="0.01" {...register('weight_kg', { valueAsNumber: true })} className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200" />
+                </div>
+             </div>
+
              <div className="grid grid-cols-2 gap-2">
                <div>
                   <label className="text-xs font-semibold text-gray-700 mb-1 block">Civil Status</label>
@@ -367,16 +401,62 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
                   </datalist>
                </div>
              </div>
-              <div>
-                  <label className="text-xs font-semibold text-gray-700 mb-1 block">Phone Number</label>
+
+             {/* Citizenship */}
+             <div className="grid grid-cols-2 gap-2">
+                <div>
+                   <label className="text-xs font-semibold text-gray-700 mb-1 block">Citizenship Type</label>
+                   <select {...register('citizenship_type')} className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200">
+                        <option value="Filipino">Filipino</option>
+                        <option value="Dual Citizenship">Dual Citizenship</option>
+                   </select>
+                </div>
+                <div>
+                   <label className="text-xs font-semibold text-gray-700 mb-1 block">Country (If Dual)</label>
+                   <input type="text" {...register('dual_citizenship_country')} placeholder="N/A" className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200" />
+                </div>
+             </div>
+
+             {/* Contact Info */}
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                   <label className="text-xs font-semibold text-gray-700 mb-1 block">Telephone No.</label>
+                   <input type="tel" {...register('telephone_no')} className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200" />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-gray-700 mb-1 block">Mobile Number</label>
                   <input type="tel" {...register('phone_number')} className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200" />
+               </div>
               </div>
+              
+              <div>
+                  <label className="text-xs font-semibold text-gray-700 mb-1 block">Residential Address</label>
+                  <div className="flex gap-2">
+                    <textarea rows={2} {...register('residential_address')} className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200 resize-none" placeholder="House/Block/Lot No., Street, Subdivision, Barangay, City/Municipality, Province" />
+                    <input type="text" {...register('residential_zip_code')} placeholder="ZIP Code" className="w-24 px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200 h-full" />
+                  </div>
+              </div>
+
               <div>
                   <label className="text-xs font-semibold text-gray-700 mb-1 block">Permanent Address</label>
-                  <textarea rows={2} {...register('permanent_address')} className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200 resize-none" />
+                  <div className="flex gap-2">
+                     <textarea rows={2} {...register('permanent_address')} className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200 resize-none" placeholder="House/Block/Lot No., Street, Subdivision, Barangay, City/Municipality, Province" />
+                     <input type="text" {...register('permanent_zip_code')} placeholder="ZIP Code" className="w-24 px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200 h-full" />
+                  </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-gray-100">
+                <div>
+                   <label className="text-xs font-semibold text-gray-700 mb-1 block">Emergency Contact Name</label>
+                   <input type="text" {...register('emergency_contact')} className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200" />
+                </div>
+                <div>
+                   <label className="text-xs font-semibold text-gray-700 mb-1 block">Emergency Contact No.</label>
+                   <input type="tel" {...register('emergency_contact_number')} className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200" />
+                </div>
               </div>
            </CollapsibleSection>
- 
+
            {/* Government IDs - Collapsible */}
            <CollapsibleSection title="Government IDs" isOpen={openSections.government} onToggle={() => toggleSection('government')}>
              <div className="grid grid-cols-2 gap-2">

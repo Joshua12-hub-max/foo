@@ -15,7 +15,14 @@ router.get('/available-employees', verifyAdmin, plantillaController.getAvailable
 
 // Salary schedule
 router.get('/salary-schedule', verifyToken, plantillaController.getSalarySchedule);
+router.post('/salary-schedule/upload', verifyAdmin, plantillaController.uploadSalarySchedule);
+router.delete('/salary-schedule/:tranche', verifyAdmin, plantillaController.deleteSalaryScheduleByTranche);
 
+// Tranches
+router.get('/tranches', verifyToken, plantillaController.getTranches);
+router.post('/tranches', verifyAdmin, plantillaController.createTranche);
+router.get('/tranches/active', verifyToken, plantillaController.getActiveTranche);
+router.put('/tranches/:id/activate', verifyAdmin, plantillaController.setActiveTranche);
 // CRUD
 router.get('/', verifyToken, plantillaController.getPlantilla);
 router.post('/', verifyAdmin, plantillaController.createPosition);

@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { verifyAdmin } from '../middleware/authMiddleware.js';
-import { uploadResume } from '../middleware/uploadMiddleware.js';
+import { uploadResume, uploadGeneral } from '../middleware/uploadMiddleware.js';
 import * as recruitmentController from '../controllers/recruitmentController.js';
 import { manualCheckEmails } from '../services/emailReceiverService.js';
 import multer from 'multer';
@@ -30,8 +30,8 @@ router.post('/apply',
 );
 
 // Admin Routes
-router.post('/jobs', verifyAdmin, recruitmentController.createJob);
-router.put('/jobs/:id', verifyAdmin, recruitmentController.updateJob);
+router.post('/jobs', verifyAdmin, uploadGeneral.single('file'), handleMulterError, recruitmentController.createJob);
+router.put('/jobs/:id', verifyAdmin, uploadGeneral.single('file'), handleMulterError, recruitmentController.updateJob);
 router.delete('/jobs/:id', verifyAdmin, recruitmentController.deleteJob);
 router.get('/applicants', verifyAdmin, recruitmentController.getApplicants);
 router.put('/applicants/:id/stage', verifyAdmin, recruitmentController.updateApplicantStage);

@@ -84,7 +84,7 @@ export const PerformanceFilters: React.FC<PerformanceFiltersProps> = ({
           <button
             onClick={handleApply}
             disabled={isLoading}
-            className="flex-1 flex items-center justify-center gap-2 bg-[#F8F9FA] text-gray-700 font-medium px-4 py-2 rounded-lg text-sm shadow-sm hover:bg-[#F8F9FA] transition-all active:scale-95 border border-gray-200 disabled:opacity-50"
+            className="flex-1 flex items-center justify-center gap-2 bg-white hover:bg-gray-50 text-gray-900 border border-gray-300 px-4 py-2 rounded-lg font-bold text-sm shadow-sm transition-all active:scale-95 disabled:opacity-50"
             aria-label="Apply filters"
           >
             Apply Filter
@@ -93,7 +93,7 @@ export const PerformanceFilters: React.FC<PerformanceFiltersProps> = ({
           <button
             onClick={handleClear}
             disabled={isLoading}
-            className="flex-1 bg-[#F8F9FA] text-gray-700 font-medium px-4 py-2 rounded-lg text-sm shadow-sm hover:bg-[#F8F9FA] transition-all active:scale-95 border border-gray-200 disabled:opacity-50"
+            className="flex-1 bg-white hover:bg-gray-50 text-gray-900 border border-gray-300 px-4 py-2 rounded-lg font-bold text-sm shadow-sm transition-all active:scale-95 disabled:opacity-50"
             aria-label="Clear filters"
           >
             Clear

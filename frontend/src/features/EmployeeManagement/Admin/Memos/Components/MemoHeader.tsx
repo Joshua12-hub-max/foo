@@ -19,14 +19,14 @@ const MemoHeader: React.FC<MemoHeaderProps> = memo(({ onRefresh, onCreateNew, is
       <div className="flex items-center gap-2">
         <button
           onClick={onRefresh}
-          className="p-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg transition-colors"
+          className="p-2 bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 rounded-lg shadow-sm transition-all"
           aria-label="Refresh memos"
         >
           <RefreshCw size={18} className={isLoading ? 'animate-spin' : ''} />
         </button>
         <button
           onClick={onCreateNew}
-          className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors"
+          className="bg-white hover:bg-gray-50 text-gray-900 border border-gray-300 px-5 py-2.5 rounded-lg flex items-center gap-2 shadow-sm transition-all active:scale-95 text-sm font-bold"
         >
           <Plus size={18} />
           New Memo

@@ -1,13 +1,12 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
-// @ts-ignore
-import { plantillaApi, type Position } from '@api/plantillaApi';
-export type { Position }; // Re-export for legacy code support
-// @ts-ignore
-import { fetchEmployeeOptions } from '@api/employeeApi';
+import { plantillaApi, type Position } from '@/api/plantillaApi';
+import { fetchEmployeeOptions } from '@/api/employeeApi';
 import { INITIAL_SUMMARY, PlantillaSummary } from '../constants/plantillaConstants';
 import { PlantillaSchema } from '@/schemas/plantilla';
+
+export type { Position };
 
 interface ApiErrorResponse {
   message?: string;
@@ -48,7 +47,6 @@ export interface UsePlantillaReturn {
   setModalMode: React.Dispatch<React.SetStateAction<'create' | 'edit'>>;
   currentPosition: Position | null;
   setCurrentPosition: React.Dispatch<React.SetStateAction<Position | null>>;
-  // formData removed
   isAssignModalOpen: boolean;
   setIsAssignModalOpen: React.Dispatch<React.SetStateAction<boolean>>;
   availableEmployees: Employee[];
@@ -59,6 +57,8 @@ export interface UsePlantillaReturn {
   positionHistory: HistoryRecord[];
   isVacateModalOpen: boolean;
   setIsVacateModalOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  isAppointmentModalOpen: boolean;
+  setIsAppointmentModalOpen: React.Dispatch<React.SetStateAction<boolean>>;
   vacateReason: string;
   setVacateReason: React.Dispatch<React.SetStateAction<string>>;
   filteredPositions: Position[];
@@ -68,6 +68,7 @@ export interface UsePlantillaReturn {
   handleVacate: () => Promise<void>;
   fetchHistory: (position: Position) => Promise<void>;
   openAssignModal: (position: Position) => Promise<void>;
+  openAppointmentModal: (position: Position) => void;
   refetch: () => void;
 }
 
@@ -111,33 +112,42 @@ export const usePlantilla = ({ showNotification }: UsePlantillaOptions = {}): Us
     const [isVacateModalOpen, setIsVacateModalOpen] = useState(false);
     const [vacateReason, setVacateReason] = useState('');
     const [selectedEmployee, setSelectedEmployee] = useState('');
+    // Appointment modal state
+    const [isAppointmentModalOpen, setIsAppointmentModalOpen] = useState(false);
     const { data: positionsData, isLoading: positionsLoading, error: positionsError, refetch: refetchPositions } = useQuery({
         queryKey: ['plantilla', selectedDept],
         queryFn: async () => {
             const response = await plantillaApi.getPositions({ 
-                department_id: selectedDept !== 'All' ? selectedDept : undefined
+                department_id: selectedDept !== 'All' ? Number(selectedDept) : undefined
             });
             return response.data.positions;
         },
-        initialData: []
+        staleTime: 0,
     });
 
     const { data: summaryData, refetch: refetchSummary } = useQuery({
         queryKey: ['plantilla-summary'],
         queryFn: async () => {
-            const response = await plantillaApi.getSummary();
-            return response.data.summary || INITIAL_SUMMARY;
+            try {
+                const response = await plantillaApi.getSummary();
+                return response.data.summary;
+            } catch (error) {
+                console.error('Failed to fetch summary:', error);
+                return INITIAL_SUMMARY;
+            }
         },
-        initialData: INITIAL_SUMMARY
+        staleTime: 0,
+        refetchOnMount: true,
+        refetchOnWindowFocus: true
     });
 
     const { data: departmentsData } = useQuery({
         queryKey: ['departments-options'],
         queryFn: async () => {
-            const options = await fetchEmployeeOptions();
-            return (options.departments || []) as { id: number; name: string }[];
+            const response = await fetchEmployeeOptions();
+            // Ensure response structure is handled correctly
+            return (response.departments || []) as { id: number; name: string }[];
         },
-        initialData: []
     });
     
     // Actions
@@ -156,19 +166,26 @@ export const usePlantilla = ({ showNotification }: UsePlantillaOptions = {}): Us
 
     const handleCreateOrUpdate = useCallback(async (data: PlantillaSchema) => {
         try {
+          // Ensure numbers are actually numbers for the API
           const payload = {
             ...data,
-            salary_grade: String(data.salary_grade),
-            monthly_salary: data.monthly_salary ? String(data.monthly_salary) : undefined,
-            department_id: data.department_id,
-            status: 'Active' as const
+            salary_grade: Number(data.salary_grade),
+            step_increment: Number(data.step_increment),
+            monthly_salary: data.monthly_salary ? Number(data.monthly_salary) : undefined,
+            department_id: Number(data.department_id),
+            // Explicitly map optional fields to avoid undefined if the backend expects null
+            area_code: data.area_code || undefined,
+            area_type: data.area_type || undefined,
+            area_level: data.area_level || undefined,
+            status: 'Active' as const,
+            is_vacant: data.is_vacant
           };
 
           if (modalMode === 'create') {
-            await plantillaApi.createPosition(data as Omit<Position, 'id'>);
+            await plantillaApi.createPosition(payload as unknown as Omit<Position, 'id'>);
           } else {
             if (!currentPosition?.id) throw new Error("No position selected for update");
-            await plantillaApi.updatePosition(currentPosition.id, data as Partial<Position>);
+            await plantillaApi.updatePosition(currentPosition.id, payload as unknown as Partial<Position>);
           }
           setIsModalOpen(false);
           refetchPositions();
@@ -217,7 +234,8 @@ export const usePlantilla = ({ showNotification }: UsePlantillaOptions = {}): Us
         setCurrentPosition(position);
         try {
           const response = await plantillaApi.getPositionHistory(position.id);
-          setPositionHistory(response.data.history);
+          // @ts-ignore - History record type mismatch in some environments, casting safely
+          setPositionHistory(response.data.history as HistoryRecord[]);
           setIsHistoryModalOpen(true);
         } catch (err) {
           notify("Failed to load position history", "error");
@@ -228,22 +246,41 @@ export const usePlantilla = ({ showNotification }: UsePlantillaOptions = {}): Us
         setCurrentPosition(position);
         try {
           const response = await plantillaApi.getAvailableEmployees();
-          setAvailableEmployees(response.data.employees);
-          // setSelectedEmployee(''); // Handled in modal
+          // @ts-ignore - Employee type mismatch
+          setAvailableEmployees(response.data.employees as Employee[]);
           setIsAssignModalOpen(true);
         } catch (err) {
           notify("Failed to load available employees", "error");
         }
     }, []);
 
-    const filteredPositions = useMemo(() => 
-        (positionsData || []).filter((p: Position) => 
-          p.position_title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          p.item_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          (p.incumbent_name && p.incumbent_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-          (p.department && p.department.toLowerCase().includes(searchTerm.toLowerCase()))
-        ), [positionsData, searchTerm]
-    );
+    const openAppointmentModal = useCallback((position: Position) => {
+        setCurrentPosition(position);
+        setIsAppointmentModalOpen(true);
+    }, []);
+
+    const filteredPositions = useMemo(() => {
+        const data = positionsData || [];
+        const lowerSearch = searchTerm?.toLowerCase() || '';
+
+        if (!lowerSearch) return data;
+
+        return data.filter((p: Position) => {
+            const posTitle = p.position_title?.toLowerCase() || '';
+            const itemNum = p.item_number?.toLowerCase() || '';
+            const incumbent = p.incumbent_name?.toLowerCase() || '';
+            const dept = p.department?.toLowerCase() || '';
+            const deptName = p.department_name?.toLowerCase() || '';
+
+            return (
+                posTitle.includes(lowerSearch) ||
+                itemNum.includes(lowerSearch) ||
+                incumbent.includes(lowerSearch) ||
+                dept.includes(lowerSearch) ||
+                deptName.includes(lowerSearch)
+            );
+        });
+    }, [positionsData, searchTerm]);
 
     return {
         // State
@@ -265,6 +302,8 @@ export const usePlantilla = ({ showNotification }: UsePlantillaOptions = {}): Us
         handleDelete, handleCreateOrUpdate, 
         handleAssign, handleVacate,
         fetchHistory, openAssignModal,
+        openAppointmentModal,
+        isAppointmentModalOpen, setIsAppointmentModalOpen,
         refetch: () => { refetchPositions(); refetchSummary(); }
     };
 };

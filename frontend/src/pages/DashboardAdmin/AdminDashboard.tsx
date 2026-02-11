@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate, Outlet, useLocation } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 
 // Standardizing Aliased Imports
 import { useAuth } from "@hooks/useAuth";
@@ -24,7 +25,8 @@ import RegularizationWidget from "../../features/Dashboard/components/Regulariza
 // Icons
 import { 
   LayoutDashboard, Clock, Users, Briefcase, 
-  Award, Settings, Mail, MessageCircle, LucideIcon
+  Award, Settings, Mail, MessageCircle, LucideIcon,
+  Wallet
 } from "lucide-react";
 
 // --- Interfaces ---
@@ -161,23 +163,38 @@ export default function HDashboard(): React.ReactElement {
   }, [sidebarOpen, setSidebarOpenStore]);
 
   const [activeTable, setActiveTable] = useState<string | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-  
-  const [stats, setStats] = useState({
-    present: 0,
-    absent: 0,
-    late: 0,
-    leave: 0,
-    hired: 0
+
+  const { data: dashboardData, isLoading: loading } = useQuery({
+    queryKey: ['adminDashboardStats'],
+    queryFn: async () => {
+      const response = await attendanceApi.getDashboardStats();
+      return response.data?.data;
+    }
   });
 
-  const [employeeLists, setEmployeeLists] = useState<EmployeeLists>({
-    present: [],
-    absent: [],
-    late: [],
-    onLeave: [],
-    hired: []
-  });
+  const stats = useMemo(() => ({
+    present: dashboardData?.counts?.present || 0,
+    absent: dashboardData?.counts?.absent || 0,
+    late: dashboardData?.counts?.late || 0,
+    leave: dashboardData?.counts?.onLeave || 0,
+    hired: dashboardData?.counts?.hired || 0
+  }), [dashboardData]);
+
+  const employeeLists = useMemo(() => {
+    const processList = (list: any[]): Employee[] => (list || []).map(emp => ({
+      ...emp,
+      name: emp.name || `${emp.first_name || ''} ${emp.last_name || ''}`.trim(),
+      department: emp.department || emp.department_name,
+    }));
+
+    return {
+      present: processList(dashboardData?.lists?.present),
+      absent: processList(dashboardData?.lists?.absent),
+      late: processList(dashboardData?.lists?.late),
+      onLeave: processList(dashboardData?.lists?.onLeave),
+      hired: processList(dashboardData?.lists?.hired)
+    };
+  }, [dashboardData]);
 
   const isDashboardHome = useMemo(() => 
     location.pathname === "/admin-dashboard" || location.pathname === "/admin-dashboard/", 
@@ -240,51 +257,8 @@ export default function HDashboard(): React.ReactElement {
         { name: "Biometrics Logs", action: "biometrics-logs" },
       ],
     },
+    { name: "Compensation", icon: Wallet, action: "compensation" },
   ], []);
-
-  // --- Data Fetching ---
-  useEffect(() => {
-    let isMounted = true;
-    
-    const loadStats = async (): Promise<void> => {
-      try {
-        setLoading(true);
-        const response = await attendanceApi.getDashboardStats();
-        const data = response.data?.data;
-        
-        if (data && isMounted) {
-          setStats({
-            present: data.counts?.present || 0,
-            late: data.counts?.late || 0,
-            leave: data.counts?.onLeave || 0,
-            absent: data.counts?.absent || 0,
-            hired: data.counts?.hired || 0
-          });
-          
-          const processList = (list: any[]): Employee[] => list.map(emp => ({
-            ...emp,
-            name: emp.name || `${emp.first_name || ''} ${emp.last_name || ''}`.trim(),
-            department: emp.department || emp.department_name,
-          }));
-
-          setEmployeeLists({
-            present: processList(data.lists?.present || []),
-            absent: processList(data.lists?.absent || []),
-            late: processList(data.lists?.late || []),
-            onLeave: processList(data.lists?.onLeave || []),
-            hired: processList(data.lists?.hired || [])
-          });
-        }
-      } catch (error) {
-        console.error("Dashboard Stats Fetch Error:", error);
-      } finally {
-        if (isMounted) setLoading(false);
-      }
-    };
-
-    loadStats();
-    return () => { isMounted = false; };
-  }, []);
 
   const statsCards: StatCardData[] = useMemo(() => [
     { title: "Present", data: stats.present },

@@ -10,8 +10,7 @@ import AttendanceFilters from '@features/Attendance/components/Admin/AttendanceF
 import AttendanceExport from '@features/Attendance/components/Admin/AttendanceExport';
 import AttendanceTable from '@features/Attendance/components/Admin/AttendanceTable';
 
-import { fetchDepartments } from '@api/departmentApi';
-import { fetchEmployees } from '@api/employeeApi';
+import { useFilterOptions } from '@/hooks/useFilterOptions';
 
 const AdminAttendance = () => {
   const sidebarOpen = useUIStore((state) => state.sidebarOpen);
@@ -24,33 +23,8 @@ const AdminAttendance = () => {
   const logs = data?.data?.data || [];
   const paginationData = data?.data?.pagination;
 
-  // Fetch Filter Options using React Query
-  const { data: filterOptions, isLoading: loadingFilters } = useQuery({
-    queryKey: ['attendance-filters'],
-    queryFn: async () => {
-      const [deptRes, empRes] = await Promise.all([
-        fetchDepartments(),
-        fetchEmployees()
-      ]);
-      
-      const uniqueDepts = deptRes.success && deptRes.departments 
-        ? Array.from(new Set(deptRes.departments.map((d: any) => d.name).filter(Boolean)))
-        : [];
-      
-      const emps = empRes.success && empRes.employees
-        ? empRes.employees.map((e: any) => ({
-            id: e.employee_id || e.id,
-            name: e.name || `${e.first_name} ${e.last_name}`
-          })).filter((e: any) => e.id && e.name)
-        : [];
-
-      // Remove duplicates by ID (unique employee options)
-      const uniqueEmps = Array.from(new Map(emps.map((item: any) => [item.id, item])).values());
-
-      return { departments: uniqueDepts as string[], employees: uniqueEmps as {id: string, name: string}[] };
-    },
-    initialData: { departments: [], employees: [] }
-  });
+  // Fetch Filter Options using Centralized Hook
+  const { data: filterOptions, isLoading: loadingFilters } = useFilterOptions();
 
   const handlePageChange = (newPage: number) => {
     setPage(newPage);

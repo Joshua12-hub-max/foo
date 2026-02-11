@@ -1,24 +1,8 @@
 import { Request, Response } from 'express';
-import db from '../db/connection.js';
-import type { RowDataPacket, ResultSetHeader } from 'mysql2/promise';
+import { db } from '../db/index.js';
+import { chatConversations, chatMessages } from '../db/schema.js';
+import { eq, and, desc, sql, asc } from 'drizzle-orm';
 import type { AuthenticatedRequest } from '../types/index.js';
-
-interface ConversationRow extends RowDataPacket {
-  id: number;
-  applicant_name: string;
-  applicant_email: string;
-  status: string;
-  created_at: Date;
-  unread_count?: number;
-}
-
-interface MessageRow extends RowDataPacket {
-  id: number;
-  conversation_id: number;
-  sender_type: string;
-  message: string;
-  created_at: Date;
-}
 
 /**
  * Public: Start or Resume Conversation
@@ -34,20 +18,23 @@ export const startConversation = async (req: Request, res: Response): Promise<vo
     }
 
     // Check if there's an active conversation for this email
-    const [existing] = await db.query<ConversationRow[]>(
-      `SELECT * FROM chat_conversations WHERE applicant_email = ? AND status = 'Active' LIMIT 1`,
-      [email]
-    );
+    const existing = await db.query.chatConversations.findFirst({
+      where: and(
+        eq(chatConversations.applicantEmail, email),
+        eq(chatConversations.status, 'Active')
+      )
+    });
 
-    if (existing.length > 0) {
-      res.json({ success: true, conversation: existing[0] });
+    if (existing) {
+      res.json({ success: true, conversation: existing });
       return;
     }
 
-    const [result] = await db.query<ResultSetHeader>(
-      `INSERT INTO chat_conversations (applicant_name, applicant_email) VALUES (?, ?)`,
-      [name, email]
-    );
+    const [result] = await db.insert(chatConversations).values({
+      applicantName: name,
+      applicantEmail: email,
+      status: 'Active'
+    });
 
     res.status(201).json({ 
       success: true, 
@@ -75,13 +62,18 @@ export const sendMessage = async (req: Request, res: Response): Promise<void> =>
 
     const sender_id = sender_type === 'Admin' ? authReq.user?.id : null;
 
-    const [result] = await db.query<ResultSetHeader>(
-      `INSERT INTO chat_messages (conversation_id, sender_type, sender_id, message) VALUES (?, ?, ?, ?)`,
-      [conversation_id, sender_type, sender_id, message]
-    );
+    const [result] = await db.insert(chatMessages).values({
+      conversationId: Number(conversation_id),
+      senderType: sender_type as any,
+      senderId: sender_id,
+      message,
+      isRead: 0
+    });
 
     // Update conversation's updated_at
-    await db.query(`UPDATE chat_conversations SET updated_at = NOW() WHERE id = ?`, [conversation_id]);
+    await db.update(chatConversations)
+      .set({ updatedAt: new Date().toISOString() })
+      .where(eq(chatConversations.id, Number(conversation_id)));
 
     res.status(201).json({ success: true, message_id: result.insertId });
   } catch (error) {
@@ -97,19 +89,21 @@ export const sendMessage = async (req: Request, res: Response): Promise<void> =>
 export const getMessages = async (req: Request, res: Response): Promise<void> => {
   try {
     const { conversationId } = req.params;
-    const { mark_read } = req.query;
+    const { mark_read, reader } = req.query;
 
-    const [messages] = await db.query<MessageRow[]>(
-      `SELECT * FROM chat_messages WHERE conversation_id = ? ORDER BY created_at ASC`,
-      [conversationId]
-    );
+    const messages = await db.select()
+      .from(chatMessages)
+      .where(eq(chatMessages.conversationId, Number(conversationId)))
+      .orderBy(asc(chatMessages.createdAt));
 
     if (mark_read === 'true') {
-        const sender_type_to_mark = req.query.reader === 'Admin' ? 'Applicant' : 'Admin';
-        await db.query(
-            `UPDATE chat_messages SET is_read = TRUE WHERE conversation_id = ? AND sender_type = ?`,
-            [conversationId, sender_type_to_mark]
-        );
+        const sender_type_to_mark = reader === 'Admin' ? 'Applicant' : 'Admin';
+        await db.update(chatMessages)
+          .set({ isRead: 1 })
+          .where(and(
+            eq(chatMessages.conversationId, Number(conversationId)),
+            eq(chatMessages.senderType, sender_type_to_mark as any)
+          ));
     }
 
     res.json({ success: true, messages });
@@ -123,16 +117,23 @@ export const getMessages = async (req: Request, res: Response): Promise<void> =>
  * Admin: List All Active Conversations
  * GET /api/chat/conversations
  */
-export const getActiveConversations = async (req: Request, res: Response): Promise<void> => {
+export const getActiveConversations = async (_req: Request, res: Response): Promise<void> => {
   try {
-    const [conversations] = await db.query<ConversationRow[]>(`
-      SELECT c.*, 
-      (SELECT COUNT(*) FROM chat_messages m WHERE m.conversation_id = c.id AND m.is_read = FALSE AND m.sender_type = 'Applicant') as unread_count,
-      (SELECT message FROM chat_messages m WHERE m.conversation_id = c.id ORDER BY m.created_at DESC LIMIT 1) as last_message
-      FROM chat_conversations c 
-      WHERE c.status = 'Active' 
-      ORDER BY c.updated_at DESC
-    `);
+    const conversations = await db.select({
+      id: chatConversations.id,
+      applicantName: chatConversations.applicantName,
+      applicantEmail: chatConversations.applicantEmail,
+      status: chatConversations.status,
+      createdAt: chatConversations.createdAt,
+      updatedAt: chatConversations.updatedAt,
+      // Use subqueries for aggregated data
+      unreadCount: sql<number>`(SELECT COUNT(*) FROM ${chatMessages} WHERE ${chatMessages.conversationId} = ${chatConversations.id} AND ${chatMessages.isRead} = 0 AND ${chatMessages.senderType} = 'Applicant')`,
+      lastMessage: sql<string>`(SELECT ${chatMessages.message} FROM ${chatMessages} WHERE ${chatMessages.conversationId} = ${chatConversations.id} ORDER BY ${chatMessages.createdAt} DESC LIMIT 1)`
+    })
+    .from(chatConversations)
+    .where(eq(chatConversations.status, 'Active'))
+    .orderBy(desc(chatConversations.updatedAt));
+
     res.json({ success: true, conversations });
   } catch (error) {
     console.error('Get Active Conversations Error:', error);
@@ -147,7 +148,9 @@ export const getActiveConversations = async (req: Request, res: Response): Promi
 export const closeConversation = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    await db.query(`UPDATE chat_conversations SET status = 'Closed' WHERE id = ?`, [id]);
+    await db.update(chatConversations)
+      .set({ status: 'Closed' })
+      .where(eq(chatConversations.id, Number(id)));
     res.json({ success: true, message: 'Conversation closed' });
   } catch (error) {
     console.error('Close Conversation Error:', error);

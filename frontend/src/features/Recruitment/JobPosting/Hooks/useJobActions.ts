@@ -12,7 +12,7 @@ const useJobActions = (
   const handleSaveJob = async (
     isEditing: boolean, 
     selectedJobId: number | null, 
-    formData: JobFormData, 
+    formData: JobFormData | FormData, 
     onSuccess: () => void
   ) => {
     setSaving(true);
@@ -22,6 +22,10 @@ const useJobActions = (
       } else {
         await recruitmentApi.createJob(formData);
       }
+      
+      // Artificial delay for UX
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      
       onSuccess();
       loadJobs();
     } catch (err: any) {

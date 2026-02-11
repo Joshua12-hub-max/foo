@@ -9,6 +9,10 @@ export const plantillaSchema = z.object({
   department: z.string().optional(),
   department_id: z.number().min(1, 'Department is required'),
   is_vacant: z.boolean(),
+  area_code: z.string().optional(),
+  area_type: z.string().optional(),
+  area_level: z.string().optional(),
+  last_promotion_date: z.string().optional(),
 });
 
 export type PlantillaSchema = z.infer<typeof plantillaSchema>;

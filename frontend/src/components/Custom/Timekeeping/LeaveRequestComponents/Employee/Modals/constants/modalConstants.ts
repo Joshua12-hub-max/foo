@@ -12,7 +12,7 @@ export const LEAVE_TYPES = [
   'Special Privilege Leave',
   'Wellness Leave',           // CSC 2025/2026 Memo - 5 days
   'Forced/Mandatory Leave',
-  'Official Business',
+
   'Other'
 ] as const;
 
@@ -23,7 +23,7 @@ export const SPECIAL_LEAVES_NO_DEDUCTION = [
   'Special Privilege Leave',      // 3 days/year (SLP)
   'Special Emergency Leave',      // 5 days (calamity)
   'Wellness Leave',               // 5 days (2025/2026 CSC Memo)
-  'Official Business',            // No credit deduction
+
   'Study Leave',                  // CSC-approved, separate allocation
   'VAWC Leave',                   // Violence Against Women and Children
   'Rehabilitation Leave',         // Separate allocation
@@ -47,7 +47,7 @@ export const LEAVE_TO_CREDIT_MAP: Record<string, string | null> = {
   'Special Privilege Leave': 'Special Privilege Leave',
   'Special Emergency Leave': null,
   'Wellness Leave': null,
-  'Official Business': null,
+
   'Forced/Mandatory Leave': 'Vacation Leave',
   'Maternity Leave': 'Maternity Leave',
   'Paternity Leave': 'Paternity Leave',

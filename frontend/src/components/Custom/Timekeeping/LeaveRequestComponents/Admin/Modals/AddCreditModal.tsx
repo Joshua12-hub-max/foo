@@ -38,19 +38,28 @@ const AddCreditModal = ({ isOpen, onClose, onSubmit, employees, isLoadingEmploye
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-50" onClick={onClose}>
-      <div className="bg-white rounded-xl shadow-md w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 transition-all duration-300" onClick={onClose}>
+      <div 
+        className="bg-white/95 backdrop-blur-md rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] w-full max-w-md border border-white/20 overflow-hidden animate-in fade-in zoom-in duration-300"
+        onClick={e => e.stopPropagation()}
+      >
         {/* Header */}
-        <div className="bg-gray-50 p-4 border-b border-gray-100 flex justify-between items-center">
-          <h2 className="text-lg font-semibold text-gray-800">Add Leave Credit</h2>
-          <button 
-            onClick={onClose}
-            disabled={isSubmitting}
-            className="text-gray-400 hover:text-gray-600 transition-colors p-1 hover:bg-gray-100 rounded-full"
-          >
-            <X className="w-5 h-5 text-gray-600 hover:text-red-700" />
-          </button>
-        </div>
+        <div className="flex items-center justify-between px-6 py-4 shrink-0 border-b border-gray-100">
+            <div className="flex items-center gap-2">
+              <div className="bg-amber-50 p-2 rounded-lg">
+                <Loader2 className="w-5 h-5 text-amber-600" />
+              </div>
+              <h2 className="text-xl font-bold text-gray-900">Add Leave Credit</h2>
+            </div>
+            <button 
+              type="button"
+              onClick={onClose} 
+              disabled={isSubmitting}
+              className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-full hover:bg-gray-100"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
 
         {/* Body */}
         <form onSubmit={handleSubmit(handleFormSubmit)} className="p-6 space-y-4">
@@ -70,11 +79,17 @@ const AddCreditModal = ({ isOpen, onClose, onSubmit, employees, isLoadingEmploye
                 className={`w-full border ${errors.employee_id ? 'border-red-300' : 'border-gray-200'} rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-600/20 focus:border-gray-600 outline-none transition-all`}
               >
                 <option value="">Select an employee...</option>
-                {employees.map(emp => (
-                  <option key={emp.employee_id} value={emp.employee_id}>
-                    {emp.first_name} {emp.last_name} ({emp.employee_id})
-                  </option>
-                ))}
+                {employees.map(emp => {
+                  const empId = emp.employeeId || emp.employee_id || emp.id;
+                  const firstName = emp.firstName || emp.first_name || '';
+                  const lastName = emp.lastName || emp.last_name || '';
+                  return (
+                    <option key={empId} value={empId}>
+                      {firstName} {lastName} ({empId})
+                    </option>
+                  );
+                })}
+
               </select>
             )}
             {errors.employee_id && (

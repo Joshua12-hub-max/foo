@@ -1,4 +1,4 @@
-import db from '../db/connection.js';
+import db from '../db/index.js';
 import type { RowDataPacket } from 'mysql2/promise';
 
 interface DTRRow extends RowDataPacket {

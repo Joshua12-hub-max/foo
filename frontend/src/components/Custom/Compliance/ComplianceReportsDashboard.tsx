@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Download, Printer, AlertCircle } from 'lucide-react';
 
@@ -29,14 +30,6 @@ const reports: ReportType[] = [
         frequency: 'Per appointment'
     },
     {
-        id: 'rai',
-        title: 'Report on Appointments Issued (RAI)',
-        description: 'Monthly report submitted to CSC detailing all appointments issued.',
-        color: 'text-purple-600',
-        bg: 'bg-purple-50',
-        frequency: 'Monthly'
-    },
-    {
         id: 'psipop',
         title: 'PSI-POP',
         description: 'Personal Services Itemization and Plantilla of Personnel.',
@@ -50,9 +43,21 @@ import { reportsApi } from '@/api/reportsApi';
 import { plantillaApi } from '@/api/plantillaApi';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import * as XLSX from 'xlsx';
 import toast from 'react-hot-toast';
 import { useState } from 'react';
 import { X } from 'lucide-react';
+import AppointmentFormModal from '@features/EmployeeManagement/Admin/Plantilla/components/AppointmentFormModal';
+import Form9Modal from '@features/EmployeeManagement/Admin/Plantilla/components/Form9Modal';
+import { useForm9 } from '@features/EmployeeManagement/Admin/Plantilla/hooks/useForm9';
+import { 
+  exportForm9ToPDF, 
+  exportForm9ToExcel, 
+  type Form9Header,
+  type Form9Position 
+} from '@/utils/cscFormExports';
+
+import PSIPOPModal from '@features/EmployeeManagement/Admin/Plantilla/components/PSIPOPModal';
 
 const ComplianceReportsDashboard: React.FC = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -60,6 +65,18 @@ const ComplianceReportsDashboard: React.FC = () => {
     const [positions, setPositions] = useState<any[]>([]);
     const [selectedPositionId, setSelectedPositionId] = useState<string>('');
     const [loadingPositions, setLoadingPositions] = useState(false);
+    
+    // New state for Complex Modal
+    const [isAppointmentFormOpen, setIsAppointmentFormOpen] = useState(false);
+    const [selectedAppointmentPosition, setSelectedAppointmentPosition] = useState<any>(null);
+    
+    // PSI-POP Modal State (New WYSIWYG)
+    const [isPSIPOPModalOpen, setIsPSIPOPModalOpen] = useState(false);
+    const [psipopPositions, setPsipopPositions] = useState<any[]>([]); 
+    const [loadingPsipop, setLoadingPsipop] = useState(false);
+    
+    // Form 9 Hook (Zustand + React Query)
+    const { openForm9Modal } = useForm9();
 
     const generatePDF = (reportId: string, data: any, meta: any) => {
         // ... (PDF Generation Logic - Unchanged) ...
@@ -71,7 +88,7 @@ const ComplianceReportsDashboard: React.FC = () => {
         doc.text("Province of Bulacan", 105, 20, { align: "center" });
         doc.setFontSize(14);
         doc.setFont("helvetica", "bold");
-        doc.text("MUNICIPALITY OF MEYCAUAYAN", 105, 28, { align: "center" });
+        doc.text("CITY GOVERNMENT OF LIGAO", 105, 28, { align: "center" });
         
         doc.setFontSize(12);
         doc.setFont("helvetica", "normal");
@@ -115,6 +132,34 @@ const ComplianceReportsDashboard: React.FC = () => {
     };
 
     const handlePreviewClick = async (reportId: string) => {
+        if (reportId === 'psipop') {
+            const toastId = toast.loading("Loading PSI-POP data...");
+            try {
+                setLoadingPsipop(true);
+                const response = await plantillaApi.getPositions({});
+                if (response.data && response.data.positions) {
+                     setPsipopPositions(response.data.positions);
+                     setIsPSIPOPModalOpen(true);
+                     toast.dismiss(toastId);
+                     // toast.success("Ready", { id: toastId }); // Don't show success, just open modal
+                } else {
+                     toast.error("No positions found", { id: toastId });
+                }
+            } catch (err) {
+                console.error(err);
+                toast.error("Failed to load positions", { id: toastId });
+            } finally {
+                setLoadingPsipop(false);
+            }
+            return;
+        }
+
+        // CS Form No. 9 - Request for Publication of Vacant Positions
+        if (reportId === 'form9') {
+            openForm9Modal();
+            return;
+        }
+
         if (reportId === 'form33') {
             setModalReportId(reportId);
             setIsModalOpen(true);
@@ -139,20 +184,101 @@ const ComplianceReportsDashboard: React.FC = () => {
         try {
             toast.loading("Generating report...");
             
-            // 1. Fetch JSON Data
+            // Form 9 - Use official CSC form layout
+            if (reportId === 'form9') {
+                const response = await reportsApi.getReportData('form9', params);
+                toast.dismiss();
+                
+                if (!response.success || !response.data || response.data.length === 0) {
+                    toast.error("No vacant positions found to export");
+                    return;
+                }
+                
+                // Transform API data to Form9Position format
+                const positions: Form9Position[] = response.data.map((pos: any, idx: number) => ({
+                    no: idx + 1,
+                    positionTitle: pos.position_title || '',
+                    plantillaItemNo: pos.item_number || '',
+                    salaryGrade: pos.salary_grade?.toString() || '',
+                    monthlySalary: pos.monthly_salary?.toLocaleString() || '',
+                    education: pos.education || '',
+                    training: pos.training ? `${pos.training} hours` : 'None required',
+                    experience: pos.experience ? `${pos.experience} years` : 'None required',
+                    eligibility: pos.eligibility || '',
+                    competency: pos.competency || '',
+                    placeOfAssignment: pos.assignment || pos.department || ''
+                }));
+                
+                const header: Form9Header = {
+                    agencyName: 'CGO MEYCAUAYAN, BULACAN',
+                    signatoryName: 'JUDITH S. GUEVARRA, MPA',
+                    signatoryTitle: 'City Human Resource Management Officer',
+                    date: new Date().toLocaleDateString('en-PH'),
+                    deadlineDate: '',
+                    officeAddress: 'City Govt. of Meycauayan, Saluysoy, City of Meycauayan',
+                    contactInfo: '(044) 840-3020 local 501 / chrmo.meycjobs.csc@gmail.cc'
+                };
+                
+                if (type === 'pdf') {
+                    exportForm9ToPDF(header, positions);
+                } else {
+                    await exportForm9ToExcel(header, positions);
+                }
+                toast.success(`Form 9 exported to ${type.toUpperCase()}`);
+                return;
+            }
+            
+            // PSI-POP - Open Modal for both PDF/Excel (User checks preview first)
+            if (reportId === 'psipop') {
+                handlePreviewClick('psipop');
+                return;
+            }
+            
+            // Form 33 - Requires position selection first (opens modal just like Preview button)
+            if (reportId === 'form33') {
+                toast.dismiss();
+                setModalReportId(reportId);
+                setIsModalOpen(true);
+                setLoadingPositions(true);
+                try {
+                    const response = await plantillaApi.getPositions({});
+                    const filled = response.data.positions.filter((p: any) => p.incumbent_id);
+                    setPositions(filled);
+                } catch (err) {
+                    toast.error("Failed to load positions");
+                    setIsModalOpen(false);
+                } finally {
+                    setLoadingPositions(false);
+                }
+                return;
+            }
+            
+            // Form 33 and other reports - Use generic export
             const response = await reportsApi.getReportData(reportId, params);
             
             if (response.success && response.data) {
                 toast.dismiss();
-                toast.success("Report generated!");
                 
                 if (type === 'pdf') {
                     generatePDF(reportId, response.data, response.meta);
+                    toast.success("PDF generated!");
                 } else {
-                    toast("Excel export coming soon!", { icon: '⚠️' });
+                    // Generic Excel Export
+                    const data = Array.isArray(response.data) ? response.data : [response.data];
+                    if (data.length === 0) {
+                        toast.error("No data to export");
+                        return;
+                    }
+                    
+                    const ws = XLSX.utils.json_to_sheet(data);
+                    const wb = XLSX.utils.book_new();
+                    XLSX.utils.book_append_sheet(wb, ws, response.meta?.form_name || 'Report');
+                    const filename = `${response.meta?.form_name || reportId}_${new Date().toISOString().split('T')[0]}.xlsx`;
+                    XLSX.writeFile(wb, filename);
+                    toast.success(`Exported to ${filename}`);
                 }
             } else {
-                 throw new Error(response.message || "No data returned");
+                throw new Error(response.message || "No data returned");
             }
         } catch (error: any) {
             toast.dismiss();
@@ -167,10 +293,22 @@ const ComplianceReportsDashboard: React.FC = () => {
             toast.error("Please select a position");
             return;
         }
-        handleDownload('form33', 'pdf', { position_id: selectedPositionId });
-        setIsModalOpen(false);
-        setSelectedPositionId('');
+        
+        // Find the full position object (Handle string/number mismatch)
+        const pos = positions.find(p => String(p.id) === String(selectedPositionId));
+        
+        if (pos) {
+            // Close the selection modal
+            setIsModalOpen(false);
+            // Open the OFFICIAL Complex Form Modal
+            setSelectedAppointmentPosition(pos);
+            setIsAppointmentFormOpen(true);
+        } else {
+            console.error("Position not found logic error", { selectedPositionId, positions });
+            toast.error("Error: Could not find selected position details.");
+        }
     };
+
 
 
     return (
@@ -190,7 +328,7 @@ const ComplianceReportsDashboard: React.FC = () => {
                 {reports.map((report) => (
                     <div 
                         key={report.id} 
-                        className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm hover:shadow-md hover:border-emerald-200 transition-all group"
+                        className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm hover:shadow-md hover:border-gray-300 transition-all group"
                     >
                         <div className="flex items-start justify-end mb-3">
                             <span className="px-2.5 py-1 bg-gray-100 text-gray-600 text-[10px] font-bold rounded-full uppercase tracking-wider">
@@ -198,7 +336,7 @@ const ComplianceReportsDashboard: React.FC = () => {
                             </span>
                         </div>
                         
-                        <h4 className="text-base font-bold text-gray-900 mb-1 group-hover:text-emerald-600 transition-colors">
+                        <h4 className="text-base font-bold text-gray-900 mb-1 transition-colors">
                             {report.title}
                         </h4>
                         <p className="text-gray-500 text-xs mb-4 h-8 line-clamp-2 leading-relaxed">
@@ -208,17 +346,26 @@ const ComplianceReportsDashboard: React.FC = () => {
                         <div className="flex gap-2 pt-3 border-t border-gray-100">
                             <button 
                                 onClick={() => handlePreviewClick(report.id)}
-                                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-white hover:bg-emerald-50 border border-gray-200 hover:border-emerald-200 text-gray-600 hover:text-emerald-700 rounded-lg text-xs font-semibold transition-all active:scale-95"
+                                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300 text-gray-600 hover:text-gray-800 rounded-lg text-xs font-semibold transition-all active:scale-95"
                             >
                                 <Printer size={14} />
                                 Preview
                             </button>
                             <button 
                                 onClick={() => handleDownload(report.id, 'excel')}
-                                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-sm transition-all active:scale-95"
+                                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300 text-gray-600 hover:text-gray-800 rounded-lg text-xs font-semibold transition-all active:scale-95"
+                                title="Export to Excel"
                             >
                                 <Download size={14} />
-                                Export
+                                Excel
+                            </button>
+                            <button 
+                                onClick={() => handleDownload(report.id, 'pdf')}
+                                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300 text-gray-600 hover:text-gray-800 rounded-lg text-xs font-semibold transition-all active:scale-95"
+                                title="Export to PDF"
+                            >
+                                <Download size={14} />
+                                PDF
                             </button>
                         </div>
                     </div>
@@ -270,13 +417,31 @@ const ComplianceReportsDashboard: React.FC = () => {
                                     disabled={!selectedPositionId}
                                     className="px-4 py-2 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                    Generate Report
+                                    Generate Form
                                 </button>
                             </div>
                         </div>
                     </div>
                 </div>
             )}
+
+            {/* Official Appointment Form Modal (Complex Layout) */}
+            <AppointmentFormModal 
+                isOpen={isAppointmentFormOpen} 
+                onClose={() => setIsAppointmentFormOpen(false)} 
+                position={selectedAppointmentPosition} 
+            />
+
+            {/* CS Form No. 9 Modal - State managed by Zustand */}
+            <Form9Modal />
+
+            {/* PSI-POP Modal (New WYSIWYG) */}
+            <PSIPOPModal 
+                isOpen={isPSIPOPModalOpen}
+                onClose={() => setIsPSIPOPModalOpen(false)}
+                positions={psipopPositions}
+            />
+
 
             {/* Info Footer */}
             <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 flex items-start gap-3">

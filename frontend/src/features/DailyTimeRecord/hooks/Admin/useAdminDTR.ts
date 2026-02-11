@@ -4,6 +4,10 @@ import { useUIStore } from '@/stores';
 import { attendanceApi } from "@api/attendanceApi";
 import { dtrApi } from "@api/dtrApi";
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { fetchDepartments } from "@api/departmentApi";
+import { fetchEmployees } from "@api/employeeApi";
+import { useFilterOptions } from "@/hooks/useFilterOptions";
+
 import { 
   filterDTRData, 
   calculatePagination, 
@@ -49,10 +53,16 @@ export const useAdminDTR = () => {
         const data = response.data.data || [];
         
         return data.map((item: any): DTRRecord => {
+            const timeIn = item.time_in || item.timeIn;
+            const timeOut = item.time_out || item.timeOut;
+            const employeeId = item.employee_id || item.employeeId;
+            const firstName = item.first_name || item.firstName;
+            const lastName = item.last_name || item.lastName;
+
             let hoursWorked = '0';
-            if (item.time_in && item.time_out) {
-              const start = new Date(item.time_in).getTime();
-              const end = new Date(item.time_out).getTime();
+            if (timeIn && timeOut) {
+              const start = new Date(timeIn).getTime();
+              const end = new Date(timeOut).getTime();
               hoursWorked = ((end - start) / (1000 * 60 * 60)).toFixed(2);
             }
             
@@ -67,13 +77,13 @@ export const useAdminDTR = () => {
             }
             
             return {
-              id: item.id || item.record_id, // Primary Key for updates/keys
-              employeeId: item.employee_id, // Display ID
-              name: item.employee_name || `${item.first_name || ''} ${item.last_name || ''}`.trim(),
+              id: item.id || item.record_id, 
+              employeeId: employeeId,
+              name: item.employee_name || `${firstName || ''} ${lastName || ''}`.trim(),
               department: item.department || 'N/A',
               date: formattedDate,
-              timeIn: item.time_in ? new Date(item.time_in).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--',
-              timeOut: item.time_out ? new Date(item.time_out).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--',
+              timeIn: timeIn ? new Date(timeIn).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--',
+              timeOut: timeOut ? new Date(timeOut).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--',
               hoursWorked: hoursWorked,
               status: item.status || 'Absent',
               remarks: '-'
@@ -102,9 +112,11 @@ export const useAdminDTR = () => {
     }
   });
 
-  // Derived data
-  const uniqueDepartments = useMemo(() => getUniqueDepartments(dtrData), [dtrData]);
-  const uniqueEmployees = useMemo(() => getUniqueEmployees(dtrData), [dtrData]);
+  // Fetch Filter Options using Centralized Hook
+  const { data: filterOptions } = useFilterOptions();
+  const uniqueDepartments = filterOptions.departments;
+  const uniqueEmployees = filterOptions.employees;
+
   
   const filteredData = useMemo(
     () => filterDTRData(dtrData, filters, debouncedSearchQuery),

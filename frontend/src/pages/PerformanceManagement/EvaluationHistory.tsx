@@ -4,16 +4,19 @@ import { motion } from 'framer-motion';
 import { SquarePen, Eye, Search, RefreshCw, Plus, AlertTriangle, FileText, Calendar, User, ChevronLeft, ChevronRight, Filter, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { fetchReviews, deleteReview } from '@api';
-import { fetchDepartments } from '@api';
+import { useFilterOptions } from '@/hooks/useFilterOptions';
 import PerformanceLayout from '@components/Custom/Performance/PerformanceLayout';
+
 import { useToastStore } from '@/stores';
 
 const ITEMS_PER_PAGE = 12;
 
 const EvaluationHistory = () => {
   const navigate = useNavigate();
+  const { data: filterOptions, isLoading: loadingFilters } = useFilterOptions();
+  const departments = filterOptions.departments;
+
   const [reviews, setReviews] = useState([]);
-  const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -27,20 +30,15 @@ const EvaluationHistory = () => {
   const showNotification = (message: string, type: 'success' | 'error') => showToast(message, type);
 
   const loadData = useCallback(async () => {
+
     try {
       setLoading(true);
       setError(null);
       
-      const [reviewsRes, deptsRes] = await Promise.all([
-        fetchReviews(),
-        fetchDepartments()
-      ]);
+      const reviewsRes = await fetchReviews();
 
       if (reviewsRes.success) {
         setReviews(reviewsRes.reviews);
-      }
-      if (deptsRes.success) {
-        setDepartments(deptsRes.departments);
       }
     } catch (err) {
       console.error('Failed to load evaluation history:', err);
@@ -49,6 +47,7 @@ const EvaluationHistory = () => {
       setLoading(false);
     }
   }, []);
+
 
   useEffect(() => {
     loadData();
@@ -166,14 +165,14 @@ const EvaluationHistory = () => {
           <div className="flex gap-3">
               <button
                 onClick={loadData}
-                className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:bg-gray-200 rounded-lg transition-colors border border-gray-200 bg-white"
+                className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 rounded-lg shadow-sm transition-all"
                 title="Refresh"
               >
                 <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
               </button>
               <button
                 onClick={() => navigate('/admin-dashboard/performance/reviews/new')}
-                className="flex items-center gap-2 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:text-green-700 transition-all font-medium shadow-sm"
+                className="bg-white hover:bg-gray-50 text-gray-900 border border-gray-300 px-5 py-2.5 rounded-lg flex items-center gap-2 shadow-sm transition-all active:scale-95 text-sm font-bold"
               >
                 <Plus size={18} />
                 <span>New Evaluation</span>
@@ -203,8 +202,9 @@ const EvaluationHistory = () => {
             >
               <option value="All">All Departments</option>
               {departments.map(dept => (
-                <option key={dept.id} value={dept.name}>{dept.name}</option>
+                <option key={dept} value={dept}>{dept}</option>
               ))}
+
             </select>
           </div>
 
@@ -338,7 +338,7 @@ const EvaluationHistory = () => {
                 <button
                   onClick={() => handlePageChange(currentPage - 1)}
                   disabled={currentPage === 1}
-                  className="px-4 py-2 bg-gray-200 border border-gray-200 rounded-lg shadow-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-200 transition-all text-sm font-medium text-gray-800"
+                  className="px-4 py-2 bg-white border border-gray-300 rounded-lg shadow-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-all text-sm font-bold text-gray-700"
                 >
                   Previous
                 </button>
@@ -348,7 +348,7 @@ const EvaluationHistory = () => {
                 <button
                   onClick={() => handlePageChange(currentPage + 1)}
                   disabled={currentPage === totalPages}
-                  className="px-6 py-2 bg-gray-200 border border-gray-200 rounded-lg shadow-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-200 transition-all text-sm font-medium text-gray-800"
+                  className="px-6 py-2 bg-white border border-gray-300 rounded-lg shadow-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-all text-sm font-bold text-gray-700"
                 >
                   Next
                 </button>

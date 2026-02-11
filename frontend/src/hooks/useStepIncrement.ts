@@ -7,7 +7,7 @@ import { toast } from 'react-hot-toast';
 export const stepIncrementKeys = {
   all: ['step-increments'] as const,
   lists: () => [...stepIncrementKeys.all, 'list'] as const,
-  list: (filters: any) => [...stepIncrementKeys.lists(), filters] as const,
+  list: (filters: Record<string, unknown>) => [...stepIncrementKeys.lists(), filters] as const,
   eligible: () => [...stepIncrementKeys.all, 'eligible'] as const,
 };
 
@@ -17,9 +17,16 @@ export const useStepIncrements = (params?: { status?: string; employee_id?: numb
   return useQuery({
     queryKey: stepIncrementKeys.list(params || {}),
     queryFn: async () => {
-      const response = await stepIncrementApi.getAll(params);
-      return response.data.increments;
+      try {
+        const response = await stepIncrementApi.getAll(params);
+        return response.data.increments || [];
+      } catch (error) {
+        console.error('Failed to fetch increments:', error);
+        return [];
+      }
     },
+    staleTime: 0,
+    refetchOnMount: true,
   });
 };
 
@@ -27,9 +34,16 @@ export const useEligibleEmployees = () => {
   return useQuery({
     queryKey: stepIncrementKeys.eligible(),
     queryFn: async () => {
-      const response = await stepIncrementApi.getEligible();
-      return response.data;
+      try {
+        const response = await stepIncrementApi.getEligible();
+        return response.data;
+      } catch (error) {
+         console.error('Failed to fetch eligible employees:', error);
+         return { eligible_employees: [], count: 0 };
+      }
     },
+    staleTime: 0,
+    refetchOnMount: true,
   });
 };
 
@@ -55,8 +69,9 @@ export const useCreateStepIncrement = () => {
       queryClient.invalidateQueries({ queryKey: stepIncrementKeys.eligible() });
       toast.success('Step increment request created successfully');
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to create step increment request');
+    onError: (error: unknown) => {
+      const message = (error as { response?: { data?: { message?: string } } }).response?.data?.message || 'Failed to create step increment request';
+      toast.error(message);
     },
   });
 };
@@ -83,8 +98,9 @@ export const useProcessStepIncrement = () => {
       const action = variables.status === 'Approved' ? 'approved' : 'denied';
       toast.success(`Step increment ${action} successfully`);
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to process step increment');
+    onError: (error: unknown) => {
+      const message = (error as { response?: { data?: { message?: string } } }).response?.data?.message || 'Failed to process step increment';
+      toast.error(message);
     },
   });
 };

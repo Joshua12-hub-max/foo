@@ -10,7 +10,7 @@ export const eventApi = {
             throw error;
         }
     },
-    createEvent: async (data: any): Promise<AxiosResponse> => {
+    createEvent: async (data: Record<string, unknown>): Promise<AxiosResponse> => {
         try {
             const response = await api.post('/event/create', data);
             return response;
@@ -18,7 +18,7 @@ export const eventApi = {
             throw error;
         }
     },
-    updateEvent: async (id: string | number, data: any): Promise<AxiosResponse> => {
+    updateEvent: async (id: string | number, data: Record<string, unknown>): Promise<AxiosResponse> => {
         try {
             const response = await api.put(`/event/${id}`, data);
             return response;

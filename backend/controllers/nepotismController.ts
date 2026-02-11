@@ -1,43 +1,13 @@
 import { Request, Response } from 'express';
-import db from '../db/connection.js';
-import type { RowDataPacket, ResultSetHeader } from 'mysql2/promise';
+import { db } from '../db/index.js';
+import { nepotismRelationships, authentication, plantillaPositions } from '../db/schema.js';
+import { eq, or, and, desc, asc, sql, like } from 'drizzle-orm';
 import type { AuthenticatedRequest } from '../types/index.js';
 import {
   NepotismRelationshipSchema,
-  CheckNepotismSchema,
-  type NepotismRelationshipInput,
-  type CheckNepotismInput
+  CheckNepotismSchema
 } from '../schemas/plantillaComplianceSchema.js';
-
-interface NepotismRow extends RowDataPacket {
-  id: number;
-  employee_id_1: number;
-  employee_id_2: number;
-  relationship_type: string;
-  degree: number;
-  verified_by?: number;
-  verified_at?: Date;
-  notes?: string;
-  created_at: Date;
-  // Joined fields
-  employee_1_name?: string;
-  employee_2_name?: string;
-  verifier_name?: string;
-}
-
-interface EmployeeRow extends RowDataPacket {
-  id: number;
-  first_name: string;
-  last_name: string;
-  employee_id: string;
-  department?: string;
-}
-
-interface PositionRow extends RowDataPacket {
-  id: number;
-  position_title: string;
-  department?: string;
-}
+import { alias } from 'drizzle-orm/mysql-core';
 
 /**
  * Get all nepotism relationships
@@ -47,32 +17,42 @@ export const getNepotismRelationships = async (req: Request, res: Response): Pro
   try {
     const { employee_id, degree } = req.query;
 
-    let query = `
-      SELECT nr.*,
-             CONCAT(e1.first_name, ' ', e1.last_name) as employee_1_name,
-             CONCAT(e2.first_name, ' ', e2.last_name) as employee_2_name,
-             CONCAT(v.first_name, ' ', v.last_name) as verifier_name
-      FROM nepotism_relationships nr
-      LEFT JOIN authentication e1 ON nr.employee_id_1 = e1.id
-      LEFT JOIN authentication e2 ON nr.employee_id_2 = e2.id
-      LEFT JOIN authentication v ON nr.verified_by = v.id
-      WHERE 1=1
-    `;
-    const params: (string | number)[] = [];
+    // Aliases for joins
+    const e1 = alias(authentication, 'e1');
+    const e2 = alias(authentication, 'e2');
+    const v = alias(authentication, 'v');
 
+    const conditions = [];
     if (employee_id) {
-      query += ' AND (nr.employee_id_1 = ? OR nr.employee_id_2 = ?)';
-      params.push(parseInt(employee_id as string), parseInt(employee_id as string));
+      conditions.push(or(
+        eq(nepotismRelationships.employeeId1, Number(employee_id)),
+        eq(nepotismRelationships.employeeId2, Number(employee_id))
+      ));
     }
-
     if (degree) {
-      query += ' AND nr.degree = ?';
-      params.push(parseInt(degree as string));
+      conditions.push(eq(nepotismRelationships.degree, Number(degree)));
     }
 
-    query += ' ORDER BY nr.created_at DESC';
-
-    const [relationships] = await db.query<NepotismRow[]>(query, params);
+    const relationships = await db.select({
+      id: nepotismRelationships.id,
+      employeeId1: nepotismRelationships.employeeId1,
+      employeeId2: nepotismRelationships.employeeId2,
+      relationshipType: nepotismRelationships.relationshipType,
+      degree: nepotismRelationships.degree,
+      verifiedBy: nepotismRelationships.verifiedBy,
+      verifiedAt: nepotismRelationships.verifiedAt,
+      notes: nepotismRelationships.notes,
+      createdAt: nepotismRelationships.createdAt,
+      employee1Name: sql<string>`CONCAT(${e1.firstName}, ' ', ${e1.lastName})`,
+      employee2Name: sql<string>`CONCAT(${e2.firstName}, ' ', ${e2.lastName})`,
+      verifierName: sql<string>`CONCAT(${v.firstName}, ' ', ${v.lastName})`
+    })
+    .from(nepotismRelationships)
+    .leftJoin(e1, eq(nepotismRelationships.employeeId1, e1.id))
+    .leftJoin(e2, eq(nepotismRelationships.employeeId2, e2.id))
+    .leftJoin(v, eq(nepotismRelationships.verifiedBy, v.id))
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .orderBy(desc(nepotismRelationships.createdAt));
 
     res.json({
       success: true,
@@ -94,20 +74,35 @@ export const getNepotismRelationships = async (req: Request, res: Response): Pro
 export const getEmployeeRelationships = async (req: Request, res: Response): Promise<void> => {
   try {
     const { employee_id } = req.params;
+    const empId = Number(employee_id);
 
-    const [relationships] = await db.query<NepotismRow[]>(
-      `SELECT nr.*,
-              CONCAT(e1.first_name, ' ', e1.last_name) as employee_1_name,
-              CONCAT(e2.first_name, ' ', e2.last_name) as employee_2_name,
-              CONCAT(v.first_name, ' ', v.last_name) as verifier_name
-       FROM nepotism_relationships nr
-       LEFT JOIN authentication e1 ON nr.employee_id_1 = e1.id
-       LEFT JOIN authentication e2 ON nr.employee_id_2 = e2.id
-       LEFT JOIN authentication v ON nr.verified_by = v.id
-       WHERE nr.employee_id_1 = ? OR nr.employee_id_2 = ?
-       ORDER BY nr.degree ASC, nr.created_at DESC`,
-      [employee_id, employee_id]
-    );
+    const e1 = alias(authentication, 'e1');
+    const e2 = alias(authentication, 'e2');
+    const v = alias(authentication, 'v');
+
+    const relationships = await db.select({
+      id: nepotismRelationships.id,
+      employeeId1: nepotismRelationships.employeeId1,
+      employeeId2: nepotismRelationships.employeeId2,
+      relationshipType: nepotismRelationships.relationshipType,
+      degree: nepotismRelationships.degree,
+      verifiedBy: nepotismRelationships.verifiedBy,
+      verifiedAt: nepotismRelationships.verifiedAt,
+      notes: nepotismRelationships.notes,
+      createdAt: nepotismRelationships.createdAt,
+      employee1Name: sql<string>`CONCAT(${e1.firstName}, ' ', ${e1.lastName})`,
+      employee2Name: sql<string>`CONCAT(${e2.firstName}, ' ', ${e2.lastName})`,
+      verifierName: sql<string>`CONCAT(${v.firstName}, ' ', ${v.lastName})`
+    })
+    .from(nepotismRelationships)
+    .leftJoin(e1, eq(nepotismRelationships.employeeId1, e1.id))
+    .leftJoin(e2, eq(nepotismRelationships.employeeId2, e2.id))
+    .leftJoin(v, eq(nepotismRelationships.verifiedBy, v.id))
+    .where(or(
+      eq(nepotismRelationships.employeeId1, empId),
+      eq(nepotismRelationships.employeeId2, empId)
+    ))
+    .orderBy(asc(nepotismRelationships.degree), desc(nepotismRelationships.createdAt));
 
     res.json({
       success: true,
@@ -132,17 +127,10 @@ export const createNepotismRelationship = async (req: Request, res: Response): P
     const validatedData = NepotismRelationshipSchema.parse(req.body);
 
     // Verify both employees exist
-    const [employee1] = await db.query<EmployeeRow[]>(
-      'SELECT id FROM authentication WHERE id = ?',
-      [validatedData.employee_id_1]
-    );
+    const [employee1] = await db.select({ id: authentication.id }).from(authentication).where(eq(authentication.id, validatedData.employee_id_1));
+    const [employee2] = await db.select({ id: authentication.id }).from(authentication).where(eq(authentication.id, validatedData.employee_id_2));
 
-    const [employee2] = await db.query<EmployeeRow[]>(
-      'SELECT id FROM authentication WHERE id = ?',
-      [validatedData.employee_id_2]
-    );
-
-    if (employee1.length === 0 || employee2.length === 0) {
+    if (!employee1 || !employee2) {
       res.status(404).json({
         success: false,
         message: 'One or both employees not found'
@@ -151,17 +139,11 @@ export const createNepotismRelationship = async (req: Request, res: Response): P
     }
 
     // Prevent duplicate relationships
-    const [existing] = await db.query<NepotismRow[]>(
-      `SELECT id FROM nepotism_relationships 
-       WHERE (employee_id_1 = ? AND employee_id_2 = ?) 
-          OR (employee_id_1 = ? AND employee_id_2 = ?)`,
-      [
-        validatedData.employee_id_1,
-        validatedData.employee_id_2,
-        validatedData.employee_id_2,
-        validatedData.employee_id_1
-      ]
-    );
+    const existing = await db.select({ id: nepotismRelationships.id }).from(nepotismRelationships)
+      .where(or(
+        and(eq(nepotismRelationships.employeeId1, validatedData.employee_id_1), eq(nepotismRelationships.employeeId2, validatedData.employee_id_2)),
+        and(eq(nepotismRelationships.employeeId1, validatedData.employee_id_2), eq(nepotismRelationships.employeeId2, validatedData.employee_id_1))
+      ));
 
     if (existing.length > 0) {
       res.status(409).json({
@@ -171,19 +153,16 @@ export const createNepotismRelationship = async (req: Request, res: Response): P
       return;
     }
 
-    const [result] = await db.query<ResultSetHeader>(
-      `INSERT INTO nepotism_relationships 
-       (employee_id_1, employee_id_2, relationship_type, degree, verified_by, verified_at, notes)
-       VALUES (?, ?, ?, ?, ?, NOW(), ?)`,
-      [
-        validatedData.employee_id_1,
-        validatedData.employee_id_2,
-        validatedData.relationship_type,
-        validatedData.degree,
-        authReq.user.id,
-        validatedData.notes || null
-      ]
-    );
+    const [result] = await db.insert(nepotismRelationships).values({
+      employeeId1: validatedData.employee_id_1,
+      employeeId2: validatedData.employee_id_2,
+      relationshipType: validatedData.relationship_type,
+      degree: validatedData.degree,
+      verifiedBy: authReq.user.id,
+      verifiedAt: new Date().toISOString(),
+      notes: validatedData.notes || null,
+      createdAt: new Date().toISOString()
+    });
 
     res.status(201).json({
       success: true,
@@ -223,12 +202,12 @@ export const checkNepotism = async (req: Request, res: Response): Promise<void> 
     const { employee_id, position_id, appointing_authority_id } = validatedData;
 
     // Get employee details
-    const [employees] = await db.query<EmployeeRow[]>(
-      'SELECT id, first_name, last_name, employee_id, department FROM authentication WHERE id = ?',
-      [employee_id]
-    );
+    const employee = await db.query.authentication.findFirst({
+      where: eq(authentication.id, employee_id),
+      columns: { id: true, firstName: true, lastName: true, employeeId: true, department: true }
+    });
 
-    if (employees.length === 0) {
+    if (!employee) {
       res.status(404).json({
         success: false,
         message: 'Employee not found'
@@ -236,15 +215,13 @@ export const checkNepotism = async (req: Request, res: Response): Promise<void> 
       return;
     }
 
-    const employee = employees[0];
-
     // Get position details
-    const [positions] = await db.query<PositionRow[]>(
-      'SELECT id, position_title, department FROM plantilla_positions WHERE id = ?',
-      [position_id]
-    );
+    const position = await db.query.plantillaPositions.findFirst({
+      where: eq(plantillaPositions.id, position_id),
+      columns: { id: true, positionTitle: true, department: true }
+    });
 
-    if (positions.length === 0) {
+    if (!position) {
       res.status(404).json({
         success: false,
         message: 'Position not found'
@@ -252,33 +229,41 @@ export const checkNepotism = async (req: Request, res: Response): Promise<void> 
       return;
     }
 
-    const position = positions[0];
-
     // Get all relationships of the employee (up to 3rd degree)
-    const [relationships] = await db.query<NepotismRow[]>(
-      `SELECT nr.*,
-              CONCAT(e1.first_name, ' ', e1.last_name) as employee_1_name,
-              CONCAT(e2.first_name, ' ', e2.last_name) as employee_2_name,
-              e1.id as e1_id, e2.id as e2_id
-       FROM nepotism_relationships nr
-       LEFT JOIN authentication e1 ON nr.employee_id_1 = e1.id
-       LEFT JOIN authentication e2 ON nr.employee_id_2 = e2.id
-       WHERE (nr.employee_id_1 = ? OR nr.employee_id_2 = ?)
-         AND nr.degree <= 3`,
-      [employee_id, employee_id]
-    );
+    const e1 = alias(authentication, 'e1');
+    const e2 = alias(authentication, 'e2');
+
+    const relationships = await db.select({
+      relationshipType: nepotismRelationships.relationshipType,
+      degree: nepotismRelationships.degree,
+      employeeId1: nepotismRelationships.employeeId1,
+      employeeId2: nepotismRelationships.employeeId2,
+      employee1Name: sql<string>`CONCAT(${e1.firstName}, ' ', ${e1.lastName})`,
+      employee2Name: sql<string>`CONCAT(${e2.firstName}, ' ', ${e2.lastName})`
+    })
+    .from(nepotismRelationships)
+    .leftJoin(e1, eq(nepotismRelationships.employeeId1, e1.id))
+    .leftJoin(e2, eq(nepotismRelationships.employeeId2, e2.id))
+    .where(and(
+      or(eq(nepotismRelationships.employeeId1, employee_id), eq(nepotismRelationships.employeeId2, employee_id)),
+      sql`${nepotismRelationships.degree} <= 3`
+    ));
 
     // Find department head for the position's department
     let departmentHeadId: number | null = null;
     if (position.department) {
-      const [deptHeads] = await db.query<EmployeeRow[]>(
-        `SELECT a.id FROM authentication a
-         LEFT JOIN plantilla_positions pp ON a.id = pp.incumbent_id
-         WHERE a.department = ? 
-           AND (a.role = 'admin' OR pp.position_title LIKE '%Head%' OR pp.position_title LIKE '%Chief%')
-         LIMIT 1`,
-        [position.department]
-      );
+      const deptHeads = await db.select({ id: authentication.id })
+        .from(authentication)
+        .leftJoin(plantillaPositions, eq(authentication.id, plantillaPositions.incumbentId))
+        .where(and(
+          eq(authentication.department, position.department),
+          or(
+            eq(authentication.role, 'admin'),
+            like(plantillaPositions.positionTitle, '%Head%'),
+            like(plantillaPositions.positionTitle, '%Chief%')
+          )
+        ))
+        .limit(1);
 
       if (deptHeads.length > 0) {
         departmentHeadId = deptHeads[0].id;
@@ -289,14 +274,14 @@ export const checkNepotism = async (req: Request, res: Response): Promise<void> 
     const violations: any[] = [];
 
     for (const rel of relationships) {
-      const relatedPersonId = rel.employee_id_1 === employee_id ? rel.employee_id_2 : rel.employee_id_1;
-      const relatedPersonName = rel.employee_id_1 === employee_id ? rel.employee_2_name : rel.employee_1_name;
+      const relatedPersonId = rel.employeeId1 === employee_id ? rel.employeeId2 : rel.employeeId1;
+      const relatedPersonName = rel.employeeId1 === employee_id ? rel.employee2Name : rel.employee1Name;
 
       // Check if related person is the appointing authority
       if (appointing_authority_id && relatedPersonId === appointing_authority_id) {
         violations.push({
           type: 'Appointing Authority',
-          relationship: rel.relationship_type,
+          relationship: rel.relationshipType,
           degree: rel.degree,
           related_person: relatedPersonName,
           severity: 'CRITICAL'
@@ -307,7 +292,7 @@ export const checkNepotism = async (req: Request, res: Response): Promise<void> 
       if (departmentHeadId && relatedPersonId === departmentHeadId) {
         violations.push({
           type: 'Department Head',
-          relationship: rel.relationship_type,
+          relationship: rel.relationshipType,
           degree: rel.degree,
           related_person: relatedPersonName,
           severity: 'CRITICAL'
@@ -315,15 +300,15 @@ export const checkNepotism = async (req: Request, res: Response): Promise<void> 
       }
 
       // Check if related person works in the same department (warning only)
-      const [relatedEmployee] = await db.query<EmployeeRow[]>(
-        'SELECT department FROM authentication WHERE id = ?',
-        [relatedPersonId]
-      );
+      const relatedEmployee = await db.query.authentication.findFirst({
+        where: eq(authentication.id, relatedPersonId),
+        columns: { department: true }
+      });
 
-      if (relatedEmployee.length > 0 && relatedEmployee[0].department === position.department) {
+      if (relatedEmployee && relatedEmployee.department === position.department) {
         violations.push({
           type: 'Same Department',
-          relationship: rel.relationship_type,
+          relationship: rel.relationshipType,
           degree: rel.degree,
           related_person: relatedPersonName,
           severity: rel.degree <= 3 ? 'WARNING' : 'INFO'
@@ -339,12 +324,12 @@ export const checkNepotism = async (req: Request, res: Response): Promise<void> 
       violations,
       employee: {
         id: employee.id,
-        name: `${employee.first_name} ${employee.last_name}`,
-        employee_id: employee.employee_id
+        name: `${employee.firstName} ${employee.lastName}`,
+        employee_id: employee.employeeId
       },
       position: {
         id: position.id,
-        title: position.position_title,
+        title: position.positionTitle,
         department: position.department
       },
       warning_message: hasViolation
@@ -380,12 +365,13 @@ export const deleteNepotismRelationship = async (req: Request, res: Response): P
   try {
     const { id } = req.params;
 
-    const [result] = await db.query<ResultSetHeader>(
-      'DELETE FROM nepotism_relationships WHERE id = ?',
-      [id]
-    );
+    const [result] = await db.delete(nepotismRelationships).where(eq(nepotismRelationships.id, Number(id)));
 
-    if (result.affectedRows === 0) {
+    // Drizzle doesn't return affectedRows easily in generic result unless configured
+    // But `delete` returns [ResultSetHeader] in mysql2
+    const affectedRows = (result as any).affectedRows;
+
+    if (affectedRows === 0) {
       res.status(404).json({
         success: false,
         message: 'Relationship not found'

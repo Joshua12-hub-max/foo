@@ -83,7 +83,7 @@ const MyDepartmentPage: React.FC<MyDepartmentPageProps> = ({ hideHeader = false 
           <h3 className="text-base font-bold text-gray-800">My Employment Record</h3>
           <button 
             onClick={() => navigate('/employee-dashboard/my-profile')}
-            className="flex items-center gap-2 px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 text-sm font-semibold rounded-lg transition-colors"
+            className="flex items-center gap-2 bg-white hover:bg-gray-50 text-gray-900 border border-gray-300 px-5 py-2.5 rounded-lg shadow-sm transition-all active:scale-95 text-sm font-bold"
           >
             View Full Profile
             <ArrowRight size={14} />

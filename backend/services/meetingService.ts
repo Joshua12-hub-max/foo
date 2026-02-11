@@ -1,12 +1,7 @@
 import { google, calendar_v3 } from 'googleapis';
-import db from '../db/connection.js';
-import type { RowDataPacket } from 'mysql2/promise';
-
-interface TokenRow extends RowDataPacket {
-  access_token: string;
-  refresh_token: string;
-  token_expiry: Date;
-}
+import { db } from '../db/index.js';
+import { googleCalendarTokens } from '../db/schema.js';
+import { eq } from 'drizzle-orm';
 
 interface MeetingResult {
   success: boolean;
@@ -39,12 +34,11 @@ const getOAuth2Client = () => {
 export const generateGoogleMeetLink = async (options: MeetingOptions): Promise<MeetingResult> => {
   try {
     // Get user's Google Calendar tokens
-    const [tokens] = await db.query<TokenRow[]>(
-      'SELECT access_token, refresh_token, token_expiry FROM google_calendar_tokens WHERE user_id = ?',
-      [options.userId]
-    );
+    const tokens = await db.query.googleCalendarTokens.findFirst({
+      where: eq(googleCalendarTokens.userId, options.userId)
+    });
 
-    if (tokens.length === 0) {
+    if (!tokens) {
       return {
         success: false,
         error: 'Google Calendar not connected. Please connect your Google Calendar first.'
@@ -53,20 +47,23 @@ export const generateGoogleMeetLink = async (options: MeetingOptions): Promise<M
 
     const oauth2Client = getOAuth2Client();
     oauth2Client.setCredentials({
-      access_token: tokens[0].access_token,
-      refresh_token: tokens[0].refresh_token
+      access_token: tokens.accessToken,
+      refresh_token: tokens.refreshToken
     });
 
     // Handle token refresh if expired
-    const tokenExpiry = new Date(tokens[0].token_expiry);
+    const tokenExpiry = new Date(tokens.tokenExpiry);
     if (tokenExpiry < new Date()) {
       try {
         const { credentials } = await oauth2Client.refreshAccessToken();
         if (credentials.access_token) {
-          await db.query(
-            'UPDATE google_calendar_tokens SET access_token = ?, token_expiry = ? WHERE user_id = ?',
-            [credentials.access_token, new Date(credentials.expiry_date || Date.now() + 3600000), options.userId]
-          );
+          await db.update(googleCalendarTokens)
+            .set({ 
+              accessToken: credentials.access_token, 
+              tokenExpiry: new Date(credentials.expiry_date || Date.now() + 3600000).toISOString() 
+            })
+            .where(eq(googleCalendarTokens.userId, options.userId));
+            
           oauth2Client.setCredentials(credentials);
         }
       } catch (refreshError) {

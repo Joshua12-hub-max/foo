@@ -2,9 +2,11 @@ import api from './axios';
 import { AxiosResponse } from 'axios';
 import { DTRQueryValues, UpdateDTRValues } from '../schemas/dtrSchema';
 
+import { DTRCorrectionRecord } from '../types';
+
 interface DTRResponse {
     success: boolean;
-    data: any[];
+    data: DTRCorrectionRecord[];
     pagination: {
         total: number;
         page: number;
@@ -28,5 +30,9 @@ export const dtrApi = {
 
     updateRecord: async (id: string, data: UpdateDTRValues): Promise<AxiosResponse<{ success: boolean; message: string }>> => {
         return await api.put(`/dtr/${id}`, data);
+    },
+
+    requestCorrection: async (data: any): Promise<AxiosResponse<{ success: boolean; message: string }>> => {
+        return await api.post('/dtr/request', data);
     },
 };

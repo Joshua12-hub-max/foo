@@ -29,10 +29,10 @@ const InfoItem: React.FC<InfoItemProps> = ({
     {editable && setIsEditing && (
       <button 
         onClick={() => setIsEditing(true)}
-        className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-gray-200 transition-all shadow-sm"
+        className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-gray-100 border border-transparent hover:border-gray-200 transition-all shadow-sm text-gray-400 hover:text-gray-700"
         title="Edit"
       >
-        <SquarePen size={14} className="text-gray-400" />
+        <SquarePen size={14} />
       </button>
     )}
   </div>

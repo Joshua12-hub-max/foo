@@ -1,6 +1,6 @@
 import React, { forwardRef, useImperativeHandle, Ref } from 'react';
 import { useUIStore } from '@/stores';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Plus } from 'lucide-react';
 import { useMemoManagement, MemoFilters, MemoTable, MemoFormModal, MemoViewModal, MemoDeleteModal } from '@features/EmployeeManagement/Admin/Memos';
 
 interface OutletContext {
@@ -50,9 +50,10 @@ const AdminMemoPage = forwardRef<AdminMemoPageRef, AdminMemoPageProps>(({ hideHe
               Refresh
             </button>
             <button 
-              className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-5 py-2.5 rounded-xl flex items-center gap-2 shadow-sm transition-all active:scale-95 text-sm font-semibold"
+              className="bg-white hover:bg-gray-50 text-gray-900 border border-gray-300 px-5 py-2.5 rounded-lg flex items-center gap-2 shadow-sm transition-all active:scale-95 text-sm font-bold"
               onClick={openCreateForm}
             >
+              <Plus size={18} />
               <span>New Memo</span>
             </button>
           </div>

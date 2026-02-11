@@ -1,5 +1,5 @@
 import cron from 'node-cron';
-import db from '../db/connection.js';
+import db from '../db/index.js';
 import { RowDataPacket } from 'mysql2';
 // import { sendEmailNotification } from '../controllers/recruitmentController.js'; // Assuming we can export this or move to utils
 

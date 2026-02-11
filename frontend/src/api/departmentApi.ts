@@ -1,12 +1,21 @@
 import axios from './axios';
 
+import { Employee } from '../types';
+
+export interface Department {
+  id: number;
+  name: string;
+  description?: string;
+  code?: string;
+  employee_count?: number;
+}
+
 interface DepartmentResponse {
   success: boolean;
-  departments?: any[];
-  department?: any;
-  employees?: any[];
+  departments?: Department[];
+  department?: Department | null;
+  employees?: Employee[];
   message?: string;
-  [key: string]: any;
 }
 
 export const fetchDepartments = async (): Promise<DepartmentResponse> => {
@@ -37,21 +46,23 @@ export const fetchDepartmentEmployees = async (id: string | number): Promise<Dep
   }
 };
 
-export const addDepartment = async (formData: any): Promise<DepartmentResponse> => {
+export const addDepartment = async (formData: Record<string, unknown>): Promise<DepartmentResponse> => {
   try {
     const response = await axios.post('/departments', formData);
     return response.data;
-  } catch (error: any) {
-    return { success: false, message: error.response?.data?.message || 'Failed to add department' };
+  } catch (error: unknown) {
+    const message = (error as { response?: { data?: { message?: string } } }).response?.data?.message || 'Failed to add department';
+    return { success: false, message };
   }
 };
 
-export const updateDepartment = async (id: string | number, formData: any): Promise<DepartmentResponse> => {
+export const updateDepartment = async (id: string | number, formData: Record<string, unknown>): Promise<DepartmentResponse> => {
   try {
     const response = await axios.put(`/departments/${id}`, formData);
     return response.data;
-  } catch (error: any) {
-    return { success: false, message: error.response?.data?.message || 'Failed to update department' };
+  } catch (error: unknown) {
+    const message = (error as { response?: { data?: { message?: string } } }).response?.data?.message || 'Failed to update department';
+    return { success: false, message };
   }
 };
 
@@ -59,8 +70,9 @@ export const deleteDepartment = async (id: string | number): Promise<DepartmentR
   try {
     const response = await axios.delete(`/departments/${id}`);
     return response.data;
-  } catch (error: any) {
-    return { success: false, message: error.response?.data?.message || 'Failed to delete department' };
+  } catch (error: unknown) {
+    const message = (error as { response?: { data?: { message?: string } } }).response?.data?.message || 'Failed to delete department';
+    return { success: false, message };
   }
 };
 

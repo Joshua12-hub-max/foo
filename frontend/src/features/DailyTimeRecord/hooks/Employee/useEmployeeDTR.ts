@@ -43,32 +43,42 @@ export const useEmployeeDTR = () => {
 
   // React Query: Fetch Data
   const { data: dtrData = [], isLoading, error: queryError, refetch } = useQuery({
-    queryKey: ['employee-dtr-logs', user?.employeeId],
+    queryKey: ['employee-dtr-logs', user?.employeeId, filters.fromDate, filters.toDate],
     queryFn: async () => {
         if (!user?.employeeId) return [];
-        const response = await attendanceApi.getLogs({ employeeId: String(user.employeeId) });
+        
+        // Fetch with filters and a high limit to get "permanent" historical data
+        const response = await attendanceApi.getLogs({ 
+          employeeId: String(user.employeeId),
+          startDate: filters.fromDate || undefined,
+          endDate: filters.toDate || undefined,
+          limit: 1000 // Get up to 1000 records for the employee portal view
+        });
+        
         const data = response.data.data || [];
         
         // Map data
         return data.map((item: any): EmployeeDTRRecord => {
-            let hoursWorked = '0';
-            if (item.time_in && item.time_out) {
-              const start = new Date(item.time_in).getTime();
-              const end = new Date(item.time_out).getTime();
+            const timeIn = item.time_in || item.timeIn;
+            const timeOut = item.time_out || item.timeOut;
+            
+            let hoursWorked = item.hours_worked || '0';
+            if (!item.hours_worked && timeIn && timeOut) {
+              const start = new Date(timeIn).getTime();
+              const end = new Date(timeOut).getTime();
               hoursWorked = ((end - start) / (1000 * 60 * 60)).toFixed(2);
             }
             return {
               id: item.id || item.record_id,
               date: item.date, // Assuming format YYYY-MM-DD
-              timeIn: item.time_in ? new Date(item.time_in).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--',
-              timeOut: item.time_out ? new Date(item.time_out).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--',
+              timeIn: timeIn ? new Date(timeIn).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--',
+              timeOut: timeOut ? new Date(timeOut).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--',
               hoursWorked: hoursWorked,
               status: item.status || 'Absent',
               remarks: item.remarks || '-'
             };
         });
     },
-    initialData: [],
     enabled: !!user?.employeeId,
   });
 

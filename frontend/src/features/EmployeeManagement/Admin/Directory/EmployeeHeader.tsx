@@ -22,7 +22,7 @@ const EmployeeHeader: React.FC<EmployeeHeaderProps> = ({
         <p className="text-gray-800 text-sm mt-1">Manage and view all employee records</p>
       </div>
       <button 
-        className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-lg flex items-center gap-2 shadow-md transition-colors text-sm font-medium"
+        className="bg-white hover:bg-gray-50 text-gray-900 border border-gray-300 px-5 py-2.5 rounded-lg flex items-center gap-2 shadow-sm transition-all active:scale-95 text-sm font-bold"
         onClick={onAddClick}
       >
         <Plus size={18} />

@@ -2,10 +2,12 @@ import api from './axios';
 import { AxiosResponse } from 'axios';
 import { AttendanceQueryValues } from '../schemas/attendanceSchema';
 
+import { AttendanceRecord } from '../types';
+
 interface AttendanceLogResponse {
     success: boolean;
     message: string;
-    data: any[];
+    data: AttendanceRecord[];
     pagination: {
         total: number;
         page: number;

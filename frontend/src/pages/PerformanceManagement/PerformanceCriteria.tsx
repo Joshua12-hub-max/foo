@@ -87,7 +87,7 @@ const PerformanceCriteria = () => {
         <div className="flex justify-end">
           <button
             onClick={handleAdd}
-            className="flex items-center gap-2 px-4 py-2 bg-[#F8F9FA] text-gray-700 border-none rounded-lg shadow-md hover:bg-gray-100 transition-all font-medium"
+            className="bg-white hover:bg-gray-50 text-gray-900 border border-gray-300 px-5 py-2.5 rounded-lg flex items-center gap-2 shadow-sm transition-all active:scale-95 text-sm font-bold"
           >
             <Plus size={18} />
             <span>Add Criteria</span>

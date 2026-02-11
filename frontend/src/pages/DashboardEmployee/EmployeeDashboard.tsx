@@ -113,19 +113,22 @@ export default function EmployeeDashboard(): React.ReactElement {
           
           const startDate = firstDay.toISOString().split('T')[0];
           const endDate = lastDay.toISOString().split('T')[0];
+          
+          const empId = String(user.employeeId || user.employee_id || user.id);
 
           const logsRes = await attendanceApi.getLogs({ 
               startDate, 
               endDate,
-              employeeId: String(user.id)
+              employeeId: empId,
+              limit: 100 // Get all logs for the current month for accurate stats
           });
           
           // Simple calculation (logic might need adjustment based on actual API response structure)
           const logs = logsRes.data?.data || [];
-          const present = logs.filter((l: { status: string }) => l.status === 'Present').length;
-          const late = logs.filter((l: { status: string }) => l.status === 'Late').length;
+          const present = logs.filter((l: any) => l.status === 'Present').length;
+          const late = logs.filter((l: any) => l.status === 'Late').length;
           // Absent logic might be complex (missing logs vs status='Absent'), assuming API returns it or we rely on just present/late for now.
-          const absent = logs.filter((l: { status: string }) => l.status === 'Absent').length; 
+          const absent = logs.filter((l: any) => l.status === 'Absent').length; 
 
           // Fetch leave credits
           const creditsRes = await leaveApi.getMyCredits();

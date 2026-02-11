@@ -1,10 +1,7 @@
 import { Request, Response } from 'express';
-import db from '../db/connection.js';
-import type { RowDataPacket } from 'mysql2/promise';
-
-interface ReportRow extends RowDataPacket {
-  [key: string]: any;
-}
+import { db } from '../db/index.js';
+import { plantillaPositions, qualificationStandards, authentication, plantillaPositionHistory } from '../db/schema.js';
+import { eq, and, desc, asc, sql, gte, lte } from 'drizzle-orm';
 
 /**
  * Get Data for CSC Form 9 (Publication of Vacant Positions)
@@ -12,32 +9,32 @@ interface ReportRow extends RowDataPacket {
 export const getForm9Data = async (req: Request, res: Response): Promise<void> => {
   try {
     const { department } = req.query;
-    let query = `
-      SELECT 
-        p.item_number, 
-        p.position_title, 
-        p.salary_grade, 
-        p.monthly_salary,
-        qs.education_requirement as education,
-        qs.training_hours as training,
-        qs.experience_years as experience,
-        qs.eligibility_required as eligibility,
-        qs.competency_requirements as competency,
-        p.department as assignment
-      FROM plantilla_positions p
-      LEFT JOIN qualification_standards qs ON p.qualification_standards_id = qs.id
-      WHERE p.is_vacant = 1 AND p.status = 'Active'
-    `;
     
-    const params: any[] = [];
+    const conditions = [
+      eq(plantillaPositions.isVacant, 1),
+      eq(plantillaPositions.status, 'Active')
+    ];
+
     if (department && department !== 'All') {
-      query += ` AND p.department = ?`;
-      params.push(department);
+      conditions.push(eq(plantillaPositions.department, department as string));
     }
-    
-    query += ` ORDER BY p.salary_grade DESC`;
-    
-    const [rows] = await db.query<ReportRow[]>(query, params);
+
+    const rows = await db.select({
+      item_number: plantillaPositions.itemNumber,
+      position_title: plantillaPositions.positionTitle,
+      salary_grade: plantillaPositions.salaryGrade,
+      monthly_salary: plantillaPositions.monthlySalary,
+      education: qualificationStandards.educationRequirement,
+      training: qualificationStandards.trainingHours,
+      experience: qualificationStandards.experienceYears,
+      eligibility: qualificationStandards.eligibilityRequired,
+      competency: qualificationStandards.competencyRequirements,
+      assignment: plantillaPositions.department
+    })
+    .from(plantillaPositions)
+    .leftJoin(qualificationStandards, eq(plantillaPositions.qualificationStandardsId, qualificationStandards.id))
+    .where(and(...conditions))
+    .orderBy(desc(plantillaPositions.salaryGrade));
     
     res.json({
       success: true,
@@ -65,26 +62,22 @@ export const getForm33Data = async (req: Request, res: Response): Promise<void> 
       return;
     }
 
-    const query = `
-      SELECT 
-        p.item_number, 
-        p.position_title, 
-        p.salary_grade, 
-        p.monthly_salary,
-        p.department,
-        a.first_name,
-        a.last_name,
-        a.middle_name,
-        a.employee_id,
-        p.filled_date as date_of_signing,
-        'Permanent' as status, -- Default or fetch from profile
-        'Original' as nature_of_appointment -- Default or fetch from profile
-      FROM plantilla_positions p
-      JOIN authentication a ON p.incumbent_id = a.id
-      WHERE p.id = ?
-    `;
-    
-    const [rows] = await db.query<ReportRow[]>(query, [position_id]);
+    const rows = await db.select({
+      item_number: plantillaPositions.itemNumber,
+      position_title: plantillaPositions.positionTitle,
+      salary_grade: plantillaPositions.salaryGrade,
+      monthly_salary: plantillaPositions.monthlySalary,
+      department: plantillaPositions.department,
+      first_name: authentication.firstName,
+      last_name: authentication.lastName,
+      employee_id: authentication.employeeId,
+      date_of_signing: plantillaPositions.filledDate,
+      status: sql<string>`'Permanent'`, // Default or fetch from profile
+      nature_of_appointment: sql<string>`'Original'` // Default or fetch from profile
+    })
+    .from(plantillaPositions)
+    .innerJoin(authentication, eq(plantillaPositions.incumbentId, authentication.id))
+    .where(eq(plantillaPositions.id, Number(position_id)));
     
     if (rows.length === 0) {
       res.status(404).json({ success: false, message: 'Filled position not found' });
@@ -113,35 +106,29 @@ export const getRAIData = async (req: Request, res: Response): Promise<void> => 
   try {
     const { start_date, end_date } = req.query;
     
-    let query = `
-      SELECT 
-        ph.employee_name,
-        ph.position_title,
-        p.item_number,
-        p.salary_grade,
-        p.monthly_salary,
-        ph.start_date as date_issued,
-        'Permanent' as status,
-        'Original' as nature_of_appointment,
-        p.department
-      FROM plantilla_position_history ph
-      JOIN plantilla_positions p ON ph.position_id = p.id
-      WHERE 1=1
-    `;
-    
-    const params: any[] = [];
+    const conditions = [];
     if (start_date) {
-      query += ` AND ph.start_date >= ?`;
-      params.push(start_date);
+      conditions.push(gte(plantillaPositionHistory.startDate, String(start_date)));
     }
     if (end_date) {
-      query += ` AND ph.start_date <= ?`;
-      params.push(end_date);
+      conditions.push(lte(plantillaPositionHistory.startDate, String(end_date)));
     }
-    
-    query += ` ORDER BY ph.start_date DESC`;
-    
-    const [rows] = await db.query<ReportRow[]>(query, params);
+
+    const rows = await db.select({
+      employee_name: plantillaPositionHistory.employeeName,
+      position_title: plantillaPositionHistory.positionTitle,
+      item_number: plantillaPositions.itemNumber,
+      salary_grade: plantillaPositions.salaryGrade,
+      monthly_salary: plantillaPositions.monthlySalary,
+      date_issued: plantillaPositionHistory.startDate,
+      status: sql<string>`'Permanent'`,
+      nature_of_appointment: sql<string>`'Original'`,
+      department: plantillaPositions.department
+    })
+    .from(plantillaPositionHistory)
+    .innerJoin(plantillaPositions, eq(plantillaPositionHistory.positionId, plantillaPositions.id))
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .orderBy(desc(plantillaPositionHistory.startDate));
     
     res.json({
       success: true,
@@ -160,24 +147,23 @@ export const getRAIData = async (req: Request, res: Response): Promise<void> => 
 /**
  * Get Data for PSI-POP (Plantilla of Personnel)
  */
-export const getPSIPOPData = async (req: Request, res: Response): Promise<void> => {
+export const getPSIPOPData = async (_req: Request, res: Response): Promise<void> => {
   try {
-    const [rows] = await db.query<ReportRow[]>(`
-      SELECT 
-        p.item_number,
-        p.position_title,
-        p.salary_grade,
-        p.step_increment,
-        p.monthly_salary,
-        p.department,
-        p.is_vacant,
-        CONCAT(a.first_name, ' ', a.last_name) as incumbent_name,
-        a.employee_id,
-        p.status as position_status
-      FROM plantilla_positions p
-      LEFT JOIN authentication a ON p.incumbent_id = a.id
-      ORDER BY p.department ASC, p.salary_grade DESC
-    `);
+    const rows = await db.select({
+      item_number: plantillaPositions.itemNumber,
+      position_title: plantillaPositions.positionTitle,
+      salary_grade: plantillaPositions.salaryGrade,
+      step_increment: plantillaPositions.stepIncrement,
+      monthly_salary: plantillaPositions.monthlySalary,
+      department: plantillaPositions.department,
+      is_vacant: plantillaPositions.isVacant,
+      incumbent_name: sql<string>`CONCAT(${authentication.firstName}, ' ', ${authentication.lastName})`,
+      employee_id: authentication.employeeId,
+      position_status: plantillaPositions.status
+    })
+    .from(plantillaPositions)
+    .leftJoin(authentication, eq(plantillaPositions.incumbentId, authentication.id))
+    .orderBy(asc(plantillaPositions.department), desc(plantillaPositions.salaryGrade));
     
     res.json({
       success: true,

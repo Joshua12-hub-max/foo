@@ -21,9 +21,7 @@ export interface InquirySubmission {
 }
 
 export const inquiryApi = {
-  /**
-   * Public: Submit a new inquiry
-   */
+  
   submit: async (data: InquirySubmission): Promise<AxiosResponse<{ success: boolean; message: string }>> => {
     try {
       return await api.post('/inquiries', data);

@@ -41,6 +41,10 @@ export interface UsePlantillaReturn {
   setModalMode: React.Dispatch<React.SetStateAction<string>>;
   currentPosition: Position | null;
   setCurrentPosition: React.Dispatch<React.SetStateAction<Position | null>>;
+  // Appointment modal state
+  isAppointmentModalOpen: boolean;
+  setIsAppointmentModalOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  openAppointmentModal: (pos: Position) => void;
   // formData removed
   isAssignModalOpen: boolean;
   setIsAssignModalOpen: React.Dispatch<React.SetStateAction<boolean>>;
@@ -91,6 +95,9 @@ export const usePlantilla = ({ showNotification }: UsePlantillaOptions = {}): Us
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalMode, setModalMode] = useState('create');
     const [currentPosition, setCurrentPosition] = useState<Position | null>(null);
+
+    // Appointment Modal
+    const [isAppointmentModalOpen, setIsAppointmentModalOpen] = useState(false);
     
     // Assign modal state
     const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
@@ -188,6 +195,11 @@ export const usePlantilla = ({ showNotification }: UsePlantillaOptions = {}): Us
         }
     }, []);
 
+    const openAppointmentModal = useCallback((position: Position) => {
+        setCurrentPosition(position);
+        setIsAppointmentModalOpen(true);
+    }, []);
+
     const filteredPositions = useMemo(() => 
         (positionsData || []).filter((p: Position) => 
           p.position_title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -204,6 +216,7 @@ export const usePlantilla = ({ showNotification }: UsePlantillaOptions = {}): Us
         summary: summaryData || INITIAL_SUMMARY,
         selectedDept, setSelectedDept, searchTerm, setSearchTerm,
         isModalOpen, setIsModalOpen, modalMode, setModalMode, currentPosition, setCurrentPosition,
+        isAppointmentModalOpen, setIsAppointmentModalOpen, openAppointmentModal,
         isAssignModalOpen, setIsAssignModalOpen, availableEmployees, 
         selectedEmployee: '', setSelectedEmployee: (_: React.SetStateAction<string>) => {}, // Deprecated shim
         isHistoryModalOpen, setIsHistoryModalOpen, positionHistory,

@@ -31,5 +31,17 @@ export const UpdateDTRSchema = z.object({
   }),
 });
 
+export const RequestCorrectionSchema = z.object({
+  body: z.object({
+    date: z.string().min(1, 'Date is required'),
+    originalTimeIn: z.string().nullable().optional(),
+    originalTimeOut: z.string().nullable().optional(),
+    correctedTimeIn: z.string().nullable().optional(),
+    correctedTimeOut: z.string().nullable().optional(),
+    reason: z.string().min(5, 'Reason must be at least 5 characters'),
+  }),
+});
+
 export type GetDTRInput = z.infer<typeof GetDTRSchema>;
 export type UpdateDTRInput = z.infer<typeof UpdateDTRSchema>;
+export type RequestCorrectionInput = z.infer<typeof RequestCorrectionSchema>;

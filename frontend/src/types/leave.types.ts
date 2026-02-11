@@ -30,7 +30,7 @@ export const LEAVE_TYPES = [
   'Solo Parent Leave',
   'Study Leave',
   'Special Emergency Leave',
-  'Official Business',
+
   'VAWC Leave',
   'Rehabilitation Leave',
   'Special Leave Benefits for Women',
@@ -324,7 +324,7 @@ export const SPECIAL_LEAVES_NO_DEDUCTION: LeaveType[] = [
   'Special Privilege Leave',
   'Special Emergency Leave',
   'Wellness Leave',
-  'Official Business',
+
   'Study Leave',
   'VAWC Leave',
   'Rehabilitation Leave',

@@ -13,25 +13,25 @@ import { INITIAL_FORM_DATA, INITIAL_FILTERS, MemoFormData, MemoFilters } from '.
 
 export interface Memo {
   id: number;
-  employee_id: string | number;
-  employee_name: string;
-  author_name?: string;
-  memo_number: string;
-  memo_type: string;
+  employeeId: string | number;
+  employeeName: string;
+  authorName?: string;
+  memoNumber: string;
+  memoType: string;
   subject: string;
   content: string;
   priority: string;
   status: string;
-  effective_date?: string;
-  acknowledgment_required: boolean;
-  acknowledged_at?: string;
-  created_at: string;
+  effectiveDate?: string;
+  acknowledgmentRequired: boolean;
+  acknowledgedAt?: string;
+  createdAt: string;
 }
 
 export interface Employee {
   id: number;
-  first_name: string;
-  last_name: string;
+  firstName: string;
+  lastName: string;
 }
 
 export interface EmployeeOption {
@@ -97,8 +97,15 @@ export const useMemoManagement = (): UseMemoManagementReturn => {
         fetchMemos(currentFilters),
         fetchEmployees()
       ]);
-      setMemos(memosRes.memos || []);
-      setEmployees((employeesRes.employees || employeesRes || []) as Employee[]);
+      setMemos((memosRes as any).memos || []);
+      
+      const rawEmployees = (employeesRes as any).employees || employeesRes || [];
+      const mappedEmployees: Employee[] = rawEmployees.map((emp: any) => ({
+        id: emp.id,
+        firstName: emp.firstName || emp.first_name || '',
+        lastName: emp.lastName || emp.last_name || ''
+      }));
+      setEmployees(mappedEmployees);
     } catch (err) {
       setError('Failed to load data');
     } finally {
@@ -138,13 +145,13 @@ export const useMemoManagement = (): UseMemoManagementReturn => {
   const openEditForm = useCallback((memo: Memo) => {
     setSelectedMemo(memo);
     setFormData({
-      employee_id: String(memo.employee_id),
-      memo_type: memo.memo_type,
+      employee_id: String(memo.employeeId),
+      memo_type: memo.memoType,
       subject: memo.subject,
       content: memo.content,
       priority: memo.priority,
-      effective_date: memo.effective_date ? memo.effective_date.split('T')[0] : '',
-      acknowledgment_required: memo.acknowledgment_required,
+      effective_date: memo.effectiveDate ? memo.effectiveDate.split('T')[0] : '',
+      acknowledgment_required: memo.acknowledgmentRequired,
       status: memo.status
     });
     setIsFormOpen(true);
@@ -190,10 +197,14 @@ export const useMemoManagement = (): UseMemoManagementReturn => {
     e.preventDefault();
     try {
       setSaving(true);
+      const payload: any = { ...formData };
+      // Ensure employee_id is a number for the API
+      if (payload.employee_id) payload.employee_id = Number(payload.employee_id);
+
       if (selectedMemo) {
-        await updateMemo(selectedMemo.id, formData);
+        await updateMemo(selectedMemo.id, payload);
       } else {
-        await createMemo(formData);
+        await createMemo(payload);
       }
       setIsFormOpen(false);
       loadData(filters);
@@ -222,7 +233,7 @@ export const useMemoManagement = (): UseMemoManagementReturn => {
   const employeeOptions = useMemo<EmployeeOption[]>(() => {
     return employees.map(emp => ({
       value: emp.id,
-      label: `${emp.first_name} ${emp.last_name}`
+      label: `${emp.firstName} ${emp.lastName}`
     }));
   }, [employees]);
 

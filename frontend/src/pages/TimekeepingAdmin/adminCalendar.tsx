@@ -28,15 +28,29 @@ import {
   ScheduleModal,
   EditScheduleModal
 } from '@components/Custom/CalendarComponents/admin/Modals';
-import { useToastStore } from '@/stores';
+import {
+  useCalendarStore,
+  useToastStore
+} from '@/stores';
 import { holidays } from '@utils';
 
 export default function AdminCalendar() {
   const queryClient = useQueryClient();
   const showToast = useToastStore((state) => state.showToast);
-  const showNotification = (message: string, type: 'success' | 'error') => showToast(message, type);
 
-  // Calendar state management
+  // Zustand Calendar State
+  const { 
+    modals, 
+    setModal, 
+    selectedItem, 
+    selectedType, 
+    setSelectedItem, 
+    currentView, 
+    setCurrentView,
+    closeAllModals 
+  } = useCalendarStore();
+
+  // Calendar primitive state management (for current date/drawer)
   const calendarState = useCalendarState();
   const { today, currentDate, setCurrentDate, isDrawerOpen, setIsDrawerOpen, showHolidays, setShowHolidays, showEventDetails, setShowEventDetails } = calendarState;
 
@@ -45,24 +59,6 @@ export default function AdminCalendar() {
 
   // Navigation handlers
   const navigation = useCalendarNav({ setCurrentDate });
-
-  // View state
-  const [currentView, setCurrentView] = useState('month');
-
-  // Modal states
-  const [showAddEvent, setShowAddEvent] = useState(false);
-  const [showEditEvent, setShowEditEvent] = useState(false);
-  const [showAnnouncementModal, setShowAnnouncementModal] = useState(false);
-  const [showScheduleModal, setShowScheduleModal] = useState(false);
-  const [showEditSchedule, setShowEditSchedule] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [showEditAnnouncement, setShowEditAnnouncement] = useState(false);
-  
-  const [eventToEdit, setEventToEdit] = useState<any>(null);
-  const [announcementToEdit, setAnnouncementToEdit] = useState<any>(null);
-  const [scheduleToEdit, setScheduleToEdit] = useState<any>(null);
-  const [itemToDelete, setItemToDelete] = useState<any>(null);
-  const [deleteType, setDeleteType] = useState<'event' | 'announcement' | 'schedule' | null>(null);
 
 
 
@@ -118,7 +114,7 @@ export default function AdminCalendar() {
 
   const createScheduleMutation = useMutation({
     mutationFn: async (data: any) => {
-        console.log('📅 [createScheduleMutation] Raw data received:', data);
+        console.log('[createScheduleMutation] Raw data received:', data);
         // Support both snake_case (from ScheduleModal) and camelCase formats
         const payload = {
             employee_id: data.employee_id,
@@ -130,20 +126,20 @@ export default function AdminCalendar() {
             description: data.description,
             repeat: data.repeat || 'none'
         };
-        console.log('📅 [createScheduleMutation] Payload to send:', payload);
+        console.log('[createScheduleMutation] Payload to send:', payload);
         const response = await scheduleApi.createSchedule(payload);
-        console.log('📅 [createScheduleMutation] Response:', response);
+        console.log('[createScheduleMutation] Response:', response);
         return response;
     },
     onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ['schedules'] });
-        setShowScheduleModal(false);
-        showNotification("Schedule created successfully!", "success");
+        setModal('schedule', false);
+        showToast("Schedule created successfully!", "success");
     },
     onError: (error: any) => {
         console.error("Failed to create schedule:", error);
         const errorMsg = error?.response?.data?.message || "Failed to create schedule.";
-        showNotification(errorMsg, "error");
+        showToast(errorMsg, "error");
     }
   });
 
@@ -158,13 +154,13 @@ export default function AdminCalendar() {
     },
     onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ['schedules'] });
-        setShowEditSchedule(false);
-        setScheduleToEdit(null);
-        showNotification("Schedule updated successfully!", "success");
+        setModal('editSchedule', false);
+        setSelectedItem(null, null);
+        showToast("Schedule updated successfully!", "success");
     },
     onError: (error) => {
         console.error("Failed to update schedule:", error);
-        showNotification("Failed to update schedule.", "error");
+        showToast("Failed to update schedule.", "error");
     }
   });
 
@@ -174,14 +170,13 @@ export default function AdminCalendar() {
     },
     onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ['schedules'] });
-        setShowDeleteConfirm(false);
-        setItemToDelete(null);
-        setDeleteType(null);
-        showNotification("Schedule deleted successfully!", "success");
+        setModal('deleteConfirm', false);
+        setSelectedItem(null, null);
+        showToast("Schedule deleted successfully!", "success");
     },
     onError: (error) => {
         console.error("Failed to delete schedule:", error);
-        showNotification("Failed to delete schedule.", "error");
+        showToast("Failed to delete schedule.", "error");
     }
   });
 
@@ -197,13 +192,13 @@ export default function AdminCalendar() {
     },
     onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ['events'] });
-        setShowAddEvent(false);
-        showNotification("Event created successfully!", "success");
+        setModal('addEvent', false);
+        showToast("Event created successfully!", "success");
     },
     onError: (error: any) => {
         console.error("Failed to create event:", error);
         const errorMessage = error.message || error.response?.data?.error || "Failed to create event.";
-        showNotification(errorMessage.includes("fill in") ? errorMessage : `Failed to create event: ${errorMessage}`, "error");
+        showToast(errorMessage.includes("fill in") ? errorMessage : `Failed to create event: ${errorMessage}`, "error");
     }
   });
 
@@ -213,13 +208,13 @@ export default function AdminCalendar() {
     },
     onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ['events'] });
-        setShowEditEvent(false);
-        setEventToEdit(null);
-        showNotification("Event updated successfully!", "success");
+        setModal('editEvent', false);
+        setSelectedItem(null, null);
+        showToast("Event updated successfully!", "success");
     },
     onError: (error) => {
         console.error("Failed to update event:", error);
-        showNotification("Failed to update event. Please try again.", "error");
+        showToast("Failed to update event. Please try again.", "error");
     }
   });
 
@@ -229,14 +224,13 @@ export default function AdminCalendar() {
     },
     onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ['events'] });
-        setShowDeleteConfirm(false);
-        setItemToDelete(null);
-        setDeleteType(null);
-        showNotification("Deleted successfully!", "success");
+        setModal('deleteConfirm', false);
+        setSelectedItem(null, null);
+        showToast("Deleted successfully!", "success");
     },
     onError: (error) => {
         console.error("Failed to delete event:", error);
-        showNotification("Failed to delete. Please try again.", "error");
+        showToast("Failed to delete. Please try again.", "error");
     }
   });
 
@@ -249,13 +243,13 @@ export default function AdminCalendar() {
     },
     onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ['announcements'] });
-        setShowAnnouncementModal(false);
-        showNotification("Announcement created successfully!", "success");
+        setModal('createAnnouncement', false);
+        showToast("Announcement created successfully!", "success");
     },
     onError: (error: any) => {
         console.error("Failed to create announcement:", error);
         const errorMessage = error.message || error.response?.data?.message || "Failed to create announcement.";
-        showNotification(errorMessage.includes("fill in") ? errorMessage : `Error: ${errorMessage}`, "error");
+        showToast(errorMessage.includes("fill in") ? errorMessage : `Error: ${errorMessage}`, "error");
     }
   });
 
@@ -265,13 +259,13 @@ export default function AdminCalendar() {
     },
     onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ['announcements'] });
-        setShowEditAnnouncement(false);
-        setAnnouncementToEdit(null);
-        showNotification('Announcement updated successfully!', 'success');
+        setModal('editAnnouncement', false);
+        setSelectedItem(null, null);
+        showToast('Announcement updated successfully!', 'success');
     },
     onError: (error) => {
         console.error('Failed to update announcement:', error);
-        showNotification('Failed to update announcement. Please try again.', 'error');
+        showToast('Failed to update announcement. Please try again.', 'error');
     }
   });
 
@@ -281,14 +275,13 @@ export default function AdminCalendar() {
     },
     onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ['announcements'] });
-        setShowDeleteConfirm(false);
-        setItemToDelete(null);
-        setDeleteType(null);
-        showNotification("Deleted successfully!", "success");
+        setModal('deleteConfirm', false);
+        setSelectedItem(null, null);
+        showToast("Deleted successfully!", "success");
     },
     onError: (error) => {
         console.error("Failed to delete announcement:", error);
-        showNotification("Failed to delete. Please try again.", "error");
+        showToast("Failed to delete. Please try again.", "error");
     }
   });
 
@@ -296,9 +289,8 @@ export default function AdminCalendar() {
   // --- HANDLERS ---
 
   const handleAddEventClick = useCallback((time = '09:00') => {
-    // If we wanted to pass time to the modal we could using a separate state or just let the modal default
-    setShowAddEvent(true);
-  }, []);
+    setModal('addEvent', true);
+  }, [setModal]);
 
   const handleAddEvent = useCallback((data: any) => {
     // RHF provides the data
@@ -310,64 +302,61 @@ export default function AdminCalendar() {
   }, [createAnnouncementMutation]);
 
   const handleEditEvent = useCallback((event: any) => {
-    setEventToEdit(event);
+    setSelectedItem(event, 'event');
     setShowEventDetails(null);
-    setShowEditEvent(true);
-  }, [setShowEventDetails]);
+    setModal('editEvent', true);
+  }, [setShowEventDetails, setSelectedItem, setModal]);
 
   const handleUpdateEvent = useCallback((updatedData: any) => {
-    if (!eventToEdit) return;
-    updateEventMutation.mutate({ id: eventToEdit.id, data: updatedData });
-  }, [eventToEdit, updateEventMutation]);
+    if (!selectedItem) return;
+    updateEventMutation.mutate({ id: selectedItem.id, data: updatedData });
+  }, [selectedItem, updateEventMutation]);
 
   const handleEditAnnouncement = useCallback((announcement: any) => {
-    setAnnouncementToEdit(announcement);
-    setShowEditAnnouncement(true);
-  }, []);
+    setSelectedItem(announcement, 'announcement');
+    setModal('editAnnouncement', true);
+  }, [setSelectedItem, setModal]);
 
   const handleUpdateAnnouncement = useCallback((id: string | number, updatedData: any) => {
     updateAnnouncementMutation.mutate({ id, data: updatedData });
   }, [updateAnnouncementMutation]);
 
   const handleDeleteAnnouncement = useCallback((item: any) => {
-    setItemToDelete(item);
-    setDeleteType('announcement');
-    setShowDeleteConfirm(true);
-  }, []);
+    setSelectedItem(item, 'announcement');
+    setModal('deleteConfirm', true);
+  }, [setSelectedItem, setModal]);
 
   const handleDeleteClick = useCallback((item: any) => {
-    setItemToDelete(item);
-    setDeleteType('event');
+    setSelectedItem(item, 'event');
     setShowEventDetails(null);
-    setShowDeleteConfirm(true);
-  }, [setShowEventDetails]);
+    setModal('deleteConfirm', true);
+  }, [setShowEventDetails, setSelectedItem, setModal]);
 
   const handleConfirmDelete = useCallback(() => {
-    if (!itemToDelete) return;
+    if (!selectedItem) return;
 
-    if (deleteType === 'announcement') {
-      deleteAnnouncementMutation.mutate(itemToDelete.id);
-    } else if (deleteType === 'schedule') {
-      deleteScheduleMutation.mutate(itemToDelete.id);
+    if (selectedType === 'announcement') {
+      deleteAnnouncementMutation.mutate(selectedItem.id);
+    } else if (selectedType === 'schedule') {
+      deleteScheduleMutation.mutate(selectedItem.id);
     } else {
-      deleteEventMutation.mutate(itemToDelete.id);
+      deleteEventMutation.mutate(selectedItem.id);
     }
-  }, [itemToDelete, deleteType, deleteAnnouncementMutation, deleteEventMutation, deleteScheduleMutation]);
+  }, [selectedItem, selectedType, deleteAnnouncementMutation, deleteEventMutation, deleteScheduleMutation]);
 
   const handleEditSchedule = useCallback((schedule: any) => {
-    setScheduleToEdit(schedule);
-    setShowEditSchedule(true);
-  }, []);
+    setSelectedItem(schedule, 'schedule');
+    setModal('editSchedule', true);
+  }, [setSelectedItem, setModal]);
 
   const handleUpdateSchedule = useCallback((id: string | number, updatedData: any) => {
     updateScheduleMutation.mutate({ id, data: updatedData });
   }, [updateScheduleMutation]);
 
   const handleDeleteSchedule = useCallback((item: any) => {
-    setItemToDelete(item);
-    setDeleteType('schedule');
-    setShowDeleteConfirm(true);
-  }, []);
+    setSelectedItem(item, 'schedule');
+    setModal('deleteConfirm', true);
+  }, [setSelectedItem, setModal]);
 
 
   const handleEventDrop = useCallback((event: any, newDate: Date) => {
@@ -403,8 +392,8 @@ export default function AdminCalendar() {
                 <AdminCalendarActions
                   {...{
                     onAddEvent: () => handleAddEventClick('09:00'),
-                    onAnnouncement: () => setShowAnnouncementModal(true),
-                    onAddSchedule: () => setShowScheduleModal(true),
+                    onAnnouncement: () => setModal('createAnnouncement', true),
+                    onAddSchedule: () => setModal('schedule', true),
                     onOpenDrawer: () => setIsDrawerOpen(true)
                   } as any}
                 />
@@ -434,11 +423,11 @@ export default function AdminCalendar() {
                 onAddEvent={() => handleAddEventClick('09:00')}
                 onEditEvent={handleEditEvent}
                 onDeleteEvent={handleDeleteClick}
-                onAddAnnouncement={() => setShowAnnouncementModal(true)}
+                onAddAnnouncement={() => setModal('createAnnouncement', true)}
                 onEditAnnouncement={handleEditAnnouncement}
                 onDeleteAnnouncement={handleDeleteAnnouncement}
                 schedules={schedules}
-                onAddSchedule={() => setShowScheduleModal(true)}
+                onAddSchedule={() => setModal('schedule', true)}
                 onEditSchedule={handleEditSchedule}
                 onDeleteSchedule={handleDeleteSchedule}
               />
@@ -482,8 +471,8 @@ export default function AdminCalendar() {
 
         {/* Add Event Modal */}
         <AddEventModal
-          show={showAddEvent}
-          onClose={() => setShowAddEvent(false)}
+          show={modals.addEvent}
+          onClose={() => setModal('addEvent', false)}
           onAdd={handleAddEvent}
           hours={HOURS_LIST}
           departments={departments}
@@ -491,19 +480,19 @@ export default function AdminCalendar() {
 
         {/* Announcement Modal */}
         <CreateAnnouncementModal
-          show={showAnnouncementModal}
-          onClose={() => setShowAnnouncementModal(false)}
+          show={modals.createAnnouncement}
+          onClose={() => setModal('createAnnouncement', false)}
           onCreate={handleCreateAnnouncement}
           hours={HOURS_LIST}
         />
 
         {/* Edit Event Modal */}
         <EditEventModal
-          show={showEditEvent}
-          event={eventToEdit}
+          show={modals.editEvent}
+          event={selectedItem}
           onClose={() => {
-            setShowEditEvent(false);
-            setEventToEdit(null);
+            setModal('editEvent', false);
+            setSelectedItem(null, null);
           }}
           // @ts-ignore
           onUpdate={handleUpdateEvent}
@@ -513,11 +502,11 @@ export default function AdminCalendar() {
 
         {/* Edit Announcement Modal */}
         <EditAnnouncementModal
-          show={showEditAnnouncement}
-          announcement={announcementToEdit}
+          show={modals.editAnnouncement}
+          announcement={selectedItem}
           onClose={() => {
-            setShowEditAnnouncement(false);
-            setAnnouncementToEdit(null);
+            setModal('editAnnouncement', false);
+            setSelectedItem(null, null);
           }}
           // @ts-ignore
           onUpdate={handleUpdateAnnouncement}
@@ -525,29 +514,29 @@ export default function AdminCalendar() {
         />
 
         <ScheduleModal
-          show={showScheduleModal}
-          onClose={() => setShowScheduleModal(false)}
+          show={modals.schedule}
+          onClose={() => setModal('schedule', false)}
           onCreate={(data) => createScheduleMutation.mutate(data)}
           hours={HOURS_LIST}
         />
 
         <EditScheduleModal 
-          show={showEditSchedule}
-          schedule={scheduleToEdit}
-          onClose={() => setShowEditSchedule(false)}
+          show={modals.editSchedule}
+          schedule={selectedItem}
+          onClose={() => setModal('editSchedule', false)}
           onUpdate={handleUpdateSchedule}
           hours={HOURS_LIST}
         />
 
         {/* Confirm Delete Modal */}
         <ConfirmDeleteModal
-          show={showDeleteConfirm}
+          show={modals.deleteConfirm}
           title="Confirm Deletion"
-          message={`Are you sure you want to delete "${itemToDelete?.title || 'this item'}"? This action cannot be undone.`}
+          message={`Are you sure you want to delete "${selectedItem?.title || 'this item'}"? This action cannot be undone.`}
           onConfirm={handleConfirmDelete}
           onCancel={() => {
-            setShowDeleteConfirm(false);
-            setItemToDelete(null);
+            setModal('deleteConfirm', false);
+            setSelectedItem(null, null);
           }}
           isDeleting={isDeleting}
         />

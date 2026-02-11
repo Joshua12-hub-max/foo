@@ -10,7 +10,7 @@ export const announcementApi = {
             throw error;
         }
     },
-    createAnnouncement: async (data: any): Promise<AxiosResponse> => {
+    createAnnouncement: async (data: Record<string, unknown>): Promise<AxiosResponse> => {
         try {
             const response = await api.post('/announcement/create', data);
             return response;
@@ -18,7 +18,7 @@ export const announcementApi = {
             throw error;
         }
     },
-    updateAnnouncement: async (id: string | number, data: any): Promise<AxiosResponse> => {
+    updateAnnouncement: async (id: string | number, data: Record<string, unknown>): Promise<AxiosResponse> => {
         try {
             const response = await api.put(`/announcement/${id}`, data);
             return response;

@@ -1,5 +1,5 @@
 import React, { memo } from 'react';
-import { SquarePen, Trash2, UserPlus, UserMinus, History } from 'lucide-react';
+import { SquarePen, Trash2, UserPlus, UserMinus, History, Printer } from 'lucide-react';
 
 import { type Position } from '@api/plantillaApi';
 
@@ -12,6 +12,7 @@ interface PlantillaTableProps {
   onViewHistory: (pos: Position) => void;
   onEdit: (pos: Position) => void;
   onDelete: (id: number) => void;
+  onPrintAppointment: (pos: Position) => void;
 }
 
 const PlantillaTable: React.FC<PlantillaTableProps> = ({ 
@@ -22,7 +23,8 @@ const PlantillaTable: React.FC<PlantillaTableProps> = ({
     onVacate, 
     onViewHistory, 
     onEdit, 
-    onDelete 
+    onDelete,
+    onPrintAppointment
 }) => {
     return (
         <div className="bg-white rounded-lg shadow-md border border-gray-100 overflow-hidden flex-1">
@@ -42,6 +44,7 @@ const PlantillaTable: React.FC<PlantillaTableProps> = ({
                     <th className="px-4 py-3 text-left text-sm font-semibold">Position Title</th>
                     <th className="px-4 py-3 text-left text-sm font-semibold">SG</th>
                     <th className="px-4 py-3 text-left text-sm font-semibold">Department</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold">Area</th>
                     <th className="px-4 py-3 text-left text-sm font-semibold">Incumbent</th>
                     <th className="px-4 py-3 text-left text-sm font-semibold">Status</th>
                     <th className="px-4 py-3 text-center text-sm font-semibold">Actions</th>
@@ -56,6 +59,16 @@ const PlantillaTable: React.FC<PlantillaTableProps> = ({
                         <td className="px-4 py-3 text-sm">{pos.position_title}</td>
                         <td className="px-4 py-3 text-sm">{pos.salary_grade}-{pos.step_increment}</td>
                         <td className="px-4 py-3 text-sm">{pos.department || '-'}</td>
+                        <td className="px-4 py-3 text-sm">
+                            <div className="flex flex-col">
+                                <span className="font-medium text-gray-700">{pos.area_code || '-'}</span>
+                                {(pos.area_type || pos.area_level) && (
+                                    <span className="text-[10px] text-gray-400 font-mono">
+                                        {pos.area_type || '?'}/{pos.area_level || '?'}
+                                    </span>
+                                )}
+                            </div>
+                        </td>
                         <td className="px-4 py-3 text-sm">
                         {pos.incumbent_name || <span className="text-gray-400 italic">Vacant</span>}
                         </td>
@@ -85,6 +98,17 @@ const PlantillaTable: React.FC<PlantillaTableProps> = ({
                                 <UserMinus size={16} />
                             </button>
                             )}
+
+                            {!pos.is_vacant && (
+                                <button
+                                    onClick={() => onPrintAppointment(pos)}
+                                    className="text-emerald-600 hover:text-emerald-800 p-1.5 rounded hover:bg-emerald-50 transition"
+                                    title="Print Appointment (Form 33)"
+                                >
+                                    <Printer size={16} />
+                                </button>
+                            )}
+
                             <button 
                             onClick={() => onViewHistory(pos)}
                             className="text-purple-600 hover:text-purple-800 p-1.5 rounded hover:bg-purple-50 transition"

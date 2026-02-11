@@ -1,19 +1,11 @@
 import { Request, Response } from 'express';
-import db from '../db/connection.js';
-import type { RowDataPacket } from 'mysql2/promise';
+import { db } from '../db/index.js';
+import { recruitmentEmailTemplates } from '../db/schema.js';
+import { eq, asc } from 'drizzle-orm';
 
 // ============================================================================
 // Interfaces
 // ============================================================================
-
-interface EmailTemplateRow extends RowDataPacket {
-  id: number;
-  stage_name: string;
-  subject_template: string;
-  body_template: string;
-  created_at: Date;
-  updated_at: Date;
-}
 
 interface UpdateTemplateRequest {
   subject_template: string;
@@ -24,11 +16,12 @@ interface UpdateTemplateRequest {
 // Controllers
 // ============================================================================
 
-export const getTemplates = async (req: Request, res: Response): Promise<void> => {
+export const getTemplates = async (_req: Request, res: Response): Promise<void> => {
   try {
-    const [templates] = await db.query<EmailTemplateRow[]>(
-      'SELECT * FROM recruitment_email_templates ORDER BY id'
-    );
+    const templates = await db.select()
+      .from(recruitmentEmailTemplates)
+      .orderBy(asc(recruitmentEmailTemplates.id));
+      
     res.json({ success: true, templates });
   } catch (error) {
     console.error('Error fetching templates:', error);
@@ -41,10 +34,12 @@ export const updateTemplate = async (req: Request, res: Response): Promise<void>
     const { id } = req.params;
     const { subject_template, body_template }: UpdateTemplateRequest = req.body;
 
-    await db.query(
-      'UPDATE recruitment_email_templates SET subject_template = ?, body_template = ? WHERE id = ?',
-      [subject_template, body_template, id]
-    );
+    await db.update(recruitmentEmailTemplates)
+      .set({ 
+        subjectTemplate: subject_template, 
+        bodyTemplate: body_template 
+      })
+      .where(eq(recruitmentEmailTemplates.id, Number(id)));
 
     res.json({ success: true, message: 'Template updated successfully' });
   } catch (error) {

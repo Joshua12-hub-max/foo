@@ -1,22 +1,6 @@
-import db from '../db/connection.js';
-import type { RowDataPacket } from 'mysql2/promise';
-
-/**
- * Attendance log record from database
- */
-interface AttendanceLog extends RowDataPacket {
-  scan_time: Date;
-  type: 'IN' | 'OUT';
-}
-
-/**
- * Schedule record from database
- */
-interface ScheduleRow extends RowDataPacket {
-  start_time: string;
-  end_time: string;
-  is_rest_day: boolean;
-}
+import { db } from '../db/index.js';
+import { attendanceLogs, schedules, dailyTimeRecords } from '../db/schema.js';
+import { eq, and, asc, sql } from 'drizzle-orm';
 
 const DAYS_OF_WEEK = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as const;
 
@@ -42,10 +26,16 @@ export const processDailyAttendance = async (
 ): Promise<void> => {
   try {
     // 1. Get all logs for the day
-    const [logs] = await db.query<AttendanceLog[]>(
-      'SELECT scan_time, type FROM attendance_logs WHERE employee_id = ? AND DATE(scan_time) = ? ORDER BY scan_time ASC',
-      [employeeId, dateStr]
-    );
+    const logs = await db.select({
+      scanTime: attendanceLogs.scanTime,
+      type: attendanceLogs.type
+    })
+    .from(attendanceLogs)
+    .where(and(
+      eq(attendanceLogs.employeeId, employeeId),
+      eq(sql`DATE(${attendanceLogs.scanTime})`, dateStr)
+    ))
+    .orderBy(asc(attendanceLogs.scanTime));
 
     if (logs.length === 0) return;
 
@@ -56,12 +46,13 @@ export const processDailyAttendance = async (
 
     const inLogs = logs.filter((l) => l.type === 'IN');
     if (inLogs.length > 0) {
-      timeIn = inLogs[0].scan_time; // Earliest IN
+      // Drizzle scanTime might be Date or string depending on driver/schema, assuming Date from schema
+      timeIn = new Date(inLogs[0].scanTime); 
     }
 
     const outLogs = logs.filter((l) => l.type === 'OUT');
     if (outLogs.length > 0) {
-      timeOut = outLogs[outLogs.length - 1].scan_time; // Latest OUT
+      timeOut = new Date(outLogs[outLogs.length - 1].scanTime);
     }
 
     // 3. Get Schedule to calculate Late / Undertime
@@ -70,25 +61,26 @@ export const processDailyAttendance = async (
     const dateObj = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
     const dayName = DAYS_OF_WEEK[dateObj.getDay()];
 
-    const [schedules] = await db.query<ScheduleRow[]>(
-      'SELECT start_time, end_time, is_rest_day FROM schedules WHERE employee_id = ? AND day_of_week = ?',
-      [employeeId, dayName]
-    );
+    const scheduled = await db.query.schedules.findFirst({
+      where: and(
+        eq(schedules.employeeId, employeeId),
+        eq(schedules.dayOfWeek, dayName)
+      ),
+      columns: { startTime: true, endTime: true, isRestDay: true }
+    });
 
     let lateMinutes = 0;
     let undertimeMinutes = 0;
     let status = 'Present';
 
-    if (schedules.length > 0 && !schedules[0].is_rest_day) {
-      const schedule = schedules[0];
-
+    if (scheduled && !scheduled.isRestDay) {
       // Construct Schedule Date Objects using local components
       const scheduleStart = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
-      const [startH, startM, startS] = parseTimeString(schedule.start_time);
+      const [startH, startM, startS] = parseTimeString(scheduled.startTime);
       scheduleStart.setHours(startH, startM, startS);
 
       const scheduleEnd = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
-      const [endH, endM, endS] = parseTimeString(schedule.end_time);
+      const [endH, endM, endS] = parseTimeString(scheduled.endTime);
       scheduleEnd.setHours(endH, endM, endS);
 
       // Calculate Late
@@ -110,19 +102,25 @@ export const processDailyAttendance = async (
     }
 
     // 4. Upsert into daily_time_records
-    await db.query(
-      `INSERT INTO daily_time_records 
-       (employee_id, date, time_in, time_out, late_minutes, undertime_minutes, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?)
-       ON DUPLICATE KEY UPDATE
-       time_in = VALUES(time_in),
-       time_out = VALUES(time_out),
-       late_minutes = VALUES(late_minutes),
-       undertime_minutes = VALUES(undertime_minutes),
-       status = VALUES(status),
-       updated_at = CURRENT_TIMESTAMP`,
-      [employeeId, dateStr, timeIn, timeOut, lateMinutes, undertimeMinutes, status]
-    );
+    await db.insert(dailyTimeRecords).values({
+      employeeId,
+      date: dateStr,
+      timeIn: timeIn ? timeIn.toISOString() : null,
+      timeOut: timeOut ? timeOut.toISOString() : null,
+      lateMinutes,
+      undertimeMinutes,
+      status,
+      updatedAt: new Date().toISOString() // Or let default handle it if set
+    }).onDuplicateKeyUpdate({
+      set: {
+        timeIn: timeIn ? timeIn.toISOString() : null,
+        timeOut: timeOut ? timeOut.toISOString() : null,
+        lateMinutes,
+        undertimeMinutes,
+        status,
+        updatedAt: new Date().toISOString()
+      }
+    });
 
     console.log(`Processed DTR for ${employeeId} on ${dateStr}: Late=${lateMinutes}, Undertime=${undertimeMinutes}`);
   } catch (error) {

@@ -100,8 +100,8 @@ export default function ScheduleModal({ show, onClose, onCreate, hours = [] }: S
                     >
                     <option value="">Select an employee...</option>
                     {employees.map((emp) => (
-                        <option key={emp.id} value={emp.employee_id}>
-                        {emp.first_name} {emp.last_name} ({emp.employee_id})
+                        <option key={emp.id} value={emp.employeeId}>
+                        {emp.firstName} {emp.lastName} ({emp.employeeId})
                         </option>
                     ))}
                     </select>

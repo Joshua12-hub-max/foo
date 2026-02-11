@@ -50,7 +50,7 @@ const MemoRow: React.FC<MemoRowProps> = memo(({ memo, onView }) => {
         <div className="flex items-center justify-center">
           <button
             onClick={handleView}
-            className="p-2 bg-gray-200 hover:bg-gray-800 hover:text-white text-gray-700 rounded-lg transition-all shadow-sm"
+            className="p-2 bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 rounded-lg transition-all shadow-sm"
             title="View Memo Details"
           >
             <Eye size={16} />

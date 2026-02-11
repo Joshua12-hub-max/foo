@@ -5,7 +5,7 @@ import { toast } from 'react-hot-toast';
 export const nepotismKeys = {
   all: ['nepotism'] as const,
   relationships: () => [...nepotismKeys.all, 'relationships'] as const,
-  relationship: (filters: any) => [...nepotismKeys.relationships(), filters] as const,
+  relationship: (filters: Record<string, unknown>) => [...nepotismKeys.relationships(), filters] as const,
   employeeRelationships: (id: number) => [...nepotismKeys.all, 'employee', id] as const,
 };
 
@@ -57,8 +57,9 @@ export const useCreateNepotismRelationship = () => {
       queryClient.invalidateQueries({ queryKey: nepotismKeys.relationships() });
       toast.success('Relationship registered successfully');
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to register relationship');
+    onError: (error: unknown) => {
+      const message = (error as { response?: { data?: { message?: string } } }).response?.data?.message || 'Failed to register relationship';
+      toast.error(message);
     },
   });
 };
@@ -75,8 +76,9 @@ export const useDeleteNepotismRelationship = () => {
       queryClient.invalidateQueries({ queryKey: nepotismKeys.relationships() });
       toast.success('Relationship deleted successfully');
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to delete relationship');
+    onError: (error: unknown) => {
+      const message = (error as { response?: { data?: { message?: string } } }).response?.data?.message || 'Failed to delete relationship';
+      toast.error(message);
     },
   });
 };

@@ -10,6 +10,13 @@ import { fetchEmployees } from '@/api/employeeApi';
 import { useAuth } from '@/hooks/useAuth';
 import { useToastStore } from '@/stores';
 import { INITIAL_REVIEW_FORM } from '@/components/Custom/Performance/constants/performanceConstants';
+import { 
+  InternalReview, 
+  ReviewItem, 
+  ReviewCycle, 
+  PerformanceCriteria 
+} from '@/types/performance';
+import { Employee } from '@/types';
 
 interface Assessment {
   id: string | number;
@@ -21,43 +28,6 @@ interface Assessment {
   badgeColor?: string;
   iconName?: string;
   value?: string;
-  [key: string]: any;
-}
-
-interface ReviewItem {
-  id: string | number;
-  criteria_id: string | number | null;
-  score: number | string;
-  comment?: string;
-  self_score?: number | string;
-  actual_accomplishments?: string;
-  criteria_title?: string;
-  criteria_description?: string;
-  category?: string;
-  weight?: number | string;
-  max_score?: number | string;
-  q_score?: number;
-  e_score?: number;
-  t_score?: number;
-  [key: string]: any;
-}
-
-interface FormDataState {
-  id?: string | number;
-  employee_id: string | number;
-  review_cycle_id: string | number;
-  reviewer_id: string | number;
-  status: string;
-  items: ReviewItem[];
-  overall_feedback?: string;
-  additional_comments?: string;
-  strengths?: string;
-  improvements?: string;
-  goals?: string;
-  training_recommendations?: string;
-  action_plan?: string;
-  total_score?: number | string;
-  [key: string]: any;
 }
 
 const DEFAULT_QUALITATIVE_CONFIG: Assessment[] = [
@@ -68,6 +38,11 @@ const DEFAULT_QUALITATIVE_CONFIG: Assessment[] = [
   { id: 'comments', label: 'Additional Comments', placeholder: "Any other remarks...", badge: 'Feedback', badgeColor: 'bg-gray-50 text-gray-700 border-gray-100', iconName: 'MessageSquare' }
 ];
 
+interface FormDataState extends Omit<Partial<InternalReview>, 'items'> {
+  items: Partial<ReviewItem>[];
+  additional_comments?: string;
+}
+
 export const usePerformanceReview = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -77,15 +52,15 @@ export const usePerformanceReview = () => {
   
   const isNew = !id || id === 'new';
   const [currentReviewId, setCurrentReviewId] = useState<string | number | null>(isNew ? null : id!);
-  const creationInProgress = useRef(false); // Mutex to prevent duplicate creation
+  const creationInProgress = useRef(false);
 
   const [loading, setLoading] = useState<boolean>(true);
   const [saving, setSaving] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [formData, setFormData] = useState<FormDataState>(INITIAL_REVIEW_FORM);
+  const [formData, setFormData] = useState<FormDataState>(INITIAL_REVIEW_FORM as unknown as FormDataState);
   const [qualitativeAssessments, setQualitativeAssessments] = useState<Assessment[]>([]);
-  const [employees, setEmployees] = useState<any[]>([]);
-  const [cycles, setCycles] = useState<any[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [cycles, setCycles] = useState<ReviewCycle[]>([]);
 
   // Load Data
   useEffect(() => {
@@ -103,21 +78,20 @@ export const usePerformanceReview = () => {
 
         if (!isMounted) return;
 
-        if (empData.success) setEmployees(empData.employees);
-        if (cycleData.success) setCycles(cycleData.cycles);
+        if (empData.success) setEmployees(empData.employees as Employee[]);
+        if (cycleData.success) setCycles(cycleData.data.cycles);
 
         if (currentReviewId && currentReviewId !== 'new') {
           const reviewData = await fetchReviewById(currentReviewId);
           if (!isMounted) return;
           
           if (reviewData.success) {
-            const review = reviewData.review;
+            const review = reviewData.data.review;
             
             // Parse overall_feedback
-            let parsedFeedback: any = {};
+            let parsedFeedback: Record<string, unknown> = {};
             try {
               parsedFeedback = JSON.parse(review.overall_feedback || '{}');
-              if (typeof parsedFeedback !== 'object') parsedFeedback = { additional_comments: review.overall_feedback };
             } catch (e) {
               parsedFeedback = { additional_comments: review.overall_feedback };
             }
@@ -131,7 +105,7 @@ export const usePerformanceReview = () => {
                    id: conf.id,
                    title: conf.label,
                    description: conf.placeholder,
-                   value: parsedFeedback[conf.id] || '',
+                   value: (parsedFeedback[conf.id] as string) || '',
                    badge: conf.badge,
                    badgeColor: conf.badgeColor,
                    iconName: conf.iconName
@@ -141,13 +115,14 @@ export const usePerformanceReview = () => {
             setQualitativeAssessments(loadedAssessments);
 
             // Merge Items with Criteria
-            let items: ReviewItem[] = review.items || [];
+            let items: Partial<ReviewItem>[] = review.items || [];
             if (review.status === 'Draft' && criteriaData.success) {
+                 const criteria = criteriaData.data.criteria;
                  const existingCriteriaIds = new Set(items.map(i => i.criteria_id).filter(id => id));
-                 const missingCriteria = criteriaData.criteria.filter((c: any) => !existingCriteriaIds.has(c.id));
+                 const missingCriteria = criteria.filter((c: PerformanceCriteria) => !existingCriteriaIds.has(c.id));
                  if (missingCriteria.length > 0) {
-                     const newItems = missingCriteria.map((c: any, index: number) => ({
-                         id: Date.now() + index + Math.floor(Math.random() * 1000), // Temp ID
+                     const newItems = missingCriteria.map((c: PerformanceCriteria, index: number) => ({
+                         id: Date.now() + index + Math.floor(Math.random() * 1000), 
                          criteria_id: c.id,
                          score: 0,
                          comment: '',
@@ -166,7 +141,7 @@ export const usePerformanceReview = () => {
             setFormData({
               ...review,
               items: items,
-              additional_comments: parsedFeedback.additional_comments || ''
+              additional_comments: (parsedFeedback.additional_comments as string) || ''
             });
           }
         } else {
@@ -175,7 +150,7 @@ export const usePerformanceReview = () => {
             setFormData(prev => ({
               ...prev,
               reviewer_id: user?.id,
-              items: criteriaData.criteria.map((c: any) => ({
+              items: criteriaData.data.criteria.map((c: PerformanceCriteria) => ({
                 criteria_id: c.id,
                 score: 0,
                 comment: '',
@@ -202,7 +177,7 @@ export const usePerformanceReview = () => {
           
           const params = new URLSearchParams(window.location.search);
           const empId = params.get('employeeId');
-          if (empId && isMounted) setFormData(prev => ({ ...prev, employee_id: empId }));
+          if (empId && isMounted) setFormData(prev => ({ ...prev, employee_id: Number(empId) }));
         }
       } catch (err) {
         if (isMounted) {
@@ -218,7 +193,6 @@ export const usePerformanceReview = () => {
     return () => { isMounted = false; };
   }, [currentReviewId, isNew, user]);
 
-  // Derived Values
   const selectedEmployee = useMemo(() => employees.find(e => e.id == formData.employee_id), [employees, formData.employee_id]);
   const selectedCycle = useMemo(() => cycles.find(c => c.id == formData.review_cycle_id), [cycles, formData.review_cycle_id]);
   
@@ -231,8 +205,8 @@ export const usePerformanceReview = () => {
       isReviewer,
       isEmployee,
       canEdit: isNew || 
-        (isReviewer && !['Finalized', 'Acknowledged', 'Approved'].includes(formData.status)) ||
-        (isEmployee && ['Draft', 'Self-Rated'].includes(formData.status))
+        (isReviewer && !['Finalized', 'Acknowledged', 'Approved'].includes(formData.status || '')) ||
+        (isEmployee && ['Draft', 'Self-Rated'].includes(formData.status || ''))
     };
   }, [user, formData.status, isNew]);
 
@@ -249,11 +223,10 @@ export const usePerformanceReview = () => {
     return totalWeight > 0 ? (totalWeightedScore / totalWeight).toFixed(2) : '0.00';
   }, [formData.items]);
 
-  // Handlers
   const handleScoreChange = useCallback((criteriaId: string | number, value: string | number) => {
     setFormData(prev => ({
       ...prev,
-      items: prev.items.map(item => item.criteria_id === criteriaId ? { ...item, score: value } : item)
+      items: prev.items.map(item => item.criteria_id === criteriaId ? { ...item, score: Number(value) } : item)
     }));
   }, []);
 
@@ -282,7 +255,7 @@ export const usePerformanceReview = () => {
   const handleSelfScoreChange = useCallback((criteriaId: string | number, value: string | number) => {
     setFormData(prev => ({
       ...prev,
-      items: prev.items.map(item => item.criteria_id === criteriaId ? { ...item, self_score: value } : item)
+      items: prev.items.map(item => item.criteria_id === criteriaId ? { ...item, self_score: Number(value) } : item)
     }));
   }, []);
 
@@ -294,31 +267,14 @@ export const usePerformanceReview = () => {
   }, []);
 
 
-  // Edit an item - only updates this review's item, NOT master criteria
-  const onEditItem = useCallback(async (updatedItem: ReviewItem) => {
-    // Helper to check if ID is a real database ID (not a temp timestamp ID)
-    const isRealDbId = (id: any) => typeof id === 'number' && id < 10000000000;
+  const onEditItem = useCallback(async (updatedItem: Partial<ReviewItem>) => {
+    const isRealDbId = (id: unknown) => typeof id === 'number' && (id as number) < 10000000000;
 
     try {
-      // Update the review item in the database only if it has a real DB ID
       if (updatedItem.id && isRealDbId(updatedItem.id)) {
-        await updateItemApi(updatedItem.id, {
-          score: updatedItem.score,
-          comment: updatedItem.comment,
-          self_score: updatedItem.self_score,
-          actual_accomplishments: updatedItem.actual_accomplishments,
-          q_score: updatedItem.q_score,
-          e_score: updatedItem.e_score,
-          t_score: updatedItem.t_score,
-          criteria_title: updatedItem.criteria_title,
-          criteria_description: updatedItem.criteria_description,
-          category: updatedItem.category,
-          weight: updatedItem.weight,
-          max_score: updatedItem.max_score
-        });
+        await updateItemApi(updatedItem.id, updatedItem);
       }
 
-      // Update local state
       setFormData(prev => ({
         ...prev,
         items: prev.items.map(i => {
@@ -334,25 +290,17 @@ export const usePerformanceReview = () => {
     }
   }, [showNotification]);
 
-  // Delete an item - only removes from this review, NOT master criteria
   const onDeleteItem = useCallback(async (itemId: string | number) => {
     const itemToDelete = formData.items.find(i => (i.id == itemId) || (i.criteria_id == itemId));
-    if (!itemToDelete) {
-      console.error("Item to delete not found:", itemId);
-      return;
-    }
+    if (!itemToDelete) return;
 
-    // Helper to check if ID is a real database ID (not a temp timestamp ID)
-    // Temp IDs from Date.now() are typically 13+ digits (timestamps > 1 trillion)
-    const isRealDbId = (id: any) => typeof id === 'number' && id < 10000000000;
+    const isRealDbId = (id: unknown) => typeof id === 'number' && (id as number) < 10000000000;
 
     try {
-      // Delete from performance_review_items only if it has a real database ID
       if (itemToDelete.id && isRealDbId(itemToDelete.id)) {
         await deleteItemApi(itemToDelete.id);
       }
 
-      // Update local state
       setFormData(prev => ({
         ...prev,
         items: prev.items.filter(i => {
@@ -368,16 +316,9 @@ export const usePerformanceReview = () => {
     }
   }, [formData.items, showNotification]);
 
-  // --- QA Logic ---
-
   const ensureReviewExists = useCallback(async () => {
     if (currentReviewId && currentReviewId !== 'new') return currentReviewId;
-    if (creationInProgress.current) {
-        // Wait for potential in-flight creation? Ideally just reject or wait. 
-        // For now, simpler to abort to prevent race condition loop.
-        console.warn("Creation already in progress");
-        return null; 
-    }
+    if (creationInProgress.current) return null; 
     
     if (!formData.employee_id) {
       showNotification("Please select an employee before making changes.", "error");
@@ -391,60 +332,49 @@ export const usePerformanceReview = () => {
         assessments: qualitativeAssessments
       });
       
-      const payload = {
-        employee_id: formData.employee_id,
-        reviewer_id: user?.id || formData.reviewer_id,
-        review_cycle_id: formData.review_cycle_id,
+      const payload: Partial<InternalReview> = {
+        employee_id: Number(formData.employee_id),
+        reviewer_id: Number(user?.id || formData.reviewer_id),
+        review_cycle_id: Number(formData.review_cycle_id),
         overall_feedback,
-        total_score: 0,
-        items: (formData.items || []).map(item => ({
-          criteria_id: item.criteria_id || null,
-          score: 0,
-          weight: item.weight || 1,
-          max_score: item.max_score || 5,
-          category: item.category || 'General'
-        }))
+        total_score: "0",
       };
       
       const res = await createReview(payload);
-      if (res.success && res.reviewId) {
-        setCurrentReviewId(res.reviewId);
-        // Important: Update URL silently or rely on currentReviewId state
-        window.history.replaceState(null, '', `/admin-dashboard/performance/reviews/${res.reviewId}`);
-        return res.reviewId;
+      if (res.success && res.data.reviewId) {
+        setCurrentReviewId(res.data.reviewId);
+        window.history.replaceState(null, '', `/admin-dashboard/performance/reviews/${res.data.reviewId}`);
+        return res.data.reviewId;
       }
       return null;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Auto-create failed:", error);
-      showNotification("Failed to initialize draft. " + (error.response?.data?.message || ''), "error");
       return null;
     } finally {
         creationInProgress.current = false;
     }
   }, [currentReviewId, formData, qualitativeAssessments, user, showNotification]);
 
-  // Add a new item to review - immediately persists to backend
-  const handleAddItem = useCallback(async (newItemData: any) => {
+  const handleAddItem = useCallback(async (newItemData: Partial<ReviewItem>) => {
     try {
       const reviewId = await ensureReviewExists();
       if (!reviewId) return;
 
-      const payload = {
-        review_id: reviewId,
+      const payload: Partial<ReviewItem> = {
+        review_id: Number(reviewId),
         criteria_id: newItemData.criteria_id || null,
-        criteria_title: newItemData.criteria_title || newItemData.title,
-        criteria_description: newItemData.criteria_description || newItemData.description,
-        weight: newItemData.weight || 1,
-        max_score: newItemData.max_score || 5,
+        criteria_title: newItemData.criteria_title,
+        criteria_description: newItemData.criteria_description,
+        weight: Number(newItemData.weight) || 1,
+        max_score: Number(newItemData.max_score) || 5,
         category: newItemData.category || 'General'
       };
 
       const res = await addItemApi(payload);
-      if (res.success && res.itemId) {
-        // Add item to local state with the returned ID
+      if (res.success && res.data.itemId) {
         setFormData(prev => ({
           ...prev,
-          items: [...prev.items, { ...newItemData, id: res.itemId, score: 0, self_score: 0 }]
+          items: [...prev.items, { ...newItemData, id: res.data.itemId, score: 0, self_score: 0 }]
         }));
         showNotification("Criteria added successfully.", "success");
       }
@@ -462,15 +392,12 @@ export const usePerformanceReview = () => {
         assessments: updatedAssessments
       });
       await updateReview(reviewId, {
-        employee_id: formData.employee_id,
-        reviewer_id: user?.id || formData.reviewer_id,
-        review_cycle_id: formData.review_cycle_id,
         overall_feedback
       });
     } catch (e) {
       console.error("QA Save failed", e);
     }
-  }, [formData, user]);
+  }, [formData.additional_comments]);
 
   const handleAddAssessment = useCallback(async (newAssessment: Assessment) => {
     const newItem = {
@@ -509,11 +436,8 @@ export const usePerformanceReview = () => {
     }
     setSaving(true);
     try {
-        // Unify creation logic: Always ensure ID exists first
         const reviewId = await ensureReviewExists();
-        
         if (!reviewId) {
-            // Should be handled by ensureReviewExists notification, but safety check
             setSaving(false);
             return;
         }
@@ -523,20 +447,10 @@ export const usePerformanceReview = () => {
             assessments: qualitativeAssessments
         });
 
-        // Use helper to strip temp IDs
         const itemsPayload = (formData.items || []).map(item => ({
             ...item,
-            id: (item.id && (typeof item.id === 'number' || !item.id.toString().startsWith('temp')) && Number(item.id) < 999999999999) ? item.id : null,
+            id: (item.id && typeof item.id === 'number' && item.id < 999999999999) ? item.id : undefined,
         }));
-
-        const payload = { 
-            employee_id: formData.employee_id,
-            reviewer_id: user?.id || formData.reviewer_id,
-            review_cycle_id: formData.review_cycle_id,
-            overall_feedback,
-            items: itemsPayload,
-            additional_comments: formData.additional_comments
-        };
 
         if (permissions.isEmployee) {
             if (action === 'submit') {
@@ -553,19 +467,20 @@ export const usePerformanceReview = () => {
         }
 
         if (action === 'submit') {
-            const submitPayload = { items: itemsPayload, supervisor_remarks: formData.additional_comments, overall_feedback };
-            await submitSupervisorRating(reviewId, submitPayload);
+            await submitSupervisorRating(reviewId, { items: itemsPayload, supervisor_remarks: formData.additional_comments, overall_feedback });
             navigate('/admin-dashboard/performance-reviews');
             return;
         }
 
-        // Just Save (Existing or Newly Created via ensureReviewExists)
-        await updateReview(reviewId, payload);
+        await updateReview(reviewId, {
+            overall_feedback,
+            additional_comments: formData.additional_comments
+        });
         showNotification("Review saved.", "success");
 
-    } catch (err: any) {
+    } catch (err: unknown) {
         console.error(err);
-        showNotification(err.response?.data?.message || "Failed to save.", "error");
+        showNotification("Failed to save.", "error");
     } finally {
         setSaving(false);
     }

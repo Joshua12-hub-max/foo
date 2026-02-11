@@ -15,8 +15,7 @@ export const TABLE_COLUMNS: readonly TableColumn[] = [
   { header: 'Date', key: 'date', align: 'center' },
   { header: 'Time In', key: 'timeIn', align: 'center' },
   { header: 'Time Out', key: 'timeOut', align: 'center' },
-  { header: 'Hours Worked', key: 'hoursWorked', align: 'center' },
-  { header: 'Remarks', key: 'remarks', align: 'left' }
+  { header: 'Hours Worked', key: 'hoursWorked', align: 'center' }
 ] as const;
 
 // Derived headers for backward compatibility

@@ -3,15 +3,16 @@ import { formatDate, getStatusColor } from './utils/attendanceUtils';
 import { STATUS_STYLES } from './constants/attendanceConstants';
 
 interface AttendanceRow {
-  employee_id: string;
+  employeeId: string;
   employee_name: string;
   department?: string;
   date: string;
-  time_in?: string;
-  time_out?: string;
+  timeIn?: string;
+  timeOut?: string;
   status: string;
-  late_minutes: number;
-  undertime_minutes: number;
+  lateMinutes: number;
+  undertimeMinutes: number;
+  overtimeMinutes?: number;
   notes?: string;
   [key: string]: any;
 }
@@ -75,7 +76,7 @@ const AttendanceTable: React.FC<AttendanceTableProps> = memo(({ data, headers, i
           </thead>
           <tbody className="divide-y divide-slate-100">
             {data.map((row) => (
-              <tr key={row.id || `${row.employee_id}-${row.date}`} className="hover:bg-[#F8F9FA] hover:shadow-xl transition-colors">
+              <tr key={row.id || `${row.employeeId}-${row.date}`} className="hover:bg-[#F8F9FA] hover:shadow-xl transition-colors">
                 
                 {/* Status - First Column */}
                 <td className="px-6 py-4 whitespace-nowrap">
@@ -86,7 +87,7 @@ const AttendanceTable: React.FC<AttendanceTableProps> = memo(({ data, headers, i
 
                 {/* Employee ID - Separate Column */}
                 <td className="px-6 py-4 text-sm font-medium text-gray-700 whitespace-nowrap">
-                  {row.employee_id}
+                  {row.employeeId}
                 </td>
 
                 {/* Employee Name - Separate Column */}
@@ -104,22 +105,22 @@ const AttendanceTable: React.FC<AttendanceTableProps> = memo(({ data, headers, i
 
                 {/* Time In */}
                 <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">
-                  {row.time_in ? formatTime(row.time_in) : '-'}
+                  {row.timeIn ? formatTime(row.timeIn) : '-'}
                 </td>
 
                 {/* Time Out */}
                 <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">
-                  {row.time_out ? formatTime(row.time_out) : '-'}
+                  {row.timeOut ? formatTime(row.timeOut) : '-'}
                 </td>
 
                 {/* Late */}
                 <td className="px-6 py-4 text-sm text-red-600 whitespace-nowrap">
-                  {row.late_minutes > 0 ? `${row.late_minutes} min` : '-'}
+                  {row.lateMinutes > 0 ? `${row.lateMinutes} min` : '-'}
                 </td>
 
                 {/* Undertime */}
                 <td className="px-6 py-4 text-sm text-orange-600 whitespace-nowrap">
-                  {row.undertime_minutes > 0 ? `${row.undertime_minutes} min` : '-'}
+                  {row.undertimeMinutes > 0 ? `${row.undertimeMinutes} min` : '-'}
                 </td>
 
               </tr>

@@ -18,7 +18,7 @@ import {
   addEmployeeCustomField,
   deleteEmployeeCustomField,
   updateEmployeeCustomField
-} from '../controllers/employeeController.js';
+} from '../controllers/user.controller.js';
 import { verifyToken, verifyAdmin, verifyOwnerOrAdmin } from '../middleware/authMiddleware.js';
 
 const router: Router = Router();

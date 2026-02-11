@@ -21,7 +21,11 @@ export const useCredits = () => {
   const creditsQuery = usePaginatedQuery({
     queryKey: ['leave-credits', page, limit, search],
     queryFn: async () => {
-      const res = await leaveApi.getAllCredits({ page, limit, search });
+      // Default to current year or 2026 if not set
+      const year = new Date().getFullYear();
+      console.log('Fetching credits for year:', year);
+      const res = await leaveApi.getAllCredits({ page, limit, search, year });
+      console.log('Credits fetched:', res.data?.credits);
       return {
         data: (res.data?.credits || []) as LeaveCredit[],
         pagination: res.data?.pagination || { page: 1, limit: 10, totalPages: 1, totalItems: 0 }
@@ -34,8 +38,15 @@ export const useCredits = () => {
     queryKey: ['employees-options'],
     queryFn: async () => {
       const res = await employeeApi.fetchEmployees();
-      return res.employees || [];
+      const raw = res.employees || [];
+      return raw.map((e: any) => ({
+        ...e,
+        employee_id: String(e.employeeId || e.employee_id || e.id),
+        first_name: e.firstName || e.first_name || '',
+        last_name: e.lastName || e.last_name || ''
+      }));
     },
+
   });
 
   // Update or Add Credit mutation

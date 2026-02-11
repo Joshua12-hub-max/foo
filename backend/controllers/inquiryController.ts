@@ -1,18 +1,8 @@
 import { Request, Response } from 'express';
-import db from '../db/connection.js';
+import { db } from '../db/index.js';
+import { contactInquiries } from '../db/schema.js';
+import { eq, desc } from 'drizzle-orm';
 import nodemailer from 'nodemailer';
-import type { RowDataPacket, ResultSetHeader } from 'mysql2/promise';
-
-interface InquiryRow extends RowDataPacket {
-  id: number;
-  first_name: string;
-  last_name: string;
-  email: string;
-  message: string;
-  status: string;
-  admin_notes?: string;
-  created_at: Date;
-}
 
 /**
  * Utility: Send Email Notification
@@ -51,10 +41,13 @@ export const submitInquiry = async (req: Request, res: Response): Promise<void> 
       return;
     }
 
-    const [result] = await db.query<ResultSetHeader>(
-      `INSERT INTO contact_inquiries (first_name, last_name, email, message) VALUES (?, ?, ?, ?)`,
-      [first_name, last_name, email, message]
-    );
+    const [result] = await db.insert(contactInquiries).values({
+      firstName: first_name,
+      lastName: last_name,
+      email,
+      message,
+      status: 'Pending'
+    });
 
     // 1. Send confirmation to User
     await sendNotification(
@@ -109,17 +102,17 @@ export const submitInquiry = async (req: Request, res: Response): Promise<void> 
 export const getInquiries = async (req: Request, res: Response): Promise<void> => {
   try {
     const { status } = req.query;
-    let query = 'SELECT * FROM contact_inquiries WHERE 1=1';
-    const params: any[] = [];
-
+    
+    const conditions = [];
     if (status && status !== 'All') {
-      query += ' AND status = ?';
-      params.push(status);
+      conditions.push(eq(contactInquiries.status, status as any));
     }
 
-    query += ' ORDER BY created_at DESC';
+    const inquiries = await db.select()
+      .from(contactInquiries)
+      .where(conditions.length > 0 ? conditions[0] : undefined)
+      .orderBy(desc(contactInquiries.createdAt));
 
-    const [inquiries] = await db.query<InquiryRow[]>(query, params);
     res.json({ success: true, inquiries });
   } catch (error) {
     console.error('Get Inquiries Error:', error);
@@ -141,10 +134,14 @@ export const updateStatus = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
-    await db.query(
-      `UPDATE contact_inquiries SET status = ?, admin_notes = COALESCE(?, admin_notes) WHERE id = ?`,
-      [status, admin_notes || null, id]
-    );
+    const updateData: any = { status: status as any };
+    if (admin_notes !== undefined) {
+      updateData.adminNotes = admin_notes || null;
+    }
+
+    await db.update(contactInquiries)
+      .set(updateData)
+      .where(eq(contactInquiries.id, Number(id)));
 
     res.json({ success: true, message: 'Inquiry status updated' });
   } catch (error) {
@@ -160,7 +157,7 @@ export const updateStatus = async (req: Request, res: Response): Promise<void> =
 export const deleteInquiry = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    await db.query('DELETE FROM contact_inquiries WHERE id = ?', [id]);
+    await db.delete(contactInquiries).where(eq(contactInquiries.id, Number(id)));
     res.json({ success: true, message: 'Inquiry deleted successfully' });
   } catch (error) {
     console.error('Delete Inquiry Error:', error);

@@ -9,3 +9,11 @@ export const dtrEditSchema = z.object({
 });
 
 export type DtrEditSchema = z.infer<typeof dtrEditSchema>;
+
+export const dtrCorrectionSchema = z.object({
+    timeIn: z.string().optional(),
+    timeOut: z.string().optional(),
+    reason: z.string().min(5, 'Reason must be at least 5 characters'),
+});
+
+export type DtrCorrectionSchema = z.infer<typeof dtrCorrectionSchema>;

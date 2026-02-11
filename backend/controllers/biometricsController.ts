@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
-import db from '../db/connection.js';
-import type { RowDataPacket } from 'mysql2/promise';
+import { db } from '../db/index.js';
+import { authentication, fingerprints } from '../db/schema.js';
+import { eq } from 'drizzle-orm';
 import {
   StartEnrollmentSchema,
   GetEnrollmentStatusSchema,
@@ -13,20 +14,6 @@ import {
   startEnrollment as startEnrollmentService,
   isEnrollmentInProgress
 } from '../services/biometricService.js';
-
-// ============================================================================
-// Interfaces & Helper Types
-// ============================================================================
-
-interface EmployeeRow extends RowDataPacket {
-  first_name: string;
-  last_name: string;
-  department: string;
-}
-
-interface FingerprintRow extends RowDataPacket {
-  fingerprint_id: number;
-}
 
 // ============================================================================
 // Helper Functions
@@ -79,17 +66,17 @@ export const startEnrollment = async (
     }
 
     // Try to get employee info from database
-    const [employee] = await db.query<EmployeeRow[]>(
-      'SELECT first_name, last_name, department FROM authentication WHERE employee_id = ?',
-      [employeeId]
-    );
+    const employee = await db.query.authentication.findFirst({
+      where: eq(authentication.employeeId, employeeId),
+      columns: { firstName: true, lastName: true, department: true }
+    });
 
     let fullName = name || 'Pending Registration';
     let dept = department || 'N/A';
 
-    if (employee.length > 0) {
-      fullName = `${employee[0].first_name} ${employee[0].last_name}`;
-      dept = employee[0].department || dept;
+    if (employee) {
+      fullName = `${employee.firstName} ${employee.lastName}`;
+      dept = employee.department || dept;
     }
 
     // Start enrollment via service
@@ -136,15 +123,15 @@ export const getEnrollmentStatus = async (
 
     const { employeeId } = validation.data.params;
 
-    const [fingerprint] = await db.query<FingerprintRow[]>(
-      'SELECT fingerprint_id FROM fingerprints WHERE employee_id = ?',
-      [employeeId]
-    );
+    const fingerprint = await db.query.fingerprints.findFirst({
+      where: eq(fingerprints.employeeId, employeeId),
+      columns: { fingerprintId: true }
+    });
 
     res.status(200).json({
       success: true,
-      isEnrolled: fingerprint.length > 0,
-      fingerprintId: fingerprint.length > 0 ? fingerprint[0].fingerprint_id : null
+      isEnrolled: !!fingerprint,
+      fingerprintId: fingerprint ? fingerprint.fingerprintId : null
     });
   } catch (err) {
     handleError(res, err as Error, 'getEnrollmentStatus');

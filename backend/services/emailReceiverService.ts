@@ -3,8 +3,9 @@ import { simpleParser, ParsedMail, AddressObject, Attachment } from 'mailparser'
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import db from '../db/connection.js';
-import type { RowDataPacket } from 'mysql2/promise';
+import { db } from '../db/index.js';
+import { recruitmentJobs, recruitmentApplicants } from '../db/schema.js';
+import { eq, and } from 'drizzle-orm';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -22,21 +23,6 @@ interface ApplicantData {
   email: string;
   resume_path: string | null;
   email_subject: string;
-}
-
-/**
- * Job row from database
- */
-interface JobRow extends RowDataPacket {
-  id: number;
-  title: string;
-}
-
-/**
- * Existing applicant check row
- */
-interface ApplicantRow extends RowDataPacket {
-  id: number;
 }
 
 /**
@@ -132,9 +118,12 @@ const matchJobFromSubject = async (subject: string | undefined): Promise<number 
     if (!subject) return null;
 
     // Get all open jobs
-    const [jobs] = await db.query<JobRow[]>(
-      "SELECT id, title FROM recruitment_jobs WHERE status = 'Open'"
-    );
+    const jobs = await db.select({
+      id: recruitmentJobs.id,
+      title: recruitmentJobs.title
+    })
+    .from(recruitmentJobs)
+    .where(eq(recruitmentJobs.status, 'Open'));
 
     // Try to find a matching job title in the subject
     const subjectLower = subject.toLowerCase();
@@ -190,13 +179,14 @@ const saveAttachment = async (attachment: Attachment): Promise<string | null> =>
  */
 const isEmailProcessed = async (email: string, subject: string): Promise<boolean> => {
   try {
-    const [existing] = await db.query<ApplicantRow[]>(
-      `SELECT id FROM recruitment_applicants 
-       WHERE email = ? AND email_subject = ? AND source = 'email'
-       LIMIT 1`,
-      [email, subject]
-    );
-    return existing.length > 0;
+    const existing = await db.query.recruitmentApplicants.findFirst({
+      where: and(
+        eq(recruitmentApplicants.email, email),
+        eq(recruitmentApplicants.emailSubject, subject),
+        eq(recruitmentApplicants.source, 'email')
+      )
+    });
+    return !!existing;
   } catch (err) {
     console.error('Error checking processed email:', err);
     return false;
@@ -210,12 +200,16 @@ const saveApplication = async (applicantData: ApplicantData): Promise<boolean> =
   try {
     const { job_id, first_name, last_name, email, resume_path, email_subject } = applicantData;
 
-    await db.query(
-      `INSERT INTO recruitment_applicants 
-       (job_id, first_name, last_name, email, resume_path, source, email_subject, email_received_at)
-       VALUES (?, ?, ?, ?, ?, 'email', ?, NOW())`,
-      [job_id, first_name, last_name, email, resume_path, email_subject]
-    );
+    await db.insert(recruitmentApplicants).values({
+      jobId: job_id,
+      firstName: first_name,
+      lastName: last_name,
+      email,
+      resumePath: resume_path,
+      source: 'email',
+      emailSubject: email_subject,
+      emailReceivedAt: new Date().toISOString()
+    });
 
     console.log(`Saved application from ${email} for job ${job_id || 'General'}`);
     return true;

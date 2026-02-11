@@ -10,8 +10,8 @@ import { MEMO_TYPES, MEMO_PRIORITIES, MEMO_STATUSES } from '../Constants/memoCon
 
 interface Employee {
   id: number;
-  first_name: string;
-  last_name: string;
+  firstName: string;
+  lastName: string;
 }
 
 interface FormData {
@@ -83,7 +83,7 @@ const MemoFormModal: React.FC<MemoFormModalProps> = memo(({
                 <option value="">Select Employee</option>
                 {employees.map(emp => (
                   <option key={emp.id} value={emp.id}>
-                    {emp.first_name} {emp.last_name}
+                    {emp.firstName} {emp.lastName}
                   </option>
                 ))}
               </select>

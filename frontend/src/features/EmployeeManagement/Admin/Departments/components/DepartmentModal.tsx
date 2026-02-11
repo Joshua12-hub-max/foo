@@ -12,6 +12,7 @@ interface Department {
 
 interface InitialData extends DepartmentModalInput {
   id?: number;
+  headOfDepartment?: string;
 }
 
 interface DepartmentModalProps {
@@ -45,7 +46,7 @@ const DepartmentModal: React.FC<DepartmentModalProps> = ({ isOpen, onClose, onSu
       reset({
         name: initialData.name || '',
         description: initialData.description || '',
-        head_of_department: initialData.head_of_department || '',
+        head_of_department: initialData.head_of_department || initialData.headOfDepartment || '',
         parent_department_id: initialData.parent_department_id || '',
         location: initialData.location || '',
         budget: Number(initialData.budget) || 0,

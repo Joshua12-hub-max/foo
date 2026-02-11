@@ -1,42 +1,19 @@
 import { Request, Response } from 'express';
-import db from '../db/connection.js';
-import type { RowDataPacket, ResultSetHeader } from 'mysql2/promise';
+import { db } from '../db/index.js';
+import { 
+  stepIncrementTracker, 
+  authentication, 
+  plantillaPositions, 
+  plantillaPositionHistory, 
+  salarySchedule 
+} from '../db/schema.js';
+import { eq, and, asc, desc, sql, lt } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/mysql-core';
 import type { AuthenticatedRequest } from '../types/index.js';
 import {
   StepIncrementTrackerSchema,
   ProcessStepIncrementSchema
 } from '../schemas/plantillaComplianceSchema.js';
-
-interface StepIncrementRow extends RowDataPacket {
-  id: number;
-  employee_id: number;
-  position_id: number;
-  current_step: number;
-  previous_step?: number;
-  eligible_date: string;
-  status: string;
-  processed_at?: Date;
-  processed_by?: number;
-  remarks?: string;
-  // Joined fields
-  employee_name?: string;
-  employee_employee_id?: string;
-  position_title?: string;
-  salary_grade?: number;
-  processor_name?: string;
-}
-
-interface EmployeePositionRow extends RowDataPacket {
-  employee_id: number;
-  employee_name: string;
-  employee_employee_id: string;
-  position_id: number;
-  position_title: string;
-  salary_grade: number;
-  current_step: number;
-  start_date: string;
-  years_in_position: number;
-}
 
 /**
  * Get all step increment records
@@ -45,35 +22,40 @@ interface EmployeePositionRow extends RowDataPacket {
 export const getStepIncrements = async (req: Request, res: Response): Promise<void> => {
   try {
     const { status, employee_id } = req.query;
+    const processor = alias(authentication, 'processor');
 
-    let query = `
-      SELECT si.*,
-             CONCAT(e.first_name, ' ', e.last_name) as employee_name,
-             e.employee_id as employee_employee_id,
-             pp.position_title,
-             pp.salary_grade,
-             CONCAT(p.first_name, ' ', p.last_name) as processor_name
-      FROM step_increment_tracker si
-      LEFT JOIN authentication e ON si.employee_id = e.id
-      LEFT JOIN plantilla_positions pp ON si.position_id = pp.id
-      LEFT JOIN authentication p ON si.processed_by = p.id
-      WHERE 1=1
-    `;
-    const params: (string | number)[] = [];
-
+    const filters = [];
     if (status) {
-      query += ' AND si.status = ?';
-      params.push(status as string);
+      filters.push(eq(stepIncrementTracker.status, status as any));
     }
-
     if (employee_id) {
-      query += ' AND si.employee_id = ?';
-      params.push(parseInt(employee_id as string));
+      filters.push(eq(stepIncrementTracker.employeeId, parseInt(employee_id as string)));
     }
 
-    query += ' ORDER BY si.eligible_date ASC, si.created_at DESC';
-
-    const [increments] = await db.query<StepIncrementRow[]>(query, params);
+    const increments = await db
+      .select({
+        id: stepIncrementTracker.id,
+        employeeId: stepIncrementTracker.employeeId,
+        positionId: stepIncrementTracker.positionId,
+        currentStep: stepIncrementTracker.currentStep,
+        previousStep: stepIncrementTracker.previousStep,
+        eligibleDate: stepIncrementTracker.eligibleDate,
+        status: stepIncrementTracker.status,
+        processedAt: stepIncrementTracker.processedAt,
+        processedBy: stepIncrementTracker.processedBy,
+        remarks: stepIncrementTracker.remarks,
+        employeeName: sql<string>`CONCAT(${authentication.firstName}, ' ', ${authentication.lastName})`,
+        employeeEmployeeId: authentication.employeeId,
+        positionTitle: plantillaPositions.positionTitle,
+        salaryGrade: plantillaPositions.salaryGrade,
+        processorName: sql<string>`CONCAT(${processor.firstName}, ' ', ${processor.lastName})`
+      })
+      .from(stepIncrementTracker)
+      .leftJoin(authentication, eq(stepIncrementTracker.employeeId, authentication.id))
+      .leftJoin(plantillaPositions, eq(stepIncrementTracker.positionId, plantillaPositions.id))
+      .leftJoin(processor, eq(stepIncrementTracker.processedBy, processor.id))
+      .where(filters.length > 0 ? and(...filters) : undefined)
+      .orderBy(asc(stepIncrementTracker.eligibleDate), desc(stepIncrementTracker.createdAt));
 
     res.json({
       success: true,
@@ -97,54 +79,106 @@ export const getStepIncrements = async (req: Request, res: Response): Promise<vo
  * - Current step < 8
  * - No promotion in last 3 years
  */
-export const getEligibleEmployees = async (req: Request, res: Response): Promise<void> => {
+export const getEligibleEmployees = async (_req: Request, res: Response): Promise<void> => {
   try {
-    // Get all employees with their current positions and tenure
-    const [employees] = await db.query<EmployeePositionRow[]>(`
-      SELECT 
-        a.id as employee_id,
-        CONCAT(a.first_name, ' ', a.last_name) as employee_name,
-        a.employee_id as employee_employee_id,
-        pp.id as position_id,
-        pp.position_title,
-        pp.salary_grade,
-        a.step_increment as current_step,
-        pph.start_date,
-        TIMESTAMPDIFF(YEAR, pph.start_date, CURDATE()) as years_in_position
-      FROM authentication a
-      INNER JOIN plantilla_positions pp ON a.id = pp.incumbent_id
-      INNER JOIN plantilla_position_history pph ON pp.id = pph.position_id 
-        AND a.id = pph.employee_id 
-        AND pph.end_date IS NULL
-      WHERE a.step_increment < 8
-        AND TIMESTAMPDIFF(YEAR, pph.start_date, CURDATE()) >= 3
-        AND a.employment_status = 'Active'
-      ORDER BY years_in_position DESC, a.last_name ASC
-    `);
+    // 1. Fetch all active regular employees with their position details
+    // We use leftJoin for history because it might not exist for initial appointments
+    const employees = await db.select({
+      employee_id: authentication.id,
+      first_name: authentication.firstName,
+      last_name: authentication.lastName,
+      employee_employee_id: authentication.employeeId,
+      position_id: plantillaPositions.id,
+      position_title: plantillaPositions.positionTitle,
+      salary_grade: plantillaPositions.salaryGrade,
+      current_step: authentication.stepIncrement,
+      date_hired: authentication.dateHired,
+      history_start_date: plantillaPositionHistory.startDate,
+      contact_number: authentication.mobileNo
+    })
+    .from(authentication)
+    .innerJoin(plantillaPositions, eq(authentication.id, plantillaPositions.incumbentId))
+    .leftJoin(plantillaPositionHistory, and(
+      eq(plantillaPositions.id, plantillaPositionHistory.positionId),
+      eq(authentication.id, plantillaPositionHistory.employeeId),
+      sql`${plantillaPositionHistory.endDate} IS NULL`
+    ))
+    .where(and(
+      eq(authentication.employmentStatus, 'Active'),
+      lt(authentication.stepIncrement, 8) // Optimize: pre-filter steps < 8
+    ));
 
-    // Filter out those who already have pending/approved increments
     const eligibleEmployees = [];
+    const currentTime = new Date();
+    console.log('[DEBUG] getEligibleEmployees executing with updated logic');
 
     for (const emp of employees) {
-      const [existing] = await db.query<StepIncrementRow[]>(
-        `SELECT id FROM step_increment_tracker 
-         WHERE employee_id = ? AND status IN ('Pending', 'Approved')`,
-        [emp.employee_id]
-      );
+      // Determine Start Date
+      // Priority: History Start Date -> Date Hired
+      let startDateStr = emp.history_start_date || emp.date_hired;
+      if (!startDateStr) continue; // Cannot determine tenure
 
-      if (existing.length === 0) {
-        // Calculate eligible date (start_date + 3 years)
-        const startDate = new Date(emp.start_date);
-        const eligibleDate = new Date(startDate);
-        eligibleDate.setFullYear(eligibleDate.getFullYear() + 3);
+      const startDate = new Date(startDateStr);
+      
+      // Calculate Tenure in Years
+      const diffTime = Math.abs(currentTime.getTime() - startDate.getTime());
+      const diffYears = diffTime / (1000 * 60 * 60 * 24 * 365.25);
 
-        eligibleEmployees.push({
-          ...emp,
-          eligible_date: eligibleDate.toISOString().split('T')[0],
-          next_step: emp.current_step + 1
-        });
+      if (diffYears < 3) continue; // Not yet 3 years
+
+      // Check for Pending or Recent Approved Increments
+      // Use db.select instead of db.query for safety
+      const existingTracker = await db.select()
+        .from(stepIncrementTracker)
+        .where(eq(stepIncrementTracker.employeeId, emp.employee_id))
+        .orderBy(desc(stepIncrementTracker.processedAt));
+
+      // Check 1: Pending Request Exists
+      const hasPending = existingTracker.some(t => t.status === 'Pending');
+      if (hasPending) continue;
+
+      // Check 2: Recent Approved Increment (< 3 years ago)
+      const lastApproved = existingTracker.find(t => t.status === 'Approved');
+      let isEligible = true;
+      let eligibleDate = new Date(startDate);
+      eligibleDate.setFullYear(eligibleDate.getFullYear() + 3);
+
+      if (lastApproved && lastApproved.processedAt) {
+        const lastProcessedDate = new Date(lastApproved.processedAt);
+        const yearsSinceLast = (currentTime.getTime() - lastProcessedDate.getTime()) / (1000 * 60 * 60 * 24 * 365.25);
+        
+        if (yearsSinceLast < 3) {
+          isEligible = false;
+        } else {
+           // If mostly eligible, the NEXT eligible date is 3 years from last approval
+           eligibleDate = new Date(lastProcessedDate);
+           eligibleDate.setFullYear(eligibleDate.getFullYear() + 3);
+        }
+      }
+
+      if (isEligible) {
+        // Deduplicate: Check if employee already exists in the list
+        const isDuplicate = eligibleEmployees.some(e => e.employee_id === emp.employee_id);
+        if (!isDuplicate) {
+          eligibleEmployees.push({
+            employee_id: emp.employee_id,
+            employee_name: `${emp.first_name} ${emp.last_name}`,
+            item_number: emp.employee_employee_id, // Mapping for UI
+            position_title: emp.position_title,
+            salary_grade: Number(emp.salary_grade),
+            current_step: Number(emp.current_step),
+            years_in_position: parseFloat(diffYears.toFixed(2)),
+            eligible_date: eligibleDate.toISOString().split('T')[0],
+            next_step: Number(emp.current_step) + 1
+          });
+        }
       }
     }
+
+    // Sort by name
+    eligibleEmployees.sort((a, b) => a.employee_name.localeCompare(b.employee_name));
+
+    console.log(`[DEBUG: DEDUPLICATION ACTIVE] Found ${eligibleEmployees.length} unique eligible employees.`);
 
     res.json({
       success: true,
@@ -168,13 +202,13 @@ export const createStepIncrement = async (req: Request, res: Response): Promise<
   try {
     const validatedData = StepIncrementTrackerSchema.parse(req.body);
 
-    // Verify employee and position exist
-    const [employees] = await db.query<RowDataPacket[]>(
-      'SELECT id, step_increment FROM authentication WHERE id = ?',
-      [validatedData.employee_id]
-    );
+    // Verify employee exists
+    const employee = await db.query.authentication.findFirst({
+      where: eq(authentication.id, validatedData.employee_id),
+      columns: { id: true, stepIncrement: true }
+    });
 
-    if (employees.length === 0) {
+    if (!employee) {
       res.status(404).json({
         success: false,
         message: 'Employee not found'
@@ -182,25 +216,20 @@ export const createStepIncrement = async (req: Request, res: Response): Promise<
       return;
     }
 
-    const [result] = await db.query<ResultSetHeader>(
-      `INSERT INTO step_increment_tracker 
-       (employee_id, position_id, current_step, previous_step, eligible_date, status, remarks)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [
-        validatedData.employee_id,
-        validatedData.position_id,
-        validatedData.current_step,
-        validatedData.previous_step || null,
-        validatedData.eligible_date,
-        validatedData.status,
-        validatedData.remarks || null
-      ]
-    );
+    const result = await db.insert(stepIncrementTracker).values({
+      employeeId: validatedData.employee_id,
+      positionId: validatedData.position_id,
+      currentStep: validatedData.current_step,
+      previousStep: validatedData.previous_step || null,
+      eligibleDate: validatedData.eligible_date,
+      status: validatedData.status as any,
+      remarks: validatedData.remarks || null
+    });
 
     res.status(201).json({
       success: true,
       message: 'Step increment request created successfully',
-      id: result.insertId
+      id: result[0].insertId
     });
   } catch (error: any) {
     console.error('Create Step Increment Error:', error);
@@ -232,20 +261,17 @@ export const processStepIncrement = async (req: Request, res: Response): Promise
     const { increment_id, status, remarks } = validatedData;
 
     // Get increment details
-    const [increments] = await db.query<StepIncrementRow[]>(
-      'SELECT * FROM step_increment_tracker WHERE id = ?',
-      [increment_id]
-    );
+    const increment = await db.query.stepIncrementTracker.findFirst({
+      where: eq(stepIncrementTracker.id, increment_id)
+    });
 
-    if (increments.length === 0) {
+    if (!increment) {
       res.status(404).json({
         success: false,
         message: 'Step increment request not found'
       });
       return;
     }
-
-    const increment = increments[0];
 
     if (increment.status === 'Processed') {
       res.status(400).json({
@@ -256,49 +282,55 @@ export const processStepIncrement = async (req: Request, res: Response): Promise
     }
 
     // Update increment status
-    await db.query(
-      `UPDATE step_increment_tracker 
-       SET status = ?, processed_at = NOW(), processed_by = ?, remarks = ?
-       WHERE id = ?`,
-      [status, authReq.user.id, remarks || null, increment_id]
-    );
+    await db.update(stepIncrementTracker)
+      .set({ 
+        status: status as any, 
+        processedAt: new Date().toISOString(), 
+        processedBy: authReq.user.id, 
+        remarks: remarks || null 
+      })
+      .where(eq(stepIncrementTracker.id, increment_id));
 
     // If approved, update employee and position
     if (status === 'Approved') {
-      const newStep = increment.current_step + 1;
+      const newStep = increment.currentStep + 1;
 
       // Update employee step
-      await db.query(
-        'UPDATE authentication SET step_increment = ? WHERE id = ?',
-        [newStep, increment.employee_id]
-      );
+      await db.update(authentication)
+        .set({ stepIncrement: newStep })
+        .where(eq(authentication.id, increment.employeeId));
 
       // Update position step
-      await db.query(
-        'UPDATE plantilla_positions SET step_increment = ? WHERE id = ?',
-        [newStep, increment.position_id]
-      );
+      await db.update(plantillaPositions)
+        .set({ stepIncrement: newStep })
+        .where(eq(plantillaPositions.id, increment.positionId));
 
       // Get new salary from salary_schedule
-      const [salaries] = await db.query<RowDataPacket[]>(
-        `SELECT monthly_salary FROM salary_schedule 
-         WHERE salary_grade = (SELECT salary_grade FROM plantilla_positions WHERE id = ?)
-           AND step = ?`,
-        [increment.position_id, newStep]
-      );
+      // We need to fetch the salary grade of the position first
+      const position = await db.query.plantillaPositions.findFirst({
+        where: eq(plantillaPositions.id, increment.positionId),
+        columns: { salaryGrade: true }
+      });
 
-      if (salaries.length > 0) {
-        await db.query(
-          'UPDATE plantilla_positions SET monthly_salary = ? WHERE id = ?',
-          [salaries[0].monthly_salary, increment.position_id]
-        );
+      if (position) {
+        const salary = await db.query.salarySchedule.findFirst({
+          where: and(
+            eq(salarySchedule.salaryGrade, position.salaryGrade),
+            eq(salarySchedule.step, newStep)
+          )
+        });
+
+        if (salary) {
+          await db.update(plantillaPositions)
+            .set({ monthlySalary: salary.monthlySalary })
+            .where(eq(plantillaPositions.id, increment.positionId));
+        }
       }
 
       // Mark as processed
-      await db.query(
-        'UPDATE step_increment_tracker SET status = ? WHERE id = ?',
-        ['Processed', increment_id]
-      );
+      await db.update(stepIncrementTracker)
+        .set({ status: 'Processed' })
+        .where(eq(stepIncrementTracker.id, increment_id));
     }
 
     res.json({

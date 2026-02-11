@@ -8,7 +8,7 @@ import { X, Loader, Save } from 'lucide-react';
 const budgetSchema = z.object({
   year: z.number().min(2020).max(2050),
   department: z.string().min(1, "Department is required"),
-  total_budget: z.number().min(1, "Total budget must be greater than 0"),
+  totalBudget: z.number().min(1, "Total budget must be greater than 0"),
   notes: z.string().optional()
 });
 
@@ -39,7 +39,7 @@ const BudgetFormModal: React.FC<BudgetFormModalProps> = ({
     defaultValues: {
       year: new Date().getFullYear(),
       department: '',
-      total_budget: 0,
+      totalBudget: 0,
       notes: ''
     }
   });
@@ -51,14 +51,14 @@ const BudgetFormModal: React.FC<BudgetFormModalProps> = ({
         reset({
           year: Number(initialData.year),
           department: initialData.department,
-          total_budget: Number(initialData.total_budget),
+          totalBudget: Number(initialData.totalBudget),
           notes: initialData.notes || ''
         });
       } else {
         reset({
            year: new Date().getFullYear(),
            department: '',
-           total_budget: 0,
+           totalBudget: 0,
            notes: ''
         });
       }
@@ -69,7 +69,7 @@ const BudgetFormModal: React.FC<BudgetFormModalProps> = ({
     await onSubmit({
         ...data,
         year: Number(data.year),
-        total_budget: Number(data.total_budget)
+        totalBudget: Number(data.totalBudget)
     });
   };
 
@@ -137,12 +137,12 @@ const BudgetFormModal: React.FC<BudgetFormModalProps> = ({
                 <input 
                   type="number" 
                   step="0.01"
-                  {...register('total_budget', { valueAsNumber: true })}
-                  className={`w-full pl-7 pr-3 py-2 bg-gray-50 border rounded-lg text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all ${errors.total_budget ? 'border-red-500' : 'border-gray-200'}`}
+                  {...register('totalBudget', { valueAsNumber: true })}
+                  className={`w-full pl-7 pr-3 py-2 bg-gray-50 border rounded-lg text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all ${errors.totalBudget ? 'border-red-500' : 'border-gray-200'}`}
                   placeholder="0.00"
                 />
               </div>
-              {errors.total_budget && <p className="text-xs text-red-500 mt-1">{errors.total_budget.message}</p>}
+              {errors.totalBudget && <p className="text-xs text-red-500 mt-1">{errors.totalBudget.message}</p>}
             </div>
 
             {/* Notes */}

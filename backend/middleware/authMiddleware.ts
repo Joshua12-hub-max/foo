@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import type { JwtPayload, AuthenticatedRequest, UserRole, UserRow } from '../types/index.js';
-import db from '../db/connection.js';
+import db from '../db/index.js';
 
 // ============================================================================
 // Type Definitions
@@ -21,8 +21,23 @@ type MiddlewareFunction = (
  */
 interface AuthErrorResponse {
   message: string;
-  code: 'NO_TOKEN' | 'INVALID_TOKEN' | 'EXPIRED_TOKEN' | 'SERVER_ERROR' | 'FORBIDDEN' | 'ACCOUNT_SUSPENDED';
+  code: 'NO_TOKEN' | 'INVALID_TOKEN' | 'EXPIRED_TOKEN' | 'SERVER_ERROR' | 'FORBIDDEN' | 'ACCOUNT_SUSPENDED' | 'INVALID_PARAMS';
 }
+
+/**
+ * Validates that the 'id' parameter is a valid positive integer.
+ * Prevents logic errors in ownership checks.
+ */
+export const verifyIdParam: MiddlewareFunction = (req, res, next) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id) || id <= 0) {
+    return res.status(400).json({
+      message: 'Invalid ID parameter. Expected a positive integer.',
+      code: 'INVALID_PARAMS'
+    } satisfies AuthErrorResponse);
+  }
+  next();
+};
 
 // ============================================================================
 // Helper Functions
@@ -216,7 +231,15 @@ export const verifyOwnerOrAdmin: MiddlewareFunction = (
 
         const userRole = user.role?.toLowerCase();
         const isAdmin = ['admin', 'hr'].includes(userRole || '');
-        const targetId = parseInt(req.params.id);
+        
+        const targetIdString = req.params.id;
+        const targetId = parseInt(targetIdString);
+        
+        if (isNaN(targetId)) {
+          res.status(400).json({ message: 'Invalid ID parameter', code: 'INVALID_PARAMS' });
+          return;
+        }
+
         const isOwner = user.id === targetId;
 
         if (isAdmin || isOwner) {
@@ -303,7 +326,7 @@ export const requireRole = (allowedRoles: readonly UserRole[]): MiddlewareFuncti
  */
 export const optionalAuth: MiddlewareFunction = (
   req: Request,
-  res: Response,
+  _res: Response,
   next: NextFunction
 ): void => {
   try {
@@ -343,7 +366,7 @@ export const optionalAuth: MiddlewareFunction = (
  * Middleware to restrict access for "Suspended" employees.
  * Blocks write operations or specific requests.
  */
-export const restrictSuspended: MiddlewareFunction = async (
+export const restrictSuspended = async (
   req: Request,
   res: Response,
   next: NextFunction
