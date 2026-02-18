@@ -35,8 +35,8 @@ export const useEmployeeDTR = () => {
   // Employee info for exports
   const employeeInfo = useMemo<EmployeeInfo | null>(() => user ? {
       id: user.employeeId as string | number,
-      name: user.name as string,
-      department: user.department as string
+      name: `${user.firstName} ${user.lastName}`,
+      department: user.department || 'N/A'
   } : null, [user]);
 
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -66,7 +66,14 @@ export const useEmployeeDTR = () => {
             if (!item.hours_worked && timeIn && timeOut) {
               const start = new Date(timeIn).getTime();
               const end = new Date(timeOut).getTime();
-              hoursWorked = ((end - start) / (1000 * 60 * 60)).toFixed(2);
+              let duration = (end - start) / (1000 * 60 * 60);
+
+              // Policy: Deduct 1 hour break for shifts > 5 hours
+              if (duration > 5) {
+                duration -= 1;
+              }
+
+              hoursWorked = Math.max(0, duration).toFixed(2);
             }
             return {
               id: item.id || item.record_id,

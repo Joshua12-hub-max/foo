@@ -19,7 +19,7 @@ const AdminLeaveRequestProcess: React.FC<ProcessModalProps> = ({ isOpen, request
   const processMutation = useMutation({
     mutationFn: async (formData: FormData) => {
       if (!request) return;
-      await (leaveApi as any).processLeave(request.id, formData);
+      await leaveApi.processLeave(request.id, formData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-leaves'] });
@@ -27,7 +27,7 @@ const AdminLeaveRequestProcess: React.FC<ProcessModalProps> = ({ isOpen, request
       setError("");
       onConfirm();
     },
-    onError: (err: any) => {
+    onError: (err: unknown) => {
         console.error(err);
         setError("Failed to process request");
     }
@@ -77,7 +77,7 @@ const AdminLeaveRequestProcess: React.FC<ProcessModalProps> = ({ isOpen, request
                 {request.attachment_path && (
                      <div className="mt-2">
                         <p className="mb-1 font-semibold">Attachment:</p>
-                        <a href={`${(import.meta as any).env.VITE_API_URL.replace('/api', '')}/uploads/${request.attachment_path}`} target="_blank" rel="noreferrer" className="text-[#274b46] hover:underline flex items-center gap-1">
+                        <a href={`${import.meta.env.VITE_API_URL?.replace('/api', '') ?? ''}/uploads/${request.attachment_path}`} target="_blank" rel="noreferrer" className="text-[#274b46] hover:underline flex items-center gap-1">
                             <Download className="w-4 h-4" /> Download Employee Attachment
                         </a>
                      </div>

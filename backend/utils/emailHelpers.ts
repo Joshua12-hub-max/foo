@@ -7,13 +7,11 @@ import type { MySql2Database } from 'drizzle-orm/mysql2';
  */
 interface EmailTemplate {
   id: number;
-  stageName: string;
-  subjectTemplate: string;
-  bodyTemplate: string;
-  availableVariables?: string | null;
-  updatedAt: string | null; // Using snake_case column names as properties if using select() without explicit mapping? 
-  // Wait, Drizzle select() returns camelCase properties if defined in schema? No, it returns whatever property name is defined.
-  // In `schema.ts`: `updatedAt: timestamp("updated_at", ...)` -> property is `updatedAt`.
+  stage_name: string;
+  subject_template: string;
+  body_template: string;
+  available_variables?: string | null;
+  updated_at: string | null;
 }
 
 /**
@@ -34,7 +32,7 @@ export const getTemplateForStage = async (
   try {
     const templates = await db.select()
       .from(recruitmentEmailTemplates)
-      .where(eq(recruitmentEmailTemplates.stageName, stageName));
+      .where(eq(recruitmentEmailTemplates.stage_name, stageName));
     
     if (templates.length > 0) {
       return templates[0];

@@ -9,11 +9,13 @@ export interface DTRRecord {
   name: string;
   department: string;
   date: string;
+  rawDate?: string; // ISO date (YYYY-MM-DD) for accurate filtering
   timeIn: string;
   timeOut: string;
   hoursWorked: string | number;
   status: string;
   remarks: string;
+  duties?: string;
   createdAt?: string;
 }
 
@@ -45,6 +47,7 @@ export const mapDTRData = (apiData: any[]): DTRRecord[] => {
     hoursWorked: item.hours_worked || '0',
     status: item.status || 'Unknown',
     remarks: item.remarks || '-',
+    duties: item.duties || 'N/A',
     createdAt: item.created_at
   }));
 };
@@ -193,7 +196,7 @@ export const exportToCSV = async (data: DTRRecord[], _headers: string[], filenam
 
     data.forEach(row => {
       const rowData = keys.map(key => {
-        const val = (row as any)[key] || '';
+        const val = String((row as unknown as Record<string, string>)[key] || '');
         return `"${String(val).replace(/"/g, '""')}"`;
       });
       csvRows.push(rowData.join(','));
@@ -240,5 +243,16 @@ export const exportToPDF = async (data: DTRRecord[], headers: string[], today: s
  * Get status badge styles
  */
 export const getStatusBadge = (status: string, statusStyles: Record<string, string>): string => {
-  return statusStyles[status] || 'bg-gray-100 text-gray-800';
+  // Try exact match first
+  if (statusStyles[status]) return statusStyles[status];
+  
+  // Try Title Case (e.g. "present" -> "Present")
+  const titleCase = status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
+  if (statusStyles[titleCase]) return statusStyles[titleCase];
+  
+  // Try all lowercase
+  const lowerCase = status.toLowerCase();
+  if (statusStyles[lowerCase]) return statusStyles[lowerCase];
+
+  return 'bg-gray-100 text-gray-800';
 };

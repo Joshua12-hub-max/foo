@@ -12,6 +12,8 @@ export const GetLogsSchema = z.object({
     limit: z.coerce.number().int().min(1).default(50),
     startDate: z.string().optional(),
     endDate: z.string().optional(),
+    department: z.string().optional(),
+    search: z.string().optional(),
   }),
 });
 

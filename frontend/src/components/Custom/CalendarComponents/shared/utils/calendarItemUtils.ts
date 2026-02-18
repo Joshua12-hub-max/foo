@@ -86,7 +86,7 @@ export const combineCalendarItems = (events: any[], holidays: any[], showHoliday
       // @ts-ignore
       const scheduleDays = daysString ? daysString.split(',').map(d => d.trim()) : [];
       
-      console.log(`📅 Schedule: ${schedule.schedule_title || schedule.scheduleName}`, { startDateStr, endDateStr, scheduleDays });
+      console.log(`📅 Duty: ${schedule.duties || schedule.scheduleName}`, { startDateStr, endDateStr, scheduleDays });
       
       // Check if we have valid date strings (not 'Recurring' or empty)
       const hasValidDates = startDateStr && endDateStr && 
@@ -120,7 +120,7 @@ export const combineCalendarItems = (events: any[], holidays: any[], showHoliday
               
               scheduleItems.push({
                 id: `schedule-${schedule.id}-${dateStr}`,
-                title: schedule.schedule_title || schedule.scheduleName || 'Work Schedule',
+                title: schedule.duties || schedule.scheduleName || 'Work Duties',
                 type: 'schedule',
                 isSchedule: true,
                 time: schedule.start_time || schedule.startTime || '09:00',
@@ -147,7 +147,7 @@ export const combineCalendarItems = (events: any[], holidays: any[], showHoliday
             
             scheduleItems.push({
               id: `schedule-${schedule.id}-${dateStr}`,
-              title: schedule.schedule_title || schedule.scheduleName || 'Work Schedule',
+              title: schedule.duties || schedule.scheduleName || 'Work Duties',
               type: 'schedule',
               isSchedule: true,
               time: schedule.start_time || schedule.startTime || '09:00',

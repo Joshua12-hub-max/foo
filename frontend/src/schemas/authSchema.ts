@@ -7,11 +7,9 @@ export const LoginSchema = z.object({
 
 export const RegisterSchema = z.object({
   employee_id: z.string().min(1, "Employee ID is required"),
-  name: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Invalid email format"),
-  department: z.string().min(1, "Department is required"),
   password: z.string().min(8, "Password must be at least 8 characters"),
-  role: z.enum(['admin', 'hr', 'employee']).default('employee')
+  role: z.enum(["admin", "hr", "employee"]).default("employee"),
 });
 
 export const VerifyOTPSchema = z.object({

@@ -48,7 +48,7 @@ export const useExport = () => {
 
       transformData.forEach(row => {
         const rowData = keys.map(key => {
-          const val = (row as any)[key] || '';
+          const val = String((row as unknown as Record<string, string>)[key] || '');
           return `"${String(val).replace(/"/g, '""')}"`;
         });
         csvRows.push(rowData.join(','));

@@ -24,7 +24,7 @@ import {
   dailyTimeRecords, 
   authentication 
 } from '../db/schema.js';
-import { eq, and, between, ne, or, sql, desc, lt } from 'drizzle-orm';
+import { eq, and, between, ne, or, sql, desc, lt, lte, gte } from 'drizzle-orm';
 import { createNotification, notifyAdmins } from './notificationController.js';
 import type { AuthenticatedRequest } from '../types/index.js';
 import {
@@ -398,6 +398,61 @@ export const applyLeave = async (req: Request, res: Response): Promise<void> => 
 
     // Check SL medical certificate requirement
     const needsMedCert = leaveType === 'Sick Leave' && requiresMedicalCertificate(workingDays);
+
+    // 3. Enforce Special Privilege Leave limit (3 working days per year)
+    if (leaveType === 'Special Privilege Leave') {
+      const year = new Date(startDate).getFullYear();
+      
+      // Get total days used this year
+      const splResult = await db.select({ 
+        totalDays: sql<string>`sum(${leaveApplications.workingDays})` 
+      })
+      .from(leaveApplications)
+      .where(and(
+        eq(leaveApplications.employeeId, String(employeeId)),
+        eq(leaveApplications.leaveType, 'Special Privilege Leave'),
+        sql`YEAR(${leaveApplications.startDate}) = ${year}`,
+        ne(leaveApplications.status, 'Rejected'),
+        ne(leaveApplications.status, 'Cancelled')
+      ));
+      
+      const usedDays = Number(splResult[0]?.totalDays || 0);
+      const newTotal = usedDays + workingDays;
+
+      if (newTotal > 3) {
+        res.status(400).json({
+          message: `You have reached the annual limit of 3 Special Privilege Leave days. (Used: ${usedDays}, Requested: ${workingDays}, Remaining: ${Math.max(0, 3 - usedDays)})`,
+        });
+        return;
+      }
+    }
+
+    // 4. Enforce Solo Parent Leave limit (7 working days per year)
+    if (leaveType === 'Solo Parent Leave') {
+      const year = new Date(startDate).getFullYear();
+      
+      const spResult = await db.select({ 
+        totalDays: sql<string>`sum(${leaveApplications.workingDays})` 
+      })
+      .from(leaveApplications)
+      .where(and(
+        eq(leaveApplications.employeeId, String(employeeId)),
+        eq(leaveApplications.leaveType, 'Solo Parent Leave'),
+        sql`YEAR(${leaveApplications.startDate}) = ${year}`,
+        ne(leaveApplications.status, 'Rejected'),
+        ne(leaveApplications.status, 'Cancelled')
+      ));
+      
+      const usedDays = Number(spResult[0]?.totalDays || 0);
+      const newTotal = usedDays + workingDays;
+
+      if (newTotal > 7) {
+        res.status(400).json({
+          message: `You have reached the annual limit of 7 Solo Parent Leave days. (Used: ${usedDays}, Requested: ${workingDays}, Remaining: ${Math.max(0, 7 - usedDays)})`,
+        });
+        return;
+      }
+    }
 
     // Validate attachment
     if (needsMedCert && !req.file) {
@@ -1038,9 +1093,10 @@ export const getAllEmployeeCredits = async (req: Request, res: Response): Promis
     const conditions = [eq(leaveBalances.year, year)];
     if (search) {
       conditions.push(or(
-        sql`${authentication.firstName} LIKE ${`%${search}%`}`,
-        sql`${authentication.lastName} LIKE ${`%${search}%`}`,
-        sql`${leaveBalances.employeeId} LIKE ${`%${search}%`}`
+        sql`COALESCE(${authentication.firstName}, '') LIKE ${`%${search}%`}`,
+        sql`COALESCE(${authentication.lastName}, '') LIKE ${`%${search}%`}`,
+        sql`CONCAT(COALESCE(${authentication.firstName}, ''), ' ', COALESCE(${authentication.lastName}, '')) LIKE ${`%${search}%`}`,
+        sql`COALESCE(${leaveBalances.employeeId}, '') LIKE ${`%${search}%`}`
       )!);
     }
 
@@ -1054,7 +1110,11 @@ export const getAllEmployeeCredits = async (req: Request, res: Response): Promis
     const totalItems = Number(countResult.total);
     const totalPages = Math.ceil(totalItems / limit);
 
-    // Fetch credits
+    // Subquery for Usage (Deductions from Ledger)
+    // We assume deductions are negative values in the ledger
+    // usage = ABS(SUM(amount)) where transactionType = 'DEDUCTION' AND year matches
+    
+    // Fetch credits with usage calculation
     const credits = await db.select({
       id: leaveBalances.id,
       employee_id: leaveBalances.employeeId,
@@ -1065,8 +1125,24 @@ export const getAllEmployeeCredits = async (req: Request, res: Response): Promis
       first_name: sql<string>`COALESCE(${authentication.firstName}, '')`,
       last_name: sql<string>`COALESCE(${authentication.lastName}, '')`,
       department: sql<string>`COALESCE(${authentication.department}, 'N/A')`,
-      days_used_with_pay: sql<number>`0`,
-      days_used_without_pay: sql<number>`0`
+      // Calculate usage from ledger for this year
+      days_used_with_pay: sql<number>`(
+        SELECT COALESCE(ABS(SUM(ll.amount)), 0)
+        FROM ${leaveLedger} ll
+        WHERE ll.employee_id = ${leaveBalances.employeeId}
+          AND ll.credit_type = ${leaveBalances.creditType}
+          AND ll.transaction_type = 'DEDUCTION'
+          AND YEAR(ll.created_at) = ${year}
+      )`,
+      // Calculate LWOP from approved applications for this leave type & year
+      days_used_without_pay: sql<number>`(
+        SELECT COALESCE(SUM(la.days_without_pay), 0)
+        FROM ${leaveApplications} la
+        WHERE la.employee_id = ${leaveBalances.employeeId}
+          AND la.leave_type = ${leaveBalances.creditType}
+          AND la.status = 'Approved'
+          AND YEAR(la.start_date) = ${year}
+      )`
     })
     .from(leaveBalances)
     .leftJoin(authentication, eq(leaveBalances.employeeId, authentication.employeeId))

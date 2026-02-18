@@ -2,14 +2,14 @@ import React from 'react';
 import { useState, useEffect } from 'react';
 import { useUIStore } from '@/stores';
 import { useToastStore } from '@/stores';
-import { useJobData, useJobForm, useJobFilters, useJobActions } from '@jobposting/Hooks';
-import { JobHeader, JobFilters, JobTable } from '@jobposting/Components';
-import { JobFormModal, JobDetailsModal, DeleteJobModal } from '@jobposting/Modals';
+import { useJobData, useJobForm, useJobFilters, useJobActions } from '../../features/Recruitment/JobPosting/Hooks';
+import { JobHeader, JobFilters, JobTable } from '../../features/Recruitment/JobPosting/Components';
+import { JobFormModal, JobDetailsModal, DeleteJobModal } from '../../features/Recruitment/JobPosting/Modals';
 import { Job } from '@/types';
 
 const JobPosting = () => {
-  const sidebarOpen = useUIStore((state: any) => state.sidebarOpen);
-  const showToast = useToastStore((state: any) => state.showToast);
+  const sidebarOpen = useUIStore((state) => state.sidebarOpen);
+  const showToast = useToastStore((state) => state.showToast);
   const showNotification = (message: string, type: 'success' | 'error' | 'info') => showToast(message, type);
   
   // Custom Hooks
@@ -96,7 +96,7 @@ const JobPosting = () => {
         onClose={() => setIsFormOpen(false)}
         isEditing={isEditing}
         initialData={formData}
-        onSubmit={(data: any) => handleSaveJob(isEditing, selectedJob?.id ?? null, data, () => setIsFormOpen(false))}
+        onSubmit={(data) => handleSaveJob(isEditing, selectedJob?.id ?? null, data, () => setIsFormOpen(false))}
         saving={saving}
       />
 

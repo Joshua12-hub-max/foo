@@ -3,12 +3,14 @@ import { z } from 'zod';
 const BaseEmployeeSchema = z.object({
   first_name: z.string().min(1, "First name is required"),
   last_name: z.string().min(1, "Last name is required"),
+  middle_name: z.string().optional().nullable(),
   email: z.string().email("Invalid email format"),
   
   // Job Order & Regularization Fields
   department: z.string().optional().nullable(),
   department_id: z.number().optional().nullable(),
   job_title: z.string().optional().nullable(),
+  duties: z.string().optional().nullable(),
   role: z.string(),
   employment_status: z.enum(['Active','Probationary','Terminated','Resigned','On Leave','Suspended','Verbal Warning','Written Warning','Show Cause']),
   employment_type: z.enum(['Full-time', 'Part-time', 'Contractual', 'Job Order', 'Coterminous', 'Temporary', 'Probationary', 'Casual', 'Permanent']),
@@ -33,9 +35,6 @@ const BaseEmployeeSchema = z.object({
   weight_kg: z.coerce.number().optional().nullable(),
   blood_type: z.string().optional().nullable(),
   place_of_birth: z.string().optional().nullable(),
-  citizenship: z.string().optional().nullable(),
-  citizenship_type: z.string().optional().nullable(),
-  dual_citizenship_country: z.string().optional().nullable(),
   residential_address: z.string().optional().nullable(),
   residential_zip_code: z.string().optional().nullable(),
   permanent_zip_code: z.string().optional().nullable(),
@@ -46,6 +45,7 @@ const BaseEmployeeSchema = z.object({
   emergency_contact_number: z.string().optional().nullable(),
   
   // Government IDs
+  sss_number: z.string().optional().nullable(),
   philhealth_number: z.string().optional().nullable(),
   pagibig_number: z.string().optional().nullable(),
   tin_number: z.string().optional().nullable(),
@@ -55,7 +55,10 @@ const BaseEmployeeSchema = z.object({
   salary_grade: z.coerce.string().optional().nullable(),
   step_increment: z.number().optional().nullable(),
   appointment_type: z.string().optional().nullable(),
+  original_appointment_date: z.string().optional().nullable(),
+  last_promotion_date: z.string().optional().nullable(),
   station: z.string().optional().nullable(),
+  office_address: z.string().optional().nullable(),
   position_title: z.string().optional().nullable(),
   item_number: z.string().optional().nullable(),
   date_hired: z.string().optional().nullable(),
@@ -109,6 +112,10 @@ export const AddContactSchema = z.object({
   is_primary: z.boolean().default(false)
 });
 
+export const UpdateSkillSchema = AddSkillSchema.partial();
+export const UpdateEducationSchema = AddEducationSchema.partial();
+export const UpdateContactSchema = AddContactSchema.partial();
+
 export const RevertStatusSchema = z.object({
     new_status: z.string().min(1, "Status is required"),
     reason: z.string().optional()
@@ -123,4 +130,13 @@ export const AddCustomFieldSchema = z.object({
 export const UpdateCustomFieldSchema = AddCustomFieldSchema.partial();
 
 export type CreateEmployeeInput = z.infer<typeof CreateEmployeeSchema>;
+
 export type UpdateEmployeeInput = z.infer<typeof UpdateEmployeeSchema>;
+
+export const PDSUpdateSchema = z.object({
+  items: z.array(z.object({}).passthrough()).min(0),
+  employee_id: z.coerce.string().optional(),
+  employeeId: z.coerce.string().optional()
+});
+
+export type PDSUpdateInput = z.infer<typeof PDSUpdateSchema>;

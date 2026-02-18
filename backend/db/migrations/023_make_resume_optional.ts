@@ -1,4 +1,4 @@
-import db from '../connection.ts';
+import db from '../index.js';
 
 const migration = async (): Promise<void> => {
   console.log('🚀 Starting Make Resume Optional Migration...');

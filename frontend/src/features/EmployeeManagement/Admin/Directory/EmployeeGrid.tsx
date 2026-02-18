@@ -77,11 +77,11 @@ const EmployeeTable: React.FC<EmployeeGridProps> = ({
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {employees.map((employee) => {
+            {employees.map((employee, index) => {
               const isTerminated = employee.employment_status === 'Terminated';
               return (
                 <tr 
-                  key={employee.id} 
+                  key={`${employee.id}-${index}`} 
                   className={`hover:bg-gray-50 transition-colors group cursor-pointer ${isTerminated ? 'opacity-60' : ''}`}
                   onClick={() => onEmployeeClick(employee)}
                 >

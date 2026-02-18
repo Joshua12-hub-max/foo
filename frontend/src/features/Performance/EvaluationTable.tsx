@@ -75,6 +75,7 @@ const EvaluationTable: React.FC<EvaluationTableProps> = ({ employees, loading })
             <tr>
               <th className="px-6 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap">Employee</th>
               <th className="px-6 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap">Department</th>
+              <th className="px-6 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap">Duties</th>
               <th className="px-6 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap">Score</th>
               <th className="px-6 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap">Last Evaluation</th>
               <th className="px-6 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap">Status</th>
@@ -104,6 +105,11 @@ const EvaluationTable: React.FC<EvaluationTableProps> = ({ employees, loading })
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-600">
                    {employee.department}
+                </td>
+                <td className="px-6 py-4">
+                   <span className="text-xs font-bold text-blue-600 uppercase tracking-tighter">
+                       {employee.duties || 'Regular'}
+                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                    {employee.score != null && employee.score !== '' ? (
@@ -142,7 +148,7 @@ const EvaluationTable: React.FC<EvaluationTableProps> = ({ employees, loading })
             )})}
             {employees.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-6 py-16 text-center text-gray-500 bg-gray-50/50">
+                <td colSpan={7} className="px-6 py-16 text-center text-gray-500 bg-gray-50/50">
                   <div className="flex flex-col items-center justify-center">
                      <User size={48} className="text-gray-300 mb-3" />
                      <p>No employees found matching your filters.</p>

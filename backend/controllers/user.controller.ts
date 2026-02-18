@@ -2,17 +2,19 @@ import { Request, Response } from 'express';
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 import { db } from '../db/index.js';
-import { eq, and, or, sql, desc, like, ne } from 'drizzle-orm';
-import type { AuthenticatedRequest, EmploymentStatus, Gender, CivilStatus, AppointmentType, CitizenshipType } from '../types/index.js';
+import { eq, and, or, sql, desc, like, ne, InferSelectModel } from 'drizzle-orm';
+import type { AuthenticatedRequest, EmploymentStatus, Gender, CivilStatus, AppointmentType } from '../types/index.js';
 import { UserService } from '../services/user.service.js';
 import { 
   authentication, 
   departments, 
   plantillaPositions, 
+  plantillaPositionHistory,
   employeeSkills, 
   employeeEducation, 
   employeeEmergencyContacts, 
-  employeeCustomFields 
+  employeeCustomFields,
+  schedules 
 } from '../db/schema.js';
 import { 
   CreateEmployeeSchema, 
@@ -22,14 +24,197 @@ import {
   AddEducationSchema,
   AddContactSchema,
   AddCustomFieldSchema,
-  UpdateCustomFieldSchema
+  UpdateCustomFieldSchema,
+  UpdateEmployeeInput,
+  UpdateSkillSchema,
+  UpdateEducationSchema,
+  UpdateContactSchema
 } from '../schemas/employeeSchema.js';
+import { 
+  EmployeeApiResponse, 
+  EmployeeMapperInput,
+  EmployeeSkillsResponse, 
+  EmployeeEducationResponse, 
+  EmployeeEmergencyContactResponse, 
+  EmployeeCustomFieldResponse 
+} from '../types/employee.js';
+
+
+type UserRole = 'admin' | 'hr' | 'employee';
+
+interface UpdateFields {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  department?: string;
+  departmentId?: number | null;
+  jobTitle?: string;
+  role?: UserRole;
+  employmentStatus?: EmploymentStatus;
+  employeeId?: string;
+  birthDate?: string | null;
+  gender?: Gender;
+  civilStatus?: CivilStatus;
+  nationality?: string;
+  phoneNumber?: string | null;
+  address?: string | null;
+  permanentAddress?: string | null;
+  sssNumber?: string | null;
+  philhealthNumber?: string | null;
+  pagibigNumber?: string | null;
+  tinNumber?: string | null;
+  gsisNumber?: string | null;
+  salaryGrade?: string | null;
+  stepIncrement?: number;
+  appointmentType?: AppointmentType;
+  station?: string | null;
+  positionTitle?: string | null;
+  itemNumber?: string | null;
+  positionId?: number | null;
+  dateHired?: string | null;
+  avatarUrl?: string | null;
+  contractEndDate?: string | null;
+  regularizationDate?: string | null;
+  isRegular?: number;
+  employmentType?: string;
+  heightM?: string | null;
+  weightKg?: string | null;
+  bloodType?: string | null;
+  placeOfBirth?: string | null;
+
+  residentialAddress?: string | null;
+  residentialZipCode?: string | null;
+  permanentZipCode?: string | null;
+  telephoneNo?: string | null;
+  mobileNo?: string | null;
+  agencyEmployeeNo?: string | null;
+  emergencyContact?: string | null;
+  emergencyContactNumber?: string | null;
+  eligibilityType?: string | null;
+  eligibilityNumber?: string | null;
+  eligibilityDate?: string | null;
+  highestEducation?: string | null;
+  yearsOfExperience?: number;
+  facebookUrl?: string | null;
+  linkedinUrl?: string | null;
+  twitterHandle?: string | null;
+  middleName?: string | null;
+  firstDayOfService?: string | null;
+  supervisor?: string | null;
+  officeAddress?: string | null;
+  originalAppointmentDate?: string | null;
+  lastPromotionDate?: string | null;
+  [key: string]: string | number | null | undefined;
+}
 
 // ============================================================================
 // HELPERS
 // ============================================================================
 
-const sanitizePDSFields = (updates: any) => {
+export const mapToEmployeeApi = (emp: EmployeeMapperInput): EmployeeApiResponse => {
+  return {
+    id: emp.id,
+    first_name: String(emp.firstName || ''),
+    last_name: String(emp.lastName || ''),
+    middle_name: emp.middleName || null,
+    email: String(emp.email || ''),
+    role: (emp.role || 'employee') as UserRole,
+    department: emp.department || null,
+    department_id: emp.departmentId || null,
+    employee_id: String(emp.employeeId || ''),
+    job_title: emp.jobTitle || null,
+    position_title: emp.positionTitle || null,
+    employment_status: emp.employmentStatus as EmploymentStatus || null,
+    employment_type: emp.employmentType || null,
+    date_hired: emp.dateHired || null,
+    contract_end_date: emp.contractEndDate || null,
+    regularization_date: emp.regularizationDate || null,
+    is_regular: emp.isRegular || 0,
+    birth_date: emp.birthDate || null,
+    gender: emp.gender as Gender || null,
+    civil_status: emp.civilStatus as CivilStatus || null,
+    nationality: emp.nationality || null,
+    phone_number: emp.phoneNumber || null,
+    address: emp.address || null,
+    permanent_address: emp.permanentAddress || null,
+    avatar_url: emp.avatarUrl || null,
+    sss_number: emp.sssNumber || null,
+    philhealth_number: emp.philhealthNumber || null,
+    pagibig_number: emp.pagibigNumber || null,
+    tin_number: emp.tinNumber || null,
+    gsis_number: emp.gsisNumber || null,
+    salary_grade: emp.salaryGrade || null,
+    step_increment: emp.stepIncrement || 1,
+    appointment_type: emp.appointmentType as AppointmentType || null,
+    station: emp.station || null,
+    item_number: emp.itemNumber || null,
+    position_id: emp.positionId || null,
+    duties: emp.duties || 'No Schedule',
+    
+    height_m: emp.heightM || null,
+    weight_kg: emp.weightKg || null,
+    blood_type: emp.bloodType || null,
+    place_of_birth: emp.placeOfBirth || null,
+    residential_address: emp.residentialAddress || null,
+    residential_zip_code: emp.residentialZipCode || null,
+    permanent_zip_code: emp.permanentZipCode || null,
+    telephone_no: emp.telephoneNo || null,
+    mobile_no: emp.mobileNo || null,
+    agency_employee_no: emp.agencyEmployeeNo || null,
+    emergency_contact: emp.emergencyContact || null,
+    emergency_contact_number: emp.emergencyContactNumber || null,
+    
+    eligibility_type: emp.eligibilityType || null,
+    eligibility_number: emp.eligibilityNumber || null,
+    eligibility_date: emp.eligibilityDate || null,
+    highest_education: emp.highestEducation || null,
+    years_of_experience: emp.yearsOfExperience || 0,
+
+    facebook_url: emp.facebookUrl || null,
+    linkedin_url: emp.linkedinUrl || null,
+    twitter_handle: emp.twitterHandle || null,
+    first_day_of_service: emp.firstDayOfService || null,
+    supervisor: emp.supervisor || null,
+    office_address: emp.officeAddress || null
+  };
+};
+
+const mapToSkillApi = (skill: InferSelectModel<typeof employeeSkills>): EmployeeSkillsResponse => ({
+  id: skill.id,
+  skill_name: skill.skillName,
+  category: skill.category || 'Technical',
+  proficiency_level: skill.proficiencyLevel || 'Intermediate',
+  years_experience: skill.yearsExperience ? Number(skill.yearsExperience) : null
+});
+
+const mapToEducationApi = (edu: InferSelectModel<typeof employeeEducation>): EmployeeEducationResponse => ({
+  id: edu.id,
+  institution: edu.institution,
+  degree: edu.degree || null,
+  field_of_study: edu.fieldOfStudy || null,
+  start_date: edu.startDate || null,
+  end_date: edu.endDate || null,
+  is_current: edu.isCurrent || 0
+});
+
+const mapToContactApi = (contact: InferSelectModel<typeof employeeEmergencyContacts>): EmployeeEmergencyContactResponse => ({
+  id: contact.id,
+  name: contact.name,
+  relationship: contact.relationship,
+  phone_number: contact.phoneNumber,
+  email: contact.email || null,
+  address: contact.address || null,
+  is_primary: contact.isPrimary || 0
+});
+
+const mapToCustomFieldApi = (field: InferSelectModel<typeof employeeCustomFields>): EmployeeCustomFieldResponse => ({
+  id: field.id,
+  section: field.section,
+  field_name: field.fieldName,
+  field_value: field.fieldValue || null
+});
+
+const sanitizePDSFields = (updates: UpdateEmployeeInput): UpdateEmployeeInput => {
   // Auto-convert Height (cm -> m) if likely in cm (> 3 meters is unlikely for humans)
   if (updates.height_m && updates.height_m > 3) {
     console.log(`Auto-converting height from ${updates.height_m} cm to meters.`);
@@ -64,13 +249,10 @@ export const getAllEmployees = async (req: Request, res: Response): Promise<void
       conditions.push(eq(authentication.department, department as string));
     }
 
-    // Pass the conditions array directly to the service
-    // Assuming UserService.getAllEmployees can handle the conditions array
-    // If not, we might need to adjust UserService or pass 'and(...conditions)'
-    // Looking at the previous code, it seems UserService expects an array or undefined.
-    
     const employees = await UserService.getAllEmployees(conditions);
-    res.json({ success: true, employees });
+
+    const mappedEmployees = employees.map(mapToEmployeeApi);
+    res.json({ success: true, employees: mappedEmployees });
   } catch (error) {
     console.error('Get all employees error:', error);
     res.status(500).json({ success: false, message: 'Failed to fetch employees' });
@@ -80,14 +262,16 @@ export const getAllEmployees = async (req: Request, res: Response): Promise<void
 export const getEmployeeById = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const employeeData = await UserService.getEmployeeById(parseInt(id));
+    const [employeeData, relatedData] = await Promise.all([
+      UserService.getEmployeeById(parseInt(id)),
+      UserService.getRelatedData(parseInt(id))
+    ]);
 
     if (!employeeData) {
       res.status(404).json({ success: false, message: 'Employee not found' });
       return;
     }
 
-    const employee = { ...employeeData } as any;
 
     // Security: PII Filtering
     const authReq = req as AuthenticatedRequest;
@@ -100,14 +284,9 @@ export const getEmployeeById = async (req: Request, res: Response): Promise<void
       return;
     }
 
-    // Remove sensitive fields always
-    delete employee.passwordHash;
-    delete employee.verificationToken;
-    delete employee.resetPasswordToken;
-    delete employee.resetPasswordExpires;
-
-    // Fetch related data
-    const { skills, education, emergencyContacts, customFields } = await UserService.getRelatedData(parseInt(id));
+    // Map everything to the strict API response format
+    const mappedEmployee = mapToEmployeeApi(employeeData);
+    const { skills, education, emergencyContacts, customFields } = relatedData;
 
     // Filter contacts for non-admins
     const finalContacts = !isSelf && !isAdmin ? [] : emergencyContacts;
@@ -115,11 +294,13 @@ export const getEmployeeById = async (req: Request, res: Response): Promise<void
     res.json({
       success: true,
       employee: {
-        ...employee,
-        skills,
-        education,
-        emergencyContacts: finalContacts,
-        customFields
+        ...mappedEmployee,
+        skills: skills.map(mapToSkillApi),
+        education: education.map(mapToEducationApi),
+        emergencyContacts: finalContacts.map(mapToContactApi),
+        emergency_contacts: finalContacts.map(mapToContactApi),
+        customFields: customFields.map(mapToCustomFieldApi),
+        custom_fields: customFields.map(mapToCustomFieldApi)
       }
     });
   } catch (error) {
@@ -218,9 +399,10 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(passwordToHash, salt);
 
-    // Handle Plantilla
+    // Handle Plantilla — validation only, actual update after employee insert
     let finalItemNumber = item_number || null;
     let finalPosId = position_id || null;
+    let plantillaPositionTitle: string | null = null;
 
     if (finalPosId) {
       const plantilla = await db.query.plantillaPositions.findFirst({
@@ -232,9 +414,7 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
           return;
         }
         finalItemNumber = plantilla.itemNumber;
-        await db.update(plantillaPositions)
-          .set({ isVacant: 0 })
-          .where(eq(plantillaPositions.id, finalPosId));
+        plantillaPositionTitle = plantilla.positionTitle;
       }
     } else if (finalItemNumber && finalItemNumber !== 'N/A') {
       const plantilla = await db.query.plantillaPositions.findFirst({
@@ -246,9 +426,7 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
           return;
         }
         finalPosId = plantilla.id;
-        await db.update(plantillaPositions)
-          .set({ isVacant: 0 })
-          .where(eq(plantillaPositions.id, finalPosId));
+        plantillaPositionTitle = plantilla.positionTitle;
       }
     }
 
@@ -272,9 +450,9 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
       department: finalDeptName,
       departmentId: finalDeptId,
       jobTitle: job_title || 'N/A',
-      role: role as any,
+      role: role as UserRole,
       employmentStatus: (employment_status || 'Active') as EmploymentStatus,
-      employmentType: (sanitizedData.employment_type || 'Probationary') as any,
+      employmentType: (sanitizedData.employment_type || 'Probationary') as string,
       employeeId: finalEmployeeId,
       passwordHash: hashedPassword,
       isVerified: 1, // tinyint
@@ -300,12 +478,10 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
       regularizationDate: finalRegularizationDate ? finalRegularizationDate.toISOString().split('T')[0] : null,
       isRegular: sanitizedData.is_regular ? 1 : 0, // tinyint
       heightCm: sanitizedData.height_m ? String(sanitizedData.height_m) : null,
+      heightM: sanitizedData.height_m ? String(sanitizedData.height_m) : null,
       weightKg: sanitizedData.weight_kg ? String(sanitizedData.weight_kg) : null,
-      bloodType: sanitizedData.blood_type as any,
+      bloodType: sanitizedData.blood_type || null,
       placeOfBirth: sanitizedData.place_of_birth || null,
-      citizenship: sanitizedData.citizenship || null,
-      citizenshipType: sanitizedData.citizenship_type as CitizenshipType,
-      dualCitizenshipCountry: sanitizedData.dual_citizenship_country || null,
       residentialAddress: sanitizedData.residential_address || null,
       residentialZipCode: sanitizedData.residential_zip_code || null,
       permanentZipCode: sanitizedData.permanent_zip_code || null,
@@ -324,9 +500,18 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
     const newEmployeeIdNum = result.insertId;
     
     if (finalPosId && newEmployeeIdNum) {
+       const today = new Date().toISOString().split('T')[0];
        await db.update(plantillaPositions)
-         .set({ incumbentId: newEmployeeIdNum })
+         .set({ incumbentId: newEmployeeIdNum, isVacant: 0, filledDate: today })
          .where(eq(plantillaPositions.id, finalPosId));
+
+       await db.insert(plantillaPositionHistory).values({
+         positionId: finalPosId,
+         employeeId: newEmployeeIdNum,
+         employeeName: `${first_name} ${last_name}`,
+         positionTitle: plantillaPositionTitle,
+         startDate: today
+       });
     }
 
     res.status(201).json({ success: true, message: 'Employee created successfully', employeeId: finalEmployeeId });
@@ -393,7 +578,8 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
     // 1. Sanitize PDS fields (height/weight conversion)
     const sanitizedUpdates = sanitizePDSFields({ ...updates });
 
-    const updateFields: any = {};
+    const updateFields: UpdateFields = {};
+    const skippedEnumFields: { field: string; value: unknown; validValues: string[] }[] = [];
 
     // Mapping manual updates to Drizzle fields
     const fieldMapping: Record<string, string> = {
@@ -431,13 +617,10 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
       regularization_date: 'regularizationDate',
       is_regular: 'isRegular',
       employment_type: 'employmentType',
-      height_m: 'heightCm', // SCHEMA is heightCm
+      height_m: 'heightM', // Corrected to map to heightM (decimal 4,2)
       weight_kg: 'weightKg',
       blood_type: 'bloodType',
       place_of_birth: 'placeOfBirth',
-      citizenship: 'citizenship',
-      citizenship_type: 'citizenshipType',
-      dual_citizenship_country: 'dualCitizenshipCountry',
       residential_address: 'residentialAddress',
       residential_zip_code: 'residentialZipCode',
       permanent_zip_code: 'permanentZipCode',
@@ -450,7 +633,17 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
       eligibility_number: 'eligibilityNumber',
       eligibility_date: 'eligibilityDate',
       highest_education: 'highestEducation',
-      years_of_experience: 'yearsOfExperience'
+      years_of_experience: 'yearsOfExperience',
+      facebook_url: 'facebookUrl',
+      linkedin_url: 'linkedinUrl',
+      twitter_handle: 'twitterHandle',
+      middle_name: 'middleName',
+      first_day_of_service: 'firstDayOfService',
+      supervisor: 'supervisor',
+      office_address: 'officeAddress',
+      original_appointment_date: 'originalAppointmentDate',
+      last_promotion_date: 'lastPromotionDate',
+      duties: 'duties' // Special handling
     };
 
     for (const [jsonKey, value] of Object.entries(sanitizedUpdates)) {
@@ -459,7 +652,7 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
         if (value !== undefined) {
            let processedVal = value === '' ? null : value;
            // Handle dates (schema mode string)
-           if (['birthDate', 'dateHired', 'contractEndDate', 'regularizationDate', 'eligibilityDate'].includes(drizzleKey) && processedVal) {
+           if (['birthDate', 'dateHired', 'contractEndDate', 'regularizationDate', 'eligibilityDate', 'originalAppointmentDate', 'lastPromotionDate'].includes(drizzleKey) && processedVal) {
              processedVal = String(processedVal);
            }
            // Handle booleans (tinyint)
@@ -470,18 +663,74 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
            if (drizzleKey === 'salaryGrade' && processedVal !== null) {
               processedVal = String(processedVal);
            }
+
+
            // Handle decimals
-           if (['heightCm', 'weightKg'].includes(drizzleKey) && processedVal !== null) {
+           if (['heightCm', 'weightKg', 'heightM'].includes(drizzleKey) && processedVal !== null) {
               processedVal = String(processedVal);
            }
            // Handle int
-           if (drizzleKey === 'yearsOfExperience' && processedVal !== null) {
+           if (['yearsOfExperience', 'stepIncrement'].includes(drizzleKey) && processedVal !== null) {
               processedVal = Number(processedVal);
            }
-           updateFields[drizzleKey] = processedVal;
+           // Validate MySQL ENUM fields — skip invalid values to prevent DB crash
+           const enumValidation: Record<string, string[]> = {
+             appointmentType: ['Permanent','Contractual','Casual','Job Order','Coterminous','Temporary'],
+             employmentStatus: ['Active','Probationary','Terminated','Resigned','On Leave','Suspended','Verbal Warning','Written Warning','Show Cause'],
+             gender: ['Male','Female'],
+             civilStatus: ['Single','Married','Widowed','Separated','Annulled'],
+       
+           };
+            if (enumValidation[drizzleKey] && processedVal !== null) {
+              if (!enumValidation[drizzleKey].includes(String(processedVal))) {
+                console.warn(`Skipping invalid enum value for ${drizzleKey}: "${processedVal}"`);
+                skippedEnumFields.push({ field: jsonKey, value: processedVal, validValues: enumValidation[drizzleKey] });
+                continue;
+              }
+            }
+            
+            if (drizzleKey === 'duties') {
+               // Special handling for duties - do not add to authentication updateFields
+               // We will handle this separately below
+            } else {
+               updateFields[drizzleKey] = processedVal as string | number | null | undefined;
+            }
         }
       }
     }
+
+    // Handle duties update (Schedule Title)
+    if (sanitizedUpdates.duties !== undefined) {
+      const newDuties = String(sanitizedUpdates.duties);
+      console.log(`Updating duties (schedule title) for employee ${currentEmployee.employeeId}: ${newDuties}`);
+      
+      // Check if schedule exists for current employee
+      const existingSchedule = await db.query.schedules.findFirst({
+        where: eq(schedules.employeeId, currentEmployee.employeeId)
+      });
+
+      if (existingSchedule) {
+        // Update existing
+        await db.update(schedules)
+          .set({ scheduleTitle: newDuties })
+          .where(eq(schedules.employeeId, currentEmployee.employeeId));
+      } else {
+        // Create default
+        console.log(`No existing schedule found for ${currentEmployee.employeeId}. Creating default schedule with duties: ${newDuties}`);
+        const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+        const newSchedules = days.map(day => ({
+            employeeId: currentEmployee.employeeId,
+            scheduleTitle: newDuties,
+            dayOfWeek: day,
+            startTime: '08:00:00',
+            endTime: '17:00:00',
+            repeatPattern: 'Weekly'
+        }));
+        
+        await db.insert(schedules).values(newSchedules);
+      }
+    }
+
 
     // Handle department sync if department_id changed
     if (updates.department_id && updates.department_id !== currentEmployee.departmentId) {
@@ -518,7 +767,7 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
           
           if (updates.item_number === undefined) updateFields.itemNumber = plantilla.itemNumber;
           if (updates.position_title === undefined) updateFields.positionTitle = plantilla.positionTitle;
-          if (updates.salary_grade === undefined) updateFields.salaryGrade = plantilla.salaryGrade;
+          if (updates.salary_grade === undefined) updateFields.salaryGrade = String(plantilla.salaryGrade);
         }
       } else {
           if (updates.item_number === undefined) updateFields.itemNumber = null;
@@ -527,6 +776,19 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
     }
 
     if (Object.keys(updateFields).length === 0) {
+      // Check if duties was updated (since it's not in updateFields)
+      if (sanitizedUpdates.duties !== undefined) {
+          res.json({ success: true, message: 'Employee duties updated successfully' });
+          return;
+      }
+
+      if (skippedEnumFields.length > 0) {
+        const details = skippedEnumFields.map(f => 
+          `"${f.field}" value "${f.value}" is invalid. Valid options: ${f.validValues.join(', ')}`
+        ).join('; ');
+        res.status(400).json({ success: false, message: `Invalid field value: ${details}` });
+        return;
+      }
       res.status(400).json({ success: false, message: 'No valid fields to update' });
       return;
     }
@@ -614,7 +876,9 @@ export const getEmployeeSkills = async (req: Request, res: Response): Promise<vo
       .from(employeeSkills)
       .where(eq(employeeSkills.employeeId, parseInt(id)))
       .orderBy(employeeSkills.skillName);
-    res.json({ success: true, skills });
+    
+    const mappedSkills = skills.map(mapToSkillApi);
+    res.json({ success: true, skills: mappedSkills });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Failed to fetch skills' });
   }
@@ -628,14 +892,44 @@ export const addEmployeeSkill = async (req: Request, res: Response): Promise<voi
     const [result] = await db.insert(employeeSkills).values({
       employeeId: parseInt(id),
       skillName: skill_name,
-      category: (category || 'Technical') as any,
-      proficiencyLevel: (proficiency_level || 'Intermediate') as any,
+      category: (category || 'Technical'),
+      proficiencyLevel: (proficiency_level || 'Intermediate') as 'Beginner' | 'Intermediate' | 'Advanced' | 'Expert',
       yearsExperience: years_experience ? String(years_experience) : null
     });
 
     res.status(201).json({ success: true, message: 'Skill added', skillId: result.insertId });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Failed to add skill' });
+  }
+};
+
+export const updateEmployeeSkill = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id, skillId } = req.params;
+    const updates = UpdateSkillSchema.parse(req.body);
+
+    if (Object.keys(updates).length === 0) {
+        res.status(400).json({ success: false, message: 'No fields to update' });
+        return;
+    }
+
+    const drizzleUpdates: any = {};
+    if (updates.skill_name) drizzleUpdates.skillName = updates.skill_name;
+    if (updates.category) drizzleUpdates.category = updates.category;
+    if (updates.proficiency_level) drizzleUpdates.proficiencyLevel = updates.proficiency_level;
+    if (updates.years_experience !== undefined) drizzleUpdates.yearsExperience = updates.years_experience ? String(updates.years_experience) : null;
+
+    await db.update(employeeSkills)
+      .set(drizzleUpdates)
+      .where(and(
+        eq(employeeSkills.id, parseInt(skillId)),
+        eq(employeeSkills.employeeId, parseInt(id))
+      ));
+
+    res.json({ success: true, message: 'Skill updated' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: 'Failed to update skill' });
   }
 };
 
@@ -664,7 +958,9 @@ export const getEmployeeEducation = async (req: Request, res: Response): Promise
       .from(employeeEducation)
       .where(eq(employeeEducation.employeeId, parseInt(id)))
       .orderBy(desc(employeeEducation.startDate));
-    res.json({ success: true, education });
+    
+    const mappedEducation = education.map(mapToEducationApi);
+    res.json({ success: true, education: mappedEducation });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Failed to fetch education' });
   }
@@ -683,13 +979,47 @@ export const addEmployeeEducation = async (req: Request, res: Response): Promise
       startDate: start_date ? String(start_date) : null,
       endDate: end_date ? String(end_date) : null,
       isCurrent: is_current ? 1 : 0, // tinyint
-      type: (type || 'Education') as any,
+      type: (type || 'Education') as 'Education' | 'Certification' | 'Training',
       description: description || null
     });
 
     res.status(201).json({ success: true, message: 'Education added', educationId: result.insertId });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Failed to add education' });
+  }
+};
+
+export const updateEmployeeEducation = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id, educationId } = req.params;
+    const updates = UpdateEducationSchema.parse(req.body);
+
+    if (Object.keys(updates).length === 0) {
+        res.status(400).json({ success: false, message: 'No fields to update' });
+        return;
+    }
+
+    const drizzleUpdates: any = {};
+    if (updates.institution) drizzleUpdates.institution = updates.institution;
+    if (updates.degree !== undefined) drizzleUpdates.degree = updates.degree || null;
+    if (updates.field_of_study !== undefined) drizzleUpdates.fieldOfStudy = updates.field_of_study || null;
+    if (updates.start_date !== undefined) drizzleUpdates.startDate = updates.start_date ? String(updates.start_date) : null;
+    if (updates.end_date !== undefined) drizzleUpdates.endDate = updates.end_date ? String(updates.end_date) : null;
+    if (updates.is_current !== undefined) drizzleUpdates.isCurrent = updates.is_current ? 1 : 0;
+    if (updates.type) drizzleUpdates.type = updates.type;
+    if (updates.description !== undefined) drizzleUpdates.description = updates.description || null;
+
+    await db.update(employeeEducation)
+      .set(drizzleUpdates)
+      .where(and(
+        eq(employeeEducation.id, parseInt(educationId)),
+        eq(employeeEducation.employeeId, parseInt(id))
+      ));
+
+    res.json({ success: true, message: 'Education updated' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: 'Failed to update education' });
   }
 };
 
@@ -718,7 +1048,9 @@ export const getEmployeeContacts = async (req: Request, res: Response): Promise<
       .from(employeeEmergencyContacts)
       .where(eq(employeeEmergencyContacts.employeeId, parseInt(id)))
       .orderBy(desc(employeeEmergencyContacts.isPrimary));
-    res.json({ success: true, contacts });
+    
+    const mappedContacts = contacts.map(mapToContactApi);
+    res.json({ success: true, contacts: mappedContacts });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Failed to fetch contacts' });
   }
@@ -748,6 +1080,51 @@ export const addEmployeeContact = async (req: Request, res: Response): Promise<v
     res.status(201).json({ success: true, message: 'Contact added', contactId: result.insertId });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Failed to add contact' });
+  }
+};
+
+export const updateEmployeeContact = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id, contactId } = req.params;
+    const updates = UpdateContactSchema.parse(req.body);
+
+    if (Object.keys(updates).length === 0) {
+        res.status(400).json({ success: false, message: 'No fields to update' });
+        return;
+    }
+
+    if (updates.is_primary) {
+      await db.update(employeeEmergencyContacts)
+        .set({ isPrimary: 0 })
+        .where(eq(employeeEmergencyContacts.employeeId, parseInt(id)));
+    }
+
+    const drizzleUpdates: {
+      name?: string;
+      relationship?: string;
+      phoneNumber?: string;
+      email?: string | null;
+      address?: string | null;
+      isPrimary?: number;
+    } = {};
+    if (updates.name) drizzleUpdates.name = updates.name;
+    if (updates.relationship) drizzleUpdates.relationship = updates.relationship;
+    if (updates.phone_number) drizzleUpdates.phoneNumber = updates.phone_number;
+    if (updates.email !== undefined) drizzleUpdates.email = updates.email || null;
+    if (updates.address !== undefined) drizzleUpdates.address = updates.address || null;
+    if (updates.is_primary !== undefined) drizzleUpdates.isPrimary = updates.is_primary ? 1 : 0;
+
+    await db.update(employeeEmergencyContacts)
+      .set(drizzleUpdates)
+      .where(and(
+        eq(employeeEmergencyContacts.id, parseInt(contactId)),
+        eq(employeeEmergencyContacts.employeeId, parseInt(id))
+      ));
+
+    res.json({ success: true, message: 'Contact updated' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: 'Failed to update contact' });
   }
 };
 
@@ -799,10 +1176,14 @@ export const updateEmployeeCustomField = async (req: Request, res: Response): Pr
         return;
     }
 
-    const drizzleUpdates: any = {};
+    const drizzleUpdates: {
+      section?: string;
+      fieldName?: string;
+      fieldValue?: string;
+    } = {};
     if (updates.section) drizzleUpdates.section = updates.section;
     if (updates.field_name) drizzleUpdates.fieldName = updates.field_name;
-    if (updates.field_value !== undefined) drizzleUpdates.fieldValue = updates.field_value;
+    if (updates.field_value !== undefined && updates.field_value !== null) drizzleUpdates.fieldValue = updates.field_value;
 
     await db.update(employeeCustomFields)
       .set(drizzleUpdates)

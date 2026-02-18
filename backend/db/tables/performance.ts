@@ -1,4 +1,4 @@
-import { mysqlTable, varchar, int, date, timestamp, decimal, text, mysqlEnum, tinyint, primaryKey, index, json } from 'drizzle-orm/mysql-core';
+import { mysqlTable, varchar, int, date, timestamp, decimal, text, mysqlEnum, tinyint, primaryKey, index, json, foreignKey } from 'drizzle-orm/mysql-core';
 import { authentication } from './auth.js';
 
 export const performanceCriteria = mysqlTable("performance_criteria", {
@@ -9,6 +9,14 @@ export const performanceCriteria = mysqlTable("performance_criteria", {
 	criteriaType: mysqlEnum("criteria_type", ['core_function','support_function','core_competency','organizational_competency']).default('core_function'),
 	weight: decimal({ precision: 5, scale: 2 }).default('1.00'),
 	maxScore: int("max_score").default(5),
+    // Rating Matrix Definitions
+    ratingDefinition5: text("rating_definition_5"),
+    ratingDefinition4: text("rating_definition_4"),
+    ratingDefinition3: text("rating_definition_3"),
+    ratingDefinition2: text("rating_definition_2"),
+    ratingDefinition1: text("rating_definition_1"),
+    // Evidence Support
+    evidenceRequirements: text("evidence_requirements"),
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
 	isActive: tinyint("is_active").default(1),
 },
@@ -85,7 +93,7 @@ export const performanceAuditLog = mysqlTable("performance_audit_log", {
 export const performanceGoals = mysqlTable("performance_goals", {
 	id: int().autoincrement().notNull(),
 	employeeId: int("employee_id").notNull().references(() => authentication.id, { onDelete: "cascade" } ),
-	reviewCycleId: int("review_cycle_id").references(() => performanceReviewCycles.id, { onDelete: "set null" } ),
+	reviewCycleId: int("review_cycle_id"),
 	title: varchar({ length: 255 }).notNull(),
 	description: text(),
 	metric: varchar({ length: 255 }),
@@ -101,6 +109,11 @@ export const performanceGoals = mysqlTable("performance_goals", {
 (table) => [
 	index("employee_id").on(table.employeeId),
 	index("review_cycle_id").on(table.reviewCycleId),
+	foreignKey({
+			columns: [table.reviewCycleId],
+			foreignColumns: [performanceReviewCycles.id],
+			name: "fk_pg_rc"
+		}).onDelete("set null"),
 	primaryKey({ columns: [table.id], name: "performance_goals_id"}),
 ]);
 
@@ -138,6 +151,9 @@ export const performanceReviewItems = mysqlTable("performance_review_items", {
 	weight: decimal({ precision: 5, scale: 2 }).default('0.00'),
 	maxScore: int("max_score").default(5),
 	category: varchar({ length: 100 }).default('General'),
+    // Evidence / MOV
+    evidenceFilePath: text("evidence_file_path"), // JSON string or comma-separated paths
+    evidenceDescription: text("evidence_description"),
 },
 (table) => [
 	index("review_id").on(table.reviewId),

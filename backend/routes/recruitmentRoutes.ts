@@ -8,7 +8,7 @@ import multer from 'multer';
 const router: Router = Router();
 
 // Multer error handler wrapper
-const handleMulterError = (err: Error, req: Request, res: Response, next: NextFunction): void => {
+const handleMulterError = (err: Error, _req: Request, res: Response, next: NextFunction): void => {
   if (err instanceof multer.MulterError) {
     res.status(400).json({ success: false, message: `Upload error: ${err.message}` });
     return;
@@ -37,7 +37,7 @@ router.get('/applicants', verifyAdmin, recruitmentController.getApplicants);
 router.put('/applicants/:id/stage', verifyAdmin, recruitmentController.updateApplicantStage);
 
 // Email Application Routes
-router.post('/check-emails', verifyAdmin, async (req: Request, res: Response): Promise<void> => {
+router.post('/check-emails', verifyAdmin, async (_req: Request, res: Response): Promise<void> => {
   try {
     const result = await manualCheckEmails();
     res.json(result);
@@ -59,6 +59,8 @@ router.post('/generate-meeting-link', verifyAdmin, recruitmentController.generat
 
 // Interview Notes
 router.post('/applicants/:id/interview-notes', verifyAdmin, recruitmentController.saveInterviewNotes);
+
+
 
 
 

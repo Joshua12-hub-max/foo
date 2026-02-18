@@ -1,7 +1,7 @@
 import axios from './axios';
 import { ApiResponse } from '../types';
 
-import { Employee, Skill, Education, EmergencyContact, CustomField } from '../types';
+import { Employee, Skill, Education, EmergencyContact, CustomField, ApiError, SkillData, EducationData, ContactData, CustomFieldData } from '../types';
 
 interface EmployeeResponse {
   success: boolean;
@@ -9,7 +9,7 @@ interface EmployeeResponse {
   profile?: Employee;
   message?: string;
   id?: string | number;
-  data?: unknown;
+  data?: Employee; // Profile data returned from auth endpoint
   previousStatus?: string;
   newStatus?: string;
   skills?: Skill[];
@@ -21,7 +21,7 @@ interface EmployeeResponse {
   fieldId?: string | number;
   departments?: { id: number; name: string }[] | string[];
   jobTitles?: string[];
-  isEnrolled?: boolean;
+
 }
 
 
@@ -43,7 +43,7 @@ export const fetchEmployees = async (deptParams: { department?: string | null, d
     
     const response = await axios.get(url);
     return { success: true, employees: response.data.employees };
-  } catch (error) {
+  } catch (error: unknown) {
     return { success: false, employees: [] };
   }
 };
@@ -52,12 +52,12 @@ export const fetchEmployeeProfile = async (id: string | number): Promise<Employe
   try {
     const response = await axios.get(`/employees/${id}`);
     return { success: true, profile: response.data.employee };
-  } catch (error) {
+  } catch (error: unknown) {
     return { success: false, profile: undefined };
   }
 };
 
-export const addEmployee = async (formData: FormData): Promise<EmployeeResponse> => {
+export const addEmployee = async (formData: FormData | Record<string, unknown>): Promise<EmployeeResponse> => {
   try {
     const response = await axios.post('/employees', formData);
     return { success: true, message: response.data.message, id: response.data.employeeId };
@@ -71,18 +71,19 @@ export const deleteEmployee = async (id: string | number): Promise<EmployeeRespo
   try {
     const response = await axios.delete(`/employees/${id}`);
     return { success: true, message: response.data.message };
-  } catch (error: any) {
-      return { success: false, message: error.response?.data?.message || 'Failed to delete employee' };
+  } catch (error: unknown) {
+      const err = error as ApiError;
+      return { success: false, message: err.response?.data?.message || err.message || 'Failed to delete employee' };
   }
 };
 
-export const updateEmployee = async (id: string | number, formData: FormData): Promise<EmployeeResponse> => {
+export const updateEmployee = async (id: string | number, data: Record<string, unknown>): Promise<EmployeeResponse> => {
   try {
-    const response = await axios.put(`/employees/${id}`, formData);
+    const response = await axios.put(`/employees/${id}`, data);
     return { success: true, message: response.data.message };
   } catch (error: unknown) {
-    const message = (error as { response?: { data?: { message?: string } } }).response?.data?.message || 'Failed to update employee';
-    return { success: false, message };
+    console.error('Update Employee Error:', error);
+    throw error;
   }
 };
 
@@ -99,20 +100,22 @@ export const revertEmployeeStatus = async (id: string | number, newStatus: strin
       previousStatus: response.data.previousStatus,
       newStatus: response.data.newStatus
     };
-  } catch (error: any) {
-    return { success: false, message: error.response?.data?.message || 'Failed to revert employee status' };
+  } catch (error: unknown) {
+    const err = error as ApiError;
+    return { success: false, message: err.response?.data?.message || err.message || 'Failed to revert employee status' };
   }
 };
 
 // Update own profile (for logged in user) - still uses auth route
-export const updateMyProfile = async (formData: FormData | any): Promise<EmployeeResponse> => {
+export const updateMyProfile = async (formData: FormData): Promise<EmployeeResponse> => {
   try {
     const response = await axios.post('/auth/profile', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
     return { success: true, message: 'Profile updated successfully', data: response.data.data };
-  } catch (error: any) {
-    return { success: false, message: error.response?.data?.message || 'Failed to update profile' };
+  } catch (error: unknown) {
+    const err = error as ApiError;
+    return { success: false, message: err.response?.data?.message || err.message || 'Failed to update profile' };
   }
 };
 
@@ -122,17 +125,28 @@ export const fetchEmployeeSkills = async (employeeId: string | number): Promise<
   try {
     const response = await axios.get(`/employees/${employeeId}/skills`);
     return { success: true, skills: response.data.skills };
-  } catch (error) {
+  } catch (error: unknown) {
     return { success: false, skills: [] };
   }
 };
 
-export const addEmployeeSkill = async (employeeId: string | number, skillData: any): Promise<EmployeeResponse> => {
+export const addEmployeeSkill = async (employeeId: string | number, skillData: SkillData): Promise<EmployeeResponse> => {
   try {
     const response = await axios.post(`/employees/${employeeId}/skills`, skillData);
     return { success: true, message: 'Skill added', skillId: response.data.skillId };
-  } catch (error: any) {
-    return { success: false, message: error.response?.data?.message || 'Failed to add skill' };
+  } catch (error: unknown) {
+    const err = error as ApiError;
+    return { success: false, message: err.response?.data?.message || err.message || 'Failed to add skill' };
+  }
+};
+
+export const updateEmployeeSkill = async (employeeId: string | number, skillId: string | number, skillData: Partial<SkillData>): Promise<EmployeeResponse> => {
+  try {
+    const response = await axios.put(`/employees/${employeeId}/skills/${skillId}`, skillData);
+    return { success: true, message: 'Skill updated' };
+  } catch (error: unknown) {
+    const err = error as ApiError;
+    return { success: false, message: err.response?.data?.message || err.message || 'Failed to update skill' };
   }
 };
 
@@ -140,8 +154,9 @@ export const deleteEmployeeSkill = async (employeeId: string | number, skillId: 
   try {
     await axios.delete(`/employees/${employeeId}/skills/${skillId}`);
     return { success: true };
-  } catch (error: any) {
-    return { success: false, message: error.response?.data?.message || 'Failed to delete skill' };
+  } catch (error: unknown) {
+    const err = error as ApiError;
+    return { success: false, message: err.response?.data?.message || err.message || 'Failed to delete skill' };
   }
 };
 
@@ -153,17 +168,28 @@ export const fetchEmployeeEducation = async (employeeId: string | number): Promi
   try {
     const response = await axios.get(`/employees/${employeeId}/education`);
     return { success: true, education: response.data.education };
-  } catch (error) {
+  } catch (error: unknown) {
     return { success: false, education: [] };
   }
 };
 
-export const addEmployeeEducation = async (employeeId: string | number, educationData: any): Promise<EmployeeResponse> => {
+export const addEmployeeEducation = async (employeeId: string | number, educationData: EducationData): Promise<EmployeeResponse> => {
   try {
     const response = await axios.post(`/employees/${employeeId}/education`, educationData);
     return { success: true, message: 'Education added', educationId: response.data.educationId };
-  } catch (error: any) {
-    return { success: false, message: error.response?.data?.message || 'Failed to add education' };
+  } catch (error: unknown) {
+    const err = error as ApiError;
+    return { success: false, message: err.response?.data?.message || err.message || 'Failed to add education' };
+  }
+};
+
+export const updateEmployeeEducation = async (employeeId: string | number, educationId: string | number, educationData: Partial<EducationData>): Promise<EmployeeResponse> => {
+  try {
+    const response = await axios.put(`/employees/${employeeId}/education/${educationId}`, educationData);
+    return { success: true, message: 'Education updated' };
+  } catch (error: unknown) {
+    const err = error as ApiError;
+    return { success: false, message: err.response?.data?.message || err.message || 'Failed to update education' };
   }
 };
 
@@ -171,8 +197,9 @@ export const deleteEmployeeEducation = async (employeeId: string | number, educa
   try {
     await axios.delete(`/employees/${employeeId}/education/${educationId}`);
     return { success: true };
-  } catch (error: any) {
-    return { success: false, message: error.response?.data?.message || 'Failed to delete education' };
+  } catch (error: unknown) {
+    const err = error as ApiError;
+    return { success: false, message: err.response?.data?.message || err.message || 'Failed to delete education' };
   }
 };
 
@@ -184,17 +211,28 @@ export const fetchEmployeeContacts = async (employeeId: string | number): Promis
   try {
     const response = await axios.get(`/employees/${employeeId}/contacts`);
     return { success: true, contacts: response.data.contacts };
-  } catch (error) {
+  } catch (error: unknown) {
     return { success: false, contacts: [] };
   }
 };
 
-export const addEmployeeContact = async (employeeId: string | number, contactData: any): Promise<EmployeeResponse> => {
+export const addEmployeeContact = async (employeeId: string | number, contactData: ContactData): Promise<EmployeeResponse> => {
   try {
     const response = await axios.post(`/employees/${employeeId}/contacts`, contactData);
     return { success: true, message: 'Contact added', contactId: response.data.contactId };
-  } catch (error: any) {
-    return { success: false, message: error.response?.data?.message || 'Failed to add contact' };
+  } catch (error: unknown) {
+    const err = error as ApiError;
+    return { success: false, message: err.response?.data?.message || err.message || 'Failed to add contact' };
+  }
+};
+
+export const updateEmployeeContact = async (employeeId: string | number, contactId: string | number, contactData: Partial<ContactData>): Promise<EmployeeResponse> => {
+  try {
+    const response = await axios.put(`/employees/${employeeId}/contacts/${contactId}`, contactData);
+    return { success: true, message: 'Contact updated' };
+  } catch (error: unknown) {
+    const err = error as ApiError;
+    return { success: false, message: err.response?.data?.message || err.message || 'Failed to update contact' };
   }
 };
 
@@ -202,8 +240,9 @@ export const deleteEmployeeContact = async (employeeId: string | number, contact
   try {
     await axios.delete(`/employees/${employeeId}/contacts/${contactId}`);
     return { success: true };
-  } catch (error: any) {
-    return { success: false, message: error.response?.data?.message || 'Failed to delete contact' };
+  } catch (error: unknown) {
+    const err = error as ApiError;
+    return { success: false, message: err.response?.data?.message || err.message || 'Failed to delete contact' };
   }
 };
 
@@ -212,21 +251,23 @@ export const deleteEmployeeContact = async (employeeId: string | number, contact
 // EMPLOYEE CUSTOM FIELDS
 // ==========================================
 
-export const addEmployeeCustomField = async (employeeId: string | number, fieldData: any): Promise<EmployeeResponse> => {
+export const addEmployeeCustomField = async (employeeId: string | number, fieldData: CustomFieldData): Promise<EmployeeResponse> => {
   try {
     const response = await axios.post(`/employees/${employeeId}/custom-fields`, fieldData);
     return { success: true, message: 'Custom field added', fieldId: response.data.fieldId };
-  } catch (error: any) {
-    return { success: false, message: error.response?.data?.message || 'Failed to add custom field' };
+  } catch (error: unknown) {
+    const err = error as ApiError;
+    return { success: false, message: err.response?.data?.message || err.message || 'Failed to add custom field' };
   }
 };
 
-export const updateEmployeeCustomField = async (employeeId: string | number, fieldId: string | number, fieldData: any): Promise<EmployeeResponse> => {
+export const updateEmployeeCustomField = async (employeeId: string | number, fieldId: string | number, fieldData: Partial<CustomFieldData>): Promise<EmployeeResponse> => {
   try {
     const response = await axios.put(`/employees/${employeeId}/custom-fields/${fieldId}`, fieldData);
     return { success: true, message: 'Custom field updated' };
-  } catch (error: any) {
-    return { success: false, message: error.response?.data?.message || 'Failed to update custom field' };
+  } catch (error: unknown) {
+    const err = error as ApiError;
+    return { success: false, message: err.response?.data?.message || err.message || 'Failed to update custom field' };
   }
 };
 
@@ -234,17 +275,13 @@ export const deleteEmployeeCustomField = async (employeeId: string | number, fie
   try {
     await axios.delete(`/employees/${employeeId}/custom-fields/${fieldId}`);
     return { success: true };
-  } catch (error: any) {
-    return { success: false, message: error.response?.data?.message || 'Failed to delete custom field' };
+  } catch (error: unknown) {
+    const err = error as ApiError;
+    return { success: false, message: err.response?.data?.message || err.message || 'Failed to delete custom field' };
   }
 };
 
-// ==========================================
 // EMPLOYEE DOCUMENTS
-// ==========================================
-
-
-
 
 //utility functions
 export const fetchEmployeeOptions = async (): Promise<EmployeeResponse> => {
@@ -256,7 +293,7 @@ export const fetchEmployeeOptions = async (): Promise<EmployeeResponse> => {
             departments: departments.length > 0 ? departments : [{ id: 0, name: 'General' }],
             jobTitles: ['Developer', 'Manager', 'Accountant', 'Specialist', 'Analyst', 'Clerk', 'Officer', 'HR Officer']
         };
-    } catch (e) {
+    } catch (e: unknown) {
          return {
             success: true,
             departments: [{ id: 0, name: 'General' }], // Fallback
@@ -265,22 +302,14 @@ export const fetchEmployeeOptions = async (): Promise<EmployeeResponse> => {
     }
 };
 
-// Biometrics
-export const startFingerprintEnrollment = async (employeeId: string | number): Promise<any> => {
-    try {
-        const response = await axios.post('/biometrics/enroll/start', { employeeId });
-        return response.data;
-    } catch (error: any) {
-        throw error.response?.data?.message || "Enrollment failed";
-    }
-};
 
-export const checkEnrollmentStatus = async (employeeId: string | number): Promise<{ isEnrolled: boolean }> => {
+// Next Step Increment
+export const getNextStepIncrement = async (id: string | number): Promise<{ success: boolean; nextStepDate?: string | null; totalLwopDays?: number }> => {
     try {
-        const response = await axios.get(`/biometrics/enroll/status/${employeeId}`);
+        const response = await axios.get(`/step-increment/${id}/next`);
         return response.data;
-    } catch (error) {
-        return { isEnrolled: false };
+    } catch (error: unknown) {
+        return { success: false, nextStepDate: null };
     }
 };
 
@@ -294,17 +323,20 @@ export const employeeApi = {
     updateMyProfile,
     fetchEmployeeSkills,
     addEmployeeSkill,
+    updateEmployeeSkill,
     deleteEmployeeSkill,
     fetchEmployeeEducation,
     addEmployeeEducation,
+    updateEmployeeEducation,
     deleteEmployeeEducation,
     fetchEmployeeContacts,
     addEmployeeContact,
+    updateEmployeeContact,
     deleteEmployeeContact,
     addEmployeeCustomField,
     updateEmployeeCustomField,
     deleteEmployeeCustomField,
     fetchEmployeeOptions,
-    startFingerprintEnrollment,
-    checkEnrollmentStatus
+
+    getNextStepIncrement
 };

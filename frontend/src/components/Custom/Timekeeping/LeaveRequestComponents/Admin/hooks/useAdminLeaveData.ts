@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tansta
 import { leaveApi } from "@api";
 import { AdminLeaveRequest } from '@/components/Custom/Timekeeping/LeaveRequestComponents/Admin/types';
 
-export const useAdminLeaveData = (initialFilters?: any) => {
+export const useAdminLeaveData = (initialFilters?: Record<string, string>) => {
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
@@ -27,9 +27,9 @@ export const useAdminLeaveData = (initialFilters?: any) => {
         startDate: filters.fromDate,
         endDate: filters.toDate
       };
-      const res = await (leaveApi as any).getAllLeaves(params);
+      const res = await leaveApi.getAllApplications(params);
       
-      const leaves = res.data.leaves.map((l: any) => {
+      const leaves = (res.data?.leaves || []).map((l: Record<string, unknown>) => {
         // Build employee name with fallbacks
         const firstName = l.first_name || '';
         const lastName = l.last_name || '';
@@ -72,7 +72,7 @@ export const useAdminLeaveData = (initialFilters?: any) => {
   };
 
   // Helper to update filters from the UI
-  const updateFilters = (newFilters: any) => {
+  const updateFilters = (newFilters: Record<string, string>) => {
     setFilters(prev => ({ ...prev, ...newFilters }));
     setPage(1); // Reset to page 1 on filter change
   };

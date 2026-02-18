@@ -1,0 +1,55 @@
+
+============================================================
+TABLE: bio_enrolled_users
+============================================================
+
+COLUMNS:
+  employee_id          | int                            | Null: NO | Key: PRI | Default: null
+  full_name            | varchar(150)                   | Null: NO | Key: - | Default: null
+  department           | varchar(100)                   | Null: YES | Key: - | Default: null
+  user_status          | enum('active','inactive')      | Null: NO | Key: - | Default: active
+  enrolled_at          | datetime                       | Null: NO | Key: - | Default: CURRENT_TIMESTAMP
+  updated_at           | datetime                       | Null: NO | Key: - | Default: CURRENT_TIMESTAMP
+
+DATA (3 rows):
+  {"employee_id":1,"full_name":"Juan Dela Cruz","department":null,"user_status":"active","enrolled_at":"2026-02-17T10:38:48.000Z","updated_at":"2026-02-17T10:38:48.000Z"}
+  {"employee_id":2,"full_name":"Alaric Yuson","department":null,"user_status":"active","enrolled_at":"2026-02-17T11:00:19.000Z","updated_at":"2026-02-17T11:00:19.000Z"}
+  {"employee_id":3,"full_name":"Mirana Nightshade","department":null,"user_status":"active","enrolled_at":"2026-02-17T11:09:14.000Z","updated_at":"2026-02-17T11:09:14.000Z"}
+
+============================================================
+TABLE: bio_attendance_logs
+============================================================
+
+COLUMNS:
+  id                   | bigint                         | Null: NO | Key: PRI | Default: null
+  employee_id          | int                            | Null: NO | Key: MUL | Default: null
+  card_type            | enum('IN','OUT')               | Null: NO | Key: - | Default: null
+  log_date             | date                           | Null: NO | Key: MUL | Default: null
+  log_time             | time                           | Null: NO | Key: - | Default: null
+  created_at           | datetime                       | Null: NO | Key: - | Default: CURRENT_TIMESTAMP
+
+DATA (5 rows):
+  {"id":1,"employee_id":1,"card_type":"IN","log_date":"2026-02-16T16:00:00.000Z","log_time":"18:41:58","created_at":"2026-02-17T10:41:58.000Z"}
+  {"id":2,"employee_id":1,"card_type":"OUT","log_date":"2026-02-16T16:00:00.000Z","log_time":"18:43:02","created_at":"2026-02-17T10:43:02.000Z"}
+  {"id":3,"employee_id":2,"card_type":"IN","log_date":"2026-02-16T16:00:00.000Z","log_time":"19:00:47","created_at":"2026-02-17T11:00:47.000Z"}
+  {"id":4,"employee_id":2,"card_type":"OUT","log_date":"2026-02-16T16:00:00.000Z","log_time":"19:00:57","created_at":"2026-02-17T11:00:57.000Z"}
+  {"id":5,"employee_id":3,"card_type":"IN","log_date":"2026-02-16T16:00:00.000Z","log_time":"19:09:15","created_at":"2026-02-17T11:09:15.000Z"}
+
+============================================================
+TABLE: attendance_logs
+============================================================
+
+COLUMNS:
+  id                   | int                            | Null: NO | Key: PRI | Default: null
+  employee_id          | varchar(50)                    | Null: NO | Key: - | Default: null
+  scan_time            | datetime                       | Null: NO | Key: - | Default: null
+  type                 | enum('IN','OUT')               | Null: NO | Key: - | Default: null
+  source               | varchar(50)                    | Null: YES | Key: - | Default: WEB
+  created_at           | timestamp                      | Null: YES | Key: - | Default: CURRENT_TIMESTAMP
+
+DATA (5 rows):
+  {"id":6,"employee_id":"EMP-001","scan_time":"2026-02-17T10:41:58.000Z","type":"IN","source":"BIOMETRIC","created_at":"2026-02-18T02:27:56.000Z"}
+  {"id":7,"employee_id":"EMP-001","scan_time":"2026-02-17T10:43:02.000Z","type":"OUT","source":"BIOMETRIC","created_at":"2026-02-18T02:27:56.000Z"}
+  {"id":8,"employee_id":"EMP-002","scan_time":"2026-02-17T11:00:47.000Z","type":"IN","source":"BIOMETRIC","created_at":"2026-02-18T02:27:56.000Z"}
+  {"id":9,"employee_id":"EMP-002","scan_time":"2026-02-17T11:00:57.000Z","type":"OUT","source":"BIOMETRIC","created_at":"2026-02-18T02:27:56.000Z"}
+  {"id":10,"employee_id":"EMP-003","scan_time":"2026-02-17T11:09:15.000Z","type":"IN","source":"BIOMETRIC","created_at":"2026-02-18T02:27:56.000Z"}

@@ -9,26 +9,18 @@ import {
 import { fetchEmployees } from '@/api/employeeApi';
 import { useAuth } from '@/hooks/useAuth';
 import { useToastStore } from '@/stores';
+import { complianceApi } from '@/api/complianceApi';
 import { INITIAL_REVIEW_FORM } from '@/components/Custom/Performance/constants/performanceConstants';
 import { 
   InternalReview, 
   ReviewItem, 
   ReviewCycle, 
-  PerformanceCriteria 
-} from '@/types/performance';
+  PerformanceCriteria,
+  Assessment,
+  QETField} from '@/types/performance';
 import { Employee } from '@/types';
 
-interface Assessment {
-  id: string | number;
-  label?: string;
-  title?: string;
-  placeholder?: string;
-  description?: string;
-  badge?: string;
-  badgeColor?: string;
-  iconName?: string;
-  value?: string;
-}
+// Assessment interface is now imported from @/types/performance
 
 const DEFAULT_QUALITATIVE_CONFIG: Assessment[] = [
   { id: 'strengths', label: 'Strengths', placeholder: "List the employee's competencies and behavioral assets...", badge: 'Strengths', badgeColor: 'bg-green-50 text-green-700 border-green-100', iconName: 'Zap' },
@@ -41,6 +33,7 @@ const DEFAULT_QUALITATIVE_CONFIG: Assessment[] = [
 interface FormDataState extends Omit<Partial<InternalReview>, 'items'> {
   items: Partial<ReviewItem>[];
   additional_comments?: string;
+  employee_metrics?: any;
 }
 
 export const usePerformanceReview = () => {
@@ -79,14 +72,14 @@ export const usePerformanceReview = () => {
         if (!isMounted) return;
 
         if (empData.success) setEmployees(empData.employees as Employee[]);
-        if (cycleData.success) setCycles(cycleData.data.cycles);
+        if (cycleData.success) setCycles(cycleData.cycles || []);
 
         if (currentReviewId && currentReviewId !== 'new') {
           const reviewData = await fetchReviewById(currentReviewId);
           if (!isMounted) return;
           
           if (reviewData.success) {
-            const review = reviewData.data.review;
+            const review = reviewData.review;
             
             // Parse overall_feedback
             let parsedFeedback: Record<string, unknown> = {};
@@ -117,7 +110,7 @@ export const usePerformanceReview = () => {
             // Merge Items with Criteria
             let items: Partial<ReviewItem>[] = review.items || [];
             if (review.status === 'Draft' && criteriaData.success) {
-                 const criteria = criteriaData.data.criteria;
+                 const criteria = criteriaData.criteria || [];
                  const existingCriteriaIds = new Set(items.map(i => i.criteria_id).filter(id => id));
                  const missingCriteria = criteria.filter((c: PerformanceCriteria) => !existingCriteriaIds.has(c.id));
                  if (missingCriteria.length > 0) {
@@ -132,7 +125,7 @@ export const usePerformanceReview = () => {
                          criteria_description: c.description,
                          category: c.category,
                          weight: c.weight,
-                         max_score: c.max_score
+                         max_score: c.maxScore
                      }));
                      items = [...items, ...newItems];
                  }
@@ -143,6 +136,20 @@ export const usePerformanceReview = () => {
               items: items,
               additional_comments: (parsedFeedback.additional_comments as string) || ''
             });
+
+            // Fetch Metrics for existing review
+            try {
+              const metricRes = await complianceApi.getEmployeeMetrics(review.employee_id.toString());
+              if (metricRes.data.success) {
+                setFormData(prev => ({
+                    ...prev,
+                    employee_metrics: metricRes.data.metrics,
+                    employee_info: metricRes.data.employee
+                }));
+              }
+            } catch (e) {
+              console.error("Failed to fetch initial metrics", e);
+            }
           }
         } else {
           // New Review Initialization
@@ -150,7 +157,7 @@ export const usePerformanceReview = () => {
             setFormData(prev => ({
               ...prev,
               reviewer_id: user?.id,
-              items: criteriaData.data.criteria.map((c: PerformanceCriteria) => ({
+              items: (criteriaData.criteria || []).map((c: PerformanceCriteria) => ({
                 criteria_id: c.id,
                 score: 0,
                 comment: '',
@@ -160,7 +167,7 @@ export const usePerformanceReview = () => {
                 criteria_description: c.description,
                 category: c.category,
                 weight: c.weight,
-                max_score: c.max_score
+                max_score: c.maxScore
               }))
             }));
           }
@@ -192,6 +199,28 @@ export const usePerformanceReview = () => {
     loadData();
     return () => { isMounted = false; };
   }, [currentReviewId, isNew, user]);
+
+  // Fetch Metrics when employee changes
+  useEffect(() => {
+    if (!formData.employee_id || !isNew) return;
+    
+    const fetchMetrics = async () => {
+        try {
+            const res = await complianceApi.getEmployeeMetrics((formData.employee_id as number).toString());
+            if (res.data.success) {
+                setFormData(prev => ({
+                    ...prev,
+                    employee_metrics: res.data.metrics,
+                    employee_info: res.data.employee
+                }));
+            }
+        } catch (error) {
+            console.error("Failed to fetch metrics", error);
+        }
+    };
+    
+    fetchMetrics();
+  }, [formData.employee_id, isNew]);
 
   const selectedEmployee = useMemo(() => employees.find(e => e.id == formData.employee_id), [employees, formData.employee_id]);
   const selectedCycle = useMemo(() => cycles.find(c => c.id == formData.review_cycle_id), [cycles, formData.review_cycle_id]);
@@ -230,16 +259,16 @@ export const usePerformanceReview = () => {
     }));
   }, []);
 
-  const handleQETChange = useCallback((criteriaId: string | number, type: 'q_score' | 'e_score' | 't_score', value: string | number) => {
+  const handleQETChange = useCallback((criteriaId: string | number, type: QETField, value: string | number) => {
     setFormData(prev => ({
       ...prev,
       items: prev.items.map(item => {
         if (item.criteria_id !== criteriaId) return item;
         const updates = { [type]: parseFloat(value.toString()) || 0 };
         const newItem = { ...item, ...updates };
-        const q = newItem.q_score || 0;
-        const e = newItem.e_score || 0;
-        const t = newItem.t_score || 0;
+        const q = Number(newItem.q_score) || 0;
+        const e = Number(newItem.e_score) || 0;
+        const t = Number(newItem.t_score) || 0;
         return { ...newItem, score: parseFloat(((q + e + t) / 3).toFixed(2)) };
       })
     }));
@@ -263,6 +292,13 @@ export const usePerformanceReview = () => {
     setFormData(prev => ({
       ...prev,
       items: prev.items.map(item => item.criteria_id === criteriaId ? { ...item, actual_accomplishments: value } : item)
+    }));
+  }, []);
+
+  const handleEvidenceChange = useCallback((criteriaId: string | number, field: 'evidence_file_path' | 'evidence_description', value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      items: prev.items.map(item => item.criteria_id === criteriaId ? { ...item, [field]: value } : item)
     }));
   }, []);
 
@@ -345,10 +381,13 @@ export const usePerformanceReview = () => {
         setCurrentReviewId(res.data.reviewId);
         window.history.replaceState(null, '', `/admin-dashboard/performance/reviews/${res.data.reviewId}`);
         return res.data.reviewId;
+      } else {
+        showNotification(res.message || "Failed to initialize review record.", "error");
+        return null;
       }
-      return null;
-    } catch (error: unknown) {
+    } catch (error: any) {
       console.error("Auto-create failed:", error);
+      showNotification(error.response?.data?.message || "Connection error while creating review.", "error");
       return null;
     } finally {
         creationInProgress.current = false;
@@ -399,10 +438,15 @@ export const usePerformanceReview = () => {
     }
   }, [formData.additional_comments]);
 
-  const handleAddAssessment = useCallback(async (newAssessment: Assessment) => {
-    const newItem = {
-      ...newAssessment, id: Date.now().toString(), value: '',
-      badge: newAssessment.badge || 'CUSTOM', badgeColor: newAssessment.badgeColor || 'bg-indigo-50 text-indigo-700', iconName: newAssessment.iconName || 'MessageSquare'
+  const handleAddAssessment = useCallback(async (newAssessment: Partial<Assessment>) => {
+    const newItem: Assessment = {
+      ...newAssessment as Assessment, 
+      id: Date.now().toString(), 
+      value: newAssessment.value || '',
+      title: newAssessment.title || '',
+      badge: newAssessment.badge || 'CUSTOM', 
+      badgeColor: newAssessment.badgeColor || 'bg-indigo-50 text-indigo-700', 
+      iconName: newAssessment.iconName || 'MessageSquare'
     };
     const updated = [...qualitativeAssessments, newItem];
     setQualitativeAssessments(updated);
@@ -411,8 +455,9 @@ export const usePerformanceReview = () => {
     if (rid) saveAssessmentsToBackend(updated, rid);
   }, [qualitativeAssessments, ensureReviewExists, saveAssessmentsToBackend]);
 
-  const handleEditAssessment = useCallback(async (updatedAssessment: Assessment) => {
-    const updated = qualitativeAssessments.map(i => i.id === updatedAssessment.id ? { ...i, ...updatedAssessment } : i);
+  const handleEditAssessment = useCallback(async (updatedAssessment: Assessment | Partial<Assessment>) => {
+    if (!updatedAssessment.id) return;
+    const updated = qualitativeAssessments.map(i => i.id === updatedAssessment.id ? { ...i, ...updatedAssessment } as Assessment : i);
     setQualitativeAssessments(updated);
     const rid = await ensureReviewExists();
     if (rid) saveAssessmentsToBackend(updated, rid);
@@ -434,6 +479,7 @@ export const usePerformanceReview = () => {
         showNotification("Please select an employee.", "error");
         return;
     }
+    
     setSaving(true);
     try {
         const reviewId = await ensureReviewExists();
@@ -447,40 +493,69 @@ export const usePerformanceReview = () => {
             assessments: qualitativeAssessments
         });
 
-        const itemsPayload = (formData.items || []).map(item => ({
-            ...item,
-            id: (item.id && typeof item.id === 'number' && item.id < 999999999999) ? item.id : undefined,
-        }));
+        // Filter out temporary frontend IDs (Date.now() based ones)
+        const itemsPayload = (formData.items || []).map(item => {
+            const isTempId = typeof item.id === 'string' || (typeof item.id === 'number' && item.id > 2000000000);
+            return {
+                ...item,
+                id: isTempId ? undefined : item.id,
+            };
+        });
 
         if (permissions.isEmployee) {
             if (action === 'submit') {
-                await submitSelfRating(reviewId, { items: itemsPayload, employee_remarks: formData.additional_comments });
-                navigate('/employee-dashboard/performance');
+                const res = await submitSelfRating(reviewId, { items: itemsPayload, employee_remarks: formData.additional_comments });
+                if (res.success) {
+                    showNotification("Self-rating submitted successfully.", "success");
+                    navigate('/employee-dashboard/performance');
+                } else {
+                    showNotification(res.message || "Failed to submit self-rating.", "error");
+                }
             } else if (action === 'acknowledge') {
-                await acknowledgeReview(reviewId);
-                window.location.reload();
+                const res = await acknowledgeReview(reviewId);
+                if (res.success) {
+                    showNotification("Review acknowledged.", "success");
+                    window.location.reload();
+                } else {
+                    showNotification(res.message || "Failed to acknowledge.", "error");
+                }
             } else {
-                await submitSelfRating(reviewId, { items: itemsPayload, employee_remarks: formData.additional_comments, isDraft: true });
-                showNotification("Draft saved.", "success");
+                const res = await submitSelfRating(reviewId, { items: itemsPayload, employee_remarks: formData.additional_comments, isDraft: true });
+                if (res.success) {
+                    showNotification("Draft saved.", "success");
+                } else {
+                    showNotification(res.message || "Failed to save draft.", "error");
+                }
             }
             return;
         }
 
         if (action === 'submit') {
-            await submitSupervisorRating(reviewId, { items: itemsPayload, supervisor_remarks: formData.additional_comments, overall_feedback });
-            navigate('/admin-dashboard/performance-reviews');
+            const res = await submitSupervisorRating(reviewId, { items: itemsPayload, supervisor_remarks: formData.additional_comments, overall_feedback });
+            if (res.success) {
+                showNotification("Performance review submitted successfully.", "success");
+                navigate('/admin-dashboard/performance-reviews');
+            } else {
+                showNotification(res.message || "Failed to submit supervisor rating.", "error");
+            }
             return;
         }
 
-        await updateReview(reviewId, {
+        const res = await updateReview(reviewId, {
             overall_feedback,
             additional_comments: formData.additional_comments
         });
-        showNotification("Review saved.", "success");
+        
+        if (res.success) {
+            showNotification("Review saved.", "success");
+        } else {
+            showNotification(res.message || "Failed to save review.", "error");
+        }
 
-    } catch (err: unknown) {
-        console.error(err);
-        showNotification("Failed to save.", "error");
+    } catch (err: any) {
+        console.error("Submission Error:", err);
+        const errorMsg = err.response?.data?.message || err.message || "An unexpected error occurred.";
+        showNotification(`Submission failed: ${errorMsg}`, "error");
     } finally {
         setSaving(false);
     }
@@ -494,7 +569,7 @@ export const usePerformanceReview = () => {
         handleScoreChange, handleQETChange, handleCommentChange, handleSelfScoreChange, handleAccomplishmentChange,
         handleAddItem, onEditItem, onDeleteItem,
         handleAddAssessment, handleEditAssessment, handleDeleteAssessment, handleAssessmentValueChange,
-        handleSave
+        handleSave, handleEvidenceChange
     }
   };
 };

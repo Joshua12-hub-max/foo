@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { X, Upload, Download } from "lucide-react";
+import { X, Upload, Download, CheckCircle } from "lucide-react";
 import { leaveApi } from "@/api/leaveApi";
 import { AdminLeaveRequest } from "@/components/Custom/Timekeeping/LeaveRequestComponents/Admin/types";
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -19,7 +19,7 @@ const AdminLeaveRequestProcess: React.FC<ProcessModalProps> = ({ isOpen, request
   const processMutation = useMutation({
     mutationFn: async (formData: FormData) => {
       if (!request) return;
-      await (leaveApi as any).processLeave(request.id, formData);
+      await leaveApi.processLeave(request.id, formData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-leaves'] });
@@ -27,7 +27,7 @@ const AdminLeaveRequestProcess: React.FC<ProcessModalProps> = ({ isOpen, request
       setError("");
       onConfirm();
     },
-    onError: (err: any) => {
+    onError: (err: unknown) => {
         console.error(err);
         setError("Failed to process request");
     }
@@ -100,7 +100,7 @@ const AdminLeaveRequestProcess: React.FC<ProcessModalProps> = ({ isOpen, request
                 </div>
                 {request?.attachment_path && (
                      <div className="mt-2 pt-2 border-t border-gray-100">
-                        <a href={`${(import.meta as any).env.VITE_API_URL.replace('/api', '')}/uploads/${request.attachment_path}`} target="_blank" rel="noreferrer" className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 transition-colors text-xs font-medium border border-indigo-100">
+                        <a href={`${import.meta.env.VITE_API_URL.replace('/api', '')}/uploads/${request.attachment_path}`} target="_blank" rel="noreferrer" className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 transition-colors text-xs font-medium border border-indigo-100">
                             <Download className="w-4 h-4" /> View Employee Attachment
                         </a>
                      </div>

@@ -68,7 +68,7 @@ export const generateLeaveRequestPDF = async (leaveRequest: LeaveRequest): Promi
     });
 
     // Approval Section
-    const finalY = (doc as any).lastAutoTable.finalY + 20;
+    const finalY = doc.lastAutoTable.finalY + 20;
 
     doc.setFontSize(14);
     doc.text('Approval Status', 20, finalY);
@@ -92,7 +92,7 @@ export const generateLeaveRequestPDF = async (leaveRequest: LeaveRequest): Promi
     });
 
     // Footer
-    const pageCount = (doc as any).internal.getNumberOfPages();
+    const pageCount = (doc.internal as unknown as { getNumberOfPages(): number }).getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
       doc.setPage(i);
       doc.setFontSize(10);
@@ -194,7 +194,7 @@ export const generateUndertimeRequestPDF = async (undertimeRequest: UndertimeReq
     });
 
     // Approval Section
-    let finalY = (doc as any).lastAutoTable.finalY + 20;
+    let finalY = doc.lastAutoTable.finalY + 20;
 
     doc.setFontSize(14);
     doc.text('Approval Status', 20, finalY);
@@ -219,7 +219,7 @@ export const generateUndertimeRequestPDF = async (undertimeRequest: UndertimeReq
     });
 
     // Signature Section
-    finalY = (doc as any).lastAutoTable.finalY + 25;
+    finalY = doc.lastAutoTable.finalY + 25;
 
     doc.setFontSize(12);
     doc.setTextColor(0, 0, 0);
@@ -241,7 +241,7 @@ export const generateUndertimeRequestPDF = async (undertimeRequest: UndertimeReq
     doc.text('Date: _______________', 120, finalY + 22);
 
     // Footer
-    const pageCount = (doc as any).internal.getNumberOfPages();
+    const pageCount = (doc.internal as unknown as { getNumberOfPages(): number }).getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
       doc.setPage(i);
       doc.setFontSize(10);

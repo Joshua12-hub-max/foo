@@ -178,6 +178,7 @@ const DepartmentDetail: React.FC = () => {
                   <th className="px-6 py-4 font-bold text-gray-700 text-sm tracking-wide">Employee</th>
                   <th className="px-6 py-4 font-bold text-gray-700 text-sm tracking-wide">Employee ID</th>
                   <th className="px-6 py-4 font-bold text-gray-700 text-sm tracking-wide">Position</th>
+                  <th className="px-6 py-4 font-bold text-gray-700 text-sm tracking-wide">Duties</th>
                   <th className="px-6 py-4 font-bold text-gray-700 text-sm tracking-wide">Contact</th>
                   <th className="px-6 py-4 font-bold text-gray-700 text-sm tracking-wide">Date Hired</th>
                   <th className="px-6 py-4 font-bold text-gray-700 text-sm tracking-wide">Status</th>

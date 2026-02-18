@@ -1,22 +1,23 @@
+import { UserRole, EmploymentStatus } from './enums';
+export * from './enums';
+export * from './employee';
+export * from './org';
+export * from './attendance';
+
 export interface User {
   id: number;
   email: string;
-  first_name?: string;
-  last_name?: string;
-  role?: string;
-  department_id?: number;
-  department_name?: string;
-  department?: string; 
-  position?: string;
-  position_id?: number;
-  avatar?: string;
-  profilePicture?: string;
-  name?: string;
-  employeeId?: string | number;
-  employee_id?: string | number;
-  employment_status?: string;
-  status?: string;
-  completion_status?: string;
+  firstName: string;
+  lastName: string;
+  name: string;
+  role: UserRole;
+  department: string | null;
+  employeeId: string;
+  avatarUrl: string | null;
+  jobTitle: string | null;
+  employmentStatus: EmploymentStatus | null;
+  twoFactorEnabled: boolean;
+  duties: string;
 }
 
 export interface ApiResponse<T = unknown> {
@@ -51,21 +52,7 @@ export interface PaginationProps {
   setCurrentPage?: (page: number) => void;
 }
 
-// Employee base interface
-export interface Employee {
-  id: number;
-  first_name: string;
-  last_name: string;
-  email?: string;
-  department?: string;
-  department_id?: number;
-  position?: string;
-  job_title?: string;
-  position_id?: number;
-  employee_id?: string | number;
-  avatar_url?: string;
-  status?: string;
-}
+// Redundant Employee interface removed. Use import { Employee } from './employee'
 
 // Attendance Header
 export interface AttendanceHeader {
@@ -74,47 +61,59 @@ export interface AttendanceHeader {
   sortable?: boolean;
 }
 
-// Biometrics Log
+// Biometrics Log (Merged DTR & Raw)
 export interface BiometricsLog {
-  id: number;
-  employee_id?: string | number;
-  employee_name?: string;
-  timestamp?: string;
-  created_at?: string;
-  updated_at?: string;
-  name?: string;
-  department?: string;
-  status?: string;
-  type?: string;
-}
-
-// DTR Correction interfaces
-export interface DTRCorrectionRecord {
   id: string | number;
-  employeeId?: string | number;
-  employeeName?: string;
-  requestDate?: string;
+  employee_id: string | number;
+  employeeId?: string; // Standardized ID
+  // Raw fields
+  scan_time?: string;
+  type?: 'IN' | 'OUT';
+  source: string;
+  // DTR fields
   date?: string;
-  time_in?: string;
-  time_out?: string;
-  reason?: string;
-  status?: string;
-  created_at?: string;
-}
-
-// Attendance Record
-export interface AttendanceRecord {
-  id: number;
-  employee_id?: number;
-  employee_name?: string;
-  date: string;
-  time_in?: string;
-  time_out?: string;
   timeIn?: string;
   timeOut?: string;
-  status?: string;
-  daily_status?: string;
+  // Common
+  first_name?: string;
+  last_name?: string;
+  name?: string;
   department?: string;
+  duties?: string;
+  status?: string;
+  scan_date?: Date; // Frontend helper for sorting/filtering
+}
+
+export interface MonitorLogData {
+  id: number;
+  employeeId: string;
+  date: string;
+  timeIn: string | null;
+  timeOut: string | null;
+  status: string;
+  updatedAt: string;
+  firstName: string;
+  lastName: string;
+  name: string;
+  department: string;
+  duties?: string;
+}
+
+// Attendance Record (General)
+export interface AttendanceRecord {
+  id: string | number;
+  employee_id?: string | number;
+  employeeId?: string; // Standardized ID
+  employee_name?: string;
+  name?: string; 
+  date: string;
+  timeIn?: string;
+  timeOut?: string;
+  lateMinutes?: number;
+  undertimeMinutes?: number;
+  status?: string;
+  department?: string;
+  duties?: string;
 }
 
 // New Event for Calendar
@@ -139,6 +138,7 @@ export interface LeaveCredit {
 }
 
 // Job interface for recruitment
+export type EmploymentType = 'Full-time' | 'Part-time' | 'Contractual' | 'Job Order' | 'Coterminous' | 'Temporary' | 'Probationary' | 'Casual' | 'Permanent';
 export type JobStatus = 'Open' | 'Closed' | 'On Hold';
 export type JobStatusFilter = 'All' | JobStatus;
 
@@ -148,32 +148,26 @@ export interface Job {
   title: string;
   department: string;
   location: string;
-  employment_type: string;
-  status: string; // Keep string for compatibility with backend or update to JobStatus | string
+  employment_type: EmploymentType;
+  status: JobStatus; 
   job_description: string;
-  requirements: string;
-  salary_range?: string;
-  application_email?: string;
+  requirements: string | null;
+  application_email: string;
   created_at?: string;
   posted_at?: string;
-
-
-  attachment_path?: string;
+  attachment_path?: string | null;
 }
 
 export interface JobFormData {
   title: string;
   department: string;
   location: string;
-  employment_type: string;
-  status: string; // JobStatus | string
+  employment_type: EmploymentType;
+  status: JobStatus;
   job_description: string;
-  requirements?: string;
-  salary_range?: string;
+  requirements?: string | null;
   application_email: string;
-
-
-  attachment_path?: string;
+  attachment_path?: string | File | null;
 }
 
 export interface JobApplication {
@@ -201,34 +195,40 @@ export interface JobApplicationForm {
   resume: File | null;
 }
 
-export interface Skill {
-  id: number;
-  employee_id: number;
+// Basic types now strictly defined in ./employee.ts
+
+export interface ApiError {
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
+  message?: string;
+}
+
+export interface SkillData {
   skill_name: string;
-  proficiency_level: string;
+  proficiency_level?: string;
 }
 
-export interface Education {
-  id: number;
-  employee_id: number;
+export interface EducationData {
   institution: string;
-  degree: string;
-  field_of_study: string;
+  degree?: string;
+  field_of_study?: string;
   start_date: string;
-  end_date: string;
+  end_date?: string;
+  type?: string;
 }
 
-export interface EmergencyContact {
-  id: number;
-  employee_id: number;
+export interface ContactData {
   name: string;
   relationship: string;
   phone_number: string;
+  address?: string;
 }
 
-export interface CustomField {
-  id: number;
-  employee_id: number;
+export interface CustomFieldData {
+  section: string;
   field_name: string;
   field_value: string;
 }

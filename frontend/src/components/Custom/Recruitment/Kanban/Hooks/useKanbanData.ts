@@ -21,7 +21,7 @@ const useKanbanData = (showNotification: (message: string, type: 'success' | 'er
   const fetchApplicants = useCallback(async () => {
     try {
       setLoading(true);
-      const { data } = await (recruitmentApi as any).getApplicants();
+      const { data } = await recruitmentApi.getApplicants();
       const relevantApplicants = data.applicants.filter((a: any) => 
         ['Applied', 'Screening', 'Initial Interview', 'Final Interview', 'Offer', 'Hired', 'Rejected'].includes(a.stage) ||
         a.stage === null

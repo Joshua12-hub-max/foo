@@ -15,7 +15,7 @@ const JobVacancyAnnouncement: React.FC<JobVacancyAnnouncementProps> = ({ job, on
   const handlePrint = useReactToPrint({
     content: () => componentRef.current,
     documentTitle: `Job_Vacancy_${job.title.replace(/\s+/g, '_')}`,
-  } as any);
+  } as unknown as Parameters<typeof useReactToPrint>[0]);
 
   // Helper to check employment status
   const isJobOrder = job.employment_type?.toLowerCase().includes('job order');
@@ -99,10 +99,6 @@ const JobVacancyAnnouncement: React.FC<JobVacancyAnnouncementProps> = ({ job, on
               <tr>
                 <td className="border border-black p-2 font-bold bg-gray-100">OFFICE</td>
                 <td className="border border-black p-2 uppercase" colSpan={3}>{job.department}</td>
-              </tr>
-              <tr>
-                <td className="border border-black p-2 font-bold bg-gray-100">SALARY</td>
-                <td className="border border-black p-2 uppercase" colSpan={3}>{job.salary_range}</td>
               </tr>
               <tr>
                 <td className="border border-black p-2 font-bold bg-gray-100">EMPLOYMENT STATUS</td>

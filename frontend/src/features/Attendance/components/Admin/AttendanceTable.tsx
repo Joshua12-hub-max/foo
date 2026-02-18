@@ -13,6 +13,7 @@ interface AttendanceRow {
   lateMinutes: number;
   undertimeMinutes: number;
   overtimeMinutes?: number;
+  duties?: string;
   notes?: string;
   [key: string]: any;
 }
@@ -91,11 +92,18 @@ const AttendanceTable: React.FC<AttendanceTableProps> = memo(({ data, headers, i
                 </td>
 
                 {/* Employee Name - Separate Column */}
-                <td className="px-6 py-4">
+                <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex flex-col">
                     <span className="text-sm font-medium text-gray-900">{row.employee_name}</span>
                     <span className="text-xs text-gray-500">{row.department}</span>
                   </div>
+                </td>
+
+                {/* Duties */}
+                <td className="px-6 py-4">
+                  <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded border border-blue-100 whitespace-nowrap">
+                    {row.duties || 'No Schedule'}
+                  </span>
                 </td>
 
                 {/* Date */}

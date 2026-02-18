@@ -108,7 +108,7 @@ const InformationGrid: React.FC<InformationGridProps> = ({
             <InfoItem 
               icon={IdCard} 
               label="Employee ID" 
-              value={profile?.employeeId || (user as any)?.employeeId} 
+              value={profile?.employeeId || user?.employeeId} 
             />
             <InfoItem 
               icon={Shield} 

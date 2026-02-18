@@ -32,7 +32,7 @@ const FinalizeModal: React.FC<FinalizeModalProps> = ({ isOpen, request, onConfir
       const formData = new FormData();
       formData.append('finalForm', signedForm);
       
-      await (leaveApi as any).finalizeLeave(request.id, formData);
+      await leaveApi.finalizeLeave(request.id, formData);
       onConfirm();
     } catch (err) {
       console.error(err);
@@ -71,9 +71,9 @@ const FinalizeModal: React.FC<FinalizeModalProps> = ({ isOpen, request, onConfir
             
             <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl text-sm space-y-3">
                 <p className="text-blue-900 leading-relaxed font-medium">The HR/Admin has processed your request. Please download the form below, sign it, and upload it back to finalize your request.</p>
-                {(request as any).admin_form_path && (
+                {Boolean((request as unknown as Record<string, unknown>).admin_form_path) && (
                      <div>
-                        <a href={`${(import.meta as any).env.VITE_API_URL.replace('/api', '')}/uploads/${(request as any).admin_form_path}`} target="_blank" rel="noreferrer" className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-white text-blue-700 rounded-lg hover:bg-blue-50 transition-colors text-sm font-semibold border border-blue-200 shadow-sm">
+                        <a href={`${import.meta.env.VITE_API_URL?.replace('/api', '') ?? ''}/uploads/${String((request as unknown as Record<string, unknown>).admin_form_path)}`} target="_blank" rel="noreferrer" className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-white text-blue-700 rounded-lg hover:bg-blue-50 transition-colors text-sm font-semibold border border-blue-200 shadow-sm">
                             <Download className="w-4 h-4" /> Download Admin Form
                         </a>
                      </div>

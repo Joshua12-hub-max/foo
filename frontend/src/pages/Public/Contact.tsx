@@ -21,13 +21,13 @@ const Contact = () => {
         <div className="flex flex-col lg:flex-row items-center gap-10 mb-12">
             <div className="flex-1 text-center lg:text-left">
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-slate-900 border border-white/5 text-white text-[9px] font-black tracking-[0.2em] mb-4 uppercase">
-                    Communication Link
+                    Contact HR
                 </div>
                 <h1 className="text-4xl md:text-5xl font-black text-slate-950 mb-4 tracking-tighter leading-none">
                   Get in <span className="text-green-600">Touch</span>
                 </h1>
                 <p className="text-slate-500 text-sm md:text-base font-semibold max-w-xl mx-auto lg:mx-0 leading-relaxed">
-                  Connect with our human resource administrative terminal for inquiries regarding the recruitment protocol. High-priority response guaranteed.
+                  Connect with our human resources team for inquiries regarding job openings and applications. We prioritize every message.
                 </p>
             </div>
             
@@ -50,19 +50,19 @@ const Contact = () => {
             {[
                 {
                     icon: <Mail className="text-green-600" size={20} />,
-                    label: "Email Interface",
+                    label: "Email Us",
                     value: "hr@lgu-meycauayan.gov.ph",
-                    desc: "Official digital transmission channel."
+                    desc: "Send us an email anytime."
                 },
                 {
                     icon: <Phone className="text-green-600" size={20} />,
-                    label: "Voice Channel",
+                    label: "Call Us",
                     value: "(044) 123-4567",
-                    desc: "Direct administrative line."
+                    desc: "Direct HR office line."
                 },
                 {
                     icon: <MapPin className="text-green-600" size={20} />,
-                    label: "Physical Terminal",
+                    label: "Visit Us",
                     value: "Meycauayan City Hall",
                     desc: "Brgy. Saluysoy, MacArthur Highway, City of Meycauayan, Bulacan",
                     image: mapVisual
@@ -100,13 +100,13 @@ const Contact = () => {
                 <div className="text-center md:text-left space-y-3">
                     <div className="flex items-center justify-center md:justify-start gap-2 text-green-400 font-bold text-[10px] tracking-[0.2em] uppercase">
                         <Zap size={14} fill="currentColor" />
-                        Instant Synchronization
+                        Quick Response
                     </div>
                     <h2 className="text-3xl md:text-4xl font-black text-white tracking-tighter leading-none">
-                        Live Protocol Support
+                        Live Support
                     </h2>
                     <p className="text-white/40 text-sm md:text-base font-semibold max-w-md">
-                        Transmit your inquiries directly to our administrative team for a real-time resolution protocol.
+                        Chat directly with our team for real-time assistance and support.
                     </p>
                 </div>
                 
@@ -116,11 +116,11 @@ const Contact = () => {
                         className="group bg-white text-slate-950 px-8 py-4 rounded-xl font-black text-[14px] tracking-tight transition-all shadow-xl shadow-green-500/10 flex items-center gap-3 active:scale-95 hover:bg-green-500 hover:text-white"
                     >
                         <MessageCircle size={18} className="transition-transform group-hover:rotate-12" />
-                        Execute Live Chat
+                        Chat Now
                     </button>
                     <div className="flex items-center gap-2 text-white/30 text-[10px] font-bold tracking-widest uppercase">
                         <ShieldCheck size={12} />
-                        Secured Terminal
+                        Secured Chat
                     </div>
                 </div>
             </div>

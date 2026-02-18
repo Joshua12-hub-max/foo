@@ -6,7 +6,7 @@ import heroGlow from '../../assets/home-hero-glow.png';
 import deptImg from '../../assets/home-dept.png';
 import registryImg from '../../assets/home-registry.png';
 import submissionImg from '../../assets/home-submission.png';
-import { motion } from 'framer-motion';
+import Marquee from '@components/Public/Marquee';
 
 const Home = () => {
   const navigate = useNavigate();
@@ -28,7 +28,7 @@ const Home = () => {
             <div className="text-left space-y-5 relative">
                 <div>
                     <div className="inline-flex items-center gap-2.5 px-3.5 py-1 rounded-lg bg-slate-900 border border-white/5 text-white text-[9px] font-black tracking-[0.2em] mb-5 shadow-xl">
-                        RECRUITMENT TERMINAL
+                        CAREERS & JOBS
                     </div>
                 
                     <h1 className="text-5xl md:text-6xl font-black tracking-tighter text-slate-950 leading-[0.92] lg:max-w-lg">
@@ -78,44 +78,50 @@ const Home = () => {
             </div>
         </div>
 
-        {/* Features stats - Master Precision */}
-        <div className="grid md:grid-cols-3 gap-5">
-            {[
-                { 
-                    title: "Department Filter", 
-                    desc: "Easily find job openings across different city departments that match your skills.",
-                    image: deptImg
-                },
-                { 
-                    title: "Career Registry", 
-                    desc: "A digital registry used by HR to track and coordinate future opportunities for all applicants.",
-                    image: registryImg
-                },
-                { 
-                    title: "Online Submission", 
-                    desc: "Submit your application directly to the HR office instantly and skip the paperwork.",
-                    image: submissionImg
-                }
-            ].map((feature, i) => (
-                <div 
-                    key={i}
-                    className="group relative bg-white rounded-2xl border border-slate-100 shadow-premium hover:shadow-premium-hover transition-all duration-500 overflow-hidden flex flex-col"
-                >
-                    <div className="p-6">
-                        <h3 className="text-xl font-black mb-2 text-slate-950 tracking-tight">{feature.title}</h3>
-                        <p className="text-slate-500 text-[13px] leading-relaxed font-semibold">{feature.desc}</p>
+        {/* Features stats - Infinite Marquee */}
+        <div className="relative mt-8">
+            {/* Edge Fades for Premium Look */}
+            <div className="absolute left-0 top-0 bottom-0 w-32 bg-gradient-to-r from-[#FDFDFD] to-transparent z-10 pointer-events-none"></div>
+            <div className="absolute right-0 top-0 bottom-0 w-32 bg-gradient-to-l from-[#FDFDFD] to-transparent z-10 pointer-events-none"></div>
+
+            <Marquee speed={30} className="py-4">
+                {[
+                    { 
+                        title: "Department Filter", 
+                        desc: "Easily find job openings across different city departments that match your skills.",
+                        image: deptImg
+                    },
+                    { 
+                        title: "Career Registry", 
+                        desc: "A digital registry used by HR to track and coordinate future opportunities for all applicants.",
+                        image: registryImg
+                    },
+                    { 
+                        title: "Online Submission", 
+                        desc: "Submit your application directly to the HR office instantly and skip the paperwork.",
+                        image: submissionImg
+                    }
+                ].map((feature, i) => (
+                    <div 
+                        key={i}
+                        className="group relative bg-white rounded-2xl border border-slate-100 shadow-premium hover:shadow-premium-hover transition-all duration-500 overflow-hidden flex flex-col w-[350px] mx-3 shrink-0"
+                    >
+                        <div className="p-6">
+                            <h3 className="text-xl font-black mb-2 text-slate-950 tracking-tight">{feature.title}</h3>
+                            <p className="text-slate-500 text-[13px] leading-relaxed font-semibold line-clamp-2">{feature.desc}</p>
+                        </div>
+                        
+                        <div className="mt-auto h-32 bg-slate-50 overflow-hidden relative group-hover:h-36 transition-all duration-700">
+                            <img 
+                                src={feature.image} 
+                                alt={feature.title} 
+                                className="w-full h-full object-cover opacity-60 group-hover:opacity-100 group-hover:scale-110 transition-all duration-700"
+                            />
+                            <div className="absolute inset-x-0 bottom-0 h-1 w-0 bg-green-500 transition-all duration-700 group-hover:w-full"></div>
+                        </div>
                     </div>
-                    
-                    <div className="mt-auto h-32 bg-slate-50 overflow-hidden relative group-hover:h-36 transition-all duration-700">
-                        <img 
-                            src={feature.image} 
-                            alt={feature.title} 
-                            className="w-full h-full object-cover opacity-60 group-hover:opacity-100 group-hover:scale-110 transition-all duration-700"
-                        />
-                        <div className="absolute inset-x-0 bottom-0 h-1 w-0 bg-green-500 transition-all duration-700 group-hover:w-full"></div>
-                    </div>
-                </div>
-            ))}
+                ))}
+            </Marquee>
         </div>
       </div>
     </PublicLayout>

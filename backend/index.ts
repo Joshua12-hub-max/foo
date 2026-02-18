@@ -13,8 +13,6 @@ import authRoutes from './routes/authRoutes.js';
 import dtrRoutes from './routes/dtrRoutes.js';
 import attendanceRoutes from './routes/attendanceRoutes.js';
 import leaveRoutes from './routes/leaveRoutes.js';
-
-import biometricsRoutes from './routes/biometricsRoutes.js';
 import announcementRoutes from './routes/announcementRoutes.js';
 import eventRoutes from './routes/eventRoutes.js';
 import scheduleRoutes from './routes/scheduleRoutes.js';
@@ -38,12 +36,15 @@ import budgetAllocationRoutes from './routes/budgetAllocationRoutes.js';
 import reportRoutes from './routes/reportRoutes.js';
 import inquiryRoutes from './routes/inquiryRoutes.js';
 import chatRoutes from './routes/chatRoutes.js';
-import allowanceRoutes from './routes/allowanceRoutes.js';
+import policyRoutes from './routes/policyRoutes.js';
+import complianceRoutes from './routes/complianceRoutes.js';
+import devRoutes from './routes/devRoutes.js';
+import biometricRoutes from './routes/biometricRoutes.js';
 
 
 dotenv.config();
-import { initBiometrics } from './services/biometricService.js';
 import { checkForNewApplications } from './services/emailReceiverService.js';
+import { startPollingService } from './services/pollingService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -52,11 +53,11 @@ const app = express();
 
 import { initCronJobs } from './jobs/employmentChecks.js';
 
-// Initialize Biometrics Service
-// initBiometrics();
-
 // Initialize Employment Cron Jobs
 initCronJobs();
+
+// Initialize Attendance Log Polling (syncs external biometric scanner data)
+startPollingService(5000);
 
 // Initialize Email Application Checker (runs every 5 minutes)
 cron.schedule('*/5 * * * *', async () => {
@@ -76,7 +77,7 @@ console.log('Email application checker scheduled (every 5 minutes)');
 // Middleware
 
 // Generate a cryptographic nonce for each request (for secure inline scripts)
-app.use((req, res, next) => {
+app.use((_req, res, next) => {
   res.locals.nonce = crypto.randomBytes(16).toString('base64');
   next();
 });
@@ -90,7 +91,7 @@ app.use(
     contentSecurityPolicy: {
       useDefaults: true,
       directives: {
-        'script-src': ["'self'", (req, res) => `'nonce-${(res as express.Response).locals.nonce}'`],
+        'script-src': ["'self'", (_req, res) => `'nonce-${(res as express.Response).locals.nonce}'`],
         'img-src': ["'self'", "https:", "data:"],
       },
     },
@@ -105,7 +106,7 @@ app.use(cookieParser());
 app.use(compression());
 
 // Serve uploaded files with CORS headers
-app.use('/uploads', (req, res, next) => {
+app.use('/uploads', (_req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
   next();
@@ -119,7 +120,6 @@ app.use('/api/dtr', dtrRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/leave', leaveRoutes);
 
-app.use('/api/biometrics', biometricsRoutes);
 app.use('/api/announcement', announcementRoutes);
 app.use('/api/event', eventRoutes);
 app.use('/api/schedules', scheduleRoutes);
@@ -142,15 +142,18 @@ app.use('/api/budget-allocation', budgetAllocationRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/inquiries', inquiryRoutes);
 app.use('/api/chat', chatRoutes);
-app.use('/api/allowances', allowanceRoutes);
+app.use('/api/policies', policyRoutes);
+app.use('/api/compliance', complianceRoutes);
 
 // PDS Routes
 import pdsRoutes from './routes/pdsRoutes.js';
 app.use('/api/pds', pdsRoutes);
+app.use('/api/dev', devRoutes);
+app.use('/api/biometric', biometricRoutes);
 
 
 // Root route
-app.get("/", (req, res) => {
+app.get("/", (_req, res) => {
   res.json({ message: "Backend is running!" });
 });
 

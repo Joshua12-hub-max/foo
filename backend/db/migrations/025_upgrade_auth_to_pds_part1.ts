@@ -1,4 +1,4 @@
-import db from '../connection.js';
+import db from '../index.js';
 
 /**
  * Migration: Upgrade Authentication Table to PDS Part I

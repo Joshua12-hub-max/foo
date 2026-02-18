@@ -45,7 +45,7 @@ const About = () => {
                         </div>
                         <h2 className="text-2xl font-black mb-4 tracking-tight text-white">Our Mission</h2>
                         <p className="text-white/50 leading-relaxed text-[15px] font-semibold mb-6">
-                            To provide efficient, transparent, and accessible public service. We value integrity and excellence in all our administrative protocols and employee relations.
+                            To provide efficient, transparent, and accessible public service. We value integrity and excellence in all our administrative standards and employee relations.
                         </p>
                         
                         <div className="mt-auto h-40 -mx-10 -mb-10 bg-white/5 overflow-hidden group-hover:h-48 transition-all duration-700 relative">

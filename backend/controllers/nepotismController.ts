@@ -127,8 +127,8 @@ export const createNepotismRelationship = async (req: Request, res: Response): P
     const validatedData = NepotismRelationshipSchema.parse(req.body);
 
     // Verify both employees exist
-    const [employee1] = await db.select({ id: authentication.id }).from(authentication).where(eq(authentication.id, validatedData.employee_id_1));
-    const [employee2] = await db.select({ id: authentication.id }).from(authentication).where(eq(authentication.id, validatedData.employee_id_2));
+    const [employee1] = await db.select({ id: authentication.id }).from(authentication).where(eq(authentication.id, validatedData.employeeId1));
+    const [employee2] = await db.select({ id: authentication.id }).from(authentication).where(eq(authentication.id, validatedData.employeeId2));
 
     if (!employee1 || !employee2) {
       res.status(404).json({
@@ -141,8 +141,8 @@ export const createNepotismRelationship = async (req: Request, res: Response): P
     // Prevent duplicate relationships
     const existing = await db.select({ id: nepotismRelationships.id }).from(nepotismRelationships)
       .where(or(
-        and(eq(nepotismRelationships.employeeId1, validatedData.employee_id_1), eq(nepotismRelationships.employeeId2, validatedData.employee_id_2)),
-        and(eq(nepotismRelationships.employeeId1, validatedData.employee_id_2), eq(nepotismRelationships.employeeId2, validatedData.employee_id_1))
+        and(eq(nepotismRelationships.employeeId1, validatedData.employeeId1), eq(nepotismRelationships.employeeId2, validatedData.employeeId2)),
+        and(eq(nepotismRelationships.employeeId1, validatedData.employeeId2), eq(nepotismRelationships.employeeId2, validatedData.employeeId1))
       ));
 
     if (existing.length > 0) {
@@ -154,9 +154,9 @@ export const createNepotismRelationship = async (req: Request, res: Response): P
     }
 
     const [result] = await db.insert(nepotismRelationships).values({
-      employeeId1: validatedData.employee_id_1,
-      employeeId2: validatedData.employee_id_2,
-      relationshipType: validatedData.relationship_type,
+      employeeId1: validatedData.employeeId1,
+      employeeId2: validatedData.employeeId2,
+      relationshipType: validatedData.relationshipType,
       degree: validatedData.degree,
       verifiedBy: authReq.user.id,
       verifiedAt: new Date().toISOString(),
@@ -199,7 +199,7 @@ export const createNepotismRelationship = async (req: Request, res: Response): P
 export const checkNepotism = async (req: Request, res: Response): Promise<void> => {
   try {
     const validatedData = CheckNepotismSchema.parse(req.body);
-    const { employee_id, position_id, appointing_authority_id } = validatedData;
+    const { employeeId: employee_id, positionId: position_id, appointingAuthorityId: appointing_authority_id } = validatedData;
 
     // Get employee details
     const employee = await db.query.authentication.findFirst({

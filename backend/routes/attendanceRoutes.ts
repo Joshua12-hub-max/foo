@@ -1,7 +1,5 @@
 import { Router } from 'express';
 import {
-  clockIn,
-  clockOut,
   getLogs,
   getTodayStatus,
   getRecentActivity,
@@ -12,8 +10,6 @@ import { verifyToken, verifyAdmin } from '../middleware/authMiddleware.js';
 
 const router: Router = Router();
 
-router.post('/clock-in', verifyToken, clockIn);
-router.post('/clock-out', verifyToken, clockOut);
 router.get('/logs', verifyToken, getLogs);
 router.get('/raw-logs', verifyAdmin, getRawLogs);
 router.get('/recent-activity', verifyAdmin, getRecentActivity);

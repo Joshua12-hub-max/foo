@@ -1,4 +1,4 @@
-import db from '../connection.js';
+import db from '../index.js';
 
 /**
  * Migration 029: Fix Citizenship Type ENUM and Harmonize PDS Fields

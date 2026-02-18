@@ -100,17 +100,16 @@ export interface StepIncrement {
 }
 
 export interface EligibleEmployee {
-  employeeId: number;
-  employeeName: string;
-  employeeNumber: string;
-  positionId: number;
-  positionTitle: string;
-  salaryGrade: number;
-  currentStep: number;
-  nextStep: number;
-  startDate: string;
-  yearsInPosition: number;
-  eligibleDate: string;
+  employee_id: number;
+  employee_name: string;
+  employee_employee_id: string;
+  position_id: number;
+  position_title: string;
+  salary_grade: number;
+  current_step: number;
+  next_step: number;
+  years_in_position: number;
+  eligible_date: string;
 }
 
 export interface BudgetAllocation {
@@ -155,17 +154,6 @@ export interface Form9Row {
   assignment: string;
 }
 
-export interface RAIRow {
-  employee_name: string;
-  position_title: string;
-  item_number: string;
-  salary_grade: number;
-  monthly_salary: number;
-  date_issued: string;
-  status: string;
-  nature_of_appointment: string;
-  department: string;
-}
 
 export interface PSIPOPRow {
   item_number: string;
@@ -419,13 +407,6 @@ export const reportsApi = {
     }
   },
 
-  getRAI: async (params?: { startDate?: string; endDate?: string }): Promise<AxiosResponse<{ success: boolean; data: RAIRow[]; meta: Record<string, unknown> }>> => {
-    try {
-      return await api.get('/reports/rai', { params });
-    } catch (error) {
-      throw error;
-    }
-  },
 
   getPSIPOP: async (): Promise<AxiosResponse<{ success: boolean; data: PSIPOPRow[]; meta: Record<string, unknown> }>> => {
     try {
@@ -442,5 +423,19 @@ export const complianceApi = {
   nepotism: nepotismApi,
   stepIncrement: stepIncrementApi,
   budgetAllocation: budgetAllocationApi,
-  reports: reportsApi
+  reports: reportsApi,
+  getEmployeeMetrics: async (employeeId: string, params?: { year?: number; month?: number }): Promise<AxiosResponse<{ 
+    success: boolean; 
+    employee: any; 
+    metrics: {
+      attendance: any;
+      violations: any[];
+    }
+  }>> => {
+    try {
+      return await api.get(`/compliance/metrics/${employeeId}`, { params });
+    } catch (error) {
+      throw error;
+    }
+  }
 };

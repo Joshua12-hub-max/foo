@@ -36,7 +36,7 @@ const Table: React.FC<TableProps> = ({ data, onOpenApprove, onOpenReject, onOpen
         <table className="w-full min-w-[1500px]">
           <thead className="bg-gray-200 shadow-md text-gray-700">
             <tr>
-              {['Status', 'Department', 'Employee ID', 'Employee Name', 'Leave Type', 'Payment', 'From Date', 'To Date', 'Credits', 'Actions'].map((header) => (
+              {['Status', 'Employee ID', 'Employee Name', 'Leave Type', 'Payment', 'From Date', 'To Date', 'Credits', 'Actions'].map((header) => (
                 <th key={header} className="px-6 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap">
                   {header}
                 </th>
@@ -47,17 +47,22 @@ const Table: React.FC<TableProps> = ({ data, onOpenApprove, onOpenReject, onOpen
             {data.length ? (
               data.map((item) => (
                 <tr key={item.id} className="hover:bg-[#F8F9FA] hover:shadow-xl transition-colors">
-                  <td className="px-6 py-4">
+                  <td className="px-6 py-4 whitespace-nowrap">
                     <span
-                      className={`${getStatusBadge(item.status)} px-3 py-1 text-sm font-medium inline-block`}
-                      style={{ borderRadius: '20px' }}
+                      className={`${getStatusBadge(item.status)} px-3 py-1 text-xs font-semibold rounded-full`}
                     >
                       {item.status}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">{item.department || 'N/A'}</td>
-                  <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">{item.employee_id || 'N/A'}</td>
-                  <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">{item.name || item.employee_id || 'Unknown'}</td>
+                  <td className="px-6 py-4 text-sm font-medium text-gray-700 whitespace-nowrap">{item.employee_id || 'N/A'}</td>
+                  <td className="px-6 py-4">
+                    <div className="flex flex-col">
+                      <span className="text-sm font-medium text-gray-900 whitespace-nowrap">
+                        {item.name || item.first_name ? `${item.first_name || ''} ${item.last_name || ''}`.trim() : 'Unknown'}
+                      </span>
+                      <span className="text-xs text-gray-500 whitespace-nowrap">{item.department || 'No Department'}</span>
+                    </div>
+                  </td>
                   <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">{item.leaveType || 'N/A'}</td>
                   <td className="px-6 py-4">
                     <span
@@ -70,8 +75,8 @@ const Table: React.FC<TableProps> = ({ data, onOpenApprove, onOpenReject, onOpen
                       {item.with_pay ? 'With Pay' : 'Without Pay'}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">{new Date(item.fromDate).toLocaleDateString()}</td>
-                  <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">{new Date(item.toDate).toLocaleDateString()}</td>
+                  <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">{new Date(item.fromDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</td>
+                  <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">{new Date(item.toDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</td>
                   <td className="px-6 py-4">
                     <span className={`font-semibold ${
                       (item.current_balance || 0) > 0 ? 'text-teal-600' : 'text-gray-400'
@@ -92,13 +97,13 @@ const Table: React.FC<TableProps> = ({ data, onOpenApprove, onOpenReject, onOpen
                         <>
                           <button
                             onClick={() => onOpenApprove(item)}
-                            className="bg-gray-900 hover:bg-gray-800 text-white px-3 py-1.5 rounded text-xs font-semibold transition-colors"
+                            className="bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border border-emerald-200 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1"
                           >
                             Approve
                           </button>
                           <button
                             onClick={() => onOpenReject(item)}
-                            className="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded text-xs font-semibold transition-colors"
+                            className="bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1"
                           >
                             Reject
                           </button>

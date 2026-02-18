@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { db } from '../db/index.js';
-import { authentication, fingerprints } from '../db/schema.js';
-import { eq, or, and, sql, gt } from 'drizzle-orm';
+import { authentication, bioEnrolledUsers, schedules } from '../db/schema.js';
+import { eq, or, and, sql, gt, getTableColumns, desc } from 'drizzle-orm';
 import { AuthService } from '../services/auth.service.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
@@ -17,8 +17,10 @@ import {
   EmailVerifySchema, 
   ResendOTPSchema, 
   ForgotPasswordSchema, 
-  ResetPasswordSchema 
+  ResetPasswordSchema,
+  GoogleLoginSchema
 } from '../schemas/authSchema.js';
+import { UserRole, EmploymentStatus } from '../types/index.js';
 
 // Google OAuth Client
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
@@ -33,6 +35,28 @@ const transporter = nodemailer.createTransport({
 });
 
 // interfaces removed, using Drizzle types and schema definitions
+
+/**
+ * Strictly maps an internal user/employee object to the Auth API response format.
+ * Ensures consistency between /auth/me and /user/ profile data.
+ */
+const mapToAuthUser = (user: any): any => {
+  return {
+    id: user.id,
+    email: user.email,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    name: `${user.firstName} ${user.lastName}`.trim(),
+    role: user.role as UserRole,
+    department: user.department,
+    employeeId: user.employeeId,
+    avatarUrl: user.avatarUrl,
+    jobTitle: user.jobTitle,
+    employmentStatus: user.employmentStatus as EmploymentStatus,
+    twoFactorEnabled: !!user.twoFactorEnabled,
+    duties: user.duties || 'No Schedule'
+  };
+};
 
 // ============================================================================
 // Helper Functions
@@ -82,14 +106,8 @@ const sendOTPEmail = async (
 // ============================================================================
 
 export const googleLogin = async (req: Request, res: Response): Promise<void> => {
-  const { credential } = req.body;
-
-  if (!credential) {
-    res.status(400).json({ message: 'Google credential is required' });
-    return;
-  }
-
   try {
+    const { credential } = GoogleLoginSchema.parse(req.body);
     // Verify Google Token
     const ticket = await googleClient.verifyIdToken({
       idToken: credential,
@@ -108,8 +126,16 @@ export const googleLogin = async (req: Request, res: Response): Promise<void> =>
     }
 
     const user = await db.query.authentication.findFirst({
-      where: eq(authentication.email, email)
+      where: eq(authentication.email, email),
+      with: {
+        schedules: {
+          limit: 1,
+          orderBy: [desc(schedules.updatedAt)],
+          columns: { scheduleTitle: true }
+        }
+      } as const 
     });
+
 
     if (!user) {
       res.status(403).json({
@@ -129,18 +155,25 @@ export const googleLogin = async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
-    // BIOMETRIC ENFORCEMENT: Check if employee is enrolled
+    // BIOMETRIC ENFORCEMENT: Check bio_enrolled_users (C# biometric data)
     const isCHRMO = (user.department && (
       user.department.toUpperCase().includes('CHRMO') || 
       user.department.toUpperCase().includes('HUMAN RESOURCE')
     )) || (user.employeeId && user.employeeId.toUpperCase().startsWith('CHRMO'));
 
     if (user.role !== 'admin' && !isCHRMO) {
-      const fingerprint = await db.query.fingerprints.findFirst({
-        where: eq(fingerprints.employeeId, user.employeeId || '')
-      });
+      // Extract numeric ID from EMP-XXX format
+      const bioIdMatch = user.employeeId?.match(/EMP-(\d+)/);
+      const bioId = bioIdMatch ? parseInt(bioIdMatch[1], 10) : 0;
 
-      if (!fingerprint) {
+      const [enrolled] = await db.select().from(bioEnrolledUsers).where(
+        and(
+          eq(bioEnrolledUsers.employeeId, bioId),
+          eq(bioEnrolledUsers.userStatus, 'active')
+        )
+      ).limit(1);
+
+      if (!enrolled) {
         res.status(403).json({
           success: false,
           message: 'Access Denied: You are not yet registered in the biometric system. Please contact your HR Administrator to complete your enrollment.',
@@ -187,20 +220,120 @@ export const googleLogin = async (req: Request, res: Response): Promise<void> =>
   }
 };
 
+/**
+ * GET /api/auth/verify-enrollment/:employeeId
+ * PUBLIC endpoint — checks if employee is enrolled in biometrics.
+ * Returns name + department from bio_enrolled_users.
+ */
+export const verifyEnrollment = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { employeeId } = req.params;
+    
+    // Parse the input — accept "1", "001", or "EMP-001"
+    let bioId: number;
+    const empMatch = employeeId.match(/EMP-(\d+)/i);
+    if (empMatch) {
+      bioId = parseInt(empMatch[1], 10);
+    } else {
+      bioId = parseInt(employeeId, 10);
+    }
+
+    if (isNaN(bioId) || bioId <= 0) {
+      res.status(400).json({ success: false, message: 'Invalid Employee ID format.' });
+      return;
+    }
+
+    // Check bio_enrolled_users
+    const [enrolled] = await db.select().from(bioEnrolledUsers).where(
+      and(
+        eq(bioEnrolledUsers.employeeId, bioId),
+        eq(bioEnrolledUsers.userStatus, 'active')
+      )
+    ).limit(1);
+
+    if (!enrolled) {
+      res.status(404).json({
+        success: false,
+        message: 'Employee ID not found in biometric enrollment. Please contact HR to enroll first.',
+        code: 'NOT_ENROLLED'
+      });
+      return;
+    }
+
+    // Convert to system ID format
+    const systemEmployeeId = `EMP-${String(bioId).padStart(3, '0')}`;
+
+    // Check if already registered in the web system
+    const [existingAccount] = await db.select({ employeeId: authentication.employeeId })
+      .from(authentication)
+      .where(eq(authentication.employeeId, systemEmployeeId))
+      .limit(1);
+
+    res.status(200).json({
+      success: true,
+      message: 'Employee is enrolled in biometrics.',
+      data: {
+        bioEmployeeId: bioId,
+        systemEmployeeId,
+        fullName: enrolled.fullName,
+        department: enrolled.department,
+        enrolledAt: enrolled.enrolledAt,
+        alreadyRegistered: !!existingAccount
+      }
+    });
+  } catch (error) {
+    console.error('Verify Enrollment Error:', error);
+    res.status(500).json({ success: false, message: 'Failed to verify enrollment.' });
+  }
+};
+
 export const register = async (req: Request, res: Response): Promise<void> => {
   try {
     const validatedData = RegisterSchema.parse(req.body);
-    const { employee_id, name, email, department, password, role } = validatedData;
-    // Determine role
-    let assignedRole = 'employee';
-    if (role && ['admin', 'hr', 'employee'].includes(role.toLowerCase())) {
-      assignedRole = role.toLowerCase();
+    const { employee_id, email, password, role } = validatedData;
+
+    // 1. Parse bio ID from input
+    let bioId: number;
+    const empMatch = employee_id.match(/EMP-(\d+)/i);
+    if (empMatch) {
+      bioId = parseInt(empMatch[1], 10);
+    } else {
+      bioId = parseInt(employee_id, 10);
     }
 
-    // Use provided employee_id or auto-generate
-    const employeeId = employee_id || `EMP-${Date.now().toString().slice(-6)}${Math.floor(Math.random() * 100)}`;
+    if (isNaN(bioId) || bioId <= 0) {
+      res.status(400).json({ success: false, message: 'Invalid Employee ID format.', data: null });
+      return;
+    }
 
-    // Check if user already exists
+    // 2. Verify biometric enrollment — MUST be enrolled to register
+    const [enrolled] = await db.select().from(bioEnrolledUsers).where(
+      and(
+        eq(bioEnrolledUsers.employeeId, bioId),
+        eq(bioEnrolledUsers.userStatus, 'active')
+      )
+    ).limit(1);
+
+    if (!enrolled) {
+      res.status(403).json({
+        success: false,
+        message: 'You are not enrolled in the biometric system. Please contact HR to enroll first.',
+        code: 'NOT_ENROLLED',
+        data: null
+      });
+      return;
+    }
+
+    // 3. Convert to system employee ID format
+    const employeeId = `EMP-${String(bioId).padStart(3, '0')}`;
+
+    // 4. Auto-pull name + department from biometric enrollment
+    const nameParts = enrolled.fullName.split(' ');
+    const firstName = nameParts[0];
+    const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
+    const department = enrolled.department || 'Unassigned';
+
+    // 5. Check if already registered
     const existingUser = await db.query.authentication.findFirst({
       where: or(
         eq(authentication.employeeId, employeeId),
@@ -213,43 +346,39 @@ export const register = async (req: Request, res: Response): Promise<void> => {
         res.status(409).json({ success: false, message: 'Email already exists.', data: null });
         return;
       }
-      res.status(409).json({ success: false, message: 'Could not generate a unique employee ID. Please try again.', data: null });
+      res.status(409).json({ success: false, message: 'This Employee ID is already registered.', data: null });
       return;
     }
 
-    // Hash password
+    // 6. Hash password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    const nameParts = name.split(' ');
-    const first_name = nameParts[0];
-    const last_name = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
-
-    // Generate Verification OTP
+    // 7. Generate Verification OTP
     const verificationOTP = generateOTP();
 
-    // Insert user into database
+    // 8. Insert user — name + department auto-pulled from bio_enrolled_users
     await db.insert(authentication).values({
-      firstName: first_name,
-      lastName: last_name,
-      email: email,
-      role: assignedRole,
-      department: department,
-      employeeId: employeeId,
+      firstName,
+      lastName,
+      email,
+      role: role || 'employee',
+      department,
+      employeeId,
       passwordHash: hashedPassword,
       isVerified: 0,
       verificationToken: verificationOTP
     });
 
-    // AUTO-ALLOCATION: Assign default leave credits
+    // 9. AUTO-ALLOCATION: Assign default leave credits
     await allocateDefaultCredits(employeeId);
 
-    // Send Verification Email
+    // 10. Send Verification Email
     try {
       if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
         throw new Error('Email credentials are not configured.');
       }
-      await sendOTPEmail(email, first_name, verificationOTP, 'Email Verification', 'Thank you for registering. Please use the code below to verify your email address:');
+      await sendOTPEmail(email, firstName, verificationOTP, 'Email Verification', 'Thank you for registering. Please use the code below to verify your email address:');
     } catch (emailErr) {
       console.error('Failed to send email:', emailErr);
       res.status(201).json({
@@ -263,7 +392,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     res.status(201).json({
       success: true,
       message: 'Registration successful! Please check your email for the verification code.',
-      data: { email }
+      data: { email, employeeId, fullName: enrolled.fullName, department }
     });
   } catch (err) {
     console.error('Registration Error:', err);
@@ -427,9 +556,12 @@ export const getMe = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const user = await db.query.authentication.findFirst({
-      where: eq(authentication.id, userId as number)
-    });
+    const [user] = await db.select({
+      ...getTableColumns(authentication),
+      duties: sql<string>`COALESCE((SELECT schedule_title FROM schedules WHERE employee_id = ${authentication.employeeId} ORDER BY updated_at DESC LIMIT 1), 'No Schedule')`
+    })
+    .from(authentication)
+    .where(eq(authentication.id, userId as number));
 
     if (!user) {
       res.status(404).json({ success: false, message: 'User not found' });
@@ -438,51 +570,7 @@ export const getMe = async (req: Request, res: Response): Promise<void> => {
 
     res.status(200).json({
       success: true,
-      data: {
-        id: user.id,
-        name: `${user.firstName} ${user.lastName}`,
-        first_name: user.firstName,
-        last_name: user.lastName,
-        email: user.email,
-        phone_number: user.phoneNumber,
-        role: user.role,
-        department: user.department,
-        employeeId: user.employeeId,
-        avatar: user.avatarUrl,
-        jobTitle: user.jobTitle,
-        positionTitle: user.positionTitle,
-        itemNumber: user.itemNumber,
-        salaryGrade: user.salaryGrade,
-        stepIncrement: user.stepIncrement,
-        dateHired: user.dateHired,
-        employmentStatus: user.employmentStatus,
-        birth_date: user.birthDate,
-        gender: user.gender,
-        civil_status: user.civilStatus,
-        nationality: user.nationality,
-        blood_type: user.bloodType,
-        height_m: user.heightM,
-        weight_kg: user.weightKg,
-        place_of_birth: user.placeOfBirth,
-        citizenship: user.citizenship,
-        citizenship_type: user.citizenshipType,
-        dual_citizenship_country: user.dualCitizenshipCountry,
-        residential_address: user.residentialAddress,
-        residential_zip_code: user.residentialZipCode,
-        permanent_address: user.permanentAddress,
-        permanent_zip_code: user.permanentZipCode,
-        telephone_no: user.telephoneNo,
-        mobile_no: user.mobileNo,
-        emergency_contact: user.emergencyContact,
-        emergency_contact_number: user.emergencyContactNumber,
-        sss_number: user.sssNumber,
-        gsis_number: user.gsisNumber, 
-        philhealth_number: user.philhealthNumber,
-        pagibig_number: user.pagibigNumber,
-        tin_number: user.tinNumber,
-        agency_employee_no: user.agencyEmployeeNo,
-        twoFactorEnabled: !!user.twoFactorEnabled
-      }
+      data: mapToAuthUser(user)
     });
   } catch (error) {
     console.error('GetMe Error:', error);
@@ -525,18 +613,25 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // BIOMETRIC ENFORCEMENT: Check if employee is enrolled
+    // BIOMETRIC ENFORCEMENT: Check bio_enrolled_users (C# biometric data)
     const isCHRMO = (user.department && (
       user.department.toUpperCase().includes('CHRMO') || 
       user.department.toUpperCase().includes('HUMAN RESOURCE')
     )) || (user.employeeId && user.employeeId.toUpperCase().startsWith('CHRMO'));
 
     if (user.role !== 'admin' && !isCHRMO) {
-      const fingerprint = await db.query.fingerprints.findFirst({
-        where: eq(fingerprints.employeeId, user.employeeId || '')
-      });
+      // Extract numeric ID from EMP-XXX format
+      const bioIdMatch = user.employeeId?.match(/EMP-(\d+)/);
+      const bioId = bioIdMatch ? parseInt(bioIdMatch[1], 10) : 0;
 
-      if (!fingerprint) {
+      const [enrolled] = await db.select().from(bioEnrolledUsers).where(
+        and(
+          eq(bioEnrolledUsers.employeeId, bioId),
+          eq(bioEnrolledUsers.userStatus, 'active')
+        )
+      ).limit(1);
+
+      if (!enrolled) {
         console.log(`[LOGIN FAIL] Biometric not enrolled for: ${user.employeeId}`);
         res.status(403).json({
           success: false,
@@ -612,18 +707,19 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       maxAge: 24 * 60 * 60 * 1000
     });
 
+    // Fetch schedule for the logged in user to include in response
+    const [userSchedule] = await db.select({
+      duties: sql<string>`COALESCE((SELECT schedule_title FROM schedules WHERE employee_id = ${user.employeeId} ORDER BY updated_at DESC LIMIT 1), 'No Schedule')`
+    }).from(authentication).where(eq(authentication.id, user.id));
+
     console.log(`[LOGIN SUCCESS] Token generated for ${user.email}`);
     res.status(200).json({
       success: true,
       message: 'Login successful!',
-      data: {
-        id: user.id,
-        name: `${user.firstName} ${user.lastName}`,
-        email: user.email,
-        role: user.role,
-        department: user.department,
-        employeeId: user.employeeId
-      }
+      data: mapToAuthUser({
+        ...user,
+        duties: (userSchedule as any)?.duties || 'No Schedule'
+      })
     });
   } catch (err) {
     console.error('Login Error:', err);
@@ -771,16 +867,18 @@ export const getUsers = async (_req: Request, res: Response): Promise<void> => {
   try {
     const users = await db.select({
       id: authentication.id,
-      employeeId: authentication.employeeId,
-      firstName: authentication.firstName,
-      lastName: authentication.lastName,
+      employee_id: authentication.employeeId,
+      first_name: authentication.firstName,
+      last_name: authentication.lastName,
       email: authentication.email,
       department: authentication.department,
-      jobTitle: authentication.jobTitle,
-      employmentStatus: authentication.employmentStatus,
+      position_title: authentication.positionTitle,
+      job_title: authentication.jobTitle,
+      employment_status: authentication.employmentStatus,
       role: authentication.role,
-      avatarUrl: authentication.avatarUrl,
-      twoFactorEnabled: authentication.twoFactorEnabled
+      avatar_url: authentication.avatarUrl,
+      two_factor_enabled: authentication.twoFactorEnabled,
+      duties: sql<string>`COALESCE((SELECT schedule_title FROM schedules WHERE employee_id = ${authentication.employeeId} ORDER BY updated_at DESC LIMIT 1), 'No Schedule')`
     }).from(authentication).orderBy(authentication.lastName);
 
     res.status(200).json({
@@ -802,9 +900,12 @@ export const getUserById = async (req: Request, res: Response): Promise<void> =>
   const { id } = req.params;
 
   try {
-    const user = await db.query.authentication.findFirst({
-      where: eq(authentication.id, Number(id))
-    });
+    const [user] = await db.select({
+      ...getTableColumns(authentication),
+      duties: sql<string>`COALESCE((SELECT schedule_title FROM schedules WHERE employee_id = ${authentication.employeeId} ORDER BY updated_at DESC LIMIT 1), 'No Schedule')`
+    })
+    .from(authentication)
+    .where(eq(authentication.id, Number(id)));
 
     if (!user) {
       res.status(404).json({ success: false, message: 'User not found' });
@@ -900,7 +1001,34 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
     if (avatarUrl) mappedUpdates.avatarUrl = avatarUrl;
 
     if (Object.keys(mappedUpdates).length === 0) {
-      res.status(400).json({ success: false, message: 'No changes provided' });
+      // If no changes, still return success to avoid frontend error states
+      // but fetch the current user to return their data
+      const [user] = await db.select({
+        ...getTableColumns(authentication),
+        duties: sql<string>`COALESCE((SELECT schedule_title FROM schedules WHERE employee_id = ${authentication.employeeId} ORDER BY updated_at DESC LIMIT 1), 'No Schedule')`
+      })
+      .from(authentication)
+      .where(eq(authentication.id, userId));
+
+      res.json({
+        success: true,
+        message: 'No changes detected',
+        data: {
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          name: `${user.firstName} ${user.lastName}`.trim(),
+          role: user.role,
+          department: user.department,
+          employeeId: user.employeeId,
+          avatarUrl: user.avatarUrl,
+          jobTitle: user.jobTitle,
+          employmentStatus: user.employmentStatus,
+          twoFactorEnabled: !!user.twoFactorEnabled,
+          duties: user.duties
+        }
+      });
       return;
     }
 
@@ -908,15 +1036,32 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
       .set(mappedUpdates)
       .where(eq(authentication.id, userId));
 
-    // Fetch updated user
-    const user = await db.query.authentication.findFirst({
-      where: eq(authentication.id, userId)
-    });
+    // Fetch updated user with duties
+    const [updatedUser] = await db.select({
+      ...getTableColumns(authentication),
+      duties: sql<string>`COALESCE((SELECT schedule_title FROM schedules WHERE employee_id = ${authentication.employeeId} ORDER BY updated_at DESC LIMIT 1), 'No Schedule')`
+    })
+    .from(authentication)
+    .where(eq(authentication.id, userId));
 
     res.json({
       success: true,
       message: 'Profile updated successfully',
-      data: user
+      data: {
+        id: updatedUser.id,
+        email: updatedUser.email,
+        firstName: updatedUser.firstName,
+        lastName: updatedUser.lastName,
+        name: `${updatedUser.firstName} ${updatedUser.lastName}`.trim(),
+        role: updatedUser.role,
+        department: updatedUser.department,
+        employeeId: updatedUser.employeeId,
+        avatarUrl: updatedUser.avatarUrl,
+        jobTitle: updatedUser.jobTitle,
+        employmentStatus: updatedUser.employmentStatus,
+        twoFactorEnabled: !!updatedUser.twoFactorEnabled,
+        duties: updatedUser.duties
+      }
     });
   } catch (error) {
     console.error('Update Profile Error:', error);

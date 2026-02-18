@@ -75,7 +75,7 @@ const PublicLayout: React.FC<PublicLayoutProps> = ({ children }) => {
               <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest">
                 © {new Date().getFullYear()} City Government of Meycauayan.
               </p>
-              <p className="text-slate-300 text-[9px] font-bold uppercase tracking-tight">Administrative Protocol v1.2.0-STABLE</p>
+              <p className="text-slate-300 text-[9px] font-bold uppercase tracking-tight">Official HR Portal</p>
             </div>
             
             <div className="flex items-center gap-4 px-4 py-2 bg-slate-50 rounded-full border border-slate-100">
@@ -83,7 +83,7 @@ const PublicLayout: React.FC<PublicLayoutProps> = ({ children }) => {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
               </span>
-              <span className="text-slate-500 text-[10px] font-black uppercase tracking-widest">Master System Online</span>
+              <span className="text-slate-500 text-[10px] font-black uppercase tracking-widest">Live Support Active</span>
             </div>
           </div>
         </div>

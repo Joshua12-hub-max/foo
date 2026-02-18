@@ -12,14 +12,148 @@ import {
 import { eq, and, sql, asc, desc, isNull, ne } from 'drizzle-orm';
 import type { AuthenticatedRequest } from '../types/index.js';
 import { 
+  PlantillaPositionApiResponse, 
+  PlantillaAuditLogApiResponse, 
+  PlantillaHistoryApiResponse 
+} from '../types/org.js';
+import { 
   createPositionSchema, 
   updatePositionSchema, 
   assignEmployeeSchema, 
   vacatePositionSchema, 
   abolishPositionSchema, 
-  uploadSalarySchema 
+  uploadSalarySchema,
+  createTrancheSchema 
 } from '../schemas/plantillaSchema.js';
 import { z } from 'zod';
+import { InferSelectModel } from 'drizzle-orm';
+import { QualificationService } from '../services/qualificationService.js';
+
+interface PlantillaSelectRow {
+  id: number;
+  item_number: string;
+  position_title: string;
+  salary_grade: number;
+  step_increment: number | null;
+  department: string | null;
+  department_id: number | null;
+  is_vacant: number | null;
+  incumbent_id: number | null;
+  monthly_salary: string | null;
+  filled_date: string | null;
+  vacated_date: string | null;
+  status: 'Active' | 'Abolished' | 'Frozen' | null;
+  area_code: string | null;
+  area_type: 'R' | 'P' | 'D' | 'M' | 'F' | 'B' | null;
+  area_level: 'K' | 'T' | 'S' | 'A' | null;
+  last_promotion_date: string | null;
+  department_name: string | null;
+  incumbent_first_name: string | null;
+  incumbent_last_name: string | null;
+  incumbent_middle_name: string | null;
+  incumbent_employee_id: string | null;
+  emp_last_promotion_date?: string | null;
+  ordinance_number?: string | null;
+  ordinance_date?: string | null;
+  abolishment_ordinance?: string | null;
+  abolishment_date?: string | null;
+  qualification_standards_id?: number | null;
+  budget_source?: string | null;
+  is_coterminous?: number | null;
+  [key: string]: unknown;
+}
+
+interface AuditLogSelectRow {
+  id: number;
+  positionId: number;
+  action: string;
+  actorId: number;
+  oldValues: unknown;
+  newValues: unknown;
+  createdAt: string | null;
+  itemNumber: string | null;
+  positionTitle: string | null;
+  actor_first_name: string | null;
+  actor_last_name: string | null;
+  [key: string]: unknown;
+}
+
+/**
+ * Strictly maps a Plantilla Position DB/Join model to its API response counterpart.
+ */
+const mapToPlantillaApi = (pos: PlantillaSelectRow): PlantillaPositionApiResponse => {
+  return {
+    id: pos.id,
+    item_number: String(pos.item_number || pos.itemNumber || ''),
+    position_title: String(pos.position_title || pos.positionTitle || ''),
+    salary_grade: Number(pos.salary_grade || pos.salaryGrade),
+    step_increment: (pos.step_increment || pos.stepIncrement) ? Number(pos.step_increment || pos.stepIncrement) : null,
+    department: String(pos.department_name || pos.department || ''),
+    department_id: (pos.department_id || pos.departmentId) ? Number(pos.department_id || pos.departmentId) : null,
+    is_vacant: pos.is_vacant !== undefined && pos.is_vacant !== null ? Number(pos.is_vacant) : 1,
+    incumbent_id: (pos.incumbent_id || pos.incumbentId) ? Number(pos.incumbent_id || pos.incumbentId) : null,
+    monthly_salary: (pos.monthly_salary || pos.monthlySalary) ? String(pos.monthly_salary || pos.monthlySalary) : null,
+    filled_date: (pos.filled_date || pos.filledDate) ? String(pos.filled_date || pos.filledDate) : null,
+    vacated_date: (pos.vacated_date || pos.vacatedDate) ? String(pos.vacated_date || pos.vacatedDate) : null,
+    ordinance_number: (pos.ordinance_number || pos.ordinanceNumber) ? String(pos.ordinance_number || pos.ordinanceNumber) : null,
+    ordinance_date: (pos.ordinance_date || pos.ordinanceDate) ? String(pos.ordinance_date || pos.ordinanceDate) : null,
+    abolishment_ordinance: (pos.abolishment_ordinance || pos.abolishmentOrdinance) ? String(pos.abolishment_ordinance || pos.abolishmentOrdinance) : null,
+    abolishment_date: (pos.abolishment_date || pos.abolishmentDate) ? String(pos.abolishment_date || pos.abolishmentDate) : null,
+    qualification_standards_id: (pos.qualification_standards_id || pos.qualificationStandardsId) ? Number(pos.qualification_standards_id || pos.qualificationStandardsId) : null,
+    budget_source: String(pos.budget_source || pos.budgetSource || 'Regular'),
+    is_coterminous: pos.is_coterminous !== undefined && pos.is_coterminous !== null ? Number(pos.is_coterminous) : 0,
+    status: (pos.status || 'Active') as 'Active' | 'Abolished' | 'Frozen',
+    area_code: (pos.area_code || pos.areaCode) ? String(pos.area_code || pos.areaCode) : null,
+    area_type: (pos.area_type || pos.areaType) ? (pos.area_type || pos.areaType) as 'R' | 'P' | 'D' | 'M' | 'F' | 'B' : null,
+    area_level: (pos.area_level || pos.areaLevel) ? (pos.area_level || pos.areaLevel) as 'K' | 'T' | 'S' | 'A' : null,
+    last_promotion_date: (pos.emp_last_promotion_date || pos.last_promotion_date) ? String(pos.emp_last_promotion_date || pos.last_promotion_date) : null,
+    
+    // Joined fields
+    incumbent_name: String(pos.incumbent_name || (pos.incumbent_last_name 
+      ? `${pos.incumbent_last_name}, ${pos.incumbent_first_name} ${pos.incumbent_middle_name || ''}`.trim() 
+      : '')),
+    incumbent_employee_id: (pos.incumbent_employee_id || pos.incumbentEmployeeId) ? String(pos.incumbent_employee_id || pos.incumbentEmployeeId) : null,
+    incumbent_first_name: (pos.incumbent_first_name) ? String(pos.incumbent_first_name) : null,
+    incumbent_last_name: (pos.incumbent_last_name) ? String(pos.incumbent_last_name) : null,
+    incumbent_middle_name: (pos.incumbent_middle_name) ? String(pos.incumbent_middle_name) : null,
+    department_name: (pos.department_name) ? String(pos.department_name) : null
+  };
+};
+
+/**
+ * Strictly maps an Audit Log DB model to its API response counterpart.
+ */
+const mapToAuditLogApi = (log: AuditLogSelectRow): PlantillaAuditLogApiResponse => {
+  return {
+    id: log.id,
+    position_id: Number(log.positionId),
+    action: String(log.action),
+    actor_id: Number(log.actorId),
+    old_values: (log.oldValues as Record<string, unknown> | null) || null,
+    new_values: (log.newValues as Record<string, unknown> | null) || null,
+    created_at: log.createdAt ? new Date(String(log.createdAt)).toISOString() : null,
+    item_number: log.itemNumber ? String(log.itemNumber) : undefined,
+    position_title: log.positionTitle ? String(log.positionTitle) : undefined,
+    actor_name: (log.actor_first_name || log.actor_last_name) ? `${log.actor_first_name} ${log.actor_last_name}`.trim() : 'Unknown'
+  };
+};
+
+/**
+ * Strictly maps a Position History DB model to its API response counterpart.
+ */
+const mapToHistoryApi = (history: InferSelectModel<typeof plantillaPositionHistory>): PlantillaHistoryApiResponse => {
+  return {
+    id: history.id,
+    position_id: history.positionId,
+    employee_id: history.employeeId,
+    employee_name: history.employeeName || null,
+    position_title: history.positionTitle || null,
+    start_date: String(history.startDate),
+    end_date: history.endDate ? String(history.endDate) : null,
+    reason: history.reason || null,
+    created_at: history.createdAt ? new Date(String(history.createdAt)).toISOString() : null
+  };
+};
 
 /**
  * Log action to plantilla audit log
@@ -28,8 +162,8 @@ const logAudit = async (
   positionId: number, 
   action: string, 
   actorId: number, 
-  oldValues: any = null, 
-  newValues: any = null
+  oldValues: Record<string, unknown> | null = null, 
+  newValues: Record<string, unknown> | null = null
 ): Promise<void> => {
   try { 
     await db.insert(plantillaAuditLog).values({
@@ -92,13 +226,7 @@ export const getPlantilla = async (req: Request, res: Response): Promise<void> =
     .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
     .orderBy(asc(plantillaPositions.itemNumber));
 
-    const formattedPositions = positions.map(pos => ({ 
-      ...pos, 
-      incumbent_name: pos.incumbent_first_name 
-        ? `${pos.incumbent_last_name}, ${pos.incumbent_first_name} ${pos.incumbent_middle_name || ''}`.trim() 
-        : null,
-      last_promotion_date: pos.emp_last_promotion_date || pos.last_promotion_date
-    }));
+    const formattedPositions = positions.map(mapToPlantillaApi);
 
     res.json({ success: true, positions: formattedPositions });
   } catch (error) { 
@@ -168,12 +296,12 @@ export const createPosition = async (req: Request, res: Response): Promise<void>
     await logAudit(insertId, 'created', authReq.user.id, null, validatedData);
     
     res.status(201).json({ success: true, message: 'Position created successfully', id: insertId });
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error instanceof z.ZodError) {
-        res.status(400).json({ success: false, message: 'Validation Error', errors: error.errors });
+        res.status(400).json({ success: false, message: 'Validation Error', errors: (error as z.ZodError).issues });
         return;
     }
-    if (error.code === 'ER_DUP_ENTRY') { 
+    if (error instanceof Error && 'code' in error && (error as Record<string, unknown>).code === 'ER_DUP_ENTRY') { 
       res.status(409).json({ success: false, message: 'Item number already exists' }); 
       return; 
     }
@@ -223,9 +351,9 @@ export const updatePosition = async (req: Request, res: Response): Promise<void>
 
     await logAudit(Number(id), 'updated', authReq.user.id, oldData, updates);
     res.json({ success: true, message: 'Position updated successfully' });
-  } catch (error: any) { 
+  } catch (error: unknown) { 
     if (error instanceof z.ZodError) {
-        res.status(400).json({ success: false, message: 'Validation Error', errors: error.errors });
+        res.status(400).json({ success: false, message: 'Validation Error', errors: (error as z.ZodError).issues });
         return;
     }
     console.error('Update Position Error:', error);
@@ -331,6 +459,29 @@ export const assignEmployee = async (req: Request, res: Response): Promise<void>
       targetSalary = currentSalary > positionSalary ? currentSalary : positionSalary;
     }
 
+    // 3.5. Enforce Qualification Standards
+    // Import dynamically or at top. Since we're in a controller, importing at top is better, but let's check imports first.
+    // For now, I will assume the import is added at the top in a separate step or I can add it here if I replace the whole file or a larger chunk.
+    // To be safe and clean, I will use a separate step to add the import, and here I will just add the logic.
+    // Wait, I can't easily add import if I don't see the top. 
+    // I will use a multi-step approach: 1. Add import, 2. Add logic.
+    // Actually, I can doing it all in one go if I read the file again or just trust my memory/view.
+    // Let's look at `plantillaController.ts` again to be sure where to insert import.
+    // It's already imported in `qualificationStandardsController.ts`, so I need to import `QualificationService` in `plantillaController.ts`.
+    
+    // Logic insertion:
+    const validationResult = await QualificationService.validate(Number(employee_id), Number(id));
+    
+    if (!validationResult.qualified) {
+        res.status(400).json({ 
+            success: false, 
+            message: 'Employee does not meet the Qualification Standards for this position',
+            missing_requirements: validationResult.missingRequirements,
+            score: validationResult.score
+        });
+        return;
+    }
+
     const assignDate = start_date || new Date().toISOString().split('T')[0];
 
     await db.transaction(async (tx) => {
@@ -378,7 +529,7 @@ export const assignEmployee = async (req: Request, res: Response): Promise<void>
     res.json({ success: true, message: 'Employee assigned and salary protected successfully', step: targetStep, salary: targetSalary });
   } catch (error) { 
     if (error instanceof z.ZodError) {
-        res.status(400).json({ success: false, message: 'Validation Error', errors: error.errors });
+        res.status(400).json({ success: false, message: 'Validation Error', errors: (error as z.ZodError).issues });
         return;
     }
     console.error('Assign Employee Error:', error); 
@@ -429,7 +580,7 @@ export const vacatePosition = async (req: Request, res: Response): Promise<void>
     res.json({ success: true, message: 'Position vacated successfully' });
   } catch (error) { 
     if (error instanceof z.ZodError) {
-        res.status(400).json({ success: false, message: 'Validation Error', errors: error.errors });
+        res.status(400).json({ success: false, message: 'Validation Error', errors: (error as z.ZodError).issues });
         return;
     }
     console.error('Vacate Position Error:', error);
@@ -443,9 +594,8 @@ export const getPositionHistory = async (req: Request, res: Response): Promise<v
     const history = await db.select()
       .from(plantillaPositionHistory)
       .where(eq(plantillaPositionHistory.positionId, Number(id)))
-      .orderBy(desc(plantillaPositionHistory.startDate));
-    
-    res.json({ success: true, history }); 
+    const formattedHistory = history.map(mapToHistoryApi);
+    res.json({ success: true, history: formattedHistory }); 
   } catch (error) { 
     console.error('Get Position History Error:', error);
     res.status(500).json({ success: false, message: 'Failed to fetch position history' }); 
@@ -476,10 +626,7 @@ export const getAuditLog = async (req: Request, res: Response): Promise<void> =>
     .orderBy(desc(plantillaAuditLog.createdAt))
     .limit(Number(limit));
 
-    const formattedLogs = logs.map(log => ({ 
-      ...log, 
-      actor_name: `${log.actor_first_name} ${log.actor_last_name}`
-    }));
+    const formattedLogs = logs.map(mapToAuditLogApi);
 
     res.json({ success: true, logs: formattedLogs });
   } catch (error) { 
@@ -505,7 +652,15 @@ export const getAvailableEmployees = async (_req: Request, res: Response): Promi
     ))
     .orderBy(asc(authentication.lastName), asc(authentication.firstName));
 
-    res.json({ success: true, employees });
+    const formattedEmployees = employees.map(emp => ({
+      id: emp.id,
+      first_name: emp.firstName,
+      last_name: emp.lastName,
+      employee_id: emp.employeeId,
+      department: emp.department
+    }));
+
+    res.json({ success: true, employees: formattedEmployees });
   } catch (error) { 
     console.error('Get Available Employees Error:', error);
     res.status(500).json({ success: false, message: 'Failed to fetch available employees' }); 
@@ -602,7 +757,7 @@ export const getActiveTranche = async (_req: Request, res: Response): Promise<vo
 
 export const createTranche = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { name, tranche_number, circular_number, effective_date } = req.body;
+        const { name, tranche_number, circular_number, effective_date } = createTrancheSchema.parse(req.body);
 
         const existing = await db.query.salaryTranches.findFirst({
             where: eq(salaryTranches.trancheNumber, tranche_number)
@@ -613,7 +768,7 @@ export const createTranche = async (req: Request, res: Response): Promise<void> 
             return;
         }
 
-        const [newTranche] = await db.insert(salaryTranches).values({
+        const [result] = await db.insert(salaryTranches).values({
             name,
             trancheNumber: tranche_number,
             circularNumber: circular_number,
@@ -621,7 +776,11 @@ export const createTranche = async (req: Request, res: Response): Promise<void> 
             dateIssued: new Date().toISOString(),
             applicableTo: 'Civilian Government Personnel',
             isActive: 0
-        }).returning();
+        });
+
+        const newTranche = await db.query.salaryTranches.findFirst({
+            where: eq(salaryTranches.id, result.insertId)
+        });
 
         res.status(201).json({ success: true, tranche: newTranche });
     } catch (error) {
@@ -671,7 +830,7 @@ export const abolishPosition = async (req: Request, res: Response): Promise<void
     res.json({ success: true, message: 'Position abolished successfully' });
   } catch (error) {
     if (error instanceof z.ZodError) {
-        res.status(400).json({ success: false, message: 'Validation Error', errors: error.errors });
+        res.status(400).json({ success: false, message: 'Validation Error', errors: (error as z.ZodError).issues });
         return;
     }
     console.error('Abolish Position Error:', error);
@@ -704,7 +863,7 @@ export const uploadSalarySchedule = async (req: Request, res: Response): Promise
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
-        res.status(400).json({ success: false, message: 'Validation Error', errors: error.errors });
+        res.status(400).json({ success: false, message: 'Validation Error', errors: (error as z.ZodError).issues });
         return;
     }
     console.error('Upload Salary Schedule Error:', error);

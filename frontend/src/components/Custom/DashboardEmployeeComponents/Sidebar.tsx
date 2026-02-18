@@ -39,7 +39,7 @@ export default function Sidebar({ isOpen, navItems, onLogout, onSectionChange }:
 
   return (
     <aside 
-      className={`bg-gradient-to-b from-slate-950 to-green-800 text-gray-100 p-4 shadow-xl mb-6 flex flex-col justify-between transition-all duration-300 z-40 min-h-screen sticky top-0 overflow-y-auto border-r border-green-900/50 ${sidebarOpen ? 'w-72' : 'w-20'}`}
+      className={`bg-gradient-to-r from-slate-950 to-green-900 text-gray-100 p-4 shadow-xl mb-6 flex flex-col justify-between transition-all duration-300 z-40 min-h-screen sticky top-0 overflow-y-auto border-r border-green-900/50 ${sidebarOpen ? 'w-72' : 'w-20'}`}
       style={{
         scrollbarWidth: 'none',
         // @ts-ignore
@@ -130,10 +130,10 @@ export default function Sidebar({ isOpen, navItems, onLogout, onSectionChange }:
         </nav>
       </div>
 
-      <div className="p-4 border-t border-green-900/50 flex-shrink-0 bg-green-900/30">
+      <div className="p-4 border-t border-green-900/50 rounded-b-lg flex-shrink-0 bg-green-900/30">
         <button
           onClick={onLogout}
-          className="w-full flex items-center justify-center gap-2 py-2.5 text-red-400 font-semibold bg-red-500/10 hover:bg-red-500/20 rounded-lg transition-all border border-red-500/10 hover:border-red-500/20 active:scale-95 text-sm"
+          className="w-full flex items-center justify-center gap-2 py-2.5 text-[#F8F9FA] font-semibold bg-slate-950 hover:bg-slate-950/20 rounded-md transition-all border border-slate-950/10 hover:border-slate-950/20 focus:ring-2 focus:ring-slate-950/20 active:scale-95 text-sm"
         >
           <LogOut className="w-4 h-4 flex-shrink-0" />
           {sidebarOpen && 'Sign Out'}

@@ -5,6 +5,7 @@ import { toast } from 'react-hot-toast';
 import { usePagination } from '@/hooks/usePagination';
 import { usePaginatedQuery } from '@/hooks/usePaginatedQuery';
 import { LeaveCredit } from '../../types';
+import type { CreditType } from '@/types/leave.types';
 
 export const useCredits = () => {
   const queryClient = useQueryClient();
@@ -39,11 +40,11 @@ export const useCredits = () => {
     queryFn: async () => {
       const res = await employeeApi.fetchEmployees();
       const raw = res.employees || [];
-      return raw.map((e: any) => ({
+      return raw.map((e) => ({
         ...e,
-        employee_id: String(e.employeeId || e.employee_id || e.id),
-        first_name: e.firstName || e.first_name || '',
-        last_name: e.lastName || e.last_name || ''
+        employee_id: String(e.employee_id || e.id),
+        first_name: e.first_name || '',
+        last_name: e.last_name || ''
       }));
     },
 
@@ -52,15 +53,16 @@ export const useCredits = () => {
   // Update or Add Credit mutation
   const updateCreditMutation = useMutation({
     mutationFn: async ({ employeeId, creditType, balance }: { employeeId: string; creditType: string; balance: number }) => {
-      const res = await leaveApi.updateCredit(employeeId, { creditType: creditType as any, balance });
+      const res = await leaveApi.updateCredit(employeeId, { creditType: creditType as CreditType, balance });
       return res.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['leave-credits'] });
       toast.success('Leave credit updated successfully');
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to update leave credit');
+    onError: (error: unknown) => {
+      const err = error as { response?: { data?: { message?: string } } };
+      toast.error(err.response?.data?.message || 'Failed to update leave credit');
     },
   });
 
@@ -74,8 +76,9 @@ export const useCredits = () => {
       queryClient.invalidateQueries({ queryKey: ['leave-credits'] });
       toast.success('Leave credit deleted successfully');
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to delete leave credit');
+    onError: (error: unknown) => {
+      const err = error as { response?: { data?: { message?: string } } };
+      toast.error(err.response?.data?.message || 'Failed to delete leave credit');
     },
   });
 

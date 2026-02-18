@@ -52,9 +52,9 @@ export const AssignModal: React.FC<AssignModalProps> = memo(({ isOpen, onClose, 
              if (onSuccess) onSuccess();
         },
         onError: (error: unknown) => {
-             const err = error as any;
-             console.error('Failed to assign employee', err);
-             showToast(err.response?.data?.message || 'Failed to assign employee', 'error');
+             const errMessage = error instanceof Error ? (error as Error & { response?: { data?: { message?: string } } }).response?.data?.message || error.message : 'Failed to assign employee';
+              console.error('Failed to assign employee', error);
+              showToast(errMessage, 'error');
         }
     });
 
@@ -142,9 +142,9 @@ export const VacateModal: React.FC<VacateModalProps> = memo(({ isOpen, onClose, 
              if (onSuccess) onSuccess();
         },
         onError: (error: unknown) => {
-             const err = error as any;
-             console.error('Failed to vacate position', err);
-             showToast(err.response?.data?.message || 'Failed to vacate position', 'error');
+             const errMessage = error instanceof Error ? (error as Error & { response?: { data?: { message?: string } } }).response?.data?.message || error.message : 'Failed to vacate position';
+              console.error('Failed to vacate position', error);
+              showToast(errMessage, 'error');
         }
     });
 

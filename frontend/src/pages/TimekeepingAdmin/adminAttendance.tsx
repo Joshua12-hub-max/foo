@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMemo } from 'react';
 import { useUIStore } from '@/stores';
 import { ADMIN_ATTENDANCE_HEADERS } from '@features/Attendance/components/Admin/constants/attendanceConstants';
 import { useAttendanceLogs } from '../../features/Attendance/hooks/useAttendance';
@@ -20,8 +20,24 @@ const AdminAttendance = () => {
   // 1. Fetch Data
   const { data, isLoading, error, refetch } = useAttendanceLogs(queryParams);
   
-  const logs = data?.data?.data || [];
+  const rawLogs = data?.data?.data || [];
   const paginationData = data?.data?.pagination;
+
+  // 2. Transform snake_case API fields → camelCase for AttendanceTable
+  const logs = useMemo(() => rawLogs.map((item: any) => ({
+    id: item.id,
+    employeeId: item.employee_id || item.employeeId,
+    employee_name: item.employee_name || 'Unknown',
+    department: item.department || 'N/A',
+    date: item.date,
+    timeIn: item.time_in || item.timeIn || null,
+    timeOut: item.time_out || item.timeOut || null,
+    lateMinutes: Number(item.late_minutes ?? item.lateMinutes ?? 0),
+    undertimeMinutes: Number(item.undertime_minutes ?? item.undertimeMinutes ?? 0),
+    overtimeMinutes: Number(item.overtime_minutes ?? item.overtimeMinutes ?? 0),
+    status: item.status || 'Absent',
+    duties: item.duties || 'No Schedule',
+  })), [rawLogs]);
 
   // Fetch Filter Options using Centralized Hook
   const { data: filterOptions, isLoading: loadingFilters } = useFilterOptions();

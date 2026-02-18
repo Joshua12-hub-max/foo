@@ -18,7 +18,11 @@ interface FamilyMember {
     date_of_birth?: string;
 }
 
-export const FamilyBackground: React.FC = () => {
+interface FamilyBackgroundProps {
+    employeeId?: number;
+}
+
+export const FamilyBackground: React.FC<FamilyBackgroundProps> = ({ employeeId }) => {
     const queryClient = useQueryClient();
     
     // State management
@@ -29,9 +33,9 @@ export const FamilyBackground: React.FC = () => {
 
     // Fetch Data
     const { data: apiData, isLoading } = useQuery({
-        queryKey: ['pds-family'],
+        queryKey: ['pds-family', employeeId],
         queryFn: async () => {
-            const res = await pdsApi.getSection<FamilyMember>('family');
+            const res = await pdsApi.getSection<FamilyMember>('family', employeeId);
             return res.data.data;
         }
     });
@@ -56,10 +60,10 @@ export const FamilyBackground: React.FC = () => {
     // Mutation
     const saveMutation = useMutation({
         mutationFn: async (items: FamilyMember[]) => {
-            return await pdsApi.updateSection('family', items);
+            return await pdsApi.updateSection('family', items, employeeId);
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['pds-family'] });
+            queryClient.invalidateQueries({ queryKey: ['pds-family', employeeId] });
             toast.success('Family background updated successfully');
         },
         onError: (err: any) => {

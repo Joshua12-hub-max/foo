@@ -206,7 +206,7 @@ export type AppointmentType =
   | 'Coterminous'
   | 'Temporary';
 
-export type CitizenshipType = 'By Birth' | 'By Naturalization';
+
 
 
 

@@ -1,12 +1,15 @@
 import { Request, Response } from 'express';
 import { db } from '../db/index.js';
-import { qualificationStandards, plantillaPositions, authentication } from '../db/schema.js';
+import { qualificationStandards, plantillaPositions } from '../db/schema.js';
+
 import { eq, and, desc, asc, like } from 'drizzle-orm';
 import {
   QualificationStandardSchema,
   UpdateQualificationStandardSchema,
   ValidateQualificationSchema
 } from '../schemas/plantillaComplianceSchema.js';
+import { QualificationService } from '../services/qualificationService.js';
+
 
 /**
  * Get all Qualification Standards
@@ -55,9 +58,11 @@ export const getQualificationStandardById = async (req: Request, res: Response):
   try {
     const { id } = req.params;
 
-    const standard = await db.query.qualificationStandards.findFirst({
-      where: eq(qualificationStandards.id, Number(id))
-    });
+    const [standard] = await db.select()
+      .from(qualificationStandards)
+      .where(eq(qualificationStandards.id, Number(id)))
+      .limit(1);
+
 
     if (!standard) {
       res.status(404).json({
@@ -140,9 +145,11 @@ export const updateQualificationStandard = async (req: Request, res: Response): 
     const { id } = req.params;
     const validatedData = UpdateQualificationStandardSchema.parse(req.body);
 
-    const existing = await db.query.qualificationStandards.findFirst({
-      where: eq(qualificationStandards.id, Number(id))
-    });
+    const [existing] = await db.select()
+      .from(qualificationStandards)
+      .where(eq(qualificationStandards.id, Number(id)))
+      .limit(1);
+
 
     if (!existing) {
       res.status(404).json({
@@ -206,9 +213,11 @@ export const deleteQualificationStandard = async (req: Request, res: Response): 
     const { id } = req.params;
 
     // Check if any positions are using this QS
-    const positions = await db.query.plantillaPositions.findFirst({
-      where: eq(plantillaPositions.qualificationStandardsId, Number(id))
-    });
+    const [positions] = await db.select()
+      .from(plantillaPositions)
+      .where(eq(plantillaPositions.qualificationStandardsId, Number(id)))
+      .limit(1);
+
 
     if (positions) {
       res.status(400).json({
@@ -241,168 +250,42 @@ export const deleteQualificationStandard = async (req: Request, res: Response): 
   }
 };
 
-/**
- * Validate Employee against Position's Qualification Standards
- * POST /api/qualification-standards/validate
- */
 export const validateEmployeeQualifications = async (req: Request, res: Response): Promise<void> => {
   try {
     const validatedData = ValidateQualificationSchema.parse(req.body);
     const { employeeId, positionId } = validatedData;
 
-    // Get employee details
-    const employee = await db.query.authentication.findFirst({
-      where: eq(authentication.id, employee_id),
-      columns: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        employeeId: true,
-        eligibilityType: true,
-        eligibilityNumber: true,
-        eligibilityDate: true,
-        highestEducation: true,
-        yearsOfExperience: true
-      }
-    });
+    // Use the comprehensive service for validation
+    const result = await QualificationService.validate(employeeId, positionId);
 
-    if (!employee) {
-      res.status(404).json({
-        success: false,
-        message: 'Employee not found'
-      });
-      return;
-    }
-
-    // Get position with QS
-    const position = await db.query.plantillaPositions.findFirst({
-      where: eq(plantillaPositions.id, position_id),
-      columns: {
-        id: true,
-        positionTitle: true,
-        salaryGrade: true,
-        qualificationStandardsId: true
-      }
-    });
-
-    if (!position) {
-      res.status(404).json({
-        success: false,
-        message: 'Position not found'
-      });
-      return;
-    }
-
-    if (!position.qualificationStandardsId) {
-      res.json({
-        success: true,
-        qualified: true,
-        message: 'No qualification standards defined for this position',
-        score: 100
-      });
-      return;
-    }
-
-    // Get QS requirements
-    const qs = await db.query.qualificationStandards.findFirst({
-      where: eq(qualificationStandards.id, position.qualificationStandardsId)
-    });
-
-    if (!qs) {
-      res.status(404).json({
-        success: false,
-        message: 'Qualification standards not found'
-      });
-      return;
-    }
-
-    // Validation logic
-    const missingRequirements: string[] = [];
-    let score = 0;
-    const maxScore = 4; // Education, Experience, Training, Eligibility
-
-    // 1. Education (25%)
-    if (employee.highestEducation) {
-      // Simple check: if employee has education data
-      score += 1;
-    } else {
-      missingRequirements.push(`Education: ${qs.educationRequirement}`);
-    }
-
-    // 2. Experience (25%)
-    const empExp = employee.yearsOfExperience || 0;
-    // Fix: Handle possibly null values with defaults
-    const requiredExp = qs.experienceYears || 0;
-    
-    if (empExp >= requiredExp) {
-      score += 1;
-    } else {
-      missingRequirements.push(
-        `Experience: ${requiredExp} years required (has ${empExp} years)`
-      );
-    }
-
-    // 3. Training (25%) - Simplified: assume met if employee has experience
-    const requiredTraining = qs.trainingHours || 0;
-    
-    if (empExp > 0) {
-      score += 1;
-    } else if (requiredTraining > 0) {
-      missingRequirements.push(`Training: ${requiredTraining} hours required`);
-    } else {
-      score += 1; // No training required
-    }
-
-    // 4. Eligibility (25%)
-    if (employee.eligibilityType) {
-      // Check if eligibility matches (case-insensitive partial match)
-      const employeeElig = employee.eligibilityType.toLowerCase();
-      const requiredElig = (qs.eligibilityRequired || '').toLowerCase();
-
-      if (
-        requiredElig === '' || // No requirement
-        employeeElig.includes(requiredElig) ||
-        requiredElig.includes(employeeElig) ||
-        employeeElig.includes('professional') ||
-        employeeElig.includes('cpa') ||
-        employeeElig.includes('engineer')
-      ) {
-        score += 1;
-      } else {
-        missingRequirements.push(`Eligibility: ${qs.eligibilityRequired} (has ${employee.eligibilityType})`);
-      }
-    } else {
-      missingRequirements.push(`Eligibility: ${qs.eligibilityRequired}`);
-    }
-
-    const qualificationScore = Math.round((score / maxScore) * 100);
-    const qualified = qualificationScore === 100;
-
+    // Map the service result to the expected API response format
     res.json({
       success: true,
-      qualified,
-      score: qualificationScore,
-      missing_requirements: missingRequirements,
+      qualified: result.qualified,
+      score: result.score,
+      missing_requirements: result.missingRequirements,
       employee: {
-        id: employee.id,
-        name: `${employee.firstName} ${employee.lastName}`,
-        employee_id: employee.employeeId,
-        education: employee.highestEducation,
-        experience_years: empExp,
-        eligibility: employee.eligibilityType
+        id: result.employeeDetails.id,
+        name: result.employeeDetails.name,
+        employee_id: result.employeeDetails.employee_id,
+
+        education: result.employeeDetails.education,
+        experience_years: result.employeeDetails.experienceYears,
+        eligibility: result.employeeDetails.eligibility
       },
       position: {
-        id: position.id,
-        title: position.positionTitle,
-        salary_grade: position.salaryGrade
+        id: result.positionDetails.id,
+        title: result.positionDetails.title,
+        salary_grade: result.positionDetails.salaryGrade
       },
       requirements: {
-        education: qs.educationRequirement,
-        experience_years: qs.experienceYears,
-        training_hours: qs.trainingHours,
-        eligibility: qs.eligibilityRequired
+        education: result.requirements.education,
+        experience_years: result.requirements.experienceYears,
+        training_hours: result.requirements.trainingHours,
+        eligibility: result.requirements.eligibility
       }
     });
+
   } catch (error: any) {
     console.error('Validate QS Error:', error);
 
@@ -413,6 +296,11 @@ export const validateEmployeeQualifications = async (req: Request, res: Response
         errors: error.errors
       });
       return;
+    }
+    
+    if (error.message === 'Employee not found' || error.message === 'Position not found') {
+        res.status(404).json({ success: false, message: error.message });
+        return;
     }
 
     res.status(500).json({

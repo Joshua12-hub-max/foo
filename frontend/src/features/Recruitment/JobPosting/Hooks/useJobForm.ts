@@ -6,11 +6,11 @@ const INITIAL_FORM_DATA: JobFormData = {
   department: '',
   location: 'Main Office',
   employment_type: 'Full-time',
-  salary_range: '',
   application_email: '',
   job_description: '',
   requirements: '',
-  status: 'Open'
+  status: 'Open',
+  attachment_path: null
 };
 
 const useJobForm = () => {
@@ -35,11 +35,11 @@ const useJobForm = () => {
       department: job.department,
       location: job.location,
       employment_type: job.employment_type,
-      salary_range: job.salary_range || '',
       application_email: job.application_email || '',
       job_description: job.job_description,
-      requirements: job.requirements,
-      status: job.status
+      requirements: job.requirements || '',
+      status: job.status,
+      attachment_path: job.attachment_path || null
     });
     setIsFormOpen(true);
   }, []);

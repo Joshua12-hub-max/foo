@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
+import { zodResolver } from '@/lib/zodResolver';
 import { X, User, Briefcase, Mail, Phone, Calendar, Shield, CreditCard, MapPin, Building, FileText, Loader } from 'lucide-react';
 import { plantillaApi } from '@/api/plantillaApi';
 import { employeeApi } from '@/api/employeeApi';
@@ -47,7 +47,7 @@ const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
   const showToast = useToastStore((state) => state.showToast);
 
   const { register, handleSubmit, formState: { errors }, setValue, reset, watch } = useForm<CreateEmployeeInput>({
-    resolver: zodResolver(CreateEmployeeSchema) as any,
+    resolver: zodResolver(CreateEmployeeSchema),
     defaultValues: {
       first_name: '',
       last_name: '',
@@ -71,9 +71,9 @@ const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
         if (onSuccess) onSuccess();
     },
     onError: (error: unknown) => {
-        const err = error as any;
-        console.error('Failed to add employee', err);
-        showToast(err.message || 'Failed to add employee', 'error');
+        const errMessage = error instanceof Error ? error.message : 'Failed to add employee';
+        console.error('Failed to add employee', error);
+        showToast(errMessage, 'error');
     }
   });
 

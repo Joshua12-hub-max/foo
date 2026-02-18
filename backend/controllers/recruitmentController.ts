@@ -1,17 +1,15 @@
 import { Request, Response } from 'express';
 import { db } from '../db/index.js';
-import { 
-  recruitmentJobs, 
-  recruitmentApplicants, 
-  authentication
-} from '../db/schema.js';
+import { recruitmentJobs, recruitmentApplicants, authentication } from '../db/schema.js';
 import { eq, and, sql, desc, or, inArray, isNull } from 'drizzle-orm';
 import nodemailer from 'nodemailer';
 import PDFDocument from 'pdfkit';
 import * as ics from 'ics';
 import { getTemplateForStage, replaceVariables } from '../utils/emailHelpers.js';
 import { generateGoogleMeetLink } from '../services/meetingService.js';
-import type { AuthenticatedRequest, JobStatus, EmploymentType, ApplicantStage, ApplicantSource, ApplicantStatus, InterviewPlatform } from '../types/index.js';
+import { currentManilaDateTime } from '../utils/dateUtils.js';
+import type { AuthenticatedRequest, JobStatus, EmploymentType, ApplicantStage, ApplicantSource } from '../types/index.js';
+
 import { 
   createJobSchema, 
   applyJobSchema, 
@@ -59,26 +57,25 @@ export const createJob = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const { title, department, job_description, requirements, salary_range, location, employment_type, application_email, status } = parseResult.data; 
+    const { title, department, job_description, requirements, location, employment_type, application_email, status } = parseResult.data; 
   
     const jobStatus = status || 'Open';
-    const postedAt = jobStatus === 'Open' ? new Date().toISOString() : null;
+    const postedAt = jobStatus === 'Open' ? currentManilaDateTime() : null;
     const attachmentPath = req.file ? `/uploads/general/${req.file.filename}` : null;
 
     await db.insert(recruitmentJobs).values({
       title,
       department,
-      jobDescription: job_description,
+      job_description: job_description,
       requirements: requirements || null,
-      salaryRange: salary_range || null,
       location,
-      employmentType: (employment_type || 'Full-time') as EmploymentType,
-      applicationEmail: application_email,
+      employment_type: (employment_type || 'Full-time') as EmploymentType,
+      application_email: application_email,
       status: jobStatus as JobStatus,
-      attachmentPath,
-      postedBy: authReq.user.id,
-      postedAt: postedAt,
-      createdAt: new Date().toISOString()
+      attachment_path: attachmentPath,
+      posted_by: authReq.user.id,
+      posted_at: postedAt,
+      created_at: currentManilaDateTime()
     });
 
     res.status(201).json({ success: true, message: 'Job posted successfully' }); 
@@ -103,7 +100,7 @@ export const getJobs = async (req: Request, res: Response): Promise<void> => {
     const jobs = await db.select()
       .from(recruitmentJobs)
       .where(conditions.length > 0 ? and(...conditions) : undefined)
-      .orderBy(desc(recruitmentJobs.createdAt));
+      .orderBy(desc(recruitmentJobs.created_at));
 
     res.json({ success: true, jobs }); 
   } catch (error) { 
@@ -146,17 +143,17 @@ export const applyJob = async (req: Request, res: Response): Promise<void> => {
     const resume_path = req.file ? req.file.filename : null;
 
     await db.insert(recruitmentApplicants).values({
-      jobId: Number(job_id),
-      firstName: first_name,
-      lastName: last_name,
+      job_id: Number(job_id),
+      first_name: first_name,
+      last_name: last_name,
       email,
-      phoneNumber: phone_number,
+      phone_number: phone_number,
       address,
       education,
       experience,
       skills,
-      resumePath: resume_path,
-      createdAt: new Date().toISOString()
+      resume_path: resume_path,
+      created_at: currentManilaDateTime()
     });
 
     res.status(201).json({ success: true, message: 'Application submitted successfully' });
@@ -173,7 +170,7 @@ export const getApplicants = async (req: Request, res: Response): Promise<void> 
     
     const conditions = [];
     if (job_id) {
-      conditions.push(eq(recruitmentApplicants.jobId, Number(job_id)));
+      conditions.push(eq(recruitmentApplicants.job_id, Number(job_id)));
     }
     
     if (stage) {
@@ -194,28 +191,28 @@ export const getApplicants = async (req: Request, res: Response): Promise<void> 
 
     const applicants = await db.select({
       id: recruitmentApplicants.id,
-      jobId: recruitmentApplicants.jobId,
-      firstName: recruitmentApplicants.firstName,
-      lastName: recruitmentApplicants.lastName,
+      job_id: recruitmentApplicants.job_id,
+      first_name: recruitmentApplicants.first_name,
+      last_name: recruitmentApplicants.last_name,
       email: recruitmentApplicants.email,
-      phoneNumber: recruitmentApplicants.phoneNumber,
-      resumePath: recruitmentApplicants.resumePath,
+      phone_number: recruitmentApplicants.phone_number,
+      resume_path: recruitmentApplicants.resume_path,
       stage: recruitmentApplicants.stage,
-      interviewDate: recruitmentApplicants.interviewDate,
-      interviewLink: recruitmentApplicants.interviewLink,
+      interview_date: recruitmentApplicants.interview_date,
+      interview_link: recruitmentApplicants.interview_link,
       source: recruitmentApplicants.source,
-      createdAt: recruitmentApplicants.createdAt,
-      jobTitle: recruitmentJobs.title,
-      jobRequirements: recruitmentJobs.requirements,
-      jobDepartment: recruitmentJobs.department,
-      jobStatus: recruitmentJobs.status,
-      interviewerName: sql<string>`CONCAT(${authentication.firstName}, ' ', ${authentication.lastName})`
+      created_at: recruitmentApplicants.created_at,
+      job_title: recruitmentJobs.title,
+      job_requirements: recruitmentJobs.requirements,
+      job_department: recruitmentJobs.department,
+      job_status: recruitmentJobs.status,
+      interviewer_name: sql<string>`CONCAT(${authentication.firstName}, ' ', ${authentication.lastName})`
     })
     .from(recruitmentApplicants)
-    .leftJoin(recruitmentJobs, eq(recruitmentApplicants.jobId, recruitmentJobs.id))
-    .leftJoin(authentication, eq(recruitmentApplicants.interviewerId, authentication.id))
+    .leftJoin(recruitmentJobs, eq(recruitmentApplicants.job_id, recruitmentJobs.id))
+    .leftJoin(authentication, eq(recruitmentApplicants.interviewer_id, authentication.id))
     .where(conditions.length > 0 ? and(...conditions) : undefined)
-    .orderBy(desc(recruitmentApplicants.createdAt));
+    .orderBy(desc(recruitmentApplicants.created_at));
 
     res.json({ success: true, applicants }); 
   } catch (error) { 
@@ -241,11 +238,11 @@ export const updateApplicantStage = async (req: Request, res: Response): Promise
     
     const { stage, interview_date, interview_link, notes, interview_platform } = parseResult.data;
     
-    const updateValues: Record<string, unknown> = { stage: stage as ApplicantStage };
-    if (interview_date) updateValues.interviewDate = interview_date; // Assumes string ISO
-    if (interview_link) updateValues.interviewLink = interview_link;
-    if (notes) updateValues.interviewNotes = notes;
-    if (stage === 'Hired') updateValues.hiredDate = new Date().toISOString();
+    const updateValues: Partial<typeof recruitmentApplicants.$inferInsert> = { stage: stage as ApplicantStage };
+    if (interview_date) updateValues.interview_date = interview_date;
+    if (interview_link) updateValues.interview_link = interview_link;
+    if (notes) updateValues.interview_notes = notes;
+    if (stage === 'Hired') updateValues.hired_date = currentManilaDateTime();
     
     await db.update(recruitmentApplicants)
       .set(updateValues)
@@ -259,15 +256,15 @@ export const updateApplicantStage = async (req: Request, res: Response): Promise
     });
     
     if (applicant) {
-      console.log('Applicant found:', { email: applicant.email, first_name: applicant.firstName });
+      console.log('Applicant found:', { email: applicant.email, first_name: applicant.first_name });
       
       try {
         const template = await getTemplateForStage(db, stage);
         
         if (template) {
           const variables = {
-            applicant_first_name: applicant.firstName,
-            applicant_last_name: applicant.lastName,
+            applicant_first_name: applicant.first_name,
+            applicant_last_name: applicant.last_name,
             job_title: applicant.recruitmentJob?.title || 'the position',
             interview_date: interview_date ? new Date(interview_date).toLocaleString() : 'TBD',
             interview_link: interview_link || '#',
@@ -275,8 +272,8 @@ export const updateApplicantStage = async (req: Request, res: Response): Promise
             interview_notes: notes || ''
           };
           
-          const subject = replaceVariables(template.subjectTemplate, variables);
-          const body = replaceVariables(template.bodyTemplate, variables);
+          const subject = replaceVariables(template.subject_template, variables);
+          const body = replaceVariables(template.body_template, variables);
           
           const attachments: { filename: string; content: string; contentType: string }[] = [];
           
@@ -286,14 +283,14 @@ export const updateApplicantStage = async (req: Request, res: Response): Promise
               const event: ics.EventAttributes = {
                 start: [dateObj.getFullYear(), dateObj.getMonth() + 1, dateObj.getDate(), dateObj.getHours(), dateObj.getMinutes()],
                 duration: { minutes: 60 },
-                title: `Interview: ${applicant.recruitmentJob?.title} - ${applicant.firstName}`,
+                title: `Interview: ${applicant.recruitmentJob?.title} - ${applicant.first_name}`,
                 description: `Interview for ${applicant.recruitmentJob?.title}. Platform: ${interview_platform}. Link: ${interview_link}`,
                 location: interview_platform ? interview_link : 'Office',
                 url: interview_link,
                 status: 'CONFIRMED',
                 busyStatus: 'BUSY',
                 organizer: { name: 'Recruitment Team', email: process.env.EMAIL_USER || '' },
-                attendees: [{ name: `${applicant.firstName} ${applicant.lastName}`, email: applicant.email, rsvp: true }]
+                attendees: [{ name: `${applicant.first_name} ${applicant.last_name}`, email: applicant.email, rsvp: true }]
               };
               const { error, value } = ics.createEvent(event);
               if (!error && value) {
@@ -343,31 +340,30 @@ export const updateJob = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const { title, department, job_description, requirements, salary_range, location, status, employment_type, application_email } = parseResult.data; 
+    const { title, department, job_description, requirements, location, status, employment_type, application_email } = parseResult.data; 
   
-    const updateValues: any = {
+    const updateValues: Partial<typeof recruitmentJobs.$inferInsert> = {
       title, 
       department, 
-      jobDescription: job_description, 
+      job_description: job_description, 
       requirements: requirements || null, 
-      salaryRange: salary_range || null, 
       location, 
-      status: status as JobStatus, 
-      employmentType: (employment_type || 'Full-time') as EmploymentType, 
-      applicationEmail: application_email,
-      updatedAt: new Date().toISOString()
+      status: status ? (status as JobStatus) : undefined, 
+      employment_type: employment_type ? (employment_type as EmploymentType) : undefined, 
+      application_email: application_email,
+      updated_at: currentManilaDateTime()
     };
 
     if (req.file) {
-      updateValues.attachmentPath = `/uploads/general/${req.file.filename}`;
+      updateValues.attachment_path = `/uploads/general/${req.file.filename}`;
     }
     
     const currentJob = await db.query.recruitmentJobs.findFirst({
         where: eq(recruitmentJobs.id, Number(id))
     });
 
-    if (currentJob && status === 'Open' && !currentJob.postedAt) {
-        updateValues.postedAt = new Date().toISOString();
+    if (currentJob && status === 'Open' && !currentJob.posted_at) {
+        updateValues.posted_at = currentManilaDateTime();
     }
 
     await db.update(recruitmentJobs)
@@ -386,14 +382,15 @@ export const generateJobFeed = async (_req: Request, res: Response): Promise<voi
     const jobs = await db.select()
       .from(recruitmentJobs)
       .where(eq(recruitmentJobs.status, 'Open'))
-      .orderBy(desc(recruitmentJobs.createdAt));
+      .orderBy(desc(recruitmentJobs.created_at));
+
       
     const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173'; 
     let xml = '<?xml version="1.0" encoding="UTF-8"?>\n<source>\n'; 
     xml += `<publisher>NEBR HR System</publisher>\n<publisherurl>${baseUrl}</publisherurl>\n<lastBuildDate>${new Date().toUTCString()}</lastBuildDate>\n`; 
     jobs.forEach(job => { 
-      const createdDate = job.createdAt ? new Date(job.createdAt).toUTCString() : new Date().toUTCString();
-      xml += `<job>\n<title><![CDATA[${job.title}]]></title>\n<date><![CDATA[${createdDate}]]></date>\n<referencenumber><![CDATA[${job.id}]]></referencenumber>\n<url><![CDATA[${baseUrl}/careers/job/${job.id}]]></url>\n<company><![CDATA[Local Government of Meycauayan]]></company>\n<city><![CDATA[${job.location}]]></city>\n<state><![CDATA[Bulacan]]></state>\n<country><![CDATA[PH]]></country>\n<description><![CDATA[${job.jobDescription}]]></description>\n<salary><![CDATA[${job.salaryRange}]]></salary>\n<category><![CDATA[${job.department}]]></category>\n</job>\n`; 
+      const createdDate = job.created_at ? new Date(job.created_at).toUTCString() : new Date().toUTCString();
+      xml += `<job>\n<title><![CDATA[${job.title}]]></title>\n<date><![CDATA[${createdDate}]]></date>\n<referencenumber><![CDATA[${job.id}]]></referencenumber>\n<url><![CDATA[${baseUrl}/careers/job/${job.id}]]></url>\n<company><![CDATA[Local Government of Meycauayan]]></company>\n<city><![CDATA[${job.location}]]></city>\n<state><![CDATA[Bulacan]]></state>\n<country><![CDATA[PH]]></country>\n<description><![CDATA[${job.job_description}]]></description>\n<category><![CDATA[${job.department}]]></category>\n</job>\n`; 
     }); 
     xml += '</source>'; 
     res.header('Content-Type', 'application/xml'); 
@@ -436,7 +433,13 @@ export const getApplicantStats = async (_req: Request, res: Response): Promise<v
 export const generateOfferLetter = async (req: Request, res: Response): Promise<void> => {
   try { 
     const { applicantId } = req.params; 
-    const { position, salary, startDate, benefits, additionalTerms } = req.body; 
+    const { position, salary, startDate, benefits, additionalTerms } = req.body as { 
+      position: string; 
+      salary: string; 
+      startDate: string; 
+      benefits?: string; 
+      additionalTerms?: string; 
+    }; 
     
     const applicant = await db.query.recruitmentApplicants.findFirst({
       where: eq(recruitmentApplicants.id, Number(applicantId)),
@@ -460,17 +463,17 @@ export const generateOfferLetter = async (req: Request, res: Response): Promise<
     doc.on('end', () => { 
       const pdfBuffer = Buffer.concat(chunks); 
       res.setHeader('Content-Type', 'application/pdf'); 
-      res.setHeader('Content-Disposition', `attachment; filename=offer_letter_${applicant.firstName}_${applicant.lastName}.pdf`); 
+      res.setHeader('Content-Disposition', `attachment; filename=offer_letter_${applicant.first_name}_${applicant.last_name}.pdf`); 
       res.send(pdfBuffer); 
     }); 
     doc.fontSize(20).font('Helvetica-Bold').text('OFFER OF EMPLOYMENT', { align: 'center' }); 
     doc.moveDown(2); 
     doc.fontSize(12).font('Helvetica').text(`Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`); 
     doc.moveDown(); 
-    doc.text(`${applicant.firstName} ${applicant.lastName}`); 
+    doc.text(`${applicant.first_name} ${applicant.last_name}`); 
     doc.text(applicant.email); 
     doc.moveDown(2); 
-    doc.text(`Dear ${applicant.firstName},`); 
+    doc.text(`Dear ${applicant.first_name},`); 
     doc.moveDown(); 
     doc.text(`We are pleased to offer you the position of ${position || jobTitle}. We believe your skills and experience will be a valuable addition to our team.`); 
     doc.moveDown(); 
@@ -506,9 +509,9 @@ export const generateOfferLetter = async (req: Request, res: Response): Promise<
 
 export const assignInterviewer = async (req: Request, res: Response): Promise<void> => { 
   const { applicantId } = req.params; 
-  const { interviewerId } = req.body; 
+  const { interviewerId } = req.body as { interviewerId: number }; 
   await db.update(recruitmentApplicants)
-    .set({ interviewerId, stage: 'Screening' })
+    .set({ interviewer_id: interviewerId, stage: 'Screening' })
     .where(eq(recruitmentApplicants.id, Number(applicantId))); 
   res.json({ message: 'Assigned' }); 
 };
@@ -550,12 +553,12 @@ export const generateMeetingLink = async (req: Request, res: Response): Promise<
 
     const result = await generateGoogleMeetLink({
       userId: authReq.user.id,
-      title: `Interview: ${jobTitle || 'Position'} - ${applicant.firstName} ${applicant.lastName}`,
+      title: `Interview: ${jobTitle || 'Position'} - ${applicant.first_name} ${applicant.last_name}`,
       startTime: interviewDate,
       duration: duration,
-      description: `Interview for ${jobTitle || 'the position'} with ${applicant.firstName} ${applicant.lastName}`,
+      description: `Interview for ${jobTitle || 'the position'} with ${applicant.first_name} ${applicant.last_name}`,
       attendeeEmail: applicant.email,
-      attendeeName: `${applicant.firstName} ${applicant.lastName}`
+      attendeeName: `${applicant.first_name} ${applicant.last_name}`
     });
 
     if (!result.success) {
@@ -588,10 +591,10 @@ export const saveInterviewNotes = async (req: Request, res: Response): Promise<v
     }
 
     const { applicantId, notes } = parseResult.data;
-
+ 
     // Use interview_notes column
     await db.update(recruitmentApplicants)
-      .set({ interviewNotes: notes || '' })
+      .set({ interview_notes: notes || '' })
       .where(eq(recruitmentApplicants.id, Number(applicantId)));
 
     res.json({ success: true, message: 'Interview notes saved successfully' });

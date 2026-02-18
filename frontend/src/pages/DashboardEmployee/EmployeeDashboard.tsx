@@ -125,10 +125,10 @@ export default function EmployeeDashboard(): React.ReactElement {
           
           // Simple calculation (logic might need adjustment based on actual API response structure)
           const logs = logsRes.data?.data || [];
-          const present = logs.filter((l: any) => l.status === 'Present').length;
-          const late = logs.filter((l: any) => l.status === 'Late').length;
+          const present = logs.filter((l: { status: string }) => l.status === 'Present').length;
+          const late = logs.filter((l: { status: string }) => l.status === 'Late').length;
           // Absent logic might be complex (missing logs vs status='Absent'), assuming API returns it or we rely on just present/late for now.
-          const absent = logs.filter((l: any) => l.status === 'Absent').length; 
+          const absent = logs.filter((l: { status: string }) => l.status === 'Absent').length; 
 
           // Fetch leave credits
           const creditsRes = await leaveApi.getMyCredits();
@@ -181,6 +181,7 @@ export default function EmployeeDashboard(): React.ReactElement {
       ],
     },
     { name: 'Performance Evaluation', icon: Award, action: 'performance' },
+    { name: 'Internal Policies', icon: FileText, action: 'internal-policies' },
     { 
       name: 'Settings',
       icon: Settings,
@@ -217,7 +218,7 @@ export default function EmployeeDashboard(): React.ReactElement {
 
   return (
     <div className="flex h-screen bg-[#F8F9FA] text-gray-800">
-      <Sidebar isOpen={sidebarOpen} navItems={NAV_ITEMS as any} onLogout={handleLogout} onSectionChange={handleNavigate} />
+      <Sidebar isOpen={sidebarOpen} navItems={NAV_ITEMS as unknown as { name: string; icon: React.ComponentType<{ className?: string }>; path?: string; action?: string; children?: { name: string; action: string }[] }[]} onLogout={handleLogout} onSectionChange={handleNavigate} />
       <div className="flex-1 flex flex-col">
         <Header 
             onToggleSidebar={toggleSidebar} 

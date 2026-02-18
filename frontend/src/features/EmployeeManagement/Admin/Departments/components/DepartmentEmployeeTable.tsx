@@ -3,19 +3,7 @@ import { Users, Phone, SquarePen, Trash2, Calendar } from 'lucide-react';
 // @ts-ignore
 import EmploymentStatusBadge from '@components/Custom/Common/EmploymentStatusBadge';
 
-interface Employee {
-  id: number;
-  first_name?: string;
-  last_name?: string;
-  email?: string;
-  employee_id?: string;
-  position_title?: string;
-  job_title?: string;
-  phone_number?: string;
-  date_hired?: string;
-  employment_status?: string;
-  avatar_url?: string;
-}
+import { Employee } from '@/types';
 
 interface EmployeeRowProps {
   employee: Employee;
@@ -30,7 +18,7 @@ const EmployeeRow: React.FC<EmployeeRowProps> = memo(({ employee, onView, onEdit
   const handleEdit = useCallback(() => onEdit(employee.id), [employee.id, onEdit]);
   const handleDelete = useCallback(() => onDelete(employee), [employee, onDelete]);
 
-  const formatDate = (dateStr?: string) => {
+  const formatDate = (dateStr?: string | null) => {
     return dateStr ? new Date(dateStr).toLocaleDateString() : '—';
   };
 
@@ -53,6 +41,12 @@ const EmployeeRow: React.FC<EmployeeRowProps> = memo(({ employee, onView, onEdit
       </td>
       <td className="px-6 py-4 text-sm text-gray-600">{employee.employee_id || '—'}</td>
       <td className="px-6 py-4 text-sm text-gray-800">{employee.position_title || employee.job_title || '—'}</td>
+      <td className="px-6 py-4 text-sm text-gray-500">
+        <div className="flex items-center gap-2">
+          <Calendar size={14} className="text-gray-400" />
+          <span className="font-medium text-blue-600">{employee.duties || 'No Schedule'}</span>
+        </div>
+      </td>
       <td className="px-6 py-4 text-sm text-gray-500">
         <div className="flex items-center gap-2">
           <Phone size={14} />
@@ -114,9 +108,9 @@ const DepartmentEmployeeTable: React.FC<DepartmentEmployeeTableProps> = memo(({
 }) => {
   // Memoize the rows rendering
   const tableRows = useMemo(() => {
-    return employees.map((employee) => (
+    return employees.map((employee, index) => (
       <EmployeeRow
-        key={employee.id}
+        key={`${employee.id}-${index}`}
         employee={employee}
         onView={onViewEmployee}
         onEdit={onEditEmployee}
@@ -128,7 +122,7 @@ const DepartmentEmployeeTable: React.FC<DepartmentEmployeeTableProps> = memo(({
   if (employees.length === 0) {
     return (
       <tr>
-        <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
+        <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
           No employees found in this department.
         </td>
       </tr>

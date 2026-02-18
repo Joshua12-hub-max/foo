@@ -1,64 +1,64 @@
 import React from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { useUIStore } from '@/stores';
-import { useAttendanceLogs } from '../../features/Attendance/hooks/useAttendance';
-import { useBiometricsStore } from '@/stores/biometricsStore';
-import { useFilterOptions } from '@/hooks/useFilterOptions';
-
-
+import { AttendanceFilterValues } from '@/schemas/attendanceSchema';
 import { 
   BiometricsHeader, 
   BiometricsNotification, 
   BiometricsFilters, 
-  BiometricsTable 
+  BiometricsTable,
+  useBiometricsLogs 
 } from "@settings/Biometrics/Logs";
 import Pagination from '@/components/CustomUI/Pagination';
+import { FileText, FileSpreadsheet } from "lucide-react";
 
 const BiometricsLogsUI = () => {
   const sidebarOpen = useUIStore((state) => state.sidebarOpen);
-  const { 
-    logPagination, 
-    setLogPage, 
-    getLogQuery, 
-    statusMessage, 
-    setStatusMessage 
-  } = useBiometricsStore();
-
-  const queryParams = getLogQuery();
-
-  // 1. Fetch Logs
-  const { data, isLoading, error, refetch } = useAttendanceLogs(queryParams);
-
-  const logs = data?.data?.data || [];
-  const paginationData = data?.data?.pagination;
-
-  // 2. Fetch Filter Options
-  const { data: filterOptions, isLoading: loadingFilters } = useFilterOptions();
-
-
-  // 3. Map Data for Table
-  const tableData = logs.map((log: any) => ({
-    id: log.employee_id,
-    department: log.department || 'N/A',
-    name: log.employee_name || `${log.first_name || ''} ${log.last_name || ''}`.trim(),
-    date: new Date(log.scan_time).toLocaleDateString(),
-    time: new Date(log.scan_time).toLocaleTimeString(),
-    type: log.type,
-    status: 'Logged',
-  }));
-
-  const handlePageChange = (newPage: number) => {
-    setLogPage(newPage);
-  };
   
-  const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  const {
+    today,
+    isLoading,
+    error,
+    successMessage,
+    paginationData,
+    uniqueDepartments,
+    uniqueEmployees,
+    handleRefresh,
+    handleFilterChange,
+    handleApply,
+    handleClear,
+    handleSearchChange,
+    searchQuery,
+    filters,
+    handlePrevPage,
+    handleNextPage,
+    setPage,
+    handleExportCSV,
+    handleExportPDF,
+    setSuccessMessage,
+    setFilters,
+    setError
+  } = useBiometricsLogs();
+
+  // Map pagination data for the Pagination component
+  const totalPages = paginationData.totalPages;
+  const currentPage = Math.ceil((paginationData.startIndex + 1) / 10); // Calculate current page based on index
+  const totalItems = paginationData.currentItems.length * totalPages; // Approximate since we filter client side
+
+  const handleFilterSubmit = (newFilters: AttendanceFilterValues) => {
+      setFilters({
+          department: newFilters.department || '',
+          employeeId: newFilters.employeeId || '', // Map employeeId
+          startDate: newFilters.startDate || '',
+          endDate: newFilters.endDate || ''
+      });
+  };
 
   return (
     <div className={`min-h-screen flex flex-col bg-gradient-to-br from-neutral-100 to-stone-50 rounded-xl shadow-xl p-7 w-full overflow-hidden text-gray-800 transition-all duration-300 ${!sidebarOpen ? 'max-w-[1600px] xl:max-w-[88vw]' : 'max-w-[1400px] xl:max-w-[77vw]'}`}>
       
       <BiometricsHeader 
         today={today} 
-        handleRefresh={refetch} 
+        handleRefresh={handleRefresh} 
         isLoading={isLoading} 
       />
 
@@ -67,37 +67,65 @@ const BiometricsLogsUI = () => {
       {error && (
         <BiometricsNotification 
           type="error" 
-          message={error instanceof Error ? error.message : 'Failed to fetch logs'} 
-          onClose={() => {}} 
+          message={error} 
+          onClose={() => setError(null)} 
         />
       )}
 
-      {statusMessage && (
+      {successMessage && (
         <BiometricsNotification 
           type="success" 
-          message={statusMessage} 
-          onClose={() => setStatusMessage('')} 
+          message={successMessage} 
+          onClose={() => setSuccessMessage(null)} 
         />
       )}
 
       <BiometricsFilters 
-        uniqueDepartments={filterOptions.departments}
-        uniqueEmployees={filterOptions.employees}
-        isLoading={loadingFilters || isLoading}
+        uniqueDepartments={uniqueDepartments}
+        uniqueEmployees={uniqueEmployees}
+        isLoading={isLoading}
+        filters={filters}
+        onFilterChange={handleFilterSubmit}
       />
 
+      <div className="flex flex-col sm:flex-row justify-between items-center my-6 gap-4">
+        <div className="flex items-center gap-6">
+          <span className="text-sm font-medium text-gray-700">Export Report:</span>
+          <label className="flex items-center gap-2 cursor-pointer group">
+            <input type="checkbox" className="w-4 h-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 transition-colors" />
+            <span className="text-sm text-gray-600 group-hover:text-gray-900 transition-colors select-none">Group by Department</span>
+          </label>
+        </div>
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={handleExportCSV}
+            className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-md transition-colors border border-emerald-200"
+          >
+            <FileSpreadsheet className="w-4 h-4" />
+            Excel
+          </button>
+          <button 
+            onClick={handleExportPDF}
+            className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-md transition-colors border border-rose-200"
+          >
+            <FileText className="w-4 h-4" />
+            PDF
+          </button>
+        </div>
+      </div>
+
       <BiometricsTable 
-        currentItems={tableData} 
+        currentItems={paginationData.currentItems} 
         isLoading={isLoading} 
       />
 
-      {paginationData && (
+      {paginationData.total > 0 && (
         <Pagination 
-          currentPage={paginationData.page}
-          totalPages={paginationData.totalPages}
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setPage}
           totalItems={paginationData.total}
-          itemsPerPage={paginationData.limit}
-          onPageChange={handlePageChange}
+          itemsPerPage={10}
         />
       )}
     </div>

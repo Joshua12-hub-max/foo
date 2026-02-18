@@ -13,7 +13,7 @@ interface Memo {
   memo_number: string;
   memo_type: string;
   subject: string;
-  content?: string;
+  content: string;
   priority: string;
   status: string;
   created_at: string;
@@ -33,8 +33,8 @@ const MemoRow: React.FC<MemoRowProps> = memo(({ memo, onView }) => {
   return (
     <tr className="hover:bg-[#F8F9FA] hover:shadow-xl transition-colors">
       <td className="px-6 py-4 whitespace-nowrap">
-        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${getEmployeeStatusBadge(memo as any)}`}>
-          {getEmployeeStatusText(memo as any)}
+        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${getEmployeeStatusBadge(memo)}`}>
+          {getEmployeeStatusText(memo)}
         </span>
       </td>
       <td className="px-6 py-4 text-sm text-gray-800 font-bold whitespace-nowrap">{memo.memo_number}</td>

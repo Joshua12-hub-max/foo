@@ -55,7 +55,6 @@ export const getSchedules = async (_req: Request, res: Response) => {
       day_of_week: schedules.dayOfWeek,
       start_time: schedules.startTime,
       end_time: schedules.endTime,
-      is_rest_day: schedules.isRestDay,
       first_name: authentication.firstName,
       last_name: authentication.lastName,
       employee_name: sql<string>`CONCAT(${authentication.firstName}, ' ', ${authentication.lastName})`,
@@ -86,7 +85,8 @@ export const createSchedule = async (req: Request, res: Response): Promise<void>
       return;
     }
 
-    const { employee_id, start_date, start_time, end_time, repeat, is_rest_day, title } = validation.data;
+    const { employee_id, start_date, start_time, end_time, repeat, title } = validation.data;
+
     
     const daysToSet = [];
     
@@ -112,12 +112,12 @@ export const createSchedule = async (req: Request, res: Response): Promise<void>
         dayOfWeek: day,
         startTime: startTime24,
         endTime: endTime24,
-        isRestDay: is_rest_day ? 1 : 0
+        // isRestDay: is_rest_day ? 1 : 0 // Column missing in schema
       }).onDuplicateKeyUpdate({
         set: {
           startTime: startTime24,
           endTime: endTime24,
-          isRestDay: is_rest_day ? 1 : 0
+          // isRestDay: is_rest_day ? 1 : 0 // Column missing in schema
         }
       });
     });

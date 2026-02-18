@@ -20,8 +20,9 @@ export const useUpdateDTR = () => {
             queryClient.invalidateQueries({ queryKey: ['dtrRecords'] });
             showToast('DTR Record updated successfully', 'success');
         },
-        onError: (error: any) => {
-            showToast(error.response?.data?.message || 'Failed to update DTR record', 'error');
+        onError: (error: unknown) => {
+            const msg = (error as { response?: { data?: { message?: string } } }).response?.data?.message;
+            showToast(msg || 'Failed to update DTR record', 'error');
         }
     });
 };

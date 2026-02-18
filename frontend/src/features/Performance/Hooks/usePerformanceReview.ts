@@ -104,7 +104,7 @@ export const usePerformanceReview = () => {
         if (!isMounted) return;
 
         if (empData.success) setEmployees(empData.employees);
-        if (cycleData.success) setCycles(cycleData.cycles);
+        if (cycleData.success) setCycles(cycleData.cycles || cycleData.data?.cycles || []);
 
         if (currentReviewId && currentReviewId !== 'new') {
           const reviewData = await fetchReviewById(currentReviewId);
@@ -144,7 +144,8 @@ export const usePerformanceReview = () => {
             let items: ReviewItem[] = review.items || [];
             if (review.status === 'Draft' && criteriaData.success) {
                  const existingCriteriaIds = new Set(items.map(i => i.criteria_id).filter(id => id));
-                 const missingCriteria = criteriaData.criteria.filter((c: any) => !existingCriteriaIds.has(c.id));
+                 const criteria = criteriaData.criteria || criteriaData.data?.criteria || [];
+                 const missingCriteria = criteria.filter((c: any) => !existingCriteriaIds.has(c.id));
                  if (missingCriteria.length > 0) {
                      const newItems = missingCriteria.map((c: any, index: number) => ({
                          id: Date.now() + index + Math.floor(Math.random() * 1000), // Temp ID

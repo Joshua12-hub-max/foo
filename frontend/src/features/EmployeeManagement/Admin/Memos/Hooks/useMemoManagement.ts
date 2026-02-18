@@ -26,6 +26,7 @@ export interface Memo {
   acknowledgmentRequired: boolean;
   acknowledgedAt?: string;
   createdAt: string;
+  department?: string;
 }
 
 export interface Employee {
@@ -97,15 +98,19 @@ export const useMemoManagement = (): UseMemoManagementReturn => {
         fetchMemos(currentFilters),
         fetchEmployees()
       ]);
-      setMemos((memosRes as any).memos || []);
-      
-      const rawEmployees = (employeesRes as any).employees || employeesRes || [];
-      const mappedEmployees: Employee[] = rawEmployees.map((emp: any) => ({
+      const employeesResult = employeesRes as { employees?: Array<{ id: number; firstName?: string; first_name?: string; lastName?: string; last_name?: string }> };
+      const rawEmployees = employeesResult.employees || (Array.isArray(employeesRes) ? employeesRes : []);
+      const mappedEmployees: Employee[] = rawEmployees.map((emp) => ({
         id: emp.id,
         firstName: emp.firstName || emp.first_name || '',
         lastName: emp.lastName || emp.last_name || ''
       }));
       setEmployees(mappedEmployees);
+
+      // Memos now include department directly from backend join
+      const memosResult = memosRes as { memos?: Memo[] };
+      const rawMemos = memosResult.memos || [];
+      setMemos(rawMemos);
     } catch (err) {
       setError('Failed to load data');
     } finally {
@@ -197,7 +202,7 @@ export const useMemoManagement = (): UseMemoManagementReturn => {
     e.preventDefault();
     try {
       setSaving(true);
-      const payload: any = { ...formData };
+      const payload: Record<string, string | boolean | number> = { ...formData };
       // Ensure employee_id is a number for the API
       if (payload.employee_id) payload.employee_id = Number(payload.employee_id);
 

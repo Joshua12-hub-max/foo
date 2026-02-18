@@ -41,13 +41,15 @@ interface ReviewItemProps {
   onCommentChange?: (id: string | number, comment: string) => void;
   onSelfScoreChange?: (id: string | number, score: number) => void;
   onAccomplishmentChange?: (id: string | number, text: string) => void;
+
   onQETChange?: (id: string | number, field: string, value: string | number) => void;
+  onEvidenceChange?: (id: string | number, field: 'evidence_file_path' | 'evidence_description', value: string) => void;
   readOnly?: boolean;
   showSelfRating?: boolean;
   isSelfRatingMode?: boolean;
 }
 
-const ReviewItem: React.FC<ReviewItemProps> = ({ item, onScoreChange, onCommentChange, onSelfScoreChange, onAccomplishmentChange, onQETChange, readOnly, showSelfRating, isSelfRatingMode }) => {
+const ReviewItem: React.FC<ReviewItemProps> = ({ item, onScoreChange, onCommentChange, onSelfScoreChange, onAccomplishmentChange, onQETChange, onEvidenceChange, readOnly, showSelfRating, isSelfRatingMode }) => {
   const diff = Math.abs((item.self_score || 0) - (item.score || 0));
   const hasDiscrepancy = showSelfRating && diff >= 2 && (item.score || 0) > 0;
   const id = item.criteria_id || item.id || 0; // fallback ID
@@ -73,8 +75,18 @@ const ReviewItem: React.FC<ReviewItemProps> = ({ item, onScoreChange, onCommentC
                 </span>
               )}
             </div>
-            <h4 className="text-sm font-bold text-gray-900 leading-tight">{item.criteria_title || item.title}</h4>
-            <p className="text-[11px] text-gray-500 mt-1 leading-relaxed line-clamp-2 hover:line-clamp-none transition-all">{item.criteria_description || item.description}</p>
+             <h4 className="text-sm font-bold text-gray-900 leading-tight">{item.criteria_title || item.title}</h4>
+            <div className="bg-blue-50/50 p-2 rounded-md border border-blue-100 mt-2">
+                <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider block mb-1">Success Indicators (Targets)</span>
+                <p className="text-xs text-gray-700 leading-relaxed">{item.criteria_description || item.description}</p>
+            </div>
+            
+            {(item.evidenceRequirements || item.evidence_requirements) && (
+                <div className="bg-amber-50/50 p-2 rounded-md border border-amber-100 mt-2">
+                    <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider block mb-1">Evidence Required (MOV)</span>
+                    <p className="text-xs text-gray-700 leading-relaxed whitespace-pre-line">{item.evidenceRequirements || item.evidence_requirements}</p>
+                </div>
+            )}
           </div>
 
           <div className="pt-1">
@@ -84,22 +96,61 @@ const ReviewItem: React.FC<ReviewItemProps> = ({ item, onScoreChange, onCommentC
              </label>
              
              {isSelfRatingMode ? (
-                <textarea
-                  value={item.actual_accomplishments || ''}
-                  onChange={(e) => onAccomplishmentChange?.(id, e.target.value)}
-                  placeholder="Describe your specific accomplishments..."
-                  className="w-full p-2 bg-gray-50 hover:bg-gray-50/80 focus:bg-white border border-gray-100 hover:border-gray-200 focus:border-gray-300 rounded text-xs transition-all outline-none min-h-[60px] resize-none focus:ring-1 focus:ring-gray-100 placeholder:text-gray-300 text-gray-700"
-                />
+                <div className="space-y-3">
+                    <textarea
+                      value={item.actual_accomplishments || ''}
+                      onChange={(e) => onAccomplishmentChange?.(id, e.target.value)}
+                      placeholder="Describe your specific accomplishments based on the targets..."
+                      className="w-full p-2 bg-gray-50 hover:bg-gray-50/80 focus:bg-white border border-gray-100 hover:border-gray-200 focus:border-gray-300 rounded text-xs transition-all outline-none min-h-[60px] resize-none focus:ring-1 focus:ring-gray-100 placeholder:text-gray-300 text-gray-700"
+                    />
+                    
+                    {/* Evidence Upload Section */}
+                    <div className="grid grid-cols-1 gap-2">
+                        <input 
+                            type="text"
+                            value={item.evidenceFilePath || item.evidence_file_path || ''}
+                            onChange={(e) => onEvidenceChange?.(id, 'evidence_file_path', e.target.value)}
+                            placeholder="Link to Evidence (Google Drive, URL)..."
+                            className="w-full p-2 bg-white border border-gray-200 rounded text-xs focus:ring-1 focus:ring-blue-100 focus:border-blue-300 outline-none"
+                        />
+                         <textarea
+                            value={item.evidenceDescription || item.evidence_description || ''}
+                            onChange={(e) => onEvidenceChange?.(id, 'evidence_description', e.target.value)}
+                            placeholder="Description of Proof..."
+                            rows={1}
+                            className="w-full p-2 bg-white border border-gray-200 rounded text-xs focus:ring-1 focus:ring-blue-100 focus:border-blue-300 outline-none resize-none"
+                        />
+                    </div>
+                </div>
              ) : !readOnly ? (
-                <textarea
-                  value={item.comment || ''}
-                  onChange={(e) => onCommentChange?.(id, e.target.value)}
-                  placeholder="Enter remarks..."
-                  className="w-full p-2 bg-gray-50 hover:bg-gray-50/80 focus:bg-white border border-gray-100 hover:border-gray-200 focus:border-gray-300 rounded text-xs transition-all outline-none min-h-[60px] resize-none focus:ring-1 focus:ring-gray-100 placeholder:text-gray-300 text-gray-700"
-                />
+                <div className="space-y-2">
+                    <textarea
+                    value={item.comment || ''}
+                    onChange={(e) => onCommentChange?.(id, e.target.value)}
+                    placeholder="Enter remarks..."
+                    className="w-full p-2 bg-gray-50 hover:bg-gray-50/80 focus:bg-white border border-gray-100 hover:border-gray-200 focus:border-gray-300 rounded text-xs transition-all outline-none min-h-[60px] resize-none focus:ring-1 focus:ring-gray-100 placeholder:text-gray-300 text-gray-700"
+                    />
+                    {(item.evidenceFilePath || item.evidence_file_path) && (
+                        <div className="bg-gray-50 p-2 rounded border border-gray-100 text-xs">
+                             <strong className="block text-gray-500 mb-1">Evidence Provided:</strong>
+                             <a href={item.evidenceFilePath || item.evidence_file_path} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline truncate block mb-1">
+                                {item.evidenceFilePath || item.evidence_file_path}
+                             </a>
+                             <p className="text-gray-600 italic">{item.evidenceDescription || item.evidence_description}</p>
+                        </div>
+                    )}
+                </div>
              ) : (
-                <div className="p-2 bg-gray-50/50 rounded text-xs text-gray-600 italic border border-gray-100 min-h-[40px]">
-                   {item.actual_accomplishments || item.comment || <span className="text-gray-400 not-italic">No remarks.</span>}
+                <div className="space-y-2">
+                    <div className="p-2 bg-gray-50/50 rounded text-xs text-gray-600 italic border border-gray-100 min-h-[40px]">
+                       {item.actual_accomplishments || item.comment || <span className="text-gray-400 not-italic">No remarks.</span>}
+                    </div>
+                     {(item.evidenceFilePath || item.evidence_file_path) && (
+                        <div className="p-2 bg-gray-50/50 rounded text-xs border border-gray-100">
+                             <span className="text-gray-400 font-bold mr-1">Evidence:</span>
+                             <a href={item.evidenceFilePath || item.evidence_file_path} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">View Proof</a>
+                        </div>
+                     )}
                 </div>
              )}
           </div>
@@ -198,7 +249,9 @@ interface ReviewMatrixProps {
   onAddItem?: (item: PerformanceItem) => void;
   onEditItem?: (item: PerformanceItem) => void;
   onDeleteItem?: (id: string | number) => void;
+
   onQETChange?: (id: string | number, field: string, value: string | number) => void;
+  onEvidenceChange?: (id: string | number, field: 'evidence_file_path' | 'evidence_description', value: string) => void;
 }
 
 const ReviewMatrix: React.FC<ReviewMatrixProps> = ({ 
@@ -214,7 +267,9 @@ const ReviewMatrix: React.FC<ReviewMatrixProps> = ({
   onAddItem, 
   onEditItem, 
   onDeleteItem, 
-  onQETChange 
+ 
+  onQETChange,
+  onEvidenceChange 
 }) => {
   const [showModal, setShowModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -231,7 +286,7 @@ const ReviewMatrix: React.FC<ReviewMatrixProps> = ({
     setShowModal(true);
   };
 
-  const handleSaveModal = (formData: any) => {
+  const handleSaveModal = (formData: Partial<PerformanceItem>) => {
     const processedData = { ...formData, criteria_title: formData.title, criteria_description: formData.description };
     if (editingItem && onEditItem) {
       onEditItem({ ...editingItem, ...processedData });
@@ -316,6 +371,7 @@ const ReviewMatrix: React.FC<ReviewMatrixProps> = ({
                  showSelfRating={showSelfRating}
                  isSelfRatingMode={isSelfRatingMode}
                  onScoreChange={onScoreChange}
+                 onEvidenceChange={onEvidenceChange}
                />
             ))}
             </AnimatePresence>

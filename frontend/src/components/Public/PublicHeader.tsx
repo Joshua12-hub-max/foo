@@ -58,7 +58,7 @@ const PublicHeader = () => {
               </div>
               <div className="flex flex-col">
                   <span className={`font-black text-lg leading-none tracking-tight transition-colors ${isScrolled ? 'text-white' : 'text-slate-950'}`}>
-                    CHRM Services
+                    HR Portal
                   </span>
                   <span className={`text-[9px] font-bold tracking-[0.2em] transition-colors mt-0.5 ${isScrolled ? 'text-indigo-400/80' : 'text-slate-500'}`}>
                     CITY OF MEYCAUAYAN

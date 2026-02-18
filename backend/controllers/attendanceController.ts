@@ -5,21 +5,20 @@ import {
   dailyTimeRecords, 
   authentication, 
   schedules, 
-  leaveApplications, // Updated from leaveRequests
+  leaveApplications, 
   recruitmentApplicants, 
-  recruitmentJobs 
+  recruitmentJobs,
+  bioEnrolledUsers 
 } from "../db/schema.js";
-import { eq, and, sql, desc, between, ne } from "drizzle-orm";
-import { processDailyAttendance } from "../services/attendanceProcessor.js";
+import { eq, and, sql, desc, between, ne, or, like } from "drizzle-orm";
 import type { AuthenticatedRequest } from "../types/index.js";
 import {
   GetLogsSchema,
   GetTodayStatusSchema,
 } from "../schemas/attendanceSchema.js";
+import { AttendanceLogApiResponse, DTRApiResponse } from "../types/attendance.js";
+import { formatToManilaDateTime } from "../utils/dateUtils.js";
 
-// ============================================================================
-// Helpers
-// ============================================================================
 
 const handleError = (res: Response, error: Error, context: string): void => {
   console.error(`Error in ${context}:`, error);
@@ -58,77 +57,22 @@ const formatDate = (dateString: string | null | undefined): string => {
   });
 };
 
-// ============================================================================
-// Controllers
-// ============================================================================
-
-export const clockIn = async (req: Request, res: Response): Promise<void> => {
-  const authReq = req as AuthenticatedRequest;
-  const employeeId = authReq.user.employeeId;
-
-  if (!employeeId) {
-    res.status(400).json({
-      success: false,
-      message: "User not authenticated or missing Employee ID.",
-      data: null,
-    });
-    return;
-  }
-
-  try {
-    const scanTime = new Date();
-    await db.insert(attendanceLogs).values({
-      employeeId,
-      scanTime: scanTime.toISOString(),
-      type: 'IN',
-      source: 'WEB'
-    });
-
-    res.status(201).json({
-      success: true,
-      message: "Clock in successful.",
-      data: { timeIn: scanTime },
-    });
-  } catch (err) {
-    handleError(res, err as Error, "clockIn");
-  }
+const mapToAttendanceLogApi = (log: any): AttendanceLogApiResponse => {
+  return {
+    id: log.id,
+    employee_id: log.employee_id || log.employeeId, 
+    scan_time: log.scan_time ? new Date(log.scan_time).toISOString() : (log.scanTime ? new Date(log.scanTime).toISOString() : ''),
+    type: (log.type || 'IN') as 'IN' | 'OUT',
+    source: log.source || 'Unknown',
+    first_name: log.first_name || log.firstName || null,
+    last_name: log.last_name || log.lastName || null,
+    department: log.department || 'N/A',
+    duties: log.duties || 'No Schedule',
+    dtr_status: log.dtr_status || 'Present'
+  };
 };
 
-export const clockOut = async (req: Request, res: Response): Promise<void> => {
-  const authReq = req as AuthenticatedRequest;
-  const employeeId = authReq.user.employeeId;
 
-  if (!employeeId) {
-    res.status(400).json({
-      success: false,
-      message: "User not authenticated or missing Employee ID.",
-      data: null,
-    });
-    return;
-  }
-
-  try {
-    const scanTime = new Date();
-    const dateStr = getLocalDate();
-
-    await db.insert(attendanceLogs).values({
-      employeeId,
-      scanTime: scanTime.toISOString(),
-      type: 'OUT',
-      source: 'WEB'
-    });
-
-    await processDailyAttendance(employeeId, dateStr);
-
-    res.status(200).json({
-      success: true,
-      message: "Clock out successful.",
-      data: { timeOut: scanTime },
-    });
-  } catch (err) {
-    handleError(res, err as Error, "clockOut");
-  }
-};
 
 export const getLogs = async (req: Request, res: Response): Promise<void> => {
   const validation = GetLogsSchema.safeParse(req);
@@ -147,15 +91,26 @@ export const getLogs = async (req: Request, res: Response): Promise<void> => {
   const user = authReq.user;
   const isAdminOrHr = ["admin", "hr"].includes(user.role?.toLowerCase());
 
+  // Extract query parameters
+  const { 
+    startDate, 
+    endDate, 
+    department, 
+    search, 
+    employeeId: queryEmployeeId, 
+    id: queryId,
+    page: qPage = 1,
+    limit: qLimit = 10 
+  } = query;
+
+  // Determine which employee's logs to fetch
   const targetEmployeeId = isAdminOrHr
-    ? query.employeeId || query.id
+    ? queryEmployeeId || queryId
     : user.employeeId;
 
-  const page = query.page || 1;
-  const limit = query.limit || 10;
+  const page = qPage;
+  const limit = qLimit;
   const offset = (page - 1) * limit;
-  const startDate = query.startDate;
-  const endDate = query.endDate;
 
   try {
     const whereConditions = [];
@@ -163,7 +118,29 @@ export const getLogs = async (req: Request, res: Response): Promise<void> => {
       whereConditions.push(eq(dailyTimeRecords.employeeId, targetEmployeeId));
     }
     if (startDate && endDate) {
-      whereConditions.push(between(dailyTimeRecords.date, startDate, endDate));
+      // Robust date parsing (Handle MM/DD/YYYY or YYYY-MM-DD)
+      const parseDate = (dateStr: string) => {
+          const d = new Date(dateStr);
+          if (isNaN(d.getTime())) return dateStr; // Fallback to original if invalid
+          return d.toISOString().split('T')[0];
+      };
+      
+      const safeStartDate = parseDate(startDate);
+      const safeEndDate = parseDate(endDate);
+
+      whereConditions.push(between(dailyTimeRecords.date, safeStartDate, safeEndDate));
+    }
+    if (department && department !== 'all') {
+      whereConditions.push(eq(authentication.department, department));
+    }
+    if (search) {
+      const searchStr = `%${search}%`;
+      whereConditions.push(or(
+        like(authentication.firstName, searchStr),
+        like(authentication.lastName, searchStr),
+        like(authentication.employeeId, searchStr),
+        like(dailyTimeRecords.employeeId, searchStr)
+      ));
     }
 
     const whereClause = whereConditions.length > 0 ? and(...whereConditions) : undefined;
@@ -178,9 +155,11 @@ export const getLogs = async (req: Request, res: Response): Promise<void> => {
       undertimeMinutes: dailyTimeRecords.undertimeMinutes,
       overtimeMinutes: dailyTimeRecords.overtimeMinutes,
       status: dailyTimeRecords.status,
-      first_name: authentication.firstName,
-      last_name: authentication.lastName,
-      department: authentication.department
+      createdAt: dailyTimeRecords.createdAt,
+      updatedAt: dailyTimeRecords.updatedAt,
+      employee_name: sql<string>`CONCAT(${authentication.firstName}, ' ', ${authentication.lastName})`,
+      department: authentication.department,
+      duties: sql<string>`(SELECT schedule_title FROM schedules WHERE employee_id = ${dailyTimeRecords.employeeId} ORDER BY updated_at DESC LIMIT 1)`
     })
     .from(dailyTimeRecords)
     .leftJoin(authentication, eq(dailyTimeRecords.employeeId, authentication.employeeId))
@@ -193,16 +172,26 @@ export const getLogs = async (req: Request, res: Response): Promise<void> => {
       total: sql<number>`count(*)`
     })
     .from(dailyTimeRecords)
+    .leftJoin(authentication, eq(dailyTimeRecords.employeeId, authentication.employeeId))
     .where(whereClause);
 
     const total = Number(countResult.total || 0);
 
-    const formattedLogs = logs.map((log) => ({
-      ...log,
+    const formattedLogs: DTRApiResponse[] = logs.map((log) => ({
+      id: log.id,
+      employee_id: log.employeeId,
+      date: log.date ? new Date(log.date).toISOString().split('T')[0] : '',
+      time_in: log.timeIn ? formatToManilaDateTime(log.timeIn) : null,
+      time_out: log.timeOut ? formatToManilaDateTime(log.timeOut) : null,
+      late_minutes: log.lateMinutes || 0,
+      undertime_minutes: log.undertimeMinutes || 0,
+      overtime_minutes: log.overtimeMinutes || 0,
+      status: log.status || 'Pending',
+      created_at: log.createdAt ? new Date(log.createdAt).toISOString() : null,
+      updated_at: log.updatedAt ? new Date(log.updatedAt).toISOString() : null,
+      employee_name: log.employee_name || "Unknown Employee",
       department: log.department || "N/A",
-      employee_name: log.first_name && log.last_name
-          ? `${log.first_name} ${log.last_name}`
-          : "Unknown Employee",
+      duties: log.duties || 'No Schedule'
     }));
 
     res.status(200).json({
@@ -235,12 +224,21 @@ export const getRecentActivity = async (_req: Request, res: Response): Promise<v
     .orderBy(desc(dailyTimeRecords.updatedAt))
     .limit(20);
 
-    const formattedLogs = logs.map((log) => ({
-      ...log,
-      name: log.firstName && log.lastName
-          ? `${log.firstName} ${log.lastName}`
-          : "Unknown Employee",
+    const formattedLogs: DTRApiResponse[] = logs.map((log) => ({
+      id: log.id,
+      employee_id: log.employeeId,
+      date: log.date ? new Date(log.date).toLocaleDateString('en-US') : '',
+      time_in: log.timeIn ? formatToManilaDateTime(log.timeIn) : null,
+      time_out: log.timeOut ? formatToManilaDateTime(log.timeOut) : null,
+      late_minutes: 0, // Recent activity doesn't usually feature this, but interface requires it
+      undertime_minutes: 0,
+      overtime_minutes: 0,
+      status: log.status || 'Pending',
+      created_at: null,
+      updated_at: log.updatedAt || null,
+      employee_name: (log.firstName && log.lastName) ? `${log.firstName} ${log.lastName}` : "Unknown Employee",
       department: log.department || "N/A",
+      duties: 'No Schedule' // Recent activity doesn't fetch schedule
     }));
 
     res.status(200).json({ success: true, data: formattedLogs });
@@ -312,24 +310,70 @@ export const getTodayStatus = async (req: Request, res: Response): Promise<void>
   }
 };
 
-export const getRawLogs = async (_req: Request, res: Response): Promise<void> => {
+export const getRawLogs = async (req: Request, res: Response): Promise<void> => {
   try {
+    const { employeeId, startDate, endDate, department, search, limit = 500 } = req.query;
+
+    const whereConditions = [];
+
+    if (employeeId) {
+      whereConditions.push(eq(attendanceLogs.employeeId, String(employeeId)));
+    }
+
+    if (startDate && endDate) {
+       whereConditions.push(between(attendanceLogs.scanTime, `${startDate} 00:00:00`, `${endDate} 23:59:59`));
+    }
+
+    if (department && department !== 'All Departments') {
+       whereConditions.push(
+         sql`COALESCE(${authentication.department}, ${bioEnrolledUsers.department}) = ${String(department)}`
+       );
+    }
+
+    if (search) {
+      const searchStr = `%${search}%`;
+      whereConditions.push(or(
+        like(authentication.firstName, searchStr),
+        like(authentication.lastName, searchStr),
+        like(bioEnrolledUsers.fullName, searchStr),
+        like(attendanceLogs.employeeId, searchStr)
+      ));
+    }
+
+    const whereClause = whereConditions.length > 0 ? and(...whereConditions) : undefined;
+
     const logs = await db.select({
       id: attendanceLogs.id,
       employee_id: attendanceLogs.employeeId,
       scan_time: attendanceLogs.scanTime,
       type: attendanceLogs.type,
       source: attendanceLogs.source,
-      first_name: authentication.firstName,
-      last_name: authentication.lastName,
-      department: authentication.department
+      // COALESCE: try authentication first, fallback to bio_enrolled_users
+      first_name: sql<string>`COALESCE(
+        ${authentication.firstName},
+        SUBSTRING_INDEX(${bioEnrolledUsers.fullName}, ' ', 1)
+      )`,
+      last_name: sql<string>`COALESCE(
+        ${authentication.lastName},
+        CASE WHEN LOCATE(' ', ${bioEnrolledUsers.fullName}) > 0
+          THEN SUBSTRING(${bioEnrolledUsers.fullName}, LOCATE(' ', ${bioEnrolledUsers.fullName}) + 1)
+          ELSE ''
+        END
+      )`,
+      department: sql<string>`COALESCE(${authentication.department}, ${bioEnrolledUsers.department}, 'N/A')`,
+      duties: sql<string>`COALESCE((SELECT schedule_title FROM schedules WHERE employee_id = ${attendanceLogs.employeeId} ORDER BY updated_at DESC LIMIT 1), 'No Schedule')`,
+      dtr_status: sql<string>`COALESCE((SELECT status FROM daily_time_records WHERE employee_id = ${attendanceLogs.employeeId} AND date = DATE(${attendanceLogs.scanTime}) LIMIT 1), 'Present')`
     })
     .from(attendanceLogs)
     .leftJoin(authentication, eq(attendanceLogs.employeeId, authentication.employeeId))
+    .leftJoin(bioEnrolledUsers, sql`${bioEnrolledUsers.employeeId} = CAST(REPLACE(${attendanceLogs.employeeId}, 'EMP-', '') AS UNSIGNED)`)
+    .where(whereClause)
     .orderBy(desc(attendanceLogs.scanTime))
-    .limit(500);
+    .limit(Number(limit));
 
-    res.status(200).json({ success: true, data: logs });
+    const formattedLogs = logs.map(mapToAttendanceLogApi);
+
+    res.status(200).json({ success: true, data: formattedLogs });
   } catch (err) {
     handleError(res, err as Error, "getRawLogs");
   }
@@ -350,7 +394,6 @@ export const getDashboardStats = async (_req: Request, res: Response): Promise<v
       jobTitle: authentication.jobTitle,
       dateHired: authentication.dateHired,
       employmentStatus: authentication.employmentStatus,
-      isRestDay: schedules.isRestDay,
       startTime: schedules.startTime,
       endTime: schedules.endTime
     })
@@ -395,18 +438,18 @@ export const getDashboardStats = async (_req: Request, res: Response): Promise<v
 
     const hiredApplicants = await db.select({
       id: recruitmentApplicants.id,
-      firstName: recruitmentApplicants.firstName,
-      lastName: recruitmentApplicants.lastName,
+      firstName: recruitmentApplicants.first_name,
+      lastName: recruitmentApplicants.last_name,
       email: recruitmentApplicants.email,
-      createdAt: recruitmentApplicants.createdAt,
-      hiredDate: recruitmentApplicants.hiredDate,
+      createdAt: recruitmentApplicants.created_at,
+      hiredDate: recruitmentApplicants.hired_date,
       jobTitle: recruitmentJobs.title,
       departmentName: recruitmentJobs.department
     })
     .from(recruitmentApplicants)
-    .leftJoin(recruitmentJobs, eq(recruitmentApplicants.jobId, recruitmentJobs.id))
+    .leftJoin(recruitmentJobs, eq(recruitmentApplicants.job_id, recruitmentJobs.id))
     .where(eq(recruitmentApplicants.stage, 'Hired'))
-    .orderBy(desc(recruitmentApplicants.hiredDate), desc(recruitmentApplicants.createdAt));
+    .orderBy(desc(recruitmentApplicants.hired_date), desc(recruitmentApplicants.created_at));
 
     const dtrMap = new Map(dtrRecords.map((r) => [r.employeeId, r]));
     const onLeaveEmployeeIds = new Set(leaves.map((l) => l.employeeId));
@@ -456,7 +499,8 @@ export const getDashboardStats = async (_req: Request, res: Response): Promise<v
           presentList.push(record);
         }
       } else {
-        if (emp.isRestDay === 0) {
+        // If they have a schedule but no DTR, they are absent
+        if (emp.startTime) {
           absentList.push({
             id: employeeId,
             name,

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import {
   login,
   register,
+  verifyEnrollment,
   getUsers,
   getUserById,
   logout,
@@ -24,6 +25,7 @@ import { authLimiter } from '../middleware/rateLimitMiddleware.js';
 const router: Router = Router();
 
 // Public routes
+router.get('/verify-enrollment/:employeeId', verifyEnrollment);
 router.post('/register', authLimiter, register);
 router.post('/login', authLimiter, login);
 router.post('/logout', logout);

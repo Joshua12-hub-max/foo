@@ -49,7 +49,6 @@ const JobTable: React.FC<JobTableProps> = ({
                 <th className="px-6 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap">Job Title</th>
                 <th className="px-6 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap">Department</th>
                 <th className="px-6 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap">Type</th>
-                <th className="px-6 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap">Salary Range</th>
                 <th className="px-6 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap">Application Email</th>
                 <th className="px-6 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap">Posted Date</th>
                 <th className="px-6 py-4 text-center text-sm font-bold tracking-wide whitespace-nowrap">Actions</th>
@@ -70,7 +69,6 @@ const JobTable: React.FC<JobTableProps> = ({
                 <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap font-medium">{job.title}</td>
                 <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">{job.department}</td>
                 <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">{job.employment_type || 'Full-time'}</td>
-                <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">{job.salary_range || '-'}</td>
                 <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">
                     {job.application_email ? (
                     <a href={`mailto:${job.application_email}`} onClick={e => e.stopPropagation()} className="text-blue-600 hover:underline">{job.application_email}</a>
@@ -106,7 +104,7 @@ const JobTable: React.FC<JobTableProps> = ({
                 </tr>
             )) : (
                 <tr>
-                <td colSpan={8} className="p-8 text-center text-gray-500">
+                <td colSpan={7} className="p-8 text-center text-gray-500">
                     No job postings found matching your criteria.
                 </td>
                 </tr>

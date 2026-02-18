@@ -9,6 +9,9 @@ import { useToastStore } from '@/stores';
 // @ts-ignore
 import EditableProfileView from '@features/EmployeeManagement/Employee/Portal/Profile/EditableProfileView';
 
+// @ts-ignore
+import ProfileSkeleton from '@features/EmployeeManagement/Employee/Portal/Profile/ProfileSkeleton';
+
 interface Profile {
   id: number;
   first_name?: string;
@@ -36,8 +39,26 @@ const EmployeeProfile: React.FC = () => {
       setLoading(true);
       if (!id) return;
       const profileRes = await fetchEmployeeProfile(id);
-      if (profileRes.success) {
-        setProfile(profileRes.profile);
+      if (profileRes.success && profileRes.profile) {
+        // Sanitize null values to undefined to match Profile interface and EditableProfileView props
+        const sanitizedProfile: Profile = {
+            ...profileRes.profile,
+            department: profileRes.profile.department || undefined,
+            position_title: profileRes.profile.position_title || undefined,
+            employment_status: profileRes.profile.employment_status || undefined,
+            first_name: profileRes.profile.first_name || undefined,
+            last_name: profileRes.profile.last_name || undefined,
+            email: profileRes.profile.email || undefined,
+            // Generic fallback for other nulls if necessary, but these are the main conflict points
+        };
+        // Use a generic loop to clean all nulls if needed, but explicit is safer for types
+        Object.keys(sanitizedProfile).forEach(key => {
+            if (sanitizedProfile[key] === null) {
+                sanitizedProfile[key] = undefined;
+            }
+        });
+        
+        setProfile(sanitizedProfile);
       } else {
         showNotification(profileRes.message || 'Failed to load profile', 'error');
       }
@@ -68,11 +89,17 @@ const EmployeeProfile: React.FC = () => {
   };
 
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="flex flex-col items-center gap-4">
-        <div className="w-12 h-12 border-4 border-gray-800 border-t-transparent rounded-full animate-spin"></div>
-        <p className="text-gray-500 font-medium tracking-wide">Fetching Employee Record...</p>
+    <div className={`min-h-screen flex flex-col bg-white rounded-xl shadow-sm border border-gray-200 p-6 w-full overflow-hidden text-gray-800 transition-all duration-300 ${sidebarOpen ? 'max-w-[1400px] xl:max-w-[77vw]' : 'max-w-[1600px] xl:max-w-[88vw]'}`}>
+      <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-100">
+        <button 
+          onClick={() => navigate('/admin-dashboard/employees')}
+          className="flex items-center gap-2 text-gray-500 hover:text-gray-800 transition-colors"
+        >
+          <ArrowLeft size={18} />
+          <span className="font-bold text-sm">Return to Directory</span>
+        </button>
       </div>
+      <ProfileSkeleton />
     </div>
   );
   

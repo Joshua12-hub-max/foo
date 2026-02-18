@@ -154,22 +154,28 @@ const PlantillaManagement = forwardRef<PlantillaManagementRef, PlantillaManageme
                             summary={summary}
                             onCreateNew={handleOpenCreate}
                             hideHeader={true}
-                            onPrint={() => {
-                                import('@features/EmployeeManagement/Admin/Plantilla/components/print/csc_compliance_generator')
-                                    .then(({ generateCSCCompliantReport }) => {
+                            onExportPDF={() => {
+                                import('@features/EmployeeManagement/Admin/Plantilla/components/print/psipop_pdf_generator')
+                                    .then(({ generatePSIPOPPDF }) => {
                                         const deptName = selectedDept === 'All' 
                                             ? 'All Departments' 
                                             : departments.find(d => String(d.id) === String(selectedDept))?.name || 'Unknown';
-                                        generateCSCCompliantReport(filteredPositions, deptName);
+                                        
+                                        generatePSIPOPPDF(filteredPositions, {
+                                            departmentGocc: deptName,
+                                            bureauAgency: 'LGU Ligao',
+                                            preparedBy: 'HR Officer',
+                                            approvedBy: 'City Mayor'
+                                        });
                                     });
                             }}
                             onExportExcel={() => {
-                                import('@features/EmployeeManagement/Admin/Plantilla/components/print/csc_excel_generator')
-                                    .then(({ generateCSCExcelReport }) => {
+                                import('@features/EmployeeManagement/Admin/Plantilla/components/print/psipop_excel_generator')
+                                    .then(({ generatePSIPOPExcel }) => {
                                         const deptName = selectedDept === 'All' 
                                             ? 'All Departments' 
                                             : departments.find(d => String(d.id) === String(selectedDept))?.name || 'Unknown';
-                                        generateCSCExcelReport(filteredPositions, deptName);
+                                        generatePSIPOPExcel(filteredPositions, { departmentGocc: deptName });
                                     });
                             }}
                         />
@@ -182,7 +188,6 @@ const PlantillaManagement = forwardRef<PlantillaManagementRef, PlantillaManageme
                             onAssign={openAssignModal}
                             onVacate={handleOpenVacate}
                             onViewHistory={fetchHistory}
-                            onPrintAppointment={openAppointmentModal}
                         />
                     </>
                 )}

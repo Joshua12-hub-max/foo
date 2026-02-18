@@ -1,9 +1,9 @@
 import { db } from '../db/index.js';
 import { authentication } from '../db/schema.js';
-import { eq, or, and, gt, sql, InferInsertModel, InferSelectModel } from 'drizzle-orm';
+import { eq, or, and, gt, sql } from 'drizzle-orm';
 
-type User = InferSelectModel<typeof authentication>;
-type NewUser = InferInsertModel<typeof authentication>;
+
+type NewUser = typeof authentication.$inferInsert;
 type UpdateUser = Partial<NewUser>;
 
 export class AuthService {

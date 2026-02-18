@@ -29,11 +29,12 @@ const InquiriesPage = () => {
       showToast(data.data.message, 'success');
       queryClient.invalidateQueries({ queryKey: ['inquiries'] });
       if (selectedInquiry) {
-        setSelectedInquiry(prev => prev ? { ...prev, status: prev.status as any } : null);
+        setSelectedInquiry(prev => prev ? { ...prev, status: prev.status } : null);
       }
     },
-    onError: (error: any) => {
-      showToast(error.response?.data?.message || 'Update failed', 'error');
+    onError: (error: unknown) => {
+      const err = error as { response?: { data?: { message?: string } } };
+      showToast(err.response?.data?.message || 'Update failed', 'error');
     }
   });
 

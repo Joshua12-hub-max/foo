@@ -14,7 +14,6 @@ import {
   getAllEmployeeCredits,
   updateEmployeeCredit,
   deleteEmployeeCredit,
-  allocateDefaultCredits,
   // Accrual
   accrueMonthlyCredits,
   // Ledger

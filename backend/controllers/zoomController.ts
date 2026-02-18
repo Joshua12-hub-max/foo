@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import axios from 'axios';
-import type { AuthenticatedRequest } from '../types/index.js';
+
+
 
 // ============================================================================
 // Type Definitions (100% Type-Safe)

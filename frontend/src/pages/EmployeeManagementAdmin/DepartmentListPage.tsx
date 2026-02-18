@@ -5,6 +5,8 @@ import { RefreshCw, Plus } from 'lucide-react';
 import { useDepartments, DepartmentSearch, DepartmentTable, DepartmentFormModal, DepartmentDeleteModal, RemoveEmployeeModal } from '@features/EmployeeManagement/Admin/Departments';
 import { useState } from 'react';
 
+import { Employee } from '@/types';
+
 interface OutletContext {
   sidebarOpen?: boolean;
 }
@@ -44,10 +46,10 @@ const DepartmentList = forwardRef<DepartmentListRef, DepartmentListProps>(({ hid
   
   // Remove Employee Modal State
   const [removeModalOpen, setRemoveModalOpen] = useState(false);
-  const [employeeToRemove, setEmployeeToRemove] = useState<any>(null);
+  const [employeeToRemove, setEmployeeToRemove] = useState<Employee | null>(null);
   const [removeDeptId, setRemoveDeptId] = useState<number | null>(null);
 
-  const handleRemoveEmployeeClick = (employee: any, deptId: number) => {
+  const handleRemoveEmployeeClick = (employee: Employee, deptId: number) => {
     setEmployeeToRemove(employee);
     setRemoveDeptId(deptId);
     setRemoveModalOpen(true);

@@ -42,7 +42,7 @@ const RejectModal: React.FC<RejectModalProps> = ({
         reset();
         onConfirm();
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
         console.error("Rejection failed", error);
         showNotification("Failed to reject request", "error");
     }

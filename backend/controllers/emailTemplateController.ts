@@ -7,10 +7,7 @@ import { eq, asc } from 'drizzle-orm';
 // Interfaces
 // ============================================================================
 
-interface UpdateTemplateRequest {
-  subject_template: string;
-  body_template: string;
-}
+
 
 // ============================================================================
 // Controllers
@@ -32,12 +29,11 @@ export const getTemplates = async (_req: Request, res: Response): Promise<void> 
 export const updateTemplate = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const { subject_template, body_template }: UpdateTemplateRequest = req.body;
 
     await db.update(recruitmentEmailTemplates)
       .set({ 
-        subjectTemplate: subject_template, 
-        bodyTemplate: body_template 
+        subject_template: req.body.subject_template, 
+        body_template: req.body.body_template 
       })
       .where(eq(recruitmentEmailTemplates.id, Number(id)));
 

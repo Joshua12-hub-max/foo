@@ -42,8 +42,8 @@ export const submitInquiry = async (req: Request, res: Response): Promise<void> 
     }
 
     const [result] = await db.insert(contactInquiries).values({
-      firstName: first_name,
-      lastName: last_name,
+      first_name,
+      last_name,
       email,
       message,
       status: 'Pending'
@@ -111,7 +111,7 @@ export const getInquiries = async (req: Request, res: Response): Promise<void> =
     const inquiries = await db.select()
       .from(contactInquiries)
       .where(conditions.length > 0 ? conditions[0] : undefined)
-      .orderBy(desc(contactInquiries.createdAt));
+      .orderBy(desc(contactInquiries.created_at));
 
     res.json({ success: true, inquiries });
   } catch (error) {
@@ -136,7 +136,7 @@ export const updateStatus = async (req: Request, res: Response): Promise<void> =
 
     const updateData: any = { status: status as any };
     if (admin_notes !== undefined) {
-      updateData.adminNotes = admin_notes || null;
+      updateData.admin_notes = admin_notes || null;
     }
 
     await db.update(contactInquiries)

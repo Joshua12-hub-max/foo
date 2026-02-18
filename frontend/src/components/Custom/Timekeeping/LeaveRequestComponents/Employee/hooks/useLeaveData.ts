@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tansta
 import { leaveApi } from "@/api/leaveApi";
 import { EmployeeLeaveRequest } from '@/components/Custom/Timekeeping/LeaveRequestComponents/Employee/types';
 
-export const useLeaveData = (initialFilters?: any) => {
+export const useLeaveData = (initialFilters?: Record<string, string>) => {
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
@@ -38,9 +38,9 @@ export const useLeaveData = (initialFilters?: any) => {
         // I'll keep it as is for now and maybe update backend if I see the need.
       };
       
-      const response = await (leaveApi as any).getMyLeaves(params);
+      const response = await leaveApi.getMyApplications(params);
       
-      const leaves = (response.data?.leaves || []).map((l: any) => ({
+      const leaves = (response.data?.leaves || []).map((l: Record<string, unknown>) => ({
         id: l.id,
         employee_id: l.employee_id,
         leaveType: l.leave_type,
@@ -67,7 +67,7 @@ export const useLeaveData = (initialFilters?: any) => {
     await queryClient.invalidateQueries({ queryKey: ['employee-leaves'] });
   };
 
-  const updateFilters = (newFilters: any) => {
+  const updateFilters = (newFilters: Record<string, string>) => {
     setFilters(prev => ({ ...prev, ...newFilters }));
     setPage(1);
   };

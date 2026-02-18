@@ -1,7 +1,31 @@
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 
-export const generateAppointmentExcel = async (data: any) => {
+export interface AppointmentData {
+  agencyName: string;
+  appointeeName: string;
+  positionTitle: string;
+  salaryGrade: string;
+  status: string;
+  department: string;
+  compensationRate: string;
+  natureOfAppointment: string;
+  viceName: string;
+  vacatedReason: string;
+  plantillaItemNo: string;
+  pageNo: string;
+  signatoryName: string;
+  signatoryTitle: string;
+  appointmentDate: string;
+  hrmoName?: string;
+  chairpersonName?: string;
+  publishedFrom?: string;
+  publishedTo?: string;
+  publishedAt?: string;
+  deliberationDate?: string;
+}
+
+export const generateAppointmentExcel = async (data: AppointmentData) => {
     try {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('CS Form 33-A');

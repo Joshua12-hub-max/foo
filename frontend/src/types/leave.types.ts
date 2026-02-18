@@ -96,6 +96,8 @@ export interface LeaveBalance {
   first_name?: string;
   last_name?: string;
   department?: string;
+  days_used_with_pay?: number;
+  days_used_without_pay?: number;
 }
 
 export interface LedgerEntry {

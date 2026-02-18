@@ -33,7 +33,8 @@ export const formatDate = (dateStr: string | null | undefined): string => {
  * @returns CSS class string
  */
 export const getStatusBadge = (status: string): string => {
-  return STATUS_BADGE_STYLES[status] || 'bg-gray-100 text-gray-700';
+  const normalizedStatus = Object.keys(STATUS_BADGE_STYLES).find(key => key.toLowerCase() === status.toLowerCase());
+  return STATUS_BADGE_STYLES[normalizedStatus || ''] || 'bg-gray-100 text-gray-700';
 };
 
 /**
@@ -42,12 +43,12 @@ export const getStatusBadge = (status: string): string => {
  * @returns CSS class string
  */
 export const getPriorityBadge = (priority: string): string => {
-  return PRIORITY_BADGE_STYLES[priority] || 'bg-gray-100 text-gray-600';
+  const normalizedPriority = Object.keys(PRIORITY_BADGE_STYLES).find(key => key.toLowerCase() === priority.toLowerCase());
+  return PRIORITY_BADGE_STYLES[normalizedPriority || ''] || 'bg-gray-100 text-gray-600';
 };
 
 /**
- * Get employee status badge for employee memo view
- * Uses acknowledgment status rather than memo status
+ *
  * @param memo - Memo object
  * @returns CSS class string
  */

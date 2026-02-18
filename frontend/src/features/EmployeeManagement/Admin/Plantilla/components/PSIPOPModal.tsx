@@ -1,5 +1,4 @@
 import React, { memo, useRef, useState, useEffect } from 'react';
-import { useReactToPrint } from 'react-to-print';
 import { X, Printer } from 'lucide-react';
 import { Position } from '@/api/plantillaApi';
 import { generatePSIPOPPDF, type PSIPOPConfig } from './print/psipop_pdf_generator';
@@ -26,11 +25,7 @@ const PSIPOPModal: React.FC<PSIPOPModalProps> = memo(({ isOpen, onClose, positio
     approvedByTitle: 'City Mayor'
   });
 
-  // Handle Print (Browser)
-  const handlePrint = useReactToPrint({
-    contentRef: componentRef,
-    documentTitle: `PSI-POP_${config.fiscalYear}`,
-  });
+
 
   // Handle PDF Export
   const handlePDFExport = () => {
@@ -68,10 +63,10 @@ const PSIPOPModal: React.FC<PSIPOPModalProps> = memo(({ isOpen, onClose, positio
   const parseName = (name?: string) => {
     if (!name) return { last: '', first: '', middle: '' };
     const parts = name.split(',').map(s => s.trim());
-    let last = parts[0] || '';
-    let rest = parts[1] ? parts[1].split(' ') : [];
-    let first = rest[0] || '';
-    let middle = rest.slice(1).join(' ');
+    const last = parts[0] || '';
+    const rest = parts[1] ? parts[1].split(' ') : [];
+    const first = rest[0] || '';
+    const middle = rest.slice(1).join(' ');
     return { last, first, middle };
   };
 
@@ -89,12 +84,6 @@ const PSIPOPModal: React.FC<PSIPOPModalProps> = memo(({ isOpen, onClose, positio
             <p className="text-sm text-gray-500">CSC Form No. 1 (Revised 2018) - Official Format</p>
           </div>
           <div className="flex gap-2">
-            <button 
-              onClick={handlePrint}
-              className="px-5 py-2 bg-white text-gray-700 text-sm font-semibold rounded-lg border border-gray-300 hover:bg-gray-50 hover:border-gray-400 transition-all"
-            >
-              Print
-            </button>
             <button 
               onClick={handlePDFExport}
               className="px-5 py-2 bg-white text-gray-700 text-sm font-semibold rounded-lg border border-gray-300 hover:bg-gray-50 hover:border-gray-400 transition-all"

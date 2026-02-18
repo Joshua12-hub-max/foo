@@ -7,12 +7,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchDepartments } from "@api/departmentApi";
 import { fetchEmployees } from "@api/employeeApi";
 import { useFilterOptions } from "@/hooks/useFilterOptions";
+import { useDTRStore } from "@/stores/dtrStore";
+import { DTRFilterValues, DTRQueryValues, UpdateDTRValues } from "@/schemas/dtrSchema";
 
 import { 
-  filterDTRData, 
-  calculatePagination, 
-  getUniqueDepartments, 
-  getUniqueEmployees, 
   exportToCSV, 
   exportToPDF, 
   getStatusBadge as getStatusBadgeUtil,
@@ -20,53 +18,72 @@ import {
   DTRFilters,
   PaginationResult
 } from "../../Utils/adminDTRUtils";
+import { DTRApiResponse } from "@/types/attendance";
+import { AttendanceRecord } from "@/types";
 import { ITEMS_PER_PAGE, MESSAGES, DELAYS, EXPORT_HEADERS, STATUS_STYLES } from "../../Constants/adminDTR.constant";
 
 export const useAdminDTR = () => {
   const today = useMemo(() => new Date().toLocaleDateString("en-US"), []);
   const sidebarOpen = useUIStore((state) => state.sidebarOpen);
   const queryClient = useQueryClient();
+  const { 
+    filters: storeFilters, 
+    search: storeSearch, 
+    pagination: storePagination,
+    setFilters: setStoreFilters,
+    setSearch: setStoreSearch,
+    setPage: setStorePage,
+    resetFilters
+  } = useDTRStore();
 
-  // State management
-  const [filters, setFilters] = useState<DTRFilters>({  
-    department: "", 
-    employee: "", 
-    fromDate: "", 
-    toDate: "", 
-  });
-
-  const [searchQuery, setSearchQuery] = useState("");
-  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [loadingType, setLoadingType] = useState<string>(""); // Used for export loading
-  const [errorLocal, setErrorLocal] = useState<string | null>(null); // For non-query errors (exports)
+  // Local UI state for search input (not yet debounced)
+  const [searchQuery, setSearchQuery] = useState(storeSearch);
+  const [loadingType, setLoadingType] = useState<string>(""); 
+  const [errorLocal, setErrorLocal] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [editingRecord, setEditingRecord] = useState<DTRRecord | null>(null);
 
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // React Query: Fetch Data
-  const { data: dtrData = [], isLoading, error: queryError, refetch } = useQuery({
-    queryKey: ['admin-dtr-logs'],
+  const { data, isLoading, error: queryError, refetch } = useQuery({
+    queryKey: ['admin-dtr-logs', storeFilters, storeSearch, storePagination.page],
     queryFn: async () => {
-        const response = await attendanceApi.getLogs({});
-        const data = response.data.data || [];
+        const response = await attendanceApi.getLogs({
+            page: storePagination.page,
+            limit: storePagination.limit,
+            department: storeFilters.department,
+            employeeId: storeFilters.employeeId,
+            startDate: storeFilters.startDate,
+            endDate: storeFilters.endDate,
+            search: storeSearch
+        });
         
-        return data.map((item: any): DTRRecord => {
-            const timeIn = item.time_in || item.timeIn;
-            const timeOut = item.time_out || item.timeOut;
-            const employeeId = item.employee_id || item.employeeId;
-            const firstName = item.first_name || item.firstName;
-            const lastName = item.last_name || item.lastName;
-
+        const logs = response.data.data || [];
+        const mappedLogs = logs.map((item: DTRApiResponse): DTRRecord => {
+            const timeIn = item.time_in;
+            const timeOut = item.time_out;
+            
             let hoursWorked = '0';
             if (timeIn && timeOut) {
               const start = new Date(timeIn).getTime();
               const end = new Date(timeOut).getTime();
-              hoursWorked = ((end - start) / (1000 * 60 * 60)).toFixed(2);
+              let duration = (end - start) / (1000 * 60 * 60);
+
+              // Policy: Deduct 1 hour break for shifts > 5 hours
+              // This aligns with the "dedicated working hours" policy (e.g., 8-5 shift = 9h span - 1h break = 8h)
+              if (duration > 5) {
+                duration -= 1;
+              }
+              
+              // Ensure we don't display negative values in edge cases
+              hoursWorked = Math.max(0, duration).toFixed(2);
             }
             
             let formattedDate = item.date;
+            // Store raw ISO date for filtering (item.date is now ISO YYYY-MM-DD from backend)
+            const rawDate = item.date;
+
             if (item.date) {
               const dateObj = new Date(item.date);
               formattedDate = dateObj.toLocaleDateString('en-US', { 
@@ -77,71 +94,84 @@ export const useAdminDTR = () => {
             }
             
             return {
-              id: item.id || item.record_id, 
-              employeeId: employeeId,
-              name: item.employee_name || `${firstName || ''} ${lastName || ''}`.trim(),
+              id: item.id || 0, 
+              employeeId: String(item.employee_id || "N/A"),
+              name: item.employee_name || 'Unknown Employee',
               department: item.department || 'N/A',
-              date: formattedDate,
+              date: formattedDate || "N/A",
+              rawDate: rawDate, // Use for filtering
               timeIn: timeIn ? new Date(timeIn).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--',
               timeOut: timeOut ? new Date(timeOut).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--',
               hoursWorked: hoursWorked,
               status: item.status || 'Absent',
+              duties: item.duties || 'No Schedule',
               remarks: '-'
             };
         });
+
+        return {
+            items: mappedLogs,
+            pagination: response.data.pagination
+        };
     },
-    staleTime: 0,
-    refetchOnMount: true,
+    staleTime: 5000,
   });
 
+  const dtrData = data?.items || [];
+  const serverPagination = data?.pagination;
   const error = queryError ? (queryError as Error).message : errorLocal;
 
   // React Query: Mutation
   const updateRecordMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string | number, data: any }) => {
+    mutationFn: async ({ id, data }: { id: string | number, data: UpdateDTRValues }) => {
         await dtrApi.updateRecord(String(id), data);
     },
     onSuccess: () => {
         setSuccessMessage("Record updated successfully");
+        // Invalidate all variants of admin-dtr-logs to ensure filtered views are updated
         queryClient.invalidateQueries({ queryKey: ['admin-dtr-logs'] });
+        queryClient.invalidateQueries({ queryKey: ['attendanceLogs'] });
+        
+        // Force refetch of current view
+        refetch();
+        
         setEditingRecord(null);
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
         console.error("Failed to update record", err);
         setErrorLocal("Failed to update record");
     }
   });
 
-  // Fetch Filter Options using Centralized Hook
+  // Fetch Filter Options
   const { data: filterOptions } = useFilterOptions();
   const uniqueDepartments = filterOptions.departments;
   const uniqueEmployees = filterOptions.employees;
 
-  
-  const filteredData = useMemo(
-    () => filterDTRData(dtrData, filters, debouncedSearchQuery),
-    [filters, debouncedSearchQuery, dtrData]
-  );
-
-  const paginationData: PaginationResult = useMemo(
-    () => calculatePagination(filteredData, currentPage, ITEMS_PER_PAGE),
-    [filteredData, currentPage]
-  );
+  const paginationData: PaginationResult = useMemo(() => {
+    return {
+      totalPages: serverPagination?.totalPages || 0,
+      startIndex: ((storePagination.page - 1) * storePagination.limit) + 1,
+      endIndex: Math.min(storePagination.page * storePagination.limit, serverPagination?.total || 0),
+      currentItems: dtrData,
+      totalRecords: serverPagination?.total || 0
+    };
+  }, [dtrData, serverPagination, storePagination]);
 
   // Event handlers
-  const handleFilterChange = useCallback((field: keyof DTRFilters, value: string) => {
-    setFilters((prev) => ({ ...prev, [field]: value }));
-  }, []);
+  const handleFilterChange = useCallback((field: string, value: string) => {
+    setStoreFilters({ [field]: value });
+  }, [setStoreFilters]);
 
   const handleApply = useCallback(() => {
     setSuccessMessage(MESSAGES.FILTERS_APPLIED);
   }, []);
 
   const handleClear = useCallback(() => {
-    setFilters({ department: "", employee: "", fromDate: "", toDate: "" });
+    resetFilters();
     setSearchQuery("");
     setSuccessMessage(MESSAGES.FILTERS_CLEARED);
-  }, []);
+  }, [resetFilters]);
 
   const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
@@ -153,16 +183,16 @@ export const useAdminDTR = () => {
   }, [refetch]);
 
   const handlePrevPage = useCallback(() => {
-    setCurrentPage((prev) => Math.max(prev - 1, 1));
-  }, []);
+    setStorePage(Math.max(storePagination.page - 1, 1));
+  }, [storePagination.page, setStorePage]);
 
   const handleNextPage = useCallback(() => {
-    setCurrentPage((prev) => Math.min(prev + 1, paginationData.totalPages));
-  }, [paginationData.totalPages]);
+    setStorePage(Math.min(storePagination.page + 1, serverPagination?.totalPages || 1));
+  }, [storePagination.page, serverPagination?.totalPages, setStorePage]);
 
   // Export handlers
   const handleExportCSV = useCallback(async () => {
-    if (filteredData.length === 0) {
+    if (dtrData.length === 0) {
       setErrorLocal(MESSAGES.ERROR_NO_DATA);
       return;
     }
@@ -171,18 +201,19 @@ export const useAdminDTR = () => {
     try {
       await new Promise(resolve => setTimeout(resolve, DELAYS.EXPORT_DELAY));
       const filename = `dtr_${today.replace(/\//g, '-')}.csv`;
-      await exportToCSV(filteredData, EXPORT_HEADERS, filename);
+      await exportToCSV(dtrData, EXPORT_HEADERS, filename);
       setSuccessMessage(MESSAGES.CSV_EXPORTED);
-    } catch (err: any) {
-      console.error('Export to CSV failed:', err);
-      setErrorLocal(`${MESSAGES.ERROR_EXPORT_CSV}: ${err.message || 'Unknown error. Please try again.'}`);
+    } catch (err) {
+      const error = err as Error;
+      console.error('Export to CSV failed:', error);
+      setErrorLocal(`${MESSAGES.ERROR_EXPORT_CSV}: ${error.message || 'Unknown error.'}`);
     } finally {
       setLoadingType("");
     }
-  }, [filteredData, today]);
+  }, [dtrData, today]);
 
   const handleExportPDF = useCallback(async () => {
-    if (filteredData.length === 0) {
+    if (dtrData.length === 0) {
       setErrorLocal(MESSAGES.ERROR_NO_DATA);
       return;
     }
@@ -190,15 +221,16 @@ export const useAdminDTR = () => {
     setErrorLocal(null);
     try {
       await new Promise(resolve => setTimeout(resolve, DELAYS.EXPORT_DELAY));
-      await exportToPDF(filteredData, EXPORT_HEADERS, today, DELAYS.PDF_PRINT_DELAY);
+      await exportToPDF(dtrData, EXPORT_HEADERS, today, DELAYS.PDF_PRINT_DELAY);
       setSuccessMessage(MESSAGES.PDF_EXPORTED);
-    } catch (err: any) {
-      console.error('Export to PDF failed:', err);
-      setErrorLocal(`${MESSAGES.ERROR_EXPORT_PDF}: ${err.message || 'Unknown error. Please try again.'}`);
+    } catch (err) {
+      const error = err as Error;
+      console.error('Export to PDF failed:', error);
+      setErrorLocal(`${MESSAGES.ERROR_EXPORT_PDF}: ${error.message || 'Unknown error.'}`);
     } finally {
       setLoadingType("");
     }
-  }, [filteredData, today]);
+  }, [dtrData, today]);
 
   const getStatusBadge = useCallback((status: string) => {
     return getStatusBadgeUtil(status, STATUS_STYLES);
@@ -208,25 +240,18 @@ export const useAdminDTR = () => {
     setEditingRecord(record);
   }, []);
 
-  const handleSaveEdit = useCallback(async (id: string | number, data: any) => {
-     updateRecordMutation.mutate({ id, data });
+  const handleSaveEdit = useCallback(async (id: string | number, data: UpdateDTRValues) => {
+     await updateRecordMutation.mutateAsync({ id, data });
   }, [updateRecordMutation]);
 
-  // Effects
+  // Search Debounce Effect
   useEffect(() => {
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
-    }
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
     searchTimeoutRef.current = setTimeout(() => {
-      setDebouncedSearchQuery(searchQuery);
+      setStoreSearch(searchQuery);
     }, DELAYS.SEARCH_DEBOUNCE);
-
-    return () => {
-      if (searchTimeoutRef.current) {
-        clearTimeout(searchTimeoutRef.current);
-      }
-    };
-  }, [searchQuery]);
+    return () => { if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current); };
+  }, [searchQuery, setStoreSearch]);
 
   useEffect(() => {
     if (error || errorLocal) {
@@ -242,35 +267,25 @@ export const useAdminDTR = () => {
     }
   }, [successMessage]);
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [filters, debouncedSearchQuery]);
-
   return {
-    // Data
     today,
     sidebarOpen,
-    filters,
+    filters: storeFilters,
     searchQuery,
-    debouncedSearchQuery,
-    currentPage,
+    debouncedSearchQuery: storeSearch,
+    currentPage: storePagination.page,
     isLoading: isLoading || loadingType !== "",
-    loadingType: isLoading ? "data" : loadingType,
     error,
     successMessage,
     dtrData,
-    filteredData,
+    filteredData: dtrData,
     paginationData,
     uniqueDepartments,
     uniqueEmployees,
     editingRecord,
-    
-    // Setters
     setError: setErrorLocal,
     setSuccessMessage,
     setEditingRecord,
-    
-    // Handlers
     handleFilterChange,
     handleApply,
     handleClear,

@@ -1,4 +1,5 @@
-import db from '../connection.js';
+import { db } from '../index.js';
+import { sql } from 'drizzle-orm';
 
 /**
  * Migration: 100% CSC POP Compliance Upgrade
@@ -7,7 +8,7 @@ import db from '../connection.js';
  */
 
 const migration = async (): Promise<void> => {
-  console.log('🚀 Starting CSC POP Compliance Migration...');
+  console.log('Starting CSC POP Compliance Migration...');
 
   try {
     // 1. Update Auth Table (Employee Details)
@@ -19,8 +20,8 @@ const migration = async (): Promise<void> => {
 
     for (const field of authFields) {
       try {
-        await db.query(`ALTER TABLE authentication ADD COLUMN ${field.name} ${field.definition}`);
-        console.log(`  ✅ Added ${field.name} to authentication`);
+        await db.execute(sql.raw(`ALTER TABLE authentication ADD COLUMN ${field.name} ${field.definition}`));
+        console.log(`Added ${field.name} to authentication`);
       } catch (error: any) {
         if (error.code === 'ER_DUP_FIELDNAME') console.log(`  ⚠️  ${field.name} already exists`);
         else throw error;
@@ -37,24 +38,25 @@ const migration = async (): Promise<void> => {
 
     for (const field of positionFields) {
       try {
-        await db.query(`ALTER TABLE plantilla_positions ADD COLUMN ${field.name} ${field.definition}`);
-        console.log(`  ✅ Added ${field.name} to plantilla_positions`);
+        await db.execute(sql.raw(`ALTER TABLE plantilla_positions ADD COLUMN ${field.name} ${field.definition}`));
+        console.log(`  Added ${field.name} to plantilla_positions`);
       } catch (error: any) {
-        if (error.code === 'ER_DUP_FIELDNAME') console.log(`  ⚠️  ${field.name} already exists`);
+        if (error.code === 'ER_DUP_FIELDNAME') console.log(`  ${field.name} already exists`);
         else throw error;
       }
     }
 
-    console.log('\n🎉 CSC POP Compliance Migration completed!');
+
+    console.log('\n CSC POP Compliance Migration completed!');
 
   } catch (error) {
-    console.error('❌ Migration failed:', error);
+    console.error('Migration failed:', error);
     throw error;
   }
 };
 
 migration()
-  .then(() => { console.log('\n✅ Migration script finished'); process.exit(0); })
-  .catch((error) => { console.error('\n❌ Migration script failed:', error); process.exit(1); });
+  .then(() => { console.log('\n Migration script finished'); process.exit(0); })
+  .catch((error) => { console.error('\n Migration script failed:', error); process.exit(1); });
 
 export default migration;

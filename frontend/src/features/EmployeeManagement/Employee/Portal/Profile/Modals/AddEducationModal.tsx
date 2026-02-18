@@ -1,52 +1,81 @@
 import React from 'react';
 import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
+import { zodResolver } from '@/lib/zodResolver';
 import { X, Loader } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToastStore } from '@/stores';
 import { employeeApi } from '@/api/employeeApi';
 import { AddEducationSchema, AddEducationInput } from '@/schemas/employeeSchema';
+import { Education, EducationData, ApiError } from '@/types';
 
 interface AddEducationModalProps {
   isOpen: boolean;
   onClose: () => void;
   employeeId: number;
   onSuccess?: () => void;
+  initialData?: Education | null;
 }
 
 const AddEducationModal: React.FC<AddEducationModalProps> = ({
   isOpen,
   onClose,
   employeeId,
-  onSuccess
+  onSuccess,
+  initialData
 }) => {
   const showToast = useToastStore((state) => state.showToast);
   const queryClient = useQueryClient();
+  const isEditMode = !!initialData;
 
-  const { register, handleSubmit, formState: { errors }, reset, watch } = useForm<AddEducationInput>({
-    resolver: zodResolver(AddEducationSchema) as any,
+  const { register, handleSubmit, formState: { errors }, reset, watch, setValue } = useForm<AddEducationInput>({
+    resolver: zodResolver(AddEducationSchema),
     defaultValues: {
       is_current: false,
       type: 'Education'
     }
   });
 
+  React.useEffect(() => {
+    if (isOpen && initialData) {
+       setValue('institution', initialData.institution);
+       setValue('degree', initialData.degree || '');
+       setValue('field_of_study', initialData.field_of_study || '');
+       setValue('start_date', initialData.start_date ? new Date(initialData.start_date).toISOString().split('T')[0] : '');
+       setValue('end_date', initialData.end_date ? new Date(initialData.end_date).toISOString().split('T')[0] : '');
+       setValue('is_current', !!initialData.is_current);
+       setValue('type', initialData.type || 'Education'); 
+    } else if (isOpen && !initialData) {
+       reset({ is_current: false, type: 'Education' });
+    }
+  }, [isOpen, initialData, setValue, reset]);
+
   const isCurrent = watch('is_current');
 
   const mutation = useMutation({
     mutationFn: async (data: AddEducationInput) => {
-      await employeeApi.addEmployeeEducation(employeeId, data);
+      if (isEditMode && initialData?.id) {
+        const cleanData = Object.fromEntries(
+          Object.entries(data).map(([k, v]) => [k, v === null ? undefined : v])
+        ) as Partial<EducationData>;
+        await employeeApi.updateEmployeeEducation(employeeId, initialData.id, cleanData);
+      } else {
+        const cleanData = Object.fromEntries(
+          Object.entries(data).map(([k, v]) => [k, v === null ? undefined : v])
+        ) as unknown as EducationData;
+        await employeeApi.addEmployeeEducation(employeeId, cleanData);
+      }
     },
     onSuccess: () => {
-      showToast('Education added successfully', 'success');
+      showToast(isEditMode ? 'Education updated successfully' : 'Education added successfully', 'success');
       queryClient.invalidateQueries({ queryKey: ['employee', String(employeeId)] });
       reset();
       if (onSuccess) onSuccess();
       onClose();
     },
-    onError: (error: any) => {
-      console.error('Failed to add education', error);
-      showToast(error.message || 'Failed to add education', 'error');
+    onError: (error: unknown) => {
+      console.error('Failed to save education', error);
+      const err = error as ApiError;
+      showToast(err.response?.data?.message || err.message || 'Failed to save education', 'error');
     }
   });
 
@@ -60,7 +89,7 @@ const AddEducationModal: React.FC<AddEducationModalProps> = ({
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col border border-gray-100 animate-in fade-in zoom-in duration-200">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <h3 className="text-lg font-bold text-gray-900">Add Education</h3>
+          <h3 className="text-lg font-bold text-gray-900">{isEditMode ? 'Edit Education' : 'Add Education'}</h3>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-full hover:bg-gray-100">
             <X className="w-5 h-5" />
           </button>

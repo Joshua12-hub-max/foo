@@ -89,8 +89,13 @@ export const PerformanceTable: React.FC<PerformanceTableProps> = ({
                   <td className="px-6 py-4">
                       <div className="text-sm font-bold text-gray-900">{item.name}</div>
                   </td>
-                  <td className="px-6 py-4 text-xs text-gray-500 font-medium">{item.department}</td>
-                  <td className="px-6 py-4 text-xs text-gray-500 font-medium">{item.jobTitle}</td>
+                  <td className="px-6 py-4">
+                      <span className="text-xs font-bold text-blue-600 uppercase tracking-tighter whitespace-nowrap">
+                          {item.duties || 'Regular'}
+                      </span>
+                  </td>
+                  <td className="px-6 py-4 text-xs text-gray-500 font-medium whitespace-nowrap">{item.department}</td>
+                  <td className="px-6 py-4 text-xs text-gray-500 font-medium whitespace-nowrap">{item.position_title || item.jobTitle}</td>
                   <td className="px-6 py-4 text-xs text-gray-400 font-medium">{item.lastEvaluation}</td>
                   <td className="px-6 py-4">
                       {item.score ? <span className="text-lg font-black text-gray-900">{item.score}</span> : <span className="text-gray-300 text-xs italic">Pending</span>}

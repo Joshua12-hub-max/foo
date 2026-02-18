@@ -111,7 +111,7 @@ const LiveChatWidget = () => {
                                         <MessageCircle size={18} />
                                     </div>
                                     <div>
-                                        <h3 className="text-xs font-black tracking-widest text-white uppercase">Live Support</h3>
+                                        <h3 className="text-xs font-black tracking-widest text-white uppercase font-sans">Human Resources</h3>
                                         <div className="flex items-center gap-1.5 mt-1">
                                             <span className="relative flex h-1.5 w-1.5">
                                               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
@@ -135,8 +135,8 @@ const LiveChatWidget = () => {
                             {!onboarded ? (
                                 <div className="flex-1 p-6 flex flex-col justify-center text-center">
                                     <div className="mb-6">
-                                        <h4 className="text-base font-black text-slate-900 tracking-tight italic">Direct Chat with HR</h4>
-                                        <p className="text-[11px] text-slate-500 mt-1.5 font-medium">Please enter your details to begin.</p>
+                                        <h4 className="text-base font-black text-slate-900 tracking-tight italic">Chat with HR</h4>
+                                        <p className="text-[11px] text-slate-500 mt-1.5 font-medium">Please enter your details to start a conversation.</p>
                                     </div>
                                     <form onSubmit={handleStartChat} className="space-y-4">
                                         <div className="space-y-1.5 text-left">
@@ -163,7 +163,7 @@ const LiveChatWidget = () => {
                                             disabled={loading}
                                             className="w-full bg-slate-950 text-white font-black py-3.5 rounded-xl shadow-lg hover:shadow-indigo-500/20 active:scale-95 transition-all text-xs uppercase tracking-widest flex items-center justify-center gap-2 mt-2"
                                         >
-                                            {loading ? <Loader2 size={16} className="animate-spin text-white/50" /> : 'Start Connection'}
+                                            {loading ? <Loader2 size={16} className="animate-spin text-white/50" /> : 'Start Chat'}
                                         </button>
                                     </form>
                                     <p className="mt-6 text-[9px] text-slate-400 font-bold uppercase tracking-widest">Typical response: 5 mins</p>
@@ -177,26 +177,26 @@ const LiveChatWidget = () => {
                                         {messages.length === 0 && (
                                             <div className="h-full flex flex-col items-center justify-center text-center opacity-30 p-4">
                                                 <MessageCircle className="text-slate-900 mb-2" size={24} />
-                                                <p className="text-[10px] font-black uppercase tracking-tight">Connected to Meycauayan HR</p>
+                                                <p className="text-[10px] font-black uppercase tracking-tight">Connected with HR Support</p>
                                             </div>
                                         )}
-                                        {messages.map((msg) => (
-                                            <div
-                                                key={msg.id}
-                                                className={`flex ${msg.sender_type === 'Applicant' ? 'justify-end' : 'justify-start'}`}
-                                            >
-                                                <div className={`max-w-[90%] p-3 px-4 rounded-2xl flex flex-col ${
-                                                    msg.sender_type === 'Applicant' 
-                                                    ? 'bg-[#0f172a] text-white rounded-br-none' 
-                                                    : 'bg-white border border-slate-100 text-slate-800 rounded-bl-none shadow-sm'
-                                                }`}>
-                                                    <p className="text-[13px] font-bold leading-relaxed">{msg.message}</p>
-                                                    <span className="text-[8px] mt-1 text-right opacity-30 font-black tracking-tighter uppercase font-sans">
-                                                        {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                    </span>
+                                        {messages.map((msg) => {
+                                            const isApplicant = msg.sender_type === 'Applicant';
+                                            return (
+                                                <div key={msg.id} className={`flex ${isApplicant ? 'justify-end' : 'justify-start'}`}>
+                                                    <div className={`max-w-[90%] p-3 px-4 rounded-2xl flex flex-col ${
+                                                        isApplicant 
+                                                        ? 'bg-slate-900 text-white rounded-br-none' 
+                                                        : 'bg-white border border-slate-100 text-slate-800 rounded-bl-none shadow-sm'
+                                                    }`}>
+                                                        <p className="text-[13px] font-bold leading-relaxed">{msg.message}</p>
+                                                        <span className="text-[8px] mt-1 text-right opacity-30 font-black tracking-tighter uppercase">
+                                                            {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                        </span>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
 
                                     <div className="p-4 bg-white border-t border-slate-50">

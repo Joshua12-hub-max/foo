@@ -1,6 +1,6 @@
 import React from 'react';
 import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
+import { zodResolver } from '@/lib/zodResolver';
 import { X, Loader } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToastStore } from '@/stores';
@@ -26,7 +26,7 @@ const AddCustomFieldModal: React.FC<AddCustomFieldModalProps> = ({
   const queryClient = useQueryClient();
 
   const { register, handleSubmit, formState: { errors }, reset } = useForm<AddCustomFieldInput>({
-    resolver: zodResolver(AddCustomFieldSchema) as any,
+    resolver: zodResolver(AddCustomFieldSchema),
     defaultValues: {
       section: section
     }

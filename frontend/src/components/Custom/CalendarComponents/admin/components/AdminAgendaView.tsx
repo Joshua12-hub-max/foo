@@ -48,12 +48,12 @@ const AdminAgendaView = ({ events = [], announcements = [], schedules = [], onAd
 
   const filteredAnnouncements = filterItems(announcements, ['title', 'content']);
   const filteredEvents = filterItems(events, ['title', 'description']);
-  const filteredSchedules = filterItems(schedules, ['employee_name', 'scheduleName', 'schedule_title', 'title', 'description']);
+  const filteredSchedules = filterItems(schedules, ['employee_name', 'scheduleName', 'duties', 'title', 'description']);
 
   const tabs = [
     { id: 'announcements', label: 'Announcements', icon: Megaphone, count: filteredAnnouncements.length },
     { id: 'events', label: 'Events', icon: CalendarDays, count: filteredEvents.length },
-    { id: 'schedules', label: 'Schedules', icon: Users, count: filteredSchedules.length }
+    { id: 'schedules', label: 'Duties', icon: Users, count: filteredSchedules.length }
   ];
 
   const getAddHandler = () => {
@@ -69,7 +69,7 @@ const AdminAgendaView = ({ events = [], announcements = [], schedules = [], onAd
     switch (activeTab) {
       case 'announcements': return 'New Announcement';
       case 'events': return 'New Event';
-      case 'schedules': return 'New Schedule';
+      case 'schedules': return 'New Duties';
       default: return 'Add New';
     }
   };
@@ -270,7 +270,7 @@ const AdminAgendaView = ({ events = [], announcements = [], schedules = [], onAd
                       <td className="px-6 py-4 text-sm font-medium text-gray-900">
                         {item.employeeName || item.employee_name || item.employee_id || 'N/A'}
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">{item.scheduleName || item.schedule_title || item.title || '-'}</td>
+                      <td className="px-6 py-4 text-sm text-gray-600">{item.scheduleName || item.duties || item.title || '-'}</td>
                       <td className="px-6 py-4 text-sm text-gray-600">{formatDate(item.start_date)}</td>
                       <td className="px-6 py-4 text-sm text-gray-600">{formatDate(item.end_date)}</td>
                       <td className="px-6 py-4 text-sm text-gray-600">

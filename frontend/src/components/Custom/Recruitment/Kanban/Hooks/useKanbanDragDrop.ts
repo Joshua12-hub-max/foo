@@ -92,7 +92,7 @@ const useKanbanDragDrop = (
     );
 
     try {
-      await (recruitmentApi as any).updateStage(applicantId, { stage: targetColumnId });
+      await recruitmentApi.updateStage(applicantId, { stage: targetColumnId });
       showNotification(`Moved to ${column.title}`, 'success');
     } catch (err) {
       fetchApplicants();

@@ -1,4 +1,4 @@
-import { mysqlTable, varchar, int, date, timestamp, decimal, mysqlEnum, datetime, unique, longtext, primaryKey, text, tinyint } from 'drizzle-orm/mysql-core';
+import { mysqlTable, varchar, int, bigint, date, timestamp, decimal, mysqlEnum, datetime, unique, longtext, primaryKey, text, index, time } from 'drizzle-orm/mysql-core';
 import { sql } from 'drizzle-orm';
 
 export const attendanceLogs = mysqlTable("attendance_logs", {
@@ -6,7 +6,7 @@ export const attendanceLogs = mysqlTable("attendance_logs", {
 	employeeId: varchar("employee_id", { length: 50 }).notNull(),
 	scanTime: datetime("scan_time", { mode: 'string'}).notNull(),
 	type: mysqlEnum(['IN','OUT']).notNull(),
-	source: varchar({ length: 50 }).default('WEB'),
+	source: varchar({ length: 50 }).default('BIOMETRIC'),
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
 },
 (table) => [
@@ -71,13 +71,14 @@ export const schedules = mysqlTable("schedules", {
 	startTime: time("start_time").notNull(),
 	endTime: time("end_time").notNull(),
 	repeatPattern: varchar("repeat_pattern", { length: 50 }).default('Weekly'),
-	isRestDay: tinyint("is_rest_day").default(0),
+	// isRestDay: tinyint("is_rest_day").default(0), // Removed as it caused unknown column error during seeding
+	// isSpecial: tinyint("is_special").default(0), // Removed as it caused unknown column error during seeding
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
 	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow(),
 },
 (table) => [
 	primaryKey({ columns: [table.id], name: "schedules_id"}),
-	unique("unique_schedule").on(table.employeeId, table.dayOfWeek),
+	index("idx_employee_day").on(table.employeeId, table.dayOfWeek),
 ]);
 
 export const tardinessSummary = mysqlTable("tardiness_summary", {
@@ -87,8 +88,11 @@ export const tardinessSummary = mysqlTable("tardiness_summary", {
 	month: int().notNull(),
 	totalLateMinutes: int("total_late_minutes").default(0),
 	totalUndertimeMinutes: int("total_undertime_minutes").default(0),
+	totalLateCount: int("total_late_count").default(0),
+	totalUndertimeCount: int("total_undertime_count").default(0),
+	totalAbsenceCount: int("total_absence_count").default(0),
 	totalMinutes: int("total_minutes").generatedAlwaysAs(sql`(\`total_late_minutes\` + \`total_undertime_minutes\`)`, { mode: "stored" }),
-	daysEquivalent: decimal("days_equivalent", { precision: 5, scale: 3 }).generatedAlwaysAs(sql`((\`total_late_minutes\` + \`total_undertime_minutes\`) / 480)`, { mode: "stored" }),
+	daysEquivalent: decimal("days_equivalent", { precision: 5, scale: 3 }).default('0.000'),
 	deductedFromVl: decimal("deducted_from_vl", { precision: 5, scale: 3 }).default('0.000'),
 	chargedAsLwop: decimal("charged_as_lwop", { precision: 5, scale: 3 }).default('0.000'),
 	processedAt: timestamp("processed_at", { mode: 'string' }),
@@ -102,4 +106,34 @@ export const tardinessSummary = mysqlTable("tardiness_summary", {
 	unique("unique_tardiness").on(table.employeeId, table.year, table.month),
 ]);
 
-import { index, time } from 'drizzle-orm/mysql-core';
+// =============================================================================
+// C# Biometric Middleware Tables (READ-ONLY from Node.js side)
+// These tables are managed by the external C# biometric enrollment program.
+// Node.js only READS from these tables to sync into attendance_logs.
+// =============================================================================
+
+export const bioEnrolledUsers = mysqlTable("bio_enrolled_users", {
+	employeeId: int("employee_id").notNull(),
+	fullName: varchar("full_name", { length: 150 }).notNull(),
+	department: varchar({ length: 100 }),
+	userStatus: mysqlEnum("user_status", ['active', 'inactive']).notNull().default('active'),
+	enrolledAt: datetime("enrolled_at", { mode: 'string' }).default(sql`(CURRENT_TIMESTAMP)`),
+	updatedAt: datetime("updated_at", { mode: 'string' }).default(sql`(CURRENT_TIMESTAMP)`),
+},
+(table) => [
+	primaryKey({ columns: [table.employeeId], name: "bio_enrolled_users_pk" }),
+]);
+
+export const bioAttendanceLogs = mysqlTable("bio_attendance_logs", {
+	id: bigint({ mode: 'number' }).autoincrement().notNull(),
+	employeeId: int("employee_id").notNull(),
+	cardType: mysqlEnum("card_type", ['IN', 'OUT']).notNull(),
+	logDate: date("log_date", { mode: 'string' }).notNull(),
+	logTime: time("log_time").notNull(),
+	createdAt: datetime("created_at", { mode: 'string' }).default(sql`(CURRENT_TIMESTAMP)`),
+},
+(table) => [
+	primaryKey({ columns: [table.id], name: "bio_attendance_logs_pk" }),
+	index("idx_emp_date").on(table.employeeId, table.logDate),
+	index("idx_date_time").on(table.logDate, table.logTime),
+]);

@@ -88,7 +88,7 @@ const ApplicantTable: React.FC<ApplicantTableProps> = ({
                   )}
                 </td>
                 <td className="px-6 py-4">
-                  <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${getStatusBadgeColor((app as any).status)}`}>{(app as any).status}</span>
+                  <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${getStatusBadgeColor(app.status)}`}>{app.status}</span>
                 </td>
                 <td className="px-6 py-4 text-center">
                     <div className="flex justify-center gap-2">
@@ -115,9 +115,9 @@ const ApplicantTable: React.FC<ApplicantTableProps> = ({
                         )}
 
                          {/* Resume Link */}
-                         {(app as any).resume_path && (
+                         {app.resume_path && (
                             <a 
-                                href={`http://localhost:5000/uploads/resumes/${(app as any).resume_path}`} 
+                                href={`${import.meta.env.VITE_API_URL?.replace('/api', '') ?? 'http://localhost:5000'}/uploads/resumes/${app.resume_path}`} 
                                 target="_blank" rel="noopener noreferrer"
                                 className="p-1.5 text-gray-600 hover:bg-gray-100 rounded-lg"
                                 title="View Resume"

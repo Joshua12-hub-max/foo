@@ -3,9 +3,11 @@ import { saveAs } from 'file-saver';
 import { Form9Data } from '@/schemas/compliance';
 
 export const generateForm9Excel = async (data: Form9Data) => {
+  try {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('CS Form No. 9');
 
+    // ... (rest of the implementation)
     // Setup Page Layout
     worksheet.pageSetup = {
         paperSize: 5, // Legal
@@ -223,4 +225,8 @@ export const generateForm9Excel = async (data: Form9Data) => {
     // Generate Buffer
     const buffer = await workbook.xlsx.writeBuffer();
     saveAs(new Blob([buffer]), `CSForm9_Publication_${data.header.agencyName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`);
+  } catch (error) {
+    console.error('Failed to generate Form 9 Excel:', error);
+    throw error;
+  }
 };

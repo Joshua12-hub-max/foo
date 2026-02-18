@@ -116,7 +116,7 @@ export const SalaryUploadModal: React.FC<SalaryUploadModalProps> = ({
             if (typeof firstCell === 'string' && firstCell.toLowerCase().includes('grade')) return;
 
             const gradeVal = row.getCell(1).value;
-            const grade = typeof gradeVal === 'object' ? Number((gradeVal as any).result || 0) : Number(gradeVal);
+            const grade = typeof gradeVal === 'object' ? Number((gradeVal as unknown as { result?: number }).result || 0) : Number(gradeVal);
 
             if (!grade || isNaN(grade)) return; 
 

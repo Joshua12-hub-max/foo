@@ -15,7 +15,6 @@ interface Times {
 
 const ClockInWidget = ({ onStatusChange }: ClockInWidgetProps) => {
   const { user } = useAuth();
-  const queryClient = useQueryClient();
   const [currentTime, setCurrentTime] = useState(new Date());
 
   useEffect(() => {
@@ -33,21 +32,6 @@ const ClockInWidget = ({ onStatusChange }: ClockInWidgetProps) => {
     enabled: !!user,
   });
 
-  const clockMutation = useMutation({
-    mutationFn: async (action: 'in' | 'out') => {
-      const response = action === 'in' 
-        ? await attendanceApi.clockIn() 
-        : await attendanceApi.clockOut();
-      return response.data;
-    },
-    onSuccess: (data) => {
-      if (data?.success) {
-        queryClient.invalidateQueries({ queryKey: ['todayStatus'] });
-        onStatusChange?.();
-      }
-    }
-  });
-
   const times = useMemo(() => ({
     in: statusData?.data?.timeIn || null,
     out: statusData?.data?.timeOut || null
@@ -59,10 +43,6 @@ const ClockInWidget = ({ onStatusChange }: ClockInWidgetProps) => {
     if (times.in) return 'in';
     return 'out';
   }, [isStatusLoading, times]);
-
-  const handleClockAction = (action: 'in' | 'out') => {
-    clockMutation.mutate(action);
-  };
 
   const formatTime = (dateString: string | null) => {
     if (!dateString) return '--:--';
@@ -88,34 +68,24 @@ const ClockInWidget = ({ onStatusChange }: ClockInWidgetProps) => {
           <span>In: <span className="font-semibold text-gray-800">{formatTime(times.in)}</span></span>
           <span>Out: <span className="font-semibold text-gray-800">{formatTime(times.out)}</span></span>
         </div>
-        {clockMutation.isError && <p className="text-red-500 text-xs">Error performing action</p>}
       </div>
 
       <div>
         {status === 'loading' ? (
           <div className="animate-pulse bg-gray-200 h-8 w-20 rounded-lg"></div>
-        ) : status === 'out' ? (
-          <button
-            onClick={() => handleClockAction('in')}
-            disabled={clockMutation.isPending}
-            className="flex items-center gap-1.5 bg-gray-900 hover:bg-gray-800 text-white px-4 py-2 rounded-lg text-sm font-semibold disabled:opacity-50 transition-all"
-          >
-            <LogIn className="w-4 h-4" />
-            {clockMutation.isPending ? '...' : 'Time In'}
-          </button>
         ) : status === 'in' ? (
-          <button
-            onClick={() => handleClockAction('out')}
-            disabled={clockMutation.isPending}
-            className="flex items-center gap-1.5 bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-semibold disabled:opacity-50 transition-all"
-          >
-            <LogOut className="w-4 h-4" />
-            {clockMutation.isPending ? '...' : 'Time Out'}
-          </button>
-        ) : (
-          <div className="flex items-center gap-1.5 bg-green-100 text-green-700 px-3 py-2 rounded-lg text-sm font-semibold">
+          <div className="flex items-center gap-1.5 bg-blue-50 text-blue-700 px-3 py-2 rounded-lg text-sm font-semibold">
+            <LogIn className="w-4 h-4" />
+            <span>Clocked In</span>
+          </div>
+        ) : status === 'completed' ? (
+          <div className="flex items-center gap-1.5 bg-green-50 text-green-700 px-3 py-2 rounded-lg text-sm font-semibold">
             <CheckCircle className="w-4 h-4" />
-            <span>Done</span>
+            <span>Duty Completed</span>
+          </div>
+        ) : (
+          <div className="flex items-center gap-1.5 bg-gray-50 text-gray-500 px-3 py-2 rounded-lg text-sm font-semibold italic">
+             Waiting for biometric scan...
           </div>
         )}
       </div>

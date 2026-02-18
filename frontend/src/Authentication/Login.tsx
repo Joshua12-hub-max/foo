@@ -111,8 +111,13 @@ export default function Login() {
                 handleLoginSuccess(payload.data as User);
              }
         },
-        onError: (err) => {
+        onError: (err: any) => {
             console.error("Login failed", err);
+            const response = err.response?.data;
+            if (response?.code === 'BIOMETRIC_NOT_ENROLLED') {
+                console.warn("User blocked: Biometric registration required.");
+                // Optionally redirect to an info page or show a specific modal
+            }
         }
       }
     );
@@ -172,7 +177,7 @@ export default function Login() {
       const roleName = user.role.toLowerCase();
       if (roleName === "hr" || roleName === "admin") {
         navigate("/admin-dashboard", { replace: true });
-      } else if (roleName === "employee") {
+      } else if (roleName === "employee" || roleName === "department head") {
         navigate("/employee-dashboard", { replace: true });
       } else {
         console.error("Unknown role", roleName);

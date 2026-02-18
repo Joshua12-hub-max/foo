@@ -14,7 +14,7 @@ const LeaveDetailsModal: React.FC<LeaveDetailsModalProps> = ({ isOpen, onClose, 
   const handleDownloadAttachment = () => {
     if (!leaveRequest.attachment_path) return;
     
-    const API_URL = (import.meta as any).env.VITE_API_URL || 'http://localhost:5000/api';
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
     const BASE_URL = API_URL.replace('/api', '');
     const attachmentUrl = `${BASE_URL}/uploads/${leaveRequest.attachment_path}`;
     

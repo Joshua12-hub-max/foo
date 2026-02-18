@@ -10,6 +10,8 @@ export interface Applicant {
   email_subject?: string;
   source?: string;
   stage: string;
+  status?: string;
+  resume_path?: string;
   interview_date?: string;
   interview_link?: string;
   interview_platform?: string;
@@ -38,8 +40,8 @@ const useApplicantData = (showNotification?: (message: string, type: 'success' |
       else setIsRefetching(true);
 
       const [appRes, intRes] = await Promise.all([
-        (recruitmentApi as any).getApplicants(),
-        (recruitmentApi as any).getInterviewers()
+        recruitmentApi.getApplicants(),
+        recruitmentApi.getInterviewers()
       ]);
       setApplicants(appRes.data.applicants || []);
       setInterviewers(intRes.data || []);

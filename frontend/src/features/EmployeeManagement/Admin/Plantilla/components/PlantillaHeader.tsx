@@ -14,7 +14,7 @@ interface PlantillaHeaderProps {
   departments: { id: number; name: string }[];
   hideHeader?: boolean;
   summary: PlantillaSummary;
-  onPrint?: () => void;
+  onExportPDF?: () => void;
   onExportExcel?: () => void;
 }
 
@@ -29,7 +29,7 @@ const PlantillaHeader: React.FC<PlantillaHeaderProps> = ({
     departments,
     summary,
     hideHeader = false,
-    onPrint,
+    onExportPDF,
     onExportExcel,
 }) => {
     return (
@@ -52,13 +52,13 @@ const PlantillaHeader: React.FC<PlantillaHeaderProps> = ({
                         </div>
                         </div>
                         <div className="flex gap-2">
-                        {onPrint && (
+                        {onExportPDF && (
                             <button
-                                onClick={onPrint}
-                                className="bg-white text-gray-700 font-bold px-4 py-2 rounded-lg text-sm shadow border border-gray-300 hover:bg-gray-50 transition-all flex items-center gap-2"
+                                onClick={onExportPDF}
+                                className="bg-white text-rose-600 font-bold px-4 py-2 rounded-lg text-sm shadow border border-rose-100 hover:bg-rose-50 transition-all flex items-center gap-2"
                             >
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
-                                Print Report
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                                Export PDF
                             </button>
                         )}
                         <button 

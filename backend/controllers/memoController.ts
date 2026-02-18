@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { db } from '../db/index.js';
-import { employeeMemos, authentication, memoSequences, plantillaPositions } from '../db/schema.js';
+import { employeeMemos, authentication, memoSequences, plantillaPositions, departments } from '../db/schema.js';
 import { eq, and, sql, desc, or, like } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/mysql-core';
 import { createNotification } from './notificationController.js';
@@ -124,6 +124,7 @@ export const getAllMemos = async (req: Request, res: Response): Promise<void> =>
     // Aliases for joins
     const employee = alias(authentication, 'employee');
     const author = alias(authentication, 'author');
+    const department = alias(departments, 'department');
 
     const conditions = [];
     if (memo_type && memo_type !== 'all') conditions.push(eq(employeeMemos.memoType, memo_type as MemoType));
@@ -167,13 +168,15 @@ export const getAllMemos = async (req: Request, res: Response): Promise<void> =>
       acknowledgedAt: employeeMemos.acknowledgedAt,
       createdAt: employeeMemos.createdAt,
       updatedAt: employeeMemos.updatedAt,
-      employeeName: sql<string>`CONCAT(${employee.firstName}, ' ', ${employee.lastName})`,
+      employeeName: sql<string>`COALESCE(CONCAT(${employee.firstName}, ' ', ${employee.lastName}), 'Unknown Employee')`,
       employeeNumber: employee.employeeId,
-      authorName: sql<string>`CONCAT(${author.firstName}, ' ', ${author.lastName})`
+      department: sql<string>`COALESCE(${department.name}, 'N/A')`,
+      authorName: sql<string>`COALESCE(CONCAT(${author.firstName}, ' ', ${author.lastName}), 'Unknown Author')`
     })
     .from(employeeMemos)
-    .innerJoin(employee, eq(employeeMemos.employeeId, employee.id))
-    .innerJoin(author, eq(employeeMemos.authorId, author.id))
+    .leftJoin(employee, eq(employeeMemos.employeeId, employee.id))
+    .leftJoin(department, eq(employee.departmentId, department.id))
+    .leftJoin(author, eq(employeeMemos.authorId, author.id))
     .where(where)
     .orderBy(desc(employeeMemos.createdAt))
     .limit(Number(limit))
@@ -227,6 +230,7 @@ export const getMemoById = async (req: Request, res: Response): Promise<void> =>
     const { id } = req.params;
     const employee = alias(authentication, 'employee');
     const author = alias(authentication, 'author');
+    const department = alias(departments, 'department');
 
     const result = await db.select({
       id: employeeMemos.id,
@@ -245,11 +249,12 @@ export const getMemoById = async (req: Request, res: Response): Promise<void> =>
       employeeName: sql<string>`CONCAT(${employee.firstName}, ' ', ${employee.lastName})`,
       employeeNumber: employee.employeeId,
       employeeEmail: employee.email,
-      department: employee.department,
+      department: department.name,
       authorName: sql<string>`CONCAT(${author.firstName}, ' ', ${author.lastName})`
     })
     .from(employeeMemos)
     .innerJoin(employee, eq(employeeMemos.employeeId, employee.id))
+    .leftJoin(department, eq(employee.departmentId, department.id))
     .innerJoin(author, eq(employeeMemos.authorId, author.id))
     .where(eq(employeeMemos.id, Number(id)));
 

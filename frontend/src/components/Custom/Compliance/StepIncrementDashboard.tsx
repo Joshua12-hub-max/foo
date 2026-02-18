@@ -1,13 +1,11 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Users, AlertCircle, ArrowRight, DollarSign, Table2, ChevronRight, Wallet, BadgePercent, Car, Heart, ChevronDown, Upload, X, Plus, Trash2 } from 'lucide-react';
+import { Users, AlertCircle, ArrowRight, DollarSign, Table2, Car, Heart, ChevronDown, Upload, X, Plus, Trash2 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEligibleEmployees, useProcessStepIncrement, useCreateStepIncrement } from '@/hooks/useStepIncrement';
 import { type EligibleEmployee } from '@/api/complianceApi';
 import { plantillaApi, type Tranche } from '@/api/plantillaApi';
 import ConfirmDialog from '@/components/Custom/Shared/ConfirmDialog';
 import { SalaryUploadModal } from './SalaryUploadModal';
-import { useAllowanceStore } from '@/stores/allowanceStore';
-
 type TabType = 'eligible' | 'salary-schedule';
 
 interface SalaryScheduleEntry {
@@ -60,12 +58,8 @@ export const StepIncrementDashboard: React.FC = () => {
         if (!tranchesData) return null;
         return tranchesData.find((t: Tranche) => t.tranche_number === selectedTrancheNum) || activeTranche || null;
     }, [tranchesData, selectedTrancheNum, activeTranche]);
-    
-    // --- NEW ALLOWANCE LOGIC ---
-    const { activeSchedule, fetchActiveSchedule } = useAllowanceStore();
-    useEffect(() => {
-        if (!activeSchedule) fetchActiveSchedule();
-    }, [activeSchedule, fetchActiveSchedule]);
+
+    // --- ALLOWANCE LOGIC DECOUPLED (Managed in Compensation Module) ---
 
     // Auto-select active tranche
     useEffect(() => {
@@ -455,25 +449,7 @@ export const StepIncrementDashboard: React.FC = () => {
                 </div>
             )}
 
-            {/* Allowance Management Notice */}
-            <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-white rounded-xl shadow-sm border border-indigo-100 flex items-center justify-center shrink-0">
-                        <Wallet className="text-indigo-600" size={24} />
-                    </div>
-                    <div>
-                        <h4 className="text-sm font-bold text-gray-900">Decoupled Allowance Management</h4>
-                        <p className="text-xs text-gray-500 max-w-md">Benefits, PERA, and other allowances are now managed independently in the Compensation module to allow for flexible effectivity dates.</p>
-                    </div>
-                </div>
-                <button 
-                    onClick={() => window.location.href = '/compensation'}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-xs font-bold transition-all shadow-sm flex items-center gap-2"
-                >
-                    Go to Compensation Tool
-                    <ChevronRight size={14} />
-                </button>
-            </div>
+
 
             <ConfirmDialog 
                 isOpen={isApproveModalOpen}

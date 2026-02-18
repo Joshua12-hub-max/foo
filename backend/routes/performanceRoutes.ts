@@ -27,6 +27,7 @@ router.put('/reviews/:id', verifyToken, performanceController.updateReview);
 router.post('/reviews/:id/submit', verifyToken, performanceController.submitReview);
 router.delete('/reviews/:id', verifyToken, performanceController.deleteReview);
 router.post('/reviews/:id/acknowledge', verifyToken, performanceController.acknowledgeReview);
+router.post('/reviews/:id/disagree', verifyToken, performanceController.disagreeWithReview);
 
 // CSC-Compliant Routes
 router.post('/reviews/:id/self-rating', verifyToken, performanceController.submitSelfRating);

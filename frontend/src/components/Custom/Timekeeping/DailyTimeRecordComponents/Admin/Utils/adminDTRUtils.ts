@@ -9,6 +9,7 @@ export interface DTRRecord {
   name: string;
   department: string;
   date: string;
+  rawDate?: string; // For filtering
   timeIn: string;
   timeOut: string;
   hoursWorked: string | number;
@@ -40,6 +41,7 @@ export const mapDTRData = (apiData: any[]): DTRRecord[] => {
     name: item.employee_name || 'N/A',
     department: item.department || 'N/A',
     date: item.date,
+    rawDate: item.date, // Assuming API gives ISO, logic elsewhere might format 'date' display
     timeIn: item.time_in || 'N/A',
     timeOut: item.time_out || 'N/A',
     hoursWorked: item.hours_worked || '0',
@@ -72,11 +74,11 @@ export const filterDTRData = (data: DTRRecord[], filters: DTRFilters, searchQuer
 
   // Apply date range filters
   if (filters.fromDate) {
-    filteredData = filteredData.filter((item) => item.date >= filters.fromDate!);
+    filteredData = filteredData.filter((item) => (item.rawDate || item.date) >= filters.fromDate!);
   }
 
   if (filters.toDate) {
-    filteredData = filteredData.filter((item) => item.date <= filters.toDate!);
+    filteredData = filteredData.filter((item) => (item.rawDate || item.date) <= filters.toDate!);
   }
 
   // Apply search query
@@ -193,7 +195,7 @@ export const exportToCSV = async (data: DTRRecord[], _headers: string[], filenam
 
     data.forEach(row => {
       const rowData = keys.map(key => {
-        const val = (row as any)[key] || '';
+        const val = (row as unknown as Record<string, string>)[key] || '';
         return `"${String(val).replace(/"/g, '""')}"`;
       });
       csvRows.push(rowData.join(','));

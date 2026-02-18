@@ -1,17 +1,19 @@
 import React from 'react';
 import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
+import { zodResolver } from '@/lib/zodResolver';
 import { X, Loader } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToastStore } from '@/stores';
 import { employeeApi } from '@/api/employeeApi';
 import { AddSkillSchema, AddSkillInput } from '@/schemas/employeeSchema';
+import { Skill, ApiError } from '@/types';
 
 interface AddSkillModalProps {
   isOpen: boolean;
   onClose: () => void;
   employeeId: number;
   onSuccess?: () => void;
+  initialData?: Skill | null;
 }
 
 const SKILL_PROFICIENCY_OPTIONS = [
@@ -25,33 +27,54 @@ const AddSkillModal: React.FC<AddSkillModalProps> = ({
   isOpen,
   onClose,
   employeeId,
-  onSuccess
+  onSuccess,
+  initialData
 }) => {
   const showToast = useToastStore((state) => state.showToast);
   const queryClient = useQueryClient();
+  const isEditMode = !!initialData;
 
-  const { register, handleSubmit, formState: { errors }, reset } = useForm<AddSkillInput>({
-    resolver: zodResolver(AddSkillSchema) as any,
+  const { register, handleSubmit, formState: { errors }, reset, setValue } = useForm<AddSkillInput>({
+    resolver: zodResolver(AddSkillSchema),
     defaultValues: {
       category: 'Technical',
       proficiency_level: 'Intermediate'
     }
   });
 
+  React.useEffect(() => {
+    if (isOpen && initialData) {
+       setValue('skill_name', initialData.skill_name);
+       setValue('category', initialData.category || 'Technical');
+       setValue('proficiency_level', (initialData.proficiency_level as AddSkillInput['proficiency_level']) || 'Intermediate'); 
+       setValue('years_experience', initialData.years_experience || undefined);
+    } else if (isOpen && !initialData) {
+       reset({ category: 'Technical', proficiency_level: 'Intermediate' });
+    }
+  }, [isOpen, initialData, setValue, reset]);
+
   const mutation = useMutation({
     mutationFn: async (data: AddSkillInput) => {
-      await employeeApi.addEmployeeSkill(employeeId, data);
+      if (isEditMode && initialData?.id) {
+         const cleanData = Object.fromEntries(
+           Object.entries(data).map(([k, v]) => [k, v === null ? undefined : v])
+         ) as Partial<Skill>;
+         await employeeApi.updateEmployeeSkill(employeeId, initialData.id, cleanData);
+      } else {
+         await employeeApi.addEmployeeSkill(employeeId, data);
+      }
     },
     onSuccess: () => {
-      showToast('Skill added successfully', 'success');
+      showToast(isEditMode ? 'Skill updated successfully' : 'Skill added successfully', 'success');
       queryClient.invalidateQueries({ queryKey: ['employee', String(employeeId)] });
       reset();
       if (onSuccess) onSuccess();
       onClose();
     },
-    onError: (error: any) => {
-      console.error('Failed to add skill', error);
-      showToast(error.message || 'Failed to add skill', 'error');
+    onError: (error: unknown) => {
+      console.error('Failed to save skill', error);
+      const err = error as ApiError;
+      showToast(err.response?.data?.message || err.message || 'Failed to save skill', 'error');
     }
   });
 
@@ -65,7 +88,7 @@ const AddSkillModal: React.FC<AddSkillModalProps> = ({
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col border border-gray-100 animate-in fade-in zoom-in duration-200">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <h3 className="text-lg font-bold text-gray-900">Add Skill</h3>
+          <h3 className="text-lg font-bold text-gray-900">{isEditMode ? 'Edit Skill' : 'Add Skill'}</h3>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-full hover:bg-gray-100">
             <X className="w-5 h-5" />
           </button>

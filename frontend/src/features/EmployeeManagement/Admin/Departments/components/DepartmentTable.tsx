@@ -8,26 +8,21 @@ import { DepartmentEmployeeTable } from '@features/EmployeeManagement/Admin/Depa
 // @ts-ignore
 import { fetchDepartmentEmployees } from '@api/departmentApi';
 
-interface Department {
-  id: number;
-  name: string;
-  headOfDepartment?: string;
-  employee_count?: number;
-  description?: string;
-}
+import { Department } from '@/types/org';
+import { Employee } from '@/types';
 
 interface DepartmentTableProps {
   departments: Department[];
   loading: boolean;
   onEdit: (dept: Department) => void;
   onDelete: (dept: Department) => void;
-  onRemoveEmployee: (employee: any, deptId: number) => void;
+  onRemoveEmployee: (employee: Employee, deptId: number) => void;
 }
 
 const DepartmentTable: React.FC<DepartmentTableProps> = memo(({ departments, loading, onEdit, onDelete, onRemoveEmployee }) => {
   const navigate = useNavigate();
   const [expandedRows, setExpandedRows] = useState<Record<number, boolean>>({});
-  const [departmentEmployees, setDepartmentEmployees] = useState<Record<number, any[]>>({});
+  const [departmentEmployees, setDepartmentEmployees] = useState<Record<number, Employee[]>>({});
   const [loadingEmployees, setLoadingEmployees] = useState<Record<number, boolean>>({});
 
   const toggleRow = useCallback(async (deptId: number) => {
@@ -91,7 +86,7 @@ const DepartmentTable: React.FC<DepartmentTableProps> = memo(({ departments, loa
                 const isLoadingEmp = !!loadingEmployees[dept.id];
 
                 return (
-                    <React.Fragment key={dept.id}>
+                    <React.Fragment key={`${dept.id}-${index}`}>
                         <tr className={`hover:bg-gray-50 transition-colors group ${isExpanded ? 'bg-blue-50/30' : ''}`}>
                             <td className="px-4 py-4">
                                 <button 
@@ -108,7 +103,7 @@ const DepartmentTable: React.FC<DepartmentTableProps> = memo(({ departments, loa
                                 <div className="text-sm font-medium text-gray-800">{dept.name}</div>
                             </td>
                             <td className="px-6 py-4 text-sm text-gray-700 font-medium">
-                                {dept.headOfDepartment || <span className="text-gray-400 italic">Not Assigned</span>}
+                                {dept.head_of_department || <span className="text-gray-400 italic">Not Assigned</span>}
                             </td>
                             <td className="px-6 py-4">
                                 <div className="flex items-center gap-2">
@@ -179,6 +174,10 @@ const DepartmentTable: React.FC<DepartmentTableProps> = memo(({ departments, loa
                                                             <th className="px-6 py-2">Member</th>
                                                             <th className="px-6 py-2">Employee ID</th>
                                                             <th className="px-6 py-2">Position</th>
+                                                            <th className="px-6 py-2">Duties</th>
+                                                            <th className="px-6 py-2">Phone</th>
+                                                            <th className="px-6 py-2">Date Hired</th>
+                                                            <th className="px-6 py-2">Status</th>
                                                             <th className="px-6 py-2 text-right">Actions</th>
                                                         </tr>
                                                     </thead>

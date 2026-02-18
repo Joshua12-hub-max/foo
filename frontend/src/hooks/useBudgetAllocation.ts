@@ -5,7 +5,7 @@ import { toast } from 'react-hot-toast';
 export const budgetKeys = {
   all: ['budget-allocation'] as const,
   lists: () => [...budgetKeys.all, 'list'] as const,
-  list: (filters: any) => [...budgetKeys.lists(), filters] as const,
+  list: (filters: Record<string, unknown>) => [...budgetKeys.lists(), filters] as const,
   summary: (year: number) => [...budgetKeys.all, 'summary', year] as const,
 };
 
@@ -42,8 +42,9 @@ export const useCreateBudgetAllocation = () => {
       queryClient.invalidateQueries({ queryKey: budgetKeys.lists() });
       toast.success('Budget allocation created successfully');
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to create budget allocation');
+    onError: (error: unknown) => {
+      const msg = (error as { response?: { data?: { message?: string } } }).response?.data?.message;
+      toast.error(msg || 'Failed to create budget allocation');
     },
   });
 };
@@ -60,8 +61,9 @@ export const useUpdateBudgetAllocation = () => {
       queryClient.invalidateQueries({ queryKey: budgetKeys.lists() });
       toast.success('Budget allocation updated successfully');
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to update budget allocation');
+    onError: (error: unknown) => {
+      const msg = (error as { response?: { data?: { message?: string } } }).response?.data?.message;
+      toast.error(msg || 'Failed to update budget allocation');
     },
   });
 };
@@ -78,8 +80,9 @@ export const useRecalculateBudget = () => {
       queryClient.invalidateQueries({ queryKey: budgetKeys.lists() });
       toast.success('Budget utilization recalculated successfully');
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to recalculate budget');
+    onError: (error: unknown) => {
+      const msg = (error as { response?: { data?: { message?: string } } }).response?.data?.message;
+      toast.error(msg || 'Failed to recalculate budget');
     },
   });
 };

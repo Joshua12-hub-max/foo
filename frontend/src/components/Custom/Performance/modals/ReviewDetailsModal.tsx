@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, CheckCircle, AlertCircle, Clock, ThumbsDown, AlertTriangle } from 'lucide-react';
+import { X, CheckCircle, AlertCircle, Clock, ThumbsDown, AlertTriangle, TrendingDown, Info } from 'lucide-react';
 import { getAdjectivalRating, getScoreColor } from '../constants/performanceConstants';
 
 interface ReviewItem {
@@ -8,7 +8,7 @@ interface ReviewItem {
   criteria_description?: string;
   self_score?: number | string;
   score: number | string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 interface ReviewType {
@@ -21,7 +21,15 @@ interface ReviewType {
   improvements?: string;
   goals?: string;
   status?: string;
-  [key: string]: any;
+  attendance_details?: {
+    totalLates: number;
+    totalUndertime: number;
+    totalAbsences: number;
+    totalLateMinutes: number;
+    ratingDescription: string;
+  } | null;
+  violation_count?: number;
+  [key: string]: unknown;
 }
 
 interface ReviewDetailsModalProps {
@@ -102,6 +110,42 @@ const ReviewDetailsModal: React.FC<ReviewDetailsModalProps> = ({
                 </div>
               </div>
             )}
+
+            {/* Metrics Breakdown (Automated) */}
+            <div className="bg-gray-50 border border-gray-100 rounded-xl p-4 overflow-hidden">
+                <div className="flex items-center gap-2 mb-3">
+                    <Clock size={16} className="text-gray-400" />
+                    <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Automated Attendance Summary</h4>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-y-4 gap-x-2">
+                    <div className="flex flex-col">
+                        <span className="text-[10px] text-gray-400 font-bold uppercase">Tardiness</span>
+                        <span className="text-sm font-bold text-gray-800">
+                             {selectedReview.attendance_details?.totalLates || 0}x 
+                             <span className="text-gray-500 font-normal ml-1">({selectedReview.attendance_details?.totalLateMinutes || 0}m)</span>
+                        </span>
+                    </div>
+                    <div className="flex flex-col border-l border-gray-200 pl-3">
+                        <span className="text-[10px] text-gray-400 font-bold uppercase">Absences</span>
+                        <span className="text-sm font-bold text-gray-800">
+                            {selectedReview.attendance_details?.totalAbsences || 0} Unexplained
+                        </span>
+                    </div>
+                    <div className="flex flex-col">
+                        <span className="text-[10px] text-gray-400 font-bold uppercase">Rate</span>
+                        <span className="text-sm font-bold text-gray-800">
+                            {selectedReview.attendance_details?.ratingDescription || 'N/A'}
+                        </span>
+                    </div>
+                    <div className="flex flex-col border-l border-gray-200 pl-3">
+                        <span className="text-[10px] text-red-400 font-bold uppercase">Violations</span>
+                        <span className={`text-sm font-bold ${selectedReview.violation_count ? 'text-red-600' : 'text-green-600'}`}>
+                            {selectedReview.violation_count || 0} Active
+                        </span>
+                    </div>
+                </div>
+            </div>
 
             {/* Criteria Ratings */}
             <div>

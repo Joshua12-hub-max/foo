@@ -7,13 +7,13 @@ import ExcelJS from 'exceljs';
 import type { Position } from '@/api/plantillaApi';
 
 export interface PSIPOPConfig {
-  departmentGocc: string;
-  bureauAgency: string;
-  fiscalYear: string;
-  preparedBy: string;
-  preparedByTitle: string;
-  approvedBy: string;
-  approvedByTitle: string;
+  departmentGocc?: string;
+  bureauAgency?: string;
+  fiscalYear?: string;
+  preparedBy?: string;
+  preparedByTitle?: string;
+  approvedBy?: string;
+  approvedByTitle?: string;
 }
 
 // ============================================
@@ -79,10 +79,8 @@ const parseIncumbentName = (name?: string): { lastName: string; firstName: strin
  * Generate PSI-POP Excel matching CSC Form No. 1 (Revised 2018)
  * Landscape, Legal Size with official table format
  */
-export const generatePSIPOPExcel = async (
-  positions: Position[],
-  config: PSIPOPConfig
-): Promise<void> => {
+export const generatePSIPOPExcel = async (positions: Position[], config: PSIPOPConfig = {}) => {
+    const departmentName = config.departmentGocc || 'All Departments';
   try {
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'NEBR System';

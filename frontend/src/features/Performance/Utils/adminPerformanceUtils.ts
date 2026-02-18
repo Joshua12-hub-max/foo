@@ -11,7 +11,9 @@ export interface PerformanceTableItem {
   name: string;
   department: string;
   jobTitle: string;
+  position_title?: string;
   lastEvaluation: string;
+  duties?: string;
   score: string | number;
   [key: string]: any;
 }
@@ -23,11 +25,13 @@ export const mapPerformanceData = (apiData: any[]): PerformanceTableItem[] => {
     name: item.name || `${item.first_name || ''} ${item.last_name || ''}`.trim(),
     department: item.department || 'N/A',
     jobTitle: item.job_title || 'N/A',
+    position_title: item.position_title || 'N/A',
     lastEvaluation: item.last_evaluation_date 
       ? new Date(item.last_evaluation_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) 
       : 'Never',
     score: item.score !== null && item.score !== undefined ? parseFloat(item.score).toFixed(2) : 'N/A',
     status: item.status || 'Not Started',
+    duties: item.duties || 'No Schedule',
     reviewId: item.review_id
   }));
 };
@@ -135,7 +139,7 @@ export const generatePDFContent = (data: any[], headers: string[], today: string
               <td>${row.id || ''}</td>
               <td>${row.name || ''}</td>
               <td>${row.department || ''}</td>
-              <td>${row.jobTitle || ''}</td>
+              <td>${row.position_title || row.jobTitle || ''}</td>
               <td>${row.lastEvaluation || ''}</td>
               <td>${row.score || ''}</td>
               <td>View</td>
@@ -154,8 +158,8 @@ export const generatePDFContent = (data: any[], headers: string[], today: string
 // Native CSV export to remove dependency on ExcelJS
 export const exportToCSV = async (data: any[], headers: string[], filename: string) => {
   try {
-    const csvHeaders = ['Status', 'Employee ID', 'Name', 'Department', 'Job Title', 'Last Evaluation', 'Score'];
-    const keys = ['status', 'id', 'name', 'department', 'jobTitle', 'lastEvaluation', 'score'];
+    const csvHeaders = ['Status', 'Employee ID', 'Name', 'Department', 'Position Title', 'Last Evaluation', 'Score'];
+    const keys = ['status', 'id', 'name', 'department', 'position_title', 'lastEvaluation', 'score'];
 
     const csvRows = [csvHeaders.join(',')];
 

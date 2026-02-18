@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, MapPin, Briefcase, DollarSign, Calendar, Clock, Edit, Trash2, SquarePen, FileText, Download } from 'lucide-react';
+import { X, MapPin, Briefcase, DollarSign, Calendar, Clock, Edit, Trash2, SquarePen, FileText, Download, Mail } from 'lucide-react';
 import { Job } from '@/types';
 import { JobVacancyAnnouncement } from '../Components';
 
@@ -81,8 +81,8 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                 <span>{selectedJob.employment_type || 'Full-time'}</span>
               </div>
               <div className="flex items-center gap-2.5 text-gray-700">
-                <DollarSign size={16} className="text-gray-400" />
-                <span>{selectedJob.salary_range || 'Not specified'}</span>
+                <Mail size={16} className="text-gray-400" />
+                <span className="truncate">{selectedJob.application_email || 'Not specified'}</span>
               </div>
               <div className="flex items-center gap-2.5 text-gray-700">
                 <Calendar size={16} className="text-gray-400" />

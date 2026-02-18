@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
+import { zodResolver } from '@/lib/zodResolver';
 import { X, ChevronUp, ChevronDown, FileText, Loader } from 'lucide-react';
 import { plantillaApi } from '@/api/plantillaApi';
 import { employeeApi } from '@/api/employeeApi';
@@ -82,7 +82,7 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
   const showToast = useToastStore((state) => state.showToast);
 
   const { register, handleSubmit, formState: { errors }, reset, setValue } = useForm<UpdateEmployeeInput>({
-    resolver: zodResolver(UpdateEmployeeSchema) as any,
+    resolver: zodResolver(UpdateEmployeeSchema),
     defaultValues: {}
   });
 
@@ -99,9 +99,9 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
         onClose();
     },
     onError: (error: unknown) => {
-        const err = error as any;
-        console.error('Failed to update employee', err);
-        showToast(err.message || 'Failed to update employee', 'error');
+        const errMessage = error instanceof Error ? error.message : 'Failed to update employee';
+        console.error('Failed to update employee', error);
+        showToast(errMessage, 'error');
     }
   });
 

@@ -1,5 +1,4 @@
 import React, { memo, useRef, useEffect } from 'react';
-import { useReactToPrint } from 'react-to-print';
 import { X, Printer } from 'lucide-react';
 import { useForm, Controller } from 'react-hook-form';
 import { Form9Data, Form9VacantPosition } from '@/schemas/compliance';
@@ -38,11 +37,7 @@ const Form9Modal: React.FC = memo(() => {
     setValue('header', header as Form9Data['header']);
   }, [header, setValue]);
 
-  // Print functionality
-  const handlePrint = useReactToPrint({
-    contentRef: componentRef,
-    documentTitle: `CSForm9_VacantPositions_${new Date().toISOString().split('T')[0]}`,
-  });
+
 
   // Handle header input changes (sync to store)
   const handleHeaderChange = (field: keyof typeof header, value: string) => {
@@ -69,13 +64,6 @@ const Form9Modal: React.FC = memo(() => {
             <p className="text-sm text-gray-500">Request for Publication of Vacant Positions - Auto-populated from system</p>
           </div>
           <div className="flex gap-2">
-            <button 
-              onClick={handlePrint}
-              className="px-6 py-2.5 bg-blue-600 text-white text-sm font-bold rounded-lg hover:bg-blue-700 flex items-center gap-2 shadow-sm transition-all"
-            >
-              <Printer size={18} />
-              Print Form
-            </button>
             <button 
               onClick={() => {
                 import('./print/form9_excel_generator').then(({ generateForm9Excel }) => {

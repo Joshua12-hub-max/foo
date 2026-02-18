@@ -1,4 +1,4 @@
-import db from '../connection.js';
+import db from '../index.js';
 
 /**
  * Migration: Create PDS Linked Tables (Part II - VIII)

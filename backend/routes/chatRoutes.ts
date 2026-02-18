@@ -6,7 +6,7 @@ import {
   getActiveConversations,
   closeConversation
 } from '../controllers/chatController.js';
-import { verifyAdmin, verifyToken } from '../middleware/authMiddleware.js';
+import { verifyAdmin } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 

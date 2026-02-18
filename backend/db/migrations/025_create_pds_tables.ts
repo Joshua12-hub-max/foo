@@ -1,4 +1,4 @@
-import db from '../connection.js';
+import db from '../index.js';
 
 /**
  * Migration: Create Personal Data Sheet (PDS) Tables (CS Form 212)

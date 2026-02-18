@@ -13,7 +13,11 @@ const SECTIONS = [
 
 // ...
 
-export const PDSFormWizard: React.FC = () => {
+interface PDSFormWizardProps {
+    employeeId?: number;
+}
+
+export const PDSFormWizard: React.FC<PDSFormWizardProps> = ({ employeeId }) => {
     const [activeSection, setActiveSection] = useState('family');
     
     return (
@@ -38,7 +42,7 @@ export const PDSFormWizard: React.FC = () => {
                 {/* Content Area - Header removed as it is inside component now */}
                 
                 <div className="min-h-[400px]">
-                    {activeSection === 'family' && <FamilyBackground />}
+                    {activeSection === 'family' && <FamilyBackground employeeId={employeeId} />}
                     {activeSection !== 'family' && (
                         <div className="flex items-center justify-center h-64 text-gray-400">
                              Feature coming soon...

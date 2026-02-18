@@ -41,3 +41,10 @@ export const uploadSalarySchema = z.object({
     monthly_salary: z.coerce.number().min(0)
   })).min(1, "Salary data array cannot be empty")
 });
+
+export const createTrancheSchema = z.object({
+  name: z.string().min(1, "Tranche name is required"),
+  tranche_number: z.coerce.number().min(1, "Tranche number is required"),
+  circular_number: z.string().optional().nullable(),
+  effective_date: z.string().optional().nullable()
+});

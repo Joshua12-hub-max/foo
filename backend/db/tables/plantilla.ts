@@ -1,4 +1,4 @@
-import { mysqlTable, varchar, int, date, timestamp, decimal, mysqlEnum, tinyint, primaryKey, json, unique, text } from 'drizzle-orm/mysql-core';
+import { mysqlTable, varchar, int, date, timestamp, decimal, mysqlEnum, tinyint, primaryKey, json, unique, text, foreignKey, index } from 'drizzle-orm/mysql-core';
 import { departments } from './hr.js';
 
 export const qualificationStandards = mysqlTable("qualification_standards", {
@@ -40,7 +40,7 @@ export const plantillaPositions = mysqlTable("plantilla_positions", {
 	ordinanceDate: date("ordinance_date", { mode: 'string' }),
 	abolishmentOrdinance: varchar("abolishment_ordinance", { length: 100 }),
 	abolishmentDate: date("abolishment_date", { mode: 'string' }),
-	qualificationStandardsId: int("qualification_standards_id").references(() => qualificationStandards.id, { onDelete: "set null" } ),
+	qualificationStandardsId: int("qualification_standards_id"),
 	budgetSource: varchar("budget_source", { length: 100 }).default('Regular'),
 	isCoterminous: tinyint("is_coterminous").default(0),
 	status: mysqlEnum(['Active','Abolished','Frozen']).default('Active'),
@@ -50,6 +50,11 @@ export const plantillaPositions = mysqlTable("plantilla_positions", {
 	lastPromotionDate: date("last_promotion_date", { mode: 'string' }),
 },
 (table) => [
+	foreignKey({
+			columns: [table.qualificationStandardsId],
+			foreignColumns: [qualificationStandards.id],
+			name: "fk_pp_qs"
+		}).onDelete("set null"),
 	primaryKey({ columns: [table.id], name: "plantilla_positions_id"}),
 	unique("item_number").on(table.itemNumber),
 ]);
@@ -109,4 +114,3 @@ export const positionPublications = mysqlTable("position_publications", {
 	primaryKey({ columns: [table.id], name: "position_publications_id"}),
 ]);
 
-import { index } from 'drizzle-orm/mysql-core';

@@ -390,7 +390,7 @@ const BudgetTrackingDashboard: React.FC<BudgetDashboardProps> = ({ selectedDeptN
                     onClose={() => setIsModalOpen(false)}
                     mode={modalMode}
                     departments={departments}
-                    initialData={selectedBudget as any}
+                    initialData={selectedBudget as unknown as { year: number; department: string; totalBudget: number; notes?: string; id?: number }}
                     onSubmit={handleFormSubmit}
                     isProcessing={isProcessing}
                 />

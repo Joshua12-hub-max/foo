@@ -1,1 +1,12 @@
 /// <reference types="vite/client" />
+
+interface ImportMetaEnv {
+  readonly VITE_API_URL: string;
+  readonly VITE_GOOGLE_CLIENT_ID?: string;
+  readonly VITE_ZOOM_SDK_KEY?: string;
+  readonly VITE_ZOOM_SDK_SECRET?: string;
+}
+
+interface ImportMeta {
+  readonly env: ImportMetaEnv;
+}

@@ -11,6 +11,7 @@ export interface PerformanceEmployee {
   department?: string;
   score?: number | string | null;
   last_evaluation_date?: string | null;
+  duties?: string;
   [key: string]: any;
 }
 
@@ -30,5 +31,22 @@ export interface PerformanceItem {
   q_score?: number | string;
   e_score?: number | string;
   t_score?: number | string;
+  rating_definition_5?: string;
+  rating_definition_4?: string;
+  rating_definition_3?: string;
+  rating_definition_2?: string;
+  rating_definition_1?: string;
+  evidence_requirements?: string;
+  evidence_file_path?: string;
+  evidence_description?: string;
+  // CamelCase variants for consistency with API
+  ratingDefinition5?: string;
+  ratingDefinition4?: string;
+  ratingDefinition3?: string;
+  ratingDefinition2?: string;
+  ratingDefinition1?: string;
+  evidenceRequirements?: string;
+  evidenceFilePath?: string;
+  evidenceDescription?: string;
   [key: string]: any;
 }

@@ -2,16 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import api from '@/api/axios';
 import { updateMyProfile } from '@/api/employeeApi';
-
-interface Profile {
-  id?: number;
-  name?: string;
-  email?: string;
-  avatar?: string;
-  role?: string;
-  department?: string;
-  employmentStatus?: string;
-}
+import { User, Employee, ApiResponse } from '@/types';
 
 interface FormData {
   first_name: string;
@@ -20,8 +11,8 @@ interface FormData {
 }
 
 export const useProfile = () => {
-  const { user, setUser } = useAuth();
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const { user, setUser, updateProfile } = useAuth();
+  const [profile, setProfile] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -40,13 +31,14 @@ export const useProfile = () => {
         if (response.data.success) {
           const userData = response.data.data;
           setProfile(userData);
-          const nameParts = userData.name?.split(' ') || ['', ''];
+          
+          // Use firstName/lastName directly if available, fallback to splitting name
           setFormData({
-            first_name: nameParts[0] || '', 
-            last_name: nameParts.slice(1).join(' ') || '', 
+            first_name: userData.firstName || userData.name?.split(' ')[0] || '',
+            last_name: userData.lastName || userData.name?.split(' ').slice(1).join(' ') || '',
             email: userData.email || ''
           });
-          setAvatarPreview(userData.avatar || null);
+          setAvatarPreview(userData.avatarUrl || userData.avatar || null);
         }
       } catch (err) {
         console.error('Failed to fetch profile:', err);
@@ -84,33 +76,43 @@ export const useProfile = () => {
         data.append('avatar', avatarFile);
       }
 
-      const result = await (updateMyProfile as any)(data);
+      const result = await updateMyProfile(data);
       
       if (result.success) {
-        const newName = `${formData.first_name} ${formData.last_name}`;
-        const newAvatar = result.data?.avatar || avatarPreview || profile?.avatar;
+        const userData = result.data;
+        const newName = userData?.name || `${formData.first_name} ${formData.last_name}`.trim();
+        const newAvatar = userData?.avatarUrl || avatarPreview || profile?.avatarUrl;
         
         setSuccess('Profile updated successfully!');
+        
+        // Update local state
         setProfile(prev => ({
           ...prev,
+          ...userData,
           name: newName,
           email: formData.email,
-          avatar: newAvatar
+          avatarUrl: newAvatar
         }));
         
-        (setUser as any)((prev: any) => ({
-          ...prev,
-          name: result.data?.name || newName,
-          email: result.data?.email || formData.email,
-          avatar: newAvatar,
-          profilePicture: newAvatar
-        }));
+        // Fix for redirection: pass object, not function, to setUser
+        // Even better, use the dedicated updateProfile from our useAuth hook
+        const updates: Partial<User> = {
+          firstName: userData?.firstName || formData.first_name,
+          lastName: userData?.lastName || formData.last_name,
+          name: newName,
+          email: userData?.email || formData.email,
+          avatarUrl: newAvatar
+        };
+
+        // Use updateProfile from useAuth for partial updates
+        updateProfile(updates);
         
         setIsEditing(false);
         setAvatarFile(null);
         setTimeout(() => setSuccess(null), 3000);
         return { success: true };
-      } else {
+      }
+ else {
         setError(result.message || 'Failed to update profile');
         return { success: false, message: result.message };
       }
@@ -131,7 +133,7 @@ export const useProfile = () => {
         last_name: nameParts.slice(1).join(' ') || '',
         email: profile.email || ''
       });
-      setAvatarPreview(profile.avatar || null);
+      setAvatarPreview(profile.avatarUrl || null);
     }
     setAvatarFile(null);
     setError(null);

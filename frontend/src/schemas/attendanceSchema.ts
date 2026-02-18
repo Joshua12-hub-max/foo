@@ -5,6 +5,7 @@ export const AttendanceFilterSchema = z.object({
   employeeId: z.string().optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
+  search: z.string().optional(),
 });
 
 export const PaginationSchema = z.object({

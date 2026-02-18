@@ -1,24 +1,5 @@
 import { relations } from "drizzle-orm/relations";
-import { allowanceSchedules, allowanceDefinitions, allowanceMatrixValues, departments, authentication, plantillaPositions, chatConversations, chatMessages, employeeCustomFields, employeeDocuments, employeeEducation, employeeEmergencyContacts, employeeEmploymentHistory, employeeMemos, employeeNotes, employeeSkills, googleCalendarTokens, nepotismRelationships, pdsEducation, pdsEligibility, pdsFamily, pdsLearningDevelopment, pdsOtherInfo, pdsReferences, pdsVoluntaryWork, pdsWorkExperience, performanceReviews, performanceAuditLog, performanceGoals, performanceReviewCycles, performanceImprovementPlans, performanceCriteria, performanceReviewItems, qualificationStandards, positionPublications, recruitmentApplicants, recruitmentJobs, socialConnections, stepIncrementTracker, events, syncedEvents } from "./schema.js";
-
-export const allowanceDefinitionsRelations = relations(allowanceDefinitions, ({one, many}) => ({
-	allowanceSchedule: one(allowanceSchedules, {
-		fields: [allowanceDefinitions.allowanceScheduleId],
-		references: [allowanceSchedules.id]
-	}),
-	allowanceMatrixValues: many(allowanceMatrixValues),
-}));
-
-export const allowanceSchedulesRelations = relations(allowanceSchedules, ({many}) => ({
-	allowanceDefinitions: many(allowanceDefinitions),
-}));
-
-export const allowanceMatrixValuesRelations = relations(allowanceMatrixValues, ({one}) => ({
-	allowanceDefinition: one(allowanceDefinitions, {
-		fields: [allowanceMatrixValues.allowanceId],
-		references: [allowanceDefinitions.id]
-	}),
-}));
+import { departments, authentication, plantillaPositions, chatConversations, chatMessages, employeeCustomFields, employeeDocuments, employeeEducation, employeeEmergencyContacts, employeeEmploymentHistory, employeeMemos, employeeNotes, employeeSkills, googleCalendarTokens, nepotismRelationships, pdsEducation, pdsEligibility, pdsFamily, pdsLearningDevelopment, pdsOtherInfo, pdsReferences, pdsVoluntaryWork, pdsWorkExperience, performanceReviews, performanceAuditLog, performanceGoals, performanceReviewCycles, performanceImprovementPlans, performanceCriteria, performanceReviewItems, qualificationStandards, positionPublications, recruitmentApplicants, recruitmentJobs, socialConnections, stepIncrementTracker, events, syncedEvents, schedules, bioEnrolledUsers, bioAttendanceLogs } from "./schema.js";
 
 export const authenticationRelations = relations(authentication, ({one, many}) => ({
 	department: one(departments, {
@@ -106,6 +87,7 @@ export const authenticationRelations = relations(authentication, ({one, many}) =
 	stepIncrementTrackers_processedBy: many(stepIncrementTracker, {
 		relationName: "stepIncrementTracker_processedBy_authentication_id"
 	}),
+	schedules: many(schedules),
 }));
 
 export const departmentsRelations = relations(departments, ({one, many}) => ({
@@ -397,11 +379,11 @@ export const positionPublicationsRelations = relations(positionPublications, ({o
 
 export const recruitmentApplicantsRelations = relations(recruitmentApplicants, ({one}) => ({
 	authentication: one(authentication, {
-		fields: [recruitmentApplicants.interviewerId],
+		fields: [recruitmentApplicants.interviewer_id],
 		references: [authentication.id]
 	}),
 	recruitmentJob: one(recruitmentJobs, {
-		fields: [recruitmentApplicants.jobId],
+		fields: [recruitmentApplicants.job_id],
 		references: [recruitmentJobs.id]
 	}),
 }));
@@ -439,4 +421,23 @@ export const syncedEventsRelations = relations(syncedEvents, ({one}) => ({
 
 export const eventsRelations = relations(events, ({many}) => ({
 	syncedEvents: many(syncedEvents),
+}));
+
+export const schedulesRelations = relations(schedules, ({one}) => ({
+	authentication: one(authentication, {
+		fields: [schedules.employeeId],
+		references: [authentication.employeeId]
+	}),
+}));
+
+// C# Biometric Tables Relations
+export const bioEnrolledUsersRelations = relations(bioEnrolledUsers, ({many}) => ({
+	bioAttendanceLogs: many(bioAttendanceLogs),
+}));
+
+export const bioAttendanceLogsRelations = relations(bioAttendanceLogs, ({one}) => ({
+	bioEnrolledUser: one(bioEnrolledUsers, {
+		fields: [bioAttendanceLogs.employeeId],
+		references: [bioEnrolledUsers.employeeId]
+	}),
 }));

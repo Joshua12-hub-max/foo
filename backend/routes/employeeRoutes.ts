@@ -17,7 +17,10 @@ import {
   deleteEmployeeContact,
   addEmployeeCustomField,
   deleteEmployeeCustomField,
-  updateEmployeeCustomField
+  updateEmployeeCustomField,
+  updateEmployeeSkill,
+  updateEmployeeEducation,
+  updateEmployeeContact
 } from '../controllers/user.controller.js';
 import { verifyToken, verifyAdmin, verifyOwnerOrAdmin } from '../middleware/authMiddleware.js';
 
@@ -38,16 +41,19 @@ router.put('/:id', verifyToken, verifyOwnerOrAdmin, updateEmployee);
 // Employee Skills
 router.get('/:id/skills', verifyToken, getEmployeeSkills);
 router.post('/:id/skills', verifyToken, verifyOwnerOrAdmin, addEmployeeSkill);
+router.put('/:id/skills/:skillId', verifyToken, verifyOwnerOrAdmin, updateEmployeeSkill);
 router.delete('/:id/skills/:skillId', verifyToken, verifyOwnerOrAdmin, deleteEmployeeSkill);
 
 // Employee Education
 router.get('/:id/education', verifyToken, getEmployeeEducation);
 router.post('/:id/education', verifyToken, verifyOwnerOrAdmin, addEmployeeEducation);
+router.put('/:id/education/:educationId', verifyToken, verifyOwnerOrAdmin, updateEmployeeEducation);
 router.delete('/:id/education/:educationId', verifyToken, verifyOwnerOrAdmin, deleteEmployeeEducation);
 
 // Employee Emergency Contacts
 router.get('/:id/contacts', verifyToken, getEmployeeContacts);
 router.post('/:id/contacts', verifyToken, verifyOwnerOrAdmin, addEmployeeContact);
+router.put('/:id/contacts/:contactId', verifyToken, verifyOwnerOrAdmin, updateEmployeeContact);
 router.delete('/:id/contacts/:contactId', verifyToken, verifyOwnerOrAdmin, deleteEmployeeContact);
 
 // Employee Custom Fields

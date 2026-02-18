@@ -18,7 +18,6 @@ const LEAVE_TYPE_VALUES = [
   'Solo Parent Leave',
   'Study Leave',
   'Special Emergency Leave',
-  'Official Business',
   'VAWC Leave',
   'Rehabilitation Leave',
   'Special Leave Benefits for Women',

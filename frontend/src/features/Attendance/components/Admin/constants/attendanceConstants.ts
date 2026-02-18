@@ -7,6 +7,7 @@ export const ADMIN_ATTENDANCE_HEADERS: AttendanceHeader[] = [
   { key: 'status', label: 'Status' },
   { key: 'employeeId', label: 'Employee ID' },
   { key: 'employeeName', label: 'Employee Name' },
+  { key: 'duties', label: 'Duties' },
   { key: 'date', label: 'Date' },
   { key: 'timeIn', label: 'Time In' },
   { key: 'timeOut', label: 'Time Out' },
@@ -16,6 +17,7 @@ export const ADMIN_ATTENDANCE_HEADERS: AttendanceHeader[] = [
 
 export const EMPLOYEE_ATTENDANCE_HEADERS: AttendanceHeader[] = [
   { key: 'date', label: 'Date' },
+  { key: 'duties', label: 'Duties' },
   { key: 'timeIn', label: 'Time In' },
   { key: 'timeOut', label: 'Time Out' },
   { key: 'late', label: 'Late' },

@@ -1,18 +1,18 @@
-import React, { useState, memo, useMemo } from 'react';
+import React, { useState, memo } from 'react';
 import { 
-  FileText, Download, Printer, Search, 
+  FileText, Search, Download,
   Calendar, Users, Building, AlertCircle,
-  FileSearch, CheckCircle2, ChevronRight
+  FileSearch
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { complianceApi } from '@/api/complianceApi';
-import type { Form9Row, RAIRow, PSIPOPRow, Form33Data } from '@/api/complianceApi';
+import type { Form9Row, PSIPOPRow, Form33Data } from '@/api/complianceApi';
 
 interface ReportsDashboardProps {
   departments: string[];
 }
 
-type SelectedReport = 'form9' | 'form33' | 'rai' | 'psipop';
+type SelectedReport = 'form9' | 'form33' | 'psipop';
 
 const ComplianceReportsDashboard: React.FC<ReportsDashboardProps> = memo(({ departments }) => {
   const [activeReport, setActiveReport] = useState<SelectedReport>('form9');
@@ -39,15 +39,6 @@ const ComplianceReportsDashboard: React.FC<ReportsDashboardProps> = memo(({ depa
     enabled: activeReport === 'psipop'
   });
 
-  // Query for RAI
-  const { data: rai, isLoading: loadingRai } = useQuery({
-    queryKey: ['report-rai', filters.startDate, filters.endDate],
-    queryFn: () => complianceApi.reports.getRAI({ 
-      start_date: filters.startDate || undefined,
-      end_date: filters.endDate || undefined
-    }),
-    enabled: activeReport === 'rai'
-  });
 
   const reports = [
     { 
@@ -63,12 +54,6 @@ const ComplianceReportsDashboard: React.FC<ReportsDashboardProps> = memo(({ depa
       icon: <Users size={18} />
     },
     { 
-      id: 'rai', 
-      title: 'RAI: Appointments', 
-      desc: 'Report on Appointments Issued within a specific period.',
-      icon: <CheckCircle2 size={18} />
-    },
-    { 
       id: 'form33', 
       title: 'Form 33: Appointment', 
       desc: 'Generate individual appointment form for a specific incumbent.',
@@ -76,39 +61,7 @@ const ComplianceReportsDashboard: React.FC<ReportsDashboardProps> = memo(({ depa
     }
   ];
 
-  const exportToCSV = () => {
-    let dataToExport: any[] = [];
-    let filename = '';
 
-    if (activeReport === 'form9') {
-      dataToExport = form9?.data.data || [];
-      filename = `CSC_Form_9_${new Date().toLocaleDateString()}.csv`;
-    } else if (activeReport === 'psipop') {
-        dataToExport = psipop?.data.data || [];
-        filename = `PSIPOP_${new Date().toLocaleDateString()}.csv`;
-    } else if (activeReport === 'rai') {
-        dataToExport = rai?.data.data || [];
-        filename = `RAI_${new Date().toLocaleDateString()}.csv`;
-    }
-
-    if (dataToExport.length === 0) return;
-
-    const headers = Object.keys(dataToExport[0]);
-    const csvContent = [
-      headers.join(','),
-      ...dataToExport.map(row => headers.map(h => `"${row[h] || ''}"`).join(','))
-    ].join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', filename);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
 
   const formatPHP = (amount: number) => {
     return new Intl.NumberFormat('en-PH', {
@@ -160,39 +113,142 @@ const ComplianceReportsDashboard: React.FC<ReportsDashboardProps> = memo(({ depa
             </div>
         )}
 
-        {activeReport === 'rai' && (
-            <div className="flex items-center gap-2">
-                <Calendar size={16} className="text-gray-400" />
-                <input 
-                    type="date"
-                    value={filters.startDate}
-                    onChange={(e) => setFilters({...filters, startDate: e.target.value})}
-                    className="bg-gray-50 border border-gray-100 rounded-lg px-3 py-1.5 text-xs font-semibold"
-                />
-                <span className="text-gray-400 text-xs text-bold">to</span>
-                <input 
-                    type="date"
-                    value={filters.endDate}
-                    onChange={(e) => setFilters({...filters, endDate: e.target.value})}
-                    className="bg-gray-50 border border-gray-100 rounded-lg px-3 py-1.5 text-xs font-semibold"
-                />
-            </div>
-        )}
 
         <div className="flex-1" />
 
         <div className="flex items-center gap-2">
             <button 
-                onClick={exportToCSV}
+                onClick={async () => {
+                    const agency = "LGU Ligao"; 
+                    const commonConfig = {
+                        departmentGocc: filters.department === 'All' ? 'All Departments' : filters.department,
+                        bureauAgency: agency,
+                        fiscalYear: new Date().getFullYear().toString(),
+                        preparedBy: 'HR Officer', // Placeholder or use user context
+                        preparedByTitle: 'HRMO III',
+                        approvedBy: 'Mayor Name',
+                        approvedByTitle: 'City Mayor'
+                    };
+
+                    if (activeReport === 'form9') {
+                        const { generateForm9Excel } = await import('./print/form9_excel_generator');
+                        if (form9?.data) {
+                           // Construct the Form9Data object expected by the generator
+                           const mappedData = {
+                               header: {
+                                    agencyName: agency,
+                                    signatoryName: "HR Officer",
+                                    signatoryTitle: "HRMO",
+                                    date: new Date().toLocaleDateString(),
+                                    deadlineDate: new Date(Date.now() + 30*24*60*60*1000).toLocaleDateString(),
+                                    officeAddress: "City Hall",
+                                    contactInfo: "123-4567"
+                               },
+                               positions: form9.data.data.map((p: any) => ({
+                                   no: p.item_number, // or index
+                                   positionTitle: p.position_title,
+                                   plantillaItemNo: p.item_number,
+                                   salaryGrade: p.salary_grade,
+                                   monthlySalary: p.monthly_salary,
+                                   education: p.education,
+                                   training: p.training,
+                                   experience: p.experience,
+                                   eligibility: p.eligibility,
+                                   competency: p.competency,
+                                   placeOfAssignment: p.place_of_assignment || 'City Hall'
+                               }))
+                           };
+                           await generateForm9Excel(mappedData);
+                        }
+                    } else if (activeReport === 'psipop') {
+                        const { generatePSIPOPExcel } = await import('./print/psipop_excel_generator');
+                        if (psipop?.data?.data) {
+                            // Map PSIPOPRow to Position (adding mock id/properties)
+                            const positions = psipop.data.data.map((p: any) => ({
+                                ...p,
+                                id: Math.random(), // Mock ID as it's required by Position but likely not used in generator logic
+                                department_id: 0,
+                                education: '',
+                                training: '', 
+                                experience: '',
+                                eligibility: '',
+                                competency: '',
+                                incumbent_id: null,
+                                created_at: '',
+                                updated_at: ''
+                            }));
+                            await generatePSIPOPExcel(positions, commonConfig);
+                        }
+                    }
+                }}
                 className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-md active:scale-95"
             >
-                <Download size={14} /> Export CSV
+                <FileText size={14} /> Export Excel
             </button>
             <button 
-                onClick={() => window.print()}
-                className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-xl text-xs font-bold transition-all"
+                onClick={async () => {
+                   const commonConfig = {
+                        departmentGocc: filters.department === 'All' ? 'All Departments' : filters.department,
+                        bureauAgency: "LGU Ligao",
+                        fiscalYear: new Date().getFullYear().toString(),
+                        preparedBy: 'HR Officer', 
+                        preparedByTitle: 'HRMO III',
+                        approvedBy: 'Mayor Name',
+                        approvedByTitle: 'City Mayor'
+                    };
+
+                    if (activeReport === 'form9') {
+                         const { generateForm9PDF } = await import('./print/form9_pdf_generator');
+                         if (form9?.data?.data) {
+                             const mappedData = {
+                               header: {
+                                    agencyName: "LGU Ligao",
+                                    signatoryName: "HR Officer",
+                                    signatoryTitle: "HRMO",
+                                    date: new Date().toLocaleDateString(),
+                                    deadlineDate: new Date(Date.now() + 30*24*60*60*1000).toLocaleDateString(),
+                                    officeAddress: "City Hall",
+                                    contactInfo: "123-4567"
+                               },
+                               positions: form9.data.data.map((p: any) => ({
+                                   no: p.item_number,
+                                   positionTitle: p.position_title,
+                                   plantillaItemNo: p.item_number,
+                                   salaryGrade: p.salary_grade,
+                                   monthlySalary: p.monthly_salary,
+                                   education: p.education,
+                                   training: p.training,
+                                   experience: p.experience,
+                                   eligibility: p.eligibility,
+                                   competency: p.competency,
+                                   placeOfAssignment: p.place_of_assignment || 'City Hall'
+                               }))
+                           };
+                           generateForm9PDF(mappedData);
+                         }
+                    } else if (activeReport === 'psipop') {
+                        const { generatePSIPOPPDF } = await import('./print/psipop_pdf_generator');
+                         if (psipop?.data?.data) {
+                            const positions = psipop.data.data.map((p: any) => ({
+                                ...p,
+                                id: Math.random(),
+                                department_id: 0,
+                                education: '',
+                                training: '', 
+                                experience: '',
+                                eligibility: '',
+                                competency: '',
+                                incumbent_id: null,
+                                created_at: '',
+                                updated_at: ''
+                            }));
+                            generatePSIPOPPDF(positions, commonConfig);
+                         }
+                    }
+                }}
+                className="flex items-center gap-2 bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-md active:scale-95"
             >
-                <Printer size={14} /> Print
+                <Download size={14} /> Export PDF
             </button>
         </div>
       </div>
@@ -249,21 +305,6 @@ const ComplianceReportsDashboard: React.FC<ReportsDashboardProps> = memo(({ depa
                 />
             )}
 
-            {activeReport === 'rai' && (
-                <TablePreview 
-                    loading={loadingRai}
-                    headers={['Employee', 'Position', 'Item No.', 'SG', 'Salary', 'Date Issued', 'Nature']}
-                    data={rai?.data.data.map(row => [
-                        row.employee_name, 
-                        row.position_title, 
-                        row.item_number, 
-                        row.salary_grade, 
-                        formatPHP(row.monthly_salary),
-                        new Date(row.date_issued).toLocaleDateString(),
-                        row.nature_of_appointment
-                    ]) || []}
-                />
-            )}
 
             {activeReport === 'form33' && (
                 <div className="flex flex-col items-center justify-center py-20 text-gray-400 gap-4">

@@ -5,13 +5,15 @@ import { Plus, Calendar, SquarePen, CheckCircle, Clock, AlertCircle, Trash2, X }
 import { fetchReviewCycles, createReviewCycle, updateReviewCycle, deleteReviewCycle } from '@api';
 import PerformanceLayout from '@components/Custom/Performance/PerformanceLayout';
 import { useToastStore } from '@/stores';
+import { ReviewCycle } from '@/types/performance';
+import { AxiosError } from 'axios';
 
 const ReviewCycles = () => {
-  const [cycles, setCycles] = useState([]);
+  const [cycles, setCycles] = useState<ReviewCycle[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingCycle, setEditingCycle] = useState(null);
-  const [formData, setFormData] = useState({title: '', description: '', start_date: '', end_date: ''});
+  const [editingCycle, setEditingCycle] = useState<ReviewCycle | null>(null);
+  const [formData, setFormData] = useState({title: '', description: '', startDate: '', endDate: ''});
   
   // Toast notification hook
   const showToast = useToastStore((state) => state.showToast);
@@ -39,29 +41,29 @@ const ReviewCycles = () => {
   const closeModal = () => {
     setIsModalOpen(false);
     setEditingCycle(null);
-    setFormData({ title: '', description: '', start_date: '', end_date: '' });
+    setFormData({ title: '', description: '', startDate: '', endDate: '' });
   };
 
   // Open modal for creating new cycle
   const handleNewCycle = () => {
     setEditingCycle(null);
-    setFormData({ title: '', description: '', start_date: '', end_date: '' });
+    setFormData({ title: '', description: '', startDate: '', endDate: '' });
     setIsModalOpen(true);
   };
 
   // Open modal for editing existing cycle
-  const handleEditCycle = (cycle) => {
+  const handleEditCycle = (cycle: ReviewCycle) => {
     setEditingCycle(cycle);
     setFormData({
       title: cycle.title || '',
       description: cycle.description || '',
-      start_date: cycle.start_date ? cycle.start_date.split('T')[0] : '',
-      end_date: cycle.end_date ? cycle.end_date.split('T')[0] : ''
+      startDate: cycle.startDate ? cycle.startDate.split('T')[0] : '',
+      endDate: cycle.endDate ? cycle.endDate.split('T')[0] : ''
     });
     setIsModalOpen(true);
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       if (editingCycle) {
@@ -74,12 +76,13 @@ const ReviewCycles = () => {
       closeModal();
       loadCycles();
     } catch (err) {
+      const axiosErr = err as AxiosError<{ message?: string }>;
       console.error("Failed to save cycle", err);
-      showNotification(err.response?.data?.message || "Failed to save cycle", "error");
+      showNotification(axiosErr.response?.data?.message || "Failed to save cycle", "error");
     }
   };
 
-  const handleDeleteCycle = async (cycleId) => {
+  const handleDeleteCycle = async (cycleId: string | number) => {
     if (!window.confirm("Are you sure you want to delete this review cycle? This action cannot be undone.")) {
       return;
     }
@@ -88,12 +91,13 @@ const ReviewCycles = () => {
       showNotification("Cycle deleted successfully!", "success");
       loadCycles();
     } catch (err) {
+      const axiosErr = err as AxiosError<{ message?: string }>;
       console.error("Failed to delete cycle", err);
-      showNotification(err.response?.data?.message || "Failed to delete cycle", "error");
+      showNotification(axiosErr.response?.data?.message || "Failed to delete cycle", "error");
     }
   };
 
-  const getStatus = (start, end) => {
+  const getStatus = (start: string, end: string) => {
     const now = new Date();
     const startDate = new Date(start);
     const endDate = new Date(end);
@@ -137,7 +141,7 @@ const ReviewCycles = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {cycles.map((cycle) => {
-            const status = getStatus(cycle.start_date, cycle.end_date);
+            const status = getStatus(cycle.startDate, cycle.endDate);
             const StatusIcon = status.icon;
             
             return (
@@ -175,11 +179,11 @@ const ReviewCycles = () => {
                 <div className="flex items-center justify-between pt-4 border-t border-gray-50 text-sm">
                   <div className="flex items-center gap-2 text-gray-600">
                     <Calendar size={16} className="text-gray-400" />
-                    <span>Start: <span className="font-bold text-gray-800">{new Date(cycle.start_date).toLocaleDateString()}</span></span>
+                    <span>Start: <span className="font-bold text-gray-800">{new Date(cycle.startDate).toLocaleDateString()}</span></span>
                   </div>
                   <div className="flex items-center gap-2 text-gray-600">
                     <CheckCircle size={16} className="text-gray-400" />
-                    <span>End: <span className="font-bold text-gray-800">{new Date(cycle.end_date).toLocaleDateString()}</span></span>
+                    <span>End: <span className="font-bold text-gray-800">{new Date(cycle.endDate).toLocaleDateString()}</span></span>
                   </div>
                 </div>
               </motion.div>
@@ -235,8 +239,8 @@ const ReviewCycles = () => {
                       <input
                         type="date"
                         required
-                        value={formData.start_date}
-                        onChange={(e) => setFormData({...formData, start_date: e.target.value})}
+                        value={formData.startDate}
+                        onChange={(e) => setFormData({...formData, startDate: e.target.value})}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-200 focus:border-transparent outline-none transition-all"
                       />
                     </div>
@@ -245,8 +249,8 @@ const ReviewCycles = () => {
                       <input
                         type="date"
                         required
-                        value={formData.end_date}
-                        onChange={(e) => setFormData({...formData, end_date: e.target.value})}
+                        value={formData.endDate}
+                        onChange={(e) => setFormData({...formData, endDate: e.target.value})}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-200 focus:border-transparent outline-none transition-all"
                       />
                     </div>

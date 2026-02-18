@@ -8,7 +8,7 @@ interface FiltersState {
   department: string;
   employee: string;
   status: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 interface PerformanceTableProps {

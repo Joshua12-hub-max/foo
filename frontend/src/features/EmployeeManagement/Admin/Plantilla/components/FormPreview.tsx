@@ -1,5 +1,5 @@
 import React, { memo } from 'react';
-import { Download, Printer, X } from 'lucide-react';
+import { Download, X } from 'lucide-react';
 import type { Form33Data } from '@/api/complianceApi';
 
 interface FormPreviewProps {
@@ -29,9 +29,7 @@ const FormPreview: React.FC<FormPreviewProps> = memo(({ isOpen, onClose, data, t
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button className="p-2 hover:bg-white/10 rounded-lg transition-colors" title="Print Document">
-                <Printer size={18} />
-            </button>
+
             <button className="p-2 hover:bg-white/10 rounded-lg transition-colors" title="Download PDF">
                 <Download size={18} />
             </button>

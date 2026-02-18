@@ -36,17 +36,17 @@ export const useFilterOptions = () => {
         const departments = deptRes.success && deptRes.departments
           ? Array.from(new Set(
               deptRes.departments
-                .map((d: any) => d.name || d.department || '')
+                .map((d: { name?: string; department?: string }) => d.name || d.department || '')
                 .filter(Boolean)
             )).sort() as string[]
           : [];
 
         // Standardize Employees: Map to consistent { id, name } objects and remove duplicates
         const rawEmps: FilterEmployee[] = empRes.success && empRes.employees
-          ? empRes.employees.map((e: any) => ({
-              id: String(e.employeeId || e.employee_id || e.id),
-              name: e.name || `${e.firstName || e.first_name || ''} ${e.lastName || e.last_name || ''}`.trim()
-            })).filter((e: any) => e.id && e.name)
+          ? empRes.employees.map((e) => ({
+              id: String(e.employee_id || e.id),
+              name: `${e.first_name || ''} ${e.last_name || ''}`.trim()
+            })).filter((e): e is FilterEmployee => !!e.id && !!e.name)
           : [];
 
 

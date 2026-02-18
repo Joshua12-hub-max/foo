@@ -1,5 +1,6 @@
 import { useQueryClient, useQuery, useMutation } from '@tanstack/react-query';
 import { leaveApi } from '@api/leaveApi';
+import type { CreditType } from '@/types/leave.types';
 import { employeeApi } from '@api/employeeApi';
 import { toast } from 'react-hot-toast';
 import { usePagination } from '@/hooks/usePagination';
@@ -40,15 +41,16 @@ export const useCredits = () => {
   // Update or Add Credit mutation
   const updateCreditMutation = useMutation({
     mutationFn: async ({ employeeId, creditType, balance }: { employeeId: string; creditType: string; balance: number }) => {
-      const res = await leaveApi.updateCredit(employeeId, { creditType: creditType as any, balance });
+      const res = await leaveApi.updateCredit(employeeId, { creditType: creditType as CreditType, balance });
       return res.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['leave-credits'] });
       toast.success('Leave credit updated successfully');
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to update leave credit');
+    onError: (error: unknown) => {
+      const err = error as { response?: { data?: { message?: string } } };
+      toast.error(err.response?.data?.message || 'Failed to update leave credit');
     },
   });
 
@@ -62,8 +64,9 @@ export const useCredits = () => {
       queryClient.invalidateQueries({ queryKey: ['leave-credits'] });
       toast.success('Leave credit deleted successfully');
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to delete leave credit');
+    onError: (error: unknown) => {
+      const err = error as { response?: { data?: { message?: string } } };
+      toast.error(err.response?.data?.message || 'Failed to delete leave credit');
     },
   });
 

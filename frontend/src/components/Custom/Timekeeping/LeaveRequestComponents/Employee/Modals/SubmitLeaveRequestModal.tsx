@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { leaveApi } from "@/api/leaveApi";
 import { useForm, Controller } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
+import { zodResolver } from '@/lib/zodResolver';
 import { submitLeaveRequestSchema, SubmitLeaveRequestSchema } from '@/schemas/leave';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { LEAVE_TYPES, SPECIAL_LEAVES_NO_DEDUCTION, CROSS_CHARGE_MAP, LEAVE_TO_CREDIT_MAP } from '@/components/Custom/Timekeeping/LeaveRequestComponents/Employee/Modals/constants/modalConstants';
@@ -34,7 +34,7 @@ export const SubmitLeaveRequestModal: React.FC<SubmitLeaveRequestModalProps> = (
   const queryClient = useQueryClient();
 
   const { register, control, handleSubmit, watch, reset, setValue, formState: { errors } } = useForm<SubmitLeaveRequestSchema>({
-    resolver: zodResolver(submitLeaveRequestSchema) as any,
+    resolver: zodResolver(submitLeaveRequestSchema),
     defaultValues: {
       leaveType: '',
       isPaid: true,
@@ -79,7 +79,7 @@ export const SubmitLeaveRequestModal: React.FC<SubmitLeaveRequestModalProps> = (
     if (!leaveType) return null;
 
     // Check if special leave (no deduction)
-    const isSpecialLeave = SPECIAL_LEAVES_NO_DEDUCTION.includes(leaveType as any);
+    const isSpecialLeave = (SPECIAL_LEAVES_NO_DEDUCTION as readonly string[]).includes(leaveType);
     
     // Identify primary credit type
     const primaryCreditType = LEAVE_TO_CREDIT_MAP[leaveType] || leaveType;
@@ -146,7 +146,8 @@ export const SubmitLeaveRequestModal: React.FC<SubmitLeaveRequestModalProps> = (
       }
 
       const formData = new FormData();
-      formData.append('employeeId', (user as any)?.employee_id || (user as any)?.employeeId || (user as any)?.id);
+      const userRecord = user as unknown as Record<string, unknown>;
+      formData.append('employeeId', String(userRecord?.employee_id || userRecord?.employeeId || userRecord?.id || ''));
       formData.append('leaveType', data.leaveType);
       formData.append('startDate', data.startDate);
       formData.append('endDate', data.endDate);
@@ -158,7 +159,7 @@ export const SubmitLeaveRequestModal: React.FC<SubmitLeaveRequestModalProps> = (
         formData.append('attachment', data.attachment);
       }
 
-      await (leaveApi as any).applyLeave(formData);
+      await leaveApi.applyLeave(formData);
     },
     onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ['employee-leaves'] });
@@ -198,7 +199,7 @@ export const SubmitLeaveRequestModal: React.FC<SubmitLeaveRequestModalProps> = (
             {(errors.root || submitMutation.error) && (
               <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-sm">
                 <XCircle className="w-4 h-4 flex-shrink-0" />
-                <span>{errors.root?.message || (submitMutation.error as any)?.message || 'Submission failed'}</span>
+                <span>{errors.root?.message || (submitMutation.error instanceof Error ? submitMutation.error.message : '') || 'Submission failed'}</span>
               </div>
             )}
 
@@ -295,7 +296,7 @@ export const SubmitLeaveRequestModal: React.FC<SubmitLeaveRequestModalProps> = (
               <FormInput label="Employee Name" required>
                 <input
                   type="text"
-                  value={(user as any)?.name || 'Loading...'}
+                  value={(user as unknown as Record<string, unknown>)?.name as string || 'Loading...'}
                   readOnly
                   placeholder="Your name"
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 text-gray-500 font-medium cursor-not-allowed focus:outline-none"
@@ -305,7 +306,7 @@ export const SubmitLeaveRequestModal: React.FC<SubmitLeaveRequestModalProps> = (
               <FormInput label="Department" required>
                 <input
                   type="text"
-                  value={userDepartment || (user as any)?.department || 'Loading...'}
+                  value={userDepartment || (user as unknown as Record<string, unknown>)?.department as string || 'Loading...'}
                   readOnly
                   placeholder="Your department"
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 text-gray-500 font-medium cursor-not-allowed focus:outline-none"

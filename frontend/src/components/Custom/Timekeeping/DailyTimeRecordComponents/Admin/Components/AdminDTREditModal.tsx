@@ -63,28 +63,12 @@ export const AdminDTREditModal: React.FC<AdminDTREditModalProps> = ({
     if (!record) return;
 
     try {
-      // Reconstruct ISO DateTimes
-      const baseDate = new Date(record.date); // "Dec 8, 2025" works in Date constructor
+      // Send raw time strings (HH:mm) - Backend now handles combining this with the existing record date.
+      // This avoids timezone issues with reconstructing Date objects on the frontend.
       
-      let timeInISO = null;
-      if (data.timeIn) {
-        const [h, m] = data.timeIn.split(':');
-        const d = new Date(baseDate);
-        d.setHours(parseInt(h), parseInt(m));
-        timeInISO = d.toISOString();
-      }
-
-      let timeOutISO = null;
-      if (data.timeOut) {
-        const [h, m] = data.timeOut.split(':');
-        const d = new Date(baseDate);
-        d.setHours(parseInt(h), parseInt(m));
-        timeOutISO = d.toISOString();
-      }
-
       await onSave(record.id, {
-        time_in: timeInISO,
-        time_out: timeOutISO,
+        time_in: data.timeIn || null,
+        time_out: data.timeOut || null,
         status: data.status,
         late_minutes: data.late,
         undertime_minutes: data.undertime

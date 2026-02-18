@@ -5,16 +5,17 @@ import { fetchCriteria, addCriteria, updateCriteria, deleteCriteria } from '@api
 import PerformanceLayout from '@components/Custom/Performance/PerformanceLayout';
 import EditCriteriaModal from '@components/Custom/Performance/Admin/Modals/EditCriteriaModal';
 import DeleteConfirmationModal from '@components/Custom/Performance/Admin/Modals/DeleteConfirmationModal';
+import { PerformanceCriteria as IPerformanceCriteria } from '@/types/performance';
 
 const PerformanceCriteria = () => {
-  const [criteriaList, setCriteriaList] = useState([]);
+  const [criteriaList, setCriteriaList] = useState<IPerformanceCriteria[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   
   // Modal States
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [selectedCriteria, setSelectedCriteria] = useState(null);
+  const [selectedCriteria, setSelectedCriteria] = useState<IPerformanceCriteria | null>(null);
 
   const loadCriteria = async () => {
     try {
@@ -39,12 +40,12 @@ const PerformanceCriteria = () => {
     setIsEditModalOpen(true);
   };
 
-  const handleEdit = (item) => {
+  const handleEdit = (item: IPerformanceCriteria) => {
     setSelectedCriteria(item);
     setIsEditModalOpen(true);
   };
 
-  const handleDeleteClick = (item) => {
+  const handleDeleteClick = (item: IPerformanceCriteria) => {
     setSelectedCriteria(item);
     setIsDeleteModalOpen(true);
   };
@@ -61,7 +62,7 @@ const PerformanceCriteria = () => {
     }
   };
 
-  const handleSave = async (formData) => {
+  const handleSave = async (formData: Partial<IPerformanceCriteria>) => {
     try {
       if (selectedCriteria) {
         await updateCriteria(selectedCriteria.id, formData);
@@ -115,7 +116,7 @@ const PerformanceCriteria = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredCriteria.map((item) => {
-              const borderColors = {
+              const borderColors: Record<string, string> = {
                 'Strategic Priorities': 'border-blue-500',
                 'Core Functions': 'border-green-500',
                 'Support Functions': 'border-amber-500',
@@ -159,7 +160,7 @@ const PerformanceCriteria = () => {
                     </div>
                     <div className="flex items-center gap-2 text-gray-600">
                       <CheckCircle size={16} className="text-gray-400" />
-                      <span>Max Score: <span className="font-bold text-gray-800">{item.max_score}</span></span>
+                      <span>Max Score: <span className="font-bold text-gray-800">{item.maxScore}</span></span>
                     </div>
                   </div>
                 </div>

@@ -1,0 +1,10 @@
+﻿controllers/recruitmentController.ts(10,33): error TS6133: 'formatToManilaDateTime' is declared but its value is never read.
+controllers/recruitmentController.ts(11,97): error TS6196: 'ApplicantStatus' is declared but never used.
+controllers/recruitmentController.ts(11,114): error TS6196: 'InterviewPlatform' is declared but never used.
+controllers/scheduleController.ts(88,68): error TS6133: 'is_rest_day' is declared but its value is never read.
+controllers/stepIncrementController.ts(310,42): error TS2552: Cannot find name 'increment_id'. Did you mean 'incrementId'?
+controllers/stepIncrementController.ts(351,44): error TS2552: Cannot find name 'increment_id'. Did you mean 'incrementId'?
+controllers/user.controller.ts(35,3): error TS6133: 'EmployeeDbModel' is declared but its value is never read.
+controllers/zoomController.ts(3,1): error TS6133: 'AuthenticatedRequest' is declared but its value is never read.
+db/migrations/013_csc_leave_system.ts(2,1): error TS6133: 'ResultSetHeader' is declared but its value is never read.
+db/migrations/015_plantilla_compliance_system.ts(2,1): error TS6133: 'ResultSetHeader' is declared but its value is never read.

@@ -86,6 +86,12 @@ export const authentication = mysqlTable("authentication", {
 	originalAppointmentDate: date("original_appointment_date", { mode: 'string' }),
 	lastPromotionDate: date("last_promotion_date", { mode: 'string' }),
 	middleName: varchar("middle_name", { length: 100 }),
+	facebookUrl: varchar("facebook_url", { length: 255 }),
+	linkedinUrl: varchar("linkedin_url", { length: 255 }),
+	twitterHandle: varchar("twitter_handle", { length: 100 }),
+	dutyType: mysqlEnum("duty_type", ['Standard','Irregular']).default('Standard'),
+	dailyTargetHours: decimal("daily_target_hours", { precision: 4, scale: 2 }).default('8.00'),
+	salaryBasis: mysqlEnum("salary_basis", ['Daily','Hourly']).default('Daily'),
 },
 (table) => [
 	foreignKey({

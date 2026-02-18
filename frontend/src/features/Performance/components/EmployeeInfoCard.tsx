@@ -6,6 +6,7 @@ interface Employee {
   first_name: string;
   last_name: string;
   job_title?: string;
+  position_title?: string;
   department?: string;
   [key: string]: any;
 }
@@ -23,6 +24,7 @@ interface PerformanceFormData {
   employee_first_name?: string;
   employee_last_name?: string;
   employee_job_title?: string;
+  employee_position_title?: string;
   employee_department?: string;
   [key: string]: any;
 }
@@ -66,7 +68,7 @@ const EmployeeInfoCard: React.FC<EmployeeInfoCardProps> = ({
             <select
               value={formData.employee_id}
               onChange={(e) => onEmployeeChange(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded bg-white focus:ring-2 focus:ring-gray-300 outline-none"
+              className="w-full p-2 border border-gray-300 rounded bg-white focus:ring-2 focus:ring-gray-300 outline-none text-sm"
             >
               <option value="">-- Select Employee --</option>
               {employees.map(emp => (
@@ -86,14 +88,17 @@ const EmployeeInfoCard: React.FC<EmployeeInfoCardProps> = ({
         <div className="space-y-1">
           <label className="text-sm font-medium text-gray-500">Position / Title</label>
           <div className="font-medium text-gray-700">
-            {formData.employee_job_title || selectedEmployee?.job_title || 'N/A'}
+            {formData.employee_position_title || formData.employee_job_title || selectedEmployee?.position_title || selectedEmployee?.job_title || 'N/A'}
           </div>
         </div>
 
         {/* Department */}
-        <div className="space-y-1">
+        <div className="space-y-1 overflow-hidden">
           <label className="text-sm font-medium text-gray-500">Department / Office</label>
-          <div className="font-medium text-gray-700">
+          <div 
+            className="font-medium text-gray-700 whitespace-nowrap overflow-hidden text-ellipsis"
+            title={formData.employee_department || selectedEmployee?.department || 'N/A'}
+          >
             {formData.employee_department || selectedEmployee?.department || 'N/A'}
           </div>
         </div>

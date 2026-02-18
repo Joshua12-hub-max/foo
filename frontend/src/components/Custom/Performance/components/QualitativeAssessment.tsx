@@ -13,16 +13,7 @@ const ICON_MAP: Record<string, React.ReactNode> = {
   'MessageSquare': <MessageSquare size={16} />
 };
 
-interface Assessment {
-  id: string | number;
-  title: string;
-  description?: string;
-  badge?: string;
-  badgeColor?: string;
-  iconName?: string;
-  value?: string;
-  [key: string]: any;
-}
+import { Assessment } from '@/types/performance';
 
 interface QualitativeAssessmentProps {
   assessments?: Assessment[];
@@ -165,7 +156,7 @@ const QualitativeAssessment: React.FC<QualitativeAssessmentProps> = ({
         isOpen={showEditModal} 
         onClose={() => setShowEditModal(false)}
         onSubmit={handleSaveModal}
-        initialData={editingAssessment ? {title: editingAssessment.title, description: editingAssessment.description || ''} : null}
+        initialData={editingAssessment ? {title: editingAssessment.title || '', description: editingAssessment.description || ''} : null}
         title={editingAssessment ? "Edit Assessment" : "Add Assessment"}
       />
       

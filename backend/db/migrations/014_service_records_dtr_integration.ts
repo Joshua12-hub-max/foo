@@ -1,5 +1,5 @@
 
-import db from '../connection.ts';
+import db from '../index.js';
 
 const migration = async (): Promise<void> => {
   console.log(' Starting Service Records & DTR Integration Migration...');

@@ -12,7 +12,7 @@ interface ReviewType {
   status: string;
   self_rating_score?: string | number;
   total_score?: string | number;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 interface ReviewCardProps {

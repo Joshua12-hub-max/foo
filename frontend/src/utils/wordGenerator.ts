@@ -113,18 +113,6 @@ export const generateJobVacancyWord = async (job: Job) => {
                   }),
                 ],
               }),
-              new TableRow({
-                children: [
-                  new TableCell({
-                    children: [new Paragraph({ children: [new TextRun({ text: "SALARY", ...tableHeaderStyle })] })],
-                    shading: { fill: "E0E0E0" },
-                  }),
-                  new TableCell({
-                    columnSpan: 3,
-                    children: [new Paragraph({ children: [new TextRun({ text: (job.salary_range || "").toUpperCase(), ...tableCellStyle })] })],
-                  }),
-                ],
-              }),
                new TableRow({
                 children: [
                   new TableCell({

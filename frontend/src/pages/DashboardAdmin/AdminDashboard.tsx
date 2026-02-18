@@ -26,7 +26,7 @@ import RegularizationWidget from "../../features/Dashboard/components/Regulariza
 import { 
   LayoutDashboard, Clock, Users, Briefcase, 
   Award, Settings, Mail, MessageCircle, LucideIcon,
-  Wallet
+  Wallet, FileText
 } from "lucide-react";
 
 // --- Interfaces ---
@@ -234,7 +234,11 @@ export default function HDashboard(): React.ReactElement {
         { name: "Leave Request", action: "leave-request" },
       ],
     },
-    { name: "Employee Management", icon: Users, action: "management" },
+    {
+      name: "Employee Management",
+      icon: Users,
+      action: "management"
+    },
     { 
       name: "Recruitment", 
       icon: Briefcase,
@@ -253,11 +257,10 @@ export default function HDashboard(): React.ReactElement {
       children: [
         { name: "User Profile", action: "profile" },
         { name: "Biometrics Monitor", action: "biometrics-monitor" },
-        { name: "Biometrics Enrollment", action: "biometrics-enrollment" },
+
         { name: "Biometrics Logs", action: "biometrics-logs" },
       ],
     },
-    { name: "Compensation", icon: Wallet, action: "compensation" },
   ], []);
 
   const statsCards: StatCardData[] = useMemo(() => [

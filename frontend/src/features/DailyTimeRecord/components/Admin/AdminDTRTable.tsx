@@ -32,14 +32,46 @@ const renderCell = (
   if (column.key === 'status') {
     return (
       <span 
-        className={`${getStatusBadge(String(value))} px-3 py-1 text-sm font-medium inline-block rounded-full`}
+        className={`${getStatusBadge(String(value))} px-2 py-1 text-xs font-xs inline-block rounded-full`}
       >
         {String(value)}
       </span>
     );
   }
   
-  return String(value ?? '-');
+  // Special rendering for name column to include department
+  if (column.key === 'name') {
+    const employeeName = item.name || 'Unknown Employee';
+    const departmentName = item.department || 'No Department';
+    
+    return (
+      <div className="flex flex-col">
+        <span className={`text-sm font-medium ${employeeName === 'Unknown Employee' ? 'text-gray-400 italic' : 'text-gray-900'}`}>
+          {employeeName}
+        </span>
+        <span className="text-xs text-gray-500">{departmentName}</span>
+      </div>
+    );
+  }
+
+  // Special rendering for duties
+  if (column.key === 'duties') {
+    const rawValue = String(value);
+    // Don't render the badge if it's N/A, undefined, or empty
+    if (!rawValue || rawValue === 'undefined' || rawValue === 'null' || rawValue === 'N/A' || rawValue === 'No Schedule') {
+       return <span className="text-gray-400 text-xs">-</span>;
+    }
+
+    const isIrregular = rawValue.toLowerCase().includes('irregular');
+    return (
+      <span className={`px-2 py-1 text-xs font-semibold rounded-full ${isIrregular ? 'bg-purple-100 text-purple-800' : 'bg-blue-50 text-blue-700'}`}>
+        {rawValue}
+      </span>
+    );
+  }
+  
+  const cellValue = item[column.key];
+  return String(cellValue ?? '-');
 };
 
 export const AdminDTRTable: React.FC<AdminDTRTableProps> = ({ 

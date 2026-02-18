@@ -12,7 +12,6 @@ interface PlantillaTableProps {
   onViewHistory: (pos: Position) => void;
   onEdit: (pos: Position) => void;
   onDelete: (id: number) => void;
-  onPrintAppointment: (pos: Position) => void;
 }
 
 const PlantillaTable: React.FC<PlantillaTableProps> = ({ 
@@ -24,7 +23,6 @@ const PlantillaTable: React.FC<PlantillaTableProps> = ({
     onViewHistory, 
     onEdit, 
     onDelete,
-    onPrintAppointment
 }) => {
     return (
         <div className="bg-white rounded-lg shadow-md border border-gray-100 overflow-hidden flex-1">
@@ -58,7 +56,7 @@ const PlantillaTable: React.FC<PlantillaTableProps> = ({
                         <td className="px-4 py-3 text-sm font-medium">{pos.item_number}</td>
                         <td className="px-4 py-3 text-sm">{pos.position_title}</td>
                         <td className="px-4 py-3 text-sm">{pos.salary_grade}-{pos.step_increment}</td>
-                        <td className="px-4 py-3 text-sm">{pos.department || '-'}</td>
+                        <td className="px-4 py-3 text-sm">{pos.department_name || pos.department || '-'}</td>
                         <td className="px-4 py-3 text-sm">
                             <div className="flex flex-col">
                                 <span className="font-medium text-gray-700">{pos.area_code || '-'}</span>
@@ -97,16 +95,6 @@ const PlantillaTable: React.FC<PlantillaTableProps> = ({
                             >
                                 <UserMinus size={16} />
                             </button>
-                            )}
-
-                            {!pos.is_vacant && (
-                                <button
-                                    onClick={() => onPrintAppointment(pos)}
-                                    className="text-emerald-600 hover:text-emerald-800 p-1.5 rounded hover:bg-emerald-50 transition"
-                                    title="Print Appointment (Form 33)"
-                                >
-                                    <Printer size={16} />
-                                </button>
                             )}
 
                             <button 

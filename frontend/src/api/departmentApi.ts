@@ -1,14 +1,7 @@
 import axios from './axios';
 
+import { Department } from '../types/org';
 import { Employee } from '../types';
-
-export interface Department {
-  id: number;
-  name: string;
-  description?: string;
-  code?: string;
-  employee_count?: number;
-}
 
 interface DepartmentResponse {
   success: boolean;
@@ -94,8 +87,9 @@ export const assignEmployeeToDepartment = async (departmentId: string | number, 
   try {
     const response = await axios.post(`/departments/${departmentId}/assign-employee`, { employeeId });
     return response.data;
-  } catch (error: any) {
-    return { success: false, message: error.response?.data?.message || 'Failed to assign employee' };
+  } catch (error: unknown) {
+    const msg = (error as { response?: { data?: { message?: string } } }).response?.data?.message;
+    return { success: false, message: msg || 'Failed to assign employee' };
   }
 };
 
@@ -104,8 +98,9 @@ export const removeEmployeeFromDepartment = async (departmentId: string | number
   try {
     const response = await axios.delete(`/departments/${departmentId}/employees/${employeeId}`);
     return response.data;
-  } catch (error: any) {
-    return { success: false, message: error.response?.data?.message || 'Failed to remove employee' };
+  } catch (error: unknown) {
+    const msg = (error as { response?: { data?: { message?: string } } }).response?.data?.message;
+    return { success: false, message: msg || 'Failed to remove employee' };
   }
 };
 

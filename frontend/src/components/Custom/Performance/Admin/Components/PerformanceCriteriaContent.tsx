@@ -5,6 +5,7 @@ import { fetchCriteria, addCriteria, updateCriteria, deleteCriteria } from '@/ap
 import EditCriteriaModal from '../Modals/EditCriteriaModal';
 import DeleteConfirmationModal from '../Modals/DeleteConfirmationModal';
 import { PerformanceItem } from '../../types';
+import { PerformanceCriteriaSchema } from '@/schemas/performanceSchema';
 
 interface CriteriaResponse {
   success: boolean;
@@ -24,7 +25,7 @@ const PerformanceCriteriaContent: React.FC = () => {
   const loadCriteria = async () => {
     try {
       setLoading(true);
-      const data = await fetchCriteria() as CriteriaResponse;
+      const data = (await fetchCriteria()) as unknown as CriteriaResponse;
       if (data.success) {
         setCriteriaList(data.criteria);
       }
@@ -66,7 +67,7 @@ const PerformanceCriteriaContent: React.FC = () => {
     }
   };
 
-  const handleSave = async (formData: any) => {
+  const handleSave = async (formData: PerformanceCriteriaSchema) => {
     try {
       if (selectedCriteria && selectedCriteria.id) {
         await updateCriteria(selectedCriteria.id, formData);
@@ -166,7 +167,7 @@ const PerformanceCriteriaContent: React.FC = () => {
                   </div>
                   <div className="flex items-center gap-1.5 text-gray-500">
                     <CheckCircle size={14} className="text-gray-400" />
-                    <span>Max: <span className="font-bold text-gray-700">{item.max_score}</span></span>
+                    <span>Max: <span className="font-bold text-gray-700">{item.maxScore}</span></span>
                   </div>
                 </div>
               </motion.div>

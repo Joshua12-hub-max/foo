@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { verifyToken, verifyAdmin } from '../middleware/authMiddleware.js';
+import { verifyAdmin } from '../middleware/authMiddleware.js';
 import * as budgetController from '../controllers/budgetAllocationController.js';
 
 const router: Router = Router();

@@ -55,7 +55,6 @@ export const createJobSchema = z.object({
   department: z.string().min(1, 'Department is required'),
   job_description: z.string().min(10, 'Job description must be at least 10 characters'),
   requirements: z.string().optional(),
-  salary_range: z.string().optional(),
   location: z.string().min(1, 'Location is required'),
   employment_type: z.enum(['Full-time', 'Part-time', 'Contractual', 'Job Order', 'Coterminous', 'Temporary', 'Probationary', 'Casual', 'Permanent']).default('Full-time'),
   application_email: z.string().email('Invalid email address'),

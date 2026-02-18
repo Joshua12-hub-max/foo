@@ -37,9 +37,9 @@ export const pdsApi = {
     },
 
     // Update PDS Section (Full Replace Strategy per Controller)
-    updateSection: async <T>(section: string, items: T[]): Promise<AxiosResponse<{ success: boolean; message: string }>> => {
+    updateSection: async <T>(section: string, items: T[], employee_id?: number): Promise<AxiosResponse<{ success: boolean; message: string }>> => {
         try {
-            const response = await api.put(`/pds/${section}`, { items });
+            const response = await api.put(`/pds/${section}`, { items, employee_id });
             return response;
         } catch (error) {
             throw error;

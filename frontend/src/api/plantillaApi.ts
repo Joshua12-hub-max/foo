@@ -217,6 +217,16 @@ export const plantillaApi = {
         }
     },
 
+    // Create a new tranche
+    createTranche: async (data: CreateTrancheParams): Promise<AxiosResponse<{ success: boolean; tranche: Tranche }>> => {
+        try {
+            const response = await api.post('/plantilla/tranches', data);
+            return response;
+        } catch (error) {
+            throw error;
+        }
+    },
+
     // Upload salary schedule
     uploadSalarySchedule: async (data: { tranche: number; salaryData: Array<{ salary_grade: number; step: number; monthly_salary: number }> }): Promise<AxiosResponse> => {
         try {
@@ -294,6 +304,7 @@ export const {
     getTranches,
     getActiveTranche,
     setActiveTranche,
+    createTranche,
     uploadSalarySchedule,
     getTrancheAllowances,
     copyTrancheAllowances,

@@ -2,16 +2,23 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { leaveApi } from "@/api/leaveApi";
 import { EmployeeLeaveRequest } from '@/components/Custom/Timekeeping/LeaveRequestComponents/Employee/types';
+import type { LeaveApplication, ApplicationStatus } from '@/types/leave.types';
 
-export const useLeaveData = (initialFilters?: any) => {
+export const useLeaveData = (initialFilters?: Record<string, string>) => {
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
-  const [filters, setFilters] = useState({
+  const [filters, setFilters] = useState<{
+    search: string;
+    startDate: string;
+    endDate: string;
+    status: ApplicationStatus | '';
+    type: string;
+  }>({
     search: '',
     startDate: '',
     endDate: '',
-    status: '',
+    status: '' as ApplicationStatus | '',
     type: ''
   });
 
@@ -38,9 +45,9 @@ export const useLeaveData = (initialFilters?: any) => {
         // I'll keep it as is for now and maybe update backend if I see the need.
       };
       
-      const response = await (leaveApi as any).getMyLeaves(params);
+      const response = await leaveApi.getMyApplications(params);
       
-      const leaves = (response.data?.leaves || []).map((l: any) => ({
+      const leaves = (response.data?.applications || []).map((l: LeaveApplication) => ({
         id: l.id,
         employee_id: l.employee_id,
         leaveType: l.leave_type,
@@ -48,7 +55,7 @@ export const useLeaveData = (initialFilters?: any) => {
         toDate: l.end_date,
         reason: l.reason,
         status: l.status,
-        with_pay: l.with_pay,
+        with_pay: l.is_with_pay,
         attachment_path: l.attachment_path,
         department: l.department || 'N/A',
         name: `${l.first_name || ''} ${l.last_name || ''}`.trim() || 'N/A'
@@ -67,7 +74,7 @@ export const useLeaveData = (initialFilters?: any) => {
     await queryClient.invalidateQueries({ queryKey: ['employee-leaves'] });
   };
 
-  const updateFilters = (newFilters: any) => {
+  const updateFilters = (newFilters: Partial<typeof filters>) => {
     setFilters(prev => ({ ...prev, ...newFilters }));
     setPage(1);
   };

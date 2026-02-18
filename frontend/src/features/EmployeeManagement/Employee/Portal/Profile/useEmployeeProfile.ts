@@ -1,8 +1,9 @@
 import { useState, useCallback, useEffect } from 'react';
 import axios from '@/api/axios';
+import { Education, Skill } from '@/types';
 
 export interface Profile {
-  id?: number;
+  id: number;
   first_name?: string;
   last_name?: string;
   email?: string;
@@ -12,8 +13,8 @@ export interface Profile {
   department?: string;
   job_title?: string;
   position_title?: string;
-  skills?: unknown[];
-  education?: unknown[];
+  skills?: Skill[];
+  education?: Education[];
   [key: string]: unknown;
 }
 

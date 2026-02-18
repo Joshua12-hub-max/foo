@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useForm, SubmitHandler } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
+import { zodResolver } from '@/lib/zodResolver';
 import { X, Loader } from 'lucide-react';
 // @ts-ignore
 import { plantillaApi } from '@api/plantillaApi';
@@ -26,7 +26,7 @@ const PlantillaFormModal: React.FC<PlantillaFormModalProps> = ({
   isProcessing = false 
 }) => {
   const { register, handleSubmit, formState: { errors }, reset, watch, setValue } = useForm<PlantillaSchema>({
-    resolver: zodResolver(plantillaSchema) as any,
+    resolver: zodResolver(plantillaSchema),
     defaultValues: {
       item_number: '',
       position_title: '',

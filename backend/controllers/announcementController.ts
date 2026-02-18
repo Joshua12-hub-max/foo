@@ -106,10 +106,7 @@ export const updateAnnouncement = async (req: Request, res: Response): Promise<v
     const validatedData = UpdateAnnouncementSchema.parse(req.body);
     const { title, content, priority, start_date, end_date, start_time, end_time } = validatedData;
 
-    const formattedStartTime = convertTo24Hour(start_time);
-    const formattedEndTime = convertTo24Hour(end_time);
-    const formattedStartDate = (start_date && start_date.trim() !== '') ? start_date : null;
-    const formattedEndDate = (end_date && end_date.trim() !== '') ? end_date : null;
+
 
     const existing = await db.query.announcements.findFirst({
       where: eq(announcements.id, Number(id))

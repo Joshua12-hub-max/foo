@@ -30,7 +30,7 @@ const LeaveRequest = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isSubmitModalOpen, setIsSubmitModalOpen] = useState(false);
-  const [finalizeModal, setFinalizeModal] = useState({ isOpen: false, request: null as any });
+  const [finalizeModal, setFinalizeModal] = useState<{ isOpen: boolean; request: unknown }>({ isOpen: false, request: null });
   
   // Custom hooks
   // Extracted server-side pagination/filtering functions
@@ -48,7 +48,7 @@ const LeaveRequest = () => {
   const { data: credits = [] } = useQuery({
     queryKey: ['employee-leave-credits'],
     queryFn: async () => {
-      const res = await (leaveApi as any).getMyCredits();
+      const res = await leaveApi.getMyCredits();
       return res.data?.credits || [];
     },
     staleTime: 1000 * 60 * 10, // 10 minutes
@@ -149,7 +149,7 @@ const LeaveRequest = () => {
         onClear={handleClear}
         onNewRequest={() => setIsSubmitModalOpen(true)}
         isLoading={isLoading || isExporting}
-        hasCredits={credits.length > 0 && credits.some((c: any) => parseFloat(c.balance) > 0)}
+        hasCredits={credits.length > 0 && credits.some((c) => c.balance > 0)}
       />
 
       {/* Search, Credits, and Create Button Row */}
@@ -168,7 +168,7 @@ const LeaveRequest = () => {
         <div className="flex items-center gap-4">
             {/* Credit Cards */}
             <div className="flex items-center gap-2">
-              {credits.map((credit: any, idx: number) => (
+              {credits.map((credit, idx) => (
                 <div 
                   key={idx} 
                   className="bg-white px-3 py-2 rounded-lg border border-gray-300 shadow-sm flex items-center gap-2"

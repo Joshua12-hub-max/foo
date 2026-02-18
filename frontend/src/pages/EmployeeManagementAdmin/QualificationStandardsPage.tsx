@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Plus } from 'lucide-react';
-import { zodResolver } from '@hookform/resolvers/zod';
+import { zodResolver } from '@/lib/zodResolver';
 import { 
   useQualificationStandards, 
   useCreateQualificationStandard,
@@ -36,7 +36,7 @@ export const QualificationStandardsPage: React.FC<QualificationStandardsPageProp
     reset,
     formState: { errors },
   } = useForm<QualificationStandardFormData>({
-    resolver: zodResolver(qualificationStandardSchema) as any,
+    resolver: zodResolver(qualificationStandardSchema),
   });
 
   const filteredStandards = standards?.filter(qs =>

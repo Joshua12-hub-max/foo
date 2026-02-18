@@ -1,5 +1,5 @@
-import db from '../connection.js';
-import type { ResultSetHeader } from 'mysql2/promise';
+import db from '../index.js';
+import type {  } from 'mysql2/promise';
 
 /**
  * Migration: Plantilla Compliance System (CSC/DBM/COA)

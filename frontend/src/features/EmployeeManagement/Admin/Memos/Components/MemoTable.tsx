@@ -18,6 +18,7 @@ interface Memo {
   acknowledgmentRequired?: boolean;
   acknowledgedAt?: string;
   authorName?: string;
+  department?: string;
 }
 
 interface MemoRowProps {
@@ -40,35 +41,44 @@ const MemoRow: React.FC<MemoRowProps> = memo(({ memo, onView, onEdit, onDelete }
           {memo.status}
         </span>
       </td>
-      <td className="px-6 py-4 text-sm text-gray-800 font-medium">{memo.memoNumber}</td>
-      <td className="px-6 py-4 text-sm text-gray-600">{memo.memoType}</td>
-      <td className="px-6 py-4 text-sm text-gray-800">{memo.employeeName}</td>
-      <td className="px-6 py-4 text-sm text-gray-700 max-w-xs truncate">{memo.subject}</td>
+      <td className="px-6 py-4 text-sm text-gray-800 font-medium whitespace-nowrap">{memo.memoNumber}</td>
+      <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">{memo.memoType}</td>
+      <td className="px-6 py-4 text-sm text-gray-800">
+        <div>
+          <div className="font-medium text-gray-900 whitespace-nowrap">{memo.employeeName}</div>
+          <div className="text-xs text-gray-500 truncate max-w-[200px]" title={memo.department}>{memo.department || 'N/A'}</div>
+        </div>
+      </td>
+      <td className="px-6 py-4 text-sm text-gray-700 min-w-[300px] max-w-[400px]">
+        <div className="truncate" title={memo.subject}>
+          {memo.subject}
+        </div>
+      </td>
       <td className="px-6 py-4">
         <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getPriorityBadge(memo.priority)}`}>
           {memo.priority}
         </span>
       </td>
-      <td className="px-6 py-4 text-sm text-gray-500">{formatDate(memo.createdAt)}</td>
+      <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">{formatDate(memo.createdAt)}</td>
       <td className="px-6 py-4">
         <div className="flex items-center justify-center gap-2">
           <button
             onClick={handleView}
-            className="p-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg transition-colors"
+            className="p-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg transition-colors"
             title="View"
           >
             <Eye size={16} />
           </button>
           <button
             onClick={handleEdit}
-            className="p-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg transition-colors"
+            className="p-2 bg-amber-50 hover:bg-amber-100 text-amber-600 rounded-lg transition-colors"
             title="Edit"
           >
             <SquarePen size={16} />
           </button>
           <button
             onClick={handleDelete}
-            className="p-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg transition-colors"
+            className="p-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition-colors"
             title="Delete"
           >
             <Trash2 size={16} />

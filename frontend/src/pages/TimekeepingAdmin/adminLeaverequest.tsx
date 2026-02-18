@@ -35,6 +35,7 @@ const ConfirmDeleteModal = React.lazy(() => import('@components/Custom/CalendarC
 // API
 import { useFilterOptions } from '@/hooks/useFilterOptions';
 import { AddCreditInput, CreditUpdateInput } from '@/schemas/creditsSchema';
+import type { LeaveCredit } from '@features/LeaveRequests/types';
 
 const AdminLeaveRequest = () => {
   const today = useMemo(() => new Date().toLocaleDateString('en-US'), []);
@@ -46,14 +47,14 @@ const AdminLeaveRequest = () => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   
   // Modal states
-  const [approveModal, setApproveModal] = useState({ isOpen: false, request: null as any });
-  const [rejectModal, setRejectModal] = useState({ isOpen: false, request: null as any });
-  const [processModal, setProcessModal] = useState({ isOpen: false, request: null as any });
+  const [approveModal, setApproveModal] = useState<{ isOpen: boolean; request: unknown }>({ isOpen: false, request: null });
+  const [rejectModal, setRejectModal] = useState<{ isOpen: boolean; request: unknown }>({ isOpen: false, request: null });
+  const [processModal, setProcessModal] = useState<{ isOpen: boolean; request: unknown }>({ isOpen: false, request: null });
   
   // Credits Modal States
   const [isAddCreditOpen, setIsAddCreditOpen] = useState(false);
-  const [editCredit, setEditCredit] = useState<{isOpen: boolean, data: any}>({ isOpen: false, data: null });
-  const [deleteCredit, setDeleteCredit] = useState<{isOpen: boolean, data: any}>({ isOpen: false, data: null });
+  const [editCredit, setEditCredit] = useState<{isOpen: boolean, data: LeaveCredit | null}>({ isOpen: false, data: null });
+  const [deleteCredit, setDeleteCredit] = useState<{isOpen: boolean, data: LeaveCredit | null}>({ isOpen: false, data: null });
 
   // Fetch Filter Options using Centralized Hook
   const { data: filterOptions, isLoading: loadingFilters } = useFilterOptions();

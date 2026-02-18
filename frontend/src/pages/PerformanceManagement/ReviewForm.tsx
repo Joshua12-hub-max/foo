@@ -2,7 +2,7 @@ import React from 'react';
 import { MoveLeft, Send, CheckCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ReviewMatrix from '@/components/Custom/Performance/ReviewMatrix';
-import { EmployeeInfoCard, QualitativeAssessment } from '@/components/Custom/Performance/components';
+import { EmployeeInfoCard, QualitativeAssessment, MetricsSummary } from '@/components/Custom/Performance/components';
 
 import { usePerformanceReview } from '@/components/Custom/Performance/Hooks/usePerformanceReview';
 
@@ -21,7 +21,7 @@ const ReviewForm = () => {
     handleScoreChange, handleQETChange, handleCommentChange, handleSelfScoreChange, handleAccomplishmentChange,
     handleAddItem, onEditItem, onDeleteItem,
     handleAddAssessment, handleEditAssessment, handleDeleteAssessment, handleAssessmentValueChange,
-    handleSave
+    handleSave, handleEvidenceChange
   } = handlers;
 
   const { canEdit, isEmployee } = permissions;
@@ -72,7 +72,7 @@ const ReviewForm = () => {
          </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          {canEdit && formData.status === 'Draft' && (
+          {canEdit && (formData.status === 'Draft' || (formData.status === 'Self-Rated' && !isEmployee)) && (
             <button
               onClick={() => handleSave('submit')}
               disabled={saving}
@@ -105,8 +105,8 @@ const ReviewForm = () => {
           employees={employees}
           cycles={cycles}
           isNew={isNew}
-          onEmployeeChange={(value) => setFormData({...formData, employee_id: value})}
-          onCycleChange={(value) => setFormData({...formData, review_cycle_id: value})}
+          onEmployeeChange={(value) => setFormData({...formData, employee_id: Number(value)})}
+          onCycleChange={(value) => setFormData({...formData, review_cycle_id: Number(value)})}
         />
 
         <div className="bg-white rounded-sm shadow-sm border border-gray-200 p-6">
@@ -116,7 +116,7 @@ const ReviewForm = () => {
           </div>
           
           <ReviewMatrix 
-            items={(formData.items || []) as any}
+            items={formData.items || []}
             onScoreChange={handleScoreChange}
             onCommentChange={handleCommentChange}
             onSelfScoreChange={handleSelfScoreChange}
@@ -125,16 +125,18 @@ const ReviewForm = () => {
             showSelfRating={true}
             isSelfRatingMode={isEmployee}
             finalScore={Number(currentScore) || 0}
-            onAddItem={handleAddItem}
-            onEditItem={onEditItem as any}
-            onDeleteItem={onDeleteItem}
+            onAddItem={handleAddItem as unknown as (...args: unknown[]) => void}
+            onEditItem={onEditItem as unknown as (...args: unknown[]) => void}
+
+
             onQETChange={handleQETChange}
+            onEvidenceChange={handleEvidenceChange}
           />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <QualitativeAssessment
-            assessments={qualitativeAssessments as any}
+            assessments={qualitativeAssessments}
             canEdit={canEdit}
             onAdd={handleAddAssessment}
             onEdit={handleEditAssessment}
@@ -144,6 +146,15 @@ const ReviewForm = () => {
             gridClassName="grid-cols-1 md:grid-cols-3"
           />
         </div>
+
+        {formData.employee_metrics && (
+          <div className="mt-8">
+            <MetricsSummary 
+              metrics={formData.employee_metrics} 
+              employeeInfo={(formData as unknown as Record<string, unknown>).employee_info as Record<string, unknown> | undefined}
+            />
+          </div>
+        )}
 
       </div>
     </div>

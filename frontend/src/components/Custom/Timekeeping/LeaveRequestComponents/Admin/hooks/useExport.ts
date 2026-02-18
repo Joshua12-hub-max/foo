@@ -48,7 +48,7 @@ export const useExport = () => {
 
       transformData.forEach(row => {
         const rowData = keys.map(key => {
-          const val = (row as any)[key] || '';
+          const val = (row as unknown as Record<string, string>)[key] || '';
           return `"${String(val).replace(/"/g, '""')}"`;
         });
         csvRows.push(rowData.join(','));
@@ -63,9 +63,9 @@ export const useExport = () => {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Export to Excel failed:', err);
-      setExportError(`Excel Export failed: ${err.message || 'Unknown error.'}`);
+      setExportError(`Excel Export failed: ${err instanceof Error ? err.message : 'Unknown error.'}`);
     } finally {
       setIsExporting(false);
     }
@@ -148,9 +148,9 @@ export const useExport = () => {
           }, 250);
         };
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Export to PDF failed:', err);
-      setExportError(`PDF Export failed: ${err.message || 'Unknown error.'}`);
+      setExportError(`PDF Export failed: ${err instanceof Error ? err.message : 'Unknown error.'}`);
     } finally {
       setIsExporting(false);
     }

@@ -3,8 +3,9 @@ export const TABLE_HEADERS = [
   'Status',
   'Employee ID',
   'Employee Name',
+  'Duties',
   'Department',
-  'Job Title',
+  'Position Title',
   'Last Evaluation',
   'Score'
 ];

@@ -22,7 +22,7 @@ export default function LeaveTable({ onClose }: LeaveTableProps) {
         setError(null);
         const response = await leaveApi.getAllLeaves();
         // Handle both old (leaves) and new (applications) response formats
-        const resData = response.data as any;
+        const resData = response.data as { applications?: unknown[]; leaves?: unknown[] };
         const leavesData = resData?.applications || resData?.leaves || [];
         if (leavesData.length > 0) {
           const today = new Date();

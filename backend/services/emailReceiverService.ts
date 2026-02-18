@@ -182,7 +182,7 @@ const isEmailProcessed = async (email: string, subject: string): Promise<boolean
     const existing = await db.query.recruitmentApplicants.findFirst({
       where: and(
         eq(recruitmentApplicants.email, email),
-        eq(recruitmentApplicants.emailSubject, subject),
+        eq(recruitmentApplicants.email_subject, subject),
         eq(recruitmentApplicants.source, 'email')
       )
     });
@@ -201,14 +201,14 @@ const saveApplication = async (applicantData: ApplicantData): Promise<boolean> =
     const { job_id, first_name, last_name, email, resume_path, email_subject } = applicantData;
 
     await db.insert(recruitmentApplicants).values({
-      jobId: job_id,
-      firstName: first_name,
-      lastName: last_name,
+      job_id: job_id,
+      first_name: first_name,
+      last_name: last_name,
       email,
-      resumePath: resume_path,
+      resume_path: resume_path,
       source: 'email',
-      emailSubject: email_subject,
-      emailReceivedAt: new Date().toISOString()
+      email_subject: email_subject,
+      email_received_at: new Date().toISOString()
     });
 
     console.log(`Saved application from ${email} for job ${job_id || 'General'}`);

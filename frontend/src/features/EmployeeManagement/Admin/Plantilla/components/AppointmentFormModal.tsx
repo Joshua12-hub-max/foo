@@ -1,7 +1,5 @@
-
 import React, { memo, useRef, useState, useEffect } from 'react';
-import { useReactToPrint } from 'react-to-print';
-import { X, Printer } from 'lucide-react';
+import { X } from 'lucide-react';
 import { Position } from '@/api/plantillaApi';
 
 interface AppointmentFormModalProps {
@@ -61,10 +59,7 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = memo(({ isOpen
     }
   }, [isOpen, position]);
 
-  const handlePrint = useReactToPrint({
-    contentRef: componentRef,
-    documentTitle: `Appointment_${formData.appointeeName || 'Form'}`,
-  });
+
 
   if (!isOpen || !position) return null;
 
@@ -80,12 +75,7 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = memo(({ isOpen
                 <p className="text-sm text-gray-500">You can edit the text directly on the form below before printing.</p>
             </div>
             <div className="flex gap-2">
-                <button 
-                    onClick={handlePrint}
-                    className="px-5 py-2 bg-white text-gray-700 text-sm font-semibold rounded-lg border border-gray-300 hover:bg-gray-50 hover:border-gray-400 transition-all"
-                >
-                    Print
-                </button>
+
                 <button
                     onClick={() => {
                         import('./print/form33_pdf_generator').then(({ generateForm33PDF }) => {

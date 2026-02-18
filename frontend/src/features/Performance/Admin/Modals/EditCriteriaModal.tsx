@@ -26,7 +26,7 @@ const EditCriteriaModal: React.FC<EditCriteriaModalProps> = ({ isOpen, onClose, 
       title: '',
       description: '',
       weight: 0,
-      max_score: 5,
+      maxScore: 5,
     },
   });
 
@@ -38,7 +38,14 @@ const EditCriteriaModal: React.FC<EditCriteriaModalProps> = ({ isOpen, onClose, 
         title: initialData.title || initialData.criteria_title || '',
         description: initialData.description || initialData.criteria_description || '',
         weight: Number(initialData.weight) || 0,
-        max_score: Number(initialData.max_score) || 5,
+        maxScore: Number(initialData.maxScore || initialData.max_score) || 5,
+        // Rating Matrix
+        ratingDefinition5: initialData.ratingDefinition5 || initialData.rating_definition_5 || '',
+        ratingDefinition4: initialData.ratingDefinition4 || initialData.rating_definition_4 || '',
+        ratingDefinition3: initialData.ratingDefinition3 || initialData.rating_definition_3 || '',
+        ratingDefinition2: initialData.ratingDefinition2 || initialData.rating_definition_2 || '',
+        ratingDefinition1: initialData.ratingDefinition1 || initialData.rating_definition_1 || '',
+        evidenceRequirements: initialData.evidenceRequirements || initialData.evidence_requirements || '',
       });
     } else {
       reset({
@@ -47,7 +54,7 @@ const EditCriteriaModal: React.FC<EditCriteriaModalProps> = ({ isOpen, onClose, 
         title: '',
         description: '',
         weight: 0,
-        max_score: 5,
+        maxScore: 5,
       });
     }
   }, [initialData, isOpen, reset]);
@@ -160,11 +167,51 @@ const EditCriteriaModal: React.FC<EditCriteriaModalProps> = ({ isOpen, onClose, 
                   type="number"
                   min="1"
                   max="5"
-                  {...register('max_score', { valueAsNumber: true })}
+                  {...register('maxScore', { valueAsNumber: true })}
                   className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100 transition-all text-gray-900"
                 />
-                {errors.max_score && <p className="text-red-500 text-xs mt-1">{errors.max_score.message}</p>}
+                {errors.maxScore && <p className="text-red-500 text-xs mt-1">{errors.maxScore.message}</p>}
               </div>
+            </div>
+
+            {/* Evidence Requirements */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-900 mb-1.5">
+                Evidence Requirements (Means of Verification)
+              </label>
+              <textarea
+                rows={2}
+                {...register('evidenceRequirements')}
+                placeholder="e.g. Scanned logbook, Photo of event..."
+                className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100 transition-all resize-none text-gray-900"
+              />
+            </div>
+
+            {/* Rating Matrix Definitions */}
+            <div className="space-y-3 pt-2 border-t border-gray-100">
+                <h4 className="text-sm font-bold text-gray-900">Rating Matrix Definitions</h4>
+                
+                {[5, 4, 3, 2, 1].map((rating) => (
+                    <div key={rating} className="grid grid-cols-[30px_1fr] gap-3 items-start">
+                        <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold mt-1.5 ${
+                            rating === 5 ? 'bg-green-100 text-green-700' :
+                            rating === 4 ? 'bg-blue-100 text-blue-700' :
+                            rating === 3 ? 'bg-gray-100 text-gray-700' :
+                            rating === 2 ? 'bg-orange-100 text-orange-700' :
+                            'bg-red-100 text-red-700'
+                        }`}>
+                            {rating}
+                        </div>
+                        <div>
+                             <textarea
+                                rows={2}
+                                {...register(`ratingDefinition${rating}` as keyof PerformanceCriteriaSchema)}
+                                placeholder={`Definition for Rating ${rating}...`}
+                                className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-gray-300 focus:ring-2 focus:ring-gray-100 transition-all resize-none text-gray-900"
+                              />
+                        </div>
+                    </div>
+                ))}
             </div>
           </div>
 

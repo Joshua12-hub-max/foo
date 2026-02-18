@@ -8,6 +8,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { leaveActionSchema, LeaveActionSchema } from '@/schemas/leave';
+import type { LeaveBalance, LeaveType } from '@/types/leave.types';
 
 interface ApproveModalProps {
   isOpen: boolean;
@@ -38,8 +39,8 @@ const ApproveModal: React.FC<ApproveModalProps> = ({
     queryKey: ['leave-credits', request?.employee_id],
     queryFn: async () => {
       if (!request?.employee_id) return [];
-      const res = await (leaveApi as any).getCredits(request.employee_id);
-      return res.data.credits || [];
+      const res = await leaveApi.getEmployeeCredits(request.employee_id);
+      return (res.data.credits || []) as LeaveBalance[];
     },
     enabled: isOpen && !!request?.employee_id,
     staleTime: 1000 * 60 * 5
@@ -49,14 +50,14 @@ const ApproveModal: React.FC<ApproveModalProps> = ({
   const approveMutation = useMutation({
     mutationFn: async (data: LeaveActionSchema) => {
       if (!request) return;
-      await (leaveApi as any).approveLeave(request.id, data.remarks);
+      await leaveApi.approveLeave(request.id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-leaves'] });
       reset();
       onConfirm();
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       console.error("Approval failed", error);
       showNotification("Failed to approve request", "error");
     }
@@ -84,7 +85,7 @@ const ApproveModal: React.FC<ApproveModalProps> = ({
     if (!request) return null;
     
     // Check special leave
-    const isSpecialLeave = SPECIAL_LEAVES_NO_DEDUCTION.includes(request.leaveType as any || request.leave_type);
+    const isSpecialLeave = (SPECIAL_LEAVES_NO_DEDUCTION as readonly string[]).includes(request.leaveType || request.leave_type);
     if (isSpecialLeave) {
       return { type: 'special', label: 'Special Leave (No Deduction)' };
     }
@@ -100,7 +101,7 @@ const ApproveModal: React.FC<ApproveModalProps> = ({
     // Helper to get balance
     const getBalance = (type: string | null) => {
       if (!type) return 0;
-      const credit = credits.find((c: any) => c.credit_type === type);
+      const credit = credits.find((c: LeaveBalance) => c.credit_type === type);
       return credit ? parseFloat(String(credit.balance)) : 0;
     };
 
@@ -222,7 +223,7 @@ const ApproveModal: React.FC<ApproveModalProps> = ({
                 {request.final_attachment_path && (
                       <div className="mt-3 pt-3 border-t border-gray-100">
                         <p className="mb-2 text-xs font-medium text-gray-500">Signed Form</p>
-                        <a href={`${(import.meta as any).env.VITE_API_URL.replace('/api', '')}/uploads/${request.final_attachment_path}`} target="_blank" rel="noreferrer" className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors text-sm font-medium border border-green-200">
+                        <a href={`${import.meta.env.VITE_API_URL.replace('/api', '')}/uploads/${request.final_attachment_path}`} target="_blank" rel="noreferrer" className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors text-sm font-medium border border-green-200">
                             <Download className="w-4 h-4" /> View Signed Document
                         </a>
                       </div>

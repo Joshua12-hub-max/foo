@@ -1,3 +1,4 @@
+import React, { useState, useEffect } from 'react';
 import { Search, SquarePen, Trash2, Plus, Loader2 } from 'lucide-react';
 import Pagination from '@/components/CustomUI/Pagination';
 
@@ -33,19 +34,37 @@ const CreditsTable = ({
 }: CreditsTableProps) => {
 
   const { page, totalPages, totalItems, limit } = pagination;
+  const [localSearch, setLocalSearch] = useState(searchTerm);
+
+  // Debounce search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (localSearch !== searchTerm) {
+        onSearchChange(localSearch);
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [localSearch, searchTerm, onSearchChange]);
+
+  // Sync local state if prop changes independently
+  useEffect(() => {
+    if (searchTerm !== localSearch) {
+       setLocalSearch(searchTerm);
+    }
+  }, [searchTerm]); // Only sync when prop really changes
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex-1 flex flex-col h-full">
-      <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-        <h3 className="font-semibold text-gray-700">Employee Leave Balances</h3>
+    <div className="flex-1 overflow-hidden rounded-xl bg-[#F8F9FA] p-1 h-full flex flex-col">
+      <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-white rounded-t-xl">
+        <h3 className="font-bold text-gray-800 text-lg">Employee Leave Balances</h3>
         <div className="flex items-center gap-3">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input 
               type="text" 
               placeholder="Search employee..." 
-              value={searchTerm}
-              onChange={(e) => onSearchChange(e.target.value)}
+              value={localSearch}
+              onChange={(e) => setLocalSearch(e.target.value)}
               className="pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all w-64"
             />
           </div>
@@ -59,19 +78,19 @@ const CreditsTable = ({
         </div>
       </div>
       
-      <div className="overflow-x-auto flex-1 p-4">
-        <table className="w-full text-sm text-left">
-          <thead className="bg-gray-50 text-gray-500 font-medium border-b border-gray-100">
+      <div className="overflow-x-auto bg-[#F8F9FA] rounded-lg">
+        <table className="w-full min-w-[1000px]">
+          <thead className="bg-gray-200 shadow-md text-gray-700">
             <tr>
-              <th className="px-6 py-4">Employee</th>
-              <th className="px-6 py-4">Department</th>
-              <th className="px-6 py-4">Credit Type</th>
-              <th className="px-6 py-4">Balance</th>
-              <th className="px-6 py-4">Usage</th>
-              <th className="px-6 py-4 text-right">Actions</th>
+              <th className="px-6 py-4 text-left text-sm font-bold tracking-wide">Employee ID</th>
+              <th className="px-6 py-4 text-left text-sm font-bold tracking-wide">Employee</th>
+              <th className="px-6 py-4 text-center text-sm font-bold tracking-wide">Credit Type</th>
+              <th className="px-6 py-4 text-center text-sm font-bold tracking-wide">Balance</th>
+              <th className="px-6 py-4 text-center text-sm font-bold tracking-wide">Usage</th>
+              <th className="px-6 py-4 text-center text-sm font-bold tracking-wide">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-50">
+          <tbody className="divide-y divide-slate-100">
             {loading ? (
               <tr>
                 <td colSpan={6} className="px-6 py-12 text-center text-gray-400">
@@ -83,74 +102,76 @@ const CreditsTable = ({
               </tr>
             ) : credits.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-6 py-12 text-center text-gray-400">
+                <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
                   <div className="flex flex-col items-center gap-2">
                     No credit records found
                   </div>
                 </td>
               </tr>
             ) : credits.map((credit, idx) => (
-              <tr key={idx} className="hover:bg-gray-50/50 transition-colors">
-                <td className="px-6 py-4">
-                  <div>
-                    <div className="font-semibold text-gray-900">
+              <tr key={idx} className="hover:bg-[#F8F9FA] hover:shadow-xl transition-colors">
+                <td className="px-6 py-4 text-sm font-medium text-gray-700 whitespace-nowrap">
+                  {credit.employee_id || 'N/A'}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="flex flex-col">
+                    <span className="text-sm font-medium text-gray-900 whitespace-nowrap">
                       {(credit.first_name || credit.last_name) 
                         ? `${credit.first_name || ''} ${credit.last_name || ''}`.trim()
-                        : credit.employee_id || 'Unknown Employee'
+                        : 'Unknown Employee'
                       }
-                    </div>
-                    <div className="text-xs text-gray-500">{credit.employee_id || 'N/A'}</div>
+                    </span>
+                    <span className="text-xs text-gray-500 whitespace-nowrap">{credit.department || 'No Department'}</span>
                   </div>
                 </td>
-                <td className="px-6 py-4 text-gray-600 whitespace-nowrap">{credit.department || '-'}</td>
-                <td className="px-6 py-4">
-                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium whitespace-nowrap ${
-                    credit.credit_type === 'Vacation Leave' ? 'bg-blue-50 text-blue-700 border border-blue-100' :
-                    credit.credit_type === 'Sick Leave' ? 'bg-amber-50 text-amber-700 border border-amber-100' :
-                    'bg-gray-50 text-gray-700 border border-gray-100'
+                <td className="px-6 py-4 text-center">
+                  <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${
+                    credit.credit_type === 'Vacation Leave' ? 'bg-blue-100 text-blue-800' :
+                    credit.credit_type === 'Sick Leave' ? 'bg-amber-100 text-amber-800' :
+                    'bg-gray-100 text-gray-800'
                   }`}>
                     {credit.credit_type}
                   </span>
                 </td>
-                <td className="px-6 py-4">
-                  <span className={`font-semibold ${credit.balance > 0 ? 'text-teal-600' : 'text-red-500'}`}>
+                <td className="px-6 py-4 text-center">
+                  <span className={`font-bold text-sm ${credit.balance > 0 ? 'text-teal-600' : 'text-red-500'}`}>
                     {credit.balance}
                   </span>
                 </td>
-                <td className="px-6 py-4">
-                  <div className="flex flex-col gap-1">
+                <td className="px-6 py-4 text-center">
+                  <div className="flex flex-col gap-1 items-center">
                     {(credit.days_used_with_pay > 0 || credit.days_used_without_pay > 0) ? (
                       <>
                         {credit.days_used_with_pay > 0 && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded bg-green-50 text-green-700 border border-green-200 whitespace-nowrap">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-green-50 text-green-700 whitespace-nowrap">
                             <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
                             {credit.days_used_with_pay}d Paid
                           </span>
                         )}
                         {credit.days_used_without_pay > 0 && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded bg-gray-50 text-gray-600 border border-gray-200 whitespace-nowrap">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-gray-50 text-gray-600 whitespace-nowrap">
                             <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />
                             {credit.days_used_without_pay}d Unpaid
                           </span>
                         )}
                       </>
                     ) : (
-                      <span className="text-xs text-gray-400">No usage</span>
+                      <span className="text-xs text-gray-400">-</span>
                     )}
                   </div>
                 </td>
-                <td className="px-6 py-4 text-right">
-                  <div className="flex items-center justify-end gap-2">
+                <td className="px-6 py-4 text-center">
+                  <div className="flex items-center justify-center gap-2">
                     <button 
                       onClick={() => onEdit(credit)}
-                      className="p-1.5 text-gray-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-all"
+                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
                       title="Edit Balance"
                     >
                       <SquarePen className="w-4 h-4" />
                     </button>
                     <button 
                       onClick={() => onDelete(credit)}
-                      className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                      className="p-2 text-red-600 hover:bg-red-50 rounded-full transition-colors"
                       title="Delete Credit"
                     >
                       <Trash2 className="w-4 h-4" />

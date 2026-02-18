@@ -44,7 +44,7 @@ export const useAuthStore = create<AuthStore>()(
             user,
             isAuthenticated: !!user,
             role: user?.role || null,
-            department: user?.department_name || null, // Mapping based on User type in types/index.ts
+            department: user?.department || null,
             isLoading: false,
           });
         },

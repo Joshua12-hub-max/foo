@@ -1,8 +1,30 @@
 import { Request, Response } from 'express';
-import { ResultSetHeader } from 'mysql2';
+import { InferSelectModel } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/mysql-core';
 import { db } from '../db/index.js';
 import { departments, authentication } from '../db/schema.js';
 import { eq, asc, sql, or, isNull, ne, and, like, getTableColumns } from 'drizzle-orm';
+import { DepartmentApiResponse, DepartmentDetailedApiResponse } from '../types/org.js';
+import { EmployeeApiResponse } from '../types/employee.js';
+import { mapToEmployeeApi } from './user.controller.js';
+
+/**
+ * Strictly maps a Department DB model to its API response counterpart.
+ */
+const mapToDepartmentApi = (dept: any): DepartmentApiResponse => {
+  return {
+    id: dept.id,
+    name: dept.name,
+    description: dept.description || null,
+    head_of_department: dept.headOfDepartment || null,
+    budget: dept.budget || '0.00',
+    parent_department_id: dept.parentDepartmentId || null,
+    location: dept.location || null,
+    created_at: dept.createdAt ? new Date(dept.createdAt).toISOString() : null,
+    updated_at: dept.updatedAt ? new Date(dept.updatedAt).toISOString() : null,
+    employee_count: dept.employee_count !== undefined ? Number(dept.employee_count) : undefined
+  };
+};
 
 export const getPublicDepartments = async (_req: Request, res: Response): Promise<void> => {
   try {
@@ -10,8 +32,8 @@ export const getPublicDepartments = async (_req: Request, res: Response): Promis
       .select({ id: departments.id, name: departments.name })
       .from(departments)
       .orderBy(asc(departments.name));
-      
-    res.status(200).json({ success: true, departments: result });
+    const mappedDepartments = result.map(mapToDepartmentApi);
+    res.status(200).json({ success: true, departments: mappedDepartments });
   } catch (error) {
     console.error('Get Public Departments Error:', error);
     res.status(500).json({ success: false, message: 'Failed to fetch departments' });
@@ -28,7 +50,8 @@ export const getDepartments = async (_req: Request, res: Response): Promise<void
     .from(departments)
     .orderBy(asc(departments.name));
 
-    res.status(200).json({ success: true, departments: result });
+    const mappedDepartments = result.map(mapToDepartmentApi);
+    res.status(200).json({ success: true, departments: mappedDepartments });
   } catch (error) {
     console.error('Get Departments Error:', error);
     res.status(500).json({ success: false, message: 'Failed to fetch departments' });
@@ -47,20 +70,33 @@ export const getDepartmentById = async (req: Request, res: Response): Promise<vo
       return; 
     }
     
+    const auth = alias(authentication, 'auth');
     const employees = await db.select({
-      id: authentication.id,
-      first_name: authentication.firstName,
-      last_name: authentication.lastName,
-      email: authentication.email,
-      job_title: authentication.jobTitle,
-      avatar_url: authentication.avatarUrl,
-      employment_status: authentication.employmentStatus,
-      date_hired: authentication.dateHired
+      id: auth.id,
+      employeeId: auth.employeeId,
+      firstName: auth.firstName,
+      lastName: auth.lastName,
+      email: auth.email,
+      positionTitle: auth.positionTitle,
+      jobTitle: auth.jobTitle,
+      phoneNumber: auth.phoneNumber,
+      avatarUrl: auth.avatarUrl,
+      employmentStatus: auth.employmentStatus,
+      dateHired: auth.dateHired,
+      department: auth.department,
+      duties: sql<string>`COALESCE((SELECT schedule_title FROM schedules WHERE schedules.employee_id = auth.employee_id ORDER BY schedules.updated_at DESC LIMIT 1), 'No Schedule')`
     })
-    .from(authentication)
-    .where(eq(authentication.department, dept.name));
+    .from(auth)
+    .where(eq(auth.department, dept.name));
 
-    res.status(200).json({ success: true, department: dept, employees });
+    const mappedEmployees: EmployeeApiResponse[] = employees.map(mapToEmployeeApi);
+
+    const departmentDetail: DepartmentDetailedApiResponse = {
+      ...mapToDepartmentApi(dept),
+      employees: mappedEmployees
+    };
+
+    res.status(200).json({ success: true, department: departmentDetail, employees: mappedEmployees });
   } catch (error) {
     console.error('Get Department By ID Error:', error);
     res.status(500).json({ success: false, message: 'Failed to fetch department details' });
@@ -127,22 +163,13 @@ export const assignEmployeeToDepartment = async (req: Request, res: Response): P
 
     if (!dept) { res.status(404).json({ success: false, message: 'Department not found' }); return; }
 
-    const result = await db.update(authentication)
+    await db.update(authentication)
       .set({ department: dept.name, departmentId: Number(id) })
       .where(eq(authentication.id, employeeId));
 
     // Drizzle update result doesn't have affectedRows directly in all drivers, but mysql2 does in [ResultSetHeader]
     // However, Drizzle's `run` or `execute` returns [ResultSetHeader]
-    // db.update returns Promise<[ResultSetHeader]>
     
-    // Check if user existed by trying to select first? Or just assume success if no error?
-    // The previous code checked affectedRows.
-    // In Drizzle mysql2: result is [ResultSetHeader, FieldPacket[]]
-    const updateResult = result[0] as unknown as ResultSetHeader;
-    const affectedRows = updateResult.affectedRows;
-
-    if (affectedRows === 0) { res.status(404).json({ success: false, message: 'Employee not found' }); return; }
-
     res.status(200).json({ success: true, message: 'Employee assigned to department successfully' });
   } catch (error) {
     console.error('Assign Employee Error:', error);
@@ -153,14 +180,10 @@ export const assignEmployeeToDepartment = async (req: Request, res: Response): P
 export const removeEmployeeFromDepartment = async (req: Request, res: Response): Promise<void> => {
   const { employeeId } = req.params;
   try {
-    const result = await db.update(authentication)
+    await db.update(authentication)
       .set({ department: null, departmentId: null })
       .where(eq(authentication.id, Number(employeeId)));
 
-    const deleteResult = result[0] as unknown as ResultSetHeader;
-    const affectedRows = deleteResult.affectedRows;
-    if (affectedRows === 0) { res.status(404).json({ success: false, message: 'Employee not found' }); return; }
-    
     res.status(200).json({ success: true, message: 'Employee removed from department' });
   } catch (error) {
     console.error('Remove Employee Error:', error);
@@ -215,7 +238,7 @@ export const updateDepartment = async (req: Request, res: Response): Promise<voi
         if (existing) { throw new Error('DEPARTMENT_NAME_TAKEN'); }
       }
 
-      const updates: any = {};
+      const updates: Partial<InferSelectModel<typeof departments>> = {};
       if (name) updates.name = name;
       if (description) updates.description = description;
       if (head_of_department) updates.headOfDepartment = head_of_department;
@@ -234,13 +257,14 @@ export const updateDepartment = async (req: Request, res: Response): Promise<voi
     });
 
     res.status(200).json({ success: true, message: 'Department updated successfully' });
-  } catch (error: any) {
-    console.error('Update Department Error:', error);
-    if (error.message === 'DEPARTMENT_NOT_FOUND') {
+  } catch (error: unknown) {
+    const err = error as Error;
+    console.error('Update Department Error:', err);
+    if (err.message === 'DEPARTMENT_NOT_FOUND') {
       res.status(404).json({ success: false, message: 'Department not found' });
       return;
     }
-    if (error.message === 'DEPARTMENT_NAME_TAKEN') {
+    if (err.message === 'DEPARTMENT_NAME_TAKEN') {
       res.status(409).json({ success: false, message: 'Department name already taken' });
       return;
     }

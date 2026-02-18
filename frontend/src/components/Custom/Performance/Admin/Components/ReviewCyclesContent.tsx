@@ -5,21 +5,9 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { reviewCycleSchema, ReviewCycleSchema } from '@/schemas/performanceSchema';
 import { fetchReviewCycles, createReviewCycle, updateReviewCycle, deleteReviewCycle } from '@/api/performanceApi';
+import { ReviewCycle, ReviewCyclesApiResponse } from '@/types/performance';
 import { useToastStore } from '@/stores';
 import { AxiosError } from 'axios';
-
-interface ReviewCycle {
-  id: string | number;
-  title: string;
-  description?: string;
-  start_date: string;
-  end_date: string;
-}
-
-interface CyclesResponse {
-  success: boolean;
-  cycles: ReviewCycle[];
-}
 
 interface ApiErrorResponse {
   message?: string;
@@ -44,15 +32,15 @@ const ReviewCyclesContent: React.FC = () => {
     defaultValues: {
       title: '',
       description: '',
-      start_date: '',
-      end_date: '',
+      startDate: '',
+      endDate: '',
     },
   });
 
   const loadCycles = async () => {
     try {
       setLoading(true);
-      const data = await fetchReviewCycles() as CyclesResponse;
+      const data = await fetchReviewCycles();
       if (data.success) {
         setCycles(data.cycles);
       }
@@ -70,12 +58,12 @@ const ReviewCyclesContent: React.FC = () => {
   const closeModal = () => {
     setIsModalOpen(false);
     setEditingCycle(null);
-    reset({ title: '', description: '', start_date: '', end_date: '' });
+    reset({ title: '', description: '', startDate: '', endDate: '' });
   };
 
   const handleNewCycle = () => {
     setEditingCycle(null);
-    reset({ title: '', description: '', start_date: '', end_date: '' });
+    reset({ title: '', description: '', startDate: '', endDate: '' });
     setIsModalOpen(true);
   };
 
@@ -84,8 +72,8 @@ const ReviewCyclesContent: React.FC = () => {
     reset({
       title: cycle.title || '',
       description: cycle.description || '',
-      start_date: cycle.start_date ? cycle.start_date.split('T')[0] : '',
-      end_date: cycle.end_date ? cycle.end_date.split('T')[0] : ''
+      startDate: cycle.startDate ? cycle.startDate.split('T')[0] : '',
+      endDate: cycle.endDate ? cycle.endDate.split('T')[0] : ''
     });
     setIsModalOpen(true);
   };
@@ -168,7 +156,7 @@ const ReviewCyclesContent: React.FC = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {cycles.map((cycle) => {
-            const status = getStatus(cycle.start_date, cycle.end_date);
+            const status = getStatus(cycle.startDate, cycle.endDate);
             const StatusIcon = status.icon;
             
             return (
@@ -212,13 +200,13 @@ const ReviewCyclesContent: React.FC = () => {
                       <span className="text-gray-500 flex items-center gap-2 group-hover/date:text-gray-700 transition-colors">
                           <Calendar size={15} className="text-gray-400 group-hover/date:text-gray-600" /> Start Date
                       </span>
-                      <span className="font-semibold text-gray-900">{new Date(cycle.start_date).toLocaleDateString()}</span>
+                      <span className="font-semibold text-gray-900">{new Date(cycle.startDate).toLocaleDateString()}</span>
                     </div>
                     <div className="flex items-center justify-between text-sm group/date">
                       <span className="text-gray-500 flex items-center gap-2 group-hover/date:text-gray-700 transition-colors">
                           <CheckCircle size={15} className="text-gray-400 group-hover/date:text-gray-600" /> End Date
                       </span>
-                      <span className="font-semibold text-gray-900">{new Date(cycle.end_date).toLocaleDateString()}</span>
+                      <span className="font-semibold text-gray-900">{new Date(cycle.endDate).toLocaleDateString()}</span>
                     </div>
                   </div>
                 </div>
@@ -281,19 +269,19 @@ const ReviewCyclesContent: React.FC = () => {
                         <label className="block text-sm font-semibold text-gray-700 mb-2">Start Date</label>
                         <input
                             type="date"
-                            {...register('start_date')}
+                            {...register('startDate')}
                             className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none transition-all text-gray-600"
                         />
-                        {errors.start_date && <p className="text-red-500 text-xs mt-1">{errors.start_date.message}</p>}
+                        {errors.startDate && <p className="text-red-500 text-xs mt-1">{errors.startDate.message}</p>}
                         </div>
                         <div>
                         <label className="block text-sm font-semibold text-gray-700 mb-2">End Date</label>
                         <input
                             type="date"
-                            {...register('end_date')}
+                            {...register('endDate')}
                             className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none transition-all text-gray-600"
                         />
-                        {errors.end_date && <p className="text-red-500 text-xs mt-1">{errors.end_date.message}</p>}
+                        {errors.endDate && <p className="text-red-500 text-xs mt-1">{errors.endDate.message}</p>}
                         </div>
                     </div>
                 </div>

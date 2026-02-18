@@ -7,4 +7,6 @@ export * from './tables/recruitment.js';
 export * from './tables/performance.js';
 export * from './tables/pds.js';
 export * from './tables/payroll.js';
+export * from './tables/internal_policies.js';
+export * from './tables/violations.js';
 export * from './tables/common.js';

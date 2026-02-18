@@ -589,7 +589,7 @@ export const exportForm9ToPDF = (header: Form9Header, positions: Form9Position[]
     });
 
     // ========== FOOTER SECTION ==========
-    const finalY = (doc as any).lastAutoTable.finalY + 0.15;
+    const finalY = doc.lastAutoTable.finalY + 0.15;
 
     doc.setFontSize(7);
     doc.setFont('helvetica', 'normal');

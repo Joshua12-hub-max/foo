@@ -2,16 +2,16 @@
 import { Request, Response, NextFunction } from 'express';
 import { ZodError } from 'zod';
 
-export const errorHandler = (err: any, req: Request, res: Response, next: NextFunction) => {
+export const errorHandler = (error: any, req: Request, res: Response, _next: NextFunction) => {
     // Log the error for internal tracking
-    console.error(`[ERROR] ${req.method} ${req.url}`, err.message || err);
+    console.error(`[ERROR] ${req.method} ${req.url}`, error.message || error);
 
     // Handle Zod Validation Errors
-    if (err instanceof ZodError) {
+    if (error instanceof ZodError) {
         return res.status(400).json({
             success: false,
             message: 'Validation failed',
-            errors: err.issues.map((e: any) => ({
+            errors: error.issues.map((e: any) => ({
                 path: e.path.join('.'),
                 message: e.message
             }))
@@ -19,7 +19,7 @@ export const errorHandler = (err: any, req: Request, res: Response, next: NextFu
     }
 
     // Handle Drizzle/DB errors (e.g. unique constraint)
-    if (err.code === 'ER_DUP_ENTRY') {
+    if (error.code === 'ER_DUP_ENTRY') {
         return res.status(409).json({
             success: false,
             message: 'Duplicate entry found.'
@@ -27,10 +27,10 @@ export const errorHandler = (err: any, req: Request, res: Response, next: NextFu
     }
 
     // Default Error
-    const statusCode = err.status || err.statusCode || 500;
+    const statusCode = error.status || error.statusCode || 500;
     res.status(statusCode).json({
         success: false,
-        message: err.message || 'Internal Server Error',
-        stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
+        message: error.message || 'Internal Server Error',
+        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
 };

@@ -1,47 +1,6 @@
 import { mysqlTable, varchar, int, date, timestamp, decimal, text, mysqlEnum, tinyint, primaryKey, index, unique } from 'drizzle-orm/mysql-core';
 import { authentication } from './auth.js';
 
-export const allowanceSchedules = mysqlTable("allowance_schedules", {
-	id: int().autoincrement().notNull(),
-	name: varchar({ length: 255 }).notNull(),
-	effectivityDate: date("effectivity_date", { mode: 'string' }).notNull(),
-	legalBasis: varchar("legal_basis", { length: 255 }),
-	isActive: tinyint("is_active").default(0),
-	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
-	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow(),
-},
-(table) => [
-	primaryKey({ columns: [table.id], name: "allowance_schedules_id"}),
-]);
-
-export const allowanceDefinitions = mysqlTable("allowance_definitions", {
-	id: int().autoincrement().notNull(),
-	name: varchar({ length: 255 }).notNull(),
-	description: text(),
-	amount: decimal({ precision: 10, scale: 2 }),
-	isMatrix: tinyint("is_matrix").default(0),
-	category: mysqlEnum(['Monthly','Annual','Bonus']).default('Monthly'),
-	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
-	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow(),
-	allowanceScheduleId: int("allowance_schedule_id").references(() => allowanceSchedules.id, { onDelete: "cascade" } ),
-},
-(table) => [
-	primaryKey({ columns: [table.id], name: "allowance_definitions_id"}),
-]);
-
-export const allowanceMatrixValues = mysqlTable("allowance_matrix_values", {
-	id: int().autoincrement().notNull(),
-	allowanceId: int("allowance_id").notNull().references(() => allowanceDefinitions.id, { onDelete: "cascade" } ),
-	conditionKey: varchar("condition_key", { length: 255 }).notNull(),
-	amount: decimal({ precision: 10, scale: 2 }).notNull(),
-	valueType: mysqlEnum("value_type", ['FIXED','PERCENTAGE']).default('FIXED'),
-	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
-},
-(table) => [
-	index("allowance_id").on(table.allowanceId),
-	primaryKey({ columns: [table.id], name: "allowance_matrix_values_id"}),
-]);
-
 export const salarySchedule = mysqlTable("salary_schedule", {
 	id: int().autoincrement().notNull(),
 	salaryGrade: int("salary_grade").notNull(),

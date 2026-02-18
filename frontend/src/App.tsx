@@ -26,7 +26,7 @@ const BiometricsMonitor = lazy(() => import("./pages/SettingsAdmin/BiometricsMon
 
 //Settings Admin Pages
 const BiometricsLogsUI = lazy(() => import("./pages/SettingsAdmin/BiometricsLogs"));
-const BiometricsEnrollment = lazy(() => import("./pages/SettingsAdmin/BiometricsEnrollment"));
+
 const DepartmentList = lazy(() => import("./pages/EmployeeManagementAdmin/DepartmentListPage"));
 const DepartmentDetail = lazy(() => import("./pages/EmployeeManagementAdmin/DepartmentDetail"));
 const EmployeeList = lazy(() => import("./pages/EmployeeManagementAdmin/EmployeeDirectoryPage"));
@@ -41,7 +41,6 @@ const EmployeeMemos = lazy(() => import("./pages/EmployeeManagementAdmin/AdminMe
 const PlantillaManagement = lazy(() => import("./pages/EmployeeManagementAdmin/PlantillaManagementPage"));
 const OrgChart = lazy(() => import("./pages/EmployeeManagementAdmin/OrgChartPage"));
 const CentralizedManagement = lazy(() => import("./pages/EmployeeManagementAdmin/EmployeeManagementHub"));
-const CompensationDashboard = lazy(() => import("./components/Custom/Compliance/CompensationDashboard"));
 
 // Recruitment Pages
 const JobPosting = lazy(() => import("./pages/Recruitment/JobPosting"));
@@ -70,6 +69,7 @@ const MyProfile = lazy(() => import("./pages/Settings/MyProfile"));
 
 const EmployeeMyMemos = lazy(() => import("./pages/EmployeeManagementEmployee/MyMemosPage"));
 const EmployeeReviews = lazy(() => import("./pages/PerformanceManagement/EmployeeReviews"));
+const InternalPolicies = lazy(() => import("./pages/InternalPolicies/InternalPoliciesPage"));
 // Loading fallback component
 
 
@@ -339,14 +339,7 @@ export default function App() {
               </Suspense>
             }
           />
-          <Route
-            path="biometrics-enrollment"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <BiometricsEnrollment />
-              </Suspense>
-            }
-          />
+
           <Route
             path="departments"
             element={
@@ -400,14 +393,6 @@ export default function App() {
             element={
               <Suspense fallback={<PageLoader />}>
                 <CentralizedManagement />
-              </Suspense>
-            }
-          />
-          <Route
-            path="compensation"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <CompensationDashboard />
               </Suspense>
             }
           />
@@ -498,6 +483,14 @@ export default function App() {
             element={
               <Suspense fallback={<PageLoader />}>
                 <MyProfile />
+              </Suspense>
+            }
+          />
+          <Route
+            path="internal-policies"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <InternalPolicies />
               </Suspense>
             }
           />
@@ -592,6 +585,14 @@ export default function App() {
             element={
               <Suspense fallback={<PageLoader />}>
                 <ReviewForm />
+              </Suspense>
+            }
+          />
+          <Route
+            path="internal-policies"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <InternalPolicies />
               </Suspense>
             }
           />

@@ -40,7 +40,7 @@ const Jobs = () => {
                   <p 
                     className="text-white/40 text-base md:text-lg font-semibold mb-10 max-w-xl mx-auto lg:mx-0 leading-normal"
                   >
-                      Integrated recruitment protocol for the City of Meycauayan. <br className="hidden md:block" /> Browse open positions across all departments.
+                      Official recruitment portal for the City of Meycauayan. <br className="hidden md:block" /> Browse open positions across all departments.
                   </p>
                   
                   <div 
@@ -72,7 +72,7 @@ const Jobs = () => {
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent"></div>
                   <div className="absolute bottom-6 left-8 right-8">
-                      <p className="text-[10px] font-black text-green-400 uppercase tracking-widest mb-1">Career Propulsion</p>
+                      <p className="text-[10px] font-black text-green-400 uppercase tracking-widest mb-1">Career Growth</p>
                       <p className="text-sm font-bold text-white tracking-tight">Advance your professional journey with the City of Meycauayan</p>
                   </div>
               </motion.div>

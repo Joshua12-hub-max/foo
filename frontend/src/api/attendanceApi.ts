@@ -2,18 +2,29 @@ import api from './axios';
 import { AxiosResponse } from 'axios';
 import { AttendanceQueryValues } from '../schemas/attendanceSchema';
 
-import { AttendanceRecord } from '../types';
+import { DTRApiResponse, AttendanceLogApiResponse } from '../types/attendance';
+import { MonitorLogData } from '../types';
 
 interface AttendanceLogResponse {
     success: boolean;
     message: string;
-    data: AttendanceRecord[];
+    data: DTRApiResponse[];
     pagination: {
         total: number;
         page: number;
         limit: number;
         totalPages: number;
     };
+}
+
+interface RecentActivityResponse {
+    success: boolean;
+    data: DTRApiResponse[];
+}
+
+interface RawLogsResponse {
+    success: boolean;
+    data: AttendanceLogApiResponse[];
 }
 
 export interface AttendanceActionResponse {
@@ -28,12 +39,6 @@ export interface AttendanceActionResponse {
 
 // Ensure strict return types
 export const attendanceApi = {
-    clockIn: async (): Promise<AxiosResponse<AttendanceActionResponse>> => {
-        return await api.post('/attendance/clock-in');
-    },
-    clockOut: async (): Promise<AxiosResponse<AttendanceActionResponse>> => {
-        return await api.post('/attendance/clock-out');
-    },
     getLogs: async (params: AttendanceQueryValues): Promise<AxiosResponse<AttendanceLogResponse>> => {
         const queryParams = new URLSearchParams();
         if (params.page) queryParams.append('page', params.page.toString());
@@ -41,14 +46,26 @@ export const attendanceApi = {
         if (params.employeeId) queryParams.append('employeeId', params.employeeId);
         if (params.startDate) queryParams.append('startDate', params.startDate);
         if (params.endDate) queryParams.append('endDate', params.endDate);
+        if (params.department) queryParams.append('department', params.department);
+        if (params.search) queryParams.append('search', params.search);
 
         return await api.get('/attendance/logs', { params: queryParams });
     },
-    getRecentActivity: async (): Promise<AxiosResponse<AttendanceLogResponse>> => {
+    getRecentActivity: async (): Promise<AxiosResponse<RecentActivityResponse>> => {
         return await api.get('/attendance/recent-activity');
     },
-    getRawLogs: async (): Promise<AxiosResponse<AttendanceLogResponse>> => {
-        return await api.get('/attendance/raw-logs');
+    getRawLogs: async (params?: AttendanceQueryValues): Promise<AxiosResponse<RawLogsResponse>> => {
+        const queryParams = new URLSearchParams();
+        if (params) {
+            if (params.page) queryParams.append('page', params.page.toString());
+            if (params.limit) queryParams.append('limit', params.limit.toString());
+            if (params.employeeId) queryParams.append('employeeId', params.employeeId);
+            if (params.startDate) queryParams.append('startDate', params.startDate);
+            if (params.endDate) queryParams.append('endDate', params.endDate);
+            if (params.department) queryParams.append('department', params.department);
+            if (params.search) queryParams.append('search', params.search);
+        }
+        return await api.get('/attendance/raw-logs', { params: queryParams });
     },
     getTodayStatus: async (employeeId?: string): Promise<AxiosResponse<AttendanceActionResponse>> => {
         return await api.get('/attendance/today-status', { params: { employeeId } });

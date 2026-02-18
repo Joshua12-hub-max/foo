@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { leaveApi } from "@api";
 import { AdminLeaveRequest } from '@/components/Custom/Timekeeping/LeaveRequestComponents/Admin/types';
+import type { LeaveApplication } from '@/types/leave.types';
 
-export const useAdminLeaveData = (initialFilters?: any) => {
+export const useAdminLeaveData = (initialFilters?: Record<string, string>) => {
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
@@ -27,9 +28,9 @@ export const useAdminLeaveData = (initialFilters?: any) => {
         startDate: filters.fromDate,
         endDate: filters.toDate
       };
-      const res = await (leaveApi as any).getAllLeaves(params);
+      const res = await leaveApi.getAllApplications(params);
       
-      const leaves = res.data.leaves.map((l: any) => {
+      const leaves = (res.data.applications || []).map((l: LeaveApplication) => {
         // Build employee name with fallbacks
         const firstName = l.first_name || '';
         const lastName = l.last_name || '';
@@ -46,15 +47,14 @@ export const useAdminLeaveData = (initialFilters?: any) => {
           toDate: l.end_date,
           reason: l.reason || '',
           status: l.status || 'Pending',
-          with_pay: l.with_pay ?? true,
-          attachment_path: l.attachment_path,
-          final_attachment_path: l.final_attachment_path,
+          with_pay: l.is_with_pay ?? true,
+          attachment_path: l.attachment_path ?? undefined,
+          final_attachment_path: l.final_attachment_path ?? undefined,
           first_name: firstName,
           last_name: lastName,
           leave_type: l.leave_type,
-          start_date: l.start_date, // Ensuring date properties exist as expected by UI
+          start_date: l.start_date,
           end_date: l.end_date,
-          current_balance: l.current_balance
         };
       });
 
@@ -72,7 +72,7 @@ export const useAdminLeaveData = (initialFilters?: any) => {
   };
 
   // Helper to update filters from the UI
-  const updateFilters = (newFilters: any) => {
+  const updateFilters = (newFilters: Partial<typeof filters>) => {
     setFilters(prev => ({ ...prev, ...newFilters }));
     setPage(1); // Reset to page 1 on filter change
   };

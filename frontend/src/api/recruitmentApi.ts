@@ -4,7 +4,7 @@ import { JobFormData, Job } from '@/types';
 
 export const recruitmentApi = {
     // Jobs
-    getJobs: async (params: Record<string, unknown> & { page?: number; search?: string; status?: string; public_view?: boolean }): Promise<AxiosResponse<{ success: boolean; data: unknown; jobs: Job[]; message?: string }>> => {
+    getJobs: async (params: Record<string, unknown> & { page?: number; search?: string; status?: string; public_view?: boolean }): Promise<AxiosResponse<{ success: boolean; jobs: Job[]; total?: number; message?: string }>> => {
         try {
             const response = await api.get('/recruitment/jobs', { params });
             return response;
@@ -102,7 +102,7 @@ export const recruitmentApi = {
     },
     
     // Email Applications
-    checkEmails: async (): Promise<AxiosResponse> => {
+    checkEmails: async (): Promise<AxiosResponse<{ success: boolean; processed: number; errors: string[] }>> => {
         try {
             const response = await api.post('/recruitment/check-emails');
             return response;
@@ -150,7 +150,14 @@ export const recruitmentApi = {
             throw error;
         }
     },
-    getApplicantStats: async (): Promise<AxiosResponse> => {
+    getApplicantStats: async (): Promise<AxiosResponse<{
+        total: number;
+        new: number;
+        interviewing: number;
+        hired: number;
+        rejected: number;
+        stats: Array<{ stage: string; count: number }>;
+    }>> => {
         try {
             const response = await api.get('/recruitment/applicant-stats');
             return response;

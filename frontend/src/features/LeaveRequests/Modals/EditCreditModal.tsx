@@ -8,7 +8,7 @@ interface EditCreditModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: CreditUpdateInput) => Promise<void>;
-  credit: any;
+  credit: { credit_type: string; balance: number; first_name: string; last_name: string; employee_id: string };
   isSubmitting: boolean;
 }
 

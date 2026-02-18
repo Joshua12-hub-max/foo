@@ -4,14 +4,7 @@ import { fetchDepartments, addDepartment, updateDepartment, deleteDepartment } f
 
 import { DepartmentSchema } from '@/schemas/department';
 
-export interface Department {
-  id: number;
-  name: string;
-  description?: string;
-  head_of_department?: string;
-  employee_count?: number;
-}
-// DepartmentFormData removed in favor of DepartmentSchema
+import { Department } from '@/types/org';
 
 export interface DepartmentStats {
   total: number;
@@ -64,7 +57,7 @@ export const useDepartmentManagement = (): UseDepartmentManagementReturn => {
       setError(null);
       const data = await fetchDepartments();
       if (data.success) {
-        setDepartments(data.departments);
+        setDepartments(data.departments || []);
       } else {
         setError('Failed to fetch departments');
       }

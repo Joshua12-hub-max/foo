@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ArrowLeft, CheckCircle, Upload, MapPin, Clock, Calendar, DollarSign, ChevronRight, Mail, Phone, Send } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Upload, MapPin, Clock, Calendar, Mail, Phone, Send } from 'lucide-react';
 import { useToastStore } from '@/stores';
 import PublicLayout from '@components/Public/PublicLayout';
 import { jobApplicationSchema, JobApplicationSchema } from '@/schemas/recruitment';
@@ -193,8 +193,8 @@ const JobDetail = () => {
                     <div className="bg-white p-6 md:p-10 rounded-2xl border border-slate-100 shadow-premium-hover">
                         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8">
                             <div className="text-left">
-                                <h3 className="text-2xl font-black text-slate-950 tracking-tight">Submission Interface</h3>
-                                <p className="text-slate-400 font-bold text-[10px] tracking-[0.1em] uppercase mt-1">Role Protocol: <span className="text-green-600">{job.title}</span></p>
+                                <h3 className="text-2xl font-black text-slate-950 tracking-tight">Application Form</h3>
+                                <p className="text-slate-400 font-bold text-[10px] tracking-[0.1em] uppercase mt-1">Applying for: <span className="text-green-600">{job.title}</span></p>
                             </div>
                             <div className="hidden md:block">
                                 <div className="px-3 py-1 bg-slate-50 border border-slate-100 rounded-lg text-[10px] font-bold text-slate-400 tracking-widest uppercase">

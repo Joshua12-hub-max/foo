@@ -390,12 +390,10 @@ export default function AdminCalendar() {
             actions={
               <>
                 <AdminCalendarActions
-                  {...{
-                    onAddEvent: () => handleAddEventClick('09:00'),
-                    onAnnouncement: () => setModal('createAnnouncement', true),
-                    onAddSchedule: () => setModal('schedule', true),
-                    onOpenDrawer: () => setIsDrawerOpen(true)
-                  } as any}
+                  onAddEvent={() => handleAddEventClick('09:00')}
+                  onAnnouncement={() => setModal('createAnnouncement', true)}
+                  onAddSchedule={() => setModal('schedule', true)}
+                  onOpenDrawer={() => setIsDrawerOpen(true)}
                 />
               </>
             }

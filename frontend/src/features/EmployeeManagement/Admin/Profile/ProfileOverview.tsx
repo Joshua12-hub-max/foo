@@ -25,6 +25,7 @@ interface Profile {
   employment_status?: string;
   date_hired?: string;
   department?: string;
+  duties?: string;
   history?: HistoryJob[];
   contacts?: Contact[];
 }
@@ -88,6 +89,18 @@ const ProfileOverview: React.FC<ProfileOverviewProps> = ({ profile }) => {
               <div className="p-4 flex items-center justify-between group hover:bg-[#F8F9FA]">
                 <span className="text-[10px] font-black text-gray-400 uppercase">Department</span>
                 <span className="text-sm font-bold text-gray-800">{profile.department || 'N/A'}</span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-gray-100 border-t border-gray-100">
+              <div className="p-4 flex items-center justify-between group hover:bg-[#F8F9FA]">
+                <span className="text-[10px] font-black text-gray-400 uppercase">Current Duties</span>
+                <span className="text-sm font-bold text-blue-600 uppercase">{profile.duties || 'No Assigned Schedule'}</span>
+              </div>
+              <div className="p-4 flex items-center justify-between group hover:bg-[#F8F9FA]">
+                {/* Placeholder for future field */}
+                <span className="text-[10px] font-black text-gray-400 uppercase">Shift Type</span>
+                <span className="text-sm font-bold text-gray-800">Standard</span>
               </div>
             </div>
           </div>

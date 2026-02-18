@@ -151,7 +151,7 @@ export const exportToCSV = async (data: EmployeeDTRRecord[], _headers: string[],
 
     data.forEach(row => {
       const rowData = keys.map(key => {
-        const val = (row as any)[key] || '';
+        const val = (row as unknown as Record<string, string>)[key] || '';
         return `"${String(val).replace(/"/g, '""')}"`;
       });
       csvRows.push(rowData.join(','));

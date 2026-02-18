@@ -6,11 +6,32 @@ export interface PerformanceCriteria {
     description: string;
     category: string;
     weight: number;
-    max_score: number;
+    maxScore: number;
+    section?: string;
+    ratingDefinition5?: string;
+    ratingDefinition4?: string;
+    ratingDefinition3?: string;
+    ratingDefinition2?: string;
+    ratingDefinition1?: string;
+    evidenceRequirements?: string;
+}
+
+export type QETField = 'q_score' | 'e_score' | 't_score';
+
+export interface Assessment {
+    id: string | number;
+    title?: string;
+    description?: string;
+    badge?: string;
+    badgeColor?: string;
+    iconName?: string;
+    value?: string;
+    label?: string; // For backward compatibility with some components
+    placeholder?: string; // For backward compatibility
 }
 
 export interface ReviewItem {
-    id: number;
+    id: string | number;
     review_id: number;
     criteria_id: number | null;
     score: number;
@@ -19,12 +40,20 @@ export interface ReviewItem {
     comment: string | null;
     self_score: number | null;
     actual_accomplishments: string | null;
-    q_score: number | null;
-    e_score: number | null;
-    t_score: number | null;
+    q_score: number | string | null;
+    e_score: number | string | null;
+    t_score: number | string | null;
     category: string | null;
     criteria_title: string | null;
     criteria_description: string | null;
+}
+
+export interface AttendanceDetails {
+    totalLates: number;
+    totalUndertime: number;
+    totalAbsences: number;
+    totalLateMinutes: number;
+    ratingDescription: string;
 }
 
 export interface InternalReview {
@@ -40,14 +69,44 @@ export interface InternalReview {
     additional_comments?: string;
     created_at: string;
     items?: ReviewItem[];
+    attendance_details?: AttendanceDetails | null;
+    violation_count?: number;
+    // flattened names for frontend
+    employee_first_name?: string;
+    employee_last_name?: string;
+    employee_department?: string;
+    employee_job_title?: string;
+    employee_position_title?: string;
+    reviewer_first_name?: string;
+    reviewer_last_name?: string;
 }
 
 export interface ReviewCycle {
     id: number;
-    name: string;
-    start_date: string;
-    end_date: string;
-    is_active: boolean;
+    title: string;
+    description?: string;
+    startDate: string;
+    endDate: string;
+    isActive: boolean;
 }
 
 export type PerformanceApiResponse<T> = ApiResponse<T>;
+
+export interface ReviewCyclesApiResponse {
+    success: boolean;
+    cycles: ReviewCycle[];
+    message?: string;
+}
+
+export interface PerformanceCriteriaApiResponse {
+    success: boolean;
+    criteria: PerformanceCriteria[];
+    message?: string;
+}
+
+export interface ReviewApiResponse {
+    success: boolean;
+    review: InternalReview;
+    message?: string;
+}
+

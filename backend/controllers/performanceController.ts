@@ -6,12 +6,18 @@ import {
   authentication, 
   performanceReviewItems, 
   performanceCriteria, 
-  performanceAuditLog 
+  performanceAuditLog,
+  policyViolations
 } from '../db/schema.js';
-import { eq, and, sql, desc, or, max, count, inArray, isNotNull, isNull, like } from 'drizzle-orm';
+import { eq, and, sql, desc, or, max, count, inArray, isNull, like } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/mysql-core';
 import type { AuthenticatedRequest, ReviewStatus, PerformanceCriteriaType } from '../types/index.js';
 import { calculateAttendanceScore } from '../services/attendanceRatingService.js';
+import { formatToManilaDateTime } from '../utils/dateUtils.js';
+
+const formatDateForMySQL = (date: Date | string) => {
+  return formatToManilaDateTime(date);
+};
 
 interface ReviewItemInput {
   id?: number | string;
@@ -28,6 +34,8 @@ interface ReviewItemInput {
   category?: string;
   self_score?: number;
   actual_accomplishments?: string;
+  evidence_file_path?: string;
+  evidence_description?: string;
 }
 
 const getStats = async () => {
@@ -119,6 +127,7 @@ export const getEvaluationSummary = async (_req: Request, res: Response): Promis
       last_name: authentication.lastName,
       department: authentication.department,
       job_title: authentication.jobTitle,
+      position_title: authentication.positionTitle,
       avatar_url: authentication.avatarUrl,
       employee_id: authentication.employeeId,
       review_id: performanceReviews.id,
@@ -127,7 +136,8 @@ export const getEvaluationSummary = async (_req: Request, res: Response): Promis
       total_score: performanceReviews.totalScore,
       supervisor_rating_score: performanceReviews.supervisorRatingScore,
       self_rating_score: performanceReviews.selfRatingScore,
-      calculated_score: calculatedScoreSubquery
+      calculated_score: calculatedScoreSubquery,
+      duties: sql<string>`COALESCE((SELECT schedule_title FROM schedules WHERE employee_id = ${authentication.employeeId} ORDER BY updated_at DESC LIMIT 1), 'No Schedule')`
     })
     .from(authentication)
     .leftJoin(performanceReviews, and(
@@ -146,11 +156,13 @@ export const getEvaluationSummary = async (_req: Request, res: Response): Promis
         last_name: emp.last_name,
         department: emp.department,
         job_title: emp.job_title,
+        position_title: emp.position_title,
         avatar_url: emp.avatar_url,
         employee_id: emp.employee_id,
         review_id: emp.review_id,
         status: emp.status || 'Not Started',
         last_evaluation_date: emp.last_evaluation_date,
+        duties: emp.duties || 'No Schedule',
         score: (storedScore && parseFloat(String(storedScore)) > 0) ? storedScore : (emp.calculated_score || null)
       };
     });
@@ -290,7 +302,7 @@ export const getReview = async (req: Request, res: Response): Promise<void> => {
     const review = await db.query.performanceReviews.findFirst({
       where: eq(performanceReviews.id, Number(id)),
       with: {
-        authentication_employeeId: true, // Use relation names from schema
+        authentication_employeeId: true,
         authentication_reviewerId: true
       }
     });
@@ -307,23 +319,20 @@ export const getReview = async (req: Request, res: Response): Promise<void> => {
       }
     }
 
-    // Auto-calculate Attendance Score
+    let attendanceDetails = null;
+
+    // 1. Auto-calculate Attendance Score if period is defined
     if (review.reviewPeriodStart && review.reviewPeriodEnd) {
       const attendanceScore = await calculateAttendanceScore(review.employeeId, review.reviewPeriodStart, review.reviewPeriodEnd);
+      attendanceDetails = attendanceScore.details;
       
-      // Update items using Drizzle ORM
-      // Need to target items where reviewId match AND criteriaTitle contains 'Attendance' or 'Punctuality'
       const attRate = attendanceScore.score;
-      const attRateVal = attRate; // it's already a number
       
-      // We can't do complex math inside .set() easily without sql template for the self-referencing update in MySQL
-      // But we can simplify: 
-      // score = (q + e + t) / 3. Since t is being updated to attRate, we can use sql fragment
-      
+      // Update items in DB
       await db.update(performanceReviewItems)
         .set({ 
-          tScore: String(attRate), // Convert to string for decimal column
-          score: sql<string>`(COALESCE(${performanceReviewItems.qScore}, 0) + COALESCE(${performanceReviewItems.eScore}, 0) + ${attRateVal}) / 3`
+          tScore: String(attRate),
+          score: sql<string>`(COALESCE(${performanceReviewItems.qScore}, 0) + COALESCE(${performanceReviewItems.eScore}, 0) + ${attRate}) / 3`
         })
         .where(and(
           eq(performanceReviewItems.reviewId, Number(id)),
@@ -333,14 +342,14 @@ export const getReview = async (req: Request, res: Response): Promise<void> => {
           )
         ));
 
-      // Recalculate total
+      // Recalculate total review score
       const newTotalScore = await calculateReviewScore(Number(id));
       await db.update(performanceReviews)
         .set({ totalScore: newTotalScore })
         .where(eq(performanceReviews.id, Number(id)));
     }
 
-    // Fetch Items with criteria info
+    // 2. Fetch fresh items (with criteria info)
     const items = await db.select({
       id: performanceReviewItems.id,
       reviewId: performanceReviewItems.reviewId,
@@ -357,7 +366,15 @@ export const getReview = async (req: Request, res: Response): Promise<void> => {
       weight: sql<number>`COALESCE(${performanceReviewItems.weight}, ${performanceCriteria.weight})`,
       category: sql<string>`COALESCE(${performanceReviewItems.category}, ${performanceCriteria.category})`,
       criteriaType: performanceCriteria.criteriaType,
-      actualAccomplishments: performanceReviewItems.actualAccomplishments
+      actualAccomplishments: performanceReviewItems.actualAccomplishments,
+      ratingDefinition5: performanceCriteria.ratingDefinition5,
+      ratingDefinition4: performanceCriteria.ratingDefinition4,
+      ratingDefinition3: performanceCriteria.ratingDefinition3,
+      ratingDefinition2: performanceCriteria.ratingDefinition2,
+      ratingDefinition1: performanceCriteria.ratingDefinition1,
+      evidenceRequirements: performanceCriteria.evidenceRequirements,
+      evidenceFilePath: performanceReviewItems.evidenceFilePath,
+      evidenceDescription: performanceReviewItems.evidenceDescription
     })
     .from(performanceReviewItems)
     .leftJoin(performanceCriteria, eq(performanceReviewItems.criteriaId, performanceCriteria.id))
@@ -367,7 +384,15 @@ export const getReview = async (req: Request, res: Response): Promise<void> => {
       performanceReviewItems.id
     );
 
-    // Flatten structure for frontend
+    // 3. Fetch Violation Count
+    const violations = await db.select({ count: count() })
+      .from(policyViolations)
+      .where(and(
+        eq(policyViolations.employeeId, String(review.employeeId)),
+        eq(policyViolations.status, 'pending')
+      ));
+
+    // 4. Resolve flattened structure
     const flatReview = {
         ...review,
         employee_first_name: review.authentication_employeeId.firstName,
@@ -376,6 +401,9 @@ export const getReview = async (req: Request, res: Response): Promise<void> => {
         employee_job_title: review.authentication_employeeId.jobTitle,
         reviewer_first_name: review.authentication_reviewerId.firstName,
         reviewer_last_name: review.authentication_reviewerId.lastName,
+        employee_position_title: review.authentication_employeeId.positionTitle,
+        attendance_details: attendanceDetails,
+        violation_count: violations[0].count,
         items
     };
 
@@ -418,6 +446,52 @@ export const acknowledgeReview = async (req: Request, res: Response): Promise<vo
     res.json({ success: true, message: 'Review acknowledged successfully' });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Failed to acknowledge review' });
+  }
+};
+
+export const disagreeWithReview = async (req: Request, res: Response): Promise<void> => {
+  const { id } = req.params;
+  const authReq = req as AuthenticatedRequest;
+  const { disagree_remarks } = req.body;
+
+  try {
+    const review = await db.query.performanceReviews.findFirst({
+      where: eq(performanceReviews.id, Number(id))
+    });
+
+    if (!review) {
+      res.status(404).json({ success: false, message: 'Review not found' });
+      return;
+    }
+
+    if (review.employeeId != authReq.user.id) {
+      res.status(403).json({ success: false, message: 'You can only disagree with your own reviews' });
+      return;
+    }
+
+    if (review.disagreed) {
+      res.status(400).json({ success: false, message: 'You have already disagreed with this review.' });
+      return;
+    }
+
+    if (!['Submitted', 'Approved', 'Finalized'].includes(review.status || '')) {
+      res.status(400).json({ success: false, message: 'Cannot disagree with a review in its current status.' });
+      return;
+    }
+
+    await db.update(performanceReviews)
+      .set({
+        disagreed: 1,
+        disagreeRemarks: disagree_remarks || null,
+        employeeRemarks: disagree_remarks || null
+      })
+      .where(eq(performanceReviews.id, Number(id)));
+
+    await logAudit(Number(id), 'disagreed', authReq.user.id, { disagree_remarks });
+    res.json({ success: true, message: 'Review disagreement recorded successfully' });
+  } catch (error) {
+    console.error('Disagree With Review Error:', error);
+    res.status(500).json({ success: false, message: 'Failed to record disagreement' });
   }
 };
 
@@ -486,7 +560,7 @@ export const createReview = async (req: Request, res: Response): Promise<void> =
       reviewPeriodStart: periodStart,
       reviewPeriodEnd: periodEnd,
       status: 'Draft',
-      createdAt: new Date().toISOString() // Or let default handle it if supported, schema says string mode
+      createdAt: formatDateForMySQL(new Date())
     });
 
     const reviewId = result.insertId;
@@ -601,9 +675,11 @@ export const updateReview = async (req: Request, res: Response): Promise<void> =
               criteriaDescription: item.criteria_description,
               weight: String(weight),
               maxScore,
-              category: item.category,
               selfScore: item.self_score ? String(item.self_score) : '0',
-              actualAccomplishments: item.actual_accomplishments || ''
+
+              actualAccomplishments: item.actual_accomplishments || '',
+              evidenceFilePath: item.evidence_file_path || null,
+              evidenceDescription: item.evidence_description || null
             })
             .where(and(
               eq(performanceReviewItems.id, Number(item.id)),
@@ -622,9 +698,11 @@ export const updateReview = async (req: Request, res: Response): Promise<void> =
             criteriaDescription: item.criteria_description,
             weight: String(weight),
             maxScore,
-            category: item.category,
             selfScore: item.self_score ? String(item.self_score) : '0',
-            actualAccomplishments: item.actual_accomplishments || ''
+
+            actualAccomplishments: item.actual_accomplishments || '',
+            evidenceFilePath: item.evidence_file_path || null,
+            evidenceDescription: item.evidence_description || null
           });
         }
       }
@@ -635,7 +713,7 @@ export const updateReview = async (req: Request, res: Response): Promise<void> =
       .set({ 
         overallFeedback: feedbackJson, 
         totalScore, 
-        updatedAt: new Date().toISOString() 
+        updatedAt: formatDateForMySQL(new Date()) 
       })
       .where(eq(performanceReviews.id, Number(id)));
 
@@ -759,13 +837,16 @@ export const deleteCriteria = async (req: Request, res: Response): Promise<void>
 };
 
 export const createReviewCycle = async (req: Request, res: Response): Promise<void> => {
-  const { title, description, start_date, end_date } = req.body;
-  if (!title || !start_date || !end_date) {
+  const { title, description, startDate, endDate, start_date, end_date } = req.body;
+  const start = startDate || start_date;
+  const end = endDate || end_date;
+
+  if (!title || !start || !end) {
     res.status(400).json({ success: false, message: 'Title, start date, and end date are required' });
     return;
   }
-  const startDateObj = new Date(start_date);
-  const endDateObj = new Date(end_date);
+  const startDateObj = new Date(start);
+  const endDateObj = new Date(end);
   if (endDateObj <= startDateObj) {
     res.status(400).json({ success: false, message: 'End date must be after start date' });
     return;
@@ -774,8 +855,8 @@ export const createReviewCycle = async (req: Request, res: Response): Promise<vo
     await db.insert(performanceReviewCycles).values({
       title,
       description,
-      startDate: start_date,
-      endDate: end_date
+      startDate: start,
+      endDate: end
     });
     res.status(201).json({ success: true, message: 'Review cycle created' });
   } catch (error) {
@@ -785,10 +866,13 @@ export const createReviewCycle = async (req: Request, res: Response): Promise<vo
 
 export const updateReviewCycle = async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params;
-  const { title, description, start_date, end_date } = req.body;
+  const { title, description, startDate, endDate, start_date, end_date } = req.body;
+  const start = startDate || start_date;
+  const end = endDate || end_date;
+
   try {
     await db.update(performanceReviewCycles)
-      .set({ title, description, startDate: start_date, endDate: end_date })
+      .set({ title, description, startDate: start, endDate: end })
       .where(eq(performanceReviewCycles.id, Number(id)));
     res.json({ success: true, message: 'Review cycle updated' });
   } catch (error) {

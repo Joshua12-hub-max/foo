@@ -147,8 +147,8 @@ export const usePlantilla = ({ showNotification }: UsePlantillaOptions = {}): Us
           refetchSummary();
           notify("Position deleted successfully");
         } catch (err: unknown) {
-          const error = err as any;
-          notify(error.response?.data?.message || "Failed to delete position", "error");
+          const errorMessage = err instanceof Error ? (err as Error & { response?: { data?: { message?: string } } }).response?.data?.message || err.message : 'Failed to delete position';
+          notify(errorMessage, "error");
         }
     }, [refetchPositions, refetchSummary]);
 
@@ -165,8 +165,8 @@ export const usePlantilla = ({ showNotification }: UsePlantillaOptions = {}): Us
           refetchSummary();
           notify(modalMode === 'create' ? "Position created successfully" : "Position updated successfully");
         } catch (err: unknown) {
-          const error = err as any;
-          notify(error.response?.data?.message || "Operation failed", "error");
+          const errorMessage = err instanceof Error ? (err as Error & { response?: { data?: { message?: string } } }).response?.data?.message || err.message : 'Operation failed';
+          notify(errorMessage, "error");
         }
     }, [modalMode, currentPosition, refetchPositions, refetchSummary]);
 

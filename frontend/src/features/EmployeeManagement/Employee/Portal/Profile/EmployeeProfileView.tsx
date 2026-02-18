@@ -96,6 +96,7 @@ interface Profile {
   facebook_url?: string;
   linkedin_url?: string;
   twitter_handle?: string;
+  duties?: string;
 }
 
 interface DataFieldProps {
@@ -233,6 +234,9 @@ const MasterProfileView: React.FC<EmployeeProfileViewProps> = ({ profile, loadin
               <span className="flex items-center gap-1.5 bg-white/10 px-2 py-1 rounded">
                 <Mail size={12} /> {profile.email}
               </span>
+              <span className="flex items-center gap-1.5 bg-blue-500/20 text-blue-200 px-2 py-1 rounded border border-blue-500/30">
+                <Clock size={12} /> Duties: {profile.duties || 'No Schedule'}
+              </span>
             </div>
           </div>
 
@@ -317,6 +321,7 @@ const MasterProfileView: React.FC<EmployeeProfileViewProps> = ({ profile, loadin
           <DataField label="Date Hired" value={formatDate(profile.date_hired || profile.dateHired)} icon={Calendar} />
           <DataField label="First Day of Service" value={formatDate(profile.first_day_of_service)} icon={Clock} />
           <DataField label="Supervisor" value={profile.supervisor} icon={UserCheck} />
+          <DataField label="Current Duties" value={profile.duties} icon={Clock} highlight />
           <DataField label="System Role" value={profile.role} icon={Shield} />
         </Section>
 
