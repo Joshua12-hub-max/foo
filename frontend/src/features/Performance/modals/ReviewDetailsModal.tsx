@@ -8,7 +8,7 @@ interface ReviewItem {
   criteria_description?: string;
   self_score?: number | string;
   score: number | string;
-  [key: string]: any;
+  [key: string]: string | number | boolean | null | undefined;
 }
 
 interface ReviewType {
@@ -21,7 +21,7 @@ interface ReviewType {
   improvements?: string;
   goals?: string;
   status?: string;
-  [key: string]: any;
+  [key: string]: string | number | boolean | ReviewItem[] | null | undefined;
 }
 
 interface ReviewDetailsModalProps {

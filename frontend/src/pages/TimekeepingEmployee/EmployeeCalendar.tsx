@@ -17,6 +17,7 @@ import {
 import { EmployeeCalendarActions } from '@components/Custom/CalendarComponents/employee/components';
 import { holidays } from '@utils';
 import { announcementApi, eventApi } from '@api';
+import { CalendarEvent } from '@/types/calendar';
 
 export default function EmployeeCalendar() {
   // Calendar state management
@@ -41,7 +42,7 @@ export default function EmployeeCalendar() {
     queryKey: ['events'],
     queryFn: async () => {
       const response = await eventApi.getEvents();
-      return response.data?.events?.map((e: any) => ({
+      return response.data?.events?.map((e: CalendarEvent) => ({
         ...e,
         color: getRandomEventColor(EVENT_COLORS)
       })) || [];

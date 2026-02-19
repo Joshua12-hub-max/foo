@@ -18,7 +18,7 @@ const EmployeeDepartmentHeader: React.FC<EmployeeDepartmentHeaderProps> = memo((
           <Building2 className="w-6 h-6 text-gray-600" />
         </div>
         <div>
-          <h1 className="text-xl font-bold text-gray-800">My Department</h1>
+          <h1 className="text-xl font-bold text-gray-800">Department</h1>
           <p className="text-sm text-gray-500">View your department and colleagues</p>
         </div>
       </div>

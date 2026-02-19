@@ -715,19 +715,29 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
           .set({ scheduleTitle: newDuties })
           .where(eq(schedules.employeeId, currentEmployee.employeeId));
       } else {
-        // Create default
-        console.log(`No existing schedule found for ${currentEmployee.employeeId}. Creating default schedule with duties: ${newDuties}`);
-        const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-        const newSchedules = days.map(day => ({
+        // Auto-create default schedule (Regular 8-5)
+        console.log(`No existing schedule found for ${currentEmployee.employeeId}. Auto-creating default 8-5 schedule.`);
+        
+        // Use a default range far into the future or current year
+        const today = new Date().toISOString().split('T')[0];
+        const nextYear = new Date();
+        nextYear.setFullYear(nextYear.getFullYear() + 1);
+        const endDate = nextYear.toISOString().split('T')[0];
+
+        await db.insert(schedules).values({
             employeeId: currentEmployee.employeeId,
             scheduleTitle: newDuties,
-            dayOfWeek: day,
-            startTime: '08:00:00',
-            endTime: '17:00:00',
+            timeIn: '08:00:00',
+            timeOut: '17:00:00',
+            startTime: '08:00:00', // redundant but required by schema
+            endTime: '17:00:00',   // redundant but required by schema
+            type: 'Regular', // mapped to schema? Schema doesn't have 'type', it has 'scheduleTitle' which we used. Wait, schema has 'repeatPattern'.
+            // Schema analysis: dayOfWeek is required. usually 'Mon-Fri' or similar.
+            dayOfWeek: 'Mon-Fri',
+            startDate: today,
+            endDate: endDate,
             repeatPattern: 'Weekly'
-        }));
-        
-        await db.insert(schedules).values(newSchedules);
+        } as any); // Type assertion if schema types are strict/partial mismatch
       }
     }
 

@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { X, Loader2 } from 'lucide-react';
 import { creditUpdateSchema, CreditUpdateInput } from '@/schemas/creditsSchema';
+import { useLeavePolicy } from '@/hooks/useLeavePolicy';
 
 interface EditCreditModalProps {
   isOpen: boolean;
@@ -13,6 +14,8 @@ interface EditCreditModalProps {
 }
 
 const EditCreditModal = ({ isOpen, onClose, onSubmit, credit, isSubmitting }: EditCreditModalProps) => {
+  const { data: leaveTypes = [] } = useLeavePolicy(); // Fetch, even if disabled, for potential validation/future use
+
   const {
     register,
     handleSubmit,

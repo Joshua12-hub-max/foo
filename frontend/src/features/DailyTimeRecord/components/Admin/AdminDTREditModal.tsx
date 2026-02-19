@@ -5,10 +5,18 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { dtrEditSchema, DtrEditSchema } from '@/schemas/dtr';
 import { DTRRecord } from '../../Utils/adminDTRUtils';
 
+export interface DTRUpdatePayload {
+  time_in: string | null;
+  time_out: string | null;
+  status: string;
+  late_minutes: number;
+  undertime_minutes: number;
+}
+
 interface AdminDTREditModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (id: string | number, data: any) => Promise<void>;
+  onSave: (id: string | number, data: DTRUpdatePayload) => Promise<void>;
   record: DTRRecord | null;
 }
 
@@ -85,8 +93,8 @@ export const AdminDTREditModal: React.FC<AdminDTREditModalProps> = ({
         time_in: timeInISO,
         time_out: timeOutISO,
         status: data.status,
-        late_minutes: data.late,
-        undertime_minutes: data.undertime
+        late_minutes: data.late ?? 0,
+        undertime_minutes: data.undertime ?? 0
       });
       onClose();
     } catch (error) {

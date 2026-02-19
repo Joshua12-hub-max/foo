@@ -33,7 +33,28 @@ const DEFAULT_QUALITATIVE_CONFIG: Assessment[] = [
 interface FormDataState extends Omit<Partial<InternalReview>, 'items'> {
   items: Partial<ReviewItem>[];
   additional_comments?: string;
-  employee_metrics?: any;
+  employee_metrics?: {
+    attendance: {
+      totalLateMinutes: number;
+      totalUndertimeMinutes: number;
+      totalLateCount: number;
+      totalUndertimeCount: number;
+      totalAbsenceCount: number;
+      daysEquivalent: string;
+    };
+    violations: Array<{
+      id: number;
+      violationDate: string;
+      penalty: string;
+      status: string;
+      policyTitle: string;
+    }>;
+  };
+  employee_info?: {
+    dutyType: string;
+    dailyTargetHours: number;
+    salaryBasis: string;
+  };
 }
 
 export const usePerformanceReview = () => {
@@ -79,7 +100,19 @@ export const usePerformanceReview = () => {
           if (!isMounted) return;
           
           if (reviewData.success) {
-            const review = reviewData.review;
+            const rawReview = reviewData.review;
+            // Normalize potential camelCase keys from backend to snake_case expected by frontend
+            const review = {
+                ...rawReview,
+                employee_id: rawReview.employee_id || (rawReview as any).employeeId,
+                reviewer_id: rawReview.reviewer_id || (rawReview as any).reviewerId,
+                review_cycle_id: rawReview.review_cycle_id || (rawReview as any).reviewCycleId,
+                items: (rawReview.items || []).map((i: any) => ({
+                    ...i,
+                    criteria_id: i.criteria_id || i.criteriaId,
+                    max_score: i.max_score || i.maxScore,
+                }))
+            };
             
             // Parse overall_feedback
             let parsedFeedback: Record<string, unknown> = {};
@@ -139,13 +172,15 @@ export const usePerformanceReview = () => {
 
             // Fetch Metrics for existing review
             try {
-              const metricRes = await complianceApi.getEmployeeMetrics(review.employee_id.toString());
-              if (metricRes.data.success) {
-                setFormData(prev => ({
-                    ...prev,
-                    employee_metrics: metricRes.data.metrics,
-                    employee_info: metricRes.data.employee
-                }));
+              if (review.employee_id) {
+                  const metricRes = await complianceApi.getEmployeeMetrics(review.employee_id.toString());
+                  if (metricRes.data.success) {
+                    setFormData(prev => ({
+                        ...prev,
+                        employee_metrics: metricRes.data.metrics,
+                        employee_info: metricRes.data.employee
+                    }));
+                  }
               }
             } catch (e) {
               console.error("Failed to fetch initial metrics", e);
@@ -385,9 +420,10 @@ export const usePerformanceReview = () => {
         showNotification(res.message || "Failed to initialize review record.", "error");
         return null;
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Auto-create failed:", error);
-      showNotification(error.response?.data?.message || "Connection error while creating review.", "error");
+      const errMsg = error instanceof Error ? error.message : 'Connection error while creating review.';
+      showNotification(errMsg, "error");
       return null;
     } finally {
         creationInProgress.current = false;
@@ -552,9 +588,9 @@ export const usePerformanceReview = () => {
             showNotification(res.message || "Failed to save review.", "error");
         }
 
-    } catch (err: any) {
+    } catch (err: unknown) {
         console.error("Submission Error:", err);
-        const errorMsg = err.response?.data?.message || err.message || "An unexpected error occurred.";
+        const errorMsg = err instanceof Error ? err.message : 'An unexpected error occurred.';
         showNotification(`Submission failed: ${errorMsg}`, "error");
     } finally {
         setSaving(false);

@@ -12,25 +12,25 @@ export interface PerformanceEmployee {
   score?: number | string | null;
   last_evaluation_date?: string | null;
   duties?: string;
-  [key: string]: any;
+  [key: string]: string | number | boolean | null | undefined | object | any[];
 }
 
 export interface PerformanceItem {
   id?: string | number;
-  criteria_id?: string | number;
-  category?: string;
-  criteria_title?: string;
-  title?: string;
-  criteria_description?: string;
-  description?: string;
-  weight?: number | string;
-  score?: number;
-  self_score?: number;
-  actual_accomplishments?: string;
-  comment?: string;
-  q_score?: number | string;
-  e_score?: number | string;
-  t_score?: number | string;
+  criteria_id?: string | number | null;
+  category?: string | null;
+  criteria_title?: string | null;
+  title?: string | null;
+  criteria_description?: string | null;
+  description?: string | null;
+  weight?: number | string | null;
+  score?: number | null;
+  self_score?: number | null;
+  actual_accomplishments?: string | null;
+  comment?: string | null;
+  q_score?: number | string | null;
+  e_score?: number | string | null;
+  t_score?: number | string | null;
   rating_definition_5?: string;
   rating_definition_4?: string;
   rating_definition_3?: string;
@@ -47,6 +47,6 @@ export interface PerformanceItem {
   ratingDefinition1?: string;
   evidenceRequirements?: string;
   evidenceFilePath?: string;
-  evidenceDescription?: string;
-  [key: string]: any;
+  evidenceDescription?: string | null;
+  [key: string]: string | number | boolean | null | undefined | object | any[];
 }

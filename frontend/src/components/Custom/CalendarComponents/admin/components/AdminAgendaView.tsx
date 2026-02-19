@@ -1,22 +1,20 @@
 import { useState } from 'react';
-import { Search, Plus, SquarePen, Trash2, Megaphone, CalendarDays, Users } from 'lucide-react';
+import { Search, Plus, SquarePen, Trash2, Megaphone, CalendarDays } from 'lucide-react';
+
+import { CalendarEvent, Announcement } from '@/types/calendar';
 
 interface AdminAgendaViewProps {
-  events?: any[];
-  announcements?: any[];
-  schedules?: any[];
+  events?: CalendarEvent[];
+  announcements?: Announcement[];
   onAddEvent?: () => void;
-  onEditEvent?: (event: any) => void;
-  onDeleteEvent?: (event: any) => void;
+  onEditEvent?: (event: CalendarEvent) => void;
+  onDeleteEvent?: (event: CalendarEvent) => void;
   onAddAnnouncement?: () => void;
-  onEditAnnouncement?: (announcement: any) => void;
-  onDeleteAnnouncement?: (announcement: any) => void;
-  onAddSchedule?: () => void;
-  onEditSchedule?: (schedule: any) => void;
-  onDeleteSchedule?: (schedule: any) => void;
+  onEditAnnouncement?: (announcement: Announcement) => void;
+  onDeleteAnnouncement?: (announcement: Announcement) => void;
 }
 
-const AdminAgendaView = ({ events = [], announcements = [], schedules = [], onAddEvent, onEditEvent, onDeleteEvent, onAddAnnouncement, onEditAnnouncement, onDeleteAnnouncement, onAddSchedule, onEditSchedule, onDeleteSchedule }: AdminAgendaViewProps) => {
+const AdminAgendaView = ({ events = [], announcements = [], onAddEvent, onEditEvent, onDeleteEvent, onAddAnnouncement, onEditAnnouncement, onDeleteAnnouncement }: AdminAgendaViewProps) => {
   const [activeTab, setActiveTab] = useState('announcements');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -25,17 +23,17 @@ const AdminAgendaView = ({ events = [], announcements = [], schedules = [], onAd
     return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
-  const formatTime = (time: any) => {
-    if (!time && time !== 0) return 'N/A';
+  const formatTime = (time: string | number | null) => {
+    if (time === null || (typeof time === 'undefined')) return 'N/A';
     if (typeof time === 'string' && time.includes(':')) return time;
-    const hour = parseInt(time);
+    const hour = typeof time === 'string' ? parseInt(time) : time;
     const period = hour >= 12 ? 'PM' : 'AM';
     const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
     return `${displayHour}:00 ${period}`;
   };
 
   // Filter items based on search query
-  const filterItems = (items: any[], fields: string[]) => {
+  const filterItems = <T extends Record<string, any>>(items: T[], fields: (keyof T)[]) => {
     if (!searchQuery) return items;
     const query = searchQuery.toLowerCase();
     return items.filter(item => 
@@ -48,19 +46,16 @@ const AdminAgendaView = ({ events = [], announcements = [], schedules = [], onAd
 
   const filteredAnnouncements = filterItems(announcements, ['title', 'content']);
   const filteredEvents = filterItems(events, ['title', 'description']);
-  const filteredSchedules = filterItems(schedules, ['employee_name', 'scheduleName', 'duties', 'title', 'description']);
 
   const tabs = [
     { id: 'announcements', label: 'Announcements', icon: Megaphone, count: filteredAnnouncements.length },
-    { id: 'events', label: 'Events', icon: CalendarDays, count: filteredEvents.length },
-    { id: 'schedules', label: 'Duties', icon: Users, count: filteredSchedules.length }
+    { id: 'events', label: 'Events', icon: CalendarDays, count: filteredEvents.length }
   ];
 
   const getAddHandler = () => {
     switch (activeTab) {
       case 'announcements': return onAddAnnouncement;
       case 'events': return onAddEvent;
-      case 'schedules': return onAddSchedule;
       default: return undefined;
     }
   };
@@ -69,7 +64,6 @@ const AdminAgendaView = ({ events = [], announcements = [], schedules = [], onAd
     switch (activeTab) {
       case 'announcements': return 'New Announcement';
       case 'events': return 'New Event';
-      case 'schedules': return 'New Duties';
       default: return 'Add New';
     }
   };
@@ -165,9 +159,11 @@ const AdminAgendaView = ({ events = [], announcements = [], schedules = [], onAd
                       <td className="px-6 py-4">
                         <div className="flex gap-2">
                           <button
-                            onClick={() => onEditAnnouncement && onEditAnnouncement(item)}
-                            className="p-1.5 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors"
-                            title="Edit"
+                            onClick={() => {
+                              onEditAnnouncement?.(item);
+                            }}
+                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            title="Edit Announcement"
                           >
                             <SquarePen className="w-4 h-4 text-blue-800" />
                           </button>
@@ -207,7 +203,7 @@ const AdminAgendaView = ({ events = [], announcements = [], schedules = [], onAd
                   filteredEvents.map((item) => (
                     <tr key={item.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4 text-sm font-medium text-gray-900">{item.title}</td>
-                      <td className="px-6 py-4 text-sm text-gray-600 max-w-xs truncate" title={item.description}>
+                      <td className="px-6 py-4 text-sm text-gray-600 max-w-xs truncate" title={item.description || undefined}>
                         {item.description || '-'}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-600">{formatDate(item.date)}</td>
@@ -250,58 +246,7 @@ const AdminAgendaView = ({ events = [], announcements = [], schedules = [], onAd
             </table>
           )}
 
-          {/* Schedules Table */}
-          {activeTab === 'schedules' && (
-            <table className="w-full">
-              <thead className="bg-gray-200 shadow-md text-gray-700">
-                <tr>
-                  <th className="px-6 py-4 text-left text-sm font-bold">Employee</th>
-                  <th className="px-6 py-4 text-left text-sm font-bold">Title</th>
-                  <th className="px-6 py-4 text-left text-sm font-bold">Start Date</th>
-                  <th className="px-6 py-4 text-left text-sm font-bold">End Date</th>
-                  <th className="px-6 py-4 text-left text-sm font-bold">Time</th>
-                  <th className="px-6 py-4 text-left text-sm font-bold">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 bg-white">
-                {filteredSchedules.length > 0 ? (
-                  filteredSchedules.map((item) => (
-                    <tr key={item.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                        {item.employeeName || item.employee_name || item.employee_id || 'N/A'}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">{item.scheduleName || item.duties || item.title || '-'}</td>
-                      <td className="px-6 py-4 text-sm text-gray-600">{formatDate(item.start_date)}</td>
-                      <td className="px-6 py-4 text-sm text-gray-600">{formatDate(item.end_date)}</td>
-                      <td className="px-6 py-4 text-sm text-gray-600">
-                        {item.start_time || 'N/A'} - {item.end_time || 'N/A'}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => onEditSchedule && onEditSchedule(item)}
-                            className="p-1.5 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors"
-                            title="Edit"
-                          >
-                            <SquarePen className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => onDeleteSchedule && onDeleteSchedule(item)}
-                            className="p-1.5 bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition-colors"
-                            title="Delete"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <EmptyState message="No schedules found" />
-                )}
-              </tbody>
-            </table>
-          )}
+
         </div>
       </div>
     </div>

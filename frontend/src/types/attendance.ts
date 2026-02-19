@@ -13,6 +13,11 @@ export interface DTRApiResponse {
   employee_name?: string;
   department?: string;
   duties?: string;
+  correction_id?: number | null;
+  correction_status?: string | null;
+  correction_reason?: string | null;
+  correction_time_in?: string | null;
+  correction_time_out?: string | null;
 }
 
 export interface AttendanceLogApiResponse {
@@ -40,4 +45,20 @@ export interface TardinessSummaryApiResponse {
   total_absence_count: number;
   days_equivalent: string;
   processed_at: string | null;
+}
+
+export interface DTRCorrectionRequest {
+  id: number;
+  employeeId: string;
+  firstName: string;
+  lastName: string;
+  date: string;
+  originalTimeIn: string | null;
+  originalTimeOut: string | null;
+  correctedTimeIn: string | null;
+  correctedTimeOut: string | null;
+  reason: string;
+  status: 'Pending' | 'Approved' | 'Rejected';
+  rejectionReason?: string | null;
+  createdAt: string;
 }

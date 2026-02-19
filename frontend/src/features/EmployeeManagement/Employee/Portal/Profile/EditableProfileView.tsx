@@ -13,6 +13,7 @@ import AddSkillModal from './Modals/AddSkillModal';
 import AddEducationModal from './Modals/AddEducationModal';
 import AddContactModal from './Modals/AddContactModal';
 import AddCustomFieldModal from './Modals/AddCustomFieldModal';
+import { formatEmployeeId } from '@/utils/formatters';
 
 
 
@@ -676,7 +677,7 @@ const EditableProfileView: React.FC<EmployeeProfileViewProps> = ({ profile, load
                 <Briefcase size={12} /> {profile.position_title || profile.job_title || profile.jobTitle || 'No Title'}
               </span>
               <span className="flex items-center gap-1.5 bg-white/10 px-2 py-1 rounded">
-                <Hash size={12} /> {profile.employee_id || profile.employeeId}
+                <Hash size={12} /> {formatEmployeeId(profile.employee_id || profile.employeeId)}
               </span>
               <span className="flex items-center gap-1.5 bg-white/10 px-2 py-1 rounded">
                 <Mail size={12} /> {profile.email}
@@ -747,7 +748,7 @@ const EditableProfileView: React.FC<EmployeeProfileViewProps> = ({ profile, load
 
         {/* EMPLOYMENT RECORD */}
         <Section title="Employment Record" icon={Briefcase}>
-          <DataField label="Employee ID" value={profile.employee_id || profile.employeeId} icon={Hash} highlight />
+          <DataField label="Employee ID" value={formatEmployeeId(profile.employee_id || profile.employeeId)} icon={Hash} highlight />
           <EditableDataField label="Position Title" value={profile.position_title || profile.job_title} fieldName="position_title" highlight onSave={handleFieldSave} />
           <EditableDataField label="Item Number" value={profile.item_number} fieldName="item_number" icon={Hash} onSave={handleFieldSave} />
           <EditableDataField label="Agency Employee No." value={profile.agency_employee_no} fieldName="agency_employee_no" icon={Hash} onSave={handleFieldSave} />

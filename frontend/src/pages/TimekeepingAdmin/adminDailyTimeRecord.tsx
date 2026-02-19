@@ -6,7 +6,10 @@ import { AdminDTRExportButtons } from "@features/DailyTimeRecord/components/Admi
 import { AdminDTRTable } from "@features/DailyTimeRecord/components/Admin/AdminDTRTable";
 import { AdminDTRPagination } from "@features/DailyTimeRecord/components/Admin/AdminDTRPagination";
 import { AdminDTREditModal } from "@features/DailyTimeRecord/components/Admin/AdminDTREditModal";
+import { ReviewCorrectionModal } from "@features/DailyTimeRecord/components/Admin/ReviewCorrectionModal";
 import { useAdminDTR } from "@features/DailyTimeRecord/hooks/Admin/useAdminDTR";
+import { dtrApi } from "@api/dtrApi";
+import { DTRRecord } from "@features/DailyTimeRecord/Utils/adminDTRUtils";
 
 const DailyTimeRecord = () => {
   const {
@@ -43,8 +46,36 @@ const DailyTimeRecord = () => {
     handleSaveEdit
   } = useAdminDTR();
 
-  const currentItems = paginationData.currentItems;
+  // --- Review Correction State ---
+  const [reviewingRecord, setReviewingRecord] = useState<DTRRecord | null>(null);
 
+  const handleReview = (item: DTRRecord) => {
+    setReviewingRecord(item);
+  };
+
+  const handleApproveCorrection = async (id: number) => {
+    try {
+      await dtrApi.updateCorrectionStatus([id], 'Approved');
+      setSuccessMessage('Correction request approved successfully.');
+      handleRefresh();
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : 'Failed to approve correction.';
+      setError(errorMsg);
+    }
+  };
+
+  const handleRejectCorrection = async (id: number, reason: string) => {
+    try {
+      await dtrApi.updateCorrectionStatus([id], 'Rejected', reason);
+      setSuccessMessage('Correction request rejected.');
+      handleRefresh();
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : 'Failed to reject correction.';
+      setError(errorMsg);
+    }
+  };
+
+  const currentItems = paginationData.currentItems;
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
   return (
@@ -90,13 +121,14 @@ const DailyTimeRecord = () => {
         debouncedSearchQuery={debouncedSearchQuery}
         filters={filters}
         onEdit={handleEdit}
+        onReview={handleReview}
       />
 
       {paginationData && (
         <AdminDTRPagination 
           startIndex={paginationData.startIndex}
           endIndex={paginationData.endIndex}
-          totalRecords={paginationData.totalRecords || 0} // Ensure totalRecords exists in PaginationResult
+          totalRecords={paginationData.totalRecords || 0}
           currentPage={currentPage}
           totalPages={paginationData.totalPages}
           handlePrevPage={handlePrevPage}
@@ -110,6 +142,14 @@ const DailyTimeRecord = () => {
         onClose={() => setEditingRecord(null)}
         onSave={handleSaveEdit}
         record={editingRecord}
+      />
+
+      <ReviewCorrectionModal
+        isOpen={!!reviewingRecord}
+        onClose={() => setReviewingRecord(null)}
+        record={reviewingRecord}
+        onApprove={handleApproveCorrection}
+        onReject={handleRejectCorrection}
       />
     </div>
   );

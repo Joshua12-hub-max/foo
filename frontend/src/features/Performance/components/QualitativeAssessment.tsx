@@ -21,7 +21,7 @@ interface Assessment {
   badgeColor?: string;
   iconName?: string;
   value?: string;
-  [key: string]: any;
+  [key: string]: string | number | null | undefined;
 }
 
 interface QualitativeAssessmentProps {

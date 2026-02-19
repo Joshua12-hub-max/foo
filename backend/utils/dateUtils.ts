@@ -21,3 +21,11 @@ export const formatToManilaDateTime = (date: Date | string): string => {
 export const currentManilaDateTime = (): string => {
   return formatToManilaDateTime(new Date());
 };
+
+/**
+ * Format date for MySQL DATETIME column (YYYY-MM-DD HH:mm:ss)
+ * Uses UTC by default as toISOString() does.
+ */
+export const formatToMysqlDateTime = (date: Date): string => {
+  return date.toISOString().slice(0, 19).replace('T', ' ');
+};

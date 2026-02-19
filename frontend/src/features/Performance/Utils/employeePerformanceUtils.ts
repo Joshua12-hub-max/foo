@@ -12,32 +12,32 @@ export interface EmployeePerformanceData {
   lastUpdate: string;
   status: string;
   selfRatingStatus: string;
-  [key: string]: any;
+  [key: string]: string | number | null | undefined;
 }
 
-export const mapEmployeePerformanceData = (apiData: any[]): EmployeePerformanceData[] => {
+export const mapEmployeePerformanceData = (apiData: Record<string, string | number | null | undefined>[]): EmployeePerformanceData[] => {
   return apiData.map(item => ({
-    id: item.id,
+    id: item.id ?? 0,
     reviewPeriod: item.review_period_start && item.review_period_end 
-      ? `${new Date(item.review_period_start).toLocaleDateString()} - ${new Date(item.review_period_end).toLocaleDateString()}`
+      ? `${new Date(String(item.review_period_start)).toLocaleDateString()} - ${new Date(String(item.review_period_end)).toLocaleDateString()}`
       : 'N/A',
-    cycleTitle: item.cycle_title || 'Regular Review',
+    cycleTitle: String(item.cycle_title || 'Regular Review'),
     reviewer: item.reviewer_first_name 
       ? `${item.reviewer_first_name} ${item.reviewer_last_name}`.trim() 
       : 'Not Assigned',
-    score: item.computed_score !== null && item.computed_score !== undefined ? parseFloat(item.computed_score).toFixed(2) : 'N/A',
+    score: item.computed_score !== null && item.computed_score !== undefined ? parseFloat(String(item.computed_score)).toFixed(2) : 'N/A',
     lastUpdate: item.updated_at 
-      ? new Date(item.updated_at).toLocaleDateString() 
-      : new Date(item.created_at).toLocaleDateString(),
-    status: item.status || 'Draft',
-    selfRatingStatus: item.self_rating_status || 'pending'
+      ? new Date(String(item.updated_at)).toLocaleDateString() 
+      : new Date(String(item.created_at || '')).toLocaleDateString(),
+    status: String(item.status || 'Draft'),
+    selfRatingStatus: String(item.self_rating_status || 'pending')
   }));
 };
 
 /**
  * Filter Performance data based on filters and search query
  */
-export const filterEmployeePerformanceData = (data: EmployeePerformanceData[], filters: any, searchQuery: string): EmployeePerformanceData[] => {
+export const filterEmployeePerformanceData = (data: EmployeePerformanceData[], filters: { status?: string }, searchQuery: string): EmployeePerformanceData[] => {
   let filteredData = [...data];
 
   // Apply status filter
@@ -61,7 +61,7 @@ export const filterEmployeePerformanceData = (data: EmployeePerformanceData[], f
 /**
  * Calculate pagination data
  */
-export const calculatePagination = (data: any[], currentPage: number, itemsPerPage: number) => {
+export const calculatePagination = <T>(data: T[], currentPage: number, itemsPerPage: number) => {
   const totalPages = Math.ceil(data.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
@@ -75,7 +75,7 @@ export const calculatePagination = (data: any[], currentPage: number, itemsPerPa
 /**
  * Generate PDF HTML content
  */
-export const generatePDFContent = (data: any[], headers: string[], today: string): string => {
+export const generatePDFContent = (data: EmployeePerformanceData[], headers: string[], today: string): string => {
   return `
     <!DOCTYPE html>
     <html>
@@ -128,7 +128,7 @@ export const generatePDFContent = (data: any[], headers: string[], today: string
  * Export data to Excel (matching departmentReportsExport.js format)
  */
 // Native CSV export to remove dependency on ExcelJS
-export const exportToCSV = async (data: any[], headers: string[], filename: string) => {
+export const exportToCSV = async (data: EmployeePerformanceData[], headers: string[], filename: string) => {
   try {
     const csvHeaders = ['Status', 'Review Period', 'Cycle Title', 'Reviewer', 'Score', 'Last Update'];
     const keys = ['status', 'reviewPeriod', 'cycleTitle', 'reviewer', 'score', 'lastUpdate'];
@@ -161,7 +161,7 @@ export const exportToCSV = async (data: any[], headers: string[], filename: stri
 /**
  * Export data to PDF
  */
-export const exportToPDF = async (data: any[], headers: string[], today: string, printDelay = 250) => {
+export const exportToPDF = async (data: EmployeePerformanceData[], headers: string[], today: string, printDelay = 250) => {
   const htmlContent = generatePDFContent(data, headers, today);
   const blob = new Blob([htmlContent], { type: 'text/html' });
   const url = URL.createObjectURL(blob);

@@ -108,17 +108,17 @@ export const processDailyAttendance = async (
     const activeBlocks = scheduleBlocks.map(b => ({ ...b, isRestDay: 0 }));
     
     // 1b. Fetch Tardiness Policy (Grace Period)
-    const policyRows = await db.select().from(internalPolicies).where(eq(internalPolicies.category, 'tardiness')).limit(1);
-    const policyRow = policyRows[0];
-    
     let gracePeriod = 0;
     try {
+      const policyRows = await db.select().from(internalPolicies).where(eq(internalPolicies.category, 'tardiness')).limit(1);
+      const policyRow = policyRows[0];
+      
       if (policyRow?.content) {
         const content = typeof policyRow.content === 'string' ? JSON.parse(policyRow.content) : policyRow.content;
         gracePeriod = Number(content.gracePeriod) || 0;
       }
     } catch (e) {
-      console.error('[ATTENDANCE] Error parsing tardiness policy:', e);
+      console.warn('[ATTENDANCE] Error fetching tardiness policy (defaulting to 0):', e);
     }
     
     let totalLateMinutes = 0;

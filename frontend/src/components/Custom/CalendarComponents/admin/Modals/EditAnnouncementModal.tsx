@@ -5,22 +5,13 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { announcementSchema } from '@/schemas/calendar';
 import { formatHour12, convertTo24Hour } from '../../shared/utils/eventUtils';
 
-interface Announcement {
-  id: string | number;
-  title: string;
-  content: string;
-  priority: string;
-  start_date: string;
-  end_date: string;
-  start_time: string;
-  end_time: string;
-}
+import { Announcement, AnnouncementFormData } from '@/types/calendar';
 
 interface EditAnnouncementModalProps {
   show: boolean;
-  announcement: Announcement;
+  announcement: Announcement | null;
   onClose: () => void;
-  onUpdate: (id: string | number, data: any) => void;
+  onUpdate: (id: string | number, data: AnnouncementFormData) => void;
   hours?: string[];
 }
 
@@ -30,8 +21,8 @@ export default function EditAnnouncementModal({ show, announcement, onClose, onU
       handleSubmit,
       reset,
       formState: { errors, isSubmitting }
-  } = useForm({
-    resolver: zodResolver(announcementSchema),
+  } = useForm<AnnouncementFormData>({
+    resolver: zodResolver(announcementSchema) as any, // Cast to avoid Resolver mismatch
     defaultValues: {
         title: '',
         content: '',
@@ -59,7 +50,7 @@ export default function EditAnnouncementModal({ show, announcement, onClose, onU
 
   if (!show || !announcement) return null;
 
-  const onSubmit = (data: any) => {
+  const onSubmit = (data: AnnouncementFormData) => {
     onUpdate(announcement.id, data);
   };
 

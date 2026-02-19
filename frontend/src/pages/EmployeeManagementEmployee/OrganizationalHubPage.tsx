@@ -39,8 +39,8 @@ const OrganizationalHubPage: React.FC = () => {
     };
 
     const tabs: Tab[] = [
-        { id: 'department', label: 'My Department' },
-        { id: 'memos', label: 'My Memos' }
+        { id: 'department', label: 'Department' },
+        { id: 'memos', label: 'Memos' }
     ];
 
     return (

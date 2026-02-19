@@ -19,15 +19,21 @@ import {
 
 import { AdminAgendaView } from '@components/Custom/CalendarComponents/admin/components';
 import AdminCalendarActions from '@components/Custom/CalendarComponents/AdminCalendarActions';
-import { eventApi, fetchEmployees, fetchDepartments, announcementApi, scheduleApi } from '@api';
+import { eventApi, fetchEmployees, fetchDepartments, announcementApi } from '@api';
 import {
   AddEventModal,
   EditEventModal,
   CreateAnnouncementModal,
   EditAnnouncementModal,
-  ScheduleModal,
-  EditScheduleModal
 } from '@components/Custom/CalendarComponents/admin/Modals';
+import { 
+  CalendarEvent, 
+  Announcement, 
+  EventFormData, 
+  AnnouncementFormData,
+  CalendarItem
+} from '@/types/calendar';
+import { ApiError } from '@/types';
 import {
   useCalendarStore,
   useToastStore
@@ -66,7 +72,7 @@ export default function AdminCalendar() {
 
   // --- QUERIES ---
 
-  const { data: announcements = [] } = useQuery({
+  const { data: announcements = [] } = useQuery<Announcement[]>({
     queryKey: ['announcements'],
     queryFn: async () => {
       const response = await announcementApi.getAnnouncements();
@@ -74,19 +80,13 @@ export default function AdminCalendar() {
     }
   });
 
-  const { data: schedules = [] } = useQuery({
-    queryKey: ['schedules'],
-    queryFn: async () => {
-        const response = await scheduleApi.getSchedules();
-        return response.data?.schedules || [];
-    }
-  });
 
-  const { data: events = [] } = useQuery({
+
+  const { data: events = [] } = useQuery<CalendarEvent[]>({
     queryKey: ['events'],
     queryFn: async () => {
       const response = await eventApi.getEvents();
-      return response.data?.events?.map((e: any) => ({
+      return response.data?.events?.map((e: CalendarEvent) => ({
         ...e,
         color: getRandomEventColor(EVENT_COLORS)
       })) || [];
@@ -112,99 +112,33 @@ export default function AdminCalendar() {
 
   // --- MUTATIONS ---
 
-  const createScheduleMutation = useMutation({
-    mutationFn: async (data: any) => {
-        console.log('[createScheduleMutation] Raw data received:', data);
-        // Support both snake_case (from ScheduleModal) and camelCase formats
-        const payload = {
-            employee_id: data.employee_id,
-            start_date: data.start_date || data.startDate,
-            end_date: data.end_date || data.endDate,
-            start_time: data.start_time || data.startTime,
-            end_time: data.end_time || data.endTime,
-            title: data.title,
-            description: data.description,
-            repeat: data.repeat || 'none'
-        };
-        console.log('[createScheduleMutation] Payload to send:', payload);
-        const response = await scheduleApi.createSchedule(payload);
-        console.log('[createScheduleMutation] Response:', response);
-        return response;
-    },
-    onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['schedules'] });
-        setModal('schedule', false);
-        showToast("Schedule created successfully!", "success");
-    },
-    onError: (error: any) => {
-        console.error("Failed to create schedule:", error);
-        const errorMsg = error?.response?.data?.message || "Failed to create schedule.";
-        showToast(errorMsg, "error");
-    }
-  });
 
-  const updateScheduleMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string | number, data: any }) => {
-        // Map frontend fields (startDate/startTime) to backend fields (start_date/start_time)
-        const payload = {
-            start_time: data.startTime || data.start_time,
-            end_time: data.endTime || data.end_time,
-        };
-        await scheduleApi.updateSchedule(id, payload);
-    },
-    onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['schedules'] });
-        setModal('editSchedule', false);
-        setSelectedItem(null, null);
-        showToast("Schedule updated successfully!", "success");
-    },
-    onError: (error) => {
-        console.error("Failed to update schedule:", error);
-        showToast("Failed to update schedule.", "error");
-    }
-  });
-
-  const deleteScheduleMutation = useMutation({
-    mutationFn: async (id: string | number) => {
-        await scheduleApi.deleteSchedule(id);
-    },
-    onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['schedules'] });
-        setModal('deleteConfirm', false);
-        setSelectedItem(null, null);
-        showToast("Schedule deleted successfully!", "success");
-    },
-    onError: (error) => {
-        console.error("Failed to delete schedule:", error);
-        showToast("Failed to delete schedule.", "error");
-    }
-  });
 
 
   const createEventMutation = useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: EventFormData) => {
         // Validation check before API call to mimic original logic behavior if needed, 
         // though typically this should be in the submit handler.
-        if (!data.title?.trim() || !data.start_date) {
-            throw new Error("Please fill in the Event Title and Start Date.");
+        if (!data.title?.trim() || !data.date) {
+            throw new Error("Please fill in the Event Title and Date.");
         }
-        await eventApi.createEvent(data);
+        await eventApi.createEvent(data as unknown as Record<string, unknown>);
     },
     onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ['events'] });
         setModal('addEvent', false);
         showToast("Event created successfully!", "success");
     },
-    onError: (error: any) => {
+    onError: (error: Error | ApiError) => {
         console.error("Failed to create event:", error);
-        const errorMessage = error.message || error.response?.data?.error || "Failed to create event.";
+        const errorMessage = error.message || (error as ApiError).response?.data?.message || "Failed to create event.";
         showToast(errorMessage.includes("fill in") ? errorMessage : `Failed to create event: ${errorMessage}`, "error");
     }
   });
 
   const updateEventMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string | number, data: any }) => {
-        await eventApi.updateEvent(id, data);
+    mutationFn: async ({ id, data }: { id: string | number, data: EventFormData }) => {
+        await eventApi.updateEvent(id, data as unknown as Record<string, unknown>);
     },
     onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ['events'] });
@@ -235,27 +169,27 @@ export default function AdminCalendar() {
   });
 
   const createAnnouncementMutation = useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: AnnouncementFormData) => {
         if (!data.title || !data.content) {
              throw new Error("Please fill in the Title and Content.");
         }
-        await announcementApi.createAnnouncement(data);
+        await announcementApi.createAnnouncement(data as unknown as Record<string, unknown>);
     },
     onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ['announcements'] });
         setModal('createAnnouncement', false);
         showToast("Announcement created successfully!", "success");
     },
-    onError: (error: any) => {
+    onError: (error: Error | ApiError) => {
         console.error("Failed to create announcement:", error);
-        const errorMessage = error.message || error.response?.data?.message || "Failed to create announcement.";
+        const errorMessage = error.message || (error as ApiError).response?.data?.message || "Failed to create announcement.";
         showToast(errorMessage.includes("fill in") ? errorMessage : `Error: ${errorMessage}`, "error");
     }
   });
 
   const updateAnnouncementMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string | number, data: any }) => {
-        await announcementApi.updateAnnouncement(id, data);
+    mutationFn: async ({ id, data }: { id: string | number, data: AnnouncementFormData }) => {
+        await announcementApi.updateAnnouncement(id, data as unknown as Record<string, unknown>);
     },
     onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ['announcements'] });
@@ -292,41 +226,41 @@ export default function AdminCalendar() {
     setModal('addEvent', true);
   }, [setModal]);
 
-  const handleAddEvent = useCallback((data: any) => {
+  const handleAddEvent = useCallback((data: EventFormData) => {
     // RHF provides the data
     createEventMutation.mutate(data);
   }, [createEventMutation]);
 
-  const handleCreateAnnouncement = useCallback((announcementData: any) => {
+  const handleCreateAnnouncement = useCallback((announcementData: AnnouncementFormData) => {
     createAnnouncementMutation.mutate(announcementData);
   }, [createAnnouncementMutation]);
 
-  const handleEditEvent = useCallback((event: any) => {
+  const handleEditEvent = useCallback((event: CalendarEvent) => {
     setSelectedItem(event, 'event');
     setShowEventDetails(null);
     setModal('editEvent', true);
   }, [setShowEventDetails, setSelectedItem, setModal]);
 
-  const handleUpdateEvent = useCallback((updatedData: any) => {
+  const handleUpdateEvent = useCallback((updatedData: EventFormData) => {
     if (!selectedItem) return;
-    updateEventMutation.mutate({ id: selectedItem.id, data: updatedData });
+    updateEventMutation.mutate({ id: (selectedItem as CalendarEvent).id, data: updatedData });
   }, [selectedItem, updateEventMutation]);
 
-  const handleEditAnnouncement = useCallback((announcement: any) => {
+  const handleEditAnnouncement = useCallback((announcement: Announcement) => {
     setSelectedItem(announcement, 'announcement');
     setModal('editAnnouncement', true);
   }, [setSelectedItem, setModal]);
 
-  const handleUpdateAnnouncement = useCallback((id: string | number, updatedData: any) => {
+  const handleUpdateAnnouncement = useCallback((id: string | number, updatedData: AnnouncementFormData) => {
     updateAnnouncementMutation.mutate({ id, data: updatedData });
   }, [updateAnnouncementMutation]);
 
-  const handleDeleteAnnouncement = useCallback((item: any) => {
+  const handleDeleteAnnouncement = useCallback((item: Announcement) => {
     setSelectedItem(item, 'announcement');
     setModal('deleteConfirm', true);
   }, [setSelectedItem, setModal]);
 
-  const handleDeleteClick = useCallback((item: any) => {
+  const handleDeleteClick = useCallback((item: CalendarEvent) => {
     setSelectedItem(item, 'event');
     setShowEventDetails(null);
     setModal('deleteConfirm', true);
@@ -336,40 +270,24 @@ export default function AdminCalendar() {
     if (!selectedItem) return;
 
     if (selectedType === 'announcement') {
-      deleteAnnouncementMutation.mutate(selectedItem.id);
-    } else if (selectedType === 'schedule') {
-      deleteScheduleMutation.mutate(selectedItem.id);
+      deleteAnnouncementMutation.mutate((selectedItem as Announcement).id);
     } else {
-      deleteEventMutation.mutate(selectedItem.id);
+      deleteEventMutation.mutate((selectedItem as CalendarEvent).id);
     }
-  }, [selectedItem, selectedType, deleteAnnouncementMutation, deleteEventMutation, deleteScheduleMutation]);
-
-  const handleEditSchedule = useCallback((schedule: any) => {
-    setSelectedItem(schedule, 'schedule');
-    setModal('editSchedule', true);
-  }, [setSelectedItem, setModal]);
-
-  const handleUpdateSchedule = useCallback((id: string | number, updatedData: any) => {
-    updateScheduleMutation.mutate({ id, data: updatedData });
-  }, [updateScheduleMutation]);
-
-  const handleDeleteSchedule = useCallback((item: any) => {
-    setSelectedItem(item, 'schedule');
-    setModal('deleteConfirm', true);
-  }, [setSelectedItem, setModal]);
+  }, [selectedItem, selectedType, deleteAnnouncementMutation, deleteEventMutation]);
 
 
-  const handleEventDrop = useCallback((event: any, newDate: Date) => {
+  const handleEventDrop = useCallback((event: CalendarEvent, newDate: Date) => {
       const formattedDate = newDate.toISOString().split('T')[0];
       // Optimistic update or just simple mutation
-      updateEventMutation.mutate({ id: event.id, data: { ...event, date: formattedDate } });
+      updateEventMutation.mutate({ id: event.id, data: { ...event, date: formattedDate } as EventFormData });
   }, [updateEventMutation]);
 
   // Calendar data processing
   const calendarData = useCalendarData({ currentDate, events, showHolidays, holidays, announcements });
   const { month, day, year, dayName, displayedEvents } = calendarData;
   
-  const isDeleting = deleteEventMutation.isPending || deleteAnnouncementMutation.isPending || deleteScheduleMutation.isPending;
+  const isDeleting = deleteEventMutation.isPending || deleteAnnouncementMutation.isPending;
 
   return (
     <DndProvider backend={HTML5Backend}>
@@ -390,9 +308,6 @@ export default function AdminCalendar() {
             actions={
               <>
                 <AdminCalendarActions
-                  onAddEvent={() => handleAddEventClick('09:00')}
-                  onAnnouncement={() => setModal('createAnnouncement', true)}
-                  onAddSchedule={() => setModal('schedule', true)}
                   onOpenDrawer={() => setIsDrawerOpen(true)}
                 />
               </>
@@ -424,10 +339,6 @@ export default function AdminCalendar() {
                 onAddAnnouncement={() => setModal('createAnnouncement', true)}
                 onEditAnnouncement={handleEditAnnouncement}
                 onDeleteAnnouncement={handleDeleteAnnouncement}
-                schedules={schedules}
-                onAddSchedule={() => setModal('schedule', true)}
-                onEditSchedule={handleEditSchedule}
-                onDeleteSchedule={handleDeleteSchedule}
               />
             )}
           </div>
@@ -487,12 +398,11 @@ export default function AdminCalendar() {
         {/* Edit Event Modal */}
         <EditEventModal
           show={modals.editEvent}
-          event={selectedItem}
+          event={selectedItem as CalendarEvent}
           onClose={() => {
             setModal('editEvent', false);
             setSelectedItem(null, null);
           }}
-          // @ts-ignore
           onUpdate={handleUpdateEvent}
           hours={HOURS_LIST}
           departments={departments}
@@ -501,36 +411,22 @@ export default function AdminCalendar() {
         {/* Edit Announcement Modal */}
         <EditAnnouncementModal
           show={modals.editAnnouncement}
-          announcement={selectedItem}
+          announcement={selectedItem as Announcement}
           onClose={() => {
             setModal('editAnnouncement', false);
             setSelectedItem(null, null);
           }}
-          // @ts-ignore
-          onUpdate={handleUpdateAnnouncement}
+          onUpdate={(id, data) => handleUpdateAnnouncement(id, data)}
           hours={HOURS_LIST}
         />
 
-        <ScheduleModal
-          show={modals.schedule}
-          onClose={() => setModal('schedule', false)}
-          onCreate={(data) => createScheduleMutation.mutate(data)}
-          hours={HOURS_LIST}
-        />
 
-        <EditScheduleModal 
-          show={modals.editSchedule}
-          schedule={selectedItem}
-          onClose={() => setModal('editSchedule', false)}
-          onUpdate={handleUpdateSchedule}
-          hours={HOURS_LIST}
-        />
 
         {/* Confirm Delete Modal */}
         <ConfirmDeleteModal
           show={modals.deleteConfirm}
           title="Confirm Deletion"
-          message={`Are you sure you want to delete "${selectedItem?.title || 'this item'}"? This action cannot be undone.`}
+          message={`Are you sure you want to delete "${(selectedItem as CalendarItem)?.title || 'this item'}"? This action cannot be undone.`}
           onConfirm={handleConfirmDelete}
           onCancel={() => {
             setModal('deleteConfirm', false);

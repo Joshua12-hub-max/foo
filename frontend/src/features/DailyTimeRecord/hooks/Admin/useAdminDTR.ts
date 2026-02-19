@@ -105,7 +105,13 @@ export const useAdminDTR = () => {
               hoursWorked: hoursWorked,
               status: item.status || 'Absent',
               duties: item.duties || 'No Schedule',
-              remarks: '-'
+              remarks: '-',
+              // Correction fields
+              correctionId: item.correction_id ?? null,
+              correctionStatus: item.correction_status ?? null,
+              correctionReason: item.correction_reason ?? null,
+              correctionTimeIn: item.correction_time_in ?? null,
+              correctionTimeOut: item.correction_time_out ?? null,
             };
         });
 

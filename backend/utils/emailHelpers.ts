@@ -1,6 +1,33 @@
 import { eq } from 'drizzle-orm';
 import { recruitmentEmailTemplates } from '../db/schema.js';
 import type { MySql2Database } from 'drizzle-orm/mysql2';
+import nodemailer from 'nodemailer';
+
+/**
+ * Send an email notification
+ */
+export const sendEmailNotification = async (to: string, subject: string, html: string, attachments: object[] = []): Promise<void> => {
+  console.log(`Attempting to send email to: ${to}`);
+  console.log(`Subject: ${subject}`);
+  // console.log(`Using EMAIL_USER: ${process.env.EMAIL_USER}`); // security risk to log
+  try { 
+    const transporter = nodemailer.createTransport({ 
+      service: 'gmail', 
+      auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS } 
+    }); 
+    const result = await transporter.sendMail({ 
+      from: process.env.EMAIL_USER || '"HR Recruitment" <no-reply@company.com>', 
+      to, 
+      subject, 
+      html, 
+      attachments 
+    }); 
+    console.log(`Email sent successfully to ${to}: ${subject}`);
+    console.log(`Message ID: ${result.messageId}`);
+  } catch (error) { 
+    console.error('Failed to send email:', error); 
+  }
+};
 
 /**
  * Email template row from database (matching Drizzle schema)

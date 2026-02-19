@@ -8,7 +8,9 @@ export const LoginSchema = z.object({
 export const RegisterSchema = z.object({
   employee_id: z.string().min(1, "Employee ID is required"),
   email: z.string().email("Invalid email format"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
+  password: z.string()
+    .min(8, "Password must be at least 8 characters")
+    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, "Password must contain at least one uppercase letter, one lowercase letter, and one number"),
   role: z.enum(["admin", "hr", "employee"]).default("employee"),
 });
 

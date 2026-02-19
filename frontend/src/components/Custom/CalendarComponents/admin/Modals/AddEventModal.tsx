@@ -2,14 +2,16 @@ import { useRef, useEffect, useState } from 'react';
 import { X, ChevronDown } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { eventSchema, EventSchema } from '@/schemas/calendar';
+import { eventSchema } from '@/schemas/calendar';
+import { CalendarEvent, EventFormData } from '@/types/calendar';
+import { Department } from '@/types/org';
 
 interface AddEventModalProps {
   show: boolean;
   onClose: () => void;
-  onAdd: (data: EventSchema) => void;
+  onAdd: (data: EventFormData) => void;
   hours: string[];
-  departments?: any[];
+  departments?: Department[];
 }
 
 export default function AddEventModal({ show, onClose, onAdd, hours = [], departments = [] }: AddEventModalProps) {
@@ -25,7 +27,7 @@ export default function AddEventModal({ show, onClose, onAdd, hours = [], depart
     watch,
     reset,
     formState: { errors, isSubmitting }
-  } = useForm<EventSchema>({
+  } = useForm<EventFormData>({
     resolver: zodResolver(eventSchema),
     defaultValues: {
       title: '',
@@ -34,7 +36,8 @@ export default function AddEventModal({ show, onClose, onAdd, hours = [], depart
       end_date: '',
       time: '9:00 AM',
       description: '',
-      department: ''
+      department: '',
+      recurring_pattern: 'none'
     }
   });
 
@@ -46,8 +49,6 @@ export default function AddEventModal({ show, onClose, onAdd, hours = [], depart
   useEffect(() => {
     if (watchedStartDate) {
        setValue('date', watchedStartDate);
-       // Optional: Set default end date to start date if empty?
-       // setValue('end_date', watchedStartDate); // Only if we want that behavior
     }
   }, [watchedStartDate, setValue]);
 
@@ -61,7 +62,8 @@ export default function AddEventModal({ show, onClose, onAdd, hours = [], depart
             end_date: new Date().toISOString().split('T')[0],
             time: '9:00 AM',
             description: '',
-            department: ''
+            department: '',
+            recurring_pattern: 'none'
         });
     }
   }, [show, reset]);
@@ -80,7 +82,7 @@ export default function AddEventModal({ show, onClose, onAdd, hours = [], depart
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const onSubmit = (data: EventSchema) => {
+  const onSubmit = (data: EventFormData) => {
     onAdd(data);
   };
 
@@ -218,14 +220,14 @@ export default function AddEventModal({ show, onClose, onAdd, hours = [], depart
                             key={index}
                             type="button"
                             onClick={() => {
-                              setValue('department', dept.name || dept);
+                              setValue('department', typeof dept === 'string' ? dept : (dept as Department).name || '');
                               setIsDeptOpen(false);
                             }}
                             className={`w-full px-4 py-2 text-left hover:bg-gray-50 transition-colors text-sm ${
-                              watchedDepartment === (dept.name || dept) ? 'bg-gray-50 text-gray-900 font-medium' : 'text-gray-600'
+                              watchedDepartment === (typeof dept === 'string' ? dept : (dept as Department).name) ? 'bg-gray-50 text-gray-900 font-medium' : 'text-gray-600'
                             }`}
                           >
-                            {dept.name || dept}
+                            {typeof dept === 'string' ? dept : (dept as Department).name}
                           </button>
                         ))}
                       </div>

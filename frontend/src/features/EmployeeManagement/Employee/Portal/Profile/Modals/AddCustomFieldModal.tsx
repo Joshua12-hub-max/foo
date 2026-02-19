@@ -50,9 +50,10 @@ const AddCustomFieldModal: React.FC<AddCustomFieldModalProps> = ({
       if (onSuccess) onSuccess();
       onClose();
     },
-    onError: (error: any) => {
-      console.error('Failed to add custom field', error);
-      showToast(error.message || 'Failed to add custom field', 'error');
+    onError: (error: unknown) => {
+      const err = error as { response?: { data?: { message?: string } }; message?: string };
+      console.error('Failed to add custom field', err);
+      showToast(err.response?.data?.message || err.message || 'Failed to add custom field', 'error');
     }
   });
 

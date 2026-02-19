@@ -18,6 +18,7 @@ export const CREDIT_TYPES = [
   'Paternity Leave',
   'Solo Parent Leave',
   'Study Leave',
+  'Adoption Leave',
 ] as const;
 
 export type CreditType = typeof CREDIT_TYPES[number];
@@ -36,6 +37,7 @@ export const LEAVE_TYPES = [
   'Rehabilitation Leave',
   'Special Leave Benefits for Women',
   'Wellness Leave',
+  'Adoption Leave',
 ] as const;
 
 export type LeaveType = typeof LEAVE_TYPES[number];
@@ -328,17 +330,124 @@ export const LEAVE_TO_CREDIT_MAP: Partial<Record<LeaveType, CreditType | null>> 
   'VAWC Leave': null,
   'Rehabilitation Leave': null,
   'Special Leave Benefits for Women': null,
+  'Adoption Leave': 'Adoption Leave',
 };
 
 /**
  * VL must be filed at least 5 days in advance (in working days)
  */
-export const VL_ADVANCE_FILING_DAYS = 0;
+/**
+ * VL must be filed at least 5 days in advance (in working days/calendar days)
+ */
+export const VL_ADVANCE_FILING_DAYS = 5;
 
 /**
- * SL > 5 days requires Medical Certificate
+ * SL >= 5 days requires Medical Certificate (Screenshot says "5 days or more")
  */
 export const SL_MEDICAL_CERT_THRESHOLD = 5;
+
+/**
+ * Paternity Leave: 7 days per year (RA 8187)
+ */
+export const PATERNITY_LEAVE_DAYS = 7;
+
+/**
+ * VAWC Leave: 10 days per year (RA 9262)
+ */
+export const VAWC_LEAVE_DAYS = 10;
+
+/**
+ * Special Leave Benefits for Women: 2 months (approx 60 days) per year (RA 9710)
+ */
+export const SPECIAL_LEAVE_WOMEN_DAYS = 60;
+
+/**
+ * Maternity Leave: 105 days (RA 11210)
+ * Note: This is per instance, but typically checked as max duration per request
+ */
+export const MATERNITY_LEAVE_DAYS = 105;
+
+/**
+ * Adoption Leave: 60 days (RA 8552)
+ */
+export const ADOPTION_LEAVE_DAYS = 60;
+
+/**
+ * Special Emergency Leave: 5 days per year
+ */
+export const SPECIAL_EMERGENCY_LEAVE_DAYS = 5;
+
+/**
+ * Forced Leave: 5 days per year
+ */
+export const FORCED_LEAVE_DAYS = 5;
+
+// ============================================================================
+// CSC Leave Credit Earnings Table (Rule XVI)
+// ============================================================================
+
+export const CSC_CREDIT_EARNINGS_TABLE = [
+  { daysPresent: 30.00, earned: 1.250 },
+  { daysPresent: 29.50, earned: 1.229 },
+  { daysPresent: 29.00, earned: 1.208 },
+  { daysPresent: 28.50, earned: 1.188 },
+  { daysPresent: 28.00, earned: 1.167 },
+  { daysPresent: 27.50, earned: 1.146 },
+  { daysPresent: 27.00, earned: 1.125 },
+  { daysPresent: 26.50, earned: 1.104 },
+  { daysPresent: 26.00, earned: 1.083 },
+  { daysPresent: 25.50, earned: 1.063 },
+  { daysPresent: 25.00, earned: 1.042 },
+  { daysPresent: 24.50, earned: 1.021 },
+  { daysPresent: 24.00, earned: 1.000 },
+  { daysPresent: 23.50, earned: 0.979 },
+  { daysPresent: 23.00, earned: 0.958 },
+  { daysPresent: 22.50, earned: 0.938 },
+  { daysPresent: 22.00, earned: 0.917 },
+  { daysPresent: 21.50, earned: 0.896 },
+  { daysPresent: 21.00, earned: 0.875 },
+  { daysPresent: 20.50, earned: 0.854 },
+  { daysPresent: 20.00, earned: 0.833 },
+  { daysPresent: 19.50, earned: 0.813 },
+  { daysPresent: 19.00, earned: 0.792 },
+  { daysPresent: 18.50, earned: 0.771 },
+  { daysPresent: 18.00, earned: 0.750 },
+  { daysPresent: 17.50, earned: 0.729 },
+  { daysPresent: 17.00, earned: 0.708 },
+  { daysPresent: 16.50, earned: 0.687 },
+  { daysPresent: 16.00, earned: 0.667 },
+  { daysPresent: 15.50, earned: 0.646 },
+  { daysPresent: 15.00, earned: 0.625 },
+  { daysPresent: 14.50, earned: 0.604 },
+  { daysPresent: 14.00, earned: 0.583 },
+  { daysPresent: 13.50, earned: 0.562 },
+  { daysPresent: 13.00, earned: 0.542 },
+  { daysPresent: 12.50, earned: 0.521 },
+  { daysPresent: 12.00, earned: 0.500 },
+  { daysPresent: 11.50, earned: 0.479 },
+  { daysPresent: 11.00, earned: 0.458 },
+  { daysPresent: 10.50, earned: 0.438 },
+  { daysPresent: 10.00, earned: 0.417 },
+  { daysPresent: 9.50, earned: 0.396 },
+  { daysPresent: 9.00, earned: 0.375 },
+  { daysPresent: 8.50, earned: 0.354 },
+  { daysPresent: 8.00, earned: 0.333 },
+  { daysPresent: 7.50, earned: 0.312 },
+  { daysPresent: 7.00, earned: 0.292 },
+  { daysPresent: 6.50, earned: 0.271 },
+  { daysPresent: 6.00, earned: 0.250 },
+  { daysPresent: 5.50, earned: 0.229 },
+  { daysPresent: 5.00, earned: 0.208 },
+  { daysPresent: 4.50, earned: 0.187 },
+  { daysPresent: 4.00, earned: 0.167 },
+  { daysPresent: 3.50, earned: 0.146 },
+  { daysPresent: 3.00, earned: 0.125 },
+  { daysPresent: 2.50, earned: 0.104 },
+  { daysPresent: 2.00, earned: 0.083 },
+  { daysPresent: 1.50, earned: 0.062 },
+  { daysPresent: 1.00, earned: 0.042 },
+  { daysPresent: 0.00, earned: 0.000 }
+];
 
 // ============================================================================
 // Utility Types

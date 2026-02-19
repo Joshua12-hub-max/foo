@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate, Outlet, useLocation } from "react-router-dom";
 
 import { useAuth } from "@hooks/useAuth";
-import { LayoutDashboard, CheckSquare, Clock, FileText, User as UserIcon, Calendar as CalendarIcon, Settings, Award } from 'lucide-react';
+import { LayoutDashboard, CheckSquare, Clock, FileText, User as UserIcon, Calendar as CalendarIcon, Settings, Award, type LucideIcon } from 'lucide-react';
 import Sidebar from "@components/Custom/DashboardEmployeeComponents/Sidebar";
 import Header from "@components/Custom/DashboardEmployeeComponents/Header";
 import WelcomeBanner from "@components/Custom/DashboardEmployeeComponents/WelcomeBanner";
@@ -17,8 +17,11 @@ import LoadingScreen from "@components/Custom/DashboardEmployeeComponents/Loadin
 import { attendanceApi } from "@api/attendanceApi";
 import { leaveApi } from "@api/leaveApi"; 
 import ClockInWidget from "@components/Custom/DashboardEmployeeComponents/ClockInWidget";
+import EventListCard from "@components/Custom/DashboardEmployeeComponents/EventListCard";
 
 import { User } from '@/types';
+import { CalendarEvent } from "@/types/calendar";
+import { eventApi } from "@api/eventApi";
 
 // Local interface removed, using global User type
 // interface User { ... }
@@ -33,7 +36,7 @@ interface StatCardData {
 
 interface NavItem {
   name: string;
-  icon?: React.ComponentType<{ className?: string }>;
+  icon: LucideIcon; // Lucide icon component type
   action?: string;
   children?: { name: string; action: string }[];
 }
@@ -49,6 +52,8 @@ interface Stats {
 interface DashboardHomeProps {
   user: User;
   statsCards: StatCardData[];
+  events: CalendarEvent[];
+  eventsLoading: boolean;
   handleStatCardClick: (stat: StatCardData) => void;
   activeTable: string | null;
   setActiveTable: (table: string | null) => void;
@@ -56,13 +61,26 @@ interface DashboardHomeProps {
 }
 
 // Dashboard Home Component for Employee
-const EmployeeDashboardHome: React.FC<DashboardHomeProps> = ({ user, statsCards, handleStatCardClick, activeTable, setActiveTable, refreshStats }) => (
+const EmployeeDashboardHome: React.FC<DashboardHomeProps> = ({ user, statsCards, events, eventsLoading, handleStatCardClick, activeTable, setActiveTable, refreshStats }) => (
   <>
     <WelcomeBanner userName={user?.name} />
     <ClockInWidget onStatusChange={refreshStats} />
     <div className="relative mb-8">
       <div className="grid grid-cols-5 gap-4">
-        {statsCards.map((stat) => (
+        {statsCards.slice(0, 3).map((stat) => (
+          <StatCard
+            key={stat.title}
+            title={stat.title}
+            data={stat.data}
+            value={stat.value}
+            onClick={stat.clickable !== false ? () => handleStatCardClick(stat) : undefined}
+          />
+        ))}
+        
+        {/* Replace index 3 (Reports Filed) with EventListCard */}
+        <EventListCard events={events} isLoading={eventsLoading} />
+
+        {statsCards.slice(3).map((stat) => (
           <StatCard
             key={stat.title}
             title={stat.title}
@@ -98,6 +116,8 @@ export default function EmployeeDashboard(): React.ReactElement {
     reports: 0,
     leaves: 0
   });
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [eventsLoading, setEventsLoading] = useState(true);
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -114,7 +134,7 @@ export default function EmployeeDashboard(): React.ReactElement {
           const startDate = firstDay.toISOString().split('T')[0];
           const endDate = lastDay.toISOString().split('T')[0];
           
-          const empId = String(user.employeeId || user.employee_id || user.id);
+          const empId = String(user.employeeId || user.id);
 
           const logsRes = await attendanceApi.getLogs({ 
               startDate, 
@@ -147,6 +167,19 @@ export default function EmployeeDashboard(): React.ReactElement {
               reports: 0, 
               leaves: leaveBalance
           });
+
+          // Fetch Events
+          try {
+            setEventsLoading(true);
+            const eventsRes = await eventApi.getEvents();
+            if (eventsRes.data && eventsRes.data.events) {
+              setEvents(eventsRes.data.events);
+            }
+          } catch (err) {
+            console.error("Error fetching dashboard events:", err);
+          } finally {
+            setEventsLoading(false);
+          }
       } catch (error) {
           console.error("Error fetching dashboard stats:", error);
       }
@@ -199,7 +232,6 @@ export default function EmployeeDashboard(): React.ReactElement {
       "Absent Days": "Absent",
       "Late Arrivals": "Late",
       "Leave Balance": "Leave",
-      "Reports Filed": "Reports",
     };
     setActiveTable(tableMap[stat.title] || null);
   }, []);
@@ -208,7 +240,6 @@ export default function EmployeeDashboard(): React.ReactElement {
     { title: "Present Days", value: stats.present, action: "present", clickable: false },
     { title: "Absent Days", value: stats.absent, action: "absent", clickable: false },
     { title: "Late Arrivals", value: stats.late, action: "late", clickable: false },
-    { title: "Reports Filed", data: Array(stats.reports).fill({}), action: "reports" },
     { title: "Leave Balance", value: stats.leaves, action: "leave", clickable: false },
   ], [stats]);
 
@@ -218,7 +249,7 @@ export default function EmployeeDashboard(): React.ReactElement {
 
   return (
     <div className="flex h-screen bg-[#F8F9FA] text-gray-800">
-      <Sidebar isOpen={sidebarOpen} navItems={NAV_ITEMS as unknown as { name: string; icon: React.ComponentType<{ className?: string }>; path?: string; action?: string; children?: { name: string; action: string }[] }[]} onLogout={handleLogout} onSectionChange={handleNavigate} />
+      <Sidebar isOpen={sidebarOpen} navItems={NAV_ITEMS} onLogout={handleLogout} onSectionChange={handleNavigate} />
       <div className="flex-1 flex flex-col">
         <Header 
             onToggleSidebar={toggleSidebar} 
@@ -248,6 +279,8 @@ export default function EmployeeDashboard(): React.ReactElement {
             <EmployeeDashboardHome
               user={user}
               statsCards={statCards}
+              events={events}
+              eventsLoading={eventsLoading}
               handleStatCardClick={handleStatCardClick}
               activeTable={activeTable}
               setActiveTable={setActiveTable}

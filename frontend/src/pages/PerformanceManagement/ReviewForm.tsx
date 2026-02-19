@@ -151,7 +151,7 @@ const ReviewForm = () => {
           <div className="mt-8">
             <MetricsSummary 
               metrics={formData.employee_metrics} 
-              employeeInfo={(formData as unknown as Record<string, unknown>).employee_info as Record<string, unknown> | undefined}
+              employeeInfo={formData.employee_info}
             />
           </div>
         )}

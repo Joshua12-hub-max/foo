@@ -2,12 +2,13 @@ import React, { useState } from 'react';
 import { FileSpreadsheet, FileText, Loader2 } from 'lucide-react';
 import { useToastStore } from '@/stores';
 import { exportAttendanceToExcel } from './utils/attendanceExcelExport';
-import { AttendanceRecord } from '../../hooks/Admin/useAttendanceData';
+import { AttendanceRecord } from '@/types';
 import { attendanceApi } from '@/api/attendanceApi';
 import { employeeApi } from '@/api/employeeApi';
 import { AttendanceQueryValues } from '@/schemas/attendanceSchema';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { Employee } from '@/types';
 
 interface AttendanceExportProps {
   data: AttendanceRecord[];
@@ -53,10 +54,8 @@ const formatTime = (timeStr: string): string => {
  */
 const getEmployeeName = (record: AttendanceRecord): string => {
   if (record.name) return record.name;
-  if (record.first_name || record.last_name) {
-    return `${record.first_name || ''} ${record.last_name || ''}`.trim();
-  }
-  return `Employee #${record.employee_id}`;
+  if (record.employee_name) return record.employee_name;
+  return `Employee #${record.employeeId || record.employee_id}`;
 };
 
 /**
@@ -112,16 +111,34 @@ const AttendanceExport: React.FC<AttendanceExportProps> = ({ data, title, dateRa
         // 4. Cross-Reference: Day x Employee
         // Create a lookup map for existing logs: "YYYY-MM-DD_EmployeeID" -> Record
         const logMap = new Map<string, AttendanceRecord>();
-        logs.forEach(log => {
+        
+        // Transform api logs (DTRApiResponse) to AttendanceRecord
+        logs.forEach((log: any) => {
              // Handle potential date format issues
             const logDate = new Date(log.date).toISOString().split('T')[0];
             const key = `${logDate}_${log.employee_id}`;
-            logMap.set(key, log);
+            
+            const record: AttendanceRecord = {
+              id: log.id,
+              employeeId: log.employee_id,
+              employee_id: log.employee_id,
+              name: log.employee_name || `${log.first_name || ''} ${log.last_name || ''}`.trim(),
+              date: logDate,
+              timeIn: log.time_in,
+              timeOut: log.time_out,
+              lateMinutes: log.late_minutes,
+              undertimeMinutes: log.undertime_minutes,
+              status: log.status,
+              department: log.department,
+              duties: log.duties
+            };
+            
+            logMap.set(key, record);
         });
 
         // Loop through every day (descending to match typical view)
         dateArray.reverse().forEach(dateStr => {
-            employees.forEach((emp: any) => {
+            employees.forEach((emp: Employee) => {
                 const empId = emp.employee_id || emp.id;
                 const key = `${dateStr}_${empId}`;
                 const existingLog = logMap.get(key);
@@ -134,21 +151,22 @@ const AttendanceExport: React.FC<AttendanceExportProps> = ({ data, title, dateRa
                     const isFuture = new Date(dateStr) > new Date();
 
                     if (!isFuture) {
-                         const firstName = emp.first_name || emp.firstName || '';
-                         const lastName = emp.last_name || emp.lastName || '';
+                         const firstName = emp.first_name || '';
+                         const lastName = emp.last_name || '';
                          
                          fullRecords.push({
                             id: `gen-${Math.random()}`, // Temp ID
                             employee_id: empId,
+                            employeeId: String(empId),
                             name: `${firstName} ${lastName}`.trim() || `Employee ${empId}`,
                             date: dateStr,
-                            time_in: '-',
-                            time_out: '-',
+                            timeIn: '-',
+                            timeOut: '-',
                             status: 'Absent', // Default to absent if no log
-                            late: 0,
-                            undertime: 0,
+                            lateMinutes: 0,
+                            undertimeMinutes: 0,
                             department: emp.department || 'N/A'
-                        } as unknown as AttendanceRecord);
+                        });
                     }
                 }
             });
@@ -223,10 +241,10 @@ const AttendanceExport: React.FC<AttendanceExportProps> = ({ data, title, dateRa
       const tableData = exportData.map(record => [
         getEmployeeName(record),
         formatDate(record.date),
-        formatTime(record.time_in),
-        formatTime(record.time_out),
-        formatMinutes(record.late),
-        formatMinutes(record.undertime),
+        formatTime(record.timeIn || ''),
+        formatTime(record.timeOut || ''),
+        formatMinutes(record.lateMinutes || 0),
+        formatMinutes(record.undertimeMinutes || 0),
         record.status || '-'
       ]);
 

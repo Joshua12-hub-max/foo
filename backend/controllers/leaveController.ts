@@ -26,6 +26,7 @@ import {
 } from '../db/schema.js';
 import { eq, and, between, ne, or, sql, desc, lt, lte, gte } from 'drizzle-orm';
 import { createNotification, notifyAdmins } from './notificationController.js';
+import { accrueCreditsForMonth } from '../services/leaveAccrualService.js';
 import type { AuthenticatedRequest } from '../types/index.js';
 import {
   type CreditType,
@@ -38,7 +39,14 @@ import {
   CROSS_CHARGE_MAP,
   LEAVE_TO_CREDIT_MAP,
   VL_ADVANCE_FILING_DAYS,
-  WORKING_DAYS_PER_MONTH
+  WORKING_DAYS_PER_MONTH,
+  PATERNITY_LEAVE_DAYS,
+  VAWC_LEAVE_DAYS,
+  SPECIAL_LEAVE_WOMEN_DAYS,
+  MATERNITY_LEAVE_DAYS,
+  ADOPTION_LEAVE_DAYS,
+  SPECIAL_EMERGENCY_LEAVE_DAYS,
+  FORCED_LEAVE_DAYS,
 } from '../types/leave.types.js';
 import {
   applyLeaveSchema,
@@ -388,22 +396,21 @@ export const applyLeave = async (req: Request, res: Response): Promise<void> => 
       return;
     }
 
-    // Validate VL advance filing (5 days before)
-    if (leaveType === 'Vacation Leave' && !validateVLAdvanceFiling(startDate)) {
+    // Validate VL/Forced/Adoption advance filing (5 days before)
+    if ((leaveType === 'Vacation Leave' || leaveType === 'Forced Leave' || leaveType === 'Adoption Leave') && !validateVLAdvanceFiling(startDate)) {
       res.status(400).json({
-        message: `Vacation Leave must be filed at least ${VL_ADVANCE_FILING_DAYS} days in advance per CSC rules.`,
+        message: `${leaveType} must be filed at least ${VL_ADVANCE_FILING_DAYS} days in advance per CSC rules.`,
       });
       return;
     }
 
-    // Check SL medical certificate requirement
+    // Check SL medical certificate requirement (>= 5 days)
     const needsMedCert = leaveType === 'Sick Leave' && requiresMedicalCertificate(workingDays);
 
     // 3. Enforce Special Privilege Leave limit (3 working days per year)
     if (leaveType === 'Special Privilege Leave') {
       const year = new Date(startDate).getFullYear();
       
-      // Get total days used this year
       const splResult = await db.select({ 
         totalDays: sql<string>`sum(${leaveApplications.workingDays})` 
       })
@@ -425,6 +432,87 @@ export const applyLeave = async (req: Request, res: Response): Promise<void> => 
         });
         return;
       }
+    }
+
+    // 3.1 Enforce Forced Leave limit (5 working days per year)
+    if (leaveType === 'Forced Leave') {
+      const year = new Date(startDate).getFullYear();
+      
+      const flResult = await db.select({ 
+        totalDays: sql<string>`sum(${leaveApplications.workingDays})` 
+      })
+      .from(leaveApplications)
+      .where(and(
+         eq(leaveApplications.employeeId, String(employeeId)),
+         eq(leaveApplications.leaveType, 'Forced Leave'),
+         sql`YEAR(${leaveApplications.startDate}) = ${year}`,
+         ne(leaveApplications.status, 'Rejected'),
+         ne(leaveApplications.status, 'Cancelled')
+      ));
+      
+      const usedDays = Number(flResult[0]?.totalDays || 0);
+      const newTotal = usedDays + workingDays;
+
+      if (newTotal > FORCED_LEAVE_DAYS) {
+        res.status(400).json({
+          message: `You have reached the annual limit of ${FORCED_LEAVE_DAYS} Forced Leave days. (Used: ${usedDays}, Requested: ${workingDays}, Remaining: ${Math.max(0, FORCED_LEAVE_DAYS - usedDays)})`,
+        });
+        return;
+      }
+    }
+
+    // 3.2 Enforce Special Emergency Leave limit (5 working days per year)
+    if (leaveType === 'Special Emergency Leave') {
+      const year = new Date(startDate).getFullYear();
+      
+      const selResult = await db.select({ 
+        totalDays: sql<string>`sum(${leaveApplications.workingDays})` 
+      })
+      .from(leaveApplications)
+      .where(and(
+         eq(leaveApplications.employeeId, String(employeeId)),
+         eq(leaveApplications.leaveType, 'Special Emergency Leave'),
+         sql`YEAR(${leaveApplications.startDate}) = ${year}`,
+         ne(leaveApplications.status, 'Rejected'),
+         ne(leaveApplications.status, 'Cancelled')
+      ));
+      
+      const usedDays = Number(selResult[0]?.totalDays || 0);
+      const newTotal = usedDays + workingDays;
+
+      if (newTotal > SPECIAL_EMERGENCY_LEAVE_DAYS) {
+        res.status(400).json({
+          message: `You have reached the annual limit of ${SPECIAL_EMERGENCY_LEAVE_DAYS} Special Emergency Leave days. (Used: ${usedDays}, Requested: ${workingDays}, Remaining: ${Math.max(0, SPECIAL_EMERGENCY_LEAVE_DAYS - usedDays)})`,
+        });
+        return;
+      }
+    }
+
+    // 3.3 Enforce Adoption Leave limit (60 working days per year)
+    if (leaveType === 'Adoption Leave') {
+        const year = new Date(startDate).getFullYear();
+        
+        const adpResult = await db.select({ 
+          totalDays: sql<string>`sum(${leaveApplications.workingDays})` 
+        })
+        .from(leaveApplications)
+        .where(and(
+           eq(leaveApplications.employeeId, String(employeeId)),
+           eq(leaveApplications.leaveType, 'Adoption Leave'),
+           sql`YEAR(${leaveApplications.startDate}) = ${year}`,
+           ne(leaveApplications.status, 'Rejected'),
+           ne(leaveApplications.status, 'Cancelled')
+        ));
+        
+        const usedDays = Number(adpResult[0]?.totalDays || 0);
+        const newTotal = usedDays + workingDays;
+  
+        if (newTotal > ADOPTION_LEAVE_DAYS) {
+          res.status(400).json({
+            message: `You have reached the annual limit of ${ADOPTION_LEAVE_DAYS} Adoption Leave days. (Used: ${usedDays}, Requested: ${workingDays}, Remaining: ${Math.max(0, ADOPTION_LEAVE_DAYS - usedDays)})`,
+          });
+          return;
+        }
     }
 
     // 4. Enforce Solo Parent Leave limit (7 working days per year)
@@ -454,9 +542,105 @@ export const applyLeave = async (req: Request, res: Response): Promise<void> => 
       }
     }
 
+    // 5. Enforce Paternity Leave limit (7 days per year)
+    if (leaveType === 'Paternity Leave') {
+      const year = new Date(startDate).getFullYear();
+      
+      const patResult = await db.select({ 
+        totalDays: sql<string>`sum(${leaveApplications.workingDays})` 
+      })
+      .from(leaveApplications)
+      .where(and(
+        eq(leaveApplications.employeeId, String(employeeId)),
+        eq(leaveApplications.leaveType, 'Paternity Leave'),
+        sql`YEAR(${leaveApplications.startDate}) = ${year}`,
+        ne(leaveApplications.status, 'Rejected'),
+        ne(leaveApplications.status, 'Cancelled')
+      ));
+      
+      const usedDays = Number(patResult[0]?.totalDays || 0);
+      const newTotal = usedDays + workingDays;
+
+      if (newTotal > PATERNITY_LEAVE_DAYS) {
+        res.status(400).json({
+          message: `You have reached the annual limit of ${PATERNITY_LEAVE_DAYS} Paternity Leave days. (Used: ${usedDays}, Requested: ${workingDays}, Remaining: ${Math.max(0, PATERNITY_LEAVE_DAYS - usedDays)})`,
+        });
+        return;
+      }
+    }
+
+    // 6. Enforce VAWC Leave limit (10 days per year)
+    if (leaveType === 'VAWC Leave') {
+      const year = new Date(startDate).getFullYear();
+      
+      const vawcResult = await db.select({ 
+        totalDays: sql<string>`sum(${leaveApplications.workingDays})` 
+      })
+      .from(leaveApplications)
+      .where(and(
+        eq(leaveApplications.employeeId, String(employeeId)),
+        eq(leaveApplications.leaveType, 'VAWC Leave'),
+        sql`YEAR(${leaveApplications.startDate}) = ${year}`,
+        ne(leaveApplications.status, 'Rejected'),
+        ne(leaveApplications.status, 'Cancelled')
+      ));
+      
+      const usedDays = Number(vawcResult[0]?.totalDays || 0);
+      const newTotal = usedDays + workingDays;
+
+      if (newTotal > VAWC_LEAVE_DAYS) {
+        res.status(400).json({
+          message: `You have reached the annual limit of ${VAWC_LEAVE_DAYS} VAWC Leave days. (Used: ${usedDays}, Requested: ${workingDays}, Remaining: ${Math.max(0, VAWC_LEAVE_DAYS - usedDays)})`,
+        });
+        return;
+      }
+    }
+
+    // 7. Enforce Special Leave Benefits for Women limit (60 days per year/instance typically per year/surgery)
+    if (leaveType === 'Special Leave Benefits for Women') {
+      const year = new Date(startDate).getFullYear();
+      
+      const womenResult = await db.select({ 
+        totalDays: sql<string>`sum(${leaveApplications.workingDays})` 
+      })
+      .from(leaveApplications)
+      .where(and(
+        eq(leaveApplications.employeeId, String(employeeId)),
+        eq(leaveApplications.leaveType, 'Special Leave Benefits for Women'),
+        sql`YEAR(${leaveApplications.startDate}) = ${year}`,
+        ne(leaveApplications.status, 'Rejected'),
+        ne(leaveApplications.status, 'Cancelled')
+      ));
+      
+      const usedDays = Number(womenResult[0]?.totalDays || 0);
+      const newTotal = usedDays + workingDays;
+
+      if (newTotal > SPECIAL_LEAVE_WOMEN_DAYS) {
+        res.status(400).json({
+          message: `You have reached the annual limit of ${SPECIAL_LEAVE_WOMEN_DAYS} days for Special Leave Benefits for Women. (Used: ${usedDays}, Requested: ${workingDays})`,
+        });
+        return;
+      }
+    }
+
+    // 8. Enforce Maternity Leave Duration (Max 105 days per request)
+    if (leaveType === 'Maternity Leave') {
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        const diffTime = Math.abs(end.getTime() - start.getTime());
+        const calendarDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // Inclusive
+
+        if (calendarDays > MATERNITY_LEAVE_DAYS) {
+             res.status(400).json({
+                message: `Maternity Leave cannot exceed ${MATERNITY_LEAVE_DAYS} calendar days. You requested ${calendarDays} days.`,
+            });
+            return;
+        }
+    }
+
     // Validate attachment
     if (needsMedCert && !req.file) {
-      res.status(400).json({ message: 'Medical certificate is required for Sick Leave exceeding 5 days.' });
+      res.status(400).json({ message: 'Medical certificate is required for Sick Leave of 5 days or more.' });
       return;
     }
 
@@ -1024,7 +1208,7 @@ export const getMyCredits = async (req: Request, res: Response): Promise<void> =
     const credits = await db.select({
       id: leaveBalances.id,
       employeeId: leaveBalances.employeeId,
-      creditType: leaveBalances.creditType,
+      credit_type: leaveBalances.creditType,
       balance: leaveBalances.balance,
       year: leaveBalances.year,
       updatedAt: leaveBalances.updatedAt,
@@ -1057,7 +1241,7 @@ export const getEmployeeCredits = async (req: Request, res: Response): Promise<v
     const credits = await db.select({
       id: leaveBalances.id,
       employeeId: leaveBalances.employeeId,
-      creditType: leaveBalances.creditType,
+      credit_type: leaveBalances.creditType,
       balance: leaveBalances.balance,
       year: leaveBalances.year,
       updatedAt: leaveBalances.updatedAt,
@@ -1268,55 +1452,14 @@ export const accrueMonthlyCredits = async (req: Request, res: Response): Promise
 
     const { month, year, employeeIds } = validation.data;
 
-    // Get employees to accrue (regular employees only)
-    const conditions = [ne(authentication.role, 'admin')];
-    if (employeeIds && employeeIds.length > 0) {
-      conditions.push(sql`${authentication.employeeId} IN (${employeeIds})`);
-    }
-
-    const employees = await db.select({
-      employeeId: authentication.employeeId
-    })
-    .from(authentication)
-    .where(and(...conditions));
-
-    let accruedCount = 0;
-    const remarks = `Monthly accrual for ${month}/${year}`;
-
-    for (const employee of employees) {
-      // Accrue VL
-      await updateBalance(
-        employee.employeeId,
-        'Vacation Leave',
-        MONTHLY_VL_ACCRUAL,
-        'ACCRUAL',
-        undefined,
-        'manual',
-        remarks,
-        adminId
-      );
-
-      // Accrue SL
-      await updateBalance(
-        employee.employeeId,
-        'Sick Leave',
-        MONTHLY_SL_ACCRUAL,
-        'ACCRUAL',
-        undefined,
-        'manual',
-        remarks,
-        adminId
-      );
-
-      accruedCount++;
-    }
+    // Call service to accrue credits
+    const result = await accrueCreditsForMonth(month, year, employeeIds);
 
     res.status(200).json({
-      message: `Monthly credits accrued for ${accruedCount} employees`,
+      message: `Monthly credits accrued for ${result.processedCount} employees`,
       month,
       year,
-      vlAccrued: MONTHLY_VL_ACCRUAL,
-      slAccrued: MONTHLY_SL_ACCRUAL,
+      details: result
     });
   } catch (err) {
     console.error('accrueMonthlyCredits error:', err);

@@ -17,6 +17,11 @@ export interface DTRRecord {
   remarks: string;
   duties?: string;
   createdAt?: string;
+  correctionId?: number | null;
+  correctionStatus?: string | null;
+  correctionReason?: string | null;
+  correctionTimeIn?: string | null;
+  correctionTimeOut?: string | null;
 }
 
 export interface DTRFilters {
@@ -48,7 +53,12 @@ export const mapDTRData = (apiData: any[]): DTRRecord[] => {
     status: item.status || 'Unknown',
     remarks: item.remarks || '-',
     duties: item.duties || 'N/A',
-    createdAt: item.created_at
+    createdAt: item.created_at,
+    correctionId: item.correction_id,
+    correctionStatus: item.correction_status,
+    correctionReason: item.correction_reason,
+    correctionTimeIn: item.correction_time_in,
+    correctionTimeOut: item.correction_time_out
   }));
 };
 

@@ -9,7 +9,7 @@ interface ReviewItem {
   created_at?: string;
   reviewer_name?: string;
   final_score?: number | string;
-  [key: string]: any;
+  [key: string]: string | number | null | undefined;
 }
 
 interface ReviewListProps {

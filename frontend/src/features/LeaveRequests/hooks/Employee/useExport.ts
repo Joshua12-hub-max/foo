@@ -22,9 +22,9 @@ export const useExport = () => {
       await new Promise(resolve => setTimeout(resolve, 100));
       const formattedData = formatLeaveRequestsForCSV(data);
       await exportToCSV(formattedData);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Export to CSV failed:', err);
-      setExportError(err.message || 'CSV export failed');
+      setExportError(err instanceof Error ? err.message : 'CSV export failed');
     } finally {
       setIsExporting(false);
       setExportType('');
@@ -45,9 +45,9 @@ export const useExport = () => {
       await new Promise(resolve => setTimeout(resolve, 100));
       const formattedData = formatLeaveRequestsForPDF(data);
       exportToPDF(formattedData);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Export to PDF failed:', err);
-      setExportError(err.message || 'PDF export failed');
+      setExportError(err instanceof Error ? err.message : 'PDF export failed');
     } finally {
       setIsExporting(false);
       setExportType('');

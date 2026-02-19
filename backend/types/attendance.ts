@@ -23,6 +23,11 @@ export interface DTRApiResponse {
   employee_name: string;
   department: string;
   duties: string;
+  correction_id?: number | null;
+  correction_status?: string | null;
+  correction_reason?: string | null;
+  correction_time_in?: string | null;
+  correction_time_out?: string | null;
 }
 
 export interface AttendanceLogApiResponse {

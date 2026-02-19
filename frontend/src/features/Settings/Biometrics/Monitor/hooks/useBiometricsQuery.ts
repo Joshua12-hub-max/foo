@@ -1,6 +1,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { attendanceApi } from '@/api/attendanceApi';
+import { DTRApiResponse } from '@/types/attendance';
 
 // Keys for caching
 // Keys for caching
@@ -19,17 +20,17 @@ export const useBiometricsLogs = (enabled = true) => {
 
       if (res.data && res.data.success) {
         // Map AttendanceRecord to MonitorLogData format
-        return res.data.data.map((record: any) => ({
+        return res.data.data.map((record: DTRApiResponse) => ({
              id: record.id,
-             employeeId: record.employee_id || record.employeeId,
+             employeeId: record.employee_id,
              date: record.date,
-             timeIn: record.time_in || record.timeIn || null,
-             timeOut: record.time_out || record.timeOut || null,
+             timeIn: record.time_in,
+             timeOut: record.time_out,
              status: record.status || 'Present',
-             updatedAt: record.updated_at || record.updatedAt || new Date().toISOString(),
-             firstName: record.first_name || record.employee_name?.split(' ')[0] || '',
-             lastName: record.last_name || record.employee_name?.split(' ').slice(1).join(' ') || '',
-             name: record.employee_name || record.name || 'Unknown',
+             updatedAt: record.updated_at || new Date().toISOString(),
+             firstName: record.employee_name?.split(' ')[0] || '',
+             lastName: record.employee_name?.split(' ').slice(1).join(' ') || '',
+             name: record.employee_name || 'Unknown',
              department: record.department || 'N/A',
              duties: record.duties || 'No Schedule'
         }));

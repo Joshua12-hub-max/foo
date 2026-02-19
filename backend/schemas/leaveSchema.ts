@@ -22,6 +22,7 @@ const LEAVE_TYPE_VALUES = [
   'Rehabilitation Leave',
   'Special Leave Benefits for Women',
   'Wellness Leave',
+  'Adoption Leave',
 ] as const;
 
 const CREDIT_TYPE_VALUES = [
@@ -33,6 +34,7 @@ const CREDIT_TYPE_VALUES = [
   'Paternity Leave',
   'Solo Parent Leave',
   'Study Leave',
+  'Adoption Leave',
 ] as const;
 
 const MONETIZATION_PURPOSE_VALUES = ['Health', 'Medical', 'Financial Emergency'] as const;
@@ -233,8 +235,8 @@ export const validateVLAdvanceFiling = (startDate: string): boolean => {
 };
 
 /**
- * Check if SL requires medical certificate (more than 5 days)
+ * Check if SL requires medical certificate (5 days or more)
  */
 export const requiresMedicalCertificate = (workingDays: number): boolean => {
-  return workingDays > SL_MEDICAL_CERT_THRESHOLD;
+  return workingDays >= SL_MEDICAL_CERT_THRESHOLD;
 };

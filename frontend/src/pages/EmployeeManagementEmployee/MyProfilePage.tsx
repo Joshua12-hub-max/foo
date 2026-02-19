@@ -20,7 +20,7 @@ const MyProfilePage: React.FC<MyProfilePageProps> = ({ hideHeader = false }) => 
           className="flex items-center gap-2 text-gray-500 hover:text-gray-800 transition-colors mb-6"
         >
           <ArrowLeft size={20} />
-          <span>Back to My Department</span>
+          <span>Back to Department</span>
         </button>
       )}
 

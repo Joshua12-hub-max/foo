@@ -202,7 +202,7 @@ export const qualificationStandardsApi = {
     }
   },
 
-  create: async (data: Omit<QualificationStandard, 'id' | 'created_at' | 'updated_at'>): Promise<AxiosResponse> => {
+  create: async (data: Omit<QualificationStandard, 'id' | 'createdAt' | 'updatedAt'>): Promise<AxiosResponse> => {
     try {
       return await api.post('/qualification-standards', data);
     } catch (error) {
@@ -426,10 +426,31 @@ export const complianceApi = {
   reports: reportsApi,
   getEmployeeMetrics: async (employeeId: string, params?: { year?: number; month?: number }): Promise<AxiosResponse<{ 
     success: boolean; 
-    employee: any; 
+    employee: {
+      id: number;
+      firstName: string;
+      lastName: string;
+      dutyType: string;
+      dailyTargetHours: number;
+      salaryBasis: string;
+      employeeId: string;
+    }; 
     metrics: {
-      attendance: any;
-      violations: any[];
+      attendance: {
+        totalLateMinutes: number;
+        totalUndertimeMinutes: number;
+        totalLateCount: number;
+        totalUndertimeCount: number;
+        totalAbsenceCount: number;
+        daysEquivalent: string;
+      };
+      violations: Array<{
+        id: number;
+        violationDate: string;
+        status: string;
+        penalty: string | null;
+        policyTitle: string;
+      }>;
     }
   }>> => {
     try {

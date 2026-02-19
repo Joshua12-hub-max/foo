@@ -11,8 +11,12 @@ let isPolling = false;
  * Convert biometric employee_id (int: 1, 2, 3...) to system format (EMP-001, EMP-002, EMP-003...).
  * Capacity: up to EMP-200.
  */
+/**
+ * Convert biometric employee_id (int) to system format.
+ * NOW CHANGED: Returns raw ID string (e.g. "1") instead of "EMP-001".
+ */
 const convertBioIdToEmployeeId = (bioId: number): string => {
-  return `EMP-${String(bioId).padStart(3, '0')}`;
+  return String(bioId); // Return raw ID, formatting happens on frontend
 };
 
 /**

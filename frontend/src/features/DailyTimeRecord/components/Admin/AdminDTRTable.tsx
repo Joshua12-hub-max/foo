@@ -1,5 +1,5 @@
 import React from "react";
-import { Edit } from "lucide-react";
+import { Edit, FileText } from "lucide-react";
 import { TABLE_COLUMNS, TableColumn } from "../../Constants/adminDTR.constant";
 import { DTRRecord, DTRFilters } from "../../Utils/adminDTRUtils";
 
@@ -9,6 +9,7 @@ interface AdminDTRTableProps {
   debouncedSearchQuery: string;
   filters: DTRFilters;
   onEdit: (item: DTRRecord) => void;
+  onReview?: (item: DTRRecord) => void;
 }
 
 // Helper to get alignment class
@@ -79,7 +80,8 @@ export const AdminDTRTable: React.FC<AdminDTRTableProps> = ({
   getStatusBadge, 
   debouncedSearchQuery, 
   filters,
-  onEdit
+  onEdit,
+  onReview
 }) => {
   const hasActiveFilters = debouncedSearchQuery || Object.values(filters).some(v => v);
   
@@ -115,13 +117,24 @@ export const AdminDTRTable: React.FC<AdminDTRTableProps> = ({
                     </td>
                   ))}
                   <td className="px-6 py-4 text-sm text-gray-800 text-center whitespace-nowrap">
-                    <button
-                      onClick={() => onEdit(item)}
-                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
-                      title="Edit Record"
-                    >
-                      <Edit size={18} />
-                    </button>
+                    <div className="flex justify-center space-x-2">
+                      {item.correctionStatus === 'Pending' && (
+                        <button
+                          onClick={() => onReview && onReview(item)}
+                          className="p-2 text-orange-600 hover:bg-orange-50 rounded-full transition-colors"
+                          title="Review Correction Request"
+                        >
+                          <FileText size={18} />
+                        </button>
+                      )}
+                      <button
+                        onClick={() => onEdit(item)}
+                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
+                        title="Edit Record"
+                      >
+                        <Edit size={18} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))

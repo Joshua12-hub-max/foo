@@ -34,14 +34,24 @@ export const UpdateDTRSchema = z.object({
 export const RequestCorrectionSchema = z.object({
   body: z.object({
     date: z.string().min(1, 'Date is required'),
-    originalTimeIn: z.string().nullable().optional(),
-    originalTimeOut: z.string().nullable().optional(),
-    correctedTimeIn: z.string().nullable().optional(),
-    correctedTimeOut: z.string().nullable().optional(),
+    originalTimeIn: z.preprocess((val) => val === '' ? null : val, z.string().nullable().optional()),
+    originalTimeOut: z.preprocess((val) => val === '' ? null : val, z.string().nullable().optional()),
+    correctedTimeIn: z.preprocess((val) => val === '' ? null : val, z.string().nullable().optional()),
+    correctedTimeOut: z.preprocess((val) => val === '' ? null : val, z.string().nullable().optional()),
     reason: z.string().min(5, 'Reason must be at least 5 characters'),
+  }),
+});
+
+// ... existing exports
+export const UpdateCorrectionStatusSchema = z.object({
+  body: z.object({
+    ids: z.array(z.number()),
+    status: z.enum(['Approved', 'Rejected']),
+    rejectionReason: z.string().optional(),
   }),
 });
 
 export type GetDTRInput = z.infer<typeof GetDTRSchema>;
 export type UpdateDTRInput = z.infer<typeof UpdateDTRSchema>;
 export type RequestCorrectionInput = z.infer<typeof RequestCorrectionSchema>;
+export type UpdateCorrectionStatusInput = z.infer<typeof UpdateCorrectionStatusSchema>;

@@ -9,11 +9,23 @@ type UpdateUser = Partial<NewUser>;
 export class AuthService {
   static async findUserByIdentifier(identifier: string) {
     const lowerIdentifier = identifier.toLowerCase();
+    
+    // Normalize ID: remove 'emp-' prefix and leading zeros to match raw DB ID (e.g. "EMP-001" -> "1")
+    // This allows users to login with "EMP-001", "001", or "1"
+    const normalizedId = lowerIdentifier.replace(/^emp-/i, '').replace(/^0+/, '');
+    
+    const conditions = [
+      eq(sql`LOWER(${authentication.email})`, lowerIdentifier),
+      eq(sql`LOWER(${authentication.employeeId})`, lowerIdentifier)
+    ];
+
+    // If normalized ID looks like a number and matches the raw ID format
+    if (normalizedId !== lowerIdentifier && /^\d+$/.test(normalizedId)) {
+      conditions.push(eq(authentication.employeeId, normalizedId));
+    }
+
     return await db.query.authentication.findFirst({
-      where: or(
-        eq(sql`LOWER(${authentication.email})`, lowerIdentifier),
-        eq(sql`LOWER(${authentication.employeeId})`, lowerIdentifier)
-      )
+      where: or(...conditions)
     });
   }
 

@@ -1,9 +1,8 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Building2, Users, Mail, Briefcase, Calendar, Hash, ArrowRight } from 'lucide-react';
-import { useEmployeeDepartment } from '@features/EmployeeManagement/Employee/Portal/Department/useEmployeeDepartment';
-// @ts-ignore
-import { useAuth } from '@hooks/useAuth';
+import { useEmployeeDepartment, type Colleague } from '@features/EmployeeManagement/Employee/Portal/Department/useEmployeeDepartment';
+import { useAuth } from '@/hooks/useAuth';
 
 interface MyDepartmentPageProps {
   hideHeader?: boolean;
@@ -41,7 +40,7 @@ const MyDepartmentPage: React.FC<MyDepartmentPageProps> = ({ hideHeader = false 
   } = useEmployeeDepartment();
 
   // Find current user's record
-  const myRecord = colleagues.find((emp: EmployeeRecord) => String(emp.id) === String(user?.id) || emp.email === user?.email);
+  const myRecord = colleagues.find((emp: Colleague) => String(emp.id) === String(user?.id) || emp.email === user?.email);
 
   if (loading) {
     return (
@@ -80,7 +79,7 @@ const MyDepartmentPage: React.FC<MyDepartmentPageProps> = ({ hideHeader = false 
       {/* My Employment Record */}
       <div className="bg-white rounded-xl border border-gray-200">
         <div className="flex items-center justify-between p-5 border-b border-gray-100">
-          <h3 className="text-base font-bold text-gray-800">My Employment Record</h3>
+          <h3 className="text-base font-bold text-gray-800">Employment Record</h3>
           <button 
             onClick={() => navigate('/employee-dashboard/my-profile')}
             className="flex items-center gap-2 bg-white hover:bg-gray-50 text-gray-900 border border-gray-300 px-5 py-2.5 rounded-lg shadow-sm transition-all active:scale-95 text-sm font-bold"

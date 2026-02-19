@@ -52,9 +52,11 @@ const __dirname = path.dirname(__filename);
 const app = express();
 
 import { initCronJobs } from './jobs/employmentChecks.js';
+import { initLeaveAccrualJob } from './jobs/leaveAccrual.js';
 
 // Initialize Employment Cron Jobs
 initCronJobs();
+initLeaveAccrualJob();
 
 // Initialize Attendance Log Polling (syncs external biometric scanner data)
 startPollingService(5000);

@@ -94,7 +94,7 @@ export const generatePDFContent = (data: EmployeeDTRRecord[], headers: string[],
     <html>
     <head>
       <meta charset="UTF-8">
-      <title>My Daily Time Record Report</title>
+      <title>Daily Time Record Report</title>
       <style>
         body { font-family: Arial, sans-serif; margin: 20px; }
         h1 { color: #333; font-size: 24px; margin-bottom: 10px; }
@@ -110,7 +110,7 @@ export const generatePDFContent = (data: EmployeeDTRRecord[], headers: string[],
       </style>
     </head>
     <body>
-      <h1>My Daily Time Record Report</h1>
+      <h1>Daily Time Record Report</h1>
       <div class="meta">Employee: ${employeeInfo?.name || 'N/A'} (${employeeInfo?.id || 'N/A'})</div>
       <div class="meta">Department: ${employeeInfo?.department || 'N/A'}</div>
       <div class="meta">Generated on: ${today}</div>
@@ -123,11 +123,13 @@ export const generatePDFContent = (data: EmployeeDTRRecord[], headers: string[],
         <tbody>
           ${data.map(row => `
             <tr>
+              <td>${row.status}</td>
+              <td>${employeeInfo?.id || '-'}</td>
+              <td>${employeeInfo?.department || '-'}</td>
               <td>${row.date}</td>
               <td>${row.timeIn}</td>
               <td>${row.timeOut}</td>
               <td>${row.hoursWorked}</td>
-              <td>${row.status}</td>
               <td>${row.remarks}</td>
             </tr>
           `).join('')}
@@ -144,17 +146,30 @@ export const generatePDFContent = (data: EmployeeDTRRecord[], headers: string[],
 // Native CSV export to remove dependency on ExcelJS
 export const exportToCSV = async (data: EmployeeDTRRecord[], _headers: string[], employeeInfo: EmployeeInfo | null, filename: string): Promise<void> => {
   try {
-    const headers = ['Date', 'Time In', 'Time Out', 'Hours Worked', 'Status', 'Remarks'];
-    const keys = ['date', 'timeIn', 'timeOut', 'hoursWorked', 'status', 'remarks'];
+    const headers = ['Status', 'Employee ID', 'Department', 'Date', 'Time In', 'Time Out', 'Hours Worked', 'Remarks'];
+    const keys = ['status', 'date', 'timeIn', 'timeOut', 'hoursWorked', 'remarks'];
 
     const csvRows = [headers.join(',')];
 
     data.forEach(row => {
+      // Prepend Employee Info
+      const empId = `"${String(employeeInfo?.id || '').replace(/"/g, '""')}"`;
+      const dept = `"${String(employeeInfo?.department || '').replace(/"/g, '""')}"`;
+      
       const rowData = keys.map(key => {
         const val = String((row as unknown as Record<string, string>)[key] || '');
         return `"${String(val).replace(/"/g, '""')}"`;
       });
-      csvRows.push(rowData.join(','));
+      // order: status (keys[0]), empId, dept, date (keys[1]), etc...
+      // Wait, let's map it manually to be safe
+      const status = `"${String(row.status || '').replace(/"/g, '""')}"`;
+      const date = `"${String(row.date || '').replace(/"/g, '""')}"`;
+      const timeIn = `"${String(row.timeIn || '').replace(/"/g, '""')}"`;
+      const timeOut = `"${String(row.timeOut || '').replace(/"/g, '""')}"`;
+      const hours = `"${String(row.hoursWorked || '').replace(/"/g, '""')}"`;
+      const remarks = `"${String(row.remarks || '').replace(/"/g, '""')}"`;
+
+      csvRows.push([status, empId, dept, date, timeIn, timeOut, hours, remarks].join(','));
     });
 
     const csvContent = "data:text/csv;charset=utf-8," + csvRows.join('\n');

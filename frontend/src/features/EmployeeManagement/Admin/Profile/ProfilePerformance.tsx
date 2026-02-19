@@ -58,12 +58,17 @@ const ProfilePerformance: React.FC<ProfilePerformanceProps> = ({ profile }) => {
           fetchReviews() 
         ]);
 
-        if (goalsData && goalsData.success) setGoals(goalsData.goals);
+        if (goalsData && goalsData.success) {
+          setGoals(goalsData.goals as any);
+        }
         
         // Filter reviews for this employee
-        if (reviewsData.success) {
-          const employeeReviews = reviewsData.reviews.filter((r: Review) => r.employee_first === profile.first_name && r.employee_last === profile.last_name);
-          setReviews(employeeReviews);
+        if (reviewsData.success && reviewsData.data) {
+          const employeeReviews = reviewsData.data.reviews.filter((r: any) => 
+            (r.employee_first === profile.first_name || r.employee_first_name === profile.first_name) && 
+            (r.employee_last === profile.last_name || r.employee_last_name === profile.last_name)
+          );
+          setReviews(employeeReviews as any);
         }
       } catch (err) {
         // Error handled silently

@@ -1,25 +1,16 @@
 import React from 'react';
 import { CalendarDays, Clock, Edit, Trash2, X } from 'lucide-react';
-
-interface Event {
-  title: string;
-  isHoliday?: boolean;
-  isAnnouncement?: boolean;
-  time: string;
-  description?: string;
-  recurring_pattern?: string;
-  [key: string]: any;
-}
+import { CalendarEvent } from '@/types/calendar';
 
 interface EventDetailsModalProps {
-  event: Event | null;
+  event: CalendarEvent | null;
   onClose: () => void;
   hours: { [key: string]: string };
   month: string;
   day: number | string;
   dayName: string;
-  onEdit?: (event: Event) => void;
-  onDelete?: (event: Event) => void;
+  onEdit?: (event: CalendarEvent) => void;
+  onDelete?: (event: CalendarEvent) => void;
   isAdmin?: boolean;
 }
 
@@ -57,7 +48,7 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({ event, onClose, h
                 <Clock className="w-4 h-4" />
             </div>
             <span className="text-sm font-medium">
-              {event.isHoliday ? 'All Day' : (hours[event.time] || event.time)}
+              {event.isHoliday ? 'All Day' : (event.time ? (hours[event.time as string] || event.time) : 'N/A')}
             </span>
           </div>
           <div className="flex items-center gap-3 text-gray-600">
@@ -82,14 +73,14 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({ event, onClose, h
           {canModify && (
             <>
               <button
-                onClick={() => onEdit(event)}
+                onClick={() => onEdit?.(event)}
                 className="flex-1 px-4 py-2.5 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors flex items-center justify-center gap-2 text-sm font-medium shadow-lg shadow-gray-900/20"
               >
                 <Edit className="w-4 h-4" />
                 Edit
               </button>
               <button
-                onClick={() => onDelete(event)}
+                onClick={() => onDelete?.(event)}
                 className="flex-1 px-4 py-2.5 bg-white border border-red-200 text-red-600 rounded-lg hover:bg-red-50 transition-colors flex items-center justify-center gap-2 text-sm font-medium"
               >
                 <Trash2 className="w-4 h-4" />
