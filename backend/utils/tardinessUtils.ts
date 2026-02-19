@@ -53,7 +53,7 @@ export const updateTardinessSummary = async (
       totalLateCount: Number(stats.totalLateCount) || 0,
       totalUndertimeCount: Number(stats.totalUndertimeCount) || 0,
       totalAbsenceCount: Number(stats.totalAbsenceCount) || 0,
-      daysEquivalent: daysEquivalent,
+      // daysEquivalent is generated, do not insert
       processedAt: currentManilaDateTime()
     }).onDuplicateKeyUpdate({
       set: {
@@ -62,7 +62,7 @@ export const updateTardinessSummary = async (
         totalLateCount: stats.totalLateCount || 0,
         totalUndertimeCount: stats.totalUndertimeCount || 0,
         totalAbsenceCount: stats.totalAbsenceCount || 0,
-        daysEquivalent: daysEquivalent,
+        // daysEquivalent is generated, do not update
         processedAt: currentManilaDateTime()
       }
     });

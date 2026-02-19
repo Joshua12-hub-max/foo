@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { Plus, Search, Filter, FileText, CheckCircle, Clock, AlertCircle, ChevronRight } from 'lucide-react';
+import { Plus, Search, Filter, ChevronRight } from 'lucide-react';
 import { fetchReviews, fetchReviewCycles } from '@api';
 import { useNavigate } from 'react-router-dom';
+import { InternalReview, ReviewCycle } from '@/types/performance';
 
 const PerformanceReviews = () => {
   const navigate = useNavigate();
-  const [reviews, setReviews] = useState([]);
-  const [cycles, setCycles] = useState([]);
+  const [reviews, setReviews] = useState<InternalReview[]>([]);
+  const [cycles, setCycles] = useState<ReviewCycle[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCycle, setFilterCycle] = useState('All');
@@ -17,12 +17,12 @@ const PerformanceReviews = () => {
     try {
       setLoading(true);
       const [reviewsData, cyclesData] = await Promise.all([
-        fetchReviews(),
-        fetchReviewCycles()
+        fetchReviews() as Promise<{ success: boolean; data?: { reviews: InternalReview[] } }>,
+        fetchReviewCycles() as Promise<{ success: boolean; data?: { cycles: ReviewCycle[] } }>
       ]);
 
-      if (reviewsData.success) setReviews(reviewsData.reviews);
-      if (cyclesData.success) setCycles(cyclesData.cycles);
+      if (reviewsData.success && reviewsData.data) setReviews(reviewsData.data.reviews);
+      if (cyclesData.success && cyclesData.data) setCycles(cyclesData.data.cycles);
     } catch (err) {
       console.error("Failed to load reviews data", err);
     } finally {
@@ -34,7 +34,7 @@ const PerformanceReviews = () => {
     loadData();
   }, []);
 
-  const getStatusColor = (status) => {
+  const getStatusColor = (status: string) => {
     switch (status) {
       case 'Completed': return 'bg-green-100 text-green-700';
       case 'In Progress': return 'bg-blue-100 text-blue-700';
@@ -44,12 +44,12 @@ const PerformanceReviews = () => {
     }
   };
 
-  const filteredReviews = reviews.filter(review => {
+  const filteredReviews = reviews.filter((review) => {
     const matchesSearch = 
-      review.employee_first.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      review.employee_last.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      review.reviewer_first.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      review.reviewer_last.toLowerCase().includes(searchTerm.toLowerCase());
+      (review.employee_first_name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (review.employee_last_name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (review.reviewer_first_name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (review.reviewer_last_name || "").toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesCycle = filterCycle === 'All' || review.review_cycle_id === parseInt(filterCycle);
     const matchesStatus = filterStatus === 'All' || review.status === filterStatus;
@@ -136,17 +136,17 @@ const PerformanceReviews = () => {
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-bold text-xs">
-                        {review.employee_first[0]}{review.employee_last[0]}
+                        {(review.employee_first_name || "?")[0]}{(review.employee_last_name || "?")[0]}
                       </div>
                       <div>
-                        <p className="font-medium text-gray-800">{review.employee_first} {review.employee_last}</p>
-                        <p className="text-xs text-gray-500">{review.employee_role || 'Employee'}</p>
+                        <p className="font-medium text-gray-800">{review.employee_first_name} {review.employee_last_name}</p>
+                        <p className="text-xs text-gray-500">{review.employee_job_title || 'Employee'}</p>
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{review.cycle_title}</td>
+                  <td className="px-6 py-4 text-sm text-gray-600">{review.review_cycle_id}</td>
                   <td className="px-6 py-4 text-sm text-gray-600">
-                    {review.reviewer_first} {review.reviewer_last}
+                    {review.reviewer_first_name} {review.reviewer_last_name}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="font-bold text-gray-800">{review.total_score != null && review.total_score !== '' ? `${((parseFloat(review.total_score) / 5) * 100).toFixed(0)}%` : '-'}</span>

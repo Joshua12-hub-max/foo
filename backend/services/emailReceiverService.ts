@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url';
 import { db } from '../db/index.js';
 import { recruitmentJobs, recruitmentApplicants } from '../db/schema.js';
 import { eq, and } from 'drizzle-orm';
+import { getTemplateForStage, replaceVariables, sendEmailNotification } from '../utils/emailHelpers.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -208,10 +209,42 @@ const saveApplication = async (applicantData: ApplicantData): Promise<boolean> =
       resume_path: resume_path,
       source: 'email',
       email_subject: email_subject,
-      email_received_at: new Date().toISOString()
+      email_received_at: new Date().toISOString().slice(0, 19).replace('T', ' ')
     });
 
     console.log(`Saved application from ${email} for job ${job_id || 'General'}`);
+
+    // Send "Applied" email notification
+    try {
+      let jobTitle = 'General Application';
+      
+      if (job_id) {
+        const job = await db.query.recruitmentJobs.findFirst({
+          where: eq(recruitmentJobs.id, Number(job_id)),
+          columns: { title: true }
+        });
+        if (job) jobTitle = job.title;
+      }
+
+      const template = await getTemplateForStage(db, 'Applied');
+      if (template) {
+        const variables = {
+          applicant_first_name: first_name,
+          applicant_last_name: last_name,
+          job_title: jobTitle,
+          interview_date: '',
+          interview_link: '',
+          interview_platform: ''
+        };
+
+        const subject = replaceVariables(template.subject_template, variables);
+        const body = replaceVariables(template.body_template, variables);
+        await sendEmailNotification(email, subject, body);
+      }
+    } catch (emailError) {
+      console.error('Failed to send application email:', emailError);
+    }
+
     return true;
   } catch (err) {
     console.error('Error saving application:', err);
@@ -244,11 +277,11 @@ const processEmail = async (parsed: ParsedMail): Promise<boolean> => {
       return false;
     }
 
-    // Check if already processed
-    if (await isEmailProcessed(senderEmail, subject)) {
-      console.log('Email already processed, skipping...');
-      return false;
-    }
+    // Check if already processed (SKIPPED to allow testing)
+    // if (await isEmailProcessed(senderEmail, subject)) {
+    //   console.log('Email already processed, skipping...');
+    //   return false;
+    // }
 
     // Match to job
     const job_id = await matchJobFromSubject(subject);

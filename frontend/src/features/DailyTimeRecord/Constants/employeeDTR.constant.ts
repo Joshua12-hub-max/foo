@@ -1,11 +1,13 @@
 export const ITEMS_PER_PAGE = 10;
 
 export const TABLE_HEADERS = [
+  'Status',
+  'Employee ID',
+  'Department',
   'Date',
   'Time In',
   'Time Out',
-  'Hours Worked',
-  'Status'
+  'Hours Worked'
 ];
 
 export const EXPORT_HEADERS = TABLE_HEADERS;

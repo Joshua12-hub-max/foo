@@ -94,7 +94,7 @@ export const generatePDFContent = (data: EmployeeDTRRecord[], headers: string[],
     <html>
     <head>
       <meta charset="UTF-8">
-      <title>My Daily Time Record Report</title>
+      <title>Daily Time Record Report</title>
       <style>
         body { font-family: Arial, sans-serif; margin: 20px; }
         h1 { color: #333; font-size: 24px; margin-bottom: 10px; }
@@ -110,7 +110,7 @@ export const generatePDFContent = (data: EmployeeDTRRecord[], headers: string[],
       </style>
     </head>
     <body>
-      <h1>My Daily Time Record Report</h1>
+      <h1>Daily Time Record Report</h1>
       <div class="meta">Employee: ${employeeInfo?.name || 'N/A'} (${employeeInfo?.id || 'N/A'})</div>
       <div class="meta">Department: ${employeeInfo?.department || 'N/A'}</div>
       <div class="meta">Generated on: ${today}</div>

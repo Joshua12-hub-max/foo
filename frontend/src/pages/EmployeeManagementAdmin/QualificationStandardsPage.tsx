@@ -141,13 +141,13 @@ export const QualificationStandardsPage: React.FC<QualificationStandardsPageProp
         </div>
         <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-4 border border-purple-200">
           <div className="text-2xl font-bold text-purple-900">
-            {standards ? Math.round(standards.reduce((sum, s) => sum + s.salaryGrade, 0) / standards.length) : 0}
+            {standards && standards.length > 0 ? Math.round(standards.reduce((sum, s) => sum + s.salaryGrade, 0) / standards.length) : 0}
           </div>
           <div className="text-xs text-purple-700 font-medium mt-1">Avg Salary Grade</div>
         </div>
         <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-lg p-4 border border-orange-200">
           <div className="text-2xl font-bold text-orange-900">
-            {standards ? Math.round(standards.reduce((sum, s) => sum + s.experienceYears, 0) / standards.length) : 0}
+            {standards && standards.length > 0 ? Math.round(standards.reduce((sum, s) => sum + s.experienceYears, 0) / standards.length) : 0}
           </div>
           <div className="text-xs text-orange-700 font-medium mt-1">Avg Experience (yrs)</div>
         </div>

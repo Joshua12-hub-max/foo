@@ -8,9 +8,10 @@ import {
   leaveApplications, 
   recruitmentApplicants, 
   recruitmentJobs,
-  bioEnrolledUsers 
+  bioEnrolledUsers,
+  dtrCorrections
 } from "../db/schema.js";
-import { eq, and, sql, desc, between, ne, or, like } from "drizzle-orm";
+import { eq, and, sql, desc, between, ne, or, like, gte, lte } from "drizzle-orm";
 import type { AuthenticatedRequest } from "../types/index.js";
 import {
   GetLogsSchema,
@@ -159,10 +160,24 @@ export const getLogs = async (req: Request, res: Response): Promise<void> => {
       updatedAt: dailyTimeRecords.updatedAt,
       employee_name: sql<string>`CONCAT(${authentication.firstName}, ' ', ${authentication.lastName})`,
       department: authentication.department,
-      duties: sql<string>`(SELECT schedule_title FROM schedules WHERE employee_id = ${dailyTimeRecords.employeeId} ORDER BY updated_at DESC LIMIT 1)`
+      duties: sql<string>`(SELECT schedule_title FROM schedules WHERE employee_id = ${dailyTimeRecords.employeeId} ORDER BY updated_at DESC LIMIT 1)`,
+      // Correction info
+      correction_id: dtrCorrections.id,
+      correction_status: dtrCorrections.status,
+      correction_reason: dtrCorrections.reason,
+      correction_time_in: dtrCorrections.correctedTimeIn,
+      correction_time_out: dtrCorrections.correctedTimeOut,
     })
     .from(dailyTimeRecords)
     .leftJoin(authentication, eq(dailyTimeRecords.employeeId, authentication.employeeId))
+    .leftJoin(
+      dtrCorrections,
+      and(
+        eq(dtrCorrections.employeeId, dailyTimeRecords.employeeId),
+        eq(dtrCorrections.dateTime, dailyTimeRecords.date),
+        eq(dtrCorrections.status, 'Pending')
+      )
+    )
     .where(whereClause)
     .orderBy(desc(dailyTimeRecords.date))
     .limit(limit)
@@ -191,7 +206,12 @@ export const getLogs = async (req: Request, res: Response): Promise<void> => {
       updated_at: log.updatedAt ? new Date(log.updatedAt).toISOString() : null,
       employee_name: log.employee_name || "Unknown Employee",
       department: log.department || "N/A",
-      duties: log.duties || 'No Schedule'
+      duties: log.duties || 'No Schedule',
+      correction_id: log.correction_id ?? null,
+      correction_status: log.correction_status ?? null,
+      correction_reason: log.correction_reason ?? null,
+      correction_time_in: log.correction_time_in ? formatToManilaDateTime(log.correction_time_in) : null,
+      correction_time_out: log.correction_time_out ? formatToManilaDateTime(log.correction_time_out) : null,
     }));
 
     res.status(200).json({
@@ -386,6 +406,7 @@ export const getDashboardStats = async (_req: Request, res: Response): Promise<v
     const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
     const dayName = days[now.getDay()];
 
+    // 1. Get All Registered Employees (for Absent checking)
     const allEmployees = await db.select({
       employeeId: authentication.employeeId,
       firstName: authentication.firstName,
@@ -405,20 +426,30 @@ export const getDashboardStats = async (_req: Request, res: Response): Promise<v
     .where(ne(authentication.role, 'admin'))
     .orderBy(desc(authentication.dateHired));
 
+    // 2. Get DTR Records (LEFT JOIN to include those without Auth profile)
+    // We also join BioEnrolledUsers to get names for unregistered people
     const dtrRecords = await db.select({
       employeeId: dailyTimeRecords.employeeId,
       status: dailyTimeRecords.status,
       timeIn: dailyTimeRecords.timeIn,
       timeOut: dailyTimeRecords.timeOut,
       lateMinutes: dailyTimeRecords.lateMinutes,
+      // Auth Details
       firstName: authentication.firstName,
       lastName: authentication.lastName,
-      department: authentication.department
+      department: authentication.department,
+      // Bio Details (Fallback)
+      bioFullName: bioEnrolledUsers.fullName,
+      bioDepartment: bioEnrolledUsers.department
     })
     .from(dailyTimeRecords)
-    .innerJoin(authentication, eq(dailyTimeRecords.employeeId, authentication.employeeId))
+    .leftJoin(authentication, eq(dailyTimeRecords.employeeId, authentication.employeeId))
+    // Join Bio Users: Try to match ID (Bio uses int, Auth uses string/int mix, we cast for join)
+    // Note: Drizzle SQL template for complex join condition
+    .leftJoin(bioEnrolledUsers, sql`${dailyTimeRecords.employeeId} = CAST(${bioEnrolledUsers.employeeId} AS CHAR)`)
     .where(eq(dailyTimeRecords.date, todayStr));
 
+    // 3. Get Approved Leaves
     const leaves = await db.select({
       employeeId: leaveApplications.employeeId,
       firstName: authentication.firstName,
@@ -451,9 +482,7 @@ export const getDashboardStats = async (_req: Request, res: Response): Promise<v
     .where(eq(recruitmentApplicants.stage, 'Hired'))
     .orderBy(desc(recruitmentApplicants.hired_date), desc(recruitmentApplicants.created_at));
 
-    const dtrMap = new Map(dtrRecords.map((r) => [r.employeeId, r]));
-    const onLeaveEmployeeIds = new Set(leaves.map((l) => l.employeeId));
-
+    // Data Structures for Processing
     interface StatusRecord {
       id: string;
       name: string;
@@ -472,44 +501,69 @@ export const getDashboardStats = async (_req: Request, res: Response): Promise<v
     const lateList: StatusRecord[] = [];
     const absentList: StatusRecord[] = [];
 
+    // Helper to get name
+    const getName = (first: string | null, last: string | null, bioName: string | null) => {
+        if (first && last) return `${first} ${last}`;
+        if (bioName) return bioName;
+        return "Unknown Employee";
+    };
+
+    const getDept = (authDept: string | null, bioDept: string | null) => {
+        return authDept || bioDept || "N/A";
+    };
+
+    // Track processed IDs to avoid duplicates between DTR loop and Auth loop
+    const processedIds = new Set<string>();
+    const onLeaveEmployeeIds = new Set(leaves.map((l) => l.employeeId));
+
+    // A. Process DTRs (Present/Late) - Includes Unregistered
+    dtrRecords.forEach(record => {
+        processedIds.add(record.employeeId);
+        if (onLeaveEmployeeIds.has(record.employeeId)) return; // Don't double count if acceptable
+
+        const name = getName(record.firstName, record.lastName, record.bioFullName);
+        const dept = getDept(record.department, record.bioDepartment);
+
+        const statusItem: StatusRecord = {
+          id: record.employeeId,
+          name,
+          department: dept,
+          status: record.status || "Present",
+          timeIn: formatTime(record.timeIn),
+          timeOut: formatTime(record.timeOut),
+          date: todayStr,
+          minutesLate: record.lateMinutes || 0,
+        };
+
+        if (record.status === 'Late') {
+            lateList.push(statusItem);
+            presentList.push(statusItem);
+        } else if (record.status === 'Present' || record.status === 'Undertime' || record.status === 'Late/Undertime') {
+             // Treat all clocked-in as present for the dashboard list
+            presentList.push(statusItem);
+        }
+    });
+
+    // B. Process Absent Employees (From Auth List)
     allEmployees.forEach((emp) => {
       const employeeId = emp.employeeId;
-      const name = `${emp.firstName} ${emp.lastName}`;
-
+      
+      // If already processed via DTR or is on leave, skip
+      if (processedIds.has(employeeId)) return;
       if (onLeaveEmployeeIds.has(employeeId)) return;
 
-      const dtr = dtrMap.get(employeeId);
+      const name = `${emp.firstName} ${emp.lastName}`;
 
-      if (dtr) {
-        const record: StatusRecord = {
+      // If they have a schedule but no DTR, they are absent
+      if (emp.startTime) {
+        absentList.push({
           id: employeeId,
           name,
           department: emp.department || "-",
-          status: dtr.status || "Present",
-          timeIn: formatTime(dtr.timeIn),
-          timeOut: formatTime(dtr.timeOut),
+          status: "Absent",
+          reason: "No clock-in recorded",
           date: todayStr,
-          minutesLate: dtr.lateMinutes || 0,
-        };
-
-        if (dtr.status === "Late") {
-          lateList.push(record);
-          presentList.push(record);
-        } else if (dtr.status === "Present") {
-          presentList.push(record);
-        }
-      } else {
-        // If they have a schedule but no DTR, they are absent
-        if (emp.startTime) {
-          absentList.push({
-            id: employeeId,
-            name,
-            department: emp.department || "-",
-            status: "Absent",
-            reason: "No clock-in recorded",
-            date: todayStr,
-          });
-        }
+        });
       }
     });
 

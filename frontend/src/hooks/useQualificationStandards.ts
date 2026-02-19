@@ -50,7 +50,7 @@ export const useCreateQualificationStandard = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: Omit<QualificationStandard, 'id' | 'created_at' | 'updated_at'>) => {
+    mutationFn: async (data: Omit<QualificationStandard, 'id' | 'createdAt' | 'updatedAt'>) => {
       const response = await qualificationStandardsApi.create(data);
       return response.data;
     },

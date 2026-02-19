@@ -57,7 +57,7 @@ export interface Employee {
   department_name?: string;
   department?: string; // Added for compatibility
   status?: string;
-  [key: string]: any; // Allow for other fields like timeIn, lateBy, etc.
+  [key: string]: string | number | boolean | null | undefined; // Allow for other fields like timeIn, lateBy, etc.
 }
 
 export interface EmployeeLists {
@@ -150,8 +150,8 @@ export default function HDashboard(): React.ReactElement {
   const [searchQuery, setSearchQuery] = useState<string>("");
   
   // Use Global UI Store for Sidebar Sync
-  const sidebarOpen = useUIStore((state: any) => state.sidebarOpen);
-  const setSidebarOpenStore = useUIStore((state: any) => state.setSidebarOpen);
+  const sidebarOpen = useUIStore((state) => state.sidebarOpen);
+  const setSidebarOpenStore = useUIStore((state) => state.setSidebarOpen);
   
   // Wrapper to match React.Dispatch<React.SetStateAction<boolean>> signature for Header
   const setSidebarOpen = useCallback((value: boolean | ((prev: boolean) => boolean)) => {
@@ -181,10 +181,11 @@ export default function HDashboard(): React.ReactElement {
   }), [dashboardData]);
 
   const employeeLists = useMemo(() => {
-    const processList = (list: any[]): Employee[] => (list || []).map(emp => ({
+    const processList = (list: Record<string, string | number | null | undefined>[]): Employee[] => (list || []).map(emp => ({
       ...emp,
-      name: emp.name || `${emp.first_name || ''} ${emp.last_name || ''}`.trim(),
-      department: emp.department || emp.department_name,
+      id: Number(emp.id) || 0,
+      name: String(emp.name || `${emp.first_name || ''} ${emp.last_name || ''}`.trim()),
+      department: String(emp.department || emp.department_name || ''),
     }));
 
     return {

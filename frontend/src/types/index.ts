@@ -13,11 +13,15 @@ export interface User {
   role: UserRole;
   department: string | null;
   employeeId: string;
+  employee_id?: string; // For compatibility
   avatarUrl: string | null;
   jobTitle: string | null;
   employmentStatus: EmploymentStatus | null;
+  employment_status?: EmploymentStatus | null; // For compatibility
   twoFactorEnabled: boolean;
   duties: string;
+  status?: string;
+  completion_status?: string;
 }
 
 export interface ApiResponse<T = unknown> {
@@ -52,7 +56,7 @@ export interface PaginationProps {
   setCurrentPage?: (page: number) => void;
 }
 
-// Redundant Employee interface removed. Use import { Employee } from './employee'
+// Redundant Employee interface removed.
 
 // Attendance Header
 export interface AttendanceHeader {
@@ -230,7 +234,7 @@ export interface ContactData {
 export interface CustomFieldData {
   section: string;
   field_name: string;
-  field_value: string;
+  field_value?: string | null;
 }
 
 export const INITIAL_APPLICATION_STATE: JobApplicationForm = {

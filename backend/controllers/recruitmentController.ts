@@ -5,7 +5,7 @@ import { eq, and, sql, desc, or, inArray, isNull } from 'drizzle-orm';
 import nodemailer from 'nodemailer';
 import PDFDocument from 'pdfkit';
 import * as ics from 'ics';
-import { getTemplateForStage, replaceVariables } from '../utils/emailHelpers.js';
+import { getTemplateForStage, replaceVariables, sendEmailNotification } from '../utils/emailHelpers.js';
 import { generateGoogleMeetLink } from '../services/meetingService.js';
 import { currentManilaDateTime } from '../utils/dateUtils.js';
 import type { AuthenticatedRequest, JobStatus, EmploymentType, ApplicantStage, ApplicantSource } from '../types/index.js';
@@ -19,28 +19,7 @@ import {
   saveInterviewNotesSchema 
 } from '../schemas/recruitmentSchema.js';
 
-const sendEmailNotification = async (to: string, subject: string, html: string, attachments: object[] = []): Promise<void> => {
-  console.log(`Attempting to send email to: ${to}`);
-  console.log(`Subject: ${subject}`);
-  console.log(`Using EMAIL_USER: ${process.env.EMAIL_USER}`);
-  try { 
-    const transporter = nodemailer.createTransport({ 
-      service: 'gmail', 
-      auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS } 
-    }); 
-    const result = await transporter.sendMail({ 
-      from: process.env.EMAIL_USER || '"HR Recruitment" <no-reply@company.com>', 
-      to, 
-      subject, 
-      html, 
-      attachments 
-    }); 
-    console.log(`Email sent successfully to ${to}: ${subject}`);
-    console.log(`Message ID: ${result.messageId}`);
-  } catch (error) { 
-    console.error('Failed to send email:', error); 
-  }
-};
+
 
 export const createJob = async (req: Request, res: Response): Promise<void> => {
   try { 
@@ -156,6 +135,33 @@ export const applyJob = async (req: Request, res: Response): Promise<void> => {
       created_at: currentManilaDateTime()
     });
 
+    // Send "Applied" email notification
+    try {
+      const job = await db.query.recruitmentJobs.findFirst({
+        where: eq(recruitmentJobs.id, Number(job_id)),
+        columns: { title: true }
+      });
+
+      const template = await getTemplateForStage(db, 'Applied');
+      if (template && job) {
+        const variables = {
+          applicant_first_name: first_name,
+          applicant_last_name: last_name,
+          job_title: job.title,
+          interview_date: '',
+          interview_link: '',
+          interview_platform: ''
+        };
+
+        const subject = replaceVariables(template.subject_template, variables);
+        const body = replaceVariables(template.body_template, variables);
+        await sendEmailNotification(email, subject, body);
+      }
+    } catch (emailError) {
+      console.error('Failed to send application email:', emailError);
+      // Continue execution, don't fail the request
+    }
+
     res.status(201).json({ success: true, message: 'Application submitted successfully' });
   } catch (error) {
     const err = error instanceof Error ? error : new Error('Unknown error');
@@ -202,9 +208,9 @@ export const getApplicants = async (req: Request, res: Response): Promise<void> 
       interview_link: recruitmentApplicants.interview_link,
       source: recruitmentApplicants.source,
       created_at: recruitmentApplicants.created_at,
-      job_title: recruitmentJobs.title,
+      job_title: sql<string>`COALESCE(${recruitmentJobs.title}, 'General Application')`,
       job_requirements: recruitmentJobs.requirements,
-      job_department: recruitmentJobs.department,
+      job_department: sql<string>`COALESCE(${recruitmentJobs.department}, 'HR')`,
       job_status: recruitmentJobs.status,
       interviewer_name: sql<string>`CONCAT(${authentication.firstName}, ' ', ${authentication.lastName})`
     })

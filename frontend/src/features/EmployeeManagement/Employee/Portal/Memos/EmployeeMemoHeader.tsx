@@ -17,7 +17,7 @@ const EmployeeMemoHeader: React.FC<EmployeeMemoHeaderProps> = memo(({ onRefresh,
   return (
     <div className="flex items-center justify-between mb-6">
       <div>
-        <h1 className="text-xl font-bold text-gray-700">My Memos</h1>
+        <h1 className="text-xl font-bold text-gray-700">Memos</h1>
         <p className="text-sm text-gray-500">View memos and notices addressed to you</p>
       </div>
       <button

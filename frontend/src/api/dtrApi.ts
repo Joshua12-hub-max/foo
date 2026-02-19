@@ -32,7 +32,15 @@ export const dtrApi = {
         return await api.put(`/dtr/${id}`, data);
     },
 
-    requestCorrection: async (data: { employee_id: string | number; date: string; reason: string; [key: string]: unknown }): Promise<AxiosResponse<{ success: boolean; message: string }>> => {
+    requestCorrection: async (data: { employee_id: string | number; date: string; originalTimeIn?: string | null; originalTimeOut?: string | null; correctedTimeIn?: string | null; correctedTimeOut?: string | null; reason: string; }) => {
         return await api.post('/dtr/request', data);
+    },
+
+    getCorrectionRequests: async (status?: string) => {
+        return await api.get('/dtr/corrections', { params: { status } });
+    },
+
+    updateCorrectionStatus: async (ids: number[], status: 'Approved' | 'Rejected', rejectionReason?: string) => {
+        return await api.patch('/dtr/corrections/status', { ids, status, rejectionReason });
     },
 };

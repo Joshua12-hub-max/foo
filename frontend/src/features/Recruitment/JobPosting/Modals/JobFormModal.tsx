@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { X, Loader2, Upload } from 'lucide-react';
+import { X, Loader2, Upload, ChevronDown } from 'lucide-react';
+import { fetchDepartments } from '@/api/departmentApi';
+import { Department } from '@/types/org';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { jobSchema, JobSchema } from '@/schemas/jobSchema';
@@ -26,9 +28,12 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
 }) => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
+
   const {
     register,
     handleSubmit,
+    setValue,
+    watch,
     reset,
     formState: { errors }
   } = useForm<JobSchema>({
@@ -45,6 +50,36 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
 
     }
   });
+
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [isDeptOpen, setIsDeptOpen] = useState(false);
+  const [deptSearch, setDeptSearch] = useState('');
+  
+  // Watch department field to sync search
+  const currentDept = watch('department');
+
+  // Derived state for filtered departments
+  const filteredDepartments = departments.filter(d => 
+    d.name.toLowerCase().includes(deptSearch.toLowerCase())
+  );
+
+  useEffect(() => {
+    // Sync local search state with form value when it changes externally (e.g. edit mode)
+    if (currentDept) setDeptSearch(currentDept);
+  }, [currentDept]);
+
+  useEffect(() => {
+    const loadDepartments = async () => {
+        const response = await fetchDepartments();
+        if (response.success && response.departments) {
+            setDepartments(response.departments);
+        }
+    };
+    if (isOpen) {
+        loadDepartments();
+        setIsDeptOpen(false); // Reset dropdown state on open
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     if (isOpen) {
@@ -159,30 +194,81 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
               )}
             </div>
 
-            {/* Job Title */}
-            <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Job Title <span className="text-red-500">*</span></label>
-              <input 
-                type="text" 
-                placeholder="e.g. Software Engineer"
-                className={`w-full border ${errors.title ? 'border-red-500 ring-2 ring-red-200' : 'border-gray-200'} rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-400 focus:outline-none transition-all bg-gray-50`}
-                {...register('title')}
-              />
-              {errors.title && <p className="text-red-500 text-xs mt-1 ml-1">{errors.title.message}</p>}
+            {/* Department (Moved Up) */}
+            <div className="relative group z-20">
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Department <span className="text-red-500">*</span></label>
+                
+                <div className="relative">
+                  <input 
+                    type="text" 
+                    placeholder="Search or Select Department..."
+                    className={`w-full border ${errors.department ? 'border-red-500 ring-2 ring-red-200' : 'border-gray-200'} rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-400 focus:outline-none transition-all bg-gray-50`}
+                    {...register('department', {
+                        onChange: (e) => {
+                            setDeptSearch(e.target.value);
+                            setIsDeptOpen(true);
+                        }
+                    })}
+                    onFocus={() => setIsDeptOpen(true)}
+                    autoComplete="off"
+                  />
+                  
+                  {/* Dropdown Indicator */}
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                    <ChevronDown size={14} />
+                  </div>
+
+                  {/* Dropdown List */}
+                  {isDeptOpen && (
+                    <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-60 overflow-y-auto animate-in fade-in zoom-in-95 duration-100">
+                        {filteredDepartments.length > 0 ? (
+                            filteredDepartments.map((dept, index) => (
+                                <button
+                                    key={dept.id}
+                                    type="button"
+                                    className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 transition-colors flex items-center group/item"
+                                    onClick={() => {
+                                        setValue('department', dept.name, { shouldValidate: true });
+                                        setDeptSearch(dept.name);
+                                        setIsDeptOpen(false);
+                                    }}
+                                >
+                                    <span className="text-gray-400 font-mono mr-3 text-xs">#{index + 1}</span>
+                                    <span className="font-medium text-gray-700 group-hover/item:text-gray-900">{dept.name}</span>
+                                </button>
+                            ))
+                        ) : (
+                            <div className="px-4 py-3 text-xs text-gray-500 text-center">
+                                No departments found. 
+                                <br />
+                                <span className="opacity-70">Type to create new validity check later...</span>
+                            </div>
+                        )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Overlay to close when clicking outside */}
+                {isDeptOpen && (
+                    <div className="fixed inset-0 z-40" onClick={() => setIsDeptOpen(false)} />
+                )}
+
+                {errors.department && <p className="text-red-500 text-xs mt-1 ml-1">{errors.department.message}</p>}
             </div>
 
-            {/* Department & Location */}
+            {/* Job Title & Location (Swapped Positions) */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Department <span className="text-red-500">*</span></label>
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Job Title <span className="text-red-500">*</span></label>
                 <input 
-                  type="text" 
-                  placeholder="e.g. IT Department"
-                  className={`w-full border ${errors.department ? 'border-red-500 ring-2 ring-red-200' : 'border-gray-200'} rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-400 focus:outline-none transition-all bg-gray-50`}
-                  {...register('department')}
+                    type="text" 
+                    placeholder="e.g. Software Engineer"
+                    className={`w-full border ${errors.title ? 'border-red-500 ring-2 ring-red-200' : 'border-gray-200'} rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-400 focus:outline-none transition-all bg-gray-50`}
+                    {...register('title')}
                 />
-                {errors.department && <p className="text-red-500 text-xs mt-1 ml-1">{errors.department.message}</p>}
+                {errors.title && <p className="text-red-500 text-xs mt-1 ml-1">{errors.title.message}</p>}
               </div>
+
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Location <span className="text-red-500">*</span></label>
                 <input 

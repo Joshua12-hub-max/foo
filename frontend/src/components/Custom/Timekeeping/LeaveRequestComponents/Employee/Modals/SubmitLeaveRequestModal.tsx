@@ -10,18 +10,18 @@ import FormInput from '@/components/Custom/Timekeeping/LeaveRequestComponents/Em
 import DateInput from '@/components/Custom/Timekeeping/LeaveRequestComponents/Employee/Modals/components/DateInput';
 import FileUpload from '@/components/Custom/Timekeeping/LeaveRequestComponents/Employee/Modals/components/FileUpload';
 import { AlertTriangle, CheckCircle, Info, XCircle } from 'lucide-react';
+import { useLeavePolicy } from '@/hooks/useLeavePolicy';
 import { useAuth } from '@/hooks/useAuth';
 
-interface Credit {
-  credit_type: string;
-  balance: string | number;
-}
+// ... (interfaces remain same)
+
+import { LeaveBalance } from '@/types/leave.types';
 
 interface SubmitLeaveRequestModalProps {
   isOpen: boolean;
-  onSubmit: (data?: any) => void;
+  onSubmit: () => void;
   onClose: () => void;
-  credits?: Credit[];
+  credits?: LeaveBalance[];
 }
 
 export const SubmitLeaveRequestModal: React.FC<SubmitLeaveRequestModalProps> = ({ 
@@ -30,6 +30,7 @@ export const SubmitLeaveRequestModal: React.FC<SubmitLeaveRequestModalProps> = (
   onClose, 
   credits = [] 
 }) => {
+  const { data: leaveTypes = [], isLoading: isLoadingPolicy } = useLeavePolicy();
   const { user, department: userDepartment } = useAuth();
   const queryClient = useQueryClient();
 
@@ -323,8 +324,10 @@ export const SubmitLeaveRequestModal: React.FC<SubmitLeaveRequestModalProps> = (
                     errors.leaveType ? 'border-red-500' : 'border-gray-200'
                   } rounded-lg focus:outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100 transition-all bg-white`}
                 >
-                  <option value="">Select leave type...</option>
-                  {(LEAVE_TYPES as unknown as string[]).map((type: string) => (
+                  <option value="">
+                    {isLoadingPolicy ? "Loading leave types..." : "Select leave type..."}
+                  </option>
+                  {leaveTypes.map((type: string) => (
                     <option key={type} value={type}>{type}</option>
                   ))}
                 </select>

@@ -78,6 +78,8 @@ export interface EmployeeLeaveRequest {
   actual_payment_status?: string;
   days_with_pay?: number;
   days_without_pay?: number;
+  admin_form_path?: string | null;
+  final_attachment_path?: string | null;
 }
 
 export interface EmployeeLeaveFilters {

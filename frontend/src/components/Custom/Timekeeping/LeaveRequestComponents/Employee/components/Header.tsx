@@ -11,7 +11,7 @@ export const Header: React.FC<HeaderProps> = ({ onRefresh, isLoading }) => {
   return (
     <div className="flex justify-between items-center mb-6">
       <div>
-        <h2 className="text-2xl font-bold text-gray-800">My Leave Requests</h2>
+        <h2 className="text-2xl font-bold text-gray-800">Leave Requests</h2>
         <p className="text-sm text-gray-800 mt-1">View and manage your personal leave requests</p>
       </div>
       <div className="flex items-center gap-3">

@@ -5,6 +5,7 @@ import { googleCalendarTokens, events, syncedEvents } from '../db/schema.js';
 import { eq, count, isNull } from 'drizzle-orm';
 import type { AuthenticatedRequest } from '../types/index.js';
 import type { OAuth2Client } from 'google-auth-library';
+import { formatToMysqlDateTime } from '../utils/dateUtils.js';
 
 // ============================================================================
 // Type Definitions
@@ -112,7 +113,7 @@ const getAuthenticatedClient = async (userId: number): Promise<{ client: OAuth2C
         await db.update(googleCalendarTokens)
           .set({ 
             accessToken: credentials.access_token || tokenData.accessToken, // Ensure not null
-            tokenExpiry: newExpiry.toISOString() 
+            tokenExpiry: formatToMysqlDateTime(newExpiry)
           })
           .where(eq(googleCalendarTokens.userId, userId));
 
@@ -174,17 +175,19 @@ export const handleGoogleCallback = async (req: Request, res: Response): Promise
 
     const expiryDate = new Date(Date.now() + (tokens.expiry_date || 3600 * 1000));
 
+    const formattedExpiry = formatToMysqlDateTime(expiryDate);
+
     await db.insert(googleCalendarTokens).values({
       userId,
       accessToken: tokens.access_token!,
       refreshToken: tokens.refresh_token!,
-      tokenExpiry: expiryDate.toISOString(),
+      tokenExpiry: formattedExpiry,
       syncEnabled: 1
     }).onDuplicateKeyUpdate({
       set: {
         accessToken: tokens.access_token!,
         refreshToken: tokens.refresh_token!,
-        tokenExpiry: expiryDate.toISOString(),
+        tokenExpiry: formattedExpiry,
         syncEnabled: 1
       }
     });
@@ -342,7 +345,7 @@ export const importFromGoogle = async (req: Request, res: Response): Promise<voi
     }
 
     await db.update(googleCalendarTokens)
-      .set({ lastSync: new Date().toISOString() })
+      .set({ lastSync: formatToMysqlDateTime(new Date()) })
       .where(eq(googleCalendarTokens.userId, userId));
 
     res.json({ message: 'Events imported successfully', imported, total: googleEventsList.length });
@@ -397,7 +400,7 @@ export const exportToGoogle = async (req: Request, res: Response): Promise<void>
     }
 
     await db.update(googleCalendarTokens)
-      .set({ lastSync: new Date().toISOString() })
+      .set({ lastSync: formatToMysqlDateTime(new Date()) })
       .where(eq(googleCalendarTokens.userId, userId));
 
     res.json({ message: 'Events exported successfully', exported });

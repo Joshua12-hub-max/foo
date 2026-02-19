@@ -4,11 +4,12 @@ import EditCriteriaModal from './Admin/Modals/EditCriteriaModal';
 import DeleteConfirmationModal from './Admin/Modals/DeleteConfirmationModal';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PerformanceItem } from './types';
+import { QETField } from '@/types/performance';
 
 // --- Sub-components for better organization ---
 
 interface CustomSelectProps {
-  value: number | string | undefined;
+  value: number | string | null | undefined;
   onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
   label: string;
   disabled?: boolean;
@@ -43,7 +44,7 @@ interface ReviewItemProps {
   
   onAccomplishmentChange?: (id: string | number, text: string) => void;
 
-  onQETChange?: (id: string | number, field: string, value: string | number) => void;
+  onQETChange?: (id: string | number, field: QETField, value: string | number) => void;
   onEvidenceChange?: (id: string | number, field: 'evidence_file_path' | 'evidence_description', value: string) => void;
   readOnly?: boolean;
   showSelfRating?: boolean;
@@ -265,7 +266,7 @@ interface ReviewMatrixProps {
   onEditItem?: (item: PerformanceItem) => void;
   onDeleteItem?: (id: string | number) => void;
 
-  onQETChange?: (id: string | number, field: string, value: string | number) => void;
+  onQETChange?: (id: string | number, field: QETField, value: string | number) => void;
   onEvidenceChange?: (id: string | number, field: 'evidence_file_path' | 'evidence_description', value: string) => void;
 }
 

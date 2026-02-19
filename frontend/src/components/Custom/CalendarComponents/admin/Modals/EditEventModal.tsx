@@ -2,16 +2,18 @@ import { useState, useEffect, useRef } from 'react';
 import { X, ChevronDown } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { eventSchema, EventSchema } from '@/schemas/calendar';
+import { eventSchema } from '@/schemas/calendar';
+import { CalendarEvent, EventFormData } from '@/types/calendar';
+import { Department } from '@/types/org';
 import { formatHour12, convertTo24Hour } from '../../shared/utils/eventUtils';
 
 interface EditEventModalProps {
   show: boolean;
-  event: any;
+  event: CalendarEvent | null;
   onClose: () => void;
-  onUpdate: (data: any) => void;
+  onUpdate: (data: EventFormData) => void;
   hours: string[];
-  departments?: any[];
+  departments?: Department[];
 }
 
 /**
@@ -29,7 +31,8 @@ const EditEventModal = ({ show, event, onClose, onUpdate, hours = [], department
       watch,
       reset,
       formState: { errors, isSubmitting }
-  } = useForm({
+  } = useForm<EventFormData>({
+    resolver: zodResolver(eventSchema),
     defaultValues: {
         title: '',
         date: '',
@@ -54,7 +57,7 @@ const EditEventModal = ({ show, event, onClose, onUpdate, hours = [], department
         date: event.start_date || event.date || '',
         start_date: event.start_date || event.date || '', 
         end_date: event.end_date || event.start_date || event.date || '', 
-        time: formatHour12(event.time), 
+        time: formatHour12(convertTo24Hour(event.time ?? undefined)), 
         description: event.description || '', 
         department: event.department || '', 
         recurring_pattern: event.recurring_pattern || 'none', 
@@ -74,13 +77,13 @@ const EditEventModal = ({ show, event, onClose, onUpdate, hours = [], department
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const onSubmit = (data: any) => {
+  const onSubmit = (data: EventFormData) => {
     onUpdate({ 
       title: data.title, 
       start_date: data.start_date, 
       end_date: data.end_date, 
       date: data.start_date, 
-      time: convertTo24Hour(data.time), 
+      time: data.time ? (convertTo24Hour(data.time) as unknown as string) : null, 
       description: data.description, 
       department: data.department || null, 
       recurring_pattern: data.recurring_pattern, 
@@ -196,14 +199,14 @@ const EditEventModal = ({ show, event, onClose, onUpdate, hours = [], department
                         key={index}
                         type="button"
                         onClick={() => {
-                          setValue('department', dept.name || dept);
+                          setValue('department', typeof dept === 'string' ? dept : (dept as Department).name || '');
                           setIsDeptOpen(false);
                         }}
                         className={`w-full px-4 py-2 text-left hover:bg-gray-50 transition-colors text-sm ${
-                          watchedDepartment === (dept.name || dept) ? 'bg-gray-50 text-gray-900 font-medium' : 'text-gray-600'
+                          watchedDepartment === (typeof dept === 'string' ? dept : (dept as Department).name) ? 'bg-gray-50 text-gray-900 font-medium' : 'text-gray-600'
                         }`}
                       >
-                        {dept.name || dept}
+                        {typeof dept === 'string' ? dept : (dept as Department).name}
                       </button>
                     ))}
                   </div>

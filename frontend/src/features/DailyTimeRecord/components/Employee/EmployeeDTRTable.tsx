@@ -1,13 +1,13 @@
 import { Search, SquarePen } from "lucide-react";
 import { TABLE_HEADERS } from "../../Constants/employeeDTR.constant";
-import { EmployeeDTRRecord, EmployeeDTRFilters } from "../../Utils/employeeDTRUtils";
-
+import { EmployeeDTRRecord, EmployeeDTRFilters, EmployeeInfo } from "../../Utils/employeeDTRUtils";
 interface EmployeeDTRTableProps {
   currentItems: EmployeeDTRRecord[];
   getStatusBadge: (status: string) => string;
   debouncedSearchQuery: string;
   filters: EmployeeDTRFilters;
   onRequestCorrection: (record: EmployeeDTRRecord) => void;
+  employeeInfo: EmployeeInfo | null;
 }
 
 export const EmployeeDTRTable: React.FC<EmployeeDTRTableProps> = ({ 
@@ -15,7 +15,8 @@ export const EmployeeDTRTable: React.FC<EmployeeDTRTableProps> = ({
   getStatusBadge,
   debouncedSearchQuery,
   filters,
-  onRequestCorrection
+  onRequestCorrection,
+  employeeInfo
 }) => {
   const hasActiveFilters = debouncedSearchQuery || Object.values(filters).some(v => v);
   const headers = [...TABLE_HEADERS, "ACTIONS"];
@@ -27,7 +28,7 @@ export const EmployeeDTRTable: React.FC<EmployeeDTRTableProps> = ({
           <thead className="bg-gray-200 shadow-md text-gray-700">
             <tr>
               {headers.map((header) => (
-                <th key={header} className="px-6 py-4 text-left text-sm font-bold tracking-wide">
+                <th key={header} className="px-6 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap">
                   {header}
                 </th>
               ))}
@@ -37,16 +38,18 @@ export const EmployeeDTRTable: React.FC<EmployeeDTRTableProps> = ({
             {currentItems.length ? (
               currentItems.map((item) => (
                 <tr key={`${item.id}-${item.date}`} className="hover:bg-[#F8F9FA] hover:shadow-xl transition-colors">
-                  <td className="px-6 py-4 text-sm text-gray-800 font-medium">{item.date}</td>
-                  <td className="px-6 py-4 text-sm text-gray-800">{item.timeIn}</td>
-                  <td className="px-6 py-4 text-sm text-gray-800">{item.timeOut}</td>
-                  <td className="px-6 py-4 text-sm text-gray-800">{item.hoursWorked}</td>
-                  <td className="px-6 py-4">
+                  <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`${getStatusBadge(item.status)} px-3 py-1 text-sm font-medium inline-block`} style={{borderRadius: '20px'}}>
                       {item.status}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-800">
+                  <td className="px-6 py-4 text-sm text-gray-800 font-medium whitespace-nowrap">{employeeInfo?.id || '-'}</td>
+                  <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">{employeeInfo?.department || '-'}</td>
+                  <td className="px-6 py-4 text-sm text-gray-800 font-medium whitespace-nowrap">{item.date}</td>
+                  <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">{item.timeIn}</td>
+                  <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">{item.timeOut}</td>
+                  <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">{item.hoursWorked}</td>
+                  <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">
                     <button
                       onClick={() => onRequestCorrection(item)}
                       className="p-2 hover:bg-blue-50 text-blue-600 rounded-lg transition-colors group relative"

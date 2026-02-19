@@ -71,14 +71,18 @@ export interface InternalReview {
     items?: ReviewItem[];
     attendance_details?: AttendanceDetails | null;
     violation_count?: number;
-    // flattened names for frontend
+    // flattened names for frontend (standardizing on both variants for compatibility)
     employee_first_name?: string;
     employee_last_name?: string;
+    employee_first?: string;
+    employee_last?: string;
     employee_department?: string;
     employee_job_title?: string;
     employee_position_title?: string;
     reviewer_first_name?: string;
     reviewer_last_name?: string;
+    reviewer_first?: string;
+    reviewer_last?: string;
 }
 
 export interface ReviewCycle {

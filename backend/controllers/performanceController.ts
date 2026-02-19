@@ -93,8 +93,9 @@ const calculateReviewScore = async (reviewId: number): Promise<string> => {
   let totalWeight = 0;
 
   items.forEach(item => {
-    // Coalesce weight: criteria weight -> item weight -> 1
-    const weight = parseFloat(String(item.criteriaWeight || item.itemWeight || 1));
+    // Coalesce weight: item weight -> criteria weight -> 1
+    // FIXED: Item weight must take precedence to allow overrides
+    const weight = parseFloat(String(item.itemWeight || item.criteriaWeight || 1));
     const score = parseFloat(String(item.score)) || 0;
     
     totalWeightedScore += score * weight;
@@ -110,8 +111,9 @@ export const getEvaluationSummary = async (_req: Request, res: Response): Promis
     
     // Subquery for calculated score
     // Note: Drizzle raw SQL used for complex aggregation until more advanced features are stable
+    // FIXED: Priority is pri.weight -> pc.weight
     const calculatedScoreSubquery = sql`(
-      SELECT ROUND(SUM(pri.score * COALESCE(pc.weight, pri.weight, 1)) / NULLIF(SUM(COALESCE(pc.weight, pri.weight, 1)), 0), 2)
+      SELECT ROUND(SUM(pri.score * COALESCE(pri.weight, pc.weight, 1)) / NULLIF(SUM(COALESCE(pri.weight, pc.weight, 1)), 0), 2)
       FROM ${performanceReviewItems} pri
       LEFT JOIN ${performanceCriteria} pc ON pri.criteria_id = pc.id
       WHERE pri.review_id = ${performanceReviews.id}

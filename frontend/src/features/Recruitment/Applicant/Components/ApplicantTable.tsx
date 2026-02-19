@@ -81,7 +81,15 @@ const ApplicantTable: React.FC<ApplicantTableProps> = ({
                   </div>
                 </td>
                 <td className="px-6 py-4">
-                  <div className="text-sm font-medium text-gray-900">{app.job_title || 'General Application'}</div>
+                  <div className="text-sm font-medium text-gray-900">
+                    {app.job_title === 'General Application' ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
+                            General Application
+                        </span>
+                    ) : (
+                        app.job_title
+                    )}
+                  </div>
                   <div className="text-xs text-gray-500">{formatDate(app.created_at)}</div>
                 </td>
                 <td className="px-6 py-4">

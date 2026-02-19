@@ -8,7 +8,7 @@ export interface Profile {
   dateHired?: string;
   employmentStatus?: string;
   twoFactorEnabled?: boolean;
-  [key: string]: any;
+  [key: string]: string | number | boolean | null | undefined;
 }
 
 export interface ProfileFormData {

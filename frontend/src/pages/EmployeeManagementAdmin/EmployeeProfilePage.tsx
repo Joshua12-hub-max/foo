@@ -6,10 +6,10 @@ import { ArrowLeft } from 'lucide-react';
 import { fetchEmployeeProfile, revertEmployeeStatus } from '@/api/employeeApi';
 import { useToastStore } from '@/stores';
 
-// @ts-ignore
+// Editable profile view component
 import EditableProfileView from '@features/EmployeeManagement/Employee/Portal/Profile/EditableProfileView';
 
-// @ts-ignore
+// Profile loading skeleton
 import ProfileSkeleton from '@features/EmployeeManagement/Employee/Portal/Profile/ProfileSkeleton';
 
 interface Profile {
@@ -20,7 +20,7 @@ interface Profile {
   department?: string;
   position_title?: string;
   employment_status?: string;
-  [key: string]: any;
+  [key: string]: string | number | boolean | null | undefined | object | any[];
 }
 
 const EmployeeProfile: React.FC = () => {

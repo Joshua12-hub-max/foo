@@ -1,20 +1,17 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { X, Loader2 } from 'lucide-react';
-import { addCreditSchema, AddCreditInput, CREDIT_TYPES } from '@/schemas/creditsSchema';
+import { useLeavePolicy } from '@/hooks/useLeavePolicy';
+import { addCreditSchema, AddCreditInput } from '@/schemas/creditsSchema';
 
-interface AddCreditModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSubmit: (data: AddCreditInput) => Promise<void>;
-  employees: any[];
-  isLoadingEmployees: boolean;
-  isSubmitting: boolean;
-}
+// ... (interface remains same)
 
 const AddCreditModal = ({ isOpen, onClose, onSubmit, employees, isLoadingEmployees, isSubmitting }: AddCreditModalProps) => {
+  const { data: leaveTypes = [], isLoading: isLoadingPolicy } = useLeavePolicy();
+
   const {
     register,
+// ... (rest of hook usage)
     handleSubmit,
     reset,
     formState: { errors }
@@ -89,10 +86,13 @@ const AddCreditModal = ({ isOpen, onClose, onSubmit, employees, isLoadingEmploye
             </label>
             <select
               {...register('creditType')}
+              disabled={isLoadingPolicy}
               className={`w-full border ${errors.creditType ? 'border-red-300' : 'border-gray-200'} rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-600/20 focus:border-gray-600 outline-none transition-all`}
             >
-              <option value="">Select credit type...</option>
-              {CREDIT_TYPES.map(type => (
+              <option value="">
+                {isLoadingPolicy ? "Loading leave types..." : "Select credit type..."}
+              </option>
+              {leaveTypes.map((type: string) => (
                 <option key={type} value={type}>{type}</option>
               ))}
             </select>

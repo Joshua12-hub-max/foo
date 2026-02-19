@@ -10,7 +10,7 @@ export interface LeaveRequest {
   fromDate: string | Date;
   toDate: string | Date;
   reason?: string;
-  [key: string]: any;
+  [key: string]: string | number | boolean | null | undefined | Date;
 }
 
 export const generateLeaveRequestPDF = async (leaveRequest: LeaveRequest): Promise<void> => {
@@ -136,7 +136,7 @@ export interface UndertimeRequest {
   rejectionReason?: string;
   reviewed_at?: string | Date;
   reviewedAt?: string | Date;
-  [key: string]: any;
+  [key: string]: string | number | boolean | null | undefined | Date;
 }
 
 // Undertime Request PDF Generator
@@ -203,7 +203,7 @@ export const generateUndertimeRequestPDF = async (undertimeRequest: UndertimeReq
       ['Admin Action', undertimeRequest.status === 'Approved' ? 'Approved' : undertimeRequest.status === 'Rejected' ? 'Rejected' : 'Pending'],
       ['Processed By', undertimeRequest.approved_by || undertimeRequest.approvedBy || 'Pending'],
       ['Rejection Reason', undertimeRequest.rejection_reason || undertimeRequest.rejectionReason || 'N/A'],
-      ['Date Processed', undertimeRequest.reviewed_at || undertimeRequest.reviewedAt ? new Date(undertimeRequest.reviewed_at || undertimeRequest.reviewedAt).toLocaleDateString() : 'Pending'],
+      ['Date Processed', undertimeRequest.reviewed_at || undertimeRequest.reviewedAt ? new Date(String(undertimeRequest.reviewed_at || undertimeRequest.reviewedAt)).toLocaleDateString() : 'Pending'],
     ];
 
     autoTable(doc, {

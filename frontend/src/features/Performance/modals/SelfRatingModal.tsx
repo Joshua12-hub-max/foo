@@ -10,13 +10,13 @@ interface SelfRatingItem {
   criteria_description?: string;
   self_score?: number | string;
   actual_accomplishments?: string;
-  [key: string]: any;
+  [key: string]: string | number | null | undefined;
 }
 
 interface SelfRatingModalProps {
   isOpen: boolean;
   onClose: () => void;
-  selectedReview: any; // Using any as the structure is complex and validated elsewhere
+  selectedReview: { id: string | number; status?: string; [key: string]: string | number | boolean | null | undefined } | null;
   selfRatingItems: SelfRatingItem[];
   selfRemarks: string;
   saving: boolean;

@@ -51,12 +51,11 @@ export const INITIAL_REVIEW_FORM = {
   review_cycle_id: '',
   reviewer_id: '',
   status: 'Draft',
+  total_score: '0.00',
+  overall_feedback: null,
+  supervisor_remarks: null,
+  employee_remarks: null,
   items: [],
-  strengths: '',
-  improvements: '',
-  goals: '',
-  training_recommendations: '',
-  action_plan: '',
   additional_comments: ''
 };
 

@@ -50,8 +50,8 @@ export interface PlantillaAuditLog {
   position_id: number;
   action: string;
   actor_id: number;
-  old_values: any;
-  new_values: any;
+  old_values: Record<string, string | number | boolean | null | undefined> | null;
+  new_values: Record<string, string | number | boolean | null | undefined> | null;
   created_at: string | null;
   item_number?: string;
   position_title?: string;

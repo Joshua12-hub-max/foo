@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Eye } from 'lucide-react';
+import { Search, Eye, FileCheck } from 'lucide-react';
 import { LEAVE_TABLE_HEADERS, STATUS_STYLES } from './constants/leaveConstants';
 import LeaveDetailsModal from '@/features/LeaveRequests/Modals/LeaveDetailsModal';
 import { EmployeeLeaveRequest, EmployeeLeaveFilters } from '../../types';
@@ -11,7 +11,7 @@ interface TableProps {
   onFinalize?: (request: EmployeeLeaveRequest) => void;
 }
 
-export const Table: React.FC<TableProps> = ({ data, searchQuery, filters }) => {
+export const Table: React.FC<TableProps> = ({ data, searchQuery, filters, onFinalize }) => {
   const [selectedLeave, setSelectedLeave] = useState<EmployeeLeaveRequest | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -81,6 +81,16 @@ export const Table: React.FC<TableProps> = ({ data, searchQuery, filters }) => {
                       >
                         <Eye size={16} />
                       </button>
+                      
+                      {item.status === 'Approved' && onFinalize && (
+                        <button
+                          onClick={() => onFinalize(item)}
+                          className="bg-green-100 hover:bg-green-200 text-green-700 p-1.5 rounded-md transition-colors"
+                          title="Finalize (Upload Signed Form)"
+                        >
+                          <FileCheck size={16} />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>

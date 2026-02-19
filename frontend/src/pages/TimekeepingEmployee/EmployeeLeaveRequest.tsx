@@ -22,6 +22,9 @@ import Pagination from '@/components/CustomUI/Pagination';
 import { useLeaveData } from '@/features/LeaveRequests/hooks/Employee/useLeaveData';
 import { useFilters } from '@/features/LeaveRequests/hooks/Employee/useFilters';
 import { useExport } from '@/features/LeaveRequests/hooks/Employee/useExport';
+import { EmployeeLeaveRequest } from "@/features/LeaveRequests/types";
+import { LeaveStatus } from "@/components/Custom/Timekeeping/LeaveRequestComponents/Employee/constants/leaveConstants";
+import type { LeaveBalance, ApplicationStatus, LeaveType } from '@/types/leave.types';
 
 const LeaveRequest = () => {
   const sidebarOpen = useUIStore((state) => state.sidebarOpen);
@@ -30,7 +33,7 @@ const LeaveRequest = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isSubmitModalOpen, setIsSubmitModalOpen] = useState(false);
-  const [finalizeModal, setFinalizeModal] = useState<{ isOpen: boolean; request: unknown }>({ isOpen: false, request: null });
+  const [finalizeModal, setFinalizeModal] = useState<{ isOpen: boolean; request: EmployeeLeaveRequest | null }>({ isOpen: false, request: null });
   
   // Custom hooks
   // Extracted server-side pagination/filtering functions
@@ -45,7 +48,7 @@ const LeaveRequest = () => {
   } = useLeaveData();
 
   // Fetch Credits using React Query
-  const { data: credits = [] } = useQuery({
+  const { data: credits = [] } = useQuery<LeaveBalance[]>({
     queryKey: ['employee-leave-credits'],
     queryFn: async () => {
       const res = await leaveApi.getMyCredits();
@@ -73,13 +76,12 @@ const LeaveRequest = () => {
     updateServerFilters({ search: debouncedSearchQuery });
   }, [debouncedSearchQuery]);
 
-  // Sync Applied Filters with Server
   useEffect(() => {
     updateServerFilters({
-      startDate: appliedFilters.date,
-      endDate: appliedFilters.date ? undefined : undefined, // If date is single day, maybe we want exact match? for now just start date filter.
-      status: appliedFilters.status,
-      type: appliedFilters.type
+      startDate: String(appliedFilters.date || ''),
+      endDate: appliedFilters.date ? undefined : undefined, 
+      status: (appliedFilters.status || '') as ApplicationStatus | '',
+      type: (appliedFilters.type || '') as LeaveType | ''
     });
   }, [appliedFilters]);
 
@@ -108,7 +110,7 @@ const LeaveRequest = () => {
     refetch();
   };
 
-  const handleOpenFinalize = (request: unknown) => {
+  const handleOpenFinalize = (request: EmployeeLeaveRequest) => {
     setFinalizeModal({ isOpen: true, request });
   };
 
@@ -174,8 +176,8 @@ const LeaveRequest = () => {
                   className="bg-white px-3 py-2 rounded-lg border border-gray-300 shadow-sm flex items-center gap-2"
                 >
                   <span className="text-xs font-medium text-gray-500">{credit.credit_type}:</span>
-                  <span className={`text-sm font-bold ${parseFloat(credit.balance) > 0 ? 'text-gray-800' : 'text-gray-400'}`}>
-                    {parseFloat(credit.balance).toFixed(1)}
+                  <span className={`text-sm font-bold ${Number(credit.balance || 0) > 0 ? 'text-gray-800' : 'text-gray-400'}`}>
+                    {Number(credit.balance || 0).toFixed(1)}
                   </span>
                 </div>
               ))}
@@ -211,7 +213,7 @@ const LeaveRequest = () => {
           data={leaves}
           searchQuery={debouncedSearchQuery}
           filters={filters}
-          onFinalize={handleOpenFinalize}
+          onFinalize={(req) => handleOpenFinalize(req)}
         />
       )}
 

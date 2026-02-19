@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { z } from 'zod';
 import { db } from '../db/index.js';
 import { authentication, bioEnrolledUsers, schedules } from '../db/schema.js';
 import { eq, or, and, sql, gt, getTableColumns, desc } from 'drizzle-orm';
@@ -162,9 +163,16 @@ export const googleLogin = async (req: Request, res: Response): Promise<void> =>
     )) || (user.employeeId && user.employeeId.toUpperCase().startsWith('CHRMO'));
 
     if (user.role !== 'admin' && !isCHRMO) {
-      // Extract numeric ID from EMP-XXX format
-      const bioIdMatch = user.employeeId?.match(/EMP-(\d+)/);
-      const bioId = bioIdMatch ? parseInt(bioIdMatch[1], 10) : 0;
+      // Extract numeric ID from EMP-XXX format OR use raw ID
+      let bioId = 0;
+      if (user.employeeId) {
+        const bioIdMatch = user.employeeId.match(/EMP-(\d+)/);
+        if (bioIdMatch) {
+             bioId = parseInt(bioIdMatch[1], 10);
+        } else {
+             bioId = parseInt(user.employeeId, 10);
+        }
+      }
 
       const [enrolled] = await db.select().from(bioEnrolledUsers).where(
         and(
@@ -261,7 +269,8 @@ export const verifyEnrollment = async (req: Request, res: Response): Promise<voi
     }
 
     // Convert to system ID format
-    const systemEmployeeId = `EMP-${String(bioId).padStart(3, '0')}`;
+    // NOW CHANGED: Use raw ID string (e.g. "1") instead of "EMP-001"
+    const systemEmployeeId = String(bioId);
 
     // Check if already registered in the web system
     const [existingAccount] = await db.select({ employeeId: authentication.employeeId })
@@ -325,7 +334,8 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     }
 
     // 3. Convert to system employee ID format
-    const employeeId = `EMP-${String(bioId).padStart(3, '0')}`;
+    // NOW CHANGED: Use raw ID string (e.g. "1") instead of "EMP-001"
+    const employeeId = String(bioId);
 
     // 4. Auto-pull name + department from biometric enrollment
     const nameParts = enrolled.fullName.split(' ');
@@ -390,11 +400,19 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     }
 
     res.status(201).json({
-      success: true,
       message: 'Registration successful! Please check your email for the verification code.',
       data: { email, employeeId, fullName: enrolled.fullName, department }
     });
   } catch (err) {
+    if (err instanceof z.ZodError) {
+      res.status(400).json({
+        success: false,
+        message: 'Validation Error',
+        errors: (err as z.ZodError).issues
+      });
+      return;
+    }
+
     console.error('Registration Error:', err);
     res.status(500).json({
       success: false,
@@ -581,9 +599,10 @@ export const getMe = async (req: Request, res: Response): Promise<void> => {
 export const login = async (req: Request, res: Response): Promise<void> => {
   try {
     const { identifier, password } = LoginSchema.parse(req.body);
-    console.log(`[LOGIN ATTEMPT] Identifier: ${identifier}`);
+    console.log(`[LOGIN ATTEMPT] Identifier: "${identifier}", Password length: ${password.length}`);
 
     const user = await AuthService.findUserByIdentifier(identifier);
+    console.log(`[LOGIN DEBUG] User found: ${user ? 'YES' : 'NO'} (ID: ${user?.id}, EmpID: ${user?.employeeId})`);
     
     if (!user) {
       console.log(`[LOGIN FAIL] User not found for identifier: ${identifier}`);
@@ -620,9 +639,16 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     )) || (user.employeeId && user.employeeId.toUpperCase().startsWith('CHRMO'));
 
     if (user.role !== 'admin' && !isCHRMO) {
-      // Extract numeric ID from EMP-XXX format
-      const bioIdMatch = user.employeeId?.match(/EMP-(\d+)/);
-      const bioId = bioIdMatch ? parseInt(bioIdMatch[1], 10) : 0;
+      // Extract numeric ID from EMP-XXX format OR use raw ID
+      let bioId = 0;
+      if (user.employeeId) {
+        const bioIdMatch = user.employeeId.match(/EMP-(\d+)/);
+        if (bioIdMatch) {
+             bioId = parseInt(bioIdMatch[1], 10);
+        } else {
+             bioId = parseInt(user.employeeId, 10);
+        }
+      }
 
       const [enrolled] = await db.select().from(bioEnrolledUsers).where(
         and(

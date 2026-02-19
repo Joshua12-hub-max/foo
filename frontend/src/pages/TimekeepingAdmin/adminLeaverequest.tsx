@@ -35,7 +35,7 @@ const ConfirmDeleteModal = React.lazy(() => import('@components/Custom/CalendarC
 // API
 import { useFilterOptions } from '@/hooks/useFilterOptions';
 import { AddCreditInput, CreditUpdateInput } from '@/schemas/creditsSchema';
-import type { LeaveCredit } from '@features/LeaveRequests/types';
+import type { LeaveCredit, AdminLeaveRequest } from '@features/LeaveRequests/types';
 
 const AdminLeaveRequest = () => {
   const today = useMemo(() => new Date().toLocaleDateString('en-US'), []);
@@ -47,9 +47,9 @@ const AdminLeaveRequest = () => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   
   // Modal states
-  const [approveModal, setApproveModal] = useState<{ isOpen: boolean; request: unknown }>({ isOpen: false, request: null });
-  const [rejectModal, setRejectModal] = useState<{ isOpen: boolean; request: unknown }>({ isOpen: false, request: null });
-  const [processModal, setProcessModal] = useState<{ isOpen: boolean; request: unknown }>({ isOpen: false, request: null });
+  const [approveModal, setApproveModal] = useState<{ isOpen: boolean; request: AdminLeaveRequest | null }>({ isOpen: false, request: null });
+  const [rejectModal, setRejectModal] = useState<{ isOpen: boolean; request: AdminLeaveRequest | null }>({ isOpen: false, request: null });
+  const [processModal, setProcessModal] = useState<{ isOpen: boolean; request: AdminLeaveRequest | null }>({ isOpen: false, request: null });
   
   // Credits Modal States
   const [isAddCreditOpen, setIsAddCreditOpen] = useState(false);
@@ -128,10 +128,10 @@ const AdminLeaveRequest = () => {
   useEffect(() => {
     // When "Apply" is clicked in filters, we update the server filters
     updateFilters({
-      department: appliedFilters.department,
-      employee: appliedFilters.employee,
-      fromDate: appliedFilters.fromDate,
-      toDate: appliedFilters.toDate
+      department: String(appliedFilters.department || ''),
+      employee: String(appliedFilters.employee || ''), 
+      fromDate: String(appliedFilters.fromDate || ''),
+      toDate: String(appliedFilters.toDate || '')
     });
   }, [appliedFilters]);
 
@@ -146,15 +146,15 @@ const AdminLeaveRequest = () => {
   }, [refreshLeaves]);
 
   // Modal handlers
-  const openApproveModal = useCallback((request: unknown) => {
+  const openApproveModal = useCallback((request: AdminLeaveRequest) => {
     setApproveModal({ isOpen: true, request });
   }, []);
 
-  const openRejectModal = useCallback((request: unknown) => {
+  const openRejectModal = useCallback((request: AdminLeaveRequest) => {
     setRejectModal({ isOpen: true, request });
   }, []);
 
-  const openProcessModal = useCallback((request: unknown) => {
+  const openProcessModal = useCallback((request: AdminLeaveRequest) => {
     setProcessModal({ isOpen: true, request });
   }, []);
 
@@ -199,8 +199,8 @@ const AdminLeaveRequest = () => {
   const handleDeleteConfirm = async () => {
     if (!deleteCredit.data) return;
     await removeCredit({
-      employeeId: deleteCredit.data.employee_id,
-      creditType: deleteCredit.data.creditType
+      employeeId: String(deleteCredit.data.employee_id),
+      creditType: deleteCredit.data.credit_type // Corrected to credit_type
     });
     setDeleteCredit({ isOpen: false, data: null });
   };
@@ -309,7 +309,6 @@ const AdminLeaveRequest = () => {
                 onApply={handleApplyFilters}
                 onClear={handleClear}
               />
-
               {/* Search */}
               <SearchBar
                 searchQuery={searchQuery}

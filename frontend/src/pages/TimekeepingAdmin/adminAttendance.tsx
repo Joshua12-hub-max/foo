@@ -11,6 +11,8 @@ import AttendanceExport from '@features/Attendance/components/Admin/AttendanceEx
 import AttendanceTable from '@features/Attendance/components/Admin/AttendanceTable';
 
 import { useFilterOptions } from '@/hooks/useFilterOptions';
+import { DTRApiResponse } from '@/types/attendance';
+import { formatEmployeeId } from '@/utils/formatters';
 
 const AdminAttendance = () => {
   const sidebarOpen = useUIStore((state) => state.sidebarOpen);
@@ -24,17 +26,17 @@ const AdminAttendance = () => {
   const paginationData = data?.data?.pagination;
 
   // 2. Transform snake_case API fields → camelCase for AttendanceTable
-  const logs = useMemo(() => rawLogs.map((item: any) => ({
+  const logs = useMemo(() => rawLogs.map((item: DTRApiResponse) => ({
     id: item.id,
-    employeeId: item.employee_id || item.employeeId,
+    employeeId: formatEmployeeId(item.employee_id),
     employee_name: item.employee_name || 'Unknown',
     department: item.department || 'N/A',
     date: item.date,
-    timeIn: item.time_in || item.timeIn || null,
-    timeOut: item.time_out || item.timeOut || null,
-    lateMinutes: Number(item.late_minutes ?? item.lateMinutes ?? 0),
-    undertimeMinutes: Number(item.undertime_minutes ?? item.undertimeMinutes ?? 0),
-    overtimeMinutes: Number(item.overtime_minutes ?? item.overtimeMinutes ?? 0),
+    timeIn: item.time_in ?? undefined,
+    timeOut: item.time_out ?? undefined,
+    lateMinutes: Number(item.late_minutes ?? 0),
+    undertimeMinutes: Number(item.undertime_minutes ?? 0),
+    overtimeMinutes: Number(item.overtime_minutes ?? 0),
     status: item.status || 'Absent',
     duties: item.duties || 'No Schedule',
   })), [rawLogs]);

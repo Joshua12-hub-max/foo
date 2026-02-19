@@ -47,6 +47,8 @@ export const useLeaveData = (initialFilters?: Record<string, string>) => {
         status: l.status,
         with_pay: l.is_with_pay,
         attachment_path: l.attachment_path,
+        admin_form_path: l.admin_form_path,
+        final_attachment_path: l.final_attachment_path,
         department: l.department || 'N/A',
         name: `${l.first_name || ''} ${l.last_name || ''}`.trim() || 'N/A'
       }));

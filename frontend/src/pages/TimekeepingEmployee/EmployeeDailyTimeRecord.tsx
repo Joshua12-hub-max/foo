@@ -96,6 +96,7 @@ const EmployeeDailyTimeRecord = () => {
         debouncedSearchQuery={debouncedSearchQuery}
         filters={filters}
         onRequestCorrection={handleRequestCorrection}
+        employeeInfo={employeeInfo}
       />
 
       {!isLoading && filteredData.length > 0 && (

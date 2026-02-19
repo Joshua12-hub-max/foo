@@ -21,6 +21,7 @@ const EmployeeDashboard = lazy(() => import("./pages/DashboardEmployee/EmployeeD
 const Attendance = lazy(() => import("./pages/TimekeepingAdmin/adminAttendance"));
 const HRCalendar = lazy(() => import("./pages/TimekeepingAdmin/adminCalendar"));
 const DailyTimeRecord = lazy(() => import("./pages/TimekeepingAdmin/adminDailyTimeRecord"));
+const DTRCorrections = lazy(() => import("./pages/TimekeepingAdmin/adminDTRCorrections"));
 
 const BiometricsMonitor = lazy(() => import("./pages/SettingsAdmin/BiometricsMonitor"));
 
@@ -321,6 +322,14 @@ export default function App() {
             element={
               <Suspense fallback={<PageLoader />}>
                 <DailyTimeRecord />
+              </Suspense>
+            }
+          />
+          <Route
+            path="dtr-corrections"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <DTRCorrections />
               </Suspense>
             }
           />
