@@ -9,7 +9,7 @@ import {
   performanceCriteria,
   performanceReviewItems
 } from '../db/schema.js';
-import { eq, like, and, sql, or, between } from 'drizzle-orm';
+import { eq, like, and, or, between } from 'drizzle-orm';
 import { calculateAttendanceScore } from '../services/attendanceRatingService.js';
 
 // Configuration
@@ -67,8 +67,7 @@ async function seedActivity() {
 
   // Clear existing logs for these employees in this range to avoid duplicates
   console.log('Clearing existing records for CHRMO within date range...');
-  const empIds = employees.map(e => e.employeeId);
-  const authIds = employees.map(e => e.id);
+  // Note: Drizzle delete with `inArray` can be tricky if array is large, loop is safer.
   
   // Note: Drizzle delete with `inArray` can be tricky if array is large, loop is safer for "delete where... and date between..."
   // But here we'll just rely on overwrite/update or manual cleanup if needed. 

@@ -7,6 +7,7 @@ import { employeeApi } from '@/api/employeeApi';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToastStore } from '@/stores';
 import { CreateEmployeeSchema, CreateEmployeeInput } from '@/schemas/employeeSchema';
+import { ApiError } from '@/types';
 import {
   ROLE_OPTIONS,
   APPOINTMENT_TYPE_OPTIONS,
@@ -73,7 +74,7 @@ const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
         if (onSuccess) onSuccess();
     },
     onError: (error: unknown) => {
-        const err = error as { response?: { data?: { message?: string } }; message?: string };
+        const err = error as ApiError;
         console.error('Failed to add employee', err);
         showToast(err.response?.data?.message || err.message || 'Failed to add employee', 'error');
     }
@@ -92,8 +93,9 @@ const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
       if (res.data.success) {
         setVacantPositions(res.data.positions);
       }
-    } catch (err) {
-      console.error("Failed to load plantilla", err);
+    } catch (err: unknown) {
+      const error = err as ApiError;
+      console.error("Failed to load plantilla", error);
     }
   };
 
@@ -320,6 +322,35 @@ const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
                   className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm resize-none" 
                   rows={2}
                   placeholder="House/Unit No., Street, Barangay, City/Municipality"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm text-gray-600 mb-1 block">Emergency Contact Person</label>
+                  <input 
+                    {...register('emergency_contact')}
+                    className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm" 
+                    placeholder="Full Name"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm text-gray-600 mb-1 block">Emergency Phone</label>
+                  <input 
+                    {...register('emergency_contact_number')}
+                    className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm" 
+                    placeholder="09XXXXXXXXX"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm text-gray-600 mb-1 block">Educational Background</label>
+                <textarea 
+                  {...register('educational_background')}
+                  className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm resize-none" 
+                  rows={2}
+                  placeholder="Degree, School, Year Graduated"
                 />
               </div>
             </>

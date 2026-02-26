@@ -1,6 +1,6 @@
 import { db } from '../db/index.js';
 import { bioAttendanceLogs, attendanceLogs } from '../db/schema.js';
-import { gt, and, eq, sql } from 'drizzle-orm';
+import { gt, eq, sql } from 'drizzle-orm';
 import { processDailyAttendance } from './attendanceProcessor.js';
 
 // Track the last synced bio_attendance_logs ID (monotonic, avoids clock drift)
@@ -46,34 +46,12 @@ async function pollBiometricLogs() {
         // 2. Convert bio employee_id (int) → system format (EMP-XXX)
         const systemEmployeeId = convertBioIdToEmployeeId(bioLog.employeeId);
 
-        // 3. Combine log_date + log_time → scan_time datetime string
-        //    log_date format: "YYYY-MM-DD", log_time format: "HH:mm:ss"
-        const scanTime = `${bioLog.logDate} ${bioLog.logTime}`;
-
         // 4. Map card_type → type (both use 'IN'/'OUT' so direct mapping)
-        const logType = bioLog.cardType;
 
-        // 5. Check for duplicate before inserting (prevent re-sync issues)
-        const [existing] = await db.select({ id: attendanceLogs.id })
-          .from(attendanceLogs)
-          .where(and(
-            eq(attendanceLogs.employeeId, systemEmployeeId),
-            eq(attendanceLogs.scanTime, scanTime),
-            eq(attendanceLogs.type, logType)
-          ))
-          .limit(1);
-
-        if (!existing) {
-          // 6. Insert into attendance_logs
-          await db.insert(attendanceLogs).values({
-            employeeId: systemEmployeeId,
-            scanTime: scanTime,
-            type: logType,
-            source: 'BIOMETRIC',
-          });
-
-          console.log(`[BIO-SYNC] Synced: Bio ID ${bioLog.id} → ${systemEmployeeId} ${logType} at ${scanTime}`);
-        }
+        // --- REMOVED DB INSERTION INTO attendanceLogs ---
+        // The C# middleware (Form1.cs) already inserts this record directly real-time.
+        // Doing it again here creates duplicates or race conditions.
+        // We solely use this loop to trigger processDailyAttendance.
 
         // 7. Queue DTR processing for this employee+date
         const dateStr = bioLog.logDate;
@@ -155,11 +133,16 @@ export const getSyncInfo = () => ({
  * @param intervalMs Polling interval in milliseconds (default: 5000ms)
  */
 export const startPollingService = async (intervalMs: number = 5000) => {
-  console.log(`[BIO-SYNC] Starting biometric sync service... Interval: ${intervalMs}ms`);
+  try {
+    console.log(`[BIO-SYNC] Starting biometric sync service... Interval: ${intervalMs}ms`);
 
-  // Initialize the last synced ID from the database
-  await initializeLastSyncedId();
+    // Initialize the last synced ID from the database
+    await initializeLastSyncedId();
 
-  // Start polling
-  setInterval(pollBiometricLogs, intervalMs);
+    // Start polling
+    setInterval(pollBiometricLogs, intervalMs);
+  } catch (err) {
+    const error = err as Error;
+    console.error('[BIO-SYNC] Failed to start polling service:', error.message);
+  }
 };

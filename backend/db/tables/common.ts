@@ -111,4 +111,15 @@ export const employeeDirectory = mysqlView("employee_directory", {
 	positionTitle: varchar("position_title", { length: 100 }),
 }).algorithm("undefined").sqlSecurity("definer").as(sql`select \`a\`.\`id\` AS \`id\`,\`a\`.\`employee_id\` AS \`employee_id\`,\`a\`.\`rfid_card_uid\` AS \`rfid_card_uid\`,\`a\`.\`first_name\` AS \`first_name\`,\`a\`.\`last_name\` AS \`last_name\`,concat(\`a\`.\`first_name\`,' ',\`a\`.\`last_name\`) AS \`full_name\`,\`a\`.\`email\` AS \`email\`,\`a\`.\`role\` AS \`role\`,\`a\`.\`job_title\` AS \`job_title\`,\`a\`.\`employment_status\` AS \`employment_status\`,\`a\`.\`avatar_url\` AS \`avatar_url\`,\`d\`.\`id\` AS \`department_id\`,\`d\`.\`name\` AS \`department_name\`,\`d\`.\`location\` AS \`department_location\`,\`a\`.\`phone_number\` AS \`phone_number\`,\`a\`.\`position_title\` AS \`position_title\` from (\`chrmo_db\`.\`authentication\` \`a\` left join \`chrmo_db\`.\`departments\` \`d\` on((\`a\`.\`department_id\` = \`d\`.\`id\`))) where (\`a\`.\`employment_status\` <> 'Terminated')`);
 
+
+export const addressRefBarangays = mysqlTable("address_ref_barangays", {
+	id: int().autoincrement().notNull(),
+	name: varchar({ length: 100 }).notNull(),
+	zipCode: varchar("zip_code", { length: 10 }).notNull(),
+},
+(table) => [
+	primaryKey({ columns: [table.id], name: "address_ref_barangays_id"}),
+	unique("unique_barangay_name").on(table.name),
+]);
+
 import { time } from 'drizzle-orm/mysql-core';

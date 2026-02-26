@@ -22,11 +22,28 @@ export const convertTo24Hour = (timeStr: string | number | undefined): number =>
  * @param {number} hour24 - 24-hour integer (0-23)
  * @returns {string} - AM/PM string like "9AM"
  */
-export const formatHour12 = (hour24: number | undefined | null): string => {
-  if (hour24 === undefined || hour24 === null) return '9AM';
+export const formatHour12 = (hour24: string | number | undefined | null): string => {
+  if (hour24 === undefined || hour24 === null || hour24 === '') return '9:00 AM';
+  if (typeof hour24 === 'string') {
+    // Handle strings like '09:00:00' or '09:00'
+    const colonMatch = /^(\d{1,2}):(\d{2})/.exec(hour24);
+    if (colonMatch) {
+      const h = parseInt(colonMatch[1], 10);
+      const m = parseInt(colonMatch[2], 10);
+      const period = h < 12 ? 'AM' : 'PM';
+      const displayH = h % 12 || 12;
+      return `${displayH}:${String(m).padStart(2, '0')} ${period}`;
+    }
+    // Handle strings like '9AM', '1PM'
+    const ampmMatch = /^(\d{1,2})(AM|PM)$/i.exec(hour24.trim());
+    if (ampmMatch) return hour24.trim();
+    const asNumber = parseInt(hour24, 10);
+    if (!isNaN(asNumber)) return formatHour12(asNumber);
+    return hour24;
+  }
   const hour = hour24 % 12 || 12;
   const period = hour24 < 12 ? 'AM' : 'PM';
-  return `${hour}${period}`;
+  return `${hour}:00 ${period}`;
 };
 
 /**

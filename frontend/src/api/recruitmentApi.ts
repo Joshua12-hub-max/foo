@@ -1,10 +1,11 @@
 import api from './axios';
 import { AxiosResponse } from 'axios';
 import { JobFormData, Job } from '@/types';
+import type { Applicant, Interviewer, ApplicantStage, ApplicantStatus } from '@/types/recruitment';
 
 export const recruitmentApi = {
     // Jobs
-    getJobs: async (params: Record<string, unknown> & { page?: number; search?: string; status?: string; public_view?: boolean }): Promise<AxiosResponse<{ success: boolean; jobs: Job[]; total?: number; message?: string }>> => {
+    getJobs: async (params: Record<string, string | number | boolean | undefined> & { page?: number; search?: string; status?: string; public_view?: boolean }): Promise<AxiosResponse<{ success: boolean; jobs: Job[]; total?: number; message?: string }>> => {
         try {
             const response = await api.get('/recruitment/jobs', { params });
             return response;
@@ -55,28 +56,7 @@ export const recruitmentApi = {
 
     
     // Applicants
-    getApplicants: async (params?: Record<string, unknown>): Promise<AxiosResponse<{ applicants: Array<{
-        id: number;
-        first_name: string;
-        last_name: string;
-        email: string;
-        phone_number?: string;
-        job_title?: string;
-        job_requirements?: string;
-        job_department?: string;
-        email_subject?: string;
-        source?: string;
-        stage: string;
-        status?: string;
-        resume_path?: string;
-        interview_date?: string;
-        interview_link?: string;
-        interview_platform?: string;
-        interviewer_id?: number;
-        interviewer_name?: string;
-        notes?: string;
-        created_at?: string;
-    }> }>> => {
+    getApplicants: async (params?: { job_id?: number | string; stage?: string; source?: string }): Promise<AxiosResponse<{ applicants: Applicant[] }>> => {
         try {
             const response = await api.get('/recruitment/applicants', { params });
             return response;
@@ -92,7 +72,7 @@ export const recruitmentApi = {
             throw error;
         }
     },
-    updateApplicantStage: async (id: string | number, data: { stage: string }): Promise<AxiosResponse> => {
+    updateApplicantStage: async (id: string | number, data: { stage: ApplicantStage }): Promise<AxiosResponse> => {
         try {
             const response = await api.put(`/recruitment/applicants/${id}/stage`, data);
             return response;
@@ -112,15 +92,7 @@ export const recruitmentApi = {
     },
 
     // Interviewer Management
-    getInterviewers: async (): Promise<AxiosResponse<Array<{
-        id: number;
-        first_name?: string;
-        last_name?: string;
-        name?: string;
-        email: string;
-        job_title?: string;
-        department?: string;
-    }>>> => {
+    getInterviewers: async (): Promise<AxiosResponse<Interviewer[]>> => {
         try {
             const response = await api.get('/recruitment/interviewers');
             return response;
@@ -137,7 +109,7 @@ export const recruitmentApi = {
         }
     },
     updateStage: async (applicantId: string | number, data: { 
-        stage: string;
+        stage: ApplicantStage;
         interview_date?: string;
         interview_link?: string;
         interview_platform?: string;

@@ -2,8 +2,8 @@ import { useMemo, useCallback } from 'react';
 
 interface StatCardProps {
   title: string;
-  data: any;
-  onClick?: (data: { title: string, data: any }) => void;
+  data: string | number | unknown[];
+  onClick?: (data: { title: string; data: string | number | unknown[] }) => void;
   isActive?: boolean;
 }
 

@@ -59,16 +59,34 @@ const ProfilePerformance: React.FC<ProfilePerformanceProps> = ({ profile }) => {
         ]);
 
         if (goalsData && goalsData.success) {
-          setGoals(goalsData.goals as any);
+          const apiGoals = goalsData.goals as (typeof goalsData.goals[0] & Partial<Goal>)[];
+          const mappedGoals: Goal[] = apiGoals.map(g => ({
+             id: Number(g.id),
+             title: String(g.title || 'Untitled Goal'),
+             description: g.description,
+             status: String(g.status || 'Not Started'),
+             progress: Number(g.progress) || 0,
+             due_date: String(g.due_date || ''),
+             weight: Number(g.weight) || 0
+          }));
+          setGoals(mappedGoals);
         }
         
-        // Filter reviews for this employee
-        if (reviewsData.success && reviewsData.data) {
-          const employeeReviews = reviewsData.data.reviews.filter((r: any) => 
+        if (reviewsData.success && 'reviews' in reviewsData) {
+          const employeeReviews = reviewsData.reviews.filter(r => 
             (r.employee_first === profile.first_name || r.employee_first_name === profile.first_name) && 
             (r.employee_last === profile.last_name || r.employee_last_name === profile.last_name)
-          );
-          setReviews(employeeReviews as any);
+          ).map(r => ({
+             id: Number(r.id),
+             cycle_title: 'Performance Review',
+             review_period_start: String(r.created_at || ''),
+             review_period_end: String(r.created_at || ''),
+             total_score: r.total_score,
+             status: r.status,
+             employee_first: r.employee_first_name || r.employee_first,
+             employee_last: r.employee_last_name || r.employee_last
+          }));
+          setReviews(employeeReviews);
         }
       } catch (err) {
         // Error handled silently

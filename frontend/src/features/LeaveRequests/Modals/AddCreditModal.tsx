@@ -4,7 +4,20 @@ import { X, Loader2 } from 'lucide-react';
 import { useLeavePolicy } from '@/hooks/useLeavePolicy';
 import { addCreditSchema, AddCreditInput } from '@/schemas/creditsSchema';
 
-// ... (interface remains same)
+interface EmployeeOption {
+  employee_id: string;
+  first_name?: string;
+  last_name?: string;
+}
+
+interface AddCreditModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSubmit: (data: AddCreditInput) => Promise<void>;
+  employees: EmployeeOption[];
+  isLoadingEmployees: boolean;
+  isSubmitting: boolean;
+}
 
 const AddCreditModal = ({ isOpen, onClose, onSubmit, employees, isLoadingEmployees, isSubmitting }: AddCreditModalProps) => {
   const { data: leaveTypes = [], isLoading: isLoadingPolicy } = useLeavePolicy();

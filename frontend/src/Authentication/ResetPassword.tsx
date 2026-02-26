@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Lock, ArrowLeft, Loader2, CheckCircle } from "lucide-react";
 import AuthLayout from "@components/Custom/Auth/AuthLayout";
 import { resetPassword } from "@/Service/Auth";
+import axios from "axios";
 
 export default function ResetPassword() {
   const [searchParams] = useSearchParams();
@@ -38,8 +39,9 @@ export default function ResetPassword() {
       await resetPassword({ token, newPassword: password, confirmNewPassword: confirmPassword });
       setIsSuccess(true);
       setTimeout(() => navigate("/login"), 3000);
-    } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to reset password. Link may be expired.");
+    } catch (err: unknown) {
+      const msg = axios.isAxiosError(err) ? err.response?.data?.message : undefined;
+      setError(msg || "Failed to reset password. Link may be expired.");
     } finally {
       setIsSubmitting(false);
     }

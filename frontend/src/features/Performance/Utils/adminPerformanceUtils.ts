@@ -13,7 +13,23 @@ export interface PerformanceTableItem {
   [key: string]: string | number | null | undefined;
 }
 
-export const mapPerformanceData = (apiData: Record<string, string | number | null | undefined>[]): PerformanceTableItem[] => {
+export interface RawPerformanceData {
+  id?: number | string;
+  employee_id?: number | string;
+  name?: string;
+  first_name?: string;
+  last_name?: string;
+  department?: string;
+  job_title?: string;
+  position_title?: string;
+  last_evaluation_date?: string | Date | null;
+  score?: number | string;
+  status?: string;
+  duties?: string;
+  review_id?: number | string;
+}
+
+export const mapPerformanceData = (apiData: RawPerformanceData[]): PerformanceTableItem[] => {
   return apiData.map(item => ({
     id: item.employee_id || item.id || '',
     systemId: typeof item.id === 'number' ? item.id : Number(item.id) || 0,

@@ -317,15 +317,15 @@ export const updateMemo = async (req: Request, res: Response): Promise<void> => 
       return;
     }
 
-    const updates: any = {};
+    const updates: Partial<typeof employeeMemos.$inferInsert> = {};
     if (employee_id) updates.employeeId = employee_id;
-    if (memo_type) updates.memoType = memo_type;
+    if (memo_type) updates.memoType = memo_type as MemoType;
     if (subject) updates.subject = subject;
     if (content) updates.content = content;
-    if (priority) updates.priority = priority;
+    if (priority) updates.priority = priority as MemoPriority;
     if (effective_date !== undefined) updates.effectiveDate = effective_date;
     if (acknowledgment_required !== undefined) updates.acknowledgmentRequired = acknowledgment_required ? 1 : 0;
-    if (status) updates.status = status;
+    if (status) updates.status = status as MemoStatus;
 
     await db.update(employeeMemos)
       .set(updates)

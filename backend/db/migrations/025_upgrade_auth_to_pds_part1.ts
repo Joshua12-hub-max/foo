@@ -24,7 +24,7 @@ const migration = async (): Promise<void> => {
       { name: 'gsis_id_no', definition: 'VARCHAR(50) NULL' },
       { name: 'pagibig_id_no', definition: 'VARCHAR(50) NULL' },
       { name: 'philhealth_no', definition: 'VARCHAR(50) NULL' }, // Might exist
-      { name: 'sss_no', definition: 'VARCHAR(50) NULL' },
+      { name: 'philsys_id', definition: 'VARCHAR(50) NULL' },
       { name: 'tin_no', definition: 'VARCHAR(50) NULL' }, // Might exist
       { name: 'agency_employee_no', definition: 'VARCHAR(50) NULL' },
       

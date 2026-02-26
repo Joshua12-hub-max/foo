@@ -3,14 +3,19 @@ import { ApiResponse } from '../types';
 
 export interface Memo {
   id: number;
-  title: string;
-  memo_number: string;
-  type: string;
-  priority: string;
-  status: string;
-  created_at: string;
   employee_id: number;
   employee_name?: string;
+  author_name?: string;
+  memo_number: string;
+  memo_type: string;
+  subject: string;
+  content?: string;
+  priority: string;
+  status: string;
+  effective_date?: string;
+  acknowledgment_required?: boolean;
+  acknowledged_at?: string;
+  created_at: string;
   reviewer_name?: string;
 }
 

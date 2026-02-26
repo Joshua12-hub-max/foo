@@ -5,6 +5,8 @@ import { toast } from 'react-hot-toast';
 import { usePagination } from '@/hooks/usePagination';
 import { usePaginatedQuery } from '@/hooks/usePaginatedQuery';
 
+export type AllowedLeaveType = "Vacation Leave" | "Sick Leave" | "Special Privilege Leave" | "Forced Leave" | "Maternity Leave" | "Paternity Leave" | "Solo Parent Leave" | "Study Leave";
+
 export const useCredits = () => {
   const queryClient = useQueryClient();
   
@@ -39,7 +41,7 @@ export const useCredits = () => {
 
   // Update or Add Credit mutation
   const updateCreditMutation = useMutation({
-    mutationFn: async ({ employeeId, creditType, balance }: { employeeId: string; creditType: string; balance: number }) => {
+    mutationFn: async ({ employeeId, creditType, balance }: { employeeId: string; creditType: AllowedLeaveType; balance: number }) => {
       const res = await leaveApi.updateCredit(employeeId, { creditType, balance });
       return res.data;
     },
@@ -55,7 +57,7 @@ export const useCredits = () => {
 
   // Delete Credit mutation
   const deleteCreditMutation = useMutation({
-    mutationFn: async ({ employeeId, creditType }: { employeeId: string; creditType: string }) => {
+    mutationFn: async ({ employeeId, creditType }: { employeeId: string; creditType: AllowedLeaveType }) => {
       const res = await leaveApi.deleteCredit(employeeId, creditType);
       return res.data;
     },

@@ -5,17 +5,7 @@ import { fetchEmployees, addEmployee, deleteEmployee } from '@api/employeeApi';
 // @ts-ignore
 import { fetchDepartments } from '@api/departmentApi';
 
-export interface Employee {
-  id: number;
-  first_name: string;
-  last_name: string;
-  email: string;
-  department?: string;
-  role?: string;
-  employment_status?: string;
-  salary_grade?: number;
-  [key: string]: unknown;
-}
+import { Employee } from '@/types';
 
 export interface Department {
   id: number;
@@ -78,7 +68,7 @@ export const useEmployees = (
       queryClient.invalidateQueries({ queryKey: ['employees'] });
       onSuccess?.('Employee added successfully');
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       onError?.(error.message || 'Failed to add employee');
     }
   });
@@ -90,7 +80,7 @@ export const useEmployees = (
       queryClient.invalidateQueries({ queryKey: ['employees'] });
       onSuccess?.('Employee deleted successfully');
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       onError?.(error.message || 'Failed to delete employee');
     }
   });
@@ -98,7 +88,7 @@ export const useEmployees = (
   // Compatibility wrappers
   const handleAddEmployee = useCallback(async (formData: Partial<Employee>): Promise<boolean> => {
     try {
-      const res = await addMutation.mutateAsync(formData);
+      const res = await addMutation.mutateAsync(formData as unknown as Parameters<typeof addEmployee>[0]);
       return res.success;
     } catch (error) {
       return false;

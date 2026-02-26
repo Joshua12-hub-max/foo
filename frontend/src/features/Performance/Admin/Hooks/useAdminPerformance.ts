@@ -9,7 +9,7 @@ interface FiltersState {
   department: string;
   employee: string;
   status: string;
-  [key: string]: any;
+  [key: string]: string;
 }
 
 interface PaginationData {
@@ -36,7 +36,7 @@ interface AdminPerformanceHookReturn {
   paginationData: PaginationData;
   uniqueDepartments: string[];
   uniqueEmployees: string[];
-  stats: any;
+  stats: Record<string, number>;
   setError: React.Dispatch<React.SetStateAction<string | null>>;
   setSuccessMessage: React.Dispatch<React.SetStateAction<string | null>>;
   handleFilterChange: (field: string, value: string) => void;

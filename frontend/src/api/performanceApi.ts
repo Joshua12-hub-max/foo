@@ -10,12 +10,25 @@ import {
   ReviewApiResponse
 } from '@/types/performance';
 
-export const fetchEvaluationSummary = async (): Promise<ApiResponse<Record<string, unknown>>> => {
+export interface EvaluationSummaryResponse {
+  success: boolean;
+  message?: string;
+  employees?: InternalReview[];
+  stats?: Record<string, number>;
+  data?: {
+    employees?: InternalReview[];
+    stats?: Record<string, number>;
+  };
+}
+
+export const fetchEvaluationSummary = async (): Promise<EvaluationSummaryResponse> => {
   try {
     const response = await axios.get('/performance/summary');
     return response.data;
-  } catch (error: unknown) {
-    console.error('Fetch Evaluation Summary Error:', error);
+  } catch (error) {
+    if (error instanceof Error) {
+        console.error('Fetch Evaluation Summary Error:', error.message);
+    }
     throw error;
   }
 };
@@ -40,7 +53,7 @@ export const fetchReviewCycles = async (): Promise<ReviewCyclesApiResponse> => {
   }
 };
 
-export const fetchReviews = async (filters: Record<string, unknown> = {}): Promise<ApiResponse<{ reviews: InternalReview[] }>> => {
+export const fetchReviews = async (filters: Record<string, unknown> = {}): Promise<{ success: boolean; message?: string; reviews: InternalReview[] }> => {
   try {
     const params = new URLSearchParams(filters as Record<string, string>).toString();
     const response = await axios.get(`/performance/reviews?${params}`);

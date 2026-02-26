@@ -19,7 +19,7 @@ const AdminLeaveRequestProcess: React.FC<ProcessModalProps> = ({ isOpen, request
   const processMutation = useMutation({
     mutationFn: async (formData: FormData) => {
       if (!request) return;
-      await leaveApi.processLeave(request.id, formData);
+      await leaveApi.processLeave(Number(request.id), formData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-leaves'] });

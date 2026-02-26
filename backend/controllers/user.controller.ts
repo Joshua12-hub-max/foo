@@ -59,11 +59,17 @@ interface UpdateFields {
   phoneNumber?: string | null;
   address?: string | null;
   permanentAddress?: string | null;
-  sssNumber?: string | null;
+  umidNo?: string | null;
+  philsysId?: string | null;
   philhealthNumber?: string | null;
+  philhealthNo?: string | null;
   pagibigNumber?: string | null;
+  pagibigIdNo?: string | null;
   tinNumber?: string | null;
+  tinNo?: string | null;
   gsisNumber?: string | null;
+  gsisIdNo?: string | null;
+  educationalBackground?: string | null;
   salaryGrade?: string | null;
   stepIncrement?: number;
   appointmentType?: AppointmentType;
@@ -117,6 +123,7 @@ export const mapToEmployeeApi = (emp: EmployeeMapperInput): EmployeeApiResponse 
     first_name: String(emp.firstName || ''),
     last_name: String(emp.lastName || ''),
     middle_name: emp.middleName || null,
+    suffix: emp.suffix || null,
     email: String(emp.email || ''),
     role: (emp.role || 'employee') as UserRole,
     department: emp.department || null,
@@ -138,11 +145,13 @@ export const mapToEmployeeApi = (emp: EmployeeMapperInput): EmployeeApiResponse 
     address: emp.address || null,
     permanent_address: emp.permanentAddress || null,
     avatar_url: emp.avatarUrl || null,
-    sss_number: emp.sssNumber || null,
+    umid_id: emp.umidNo || null,
+    philsys_id: emp.philsysId || null,
     philhealth_number: emp.philhealthNumber || null,
     pagibig_number: emp.pagibigNumber || null,
     tin_number: emp.tinNumber || null,
     gsis_number: emp.gsisNumber || null,
+    educational_background: emp.educationalBackground || null,
     salary_grade: emp.salaryGrade || null,
     step_increment: emp.stepIncrement || 1,
     appointment_type: emp.appointmentType as AppointmentType || null,
@@ -261,7 +270,7 @@ export const getAllEmployees = async (req: Request, res: Response): Promise<void
 
 export const getEmployeeById = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
+    const { id } = req.params as { id: string };
     const [employeeData, relatedData] = await Promise.all([
       UserService.getEmployeeById(parseInt(id)),
       UserService.getRelatedData(parseInt(id))
@@ -319,7 +328,7 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
       phone_number, address, permanent_address,
       philhealth_number, pagibig_number, tin_number, gsis_number,
       salary_grade, step_increment, appointment_type, station, position_title,
-      item_number, position_id
+      item_number, position_id, educational_background
     } = validatedData;
 
     // Validate department
@@ -467,6 +476,7 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
       pagibigNumber: pagibig_number || null,
       tinNumber: tin_number || null,
       gsisNumber: gsis_number || null,
+      educationalBackground: educational_background || null,
       salaryGrade: salary_grade ? String(salary_grade) : null,
       stepIncrement: step_increment || 1,
       appointmentType: appointment_type as AppointmentType,
@@ -523,7 +533,7 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
 
 export const deleteEmployee = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
+    const { id } = req.params as { id: string };
     const authReq = req as AuthenticatedRequest;
 
     if (authReq.user.id === parseInt(id)) {
@@ -560,7 +570,7 @@ export const deleteEmployee = async (req: Request, res: Response): Promise<void>
 
 export const updateEmployee = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
+    const { id } = req.params as { id: string };
     const updates = UpdateEmployeeSchema.parse(req.body);
     console.log('Update Request Body:', req.body);
     console.log('Validated Updates:', updates);
@@ -579,6 +589,13 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
     const sanitizedUpdates = sanitizePDSFields({ ...updates });
 
     const updateFields: UpdateFields = {};
+
+    // Handle Avatar Upload
+    if (req.file) {
+      const avatarUrl = `${process.env.BACKEND_URL || 'http://localhost:5000'}/uploads/avatars/${req.file.filename}`;
+      updateFields.avatarUrl = avatarUrl;
+    }
+
     const skippedEnumFields: { field: string; value: unknown; validValues: string[] }[] = [];
 
     // Mapping manual updates to Drizzle fields
@@ -599,11 +616,13 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
       phone_number: 'phoneNumber',
       address: 'address',
       permanent_address: 'permanentAddress',
-      sss_number: 'sssNumber',
+      umid_id: 'umidNo',
+      philsys_id: 'philsysId',
       philhealth_number: 'philhealthNumber',
       pagibig_number: 'pagibigNumber',
       tin_number: 'tinNumber',
       gsis_number: 'gsisNumber',
+      educational_background: 'educationalBackground',
       salary_grade: 'salaryGrade',
       step_increment: 'stepIncrement',
       appointment_type: 'appointmentType',
@@ -699,6 +718,19 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
       }
     }
 
+    // Sync redundant columns
+    if (updateFields.gsisNumber) updateFields.gsisIdNo = updateFields.gsisNumber;
+    else if (updateFields.gsisIdNo) updateFields.gsisNumber = updateFields.gsisIdNo;
+
+    if (updateFields.philhealthNumber) updateFields.philhealthNo = updateFields.philhealthNumber;
+    else if (updateFields.philhealthNo) updateFields.philhealthNumber = updateFields.philhealthNo;
+
+    if (updateFields.pagibigNumber) updateFields.pagibigIdNo = updateFields.pagibigNumber;
+    else if (updateFields.pagibigIdNo) updateFields.pagibigNumber = updateFields.pagibigIdNo;
+
+    if (updateFields.tinNumber) updateFields.tinNo = updateFields.tinNumber;
+    else if (updateFields.tinNo) updateFields.tinNumber = updateFields.tinNo;
+
     // Handle duties update (Schedule Title)
     if (sanitizedUpdates.duties !== undefined) {
       const newDuties = String(sanitizedUpdates.duties);
@@ -727,17 +759,13 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
         await db.insert(schedules).values({
             employeeId: currentEmployee.employeeId,
             scheduleTitle: newDuties,
-            timeIn: '08:00:00',
-            timeOut: '17:00:00',
-            startTime: '08:00:00', // redundant but required by schema
-            endTime: '17:00:00',   // redundant but required by schema
-            type: 'Regular', // mapped to schema? Schema doesn't have 'type', it has 'scheduleTitle' which we used. Wait, schema has 'repeatPattern'.
-            // Schema analysis: dayOfWeek is required. usually 'Mon-Fri' or similar.
+            startTime: '08:00:00',
+            endTime: '17:00:00',
             dayOfWeek: 'Mon-Fri',
             startDate: today,
             endDate: endDate,
             repeatPattern: 'Weekly'
-        } as any); // Type assertion if schema types are strict/partial mismatch
+        });
       }
     }
 
@@ -844,7 +872,7 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
 
 export const revertEmployeeStatus = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
+    const { id } = req.params as { id: string };
     const { new_status, reason } = RevertStatusSchema.parse(req.body);
     console.log(`Reverting status for ${id} to ${new_status}. Reason: ${reason}`);
 
@@ -881,7 +909,7 @@ export const revertEmployeeStatus = async (req: Request, res: Response): Promise
 
 export const getEmployeeSkills = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
+    const { id } = req.params as { id: string };
     const skills = await db.select()
       .from(employeeSkills)
       .where(eq(employeeSkills.employeeId, parseInt(id)))
@@ -896,7 +924,7 @@ export const getEmployeeSkills = async (req: Request, res: Response): Promise<vo
 
 export const addEmployeeSkill = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
+    const { id } = req.params as { id: string };
     const { skill_name, category, proficiency_level, years_experience } = AddSkillSchema.parse(req.body);
 
     const [result] = await db.insert(employeeSkills).values({
@@ -915,7 +943,7 @@ export const addEmployeeSkill = async (req: Request, res: Response): Promise<voi
 
 export const updateEmployeeSkill = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id, skillId } = req.params;
+    const { id, skillId } = req.params as { id: string; skillId: string };
     const updates = UpdateSkillSchema.parse(req.body);
 
     if (Object.keys(updates).length === 0) {
@@ -923,7 +951,7 @@ export const updateEmployeeSkill = async (req: Request, res: Response): Promise<
         return;
     }
 
-    const drizzleUpdates: any = {};
+    const drizzleUpdates: Partial<typeof employeeSkills.$inferInsert> = {};
     if (updates.skill_name) drizzleUpdates.skillName = updates.skill_name;
     if (updates.category) drizzleUpdates.category = updates.category;
     if (updates.proficiency_level) drizzleUpdates.proficiencyLevel = updates.proficiency_level;
@@ -945,7 +973,7 @@ export const updateEmployeeSkill = async (req: Request, res: Response): Promise<
 
 export const deleteEmployeeSkill = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id, skillId } = req.params;
+    const { id, skillId } = req.params as { id: string; skillId: string };
     await db.delete(employeeSkills)
       .where(and(
         eq(employeeSkills.id, parseInt(skillId)),
@@ -963,7 +991,7 @@ export const deleteEmployeeSkill = async (req: Request, res: Response): Promise<
 
 export const getEmployeeEducation = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
+    const { id } = req.params as { id: string };
     const education = await db.select()
       .from(employeeEducation)
       .where(eq(employeeEducation.employeeId, parseInt(id)))
@@ -978,7 +1006,7 @@ export const getEmployeeEducation = async (req: Request, res: Response): Promise
 
 export const addEmployeeEducation = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
+    const { id } = req.params as { id: string };
     const { institution, degree, field_of_study, start_date, end_date, is_current, type, description } = AddEducationSchema.parse(req.body);
 
     const [result] = await db.insert(employeeEducation).values({
@@ -1001,7 +1029,7 @@ export const addEmployeeEducation = async (req: Request, res: Response): Promise
 
 export const updateEmployeeEducation = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id, educationId } = req.params;
+    const { id, educationId } = req.params as { id: string; educationId: string };
     const updates = UpdateEducationSchema.parse(req.body);
 
     if (Object.keys(updates).length === 0) {
@@ -1009,14 +1037,14 @@ export const updateEmployeeEducation = async (req: Request, res: Response): Prom
         return;
     }
 
-    const drizzleUpdates: any = {};
+    const drizzleUpdates: Partial<typeof employeeEducation.$inferInsert> = {};
     if (updates.institution) drizzleUpdates.institution = updates.institution;
     if (updates.degree !== undefined) drizzleUpdates.degree = updates.degree || null;
     if (updates.field_of_study !== undefined) drizzleUpdates.fieldOfStudy = updates.field_of_study || null;
     if (updates.start_date !== undefined) drizzleUpdates.startDate = updates.start_date ? String(updates.start_date) : null;
     if (updates.end_date !== undefined) drizzleUpdates.endDate = updates.end_date ? String(updates.end_date) : null;
     if (updates.is_current !== undefined) drizzleUpdates.isCurrent = updates.is_current ? 1 : 0;
-    if (updates.type) drizzleUpdates.type = updates.type;
+    if (updates.type) drizzleUpdates.type = updates.type as 'Education' | 'Certification' | 'Training';
     if (updates.description !== undefined) drizzleUpdates.description = updates.description || null;
 
     await db.update(employeeEducation)
@@ -1035,7 +1063,7 @@ export const updateEmployeeEducation = async (req: Request, res: Response): Prom
 
 export const deleteEmployeeEducation = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id, educationId } = req.params;
+    const { id, educationId } = req.params as { id: string; educationId: string };
     await db.delete(employeeEducation)
       .where(and(
         eq(employeeEducation.id, parseInt(educationId)),
@@ -1053,7 +1081,7 @@ export const deleteEmployeeEducation = async (req: Request, res: Response): Prom
 
 export const getEmployeeContacts = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
+    const { id } = req.params as { id: string };
     const contacts = await db.select()
       .from(employeeEmergencyContacts)
       .where(eq(employeeEmergencyContacts.employeeId, parseInt(id)))
@@ -1068,7 +1096,7 @@ export const getEmployeeContacts = async (req: Request, res: Response): Promise<
 
 export const addEmployeeContact = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
+    const { id } = req.params as { id: string };
     const { name, relationship, phone_number, email, address, is_primary } = AddContactSchema.parse(req.body);
 
     if (is_primary) {
@@ -1095,7 +1123,7 @@ export const addEmployeeContact = async (req: Request, res: Response): Promise<v
 
 export const updateEmployeeContact = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id, contactId } = req.params;
+    const { id, contactId } = req.params as { id: string; contactId: string };
     const updates = UpdateContactSchema.parse(req.body);
 
     if (Object.keys(updates).length === 0) {
@@ -1140,7 +1168,7 @@ export const updateEmployeeContact = async (req: Request, res: Response): Promis
 
 export const deleteEmployeeContact = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id, contactId } = req.params;
+    const { id, contactId } = req.params as { id: string; contactId: string };
     await db.delete(employeeEmergencyContacts)
       .where(and(
         eq(employeeEmergencyContacts.id, parseInt(contactId)),
@@ -1159,7 +1187,7 @@ export const deleteEmployeeContact = async (req: Request, res: Response): Promis
 
 export const addEmployeeCustomField = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
+    const { id } = req.params as { id: string };
     const { section, field_name, field_value } = AddCustomFieldSchema.parse(req.body);
 
     const [result] = await db.insert(employeeCustomFields).values({
@@ -1178,7 +1206,7 @@ export const addEmployeeCustomField = async (req: Request, res: Response): Promi
 
 export const updateEmployeeCustomField = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id, fieldId } = req.params;
+    const { id, fieldId } = req.params as { id: string; fieldId: string };
     const updates = UpdateCustomFieldSchema.parse(req.body);
 
     if (Object.keys(updates).length === 0) {
@@ -1211,7 +1239,7 @@ export const updateEmployeeCustomField = async (req: Request, res: Response): Pr
 
 export const deleteEmployeeCustomField = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id, fieldId } = req.params;
+    const { id, fieldId } = req.params as { id: string; fieldId: string };
     await db.delete(employeeCustomFields)
       .where(and(
         eq(employeeCustomFields.id, parseInt(fieldId)),

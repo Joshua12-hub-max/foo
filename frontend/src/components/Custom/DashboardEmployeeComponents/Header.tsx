@@ -27,7 +27,7 @@ const ProfilePicture = memo<ProfilePictureProps>(
     >
       {hasProfilePicture ? (
         <img
-          src={user.avatar || user.profilePicture}
+          src={user.avatar_url}
           alt={`${user.name}'s profile`}
           className="w-full h-full object-cover transition-all group-hover:brightness-75"
           loading="lazy"
@@ -106,9 +106,9 @@ export default function Header({
 
   // Check if user has a profile picture - depends on both avatar and profilePicture fields
   const hasProfilePicture = useMemo(() => {
-    const avatarUrl = user?.avatar || user?.profilePicture;
+    const avatarUrl = user?.avatar_url;
     return !!avatarUrl;
-  }, [user?.avatar, user?.profilePicture]);
+  }, [user?.avatar_url]);
 
   const handleProfileClick = useCallback(() => {
      navigate('/employee-dashboard/profile');
@@ -146,7 +146,7 @@ export default function Header({
             onClick={handleProfileClick}
           />
 
-          <UserInfo name={user?.name} role={user?.role} />
+          <UserInfo name={user?.name || ''} role={user?.role || ''} />
         </div>
       </div>
     </header>

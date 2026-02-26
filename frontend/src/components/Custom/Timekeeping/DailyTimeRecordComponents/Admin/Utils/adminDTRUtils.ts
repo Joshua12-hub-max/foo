@@ -34,20 +34,45 @@ export interface PaginationResult {
   totalRecords: number;
 }
 
-export const mapDTRData = (apiData: any[]): DTRRecord[] => {
+export interface AdminDTRApiResponse {
+  id?: string | number;
+  record_id?: string | number;
+  employee_id?: string | number;
+  employee_name?: string;
+  first_name?: string;
+  last_name?: string;
+  department?: string;
+  date?: string;
+  time_in?: string | null;
+  time_out?: string | null;
+  hours_worked?: string | number;
+  status?: string;
+  remarks?: string;
+  created_at?: string | null;
+}
+
+export interface DTRRecordUpdate {
+  status: string;
+  late_minutes: number;
+  undertime_minutes: number;
+  time_in?: string | null;
+  time_out?: string | null;
+}
+
+export const mapDTRData = (apiData: AdminDTRApiResponse[]): DTRRecord[] => {
   return apiData.map(item => ({
-    id: item.employee_id || item.id,
-    employeeId: item.employee_id,
-    name: item.employee_name || 'N/A',
+    id: item.id ?? item.record_id ?? '',
+    employeeId: item.employee_id ?? '',
+    name: item.employee_name || `${item.first_name ?? ''} ${item.last_name ?? ''}`.trim() || 'N/A',
     department: item.department || 'N/A',
-    date: item.date,
-    rawDate: item.date, // Assuming API gives ISO, logic elsewhere might format 'date' display
+    date: item.date ?? '',
+    rawDate: item.date ?? '',
     timeIn: item.time_in || 'N/A',
     timeOut: item.time_out || 'N/A',
-    hoursWorked: item.hours_worked || '0',
+    hoursWorked: item.hours_worked ?? '0',
     status: item.status || 'Unknown',
     remarks: item.remarks || '-',
-    createdAt: item.created_at
+    createdAt: item.created_at ?? undefined
   }));
 };
 

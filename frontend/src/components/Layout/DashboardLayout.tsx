@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import Sidebar, { NavItem } from '../CustomUI/Sidebar';
-import Header from '../CustomUI/Header';
+import Header, { HeaderUser } from '../CustomUI/Header';
 import { Toaster } from 'react-hot-toast';
 
 interface DashboardLayoutProps {
-    user: any;
+    user: HeaderUser;
     navItems: NavItem[];
     onLogout: () => void;
     onSectionChange?: (section: string) => void;

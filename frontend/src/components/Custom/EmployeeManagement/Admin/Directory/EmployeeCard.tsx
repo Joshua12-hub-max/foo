@@ -101,7 +101,7 @@ const EmployeeCard: React.FC<EmployeeCardProps> = ({
       {/* Footer ID Chip */}
       <div className="bg-gray-50/50 px-6 py-3 flex justify-between items-center border-t border-gray-100">
         <span className="text-[10px] font-mono font-medium text-gray-400">ID: {employee.employee_id}</span>
-        <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold shadow-sm ${getStatusBadgeClass(employee.employment_status)}`}>
+        <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold shadow-sm ${getStatusBadgeClass(employee.employment_status || 'Active')}`}>
             {employee.employment_status || 'Active'}
         </span>
       </div>

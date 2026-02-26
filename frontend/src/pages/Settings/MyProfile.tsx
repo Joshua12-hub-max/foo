@@ -5,8 +5,9 @@ import {
   ProfileHeader, 
   ProfileAvatar, 
   InformationGrid, 
-  useProfile 
+  useProfile,
 } from '@settings/Profile';
+import type { Profile } from '@settings/Profile';
 
 import MyMemosPage from '@pages/EmployeeManagementEmployee/MyMemosPage';
 
@@ -85,7 +86,7 @@ export default function MyProfile() {
           )}
 
           <ProfileAvatar 
-            profile={profile}
+            profile={profile as Profile | null}
             formData={formData}
             isEditing={isEditing}
             avatarPreview={avatarPreview}
@@ -93,7 +94,7 @@ export default function MyProfile() {
           />
 
           <InformationGrid 
-            profile={profile}
+            profile={profile as Profile | null}
             user={user}
             isEditing={isEditing}
             formData={formData}

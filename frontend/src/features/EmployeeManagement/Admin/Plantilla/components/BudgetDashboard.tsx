@@ -51,7 +51,7 @@ const BudgetDashboard: React.FC<BudgetDashboardProps> = memo(({ departments }) =
     try {
       if (selectedAllocation) {
         await updateAllocation(selectedAllocation.id, {
-          total_budget: data.total_budget,
+          totalBudget: data.totalBudget,
           notes: data.notes
         });
       } else {
@@ -112,28 +112,28 @@ const BudgetDashboard: React.FC<BudgetDashboardProps> = memo(({ departments }) =
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <SummaryCard 
           label="Total Allocated" 
-          value={formatPHP(summary?.total_allocated || 0)} 
+          value={formatPHP(summary?.totalAllocated || 0)} 
           icon={<Wallet className="text-blue-600" size={20} />}
           bg="bg-blue-50"
           border="border-blue-100"
         />
         <SummaryCard 
           label="Total Utilized" 
-          value={formatPHP(summary?.total_utilized || 0)} 
+          value={formatPHP(summary?.totalUtilized || 0)} 
           icon={<TrendingUp className="text-emerald-600" size={20} />}
           bg="bg-emerald-50"
           border="border-emerald-100"
         />
         <SummaryCard 
           label="Remaining Balance" 
-          value={formatPHP(summary?.total_remaining || 0)} 
+          value={formatPHP(summary?.totalRemaining || 0)} 
           icon={<CheckCircle className="text-indigo-600" size={20} />}
           bg="bg-indigo-50"
           border="border-indigo-100"
         />
         <SummaryCard 
           label="Avg. Utilization" 
-          value={`${(summary?.avg_utilization_rate || 0).toFixed(2)}%`} 
+          value={`${(summary?.avgUtilizationRate || 0).toFixed(2)}%`} 
           icon={<Calculator className="text-amber-600" size={20} />}
           bg="bg-amber-50"
           border="border-amber-100"
@@ -179,32 +179,32 @@ const BudgetDashboard: React.FC<BudgetDashboardProps> = memo(({ departments }) =
                     <div className="font-bold text-gray-700">{dept.department}</div>
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <div className="font-bold text-gray-900">{formatPHP(dept.total_budget)}</div>
-                    {dept.total_budget === 0 && (
+                    <div className="font-bold text-gray-900">{formatPHP(dept.totalBudget)}</div>
+                    {dept.totalBudget === 0 && (
                         <div className="text-[10px] text-amber-600 flex items-center justify-end gap-1">
                             <AlertTriangle size={10} /> Not Set
                         </div>
                     )}
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <div className="font-medium text-gray-600">{formatPHP(dept.utilized_budget)}</div>
+                    <div className="font-medium text-gray-600">{formatPHP(dept.utilizedBudget)}</div>
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center flex-col gap-1">
                         <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden max-w-[100px]">
                             <div 
                                 className={`h-full rounded-full transition-all duration-1000 ${
-                                    dept.utilization_rate > 90 ? 'bg-red-500' : 
-                                    dept.utilization_rate > 70 ? 'bg-amber-500' : 'bg-emerald-500'
+                                    dept.utilizationRate > 90 ? 'bg-red-500' : 
+                                    dept.utilizationRate > 70 ? 'bg-amber-500' : 'bg-emerald-500'
                                 }`}
-                                style={{ width: `${Math.min(dept.utilization_rate, 100)}%` }}
+                                style={{ width: `${Math.min(dept.utilizationRate, 100)}%` }}
                             />
                         </div>
                         <span className={`text-[10px] font-bold ${
-                            dept.utilization_rate > 90 ? 'text-red-600' : 
-                            dept.utilization_rate > 70 ? 'text-amber-600' : 'text-emerald-600'
+                            dept.utilizationRate > 90 ? 'text-red-600' : 
+                            dept.utilizationRate > 70 ? 'text-amber-600' : 'text-emerald-600'
                         }`}>
-                            {dept.utilization_rate.toFixed(1)}%
+                            {dept.utilizationRate.toFixed(1)}%
                         </span>
                     </div>
                   </td>

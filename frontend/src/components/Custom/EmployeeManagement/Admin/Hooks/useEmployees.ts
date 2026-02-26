@@ -4,22 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchEmployees, addEmployee, deleteEmployee } from '@api/employeeApi';
 // @ts-ignore
 import { fetchDepartments } from '@api/departmentApi';
-
-export interface Employee {
-  id: number;
-  first_name: string;
-  last_name: string;
-  email: string;
-  department?: string;
-  role?: string;
-  employment_status?: string;
-  [key: string]: unknown;
-}
-
-export interface Department {
-  id: number;
-  name: string;
-}
+import { Employee, Department } from '@/types';
 
 export interface UseEmployeesReturn {
   employees: Employee[];
@@ -27,7 +12,7 @@ export interface UseEmployeesReturn {
   loading: boolean;
   isProcessing: boolean;
   loadEmployees: () => Promise<void>;
-  handleAddEmployee: (formData: Partial<Employee>) => Promise<boolean>;
+  handleAddEmployee: (formData: import('@/schemas/employeeSchema').UpdateEmployeeInput | FormData) => Promise<boolean>;
   handleDeleteEmployee: (id: number) => Promise<boolean>;
 }
 
@@ -95,7 +80,7 @@ export const useEmployees = (
   });
 
   // Compatibility wrappers
-  const handleAddEmployee = useCallback(async (formData: Partial<Employee>): Promise<boolean> => {
+  const handleAddEmployee = useCallback(async (formData: import('@/schemas/employeeSchema').UpdateEmployeeInput | FormData): Promise<boolean> => {
     try {
       const res = await addMutation.mutateAsync(formData);
       return res.success;

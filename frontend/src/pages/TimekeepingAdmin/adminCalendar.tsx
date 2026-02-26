@@ -16,6 +16,7 @@ import {
   DrawerSidebar,
   getRandomEventColor,
 } from '@components/Custom/CalendarComponents/shared';
+import type { GridItem } from '@components/Custom/CalendarComponents/shared/components/CalendarGrid';
 
 import { AdminAgendaView } from '@components/Custom/CalendarComponents/admin/components';
 import AdminCalendarActions from '@components/Custom/CalendarComponents/AdminCalendarActions';
@@ -277,10 +278,13 @@ export default function AdminCalendar() {
   }, [selectedItem, selectedType, deleteAnnouncementMutation, deleteEventMutation]);
 
 
-  const handleEventDrop = useCallback((event: CalendarEvent, newDate: Date) => {
+  const handleEventDrop = useCallback((item: GridItem, newDate: Date) => {
       const formattedDate = newDate.toISOString().split('T')[0];
-      // Optimistic update or just simple mutation
-      updateEventMutation.mutate({ id: event.id, data: { ...event, date: formattedDate } as EventFormData });
+      if (item.id == null) return;
+      const id = Number(item.id);
+      if (isNaN(id)) return;
+      const event = item as unknown as CalendarEvent;
+      updateEventMutation.mutate({ id, data: { ...event, date: formattedDate } as EventFormData });
   }, [updateEventMutation]);
 
   // Calendar data processing

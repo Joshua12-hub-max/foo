@@ -166,7 +166,7 @@ const PerformanceCriteriaContent: React.FC = () => {
                   </div>
                   <div className="flex items-center gap-1.5 text-gray-500">
                     <CheckCircle size={14} className="text-gray-400" />
-                    <span>Max: <span className="font-bold text-gray-700">{item.maxScore}</span></span>
+                    <span>Max: <span className="font-bold text-gray-700">{String(item.maxScore)}</span></span>
                   </div>
                 </div>
               </motion.div>
@@ -188,7 +188,7 @@ const PerformanceCriteriaContent: React.FC = () => {
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
         onConfirm={handleDeleteConfirm}
-        itemName={selectedCriteria?.title || selectedCriteria?.criteria_title}
+        itemName={(selectedCriteria?.title || selectedCriteria?.criteria_title) ?? undefined}
       />
     </div>
   );

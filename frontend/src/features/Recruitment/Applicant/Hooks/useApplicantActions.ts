@@ -45,9 +45,45 @@ const useApplicantActions = (
     }
   };
 
+  const handleRejectApplicant = async (
+    applicantId: number,
+    onSuccess?: () => void
+  ): Promise<void> => {
+    try {
+      await recruitmentApi.updateStage(applicantId, {
+        stage: 'Rejected'
+      });
+      showNotification('Applicant archived/rejected successfully', 'success');
+      if (onSuccess) onSuccess();
+      fetchData(true);
+    } catch (err) {
+      console.error(err);
+      showNotification('Failed to archive applicant', 'error');
+    }
+  };
+
+  const handleRestoreApplicant = async (
+    applicantId: number,
+    onSuccess?: () => void
+  ): Promise<void> => {
+    try {
+      await recruitmentApi.updateStage(applicantId, {
+        stage: 'Applied'
+      });
+      showNotification('Applicant restored successfully', 'success');
+      if (onSuccess) onSuccess();
+      fetchData(true);
+    } catch (err) {
+      console.error(err);
+      showNotification('Failed to restore applicant', 'error');
+    }
+  };
+
   return {
     handleAssignInterviewer,
-    handleScheduleInterview
+    handleScheduleInterview,
+    handleRejectApplicant,
+    handleRestoreApplicant
   };
 };
 

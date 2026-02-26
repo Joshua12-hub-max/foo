@@ -1,5 +1,5 @@
 import ExcelJS from 'exceljs';
-import { AttendanceRecord } from '../../../hooks/Admin/useAttendanceData';
+import { AttendanceRecord } from '@/types';
 
 interface ExportOptions {
   title?: string;
@@ -49,25 +49,19 @@ const formatTime = (timeStr: string): string => {
  */
 const getEmployeeName = (record: AttendanceRecord): string => {
   if (record.name) return record.name;
-  if (record.first_name || record.last_name) {
-    return `${record.first_name || ''} ${record.last_name || ''}`.trim();
-  }
-  return `Employee #${record.employee_id}`;
+  return `Employee #${record.employeeId || record.id}`;
 };
 
 /**
- * Format late/undertime values
+ * Make minutes readable but retain numeric value in excel formulas if possible
+ * Since this function returns a string for display in other formats, we'll
+ * keep it for CSV, but in Excel we will pass raw numbers.
  */
 const formatMinutes = (value: string | number): string => {
-  if (!value || value === 0 || value === '0') return '-';
+  if (!value || value === 0 || value === '0') return '0';
   const mins = typeof value === 'string' ? parseInt(value, 10) : value;
-  if (isNaN(mins) || mins === 0) return '-';
-  const hours = Math.floor(mins / 60);
-  const remainingMins = mins % 60;
-  if (hours > 0) {
-    return `${hours}h ${remainingMins}m`;
-  }
-  return `${remainingMins}m`;
+  if (isNaN(mins) || mins === 0) return '0';
+  return mins.toString();
 };
 
 /**
@@ -198,8 +192,8 @@ export const exportAttendanceToExcel = async (
     const sortedData = [...data];
     if (groupByDepartment) {
       sortedData.sort((a, b) => {
-        const deptA = a.department_name || a.department || '';
-        const deptB = b.department_name || b.department || '';
+        const deptA = a.department || '';
+        const deptB = b.department || '';
         return deptA.localeCompare(deptB);
       });
     }
@@ -212,7 +206,7 @@ export const exportAttendanceToExcel = async (
     limitedData.forEach((record, index) => {
       // Add department separator if grouping
       if (groupByDepartment) {
-        const dept = record.department_name || record.department || 'Unassigned';
+        const dept = record.department || 'Unassigned';
         if (dept !== currentDepartment) {
           currentDepartment = dept;
           const deptRow = worksheet.addRow([`Department: ${dept}`]);
@@ -227,13 +221,16 @@ export const exportAttendanceToExcel = async (
         }
       }
 
+      const rawLate = record.lateMinutes || 0;
+      const rawUndertime = record.undertimeMinutes || 0;
+
       const row = worksheet.addRow([
         getEmployeeName(record),
         formatDate(record.date),
-        formatTime(record.time_in),
-        formatTime(record.time_out),
-        formatMinutes(record.late),
-        formatMinutes(record.undertime),
+        formatTime(record.timeIn || ''),
+        formatTime(record.timeOut || ''),
+        Number(formatMinutes(rawLate)),
+        Number(formatMinutes(rawUndertime)),
         record.status || '-'
       ]);
       
@@ -249,9 +246,39 @@ export const exportAttendanceToExcel = async (
       statusCell.fill = {
         type: 'pattern',
         pattern: 'solid',
-        fgColor: { argb: getStatusColor(record.status) }
+        fgColor: { argb: getStatusColor(record.status || '-') }
       };
     });
+
+    // Add a final Auto-Calculation row at the very bottom
+    const totalRow = worksheet.addRow([
+      'TOTAL CALCULATION',
+      '',
+      '',
+      '',
+      { formula: `SUM(E5:E${worksheet.rowCount - 1})`, result: 0 },
+      { formula: `SUM(F5:F${worksheet.rowCount - 1})`, result: 0 },
+      ''
+    ]);
+    
+    // Style the Total Row
+    totalRow.eachCell((cell) => {
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FF1E3A5F' } 
+      };
+      cell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      cell.border = {
+        top: { style: 'medium', color: { argb: 'FF000000' } },
+        bottom: { style: 'medium', color: { argb: 'FF000000' } },
+        left: { style: 'thin', color: { argb: 'FF000000' } },
+        right: { style: 'thin', color: { argb: 'FF000000' } }
+      };
+    });
+    totalRow.getCell(1).alignment = { horizontal: 'right', vertical: 'middle' };
+    worksheet.mergeCells(`A${totalRow.number}:D${totalRow.number}`);
 
     // Add warning if data was truncated
     if (data.length > MAX_ROWS) {
@@ -306,10 +333,10 @@ export const exportAttendanceToCSV = (
       ...data.map(record => [
         `"${getEmployeeName(record)}"`,
         `"${formatDate(record.date)}"`,
-        `"${formatTime(record.time_in)}"`,
-        `"${formatTime(record.time_out)}"`,
-        `"${formatMinutes(record.late)}"`,
-        `"${formatMinutes(record.undertime)}"`,
+        `"${formatTime(record.timeIn || '')}"`,
+        `"${formatTime(record.timeOut || '')}"`,
+        `"${formatMinutes(record.lateMinutes || 0)}"`,
+        `"${formatMinutes(record.undertimeMinutes || 0)}"`,
         `"${record.status || '-'}"`
       ].join(','))
     ].join('\n');

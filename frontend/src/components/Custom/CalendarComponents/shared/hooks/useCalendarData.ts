@@ -1,14 +1,15 @@
 import { useMemo } from 'react';
 import { formatDate } from '../utils/dateUtils';
 import { combineCalendarItems, sortCalendarItemsByTime } from '../utils/calendarItemUtils'; 
+import { GridItem } from '../components/CalendarGrid';
 
 interface UseCalendarDataParams {
   currentDate: Date;
-  events: any[];
+  events: GridItem[];
   showHolidays: boolean;
-  holidays: any[];
-  announcements?: any[];
-  schedules?: any[];
+  holidays: GridItem[];
+  announcements?: GridItem[];
+  schedules?: GridItem[];
 }
 
 /**
@@ -30,13 +31,13 @@ export const useCalendarData = ({ currentDate, events, showHolidays, holidays, a
   );
 
   // Log schedules being processed
-  console.log('📅 [useCalendarData] Schedules received:', schedules?.length || 0, schedules);
+  console.log('[useCalendarData] Schedules received:', schedules?.length || 0, schedules);
 
   // Combine events with holidays, announcements, and schedules then sort
   const displayedEvents = useMemo(
     () => {
       const result = combineCalendarItems(events, holidays, showHolidays, announcements, currentDate, schedules);
-      console.log('📅 [useCalendarData] displayedEvents generated:', result.length, result.filter(e => e.isSchedule));
+      console.log('[useCalendarData] displayedEvents generated:', result.length, result.filter((e: GridItem) => e.isSchedule));
       return result;
     },
     [events, holidays, showHolidays, announcements, currentDate, schedules]

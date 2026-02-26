@@ -3,9 +3,18 @@ import { Menu, Search, User as UserIcon, Camera } from "lucide-react";
 import NotificationMenu from "./NotificationMenu";
 
 /* -------------------- Helper Components -------------------- */
+export interface HeaderUser {
+  name?: string;
+  first_name?: string;
+  role?: string;
+  avatar?: string | null;
+  profilePicture?: string | null;
+  avatar_url?: string | null;
+}
+
 interface ProfilePictureProps {
   hasProfilePicture: boolean;
-  user: any;
+  user: HeaderUser;
   isHovered: boolean;
   onMouseEnter: () => void;
   onMouseLeave: () => void;
@@ -25,7 +34,7 @@ const ProfilePicture = React.memo<ProfilePictureProps>(
     >
       {hasProfilePicture ? (
         <img
-          src={user.avatar || user.profilePicture}
+          src={(user.avatar ?? user.profilePicture) ?? undefined}
           alt={`${user.name || 'User'}'s profile`}
           className="w-full h-full object-cover transition-all group-hover:brightness-75"
           loading="lazy"
@@ -90,7 +99,7 @@ interface HeaderProps {
   setSidebarOpen: (open: boolean) => void;
   searchQuery?: string;
   setSearchQuery?: (query: string) => void;
-  user: any;
+  user: HeaderUser;
   onProfileClick?: () => void;
   children?: React.ReactNode;
 }

@@ -1,9 +1,10 @@
 import React, { ReactNode } from 'react';
 import { useDrop } from 'react-dnd';
+import { GridItem } from './CalendarGrid';
 
 interface DroppableCellProps {
   date: Date;
-  onDrop?: (event: any, date: Date) => void;
+  onDrop?: (event: GridItem, date: Date) => void;
   children: ReactNode;
 }
 
@@ -14,7 +15,7 @@ interface DroppableCellProps {
 const DroppableCell: React.FC<DroppableCellProps> = ({ date, onDrop, children }) => {
   const [{ isOver, canDrop }, drop] = useDrop(() => ({
     accept: 'EVENT',
-    drop: (item: any) => {
+    drop: (item: { event: GridItem }) => {
       if (onDrop) {
         onDrop(item.event, date);
       }

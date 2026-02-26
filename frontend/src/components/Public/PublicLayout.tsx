@@ -11,7 +11,7 @@ interface PublicLayoutProps {
 
 const PublicLayout: React.FC<PublicLayoutProps> = ({ children }) => {
   return (
-    <div className="min-h-screen bg-[#FDFDFD] font-sans text-slate-900 flex flex-col selection:bg-green-400 selection:text-slate-950">
+    <div className="min-h-screen bg-[#131314] font-sans text-slate-100 flex flex-col selection:bg-green-600 selection:text-white w-full overflow-x-hidden">
       <PublicHeader />
       
       {/* Main Content with Fade-in Entry */}
@@ -25,7 +25,7 @@ const PublicLayout: React.FC<PublicLayoutProps> = ({ children }) => {
       </motion.main>
 
       {/* Premium Footer - Master Balance */}
-      <footer className="bg-white border-t border-slate-50 pt-16 pb-12 mt-auto overflow-hidden relative">
+      <footer className="bg-[#1e1e1f] border-t border-[#444746] pt-16 pb-12 mt-auto overflow-hidden relative">
         <div className="max-w-7xl mx-auto px-6 relative z-10">
           <div className="flex flex-col md:flex-row justify-between items-start gap-12 mb-16">
             {/* Brand Section */}
@@ -37,8 +37,8 @@ const PublicLayout: React.FC<PublicLayoutProps> = ({ children }) => {
                   className="w-10 h-10 object-contain" 
                 />
                 <div>
-                  <h3 className="font-black text-slate-950 tracking-tighter text-lg leading-none">City Human Resource Management Offices</h3>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Government of Meycauayan</p>
+                  <h3 className="font-black text-white tracking-tighter text-[15px] sm:text-lg leading-none">City Human Resource Management Office</h3>
+                  <p className="text-[10px] font-bold text-slate-500 tracking-tight mt-1">City Government of Meycauayan</p>
                 </div>
               </div>
               <p className="text-slate-500 text-[13px] font-semibold leading-relaxed">
@@ -49,45 +49,45 @@ const PublicLayout: React.FC<PublicLayoutProps> = ({ children }) => {
             {/* Digital Terminal - Essential Contact */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 md:gap-16">
               <div className="space-y-4">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] leading-none mb-1">Communication</p>
+                <p className="text-[10px] font-black text-slate-400 tracking-tight leading-none mb-1">Communication</p>
                 <div className="flex items-center gap-2">
-                  <Mail className="text-slate-300" size={14} />
-                  <p className="text-slate-950 text-xs font-bold font-mono">hr@meycauayan.gov.ph</p>
+                  <Mail className="text-slate-600" size={14} />
+                  <p className="text-white text-xs font-bold font-mono">hr@meycauayan.gov.ph</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Phone className="text-slate-300" size={14} />
-                  <p className="text-slate-950 text-xs font-bold">(044) 123-4567</p>
+                  <Phone className="text-slate-600" size={14} />
+                  <p className="text-white text-xs font-bold">(044) 123-4567</p>
                 </div>
               </div>
               <div className="space-y-4">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] leading-none mb-1">Location</p>
+                <p className="text-[10px] font-black text-slate-400 tracking-tight leading-none mb-1">Location</p>
                 <div className="flex items-center gap-2">
-                  <MapPin className="text-slate-300" size={14} />
-                  <p className="text-slate-950 text-xs font-bold">City Hall, Meycauayan</p>
+                  <MapPin className="text-slate-600" size={14} />
+                  <p className="text-white text-xs font-bold">City Hall, Meycauayan</p>
                 </div>
               </div>
             </div>
           </div>
 
           {/* Bottom Copyright */}
-          <div className="pt-8 border-t border-slate-100 flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="pt-8 border-t border-[#444746] flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex flex-col gap-1">
-              <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest">
+              <p className="text-slate-400 text-[10px] font-black tracking-tight">
                 © {new Date().getFullYear()} City Government of Meycauayan.
               </p>
-              <p className="text-slate-300 text-[9px] font-bold uppercase tracking-tight">Official HR Portal</p>
+              <p className="text-slate-300 text-[9px] font-bold tracking-tight">Official job portal</p>
             </div>
             
-            <div className="flex items-center gap-4 px-4 py-2 bg-slate-50 rounded-full border border-slate-100">
+            <div className="flex items-center gap-4 px-4 py-2 bg-white/5 rounded-full border border-white/5">
               <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
               </span>
-              <span className="text-slate-500 text-[10px] font-black uppercase tracking-widest">Live Support Active</span>
+              <span className="text-slate-500 text-[10px] font-black tracking-tight">Live Support Active</span>
             </div>
           </div>
         </div>
-        <div className="absolute bottom-0 right-0 w-64 h-64 bg-indigo-500/5 blur-[100px] -mb-32 -mr-32 rounded-full"></div>
+        <div className="absolute bottom-0 right-0 w-64 h-64 bg-green-500/5 blur-[100px] -mb-32 -mr-32 rounded-full"></div>
       </footer>
 
       <LiveChatWidget />

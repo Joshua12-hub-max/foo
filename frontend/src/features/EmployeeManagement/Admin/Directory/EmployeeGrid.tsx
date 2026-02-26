@@ -13,20 +13,7 @@ const EMPLOYEE_TABLE_HEADERS = [
   { key: 'actions', label: 'Actions', align: 'right' }
 ];
 
-interface Employee {
-  id: number;
-  first_name?: string;
-  last_name?: string;
-  email?: string;
-  employee_id?: string;
-  department?: string;
-  position_title?: string;
-  job_title?: string;
-  job_title?: string;
-  salary_grade?: number;
-  employment_status?: string;
-  avatar_url?: string;
-}
+import { Employee } from '@/types';
 
 interface EmployeeGridProps {
   employees: Employee[];
@@ -130,7 +117,7 @@ const EmployeeTable: React.FC<EmployeeGridProps> = ({
 
                   {/* Status */}
                   <td className="px-6 py-4">
-                    <span className={`px-2.5 py-1 rounded-md text-xs font-bold shadow-sm ${getStatusBadgeClass(employee.employment_status)}`}>
+                    <span className={`px-2.5 py-1 rounded-md text-xs font-bold shadow-sm ${getStatusBadgeClass(employee.employment_status || '')}`}>
                       {employee.employment_status || 'Active'}
                     </span>
                   </td>

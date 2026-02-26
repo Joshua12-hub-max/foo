@@ -1,8 +1,8 @@
-import express from 'express';
+import { Router } from 'express';
 import { getSchedules, createSchedule, updateSchedule, deleteSchedule } from '../controllers/scheduleController.js';
 import { verifyToken } from '../middleware/authMiddleware.js';
 
-const router = express.Router();
+const router: Router = Router();
 
 router.use(verifyToken);
 

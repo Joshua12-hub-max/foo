@@ -13,7 +13,7 @@ export interface Memo {
   memo_number: string;
   memo_type: string;
   subject: string;
-  content: string;
+  content?: string;
   priority: string;
   status: string;
   created_at: string;
@@ -51,7 +51,7 @@ export const useEmployeeMemos = (): UseEmployeeMemosReturn => {
       setLoading(true);
       setError(null);
       const res = await fetchMyMemos();
-      setMemos(res.memos || []);
+      setMemos(res.data?.memos ?? []);
     } catch (err) {
       setError('Failed to load memos');
     } finally {

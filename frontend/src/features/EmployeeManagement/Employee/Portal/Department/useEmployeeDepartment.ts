@@ -49,7 +49,7 @@ export const useEmployeeDepartment = (): UseEmployeeDepartmentReturn => {
       setError(null);
       
       // Get department name from auth context
-      const deptName = user?.department_name;
+      const deptName = user?.department;
       
       if (!deptName) {
         setError('No department assigned');

@@ -10,14 +10,7 @@ interface Department {
   name: string;
 }
 
-interface Employee {
-  id: number;
-  first_name?: string;
-  last_name?: string;
-  employee_id?: string;
-  email?: string;
-  avatar_url?: string;
-}
+import { Employee } from '@/types';
 
 interface AddEmployeeToDepartmentProps {
   isOpen: boolean;
@@ -61,9 +54,9 @@ const AddEmployeeToDepartment: React.FC<AddEmployeeToDepartmentProps> = ({ isOpe
         queryClient.invalidateQueries({ queryKey: ['available-employees', department?.id] });
         if (onSuccess) onSuccess();
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
         console.error('Failed to assign employee', error);
-        showToast(error.response?.data?.message || 'Failed to assign employee', 'error');
+        showToast(error.message || 'Failed to assign employee', 'error');
     }
   });
 

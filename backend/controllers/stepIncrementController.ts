@@ -12,6 +12,7 @@ import {
 import { eq, and, asc, desc, sql, lt, gte } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/mysql-core';
 import type { AuthenticatedRequest } from '../types/index.js';
+import { ZodError } from 'zod';
 import {
   StepIncrementTrackerSchema,
   ProcessStepIncrementSchema
@@ -28,7 +29,7 @@ export const getStepIncrements = async (req: Request, res: Response): Promise<vo
 
     const filters = [];
     if (status) {
-      filters.push(eq(stepIncrementTracker.status, status as any));
+      filters.push(eq(stepIncrementTracker.status, status as 'Pending' | 'Approved' | 'Denied' | 'Processed'));
     }
     if (employee_id) {
       filters.push(eq(stepIncrementTracker.employeeId, parseInt(employee_id as string)));
@@ -110,7 +111,17 @@ export const getEligibleEmployees = async (_req: Request, res: Response): Promis
       lt(authentication.stepIncrement, 8) // Optimize: pre-filter steps < 8
     ));
 
-    const eligibleEmployees: any[] = [];
+    const eligibleEmployees: {
+      employee_id: number;
+      employee_name: string;
+      employee_employee_id: string;
+      position_title: string | null;
+      salary_grade: number;
+      current_step: number;
+      years_in_position: number;
+      eligible_date: string;
+      next_step: number;
+    }[] = [];
     const currentTime = new Date();
     console.log('[DEBUG] getEligibleEmployees executing with updated logic');
 
@@ -238,7 +249,7 @@ export const createStepIncrement = async (req: Request, res: Response): Promise<
       currentStep: validatedData.currentStep,
       previousStep: validatedData.previousStep || null,
       eligibleDate: validatedData.eligibleDate,
-      status: validatedData.status as any,
+      status: validatedData.status as 'Pending' | 'Approved' | 'Denied' | 'Processed',
       remarks: validatedData.remarks || null
     });
 
@@ -247,14 +258,14 @@ export const createStepIncrement = async (req: Request, res: Response): Promise<
       message: 'Step increment request created successfully',
       id: result[0].insertId
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Create Step Increment Error:', error);
 
-    if (error.name === 'ZodError') {
+    if (error instanceof ZodError) {
       res.status(400).json({
         success: false,
         message: 'Validation error',
-        errors: error.errors
+        errors: error.issues
       });
       return;
     }
@@ -302,7 +313,7 @@ export const processStepIncrement = async (req: Request, res: Response): Promise
     // Update increment status
     await db.update(stepIncrementTracker)
       .set({ 
-        status: status as any, 
+        status: status as 'Pending' | 'Approved' | 'Denied' | 'Processed', 
         processedAt: new Date().toISOString(), 
         processedBy: authReq.user.id, 
         remarks: remarks || null 
@@ -357,14 +368,14 @@ export const processStepIncrement = async (req: Request, res: Response): Promise
       success: true,
       message: `Step increment ${status.toLowerCase()} successfully`
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Process Step Increment Error:', error);
 
-    if (error.name === 'ZodError') {
+    if (error instanceof ZodError) {
       res.status(400).json({
         success: false,
         message: 'Validation error',
-        errors: error.errors
+        errors: error.issues
       });
       return;
     }
@@ -382,7 +393,7 @@ export const processStepIncrement = async (req: Request, res: Response): Promise
  */
 export const getNextStepIncrement = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
+    const { id } = req.params as { id: string };
     const employeeId = parseInt(id);
 
     // 1. Get Employee Position & Start Date

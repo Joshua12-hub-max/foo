@@ -1,6 +1,6 @@
 import { db } from '../db/index.js';
 import { authentication } from '../db/schema.js';
-import { eq, or, and, gt, sql } from 'drizzle-orm';
+import { eq, or, and, gt, sql, desc } from 'drizzle-orm';
 
 
 type NewUser = typeof authentication.$inferInsert;
@@ -11,18 +11,23 @@ export class AuthService {
     const lowerIdentifier = identifier.toLowerCase();
     
     // Normalize ID: remove 'emp-' prefix and leading zeros to match raw DB ID (e.g. "EMP-001" -> "1")
-    // This allows users to login with "EMP-001", "001", or "1"
     const normalizedId = lowerIdentifier.replace(/^emp-/i, '').replace(/^0+/, '');
     
-    const conditions = [
-      eq(sql`LOWER(${authentication.email})`, lowerIdentifier),
-      eq(sql`LOWER(${authentication.employeeId})`, lowerIdentifier)
-    ];
+    const conditions = [];
+    
+    // Direct matches for email
+    conditions.push(eq(authentication.email, identifier));
+    // Sometimes the database might have a different case for the email or employeeId
+    conditions.push(sql`LOWER(${authentication.email}) = ${lowerIdentifier}`);
+    conditions.push(sql`LOWER(${authentication.employeeId}) = ${lowerIdentifier}`);
 
     // If normalized ID looks like a number and matches the raw ID format
     if (normalizedId !== lowerIdentifier && /^\d+$/.test(normalizedId)) {
       conditions.push(eq(authentication.employeeId, normalizedId));
     }
+
+    // fallback: just check direct equality to employeeId
+    conditions.push(eq(authentication.employeeId, identifier));
 
     return await db.query.authentication.findFirst({
       where: or(...conditions)
@@ -67,5 +72,22 @@ export class AuthService {
         gt(authentication.resetPasswordExpires, sql`NOW()`)
       )
     });
+  }
+  static async getNextEmployeeId() {
+    const latestSmallUser = await db.select({ 
+        employeeId: authentication.employeeId 
+     })
+     .from(authentication)
+     .where(and(
+        sql`${authentication.employeeId} REGEXP '^[0-9]+$'`,
+        sql`CAST(${authentication.employeeId} AS UNSIGNED) <= 200`
+     ))
+     .orderBy(desc(sql`CAST(${authentication.employeeId} AS UNSIGNED)`))
+     .limit(1);
+
+    if (latestSmallUser.length > 0 && !isNaN(parseInt(latestSmallUser[0].employeeId))) {
+      return (parseInt(latestSmallUser[0].employeeId) + 1).toString();
+    }
+    return '1';
   }
 }

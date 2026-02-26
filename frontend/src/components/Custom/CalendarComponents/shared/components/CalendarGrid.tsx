@@ -5,7 +5,7 @@ import { getEventStyles, filterEventsByDate } from '../utils/calendarItemUtils';
 import DroppableCell from './DroppableCell';
 import DraggableEvent from './DraggableEvent';
 
-interface EventItem {
+export interface GridItem {
   id?: string | number;
   type?: string;
   title: string;
@@ -13,7 +13,21 @@ interface EventItem {
   isHoliday?: boolean;
   isAnnouncement?: boolean;
   isSchedule?: boolean;
-  [key: string]: any;
+  date?: string;
+  start_date?: string;
+  end_date?: string;
+  time?: string | number | null;
+  notes?: string;
+  description?: string | null;
+  color?: string;
+  month?: number;
+  day?: number;
+  created_at?: string;
+  start_time?: string;
+  content?: string;
+  endTime?: string;
+  recurring_pattern?: string | null;
+  department?: string | null;
 }
 
 interface CalendarGridProps {
@@ -21,12 +35,12 @@ interface CalendarGridProps {
   today: Date;
   onDateClick: (date: Date) => void;
   showHolidays: boolean;
-  holidays: any[];
-  announcements?: any[];
-  events?: any[];
-  schedules?: any[];
-  displayedEvents: EventItem[];
-  onEventDrop?: (item: any, date: Date) => void;
+  holidays: GridItem[];
+  announcements?: GridItem[];
+  events?: GridItem[];
+  schedules?: GridItem[];
+  displayedEvents: GridItem[];
+  onEventDrop?: (item: GridItem, date: Date) => void;
 }
 
 const CalendarGrid: React.FC<CalendarGridProps> = ({ currentDate, today, onDateClick, displayedEvents = [], onEventDrop }) => {
@@ -80,7 +94,7 @@ const CalendarGrid: React.FC<CalendarGridProps> = ({ currentDate, today, onDateC
           </div>
           
           <div className="flex flex-col gap-1 w-full">
-            {itemsToShow.map((item: EventItem, idx: number) => {
+            {itemsToShow.map((item: GridItem, idx: number) => {
               // @ts-ignore
               const styles = getEventStyles(item.type, item.title, item.priority);
               

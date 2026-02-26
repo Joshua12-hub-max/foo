@@ -37,7 +37,7 @@ const DeleteEmployeeModal: React.FC<DeleteEmployeeModalProps> = ({
       onClose();
       if (onSuccess) onSuccess();
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       console.error('Failed to delete employee:', error);
       showToast(error.message || 'Failed to delete employee', 'error');
     }

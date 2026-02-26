@@ -78,94 +78,94 @@ const AttendanceExport: React.FC<AttendanceExportProps> = ({ data, title, dateRa
   const [groupByDepartment, setGroupByDepartment] = useState(false);
   
   const fetchAllData = async (): Promise<AttendanceRecord[]> => {
+    // If no filters are provided, we just export the currently visible data
     if (!filters || !filters.startDate || !filters.endDate) return data;
 
     try {
-      // 1. Fetch all matching LOGS
+      const selectedDept = filters.department && filters.department !== 'All Departments' ? filters.department : null;
+
+      // 1. Fetch Logs (Filtered by date and department natively by API if supported, or we filter locally)
       const logsResponse = await attendanceApi.getLogs({
         ...filters,
         page: 1,
         limit: 100000 
       });
 
-      // 2. Fetch all EMPLOYEES for the target department
-      const departmentFilter = filters.department || 'All Departments';
-      const employeesResponse = await employeeApi.fetchEmployees({ department: departmentFilter });
+      // 2. Fetch EMPLOYEES for the strict target department
+      const employeesResponse = await employeeApi.fetchEmployees({ department: filters.department });
 
       if (logsResponse.data.success && Array.isArray(logsResponse.data.data) && employeesResponse.success && Array.isArray(employeesResponse.employees)) {
         
-        const logs = logsResponse.data.data;
+        let logs = logsResponse.data.data;
         const employees = employeesResponse?.employees || [];
+        const validEmpIds = new Set(employees.map((e: Employee) => String(e.employee_id || e.id)));
+        
+        // Strict Department Filtering: If a department is selected, remove ANY log that doesn't belong to those employees
+        if (selectedDept) {
+            logs = logs.filter((log: AttendanceRecord) => validEmpIds.has(String(log.employee_id)));
+        }
+
         const fullRecords: AttendanceRecord[] = [];
 
-        // 3. Generate Date Range
+        // 3. Generate Exact Date Range
         const start = new Date(filters.startDate);
         const end = new Date(filters.endDate);
         const dateArray: string[] = [];
         
-        // Clone start to avoid modifying it in loop
         for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
             dateArray.push(d.toISOString().split('T')[0]);
         }
 
-        // 4. Cross-Reference: Day x Employee
-        // Create a lookup map for existing logs: "YYYY-MM-DD_EmployeeID" -> Record
+        // 4. Cross-Reference
         const logMap = new Map<string, AttendanceRecord>();
         
-        // Transform api logs (DTRApiResponse) to AttendanceRecord
-        logs.forEach((log: any) => {
-             // Handle potential date format issues
+        logs.forEach((log: AttendanceRecord) => {
             const logDate = new Date(log.date).toISOString().split('T')[0];
-            const key = `${logDate}_${log.employee_id}`;
+            const empId = String(log.employee_id ?? log.employeeId ?? '');
+            const key = `${logDate}_${empId}`;
             
             const record: AttendanceRecord = {
               id: log.id,
-              employeeId: log.employee_id,
-              employee_id: log.employee_id,
-              name: log.employee_name || `${log.first_name || ''} ${log.last_name || ''}`.trim(),
+              employeeId: log.employeeId,
+              employee_id: log.employee_id ?? Number(log.employeeId),
+              name: log.name || `Employee #${empId}`,
               date: logDate,
-              timeIn: log.time_in,
-              timeOut: log.time_out,
-              lateMinutes: log.late_minutes,
-              undertimeMinutes: log.undertime_minutes,
+              timeIn: log.timeIn,
+              timeOut: log.timeOut,
+              lateMinutes: log.lateMinutes,
+              undertimeMinutes: log.undertimeMinutes,
               status: log.status,
-              department: log.department,
+              department: log.department ?? selectedDept ?? undefined,
               duties: log.duties
             };
             
             logMap.set(key, record);
         });
 
-        // Loop through every day (descending to match typical view)
+        // Loop through every day
         dateArray.reverse().forEach(dateStr => {
             employees.forEach((emp: Employee) => {
-                const empId = emp.employee_id || emp.id;
+                const empId = String(emp.employee_id || emp.id);
                 const key = `${dateStr}_${empId}`;
                 const existingLog = logMap.get(key);
 
                 if (existingLog) {
                     fullRecords.push(existingLog);
                 } else {
-                    // GENERATE ABSENT RECORD
-                    // Check if today is future? (Optional: don't show absent for future dates)
                     const isFuture = new Date(dateStr) > new Date();
-
                     if (!isFuture) {
-                         const firstName = emp.first_name || '';
-                         const lastName = emp.last_name || '';
-                         
                          fullRecords.push({
-                            id: `gen-${Math.random()}`, // Temp ID
-                            employee_id: empId,
-                            employeeId: String(empId),
-                            name: `${firstName} ${lastName}`.trim() || `Employee ${empId}`,
+                            id: `gen-${Math.random()}`,
+                            employee_id: Number(empId),
+                            employeeId: empId,
+                            name: `${emp.first_name || ''} ${emp.last_name || ''}`.trim() || `Employee ${empId}`,
                             date: dateStr,
                             timeIn: '-',
                             timeOut: '-',
-                            status: 'Absent', // Default to absent if no log
+                            status: 'Absent',
                             lateMinutes: 0,
                             undertimeMinutes: 0,
-                            department: emp.department || 'N/A'
+                            department: emp.department || selectedDept || 'Unassigned'
                         });
                     }
                 }
@@ -175,13 +175,12 @@ const AttendanceExport: React.FC<AttendanceExportProps> = ({ data, title, dateRa
         return fullRecords;
 
       } else {
-        // Fallback if APIs fail
-        console.warn("Could not fetch full datasets for gap filling, using raw logs only.");
-        return logsResponse.data.success ? logsResponse.data.data : data; 
+        console.warn("Could not fetch full datasets. Using raw logs.");
+        return logsResponse?.data?.success ? logsResponse.data.data : data; 
       }
     } catch (error) {
       console.error("Error fetching full export data:", error);
-      throw error; // Let caller handle
+      throw error; 
     }
   };
 

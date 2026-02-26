@@ -9,8 +9,6 @@ import {
 import { eq, and, ne, sql } from 'drizzle-orm';
 import { 
   CSC_CREDIT_EARNINGS_TABLE, 
-  MONTHLY_VL_ACCRUAL, 
-  MONTHLY_SL_ACCRUAL 
 } from '../types/leave.types.js';
 
 /**

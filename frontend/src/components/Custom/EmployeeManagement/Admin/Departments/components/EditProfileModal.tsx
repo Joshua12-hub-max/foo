@@ -43,8 +43,12 @@ interface CurrentUser {
   emergency_contact_number?: string;
   avatar_url?: string;
   avatar?: string;
-  sss_number?: string;
-  sssNumber?: string;
+  umid_id?: string;
+  umidNo?: string;
+  philsys_id?: string;
+  philsysId?: string;
+  educational_background?: string;
+  educationalBackground?: string;
   gsis_number?: string;
   gsisNumber?: string;
   philhealth_number?: string;
@@ -86,7 +90,9 @@ interface FormData {
   emergency_contact: string;
   emergency_contact_number: string;
   avatar: File | null;
-  sss_number: string;
+  umid_id: string;
+  philsys_id: string;
+  educational_background: string;
   gsis_number: string;
   philhealth_number: string;
   pagibig_number: string;
@@ -101,7 +107,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, cu
     birth_date: '', gender: '', civil_status: '', nationality: '',
     blood_type: '', height_cm: '', weight_kg: '', permanent_address: '',
     emergency_contact: '', emergency_contact_number: '', avatar: null,
-    sss_number: '', gsis_number: '', philhealth_number: '', pagibig_number: '', tin_number: ''
+    umid_id: '', philsys_id: '', educational_background: '', gsis_number: '', philhealth_number: '', pagibig_number: '', tin_number: ''
   });
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -133,7 +139,9 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, cu
         emergency_contact: currentUser.emergency_contact || currentUser.emergencyContact || '',
         emergency_contact_number: currentUser.emergency_contact_number || '',
         avatar: null,
-        sss_number: currentUser.sss_number || currentUser.sssNumber || '',
+        umid_id: currentUser.umid_id || currentUser.umidNo || '',
+        philsys_id: currentUser.philsys_id || currentUser.philsysId || '',
+        educational_background: currentUser.educational_background || currentUser.educationalBackground || '',
         gsis_number: currentUser.gsis_number || currentUser.gsisNumber || '',
         philhealth_number: currentUser.philhealth_number || currentUser.philhealthNumber || '',
         pagibig_number: currentUser.pagibig_number || currentUser.pagibigNumber || '',
@@ -144,7 +152,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, cu
     }
   }, [currentUser, isOpen]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
@@ -376,8 +384,12 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, cu
             <p className="text-xs font-bold text-gray-600 mb-2">Government IDs</p>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className={labelClass}>SSS Number</label>
-                <input type="text" name="sss_number" value={formData.sss_number} onChange={handleChange} className={inputClass} />
+                <label className={labelClass}>UMID ID</label>
+                <input type="text" name="umid_id" value={formData.umid_id} onChange={handleChange} className={inputClass} />
+              </div>
+              <div>
+                <label className={labelClass}>PHILSYS ID</label>
+                <input type="text" name="philsys_id" value={formData.philsys_id} onChange={handleChange} className={inputClass} />
               </div>
               <div>
                 <label className={labelClass}>GSIS Number</label>
@@ -395,6 +407,14 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, cu
                 <label className={labelClass}>TIN</label>
                 <input type="text" name="tin_number" value={formData.tin_number} onChange={handleChange} className={inputClass} />
               </div>
+              <div>
+                <label className={labelClass}>Blood Type</label>
+                <input type="text" name="blood_type" value={formData.blood_type} onChange={handleChange} className={inputClass} />
+              </div>
+            </div>
+            <div className="mt-2">
+              <label className={labelClass}>Educational Background</label>
+              <textarea name="educational_background" value={formData.educational_background} onChange={handleChange} className={`${inputClass} min-h-[60px]`} />
             </div>
           </div>
 

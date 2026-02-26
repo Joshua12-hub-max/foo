@@ -2,20 +2,14 @@ import { authentication } from '../db/schema.js';
 import { InferSelectModel } from 'drizzle-orm';
 import { UserRole, EmploymentStatus, Gender, CivilStatus, AppointmentType } from './index.js';
 
-/**
- * DB Model (CamelCase as per Drizzle schema)
- */
 export type EmployeeDbModel = InferSelectModel<typeof authentication>;
 
-/**
- * Input type for mapToEmployeeApi — accepts both full DB rows and partial selects.
- * All fields except `id` are optional since getAllEmployees returns a subset.
- */
 export interface EmployeeMapperInput {
   id: number;
   firstName?: string | null;
   lastName?: string | null;
   middleName?: string | null;
+  suffix?: string | null;
   email?: string | null;
   role?: string | null;
   department?: string | null;
@@ -37,11 +31,13 @@ export interface EmployeeMapperInput {
   address?: string | null;
   permanentAddress?: string | null;
   avatarUrl?: string | null;
-  sssNumber?: string | null;
+  umidNo?: string | null;
+  philsysId?: string | null;
   philhealthNumber?: string | null;
   pagibigNumber?: string | null;
   tinNumber?: string | null;
   gsisNumber?: string | null;
+  educationalBackground?: string | null;
   salaryGrade?: string | null;
   stepIncrement?: number | null;
   appointmentType?: string | null;
@@ -72,7 +68,8 @@ export interface EmployeeMapperInput {
   firstDayOfService?: string | null;
   supervisor?: string | null;
   officeAddress?: string | null;
-  [key: string]: unknown;
+  originalAppointmentDate?: string | null;
+  lastPromotionDate?: string | null;
 }
 
 /**
@@ -83,6 +80,7 @@ export interface EmployeeApiResponse {
   first_name: string;
   last_name: string;
   middle_name: string | null;
+  suffix: string | null;
   email: string;
   role: UserRole;
   department: string | null;
@@ -104,11 +102,13 @@ export interface EmployeeApiResponse {
   address: string | null;
   permanent_address: string | null;
   avatar_url: string | null;
-  sss_number: string | null;
+  umid_id: string | null;
+  philsys_id: string | null;
   philhealth_number: string | null;
   pagibig_number: string | null;
   tin_number: string | null;
   gsis_number: string | null;
+  educational_background: string | null;
   salary_grade: string | null;
   step_increment: number;
   appointment_type: AppointmentType | null;

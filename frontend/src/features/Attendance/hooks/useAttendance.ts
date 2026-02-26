@@ -9,31 +9,6 @@ export const useAttendanceLogs = (filters: AttendanceQueryValues) => {
     });
 };
 
-export const useClockIn = () => {
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: attendanceApi.clockIn,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['todayStatus'] });
-            queryClient.invalidateQueries({ queryKey: ['recentActivity'] });
-            queryClient.invalidateQueries({ queryKey: ['attendanceLogs'] });
-            queryClient.invalidateQueries({ queryKey: ['dashboardStats'] });
-        },
-    });
-};
-
-export const useClockOut = () => {
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: attendanceApi.clockOut,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['todayStatus'] });
-            queryClient.invalidateQueries({ queryKey: ['recentActivity'] });
-            queryClient.invalidateQueries({ queryKey: ['attendanceLogs'] });
-            queryClient.invalidateQueries({ queryKey: ['dashboardStats'] });
-        },
-    });
-};
 
 export const useRecentActivity = () => {
     return useQuery({

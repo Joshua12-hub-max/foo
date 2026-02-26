@@ -24,8 +24,24 @@ export const CreateEmployeeSchema = z.object({
   phone_number: z.string().optional().nullable(),
   address: z.string().optional().nullable(),
   permanent_address: z.string().optional().nullable(),
+  emergency_contact: z.string().optional().nullable(),
+  emergency_contact_number: z.string().optional().nullable(),
+  educational_background: z.string().optional().nullable(),
   
-  // Government IDs (No SSS for government - GSIS only)
+  // Extended PDS Fields
+  place_of_birth: z.string().optional().nullable(),
+  blood_type: z.string().optional().nullable(),
+  height_m: z.coerce.number().optional().nullable(),
+  weight_kg: z.coerce.number().optional().nullable(),
+  citizenship_type: z.string().optional().nullable(),
+  dual_citizenship_country: z.string().optional().nullable(),
+  telephone_no: z.string().optional().nullable(),
+  residential_address: z.string().optional().nullable(),
+  residential_zip_code: z.string().optional().nullable(),
+  permanent_zip_code: z.string().optional().nullable(),
+  agency_employee_no: z.string().optional().nullable(),
+  
+  // Government Identification
   philhealth_number: z.string().optional().nullable(),
   pagibig_number: z.string().optional().nullable(),
   tin_number: z.string().optional().nullable(),

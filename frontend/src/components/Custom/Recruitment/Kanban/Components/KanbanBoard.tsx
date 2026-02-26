@@ -1,5 +1,15 @@
 import React from 'react';
-import { DndContext, closestCenter, DragOverlay, MeasuringStrategy, SensorDescriptor, SensorOptions } from '@dnd-kit/core';
+import { 
+  DndContext, 
+  closestCenter, 
+  DragOverlay, 
+  MeasuringStrategy, 
+  SensorDescriptor, 
+  SensorOptions,
+  DragStartEvent,
+  DragEndEvent,
+  DragOverEvent
+} from '@dnd-kit/core';
 import KanbanColumn from './KanbanColumn';
 import DragOverlayCard from './DragOverlayCard';
 import { KanbanApplicant } from '../Hooks/useKanbanData';
@@ -11,9 +21,9 @@ interface KanbanBoardProps {
   sensors: SensorDescriptor<SensorOptions>[];
   activeId: string | null;
   activeApplicant: KanbanApplicant | null | undefined;
-  handleDragStart: (event: any) => void;
-  handleDragEnd: (event: any) => void;
-  handleDragOver: (event: any) => void;
+  handleDragStart: (event: DragStartEvent) => void;
+  handleDragEnd: (event: DragEndEvent) => void;
+  handleDragOver: (event: DragOverEvent) => void;
   handleViewRequirements: (applicant: KanbanApplicant) => void;
 }
 

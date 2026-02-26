@@ -94,7 +94,7 @@ const AdminMemoPage = forwardRef<AdminMemoPageRef, AdminMemoPageProps>(({ hideHe
           formData={formData}
           onFormChange={handleFormChange}
           employees={employees}
-          selectedMemo={selectedMemo}
+          selectedMemo={selectedMemo ?? undefined}
           saving={saving}
         />
 
@@ -102,7 +102,7 @@ const AdminMemoPage = forwardRef<AdminMemoPageRef, AdminMemoPageProps>(({ hideHe
         <MemoViewModal
           isOpen={isViewOpen}
           onClose={closeViewModal}
-          memo={selectedMemo}
+          memo={selectedMemo ?? undefined}
         />
 
         {/* Delete Modal */}
@@ -110,7 +110,7 @@ const AdminMemoPage = forwardRef<AdminMemoPageRef, AdminMemoPageProps>(({ hideHe
           isOpen={isDeleteOpen}
           onClose={closeDeleteModal}
           onConfirm={handleDelete}
-          memo={selectedMemo}
+          memo={selectedMemo ?? undefined}
           saving={saving}
         />
       </div>

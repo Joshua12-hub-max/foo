@@ -1,7 +1,7 @@
-import express from 'express';
+import { Router } from 'express';
 import { getEmployeeMetrics, getAllViolations } from '../controllers/complianceController.js';
 
-const router = express.Router();
+const router: Router = Router();
 
 // GET /api/compliance/metrics/:employeeId
 router.get('/metrics/:employeeId', getEmployeeMetrics);

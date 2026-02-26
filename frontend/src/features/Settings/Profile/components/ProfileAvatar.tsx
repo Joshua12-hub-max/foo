@@ -5,8 +5,8 @@ import EmploymentStatusBadge from '@/components/Custom/Common/EmploymentStatusBa
 interface Profile {
   name?: string;
   role?: string;
-  department?: string;
-  employmentStatus?: string;
+  department?: string | null;
+  employmentStatus?: string | null;
   avatar?: string;
 }
 

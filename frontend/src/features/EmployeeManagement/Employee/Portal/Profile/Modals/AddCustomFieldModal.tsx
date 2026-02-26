@@ -6,6 +6,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToastStore } from '@/stores';
 import { employeeApi } from '@/api/employeeApi';
 import { AddCustomFieldSchema, AddCustomFieldInput } from '@/schemas/employeeSchema';
+import { ApiError } from '@/types';
 
 interface AddCustomFieldModalProps {
   isOpen: boolean;
@@ -51,7 +52,7 @@ const AddCustomFieldModal: React.FC<AddCustomFieldModalProps> = ({
       onClose();
     },
     onError: (error: unknown) => {
-      const err = error as { response?: { data?: { message?: string } }; message?: string };
+      const err = error as ApiError;
       console.error('Failed to add custom field', err);
       showToast(err.response?.data?.message || err.message || 'Failed to add custom field', 'error');
     }

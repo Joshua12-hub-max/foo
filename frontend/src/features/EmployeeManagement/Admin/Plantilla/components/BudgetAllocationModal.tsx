@@ -32,7 +32,7 @@ const BudgetAllocationModal: React.FC<BudgetAllocationModalProps> = memo(({
     defaultValues: {
       year: year,
       department: '',
-      total_budget: 0,
+      totalBudget: 0,
       notes: ''
     }
   });
@@ -43,14 +43,14 @@ const BudgetAllocationModal: React.FC<BudgetAllocationModalProps> = memo(({
         reset({
           year: initialData.year,
           department: initialData.department,
-          total_budget: initialData.total_budget,
+          totalBudget: initialData.totalBudget || 0,
           notes: initialData.notes || ''
         });
       } else {
         reset({
           year: year,
           department: '',
-          total_budget: 0,
+          totalBudget: 0,
           notes: ''
         });
       }
@@ -125,13 +125,13 @@ const BudgetAllocationModal: React.FC<BudgetAllocationModalProps> = memo(({
             <input
               type="number"
               step="0.01"
-              {...register('total_budget', { valueAsNumber: true })}
+              {...register('totalBudget', { valueAsNumber: true })}
               placeholder="0.00"
               className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg text-gray-700 font-medium focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
             />
-            {errors.total_budget && (
+            {errors.totalBudget && (
               <p className="mt-1 text-xs text-red-500 flex items-center gap-1">
-                <AlertCircle size={12} /> {errors.total_budget.message}
+                <AlertCircle size={12} /> {errors.totalBudget.message}
               </p>
             )}
           </div>

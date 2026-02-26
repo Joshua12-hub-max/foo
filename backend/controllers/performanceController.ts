@@ -7,9 +7,10 @@ import {
   performanceReviewItems, 
   performanceCriteria, 
   performanceAuditLog,
-  policyViolations
+  policyViolations,
+  leaveApplications
 } from '../db/schema.js';
-import { eq, and, sql, desc, or, max, count, inArray, isNull, like } from 'drizzle-orm';
+import { eq, and, sql, desc, or, max, count, inArray, isNull, like, gte, lte } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/mysql-core';
 import type { AuthenticatedRequest, ReviewStatus, PerformanceCriteriaType } from '../types/index.js';
 import { calculateAttendanceScore } from '../services/attendanceRatingService.js';
@@ -89,6 +90,12 @@ const calculateReviewScore = async (reviewId: number): Promise<string> => {
   .leftJoin(performanceCriteria, eq(performanceReviewItems.criteriaId, performanceCriteria.id))
   .where(eq(performanceReviewItems.reviewId, reviewId));
 
+  const review = await db.query.performanceReviews.findFirst({
+    where: eq(performanceReviews.id, reviewId)
+  });
+
+  if (!review) return '0';
+
   let totalWeightedScore = 0;
   let totalWeight = 0;
 
@@ -102,7 +109,61 @@ const calculateReviewScore = async (reviewId: number): Promise<string> => {
     totalWeight += weight;
   });
 
-  return totalWeight > 0 ? (totalWeightedScore / totalWeight).toFixed(2) : '0';
+  let baseScore = totalWeight > 0 ? (totalWeightedScore / totalWeight) : 0;
+
+  try {
+    const attendance = await calculateAttendanceScore(review.employeeId.toString(), review.reviewPeriodStart, review.reviewPeriodEnd);
+    
+    // Fetch exact violations within period to deduct
+    const violations = await db.select({ count: sql<number>`count(*)` })
+      .from(policyViolations)
+      .where(and(
+        eq(policyViolations.employeeId, review.employeeId.toString()),
+        gte(policyViolations.createdAt, `${review.reviewPeriodStart} 00:00:00`),
+        lte(policyViolations.createdAt, `${review.reviewPeriodEnd} 23:59:59`)
+      ));
+    
+    const violationCount = Number(violations[0]?.count) || 0;
+
+    // Fetch exact "Over Leave" Days (Leave Without Pay) within period
+    const overLeaves = await db.select({ lwopSum: sql<number>`SUM(${leaveApplications.daysWithoutPay})` })
+      .from(leaveApplications)
+      .where(and(
+        eq(leaveApplications.employeeId, review.employeeId.toString()),
+        eq(leaveApplications.status, 'Approved'),
+        gte(leaveApplications.startDate, review.reviewPeriodStart),
+        lte(leaveApplications.endDate, review.reviewPeriodEnd)
+      ));
+
+    // Fallback safely to 0 if no lwop data is found
+    const overLeaveDays = Number(overLeaves[0]?.lwopSum) || 0;
+
+    // 100% Precision Deductions based on CSC/Meycauayan metrics:
+    // Tardiness/Undertime: 0.01 points deducted per instance or precise equivalent
+    // Absences/Leave: 0.05 points deducted per unexcused absence
+    // Over Leaves: 0.05 points deducted per day WITHOUT pay (LWOP)  <--- NEWLY ADDED
+    // Violations: 0.50 points deducted per policy violation
+    const tardinessDeduction = (attendance.details.totalLates + attendance.details.totalUndertime) * 0.01;
+    
+    // Deducting -0.05 per regular absence AND -0.05 per 'Over Leave' (LWOP) day
+    const leaveDeduction = (attendance.details.totalAbsences * 0.05) + (overLeaveDays * 0.05);
+
+    const violationDeduction = violationCount * 0.50;
+
+    const totalDeduction = tardinessDeduction + leaveDeduction + violationDeduction;
+
+    let finalScore = baseScore - totalDeduction;
+
+    // CSC Ratings are clamped between 1.00 (Poor) and 5.00 (Outstanding)
+    if (finalScore < 1.00 && baseScore > 0) finalScore = 1.00;
+    if (finalScore > 5.00) finalScore = 5.00;
+    if (baseScore === 0) finalScore = 0;
+
+    return finalScore.toFixed(2);
+  } catch (error) {
+    console.error('Error calculating final review score with deductions:', error);
+    return baseScore.toFixed(2);
+  }
 };
 
 export const getEvaluationSummary = async (_req: Request, res: Response): Promise<void> => {
@@ -297,7 +358,7 @@ export const getReviews = async (req: Request, res: Response): Promise<void> => 
 };
 
 export const getReview = async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
+  const { id } = req.params as { id: string };
   const authReq = req as AuthenticatedRequest;
 
   try {
@@ -417,7 +478,7 @@ export const getReview = async (req: Request, res: Response): Promise<void> => {
 };
 
 export const acknowledgeReview = async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
+  const { id } = req.params as { id: string };
   const authReq = req as AuthenticatedRequest;
 
   try {
@@ -452,7 +513,7 @@ export const acknowledgeReview = async (req: Request, res: Response): Promise<vo
 };
 
 export const disagreeWithReview = async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
+  const { id } = req.params as { id: string };
   const authReq = req as AuthenticatedRequest;
   const { disagree_remarks } = req.body;
 
@@ -598,7 +659,7 @@ export const createReview = async (req: Request, res: Response): Promise<void> =
 };
 
 export const updateReview = async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
+  const { id } = req.params as { id: string };
   const authReq = req as AuthenticatedRequest;
   const { items, overall_feedback, strengths, improvements, additional_comments } = req.body;
 
@@ -729,7 +790,7 @@ export const updateReview = async (req: Request, res: Response): Promise<void> =
 };
 
 export const submitReview = async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
+  const { id } = req.params as { id: string };
   try {
     const totalScore = await calculateReviewScore(parseInt(id));
     await db.update(performanceReviews)
@@ -747,7 +808,7 @@ export const submitReview = async (req: Request, res: Response): Promise<void> =
 };
 
 export const deleteReview = async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
+  const { id } = req.params as { id: string };
   const authReq = req as AuthenticatedRequest;
   try {
     const review = await db.query.performanceReviews.findFirst({
@@ -816,7 +877,7 @@ export const addCriteria = async (req: Request, res: Response): Promise<void> =>
 };
 
 export const updateCriteria = async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
+  const { id } = req.params as { id: string };
   const { title, description, weight, max_score, category } = req.body;
   try {
     await db.update(performanceCriteria)
@@ -829,7 +890,7 @@ export const updateCriteria = async (req: Request, res: Response): Promise<void>
 };
 
 export const deleteCriteria = async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
+  const { id } = req.params as { id: string };
   try {
     await db.delete(performanceCriteria).where(eq(performanceCriteria.id, Number(id)));
     res.json({ success: true, message: 'Criteria deleted' });
@@ -867,7 +928,7 @@ export const createReviewCycle = async (req: Request, res: Response): Promise<vo
 };
 
 export const updateReviewCycle = async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
+  const { id } = req.params as { id: string };
   const { title, description, startDate, endDate, start_date, end_date } = req.body;
   const start = startDate || start_date;
   const end = endDate || end_date;
@@ -883,7 +944,7 @@ export const updateReviewCycle = async (req: Request, res: Response): Promise<vo
 };
 
 export const deleteReviewCycle = async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
+  const { id } = req.params as { id: string };
   try {
     await db.delete(performanceReviewCycles).where(eq(performanceReviewCycles.id, Number(id)));
     res.json({ success: true, message: 'Review cycle deleted' });
@@ -893,7 +954,7 @@ export const deleteReviewCycle = async (req: Request, res: Response): Promise<vo
 };
 
 export const submitSelfRating = async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
+  const { id } = req.params as { id: string };
   const authReq = req as AuthenticatedRequest;
   const { items, employee_remarks, isDraft } = req.body;
 
@@ -965,7 +1026,7 @@ export const submitSelfRating = async (req: Request, res: Response): Promise<voi
 };
 
 export const submitSupervisorRating = async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
+  const { id } = req.params as { id: string };
   const authReq = req as AuthenticatedRequest;
   const { items, supervisor_remarks, overall_feedback } = req.body;
 
@@ -991,7 +1052,7 @@ export const submitSupervisorRating = async (req: Request, res: Response): Promi
 
     if (items && Array.isArray(items)) {
       for (const item of items as ReviewItemInput[]) {
-        const updateValues: any = {
+        const updateValues: Partial<typeof performanceReviewItems.$inferInsert> = {
           score: String(item.score || 0),
           qScore: item.q_score ? String(item.q_score) : null,
           eScore: item.e_score ? String(item.e_score) : null,
@@ -1036,7 +1097,7 @@ export const submitSupervisorRating = async (req: Request, res: Response): Promi
 };
 
 export const approveReview = async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
+  const { id } = req.params as { id: string };
   const authReq = req as AuthenticatedRequest;
   const { head_remarks, final_rating_score } = req.body;
 
@@ -1080,7 +1141,7 @@ export const approveReview = async (req: Request, res: Response): Promise<void> 
 };
 
 export const finalizeReview = async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
+  const { id } = req.params as { id: string };
   const authReq = req as AuthenticatedRequest;
 
   try {
@@ -1143,7 +1204,7 @@ export const addItemToReview = async (req: Request, res: Response): Promise<void
 };
 
 export const updateReviewItem = async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
+  const { id } = req.params as { id: string };
   const { score, comment, self_score, actual_accomplishments, q_score, e_score, t_score, criteria_title, criteria_description, category, weight, max_score } = req.body;
   try {
     const item = await db.query.performanceReviewItems.findFirst({
@@ -1157,22 +1218,20 @@ export const updateReviewItem = async (req: Request, res: Response): Promise<voi
     }
 
     const reviewId = item.reviewId;
-    
-    // Using simple undefined checks for selective update, or implementing logic to update only what's passed
-    // For simplicity, we can use an object with defined properties
-    const updates: any = {};
-    if (score !== undefined) updates.score = score;
+
+    const updates: Partial<typeof performanceReviewItems.$inferInsert> = {};
+    if (score !== undefined) updates.score = String(score);
     if (comment !== undefined) updates.comment = comment;
-    if (self_score !== undefined) updates.selfScore = self_score;
+    if (self_score !== undefined) updates.selfScore = String(self_score);
     if (actual_accomplishments !== undefined) updates.actualAccomplishments = actual_accomplishments;
-    if (q_score !== undefined) updates.qScore = q_score;
-    if (e_score !== undefined) updates.eScore = e_score;
-    if (t_score !== undefined) updates.tScore = t_score;
+    if (q_score !== undefined) updates.qScore = String(q_score);
+    if (e_score !== undefined) updates.eScore = String(e_score);
+    if (t_score !== undefined) updates.tScore = String(t_score);
     if (criteria_title !== undefined) updates.criteriaTitle = criteria_title;
     if (criteria_description !== undefined) updates.criteriaDescription = criteria_description;
     if (category !== undefined) updates.category = category;
-    if (weight !== undefined) updates.weight = weight;
-    if (max_score !== undefined) updates.maxScore = max_score;
+    if (weight !== undefined) updates.weight = String(weight);
+    if (max_score !== undefined) updates.maxScore = Number(max_score);
 
     if (Object.keys(updates).length > 0) {
       await db.update(performanceReviewItems)
@@ -1192,7 +1251,7 @@ export const updateReviewItem = async (req: Request, res: Response): Promise<voi
 };
 
 export const deleteReviewItem = async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
+  const { id } = req.params as { id: string };
   try {
     const item = await db.query.performanceReviewItems.findFirst({
       where: eq(performanceReviewItems.id, Number(id)),

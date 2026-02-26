@@ -8,7 +8,7 @@ import { useNavigate } from 'react-router-dom';
 const EmployeeReviews = () => {
     const navigate = useNavigate();
     const showToast = useToastStore((state) => state.showToast);
-    const showNotification = (message: string, type: 'success' | 'error') => showToast(message, type);
+    const showNotification = (message: string, type: 'success' | 'error' | 'warning' | 'info') => showToast(message, type);
     
     const {
         loading,
@@ -21,9 +21,9 @@ const EmployeeReviews = () => {
         handleStartSelfRating
     } = useEmployeeReviews({ showNotification });
 
-    const onViewReview = (review) => {
+    const onViewReview = (review: { id: string | number }) => {
         // Navigate to the shared ReviewForm component
-        navigate(`/employee-dashboard/performance/reviews/${review.id}`);
+        navigate(`/employee-dashboard/performance/reviews/${Number(review.id)}`);
     };
 
     const tabs = [
@@ -64,7 +64,7 @@ const EmployeeReviews = () => {
                     </div>
                 ) : (
                     <ReviewList 
-                        reviews={activeTab === 'pending' ? pendingReviews : completedReviews}
+                        reviews={(activeTab === 'pending' ? pendingReviews : completedReviews) as unknown as Parameters<typeof ReviewList>[0]['reviews']}
                         activeTab={activeTab}
                         onViewDetails={onViewReview}
                         onStartSelfRating={onViewReview}

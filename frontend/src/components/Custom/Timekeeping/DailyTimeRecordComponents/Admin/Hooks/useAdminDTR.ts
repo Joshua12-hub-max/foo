@@ -14,7 +14,9 @@ import {
   getStatusBadge as getStatusBadgeUtil,
   DTRRecord,
   DTRFilters,
-  PaginationResult
+  PaginationResult,
+  AdminDTRApiResponse,
+  DTRRecordUpdate
 } from "../Utils/adminDTRUtils";
 import { ITEMS_PER_PAGE, MESSAGES, DELAYS, EXPORT_HEADERS, STATUS_STYLES } from "../Constants/adminDTR.constant";
 
@@ -48,17 +50,17 @@ export const useAdminDTR = () => {
         const response = await attendanceApi.getLogs({});
         const data = response.data.data || [];
         
-        return data.map((item: any): DTRRecord => {
+        return data.map((item: AdminDTRApiResponse): DTRRecord => {
             let hoursWorked = '0';
             if (item.time_in && item.time_out) {
-              const start = new Date(item.time_in).getTime();
-              const end = new Date(item.time_out).getTime();
+              const start = new Date(String(item.time_in)).getTime();
+              const end = new Date(String(item.time_out)).getTime();
               hoursWorked = ((end - start) / (1000 * 60 * 60)).toFixed(2);
             }
             
-            let formattedDate = item.date;
+            let formattedDate = String(item.date ?? '');
             if (item.date) {
-              const dateObj = new Date(item.date);
+              const dateObj = new Date(String(item.date));
               formattedDate = dateObj.toLocaleDateString('en-US', { 
                 month: 'short', 
                 day: 'numeric', 
@@ -67,15 +69,15 @@ export const useAdminDTR = () => {
             }
             
             return {
-              id: item.id || item.record_id, // Primary Key for updates/keys
-              employeeId: item.employee_id, // Display ID
-              name: item.employee_name || `${item.first_name || ''} ${item.last_name || ''}`.trim(),
-              department: item.department || 'N/A',
+              id: item.id ?? item.record_id ?? '',
+              employeeId: item.employee_id ?? '',
+              name: item.employee_name ? String(item.employee_name) : `${item.first_name ?? ''} ${item.last_name ?? ''}`.trim(),
+              department: item.department ? String(item.department) : 'N/A',
               date: formattedDate,
-              timeIn: item.time_in ? new Date(item.time_in).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--',
-              timeOut: item.time_out ? new Date(item.time_out).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--',
+              timeIn: item.time_in ? new Date(String(item.time_in)).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--',
+              timeOut: item.time_out ? new Date(String(item.time_out)).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--',
               hoursWorked: hoursWorked,
-              status: item.status || 'Absent',
+              status: item.status ? String(item.status) : 'Absent',
               remarks: '-'
             };
         });
@@ -87,7 +89,7 @@ export const useAdminDTR = () => {
 
   // React Query: Mutation
   const updateRecordMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string | number, data: any }) => {
+    mutationFn: async ({ id, data }: { id: string | number, data: DTRRecordUpdate }) => {
         await dtrApi.updateRecord(String(id), data);
     },
     onSuccess: () => {
@@ -95,7 +97,7 @@ export const useAdminDTR = () => {
         queryClient.invalidateQueries({ queryKey: ['admin-dtr-logs'] });
         setEditingRecord(null);
     },
-    onError: (err: any) => {
+    onError: (err: unknown) => {
         console.error("Failed to update record", err);
         setErrorLocal("Failed to update record");
     }
@@ -160,9 +162,9 @@ export const useAdminDTR = () => {
       const filename = `dtr_${today.replace(/\//g, '-')}.csv`;
       await exportToCSV(filteredData, EXPORT_HEADERS, filename);
       setSuccessMessage(MESSAGES.CSV_EXPORTED);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Export to CSV failed:', err);
-      setErrorLocal(`${MESSAGES.ERROR_EXPORT_CSV}: ${err.message || 'Unknown error. Please try again.'}`);
+      setErrorLocal(`${MESSAGES.ERROR_EXPORT_CSV}: ${err instanceof Error ? err.message : 'Unknown error. Please try again.'}`);
     } finally {
       setLoadingType("");
     }
@@ -179,9 +181,9 @@ export const useAdminDTR = () => {
       await new Promise(resolve => setTimeout(resolve, DELAYS.EXPORT_DELAY));
       await exportToPDF(filteredData, EXPORT_HEADERS, today, DELAYS.PDF_PRINT_DELAY);
       setSuccessMessage(MESSAGES.PDF_EXPORTED);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Export to PDF failed:', err);
-      setErrorLocal(`${MESSAGES.ERROR_EXPORT_PDF}: ${err.message || 'Unknown error. Please try again.'}`);
+      setErrorLocal(`${MESSAGES.ERROR_EXPORT_PDF}: ${err instanceof Error ? err.message : 'Unknown error. Please try again.'}`);
     } finally {
       setLoadingType("");
     }
@@ -195,7 +197,7 @@ export const useAdminDTR = () => {
     setEditingRecord(record);
   }, []);
 
-  const handleSaveEdit = useCallback(async (id: string | number, data: any) => {
+  const handleSaveEdit = useCallback(async (id: string | number, data: DTRRecordUpdate) => {
      updateRecordMutation.mutate({ id, data });
   }, [updateRecordMutation]);
 

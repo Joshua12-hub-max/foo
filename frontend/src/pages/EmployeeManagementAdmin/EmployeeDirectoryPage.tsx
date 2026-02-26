@@ -17,13 +17,7 @@ export interface EmployeeListRef {
   openAddModal: () => void;
 }
 
-interface Employee {
-  id: number;
-  first_name?: string;
-  last_name?: string;
-  employee_id?: string;
-  department?: string;
-}
+import { Employee } from '@/types';
 
 interface Department {
   id: number;

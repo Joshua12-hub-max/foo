@@ -49,15 +49,19 @@ const AddContactModal: React.FC<AddContactModalProps> = ({
 
   const mutation = useMutation({
     mutationFn: async (data: AddContactInput) => {
+      // Ensure data conforms to ContactData which expects strings/booleans
+      const cleanData: ContactData = {
+        name: data.name,
+        relationship: data.relationship,
+        phone_number: data.phone_number,
+        email: data.email || null,
+        address: data.address || null,
+        is_primary: !!data.is_primary
+      };
+
       if (isEditMode && initialData?.id) {
-         const cleanData = Object.fromEntries(
-           Object.entries(data).map(([k, v]) => [k, v === null ? undefined : v])
-         ) as Partial<ContactData>;
          await employeeApi.updateEmployeeContact(employeeId, initialData.id, cleanData);
       } else {
-         const cleanData = Object.fromEntries(
-           Object.entries(data).map(([k, v]) => [k, v === null ? undefined : v])
-         ) as unknown as ContactData;
          await employeeApi.addEmployeeContact(employeeId, cleanData);
       }
     },

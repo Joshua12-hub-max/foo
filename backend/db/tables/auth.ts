@@ -7,6 +7,7 @@ export const authentication = mysqlTable("authentication", {
 	id: int().autoincrement().notNull(),
 	firstName: varchar("first_name", { length: 100 }).notNull(),
 	lastName: varchar("last_name", { length: 100 }).notNull(),
+	suffix: varchar("suffix", { length: 20 }),
 	email: varchar({ length: 255 }).notNull(),
 	role: varchar({ length: 50 }).notNull(),
 	department: varchar({ length: 100 }), // Made nullable to match controller usage
@@ -41,7 +42,7 @@ export const authentication = mysqlTable("authentication", {
 	permanentAddress: text("permanent_address"),
 	emergencyContact: varchar("emergency_contact", { length: 100 }),
 	emergencyContactNumber: varchar("emergency_contact_number", { length: 20 }),
-	sssNumber: varchar("sss_number", { length: 20 }),
+	umidNo: varchar("umid_no", { length: 50 }),
 	philhealthNumber: varchar("philhealth_number", { length: 20 }),
 	pagibigNumber: varchar("pagibig_number", { length: 20 }),
 	tinNumber: varchar("tin_number", { length: 20 }),
@@ -65,6 +66,7 @@ export const authentication = mysqlTable("authentication", {
 	eligibilityNumber: varchar("eligibility_number", { length: 100 }),
 	eligibilityDate: date("eligibility_date", { mode: 'string' }),
 	highestEducation: varchar("highest_education", { length: 255 }),
+	educationalBackground: text("educational_background"),
 	yearsOfExperience: int("years_of_experience").default(0),
 	placeOfBirth: varchar("place_of_birth", { length: 255 }),
 	dateOfBirth: date("date_of_birth", { mode: 'string' }),
@@ -72,7 +74,7 @@ export const authentication = mysqlTable("authentication", {
 	gsisIdNo: varchar("gsis_id_no", { length: 50 }),
 	pagibigIdNo: varchar("pagibig_id_no", { length: 50 }),
 	philhealthNo: varchar("philhealth_no", { length: 50 }),
-	sssNo: varchar("sss_no", { length: 50 }),
+	philsysId: varchar("philsys_id", { length: 50 }),
 	tinNo: varchar("tin_no", { length: 50 }),
 	agencyEmployeeNo: varchar("agency_employee_no", { length: 50 }),
 	citizenship: varchar({ length: 50 }).default('Filipino'),
@@ -92,6 +94,8 @@ export const authentication = mysqlTable("authentication", {
 	dutyType: mysqlEnum("duty_type", ['Standard','Irregular']).default('Standard'),
 	dailyTargetHours: decimal("daily_target_hours", { precision: 4, scale: 2 }).default('8.00'),
 	salaryBasis: mysqlEnum("salary_basis", ['Daily','Hourly']).default('Daily'),
+	loginAttempts: int("login_attempts").default(0),
+	lockUntil: datetime("lock_until", { mode: 'string'}),
 },
 (table) => [
 	foreignKey({

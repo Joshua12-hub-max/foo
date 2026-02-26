@@ -105,7 +105,9 @@ export interface UserRow extends BaseRow {
   permanent_address?: string;
   emergency_contact?: string;
   emergency_contact_number?: string;
-  sss_number?: string;
+  umid_id?: string;
+  philsys_id?: string;
+  educational_background?: string;
   gsis_number?: string;
   philhealth_number?: string;
   pagibig_number?: string;

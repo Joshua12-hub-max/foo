@@ -152,6 +152,7 @@ export interface Form9Row {
   eligibility: string;
   competency: string;
   assignment: string;
+  place_of_assignment?: string;
 }
 
 

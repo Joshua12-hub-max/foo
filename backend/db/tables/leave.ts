@@ -4,7 +4,7 @@ import { mysqlTable, varchar, int, date, timestamp, decimal, text, mysqlEnum, ti
 export const leaveApplications = mysqlTable("leave_applications", {
 	id: int().autoincrement().notNull(),
 	employeeId: varchar("employee_id", { length: 50 }).notNull(),
-	leaveType: mysqlEnum("leave_type", ['Vacation Leave','Sick Leave','Special Privilege Leave','Forced Leave','Maternity Leave','Paternity Leave','Solo Parent Leave','Study Leave','Special Emergency Leave','VAWC Leave','Rehabilitation Leave','Special Leave Benefits for Women','Wellness Leave']).notNull(),
+	leaveType: mysqlEnum("leave_type", ['Vacation Leave','Sick Leave','Special Privilege Leave','Forced Leave','Maternity Leave','Paternity Leave','Solo Parent Leave','Study Leave','Special Emergency Leave','VAWC Leave','Rehabilitation Leave','Special Leave Benefits for Women','Wellness Leave','Adoption Leave']).notNull(),
 	startDate: date("start_date", { mode: 'string' }).notNull(),
 	endDate: date("end_date", { mode: 'string' }).notNull(),
 	workingDays: decimal("working_days", { precision: 10, scale: 3 }).notNull(),
@@ -35,7 +35,7 @@ export const leaveApplications = mysqlTable("leave_applications", {
 export const leaveBalances = mysqlTable("leave_balances", {
 	id: int().autoincrement().notNull(),
 	employeeId: varchar("employee_id", { length: 50 }).notNull(),
-	creditType: mysqlEnum("credit_type", ['Vacation Leave','Sick Leave','Special Privilege Leave','Forced Leave','Maternity Leave','Paternity Leave','Solo Parent Leave','Study Leave']).notNull(),
+	creditType: mysqlEnum("credit_type", ['Vacation Leave','Sick Leave','Special Privilege Leave','Forced Leave','Maternity Leave','Paternity Leave','Solo Parent Leave','Study Leave','Adoption Leave']).notNull(),
 	balance: decimal({ precision: 10, scale: 3 }).default('0.000').notNull(),
 	year: int().notNull(),
 	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow(),
@@ -61,7 +61,7 @@ export const leaveCredits = mysqlTable("leave_credits", {
 export const leaveLedger = mysqlTable("leave_ledger", {
 	id: int().autoincrement().notNull(),
 	employeeId: varchar("employee_id", { length: 50 }).notNull(),
-	creditType: mysqlEnum("credit_type", ['Vacation Leave','Sick Leave','Special Privilege Leave','Forced Leave','Maternity Leave','Paternity Leave','Solo Parent Leave','Study Leave']).notNull(),
+	creditType: mysqlEnum("credit_type", ['Vacation Leave','Sick Leave','Special Privilege Leave','Forced Leave','Maternity Leave','Paternity Leave','Solo Parent Leave','Study Leave','Adoption Leave']).notNull(),
 	transactionType: mysqlEnum("transaction_type", ['ACCRUAL','DEDUCTION','ADJUSTMENT','MONETIZATION','FORFEITURE','UNDERTIME_DEDUCTION','TARDINESS_DEDUCTION']).notNull(),
 	amount: decimal({ precision: 10, scale: 3 }).notNull(),
 	balanceAfter: decimal("balance_after", { precision: 10, scale: 3 }).notNull(),

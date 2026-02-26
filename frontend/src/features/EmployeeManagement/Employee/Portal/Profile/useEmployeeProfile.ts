@@ -1,21 +1,9 @@
 import { useState, useCallback, useEffect } from 'react';
 import axios from '@/api/axios';
-import { Education, Skill } from '@/types';
+import { Education, Skill, EmployeeDetailed } from '@/types';
 
-export interface Profile {
-  id: number;
-  first_name?: string;
-  last_name?: string;
-  email?: string;
-  phone_number?: string;
-  address?: string;
+export interface Profile extends EmployeeDetailed {
   avatar?: string;
-  department?: string;
-  job_title?: string;
-  position_title?: string;
-  skills?: Skill[];
-  education?: Education[];
-  [key: string]: unknown;
 }
 
 export interface UpdateResult {
@@ -63,9 +51,9 @@ export const useEmployeeProfile = (): UseEmployeeProfileReturn => {
         setProfile(authRes.data.data);
       }
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      setError(err.response?.data?.message || 'Failed to load profile');
+      setError(err instanceof Error ? err.message : 'Failed to load profile');
     } finally {
       setLoading(false);
     }
@@ -92,10 +80,10 @@ export const useEmployeeProfile = (): UseEmployeeProfileReturn => {
         return { success: true };
       }
       return { success: false, message: res.data.message };
-    } catch (err: any) {
+    } catch (err: unknown) {
       return { 
         success: false, 
-        message: err.response?.data?.message || 'Update failed' 
+        message: err instanceof Error ? err.message : 'Update failed' 
       };
     } finally {
       setUpdating(false);

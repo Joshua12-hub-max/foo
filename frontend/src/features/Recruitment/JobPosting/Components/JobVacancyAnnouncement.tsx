@@ -13,9 +13,9 @@ const JobVacancyAnnouncement: React.FC<JobVacancyAnnouncementProps> = ({ job, on
   const componentRef = useRef<HTMLDivElement>(null);
 
   const handlePrint = useReactToPrint({
-    content: () => componentRef.current,
+    contentRef: componentRef,
     documentTitle: `Job_Vacancy_${job.title.replace(/\s+/g, '_')}`,
-  } as unknown as Parameters<typeof useReactToPrint>[0]);
+  });
 
   // Helper to check employment status
   const isJobOrder = job.employment_type?.toLowerCase().includes('job order');

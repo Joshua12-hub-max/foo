@@ -25,6 +25,8 @@ interface EmployeeResponse {
 }
 
 
+import { UpdateEmployeeInput } from '../schemas/employeeSchema';
+
 //Employee CRUD
 export const fetchEmployees = async (deptParams: { department?: string | null, department_id?: number | null } = {}): Promise<EmployeeResponse> => {
   try {
@@ -42,8 +44,8 @@ export const fetchEmployees = async (deptParams: { department?: string | null, d
     if (queryString) url += `?${queryString}`;
     
     const response = await axios.get(url);
-    return { success: true, employees: response.data.employees };
-  } catch (error: unknown) {
+    return { success: true, employees: response.data.employees as Employee[] };
+  } catch (error: Error | unknown) {
     return { success: false, employees: [] };
   }
 };
@@ -51,19 +53,19 @@ export const fetchEmployees = async (deptParams: { department?: string | null, d
 export const fetchEmployeeProfile = async (id: string | number): Promise<EmployeeResponse> => {
   try {
     const response = await axios.get(`/employees/${id}`);
-    return { success: true, profile: response.data.employee };
-  } catch (error: unknown) {
+    return { success: true, profile: response.data.employee as Employee };
+  } catch (error: Error | unknown) {
     return { success: false, profile: undefined };
   }
 };
 
-export const addEmployee = async (formData: FormData | Record<string, unknown>): Promise<EmployeeResponse> => {
+export const addEmployee = async (formData: FormData | UpdateEmployeeInput): Promise<EmployeeResponse> => {
   try {
     const response = await axios.post('/employees', formData);
     return { success: true, message: response.data.message, id: response.data.employeeId };
-  } catch (error: unknown) {
-    const message = (error as { response?: { data?: { message?: string } } }).response?.data?.message || 'Failed to add employee';
-    return { success: false, message };
+  } catch (error: Error | unknown) {
+    const err = error as ApiError;
+    return { success: false, message: err.response?.data?.message || err.message || 'Failed to add employee' };
   }
 };
 
@@ -71,17 +73,17 @@ export const deleteEmployee = async (id: string | number): Promise<EmployeeRespo
   try {
     const response = await axios.delete(`/employees/${id}`);
     return { success: true, message: response.data.message };
-  } catch (error: unknown) {
+  } catch (error: Error | unknown) {
       const err = error as ApiError;
       return { success: false, message: err.response?.data?.message || err.message || 'Failed to delete employee' };
   }
 };
 
-export const updateEmployee = async (id: string | number, data: Record<string, unknown>): Promise<EmployeeResponse> => {
+export const updateEmployee = async (id: string | number, data: UpdateEmployeeInput): Promise<EmployeeResponse> => {
   try {
     const response = await axios.put(`/employees/${id}`, data);
     return { success: true, message: response.data.message };
-  } catch (error: unknown) {
+  } catch (error: Error | unknown) {
     console.error('Update Employee Error:', error);
     throw error;
   }

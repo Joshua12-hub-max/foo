@@ -1,8 +1,8 @@
 import React from 'react';
-import { User, UserPlus, Video, FileText, Mail, Globe } from 'lucide-react';
+import { User, UserPlus, Video, FileText, Mail, Globe, BadgeCheck, Download } from 'lucide-react';
 import LoadingOverlay from '@/components/Custom/Shared/LoadingOverlay';
 import TableSkeleton from '@/components/Custom/Shared/TableSkeleton';
-import { Applicant } from '../Hooks/useApplicantData';
+import { Applicant } from '@/types';
 
 interface ApplicantTableProps {
   loading: boolean;
@@ -57,6 +57,7 @@ const ApplicantTable: React.FC<ApplicantTableProps> = ({
               <th className="px-6 py-4 text-left text-sm font-bold tracking-wide">Applicant</th>
               <th className="px-6 py-4 text-left text-sm font-bold tracking-wide">Applied For</th>
               <th className="px-6 py-4 text-left text-sm font-bold tracking-wide">Interviewer</th>
+              <th className="px-6 py-4 text-left text-sm font-bold tracking-wide">Documents</th>
               <th className="px-6 py-4 text-left text-sm font-bold tracking-wide">Status</th>
               <th className="px-6 py-4 text-center text-sm font-bold tracking-wide">Actions</th>
             </tr>
@@ -88,6 +89,52 @@ const ApplicantTable: React.FC<ApplicantTableProps> = ({
                   )}
                 </td>
                 <td className="px-6 py-4">
+                    <div className="flex items-center gap-2">
+                         {/* Resume Link */}
+                         {app.resume_path ? (
+                            <a 
+                                href={`http://localhost:5000/uploads/resumes/${app.resume_path}`} 
+                                target="_blank" rel="noopener noreferrer"
+                                className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg"
+                                title="View Resume"
+                            >
+                                <FileText size={16} />
+                            </a>
+                         ) : (
+                            <div className="p-1.5 text-gray-300 cursor-not-allowed" title="No Resume Uploaded">
+                                <FileText size={16} />
+                            </div>
+                         )}
+
+                         {/* Eligibility Link */}
+                         {app.eligibility_path ? (
+                            <a 
+                                href={`http://localhost:5000/uploads/resumes/${app.eligibility_path}`} 
+                                target="_blank" rel="noopener noreferrer"
+                                className="p-1.5 text-amber-600 hover:bg-amber-50 rounded-lg"
+                                title="View Eligibility Certificate"
+                            >
+                                <BadgeCheck size={16} />
+                            </a>
+                         ) : (
+                            <div className="p-1.5 text-gray-300 cursor-not-allowed" title="No Eligibility Certificate">
+                                <BadgeCheck size={16} />
+                            </div>
+                         )}
+
+                         {/* PDF Application Download */}
+                         <a 
+                            href={`http://localhost:5000/api/recruitment/applicants/${app.id}/pdf`}
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg"
+                            title="Download Application (PDF)"
+                         >
+                            <Download size={16} />
+                         </a>
+                    </div>
+                </td>
+                <td className="px-6 py-4">
                   <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${getStatusBadgeColor(app.status)}`}>{app.status}</span>
                 </td>
                 <td className="px-6 py-4 text-center">
@@ -112,18 +159,6 @@ const ApplicantTable: React.FC<ApplicantTableProps> = ({
                             >
                                 <Video size={16} />
                             </button>
-                        )}
-
-                         {/* Resume Link */}
-                         {app.resume_path && (
-                            <a 
-                                href={`${import.meta.env.VITE_API_URL?.replace('/api', '') ?? 'http://localhost:5000'}/uploads/resumes/${app.resume_path}`} 
-                                target="_blank" rel="noopener noreferrer"
-                                className="p-1.5 text-gray-600 hover:bg-gray-100 rounded-lg"
-                                title="View Resume"
-                            >
-                                <FileText size={16} />
-                            </a>
                         )}
                     </div>
                 </td>

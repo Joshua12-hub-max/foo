@@ -24,7 +24,7 @@ export const useLeaveData = (initialFilters?: Record<string, string>) => {
         search: filters.search,
         startDate: filters.startDate,
         endDate: filters.endDate,
-        status: filters.status
+        status: filters.status as "" | "Pending" | "Approved" | "Rejected" | "Processing" | "Finalizing" | "Cancelled" | undefined
         // Note: 'type' filter logic might need to be added to backend or matched with existing backend logic
         // For now, let's assume 'search' covers general text, and we have specific fields.
         // Wait, the backend updated code handles 'leave_type' via search only?
@@ -40,7 +40,7 @@ export const useLeaveData = (initialFilters?: Record<string, string>) => {
       
       const response = await leaveApi.getMyApplications(params);
       
-      const leaves = (response.data?.leaves || []).map((l: Record<string, unknown>) => ({
+      const leaves = (response.data?.applications || []).map((l) => ({
         id: l.id,
         employee_id: l.employee_id,
         leaveType: l.leave_type,
@@ -48,7 +48,7 @@ export const useLeaveData = (initialFilters?: Record<string, string>) => {
         toDate: l.end_date,
         reason: l.reason,
         status: l.status,
-        with_pay: l.with_pay,
+        with_pay: l.is_with_pay,
         attachment_path: l.attachment_path,
         department: l.department || 'N/A',
         name: `${l.first_name || ''} ${l.last_name || ''}`.trim() || 'N/A'

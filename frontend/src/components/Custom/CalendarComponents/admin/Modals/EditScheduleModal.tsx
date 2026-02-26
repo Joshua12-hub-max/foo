@@ -3,20 +3,42 @@ import { Clock, X, User } from 'lucide-react';
 import { fetchEmployees } from '../../../../../api/employeeApi';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { scheduleSchema } from '@/schemas/calendar';
+import { scheduleSchema, ScheduleSchema } from '@/schemas/calendar';
 
 import { formatHour12 } from '../../shared/utils/eventUtils';
 
+interface ScheduleData {
+  id: string | number;
+  employee_id?: string;
+  title?: string;
+  start_date?: string;
+  end_date?: string;
+  start_time?: string;
+  end_time?: string;
+  repeat?: string;
+  description?: string;
+}
+
+interface EmployeeOption {
+  id: number | string;
+  employee_id?: string;
+  first_name?: string;
+  last_name?: string;
+  employeeId?: string;
+  firstName?: string;
+  lastName?: string;
+}
+
 interface EditScheduleModalProps {
   show: boolean;
-  schedule: any;
+  schedule: ScheduleData | null;
   onClose: () => void;
-  onUpdate: (id: string | number, data: any) => void;
+  onUpdate: (id: string | number, data: ScheduleSchema) => void;
   hours?: string[];
 }
 
 export default function EditScheduleModal({ show, schedule, onClose, onUpdate, hours = [] }: EditScheduleModalProps) {
-  const [employees, setEmployees] = useState<any[]>([]);
+  const [employees, setEmployees] = useState<EmployeeOption[]>([]);
 
   const {
     register,
@@ -58,8 +80,8 @@ export default function EditScheduleModal({ show, schedule, onClose, onUpdate, h
         title: schedule.title || '',
         start_date: schedule.start_date ? String(schedule.start_date).split('T')[0] : '',
         end_date: schedule.end_date ? String(schedule.end_date).split('T')[0] : '',
-        start_time: formatHour12(schedule.start_time), // Format for dropdown
-        end_time: formatHour12(schedule.end_time), // Format for dropdown
+        start_time: formatHour12(schedule.start_time ?? ''), // Format for dropdown
+        end_time: formatHour12(schedule.end_time ?? ''), // Format for dropdown
         repeat: schedule.repeat || 'none',
         description: schedule.description || ''
       });
@@ -68,23 +90,8 @@ export default function EditScheduleModal({ show, schedule, onClose, onUpdate, h
 
   if (!show || !schedule) return null;
 
-  const onSubmit = (data: any) => {
-    // When submitting, if the backend expects 24h format, we might need to convert it back.
-    // But since the API layer (scheduleApi/controller) or Zod schema might handle it, 
-    // or we used to send it as-is? 
-    // Previous code sent `startTime` directly. The dropdown sends "9:00 AM".
-    // We should probably convert it back to 24h if the backend expects Time?
-    // Let's check scheduleController.ts? It seemed to take string time.
-    // adminCalendar.tsx Mutation calls `updateSchedule` with `start_time`.
-    // We'll leave it as is for now, assuming backend handles string or we verify backend.
-    
-    // UPDATE: We should convert to 24h if we want to be safe, but let's see if we can import convertTo24Hour.
-    // For now, let's just pass data and assume consistency with Events which used to convert.
-    // Wait, EditEventModal converts: `time: convertTo24Hour(data.time)`.
-    // I should convert it here too to be safe.
-    
-    // Actually, I'll import convertTo24Hour as well.
-    onUpdate(schedule.id, data);
+  const onSubmit = (data: ScheduleSchema) => {
+    onUpdate(schedule!.id, data);
   };
 
   return (

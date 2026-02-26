@@ -1,6 +1,8 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { recruitmentApi } from '@/api/recruitmentApi';
 
+export type ApplicantStage = 'Applied' | 'Screening' | 'Initial Interview' | 'Final Interview' | 'Hired' | 'Rejected';
+
 export interface KanbanApplicant {
   id: number;
   first_name: string;

@@ -1,8 +1,8 @@
-import express from 'express';
+import { Router } from 'express';
 import { getPDSSection, updatePDSSection } from '../controllers/pdsController.js';
 import { verifyToken } from '../middleware/authMiddleware.js';
 
-const router = express.Router();
+const router: Router = Router();
 
 // Apply auth middleware to all PDS routes
 router.use(verifyToken);

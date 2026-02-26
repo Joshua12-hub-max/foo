@@ -1,4 +1,5 @@
-import { Router, Request, Response, NextFunction } from 'express';
+import { Router, Request, Response, NextFunction, RequestHandler } from 'express';
+import { rateLimit } from 'express-rate-limit';
 import { verifyAdmin } from '../middleware/authMiddleware.js';
 import { uploadResume, uploadGeneral } from '../middleware/uploadMiddleware.js';
 import * as recruitmentController from '../controllers/recruitmentController.js';
@@ -6,6 +7,15 @@ import { manualCheckEmails } from '../services/emailReceiverService.js';
 import multer from 'multer';
 
 const router: Router = Router();
+
+// Anti-Spam: Rate Limit for public applications
+const applyRateLimit = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 100, // Increased for development/testing
+  message: { success: false, message: 'Too many applications from this IP. Please try again after an hour.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 // Multer error handler wrapper
 const handleMulterError = (err: Error, _req: Request, res: Response, next: NextFunction): void => {
@@ -20,21 +30,27 @@ const handleMulterError = (err: Error, _req: Request, res: Response, next: NextF
 };
 
 // Public Routes
-router.get('/jobs', recruitmentController.getJobs);
-router.get('/jobs/:id', recruitmentController.getJob);
-router.get('/feed', recruitmentController.generateJobFeed);
+router.get('/jobs', recruitmentController.getJobs as RequestHandler);
+router.get('/jobs/:id', recruitmentController.getJob as RequestHandler);
+router.get('/feed', recruitmentController.generateJobFeed as RequestHandler);
 router.post('/apply', 
-  uploadResume.single('resume'), 
+  applyRateLimit,
+  uploadResume.fields([
+    { name: 'resume', maxCount: 1 },
+    { name: 'eligibility_cert', maxCount: 1 },
+    { name: 'photo', maxCount: 1 }
+  ]),
   handleMulterError,
-  recruitmentController.applyJob
+  recruitmentController.applyJob as RequestHandler
 );
 
 // Admin Routes
-router.post('/jobs', verifyAdmin, uploadGeneral.single('file'), handleMulterError, recruitmentController.createJob);
-router.put('/jobs/:id', verifyAdmin, uploadGeneral.single('file'), handleMulterError, recruitmentController.updateJob);
-router.delete('/jobs/:id', verifyAdmin, recruitmentController.deleteJob);
-router.get('/applicants', verifyAdmin, recruitmentController.getApplicants);
-router.put('/applicants/:id/stage', verifyAdmin, recruitmentController.updateApplicantStage);
+router.post('/jobs', verifyAdmin, uploadGeneral.single('file'), handleMulterError, recruitmentController.createJob as RequestHandler);
+router.put('/jobs/:id', verifyAdmin, uploadGeneral.single('file'), handleMulterError, recruitmentController.updateJob as RequestHandler);
+router.delete('/jobs/:id', verifyAdmin, recruitmentController.deleteJob as RequestHandler);
+router.get('/applicants', verifyAdmin, recruitmentController.getApplicants as RequestHandler);
+router.get('/applicants/:id/pdf', verifyAdmin, recruitmentController.generateApplicationPDF as RequestHandler);
+router.put('/applicants/:id/stage', verifyAdmin, recruitmentController.updateApplicantStage as RequestHandler);
 
 // Email Application Routes
 router.post('/check-emails', verifyAdmin, async (_req: Request, res: Response): Promise<void> => {
@@ -49,16 +65,16 @@ router.post('/check-emails', verifyAdmin, async (_req: Request, res: Response): 
 });
 
 // Interviewer Assignment Routes
-router.get('/interviewers', verifyAdmin, recruitmentController.getPotentialInterviewers);
-router.put('/applicants/:applicantId/assign-interviewer', verifyAdmin, recruitmentController.assignInterviewer);
-router.post('/applicants/:applicantId/offer-letter', verifyAdmin, recruitmentController.generateOfferLetter);
-router.get('/applicant-stats', verifyAdmin, recruitmentController.getApplicantStats);
+router.get('/interviewers', verifyAdmin, recruitmentController.getPotentialInterviewers as RequestHandler);
+router.put('/applicants/:applicantId/assign-interviewer', verifyAdmin, recruitmentController.assignInterviewer as RequestHandler);
+router.post('/applicants/:applicantId/offer-letter', verifyAdmin, recruitmentController.generateOfferLetter as RequestHandler);
+router.get('/applicant-stats', verifyAdmin, recruitmentController.getApplicantStats as RequestHandler);
 
 // Meeting Link Generation
-router.post('/generate-meeting-link', verifyAdmin, recruitmentController.generateMeetingLink);
+router.post('/generate-meeting-link', verifyAdmin, recruitmentController.generateMeetingLink as RequestHandler);
 
 // Interview Notes
-router.post('/applicants/:id/interview-notes', verifyAdmin, recruitmentController.saveInterviewNotes);
+router.post('/applicants/:id/interview-notes', verifyAdmin, recruitmentController.saveInterviewNotes as RequestHandler);
 
 
 

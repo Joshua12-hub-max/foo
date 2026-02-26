@@ -8,6 +8,7 @@ import {
   CheckNepotismSchema
 } from '../schemas/plantillaComplianceSchema.js';
 import { alias } from 'drizzle-orm/mysql-core';
+import { ZodError } from 'zod';
 
 /**
  * Get all nepotism relationships
@@ -169,14 +170,14 @@ export const createNepotismRelationship = async (req: Request, res: Response): P
       message: 'Nepotism relationship registered successfully',
       id: result.insertId
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Create Nepotism Relationship Error:', error);
 
-    if (error.name === 'ZodError') {
+    if (error instanceof ZodError) {
       res.status(400).json({
         success: false,
         message: 'Validation error',
-        errors: error.errors
+        errors: error.issues
       });
       return;
     }
@@ -271,7 +272,7 @@ export const checkNepotism = async (req: Request, res: Response): Promise<void> 
     }
 
     // Check for violations
-    const violations: any[] = [];
+    const violations: { type: string; relationship: string; degree: number; related_person: string; severity: 'CRITICAL' | 'WARNING' | 'INFO' }[] = [];
 
     for (const rel of relationships) {
       const relatedPersonId = rel.employeeId1 === employee_id ? rel.employeeId2 : rel.employeeId1;
@@ -338,14 +339,14 @@ export const checkNepotism = async (req: Request, res: Response): Promise<void> 
         ? '⚠️ WARNING: Employee has relatives in the same department. Please review carefully.'
         : '✅ No nepotism violations detected.'
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Check Nepotism Error:', error);
 
-    if (error.name === 'ZodError') {
+    if (error instanceof ZodError) {
       res.status(400).json({
         success: false,
         message: 'Validation error',
-        errors: error.errors
+        errors: error.issues
       });
       return;
     }
@@ -369,7 +370,7 @@ export const deleteNepotismRelationship = async (req: Request, res: Response): P
 
     // Drizzle doesn't return affectedRows easily in generic result unless configured
     // But `delete` returns [ResultSetHeader] in mysql2
-    const affectedRows = (result as any).affectedRows;
+    const affectedRows = ('affectedRows' in result ? (result as { affectedRows: number }).affectedRows : 0);
 
     if (affectedRows === 0) {
       res.status(404).json({

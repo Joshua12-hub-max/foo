@@ -10,7 +10,7 @@ import { eq, and, desc, sql } from 'drizzle-orm';
  */
 export const getEmployeeMetrics = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { employeeId } = req.params;
+    const { employeeId } = req.params as { employeeId: string };
     const { year, month } = req.query;
 
     if (!employeeId) {

@@ -10,7 +10,7 @@ interface JobFormModalProps {
   onClose: () => void;
   isEditing: boolean;
   formData: JobFormData;
-  handleFormChange: (field: keyof JobFormData, value: any) => void;
+  handleFormChange: (field: keyof JobFormData, value: JobFormData[keyof JobFormData]) => void;
   handleSubmit: (e: React.FormEvent) => void;
   saving: boolean;
 }

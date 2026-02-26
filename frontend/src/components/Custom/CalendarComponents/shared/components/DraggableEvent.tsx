@@ -1,8 +1,9 @@
 import React, { ReactNode } from 'react';
 import { useDrag } from 'react-dnd';
+import { GridItem } from './CalendarGrid';
 
 interface DraggableEventProps {
-  event: any;
+  event: GridItem;
   children: ReactNode;
   onDragEnd?: () => void;
 }

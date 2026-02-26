@@ -92,6 +92,6 @@ export const useResend2FAMutation = () => {
 
 export const useRegisterMutation = () => {
     return useMutation({
-        mutationFn: (data: RegisterInput) => register(data)
+        mutationFn: (data: RegisterInput | FormData) => register(data)
     });
 };

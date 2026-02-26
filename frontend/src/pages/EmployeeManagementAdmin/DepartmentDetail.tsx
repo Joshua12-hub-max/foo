@@ -3,6 +3,7 @@ import { ArrowLeft, Users, Search, UserPlus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useUIStore } from '@/stores';
 import { useDepartmentDetails, DepartmentEmployeeTable, RemoveEmployeeModal, AddEmployeeToDepartment } from '@features/EmployeeManagement/Admin/Departments';
+import { Employee as GlobalEmployee } from '@/types';
 import Pagination from '@/components/CustomUI/Pagination';
 
 interface OutletContext {
@@ -21,9 +22,8 @@ interface Employee {
   first_name?: string;
   last_name?: string;
   email?: string;
-  position_title?: string;
-  date_hired?: string;
-  employment_status?: string;
+  job_title?: string | null;
+  position_title?: string | null;
 }
 
 const DepartmentDetail: React.FC = () => {
@@ -187,7 +187,7 @@ const DepartmentDetail: React.FC = () => {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 <DepartmentEmployeeTable
-                  employees={currentEmployees}
+                  employees={currentEmployees as unknown as GlobalEmployee[]}
                   onViewEmployee={navigateToEmployee}
                   onEditEmployee={navigateToEmployee}
                   onRemoveEmployee={openDeleteConfirm}

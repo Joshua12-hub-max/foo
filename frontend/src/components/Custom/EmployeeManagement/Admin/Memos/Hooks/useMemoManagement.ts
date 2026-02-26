@@ -97,8 +97,12 @@ export const useMemoManagement = (): UseMemoManagementReturn => {
         fetchMemos(currentFilters),
         fetchEmployees()
       ]);
-      setMemos(memosRes.memos || []);
-      setEmployees((employeesRes.employees || employeesRes || []) as Employee[]);
+      const memosData = memosRes.data as unknown as { memos: Memo[] };
+      const memosList = memosData?.memos || (memosRes as {memos?: Memo[]}).memos || [];
+      setMemos(memosList);
+      
+      const empData = employeesRes as { employees?: Employee[] };
+      setEmployees((empData.employees || employeesRes || []) as Employee[]);
     } catch (err) {
       setError('Failed to load data');
     } finally {
@@ -190,10 +194,21 @@ export const useMemoManagement = (): UseMemoManagementReturn => {
     e.preventDefault();
     try {
       setSaving(true);
+      const payload = {
+        memo_type: formData.memo_type,
+        subject: formData.subject,
+        content: formData.content,
+        priority: formData.priority,
+        effective_date: formData.effective_date,
+        acknowledgment_required: formData.acknowledgment_required,
+        status: formData.status,
+        employee_id: Number(formData.employee_id)
+      };
+
       if (selectedMemo) {
-        await updateMemo(selectedMemo.id, formData);
+        await updateMemo(selectedMemo.id, payload);
       } else {
-        await createMemo(formData);
+        await createMemo(payload);
       }
       setIsFormOpen(false);
       loadData(filters);

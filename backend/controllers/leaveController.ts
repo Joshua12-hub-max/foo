@@ -33,8 +33,6 @@ import {
   type LeaveType,
   type PaymentStatus,
   type TransactionType,
-  MONTHLY_VL_ACCRUAL,
-  MONTHLY_SL_ACCRUAL,
   SPECIAL_LEAVES_NO_DEDUCTION,
   CROSS_CHARGE_MAP,
   LEAVE_TO_CREDIT_MAP,
@@ -797,7 +795,7 @@ export const getMyLeaves = async (req: Request, res: Response): Promise<void> =>
       )!);
     }
     if (status) {
-      conditions.push(eq(leaveApplications.status, status as any));
+      conditions.push(eq(leaveApplications.status, status as 'Pending' | 'Approved' | 'Rejected' | 'Cancelled'));
     }
 
     const where = and(...conditions);
@@ -867,7 +865,7 @@ export const getAllLeaves = async (req: Request, res: Response): Promise<void> =
       conditions.push(eq(authentication.department, department));
     }
     if (status) {
-      conditions.push(eq(leaveApplications.status, status as any));
+      conditions.push(eq(leaveApplications.status, status as 'Pending' | 'Approved' | 'Rejected' | 'Cancelled'));
     }
     
     // New Filters
@@ -945,7 +943,7 @@ export const getAllLeaves = async (req: Request, res: Response): Promise<void> =
  */
 export const processLeave = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
+    const { id } = req.params as { id: string };
     const authReq = req as AuthenticatedRequest;
     const adminId = authReq.user ? String(authReq.user.employeeId || authReq.user.id) : 'Admin';
     const adminFormPath = req.file ? `leaves/${req.file.filename}` : null;
@@ -983,7 +981,7 @@ export const processLeave = async (req: Request, res: Response): Promise<void> =
  */
 export const finalizeLeave = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
+    const { id } = req.params as { id: string };
     const authReq = req as AuthenticatedRequest;
     const employeeId = authReq.user ? String(authReq.user.employeeId || authReq.user.id) : null;
     const finalPath = req.file ? `leaves/${req.file.filename}` : null;
@@ -1014,7 +1012,7 @@ export const finalizeLeave = async (req: Request, res: Response): Promise<void> 
  */
 export const approveLeave = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
+    const { id } = req.params as { id: string };
     const authReq = req as AuthenticatedRequest;
     const approvedBy = authReq.user ? String(authReq.user.employeeId || authReq.user.id) : 'Admin';
 
@@ -1108,7 +1106,7 @@ export const approveLeave = async (req: Request, res: Response): Promise<void> =
     const eventType = Number(application.daysWithoutPay) > 0 ? 'LWOP' : 'Leave';
     await logToServiceRecord(
       application.employeeId,
-      eventType as any,
+      eventType as 'LWOP' | 'Leave',
       String(application.startDate).split('T')[0],
       String(application.endDate).split('T')[0],
       application.leaveType,
@@ -1143,7 +1141,7 @@ export const approveLeave = async (req: Request, res: Response): Promise<void> =
  */
 export const rejectLeave = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
+    const { id } = req.params as { id: string };
     const authReq = req as AuthenticatedRequest;
     const approvedBy = authReq.user ? String(authReq.user.employeeId || authReq.user.id) : 'Admin';
 
@@ -1235,7 +1233,7 @@ export const getMyCredits = async (req: Request, res: Response): Promise<void> =
  */
 export const getEmployeeCredits = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { employeeId } = req.params;
+    const { employeeId } = req.params as { employeeId: string };
     const year = parseInt(req.query.year as string) || getCurrentYear();
 
     const credits = await db.select({
@@ -1351,7 +1349,7 @@ export const getAllEmployeeCredits = async (req: Request, res: Response): Promis
  */
 export const updateEmployeeCredit = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { employeeId } = req.params;
+    const { employeeId } = req.params as { employeeId: string };
     const authReq = req as AuthenticatedRequest;
     const adminId = authReq.user ? String(authReq.user.employeeId || authReq.user.id) : 'Admin';
 
@@ -1404,7 +1402,7 @@ export const updateEmployeeCredit = async (req: Request, res: Response): Promise
  */
 export const deleteEmployeeCredit = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { employeeId } = req.params;
+    const { employeeId } = req.params as { employeeId: string };
     const creditType = req.query.creditType as string;
     const year = parseInt(req.query.year as string) || getCurrentYear();
 
@@ -1416,7 +1414,7 @@ export const deleteEmployeeCredit = async (req: Request, res: Response): Promise
     await db.delete(leaveBalances)
       .where(and(
         eq(leaveBalances.employeeId, employeeId),
-        eq(leaveBalances.creditType, creditType as any),
+        eq(leaveBalances.creditType, creditType as 'Vacation Leave' | 'Sick Leave' | 'Special Privilege Leave' | 'Forced Leave' | 'Maternity Leave' | 'Paternity Leave'),
         eq(leaveBalances.year, year)
       ));
 
@@ -1437,9 +1435,6 @@ export const deleteEmployeeCredit = async (req: Request, res: Response): Promise
  */
 export const accrueMonthlyCredits = async (req: Request, res: Response): Promise<void> => {
   try {
-    const authReq = req as AuthenticatedRequest;
-    const adminId = authReq.user ? String(authReq.user.employeeId || authReq.user.id) : 'System';
-
     // Validate input
     const validation = accrueCreditsSchema.safeParse(req.body);
     if (!validation.success) {
@@ -1520,7 +1515,7 @@ export const getMyLedger = async (req: Request, res: Response): Promise<void> =>
 
     const conditions = [eq(leaveLedger.employeeId, employeeId)];
     if (creditType) {
-      conditions.push(eq(leaveLedger.creditType, creditType as any));
+      conditions.push(eq(leaveLedger.creditType, creditType as 'Vacation Leave' | 'Sick Leave' | 'Special Privilege Leave' | 'Forced Leave' | 'Maternity Leave' | 'Paternity Leave'));
     }
 
     const where = and(...conditions);
@@ -1555,7 +1550,7 @@ export const getMyLedger = async (req: Request, res: Response): Promise<void> =>
  */
 export const getEmployeeLedger = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { employeeId } = req.params;
+    const { employeeId } = req.params as { employeeId: string };
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 20;
     const creditType = (req.query.creditType as string) || '';
@@ -1563,7 +1558,7 @@ export const getEmployeeLedger = async (req: Request, res: Response): Promise<vo
 
     const conditions = [eq(leaveLedger.employeeId, employeeId)];
     if (creditType) {
-      conditions.push(eq(leaveLedger.creditType, creditType as any));
+      conditions.push(eq(leaveLedger.creditType, creditType as 'Vacation Leave' | 'Sick Leave' | 'Special Privilege Leave' | 'Forced Leave' | 'Maternity Leave' | 'Paternity Leave'));
     }
 
     const where = and(...conditions);
@@ -1633,12 +1628,12 @@ export const addHoliday = async (req: Request, res: Response): Promise<void> => 
     await db.insert(holidays).values({
       name,
       date,
-      type: type as any,
+      type: type as 'Regular' | 'Special Non-Working' | 'Special Working',
       year
     }).onDuplicateKeyUpdate({
       set: {
         name,
-        type: type as any
+        type: type as 'Regular' | 'Special Non-Working' | 'Special Working'
       }
     });
 
@@ -1654,7 +1649,7 @@ export const addHoliday = async (req: Request, res: Response): Promise<void> => 
  */
 export const deleteHoliday = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
+    const { id } = req.params as { id: string };
 
     await db.delete(holidays).where(eq(holidays.id, parseInt(id)));
 
@@ -1674,7 +1669,7 @@ export const deleteHoliday = async (req: Request, res: Response): Promise<void> 
  */
 export const getLWOPSummary = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { employeeId } = req.params;
+    const { employeeId } = req.params as { employeeId: string };
 
     const summary = await db.select()
       .from(lwopSummary)
@@ -1706,7 +1701,7 @@ export const calculateLWOPDeduction = (monthlySalary: number, lwopDays: number):
  */
 export const getServiceRecord = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { employeeId } = req.params;
+    const { employeeId } = req.params as { employeeId: string };
 
     const records = await db.select()
       .from(serviceRecords)
@@ -1800,7 +1795,7 @@ export const processMonthlyTardiness = async (req: Request, res: Response): Prom
  */
 export const getTotalLWOPForRetirement = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { employeeId } = req.params;
+    const { employeeId } = req.params as { employeeId: string };
 
     // From LWOP Summary table
     const [lwopTotalSum] = await db.select({

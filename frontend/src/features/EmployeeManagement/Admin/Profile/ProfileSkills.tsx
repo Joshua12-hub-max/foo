@@ -2,6 +2,7 @@ import React, { useState, FormEvent, ChangeEvent } from 'react';
 import { Plus, Trash2, Award } from 'lucide-react';
 // @ts-ignore
 import { addEmployeeSkill, deleteEmployeeSkill } from '@api/employeeApi';
+import { SkillData } from '@/types';
 
 interface Skill {
   id: number;
@@ -40,7 +41,13 @@ const ProfileSkills: React.FC<ProfileSkillsProps> = ({ profile, onUpdate }) => {
   const handleAdd = async (e: FormEvent) => {
     e.preventDefault();
     try {
-      await addEmployeeSkill(profile.id, newSkill);
+      const payload: SkillData = {
+        skill_name: newSkill.skill_name,
+        category: newSkill.category,
+        proficiency_level: newSkill.proficiency_level,
+        years_experience: newSkill.years_experience ? Number(newSkill.years_experience) : null
+      };
+      await addEmployeeSkill(profile.id, payload);
       setIsAdding(false);
       setNewSkill({ skill_name: '', category: 'Technical', proficiency_level: 'Intermediate', years_experience: '' });
       onUpdate();

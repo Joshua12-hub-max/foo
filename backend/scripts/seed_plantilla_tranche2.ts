@@ -6,8 +6,7 @@ import {
   plantillaPositions, 
   authentication,
   departments,
-  plantillaPositionHistory,
-  stepIncrementTracker
+  plantillaPositionHistory
 } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
 
@@ -105,7 +104,6 @@ async function seedPlantillaTranche2() {
             if (!exists) {
                 await tx.insert(departments).values({
                     name: deptName,
-                    code: deptName.substring(0, 4).toUpperCase(),
                     description: deptName
                 });
             }
@@ -176,7 +174,7 @@ async function seedPlantillaTranche2() {
                     positionId: hrmoPos.id,
                     jobTitle: hrmoPos.positionTitle,
                     department: hrmoPos.department,
-                    itemsNumber: hrmoPos.itemNumber,
+                    itemNumber: hrmoPos.itemNumber,
                     salaryGrade: String(hrmoPos.salaryGrade),
                     stepIncrement: 2, // Current Step 2
                     dateHired: '2020-01-01', // > 3 years ago

@@ -45,7 +45,7 @@ interface FormDataState extends Omit<Partial<InternalReview>, 'items'> {
     violations: Array<{
       id: number;
       violationDate: string;
-      penalty: string;
+      penalty: string | number | null;
       status: string;
       policyTitle: string;
     }>;
@@ -104,13 +104,13 @@ export const usePerformanceReview = () => {
             // Normalize potential camelCase keys from backend to snake_case expected by frontend
             const review = {
                 ...rawReview,
-                employee_id: rawReview.employee_id || (rawReview as any).employeeId,
-                reviewer_id: rawReview.reviewer_id || (rawReview as any).reviewerId,
-                review_cycle_id: rawReview.review_cycle_id || (rawReview as any).reviewCycleId,
-                items: (rawReview.items || []).map((i: any) => ({
+                employee_id: rawReview.employee_id,
+                reviewer_id: rawReview.reviewer_id,
+                review_cycle_id: rawReview.review_cycle_id,
+                items: (rawReview.items || []).map((i: ReviewItem) => ({
                     ...i,
-                    criteria_id: i.criteria_id || i.criteriaId,
-                    max_score: i.max_score || i.maxScore,
+                    criteria_id: i.criteria_id,
+                    max_score: i.max_score,
                 }))
             };
             

@@ -3,6 +3,7 @@ import { X } from 'lucide-react';
 import MiniCalendar from './MiniCalendar';
 import EventsList from './EventsList';
 import { isSameDay } from '../utils/dateUtils';
+import { GridItem } from './CalendarGrid';
 
 interface DrawerSidebarProps {
   isOpen: boolean;
@@ -14,13 +15,13 @@ interface DrawerSidebarProps {
   onDateClick: (date: Date) => void;
   onPrevMonth: () => void;
   onNextMonth: () => void;
-  displayedEvents: any[];
+  displayedEvents: GridItem[];
   hours: { [key: string]: string };
-  onEventClick: (event: any) => void;
+  onEventClick: (event: GridItem) => void;
   showHolidays: boolean;
-  holidays: any[];
-  announcements?: any[];
-  schedules?: any[];
+  holidays: GridItem[];
+  announcements?: GridItem[];
+  schedules?: GridItem[];
 }
 
 const DrawerSidebar: React.FC<DrawerSidebarProps> = ({isOpen,onClose,currentDate,today,month,year,onDateClick,onPrevMonth,onNextMonth,displayedEvents,hours,onEventClick,showHolidays,holidays,announcements = [],schedules = []}) => {
@@ -37,7 +38,7 @@ const DrawerSidebar: React.FC<DrawerSidebarProps> = ({isOpen,onClose,currentDate
          end.setHours(23,59,59,999);
          return checkDate >= start && checkDate <= end;
      } else {
-         const created = new Date(a.created_at);
+         const created = new Date(a.created_at ?? '');
          created.setHours(0,0,0,0);
          return created.getTime() === checkDate.getTime();
      }

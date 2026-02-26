@@ -8,13 +8,13 @@ interface Employee {
   job_title?: string;
   position_title?: string;
   department?: string;
-  [key: string]: any;
+  [key: string]: string | number | undefined;
 }
 
 interface ReviewCycle {
   id: string | number;
   title: string;
-  [key: string]: any;
+  [key: string]: string | number | undefined;
 }
 
 interface PerformanceFormData {
@@ -26,7 +26,7 @@ interface PerformanceFormData {
   employee_job_title?: string;
   employee_position_title?: string;
   employee_department?: string;
-  [key: string]: any;
+  [key: string]: string | number | undefined;
 }
 
 interface EmployeeInfoCardProps {

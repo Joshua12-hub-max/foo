@@ -90,6 +90,7 @@ interface AuthLayoutProps {
   showQuotes?: boolean;
   showBranding?: boolean;
   leftBgGradient?: string;
+  maxWidth?: string;
 }
 
 /**
@@ -102,7 +103,8 @@ export default function AuthLayout({
   image,
   showQuotes = true,
   showBranding = true,
-  leftBgGradient = "from-slate-950 to-slate-900"
+  leftBgGradient = "from-slate-950 to-slate-900",
+  maxWidth = "max-w-sm"
 }: AuthLayoutProps) {
   const [currentQuote, setCurrentQuote] = useState(0);
   const [fadeIn, setFadeIn] = useState(true);
@@ -180,7 +182,7 @@ export default function AuthLayout({
 
       {/* Right Section - Form Container */}
       <div className="flex flex-col justify-center w-full md:w-1/2 bg-white p-4 sm:p-6">
-        <div className="max-w-sm mx-auto w-full">
+        <div className={`mx-auto w-full ${maxWidth}`}>
           <div className="bg-white border border-gray-200 rounded-[15px] shadow-lg p-5 sm:p-6 text-gray-800 hover:shadow-2xl transition-shadow duration-200">
             <FormHeader 
               image={image} 

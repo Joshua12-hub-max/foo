@@ -10,21 +10,23 @@ const employees = [
   // Department Head
   { name: 'Judith S. Guevarra', role: 'hr', title: 'Department Head', isHead: true },
   
-  // Staff
-  { name: 'Ron Micheal Nito', role: 'hr', title: 'Administrative Assistant II' },
-  { name: 'Loida Init', role: 'hr', title: 'Administrative Officer IV' },
-  { name: 'Carmina Lim', role: 'hr', title: 'Administrative Officer II' },
-  { name: 'Cristina Peña', role: 'hr', title: 'Administrative Assistant I' },
-  { name: 'Gemma Carpon', role: 'hr', title: 'Administrative Aide IV' },
-  { name: 'Jay Ar Rodriguez', role: 'hr', title: 'Administrative Aide III' },
-  { name: 'Jeffrey Ganacias', role: 'hr', title: 'Administrative Aide I' },
-  { name: 'Federic Montes', role: 'hr', title: 'Administrative Aide I' },
-  { name: 'Tricia May De Guzman', role: 'hr', title: 'Job Order' },
-  { name: 'Hannah Lyn A. Abacan', role: 'hr', title: 'Job Order' },
-  { name: 'Jeamy Shane D. Nebrida', role: 'hr', title: 'Job Order' },
-  { name: 'Ron O. Cruz', role: 'hr', title: 'Job Order' },
-  { name: 'Vohn Ferdinand R. Baldogo', role: 'hr', title: 'Job Order' },
-  { name: 'Pinky A. Pajarillo', role: 'hr', title: 'Job Order' }
+  // Admin
+  { name: 'Ron Micheal Nito', role: 'admin', title: 'Administrative Assistant I (Computer Operator I)' },
+
+  // Staff (Employees)
+  { name: 'Loida Init', role: 'employee', title: 'Senior Administrative Assistant II (Computer Operator IV)' },
+  { name: 'Carmina Lim', role: 'employee', title: 'Senior Administrative Assistant I (Data Entry Machine Operator I)' },
+  { name: 'Cristina Peña', role: 'employee', title: 'Administrative Officer IV (Human Resource Management Officer II)' },
+  { name: 'Gemma Carpon', role: 'employee', title: 'Administrative Assistant II (Human Resource Management Assistant)' },
+  { name: 'Jay Ar Rodriguez', role: 'employee', title: 'Administrative Aide IV (Human Resource Management Aide)' },
+  { name: 'Jeffrey Ganacias', role: 'employee', title: 'Administrative Officer V (Human Resource Management Officer III)' },
+  { name: 'Federic Montes', role: 'employee', title: 'Administrative Assistant II (Human Resource Management Assistant)' },
+  { name: 'Tricia May De Guzman', role: 'employee', title: 'Administrative Aide IV (Driver II)' },
+  { name: 'Hannah Lyn A. Abacan', role: 'employee', title: 'Job Order' },
+  { name: 'Jeamy Shane D. Nebrida', role: 'employee', title: 'Job Order' },
+  { name: 'Ron O. Cruz', role: 'employee', title: 'Job Order' },
+  { name: 'Vohn Ferdinand R. Baldogo', role: 'employee', title: 'Job Order' },
+  { name: 'Pinky A. Pajarillo', role: 'employee', title: 'Job Order' }
 ];
 
 function parseName(fullName: string) {
@@ -34,8 +36,7 @@ function parseName(fullName: string) {
   const parts = cleanedName.split(' ');
   let firstName = '';
   let lastName = '';
-  let middleName = '';
-  
+
   // Basic heuristic: Last word is last name (unless it's a suffix like Jr, III, etc which we handle simply here)
   // For 'Ron Micheal Nito', First: Ron Micheal, Last: Nito
   // For 'Judith S. Guevarra', First: Judith, Middle: S., Last: Guevarra
@@ -140,7 +141,7 @@ async function seedCHRMO() {
         // so they can login if biometric check is active
         const bioId = 9000 + i; // Fake bio ID range
          try {
-             const [enrollment] = await db.insert(bioEnrolledUsers).values({
+             const [_enrollment] = await db.insert(bioEnrolledUsers).values({
                  employeeId: bioId,
                  fullName: `${firstName} ${lastName}`,
                  department: CHRMO_DEPARTMENT,
@@ -150,8 +151,8 @@ async function seedCHRMO() {
              // but here we used CHRMO-XXX. The auth controller attempts to parse ints from EMP-XXX or raw.
              // If we use CHRMO-XXX, logic might fail if it strictly expects numbers.
              // Let's check auth controller again.
-         } catch (e) {
-             console.log('Bio enrollment skipped/failed (might duplicate):', e.message);
+         } catch (e: unknown) {
+             console.log('Bio enrollment skipped/failed (might duplicate):', e instanceof Error ? e.message : String(e));
          }
 
     } catch (err) {

@@ -11,7 +11,8 @@ import {
   EmployeeDTRRecord,
   EmployeeDTRFilters,
   EmployeePaginationResult,
-  EmployeeInfo
+  EmployeeInfo,
+  DTRApiResponse
 } from "../Utils/employeeDTRUtils";
 import { ITEMS_PER_PAGE, MESSAGES, DELAYS, EXPORT_HEADERS, STATUS_STYLES } from "../Constants/employeeDTR.constant";
 
@@ -50,21 +51,21 @@ export const useEmployeeDTR = () => {
         const data = response.data.data || [];
         
         // Map data
-        return data.map((item: any): EmployeeDTRRecord => {
+        return data.map((item: DTRApiResponse): EmployeeDTRRecord => {
             let hoursWorked = '0';
             if (item.time_in && item.time_out) {
-              const start = new Date(item.time_in).getTime();
-              const end = new Date(item.time_out).getTime();
+              const start = new Date(String(item.time_in)).getTime();
+              const end = new Date(String(item.time_out)).getTime();
               hoursWorked = ((end - start) / (1000 * 60 * 60)).toFixed(2);
             }
             return {
-              id: item.id || item.record_id,
-              date: item.date, // Assuming format YYYY-MM-DD
-              timeIn: item.time_in ? new Date(item.time_in).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--',
-              timeOut: item.time_out ? new Date(item.time_out).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--',
+              id: item.id ?? item.record_id ?? '',
+              date: String(item.date ?? ''),
+              timeIn: item.time_in ? new Date(String(item.time_in)).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--',
+              timeOut: item.time_out ? new Date(String(item.time_out)).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--',
               hoursWorked: hoursWorked,
-              status: item.status || 'Absent',
-              remarks: item.remarks || '-'
+              status: item.status ? String(item.status) : 'Absent',
+              remarks: item.remarks ? String(item.remarks) : '-'
             };
         });
     },
@@ -136,9 +137,9 @@ export const useEmployeeDTR = () => {
       const filename = `my_dtr_${today.replace(/\//g, '-')}.csv`;
       await exportToCSV(filteredData, EXPORT_HEADERS, employeeInfo, filename);
       setSuccessMessage(MESSAGES.CSV_EXPORTED);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Export to CSV failed:', err);
-      setErrorLocal(`${MESSAGES.ERROR_EXPORT_CSV}: ${err.message || 'Unknown error. Please try again.'}`);
+      setErrorLocal(`${MESSAGES.ERROR_EXPORT_CSV}: ${err instanceof Error ? err.message : 'Unknown error. Please try again.'}`);
     } finally {
       setLoadingType("");
     }
@@ -155,9 +156,9 @@ export const useEmployeeDTR = () => {
       await new Promise(resolve => setTimeout(resolve, DELAYS.EXPORT_DELAY));
       await exportToPDF(filteredData, EXPORT_HEADERS, employeeInfo, today, DELAYS.PDF_PRINT_DELAY);
       setSuccessMessage(MESSAGES.PDF_EXPORTED);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Export to PDF failed:', err);
-      setErrorLocal(`${MESSAGES.ERROR_EXPORT_PDF}: ${err.message || 'Unknown error. Please try again.'}`);
+      setErrorLocal(`${MESSAGES.ERROR_EXPORT_PDF}: ${err instanceof Error ? err.message : 'Unknown error. Please try again.'}`);
     } finally {
       setLoadingType("");
     }

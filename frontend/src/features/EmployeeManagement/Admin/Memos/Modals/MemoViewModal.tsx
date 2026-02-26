@@ -15,7 +15,7 @@ interface Memo {
   employeeName: string;
   authorName?: string;
   subject: string;
-  content: string;
+  content?: string;
   priority: string;
   status: string;
   createdAt: string;
