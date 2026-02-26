@@ -61,9 +61,9 @@ export const useDepartmentManagement = (): UseDepartmentManagementReturn => {
       } else {
         setError('Failed to fetch departments');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Failed to load departments", err);
-      setError(err.message || "An error occurred");
+      setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setLoading(false);
     }
@@ -109,9 +109,9 @@ export const useDepartmentManagement = (): UseDepartmentManagementReturn => {
       setDepartments(prev => prev.filter(d => d.id !== departmentToDelete.id));
       setDeleteModalOpen(false);
       setDepartmentToDelete(null);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Failed to delete department", err);
-      setError(err.message || "Failed to delete department");
+      setError(err instanceof Error ? err.message : 'Failed to delete department');
     } finally {
       setIsDeleting(false);
     }
@@ -132,9 +132,9 @@ export const useDepartmentManagement = (): UseDepartmentManagementReturn => {
       }
       setIsModalOpen(false);
       return { success: true };
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Failed to save department", err);
-      return { success: false, error: err.message };
+      return { success: false, error: err instanceof Error ? err.message : 'An error occurred' };
     }
   }, [editingDepartment, loadDepartments]);
 

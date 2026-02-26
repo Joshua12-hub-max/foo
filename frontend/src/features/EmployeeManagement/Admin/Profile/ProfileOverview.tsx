@@ -19,13 +19,20 @@ interface Contact {
 
 interface Profile {
   first_name?: string;
+  middle_name?: string;
   last_name?: string;
+  suffix?: string;
   email?: string;
   job_title?: string;
   employment_status?: string;
   date_hired?: string;
   department?: string;
   duties?: string;
+  residential_address?: string;
+  permanent_address?: string;
+  emergency_contact?: string;
+  emergency_contact_number?: string;
+  educational_background?: string;
   history?: HistoryJob[];
   contacts?: Contact[];
 }
@@ -60,7 +67,12 @@ const ProfileOverview: React.FC<ProfileOverviewProps> = ({ profile }) => {
             <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-gray-100">
               <div className="p-4 flex items-center justify-between group hover:bg-[#F8F9FA]">
                 <span className="text-[10px] font-black text-gray-400 uppercase">Full Name</span>
-                <span className="text-sm font-bold text-gray-800">{profile.first_name} {profile.last_name}</span>
+                <span className="text-sm font-bold text-gray-800 whitespace-nowrap">
+                  {profile.last_name ? profile.last_name + ', ' : ''}
+                  {profile.first_name} 
+                  {profile.middle_name ? ' ' + profile.middle_name : ''}
+                  {profile.suffix ? ' ' + profile.suffix : ''}
+                </span>
               </div>
               <div className="p-4 flex items-center justify-between group hover:bg-[#F8F9FA]">
                 <span className="text-[10px] font-black text-gray-400 uppercase">Email Address</span>
@@ -70,7 +82,7 @@ const ProfileOverview: React.FC<ProfileOverviewProps> = ({ profile }) => {
             
             <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-gray-100 border-t border-gray-100">
               <div className="p-4 flex items-center justify-between group hover:bg-[#F8F9FA]">
-                <span className="text-[10px] font-black text-gray-400 uppercase">Job Title</span>
+                <span className="text-[10px] font-black text-gray-400 uppercase">Position Title</span>
                 <span className="text-sm font-bold text-gray-800">{profile.job_title || 'N/A'}</span>
               </div>
               <div className="p-4 flex items-center justify-between group hover:bg-[#F8F9FA]">
@@ -101,6 +113,40 @@ const ProfileOverview: React.FC<ProfileOverviewProps> = ({ profile }) => {
                 {/* Placeholder for future field */}
                 <span className="text-[10px] font-black text-gray-400 uppercase">Shift Type</span>
                 <span className="text-sm font-bold text-gray-800">Standard</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Contact & Educational Details  */}
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div className="bg-gray-100 px-6 py-3 border-b border-gray-200">
+            <h2 className="text-sm font-black text-gray-700 uppercase tracking-wider">
+              Contact & Background Information
+            </h2>
+          </div>
+          <div className="p-0">
+            <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-gray-100">
+              <div className="p-4 flex flex-col group hover:bg-[#F8F9FA]">
+                <span className="text-[10px] font-black text-gray-400 uppercase mb-1">Residential Address</span>
+                <span className="text-sm font-bold text-gray-800">{profile.residential_address || 'Not Set'}</span>
+              </div>
+              <div className="p-4 flex flex-col group hover:bg-[#F8F9FA]">
+                <span className="text-[10px] font-black text-gray-400 uppercase mb-1">Permanent Address</span>
+                <span className="text-sm font-bold text-gray-800">{profile.permanent_address || 'Not Set'}</span>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-gray-100 border-t border-gray-100">
+              <div className="p-4 flex items-center justify-between group hover:bg-[#F8F9FA]">
+                <span className="text-[10px] font-black text-gray-400 uppercase">Emergency Contact</span>
+                <div className="text-right">
+                    <span className="block text-sm font-bold text-gray-800">{profile.emergency_contact || 'N/A'}</span>
+                    <span className="block text-xs font-semibold text-gray-500">{profile.emergency_contact_number || ''}</span>
+                </div>
+              </div>
+              <div className="p-4 flex flex-col group hover:bg-[#F8F9FA]">
+                <span className="text-[10px] font-black text-gray-400 uppercase mb-1">Educational Background</span>
+                <span className="text-sm font-bold text-gray-800 line-clamp-2">{profile.educational_background || 'Not Set'}</span>
               </div>
             </div>
           </div>

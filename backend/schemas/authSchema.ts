@@ -6,12 +6,69 @@ export const LoginSchema = z.object({
 });
 
 export const RegisterSchema = z.object({
-  employee_id: z.string().min(1, "Employee ID is required"),
+  employee_id: z.string().optional(), // Auto-generated if not provided
+  firstName: z.string().min(1, "First name is required"),
+  lastName: z.string().min(1, "Last name is required"),
+  middleName: z.string().optional(),
+  suffix: z.string().optional(),
+  
+  // Address
+  address: z.string().optional(), // Optional because it might be auto-generated from barangay
+  isMeycauayan: z.string().optional().default('false').transform((val) => val === 'true'), 
+  barangay: z.string().optional(),
+
   email: z.string().email("Invalid email format"),
   password: z.string()
     .min(8, "Password must be at least 8 characters")
     .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, "Password must contain at least one uppercase letter, one lowercase letter, and one number"),
   role: z.enum(["admin", "hr", "employee"]).default("employee"),
+  
+  department: z.string().optional(),
+  position: z.string().optional(),
+  duties: z.enum(["Standard", "Irregular Duties"]).optional(),
+
+  // Personal Info
+  birthDate: z.string().optional(),
+  placeOfBirth: z.string().optional(),
+  gender: z.enum(["Male", "Female", ""]).optional(),
+  civilStatus: z.enum(["Single", "Married", "Widowed", "Separated", "Annulled", ""]).optional(),
+  nationality: z.string().optional(),
+  bloodType: z.string().optional(),
+  heightM: z.string().optional(),
+  weightKg: z.string().optional(),
+
+  // Contact & Detailed Address
+  residentialAddress: z.string().optional(),
+  residentialZipCode: z.string().optional(),
+  permanentAddress: z.string().optional(),
+  permanentZipCode: z.string().optional(),
+  telephoneNo: z.string().optional(),
+  mobileNo: z.string().optional(),
+  emergencyContact: z.string().optional(),
+  emergencyContactNumber: z.string().optional(),
+
+  // Government Identification
+  gsisIdNo: z.string().optional(),
+  pagibigIdNo: z.string().optional(),
+  philhealthNo: z.string().optional(),
+  umidId: z.string().optional(),
+  philsysId: z.string().optional(),
+  tinNo: z.string().optional(),
+  agencyEmployeeNo: z.string().optional(),
+
+  // Educational Background
+  educationalBackground: z.string().optional(),
+
+  // Social & Others
+  facebookUrl: z.string().optional(),
+  linkedinUrl: z.string().optional(),
+  twitterHandle: z.string().optional(),
+  ignoreDuplicateWarning: z.boolean().optional().default(false),
+
+  // Applicant data linking (auto-populated when pre-filling from hired applicant)
+  applicantId: z.union([z.number(), z.string().transform(v => parseInt(v, 10))]).optional(),
+  applicantHiredDate: z.string().optional(),
+  applicantPhotoPath: z.string().optional(),
 });
 
 export const GoogleLoginSchema = z.object({

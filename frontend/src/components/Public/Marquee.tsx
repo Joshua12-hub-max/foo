@@ -24,7 +24,7 @@ const Marquee: React.FC<MarqueeProps> = ({
           repeat: Infinity,
           repeatType: 'loop' as const,
           duration: speed,
-          ease: 'linear' as any,
+          ease: 'linear' as const,
         },
       },
     },
@@ -36,8 +36,8 @@ const Marquee: React.FC<MarqueeProps> = ({
         className="inline-block"
         variants={containerVariants}
         animate="animate"
-        whileHover={pauseOnHover ? { animationPlayState: 'paused' } as any : undefined}
-        style={{ display: 'flex' }}
+        whileHover={pauseOnHover ? { scale: 1 } : undefined}
+        style={{ display: 'flex', animationPlayState: pauseOnHover ? undefined : undefined }}
       >
         <div className="flex shrink-0">
           {children}

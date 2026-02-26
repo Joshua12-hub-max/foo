@@ -47,7 +47,7 @@ const InternalPoliciesPage: React.FC<InternalPoliciesPageProps> = ({ hideHeader 
 
 
     return (
-        <div className={`flex flex-col bg-white rounded-2xl shadow-sm border border-gray-200 p-6 w-full overflow-hidden transition-all duration-300 animate-in fade-in duration-500 ${!sidebarOpen ? 'max-w-[1600px] xl:max-w-[88vw]' : 'max-w-[1400px] xl:max-w-[77vw]'}`}>
+        <div className={`flex flex-col bg-white rounded-2xl shadow-sm border border-gray-200 p-6 w-full overflow-hidden transition-all duration-300 animate-in fade-in duration-500`}>
             
             {/* Header Section */}
             {!hideHeader && (
@@ -65,12 +65,12 @@ const InternalPoliciesPage: React.FC<InternalPoliciesPageProps> = ({ hideHeader 
             )}
 
             {/* Segmented Tab Navigation */}
-            <div className="flex bg-gray-100/80 p-1 rounded-2xl mb-8 w-fit border border-gray-200/50">
+            <div className="flex bg-gray-100/80 p-1 rounded-2xl mb-8 w-full border border-gray-200/50">
                 {tabs.map((tab) => (
                     <button
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id)}
-                        className={`px-4 py-2 rounded-xl text-[11px] font-bold transition-all duration-300 ${
+                        className={`flex-1 px-4 py-2 rounded-xl text-[11px] font-bold transition-all duration-300 ${
                             activeTab === tab.id
                                 ? 'bg-white text-indigo-600 shadow-sm'
                                 : 'text-gray-500 hover:text-gray-700 hover:bg-white/50'

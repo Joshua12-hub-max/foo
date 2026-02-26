@@ -105,8 +105,8 @@ const LiveSupportChat: React.FC = () => {
     };
 
     const filteredConversations = conversations.filter(conv => 
-        conv.applicant_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        conv.applicant_email.toLowerCase().includes(searchTerm.toLowerCase())
+        (conv.applicant_name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+        (conv.applicant_email?.toLowerCase() || '').includes(searchTerm.toLowerCase())
     );
 
     return (
@@ -148,11 +148,11 @@ const LiveSupportChat: React.FC = () => {
                                 className={`w-full p-4 flex items-start gap-3 border-b border-gray-50 hover:bg-blue-50/30 transition-colors text-left ${selectedConversation?.id === conv.id ? 'bg-blue-50 border-l-4 border-l-blue-600' : ''}`}
                             >
                                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center text-blue-700 font-bold shrink-0">
-                                    {conv.applicant_name[0]}
+                                    {conv.applicant_name ? conv.applicant_name[0] : '?'}
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <div className="flex justify-between items-center mb-0.5">
-                                        <h4 className="font-bold text-gray-900 truncate text-sm">{conv.applicant_name}</h4>
+                                        <h4 className="font-bold text-gray-900 truncate text-sm">{conv.applicant_name || 'Anonymous'}</h4>
                                         <span className="text-[10px] text-gray-400 shrink-0">{new Date(conv.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                     </div>
                                     <p className="text-xs text-gray-500 truncate">{conv.last_message || 'No messages yet'}</p>
@@ -179,10 +179,10 @@ const LiveSupportChat: React.FC = () => {
                                     <ChevronLeft size={20} />
                                 </button>
                                 <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-xs">
-                                    {selectedConversation.applicant_name[0]}
+                                    {selectedConversation.applicant_name ? selectedConversation.applicant_name[0] : '?'}
                                 </div>
                                 <div>
-                                    <h4 className="font-bold text-gray-900 leading-tight">{selectedConversation.applicant_name}</h4>
+                                    <h4 className="font-bold text-gray-900 leading-tight">{selectedConversation.applicant_name || 'Anonymous'}</h4>
                                     <p className="text-[10px] text-gray-500">{selectedConversation.applicant_email}</p>
                                 </div>
                             </div>

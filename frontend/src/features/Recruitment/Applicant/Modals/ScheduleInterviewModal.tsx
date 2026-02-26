@@ -3,7 +3,7 @@ import { X, Mail, Video, Globe, Wand2, Loader2, AlertCircle, CalendarCheck, Plug
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Applicant } from '../Hooks/useApplicantData';
+import { Applicant } from '@/types/recruitment';
 import { recruitmentApi } from '@/api/recruitmentApi';
 import { googleCalendarApi } from '@/api/googleCalendarApi';
 import { zoomApi } from '@/api/zoomApi';
@@ -58,6 +58,9 @@ const ScheduleInterviewModal: React.FC<ScheduleInterviewModalProps> = ({
   const getErrorMessage = (error: unknown): string => {
     if (error instanceof Error) return error.message;
     if (typeof error === 'string') return error;
+    if (error && typeof error === 'object' && 'message' in error) {
+      return String((error as { message: unknown }).message);
+    }
     return 'An unexpected error occurred';
   };
 

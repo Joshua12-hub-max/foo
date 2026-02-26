@@ -2,6 +2,14 @@ import { useState, useEffect } from 'react';
 import { recruitmentApi } from '@/api/recruitmentApi';
 import { JobFormData } from '@/types';
 
+interface AxiosErrorLike {
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
+}
+
 const useJobActions = (
   loadJobs: () => void, 
   showNotification: (message: string, type: 'success' | 'error' | 'info') => void
@@ -28,9 +36,12 @@ const useJobActions = (
       
       onSuccess();
       loadJobs();
-    } catch (err: any) {
-      console.error('Failed to save job:', err);
-      showNotification(err.response?.data?.message || 'Failed to save job posting', 'error');
+    } catch (error: unknown) {
+      console.error('Failed to save job:', error);
+      const axiosError = error as AxiosErrorLike;
+      const message = axiosError.response?.data?.message || 
+                     (error instanceof Error ? error.message : 'Failed to save job posting');
+      showNotification(message, 'error');
     } finally {
       setSaving(false);
     }
@@ -42,8 +53,8 @@ const useJobActions = (
       await recruitmentApi.deleteJob(jobId);
       onSuccess();
       loadJobs();
-    } catch (err) {
-      console.error('Failed to delete job:', err);
+    } catch (error: unknown) {
+      console.error('Failed to delete job:', error);
       showNotification('Failed to delete job posting', 'error');
     } finally {
       setSaving(false);

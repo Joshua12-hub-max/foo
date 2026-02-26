@@ -3,17 +3,27 @@ import { useEffect, useState } from "react";
 import { fetchEmployees } from "../../../../../api/employeeApi";
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { scheduleSchema } from '@/schemas/calendar';
+import { scheduleSchema, ScheduleSchema } from '@/schemas/calendar';
+
+interface EmployeeOption {
+  id: number | string;
+  employee_id?: string;
+  first_name?: string;
+  last_name?: string;
+  employeeId?: string;
+  firstName?: string;
+  lastName?: string;
+}
 
 interface ScheduleModalProps {
   show: boolean;
   onClose: () => void;
-  onCreate: (data: any) => void;
+  onCreate: (data: ScheduleSchema) => void;
   hours?: string[];
 }
 
 export default function ScheduleModal({ show, onClose, onCreate, hours = [] }: ScheduleModalProps) {
-  const [employees, setEmployees] = useState<any[]>([]);
+  const [employees, setEmployees] = useState<EmployeeOption[]>([]);
 
   const {
     register,
@@ -58,10 +68,7 @@ export default function ScheduleModal({ show, onClose, onCreate, hours = [] }: S
     }
   }, [show, reset]);
   
-  const onSubmit = (data: any) => {
-      // Map RHF data to expected keys if necessary, or just pass data
-      // API expects: employee_id, title, start_date, end_date, start_time, end_time, repeat (snake_case in backend, mostly matched here)
-      // Schema uses start_date, our RHF uses start_date.
+  const onSubmit = (data: ScheduleSchema) => {
       onCreate(data);
   };
 

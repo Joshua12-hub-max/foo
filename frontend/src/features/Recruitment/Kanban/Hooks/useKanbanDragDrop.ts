@@ -11,7 +11,7 @@ import {
 } from '@dnd-kit/core';
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { recruitmentApi } from '@/api/recruitmentApi';
-import { KanbanApplicant } from './useKanbanData';
+import { KanbanApplicant, ApplicantStage } from './useKanbanData';
 
 export interface KanbanColumn {
   id: string;
@@ -91,7 +91,7 @@ const useKanbanDragDrop = (
     );
 
     try {
-      await recruitmentApi.updateStage(applicantId, { stage: targetColumnId });
+      await recruitmentApi.updateStage(applicantId, { stage: targetColumnId as ApplicantStage });
       showNotification(`Moved to ${column.title}`, 'success');
     } catch (err) {
       fetchApplicants();

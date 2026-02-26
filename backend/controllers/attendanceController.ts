@@ -11,7 +11,7 @@ import {
   bioEnrolledUsers,
   dtrCorrections
 } from "../db/schema.js";
-import { eq, and, sql, desc, between, ne, or, like, gte, lte } from "drizzle-orm";
+import { eq, and, sql, desc, between, ne, or, like } from "drizzle-orm";
 import type { AuthenticatedRequest } from "../types/index.js";
 import {
   GetLogsSchema,
@@ -58,11 +58,32 @@ const formatDate = (dateString: string | null | undefined): string => {
   });
 };
 
-const mapToAttendanceLogApi = (log: any): AttendanceLogApiResponse => {
+interface AttendanceLog {
+  id: number;
+  employee_id?: string | null;
+  employeeId?: string | null;
+  scan_time?: string | Date | null;
+  scanTime?: string | Date | null;
+  type?: 'IN' | 'OUT' | null;
+  source?: string | null;
+  first_name?: string | null;
+  firstName?: string | null;
+  last_name?: string | null;
+  lastName?: string | null;
+  department?: string | null;
+  duties?: string | null;
+  dtr_status?: string | null;
+}
+
+const mapToAttendanceLogApi = (log: AttendanceLog): AttendanceLogApiResponse => {
+  const employeeId = log.employee_id || log.employeeId || '';
+  const scanTimeRaw = log.scan_time || log.scanTime;
+  const scanTime = scanTimeRaw ? new Date(scanTimeRaw).toISOString() : '';
+  
   return {
     id: log.id,
-    employee_id: log.employee_id || log.employeeId, 
-    scan_time: log.scan_time ? new Date(log.scan_time).toISOString() : (log.scanTime ? new Date(log.scanTime).toISOString() : ''),
+    employee_id: employeeId, 
+    scan_time: scanTime,
     type: (log.type || 'IN') as 'IN' | 'OUT',
     source: log.source || 'Unknown',
     first_name: log.first_name || log.firstName || null,

@@ -4,6 +4,7 @@ import { ShieldCheck, Loader2, ArrowRight } from "lucide-react";
 import AuthLayout from "@components/Custom/Auth/AuthLayout";
 import OTPInput from "./OTPInput";
 import { verifyRegistrationOTP, resendVerification } from "@/Service/Auth";
+import axios from "axios";
 
 export default function VerifyAccount() {
   const location = useLocation();
@@ -56,9 +57,10 @@ export default function VerifyAccount() {
         setTimeout(() => {
             navigate("/login", { replace: true });
         }, 2000);
-    } catch (err: any) {
+    } catch (err: unknown) {
         console.error("Verification error:", err);
-        setError(err.response?.data?.message || "Verification failed. Please try again.");
+        const msg = axios.isAxiosError(err) ? err.response?.data?.message : undefined;
+        setError(msg || "Verification failed. Please try again.");
     } finally {
         setLoading(false);
     }

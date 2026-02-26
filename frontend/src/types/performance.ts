@@ -83,6 +83,10 @@ export interface InternalReview {
     reviewer_last_name?: string;
     reviewer_first?: string;
     reviewer_last?: string;
+    // cycle / period info (returned in list views)
+    cycle_title?: string;
+    review_period_start?: string;
+    review_period_end?: string;
 }
 
 export interface ReviewCycle {

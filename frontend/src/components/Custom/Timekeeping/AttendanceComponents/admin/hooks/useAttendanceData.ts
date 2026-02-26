@@ -21,19 +21,31 @@ export const useAttendanceData = (isAdmin = false) => {
     queryKey: ['attendance', { isAdmin }],
     queryFn: async () => {
       const response = await attendanceApi.getLogs({});
-      
+      let apiData: any[] = [];
       if (response && response.data) {
           const resData = response.data;
           if (Array.isArray(resData)) {
-              return resData;
+              apiData = resData;
           } else if (resData.data && Array.isArray(resData.data)) {
-              return resData.data;
-
+              apiData = resData.data;
           }
       } else if (Array.isArray(response)) {
-          return response;
+          apiData = response;
       }
-      return [];
+      
+      return apiData.map(item => ({
+        id: item.id,
+        employee_id: item.employee_id,
+        name: item.name || `${item.first_name || ''} ${item.last_name || ''}`.trim(),
+        first_name: item.first_name,
+        last_name: item.last_name,
+        date: item.date,
+        time_in: item.time_in,
+        time_out: item.time_out,
+        late: item.late_minutes || item.late || 0,
+        undertime: item.undertime_minutes || item.undertime || 0,
+        status: item.status || 'Present'
+      })) as AttendanceRecord[];
     },
     initialData: [] as AttendanceRecord[] 
   });

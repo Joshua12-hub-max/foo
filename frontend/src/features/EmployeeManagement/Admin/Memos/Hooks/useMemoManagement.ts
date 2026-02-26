@@ -19,11 +19,11 @@ export interface Memo {
   memoNumber: string;
   memoType: string;
   subject: string;
-  content: string;
+  content?: string;
   priority: string;
   status: string;
   effectiveDate?: string;
-  acknowledgmentRequired: boolean;
+  acknowledgmentRequired?: boolean;
   acknowledgedAt?: string;
   createdAt: string;
   department?: string;
@@ -153,10 +153,10 @@ export const useMemoManagement = (): UseMemoManagementReturn => {
       employee_id: String(memo.employeeId),
       memo_type: memo.memoType,
       subject: memo.subject,
-      content: memo.content,
+      content: memo.content ?? '',
       priority: memo.priority,
       effective_date: memo.effectiveDate ? memo.effectiveDate.split('T')[0] : '',
-      acknowledgment_required: memo.acknowledgmentRequired,
+      acknowledgment_required: memo.acknowledgmentRequired ?? false,
       status: memo.status
     });
     setIsFormOpen(true);

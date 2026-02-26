@@ -1,35 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { recruitmentApi } from '@/api/recruitmentApi';
-
-export interface Applicant {
-  id: number;
-  first_name: string;
-  last_name: string;
-  email: string;
-  job_title?: string;
-  email_subject?: string;
-  source?: string;
-  stage: string;
-  status?: string;
-  resume_path?: string;
-  interview_date?: string;
-  interview_link?: string;
-  interview_platform?: string;
-  interviewer_id?: number;
-  interviewer_name?: string;
-  notes?: string;
-  created_at?: string;
-}
-
-export interface Interviewer {
-  id: number;
-  name?: string;
-  first_name?: string;
-  last_name?: string;
-  email: string;
-  job_title?: string;
-  department?: string;
-}
+import type { Applicant, Interviewer } from '@/types/recruitment';
 
 const useApplicantData = (showNotification?: (message: string, type: 'success' | 'error') => void) => {
   const [applicants, setApplicants] = useState<Applicant[]>([]);

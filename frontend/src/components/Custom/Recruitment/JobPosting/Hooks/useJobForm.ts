@@ -10,7 +10,17 @@ const INITIAL_FORM_DATA: JobFormData = {
   application_email: '',
   job_description: '',
   requirements: '',
-  status: 'Open'
+  status: 'Open',
+  office_name: '',
+  submission_address: '',
+  education: '',
+  experience: '',
+  training: '',
+  eligibility: '',
+  other_qualifications: '',
+  require_civil_service: false,
+  require_government_ids: false,
+  require_education_experience: false
 };
 
 const useJobForm = () => {
@@ -39,7 +49,17 @@ const useJobForm = () => {
       application_email: job.application_email || '',
       job_description: job.job_description,
       requirements: job.requirements,
-      status: job.status
+      status: job.status,
+      office_name: job.office_name || '',
+      submission_address: job.submission_address || '',
+      education: job.education || '',
+      experience: job.experience || '',
+      training: job.training || '',
+      eligibility: job.eligibility || '',
+      other_qualifications: job.other_qualifications || '',
+      require_civil_service: job.require_civil_service || false,
+      require_government_ids: job.require_government_ids || false,
+      require_education_experience: job.require_education_experience || false
     });
     setIsFormOpen(true);
   }, []);

@@ -57,7 +57,7 @@ const EmployeeModal: React.FC<EmployeeModalProps> = ({ isOpen, onClose, onSubmit
     const loadDepts = async () => {
       try {
         const data = await fetchDepartments();
-        if (data.success) setDepartments(data.departments);
+        if (data.success) setDepartments(data.departments || []);
       } catch (err) {
         // Error handled silently
       }

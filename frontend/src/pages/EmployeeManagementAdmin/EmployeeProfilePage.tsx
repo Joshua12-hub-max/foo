@@ -5,6 +5,7 @@ import { ArrowLeft } from 'lucide-react';
 
 import { fetchEmployeeProfile, revertEmployeeStatus } from '@/api/employeeApi';
 import { useToastStore } from '@/stores';
+import { EmployeeDetailed } from '@/types';
 
 // Editable profile view component
 import EditableProfileView from '@features/EmployeeManagement/Employee/Portal/Profile/EditableProfileView';
@@ -12,23 +13,12 @@ import EditableProfileView from '@features/EmployeeManagement/Employee/Portal/Pr
 // Profile loading skeleton
 import ProfileSkeleton from '@features/EmployeeManagement/Employee/Portal/Profile/ProfileSkeleton';
 
-interface Profile {
-  id: number;
-  first_name?: string;
-  last_name?: string;
-  email?: string;
-  department?: string;
-  position_title?: string;
-  employment_status?: string;
-  [key: string]: string | number | boolean | null | undefined | object | any[];
-}
-
 const EmployeeProfile: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const sidebarOpen = useUIStore((state) => state.sidebarOpen);
   
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const [profile, setProfile] = useState<EmployeeDetailed | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
   const showToast = useToastStore((state) => state.showToast);
@@ -40,25 +30,12 @@ const EmployeeProfile: React.FC = () => {
       if (!id) return;
       const profileRes = await fetchEmployeeProfile(id);
       if (profileRes.success && profileRes.profile) {
-        // Sanitize null values to undefined to match Profile interface and EditableProfileView props
-        const sanitizedProfile: Profile = {
-            ...profileRes.profile,
-            department: profileRes.profile.department || undefined,
-            position_title: profileRes.profile.position_title || undefined,
-            employment_status: profileRes.profile.employment_status || undefined,
-            first_name: profileRes.profile.first_name || undefined,
-            last_name: profileRes.profile.last_name || undefined,
-            email: profileRes.profile.email || undefined,
-            // Generic fallback for other nulls if necessary, but these are the main conflict points
-        };
-        // Use a generic loop to clean all nulls if needed, but explicit is safer for types
-        Object.keys(sanitizedProfile).forEach(key => {
-            if (sanitizedProfile[key] === null) {
-                sanitizedProfile[key] = undefined;
-            }
-        });
+        // Sanitize profile to ensure it matches EmployeeDetailed
+        const rawProfile = profileRes.profile;
         
-        setProfile(sanitizedProfile);
+        // Ensure all nullable fields are handled if needed, 
+        // but cast should be safe if API matches schema
+        setProfile(rawProfile as EmployeeDetailed);
       } else {
         showNotification(profileRes.message || 'Failed to load profile', 'error');
       }

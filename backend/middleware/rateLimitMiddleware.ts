@@ -16,3 +16,48 @@ const authLimiterOptions: Partial<Options> = {
 };
 
 export const authLimiter: RateLimitRequestHandler = rateLimit(authLimiterOptions);
+
+/**
+ * Stricter rate limiter for sensitive authentication actions (Login/Register/Verify)
+ * Limits to 5 attempts every 15 minutes to mitigate brute force
+ */
+export const strictAuthLimiter: RateLimitRequestHandler = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // 5 attempts
+  message: {
+    success: false,
+    message: 'Too many authentication attempts. Please try again in 15 minutes.'
+  },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+/**
+ * Rate limiter for public chat endpoints
+ * Prevents message flooding: 30 requests per 5 minutes per IP
+ */
+export const chatRateLimit: RateLimitRequestHandler = rateLimit({
+  windowMs: 5 * 60 * 1000, // 5 minutes
+  max: 30, // 30 requests per window
+  message: {
+    success: false,
+    message: 'Too many messages. Please slow down and try again shortly.'
+  },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+/**
+ * Rate limiter for public inquiry submissions
+ * Prevents inquiry spam: 5 submissions per hour per IP
+ */
+export const inquiryRateLimit: RateLimitRequestHandler = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 5, // 5 submissions per window
+  message: {
+    success: false,
+    message: 'Too many inquiries submitted. Please try again later.'
+  },
+  standardHeaders: true,
+  legacyHeaders: false
+});

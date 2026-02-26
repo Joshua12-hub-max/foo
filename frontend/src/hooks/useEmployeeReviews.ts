@@ -152,7 +152,8 @@ const useEmployeeReviews = ({ showNotification }: UseEmployeeReviewsOptions = {}
       });
 
       if (response.success) {
-        notify(`Self-rating submitted successfully! Your average score: ${response.self_rating_score}`, "success");
+        const ratingResponse = response as { success: boolean; self_rating_score?: number };
+        notify(`Self-rating submitted successfully! Your average score: ${ratingResponse.self_rating_score}`, "success");
         setIsSelfRatingOpen(false);
         setSelfRemarks('');
         loadReviews();

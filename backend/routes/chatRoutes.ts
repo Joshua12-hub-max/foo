@@ -1,4 +1,4 @@
-import express from 'express';
+import { Router, RequestHandler } from 'express';
 import { 
   startConversation, 
   sendMessage, 
@@ -7,18 +7,19 @@ import {
   closeConversation
 } from '../controllers/chatController.js';
 import { verifyAdmin } from '../middleware/authMiddleware.js';
+import { chatRateLimit } from '../middleware/rateLimitMiddleware.js';
 
-const router = express.Router();
+const router: Router = Router();
 
-// Public/Applicant Routes
-router.post('/start', startConversation);
-router.post('/message', sendMessage); // applicant sends
-router.get('/messages/:conversationId', getMessages); // applicant fetches
+// Public/Applicant Routes (Rate Limited)
+router.post('/start', chatRateLimit, startConversation as RequestHandler);
+router.post('/message', chatRateLimit, sendMessage as RequestHandler);
+router.get('/messages/:conversationId', getMessages as RequestHandler);
 
 // Admin Routes (Protected)
-router.get('/conversations', verifyAdmin, getActiveConversations);
-router.post('/admin/message', verifyAdmin, sendMessage); // admin sends
-router.get('/admin/messages/:conversationId', verifyAdmin, getMessages); // admin fetches
-router.patch('/conversations/:id/close', verifyAdmin, closeConversation);
+router.get('/conversations', verifyAdmin, getActiveConversations as RequestHandler);
+router.post('/admin/message', verifyAdmin, sendMessage as RequestHandler);
+router.get('/admin/messages/:conversationId', verifyAdmin, getMessages as RequestHandler);
+router.patch('/conversations/:id/close', verifyAdmin, closeConversation as RequestHandler);
 
 export default router;

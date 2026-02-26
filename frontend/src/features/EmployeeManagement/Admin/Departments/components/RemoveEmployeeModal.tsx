@@ -39,9 +39,9 @@ const RemoveEmployeeModal: React.FC<RemoveEmployeeModalProps> = memo(({
         onClose();
         if (onSuccess) onSuccess();
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
         console.error('Failed to remove employee', error);
-        showToast(error.response?.data?.message || 'Failed to remove employee', 'error');
+        showToast(error.message || 'Failed to remove employee', 'error');
     }
   });
 

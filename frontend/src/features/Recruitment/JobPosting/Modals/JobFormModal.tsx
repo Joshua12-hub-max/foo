@@ -42,12 +42,13 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
       title: '',
       department: '',
       location: '',
-      employment_type: 'Full-time',
       status: 'Open',
       application_email: '',
       job_description: '',
       requirements: '',
-
+      require_civil_service: false,
+      require_government_ids: false,
+      require_education_experience: false,
     }
   });
 
@@ -55,8 +56,19 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
   const [isDeptOpen, setIsDeptOpen] = useState(false);
   const [deptSearch, setDeptSearch] = useState('');
   
-  // Watch department field to sync search
+  // Watch fields
   const currentDept = watch('department');
+  const currentEmploymentType = watch('employment_type');
+  const isPermanent = currentEmploymentType === 'Permanent';
+
+  // Auto-lock toggles if Permanent is selected
+  useEffect(() => {
+    if (isPermanent) {
+      setValue('require_civil_service', true, { shouldValidate: true });
+      setValue('require_government_ids', true, { shouldValidate: true });
+      setValue('require_education_experience', true, { shouldValidate: true });
+    }
+  }, [isPermanent, setValue]);
 
   // Derived state for filtered departments
   const filteredDepartments = departments.filter(d => 
@@ -93,7 +105,10 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
           application_email: initialData.application_email || '',
           job_description: initialData.job_description || '',
           requirements: initialData.requirements || '',
-          attachment_path: initialData.attachment_path || null
+          attachment_path: initialData.attachment_path || null,
+          require_civil_service: initialData.require_civil_service || false,
+          require_government_ids: initialData.require_government_ids || false,
+          require_education_experience: initialData.require_education_experience || false,
         });
       } else {
         reset({
@@ -105,7 +120,10 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
           application_email: '',
           job_description: '',
           requirements: '',
-          attachment_path: null
+          attachment_path: null,
+          require_civil_service: false,
+          require_government_ids: false,
+          require_education_experience: false,
         });
       }
       setSelectedFile(null);
@@ -119,7 +137,8 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
       // Explicitly append known fields from schema
       const fields: (keyof JobSchema)[] = [
         'title', 'department', 'location', 'employment_type', 
-        'status', 'application_email', 'job_description', 'requirements'
+        'status', 'application_email', 'job_description', 'requirements',
+        'require_civil_service', 'require_government_ids', 'require_education_experience'
       ];
 
       fields.forEach(field => {
@@ -305,6 +324,66 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
                     <option key={status} value={status}>{status}</option>
                   ))}
                 </select>
+              </div>
+            </div>
+
+            {/* Application Requirements Settings */}
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-5 space-y-4">
+              <div>
+                <h3 className="text-sm font-bold text-gray-800">Application Requirements</h3>
+                <p className="text-xs text-gray-500 mt-0.5">Toggle which documents are mandatory for applicants to submit.</p>
+                {isPermanent && (
+                  <p className="text-xs text-blue-600 mt-1.5 font-medium bg-blue-50 py-1.5 px-2.5 rounded border border-blue-100 italic inline-block inline-flex items-center gap-1.5">
+                    For Permanent positions, all credentials are required by law.
+                  </p>
+                )}
+              </div>
+              
+              <div className="space-y-3 pt-1">
+                <label className={`flex items-start gap-3 p-3 rounded-lg border ${isPermanent ? 'bg-gray-100/50 border-gray-200 opacity-80' : 'bg-white border-gray-200 hover:border-gray-300 cursor-pointer'} transition-colors`}>
+                  <div className="flex h-5 items-center">
+                    <input
+                      type="checkbox"
+                      className={`h-4 w-4 rounded border-gray-300 ${isPermanent ? 'text-gray-500 cursor-not-allowed' : 'text-blue-600 cursor-pointer'} focus:ring-blue-600`}
+                      {...register('require_education_experience')}
+                      disabled={isPermanent}
+                    />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-sm font-semibold text-gray-800">Professional Qualifications</span>
+                    <span className="text-xs text-gray-500 mt-0.5">Requires Education, Skills, and Experience entries</span>
+                  </div>
+                </label>
+
+                <label className={`flex items-start gap-3 p-3 rounded-lg border ${isPermanent ? 'bg-gray-100/50 border-gray-200 opacity-80' : 'bg-white border-gray-200 hover:border-gray-300 cursor-pointer'} transition-colors`}>
+                  <div className="flex h-5 items-center">
+                    <input
+                      type="checkbox"
+                      className={`h-4 w-4 rounded border-gray-300 ${isPermanent ? 'text-gray-500 cursor-not-allowed' : 'text-blue-600 cursor-pointer'} focus:ring-blue-600`}
+                      {...register('require_government_ids')}
+                      disabled={isPermanent}
+                    />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-sm font-semibold text-gray-800">Government Records</span>
+                    <span className="text-xs text-gray-500 mt-0.5">Mandate the submission of GSIS, Pag-IBIG, TIN, PhilHealth, PhilSys</span>
+                  </div>
+                </label>
+
+                <label className={`flex items-start gap-3 p-3 rounded-lg border ${isPermanent ? 'bg-gray-100/50 border-gray-200 opacity-80' : 'bg-white border-gray-200 hover:border-gray-300 cursor-pointer'} transition-colors`}>
+                  <div className="flex h-5 items-center">
+                    <input
+                      type="checkbox"
+                      className={`h-4 w-4 rounded border-gray-300 ${isPermanent ? 'text-gray-500 cursor-not-allowed' : 'text-blue-600 cursor-pointer'} focus:ring-blue-600`}
+                      {...register('require_civil_service')}
+                      disabled={isPermanent}
+                    />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-sm font-semibold text-gray-800">Civil Service Eligibility</span>
+                    <span className="text-xs text-gray-500 mt-0.5">Requires CSC Certificate, Board/Bar rating, and PDF upload</span>
+                  </div>
+                </label>
               </div>
             </div>
 

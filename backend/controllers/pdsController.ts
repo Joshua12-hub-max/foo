@@ -29,7 +29,7 @@ export const getPDSSection = async (req: Request, res: Response) => {
     const authReq = req as AuthenticatedRequest;
     const requesterId = authReq.user?.id;
     const requesterRole = authReq.user?.role?.toLowerCase();
-    const { section } = req.params;
+    const { section } = req.params as { section: string };
     const targetEmployeeId = req.query.employee_id || req.query.employeeId;
 
     if (!requesterId) {
@@ -68,7 +68,7 @@ export const getPDSSection = async (req: Request, res: Response) => {
       const authReq = req as AuthenticatedRequest;
       const requesterId = authReq.user?.id;
       const requesterRole = authReq.user?.role?.toLowerCase();
-      const { section } = req.params;
+      const { section } = req.params as { section: string };
       
       const { items, employee_id, employeeId } = PDSUpdateSchema.parse(req.body);
       

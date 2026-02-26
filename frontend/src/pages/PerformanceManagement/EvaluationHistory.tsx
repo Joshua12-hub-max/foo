@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { SquarePen, Eye, Search, RefreshCw, Plus, AlertTriangle, FileText, Calendar, User, ChevronLeft, ChevronRight, Filter, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { fetchReviews, deleteReview } from '@api';
+import { InternalReview } from '@/types/performance';
 import { useFilterOptions } from '@/hooks/useFilterOptions';
 import PerformanceLayout from '@components/Custom/Performance/PerformanceLayout';
 
@@ -11,19 +12,21 @@ import { useToastStore } from '@/stores';
 
 const ITEMS_PER_PAGE = 12;
 
+
+
 const EvaluationHistory = () => {
   const navigate = useNavigate();
   const { data: filterOptions, isLoading: loadingFilters } = useFilterOptions();
   const departments = filterOptions.departments;
 
-  const [reviews, setReviews] = useState([]);
+  const [reviews, setReviews] = useState<InternalReview[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDepartment, setSelectedDepartment] = useState('All');
   const [currentPage, setCurrentPage] = useState(1);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [selectedReview, setSelectedReview] = useState(null);
+  const [selectedReview, setSelectedReview] = useState<InternalReview | null>(null);
   const [deleting, setDeleting] = useState(false);
   
   const showToast = useToastStore((state) => state.showToast);
@@ -57,11 +60,11 @@ const EvaluationHistory = () => {
     setCurrentPage(1);
   }, [searchTerm, selectedDepartment]);
 
-  const handleAction = useCallback((review) => {
+  const handleAction = useCallback((review: InternalReview) => {
     navigate(`/admin-dashboard/performance/reviews/${review.id}`);
   }, [navigate]);
 
-  const handleDeleteClick = useCallback((review) => {
+  const handleDeleteClick = useCallback((review: InternalReview) => {
     setSelectedReview(review);
     setDeleteModalOpen(true);
   }, []);
@@ -78,9 +81,9 @@ const EvaluationHistory = () => {
         setSelectedReview(null);
         showNotification('Evaluation deleted successfully', 'success');
       }
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Failed to delete evaluation:', err);
-      showNotification(err.response?.data?.message || 'Failed to delete evaluation', 'error');
+      showNotification(err instanceof Error ? err.message : 'Failed to delete evaluation', 'error');
     } finally {
       setDeleting(false);
     }
@@ -88,9 +91,11 @@ const EvaluationHistory = () => {
 
   const filteredReviews = useMemo(() => {
     return reviews.filter(review => {
-      const employeeName = `${review.emp_first_name} ${review.emp_last_name}`.toLowerCase();
+      const firstName = review.employee_first_name || review.employee_first || '';
+      const lastName = review.employee_last_name || review.employee_last || '';
+      const employeeName = `${firstName} ${lastName}`.toLowerCase();
       const matchesSearch = employeeName.includes(searchTerm.toLowerCase());
-      const matchesDept = selectedDepartment === 'All' || review.department === selectedDepartment;
+      const matchesDept = selectedDepartment === 'All' || review.employee_department === selectedDepartment;
       return matchesSearch && matchesDept;
     });
   }, [reviews, searchTerm, selectedDepartment]);
@@ -107,11 +112,11 @@ const EvaluationHistory = () => {
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const endIndex = startIndex + paginatedReviews.length;
 
-  const handlePageChange = useCallback((page) => {
+  const handlePageChange = useCallback((page: number) => {
     if (page >= 1 && page <= totalPages) setCurrentPage(page);
   }, [totalPages]);
 
-  const formatDate = useCallback((dateString) => {
+  const formatDate = useCallback((dateString: string | null) => {
     if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -120,7 +125,7 @@ const EvaluationHistory = () => {
     });
   }, []);
 
-  const getStatusStyle = (status) => {
+  const getStatusStyle = (status: string) => {
     switch (status) {
       case 'Draft': return 'bg-gray-100 text-gray-600 border-gray-200';
       case 'Submitted': return 'bg-blue-100 text-blue-700 border-blue-200';
@@ -276,7 +281,7 @@ const EvaluationHistory = () => {
                         </div>
                         <div>
                           <p className="font-bold text-gray-800 text-sm">
-                            {review.emp_first_name} {review.emp_last_name}
+                            {review.employee_first_name || review.employee_first} {review.employee_last_name || review.employee_last}
                           </p>
                           <p className="text-[10px] text-gray-500 font-mono">{formatDate(review.created_at)}</p>
                         </div>
@@ -284,13 +289,13 @@ const EvaluationHistory = () => {
                     </td>
                     <td className="px-6 py-4">
                       <span className="text-sm text-gray-800">
-                        {review.department || 'N/A'}
+                        {review.employee_department || 'N/A'}
                       </span>
                     </td>
                     <td className="px-6 py-4">
                       <p className="text-sm font-medium text-gray-700">{review.cycle_title || 'Direct Evaluation'}</p>
                       <p className="text-xs text-gray-400">
-                        {formatDate(review.review_period_start)} - {formatDate(review.review_period_end)}
+                        {formatDate(review.review_period_start ?? null)} - {formatDate(review.review_period_end ?? null)}
                       </p>
                     </td>
                     <td className="px-6 py-4 text-center">
@@ -378,7 +383,7 @@ const EvaluationHistory = () => {
             
             <p className="text-sm text-gray-600 mb-6 bg-gray-50 p-4 rounded-lg border border-gray-100">
               Are you sure you want to delete the evaluation for{' '}
-              <strong className="text-gray-900">{selectedReview?.emp_first_name} {selectedReview?.emp_last_name}</strong>?
+              <strong className="text-gray-900">{selectedReview?.employee_first_name || selectedReview?.employee_first} {selectedReview?.employee_last_name || selectedReview?.employee_last}</strong>?
             </p>
 
             <div className="flex gap-3 justify-end">

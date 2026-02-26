@@ -1,9 +1,5 @@
 import { UserRole, EmploymentStatus, Gender, CivilStatus, AppointmentType } from './enums';
 
-/**
- * Base Employee interface mirroring the backend's EmployeeApiResponse
- * Uses snake_case to match API output.
- */
 export interface Employee {
   id: number;
   first_name: string;
@@ -11,11 +7,11 @@ export interface Employee {
   middle_name: string | null;
   email: string;
   role: UserRole;
-  department: string | null;
-  department_id: number | null;
+  department?: string | null;
+  department_id?: number | null;
   employee_id: string;
-  job_title: string | null;
-  position_title: string | null;
+  job_title?: string | null;
+  position_title?: string | null;
   employment_status: EmploymentStatus | null;
   employment_type: string | null;
   date_hired: string | null;
@@ -29,12 +25,14 @@ export interface Employee {
   phone_number: string | null;
   address: string | null;
   permanent_address: string | null;
-  avatar_url: string | null;
-  sss_number: string | null;
+  avatar_url?: string | null;
+  umid_id: string | null;
+  philsys_id: string | null;
   philhealth_number: string | null;
   pagibig_number: string | null;
   tin_number: string | null;
   gsis_number: string | null;
+  educational_background: string | null;
   salary_grade: string | null;
   step_increment: number;
   appointment_type: AppointmentType | null;
@@ -57,12 +55,27 @@ export interface Employee {
   emergency_contact: string | null;
   emergency_contact_number: string | null;
   
+  citizenship: string | null;
+  citizenship_type: string | null;
+  dual_citizenship_country: string | null;
+  
+  facebook_url: string | null;
+  linkedin_url: string | null;
+  twitter_handle: string | null;
+  
   // Eligibility
   eligibility_type: string | null;
   eligibility_number: string | null;
   eligibility_date: string | null;
   highest_education: string | null;
   years_of_experience: number;
+
+  // Additional Employment Fields
+  office_address: string | null;
+  first_day_of_service: string | null;
+  supervisor: string | null;
+  original_appointment_date: string | null;
+  last_promotion_date: string | null;
 }
 
 export interface Skill {
@@ -101,9 +114,7 @@ export interface CustomField {
   field_value: string | null;
 }
 
-/**
- * Detailed Employee profile with related data
- */
+
 export interface EmployeeDetailed extends Employee {
   skills: Skill[];
   education: Education[];

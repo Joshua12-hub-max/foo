@@ -88,11 +88,11 @@ const useKanbanDragDrop = (
     if (!applicant || applicant.stage === targetColumnId) return;
 
     setApplicants(prev => 
-      prev.map(a => a.id === applicantId ? { ...a, stage: targetColumnId } : a)
+      prev.map(a => a.id === applicantId ? { ...a, stage: targetColumnId as import('@/types').ApplicantStage } : a)
     );
 
     try {
-      await recruitmentApi.updateStage(applicantId, { stage: targetColumnId });
+      await recruitmentApi.updateStage(applicantId, { stage: targetColumnId as import('@/types').ApplicantStage });
       showNotification(`Moved to ${column.title}`, 'success');
     } catch (err) {
       fetchApplicants();

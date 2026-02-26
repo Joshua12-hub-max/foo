@@ -4,7 +4,7 @@ import {
   getBiometricLogs,
   getSyncStatus,
 } from '../controllers/biometricController.js';
-import { verifyToken, verifyAdmin } from '../middleware/authMiddleware.js';
+import { verifyAdmin } from '../middleware/authMiddleware.js';
 
 const router: Router = Router();
 

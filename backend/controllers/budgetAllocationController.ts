@@ -1,11 +1,12 @@
 import { Request, Response } from 'express';
 import { db } from '../db/index.js';
 import { budgetAllocation, plantillaPositions } from '../db/schema.js';
-import { eq, and, desc, asc, sql, count, sum, avg } from 'drizzle-orm';
+import { eq, and, desc, asc, sql, count, sum, avg, InferInsertModel } from 'drizzle-orm';
 import {
   BudgetAllocationSchema,
   UpdateBudgetAllocationSchema
 } from '../schemas/plantillaComplianceSchema.js';
+import { ZodError } from 'zod';
 
 /**
  * Get all budget allocations
@@ -77,14 +78,14 @@ export const createBudgetAllocation = async (req: Request, res: Response): Promi
       message: 'Budget allocation created successfully',
       id: result.insertId
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Create Budget Allocation Error:', error);
 
-    if (error.name === 'ZodError') {
+    if (error instanceof ZodError) {
       res.status(400).json({
         success: false,
         message: 'Validation error',
-        errors: error.errors
+        errors: error.issues
       });
       return;
     }
@@ -117,7 +118,7 @@ export const updateBudgetAllocation = async (req: Request, res: Response): Promi
       return;
     }
 
-    const updateData: any = {};
+    const updateData: Partial<InferInsertModel<typeof budgetAllocation>> = {};
     if (validatedData.totalBudget !== undefined) {
       updateData.totalBudget = String(validatedData.totalBudget);
     }
@@ -141,14 +142,14 @@ export const updateBudgetAllocation = async (req: Request, res: Response): Promi
       success: true,
       message: 'Budget allocation updated successfully'
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Update Budget Allocation Error:', error);
 
-    if (error.name === 'ZodError') {
+    if (error instanceof ZodError) {
       res.status(400).json({
         success: false,
         message: 'Validation error',
-        errors: error.errors
+        errors: error.issues
       });
       return;
     }

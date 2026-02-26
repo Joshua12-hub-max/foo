@@ -15,12 +15,19 @@ import {
 // Using partial for flexibility if schema is too strict for partial updates,
 // but for Auth actions, strict schema is best.
 
+export const findHiredApplicant = async (firstName: string, lastName: string) => {
+  const response = await api.get(`/auth/hired-applicant-search`, {
+    params: { firstName, lastName }
+  });
+  return response.data;
+};
+
 export const verifyEnrollment = async (employeeId: string) => {
   const response = await api.get(`/auth/verify-enrollment/${employeeId}`);
   return response.data;
 };
 
-export const register = (data: RegisterInput) => api.post("/auth/register", data);
+export const register = (data: RegisterInput | FormData) => api.post("/auth/register", data);
 
 export const login = (data: LoginInput) => api.post("/auth/login", data);
 

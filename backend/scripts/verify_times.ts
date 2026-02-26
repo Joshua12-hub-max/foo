@@ -1,6 +1,6 @@
 
 import { db } from '../db/index.js';
-import { dailyTimeRecords, attendanceLogs, authentication } from '../db/schema.js';
+import { dailyTimeRecords, authentication } from '../db/schema.js';
 import { eq, desc, like } from 'drizzle-orm';
 
 async function verifyTimes() {

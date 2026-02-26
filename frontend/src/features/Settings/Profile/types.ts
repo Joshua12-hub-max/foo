@@ -3,11 +3,17 @@ export interface Profile {
   email?: string;
   employeeId?: string;
   role?: string;
-  department?: string;
-  jobTitle?: string;
+  department?: string | null;
+  jobTitle?: string | null;
   dateHired?: string;
-  employmentStatus?: string;
+  employmentStatus?: string | null;
   twoFactorEnabled?: boolean;
+  address?: string;
+  residentialAddress?: string;
+  permanentAddress?: string;
+  emergencyContact?: string;
+  emergencyContactNumber?: string;
+  educationalBackground?: string;
   [key: string]: string | number | boolean | null | undefined;
 }
 

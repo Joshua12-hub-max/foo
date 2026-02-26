@@ -22,7 +22,7 @@ const ApplicantList = () => {
     filteredApplicants, currentItems, totalPages 
   } = useApplicantFilters(applicants);
   
-  const { handleAssignInterviewer, handleScheduleInterview } = useApplicantActions(fetchData, showNotification);
+  const { handleAssignInterviewer, handleScheduleInterview, handleRejectApplicant, handleRestoreApplicant } = useApplicantActions(fetchData, showNotification);
 
   // Modal State - Properly typed
   const [showAssignModal, setShowAssignModal] = useState<boolean>(false);
@@ -50,6 +50,22 @@ const ApplicantList = () => {
       setShowInterview(true);
     } else {
       showNotification('No interview link available. Please schedule an interview first.', 'error');
+    }
+  };
+
+  const onViewDetailsClick = (applicant: Applicant): void => {
+    window.open(`http://localhost:5000/api/recruitment/applicants/${applicant.id}/pdf`, '_blank');
+  };
+  
+  const onRejectClick = (applicant: Applicant): void => {
+    if (window.confirm(`Are you sure you want to reject and archive ${applicant.first_name} ${applicant.last_name}?`)) {
+        handleRejectApplicant(Number(applicant.id));
+    }
+  };
+
+  const onRestoreClick = (applicant: Applicant): void => {
+    if (window.confirm(`Are you sure you want to restore ${applicant.first_name} ${applicant.last_name} to the active pipeline?`)) {
+        handleRestoreApplicant(Number(applicant.id));
     }
   };
 
@@ -114,6 +130,9 @@ const ApplicantList = () => {
             onAssign={onAssignClick}
             onSchedule={onScheduleClick}
             onJoinInterview={onJoinInterview}
+            onReject={onRejectClick}
+            onRestore={onRestoreClick}
+            onViewDetails={onViewDetailsClick}
           />
 
           <Pagination 

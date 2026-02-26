@@ -1,7 +1,7 @@
 
 import { db } from '../db/index.js';
 import { performanceReviews, performanceReviewItems, performanceCriteria, authentication } from '../db/schema.js';
-import { eq, desc, and, like } from 'drizzle-orm';
+import { eq, desc, like } from 'drizzle-orm';
 
 async function verifyPerformance() {
   console.log('Verifying Performance Seeding...');
@@ -33,7 +33,7 @@ async function verifyPerformance() {
       const topPerformer = reviews[0];
       console.log(`\nDetailed Items for Top Performer: ${topPerformer.emp}`);
       
-      const emp = await db.query.authentication.findFirst({ where: eq(authentication.firstName, topPerformer.emp) });
+      const emp = await db.query.authentication.findFirst({ where: eq(authentication.firstName, topPerformer.emp || '') });
       if (emp) {
         const review = await db.query.performanceReviews.findFirst({ where: eq(performanceReviews.employeeId, emp.id) });
         if (review) {

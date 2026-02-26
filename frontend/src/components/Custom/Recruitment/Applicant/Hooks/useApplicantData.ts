@@ -44,7 +44,13 @@ const useApplicantData = (showNotification?: (message: string, type: 'success' |
         recruitmentApi.getInterviewers()
       ]);
       setApplicants(appRes.data.applicants || []);
-      setInterviewers(intRes.data || []);
+      const mappedInterviewers: Interviewer[] = (intRes.data || []).map(i => ({
+        id: i.id,
+        name: i.name || `${i.first_name || ''} ${i.last_name || ''}`.trim() || 'Unknown',
+        email: i.email,
+        department: i.department
+      }));
+      setInterviewers(mappedInterviewers);
     } catch (err) {
       console.error('Error fetching data:', err);
       if (showNotification) showNotification('Failed to load data', 'error');

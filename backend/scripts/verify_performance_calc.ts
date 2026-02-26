@@ -1,7 +1,4 @@
 
-import { db } from '../db/index.js';
-import { performanceReviewItems, performanceCriteria } from '../db/schema.js';
-import { eq } from 'drizzle-orm';
 
 // Mocking the logic from performanceController.ts
 async function verifyCalculationLogic() {

@@ -203,7 +203,7 @@ const EmployeeModal: React.FC<EmployeeModalProps> = ({ isOpen, onClose, onSubmit
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Job Title</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Position Title</label>
                   <div className="relative">
                     <Briefcase className="absolute left-3 top-2.5 text-gray-400" size={18} />
                     <input

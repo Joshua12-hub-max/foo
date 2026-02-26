@@ -6,7 +6,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToastStore } from '@/stores';
 import { employeeApi } from '@/api/employeeApi';
 import { AddSkillSchema, AddSkillInput } from '@/schemas/employeeSchema';
-import { Skill, ApiError } from '@/types';
+import { Skill, ApiError, SkillData } from '@/types';
 
 interface AddSkillModalProps {
   isOpen: boolean;
@@ -55,13 +55,16 @@ const AddSkillModal: React.FC<AddSkillModalProps> = ({
 
   const mutation = useMutation({
     mutationFn: async (data: AddSkillInput) => {
+      const cleanData: SkillData = {
+        skill_name: data.skill_name,
+        category: data.category || 'Technical',
+        proficiency_level: data.proficiency_level,
+      };
+
       if (isEditMode && initialData?.id) {
-         const cleanData = Object.fromEntries(
-           Object.entries(data).map(([k, v]) => [k, v === null ? undefined : v])
-         ) as Partial<Skill>;
          await employeeApi.updateEmployeeSkill(employeeId, initialData.id, cleanData);
       } else {
-         await employeeApi.addEmployeeSkill(employeeId, data);
+         await employeeApi.addEmployeeSkill(employeeId, cleanData);
       }
     },
     onSuccess: () => {

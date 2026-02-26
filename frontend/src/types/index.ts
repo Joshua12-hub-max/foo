@@ -3,6 +3,7 @@ export * from './enums';
 export * from './employee';
 export * from './org';
 export * from './attendance';
+export * from './recruitment';
 
 export interface User {
   id: number;
@@ -11,12 +12,13 @@ export interface User {
   lastName: string;
   name: string;
   role: UserRole;
-  department: string | null;
+  department?: string | null;
   employeeId: string;
   employee_id?: string; // For compatibility
-  avatarUrl: string | null;
-  jobTitle: string | null;
-  employmentStatus: EmploymentStatus | null;
+  avatarUrl?: string | null;
+  avatar_url?: string | null; // For compatibility
+  jobTitle?: string | null;
+  employmentStatus?: EmploymentStatus | null;
   employment_status?: EmploymentStatus | null; // For compatibility
   twoFactorEnabled: boolean;
   duties: string;
@@ -156,10 +158,21 @@ export interface Job {
   status: JobStatus; 
   job_description: string;
   requirements: string | null;
+  salary_range?: string | null;
+  office_name?: string | null;
+  submission_address?: string | null;
+  education?: string | null;
+  experience?: string | null;
+  training?: string | null;
+  eligibility?: string | null;
+  other_qualifications?: string | null;
   application_email: string;
   created_at?: string;
   posted_at?: string;
   attachment_path?: string | null;
+  require_civil_service: boolean;
+  require_government_ids: boolean;
+  require_education_experience: boolean;
 }
 
 export interface JobFormData {
@@ -170,8 +183,19 @@ export interface JobFormData {
   status: JobStatus;
   job_description: string;
   requirements?: string | null;
+  salary_range?: string | null;
+  office_name?: string | null;
+  submission_address?: string | null;
+  education?: string | null;
+  experience?: string | null;
+  training?: string | null;
+  eligibility?: string | null;
+  other_qualifications?: string | null;
   application_email: string;
   attachment_path?: string | File | null;
+  require_civil_service?: boolean;
+  require_government_ids?: boolean;
+  require_education_experience?: boolean;
 }
 
 export interface JobApplication {
@@ -212,23 +236,28 @@ export interface ApiError {
 
 export interface SkillData {
   skill_name: string;
-  proficiency_level?: string;
+  proficiency_level?: string | null;
+  category?: string | null;
+  years_experience?: number | null;
 }
 
 export interface EducationData {
   institution: string;
-  degree?: string;
-  field_of_study?: string;
-  start_date: string;
-  end_date?: string;
-  type?: string;
+  degree?: string | null;
+  field_of_study?: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  type?: string | null;
+  description?: string | null;
 }
 
 export interface ContactData {
   name: string;
   relationship: string;
   phone_number: string;
-  address?: string;
+  address?: string | null;
+  email?: string | null;
+  is_primary?: number | boolean | null;
 }
 
 export interface CustomFieldData {

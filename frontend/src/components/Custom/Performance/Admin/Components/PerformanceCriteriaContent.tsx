@@ -145,7 +145,7 @@ const PerformanceCriteriaContent: React.FC = () => {
               >
                 <div className="flex justify-between items-start mb-3">
                   <span className="px-2.5 py-1 bg-gray-50 text-gray-600 rounded-full text-[10px] font-bold uppercase tracking-wider border border-gray-100">
-                    {item.category}
+                    {String(item.category || '')}
                   </span>
                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button onClick={() => handleEdit(item)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
@@ -167,7 +167,7 @@ const PerformanceCriteriaContent: React.FC = () => {
                   </div>
                   <div className="flex items-center gap-1.5 text-gray-500">
                     <CheckCircle size={14} className="text-gray-400" />
-                    <span>Max: <span className="font-bold text-gray-700">{item.maxScore}</span></span>
+                    <span>Max: <span className="font-bold text-gray-700">{String(item.maxScore || '0')}</span></span>
                   </div>
                 </div>
               </motion.div>
@@ -189,7 +189,7 @@ const PerformanceCriteriaContent: React.FC = () => {
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
         onConfirm={handleDeleteConfirm}
-        itemName={selectedCriteria?.title || selectedCriteria?.criteria_title}
+        itemName={String(selectedCriteria?.title || selectedCriteria?.criteria_title || '')}
       />
     </div>
   );

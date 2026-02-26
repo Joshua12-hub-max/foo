@@ -1,11 +1,11 @@
-import express from 'express';
+import { Router } from 'express';
 import { 
   getForm9Data, 
   getForm33Data, 
   getPSIPOPData 
 } from '../controllers/reportController.js';
 
-const router = express.Router();
+const router: Router = Router();
 
 // Publication of Vacant Positions
 router.get('/form9', getForm9Data);

@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Mail, ArrowLeft, Loader2, CheckCircle } from "lucide-react";
 import AuthLayout from "@components/Custom/Auth/AuthLayout";
 import { forgotPassword } from "@/Service/Auth";
+import axios from "axios";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
@@ -20,8 +21,9 @@ export default function ForgotPassword() {
     try {
       await forgotPassword({ email });
       setIsSent(true);
-    } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to send reset email. Please try again.");
+    } catch (err: unknown) {
+      const msg = axios.isAxiosError(err) ? err.response?.data?.message : undefined;
+      setError(msg || "Failed to send reset email. Please try again.");
     } finally {
       setIsSubmitting(false);
     }

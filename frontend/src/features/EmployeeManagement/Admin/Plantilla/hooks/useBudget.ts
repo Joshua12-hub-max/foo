@@ -15,9 +15,8 @@ export interface UseBudgetReturn {
   summary: BudgetSummary | null;
   departmentBudgets: DepartmentBudget[];
   
-  // Mutations
-  createAllocation: (data: { year: number; department: string; total_budget: number; notes?: string }) => Promise<void>;
-  updateAllocation: (id: number, data: { total_budget?: number; notes?: string }) => Promise<void>;
+  createAllocation: (data: { year: number; department: string; totalBudget: number; notes?: string }) => Promise<void>;
+  updateAllocation: (id: number, data: { totalBudget?: number; notes?: string }) => Promise<void>;
   recalculate: (year: number, department: string) => Promise<void>;
   
   // Helpers
@@ -59,29 +58,29 @@ export const useBudget = (initialYear: number = new Date().getFullYear()): UseBu
 
   // Create mutation
   const createMutation = useMutation({
-    mutationFn: (data: { year: number; department: string; total_budget: number; notes?: string }) => 
+    mutationFn: (data: { year: number; department: string; totalBudget: number; notes?: string }) => 
       complianceApi.budgetAllocation.create(data),
     onSuccess: () => {
       showToast('Budget allocation created successfully', 'success');
       queryClient.invalidateQueries({ queryKey: ['budget-allocations'] });
       queryClient.invalidateQueries({ queryKey: ['budget-summary'] });
     },
-    onError: (error: any) => {
-      showToast(error.response?.data?.message || 'Failed to create budget allocation', 'error');
+    onError: (error: Error) => {
+      showToast(error.message || 'Failed to create budget allocation', 'error');
     }
   });
 
   // Update mutation
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number, data: { total_budget?: number; notes?: string } }) => 
+    mutationFn: ({ id, data }: { id: number, data: { totalBudget?: number; notes?: string } }) => 
       complianceApi.budgetAllocation.update(id, data),
     onSuccess: () => {
       showToast('Budget allocation updated successfully', 'success');
       queryClient.invalidateQueries({ queryKey: ['budget-allocations'] });
       queryClient.invalidateQueries({ queryKey: ['budget-summary'] });
     },
-    onError: (error: any) => {
-      showToast(error.response?.data?.message || 'Failed to update budget allocation', 'error');
+    onError: (error: Error) => {
+      showToast(error.message || 'Failed to update budget allocation', 'error');
     }
   });
 
@@ -108,7 +107,7 @@ export const useBudget = (initialYear: number = new Date().getFullYear()): UseBu
     error: (allocationsError as Error) || (summaryError as Error) || null,
     allocations: allocationsData || [],
     summary: summaryData?.summary || null,
-    departmentBudgets: summaryData?.by_department || [],
+    departmentBudgets: summaryData?.byDepartment || [],
     createAllocation: async (data) => { await createMutation.mutateAsync(data); },
     updateAllocation: async (id, data) => { await updateMutation.mutateAsync({ id, data }); },
     recalculate: async (year, department) => { await recalculateMutation.mutateAsync({ year, department }); },

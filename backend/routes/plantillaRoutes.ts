@@ -4,6 +4,9 @@ import * as plantillaController from '../controllers/plantillaController.js';
 
 const router: Router = Router();
 
+// Public route for positions
+router.get('/public', plantillaController.getPublicPositions);
+
 // Summary
 router.get('/summary', verifyToken, plantillaController.getPlantillaSummary);
 

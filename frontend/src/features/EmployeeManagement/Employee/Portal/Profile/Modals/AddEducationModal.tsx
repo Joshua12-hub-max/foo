@@ -53,15 +53,19 @@ const AddEducationModal: React.FC<AddEducationModalProps> = ({
 
   const mutation = useMutation({
     mutationFn: async (data: AddEducationInput) => {
+      const cleanData: EducationData = {
+        institution: data.institution,
+        degree: data.degree || null,
+        field_of_study: data.field_of_study || null,
+        start_date: data.start_date || null,
+        end_date: data.end_date || null,
+        type: data.type || 'Education',
+        description: data.description || null
+      };
+
       if (isEditMode && initialData?.id) {
-        const cleanData = Object.fromEntries(
-          Object.entries(data).map(([k, v]) => [k, v === null ? undefined : v])
-        ) as Partial<EducationData>;
         await employeeApi.updateEmployeeEducation(employeeId, initialData.id, cleanData);
       } else {
-        const cleanData = Object.fromEntries(
-          Object.entries(data).map(([k, v]) => [k, v === null ? undefined : v])
-        ) as unknown as EducationData;
         await employeeApi.addEmployeeEducation(employeeId, cleanData);
       }
     },

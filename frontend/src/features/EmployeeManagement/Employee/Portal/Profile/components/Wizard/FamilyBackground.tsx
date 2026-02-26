@@ -66,8 +66,8 @@ export const FamilyBackground: React.FC<FamilyBackgroundProps> = ({ employeeId }
             queryClient.invalidateQueries({ queryKey: ['pds-family', employeeId] });
             toast.success('Family background updated successfully');
         },
-        onError: (err: any) => {
-            toast.error(err.response?.data?.message || 'Failed to update');
+        onError: (err: Error) => {
+            toast.error(err.message || 'Failed to update');
         }
     });
 

@@ -1,294 +1,853 @@
-import { useState, useCallback } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Mail, Lock, AlertCircle, Loader2, IdCard, CheckCircle2, ShieldCheck, UserCog } from "lucide-react";
+import { MapPin, Fingerprint, Upload, CheckCircle2, AlertCircle, Loader2, Mail, Lock, Check, X, Calendar, Droplet, Hash, Phone, Building2, Facebook, Twitter, Linkedin, Briefcase } from "lucide-react";
 import AuthLayout from "@components/Custom/Auth/AuthLayout";
-import { verifyEnrollment } from "@/Service/Auth";
+import Combobox from "@/components/Custom/Combobox";
+import ConfirmationModal from '../components/CustomUI/ConfirmationModal';
+import { PhilippineAddressSelector } from '@components/Custom/Shared/PhilippineAddressSelector';
+import type { Region, Province, CityMunicipality, Barangay } from '@/types/ph-address';
+import { useBiometricDevice } from "@/hooks/useBiometricDevice";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@/lib/zodResolver";
-import { RegisterSchema, RegisterInput } from "@/schemas/authSchema";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { RegisterSchema } from "@/schemas/authSchema";
+import { z } from "zod";
+import { toast } from "react-hot-toast";
 import { useRegisterMutation } from "@/hooks/useAuthQueries";
-import axios from "axios";
+import { useBarangaysQuery, useDepartmentsQuery, usePositionsQuery, useNextEmployeeIdQuery, useHiredApplicantSearch } from "@/hooks/useCommonQueries";
+import { HiredApplicant } from "@/types/recruitment_applicant";
+import ph from 'phil-reg-prov-mun-brgy';
 
-interface EnrollmentData {
-  bioEmployeeId: number;
-  systemEmployeeId: string;
-  fullName: string;
-  department: string | null;
-  enrolledAt: string;
-  alreadyRegistered: boolean;
-}
+type RegisterFormValues = z.infer<typeof RegisterSchema>;
 
 export default function Register() {
   const navigate = useNavigate();
-  const [successMessage, setSuccessMessage] = useState("");
-  const [enrollmentData, setEnrollmentData] = useState<EnrollmentData | null>(null);
-  const [enrollmentStatus, setEnrollmentStatus] = useState<'idle' | 'checking' | 'enrolled' | 'not_found' | 'already_registered' | 'error'>('idle');
-  const [enrollmentError, setEnrollmentError] = useState("");
+  const registerMutation = useRegisterMutation();
+  const loading = registerMutation.isPending;
+  const { data: nextEmployeeId } = useNextEmployeeIdQuery();
+  const actualEmployeeId = nextEmployeeId || "1";
+  
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [bioEnrolled, setBioEnrolled] = useState(false);
+  const [isResetModalOpen, setResetModalOpen] = useState(false);
+  const [enrollStep, setEnrollStep] = useState(0);
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPreFillModal, setShowPreFillModal] = useState(false);
+  const [matchedApplicant, setMatchedApplicant] = useState<HiredApplicant | null>(null);
+  const [hasAutomaticallyChecked, setHasAutomaticallyChecked] = useState(false);
+  
+  const { data: barangays = [] } = useBarangaysQuery();
+  const { data: departments = [] } = useDepartmentsQuery();
+  const { data: positions = [] } = usePositionsQuery();
+
+  const [enrollError, setEnrollError] = useState<string | null>(null);
 
   const { 
-    register, 
-    handleSubmit, 
+      status: bioStatus, 
+      deviceConnected, 
+      enroll, 
+      cancel, 
+      resetDevice
+  } = useBiometricDevice({
+      onEnrollSuccess: () => {
+           toast.success("Biometrics enrolled successfully!");
+           setEnrollError(null);
+           setBioEnrolled(true);
+           setEnrollStep(2);
+      },
+      onEnrollFail: (msg) => {
+          const errorMsg = msg || "Unknown error";
+          setEnrollError(errorMsg);
+          toast.error(`Enrollment failed: ${errorMsg}`);
+          setTimeout(() => {
+              setEnrollStep(0);
+              setEnrollError(null);
+          }, 3000);
+      },
+      onEnrollProgress: (step) => {
+          setEnrollError(null); 
+          if (step === 1) {
+            setEnrollStep(1);
+            toast("Remove finger...", { icon: '👆' });
+          }
+          if (step === 2) {
+            setEnrollStep(2);
+            toast("Place finger again...", { icon: '👇' });
+          }
+      }
+  });
+
+  const {
+    register,
+    handleSubmit,
     watch,
-    formState: { errors } 
-  } = useForm<RegisterInput>({
+    setValue,
+    formState: { errors }
+  } = useForm<RegisterFormValues>({
     resolver: zodResolver(RegisterSchema),
     defaultValues: {
       employee_id: "",
+      firstName: "",
+      lastName: "",
+      middleName: "",
+      suffix: "",
       email: "",
       password: "",
-      role: "employee" as const,
+      educationalBackground: "",
+      address: "",
+      residentialZipCode: "",
+      permanentAddress: "",
+      permanentZipCode: "",
+      emergencyContact: "",
+      emergencyContactNumber: "",
+      isMeycauayan: "false",
+      barangay: "",
+      department: "",
+      position: "",
+      role: "employee",
+      avatar: undefined,
+      gender: "",
+      civilStatus: "",
+      duties: "Standard"
     }
   });
 
-  const employeeIdValue = watch("employee_id");
+  const isMeycauayan = watch("isMeycauayan") === "true";
+  const firstName = watch("firstName");
+  const lastName = watch("lastName");
+  const avatarRef = useRef<HTMLInputElement>(null);
 
-  // Register Mutation
-  const registerMutation = useRegisterMutation();
+  // Search for hired applicant when name is entered
+  const { data: hiredApplicant } = useHiredApplicantSearch(
+    firstName, 
+    lastName, 
+    !hasAutomaticallyChecked && firstName?.length > 2 && lastName?.length > 2
+  );
 
-  // Verify biometric enrollment
-  const checkEnrollment = useCallback(async () => {
-    const id = employeeIdValue?.trim();
-    if (!id) return;
-
-    setEnrollmentStatus('checking');
-    setEnrollmentError("");
-    setEnrollmentData(null);
-
-    try {
-      const response = await verifyEnrollment(id);
-      
-      if (response.success && response.data) {
-        if (response.data.alreadyRegistered) {
-          setEnrollmentStatus('already_registered');
-          setEnrollmentError("This Employee ID is already registered in the system.");
-          setEnrollmentData(response.data);
-        } else {
-          setEnrollmentStatus('enrolled');
-          setEnrollmentData(response.data);
-        }
-      }
-    } catch (err: unknown) {
-      if (axios.isAxiosError(err) && err.response?.status === 404) {
-        setEnrollmentStatus('not_found');
-        setEnrollmentError("Employee ID not found in biometric enrollment. Please contact HR to enroll first.");
-      } else {
-        setEnrollmentStatus('error');
-        setEnrollmentError("Failed to verify enrollment. Please try again.");
-      }
+  useEffect(() => {
+    if (hiredApplicant && !hasAutomaticallyChecked) {
+      setMatchedApplicant(hiredApplicant);
+      setShowPreFillModal(true);
+      setHasAutomaticallyChecked(true);
     }
-  }, [employeeIdValue]);
+  }, [hiredApplicant, hasAutomaticallyChecked]);
 
-  const onSubmit = (data: RegisterInput) => {
-    if (enrollmentStatus !== 'enrolled') {
-      setEnrollmentError("Please verify your Employee ID first.");
-      return;
+  const handlePreFill = () => {
+    if (!matchedApplicant) return;
+
+    // Map applicant fields to form fields
+    setValue("middleName", matchedApplicant.middle_name || "");
+    setValue("suffix", matchedApplicant.suffix || "");
+    setValue("email", matchedApplicant.email || "");
+    setValue("birthDate", matchedApplicant.birth_date ? matchedApplicant.birth_date.split('T')[0] : "");
+    setValue("placeOfBirth", matchedApplicant.birth_place || "");
+    setValue("gender", matchedApplicant.sex || "");
+    setValue("civilStatus", matchedApplicant.civil_status || "");
+    setValue("bloodType", matchedApplicant.blood_type || "");
+    setValue("heightM", matchedApplicant.height || "");
+    setValue("weightKg", matchedApplicant.weight || "");
+    setValue("mobileNo", matchedApplicant.phone_number || "");
+
+    // Government IDs — correct mappings
+    setValue("gsisIdNo", matchedApplicant.gsis_no || "");
+    setValue("pagibigIdNo", matchedApplicant.pagibig_no || "");
+    setValue("philhealthNo", matchedApplicant.philhealth_no || "");
+    setValue("umidId", matchedApplicant.umid_no || "");
+    setValue("philsysId", matchedApplicant.philsys_id || "");
+    setValue("tinNo", matchedApplicant.tin_no || "");
+    
+    // Education
+    setValue("educationalBackground", matchedApplicant.education || "");
+    
+    // Residential Address
+    if (matchedApplicant.address) {
+        setValue("address", matchedApplicant.address);
+        setValue("residentialAddress", matchedApplicant.address);
+    }
+    if (matchedApplicant.zip_code) {
+        setValue("residentialZipCode", matchedApplicant.zip_code);
     }
 
-    setSuccessMessage("");
-    registerMutation.mutate(
-      { ...data },
-      {
-        onSuccess: (response: { data: { message?: string } }) => {
-           setSuccessMessage(response.data.message || "Registration successful! Please check your email.");
-      
-           localStorage.setItem("lastRegisteredUser", JSON.stringify({ email: data.email }));
-      
-           setTimeout(() => {
-              navigate("/verify-account", { state: { email: data.email } });
-           }, 1500);
-        },
-        onError: (error: unknown) => {
-           console.error("Registration error:", error);
-        }
-      }
-    );
+    // Permanent Address
+    if (matchedApplicant.permanent_address) {
+        setValue("permanentAddress", matchedApplicant.permanent_address);
+    }
+    if (matchedApplicant.permanent_zip_code) {
+        setValue("permanentZipCode", matchedApplicant.permanent_zip_code);
+    }
+
+    // Meycauayan Resident
+    setValue("isMeycauayan", matchedApplicant.is_meycauayan_resident === 1 ? "true" : "false");
+
+    // Photo — display applicant's ID photo as avatar preview
+    if (matchedApplicant.photo_url) {
+        setAvatarPreview(matchedApplicant.photo_url);
+    }
+
+    // Store applicant metadata for linking during registration
+    setValue("applicantId", matchedApplicant.id);
+    if (matchedApplicant.hired_date) {
+        setValue("applicantHiredDate", matchedApplicant.hired_date.split('T')[0]);
+    }
+    if (matchedApplicant.photo_path) {
+        setValue("applicantPhotoPath", matchedApplicant.photo_path);
+    }
+
+    toast.success("Form pre-filled from your application data!");
+    setShowPreFillModal(false);
   };
 
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setAvatarPreview(URL.createObjectURL(file));
+      setValue("avatar", file);
+    }
+  };
+
+  const onSubmit = async (data: RegisterFormValues) => {
+    if (!bioEnrolled) {
+        toast.error("Please enroll your fingerprint first!");
+        document.getElementById('biometrics-section')?.scrollIntoView({ behavior: 'smooth' });
+        return;
+    }
+
+    const formData = new FormData();
+    
+    // Map Geography codes to names
+    const extractName = <T extends { name: string }>(arr: T[], key: keyof T, val: string): string => arr.find(x => String(x[key]) === val)?.name || '';
+    const formatAddr = (reg: string, prov: string, city: string, brgy: string, street: string) => {
+        const rName = extractName(ph.regions as Region[], 'reg_code', reg);
+        const pName = extractName(ph.provinces as Province[], 'prov_code', prov);
+        const cName = extractName(ph.city_mun as CityMunicipality[], 'mun_code', city);
+        const bName = extractName(ph.barangays as Barangay[], 'name', brgy); // Barangay values are stored as their name
+        return [street, bName, cName, pName, rName].filter(Boolean).join(', ');
+    };
+
+    const resAddress = formatAddr(data.resRegion||'', data.resProvince||'', data.resCity||'', data.resBrgy||'', data.resStreet||'');
+    const permAddress = formatAddr(data.permRegion||'', data.permProvince||'', data.permCity||'', data.permBrgy||'', data.permStreet||'');
+
+    data.address = resAddress;
+    data.residentialAddress = resAddress;
+    data.permanentAddress = permAddress;
+
+    const ignoreKeys = ['avatar', 'employee_id', 'resRegion', 'resProvince', 'resCity', 'resBrgy', 'resStreet', 'permRegion', 'permProvince', 'permCity', 'permBrgy', 'permStreet'];
+
+    // Append simple fields
+    (Object.keys(data) as Array<keyof RegisterFormValues>).forEach((key) => {
+        const value = data[key];
+        if (!ignoreKeys.includes(key as string) && value !== undefined && value !== null) {
+            formData.append(key, String(value));
+        }
+    });
+    formData.append("employee_id", data.employee_id || actualEmployeeId);
+    if (avatarRef.current?.files?.[0]) {
+        formData.append("avatar", avatarRef.current.files[0]);
+    }
+
+    // Append applicant linking data for backend processing
+    if (data.applicantId) formData.append("applicantId", String(data.applicantId));
+    if (data.applicantHiredDate) formData.append("applicantHiredDate", data.applicantHiredDate);
+    if (data.applicantPhotoPath) formData.append("applicantPhotoPath", data.applicantPhotoPath);
+
+    try {
+      setIsSubmitting(true);
+      await registerMutation.mutateAsync(formData);
+      toast.success("Registration Successful! Please check your email.");
+      navigate("/verify-account", { state: { email: data.email } });
+    } catch (error) {
+      console.error(error);
+      let msg = "Registration failed";
+      
+      interface ServerErrorData {
+          message?: string;
+          code?: string;
+          errors?: Array<{ path: string[]; message: string }>;
+      }
+      
+      const serverError = error as { response?: { data?: ServerErrorData } };
+      const resData = serverError.response?.data;
+
+      if (resData?.code === 'DUPLICATE_NAME') {
+          setShowDuplicateModal(true);
+          setIsSubmitting(false);
+          return;
+      }
+
+      if (resData?.code === 'ACCOUNT_LOCKED') {
+          msg = resData.message || "Account is temporarily locked.";
+      } else if (resData?.errors && Array.isArray(resData.errors)) {
+          msg = resData.errors.map((err) => `${err.path.join('.')}: ${err.message}`).join(' | ');
+      } else {
+          msg = resData?.message || msg;
+      }
+      
+      toast.error(msg, { duration: 5000 });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const confirmDuplicateRegistration = () => {
+      setShowDuplicateModal(false);
+      setValue("ignoreDuplicateWarning", true);
+      handleSubmit(onSubmit)();
+  };
+
+  const inputClass = `w-full pl-9 pr-3 py-2 text-sm border-[1.5px] rounded-[10px] shadow-sm bg-gray-50/50 hover:bg-white focus:bg-white focus:ring-[3px] focus:ring-green-100 focus:border-green-600 focus:outline-none border-gray-200 transition-all`;
+  const errorClass = `border-red-400 focus:ring-red-100 focus:border-red-500 bg-red-50/30`;
+  
+  const cardClass = "bg-white p-5 rounded-[15px] border border-gray-100 shadow-sm space-y-4 mb-6 relative overflow-hidden";
+  const cardHeaderClass = "text-sm font-bold text-gray-800 tracking-wide uppercase border-b border-gray-100 pb-2 mb-3 flex items-center gap-2";
+
   return (
-    <AuthLayout title="Create Account">
-      <div className="space-y-4">
-        <div className="text-center">
-            <p className="text-gray-500 mt-1 text-sm">Enter your Biometric Employee ID to get started</p>
-        </div>
-
-        {registerMutation.isError && (
-          <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm animate-in fade-in slide-in-from-top-2">
-            <AlertCircle size={16} />
-            <span>{(registerMutation.error as { response?: { data?: { message?: string } } })?.response?.data?.message || "Registration failed. Please try again."}</span>
-          </div>
-        )}
-
-        {successMessage && (
-          <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm animate-in fade-in slide-in-from-top-2">
-            <CheckCircle2 size={16} />
-            <span>{successMessage}</span>
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
-          {/* Employee ID with Verify Button */}
-          <div>
-            <label className="text-xs font-medium text-gray-700 mb-0.5 block">Employee ID</label>
-            <div className="flex gap-2">
-              <div className="relative group flex-1">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <IdCard className="h-5 w-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
-                </div>
-                <input
-                  type="text"
-                  {...register("employee_id")}
-                  className={`block w-full pl-10 pr-3 py-2 border rounded-xl bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm ${errors.employee_id ? 'border-red-500' : enrollmentStatus === 'enrolled' ? 'border-green-500' : 'border-gray-300'}`}
-                  placeholder="e.g. 1, 001, or EMP-001"
-                  disabled={enrollmentStatus === 'enrolled'}
-                />
-              </div>
-              <button
-                type="button"
-                onClick={checkEnrollment}
-                disabled={enrollmentStatus === 'checking' || !employeeIdValue?.trim() || enrollmentStatus === 'enrolled'}
-                className="px-4 py-2 rounded-xl text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-all whitespace-nowrap"
-              >
-                {enrollmentStatus === 'checking' ? (
-                  <Loader2 className="animate-spin h-4 w-4" />
-                ) : enrollmentStatus === 'enrolled' ? (
-                  <CheckCircle2 className="h-4 w-4 text-white" />
-                ) : (
-                  "Verify"
-                )}
-              </button>
-            </div>
-            {errors.employee_id && <p className="text-red-500 text-xs mt-1 ml-1">{errors.employee_id.message}</p>}
-            
-            {/* Enrollment Error */}
-            {(enrollmentStatus === 'not_found' || enrollmentStatus === 'error' || enrollmentStatus === 'already_registered') && (
-              <div className="flex items-center gap-2 mt-2 p-2.5 bg-red-50 border border-red-200 rounded-lg text-red-600 text-xs">
-                <AlertCircle size={14} className="flex-shrink-0" />
-                <span>{enrollmentError}</span>
-              </div>
-            )}
-          </div>
-
-          {/* Auto-filled Biometric Info (read-only) */}
-          {enrollmentStatus === 'enrolled' && enrollmentData && (
-            <div className="p-3 bg-green-50 border border-green-200 rounded-xl space-y-2 animate-in fade-in slide-in-from-top-2">
-              <div className="flex items-center gap-2 text-green-700 text-xs font-semibold">
-                <ShieldCheck size={14} />
-                <span>Biometric Enrollment Verified</span>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <p className="text-xs text-gray-500">Full Name</p>
-                  <p className="text-sm font-medium text-gray-900">{enrollmentData.fullName}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500">Department</p>
-                  <p className="text-sm font-medium text-gray-900">{enrollmentData.department || 'Not assigned'}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500">System ID</p>
-                  <p className="text-sm font-medium text-gray-900">{enrollmentData.systemEmployeeId}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500">Enrolled</p>
-                  <p className="text-sm font-medium text-gray-900">
-                    {new Date(enrollmentData.enrolledAt).toLocaleDateString()}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Email, Role, and Password — only show after enrollment verified */}
-          {enrollmentStatus === 'enrolled' && (
-            <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2">
-              {/* Role Selector */}
-              <div>
-                <label className="text-xs font-medium text-gray-700 mb-0.5 block">User Role</label>
-                <div className="relative group">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <UserCog className="h-5 w-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
-                  </div>
-                  <select
-                    {...register("role")}
-                    className={`block w-full pl-10 pr-3 py-2 border rounded-xl bg-gray-50 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm appearance-none cursor-pointer ${errors.role ? 'border-red-500' : 'border-gray-300'}`}
-                  >
-                    <option value="employee">Employee</option>
-                    <option value="hr">Human Resource</option>
-                    <option value="admin">Administrator</option>
-                  </select>
-                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                    <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-                  </div>
-                </div>
-                {errors.role && <p className="text-red-500 text-xs mt-1 ml-1">{errors.role.message}</p>}
-              </div>
-
-              {/* Email */}
-              <div>
-                <label className="text-xs font-medium text-gray-700 mb-0.5 block">Email Address</label>
-                <div className="relative group">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Mail className="h-5 w-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
-                  </div>
-                  <input
-                    type="email"
-                    autoComplete="email"
-                    {...register("email")}
-                    className={`block w-full pl-10 pr-3 py-2 border rounded-xl bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm ${errors.email ? 'border-red-500' : 'border-gray-300'}`}
-                    placeholder="your.email@example.com"
-                  />
-                </div>
-                {errors.email && <p className="text-red-500 text-xs mt-1 ml-1">{errors.email.message}</p>}
-              </div>
-
-              <div>
-                <label className="text-xs font-medium text-gray-700 mb-0.5 block">Password</label>
-                <div className="relative group">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Lock className="h-5 w-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
-                  </div>
-                  <input
-                    type="password"
-                    autoComplete="new-password"
-                    {...register("password")}
-                    className={`block w-full pl-10 pr-3 py-2 border rounded-xl bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm ${errors.password ? 'border-red-500' : 'border-gray-300'}`}
-                    placeholder="Min. 8 characters"
-                  />
-                </div>
-                {errors.password && <p className="text-red-500 text-xs mt-1 ml-1">{errors.password.message}</p>}
-              </div>
-
-              <button
-                type="submit"
-                disabled={registerMutation.isPending}
-                className="w-full flex justify-center items-center py-2 px-4 rounded-xl text-sm font-semibold glass-button glass-button-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500"
-              >
-                {registerMutation.isPending ? (
-                    <>
-                        <Loader2 className="animate-spin -ml-1 mr-2 h-4 w-4" />
-                        Creating Account...
-                    </>
-                ) : (
-                    "Create Account"
-                )}
-              </button>
-            </div>
-          )}
-        </form>
-
-        <p className="text-center text-sm text-gray-600">
-          Already have an account?{" "}
-          <Link to="/login" className="font-semibold text-blue-600 hover:text-blue-500 hover:underline">
-            Sign in instead
-          </Link>
-        </p>
-
-        <div className="mt-4 text-center border-t border-gray-100 pt-4">
-          <Link to="/careers" className="text-sm text-blue-600 hover:text-blue-800 hover:underline inline-flex items-center gap-1">
-            Looking for a job? View Open Positions
-          </Link>
-        </div>
+    <AuthLayout 
+      title="Create Account" 
+      subtitle="Complete your Employee Record profile"
+      maxWidth="max-w-2xl"
+    >
+      <div className="absolute top-4 right-4 bg-green-50 text-green-700 px-3 py-1 rounded-full text-xs font-bold border border-green-200 shadow-sm flex items-center gap-2">
+         <span className="relative flex h-2 w-2">
+           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+           <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+         </span>
+         Employee ID: {actualEmployeeId}
       </div>
+
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-2 mt-4 max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar">
+        
+        {/* Photo Upload Card */}
+        <div className="flex flex-col items-center gap-3 mb-6">
+           <div className="w-24 h-24 rounded-full bg-gray-50 overflow-hidden border-[3px] border-dashed border-gray-300 flex items-center justify-center relative shadow-inner hover:bg-gray-100 transition-colors">
+              {avatarPreview ? (
+                <img src={avatarPreview} alt="Preview" className="w-full h-full object-cover" />
+              ) : (
+                <Upload className="text-gray-400" />
+              )}
+           </div>
+           <label className="cursor-pointer text-sm font-semibold text-green-700 hover:text-green-800 hover:underline bg-green-50 px-4 py-1.5 rounded-full border border-green-100 shadow-sm transition-all transform hover:scale-105 active:scale-95">
+              Upload 2x2 Photo
+              <input type="file" className="hidden" accept="image/*" ref={avatarRef} onChange={handleAvatarChange} />
+           </label>
+        </div>
+
+        {/* Account Details */}
+        <div className={cardClass}>
+           <h4 className={cardHeaderClass}>Account Details</h4>
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-gray-600 ml-1">Email Address <span className="text-red-500">*</span></label>
+                <div className="relative">
+                  <input {...register("email")} type="email" autoComplete="email" className={`${inputClass} !pl-3 ${errors.email ? errorClass : ''}`} placeholder="" />
+                </div>
+                {errors.email && <p className="text-red-500 text-[11px] ml-1">{errors.email.message}</p>}
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-gray-600 ml-1">Password <span className="text-red-500">*</span></label>
+                <div className="relative">
+                  <input {...register("password")} type="password" autoComplete="new-password" className={`${inputClass} !pl-3 ${errors.password ? errorClass : ''}`} placeholder="" />
+                </div>
+                {errors.password && <p className="text-red-500 text-[11px] ml-1">{errors.password.message}</p>}
+              </div>
+           </div>
+        </div>
+
+        {/* Personal Information */}
+        <div className={cardClass}>
+           <h4 className={cardHeaderClass}>Personal Information</h4>
+           
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-gray-600 ml-1">Last Name <span className="text-red-500">*</span></label>
+                <div className="relative">
+                    <input {...register("lastName")} autoComplete="family-name" className={`${inputClass} !pl-3 ${errors.lastName ? errorClass : ''}`} placeholder="" />
+                </div>
+                {errors.lastName && <p className="text-red-500 text-[11px] ml-1">{errors.lastName.message}</p>}
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-gray-600 ml-1">First Name <span className="text-red-500">*</span></label>
+                <div className="relative">
+                    <input {...register("firstName")} autoComplete="given-name" className={`${inputClass} !pl-3 ${errors.firstName ? errorClass : ''}`} placeholder="" />
+                </div>
+                {errors.firstName && <p className="text-red-500 text-[11px] ml-1">{errors.firstName.message}</p>}
+              </div>
+
+              <div className="space-y-1">
+                 <label className="text-xs font-semibold text-gray-600 ml-1">Middle Name</label>
+                 <div className="relative">
+                    <input {...register("middleName")} autoComplete="additional-name" className={`${inputClass} !pl-3`} placeholder="" />
+                 </div>
+              </div>
+
+              <div className="space-y-1">
+                 <label className="text-xs font-semibold text-gray-600 ml-1">Suffix</label>
+                 <div className="relative">
+                    <input {...register("suffix")} autoComplete="honorific-suffix" className={`${inputClass} !pl-3`} placeholder="" />
+                 </div>
+              </div>
+           </div>
+
+           <div className="pt-2 grid grid-cols-2 md:grid-cols-3 gap-4">
+              <div className="space-y-1">
+                 <label className="text-xs font-semibold text-gray-600 ml-1">Birth Date</label>
+                 <div className="relative">
+                    <input type="date" {...register("birthDate")} className={`${inputClass} !pl-3`} />
+                 </div>
+              </div>
+              
+              <div className="space-y-1 col-span-2 md:col-span-2">
+                 <label className="text-xs font-semibold text-gray-600 ml-1">Place of Birth</label>
+                 <div className="relative">
+                    <input {...register("placeOfBirth")} className={`${inputClass} !pl-3`} placeholder="" />
+                 </div>
+              </div>
+
+              <div className="space-y-1">
+                 <label className="text-xs font-semibold text-gray-600 ml-1">Gender</label>
+                 <select {...register("gender")} className={`${inputClass} !pl-3`}>
+                    <option value="">Select...</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                 </select>
+              </div>
+
+              <div className="space-y-1">
+                 <label className="text-xs font-semibold text-gray-600 ml-1">Civil Status</label>
+                 <select {...register("civilStatus")} className={`${inputClass} !pl-3`}>
+                    <option value="">Select...</option>
+                    <option value="Single">Single</option>
+                    <option value="Married">Married</option>
+                    <option value="Widowed">Widowed</option>
+                    <option value="Separated">Separated</option>
+                    <option value="Annulled">Annulled</option>
+                 </select>
+              </div>
+
+              <div className="space-y-1">
+                 <label className="text-xs font-semibold text-gray-600 ml-1">Nationality</label>
+                 <input {...register("nationality")} className={`${inputClass} !pl-3`} placeholder="" />
+              </div>
+
+              <div className="space-y-1">
+                 <label className="text-xs font-semibold text-gray-600 ml-1">Blood Type</label>
+                 <select {...register("bloodType")} className={`${inputClass} !pl-3`}>
+                    <option value="">Select...</option>
+                    <option value="A+">A+</option>
+                    <option value="A-">A-</option>
+                    <option value="B+">B+</option>
+                    <option value="B-">B-</option>
+                    <option value="O+">O+</option>
+                    <option value="O-">O-</option>
+                    <option value="AB+">AB+</option>
+                    <option value="AB-">AB-</option>
+                 </select>
+              </div>
+
+              <div className="space-y-1">
+                 <label className="text-xs font-semibold text-gray-600 ml-1">Height (m)</label>
+                 <input type="number" step="0.01" {...register("heightM")} className={`${inputClass} !pl-3`} placeholder="" />
+              </div>
+
+              <div className="space-y-1">
+                 <label className="text-xs font-semibold text-gray-600 ml-1">Weight (kg)</label>
+                 <input type="number" step="0.1" {...register("weightKg")} className={`${inputClass} !pl-3`} placeholder="" />
+              </div>
+           </div>
+        </div>
+
+        {/* Contact & Address */}
+        <div className={cardClass}>
+           <h4 className={cardHeaderClass}>Contact & Address</h4>
+           
+           <div className="space-y-3 pb-3 border-b border-gray-100">
+               <div className="bg-gray-50/50 p-3 rounded-[10px] border border-gray-100">
+                   <label className="text-xs font-semibold text-gray-700 block mb-2">Are you a resident of Meycauayan?</label>
+                   <div className="flex gap-4">
+                     <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer hover:bg-white px-3 py-1 rounded-md border border-transparent hover:border-gray-200 transition-all">
+                       <input type="radio" value="true" {...register("isMeycauayan")} className="accent-green-600 w-4 h-4" /> Yes
+                     </label>
+                     <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer hover:bg-white px-3 py-1 rounded-md border border-transparent hover:border-gray-200 transition-all">
+                       <input type="radio" value="false" {...register("isMeycauayan")} className="accent-green-600 w-4 h-4" /> No
+                     </label>
+                   </div>
+               </div>
+
+               {isMeycauayan ? (
+                  <div className="pb-4 border-b border-gray-100">
+                      <h5 className="text-sm font-bold text-gray-700 mb-2">Residential Address (Meycauayan)</h5>
+                      <PhilippineAddressSelector 
+                        prefix="res" 
+                        register={register} 
+                        watch={watch} 
+                        setValue={setValue} 
+                        errors={errors} 
+                        inputClass={inputClass} 
+                        isMeycauayanOnly={true} 
+                      />
+                  </div>
+               ) : (
+                  <div className="pb-4 border-b border-gray-100">
+                      <h5 className="text-sm font-bold text-gray-700 mb-2">Residential Address</h5>
+                      <PhilippineAddressSelector 
+                        prefix="res" 
+                        register={register} 
+                        watch={watch} 
+                        setValue={setValue} 
+                        errors={errors} 
+                        inputClass={inputClass} 
+                      />
+                  </div>
+               )}
+
+           <div className="pt-4 border-b border-gray-100 pb-4">
+               <h5 className="text-sm font-bold text-gray-700 mb-2">Permanent Address</h5>
+               <PhilippineAddressSelector 
+                  prefix="perm" 
+                  register={register} 
+                  watch={watch} 
+                  setValue={setValue} 
+                  errors={errors} 
+                  inputClass={inputClass} 
+               />
+           </div>
+           </div>
+
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+              <div className="space-y-1">
+                 <label className="text-xs font-semibold text-gray-600 ml-1">Mobile Number</label>
+                 <div className="relative">
+                    <input {...register("mobileNo")} className={`${inputClass} !pl-3`} placeholder="" />
+                 </div>
+              </div>
+              <div className="space-y-1">
+                 <label className="text-xs font-semibold text-gray-600 ml-1">Telephone Number</label>
+                 <div className="relative">
+                    <input {...register("telephoneNo")} className={`${inputClass} !pl-3`} placeholder="" />
+                 </div>
+              </div>
+           </div>
+
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-3 bg-red-50/30 rounded-[10px] border border-red-50">
+              <div className="space-y-1">
+                 <label className="text-xs font-semibold text-red-500 ml-1 flex items-center gap-1">Emergency Contact Person</label>
+                 <input {...register("emergencyContact")} className={`${inputClass} !pl-3`} placeholder="Full Name" />
+              </div>
+              <div className="space-y-1">
+                 <label className="text-xs font-semibold text-red-500 ml-1">Emergency Phone Number</label>
+                 <input {...register("emergencyContactNumber")} className={`${inputClass} !pl-3`} placeholder="09XX XXX XXXX" />
+              </div>
+           </div>
+        </div>
+
+        {/* Government Identification */}
+        <div className={cardClass}>
+           <h4 className={cardHeaderClass}>Government Identification</h4>
+           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              <div className="space-y-1">
+                 <label className="text-xs font-semibold text-gray-600 ml-1">GSIS ID No.</label>
+                 <input {...register("gsisIdNo")} className={`${inputClass} !pl-3`} placeholder="" />
+              </div>
+              <div className="space-y-1">
+                 <label className="text-xs font-semibold text-gray-600 ml-1">PAG-IBIG No.</label>
+                 <input {...register("pagibigIdNo")} className={`${inputClass} !pl-3`} placeholder="" />
+              </div>
+              <div className="space-y-1">
+                 <label className="text-xs font-semibold text-gray-600 ml-1">PhilHealth No.</label>
+                 <input {...register("philhealthNo")} className={`${inputClass} !pl-3`} placeholder="" />
+              </div>
+              <div className="space-y-1">
+                 <label className="text-xs font-semibold text-gray-600 ml-1">UMID ID</label>
+                 <input {...register("umidId")} className={`${inputClass} !pl-3`} placeholder="" />
+              </div>
+              <div className="space-y-1">
+                 <label className="text-xs font-semibold text-gray-600 ml-1">PHILSYS ID</label>
+                 <input {...register("philsysId")} className={`${inputClass} !pl-3`} placeholder="" />
+              </div>
+              <div className="space-y-1">
+                 <label className="text-xs font-semibold text-gray-600 ml-1">TIN No.</label>
+                 <input {...register("tinNo")} className={`${inputClass} !pl-3`} placeholder="" />
+              </div>
+              <div className="space-y-1">
+                 <label className="text-xs font-semibold text-gray-600 ml-1">Agency Employee No.</label>
+                 <input {...register("agencyEmployeeNo")} className={`${inputClass} !pl-3`} placeholder="" />
+              </div>
+           </div>
+        </div>
+
+        {/* Educational Background */}
+        <div className={cardClass}>
+           <h4 className={cardHeaderClass}>Educational Background</h4>
+           <div className="space-y-1">
+              <label className="text-xs font-semibold text-gray-600 ml-1">Highest Degree/Level Attained</label>
+              <textarea {...register("educationalBackground")} className={`${inputClass} !pl-3 min-h-[80px] resize-y`} placeholder="" />
+           </div>
+        </div>
+
+        {/* Employment Record */}
+        <div className={cardClass}>
+           <h4 className={cardHeaderClass}>Employment Details</h4>
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+               <div>
+                   <label className="text-xs font-semibold text-gray-600 ml-1 mb-1 block">Department / Office</label>
+                   <Combobox
+                       options={departments.map((d) => ({ value: d.name, label: d.name }))}
+                       value={watch("department") || ""}
+                       onChange={(val) => setValue("department", val)}
+                       placeholder=""
+                       error={!!errors.department}
+                       buttonClassName="pl-3"
+                   />
+               </div>
+               <div>
+                   <label className="text-xs font-semibold text-gray-600 ml-1 mb-1 block">Plantilla Position</label>
+                   <Combobox
+                       options={positions
+                           .filter((p) => !watch("department") || p.department === watch("department"))
+                           .map((p) => ({ value: `${p.position_title} (${p.item_number})`, label: `${p.position_title} (${p.item_number})` }))}
+                       value={watch("position") || ""}
+                       onChange={(val) => setValue("position", val)}
+                       placeholder=""
+                       error={!!errors.position}
+                       buttonClassName="pl-3"
+                   />
+               </div>
+               <div className="md:col-span-2">
+                   <label className="text-xs font-semibold text-gray-600 ml-1 mb-1 block">Type of Duties</label>
+                   <select 
+                     {...register("duties")} 
+                     className={`${inputClass} !pl-3 text-gray-700`}
+                   >
+                     <option value="Standard">Standard</option>
+                     <option value="Irregular Duties">Irregular Duties</option>
+                   </select>
+               </div>
+            </div>
+        </div>
+
+        {/* Social Accounts */}
+        <div className={cardClass}>
+           <h4 className={cardHeaderClass}><Linkedin size={16} className="text-gray-400" /> Social Links</h4>
+           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-1">
+                 <label className="text-xs font-semibold text-gray-600 ml-1">Facebook</label>
+                 <div className="relative">
+                    <Facebook className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#1877F2]" size={15} />
+                    <input {...register("facebookUrl")} className={inputClass} placeholder="" />
+                 </div>
+              </div>
+              <div className="space-y-1">
+                 <label className="text-xs font-semibold text-gray-600 ml-1">LinkedIn</label>
+                 <div className="relative">
+                    <Linkedin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#0A66C2]" size={15} />
+                    <input {...register("linkedinUrl")} className={inputClass} placeholder="" />
+                 </div>
+              </div>
+              <div className="space-y-1">
+                 <label className="text-xs font-semibold text-gray-600 ml-1">Twitter (X)</label>
+                 <div className="relative">
+                    <Twitter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-800" size={15} />
+                    <input {...register("twitterHandle")} className={inputClass} placeholder="" />
+                 </div>
+              </div>
+           </div>
+        </div>
+
+        {/* Biometrics Enroll */}
+        <div id="biometrics-section" className="bg-white p-6 rounded-[15px] border border-gray-200 flex flex-col items-center gap-4 shadow-sm relative mb-4">
+            
+            <button 
+                type="button"
+                onClick={() => setResetModalOpen(true)}
+                className="absolute top-2 right-2 text-[10px] text-gray-300 hover:text-red-500 font-bold uppercase tracking-wider transition-colors"
+                title="Reset Device and DB"
+            >
+                Reset Scanner
+            </button>
+
+            <div className="text-center mb-2">
+                <h3 className="font-bold text-lg text-gray-900 flex items-center justify-center gap-2">
+                    <Fingerprint className={bioEnrolled ? 'text-green-600' : 'text-gray-700'} size={24} /> 
+                    {bioEnrolled ? "Biometric Captured" : "Fingerprint Identity"}
+                </h3>
+                <p className="text-sm text-gray-500 max-w-[300px] mx-auto mt-1">
+                    Secure your account by registering your fingerprint as your unique digital key.
+                </p>
+            </div>
+
+            <div className={`w-24 h-24 rounded-full flex items-center justify-center transition-all duration-300 ${
+                enrollError ? 'bg-red-50 text-red-500 shadow-red-100 animate-pulse border-red-200' :
+                bioEnrolled ? 'bg-green-50 text-green-500 shadow-green-100 border-green-200' : 
+                bioStatus === 'CONNECTED' ? 'bg-blue-50 text-blue-500 shadow-blue-100 border-blue-200' : 'bg-gray-50 text-gray-400 shadow-gray-100 border-gray-200'
+            } shadow-lg border-2`}>
+                {bioEnrolled ? <CheckCircle2 size={48} /> : enrollError ? <AlertCircle size={48} /> : <Fingerprint size={48} strokeWidth={1.5} />}
+            </div>
+            
+            <div className="mt-2 flex gap-4 text-xs font-semibold">
+                <div className="flex items-center gap-1.5">
+                    <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors duration-300 ${
+                        enrollStep >= 1 || bioEnrolled ? 'bg-green-500 border-green-500 text-white' : 
+                        enrollError && enrollStep === 0 ? 'bg-red-500 border-red-500 text-white' : 
+                        'border-gray-300 text-gray-300'
+                    }`}>
+                        {(enrollStep >= 1 || bioEnrolled) && <Check size={10} strokeWidth={3} />}
+                        {enrollError && enrollStep === 0 && <X size={10} strokeWidth={3} />}
+                    </div>
+                    <span className={enrollStep >= 1 || bioEnrolled ? 'text-green-700' : 'text-gray-500'}>Scan 1</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                    <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors duration-300 ${
+                        enrollStep >= 2 || bioEnrolled ? 'bg-green-500 border-green-500 text-white' : 
+                        enrollError && enrollStep === 1 ? 'bg-red-500 border-red-500 text-white' : 
+                        'border-gray-300 text-gray-300'
+                    }`}>
+                        {(enrollStep >= 2 || bioEnrolled) && <Check size={10} strokeWidth={3} />}
+                        {enrollError && enrollStep === 1 && <X size={10} strokeWidth={3} />}
+                    </div>
+                    <span className={enrollStep >= 2 || bioEnrolled ? 'text-green-700' : 'text-gray-500'}>Scan 2</span>
+                </div>
+            </div>
+
+            <div className="mt-2 text-center">
+                <p className={`text-sm font-semibold rounded-lg px-4 py-2 ${
+                    enrollError ? 'text-red-600 bg-red-50' : 
+                    bioEnrolled ? 'text-green-700 bg-green-50' : 
+                    'text-gray-700 bg-gray-50'
+                }`}>
+                    {enrollError ? `Error: ${enrollError}` :
+                     bioEnrolled ? "Your fingerprint has been successfully stored." : 
+                     enrollStep === 1 ? "Great! Now remove your finger." :
+                     enrollStep === 2 ? "Place the SAME finger again to confirm." :
+                     bioStatus === 'CONNECTED' ? (deviceConnected ? "Scanner ready. Place your thumb to enroll." : "Scanner disconnected. Check USB cable.") : "Middleware disconnected. Check BioSync App."}
+                </p>
+            </div>
+            
+            {!bioEnrolled && (
+                <button 
+                    type="button"
+                    onClick={() => {
+                        // Prevent double click by setting step to 1 immediately or check if enrolling
+                        if (enrollStep === 0) {
+                             setEnrollStep(0.5); // temporary state to disable button
+                             enroll(actualEmployeeId, `${watch("firstName")} ${watch("lastName")}`.trim() || "User", watch("department") || "Unassigned");
+                        }
+                    }}
+                    disabled={bioStatus !== 'CONNECTED' || !deviceConnected || enrollStep > 0}
+                    className="mt-2 px-8 py-2.5 bg-gray-900 border border-gray-800 text-white text-sm font-bold uppercase tracking-wider rounded-full disabled:opacity-50 disabled:bg-gray-400 hover:bg-gray-800 hover:shadow-lg transition-all active:scale-95"
+                >
+                    {enrollStep > 0 && enrollStep < 1 ? "Starting..." : "Start Scanner"}
+                </button>
+            )}
+        </div>
+
+        {/* Action Buttons */}
+        <div className="sticky bottom-0 bg-white/80 backdrop-blur-md pt-2 pb-4 mt-8 flex flex-col relative z-20 shadow-[0_-10px_15px_-3px_rgba(255,255,255,1)]">
+            <div className="mb-4 px-2">
+                <label className="flex items-start gap-3 cursor-pointer group">
+                    <input 
+                        type="checkbox" 
+                        required 
+                        className="mt-1 w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-green-500 transition-all cursor-pointer"
+                    />
+                    <span className="text-[11px] text-gray-500 leading-relaxed group-hover:text-gray-700 transition-colors">
+                        I hereby certify that the information provided is true and correct. I authorize the CHRMO to collect and process my biometric data and personal information in accordance with the <a href="https://www.officialgazette.gov.ph/2012/08/15/republic-act-no-10173/" target="_blank" rel="noopener noreferrer" className="font-bold text-green-700 hover:underline">Data Privacy Act of 2012</a>.
+                    </span>
+                </label>
+            </div>
+
+            <button 
+              type="submit" 
+              disabled={loading || !bioEnrolled}
+              className="w-full bg-gray-900 text-white py-3.5 rounded-xl text-[15px] font-extrabold hover:bg-gray-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md flex justify-center items-center gap-2 active:scale-[0.98]"
+            >
+              {loading ? <Loader2 className="animate-spin h-5 w-5" /> : <CheckCircle2 size={18} />}
+              Create Employee Record
+            </button>
+            <div className="text-center text-xs mt-4 text-gray-500 font-medium">
+              Already have an account?{" "}
+              <Link to="/login" className="font-bold text-gray-900 hover:text-green-700 hover:underline transition-colors pb-1 border-b border-transparent hover:border-green-700">
+                Sign in here
+              </Link>
+            </div>
+        </div>
+
+      </form>
+
+      {/* Tailwind Scrollbar customization added globally or inline, 'custom-scrollbar' used playfully above */}
+      <style>{`
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #e5e7eb; border-radius: 20px; }
+        .custom-scrollbar:hover::-webkit-scrollbar-thumb { background-color: #d1d5db; }
+      `}</style>
+
+      <ConfirmationModal
+        isOpen={showPreFillModal}
+        title="Application Found!"
+        message={`We found a hired application for ${matchedApplicant?.first_name} ${matchedApplicant?.last_name}. Would you like to automatically pre-fill the form with your information?`}
+        confirmText="Yes, Pre-fill Form"
+        cancelText="No, Type Manually"
+        onConfirm={handlePreFill}
+        onClose={() => {
+            setShowPreFillModal(false);
+            setHasAutomaticallyChecked(true); // Don't ask again for this session
+        }}
+        variant="info"
+      />
+
+      <ConfirmationModal
+        isOpen={isResetModalOpen}
+        title="Reset Scanner Device"
+        message="Are you sure you want to completely erase the physical fingerprint scanner memory and clear the database? This action cannot be undone."
+        confirmText="Yes, Erase Memory"
+        cancelText="Cancel"
+        onConfirm={() => {
+            resetDevice();
+            setResetModalOpen(false);
+            setEnrollError(null);
+            setBioEnrolled(false);
+            setEnrollStep(0);
+        }}
+        onClose={() => setResetModalOpen(false)}
+        variant="danger"
+      />
+
+      {/* Duplicate Name Confirmation Modal */}
+      {showDuplicateModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+              <div className="bg-white rounded-[20px] shadow-2xl max-w-md w-full p-6 animate-in fade-in zoom-in duration-300">
+                  <div className="flex items-center gap-3 text-amber-600 mb-4">
+                      <div className="bg-amber-50 p-2 rounded-full">
+                          <AlertCircle size={24} />
+                      </div>
+                      <h3 className="text-lg font-bold">Duplicate Name Detected</h3>
+                  </div>
+                  
+                  <p className="text-gray-600 text-sm leading-relaxed mb-6">
+                      An employee named <span className="font-bold text-gray-900">{watch("firstName")} {watch("lastName")}</span> is already registered in our system.
+                      <br /><br />
+                      If you are sure you are a different person with the same name, click <strong>Confirm and Register</strong> to proceed.
+                  </p>
+
+                  <div className="flex gap-3">
+                      <button 
+                          onClick={() => setShowDuplicateModal(false)}
+                          className="flex-1 px-4 py-2.5 rounded-[12px] border border-gray-200 text-gray-600 font-semibold text-sm hover:bg-gray-50 transition-colors"
+                      >
+                          Cancel
+                      </button>
+                      <button 
+                          type="button"
+                          onClick={confirmDuplicateRegistration}
+                          className="flex-1 px-4 py-2.5 rounded-[12px] bg-green-600 text-white font-semibold text-sm hover:bg-green-700 shadow-md shadow-green-100 transition-all active:scale-95"
+                      >
+                          Confirm and Register
+                      </button>
+                  </div>
+              </div>
+          </div>
+      )}
     </AuthLayout>
   );
 }

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { leaveApi } from "@api";
 import { AdminLeaveRequest } from '@/components/Custom/Timekeeping/LeaveRequestComponents/Admin/types';
+import { LeaveApplication } from '@/types/leave.types';
 
 export const useAdminLeaveData = (initialFilters?: Record<string, string>) => {
   const queryClient = useQueryClient();
@@ -29,7 +30,7 @@ export const useAdminLeaveData = (initialFilters?: Record<string, string>) => {
       };
       const res = await leaveApi.getAllApplications(params);
       
-      const leaves = (res.data?.leaves || []).map((l: Record<string, unknown>) => {
+      const leaves = (res.data?.applications || []).map((l: LeaveApplication) => {
         // Build employee name with fallbacks
         const firstName = l.first_name || '';
         const lastName = l.last_name || '';
@@ -46,7 +47,7 @@ export const useAdminLeaveData = (initialFilters?: Record<string, string>) => {
           toDate: l.end_date,
           reason: l.reason || '',
           status: l.status || 'Pending',
-          with_pay: l.with_pay ?? true,
+          with_pay: l.is_with_pay ?? true,
           attachment_path: l.attachment_path,
           final_attachment_path: l.final_attachment_path,
           first_name: firstName,
@@ -54,7 +55,7 @@ export const useAdminLeaveData = (initialFilters?: Record<string, string>) => {
           leave_type: l.leave_type,
           start_date: l.start_date, // Ensuring date properties exist as expected by UI
           end_date: l.end_date,
-          current_balance: l.current_balance
+          current_balance: undefined // Handle missing field if needed or use other from L
         };
       });
 

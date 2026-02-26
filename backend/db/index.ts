@@ -24,17 +24,29 @@ const pool: Pool = mysql.createPool(poolConfig);
 // Initialize Drizzle
 export const db = drizzle(pool, { schema: combinedSchema, mode: 'default' });
 
-const testConnection = async (): Promise<void> => {
-  try {
-    const connection = await pool.getConnection();
-    console.log('Database connected successfully');
-    connection.release();
-  } catch (error) {
-    const err = error as Error;
-    console.error('Database connection failed:', err.message);
+/**
+ * Retries database connection until successful or max attempts reached.
+ */
+export const waitForDatabase = async (maxAttempts = 10, delayMs = 3000): Promise<boolean> => {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const connection = await pool.getConnection();
+      console.log('✅ Database connected successfully');
+      connection.release();
+      return true;
+    } catch (error) {
+      const err = error as Error;
+      console.error(`❌ Database connection attempt ${attempt}/${maxAttempts} failed: ${err.message}`);
+      if (attempt < maxAttempts) {
+        console.log(`Retrying in ${delayMs / 1000}s...`);
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+      }
+    }
   }
+  return false;
 };
 
-testConnection();
+// Initial connection check
+waitForDatabase(1); // Non-blocking initial check for logs
 
 export default pool;

@@ -13,7 +13,7 @@ interface Memo {
   memo_number: string;
   memo_type: string;
   subject: string;
-  content: string;
+  content?: string;
   priority: string;
   status: string;
   created_at: string;

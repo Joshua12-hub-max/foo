@@ -1,6 +1,6 @@
 
 import { db } from '../db/index.js';
-import { authentication, performancereviews, performanceReviews, dailyTimeRecords, attendanceLogs } from '../db/schema.js';
+import { authentication, performanceReviews, dailyTimeRecords, attendanceLogs } from '../db/schema.js';
 import { eq, like, and, sql } from 'drizzle-orm';
 
 async function verifyAndFix() {

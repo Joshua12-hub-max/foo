@@ -1,7 +1,7 @@
 
 import { db } from '../db/index.js';
 import { authentication } from '../db/schema.js';
-import { eq, like } from 'drizzle-orm';
+import { like } from 'drizzle-orm';
 
 async function verifyCHRMO() {
   console.log('Verifying CHRMO Employees...');

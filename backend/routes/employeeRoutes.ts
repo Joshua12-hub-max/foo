@@ -23,6 +23,7 @@ import {
   updateEmployeeContact
 } from '../controllers/user.controller.js';
 import { verifyToken, verifyAdmin, verifyOwnerOrAdmin } from '../middleware/authMiddleware.js';
+import { uploadAvatar } from '../middleware/uploadMiddleware.js';
 
 const router: Router = Router();
 
@@ -36,7 +37,7 @@ router.delete('/:id', verifyToken, verifyAdmin, deleteEmployee);
 router.patch('/:id/revert-status', verifyToken, verifyAdmin, revertEmployeeStatus);
 
 // OWNER OR ADMIN - Update profile
-router.put('/:id', verifyToken, verifyOwnerOrAdmin, updateEmployee);
+router.put('/:id', verifyToken, verifyOwnerOrAdmin, uploadAvatar.single('avatar'), updateEmployee);
 
 // Employee Skills
 router.get('/:id/skills', verifyToken, getEmployeeSkills);

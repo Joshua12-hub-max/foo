@@ -18,9 +18,9 @@ interface Employee {
   last_name?: string;
   email?: string;
   employee_id?: string;
-  department?: string;
-  position_title?: string;
-  job_title?: string;
+  department?: string | null;
+  position_title?: string | null;
+  job_title?: string | null;
   employment_status?: string;
   avatar_url?: string;
 }
@@ -120,7 +120,7 @@ const EmployeeTable: React.FC<EmployeeGridProps> = ({
 
                   {/* Status */}
                   <td className="px-6 py-4">
-                    <span className={`px-2.5 py-1 rounded-md text-xs font-bold shadow-sm ${getStatusBadgeClass(employee.employment_status)}`}>
+                    <span className={`px-2.5 py-1 rounded-md text-xs font-bold shadow-sm ${getStatusBadgeClass(employee.employment_status || 'Active')}`}>
                       {employee.employment_status || 'Active'}
                     </span>
                   </td>

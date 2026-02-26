@@ -32,16 +32,28 @@ export interface EmployeePaginationResult {
   currentItems: EmployeeDTRRecord[];
 }
 
-export const mapDTRData = (apiData: any[]): EmployeeDTRRecord[] => {
+export interface DTRApiResponse {
+  id?: string | number;
+  record_id?: string | number;
+  date?: string;
+  time_in?: string | null;
+  time_out?: string | null;
+  hours_worked?: string | number;
+  status?: string;
+  remarks?: string;
+  created_at?: string | null;
+}
+
+export const mapDTRData = (apiData: DTRApiResponse[]): EmployeeDTRRecord[] => {
   return apiData.map(item => ({
-    id: item.id || item.record_id,
-    date: item.date,
+    id: item.id ?? item.record_id ?? '',
+    date: item.date ?? '',
     timeIn: item.time_in || 'N/A',
     timeOut: item.time_out || 'N/A',
-    hoursWorked: item.hours_worked || '0',
+    hoursWorked: item.hours_worked ?? '0',
     status: item.status || 'Unknown',
     remarks: item.remarks || '-',
-    createdAt: item.created_at
+    createdAt: item.created_at ?? undefined
   }));
 };
 

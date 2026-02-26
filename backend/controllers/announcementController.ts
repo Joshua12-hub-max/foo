@@ -1,10 +1,11 @@
 import { Request, Response } from 'express';
 import { db } from '../db/index.js';
 import { announcements } from '../db/schema.js';
-import { eq, desc, gte, sql } from 'drizzle-orm';
+import { eq, desc, gte, sql, InferInsertModel } from 'drizzle-orm';
 import { notifyAllUsers } from './notificationController.js';
 import type { AuthenticatedRequest } from '../types/index.js';
 import { CreateAnnouncementSchema, UpdateAnnouncementSchema } from '../schemas/announcementSchema.js';
+import { ZodError } from 'zod';
 
 export const getAnnouncements = async (_req: Request, res: Response): Promise<void> => {
   try {
@@ -49,7 +50,7 @@ export const createAnnouncement = async (req: Request, res: Response): Promise<v
     const [result] = await db.insert(announcements).values({
       title,
       content,
-      priority: (priority || 'normal') as any,
+      priority: priority as 'normal' | 'high' | 'urgent' | null,
       startDate: formattedStartDate,
       endDate: formattedEndDate,
       startTime: formattedStartTime,
@@ -86,16 +87,17 @@ export const createAnnouncement = async (req: Request, res: Response): Promise<v
     }
 
     res.status(201).json({ success: true, message: 'Announcement created successfully', announcement: newAnnouncement });
-  } catch (error: any) {
-    if (error.name === 'ZodError') {
-      res.status(400).json({ success: false, message: 'Validation failed', errors: error.errors });
+  } catch (error) {
+    if (error instanceof ZodError) {
+      res.status(400).json({ success: false, message: 'Validation failed', errors: error.issues });
       return;
     }
     console.error('Error creating announcement:', error);
+    const message = error instanceof Error ? error.message : 'Unknown database error';
     res.status(500).json({ 
       success: false,
       message: 'Failed to create announcement',
-      error: error.message || 'Unknown database error'
+      error: message
     });
   }
 };
@@ -106,8 +108,6 @@ export const updateAnnouncement = async (req: Request, res: Response): Promise<v
     const validatedData = UpdateAnnouncementSchema.parse(req.body);
     const { title, content, priority, start_date, end_date, start_time, end_time } = validatedData;
 
-
-
     const existing = await db.query.announcements.findFirst({
       where: eq(announcements.id, Number(id))
     });
@@ -117,10 +117,10 @@ export const updateAnnouncement = async (req: Request, res: Response): Promise<v
       return;
     }
 
-    const updates: any = {};
+    const updates: Partial<InferInsertModel<typeof announcements>> = {};
     if (title !== undefined) updates.title = title;
     if (content !== undefined) updates.content = content;
-    if (priority !== undefined) updates.priority = priority;
+    if (priority !== undefined) updates.priority = priority as 'normal' | 'high' | 'urgent';
 
     if (start_time !== undefined) {
       updates.startTime = convertTo24Hour(start_time);
@@ -140,9 +140,9 @@ export const updateAnnouncement = async (req: Request, res: Response): Promise<v
       .where(eq(announcements.id, Number(id)));
 
     res.status(200).json({ success: true, message: 'Announcement updated successfully' });
-  } catch (error: any) {
-    if (error.name === 'ZodError') {
-      res.status(400).json({ success: false, message: 'Validation failed', errors: error.errors });
+  } catch (error) {
+    if (error instanceof ZodError) {
+      res.status(400).json({ success: false, message: 'Validation failed', errors: error.issues });
       return;
     }
     console.error('Error updating announcement:', error);

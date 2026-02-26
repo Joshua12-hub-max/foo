@@ -16,7 +16,7 @@ interface Employee {
   last_name?: string;
   employee_id?: string;
   email?: string;
-  avatar_url?: string;
+  avatar_url?: string | null;
 }
 
 interface AddEmployeeToDepartmentProps {

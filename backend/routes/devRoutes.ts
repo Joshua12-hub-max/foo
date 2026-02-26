@@ -1,8 +1,8 @@
 
-import express from 'express';
+import { Router } from 'express';
 import { devLogin, simulateBiometricLog } from '../controllers/devController.js';
 
-const router = express.Router();
+const router: Router = Router();
 
 // Auth Bypass
 router.post('/login', devLogin);

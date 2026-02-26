@@ -1,12 +1,5 @@
 import { Router } from 'express';
-import {
-  initiateGoogleAuth,
-  handleGoogleCallback,
-  disconnectGoogleCalendar,
-  getSyncStatus,
-  importFromGoogle,
-  exportToGoogle,
-  bidirectionalSync
+import { initiateGoogleAuth, handleGoogleCallback, disconnectGoogleCalendar, getSyncStatus, importFromGoogle, exportToGoogle, bidirectionalSync
 } from '../controllers/googleCalendarController.js';
 import { verifyToken } from '../middleware/authMiddleware.js';
 
@@ -24,3 +17,4 @@ router.post('/sync/export', verifyToken, exportToGoogle);
 router.post('/sync/bidirectional', verifyToken, bidirectionalSync);
 
 export default router;
+

@@ -11,7 +11,10 @@ export const jobSchema = z.object({
   requirements: z.string().nullish(),
 
 
-  attachment_path: z.union([z.string(), z.instanceof(File)]).nullish() 
+  attachment_path: z.union([z.string(), z.instanceof(File)]).nullish(),
+  require_civil_service: z.boolean().optional(),
+  require_government_ids: z.boolean().optional(),
+  require_education_experience: z.boolean().optional(),
 });
 
 export type JobSchema = z.infer<typeof jobSchema>;

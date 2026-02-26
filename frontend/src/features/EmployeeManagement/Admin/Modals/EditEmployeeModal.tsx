@@ -25,16 +25,12 @@ interface Department {
 }
 
 import { Position } from '@/api/plantillaApi';
-
-// Broad interface for incoming employee data
-interface Employee extends Record<string, any> {
-  id: number | string;
-}
+import { EmployeeDetailed } from '@/types/employee';
 
 interface EditEmployeeModalProps {
   isOpen: boolean;
   onClose: () => void;
-  employee?: Employee;
+  employee?: EmployeeDetailed;
   departments: Department[];
   onSuccess?: () => void;
 }
@@ -98,7 +94,7 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
         if (onSuccess) onSuccess();
         onClose();
     },
-    onError: (error: unknown) => {
+    onError: (error: Error | { response?: { data?: { message?: string } } }) => {
         const err = error as { response?: { data?: { message?: string } }; message?: string };
         console.error('Failed to update employee', err);
         showToast(err.response?.data?.message || err.message || 'Failed to update employee', 'error');
@@ -157,7 +153,7 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
               position_title: employee.position_title || '',
               salary_grade: Number(employee.salary_grade || 0), // number
               step_increment: employee.step_increment,
-              department: employee.department,
+              department: employee.department || '',
               is_vacant: false
           };
          // Add current position if not in list

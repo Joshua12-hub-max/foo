@@ -9,7 +9,7 @@ interface FiltersState {
   department: string;
   employee: string;
   status: string;
-  [key: string]: any;
+  [key: string]: string;
 }
 
 interface PaginationData {
@@ -91,14 +91,16 @@ export const useAdminPerformance = (): AdminPerformanceHookReturn => {
     setLoadingType("data");
     setError(null);
     try {
-      const data = await fetchEvaluationSummary();
+      const res = await fetchEvaluationSummary();
+      const payload = res as unknown as { success: boolean; message?: string; employees?: unknown[]; stats?: Record<string, unknown> };
       
-      if (data.success) {
-          const mappedData = mapPerformanceData(data.employees || []);
+      if (res.success || payload.success) {
+          const empList = payload.employees || (res.data as Record<string, unknown>)?.employees || [];
+          const mappedData = mapPerformanceData(empList as Parameters<typeof mapPerformanceData>[0]);
           setPerformanceData(mappedData);
-          setStats(data.stats || {});
+          setStats(payload.stats || (res.data as Record<string, unknown>)?.stats || {});
       } else {
-          setError(data.message || MESSAGES.ERROR_LOAD);
+          setError(res.message || payload.message || MESSAGES.ERROR_LOAD);
       }
 
     } catch (err) {

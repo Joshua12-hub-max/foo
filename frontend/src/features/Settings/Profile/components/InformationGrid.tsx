@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Mail, Building, Briefcase, IdCard, Calendar, Shield, UserCircle, Lock, Loader2 } from 'lucide-react';
+import { Mail, Building, Briefcase, IdCard, Calendar, Shield, UserCircle, Lock, Loader2, MapPin, PhoneCall, GraduationCap } from 'lucide-react';
 import InfoItem from './InfoItem';
 import EmploymentStatusBadge from '@components/Custom/Common/EmploymentStatusBadge';
 import { enableTwoFactor, disableTwoFactor } from '@/Service/Auth';
@@ -13,7 +13,7 @@ interface InformationGridProps {
   formData: ProfileFormData;
   handleChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   setIsEditing: (isEditing: boolean) => void;
-  setProfile: (profile: Profile) => void;
+  setProfile: React.Dispatch<React.SetStateAction<User | null>>;
 }
 
 const InformationGrid: React.FC<InformationGridProps> = ({ 
@@ -33,10 +33,10 @@ const InformationGrid: React.FC<InformationGridProps> = ({
       try {
           if (profile.twoFactorEnabled) {
               await disableTwoFactor();
-              if (setProfile) setProfile({ ...profile, twoFactorEnabled: false });
+              setProfile(prev => prev ? { ...prev, twoFactorEnabled: false } : null);
           } else {
               await enableTwoFactor();
-              if (setProfile) setProfile({ ...profile, twoFactorEnabled: true });
+              setProfile(prev => prev ? { ...prev, twoFactorEnabled: true } : null);
           }
       } catch (error) {
           console.error("Failed to toggle 2FA:", error);
@@ -56,17 +56,6 @@ const InformationGrid: React.FC<InformationGridProps> = ({
         {isEditing ? (
           <div className="space-y-4">
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1.5">First Name</label>
-              <input
-                type="text"
-                name="first_name"
-                value={formData.first_name}
-                onChange={handleChange}
-                className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-gray-200 transition-all shadow-sm"
-                placeholder="Enter first name"
-              />
-            </div>
-            <div>
               <label className="block text-xs font-medium text-gray-600 mb-1.5">Last Name</label>
               <input
                 type="text"
@@ -75,6 +64,17 @@ const InformationGrid: React.FC<InformationGridProps> = ({
                 onChange={handleChange}
                 className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-gray-200 transition-all shadow-sm"
                 placeholder="Enter last name"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1.5">First Name</label>
+              <input
+                type="text"
+                name="first_name"
+                value={formData.first_name}
+                onChange={handleChange}
+                className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-gray-200 transition-all shadow-sm"
+                placeholder="Enter first name"
               />
             </div>
             <div>
@@ -119,6 +119,46 @@ const InformationGrid: React.FC<InformationGridProps> = ({
         )}
       </div>
 
+      {/* Contact Information */}
+      <div className="bg-gray-50 rounded-2xl border border-gray-100 p-5 mt-6">
+        <h3 className="text-sm font-bold text-gray-800 mb-4">Contact Information</h3>
+        <div className="space-y-4">
+          <InfoItem 
+            icon={MapPin} 
+            label="Residential Address" 
+            value={profile?.residentialAddress || profile?.address} 
+          />
+          <InfoItem 
+            icon={MapPin} 
+            label="Permanent Address" 
+            value={profile?.permanentAddress} 
+          />
+          <InfoItem 
+            icon={PhoneCall} 
+            label="Emergency Contact Person" 
+            value={profile?.emergencyContact} 
+          />
+          <InfoItem 
+            icon={PhoneCall} 
+            label="Emergency Contact Number" 
+            value={profile?.emergencyContactNumber} 
+          />
+        </div>
+      </div>
+
+      {/* Educational Background */}
+      <div className="bg-gray-50 rounded-2xl border border-gray-100 p-5 mt-6">
+        <h3 className="text-sm font-bold text-gray-800 mb-4">Educational Background</h3>
+        <div className="space-y-4">
+          <InfoItem 
+            icon={GraduationCap} 
+            label="Highest Achievement / Details" 
+            value={profile?.educationalBackground} 
+          />
+        </div>
+      </div>
+
+
       <div className="space-y-6">
         {/* Work Information */}
         <div className="bg-gray-50 rounded-2xl border border-gray-100 p-5">
@@ -131,7 +171,7 @@ const InformationGrid: React.FC<InformationGridProps> = ({
             />
             <InfoItem 
                 icon={Briefcase} 
-                label="Job Title" 
+                label="Position Title" 
                 value={profile?.jobTitle} 
             />
             <InfoItem 

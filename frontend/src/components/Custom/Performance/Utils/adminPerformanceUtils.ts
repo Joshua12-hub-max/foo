@@ -12,28 +12,37 @@ export interface PerformanceTableItem {
   jobTitle: string;
   lastEvaluation: string;
   score: string | number;
-  [key: string]: any;
+  [key: string]: string | number | undefined;
 }
 
-export const mapPerformanceData = (apiData: any[]): PerformanceTableItem[] => {
+export interface PerformanceFilters {
+  department?: string;
+  employee?: string;
+  status?: string;
+  [key: string]: string | undefined;
+}
+
+export const mapPerformanceData = (apiData: Record<string, unknown>[]): PerformanceTableItem[] => {
   return apiData.map(item => ({
-    id: item.employee_id || item.id,
-    name: item.name || `${item.first_name || ''} ${item.last_name || ''}`.trim(),
-    department: item.department || 'N/A',
-    jobTitle: item.job_title || 'N/A',
+    id: (item.employee_id ?? item.id) != null ? String(item.employee_id ?? item.id) : '',
+    name: item.name
+      ? String(item.name)
+      : `${item.first_name ?? ''} ${item.last_name ?? ''}`.trim(),
+    department: String(item.department ?? 'N/A'),
+    jobTitle: String(item.job_title ?? 'N/A'),
     lastEvaluation: item.last_evaluation_date 
-      ? new Date(item.last_evaluation_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) 
+      ? new Date(String(item.last_evaluation_date)).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) 
       : 'Never',
-    score: item.score !== null && item.score !== undefined ? parseFloat(item.score).toFixed(2) : 'N/A',
-    status: item.status || 'Not Started',
-    reviewId: item.review_id
+    score: item.score !== null && item.score !== undefined ? parseFloat(String(item.score)).toFixed(2) : 'N/A',
+    status: String(item.status ?? 'Not Started'),
+    reviewId: item.review_id != null ? String(item.review_id) : undefined
   }));
 };
 
 /**
  * Filter Performance data based on filters and search query
  */
-export const filterPerformanceData = (data: PerformanceTableItem[], filters: any, searchQuery: string): PerformanceTableItem[] => {
+export const filterPerformanceData = (data: PerformanceTableItem[], filters: PerformanceFilters, searchQuery: string): PerformanceTableItem[] => {
   let filteredData = [...data];
 
   // Apply department filter
@@ -68,7 +77,7 @@ export const filterPerformanceData = (data: PerformanceTableItem[], filters: any
 /**
  * Calculate pagination data
  */
-export const calculatePagination = (data: any[], currentPage: number, itemsPerPage: number) => {
+export const calculatePagination = (data: PerformanceTableItem[], currentPage: number, itemsPerPage: number) => {
   const totalPages = Math.ceil(data.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
@@ -96,7 +105,7 @@ export const getUniqueEmployees = (data: PerformanceTableItem[]): string[] => {
 /**
  * Generate PDF HTML content
  */
-export const generatePDFContent = (data: any[], headers: string[], today: string): string => {
+export const generatePDFContent = (data: PerformanceTableItem[], headers: string[], today: string): string => {
   return `
     <!DOCTYPE html>
     <html>
@@ -150,7 +159,7 @@ export const generatePDFContent = (data: any[], headers: string[], today: string
  * Export data to Excel (matching departmentReportsExport.js format)
  */
 // Native CSV export to remove dependency on ExcelJS
-export const exportToCSV = async (data: any[], headers: string[], filename: string) => {
+export const exportToCSV = async (data: PerformanceTableItem[], headers: string[], filename: string) => {
   try {
     const csvHeaders = ['Status', 'Employee ID', 'Name', 'Department', 'Job Title', 'Last Evaluation', 'Score'];
     const keys = ['status', 'id', 'name', 'department', 'jobTitle', 'lastEvaluation', 'score'];
@@ -183,7 +192,7 @@ export const exportToCSV = async (data: any[], headers: string[], filename: stri
 /**
  * Export data to PDF
  */
-export const exportToPDF = async (data: any[], headers: string[], today: string, printDelay = 250) => {
+export const exportToPDF = async (data: PerformanceTableItem[], headers: string[], today: string, printDelay = 250) => {
   const htmlContent = generatePDFContent(data, headers, today);
   const blob = new Blob([htmlContent], { type: 'text/html' });
   const url = URL.createObjectURL(blob);

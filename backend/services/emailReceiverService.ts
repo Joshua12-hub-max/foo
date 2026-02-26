@@ -5,8 +5,9 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { db } from '../db/index.js';
 import { recruitmentJobs, recruitmentApplicants } from '../db/schema.js';
-import { eq, and } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { getTemplateForStage, replaceVariables, sendEmailNotification } from '../utils/emailHelpers.js';
+import { notifyAdmins } from '../controllers/notificationController.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -176,25 +177,6 @@ const saveAttachment = async (attachment: Attachment): Promise<string | null> =>
 };
 
 /**
- * Check if email has already been processed
- */
-const isEmailProcessed = async (email: string, subject: string): Promise<boolean> => {
-  try {
-    const existing = await db.query.recruitmentApplicants.findFirst({
-      where: and(
-        eq(recruitmentApplicants.email, email),
-        eq(recruitmentApplicants.email_subject, subject),
-        eq(recruitmentApplicants.source, 'email')
-      )
-    });
-    return !!existing;
-  } catch (err) {
-    console.error('Error checking processed email:', err);
-    return false;
-  }
-};
-
-/**
  * Save application to database
  */
 const saveApplication = async (applicantData: ApplicantData): Promise<boolean> => {
@@ -214,18 +196,18 @@ const saveApplication = async (applicantData: ApplicantData): Promise<boolean> =
 
     console.log(`Saved application from ${email} for job ${job_id || 'General'}`);
 
+    let jobTitle = 'General Application';
+      
+    if (job_id) {
+      const job = await db.query.recruitmentJobs.findFirst({
+        where: eq(recruitmentJobs.id, Number(job_id)),
+        columns: { title: true }
+      });
+      if (job) jobTitle = job.title;
+    }
+
     // Send "Applied" email notification
     try {
-      let jobTitle = 'General Application';
-      
-      if (job_id) {
-        const job = await db.query.recruitmentJobs.findFirst({
-          where: eq(recruitmentJobs.id, Number(job_id)),
-          columns: { title: true }
-        });
-        if (job) jobTitle = job.title;
-      }
-
       const template = await getTemplateForStage(db, 'Applied');
       if (template) {
         const variables = {
@@ -243,6 +225,18 @@ const saveApplication = async (applicantData: ApplicantData): Promise<boolean> =
       }
     } catch (emailError) {
       console.error('Failed to send application email:', emailError);
+    }
+
+    // Notify admins about the new application via email
+    try {
+      await notifyAdmins({
+        title: 'New Application (Email)',
+        message: `${first_name} ${last_name} has applied via email for ${jobTitle}.`,
+        type: 'recruitment',
+        referenceId: job_id ? Number(job_id) : null
+      });
+    } catch (notifError) {
+      console.error('Failed to send admin notification for email application:', notifError);
     }
 
     return true;
@@ -339,7 +333,7 @@ export const checkForNewApplications = (): Promise<EmailCheckResult> => {
       return;
     }
 
-    const imap = new Imap(config as Imap.Config);
+    const imap = new Imap(getImapConfigObject(config));
     let processedCount = 0;
 
     imap.once('ready', () => {
@@ -436,6 +430,17 @@ export const checkForNewApplications = (): Promise<EmailCheckResult> => {
   });
 };
 
+function getImapConfigObject(config: ImapConfig): Imap.Config {
+  return {
+    user: config.user || '',
+    password: config.password || '',
+    host: config.host,
+    port: config.port,
+    tls: config.tls,
+    tlsOptions: config.tlsOptions
+  };
+}
+
 /**
  * Manual trigger for checking emails (called from API)
  */
@@ -444,11 +449,11 @@ export const manualCheckEmails = async (): Promise<EmailCheckResult> => {
     const result = await checkForNewApplications();
     return result;
   } catch (err) {
-    const error = err as Error;
-    console.error('Manual email check failed:', error);
+    const errorMsg = err instanceof Error ? err.message : 'Unknown error';
+    console.error('Manual email check failed:', errorMsg);
     return {
       success: false,
-      message: error.message || 'Failed to check emails',
+      message: errorMsg,
       processed: 0
     };
   }

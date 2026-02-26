@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { InferSelectModel } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/mysql-core';
 import { db } from '../db/index.js';
-import { departments, authentication } from '../db/schema.js';
+import { departments, authentication, plantillaPositions } from '../db/schema.js';
 import { eq, asc, sql, or, isNull, ne, and, like, getTableColumns } from 'drizzle-orm';
 import { DepartmentApiResponse, DepartmentDetailedApiResponse } from '../types/org.js';
 import { EmployeeApiResponse } from '../types/employee.js';
@@ -274,11 +274,55 @@ export const updateDepartment = async (req: Request, res: Response): Promise<voi
 
 export const deleteDepartment = async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params;
+  const deptId = Number(id);
+
+  if (isNaN(deptId)) {
+    res.status(400).json({ success: false, message: 'Invalid department ID' });
+    return;
+  }
+
   try {
-    await db.delete(departments).where(eq(departments.id, Number(id)));
-    res.status(200).json({ success: true, message: 'Department deleted successfully' });
-  } catch (error) {
-    console.error('Delete Department Error:', error);
-    res.status(500).json({ success: false, message: 'Failed to delete department' });
+    const deptToDelete = await db.query.departments.findFirst({
+        where: eq(departments.id, deptId)
+    });
+
+    if (!deptToDelete) {
+        res.status(404).json({ success: false, message: 'Department not found' });
+        return;
+    }
+
+    await db.transaction(async (tx) => {
+      // 1. Remove department references from employees
+      await tx.update(authentication)
+        .set({ department: 'Unassigned', departmentId: null })
+        .where(eq(authentication.departmentId, deptId));
+
+      // 1b. Also clear by string name just in case of inconsistency
+      await tx.update(authentication)
+        .set({ department: 'Unassigned', departmentId: null })
+        .where(eq(authentication.department, deptToDelete.name));
+
+      // 2. Remove department references from plantilla positions
+      await tx.update(plantillaPositions)
+        .set({ department: 'Unassigned', departmentId: null })
+        .where(eq(plantillaPositions.departmentId, deptId));
+
+      await tx.update(plantillaPositions)
+        .set({ department: 'Unassigned', departmentId: null })
+        .where(eq(plantillaPositions.department, deptToDelete.name));
+
+      // 3. Clear self-referencing parent departments
+      await tx.update(departments)
+        .set({ parentDepartmentId: null })
+        .where(eq(departments.parentDepartmentId, deptId));
+
+      // 4. Finally, safely delete the target department
+      await tx.delete(departments).where(eq(departments.id, deptId));
+    });
+
+    res.status(200).json({ success: true, message: 'Department successfully deleted from the software and database' });
+  } catch (error: any) {
+    console.error('Delete Department Error:', error.message);
+    res.status(500).json({ success: false, message: 'Failed to delete department. Database constraint error.' });
   }
 };

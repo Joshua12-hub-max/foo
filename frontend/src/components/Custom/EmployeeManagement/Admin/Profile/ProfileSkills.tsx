@@ -40,7 +40,10 @@ const ProfileSkills: React.FC<ProfileSkillsProps> = ({ profile, onUpdate }) => {
   const handleAdd = async (e: FormEvent) => {
     e.preventDefault();
     try {
-      await addEmployeeSkill(profile.id, newSkill);
+      await addEmployeeSkill(profile.id, {
+        ...newSkill,
+        years_experience: newSkill.years_experience ? Number(newSkill.years_experience) : null
+      });
       setIsAdding(false);
       setNewSkill({ skill_name: '', category: 'Technical', proficiency_level: 'Intermediate', years_experience: '' });
       onUpdate();

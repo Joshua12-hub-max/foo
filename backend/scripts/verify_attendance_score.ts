@@ -1,6 +1,4 @@
 
-import { calculateAttendanceScore } from '../services/attendanceRatingService.js';
-import { db } from '../db/index.js';
 
 // Mock DB Query for testing
 // We will monkey-patch or just copy logic for strict testing if direct unit test is hard.
@@ -13,7 +11,7 @@ function testLogic(lates: number, lateMinutes: number, undertimes: number, absen
     const totalInstances = lates + undertimes; // Absences separate now in logic, usually
 
     let score = 5;
-    let ratingDescription = 'Result';
+    // let ratingDescription = 'Result';
 
     // Strict Scoring Logic (Reference: CSC / Internal Policy)
     // 5 - Outstanding: No lates, no undertime, no absences.
@@ -24,13 +22,13 @@ function testLogic(lates: number, lateMinutes: number, undertimes: number, absen
 
     if (violations > 0) {
         score = 1;
-        ratingDescription = `Poor (Has ${violations} Policy Violation/s)`;
+        // ratingDescription = `Poor (Has ${violations} Policy Violation/s)`;
     } else if (absences >= 3) {
         score = 1;
-        ratingDescription = `Poor (Habitual Absenteeism: ${absences} days)`;
+        // ratingDescription = `Poor (Habitual Absenteeism: ${absences} days)`;
     } else if (lateMinutes > 240) { // > 4 hours total
         score = 1;
-        ratingDescription = `Poor (Severe Tardiness: ${lateMinutes} mins)`;
+        // ratingDescription = `Poor (Severe Tardiness: ${lateMinutes} mins)`;
     } else if (totalInstances === 0 && absences === 0 && lateMinutes === 0) {
         score = 5;
     } else if (totalInstances <= 5 && lateMinutes <= 60 && absences === 0) {

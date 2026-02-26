@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { recruitmentApi } from '@/api/recruitmentApi';
+import { Applicant } from '@/types/recruitment';
 
 export interface KanbanApplicant {
   id: number;
@@ -22,10 +23,10 @@ const useKanbanData = (showNotification: (message: string, type: 'success' | 'er
     try {
       setLoading(true);
       const { data } = await recruitmentApi.getApplicants();
-      const relevantApplicants = data.applicants.filter((a: any) => 
+      const relevantApplicants = data.applicants.filter((a: Applicant) => 
         ['Applied', 'Screening', 'Initial Interview', 'Final Interview', 'Offer', 'Hired', 'Rejected'].includes(a.stage) ||
-        a.stage === null
-      ).map((a: any) => ({
+        !a.stage
+      ).map((a: Applicant) => ({
         ...a,
         stage: a.stage || 'Applied'
       }));

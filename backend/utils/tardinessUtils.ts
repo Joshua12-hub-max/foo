@@ -1,5 +1,5 @@
 import { db } from '../db/index.js';
-import { tardinessSummary, dailyTimeRecords, authentication } from '../db/schema.js';
+import { tardinessSummary, dailyTimeRecords } from '../db/schema.js';
 import { eq, and, sql } from 'drizzle-orm';
 import { currentManilaDateTime } from './dateUtils.js';
 
@@ -12,15 +12,11 @@ export const updateTardinessSummary = async (
     const year = date.getFullYear();
     const month = date.getMonth() + 1;
 
-    // 1. Get Employee Duty Type & Target Hours
-    const employees = await db.select({
-      dailyTargetHours: authentication.dailyTargetHours
-    })
-    .from(authentication)
-    .where(eq(authentication.employeeId, employeeId))
-    .limit(1);
-
-    const dailyTargetHours = Number(employees[0]?.dailyTargetHours) || 8;
+    // const employeeRows = await db.select({ dailyTargetHours: authentication.dailyTargetHours })
+    //   .from(authentication)
+    //   .where(eq(authentication.employeeId, employeeId))
+    //   .limit(1);
+    // const dailyTargetHours = Number(employeeRows[0]?.dailyTargetHours) || 8;
 
     // 2. Calculate totals for the month
     const result = await db.select({
@@ -40,10 +36,12 @@ export const updateTardinessSummary = async (
     const stats = result[0];
     const totalLateMinutes = Number(stats.totalLateMinutes) || 0;
     const totalUndertimeMinutes = Number(stats.totalUndertimeMinutes) || 0;
-    const totalMinutes = totalLateMinutes + totalUndertimeMinutes;
-    const daysEquivalent = (totalMinutes / (dailyTargetHours * 60)).toFixed(3);
+    
+    // 3. Compute Days Equivalent
+    // const totalMinutes = totalLateMinutes + totalUndertimeMinutes;
+    // const daysEquivalent = (totalMinutes / (dailyTargetHours * 60)).toFixed(3);
 
-    // 3. Upsert into tardiness_summary
+    // 4. Upsert into tardiness_summary
     await db.insert(tardinessSummary).values({
       employeeId,
       year,

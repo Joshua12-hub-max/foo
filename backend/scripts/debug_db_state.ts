@@ -1,6 +1,6 @@
 
 import { db } from '../db/index.js';
-import { authentication, plantillaPositions } from '../db/schema.js';
+import { plantillaPositions } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
 
 async function debugDbState() {

@@ -1,4 +1,3 @@
-
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { lazy, Suspense, useEffect } from "react";
 import ErrorBoundary from "@components/ErrorBoundary"; 
@@ -9,6 +8,7 @@ const Register = lazy(() => import("./Authentication/Register"));
 const VerifyAccount = lazy(() => import("./Authentication/VerifyAccount"));
 const ForgotPassword = lazy(() => import("./Authentication/ForgotPassword"));
 const ResetPassword = lazy(() => import("./Authentication/ResetPassword"));
+const TestBio = lazy(() => import("./pages/TestBio"));
 
 // Static imports for core shell and priority pages to improve LCP
 import AdminDashboard from "./pages/DashboardAdmin/AdminDashboard";
@@ -608,6 +608,7 @@ export default function App() {
         </Route>
 
         {/* Fallback */}
+        <Route path="/test-bio" element={<TestBio />} /> 
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
 

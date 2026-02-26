@@ -1,8 +1,8 @@
 import React from 'react';
-import { User, UserPlus, Video, FileText, Mail, Globe, VideoIcon } from 'lucide-react';
+import { User, UserPlus, Video, FileText, Mail, Globe, VideoIcon, Trash2, RotateCcw, BadgeCheck, Download } from 'lucide-react';
 import LoadingOverlay from '@/components/Custom/Shared/LoadingOverlay';
 import TableSkeleton from '@/components/Custom/Shared/TableSkeleton';
-import { Applicant } from '../Hooks/useApplicantData';
+import type { Applicant } from '@/types/recruitment';
 
 interface ApplicantTableProps {
   loading: boolean;
@@ -11,6 +11,9 @@ interface ApplicantTableProps {
   onAssign: (applicant: Applicant) => void;
   onSchedule: (applicant: Applicant) => void;
   onJoinInterview?: (applicant: Applicant) => void;
+  onReject: (applicant: Applicant) => void;
+  onRestore: (applicant: Applicant) => void;
+  onViewDetails: (applicant: Applicant) => void;
 }
 
 const ApplicantTable: React.FC<ApplicantTableProps> = ({ 
@@ -19,7 +22,10 @@ const ApplicantTable: React.FC<ApplicantTableProps> = ({
   filteredApplicants, 
   onAssign, 
   onSchedule,
-  onJoinInterview
+  onJoinInterview,
+  onReject,
+  onRestore,
+  onViewDetails
 }) => {
 
   const formatDate = (dateString: string | undefined): string => {
@@ -63,6 +69,7 @@ const ApplicantTable: React.FC<ApplicantTableProps> = ({
               <th className="px-6 py-4 text-left text-sm font-bold tracking-wide">Applicant</th>
               <th className="px-6 py-4 text-left text-sm font-bold tracking-wide">Applied For</th>
               <th className="px-6 py-4 text-left text-sm font-bold tracking-wide">Interviewer</th>
+              <th className="px-6 py-4 text-left text-sm font-bold tracking-wide">Documents</th>
               <th className="px-6 py-4 text-left text-sm font-bold tracking-wide">Status</th>
               <th className="px-6 py-4 text-center text-sm font-bold tracking-wide">Actions</th>
             </tr>
@@ -72,17 +79,17 @@ const ApplicantTable: React.FC<ApplicantTableProps> = ({
               <tr key={app.id} className="hover:bg-[#F8F9FA] hover:shadow-xl transition-colors">
                 <td className="px-6 py-4">
                   <div className="flex items-center gap-3">
-                    <div className="bg-gray-100 p-2 rounded-full text-gray-500"><User size={18} /></div>
-                    <div>
-                      <div className="font-medium text-gray-900">{app.first_name} {app.last_name}</div>
-                      <div className="text-sm text-gray-500">{app.email}</div>
+                    <div className="bg-gray-100 p-2 rounded-full text-gray-500 cursor-pointer hover:bg-green-50 hover:text-green-600 transition-colors" onClick={() => onViewDetails(app)}><User size={18} /></div>
+                    <div className="cursor-pointer group" onClick={() => onViewDetails(app)}>
+                      <div className="font-medium text-gray-900 group-hover:text-green-700 transition-colors">{app.first_name} {app.last_name}</div>
+                      <div className="text-sm text-gray-500 group-hover:text-green-600/70 transition-colors">{app.email}</div>
                       <div className="mt-1">{getSourceBadge(app.source)}</div>
                     </div>
                   </div>
                 </td>
                 <td className="px-6 py-4">
                   <div className="text-sm font-medium text-gray-900">
-                    {app.job_title === 'General Application' ? (
+                    {app.job_id === null ? (
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
                             General Application
                         </span>
@@ -100,6 +107,52 @@ const ApplicantTable: React.FC<ApplicantTableProps> = ({
                   ) : (
                     <span className="text-xs text-gray-400 italic">Unassigned</span>
                   )}
+                </td>
+                <td className="px-6 py-4">
+                    <div className="flex items-center gap-2">
+                         {/* Resume Link */}
+                         {app.resume_path ? (
+                            <a 
+                                href={`http://localhost:5000/uploads/resumes/${app.resume_path}`} 
+                                target="_blank" rel="noopener noreferrer"
+                                className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg"
+                                title="View Resume"
+                            >
+                                <FileText size={16} />
+                            </a>
+                         ) : (
+                            <div className="p-1.5 text-gray-300 cursor-not-allowed" title="No Resume Uploaded">
+                                <FileText size={16} />
+                            </div>
+                         )}
+
+                         {/* Eligibility Link */}
+                         {app.eligibility_path ? (
+                            <a 
+                                href={`http://localhost:5000/uploads/resumes/${app.eligibility_path}`} 
+                                target="_blank" rel="noopener noreferrer"
+                                className="p-1.5 text-amber-600 hover:bg-amber-50 rounded-lg"
+                                title="View Eligibility Certificate"
+                            >
+                                <BadgeCheck size={16} />
+                            </a>
+                         ) : (
+                            <div className="p-1.5 text-gray-300 cursor-not-allowed" title="No Eligibility Certificate">
+                                <BadgeCheck size={16} />
+                            </div>
+                         )}
+
+                         {/* PDF Application Download */}
+                         <a 
+                            href={`http://localhost:5000/api/recruitment/applicants/${app.id}/pdf`}
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg"
+                            title="Download Application (PDF)"
+                         >
+                            <Download size={16} />
+                         </a>
+                    </div>
                 </td>
                 <td className="px-6 py-4">
                   <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${getStatusBadgeColor(app.status)}`}>{app.status || app.stage}</span>
@@ -140,16 +193,26 @@ const ApplicantTable: React.FC<ApplicantTableProps> = ({
                             </button>
                         )}
 
-                         {/* Resume Link */}
-                         {app.resume_path && (
-                            <a 
-                                href={`http://localhost:5000/uploads/resumes/${app.resume_path}`} 
-                                target="_blank" rel="noopener noreferrer"
-                                className="p-1.5 text-gray-600 hover:bg-gray-100 rounded-lg"
-                                title="View Resume"
+                         {/* Reject/Archive Button */}
+                         {!['Hired', 'Rejected'].includes(app.stage) && (
+                            <button 
+                                onClick={() => onReject(app)}
+                                className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg"
+                                title="Reject/Archive Applicant"
                             >
-                                <FileText size={16} />
-                            </a>
+                                <Trash2 size={16} />
+                             </button>
+                        )}
+
+                         {/* Restore Button (only in Archive/Rejected) */}
+                         {app.stage === 'Rejected' && (
+                            <button 
+                                onClick={() => onRestore(app)}
+                                className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg"
+                                title="Restore Applicant"
+                            >
+                                <RotateCcw size={16} />
+                            </button>
                         )}
                     </div>
                 </td>

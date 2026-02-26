@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { db } from '../db/index.js';
 import { qualificationStandards, plantillaPositions } from '../db/schema.js';
+import { ZodError } from 'zod';
 
 import { eq, and, desc, asc, like } from 'drizzle-orm';
 import {
@@ -109,19 +110,19 @@ export const createQualificationStandard = async (req: Request, res: Response): 
       message: 'Qualification standard created successfully',
       id: result.insertId
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Create QS Error:', error);
 
-    if (error.name === 'ZodError') {
+    if (error instanceof ZodError) {
       res.status(400).json({
         success: false,
         message: 'Validation error',
-        errors: error.errors
+        errors: error.issues
       });
       return;
     }
 
-    if (error.code === 'ER_DUP_ENTRY') {
+    if (error instanceof Error && 'code' in error && (error as Error & { code: string }).code === 'ER_DUP_ENTRY') {
       res.status(409).json({
         success: false,
         message: 'Qualification standard for this position and salary grade already exists'
@@ -159,7 +160,7 @@ export const updateQualificationStandard = async (req: Request, res: Response): 
       return;
     }
 
-    const updates: any = {};
+    const updates: Partial<typeof qualificationStandards.$inferInsert> = {};
     if (validatedData.positionTitle) updates.positionTitle = validatedData.positionTitle;
     if (validatedData.salaryGrade) updates.salaryGrade = validatedData.salaryGrade;
     if (validatedData.educationRequirement) updates.educationRequirement = validatedData.educationRequirement;
@@ -185,14 +186,14 @@ export const updateQualificationStandard = async (req: Request, res: Response): 
       success: true,
       message: 'Qualification standard updated successfully'
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Update QS Error:', error);
 
-    if (error.name === 'ZodError') {
+    if (error instanceof ZodError) {
       res.status(400).json({
         success: false,
         message: 'Validation error',
-        errors: error.errors
+        errors: error.issues
       });
       return;
     }
@@ -286,19 +287,19 @@ export const validateEmployeeQualifications = async (req: Request, res: Response
       }
     });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Validate QS Error:', error);
 
-    if (error.name === 'ZodError') {
+    if (error instanceof ZodError) {
       res.status(400).json({
         success: false,
         message: 'Validation error',
-        errors: error.errors
+        errors: error.issues
       });
       return;
     }
     
-    if (error.message === 'Employee not found' || error.message === 'Position not found') {
+    if (error instanceof Error && (error.message === 'Employee not found' || error.message === 'Position not found')) {
         res.status(404).json({ success: false, message: error.message });
         return;
     }

@@ -23,7 +23,11 @@ const DepartmentDeleteModal: React.FC<DepartmentDeleteModalProps> = memo(({ isOp
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      await deleteDepartment(id);
+      const response = await deleteDepartment(id);
+      if (!response.success) {
+        throw new Error(response.message || 'Failed to delete department');
+      }
+      return response;
     },
     onSuccess: () => {
         showToast('Department deleted successfully', 'success');
@@ -31,9 +35,9 @@ const DepartmentDeleteModal: React.FC<DepartmentDeleteModalProps> = memo(({ isOp
         onClose();
         if (onSuccess) onSuccess();
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
         console.error('Failed to delete department', error);
-        showToast(error.response?.data?.message || 'Failed to delete department', 'error');
+        showToast(error.message || 'Failed to delete department', 'error');
     }
   });
 

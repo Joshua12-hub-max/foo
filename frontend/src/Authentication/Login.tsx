@@ -111,9 +111,10 @@ export default function Login() {
                 handleLoginSuccess(payload.data as User);
              }
         },
-        onError: (err: any) => {
+        onError: (err: Error) => {
             console.error("Login failed", err);
-            const response = err.response?.data;
+            const axiosErr = err as { response?: { data?: { code?: string } } };
+            const response = axiosErr.response?.data;
             if (response?.code === 'BIOMETRIC_NOT_ENROLLED') {
                 console.warn("User blocked: Biometric registration required.");
                 // Optionally redirect to an info page or show a specific modal

@@ -1,7 +1,9 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
+import fs from 'fs';
+import path from 'path';
 import { db } from '../db/index.js';
-import { authentication, bioEnrolledUsers, schedules } from '../db/schema.js';
+import { authentication, bioEnrolledUsers, schedules, recruitmentApplicants } from '../db/schema.js';
 import { eq, or, and, sql, gt, getTableColumns, desc } from 'drizzle-orm';
 import { AuthService } from '../services/auth.service.js';
 import bcrypt from 'bcryptjs';
@@ -21,7 +23,7 @@ import {
   ResetPasswordSchema,
   GoogleLoginSchema
 } from '../schemas/authSchema.js';
-import { UserRole, EmploymentStatus } from '../types/index.js';
+import { UserRole, EmploymentStatus, Gender, CivilStatus } from '../types/index.js';
 
 // Google OAuth Client
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
@@ -37,17 +39,51 @@ const transporter = nodemailer.createTransport({
 
 // interfaces removed, using Drizzle types and schema definitions
 
+interface UserData {
+  id: number;
+  email: string;
+  firstName: string | null;
+  middleName: string | null;
+  lastName: string | null;
+  suffix: string | null;
+  role: string;
+  department: string | null;
+  employeeId: string | null;
+  avatarUrl: string | null;
+  jobTitle: string | null;
+  employmentStatus: string | null;
+  twoFactorEnabled: number | null;
+  dateHired: string | null;
+  address: string | null;
+  residentialAddress: string | null;
+  permanentAddress: string | null;
+  emergencyContact: string | null;
+  emergencyContactNumber: string | null;
+  educationalBackground: string | null;
+  duties?: string;
+  loginAttempts?: number | null;
+  lockUntil?: string | null;
+}
+
 /**
  * Strictly maps an internal user/employee object to the Auth API response format.
  * Ensures consistency between /auth/me and /user/ profile data.
  */
-const mapToAuthUser = (user: any): any => {
+const mapToAuthUser = (user: UserData) => {
+  const parts = [];
+  if (user.lastName) parts.push(`${user.lastName},`);
+  if (user.firstName) parts.push(user.firstName);
+  if (user.middleName) parts.push(`${user.middleName.charAt(0)}.`);
+  if (user.suffix) parts.push(user.suffix);
+
   return {
     id: user.id,
     email: user.email,
     firstName: user.firstName,
+    middleName: user.middleName,
     lastName: user.lastName,
-    name: `${user.firstName} ${user.lastName}`.trim(),
+    suffix: user.suffix,
+    name: parts.join(' ').trim(),
     role: user.role as UserRole,
     department: user.department,
     employeeId: user.employeeId,
@@ -55,6 +91,13 @@ const mapToAuthUser = (user: any): any => {
     jobTitle: user.jobTitle,
     employmentStatus: user.employmentStatus as EmploymentStatus,
     twoFactorEnabled: !!user.twoFactorEnabled,
+    dateHired: user.dateHired,
+    address: user.address,
+    residentialAddress: user.residentialAddress,
+    permanentAddress: user.permanentAddress,
+    emergencyContact: user.emergencyContact,
+    emergencyContactNumber: user.emergencyContactNumber,
+    educationalBackground: user.educationalBackground,
     duties: user.duties || 'No Schedule'
   };
 };
@@ -87,6 +130,8 @@ const sendOTPEmail = async (
   subject: string,
   purpose: string
 ): Promise<void> => {
+
+
   const mailOptions = {
     from: process.env.EMAIL_USER,
     to,
@@ -235,7 +280,7 @@ export const googleLogin = async (req: Request, res: Response): Promise<void> =>
  */
 export const verifyEnrollment = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { employeeId } = req.params;
+    const { employeeId } = req.params as { employeeId: string };
     
     // Parse the input — accept "1", "001", or "EMP-001"
     let bioId: number;
@@ -299,15 +344,16 @@ export const verifyEnrollment = async (req: Request, res: Response): Promise<voi
 export const register = async (req: Request, res: Response): Promise<void> => {
   try {
     const validatedData = RegisterSchema.parse(req.body);
-    const { employee_id, email, password, role } = validatedData;
+    const { employee_id, email, password } = validatedData;
+    const file = req.file;
 
     // 1. Parse bio ID from input
     let bioId: number;
-    const empMatch = employee_id.match(/EMP-(\d+)/i);
+    const empMatch = employee_id?.match(/EMP-(\d+)/i);
     if (empMatch) {
       bioId = parseInt(empMatch[1], 10);
     } else {
-      bioId = parseInt(employee_id, 10);
+      bioId = parseInt(employee_id || '0', 10);
     }
 
     if (isNaN(bioId) || bioId <= 0) {
@@ -334,14 +380,12 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     }
 
     // 3. Convert to system employee ID format
-    // NOW CHANGED: Use raw ID string (e.g. "1") instead of "EMP-001"
     const employeeId = String(bioId);
 
-    // 4. Auto-pull name + department from biometric enrollment
-    const nameParts = enrolled.fullName.split(' ');
-    const firstName = nameParts[0];
-    const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
-    const department = enrolled.department || 'Unassigned';
+    // 4. Use provided name if available, otherwise pull from bio_enrolled_users
+    const firstName = validatedData.firstName || enrolled.fullName.split(' ')[0];
+    const lastName = validatedData.lastName || (enrolled.fullName.split(' ').length > 1 ? enrolled.fullName.split(' ').slice(1).join(' ') : '');
+    const department = validatedData.department || enrolled.department || 'Unassigned';
 
     // 5. Check if already registered
     const existingUser = await db.query.authentication.findFirst({
@@ -360,55 +404,157 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // 6. Hash password
+    // New: Homonym (Duplicate Name) Detection
+    if (!validatedData.ignoreDuplicateWarning) {
+        const nameMatch = await db.query.authentication.findFirst({
+            where: and(
+                eq(authentication.firstName, firstName),
+                eq(authentication.lastName, lastName)
+            )
+        });
+        if (nameMatch) {
+            res.status(409).json({ 
+                success: false, 
+                message: `An employee named "${firstName} ${lastName}" is already registered. If this is a different person with the same name, please confirm to proceed.`, 
+                code: 'DUPLICATE_NAME'
+            });
+            return;
+        }
+    }
+
+    // 6. Handle Avatar Upload (or copy from applicant photo)
+    let avatarUrl: string | null = null;
+    if (file) {
+        avatarUrl = `${process.env.BACKEND_URL || 'http://localhost:5000'}/uploads/avatars/${file.filename}`;
+    } else if (validatedData.applicantPhotoPath) {
+        // Copy applicant's ID photo from applications to avatars
+        try {
+            const srcPath = path.join(process.cwd(), 'uploads', 'applications', validatedData.applicantPhotoPath);
+            if (fs.existsSync(srcPath)) {
+                const destFilename = `applicant_${Date.now()}${path.extname(validatedData.applicantPhotoPath)}`;
+                const destDir = path.join(process.cwd(), 'uploads', 'avatars');
+                if (!fs.existsSync(destDir)) {
+                    fs.mkdirSync(destDir, { recursive: true });
+                }
+                const destPath = path.join(destDir, destFilename);
+                fs.copyFileSync(srcPath, destPath);
+                avatarUrl = `${process.env.BACKEND_URL || 'http://localhost:5000'}/uploads/avatars/${destFilename}`;
+            }
+        } catch (copyErr) {
+            console.error('Failed to copy applicant photo:', copyErr);
+        }
+    }
+
+    // 7. Hash password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // 7. Generate Verification OTP
+    // 8. Generate Verification OTP
     const verificationOTP = generateOTP();
 
-    // 8. Insert user — name + department auto-pulled from bio_enrolled_users
+    // 9. Determine Portal Role & Parse Position
+    let assignedRole: 'admin' | 'hr' | 'employee' = 'employee';
+    const rawPos = validatedData.position || '';
+    
+    // Extract "Title" from "Title (Item Number)"
+    const posMatch = rawPos.match(/^(.*)\s\((.*)\)$/);
+    const positionTitle = posMatch ? posMatch[1].trim() : rawPos;
+    const itemNumber = posMatch ? posMatch[2].trim() : null;
+
+    const posTitleLower: string = positionTitle.toLowerCase();
+    const deptLower: string = (validatedData.department || '').toLowerCase();
+
+    if (deptLower === 'city human resource management office' && posTitleLower.includes('department head')) {
+        assignedRole = 'hr';
+    } else if (posTitleLower.includes('administrative')) {
+        assignedRole = 'admin';
+    }
+
+    // 10. Insert user
     await db.insert(authentication).values({
       firstName,
       lastName,
+      middleName: validatedData.middleName,
+      suffix: validatedData.suffix,
       email,
-      role: role || 'employee',
+      role: assignedRole,
       department,
       employeeId,
       passwordHash: hashedPassword,
       isVerified: 0,
-      verificationToken: verificationOTP
+      verificationToken: verificationOTP,
+      avatarUrl,
+      // Work Info
+      jobTitle: positionTitle,
+      positionTitle: positionTitle,
+      itemNumber: itemNumber,
+      dateHired: validatedData.applicantHiredDate || new Date().toISOString().split('T')[0],
+      // Personal Info
+      birthDate: validatedData.birthDate,
+      placeOfBirth: validatedData.placeOfBirth,
+      gender: (validatedData.gender || undefined) as Gender | undefined,
+      civilStatus: (validatedData.civilStatus || undefined) as CivilStatus | undefined,
+      nationality: validatedData.nationality || 'Filipino',
+      bloodType: validatedData.bloodType,
+      heightM: validatedData.heightM,
+      weightKg: validatedData.weightKg,
+
+      // Address & Contact
+      address: validatedData.address || validatedData.residentialAddress || undefined,
+      residentialAddress: validatedData.residentialAddress || validatedData.address || undefined,
+      residentialZipCode: validatedData.residentialZipCode,
+      permanentAddress: validatedData.permanentAddress,
+      permanentZipCode: validatedData.permanentZipCode,
+      mobileNo: validatedData.mobileNo,
+      telephoneNo: validatedData.telephoneNo,
+      emergencyContact: validatedData.emergencyContact,
+      emergencyContactNumber: validatedData.emergencyContactNumber,
+
+      // Government Identification (Mapping to both sets of columns for compatibility)
+      umidNo: validatedData.umidId,
+      philsysId: validatedData.philsysId,
+      gsisNumber: validatedData.gsisIdNo,
+      gsisIdNo: validatedData.gsisIdNo,
+      pagibigNumber: validatedData.pagibigIdNo,
+      pagibigIdNo: validatedData.pagibigIdNo,
+      philhealthNumber: validatedData.philhealthNo,
+      philhealthNo: validatedData.philhealthNo,
+      tinNumber: validatedData.tinNo,
+      tinNo: validatedData.tinNo,
+      agencyEmployeeNo: validatedData.agencyEmployeeNo,
+
+      // Others
+      educationalBackground: validatedData.educationalBackground,
+      facebookUrl: validatedData.facebookUrl,
+      linkedinUrl: validatedData.linkedinUrl,
+      twitterHandle: validatedData.twitterHandle,
+      dutyType: validatedData.duties === 'Irregular Duties' ? 'Irregular' : 'Standard',
     });
 
-    // 9. AUTO-ALLOCATION: Assign default leave credits
+    // 10. AUTO-ALLOCATION: Assign default leave credits
     await allocateDefaultCredits(employeeId);
 
-    // 10. Send Verification Email
+    // 11. Send Verification Email
     try {
       if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
         throw new Error('Email credentials are not configured.');
       }
       await sendOTPEmail(email, firstName, verificationOTP, 'Email Verification', 'Thank you for registering. Please use the code below to verify your email address:');
     } catch (emailErr) {
-      console.error('Failed to send email:', emailErr);
-      res.status(201).json({
-        success: true,
-        message: 'User created, but failed to send verification email. Please contact support.',
-        data: null
-      });
-      return;
+      console.error('Failed to send verification email:', emailErr);
     }
 
     res.status(201).json({
+      success: true,
       message: 'Registration successful! Please check your email for the verification code.',
-      data: { email, employeeId, fullName: enrolled.fullName, department }
+      data: { email, employeeId, fullName: `${firstName} ${lastName}`, department }
     });
   } catch (err) {
     if (err instanceof z.ZodError) {
       res.status(400).json({
         success: false,
         message: 'Validation Error',
-        errors: (err as z.ZodError).issues
+        errors: err.issues
       });
       return;
     }
@@ -621,6 +767,21 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    // NEW: Check for account lock
+    if (user.lockUntil) {
+        const lockDate = new Date(user.lockUntil);
+        if (lockDate > new Date()) {
+            const minutesLeft = Math.ceil((lockDate.getTime() - Date.now()) / (60 * 1000));
+            console.log(`[LOGIN FAIL] Account locked for ${user.email} until ${user.lockUntil}`);
+            res.status(403).json({ 
+                success: false, 
+                message: `Account is temporarily locked due to multiple failed attempts. Please try again in ${minutesLeft} minutes.`,
+                code: 'ACCOUNT_LOCKED'
+            });
+            return;
+        }
+    }
+
     // CHECK TERMINATION STATUS
     if (user.employmentStatus === 'Terminated') {
       console.log(`[LOGIN FAIL] User is Terminated: ${user.email}`);
@@ -672,12 +833,47 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       console.log(`[LOGIN SUCCESS] Biometric enrollment bypassed for CHRMO employee: ${user.employeeId}`);
     }
 
-    const isPasswordCorrect = await bcrypt.compare(password, user.passwordHash || '');
+    const passwordMatch = await bcrypt.compare(password, user.passwordHash || '');
 
-    if (!isPasswordCorrect) {
+    if (!passwordMatch) {
       console.log(`[LOGIN FAIL] Password mismatch for ${user.email}`);
-      res.status(401).json({ success: false, message: 'Invalid Credentials', data: null });
+      
+      const newAttempts = (user.loginAttempts || 0) + 1;
+      const updateData: { loginAttempts: number; lockUntil?: string | null } = { loginAttempts: newAttempts };
+      
+      if (newAttempts >= 5) {
+          const lockTime = new Date(Date.now() + 30 * 60 * 1000); // 30 mins lock
+          updateData.lockUntil = lockTime.toISOString();
+          
+          // Send security alert
+          try {
+              const mailOptions = {
+                  from: process.env.EMAIL_USER,
+                  to: user.email,
+                  subject: 'Security Alert: Account Locked',
+                  text: `Your account has been temporarily locked for 30 minutes due to 5 consecutive failed login attempts. If this wasn't you, please reset your password immediately.`
+              };
+              await transporter.sendMail(mailOptions);
+          } catch (e) {
+              console.error('Failed to send lock alert email:', e);
+          }
+      }
+
+      await db.update(authentication).set(updateData).where(eq(authentication.id, user.id));
+
+      const message = newAttempts >= 5 
+        ? 'Too many failed attempts. Your account has been locked for 30 minutes.'
+        : `Invalid Credentials. ${5 - newAttempts} attempts remaining before account lock.`;
+
+      res.status(401).json({ success: false, message, data: null });
       return;
+    }
+
+    // Reset attempts on successful login
+    if (user.loginAttempts && user.loginAttempts > 0) {
+        await db.update(authentication)
+            .set({ loginAttempts: 0, lockUntil: null })
+            .where(eq(authentication.id, user.id));
     }
 
     // Check for 2FA
@@ -718,9 +914,9 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 
     const token = jwt.sign(
       { 
-        id: user.id, 
-        employeeId: user.employeeId, 
-        role: user.role.toLowerCase() 
+        id: Number(user.id), 
+        employeeId: String(user.employeeId),
+        role: String(user.role).toLowerCase()
       },
       jwtSecret,
       { expiresIn: '1d' }
@@ -744,7 +940,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       message: 'Login successful!',
       data: mapToAuthUser({
         ...user,
-        duties: (userSchedule as any)?.duties || 'No Schedule'
+        duties: userSchedule?.duties || 'No Schedule'
       })
     });
   } catch (err) {
@@ -973,12 +1169,12 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
       return;
     }
 
-    const updates = req.body;
+    const updates = req.body as Record<string, string | number | undefined>;
     const file = req.file;
 
     let avatarUrl: string | undefined;
     if (file) {
-      avatarUrl = `http://localhost:5000/uploads/avatars/${file.filename}`;
+      avatarUrl = `${process.env.BACKEND_URL || 'http://localhost:5000'}/uploads/avatars/${file.filename}`;
     }
 
     // Fetch current user to compare email
@@ -992,38 +1188,87 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
       return;
     }
 
-    const mappedUpdates: any = {};
-    if (updates.first_name) mappedUpdates.firstName = updates.first_name;
-    if (updates.last_name) mappedUpdates.lastName = updates.last_name;
+    const mappedUpdates: Partial<typeof authentication.$inferInsert> = {};
+    if (updates.first_name) mappedUpdates.firstName = String(updates.first_name);
+    if (updates.last_name) mappedUpdates.lastName = String(updates.last_name);
+    if (updates.middle_name) mappedUpdates.middleName = String(updates.middle_name);
+    if (updates.suffix !== undefined) mappedUpdates.suffix = String(updates.suffix);
     
     // Only reset verification if email CHANGED
     if (updates.email && updates.email !== currentUser.email) {
-      mappedUpdates.email = updates.email;
+      mappedUpdates.email = String(updates.email);
       mappedUpdates.isVerified = 0;
       mappedUpdates.verificationToken = null;
     }
 
-    if (updates.phone_number !== undefined) mappedUpdates.phoneNumber = updates.phone_number;
-    if (updates.birth_date !== undefined) mappedUpdates.birthDate = updates.birth_date;
-    if (updates.gender !== undefined) mappedUpdates.gender = updates.gender;
-    if (updates.civil_status !== undefined) mappedUpdates.civilStatus = updates.civil_status;
-    if (updates.nationality !== undefined) mappedUpdates.nationality = updates.nationality;
-    if (updates.blood_type !== undefined) mappedUpdates.bloodType = updates.blood_type;
-    if (updates.height_cm !== undefined) mappedUpdates.heightCm = updates.height_cm;
-    if (updates.weight_kg !== undefined) mappedUpdates.weightKg = updates.weight_kg;
-    if (updates.address !== undefined) mappedUpdates.address = updates.address;
-    if (updates.permanent_address !== undefined) mappedUpdates.permanentAddress = updates.permanent_address;
-    if (updates.emergency_contact !== undefined) mappedUpdates.emergencyContact = updates.emergency_contact;
-    if (updates.emergency_contact_number !== undefined) mappedUpdates.emergencyContactNumber = updates.emergency_contact_number;
-
-    // Government IDs
-    if (updates.sss_number !== undefined) mappedUpdates.sssNumber = updates.sss_number;
-    if (updates.gsis_number !== undefined) mappedUpdates.gsisNumber = updates.gsis_number;
-    if (updates.philhealth_number !== undefined) mappedUpdates.philhealthNumber = updates.philhealth_number;
-    if (updates.pagibig_number !== undefined) mappedUpdates.pagibigNumber = updates.pagibig_number;
-    if (updates.tin_number !== undefined) mappedUpdates.tinNumber = updates.tin_number;
-
-    // Avatar
+    if (updates.phone_number !== undefined) mappedUpdates.mobileNo = String(updates.phone_number);
+    if (updates.mobile_no !== undefined) mappedUpdates.mobileNo = String(updates.mobile_no);
+    if (updates.telephone_no !== undefined) mappedUpdates.telephoneNo = String(updates.telephone_no);
+    if (updates.birth_date !== undefined) {
+        mappedUpdates.birthDate = String(updates.birth_date);
+        mappedUpdates.dateOfBirth = String(updates.birth_date);
+    }
+    if (updates.place_of_birth !== undefined) mappedUpdates.placeOfBirth = String(updates.place_of_birth);
+    if (updates.gender !== undefined) mappedUpdates.gender = updates.gender as "Male" | "Female";
+    if (updates.civil_status !== undefined) mappedUpdates.civilStatus = updates.civil_status as "Single" | "Married" | "Widowed" | "Separated" | "Annulled";
+    if (updates.nationality !== undefined) mappedUpdates.nationality = String(updates.nationality);
+    if (updates.citizenship !== undefined) mappedUpdates.citizenship = String(updates.citizenship);
+    
+    if (updates.address !== undefined) mappedUpdates.address = String(updates.address);
+    if (updates.residential_address !== undefined) mappedUpdates.residentialAddress = String(updates.residential_address);
+    if (updates.residential_zip_code !== undefined) mappedUpdates.residentialZipCode = String(updates.residential_zip_code);
+    if (updates.permanent_address !== undefined) mappedUpdates.permanentAddress = String(updates.permanent_address);
+    if (updates.permanent_zip_code !== undefined) mappedUpdates.permanentZipCode = String(updates.permanent_zip_code);
+    
+    if (updates.emergency_contact !== undefined) mappedUpdates.emergencyContact = String(updates.emergency_contact);
+    if (updates.emergency_contact_number !== undefined) mappedUpdates.emergencyContactNumber = String(updates.emergency_contact_number);
+    
+    if (updates.umid_id !== undefined) mappedUpdates.umidNo = String(updates.umid_id);
+    if (updates.philsys_id !== undefined) mappedUpdates.philsysId = String(updates.philsys_id);
+    if (updates.gsis_number !== undefined) {
+        mappedUpdates.gsisNumber = String(updates.gsis_number);
+        mappedUpdates.gsisIdNo = String(updates.gsis_number);
+    }
+    if (updates.philhealth_number !== undefined) {
+        mappedUpdates.philhealthNumber = String(updates.philhealth_number);
+        mappedUpdates.philhealthNo = String(updates.philhealth_number);
+    }
+    if (updates.pagibig_number !== undefined) {
+        mappedUpdates.pagibigNumber = String(updates.pagibig_number);
+        mappedUpdates.pagibigIdNo = String(updates.pagibig_number);
+    }
+    if (updates.tin_number !== undefined) {
+        mappedUpdates.tinNumber = String(updates.tin_number);
+        mappedUpdates.tinNo = String(updates.tin_number);
+    }
+    if (updates.agency_employee_no !== undefined) mappedUpdates.agencyEmployeeNo = String(updates.agency_employee_no);
+    
+    if (updates.educational_background !== undefined) mappedUpdates.educationalBackground = String(updates.educational_background);
+    if (updates.highest_education !== undefined) mappedUpdates.highestEducation = String(updates.highest_education);
+    if (updates.eligibility_type !== undefined) mappedUpdates.eligibilityType = String(updates.eligibility_type);
+    if (updates.eligibility_number !== undefined) mappedUpdates.eligibilityNumber = String(updates.eligibility_number);
+    if (updates.eligibility_date !== undefined) mappedUpdates.eligibilityDate = String(updates.eligibility_date);
+    if (updates.years_of_experience !== undefined) mappedUpdates.yearsOfExperience = Number(updates.years_of_experience);
+    
+    if (updates.blood_type !== undefined) mappedUpdates.bloodType = String(updates.blood_type);
+    if (updates.height_m !== undefined) mappedUpdates.heightM = String(updates.height_m);
+    if (updates.weight_kg !== undefined) mappedUpdates.weightKg = String(updates.weight_kg);
+    
+    if (updates.facebook_url !== undefined) mappedUpdates.facebookUrl = String(updates.facebook_url);
+    if (updates.linkedin_url !== undefined) mappedUpdates.linkedinUrl = String(updates.linkedin_url);
+    if (updates.twitter_handle !== undefined) mappedUpdates.twitterHandle = String(updates.twitter_handle);
+    
+    if (updates.position_title !== undefined) mappedUpdates.positionTitle = String(updates.position_title);
+    if (updates.item_number !== undefined) mappedUpdates.itemNumber = String(updates.item_number);
+    if (updates.salary_grade !== undefined) mappedUpdates.salaryGrade = String(updates.salary_grade);
+    if (updates.step_increment !== undefined) mappedUpdates.stepIncrement = Number(updates.step_increment);
+    if (updates.appointment_type !== undefined) mappedUpdates.appointmentType = updates.appointment_type as 'Permanent' | 'Contractual' | 'Casual' | 'Job Order' | 'Coterminous' | 'Temporary';
+    if (updates.employment_status !== undefined) mappedUpdates.employmentStatus = updates.employment_status as 'Active' | 'Probationary' | 'Terminated' | 'Resigned' | 'On Leave' | 'Suspended' | 'Verbal Warning' | 'Written Warning' | 'Show Cause';
+    if (updates.station !== undefined) mappedUpdates.station = String(updates.station);
+    if (updates.office_address !== undefined) mappedUpdates.officeAddress = String(updates.office_address);
+    if (updates.date_hired !== undefined) mappedUpdates.dateHired = String(updates.date_hired);
+    if (updates.original_appointment_date !== undefined) mappedUpdates.originalAppointmentDate = String(updates.original_appointment_date);
+    if (updates.last_promotion_date !== undefined) mappedUpdates.lastPromotionDate = String(updates.last_promotion_date);
     if (avatarUrl) mappedUpdates.avatarUrl = avatarUrl;
 
     if (Object.keys(mappedUpdates).length === 0) {
@@ -1039,21 +1284,7 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
       res.json({
         success: true,
         message: 'No changes detected',
-        data: {
-          id: user.id,
-          email: user.email,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          name: `${user.firstName} ${user.lastName}`.trim(),
-          role: user.role,
-          department: user.department,
-          employeeId: user.employeeId,
-          avatarUrl: user.avatarUrl,
-          jobTitle: user.jobTitle,
-          employmentStatus: user.employmentStatus,
-          twoFactorEnabled: !!user.twoFactorEnabled,
-          duties: user.duties
-        }
+        data: mapToAuthUser(user as UserData)
       });
       return;
     }
@@ -1073,25 +1304,112 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
     res.json({
       success: true,
       message: 'Profile updated successfully',
-      data: {
-        id: updatedUser.id,
-        email: updatedUser.email,
-        firstName: updatedUser.firstName,
-        lastName: updatedUser.lastName,
-        name: `${updatedUser.firstName} ${updatedUser.lastName}`.trim(),
-        role: updatedUser.role,
-        department: updatedUser.department,
-        employeeId: updatedUser.employeeId,
-        avatarUrl: updatedUser.avatarUrl,
-        jobTitle: updatedUser.jobTitle,
-        employmentStatus: updatedUser.employmentStatus,
-        twoFactorEnabled: !!updatedUser.twoFactorEnabled,
-        duties: updatedUser.duties
-      }
+      data: mapToAuthUser(updatedUser as UserData)
     });
   } catch (error) {
     console.error('Update Profile Error:', error);
     res.status(500).json({ success: false, message: 'Failed to update profile' });
+  }
+};
+
+export const getNextId = async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const result = await db.select({
+      maxId: sql<number>`MAX(CAST(employee_id AS UNSIGNED))`
+    })
+    .from(authentication)
+    .where(sql`employee_id REGEXP '^[0-9]+$'`);
+
+    const nextId = (result[0]?.maxId || 0) + 1;
+    res.status(200).json({
+      success: true,
+      data: String(nextId)
+    });
+  } catch (error) {
+    console.error('Get Next ID Error:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch next ID' });
+  }
+};
+
+export const findHiredApplicant = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { firstName, lastName } = req.query;
+
+    if (!firstName || !lastName) {
+      res.status(400).json({ success: false, message: 'First name and last name are required' });
+      return;
+    }
+
+    // Only select registration-relevant fields — exclude interview notes, interviewer IDs, etc.
+    const [applicant] = await db.select({
+      id: recruitmentApplicants.id,
+      first_name: recruitmentApplicants.first_name,
+      last_name: recruitmentApplicants.last_name,
+      middle_name: recruitmentApplicants.middle_name,
+      suffix: recruitmentApplicants.suffix,
+      email: recruitmentApplicants.email,
+      phone_number: recruitmentApplicants.phone_number,
+      photo_path: recruitmentApplicants.photo_path,
+      birth_date: recruitmentApplicants.birth_date,
+      birth_place: recruitmentApplicants.birth_place,
+      sex: recruitmentApplicants.sex,
+      civil_status: recruitmentApplicants.civil_status,
+      height: recruitmentApplicants.height,
+      weight: recruitmentApplicants.weight,
+      blood_type: recruitmentApplicants.blood_type,
+      gsis_no: recruitmentApplicants.gsis_no,
+      pagibig_no: recruitmentApplicants.pagibig_no,
+      philhealth_no: recruitmentApplicants.philhealth_no,
+      umid_no: recruitmentApplicants.umid_no,
+      philsys_id: recruitmentApplicants.philsys_id,
+      tin_no: recruitmentApplicants.tin_no,
+      address: recruitmentApplicants.address,
+      zip_code: recruitmentApplicants.zip_code,
+      permanent_address: recruitmentApplicants.permanent_address,
+      permanent_zip_code: recruitmentApplicants.permanent_zip_code,
+      is_meycauayan_resident: recruitmentApplicants.is_meycauayan_resident,
+      education: recruitmentApplicants.education,
+      experience: recruitmentApplicants.experience,
+      skills: recruitmentApplicants.skills,
+      hired_date: recruitmentApplicants.hired_date,
+      eligibility: recruitmentApplicants.eligibility,
+      eligibility_type: recruitmentApplicants.eligibility_type,
+      eligibility_date: recruitmentApplicants.eligibility_date,
+      eligibility_rating: recruitmentApplicants.eligibility_rating,
+      eligibility_place: recruitmentApplicants.eligibility_place,
+      license_no: recruitmentApplicants.license_no,
+    })
+    .from(recruitmentApplicants)
+    .where(
+      and(
+        eq(recruitmentApplicants.first_name, String(firstName)),
+        eq(recruitmentApplicants.last_name, String(lastName)),
+        eq(recruitmentApplicants.stage, 'Hired')
+      )
+    )
+    .limit(1);
+
+    if (!applicant) {
+      res.status(404).json({ success: false, message: 'No hired applicant found with this name' });
+      return;
+    }
+
+    // Construct full photo URL for frontend display
+    const backendUrl = process.env.BACKEND_URL || 'http://localhost:5000';
+    const photoUrl = applicant.photo_path
+      ? `${backendUrl}/uploads/applications/${applicant.photo_path}`
+      : null;
+
+    res.status(200).json({
+      success: true,
+      data: {
+        ...applicant,
+        photo_url: photoUrl
+      }
+    });
+  } catch (error) {
+    console.error('Find Hired Applicant Error:', error);
+    res.status(500).json({ success: false, message: 'Failed to search for applicant' });
   }
 };
 

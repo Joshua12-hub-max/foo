@@ -97,7 +97,7 @@ export default function Sidebar({ sidebarOpen, navItems, handleLogout, onSection
                 </MainComponent>
                 {hasChildren && isOpen && sidebarOpen && (
                   <div className="ml-4 pl-3 mt-1 space-y-0.5 border-l border-gray-800">
-                    {item.children?.map((child: any) => {
+                    {item.children?.map((child: NavItem) => {
                       const childActive = isActive(child.action);
 
                       const childOnClick = () => {
@@ -112,7 +112,7 @@ export default function Sidebar({ sidebarOpen, navItems, handleLogout, onSection
                       return (
                         <ChildComponent
                           key={child.name}
-                          to={child.path}
+                          to={child.path as string}
                           onClick={childOnClick}
                           className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-all duration-200 ${
                             childActive 

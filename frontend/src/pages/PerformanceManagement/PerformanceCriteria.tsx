@@ -175,7 +175,7 @@ const PerformanceCriteria = () => {
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
         onSubmit={handleSave}
-        initialData={selectedCriteria}
+        initialData={selectedCriteria as unknown as import('@components/Custom/Performance/types').PerformanceItem | null}
       />
 
       {/* Delete Confirmation Modal */}

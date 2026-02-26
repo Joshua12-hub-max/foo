@@ -7,7 +7,8 @@ import React, { memo } from 'react';
 
 interface Memo {
   id: number;
-  memo_number: string;
+  memo_number?: string;
+  memoNumber?: string;
 }
 
 interface MemoDeleteModalProps {
@@ -34,7 +35,7 @@ const MemoDeleteModal: React.FC<MemoDeleteModalProps> = memo(({ isOpen, onClose,
           <div className="bg-red-50 border border-red-100 rounded-lg p-4 mb-4">
             <h4 className="text-sm font-bold text-red-800 mb-1">Delete Memo?</h4>
             <p className="text-sm text-red-700">
-              Are you sure you want to delete memo <strong>{memo.memo_number}</strong>?
+              Are you sure you want to delete memo <strong>{memo.memoNumber || memo.memo_number}</strong>?
             </p>
           </div>
           <p className="text-sm text-gray-500 pl-1">This action cannot be undone.</p>

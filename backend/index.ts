@@ -40,6 +40,8 @@ import policyRoutes from './routes/policyRoutes.js';
 import complianceRoutes from './routes/complianceRoutes.js';
 import devRoutes from './routes/devRoutes.js';
 import biometricRoutes from './routes/biometricRoutes.js';
+import commonRoutes from './routes/commonRoutes.js';
+import { waitForDatabase } from './db/index.js';
 
 
 dotenv.config();
@@ -54,27 +56,39 @@ const app = express();
 import { initCronJobs } from './jobs/employmentChecks.js';
 import { initLeaveAccrualJob } from './jobs/leaveAccrual.js';
 
-// Initialize Employment Cron Jobs
-initCronJobs();
-initLeaveAccrualJob();
+// Email application checker scheduled (every 5 minutes)
+const startServices = async () => {
+    console.log('Waiting for database to be ready...');
+    const isReady = await waitForDatabase(20, 3000); // 20 attempts, 3s each = 1 minute total
 
-// Initialize Attendance Log Polling (syncs external biometric scanner data)
-startPollingService(5000);
-
-// Initialize Email Application Checker (runs every 5 minutes)
-cron.schedule('*/5 * * * *', async () => {
-    console.log('[CRON] Checking for email applications...');
-    try {
-        const result = await checkForNewApplications();
-        if (result.processed > 0) {
-            console.log(`[CRON] Processed ${result.processed} new application(s) from email`);
-        }
-    } catch (err) {
-        const error = err as Error;
-        console.error('[CRON] Email check failed:', error.message);
+    if (!isReady) {
+        console.error('Could not establish database connection. Services will not start.');
+        return;
     }
-});
-console.log('Email application checker scheduled (every 5 minutes)');
+
+    // Initialize Employment Cron Jobs
+    initCronJobs();
+    initLeaveAccrualJob();
+
+    // Initialize Attendance Log Polling (syncs external biometric scanner data)
+    startPollingService(5000);
+
+    cron.schedule('*/5 * * * *', async () => {
+        console.log('[CRON] Checking for email applications...');
+        try {
+            const result = await checkForNewApplications();
+            if (result.processed > 0) {
+                console.log(`[CRON] Processed ${result.processed} new application(s) from email`);
+            }
+        } catch (err) {
+            const error = err as Error;
+            console.error('[CRON] Email check failed:', error.message);
+        }
+    });
+    console.log('Background services initialized');
+};
+
+startServices();
 
 // Middleware
 
@@ -151,6 +165,7 @@ app.use('/api/compliance', complianceRoutes);
 import pdsRoutes from './routes/pdsRoutes.js';
 app.use('/api/pds', pdsRoutes);
 app.use('/api/dev', devRoutes);
+app.use('/api/common', commonRoutes);
 app.use('/api/biometric', biometricRoutes);
 
 

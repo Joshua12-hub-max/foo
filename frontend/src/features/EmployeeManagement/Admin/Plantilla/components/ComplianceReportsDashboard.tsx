@@ -144,15 +144,15 @@ const ComplianceReportsDashboard: React.FC<ReportsDashboardProps> = memo(({ depa
                                     officeAddress: "City Hall",
                                     contactInfo: "123-4567"
                                },
-                               positions: form9.data.data.map((p: any) => ({
-                                   no: p.item_number, // or index
+                               positions: form9.data.data.map((p: Form9Row) => ({
+                                   no: Number(p.item_number),
                                    positionTitle: p.position_title,
                                    plantillaItemNo: p.item_number,
-                                   salaryGrade: p.salary_grade,
-                                   monthlySalary: p.monthly_salary,
+                                   salaryGrade: String(p.salary_grade),
+                                   monthlySalary: String(p.monthly_salary),
                                    education: p.education,
-                                   training: p.training,
-                                   experience: p.experience,
+                                   training: String(p.training),
+                                   experience: String(p.experience),
                                    eligibility: p.eligibility,
                                    competency: p.competency,
                                    placeOfAssignment: p.place_of_assignment || 'City Hall'
@@ -164,19 +164,20 @@ const ComplianceReportsDashboard: React.FC<ReportsDashboardProps> = memo(({ depa
                         const { generatePSIPOPExcel } = await import('./print/psipop_excel_generator');
                         if (psipop?.data?.data) {
                             // Map PSIPOPRow to Position (adding mock id/properties)
-                            const positions = psipop.data.data.map((p: any) => ({
-                                ...p,
-                                id: Math.random(), // Mock ID as it's required by Position but likely not used in generator logic
-                                department_id: 0,
-                                education: '',
-                                training: '', 
-                                experience: '',
-                                eligibility: '',
-                                competency: '',
-                                incumbent_id: null,
-                                created_at: '',
-                                updated_at: ''
-                            }));
+                             const positions = psipop.data.data.map((p: PSIPOPRow) => ({
+                                 ...p,
+                                 incumbent_name: p.incumbent_name ?? undefined,
+                                 id: Math.random(),
+                                 department_id: 0,
+                                 education: '',
+                                 training: '', 
+                                 experience: '',
+                                 eligibility: '',
+                                 competency: '',
+                                 incumbent_id: undefined,
+                                 created_at: '',
+                                 updated_at: ''
+                             }));
                             await generatePSIPOPExcel(positions, commonConfig);
                         }
                     }
@@ -210,15 +211,15 @@ const ComplianceReportsDashboard: React.FC<ReportsDashboardProps> = memo(({ depa
                                     officeAddress: "City Hall",
                                     contactInfo: "123-4567"
                                },
-                               positions: form9.data.data.map((p: any) => ({
-                                   no: p.item_number,
+                               positions: form9.data.data.map((p: Form9Row) => ({
+                                   no: Number(p.item_number),
                                    positionTitle: p.position_title,
                                    plantillaItemNo: p.item_number,
-                                   salaryGrade: p.salary_grade,
-                                   monthlySalary: p.monthly_salary,
+                                   salaryGrade: String(p.salary_grade),
+                                   monthlySalary: String(p.monthly_salary),
                                    education: p.education,
-                                   training: p.training,
-                                   experience: p.experience,
+                                   training: String(p.training),
+                                   experience: String(p.experience),
                                    eligibility: p.eligibility,
                                    competency: p.competency,
                                    placeOfAssignment: p.place_of_assignment || 'City Hall'
@@ -229,19 +230,20 @@ const ComplianceReportsDashboard: React.FC<ReportsDashboardProps> = memo(({ depa
                     } else if (activeReport === 'psipop') {
                         const { generatePSIPOPPDF } = await import('./print/psipop_pdf_generator');
                          if (psipop?.data?.data) {
-                            const positions = psipop.data.data.map((p: any) => ({
-                                ...p,
-                                id: Math.random(),
-                                department_id: 0,
-                                education: '',
-                                training: '', 
-                                experience: '',
-                                eligibility: '',
-                                competency: '',
-                                incumbent_id: null,
-                                created_at: '',
-                                updated_at: ''
-                            }));
+                            const positions = psipop.data.data.map((p: PSIPOPRow) => ({
+                                 ...p,
+                                 incumbent_name: p.incumbent_name ?? undefined,
+                                 id: Math.random(),
+                                 department_id: 0,
+                                 education: '',
+                                 training: '', 
+                                 experience: '',
+                                 eligibility: '',
+                                 competency: '',
+                                 incumbent_id: undefined,
+                                 created_at: '',
+                                 updated_at: ''
+                             }));
                             generatePSIPOPPDF(positions, commonConfig);
                          }
                     }
@@ -326,7 +328,7 @@ const ComplianceReportsDashboard: React.FC<ReportsDashboardProps> = memo(({ depa
 });
 
 // Helper Preview Table
-const TablePreview = ({ loading, headers, data }: { loading: boolean; headers: string[]; data: any[][] }) => {
+const TablePreview = ({ loading, headers, data }: { loading: boolean; headers: string[]; data: (string | number | boolean | null)[][] }) => {
     if (loading) return (
         <div className="flex flex-col items-center justify-center py-20 gap-3">
             <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />

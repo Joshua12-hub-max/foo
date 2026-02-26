@@ -14,7 +14,7 @@ interface MetricsSummaryProps {
     violations: Array<{
       id: number;
       violationDate: string;
-      penalty: string;
+      penalty: string | number | null;
       status: string;
       policyTitle: string;
     }>;
@@ -112,7 +112,7 @@ const MetricsSummary: React.FC<MetricsSummaryProps> = ({ metrics, employeeInfo }
                     </div>
                     <div className="text-right">
                       <span className="text-[10px] px-2 py-0.5 bg-red-50 text-red-700 font-bold uppercase border border-red-100">
-                        {v.penalty}
+                        {v.penalty ?? 'N/A'}
                       </span>
                     </div>
                   </div>

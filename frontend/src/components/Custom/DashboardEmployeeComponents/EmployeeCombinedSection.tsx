@@ -91,14 +91,15 @@ export default function EmployeeCombinedSection() {
 
   // Calculate distribution from reviews
   const distribution = useMemo(() => {
-      if (!performanceData || !Array.isArray(performanceData)) return null;
+      if (!performanceData || !Array.isArray(performanceData)) return undefined;
 
-      const dist = {
+      const dist: { outstanding: number; exceedsExpectations: number; meetsExpectations: number; needsImprovement: number; poorPerformance: number; totalRating: number } = {
         outstanding: 0,
         exceedsExpectations: 0,
         meetsExpectations: 0,
         needsImprovement: 0,
-        poorPerformance: 0
+        poorPerformance: 0,
+        totalRating: performanceData.length // Adding missing field
       };
 
       performanceData.forEach(review => {

@@ -235,6 +235,31 @@ export const getPlantilla = async (req: Request, res: Response): Promise<void> =
   }
 };
 
+export const getPublicPositions = async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const result = await db
+      .select({ 
+        id: plantillaPositions.id, 
+        position_title: plantillaPositions.positionTitle,
+        item_number: plantillaPositions.itemNumber,
+        department: plantillaPositions.department
+      })
+      .from(plantillaPositions)
+      .orderBy(asc(plantillaPositions.positionTitle));
+      
+    // Return unique titles/departments or just raw list? 
+    // Let's return raw list for now, simpler for dropdown to pick "Item 1 - Title". 
+    // Actually, user probably just wants "Position Title". 
+    // But duplicate titles exist for multiple items.
+    // Let's return the list.
+    
+    res.status(200).json({ success: true, positions: result });
+  } catch (error) {
+    console.error('Get Public Positions Error:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch positions' });
+  }
+};
+
 export const getPlantillaSummary = async (_req: Request, res: Response): Promise<void> => {
   try {
     const [summary] = await db.select({

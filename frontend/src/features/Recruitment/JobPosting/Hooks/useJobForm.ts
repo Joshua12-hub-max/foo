@@ -10,7 +10,10 @@ const INITIAL_FORM_DATA: JobFormData = {
   job_description: '',
   requirements: '',
   status: 'Open',
-  attachment_path: null
+  attachment_path: null,
+  require_civil_service: false,
+  require_government_ids: false,
+  require_education_experience: false,
 };
 
 const useJobForm = () => {
@@ -39,7 +42,10 @@ const useJobForm = () => {
       job_description: job.job_description,
       requirements: job.requirements || '',
       status: job.status,
-      attachment_path: job.attachment_path || null
+      attachment_path: job.attachment_path || null,
+      require_civil_service: job.require_civil_service,
+      require_government_ids: job.require_government_ids,
+      require_education_experience: job.require_education_experience,
     });
     setIsFormOpen(true);
   }, []);

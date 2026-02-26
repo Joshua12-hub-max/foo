@@ -1,11 +1,12 @@
 import React from 'react';
 import { Clock } from 'lucide-react';
+import { GridItem } from './CalendarGrid';
 
 interface EventsListProps {
-  events: any[];
+  events: GridItem[];
   currentDate: Date;
   hours?: { [key: string]: string };
-  onEventClick?: (event: any) => void;
+  onEventClick?: (event: GridItem) => void;
 }
 
 const EventsList: React.FC<EventsListProps> = ({  events,  currentDate, hours, onEventClick }) => {
@@ -13,7 +14,7 @@ const EventsList: React.FC<EventsListProps> = ({  events,  currentDate, hours, o
     !e.isHoliday || (e.month === currentDate.getMonth() && e.day === currentDate.getDate())
   );
   // Get styling for each item typ
-  const getItemColor = (item: any) => {
+  const getItemColor = (item: GridItem): string => {
     if (item.isSchedule || item.type === 'schedule') {
       return 'bg-gray-200 border-gray-300 text-gray-700';
     }
@@ -26,13 +27,12 @@ const EventsList: React.FC<EventsListProps> = ({  events,  currentDate, hours, o
     return 'bg-gray-200 border-gray-300 text-gray-700';
   };
 
-  // Get time display for each item type
-  const getTimeDisplay = (item: any) => {
+  const getTimeDisplay = (item: GridItem): string => {
     if (item.isHoliday) return 'All Day';
     if (item.isSchedule || item.type === 'schedule') {
-      return item.description || `${item.time} - ${item.endTime || ''}`;
+      return item.description || `${item.time ?? ''}`;
     }
-    return hours?.[item.time] || item.time || 'All Day';
+    return hours?.[String(item.time ?? '')] || (item.time != null ? String(item.time) : 'All Day');
   };
 
   return (

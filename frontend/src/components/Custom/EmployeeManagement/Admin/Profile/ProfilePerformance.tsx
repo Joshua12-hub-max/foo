@@ -41,28 +41,39 @@ const ProfilePerformance: React.FC<ProfilePerformanceProps> = ({ profile }) => {
   const [loading, setLoading] = useState(true);
 
   // Fallback for missing fetchEmployeeGoals
-  const fetchEmployeeGoalsFromApi = performanceApi.fetchEmployeeGoals || (async (id: number) => {
+  const fetchEmployeeGoalsLocal = async (id: number): Promise<{ success: boolean; goals: Goal[] }> => {
     return { success: true, goals: [
       { id: 1, title: 'Professional Development', description: 'Complete advanced certification in HR Management', status: 'In Progress', progress: 65, due_date: '2026-06-30', weight: 30 },
       { id: 2, title: 'Department Efficiency', description: 'Reduce processing time for employee requests by 20%', status: 'Completed', progress: 100, due_date: '2025-12-15', weight: 40 },
       { id: 3, title: 'System Migration', description: 'Oversee transition to new cloud-based payroll system', status: 'In Progress', progress: 15, due_date: '2026-03-31', weight: 30 }
     ]};
-  });
+  };
 
   useEffect(() => {
     const loadData = async () => {
       try {
         setLoading(true);
         const [goalsData, reviewsData] = await Promise.all([
-          fetchEmployeeGoalsFromApi(profile.id),
+          fetchEmployeeGoalsLocal(profile.id),
           fetchReviews() 
         ]);
 
         if (goalsData && goalsData.success) setGoals(goalsData.goals);
         
         // Filter reviews for this employee
-        if (reviewsData.success) {
-          const employeeReviews = reviewsData.reviews.filter((r: Review) => r.employee_first === profile.first_name && r.employee_last === profile.last_name);
+        if (reviewsData.success && reviewsData.reviews) {
+          const employeeReviews: Review[] = reviewsData.reviews
+            .filter((r: any) => (r.employee_first === profile.first_name || r.employee_first_name === profile.first_name) && (r.employee_last === profile.last_name || r.employee_last_name === profile.last_name))
+            .map((r: any) => ({
+              id: r.id,
+              cycle_title: `Cycle ${r.review_cycle_id}`,
+              review_period_start: r.created_at || '',
+              review_period_end: r.created_at || '',
+              total_score: r.total_score,
+              status: r.status,
+              employee_first: r.employee_first_name || r.employee_first,
+              employee_last: r.employee_last_name || r.employee_last
+            }));
           setReviews(employeeReviews);
         }
       } catch (err) {

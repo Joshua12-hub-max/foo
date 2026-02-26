@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { AttendanceRecord } from './useAttendanceData';
+import { AttendanceRecord } from '@/types';
 
 export interface DateRange {
   from: string;
@@ -17,7 +17,7 @@ export const useAttendanceFilters = (data: AttendanceRecord[]) => {
     return data.filter(item => {
       // Search Filter
       const searchLower = searchQuery.toLowerCase();
-      const employeeName = item.employeeName || `${item.first_name || ''} ${item.last_name || ''}`.trim();
+      const employeeName = item.employee_name || item.name || '';
       const employeeId = item.employeeId || item.employee_id;
 
       const matchesSearch = 

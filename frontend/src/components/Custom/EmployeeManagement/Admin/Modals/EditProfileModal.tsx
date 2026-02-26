@@ -18,12 +18,7 @@ const EditProfileFormSchema = z.object({
 type EditProfileFormInput = z.infer<typeof EditProfileFormSchema>;
 
 interface Profile {
-  first_name?: string;
-  last_name?: string;
-  email?: string;
-  phone_number?: string;
-  address?: string;
-  avatar_url?: string;
+  [key: string]: any;
 }
 
 interface EditProfileModalProps {
@@ -101,7 +96,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
 
       const result = await updateMyProfile(formData);
       
-      if (result.success) {
+      if (result.success && result.data) {
         onSave(result.data);
         onClose();
       } else {

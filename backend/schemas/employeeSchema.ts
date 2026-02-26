@@ -45,11 +45,13 @@ const BaseEmployeeSchema = z.object({
   emergency_contact_number: z.string().optional().nullable(),
   
   // Government IDs
-  sss_number: z.string().optional().nullable(),
+  umid_id: z.string().optional().nullable(),
+  philsys_id: z.string().optional().nullable(),
   philhealth_number: z.string().optional().nullable(),
   pagibig_number: z.string().optional().nullable(),
   tin_number: z.string().optional().nullable(),
   gsis_number: z.string().optional().nullable(),
+  educational_background: z.string().optional().nullable(),
   
   // Employment Details
   salary_grade: z.coerce.string().optional().nullable(),
@@ -62,6 +64,7 @@ const BaseEmployeeSchema = z.object({
   position_title: z.string().optional().nullable(),
   item_number: z.string().optional().nullable(),
   date_hired: z.string().optional().nullable(),
+  avatar_url: z.string().optional().nullable(),
   
   // Plantilla-required Eligibility Fields
   eligibility_type: z.string().optional().nullable(),

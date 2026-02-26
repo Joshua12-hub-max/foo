@@ -12,7 +12,7 @@ import { fetchDepartmentById, fetchDepartmentEmployees, removeEmployeeFromDepart
 export interface Department {
   id: number;
   name: string;
-  description?: string;
+  description?: string | null;
   headOfDepartment?: string;
   employee_count?: number;
 }
@@ -22,8 +22,8 @@ export interface Employee {
   first_name?: string;
   last_name?: string;
   email?: string;
-  job_title?: string;
-  position_title?: string;
+  job_title?: string | null;
+  position_title?: string | null;
 }
 
 export interface UseDepartmentDetailReturn {

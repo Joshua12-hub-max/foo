@@ -1,7 +1,7 @@
 import { X, Clock } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { useEffect } from 'react';
-import { zodResolver } from '@hookform/resolvers/zod';
+import { zodResolver } from '@/lib/zodResolver';
 import { announcementSchema } from '@/schemas/calendar';
 import { formatHour12, convertTo24Hour } from '../../shared/utils/eventUtils';
 
@@ -22,7 +22,7 @@ export default function EditAnnouncementModal({ show, announcement, onClose, onU
       reset,
       formState: { errors, isSubmitting }
   } = useForm<AnnouncementFormData>({
-    resolver: zodResolver(announcementSchema) as any, // Cast to avoid Resolver mismatch
+    resolver: zodResolver(announcementSchema),
     defaultValues: {
         title: '',
         content: '',

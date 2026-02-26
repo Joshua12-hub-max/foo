@@ -57,7 +57,7 @@ const MyMemosPage: React.FC<MyMemosPageProps> = ({ hideHeader = false }) => {
       <EmployeeMemoViewModal
         isOpen={isViewOpen}
         onClose={closeViewModal}
-        memo={selectedMemo}
+        memo={selectedMemo ?? undefined}
         onAcknowledge={handleAcknowledge}
         acknowledging={acknowledging}
       />

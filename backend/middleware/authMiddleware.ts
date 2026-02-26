@@ -29,7 +29,7 @@ interface AuthErrorResponse {
  * Prevents logic errors in ownership checks.
  */
 export const verifyIdParam: MiddlewareFunction = (req, res, next) => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(req.params.id as string);
   if (isNaN(id) || id <= 0) {
     return res.status(400).json({
       message: 'Invalid ID parameter. Expected a positive integer.',
@@ -232,7 +232,7 @@ export const verifyOwnerOrAdmin: MiddlewareFunction = (
         const userRole = user.role?.toLowerCase();
         const isAdmin = ['admin', 'hr'].includes(userRole || '');
         
-        const targetIdString = req.params.id;
+        const targetIdString = req.params.id as string;
         const targetId = parseInt(targetIdString);
         
         if (isNaN(targetId)) {

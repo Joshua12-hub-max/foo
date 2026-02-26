@@ -4,10 +4,9 @@ import {
   salaryTranches, 
   salarySchedule, 
   plantillaPositions, 
-  authentication, 
-  plantillaPositionHistory 
+  authentication
 } from '../db/schema.js';
-import { eq, and, asc, desc, sql } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 
 async function verifyPlantillaAccuracy() {
     console.log('Verifying Plantilla and Step Increment Accuracy...');

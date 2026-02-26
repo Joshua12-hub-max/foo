@@ -79,26 +79,28 @@ export const useProfile = () => {
       const result = await updateMyProfile(data);
       
       if (result.success) {
-        const userData = result.data;
-        const newName = userData?.name || `${formData.first_name} ${formData.last_name}`.trim();
-        const newAvatar = userData?.avatarUrl || avatarPreview || profile?.avatarUrl;
+        const userData = result.data as Employee & { name?: string; avatarUrl?: string; firstName?: string; lastName?: string };
+        const newName = userData?.name || `${userData?.first_name || formData.first_name} ${userData?.last_name || formData.last_name}`.trim();
+        const newAvatar = userData?.avatarUrl || userData?.avatar_url || avatarPreview || profile?.avatarUrl;
         
         setSuccess('Profile updated successfully!');
         
         // Update local state
-        setProfile(prev => ({
-          ...prev,
-          ...userData,
-          name: newName,
-          email: formData.email,
-          avatarUrl: newAvatar
-        }));
+        setProfile(prev => {
+          if (!prev) return null;
+          return {
+            ...prev,
+            ...userData,
+            name: newName,
+            email: formData.email,
+            avatarUrl: newAvatar
+          } as User;
+        });
         
-        // Fix for redirection: pass object, not function, to setUser
-        // Even better, use the dedicated updateProfile from our useAuth hook
+        // Use updateProfile from useAuth for partial updates
         const updates: Partial<User> = {
-          firstName: userData?.firstName || formData.first_name,
-          lastName: userData?.lastName || formData.last_name,
+          firstName: userData?.firstName || userData?.first_name || formData.first_name,
+          lastName: userData?.lastName || userData?.last_name || formData.last_name,
           name: newName,
           email: userData?.email || formData.email,
           avatarUrl: newAvatar
