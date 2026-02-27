@@ -9,7 +9,6 @@ import {
   useBiometricsLogs 
 } from "@settings/Biometrics/Logs";
 import Pagination from '@/components/CustomUI/Pagination';
-import { FileText, FileSpreadsheet } from "lucide-react";
 import StatCard from '@components/Custom/DashboardAdminComponents/StatCard';
 
 const BiometricsLogsUI = () => {
@@ -34,8 +33,6 @@ const BiometricsLogsUI = () => {
     handlePrevPage,
     handleNextPage,
     setPage,
-    handleExportCSV,
-    handleExportPDF,
     setSuccessMessage,
     setFilters,
     setError
@@ -110,32 +107,6 @@ const BiometricsLogsUI = () => {
         filters={filters}
         onFilterChange={handleFilterSubmit}
       />
-
-      <div className="flex flex-col sm:flex-row justify-between items-center my-6 gap-4">
-        <div className="flex items-center gap-6">
-          <span className="text-sm font-medium text-gray-700">Export Report:</span>
-          <label className="flex items-center gap-2 cursor-pointer group">
-            <input type="checkbox" className="w-4 h-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 transition-colors" />
-            <span className="text-sm text-gray-600 group-hover:text-gray-900 transition-colors select-none">Group by Department</span>
-          </label>
-        </div>
-        <div className="flex items-center gap-3">
-          <button 
-            onClick={handleExportCSV}
-            className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-md transition-colors border border-emerald-200"
-          >
-            <FileSpreadsheet className="w-4 h-4" />
-            Excel
-          </button>
-          <button 
-            onClick={handleExportPDF}
-            className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-md transition-colors border border-rose-200"
-          >
-            <FileText className="w-4 h-4" />
-            PDF
-          </button>
-        </div>
-      </div>
 
       <BiometricsTable 
         currentItems={paginationData.currentItems} 
