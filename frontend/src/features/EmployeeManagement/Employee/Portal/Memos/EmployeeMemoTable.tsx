@@ -4,7 +4,7 @@
  */
 
 import React, { memo, useMemo, useCallback } from 'react';
-import { RefreshCw, Eye, FileText } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 // @ts-ignore
 import { formatDate, getEmployeeStatusBadge, getEmployeeStatusText, getPriorityBadge } from './Shared/memoUtils';
 
@@ -31,29 +31,28 @@ const MemoRow: React.FC<MemoRowProps> = memo(({ memo, onView }) => {
   const handleView = useCallback(() => onView(memo), [memo, onView]);
 
   return (
-    <tr className="hover:bg-[#F8F9FA] hover:shadow-xl transition-colors">
-      <td className="px-6 py-4 whitespace-nowrap">
-        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${getEmployeeStatusBadge(memo)}`}>
+    <tr className="hover:bg-gray-50 transition-colors">
+      <td className="px-5 py-3 whitespace-nowrap">
+        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${getEmployeeStatusBadge(memo)}`}>
           {getEmployeeStatusText(memo)}
         </span>
       </td>
-      <td className="px-6 py-4 text-sm text-gray-800 font-bold whitespace-nowrap">{memo.memo_number}</td>
-      <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">{memo.memo_type}</td>
-      <td className="px-6 py-4 text-sm text-gray-800 max-w-xs truncate">{memo.subject}</td>
-      <td className="px-6 py-4 whitespace-nowrap">
-        <span className={`inline-flex items-center px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${getPriorityBadge(memo.priority)}`}>
+      <td className="px-5 py-3 text-sm text-gray-800 font-bold whitespace-nowrap">{memo.memo_number}</td>
+      <td className="px-5 py-3 text-sm text-gray-600 whitespace-nowrap">{memo.memo_type}</td>
+      <td className="px-5 py-3 text-sm text-gray-800 max-w-xs truncate">{memo.subject}</td>
+      <td className="px-5 py-3 whitespace-nowrap">
+        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase ${getPriorityBadge(memo.priority)}`}>
           {memo.priority}
         </span>
       </td>
-      <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">{formatDate(memo.created_at)}</td>
-      <td className="px-6 py-4 whitespace-nowrap">
+      <td className="px-5 py-3 text-xs text-gray-500 whitespace-nowrap">{formatDate(memo.created_at)}</td>
+      <td className="px-5 py-3 whitespace-nowrap">
         <div className="flex items-center justify-center">
           <button
             onClick={handleView}
-            className="p-2 bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 rounded-lg transition-all shadow-sm"
-            title="View Memo Details"
+            className="text-xs font-bold text-gray-500 hover:text-gray-900 px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-all"
           >
-            <Eye size={16} />
+            View
           </button>
         </div>
       </td>
@@ -99,21 +98,21 @@ const EmployeeMemoTable: React.FC<EmployeeMemoTableProps> = memo(({ memos, loadi
   }
 
   return (
-    <div className="flex-1 overflow-hidden rounded-xl bg-[#F8F9FA] p-1">
-      <div className="overflow-x-auto bg-gray-50 rounded-lg">
-        <table className="w-full min-w-[1000px]">
-          <thead className="bg-gray-200 shadow-md text-gray-700">
+    <div className="flex-1 overflow-hidden rounded-xl border border-gray-200">
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
-              <th className="px-6 py-4 text-left text-sm font-bold tracking-wide transition-all whitespace-nowrap">Status</th>
-              <th className="px-6 py-4 text-left text-sm font-bold tracking-wide transition-all whitespace-nowrap">Memo Number</th>
-              <th className="px-6 py-4 text-left text-sm font-bold tracking-wide transition-all whitespace-nowrap">Type</th>
-              <th className="px-6 py-4 text-left text-sm font-bold tracking-wide transition-all whitespace-nowrap">Subject</th>
-              <th className="px-6 py-4 text-left text-sm font-bold tracking-wide transition-all whitespace-nowrap">Priority</th>
-              <th className="px-6 py-4 text-left text-sm font-bold tracking-wide transition-all whitespace-nowrap">Date Issued</th>
-              <th className="px-6 py-4 text-center text-sm font-bold tracking-wide transition-all whitespace-nowrap">Actions</th>
+              <th className="px-5 py-3 text-left text-[10px] font-black text-gray-500 uppercase tracking-widest">Status</th>
+              <th className="px-5 py-3 text-left text-[10px] font-black text-gray-500 uppercase tracking-widest">Memo #</th>
+              <th className="px-5 py-3 text-left text-[10px] font-black text-gray-500 uppercase tracking-widest">Type</th>
+              <th className="px-5 py-3 text-left text-[10px] font-black text-gray-500 uppercase tracking-widest">Subject</th>
+              <th className="px-5 py-3 text-left text-[10px] font-black text-gray-500 uppercase tracking-widest">Priority</th>
+              <th className="px-5 py-3 text-left text-[10px] font-black text-gray-500 uppercase tracking-widest">Date</th>
+              <th className="px-5 py-3 text-center text-[10px] font-black text-gray-500 uppercase tracking-widest w-24"></th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-50">
+          <tbody className="divide-y divide-gray-100 bg-white">
             {tableRows}
           </tbody>
         </table>
