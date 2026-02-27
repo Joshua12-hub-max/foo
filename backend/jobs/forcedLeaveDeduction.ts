@@ -41,7 +41,7 @@ export const startForcedLeaveCron = () => {
                     await tx.insert(leaveLedger).values({
                         employeeId: record.employeeId,
                         creditType: 'Vacation Leave',
-                        transactionType: 'FORCED_LEAVE_DEDUCTION',
+                        transactionType: 'FORFEITURE',
                         amount: `-${deduction}`,
                         balanceAfter: newVl,
                         remarks: `Annual auto-deduction of 5 days Forced Leave for ${year}`,

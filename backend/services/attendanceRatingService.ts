@@ -22,11 +22,7 @@ export const calculateAttendanceScore = async (
 
   // Parse strings to full date boundaries if needed, but since date column is date YYYY-MM-DD
   // and created_at is timestamp, we use string comparisons compatible with MySQL
-  const dtrRecords = await db.select({
-      status: dailyTimeRecords.status,
-      lateMinutes: dailyTimeRecords.lateMinutes,
-      undertimeMinutes: dailyTimeRecords.undertimeMinutes
-  })
+  const dtrRecords = await db.select()
   .from(dailyTimeRecords)
   .where(and(
       eq(dailyTimeRecords.employeeId, empIdStr),
@@ -54,9 +50,9 @@ export const calculateAttendanceScore = async (
   })
   .from(employeeMemos)
   .where(and(
-      eq(employeeMemos.employeeId, empIdStr),
-      gte(employeeMemos.issuedAt, `${startDate} 00:00:00`),
-      lte(employeeMemos.issuedAt, `${endDate} 23:59:59`)
+      eq(employeeMemos.employeeId, Number(employeeId)),
+      gte(employeeMemos.createdAt, `${startDate} 00:00:00`),
+      lte(employeeMemos.createdAt, `${endDate} 23:59:59`)
   ));
 
   let hasMajor = false;

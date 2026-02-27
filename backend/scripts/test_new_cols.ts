@@ -1,6 +1,5 @@
 import { db } from '../db/index.js';
-import { policyViolations, employeeMemos, authentication } from '../db/schema.js';
-import { eq } from 'drizzle-orm';
+import { policyViolations, employeeMemos } from '../db/schema.js';
 
 async function checkRows() {
   console.log('--- VIOLATIONS TRACKER ---');
