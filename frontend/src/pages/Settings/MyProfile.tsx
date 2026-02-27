@@ -1,12 +1,7 @@
 import React from 'react';
 import { useUIStore } from '@/stores';
 import { Check, X } from 'lucide-react';
-import { 
-  ProfileHeader, 
-  ProfileAvatar, 
-  InformationGrid, 
-  useProfile,
-} from '@settings/Profile';
+import { ProfileHeader, ProfileAvatar, InformationGrid, useProfile } from '@settings/Profile';
 import type { Profile } from '@settings/Profile';
 
 import MyMemosPage from '@pages/EmployeeManagementEmployee/MyMemosPage';
@@ -55,7 +50,7 @@ export default function MyProfile() {
               : 'text-gray-400 border-transparent hover:text-navy-700'
           }`}
         >
-          PERSONAL INFORMATION
+          Personal Information
         </button>
         <button
           onClick={() => { setActiveTab('memos'); setIsEditing(false); }}
@@ -65,7 +60,7 @@ export default function MyProfile() {
               : 'text-gray-400 border-transparent hover:text-navy-700'
           }`}
         >
-          MY MEMOS
+          My Memos
         </button>
       </div>
 

@@ -23,7 +23,7 @@ const MyMemosPage: React.FC<MyMemosPageProps> = ({ hideHeader = false }) => {
       {!hideHeader && (
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
           <div>
-            <h2 className="text-xl font-black text-gray-800 tracking-tight uppercase">Memos</h2>
+            <h2 className="text-xl font-black text-gray-800 tracking-tight">Memos</h2>
             <p className="text-sm text-gray-500 font-medium">View and acknowledge official communications</p>
           </div>
           <button 
