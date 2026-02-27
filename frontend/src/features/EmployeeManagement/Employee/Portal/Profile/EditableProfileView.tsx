@@ -1,9 +1,8 @@
-import React, { useState, useCallback } from 'react';
+﻿import React, { useState, useCallback } from 'react';
 import { 
-  User, Mail, Phone, MapPin, Briefcase, Hash, CreditCard, 
-  Calendar, Flag, AlertCircle, Shield, CheckCircle,
-  GraduationCap, Award, Heart, Ruler, Scale, Building, UserCheck, Clock, ToggleLeft, ToggleRight, Loader2,
-  Pencil, X, Check, Plus, Trash2, Facebook, Linkedin, Twitter
+  AlertCircle, Loader2,
+  Pencil, X, Check, Plus, Trash2,
+  ToggleLeft, ToggleRight, Briefcase, Hash, Mail, Clock
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { employeeApi } from '@/api/employeeApi';
@@ -49,7 +48,7 @@ interface EditableDataFieldProps {
 interface SectionProps {
   title: string;
   children: React.ReactNode;
-  icon: LucideIcon;
+  icon?: LucideIcon;
   columns?: string;
 }
 
@@ -128,28 +127,10 @@ const EditableDataField: React.FC<EditableDataFieldProps> = ({
   };
 
   return (
-    <div className={`flex flex-col border border-gray-200 rounded-md p-2 bg-white group hover:border-red-300 hover:shadow-sm transition-all h-full ${colSpanClass} ${highlight ? 'border-gray-300 bg-gray-50' : ''} relative`}>
-      {/* Delete/Clear Button - Visible on Hover */}
-      {editable && !isEditing && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            if (window.confirm(`Are you sure you want to clear the ${label} field?`)) {
-                onSave(fieldName, '');
-            }
-          }}
-          className="absolute top-1 right-1 p-1.5 bg-red-100 text-red-600 rounded-full hover:bg-red-200 opacity-0 group-hover:opacity-100 transition-all z-20 shadow-sm"
-          title={`Clear ${label}`}
-        >
-          <Trash2 size={12} />
-        </button>
-      )}
+    <div className={`flex flex-col rounded-lg p-3 bg-white group hover:bg-gray-50 transition-all h-full ${colSpanClass} ${highlight ? 'bg-gray-50 border border-gray-200' : 'border border-transparent hover:border-gray-200'} relative`}>
 
-      {/* Label Row */}
-      <div className="flex items-center gap-1.5 mb-1 pr-6">
-        {Icon && <Icon size={12} className="text-gray-400 shrink-0" />}
-        <span className="text-[10px] font-semibold text-gray-500 tracking-wide text-nowrap flex-1 truncate">{label}</span>
-      </div>
+      {/* Label */}
+      <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1">{label}</span>
 
       {/* Value or Edit Mode */}
       {isEditing ? (
@@ -160,7 +141,7 @@ const EditableDataField: React.FC<EditableDataFieldProps> = ({
               onChange={(e) => setEditValue(e.target.value)}
               onKeyDown={handleKeyDown}
               onBlur={handleSave}
-              className="flex-1 text-sm font-bold text-gray-700 border border-gray-300 rounded px-1.5 py-0.5 focus:outline-none focus:border-gray-500 bg-white w-full"
+              className="flex-1 text-sm font-medium text-gray-800 border border-gray-300 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-gray-200 bg-white w-full"
               autoFocus
             >
               <option value="">Select...</option>
@@ -174,7 +155,7 @@ const EditableDataField: React.FC<EditableDataFieldProps> = ({
               onChange={(e) => setEditValue(e.target.value)}
               onKeyDown={handleKeyDown}
               onBlur={handleSave}
-              className="flex-1 text-sm font-bold text-gray-700 border border-gray-300 rounded px-1.5 py-1 focus:outline-none focus:border-gray-500 min-w-0 resize-y min-h-[60px]"
+              className="flex-1 text-sm font-medium text-gray-800 border border-gray-300 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-gray-200 min-w-0 resize-y min-h-[60px]"
               autoFocus
             />
           ) : (
@@ -184,28 +165,25 @@ const EditableDataField: React.FC<EditableDataFieldProps> = ({
               onChange={(e) => setEditValue(e.target.value)}
               onKeyDown={handleKeyDown}
               onBlur={handleSave}
-              className="flex-1 text-sm font-bold text-gray-700 border border-gray-300 rounded px-1.5 py-0.5 focus:outline-none focus:border-gray-500 min-w-0"
+              className="flex-1 text-sm font-medium text-gray-800 border border-gray-300 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-gray-200 min-w-0"
               autoFocus
               step={step}
               placeholder={placeholder}
             />
           )}
-          {/* Small save/cancel icons */}
-          <div className="flex flex-col gap-1 shrink-0">
+          <div className="flex flex-col gap-0.5 shrink-0">
              <button
-               onMouseDown={(e) => e.preventDefault()} // Prevent blur from firing before click
+               onMouseDown={(e) => e.preventDefault()}
                onClick={handleSave}
                disabled={saving}
-               className="p-1 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded transition-colors disabled:opacity-50"
-               title="Save"
+               className="p-1 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-md transition-colors disabled:opacity-50"
              >
                {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
              </button>
              <button
-               onMouseDown={(e) => e.preventDefault()} // Prevent blur
+               onMouseDown={(e) => e.preventDefault()}
                onClick={handleCancel}
-               className="p-1 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-               title="Cancel"
+               className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
              >
                <X size={14} />
              </button>
@@ -213,23 +191,21 @@ const EditableDataField: React.FC<EditableDataFieldProps> = ({
         </div>
       ) : (
         <div className="group/value relative h-full">
-            <span className={`text-sm font-bold break-words whitespace-pre-wrap ${highlight ? 'text-gray-900' : 'text-gray-700'} block min-h-[20px]`}>
-            {formattedValue || value || <span className="text-gray-300 font-normal italic">Empty</span>}
+            <span className={`text-sm font-semibold break-words whitespace-pre-wrap ${highlight ? 'text-gray-900' : 'text-gray-700'} block min-h-[20px]`}>
+            {formattedValue || value || <span className="text-gray-300 font-normal">â€”</span>}
             </span>
             {editable && (
             <div 
                 className="absolute inset-0 cursor-text" 
                 onClick={handleEdit}
-                title="Click to edit value"
             />
             )}
-            {/* Pencil highlight logic can assume the user clicks text. We can add a hidden pencil like custom data field if needed, but click-to-edit is explicit enough with the cursor */}
              {editable && (
              <button
                 onClick={handleEdit}
-                className="absolute -right-6 top-0 opacity-0 group-hover/value:opacity-100 p-0.5 text-gray-400 hover:text-gray-600 transition-all hidden group-hover:block"
+                className="absolute right-0 top-0 opacity-0 group-hover:opacity-100 p-0.5 text-gray-300 hover:text-gray-500 transition-all"
              >
-                <Pencil size={10} />
+                <Pencil size={11} />
              </button>
              )}
         </div>
@@ -270,23 +246,20 @@ const CustomEditableDataField: React.FC<CustomEditableDataFieldProps> = ({
   };
 
   return (
-    <div className={`flex flex-col border border-gray-200 rounded-md p-2 bg-white group hover:border-red-300 hover:shadow-sm transition-all h-full ${colSpanClass} relative`}>
-      {/* Delete Button - Visible on Hover */}
+    <div className={`flex flex-col rounded-lg p-3 bg-white group hover:bg-gray-50 transition-all h-full ${colSpanClass} relative border border-dashed border-gray-200 hover:border-gray-300`}>
+      {/* Delete Button */}
       <button 
         onClick={(e) => { e.stopPropagation(); onDelete(); }}
-        className="absolute top-1 right-1 p-1.5 bg-red-100 text-red-600 rounded-full hover:bg-red-200 opacity-0 group-hover:opacity-100 transition-all z-20 shadow-sm"
+        className="absolute top-1.5 right-1.5 p-1 text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all z-20"
         title="Delete Field"
       >
         <Trash2 size={12} />
       </button>
 
-      {/* Label Row */}
-      <div className="flex items-center gap-1.5 mb-1 pr-6">
-        <Hash size={12} className="text-gray-400 shrink-0" />
-        <span className="text-[10px] font-semibold text-gray-500 tracking-wide text-nowrap flex-1 truncate group-hover:text-gray-700">
-            {label}
-        </span>
-      </div>
+      {/* Label */}
+      <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1 pr-5">
+          {label}
+      </span>
 
       {/* Value Row */}
       {isEditing ? (
@@ -295,34 +268,32 @@ const CustomEditableDataField: React.FC<CustomEditableDataFieldProps> = ({
               value={editValue}
               onChange={(e) => setEditValue(e.target.value)}
               onBlur={handleSaveValue}
-              className="flex-1 text-sm font-bold text-gray-700 border border-gray-300 rounded px-1.5 py-1 focus:outline-none focus:border-gray-500 min-w-0 resize-y min-h-[60px]"
+              className="flex-1 text-sm font-medium text-gray-800 border border-gray-300 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-gray-200 min-w-0 resize-y min-h-[60px]"
               autoFocus
             />
-            <div className="flex flex-col gap-1 shrink-0">
-                 <button onMouseDown={(e) => e.preventDefault()} onClick={handleSaveValue} disabled={saving} className="p-1 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded">
+            <div className="flex flex-col gap-0.5 shrink-0">
+                 <button onMouseDown={(e) => e.preventDefault()} onClick={handleSaveValue} disabled={saving} className="p-1 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-md">
                    {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
                  </button>
-                 <button onMouseDown={(e) => e.preventDefault()} onClick={() => { setIsEditing(false); setEditValue(String(value||'')); }} className="p-1 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded">
+                 <button onMouseDown={(e) => e.preventDefault()} onClick={() => { setIsEditing(false); setEditValue(String(value||'')); }} className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md">
                    <X size={14} />
                  </button>
             </div>
         </div>
       ) : (
         <div className="group/value relative h-full">
-             <span className="text-sm font-bold break-words whitespace-pre-wrap text-gray-700 block min-h-[20px]">
-               {value || <span className="text-gray-300 font-normal italic">Empty</span>}
+             <span className="text-sm font-semibold break-words whitespace-pre-wrap text-gray-700 block min-h-[20px]">
+               {value || <span className="text-gray-300 font-normal">â€”</span>}
              </span>
              <button
                 onClick={() => { setEditValue(String(value||'')); setIsEditing(true); }}
-                className="absolute -right-6 top-0 opacity-0 group-hover/value:opacity-100 p-0.5 text-gray-400 hover:text-gray-600 transition-all hidden group-hover:block"
+                className="absolute right-0 top-0 opacity-0 group-hover:opacity-100 p-0.5 text-gray-300 hover:text-gray-500 transition-all"
              >
-                <Pencil size={10} />
+                <Pencil size={11} />
              </button>
-             {/* Make the whole value clickable to edit is also a good pattern, but let's stick to the pencil or just click */}
              <div 
                 className="absolute inset-0 cursor-text" 
                 onClick={() => { setEditValue(String(value||'')); setIsEditing(true); }} 
-                title="Click to edit value"
              />
         </div>
       )}
@@ -332,9 +303,8 @@ const CustomEditableDataField: React.FC<CustomEditableDataFieldProps> = ({
 
 // Read-only DataField component
 const DataField: React.FC<{label: string; value?: string | number | null; icon?: LucideIcon; fullWidth?: boolean; highlight?: boolean}> = ({ 
-  label, value, icon: Icon, fullWidth = false, highlight = false 
+  label, value, fullWidth = false, highlight = false 
 }) => {
-  // Dynamic width calculation
   const getColSpanClass = () => {
     if (fullWidth) return 'col-span-full';
     const len = String(value || '').length;
@@ -344,29 +314,23 @@ const DataField: React.FC<{label: string; value?: string | number | null; icon?:
   };
   
   return (
-    <div className={`flex flex-col border border-gray-200 rounded-md p-2 bg-white ${getColSpanClass()} ${highlight ? 'border-gray-300 bg-gray-50' : ''}`}>
-      <div className="flex items-center gap-1.5 mb-1">
-        {Icon && <Icon size={12} className="text-gray-400" />}
-        <span className="text-[10px] font-semibold text-gray-500 tracking-wide text-nowrap">{label}</span>
-      </div>
-      <span className={`text-sm font-bold truncate ${highlight ? 'text-gray-900' : 'text-gray-700'}`}>
-        {value || <span className="text-gray-300 font-normal italic">N/A</span>}
+    <div className={`flex flex-col rounded-lg p-3 ${getColSpanClass()} ${highlight ? 'bg-gray-50 border border-gray-200' : 'bg-white'}`}>
+      <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1">{label}</span>
+      <span className={`text-sm font-semibold truncate ${highlight ? 'text-gray-900' : 'text-gray-700'}`}>
+        {value || <span className="text-gray-300 font-normal">â€”</span>}
       </span>
     </div>
   );
 };
 
-// Section Container
-const Section: React.FC<SectionProps> = ({ title, children, icon: Icon, columns = "grid-cols-2 md:grid-cols-4 lg:grid-cols-6" }) => (
-  <div className="mb-6">
-    <div className="flex items-center gap-2 mb-3 px-1">
-      <div className="p-1 bg-gray-100 rounded text-gray-800">
-        <Icon size={14} />
-      </div>
-      <h3 className="text-xs font-bold text-gray-800 tracking-tight">{title}</h3>
-      <div className="h-px bg-gray-200 flex-grow ml-2"></div>
+// Section Container â€” Clean, minimal heading
+const Section: React.FC<SectionProps> = ({ title, children, columns = "grid-cols-2 md:grid-cols-4 lg:grid-cols-6" }) => (
+  <div className="mb-8">
+    <div className="flex items-center gap-3 mb-4">
+      <h3 className="text-xs font-black text-gray-800 uppercase tracking-widest">{title}</h3>
+      <div className="h-px bg-gray-200 flex-grow"></div>
     </div>
-    <div className={`grid ${columns} gap-2`}>
+    <div className={`grid ${columns} gap-1`}>
       {children}
     </div>
   </div>
@@ -510,7 +474,7 @@ const EditableProfileView: React.FC<EmployeeProfileViewProps> = ({ profile, load
           fieldName={String(field.id)}
           onSave={(id, val) => handleCustomFieldSave(Number(id), val)}
           onDelete={() => handleCustomFieldDelete(field.id)}
-          icon={Hash} 
+          
        />
     ));
   };
@@ -655,7 +619,7 @@ const EditableProfileView: React.FC<EmployeeProfileViewProps> = ({ profile, load
       <div className="p-6">
         
         {/* PERSONAL INFORMATION */}
-        <Section title="Personal Information" icon={User}>
+        <Section title="Personal Information">
           <EditableDataField label="Last Name" value={profile.last_name} fieldName="last_name" onSave={handleFieldSave} />
           <EditableDataField label="First Name" value={profile.first_name} fieldName="first_name" onSave={handleFieldSave} />
           <EditableDataField label="Middle Name" value={profile.middle_name} fieldName="middle_name" onSave={handleFieldSave} />
@@ -664,41 +628,41 @@ const EditableProfileView: React.FC<EmployeeProfileViewProps> = ({ profile, load
             label="Birth Date" 
             value={formatDateForInput(profile.birth_date)} 
             fieldName="birth_date" 
-            icon={Calendar} 
+            
             inputType="date" 
             onSave={handleFieldSave} 
           />
-          <EditableDataField label="Place of Birth" value={profile.place_of_birth} fieldName="place_of_birth" icon={MapPin} onSave={handleFieldSave} />
+          <EditableDataField label="Place of Birth" value={profile.place_of_birth} fieldName="place_of_birth" onSave={handleFieldSave} />
           <EditableDataField label="Gender" value={profile.gender} fieldName="gender" inputType="select" options={genderOptions} onSave={handleFieldSave} />
           <EditableDataField label="Civil Status" value={profile.civil_status} fieldName="civil_status" inputType="select" options={civilStatusOptions} onSave={handleFieldSave} />
-          <EditableDataField label="Nationality" value={profile.nationality} fieldName="nationality" icon={Flag} onSave={handleFieldSave} />
-          <EditableDataField label="Citizenship" value={profile.citizenship} fieldName="citizenship" icon={Flag} onSave={handleFieldSave} />
+          <EditableDataField label="Nationality" value={profile.nationality} fieldName="nationality" onSave={handleFieldSave} />
+          <EditableDataField label="Citizenship" value={profile.citizenship} fieldName="citizenship" onSave={handleFieldSave} />
           <EditableDataField label="Citizenship Type" value={profile.citizenship_type} fieldName="citizenship_type" inputType="select" options={[
             {value:'By Birth',label:'By Birth'},{value:'By Naturalization',label:'By Naturalization'}
           ]} onSave={handleFieldSave} />
           <EditableDataField label="Blood Type" value={profile.blood_type} fieldName="blood_type" inputType="select" options={bloodTypeOptions} onSave={handleFieldSave} />
-          <EditableDataField label="Height (m)" value={profile.height_m} fieldName="height_m" icon={Ruler} inputType="number" step="0.01" placeholder="e.g. 1.70" onSave={handleFieldSave} />
-          <EditableDataField label="Weight (kg)" value={profile.weight_kg} fieldName="weight_kg" icon={Scale} inputType="number" step="0.01" placeholder="e.g. 65.5" onSave={handleFieldSave} />
+          <EditableDataField label="Height (m)" value={profile.height_m} fieldName="height_m" inputType="number" step="0.01" placeholder="e.g. 1.70" onSave={handleFieldSave} />
+          <EditableDataField label="Weight (kg)" value={profile.weight_kg} fieldName="weight_kg" inputType="number" step="0.01" placeholder="e.g. 65.5" onSave={handleFieldSave} />
           
-          <EditableDataField label="Residential Address" value={profile.residential_address} fieldName="residential_address" fullWidth icon={MapPin} inputType="textarea" onSave={handleFieldSave} />
-          <EditableDataField label="Residential ZIP" value={profile.residential_zip_code} fieldName="residential_zip_code" icon={MapPin} onSave={handleFieldSave} />
+          <EditableDataField label="Residential Address" value={profile.residential_address} fieldName="residential_address" fullWidth inputType="textarea" onSave={handleFieldSave} />
+          <EditableDataField label="Residential ZIP" value={profile.residential_zip_code} fieldName="residential_zip_code" onSave={handleFieldSave} />
           
-          <EditableDataField label="Permanent Address" value={profile.permanent_address} fieldName="permanent_address" fullWidth icon={MapPin} inputType="textarea" onSave={handleFieldSave} />
-          <EditableDataField label="Permanent ZIP" value={profile.permanent_zip_code} fieldName="permanent_zip_code" icon={MapPin} onSave={handleFieldSave} />
+          <EditableDataField label="Permanent Address" value={profile.permanent_address} fieldName="permanent_address" fullWidth inputType="textarea" onSave={handleFieldSave} />
+          <EditableDataField label="Permanent ZIP" value={profile.permanent_zip_code} fieldName="permanent_zip_code" onSave={handleFieldSave} />
           
           {renderCustomFields("Personal Information")}
           <AddCard label="Add Card" onClick={() => openCustomFieldModal("Personal Information")} />
         </Section>
 
         {/* EMPLOYMENT RECORD */}
-        <Section title="Employment Record" icon={Briefcase}>
-          <DataField label="Employee ID" value={formatEmployeeId(profile.employee_id || profile.employeeId)} icon={Hash} highlight />
+        <Section title="Employment Record">
+          <DataField label="Employee ID" value={formatEmployeeId(profile.employee_id || profile.employeeId)} highlight />
           <EditableDataField label="Position Title" value={profile.position_title || profile.job_title} fieldName="position_title" highlight onSave={handleFieldSave} />
-          <EditableDataField label="Item Number" value={profile.item_number} fieldName="item_number" icon={Hash} onSave={handleFieldSave} />
-          <EditableDataField label="Agency Employee No." value={profile.agency_employee_no} fieldName="agency_employee_no" icon={Hash} onSave={handleFieldSave} />
-          <DataField label="Department" value={profile.department} icon={Building} />
-          <EditableDataField label="Salary Grade" value={profile.salary_grade || profile.salaryGrade} fieldName="salary_grade" icon={CreditCard} inputType="number" onSave={handleFieldSave} />
-          <EditableDataField label="Step Increment" value={profile.step_increment || profile.stepIncrement} fieldName="step_increment" icon={Hash} inputType="number" onSave={handleFieldSave} />
+          <EditableDataField label="Item Number" value={profile.item_number} fieldName="item_number" onSave={handleFieldSave} />
+          <EditableDataField label="Agency Employee No." value={profile.agency_employee_no} fieldName="agency_employee_no" onSave={handleFieldSave} />
+          <DataField label="Department" value={profile.department} />
+          <EditableDataField label="Salary Grade" value={profile.salary_grade || profile.salaryGrade} fieldName="salary_grade" inputType="number" onSave={handleFieldSave} />
+          <EditableDataField label="Step Increment" value={profile.step_increment || profile.stepIncrement} fieldName="step_increment" inputType="number" onSave={handleFieldSave} />
           <EditableDataField label="Appointment Type" value={profile.appointment_type} fieldName="appointment_type" inputType="select" options={[
             {value:'Permanent',label:'Permanent'},{value:'Contractual',label:'Contractual'},{value:'Casual',label:'Casual'},
             {value:'Job Order',label:'Job Order'},{value:'Coterminous',label:'Coterminous'},{value:'Temporary',label:'Temporary'}
@@ -708,14 +672,14 @@ const EditableProfileView: React.FC<EmployeeProfileViewProps> = ({ profile, load
             {value:'Resigned',label:'Resigned'},{value:'On Leave',label:'On Leave'},{value:'Suspended',label:'Suspended'},
             {value:'Verbal Warning',label:'Verbal Warning'},{value:'Written Warning',label:'Written Warning'},{value:'Show Cause',label:'Show Cause'}
           ]} onSave={handleFieldSave} />
-          <EditableDataField label="Station" value={profile.station} fieldName="station" icon={Building} onSave={handleFieldSave} />
-          <EditableDataField label="Office Address" value={profile.office_address} fieldName="office_address" fullWidth icon={MapPin} inputType="textarea" onSave={handleFieldSave} />
+          <EditableDataField label="Station" value={profile.station} fieldName="station" onSave={handleFieldSave} />
+          <EditableDataField label="Office Address" value={profile.office_address} fieldName="office_address" fullWidth inputType="textarea" onSave={handleFieldSave} />
           <EditableDataField 
             label="Date Hired" 
             value={formatDateForInput(profile.date_hired)}
             formattedValue={formatDate(profile.date_hired || profile.dateHired)}
             fieldName="date_hired" 
-            icon={Calendar} 
+            
             inputType="date" 
             onSave={handleFieldSave} 
           />
@@ -724,7 +688,7 @@ const EditableProfileView: React.FC<EmployeeProfileViewProps> = ({ profile, load
             value={formatDateForInput(profile.original_appointment_date)} 
             formattedValue={formatDate(profile.original_appointment_date)}
             fieldName="original_appointment_date" 
-            icon={Calendar} 
+            
             inputType="date" 
             onSave={handleFieldSave} 
           />
@@ -733,26 +697,26 @@ const EditableProfileView: React.FC<EmployeeProfileViewProps> = ({ profile, load
             value={formatDateForInput(profile.last_promotion_date)}
             formattedValue={formatDate(profile.last_promotion_date)} 
             fieldName="last_promotion_date" 
-            icon={Calendar} 
+            
             inputType="date" 
             onSave={handleFieldSave} 
           />
           <DataField 
             label="Next Step Increment" 
             value={`${formatDate(nextStepData?.nextStepDate)}${nextStepData?.totalLwopDays ? ` (Delayed by ${nextStepData.totalLwopDays} LWOP days)` : ''}`} 
-            icon={Calendar} 
+            
             highlight 
           />
-          <DataField label="First Day of Service" value={formatDate(profile.first_day_of_service)} icon={Clock} />
-          <DataField label="Supervisor" value={profile.supervisor} icon={UserCheck} />
-          <EditableDataField label="Current Duties" value={profile.duties} fieldName="duties" icon={Clock} highlight onSave={handleFieldSave} />
-          <DataField label="System Role" value={profile.role} icon={Shield} />
+          <DataField label="First Day of Service" value={formatDate(profile.first_day_of_service)} />
+          <DataField label="Supervisor" value={profile.supervisor} />
+          <EditableDataField label="Current Duties" value={profile.duties} fieldName="duties" highlight onSave={handleFieldSave} />
+          <DataField label="System Role" value={profile.role} />
           {renderCustomFields("Employment Record")}
           <AddCard label="Add Card" onClick={() => openCustomFieldModal("Employment Record")} />
         </Section>
 
         {/* GOVERNMENT IDS */}
-        <Section title="Government Identification" icon={Shield}>
+        <Section title="Government Identification">
           <EditableDataField label="UMID ID" value={profile.umid_id} fieldName="umid_id" onSave={handleFieldSave} />
           <EditableDataField label="PHILSYS ID" value={profile.philsys_id} fieldName="philsys_id" onSave={handleFieldSave} />
           <EditableDataField label="GSIS No." value={profile.gsis_number} fieldName="gsis_number" onSave={handleFieldSave} />
@@ -764,11 +728,11 @@ const EditableProfileView: React.FC<EmployeeProfileViewProps> = ({ profile, load
         </Section>
 
         {/* ELIGIBILITY & QUALIFICATIONS */}
-        <Section title="Eligibility & Qualifications" icon={Award}>
+        <Section title="Eligibility & Qualifications">
           <EditableDataField label="Eligibility Type" value={profile.eligibility_type} fieldName="eligibility_type" onSave={handleFieldSave} />
-          <EditableDataField label="Eligibility No." value={profile.eligibility_number} fieldName="eligibility_number" icon={Hash} onSave={handleFieldSave} />
-          <EditableDataField label="Eligibility Date" value={formatDateForInput(profile.eligibility_date)} fieldName="eligibility_date" icon={Calendar} inputType="date" onSave={handleFieldSave} />
-          <EditableDataField label="Highest Education" value={profile.highest_education} fieldName="highest_education" icon={GraduationCap} onSave={handleFieldSave} />
+          <EditableDataField label="Eligibility No." value={profile.eligibility_number} fieldName="eligibility_number" onSave={handleFieldSave} />
+          <EditableDataField label="Eligibility Date" value={formatDateForInput(profile.eligibility_date)} fieldName="eligibility_date" inputType="date" onSave={handleFieldSave} />
+          <EditableDataField label="Highest Education" value={profile.highest_education} fieldName="highest_education" onSave={handleFieldSave} />
           <EditableDataField label="Educational Background" value={profile.educational_background} fieldName="educational_background" onSave={handleFieldSave} />
           <EditableDataField label="Years of Experience" value={profile.years_of_experience} fieldName="years_of_experience" inputType="number" onSave={handleFieldSave} />
           {renderCustomFields("Eligibility & Qualifications")}
@@ -776,7 +740,7 @@ const EditableProfileView: React.FC<EmployeeProfileViewProps> = ({ profile, load
         </Section>
 
         {/* EDUCATION */}
-        <Section title="Educational Background" icon={GraduationCap} columns="grid-cols-1">
+        <Section title="Educational Background" columns="grid-cols-1">
           {profile.education && profile.education.length > 0 && (
             <div className="border border-gray-200 rounded-md overflow-hidden">
               <table className="w-full text-xs text-left">
@@ -824,7 +788,7 @@ const EditableProfileView: React.FC<EmployeeProfileViewProps> = ({ profile, load
         </Section>
 
         {/* SKILLS */}
-        <Section title="Skills & Competencies" icon={Award} columns="grid-cols-2 md:grid-cols-4">
+        <Section title="Skills & Competencies" columns="grid-cols-2 md:grid-cols-4">
           {profile.skills && profile.skills.map((skill, idx) => (
             <div key={idx} className="flex items-center justify-between border border-gray-200 rounded p-2 bg-gray-50 group">
               <span className="text-xs font-bold text-gray-700">{skill.skill_name}</span>
@@ -849,15 +813,15 @@ const EditableProfileView: React.FC<EmployeeProfileViewProps> = ({ profile, load
         </Section>
 
         {/* CONTACT & EMERGENCY */}
-        <Section title="Contact & Emergency" icon={Phone}>
-          <EditableDataField label="Mobile Number" value={profile.phone_number || profile.mobile_no} fieldName="phone_number" icon={Phone} inputType="tel" onSave={handleFieldSave} />
-          <EditableDataField label="Telephone No." value={profile.telephone_no} fieldName="telephone_no" icon={Phone} inputType="tel" onSave={handleFieldSave} />
-          <EditableDataField label="Official Email" value={profile.email} fieldName="email" icon={Mail} inputType="email" onSave={handleFieldSave} />
-          <EditableDataField label="Emergency Contact Person" value={profile.emergency_contact} fieldName="emergency_contact" icon={User} onSave={handleFieldSave} />
-          <EditableDataField label="Emergency Phone" value={profile.emergency_contact_number} fieldName="emergency_contact_number" icon={Phone} inputType="tel" onSave={handleFieldSave} />
+        <Section title="Contact & Emergency">
+          <EditableDataField label="Mobile Number" value={profile.phone_number || profile.mobile_no} fieldName="phone_number" inputType="tel" onSave={handleFieldSave} />
+          <EditableDataField label="Telephone No." value={profile.telephone_no} fieldName="telephone_no" inputType="tel" onSave={handleFieldSave} />
+          <EditableDataField label="Official Email" value={profile.email} fieldName="email" inputType="email" onSave={handleFieldSave} />
+          <EditableDataField label="Emergency Contact Person" value={profile.emergency_contact} fieldName="emergency_contact" onSave={handleFieldSave} />
+          <EditableDataField label="Emergency Phone" value={profile.emergency_contact_number} fieldName="emergency_contact_number" inputType="tel" onSave={handleFieldSave} />
         </Section>
 
-        <Section title="Emergency Contacts" icon={Heart} columns="grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+        <Section title="Emergency Contacts" columns="grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
            {profile.emergencyContacts && profile.emergencyContacts.map((contact, idx) => (
              <div key={idx} className="flex flex-col border border-gray-200 rounded-md p-3 bg-white relative group">
                 <div className="flex items-center justify-between mb-2">
@@ -865,9 +829,9 @@ const EditableProfileView: React.FC<EmployeeProfileViewProps> = ({ profile, load
                    {idx === 0 && <span className="text-[10px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">Primary</span>}
                 </div>
                 <div className="flex flex-col gap-1 text-xs text-gray-600">
-                   <span className="flex items-center gap-1.5"><User size={12} className="text-gray-400"/> {contact.relationship}</span>
-                   <span className="flex items-center gap-1.5"><Phone size={12} className="text-gray-400"/> {contact.phone_number}</span>
-                   {contact.address && <span className="flex items-center gap-1.5"><MapPin size={12} className="text-gray-400"/> {contact.address}</span>}
+                   <span>{contact.relationship}</span>
+                   <span className="font-medium">{contact.phone_number}</span>
+                   {contact.address && <span className="text-gray-400">{contact.address}</span>}
                 </div>
                 <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-white/80 p-0.5 rounded shadow-sm">
                    <button 
@@ -895,7 +859,7 @@ const EditableProfileView: React.FC<EmployeeProfileViewProps> = ({ profile, load
                    <span className="text-[10px] italic text-gray-400">Legacy</span>
                 </div>
                 <div className="flex flex-col gap-1 text-xs text-gray-600">
-                   <span className="flex items-center gap-1.5"><Phone size={12} className="text-gray-400"/> {profile.emergency_contact_number}</span>
+                   <span className="text-xs text-gray-600 font-medium">{profile.emergency_contact_number}</span>
                 </div>
              </div>
            )}
@@ -903,19 +867,19 @@ const EditableProfileView: React.FC<EmployeeProfileViewProps> = ({ profile, load
         </Section>
 
         {/* SOCIAL MEDIA */}
-        <Section title="Social Media" icon={User} columns="grid-cols-1 md:grid-cols-3">
-          <EditableDataField label="Facebook" value={profile.facebook_url} fieldName="facebook_url" icon={Facebook} inputType="url" onSave={handleFieldSave} />
-          <EditableDataField label="LinkedIn" value={profile.linkedin_url} fieldName="linkedin_url" icon={Linkedin} inputType="url" onSave={handleFieldSave} />
-          <EditableDataField label="Twitter/X" value={profile.twitter_handle} fieldName="twitter_handle" icon={Twitter} onSave={handleFieldSave} />
+        <Section title="Social Media" columns="grid-cols-1 md:grid-cols-3">
+          <EditableDataField label="Facebook" value={profile.facebook_url} fieldName="facebook_url" inputType="url" onSave={handleFieldSave} />
+          <EditableDataField label="LinkedIn" value={profile.linkedin_url} fieldName="linkedin_url" inputType="url" onSave={handleFieldSave} />
+          <EditableDataField label="Twitter/X" value={profile.twitter_handle} fieldName="twitter_handle" onSave={handleFieldSave} />
         </Section>
 
       </div>
 
       <div className="bg-gray-50 px-6 py-3 border-t border-gray-200 flex justify-between items-center">
-        <p className="text-[10px] text-gray-400 font-medium">System Generated Record • NEBR HRIS</p>
+        <p className="text-[10px] text-gray-400 font-medium">System Generated Record â€¢ NEBR HRIS</p>
         <div className="flex gap-2">
           <span className="flex items-center gap-1.5 text-xs font-bold text-gray-700 bg-gray-100 px-3 py-1 rounded-full border border-gray-200">
-            <CheckCircle size={12} /> Verified Record
+            ✓ Verified Record
           </span>
         </div>
       </div>
