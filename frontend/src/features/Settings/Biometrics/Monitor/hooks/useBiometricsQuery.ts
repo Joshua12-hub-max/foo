@@ -42,5 +42,3 @@ export const useBiometricsLogs = (enabled = true) => {
     staleTime: 1000,
   });
 };
-
-// Legacy hooks (useDeviceStatus, useStartEnrollment, useEnrollmentStatus) removed as requested by user.

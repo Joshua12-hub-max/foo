@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useUIStore } from '@/stores';
 import { AttendanceFilterValues } from '@/schemas/attendanceSchema';
 import { 
@@ -9,7 +9,7 @@ import {
   useBiometricsLogs 
 } from "@settings/Biometrics/Logs";
 import Pagination from '@/components/CustomUI/Pagination';
-import { FileText, FileSpreadsheet } from "lucide-react";
+import { FileText, FileSpreadsheet, CheckCircle, AlertTriangle, Activity } from "lucide-react";
 
 const BiometricsLogsUI = () => {
   const sidebarOpen = useUIStore((state) => state.sidebarOpen);
@@ -29,6 +29,7 @@ const BiometricsLogsUI = () => {
     handleSearchChange,
     searchQuery,
     filters,
+    filteredData,
     handlePrevPage,
     handleNextPage,
     setPage,
@@ -39,15 +40,22 @@ const BiometricsLogsUI = () => {
     setError
   } = useBiometricsLogs();
 
+  // Stats from Monitor (computed from filtered data)
+  const stats = useMemo(() => ({
+    onTime: filteredData.filter((l: any) => l.status === 'Present').length,
+    late: filteredData.filter((l: any) => l.status === 'Late').length,
+    total: filteredData.length,
+  }), [filteredData]);
+
   // Map pagination data for the Pagination component
   const totalPages = paginationData.totalPages;
-  const currentPage = Math.ceil((paginationData.startIndex + 1) / 10); // Calculate current page based on index
-  const totalItems = paginationData.currentItems.length * totalPages; // Approximate since we filter client side
+  const currentPage = Math.ceil((paginationData.startIndex + 1) / 10);
+  const totalItems = paginationData.currentItems.length * totalPages;
 
   const handleFilterSubmit = (newFilters: AttendanceFilterValues) => {
       setFilters({
           department: newFilters.department || '',
-          employeeId: newFilters.employeeId || '', // Map employeeId
+          employeeId: newFilters.employeeId || '',
           startDate: newFilters.startDate || '',
           endDate: newFilters.endDate || ''
       });
@@ -62,7 +70,36 @@ const BiometricsLogsUI = () => {
         isLoading={isLoading} 
       />
 
-      <hr className="mb-6 h-px bg-gray-200 border-0" />
+      {/* Stats Cards (from Monitor) */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 my-5">
+        <div className="bg-white px-5 py-4 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between">
+          <div>
+            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">On Time</p>
+            <h3 className="text-2xl font-black text-gray-800 leading-none">{stats.onTime}</h3>
+          </div>
+          <div className="p-2 bg-green-50 rounded-lg">
+            <CheckCircle className="w-5 h-5 text-green-600" />
+          </div>
+        </div>
+        <div className="bg-white px-5 py-4 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between">
+          <div>
+            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">Late</p>
+            <h3 className="text-2xl font-black text-gray-800 leading-none">{stats.late}</h3>
+          </div>
+          <div className="p-2 bg-amber-50 rounded-lg">
+            <AlertTriangle className="w-5 h-5 text-amber-600" />
+          </div>
+        </div>
+        <div className="bg-white px-5 py-4 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between">
+          <div>
+            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">Total Records</p>
+            <h3 className="text-2xl font-black text-gray-800 leading-none">{stats.total}</h3>
+          </div>
+          <div className="p-2 bg-blue-50 rounded-lg">
+            <Activity className="w-5 h-5 text-blue-600" />
+          </div>
+        </div>
+      </div>
 
       {error && (
         <BiometricsNotification 
