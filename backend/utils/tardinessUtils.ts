@@ -18,24 +18,34 @@ export const updateTardinessSummary = async (
     //   .limit(1);
     // const dailyTargetHours = Number(employeeRows[0]?.dailyTargetHours) || 8;
 
-    // 2. Calculate totals for the month
-    const result = await db.select({
-      totalLateMinutes: sql<number>`SUM(${dailyTimeRecords.lateMinutes})`,
-      totalUndertimeMinutes: sql<number>`SUM(${dailyTimeRecords.undertimeMinutes})`,
-      totalLateCount: sql<number>`COUNT(CASE WHEN ${dailyTimeRecords.lateMinutes} > 0 THEN 1 END)`,
-      totalUndertimeCount: sql<number>`COUNT(CASE WHEN ${dailyTimeRecords.undertimeMinutes} > 0 THEN 1 END)`,
-      totalAbsenceCount: sql<number>`COUNT(CASE WHEN ${dailyTimeRecords.status} = 'Absent' THEN 1 END)`
-    })
-    .from(dailyTimeRecords)
-    .where(and(
-      eq(dailyTimeRecords.employeeId, employeeId),
-      sql`YEAR(${dailyTimeRecords.date}) = ${year}`,
-      sql`MONTH(${dailyTimeRecords.date}) = ${month}`
-    ));
+    // 2. Calculate totals for the month in memory to avoid Drizzle raw-query bugs
+    const records = await db.select().from(dailyTimeRecords).where(
+      and(
+        eq(dailyTimeRecords.employeeId, employeeId),
+        sql`YEAR(${dailyTimeRecords.date}) = ${year}`,
+        sql`MONTH(${dailyTimeRecords.date}) = ${month}`
+      )
+    );
 
-    const stats = result[0];
-    const totalLateMinutes = Number(stats.totalLateMinutes) || 0;
-    const totalUndertimeMinutes = Number(stats.totalUndertimeMinutes) || 0;
+    let totalLateMinutes = 0;
+    let totalUndertimeMinutes = 0;
+    let totalLateCount = 0;
+    let totalUndertimeCount = 0;
+    let totalAbsenceCount = 0;
+
+    for (const r of records) {
+      if (r.lateMinutes && r.lateMinutes > 0) {
+        totalLateMinutes += r.lateMinutes;
+        totalLateCount++;
+      }
+      if (r.undertimeMinutes && r.undertimeMinutes > 0) {
+        totalUndertimeMinutes += r.undertimeMinutes;
+        totalUndertimeCount++;
+      }
+      if (r.status === 'Absent') {
+        totalAbsenceCount++;
+      }
+    }
     
     // 3. Compute Days Equivalent
     // const totalMinutes = totalLateMinutes + totalUndertimeMinutes;
@@ -48,18 +58,18 @@ export const updateTardinessSummary = async (
       month,
       totalLateMinutes: totalLateMinutes,
       totalUndertimeMinutes: totalUndertimeMinutes,
-      totalLateCount: Number(stats.totalLateCount) || 0,
-      totalUndertimeCount: Number(stats.totalUndertimeCount) || 0,
-      totalAbsenceCount: Number(stats.totalAbsenceCount) || 0,
+      totalLateCount: totalLateCount,
+      totalUndertimeCount: totalUndertimeCount,
+      totalAbsenceCount: totalAbsenceCount,
       // daysEquivalent is generated, do not insert
       processedAt: currentManilaDateTime()
     }).onDuplicateKeyUpdate({
       set: {
-        totalLateMinutes: stats.totalLateMinutes || 0,
-        totalUndertimeMinutes: stats.totalUndertimeMinutes || 0,
-        totalLateCount: stats.totalLateCount || 0,
-        totalUndertimeCount: stats.totalUndertimeCount || 0,
-        totalAbsenceCount: stats.totalAbsenceCount || 0,
+        totalLateMinutes: totalLateMinutes,
+        totalUndertimeMinutes: totalUndertimeMinutes,
+        totalLateCount: totalLateCount,
+        totalUndertimeCount: totalUndertimeCount,
+        totalAbsenceCount: totalAbsenceCount,
         // daysEquivalent is generated, do not update
         processedAt: currentManilaDateTime()
       }

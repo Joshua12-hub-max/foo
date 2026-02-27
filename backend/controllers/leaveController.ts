@@ -1,15 +1,3 @@
-/**
- * CSC-Compliant Leave Controller
- * Based on CSC Omnibus Rules on Leave (Rule XVI)
- * 
- * Key Features:
- * - Monthly credit accrual (1.250 VL + 1.250 SL)
- * - Working days calculation (excludes weekends + holidays)
- * - Cross-charging (SL can use VL, VL cannot use SL)
- * - LWOP logic with payroll deduction formula
- * - Forced Leave enforcement
- * - Monetization with minimum balance requirement
- */
 
 import { Request, Response } from 'express';
 import { db } from '../db/index.js';
@@ -394,12 +382,34 @@ export const applyLeave = async (req: Request, res: Response): Promise<void> => 
       return;
     }
 
-    // Validate VL/Forced/Adoption advance filing (5 days before)
-    if ((leaveType === 'Vacation Leave' || leaveType === 'Forced Leave' || leaveType === 'Adoption Leave') && !validateVLAdvanceFiling(startDate)) {
+    // Validate advance filing (5 days before)
+    const requiresAdvanceNotice = [
+      'Vacation Leave', 'Forced Leave', 'Adoption Leave', 'Special Privilege Leave',
+      'Solo Parent Leave', 'Special Leave Benefits for Women', 'Paternity Leave',
+      'Rehabilitation Leave', 'Wellness Leave'
+    ];
+
+    if (requiresAdvanceNotice.includes(leaveType) && !validateVLAdvanceFiling(startDate)) {
       res.status(400).json({
         message: `${leaveType} must be filed at least ${VL_ADVANCE_FILING_DAYS} days in advance per CSC rules.`,
       });
       return;
+    }
+
+    // Validate Sick Leave (can be post-filed, but max 3 days upon return)
+    if (leaveType === 'Sick Leave') {
+      const start = new Date(startDate);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const diffTime = today.getTime() - start.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      
+      if (diffDays > 3) { // Strict filing deadline upon return from work
+        res.status(400).json({
+          message: 'Sick Leave must be filed immediately upon return to work or up to 3 days maximum.',
+        });
+        return;
+      }
     }
 
     // Check SL medical certificate requirement (>= 5 days)
@@ -636,9 +646,21 @@ export const applyLeave = async (req: Request, res: Response): Promise<void> => 
         }
     }
 
+    // Proof requirements checking based on CGM Internal Policies
+    const needsAttachment = 
+      (leaveType === 'Sick Leave' && requiresMedicalCertificate(workingDays)) ||
+      leaveType === 'Maternity Leave' ||
+      leaveType === 'Special Leave Benefits for Women' ||
+      leaveType === 'VAWC Leave' ||
+      leaveType === 'Adoption Leave';
+
     // Validate attachment
-    if (needsMedCert && !req.file) {
-      res.status(400).json({ message: 'Medical certificate is required for Sick Leave of 5 days or more.' });
+    if (needsAttachment && !req.file) {
+      let docType = 'supporting document';
+      if (leaveType === 'Sick Leave' || leaveType === 'Maternity Leave' || leaveType === 'Special Leave Benefits for Women') {
+        docType = 'medical certificate';
+      }
+      res.status(400).json({ message: `A valid ${docType} is strictly required for ${leaveType}.` });
       return;
     }
 
@@ -852,6 +874,66 @@ export const getAllLeaves = async (req: Request, res: Response): Promise<void> =
     const department = (req.query.department as string) || '';
     const status = (req.query.status as string) || '';
     const offset = (page - 1) * limit;
+
+    // --- DEEMED APPROVED AUTO-BYPASS (CGM Policy) ---
+    // Any leave pending for >= 5 days is automatically approved.
+    try {
+      const fiveDaysAgo = new Date();
+      fiveDaysAgo.setDate(fiveDaysAgo.getDate() - 5);
+      
+      const staleLeaves = await db.query.leaveApplications.findMany({
+        where: and(
+          eq(leaveApplications.status, 'Pending'),
+          lte(leaveApplications.createdAt, fiveDaysAgo.toISOString().slice(0, 19).replace('T', ' '))
+        )
+      });
+      
+      for (const application of staleLeaves) {
+        const approvedBy = 'SYSTEM (Deemed Approved)';
+        const isSpecialLeave = SPECIAL_LEAVES_NO_DEDUCTION.includes(application.leaveType);
+
+        // 1. Deduct credits
+        if ((application.actualPaymentStatus === 'WITH_PAY' || application.actualPaymentStatus === 'PARTIAL') && !isSpecialLeave) {
+          const primaryCreditType = LEAVE_TO_CREDIT_MAP[application.leaveType] as CreditType || 'Vacation Leave';
+          if (application.crossChargedFrom) {
+            await updateBalance(application.employeeId, application.crossChargedFrom as CreditType, -Number(application.daysWithPay), 'DEDUCTION', application.id, 'leave_application', `${application.leaveType} cross-charged (Deemed Approved)`, approvedBy);
+          } else {
+            await updateBalance(application.employeeId, primaryCreditType, -Number(application.daysWithPay), 'DEDUCTION', application.id, 'leave_application', `${application.leaveType} (Deemed Approved)`, approvedBy);
+          }
+        }
+        
+        // 2. Track LWOP
+        if (Number(application.daysWithoutPay) > 0) {
+          await updateLWOPSummary(application.employeeId, Number(application.daysWithoutPay));
+        }
+
+        // 3. Update Status
+        await db.update(leaveApplications)
+          .set({ status: 'Approved', approvedBy, approvedAt: sql`CURRENT_TIMESTAMP`, updatedAt: sql`CURRENT_TIMESTAMP` })
+          .where(eq(leaveApplications.id, application.id));
+
+        // 4. Update DTR
+        const startDate = new Date(application.startDate);
+        const endDate = new Date(application.endDate);
+        const currentDate = new Date(startDate);
+        while (currentDate <= endDate) {
+          const dateStr = currentDate.toISOString().split('T')[0];
+          const dayOfWeek = currentDate.getDay();
+          if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+            await db.insert(dailyTimeRecords).values({ employeeId: application.employeeId, date: dateStr, status: 'Leave' })
+              .onDuplicateKeyUpdate({ set: { status: 'Leave', updatedAt: sql`CURRENT_TIMESTAMP` } });
+          }
+          currentDate.setDate(currentDate.getDate() + 1);
+        }
+
+        // 5. Service Record
+        const eventType = Number(application.daysWithoutPay) > 0 ? 'LWOP' : 'Leave';
+        await logToServiceRecord(application.employeeId, eventType as 'LWOP' | 'Leave', String(application.startDate).split('T')[0], String(application.endDate).split('T')[0], application.leaveType, Number(application.workingDays), application.actualPaymentStatus !== 'WITHOUT_PAY', `${application.leaveType} - Deemed Approved`, application.id, 'leave_application', approvedBy);
+      }
+    } catch (autoErr) {
+      console.error('[AUTO-APPROVE] Error processing Deemed Approved leaves:', autoErr);
+    }
+    // --- END DEEMED APPROVED AUTO-BYPASS ---
 
     const conditions = [];
     if (search) {

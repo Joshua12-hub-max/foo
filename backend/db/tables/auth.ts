@@ -49,7 +49,7 @@ export const authentication = mysqlTable("authentication", {
 	gsisNumber: varchar("gsis_number", { length: 20 }),
 	salaryGrade: varchar("salary_grade", { length: 10 }),
 	stepIncrement: int("step_increment").default(1),
-	appointmentType: mysqlEnum("appointment_type", ['Permanent','Contractual','Casual','Job Order','Coterminous','Temporary']),
+	appointmentType: mysqlEnum("appointment_type", ['Permanent','Contractual','Casual','Job Order','Coterminous','Temporary','Contract of Service','JO','COS']),
 	officeAddress: text("office_address"),
 	station: varchar({ length: 100 }),
 	positionTitle: varchar("position_title", { length: 100 }),

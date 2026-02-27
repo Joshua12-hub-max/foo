@@ -1,8 +1,7 @@
 import { db } from '../db/index.js';
-import { tardinessSummary, policyViolations, employeeMemos, memoSequences, dailyTimeRecords, internalPolicies, authentication } from '../db/schema.js';
-import { eq, and, sql, gte, lte } from 'drizzle-orm';
-
-
+import { tardinessSummary, policyViolations, employeeMemos, memoSequences, authentication } from '../db/schema.js';
+import { eq, asc } from 'drizzle-orm';
+import crypto from 'crypto';
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -24,185 +23,322 @@ const generateInternalMemoNumber = async (tx: Transaction): Promise<string> => {
   return `MEMO-${year}-${String(nextNumber).padStart(4, '0')}`;
 };
 
+interface MonthlyViolationScan {
+  yearMonth: string;
+  lateCount: number;
+  unauthorizedAbsences: number;
+  undertimeCount: number;
+  semester: number;
+}
+
+interface ViolationOffense {
+  offenseNumber: 1 | 2 | 3;
+  violationType: 'habitual_tardiness' | 'absence' | 'habitual_undertime';
+  classification?: 'Simple Misconduct' | 'Prejudicial to Service';
+  triggeredMonths: string[];
+  totalIncidents: number;
+  fingerprint: string;
+}
+
+const getOrdinalSuffix = (i: number) => {
+    let j = i % 10, k = i % 100;
+    if (j == 1 && k != 11) return "st";
+    if (j == 2 && k != 12) return "nd";
+    if (j == 3 && k != 13) return "rd";
+    return "th";
+};
+
+class CSCViolationTracker {
+  async identifyOffenses(employeeId: string): Promise<ViolationOffense[]> {
+    const summaries = await db.select({
+      year: tardinessSummary.year,
+      month: tardinessSummary.month,
+      lateCount: tardinessSummary.totalLateCount,
+      undertimeCount: tardinessSummary.totalUndertimeCount,
+      absenceCount: tardinessSummary.totalAbsenceCount
+    }).from(tardinessSummary)
+      .where(eq(tardinessSummary.employeeId, employeeId))
+      .orderBy(asc(tardinessSummary.year), asc(tardinessSummary.month));
+
+    const monthlyData: MonthlyViolationScan[] = summaries.map(s => ({
+      yearMonth: `${s.year}-${String(s.month).padStart(2, '0')}`,
+      lateCount: s.lateCount || 0,
+      unauthorizedAbsences: s.absenceCount || 0,
+      undertimeCount: s.undertimeCount || 0,
+      semester: s.month <= 6 ? 1 : 2
+    }));
+
+    const offenses: ViolationOffense[] = [];
+
+    const tardyMonths = monthlyData.filter(m => m.lateCount >= 10);
+    offenses.push(...this.buildOffenseSequence(tardyMonths, {
+      violationType: 'habitual_tardiness',
+      minMonthsPerOffense: 2,
+      pattern: 'consecutive_or_semester'
+    }));
+
+    const absenteeMonths = monthlyData.filter(m => m.unauthorizedAbsences > 2.5);
+    offenses.push(...this.buildOffenseSequence(absenteeMonths, {
+      violationType: 'absence',
+      minMonthsPerOffense: 3,
+      pattern: 'consecutive_or_semester'
+    }));
+
+    const undertimeMonths = monthlyData.filter(m => m.undertimeCount >= 10);
+    const classification = 'Simple Misconduct';
+    
+    offenses.push(...this.buildOffenseSequence(undertimeMonths, {
+        violationType: 'habitual_undertime',
+        classification,
+        minMonthsPerOffense: 2,
+        pattern: 'consecutive_or_semester'
+    }));
+
+    return offenses;
+  }
+
+  private isConsecutiveMonth(prevYM: string, currYM: string): boolean {
+    const [y1, m1] = prevYM.split('-').map(Number);
+    const [y2, m2] = currYM.split('-').map(Number);
+    if (y1 === y2) return m2 - m1 === 1;
+    if (y2 - y1 === 1) return m1 === 12 && m2 === 1;
+    return false;
+  }
+
+  private buildOffenseSequence(
+    violatingMonths: MonthlyViolationScan[],
+    config: {
+      violationType: 'habitual_tardiness' | 'absence' | 'habitual_undertime';
+      minMonthsPerOffense: number;
+      pattern: 'consecutive_or_semester';
+      classification?: 'Simple Misconduct' | 'Prejudicial to Service';
+    }
+  ): ViolationOffense[] {
+    if (violatingMonths.length < config.minMonthsPerOffense) return [];
+    
+    const offenses: ViolationOffense[] = [];
+    let currentOffense: MonthlyViolationScan[] = [];
+    let offenseCounter = 1;
+    
+    for (let i = 0; i < violatingMonths.length; i++) {
+      const current = violatingMonths[i];
+      const prev = currentOffense[currentOffense.length - 1];
+      
+      const isConsecutive = prev && this.isConsecutiveMonth(prev.yearMonth, current.yearMonth);
+      const prevYear = prev ? prev.yearMonth.substring(0,4) : null;
+      const currYear = current.yearMonth.substring(0,4);
+      const isSameSemester = prev && prevYear === currYear && prev.semester === current.semester;
+      
+      if (!prev || isConsecutive || (config.pattern === 'consecutive_or_semester' && isSameSemester)) {
+        currentOffense.push(current);
+      } else {
+        if (currentOffense.length >= config.minMonthsPerOffense) {
+          offenses.push(this.createOffenseRecord(currentOffense, offenseCounter++, config));
+        }
+        currentOffense = [current];
+      }
+
+      if (currentOffense.length === config.minMonthsPerOffense) {
+         offenses.push(this.createOffenseRecord(currentOffense, offenseCounter++, config));
+         currentOffense = [];
+      }
+    }
+    
+    return offenses;
+  }
+
+  private createOffenseRecord(
+    months: MonthlyViolationScan[],
+    offenseNumber: number,
+    config: any
+  ): ViolationOffense {
+    const triggeredMonths = months.map(m => m.yearMonth);
+    const fingerprint = crypto
+      .createHash('sha256')
+      .update(`${config.violationType}-${triggeredMonths.sort().join(',')}-${offenseNumber}`)
+      .digest('hex');
+      
+    return {
+      offenseNumber: Math.min(offenseNumber, 3) as 1 | 2 | 3,
+      violationType: config.violationType,
+      classification: config.classification,
+      triggeredMonths,
+      totalIncidents: months.reduce((sum, m) => sum + (config.violationType === 'habitual_tardiness' ? m.lateCount : (config.violationType === 'absence' ? m.unauthorizedAbsences : m.undertimeCount)), 0),
+      fingerprint
+    };
+  }
+}
+
+type MemoTypeStr = 'Verbal Warning' | 'Written Warning' | 'Reprimand' | 'Suspension Notice' | 'Termination Notice' | 'Show Cause';
+type SeverityStr = 'minor' | 'moderate' | 'major' | 'grave' | 'terminal';
+
+interface Penalty {
+  penalty: string;
+  memoType: MemoTypeStr;
+  severity: SeverityStr;
+}
+
+
+
+const penaltyMatrix: Record<string, { regular: Penalty[]; jo_cos: Penalty[] }> = {
+    'habitual_tardiness': {
+      regular: [
+        { penalty: 'Reprimand (Stern Warning)', memoType: 'Reprimand', severity: 'minor' },
+        { penalty: 'Suspension of one (1) to thirty (30) days', memoType: 'Suspension Notice', severity: 'major' },
+        { penalty: 'Dismissal from the Service', memoType: 'Termination Notice', severity: 'terminal' }
+      ],
+      jo_cos: [
+        { penalty: 'Warning', memoType: 'Written Warning', severity: 'minor' },
+        { penalty: 'Reprimand', memoType: 'Reprimand', severity: 'moderate' },
+        { penalty: 'Termination of Contract', memoType: 'Termination Notice', severity: 'terminal' }
+      ]
+    },
+    'absence': {
+      regular: [
+        { penalty: 'Suspension of six (6) months and one (1) day', memoType: 'Suspension Notice', severity: 'grave' },
+        { penalty: 'Dismissal from the Service', memoType: 'Termination Notice', severity: 'terminal' },
+        { penalty: 'Dismissal from the Service', memoType: 'Termination Notice', severity: 'terminal' }
+      ],
+      jo_cos: [
+        { penalty: 'Reprimand', memoType: 'Reprimand', severity: 'moderate' },
+        { penalty: 'Termination of Contract', memoType: 'Termination Notice', severity: 'terminal' },
+        { penalty: 'Termination of Contract', memoType: 'Termination Notice', severity: 'terminal' }
+      ]
+    },
+    'habitual_undertime-Simple Misconduct': {
+      regular: [
+        { penalty: 'Reprimand (Stern Warning)', memoType: 'Reprimand', severity: 'minor' },
+        { penalty: 'Suspension of one (1) to thirty (30) days', memoType: 'Suspension Notice', severity: 'major' },
+        { penalty: 'Dismissal from the Service', memoType: 'Termination Notice', severity: 'terminal' }
+      ],
+      jo_cos: [
+        { penalty: 'Warning', memoType: 'Written Warning', severity: 'minor' },
+        { penalty: 'Reprimand', memoType: 'Reprimand', severity: 'moderate' },
+        { penalty: 'Termination of Contract', memoType: 'Termination Notice', severity: 'terminal' }
+      ]
+    },
+    'habitual_undertime-Prejudicial to Service': {
+      regular: [
+        { penalty: 'Suspension of six (6) months and one (1) day to one (1) year', memoType: 'Suspension Notice', severity: 'grave' },
+        { penalty: 'Dismissal from the Service', memoType: 'Termination Notice', severity: 'terminal' },
+        { penalty: 'Dismissal from the Service', memoType: 'Termination Notice', severity: 'terminal' }
+      ],
+      jo_cos: [
+        { penalty: 'Reprimand', memoType: 'Reprimand', severity: 'moderate' },
+        { penalty: 'Termination of Contract', memoType: 'Termination Notice', severity: 'terminal' },
+        { penalty: 'Termination of Contract', memoType: 'Termination Notice', severity: 'terminal' }
+      ]
+    }
+};
+
+const generateMemoContent = (offense: ViolationOffense, penalty: Penalty, employeeTypeStr: string, employeeIdStr: string): string => {
+  const monthsList = offense.triggeredMonths.join(', ');
+  const displayLabel = offense.violationType === 'habitual_tardiness' ? 'Habitual Tardiness' : (offense.violationType === 'absence' ? 'Habitual Absenteeism' : 'Habitual Undertime');
+  
+  return `MEMORANDUM
+
+TO: ${employeeIdStr}
+FROM: City Human Resource Management Officer
+SUBJECT: ${displayLabel} - ${offense.offenseNumber}${getOrdinalSuffix(offense.offenseNumber)} Offense
+
+This is to inform you that you have been found guilty of ${displayLabel} based on the following periods: ${monthsList}.
+
+As ${employeeTypeStr}, you are hereby issued a ${penalty.penalty}.
+
+This memo serves as your official notice. Please acknowledge receipt within 24 hours.`.trim();
+};
+
 /**
  * Checks for policy violations based on CSC rules.
  * Rule: Habitual Tardiness/Undertime if 10x per month for 2 months in a semester.
  */
 export const checkPolicyViolations = async (
   employeeId: string,
-  year: number,
-  month: number
+  _year: number,
+  _month: number
 ): Promise<void> => {
   try {
-    const currentSummaries = await db.select().from(tardinessSummary).where(and(
-        eq(tardinessSummary.employeeId, employeeId),
-        eq(tardinessSummary.year, year),
-        eq(tardinessSummary.month, month)
-      )).limit(1);
-    const current = currentSummaries[0];
+    const tracker = new CSCViolationTracker();
+    const offenses = await tracker.identifyOffenses(employeeId);
 
-    if (!current) return;
+    if (offenses.length === 0) return;
 
-    // Fetch Threshold from Policy (Default to 3 per user request)
-    const policyRows = await db.select().from(internalPolicies).where(eq(internalPolicies.category, 'tardiness')).limit(1);
-    const policyRow = policyRows[0];
+    // Get Employee Type and details
+    const empRecord = await db.select({ id: authentication.id, dutyType: authentication.dutyType, appointmentType: authentication.appointmentType }).from(authentication).where(eq(authentication.employeeId, employeeId)).limit(1);
+    const adminRecord = await db.select({ id: authentication.id }).from(authentication).where(eq(authentication.role, 'admin')).limit(1);
     
-    let habitualThreshold = 3; // USER REQUEST: 3x Lates = Violation
-    try {
-      if (policyRow?.content) {
-        const content = typeof policyRow.content === 'string' ? JSON.parse(policyRow.content) : policyRow.content;
-        habitualThreshold = Number(content.habitualThreshold) || 3;
+    if (empRecord.length === 0) return;
+    const authorIdValue = adminRecord.length > 0 ? adminRecord[0].id : empRecord[0].id;
+    
+    const isRegular = empRecord[0].dutyType === 'Standard'; // Based on task plan (Standard Duty = Regular Penalty track)
+    const employeeTypeStr = isRegular ? 'Regular Personnel' : 'Job Order/Contract of Service Personnel';
+
+    for (const offense of offenses) {
+      // Fingerprint deduplication check inside loop
+      const existing = await db.select({ id: policyViolations.id })
+        .from(policyViolations)
+        .where(eq(policyViolations.fingerprint, offense.fingerprint))
+        .limit(1);
+
+      if (existing.length > 0) {
+        continue; // Already penalized for these exact months & offense number
       }
-    } catch (e) {
-      console.error('[POLICY] Error parsing tardiness policy:', e);
-    }
 
-    const typesToCheck: ('habitual_tardiness' | 'habitual_undertime' | 'absence')[] = [];
-    
-    // STRICT RULE: 3x Lates in a MONTH triggers "Habitual Tardiness"
-    if ((current.totalLateCount || 0) >= habitualThreshold) typesToCheck.push('habitual_tardiness');
-    // STRICT RULE: 3x Undertime in a MONTH triggers "Habitual Undertime"
-    if ((current.totalUndertimeCount || 0) >= habitualThreshold) typesToCheck.push('habitual_undertime');
+      const matrixKey = offense.violationType === 'habitual_undertime' 
+        ? `habitual_undertime-${offense.classification || 'Simple Misconduct'}`
+        : offense.violationType;
+        
+      const penalties = isRegular ? penaltyMatrix[matrixKey].regular : penaltyMatrix[matrixKey].jo_cos;
+      const penaltyIndex = Math.min(offense.offenseNumber - 1, penalties.length - 1);
+      const penalty = penalties[penaltyIndex];
 
-    // Absence check: 5 total OR check for consecutive
-    const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
-    const lastDay = new Date(year, month, 0).getDate();
-    const endDate = `${year}-${String(month).padStart(2, '0')}-${lastDay}`;
-    
-    // Total Absence Check (e.g., 5 days)
-    if ((current.totalAbsenceCount || 0) >= 5) {
-      typesToCheck.push('absence');
-    } else {
-      // Consecutive Check: 3 days
-      const dtrs = await db.select({ date: dailyTimeRecords.date, status: dailyTimeRecords.status })
-        .from(dailyTimeRecords)
-        .where(and(
-          eq(dailyTimeRecords.employeeId, employeeId),
-          gte(dailyTimeRecords.date, startDate),
-          lte(dailyTimeRecords.date, endDate)
-        ))
-        .orderBy(dailyTimeRecords.date);
-      
-      let consecutiveAbsences = 0;
-      for (const dtr of dtrs) {
-        if (dtr.status === 'Absent') {
-          consecutiveAbsences++;
-          if (consecutiveAbsences >= 3) {
-            if (!typesToCheck.includes('absence')) typesToCheck.push('absence');
-            break;
-          }
-        } else {
-          consecutiveAbsences = 0;
-        }
-      }
-    }
+      const displayLabel = offense.violationType === 'habitual_tardiness' ? 'Habitual Tardiness' : (offense.violationType === 'absence' ? 'Habitual Absenteeism' : 'Habitual Undertime');
+      const subject = `${displayLabel} - ${offense.offenseNumber}${getOrdinalSuffix(offense.offenseNumber)} Offense`;
 
-    if (typesToCheck.length === 0) return;
-
-
-
-    // STRICT FIX: Ensure current month violations trigger even without history
-    // If we have > 0 types to check, we proceed.
-
-    for (const type of typesToCheck) {
-      const isLateCheck = type === 'habitual_tardiness';
-      const isUndertimeCheck = type === 'habitual_undertime';
-      const isAbsenceCheck = type === 'absence';
-
-      // Absence triggers IMMEDIATELY if in typesToCheck
-      // Tardiness/Undertime: Triggers IMMEDIATELY if strict 3x rule is met (User Request)
-      // We removed the "2 months in a semester" requirement for this strict configuration.
-      const isStrictTrigger = (isLateCheck || isUndertimeCheck) && (
-        (isLateCheck && (current.totalLateCount || 0) >= habitualThreshold) ||
-        (isUndertimeCheck && (current.totalUndertimeCount || 0) >= habitualThreshold)
-      );
-
-      if (isAbsenceCheck || isStrictTrigger) {
-        // VIOLATION TRIGGERED
-        await db.transaction(async (tx) => {
-        // 1. Get exact dates for the triggering month
-        const incidentRecords = await tx.select()
-          .from(dailyTimeRecords)
-          .where(and(
-            eq(dailyTimeRecords.employeeId, employeeId),
-            sql`YEAR(${dailyTimeRecords.date}) = ${year}`,
-            sql`MONTH(${dailyTimeRecords.date}) = ${month}`,
-            type === 'absence' ? eq(dailyTimeRecords.status, 'Absent') : (isLateCheck ? sql`${dailyTimeRecords.lateMinutes} > 0` : sql`${dailyTimeRecords.undertimeMinutes} > 0`)
-          ));
-          
-          const incidentDatesArray = incidentRecords.map(r => r.date);
-          const incidentDates = incidentDatesArray.join(', ');
-
-          // Derive exact date from the triggering violation incident instead of "today"
-          let effectiveDateStr = new Date().toISOString().split('T')[0];
-          let createdAtStr = new Date().toISOString().slice(0, 19).replace('T', ' ');
-          if (incidentDatesArray.length > 0) {
-            const lastDate = incidentDatesArray[incidentDatesArray.length - 1]; // e.g. 2026-01-20
-            effectiveDateStr = lastDate;
-            createdAtStr = `${lastDate} 17:00:00`;
-          }
-
-          // 2. Get Offense Level
-          const existingOffenses = await tx.select({ count: sql<number>`count(*)` })
-            .from(policyViolations)
-            .where(and(
-              eq(policyViolations.employeeId, employeeId),
-              eq(policyViolations.type, type)
-            ));
-          
-          const offenseLevel = (Number(existingOffenses[0].count) || 0) + 1;
+      await db.transaction(async (tx) => {
           const memoNumber = await generateInternalMemoNumber(tx);
 
-          // 3. Map Offense to Memo Type
-          const memoTypeMap: Record<number, 'Verbal Warning' | 'Written Warning' | 'Suspension Notice' | 'Termination Notice' | 'Show Cause'> = {
-            1: type === 'absence' ? 'Show Cause' : 'Written Warning',
-            2: 'Suspension Notice',
-            3: 'Termination Notice'
-          };
-          const memoType = memoTypeMap[offenseLevel] || 'Written Warning';
-
-          // 4. Create Draft Memo
-          const subject = type === 'absence' ? `NOTICE: UNEXPLAINED ABSENCE - Offense Level ${offenseLevel}` : `NOTICE: ${type.replace('_', ' ').toUpperCase()} - Offense Level ${offenseLevel}`;
-          const violationLabel = type === 'absence' ? 'absence' : (isLateCheck ? 'tardiness' : 'undertime');
-
-          const empRecord = await tx.select({ id: authentication.id }).from(authentication).where(eq(authentication.employeeId, employeeId)).limit(1);
-          const adminRecord = await tx.select({ id: authentication.id }).from(authentication).where(eq(authentication.role, 'admin')).limit(1);
-
-          const authorIdValue = adminRecord.length > 0 ? adminRecord[0].id : empRecord[0].id; // Fallback to self if no admin
+          // Get date of the last triggered month
+          const lastMonth = offense.triggeredMonths[offense.triggeredMonths.length - 1];
+          const [yyyy, mm] = lastMonth.split('-').map(Number);
+          const lastDay = new Date(yyyy, mm, 0).getDate();
+          const effectiveDateStr = `${yyyy}-${String(mm).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+          const createdAtStr = `${effectiveDateStr} 17:00:00`;
 
           const [memo] = await tx.insert(employeeMemos).values({
             memoNumber,
             employeeId: empRecord[0].id,
             authorId: authorIdValue,
-            memoType,
+            memoType: penalty.memoType,
             subject,
-            content: `This is an automated notice regarding your attendance records for ${month}/${year}. Our records indicate you have reached the threshold or consecutive limit for ${violationLabel} incidents (DATES: ${incidentDates}). This is your Level ${offenseLevel} offense.`,
+            content: generateMemoContent(offense, penalty, employeeTypeStr, employeeId),
             status: 'Draft',
             priority: 'High',
+            severity: penalty.severity,
             effectiveDate: effectiveDateStr,
             createdAt: createdAtStr
           });
 
-          // 5. Create Violation Record linked to Memo
           await tx.insert(policyViolations).values({
-            employeeId: employeeId, // This is the string ID based on schema
-            type,
-            offenseLevel,
+            employeeId: employeeId,
+            type: offense.violationType,
+            violationSubtype: offense.classification,
+            offenseNumber: offense.offenseNumber,
+            offenseLevel: offense.offenseNumber,
+            triggeredMonths: JSON.stringify(offense.triggeredMonths),
+            fingerprint: offense.fingerprint,
             memoId: memo.insertId,
             details: JSON.stringify({
-              rule: "3x Strict Monthly Limit",
-              triggerMonth: `${month}/${year}`,
-              pastMonths: [],
-              count: isLateCheck ? current.totalLateCount : current.totalUndertimeCount,
-              dates: incidentDates.split(', ')
+              penalty_issued: penalty.penalty,
+              employee_type: employeeTypeStr,
+              severity: penalty.severity,
+              rule: "CSC MC No. 1, s. 2017 & CGM Matrix",
+              total_incidents: offense.totalIncidents
             }),
             status: 'pending'
           });
-          console.log(`[POLICY] ${type} Violation logged for ${employeeId} (Offense Level ${offenseLevel})`);
-        }).catch((txError) => {
-           console.error(`[POLICY] Transaction failed for ${employeeId} (${type}):`, txError);
-        });
-      }
+          console.log(`[POLICY] ${offense.violationType} logged for ${employeeId} (Fingerprint: ${offense.fingerprint})`);
+      });
     }
   } catch (error) {
     console.error('Error checking policy violations:', error);

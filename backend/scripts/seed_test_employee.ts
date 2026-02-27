@@ -8,7 +8,7 @@ import {
   policyViolations,
   employeeMemos
 } from '../db/schema.js';
-import { eq, or, sql } from 'drizzle-orm';
+import { eq, or } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 import { updateTardinessSummary } from '../utils/tardinessUtils.js';
 import { checkPolicyViolations } from '../services/violationService.js';
@@ -204,14 +204,14 @@ async function seedMassTestEmployees() {
         let lateMinutes = 0;
         let undertimeMinutes = 0;
 
-        // Spread: 60% Present, 15% Late, 15% Undertime, 10% Absent
-        if (rand < 0.60) { 
+        // Spread: 20% Present, 40% Late, 35% Undertime, 5% Absent to FORCE VIOLATIONS
+        if (rand < 0.20) { 
             // PRESENT
             status = 'Present'; 
             timeInDate = getRandomTime(year, month, day, 7, 50, 10); 
             timeOutDate = getRandomTime(year, month, day, 17, 5, 5); 
         }
-        else if (rand < 0.75) { 
+        else if (rand < 0.60) { 
             // LATE
             status = 'Late'; 
             timeInDate = getRandomTime(year, month, day, 8, 30, 20); // late by ~30 mins
@@ -222,7 +222,7 @@ async function seedMassTestEmployees() {
             
             timeOutDate = getRandomTime(year, month, day, 17, 5, 5); 
         }
-        else if (rand < 0.90) { 
+        else if (rand < 0.95) { 
             // UNDERTIME
             status = 'Undertime'; 
             timeInDate = getRandomTime(year, month, day, 7, 50, 10); 
@@ -240,8 +240,8 @@ async function seedMassTestEmployees() {
 
         if (status !== 'Absent') {
              // Create Logs
-             logs.push({ employeeId: emp.empId, scanTime: formatDateTime(timeInDate!), type: 'IN', source: 'BIOMETRIC' });
-             logs.push({ employeeId: emp.empId, scanTime: formatDateTime(timeOutDate!), type: 'OUT', source: 'BIOMETRIC' });
+             logs.push({ employeeId: emp.empId, scanTime: formatDateTime(timeInDate!), type: 'IN' as const, source: 'BIOMETRIC' as const });
+             logs.push({ employeeId: emp.empId, scanTime: formatDateTime(timeOutDate!), type: 'OUT' as const, source: 'BIOMETRIC' as const });
              
              // Create DTR
              dtrs.push({

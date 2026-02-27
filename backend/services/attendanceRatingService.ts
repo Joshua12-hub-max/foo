@@ -1,5 +1,5 @@
 import { db } from '../db/index.js';
-import { dailyTimeRecords, policyViolations } from '../db/schema.js';
+import { dailyTimeRecords, policyViolations, employeeMemos } from '../db/schema.js';
 import { and, eq, gte, lte, inArray } from 'drizzle-orm';
 
 interface AttendanceScoreResult {
@@ -48,6 +48,29 @@ export const calculateAttendanceScore = async (
 
   const violationCount = violations.length;
 
+  // Fetch issued Memos within the period to enforce strict Performance Ceilings
+  const memos = await db.select({
+      severity: employeeMemos.severity
+  })
+  .from(employeeMemos)
+  .where(and(
+      eq(employeeMemos.employeeId, empIdStr),
+      gte(employeeMemos.issuedAt, `${startDate} 00:00:00`),
+      lte(employeeMemos.issuedAt, `${endDate} 23:59:59`)
+  ));
+
+  let hasMajor = false;
+  let hasModerate = false;
+  let hasMinor = false;
+  let memoCount = 0;
+
+  memos.forEach(memo => {
+      if (memo.severity === 'major') hasMajor = true;
+      if (memo.severity === 'moderate') hasModerate = true;
+      if (memo.severity === 'minor') hasMinor = true;
+      memoCount++;
+  });
+
   let totalLates = 0;
   let totalUndertime = 0;
   let totalAbsences = 0;
@@ -85,16 +108,8 @@ export const calculateAttendanceScore = async (
   // 2 - Unsatisfactory: <= 15 instances AND <= 2 Absences
   // 1 - Poor: Habitual (>= 3 absences OR >= 10 consecutive absences checks) OR Violation
 
-  if (violationCount > 0) {
-      score = 1;
-      ratingDescription = `Poor (Has ${violationCount} Policy Violation/s)`;
-  } else if (totalAbsences >= 3) {
-      score = 1;
-      ratingDescription = `Poor (Habitual Absenteeism: ${totalAbsences} days)`;
-  } else if (totalLateMinutes > 240) { // > 4 hours total
-      score = 1;
-      ratingDescription = `Poor (Severe Tardiness: ${totalLateMinutes} mins)`;
-  } else if (totalInstances === 0 && totalAbsences === 0 && totalLateMinutes === 0) {
+  // Apply base score calculations
+  if (totalInstances === 0 && totalAbsences === 0 && totalLateMinutes === 0) {
       score = 5;
       ratingDescription = 'Outstanding';
   } else if (totalInstances <= 5 && totalLateMinutes <= 60 && totalAbsences === 0) {
@@ -103,12 +118,37 @@ export const calculateAttendanceScore = async (
   } else if (totalInstances <= 10 && totalLateMinutes <= 120 && totalAbsences <= 1) {
       score = 3;
       ratingDescription = 'Satisfactory';
-  } else if (totalInstances <= 15 && totalAbsences <= 2) { // FIX: Changed || to &&
+  } else if (totalInstances <= 15 && totalAbsences <= 2) { 
       score = 2;
       ratingDescription = 'Unsatisfactory';
   } else {
       score = 1;
       ratingDescription = 'Poor';
+  }
+
+  // ENFORCE CEILING CAPS BASED ON MEMO SEVERITY
+  // These override the base score if a memo penalty was formally issued.
+  if (hasMajor) {
+      score = 1;
+      ratingDescription = `Poor (Formally Reprimanded - Major Offense)`;
+  } else if (hasModerate && score > 2) {
+      score = 2; // Ceiling of 2 for moderate offenses
+      ratingDescription = `Unsatisfactory (Formally Reprimanded - Moderate Offense)`;
+  } else if (hasMinor && score > 3) {
+      score = 3; // Ceiling of 3 for minor offenses
+      ratingDescription = `Satisfactory (Formally Reprimanded - Minor Offense)`;
+  } 
+  
+  // Failsafes for extreme violations that bypassed memos or were ignored
+  else if (violationCount > 0 && score > 1) {
+      score = 1;
+      ratingDescription = `Poor (Has ${violationCount} Unresolved Policy Violation/s)`;
+  } else if (totalAbsences >= 3 && score > 1) {
+      score = 1;
+      ratingDescription = `Poor (Habitual Absenteeism: ${totalAbsences} days)`;
+  } else if (totalLateMinutes > 240 && score > 1) { // > 4 hours total
+      score = 1;
+      ratingDescription = `Poor (Severe Tardiness: ${totalLateMinutes} mins)`;
   }
 
   return {
