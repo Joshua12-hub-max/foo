@@ -1,45 +1,16 @@
 
 import { Request, Response } from 'express';
 import { db } from '../db/index.js';
-import { 
-  holidays, 
-  leaveBalances, 
-  leaveLedger, 
-  lwopSummary, 
-  serviceRecords, 
-  tardinessSummary, 
-  leaveApplications, 
-  dailyTimeRecords, 
-  authentication 
-} from '../db/schema.js';
+import { holidays, leaveBalances, leaveLedger, lwopSummary, serviceRecords, tardinessSummary, leaveApplications, dailyTimeRecords, authentication } from '../db/schema.js';
 import { eq, and, between, ne, or, sql, desc, lt, lte, gte } from 'drizzle-orm';
 import { createNotification, notifyAdmins } from './notificationController.js';
 import { accrueCreditsForMonth } from '../services/leaveAccrualService.js';
 import type { AuthenticatedRequest } from '../types/index.js';
-import {
-  type CreditType,
-  type LeaveType,
-  type PaymentStatus,
-  type TransactionType,
-  SPECIAL_LEAVES_NO_DEDUCTION,
-  CROSS_CHARGE_MAP,
-  LEAVE_TO_CREDIT_MAP,
-  VL_ADVANCE_FILING_DAYS,
-  WORKING_DAYS_PER_MONTH,
-  PATERNITY_LEAVE_DAYS,
-  VAWC_LEAVE_DAYS,
-  SPECIAL_LEAVE_WOMEN_DAYS,
-  MATERNITY_LEAVE_DAYS,
-  ADOPTION_LEAVE_DAYS,
-  SPECIAL_EMERGENCY_LEAVE_DAYS,
-  FORCED_LEAVE_DAYS,
+import { type CreditType, type LeaveType, type PaymentStatus, type TransactionType, SPECIAL_LEAVES_NO_DEDUCTION, CROSS_CHARGE_MAP,
+  LEAVE_TO_CREDIT_MAP, VL_ADVANCE_FILING_DAYS, WORKING_DAYS_PER_MONTH, PATERNITY_LEAVE_DAYS, VAWC_LEAVE_DAYS, SPECIAL_LEAVE_WOMEN_DAYS,
+  MATERNITY_LEAVE_DAYS, ADOPTION_LEAVE_DAYS, SPECIAL_EMERGENCY_LEAVE_DAYS, FORCED_LEAVE_DAYS,
 } from '../types/leave.types.js';
-import {
-  applyLeaveSchema,
-  rejectLeaveSchema,
-  creditUpdateSchema,
-  accrueCreditsSchema,
-  validateVLAdvanceFiling,
+import { applyLeaveSchema, rejectLeaveSchema, creditUpdateSchema, accrueCreditsSchema, validateVLAdvanceFiling,
   requiresMedicalCertificate,
 } from '../schemas/leaveSchema.js';
 
@@ -243,7 +214,7 @@ const logToServiceRecord = async (
       referenceType,
       processedBy
     });
-    console.log(`✅ Logged ${eventType} to service record for ${employeeId}`);
+    console.log(`Logged ${eventType} to service record for ${employeeId}`);
   } catch (error) {
     console.error('Error logging to service record:', error);
   }
@@ -273,8 +244,15 @@ const calculateTardinessDeduction = async (
       return { daysEquivalent: 0, deductedFromVL: 0, chargedAsLWOP: 0 };
     }
 
+    // Fetch employee's dailyTargetHours for accurate deduction
+    const empRecord = await db.select({ dailyTargetHours: authentication.dailyTargetHours })
+      .from(authentication)
+      .where(eq(authentication.employeeId, employeeId))
+      .limit(1);
+    const dailyTargetMinutes = (Number(empRecord[0]?.dailyTargetHours) || 8) * 60;
+
     const totalMinutes = (tardiness.totalLateMinutes || 0) + (tardiness.totalUndertimeMinutes || 0);
-    const daysEquivalent = totalMinutes / 480; // 480 mins = 8 hours = 1 day
+    const daysEquivalent = totalMinutes / dailyTargetMinutes; // Dynamic: based on employee's actual target hours
 
     if (daysEquivalent <= 0) {
       return { daysEquivalent: 0, deductedFromVL: 0, chargedAsLWOP: 0 };

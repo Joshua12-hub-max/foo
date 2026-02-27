@@ -270,7 +270,12 @@ export const checkPolicyViolations = async (
     if (empRecord.length === 0) return;
     const authorIdValue = adminRecord.length > 0 ? adminRecord[0].id : empRecord[0].id;
     
-    const isRegular = empRecord[0].dutyType === 'Standard'; // Based on task plan (Standard Duty = Regular Penalty track)
+    // Penalty track is determined by appointmentType, NOT dutyType
+    // JO, COS, Job Order, Contract of Service → JO/COS track
+    // Permanent, Contractual, Casual, Coterminous, Temporary → Regular track
+    const joCosTypes = ['Job Order', 'JO', 'Contract of Service', 'COS'];
+    const appointmentType = empRecord[0].appointmentType || 'Permanent';
+    const isRegular = !joCosTypes.includes(appointmentType);
     const employeeTypeStr = isRegular ? 'Regular Personnel' : 'Job Order/Contract of Service Personnel';
 
     for (const offense of offenses) {

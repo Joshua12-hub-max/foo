@@ -87,7 +87,7 @@ export const calculateAttendanceScore = async (
           totalUndertime++;
       }
       
-      if (record.status === 'Absent' || record.status === 'AWOL') {
+      if (record.status === 'Absent' || record.status === 'AWOL' || record.status === 'No Logs') {
           totalAbsences++;
       }
   });

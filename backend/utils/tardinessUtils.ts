@@ -42,7 +42,7 @@ export const updateTardinessSummary = async (
         totalUndertimeMinutes += r.undertimeMinutes;
         totalUndertimeCount++;
       }
-      if (r.status === 'Absent') {
+      if (r.status === 'Absent' || r.status === 'No Logs') {
         totalAbsenceCount++;
       }
     }
