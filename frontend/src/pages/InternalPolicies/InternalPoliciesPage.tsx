@@ -145,15 +145,28 @@ const InternalPoliciesPage: React.FC<InternalPoliciesPageProps> = ({ hideHeader 
                                         <div className="p-5 border border-gray-200 rounded-2xl bg-white shadow-sm">
                                             <p className="text-[10px] font-bold text-amber-600 uppercase tracking-widest mb-3">Special Rule (Irregular Duties)</p>
                                             <div className="space-y-3">
-                                                <div className="flex items-center justify-between">
-                                                    <span className="text-xs font-bold text-gray-700">Option A</span>
-                                                    <span className="text-xs text-gray-500">7h/day, 6d/week (42h)</span>
+                                                <div className="p-3 bg-amber-50 rounded-xl border border-amber-100">
+                                                    <p className="text-xs font-bold text-amber-800 mb-1">Target Hours Mode</p>
+                                                    <p className="text-[10px] text-gray-600 leading-relaxed">
+                                                        No fixed start/end time. Schedule is assigned by department head. System tracks <strong>rendered hours</strong> vs <strong>daily target</strong> (default: 8 hours).
+                                                    </p>
                                                 </div>
-                                                <div className="flex items-center justify-between">
-                                                    <span className="text-xs font-bold text-gray-700">Option B</span>
-                                                    <span className="text-xs text-gray-500">12h/day, 2d duty/2d off</span>
+                                                <div className="space-y-2">
+                                                    <div className="flex items-center justify-between text-[11px]">
+                                                        <span className="text-gray-500">Late Calculation</span>
+                                                        <span className="font-bold text-gray-700">❌ Not Applicable</span>
+                                                    </div>
+                                                    <div className="flex items-center justify-between text-[11px]">
+                                                        <span className="text-gray-500">Undertime</span>
+                                                        <span className="font-bold text-gray-700">✅ Target – Rendered = UT</span>
+                                                    </div>
+                                                    <div className="flex items-center justify-between text-[11px]">
+                                                        <span className="text-gray-500">Lunch Deduction</span>
+                                                        <span className="font-bold text-gray-700">1 hour (if &gt; 5h rendered)</span>
+                                                    </div>
                                                 </div>
                                             </div>
+                                            <p className="text-[10px] font-medium text-gray-400 mt-3">JO / COS / Casual Employees</p>
                                         </div>
                                     </div>
                                 </section>

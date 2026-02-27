@@ -64,9 +64,9 @@ export const processDailyAttendance = async (
     const leaveType = isOnLeave ? approvedLeaves[0].leaveType : null;
 
     const dutyType = employees[0]?.dutyType || 'Standard';
-
-
-
+    const dailyTargetHours = Number(employees[0]?.dailyTargetHours) || 8;
+    const dailyTargetMinutes = dailyTargetHours * 60;
+    const LUNCH_BREAK_MINUTES = 60; // 1 hour lunch deduction for rendered time calc
 
     // 3. Get Schedule(s)
     const dateParts = dateStr.split('-').map(Number);
@@ -84,6 +84,9 @@ export const processDailyAttendance = async (
     ))
     .orderBy(asc(schedules.startTime));
 
+    // Track whether we're using target-hours mode (Irregular with no schedule)
+    let useTargetHoursMode = false;
+
     // Fallback logic based on Duty Type
     if (scheduleBlocks.length === 0) {
       if (dutyType === 'Standard') {
@@ -96,10 +99,10 @@ export const processDailyAttendance = async (
             }];
          }
       } else {
-         // Irregular: Default behavior needs to be careful. 
-         // For now, if no schedule is found for Irregular, we don't assume 8-5.
-         // But we might want a "Daily Target" fallback if they logged time.
-         // console.log(`[ATTENDANCE] No schedule found for Irregular employee ${employeeId} on ${dateStr}`);
+         // Irregular: No fixed start/end time. Use dailyTargetHours to calculate undertime.
+         // Late is NOT applicable (no fixed arrival time).
+         // Undertime = dailyTargetMinutes - renderedMinutes (if renderedMinutes < target).
+         useTargetHoursMode = true;
       }
     }
 
@@ -127,6 +130,7 @@ export const processDailyAttendance = async (
     let timeOut: Date | null = null;
 
     if (activeBlocks.length > 0) {
+      // ── SCHEDULE-BASED MODE (Standard or Irregular with explicit schedule) ──
       // Map logs to blocks
       // For each block, find the best IN (closest to startTime) and OUT (closest to endTime)
       for (const block of activeBlocks) {
@@ -161,8 +165,6 @@ export const processDailyAttendance = async (
             // Apply Grace Period Rule
             if (minutesLate > gracePeriod) {
               totalLateMinutes += minutesLate;
-            } else {
-              // console.log(`[ATTENDANCE] ${employeeId} is late by ${minutesLate} mins (Within ${gracePeriod} mins grace). Recording as 0.`);
             }
           }
         }
@@ -176,17 +178,44 @@ export const processDailyAttendance = async (
           }
         }
       }
+    } else if (useTargetHoursMode && logs.length > 0) {
+      // ── TARGET-HOURS MODE (Irregular with no schedule) ──
+      // No fixed start/end time → Late is NOT computed (no arrival benchmark).
+      // Undertime = dailyTargetMinutes - renderedMinutes (if short).
+      const inLogs = logs.filter(l => l.type === 'IN');
+      const outLogs = logs.filter(l => l.type === 'OUT');
+
+      if (inLogs.length > 0) timeIn = new Date(inLogs[0].scanTime);
+      if (outLogs.length > 0) timeOut = new Date(outLogs[outLogs.length - 1].scanTime);
+
+      if (timeIn && timeOut) {
+        const grossRenderedMinutes = Math.floor((timeOut.getTime() - timeIn.getTime()) / 60000);
+        // Deduct 1 hour lunch if rendered > 5 hours (standard govt rule)
+        const lunchDeduction = grossRenderedMinutes > 300 ? LUNCH_BREAK_MINUTES : 0;
+        const netRenderedMinutes = grossRenderedMinutes - lunchDeduction;
+
+        if (netRenderedMinutes < dailyTargetMinutes) {
+          totalUndertimeMinutes = dailyTargetMinutes - netRenderedMinutes;
+        }
+        // Late is NOT applicable in target-hours mode (no fixed start time)
+      }
     } else {
-      // Rest Day or no active blocks: Just record first in and last out
+      // Rest Day or no logs at all: Just record first in and last out
       const inLogs = logs.filter(l => l.type === 'IN');
       const outLogs = logs.filter(l => l.type === 'OUT');
       if (inLogs.length > 0) timeIn = new Date(inLogs[0].scanTime);
       if (outLogs.length > 0) timeOut = new Date(outLogs[outLogs.length - 1].scanTime);
     }
 
+    // ── STATUS DETERMINATION ──
     let status: string = 'Present';
-    if (activeBlocks.length > 0) {
-      if (!timeIn) {
+    const hasScheduleOrTarget = activeBlocks.length > 0 || useTargetHoursMode;
+
+    if (hasScheduleOrTarget) {
+      if (!timeIn && logs.length === 0) {
+        // No logs at all for a working day
+        status = isOnLeave ? (leaveType || 'Leave') : (useTargetHoursMode ? 'No Logs' : 'Absent');
+      } else if (!timeIn) {
         status = isOnLeave ? (leaveType || 'Leave') : 'Absent';
       } else {
         const isLate = totalLateMinutes > 0;
