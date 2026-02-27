@@ -46,7 +46,7 @@ const MemoViewModal: React.FC<MemoViewModalProps> = memo(({ isOpen, onClose, mem
         </div>
         
         {/* Content */}
-        <div className="p-6 space-y-4">
+        <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
           <div className="flex items-center justify-between">
             <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${getStatusBadge(memo.status)}`}>
               {memo.status}
@@ -83,7 +83,7 @@ const MemoViewModal: React.FC<MemoViewModalProps> = memo(({ isOpen, onClose, mem
 
           <div>
             <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">Content</label>
-            <div className="text-sm text-gray-700 bg-gray-50 p-4 rounded-xl border border-gray-100 whitespace-pre-wrap">
+            <div className="text-sm text-gray-700 bg-gray-50 p-4 rounded-xl border border-gray-100 whitespace-pre-wrap max-h-[200px] overflow-y-auto">
               {memo.content}
             </div>
           </div>

@@ -43,7 +43,7 @@ const EmployeeMemoViewModal: React.FC<EmployeeMemoViewModalProps> = memo(({ isOp
           </button>
         </div>
         
-        <div className="p-6 space-y-4">
+        <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
           <div className="flex items-center justify-between">
             <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${getEmployeeStatusBadge(memo)}`}>
               {getEmployeeStatusText(memo)}
@@ -82,7 +82,7 @@ const EmployeeMemoViewModal: React.FC<EmployeeMemoViewModalProps> = memo(({ isOp
           {/* Content Section - Outside Card */}
           <div>
             <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">Content</label>
-            <div className="text-sm text-gray-700 bg-white p-4 rounded-xl border border-gray-200 whitespace-pre-wrap break-all shadow-sm">
+            <div className="text-sm text-gray-700 bg-white p-4 rounded-xl border border-gray-200 whitespace-pre-wrap break-all shadow-sm max-h-[200px] overflow-y-auto">
               {memo.content}
             </div>
           </div>
