@@ -185,69 +185,85 @@ const InternalPoliciesPage: React.FC<InternalPoliciesPageProps> = ({ hideHeader 
                     <div className="space-y-8 animate-in slide-in-from-bottom-2 duration-300">
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                             <div className="space-y-6">
-                                <section className="p-6 border border-gray-200 rounded-2xl bg-white shadow-sm h-full">
-                                    <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider mb-6 border-l-4 border-indigo-500 pl-3">Definitions & Immediate Impact</h3>
+                                <section className="p-6 border border-gray-200 rounded-2xl bg-white shadow-sm">
+                                    <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider mb-6 border-l-4 border-indigo-500 pl-3">Definitions (CSC MC No. 17, s. 2010)</h3>
                                     <div className="space-y-6">
                                         <div className="space-y-3">
-                                            <h4 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Tardiness (1–15 minutes late)</h4>
+                                            <h4 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Tardiness (Late)</h4>
                                             <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
-                                                <p className="text-xs text-gray-800 font-bold mb-2">Automatic Salary Deduction</p>
+                                                <p className="text-xs text-gray-800 font-bold mb-2">Reporting after prescribed time of arrival</p>
                                                 <p className="text-[11px] text-gray-600 leading-relaxed">
-                                                    Deductions start from <strong>1 minute late</strong>. Every incident is automatically deducted from the salary based on the exact minutes of lateness.
+                                                    An employee is considered <strong>tardy/late</strong> when they report for work after the prescribed time of arrival (8:00 AM for Standard Duty). Late minutes are counted from <strong>minute 1</strong>.
                                                 </p>
                                             </div>
+                                        </div>
+                                        <div className="space-y-3">
+                                            <h4 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Undertime</h4>
                                             <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
-                                                <p className="text-xs text-gray-800 font-bold mb-2">Performance Evaluation</p>
+                                                <p className="text-xs text-gray-800 font-bold mb-2">Leaving before prescribed end of office hours</p>
                                                 <p className="text-[11px] text-gray-600 leading-relaxed">
-                                                    <strong>Every single late incident</strong> is recorded and directly affects the official Performance Evaluation of the employee.
+                                                    An employee is on <strong>undertime</strong> when they leave the office before the prescribed end of office hours (5:00 PM for Standard Duty). A single day can be <strong>both Late and Undertime</strong>.
                                                 </p>
                                             </div>
                                         </div>
                                         <div className="h-px bg-gray-100" />
-                                        <div className="space-y-1">
-                                            <h4 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Insufficient Leave Credits</h4>
-                                            <p className="text-xs text-gray-700 font-bold mt-2">If an employee is late but has 0 (zero) leave credits:</p>
-                                            <ul className="text-xs text-gray-700 font-bold space-y-2 list-disc pl-4 mt-2">
-                                                <li>Mandatory salary deduction for the duration of lateness.</li>
-                                                <li><strong>Force Leave</strong> is applied (deducted from future credits or treated as Leave Without Pay).</li>
-                                            </ul>
+                                        <div className="space-y-3">
+                                            <h4 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Deduction Formula</h4>
+                                            <div className="p-4 bg-indigo-50 rounded-xl border border-indigo-100">
+                                                <p className="text-xs text-indigo-800 font-bold mb-2">Total Minutes ÷ 480 = Days Equivalent</p>
+                                                <p className="text-[11px] text-gray-600 leading-relaxed">
+                                                    480 minutes = 8 working hours = 1 day. Late + Undertime minutes are combined and deducted from <strong>Vacation Leave</strong> first. If VL is insufficient, the remainder is charged as <strong>LWOP</strong> (Leave Without Pay).
+                                                </p>
+                                            </div>
                                         </div>
                                     </div>
                                 </section>
                             </div>
 
                             <div className="space-y-6">
-                                <section className="p-6 border border-gray-200 rounded-2xl bg-white shadow-sm h-full">
-                                    <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider mb-6 border-l-4 border-rose-500 pl-3">Violation & Penalty Path</h3>
+                                <section className="p-6 border border-gray-200 rounded-2xl bg-white shadow-sm">
+                                    <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider mb-6 border-l-4 border-rose-500 pl-3">Habitual Tardiness / Undertime (CSC MC No. 1, s. 2017)</h3>
                                     <div className="space-y-6">
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="p-4 border border-gray-100 rounded-xl bg-gray-50/50">
-                                                <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Monthly Record</h4>
-                                                <p className="text-[11px] font-bold text-gray-700">Late in 1 month is recorded as an official Violation.</p>
+                                                <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Threshold</h4>
+                                                <p className="text-[11px] font-bold text-gray-700">10 or more times per month</p>
                                             </div>
                                             <div className="p-4 border border-rose-100 rounded-xl bg-rose-50/30">
-                                                <h4 className="text-[10px] font-bold text-rose-600 uppercase tracking-widest mb-1">2-Month Rule</h4>
-                                                <p className="text-[11px] font-bold text-gray-700">Late in 2 consecutive months triggers immediate Penalty.</p>
+                                                <h4 className="text-[10px] font-bold text-rose-600 uppercase tracking-widest mb-1">Trigger</h4>
+                                                <p className="text-[11px] font-bold text-gray-700">2 months in a semester or 2 consecutive months</p>
                                             </div>
                                         </div>
 
                                         <div className="bg-gray-900 text-white p-5 rounded-2xl relative overflow-hidden">
-                                            <h4 className="text-[11px] font-bold text-rose-400 uppercase tracking-widest mb-3">Habitual Tardiness (10x / Month)</h4>
-                                            <div className="space-y-3 relative z-10">
-                                                {[
-                                                    { step: "1", label: "Requirement", value: "Submission of Written Explanation" },
-                                                    { step: "2", label: "Initial Warning", value: "Issuance of Warning Letter" },
-                                                    { step: "3", label: "Escalation", value: "Violation → Performance Penalty" },
-                                                    { step: "4", label: "Final Stage", value: "Final Penalty → Termination of Contract" }
-                                                ].map((item, i) => (
-                                                    <div key={i} className="flex gap-3 items-center border-b border-white/5 pb-2 last:border-0">
-                                                        <span className="text-[10px] bg-white/10 w-5 h-5 rounded-full flex items-center justify-center shrink-0 font-bold">{item.step}</span>
-                                                        <div className="flex-1">
-                                                            <p className="text-[9px] text-gray-400 uppercase font-bold">{item.label}</p>
-                                                            <p className="text-[11px] font-bold">{item.value}</p>
+                                            <h4 className="text-[11px] font-bold text-rose-400 uppercase tracking-widest mb-4">Progressive Penalties</h4>
+                                            <div className="grid grid-cols-2 gap-6">
+                                                <div className="space-y-3">
+                                                    <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest">Regular / Plantilla</p>
+                                                    {[
+                                                        { offense: '1st', penalty: 'Reprimand (Stern Warning)', sev: 'Minor' },
+                                                        { offense: '2nd', penalty: 'Suspension 1-30 days', sev: 'Major' },
+                                                        { offense: '3rd', penalty: 'Dismissal from Service', sev: 'Terminal' }
+                                                    ].map((p, i) => (
+                                                        <div key={i} className="flex justify-between border-b border-white/5 pb-2">
+                                                            <span className="text-[11px] text-gray-400">{p.offense}</span>
+                                                            <span className="text-[11px] font-bold text-right">{p.penalty}</span>
                                                         </div>
-                                                    </div>
-                                                ))}
+                                                    ))}
+                                                </div>
+                                                <div className="space-y-3">
+                                                    <p className="text-[10px] font-bold text-amber-400 uppercase tracking-widest">JO / COS</p>
+                                                    {[
+                                                        { offense: '1st', penalty: 'Written Warning', sev: 'Minor' },
+                                                        { offense: '2nd', penalty: 'Reprimand', sev: 'Moderate' },
+                                                        { offense: '3rd', penalty: 'Termination of Contract', sev: 'Terminal' }
+                                                    ].map((p, i) => (
+                                                        <div key={i} className="flex justify-between border-b border-white/5 pb-2">
+                                                            <span className="text-[11px] text-gray-400">{p.offense}</span>
+                                                            <span className="text-[11px] font-bold text-right">{p.penalty}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -262,57 +278,55 @@ const InternalPoliciesPage: React.FC<InternalPoliciesPageProps> = ({ hideHeader 
                         <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
                             {[
                                 {
-                                    title: "Absenteeism / Loafing",
-                                    desc: "Habitual absenteeism or loafing during office hours.",
+                                    title: "Habitual Absenteeism",
+                                    desc: "Unauthorized absences exceeding 2.5 days/month for 3 months in a semester or 3 consecutive months. (CSC MC No. 1, s. 2017)",
                                     regular: [
-                                        { label: "1st Offense", penalty: "6 months & 1 day suspension" },
+                                        { label: "1st Offense", penalty: "Suspension of 6 months & 1 day" },
                                         { label: "2nd Offense", penalty: "Dismissal from Service" }
                                     ],
                                     contract: [
                                         { label: "1st Offense", penalty: "Reprimand" },
-                                        { label: "2nd Offense", penalty: "Termination" }
+                                        { label: "2nd Offense", penalty: "Termination of Contract" }
                                     ]
                                 },
                                 {
                                     title: "Habitual Tardiness",
-                                    desc: "Failing to report for work on time habitually.",
+                                    desc: "10 or more times late per month for 2 months in a semester or 2 consecutive months. (CSC MC No. 1, s. 2017)",
                                     regular: [
-                                        { label: "1st Offense", penalty: "Reprimand" },
-                                        { label: "2nd Offense", penalty: "1-30 days suspension" },
+                                        { label: "1st Offense", penalty: "Reprimand (Stern Warning)" },
+                                        { label: "2nd Offense", penalty: "Suspension of 1-30 days" },
                                         { label: "3rd Offense", penalty: "Dismissal from Service" }
                                     ],
                                     contract: [
-                                        { label: "1st Offense", penalty: "Warning" },
+                                        { label: "1st Offense", penalty: "Written Warning" },
                                         { label: "2nd Offense", penalty: "Reprimand" },
-                                        { label: "3rd Offense", penalty: "Termination" }
+                                        { label: "3rd Offense", penalty: "Termination of Contract" }
                                     ]
                                 },
                                 {
-                                    title: "Internal Office Rules",
-                                    desc: "Violation of Reasonable Office Rules and Regulations.",
+                                    title: "Habitual Undertime (Simple Misconduct)",
+                                    desc: "10 or more undertimes per month for 2 months in a semester or 2 consecutive months. Default classification. (CSC MC No. 16, s. 2010)",
                                     regular: [
-                                        { label: "1st Offense", penalty: "Reprimand" },
-                                        { label: "2nd Offense", penalty: "1-30 days suspension" },
+                                        { label: "1st Offense", penalty: "Reprimand (Stern Warning)" },
+                                        { label: "2nd Offense", penalty: "Suspension of 1-30 days" },
                                         { label: "3rd Offense", penalty: "Dismissal from Service" }
                                     ],
                                     contract: [
-                                        { label: "1st Offense", penalty: "Warning" },
+                                        { label: "1st Offense", penalty: "Written Warning" },
                                         { label: "2nd Offense", penalty: "Reprimand" },
-                                        { label: "3rd Offense", penalty: "Termination" }
+                                        { label: "3rd Offense", penalty: "Termination of Contract" }
                                     ]
                                 },
                                 {
-                                    title: "Private Practice/Business",
-                                    desc: "Engaging in private practice or business without permission.",
+                                    title: "Habitual Undertime (Prejudicial to Service)",
+                                    desc: "Undertime that adversely affects public service. Requires manual admin tagging.",
                                     regular: [
-                                        { label: "1st Offense", penalty: "Reprimand" },
-                                        { label: "2nd Offense", penalty: "1-30 days suspension" },
-                                        { label: "3rd Offense", penalty: "Dismissal from Service" }
+                                        { label: "1st Offense", penalty: "Suspension of 6 months to 1 year" },
+                                        { label: "2nd Offense", penalty: "Dismissal from Service" }
                                     ],
                                     contract: [
-                                        { label: "1st Offense", penalty: "Warning" },
-                                        { label: "2nd Offense", penalty: "Reprimand" },
-                                        { label: "3rd Offense", penalty: "Termination" }
+                                        { label: "1st Offense", penalty: "Reprimand" },
+                                        { label: "2nd Offense", penalty: "Termination of Contract" }
                                     ]
                                 }
                             ].map((category, idx) => (
@@ -323,7 +337,7 @@ const InternalPoliciesPage: React.FC<InternalPoliciesPageProps> = ({ hideHeader 
                                     </div>
                                     <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-8">
                                         <div className="space-y-3">
-                                            <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-50 pb-1">Regular Staff</h4>
+                                            <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-50 pb-1">Regular / Plantilla</h4>
                                             <div className="space-y-2">
                                                 {category.regular.map((p, i) => (
                                                     <div key={i} className="flex justify-between items-center text-[11px]">
@@ -334,7 +348,7 @@ const InternalPoliciesPage: React.FC<InternalPoliciesPageProps> = ({ hideHeader 
                                             </div>
                                         </div>
                                         <div className="space-y-3">
-                                            <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-50 pb-1">JO / COS Staff</h4>
+                                            <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-50 pb-1">JO / COS</h4>
                                             <div className="space-y-2">
                                                 {category.contract.map((p, i) => (
                                                     <div key={i} className="flex justify-between items-center text-[11px]">
@@ -349,40 +363,39 @@ const InternalPoliciesPage: React.FC<InternalPoliciesPageProps> = ({ hideHeader 
                             ))}
                         </div>
 
-                        {/* Summary Offense Section */}
+                        {/* AWOL Rule & Performance Rating Impact */}
                         <div className="bg-gray-900 rounded-2xl p-8 text-white relative overflow-hidden">
-                             <div className="relative z-10 grid grid-cols-1 md:grid-cols-3 gap-8 ">
+                             <div className="relative z-10 grid grid-cols-1 md:grid-cols-3 gap-8">
                                 <div className="md:col-span-1 border-r border-white/10 pr-6">
-                                    <h3 className="text-lg font-bold mb-2">Prejudicial Conduct</h3>
+                                    <h3 className="text-lg font-bold mb-2">Performance Rating Impact</h3>
                                     <p className="text-xs text-gray-400 leading-relaxed">
-                                        Actions that damage the integrity of public service are treated with zero tolerance.
+                                        Memo severities impose strict ceilings on the Performance Evaluation score.
                                     </p>
                                 </div>
                                 <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-8">
                                     <div className="space-y-4">
-                                        <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest">Serious Offense</p>
+                                        <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest">Memo Severity → Rating Ceiling</p>
                                         <div className="space-y-2">
-                                            <div className="flex justify-between border-b border-white/5 pb-2">
-                                                <span className="text-[11px] text-gray-400">Regular | 1st</span>
-                                                <span className="text-[11px] font-bold">6m to 1y Suspension</span>
-                                            </div>
-                                            <div className="flex justify-between border-b border-white/5 pb-2">
-                                                <span className="text-[11px] text-gray-400">Regular | 2nd</span>
-                                                <span className="text-[11px] font-bold uppercase text-rose-400">Dismissal</span>
-                                            </div>
+                                            {[
+                                                { sev: 'Minor (Reprimand)', ceiling: 'Max Score: 3 (Satisfactory)' },
+                                                { sev: 'Moderate (Suspension)', ceiling: 'Max Score: 2 (Unsatisfactory)' },
+                                                { sev: 'Major / Grave', ceiling: 'Max Score: 1 (Poor)' },
+                                                { sev: 'Terminal (Dismissal)', ceiling: 'Score: 0 (Separated)' }
+                                            ].map((item, i) => (
+                                                <div key={i} className="flex justify-between border-b border-white/5 pb-2">
+                                                    <span className="text-[11px] text-gray-400">{item.sev}</span>
+                                                    <span className="text-[11px] font-bold">{item.ceiling}</span>
+                                                </div>
+                                            ))}
                                         </div>
                                     </div>
                                     <div className="space-y-4">
-                                        <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest">Simple Misconduct</p>
-                                        <div className="space-y-2">
-                                            <div className="flex justify-between border-b border-white/5 pb-2">
-                                                <span className="text-[11px] text-gray-400">Regular | 1st</span>
-                                                <span className="text-[11px] font-bold">1m to 6m Suspension</span>
-                                            </div>
-                                            <div className="flex justify-between border-b border-white/5 pb-2">
-                                                <span className="text-[11px] text-gray-400">Contractual</span>
-                                                <span className="text-[11px] font-bold">Reprimand / Term.</span>
-                                            </div>
+                                        <p className="text-[10px] font-bold text-rose-400 uppercase tracking-widest">AWOL Rule (CSC MC No. 38, s. 1993)</p>
+                                        <div className="p-4 bg-rose-950/30 rounded-xl border border-rose-900/30">
+                                            <p className="text-[11px] font-bold text-rose-300 mb-1">30 consecutive working days</p>
+                                            <p className="text-[11px] text-gray-400 leading-relaxed">
+                                                Employee who is continuously absent without approved leave for 30 working days shall be <strong className="text-rose-400">dropped from the rolls</strong> without prior notice.
+                                            </p>
                                         </div>
                                     </div>
                                 </div>
@@ -397,13 +410,13 @@ const InternalPoliciesPage: React.FC<InternalPoliciesPageProps> = ({ hideHeader 
                             <div className="p-8 border border-gray-200 rounded-2xl bg-white shadow-sm space-y-6">
                                 <div className="space-y-1">
                                     <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest">MC No. 1, s. 2017</span>
-                                    <h4 className="text-base font-bold text-gray-800">Habitual Lateness & Absence</h4>
+                                    <h4 className="text-base font-bold text-gray-800">2017-RACCS: Habitual Offenses</h4>
                                 </div>
                                 <div className="space-y-4">
                                     <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
                                         <p className="text-[11px] font-bold text-gray-700 uppercase mb-2">Habitually Absent</p>
                                         <p className="text-xs text-gray-600 leading-relaxed">
-                                            Unauthorized absences exceeds allowable 2.5 days monthly leave credit for at least:
+                                            Unauthorized absences exceeding the allowable 2.5 days monthly leave credit for at least:
                                         </p>
                                         <ul className="text-[11px] text-gray-500 font-bold mt-2 list-disc pl-4">
                                             <li>Three (3) months in a semester; or</li>
@@ -411,9 +424,9 @@ const InternalPoliciesPage: React.FC<InternalPoliciesPageProps> = ({ hideHeader 
                                         </ul>
                                     </div>
                                     <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
-                                        <p className="text-[11px] font-bold text-gray-700 uppercase mb-2">Habitual Tardiness</p>
+                                        <p className="text-[11px] font-bold text-gray-700 uppercase mb-2">Habitually Tardy</p>
                                         <p className="text-xs text-gray-600 leading-relaxed">
-                                            Late regardless of minutes, ten (10) times a month for at least:
+                                            Late regardless of the number of minutes, ten (10) times a month for at least:
                                         </p>
                                         <ul className="text-[11px] text-gray-500 font-bold mt-2 list-disc pl-4">
                                             <li>Two (2) months in a semester; or</li>
@@ -423,28 +436,74 @@ const InternalPoliciesPage: React.FC<InternalPoliciesPageProps> = ({ hideHeader 
                                 </div>
                             </div>
 
-                            <div className="p-8 border border-gray-200 rounded-2xl bg-white shadow-sm space-y-6">
-                                <div className="space-y-1">
-                                    <span className="text-[10px] font-bold text-amber-600 uppercase tracking-widest">MC No. 16, s. 2010</span>
-                                    <h4 className="text-base font-bold text-gray-800">Policy on Undertime</h4>
-                                </div>
-                                <p className="text-xs text-gray-500 leading-relaxed italic border-l-2 border-gray-100 pl-4 py-1">
-                                    "Regardless of the number of minutes/hours, ten (10) times a month for at least two (2) months in a semester or two (2) consecutive months during the year."
-                                </p>
-                                <div className="p-4 bg-rose-50/50 rounded-xl border border-rose-100 mt-4">
-                                    <span className="text-[10px] font-bold text-rose-600 uppercase tracking-widest block mb-2">MC No. 17, s. 2010</span>
-                                    <h4 className="text-xs font-bold text-gray-800 mb-2">Half Day Absence (Definition)</h4>
+                            <div className="space-y-6">
+                                <div className="p-8 border border-gray-200 rounded-2xl bg-white shadow-sm space-y-6">
+                                    <div className="space-y-1">
+                                        <span className="text-[10px] font-bold text-amber-600 uppercase tracking-widest">MC No. 16, s. 2010</span>
+                                        <h4 className="text-base font-bold text-gray-800">Policy on Habitual Undertime</h4>
+                                    </div>
+                                    <p className="text-xs text-gray-500 leading-relaxed italic border-l-2 border-gray-100 pl-4 py-1">
+                                        "Regardless of the number of minutes/hours, ten (10) times a month for at least two (2) months in a semester or two (2) consecutive months during the year."
+                                    </p>
                                     <div className="grid grid-cols-2 gap-4">
-                                        <div className="p-3 bg-white rounded-lg border border-rose-100">
-                                            <p className="text-[10px] text-gray-400 uppercase font-bold mb-1">Morning Late</p>
-                                            <p className="text-[11px] font-bold text-gray-700">Tardy / Late</p>
+                                        <div className="p-3 bg-gray-50 rounded-lg border border-gray-100">
+                                            <p className="text-[10px] text-gray-400 uppercase font-bold mb-1">Default</p>
+                                            <p className="text-[11px] font-bold text-gray-700">Simple Misconduct</p>
                                         </div>
-                                        <div className="p-3 bg-white rounded-lg border border-rose-100">
-                                            <p className="text-[10px] text-gray-400 uppercase font-bold mb-1">Afternoon Late</p>
-                                            <p className="text-[11px] font-bold text-gray-700">Undertime</p>
+                                        <div className="p-3 bg-rose-50 rounded-lg border border-rose-100">
+                                            <p className="text-[10px] text-rose-400 uppercase font-bold mb-1">If Tagged</p>
+                                            <p className="text-[11px] font-bold text-gray-700">Prejudicial to Service</p>
                                         </div>
                                     </div>
                                 </div>
+
+                                <div className="p-8 border border-gray-200 rounded-2xl bg-white shadow-sm space-y-6">
+                                    <div className="space-y-1">
+                                        <span className="text-[10px] font-bold text-rose-600 uppercase tracking-widest">MC No. 17, s. 2010</span>
+                                        <h4 className="text-base font-bold text-gray-800">Tardiness / Undertime Deduction</h4>
+                                    </div>
+                                    <div className="p-4 bg-indigo-50 rounded-xl border border-indigo-100">
+                                        <p className="text-xs text-indigo-800 font-bold mb-2">Formula: Total Minutes ÷ 480 = Days Equivalent</p>
+                                        <p className="text-[11px] text-gray-600 leading-relaxed">
+                                            Morning late = <strong>Tardy</strong>. Afternoon early departure = <strong>Undertime</strong>. Both are combined and deducted from VL, then LWOP.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Additional CSC References */}
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <div className="p-6 border border-gray-200 rounded-2xl bg-white shadow-sm">
+                                <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">MC No. 41, s. 1998</span>
+                                <h4 className="text-sm font-bold text-gray-800 mt-1 mb-3">Omnibus Rules on Leave</h4>
+                                <ul className="text-[11px] text-gray-600 space-y-2 list-disc pl-4">
+                                    <li>Advance filing of 5 working days for VL</li>
+                                    <li>SL within 3 days of return to work</li>
+                                    <li>MedCert required if SL ≥ 5 consecutive days</li>
+                                    <li>Deemed approved if pending ≥ 5 days</li>
+                                    <li>Forced Leave: 5 days annually (needs 10 VL)</li>
+                                </ul>
+                            </div>
+                            <div className="p-6 border border-gray-200 rounded-2xl bg-white shadow-sm">
+                                <span className="text-[10px] font-bold text-purple-600 uppercase tracking-widest">MC No. 38, s. 1993</span>
+                                <h4 className="text-sm font-bold text-gray-800 mt-1 mb-3">AWOL / Dropping from Rolls</h4>
+                                <ul className="text-[11px] text-gray-600 space-y-2 list-disc pl-4">
+                                    <li>30 consecutive working days continuous absence</li>
+                                    <li>Dropped from rolls without prior notice</li>
+                                    <li>Applies to all employment types</li>
+                                    <li>No back pay or terminal leave entitlement</li>
+                                </ul>
+                            </div>
+                            <div className="p-6 border border-gray-200 rounded-2xl bg-white shadow-sm">
+                                <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">EO No. 292</span>
+                                <h4 className="text-sm font-bold text-gray-800 mt-1 mb-3">Administrative Code Leave Credits</h4>
+                                <ul className="text-[11px] text-gray-600 space-y-2 list-disc pl-4">
+                                    <li>Vacation Leave: 1.25 days/month (15 days/year)</li>
+                                    <li>Sick Leave: 1.25 days/month (15 days/year)</li>
+                                    <li>Total: 2.5 days/month or 30 days/year</li>
+                                    <li>JO/COS employees do NOT earn leave credits</li>
+                                </ul>
                             </div>
                         </div>
                     </div>
@@ -454,25 +513,25 @@ const InternalPoliciesPage: React.FC<InternalPoliciesPageProps> = ({ hideHeader 
                     <div className="space-y-8 animate-in slide-in-from-bottom-2 duration-300">
                         <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-6">
                             {[
-                                { title: "Vacation Leave", filing: "5 working days prior", max: "Subject to approval", remarks: "Attach Clearance if ≥ 30 days." },
-                                { title: "Sick Leave", filing: "Immediate / 5 days prior", max: "Subject to approval", remarks: "MedCert if ≥ 5 days. Clearance if ≥ 30." },
-                                { title: "Forced/Mandatory", filing: "5 working days prior", max: "5 days annually", remarks: "Requires 10 days VL credits. Auto-deduct." },
-                                { title: "Special Leave", filing: "5 working days prior", max: "3 days annually", remarks: "Limited to 3 applications per year. Non-cumulative." },
-                                { title: "Special Emergency", filing: "Within 30 days", max: "5 days annually", remarks: "Requires state of calamity declaration." },
-                                { title: "Parental (Solo)", filing: "5 working days prior", max: "7 days annually", remarks: "Attach Solo Parent ID. Not deducted." },
-                                { title: "Maternity", filing: "30 calendar days prior", max: "105 days base", remarks: "Can allocate 7 days to father. MedCert." },
-                                { title: "Paternity", filing: "5 working days prior", max: "7 days", remarks: "For married males. Max 4 deliveries." },
-                                { title: "Adoption", filing: "5 days before/grant", max: "60 days (Female)", remarks: "Attach DSWD placement authority." },
-                                { title: "Women benefit", filing: "5 working days prior", max: "2 weeks - 2 months", remarks: "Gynecological surgery. RA 9710." },
-                                { title: "VAWC (RA 9262)", filing: "5 days prior / immediate", max: "10 days", remarks: "For medical/legal concerns. Support docs." },
-                                { title: "Service Credits", filing: "Immediate / 5 days prior", max: "Subject to approval", remarks: "For PCCM Teaching personnel only." }
+                                { title: "Vacation Leave", filing: "5 working days prior", max: "Earned 1.25 days/month", remarks: "Advance filing required. Accrue 15 days annually. EO No. 292.", attachment: "None" },
+                                { title: "Sick Leave", filing: "Within 3 days of return", max: "Earned 1.25 days/month", remarks: "Medical Certificate required if 5+ consecutive days. CSC MC No. 41, s. 1998.", attachment: "MedCert if ≥ 5 days" },
+                                { title: "Forced/Mandatory Leave", filing: "5 working days prior", max: "5 days annually", remarks: "Must have 10 VL credits. Auto-deducted Dec 31st. Use-it-or-lose-it. CSC MC No. 41, s. 1998.", attachment: "None" },
+                                { title: "Special Privilege Leave", filing: "5 working days prior", max: "3 days annually", remarks: "Non-cumulative, non-convertible to cash. Limited to 3 applications per year.", attachment: "None" },
+                                { title: "Special Emergency Leave", filing: "Within 30 days", max: "5 days annually", remarks: "Only for declared state of calamity. RA 9263.", attachment: "None" },
+                                { title: "Solo Parent Leave", filing: "5 working days prior", max: "7 days annually", remarks: "Solo Parent ID required. RA 8972. Non-convertible.", attachment: "Solo Parent ID" },
+                                { title: "Maternity Leave", filing: "30 calendar days prior", max: "105 days (normal)", remarks: "+15 days if solo parent. Can share 7 days with father. RA 11210.", attachment: "Medical Certificate" },
+                                { title: "Paternity Leave", filing: "5 working days prior", max: "7 days", remarks: "For legally married males. First 4 deliveries. RA 8187.", attachment: "None" },
+                                { title: "Adoption Leave", filing: "5 working days prior", max: "60 days", remarks: "DSWD placement authority required. RA 8552.", attachment: "DSWD Endorsement" },
+                                { title: "Special Leave (Women)", filing: "5 working days prior", max: "Up to 2 months", remarks: "Gynecological surgery or related conditions. RA 9710.", attachment: "Medical Certificate" },
+                                { title: "VAWC Leave (RA 9262)", filing: "Immediate", max: "10 days", remarks: "For victims of violence against women & children. Renewable.", attachment: "BPO/TPO/Police Report" },
+                                { title: "Rehabilitation Leave", filing: "5 working days prior", max: "Subject to approval", remarks: "For work-related injuries or illnesses requiring rehabilitation.", attachment: "Medical Certificate" }
                             ].map((leave, idx) => (
                                 <div key={idx} className="p-6 border border-gray-100 rounded-2xl bg-white shadow-sm hover:border-gray-200 transition-colors flex flex-col h-full">
                                     <h3 className="text-xs font-bold text-gray-800 uppercase tracking-tight mb-4">{leave.title}</h3>
                                     <div className="space-y-4 flex-1">
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="space-y-1">
-                                                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Filing</p>
+                                                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Filing Window</p>
                                                 <p className="text-[11px] font-bold text-gray-700">{leave.filing}</p>
                                             </div>
                                             <div className="space-y-1">
@@ -480,12 +539,33 @@ const InternalPoliciesPage: React.FC<InternalPoliciesPageProps> = ({ hideHeader 
                                                 <p className="text-[11px] font-bold text-gray-700">{leave.max}</p>
                                             </div>
                                         </div>
+                                        {leave.attachment !== 'None' && (
+                                            <div className="p-2 bg-amber-50 rounded-lg border border-amber-100">
+                                                <p className="text-[10px] text-amber-700 font-bold">📎 Required: {leave.attachment}</p>
+                                            </div>
+                                        )}
                                         <div className="p-3 bg-gray-50 rounded-xl border border-gray-100 mt-auto">
                                              <p className="text-[10px] text-gray-500 italic leading-tight">{leave.remarks}</p>
                                         </div>
                                     </div>
                                 </div>
                             ))}
+                        </div>
+
+                        {/* Deemed Approval & Monthly Accrual */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <div className="p-6 bg-indigo-50 rounded-2xl border border-indigo-100">
+                                <h4 className="text-xs font-bold text-indigo-800 uppercase tracking-wider mb-3">⏰ Deemed Approved Rule</h4>
+                                <p className="text-[11px] text-gray-700 leading-relaxed">
+                                    Any leave application pending action for <strong>5 or more working days</strong> is automatically deemed approved. (CSC MC No. 41, s. 1998, Section 49)
+                                </p>
+                            </div>
+                            <div className="p-6 bg-emerald-50 rounded-2xl border border-emerald-100">
+                                <h4 className="text-xs font-bold text-emerald-800 uppercase tracking-wider mb-3">📅 Monthly Leave Accrual</h4>
+                                <p className="text-[11px] text-gray-700 leading-relaxed">
+                                    Regular employees earn <strong>1.25 days VL + 1.25 days SL = 2.5 days/month</strong> (15 VL + 15 SL = 30 days/year). JO/COS do not earn leave credits. (EO No. 292)
+                                </p>
+                            </div>
                         </div>
                     </div>
                 )}
@@ -494,39 +574,54 @@ const InternalPoliciesPage: React.FC<InternalPoliciesPageProps> = ({ hideHeader 
                     <div className="space-y-8 animate-in slide-in-from-bottom-2 duration-300">
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                             <div className="space-y-6">
-                                <section className="p-6 border border-gray-200 rounded-2xl bg-white shadow-sm h-full">
-                                    <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider mb-6 border-l-4 border-blue-500 pl-3">Position Framework</h3>
-                                    <div className="space-y-6">
-                                        <div className="space-y-2">
-                                            <h4 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Authorized Positions</h4>
-                                            <p className="text-xs text-gray-700 leading-relaxed">
-                                                A **Plantilla** is a formal list of authorized positions within the agency. Each position is a permanent "chair" that exists independently of the person currently holding it.
-                                            </p>
-                                        </div>
-                                        <div className="p-4 bg-blue-50/50 rounded-xl border border-blue-100">
-                                            <h4 className="text-[11px] font-bold text-blue-700 uppercase tracking-widest mb-2">Item Number & SG</h4>
-                                            <p className="text-[11px] text-gray-600 font-medium">
-                                                Every position has a unique **Item Number** and a fixed **Salary Grade (SG)** governed by the Salary Standardization Law (SSL).
-                                            </p>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <h4 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Appointment Status</h4>
-                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                                <div className="p-2 border border-gray-100 rounded-lg text-center">
-                                                    <p className="text-[10px] font-bold text-gray-800">Permanent</p>
-                                                </div>
-                                                <div className="p-2 border border-gray-100 rounded-lg text-center">
-                                                    <p className="text-[10px] font-bold text-gray-800">Temporary</p>
-                                                </div>
-                                                <div className="p-2 border border-gray-100 rounded-lg text-center">
-                                                    <p className="text-[10px] font-bold text-gray-800">Co-terminous</p>
-                                                </div>
-                                            </div>
+                                <section className="p-6 border border-gray-200 rounded-2xl bg-white shadow-sm">
+                                    <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider mb-6 border-l-4 border-blue-500 pl-3">Employment Classification Matrix</h3>
+                                    <div className="space-y-4">
+                                        <p className="text-[11px] text-gray-600 leading-relaxed">
+                                            Each appointment type determines the employee's duty schedule, penalty track, and leave credit eligibility.
+                                        </p>
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full text-[11px]">
+                                                <thead>
+                                                    <tr className="border-b border-gray-200">
+                                                        <th className="text-left py-2 pr-4 text-gray-400 uppercase font-bold tracking-wider">Type</th>
+                                                        <th className="text-left py-2 pr-4 text-gray-400 uppercase font-bold tracking-wider">Duty</th>
+                                                        <th className="text-left py-2 pr-4 text-gray-400 uppercase font-bold tracking-wider">Penalty Track</th>
+                                                        <th className="text-left py-2 text-gray-400 uppercase font-bold tracking-wider">Leave Credits</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {[
+                                                        { type: 'Permanent', duty: 'Standard', track: 'Regular', leave: true },
+                                                        { type: 'Temporary', duty: 'Standard', track: 'Regular', leave: true },
+                                                        { type: 'Contractual', duty: 'Standard', track: 'Regular', leave: true },
+                                                        { type: 'Coterminous', duty: 'Standard', track: 'Regular', leave: true },
+                                                        { type: 'Casual', duty: 'Irregular', track: 'JO/COS', leave: true },
+                                                        { type: 'Job Order (JO)', duty: 'Irregular', track: 'JO/COS', leave: false },
+                                                        { type: 'Contract of Service (COS)', duty: 'Irregular', track: 'JO/COS', leave: false }
+                                                    ].map((row, i) => (
+                                                        <tr key={i} className="border-b border-gray-50">
+                                                            <td className="py-2.5 pr-4 font-bold text-gray-800">{row.type}</td>
+                                                            <td className="py-2.5 pr-4 text-gray-600">{row.duty}</td>
+                                                            <td className="py-2.5 pr-4">
+                                                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${row.track === 'Regular' ? 'bg-indigo-50 text-indigo-700' : 'bg-amber-50 text-amber-700'}`}>
+                                                                    {row.track}
+                                                                </span>
+                                                            </td>
+                                                            <td className="py-2.5">
+                                                                <span className={`text-[10px] font-bold ${row.leave ? 'text-emerald-600' : 'text-rose-500'}`}>
+                                                                    {row.leave ? '✅ Yes' : '❌ No'}
+                                                                </span>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
                                         </div>
                                     </div>
                                 </section>
                                 
-                                <section className="p-6 border border-gray-200 rounded-2xl bg-white shadow-sm mt-6">
+                                <section className="p-6 border border-gray-200 rounded-2xl bg-white shadow-sm">
                                     <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider mb-4 border-l-4 border-emerald-500 pl-3">Step Increments</h3>
                                     <div className="space-y-3">
                                         <p className="text-[11px] text-gray-600 font-medium leading-relaxed">
@@ -543,7 +638,7 @@ const InternalPoliciesPage: React.FC<InternalPoliciesPageProps> = ({ hideHeader 
                             </div>
 
                             <div className="space-y-6">
-                                <section className="p-6 border border-gray-200 rounded-2xl bg-white shadow-sm h-full">
+                                <section className="p-6 border border-gray-200 rounded-2xl bg-white shadow-sm">
                                     <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider mb-6 border-l-4 border-indigo-500 pl-3">Qualification Standards (QS)</h3>
                                     <div className="space-y-4">
                                         {[
@@ -566,6 +661,24 @@ const InternalPoliciesPage: React.FC<InternalPoliciesPageProps> = ({ hideHeader 
                                         <p className="text-[11px] text-gray-400 leading-relaxed italic">
                                             "Positions must match the DBM PSIPOP report exactly. Any deviation triggers audit findings from COA."
                                         </p>
+                                    </div>
+                                </section>
+
+                                <section className="p-6 border border-gray-200 rounded-2xl bg-white shadow-sm">
+                                    <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider mb-4 border-l-4 border-rose-500 pl-3">Key Policy Notes</h3>
+                                    <div className="space-y-3">
+                                        {[
+                                            'Standard Duty = Regular Mon-Fri 8AM-5PM schedule',
+                                            'Irregular Duty = Schedule assigned by department head, may include weekends',
+                                            'JO/COS do not earn leave credits under CSC rules',
+                                            'Penalty track for JO/COS is shorter (Warning → Termination)',
+                                            'All employees must complete 8 working hours per day'
+                                        ].map((note, i) => (
+                                            <div key={i} className="flex gap-3 items-start">
+                                                <div className="w-1.5 h-1.5 rounded-full bg-rose-400 mt-1.5 shrink-0" />
+                                                <p className="text-[11px] text-gray-600 leading-tight">{note}</p>
+                                            </div>
+                                        ))}
                                     </div>
                                 </section>
                             </div>

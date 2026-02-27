@@ -2,10 +2,7 @@ import { db } from '../db/index.js';
 import { internalPolicies } from '../db/schema.js';
 import { sql } from 'drizzle-orm';
 
-/**
- * Seeds the internal_policies table with all CGM/CSC policy configurations.
- * These are the data-driven policy rules that the backend engines consume.
- */
+
 async function seedPolicies() {
   console.log('[SEED] Seeding Internal Policies...');
 
