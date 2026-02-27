@@ -9,7 +9,8 @@ import {
   useBiometricsLogs 
 } from "@settings/Biometrics/Logs";
 import Pagination from '@/components/CustomUI/Pagination';
-import { FileText, FileSpreadsheet, CheckCircle, AlertTriangle, Activity } from "lucide-react";
+import { FileText, FileSpreadsheet } from "lucide-react";
+import StatCard from '@components/Custom/DashboardAdminComponents/StatCard';
 
 const BiometricsLogsUI = () => {
   const sidebarOpen = useUIStore((state) => state.sidebarOpen);
@@ -70,35 +71,20 @@ const BiometricsLogsUI = () => {
         isLoading={isLoading} 
       />
 
-      {/* Stats Cards (from Monitor) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 my-5">
-        <div className="bg-white px-5 py-4 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between">
-          <div>
-            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">On Time</p>
-            <h3 className="text-2xl font-black text-gray-800 leading-none">{stats.onTime}</h3>
-          </div>
-          <div className="p-2 bg-green-50 rounded-lg">
-            <CheckCircle className="w-5 h-5 text-green-600" />
-          </div>
-        </div>
-        <div className="bg-white px-5 py-4 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between">
-          <div>
-            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">Late</p>
-            <h3 className="text-2xl font-black text-gray-800 leading-none">{stats.late}</h3>
-          </div>
-          <div className="p-2 bg-amber-50 rounded-lg">
-            <AlertTriangle className="w-5 h-5 text-amber-600" />
-          </div>
-        </div>
-        <div className="bg-white px-5 py-4 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between">
-          <div>
-            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">Total Records</p>
-            <h3 className="text-2xl font-black text-gray-800 leading-none">{stats.total}</h3>
-          </div>
-          <div className="p-2 bg-blue-50 rounded-lg">
-            <Activity className="w-5 h-5 text-blue-600" />
-          </div>
-        </div>
+      {/* Stats Cards (matching Admin Dashboard style) */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 my-5">
+        <StatCard
+          title="On Time"
+          data={stats.onTime}
+        />
+        <StatCard
+          title="Late"
+          data={stats.late}
+        />
+        <StatCard
+          title="Total Records"
+          data={stats.total}
+        />
       </div>
 
       {error && (
