@@ -20,7 +20,7 @@ const AdminMemoPage = forwardRef<AdminMemoPageRef, AdminMemoPageProps>(({ hideHe
 
   const {
     memos, employees, loading, error, saving,
-    filters, handleFilterChange, handleSearch, handleClearFilters,
+    filters, page, totalPages, handleFilterChange, handleSearch, handleClearFilters, handlePageChange,
     isFormOpen, isViewOpen, isDeleteOpen, selectedMemo,
     formData, handleFormChange,
     loadData, openCreateForm, openEditForm, openViewModal, openDeleteModal,
@@ -81,6 +81,9 @@ const AdminMemoPage = forwardRef<AdminMemoPageRef, AdminMemoPageProps>(({ hideHe
         <MemoTable
           memos={memos}
           loading={loading}
+          page={page}
+          totalPages={totalPages}
+          onPageChange={handlePageChange}
           onView={openViewModal}
           onEdit={openEditForm}
           onDelete={openDeleteModal}

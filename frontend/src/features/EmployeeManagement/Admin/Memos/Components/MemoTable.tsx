@@ -94,12 +94,15 @@ MemoRow.displayName = 'MemoRow';
 interface MemoTableProps {
   memos: Memo[];
   loading: boolean;
+  page?: number;
+  totalPages?: number;
+  onPageChange?: (page: number) => void;
   onView: (memo: Memo) => void;
   onEdit: (memo: Memo) => void;
   onDelete: (memo: Memo) => void;
 }
 
-const MemoTable: React.FC<MemoTableProps> = memo(({ memos, loading, onView, onEdit, onDelete }) => {
+const MemoTable: React.FC<MemoTableProps> = memo(({ memos, loading, page = 1, totalPages = 1, onPageChange, onView, onEdit, onDelete }) => {
   // Memoize the rows rendering
   const tableRows = useMemo(() => {
     return memos.map((memo) => (
@@ -155,6 +158,39 @@ const MemoTable: React.FC<MemoTableProps> = memo(({ memos, loading, onView, onEd
           </tbody>
         </table>
       </div>
+      
+      {/* Pagination Footer */}
+      {totalPages > 1 && onPageChange && (
+        <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100 bg-gray-50">
+          <div className="text-sm text-gray-600">
+            Page <span className="font-medium text-gray-900">{page}</span> of <span className="font-medium text-gray-900">{totalPages}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => onPageChange(page - 1)}
+              disabled={page <= 1}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                page <= 1 
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                  : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 active:bg-gray-100'
+              }`}
+            >
+              Previous
+            </button>
+            <button
+              onClick={() => onPageChange(page + 1)}
+              disabled={page >= totalPages}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                page >= totalPages 
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                  : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 active:bg-gray-100'
+              }`}
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 });

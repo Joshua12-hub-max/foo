@@ -1,5 +1,5 @@
 import { db } from '../db/index.js';
-import { tardinessSummary, policyViolations, employeeMemos, memoSequences, dailyTimeRecords, internalPolicies } from '../db/schema.js';
+import { tardinessSummary, policyViolations, employeeMemos, memoSequences, dailyTimeRecords, internalPolicies, authentication } from '../db/schema.js';
 import { eq, and, sql, gte, lte } from 'drizzle-orm';
 
 
@@ -130,7 +130,17 @@ export const checkPolicyViolations = async (
             type === 'absence' ? eq(dailyTimeRecords.status, 'Absent') : (isLateCheck ? sql`${dailyTimeRecords.lateMinutes} > 0` : sql`${dailyTimeRecords.undertimeMinutes} > 0`)
           ));
           
-          const incidentDates = incidentRecords.map(r => r.date).join(', ');
+          const incidentDatesArray = incidentRecords.map(r => r.date);
+          const incidentDates = incidentDatesArray.join(', ');
+
+          // Derive exact date from the triggering violation incident instead of "today"
+          let effectiveDateStr = new Date().toISOString().split('T')[0];
+          let createdAtStr = new Date().toISOString().slice(0, 19).replace('T', ' ');
+          if (incidentDatesArray.length > 0) {
+            const lastDate = incidentDatesArray[incidentDatesArray.length - 1]; // e.g. 2026-01-20
+            effectiveDateStr = lastDate;
+            createdAtStr = `${lastDate} 17:00:00`;
+          }
 
           // 2. Get Offense Level
           const existingOffenses = await tx.select({ count: sql<number>`count(*)` })
@@ -155,21 +165,27 @@ export const checkPolicyViolations = async (
           const subject = type === 'absence' ? `NOTICE: UNEXPLAINED ABSENCE - Offense Level ${offenseLevel}` : `NOTICE: ${type.replace('_', ' ').toUpperCase()} - Offense Level ${offenseLevel}`;
           const violationLabel = type === 'absence' ? 'absence' : (isLateCheck ? 'tardiness' : 'undertime');
 
+          const empRecord = await tx.select({ id: authentication.id }).from(authentication).where(eq(authentication.employeeId, employeeId)).limit(1);
+          const adminRecord = await tx.select({ id: authentication.id }).from(authentication).where(eq(authentication.role, 'admin')).limit(1);
+
+          const authorIdValue = adminRecord.length > 0 ? adminRecord[0].id : empRecord[0].id; // Fallback to self if no admin
+
           const [memo] = await tx.insert(employeeMemos).values({
             memoNumber,
-            employeeId: sql`(SELECT id FROM authentication WHERE employee_id = ${employeeId})`,
-            authorId: sql`(SELECT id FROM authentication WHERE role = 'admin' LIMIT 1)`,
+            employeeId: empRecord[0].id,
+            authorId: authorIdValue,
             memoType,
             subject,
             content: `This is an automated notice regarding your attendance records for ${month}/${year}. Our records indicate you have reached the threshold or consecutive limit for ${violationLabel} incidents (DATES: ${incidentDates}). This is your Level ${offenseLevel} offense.`,
             status: 'Draft',
             priority: 'High',
-            effectiveDate: new Date().toISOString().split('T')[0]
+            effectiveDate: effectiveDateStr,
+            createdAt: createdAtStr
           });
 
           // 5. Create Violation Record linked to Memo
           await tx.insert(policyViolations).values({
-            employeeId,
+            employeeId: employeeId, // This is the string ID based on schema
             type,
             offenseLevel,
             memoId: memo.insertId,
@@ -183,6 +199,8 @@ export const checkPolicyViolations = async (
             status: 'pending'
           });
           console.log(`[POLICY] ${type} Violation logged for ${employeeId} (Offense Level ${offenseLevel})`);
+        }).catch((txError) => {
+           console.error(`[POLICY] Transaction failed for ${employeeId} (${type}):`, txError);
         });
       }
     }

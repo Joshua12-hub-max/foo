@@ -48,9 +48,12 @@ export interface UseMemoManagementReturn {
   error: string | null;
   saving: boolean;
   filters: MemoFilters;
+  page: number;
+  totalPages: number;
   handleFilterChange: (key: string, value: string) => void;
   handleSearch: () => void;
   handleClearFilters: () => void;
+  handlePageChange: (page: number) => void;
   isFormOpen: boolean;
   isViewOpen: boolean;
   isDeleteOpen: boolean;
@@ -89,13 +92,18 @@ export const useMemoManagement = (): UseMemoManagementReturn => {
   // Form data
   const [formData, setFormData] = useState<MemoFormData>(INITIAL_FORM_DATA);
 
+  // Pagination state
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const LIMIT = 20;
+
   // Load data function - memoized with useCallback
-  const loadData = useCallback(async (currentFilters: Partial<MemoFilters> = {}) => {
+  const loadData = useCallback(async (currentFilters: Partial<MemoFilters> = {}, currentPage: number = 1) => {
     try {
       setLoading(true);
       setError(null);
       const [memosRes, employeesRes] = await Promise.all([
-        fetchMemos(currentFilters),
+        fetchMemos({ ...currentFilters, page: currentPage, limit: LIMIT }),
         fetchEmployees()
       ]);
       const employeesResult = employeesRes as { employees?: Array<{ id: number; firstName?: string; first_name?: string; lastName?: string; last_name?: string }> };
@@ -108,9 +116,15 @@ export const useMemoManagement = (): UseMemoManagementReturn => {
       setEmployees(mappedEmployees);
 
       // Memos now include department directly from backend join
-      const memosResult = memosRes as { memos?: Memo[] };
+      const memosResult = memosRes as { memos?: Memo[], pagination?: { totalPages: number } };
       const rawMemos = memosResult.memos || [];
       setMemos(rawMemos);
+      
+      if (memosResult.pagination?.totalPages) {
+        setTotalPages(memosResult.pagination.totalPages);
+      } else {
+        setTotalPages(1);
+      }
     } catch (err) {
       setError('Failed to load data');
     } finally {
@@ -234,6 +248,14 @@ export const useMemoManagement = (): UseMemoManagementReturn => {
     }
   }, [selectedMemo, filters, loadData]);
 
+  // Handle page change - memoized
+  const handlePageChange = useCallback((newPage: number) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setPage(newPage);
+      loadData(filters, newPage);
+    }
+  }, [filters, totalPages, loadData]);
+
   // Memoized employee options for select dropdown
   const employeeOptions = useMemo<EmployeeOption[]>(() => {
     return employees.map(emp => ({
@@ -251,11 +273,14 @@ export const useMemoManagement = (): UseMemoManagementReturn => {
     error,
     saving,
 
-    // Filters
+    // Filters & Pagination
     filters,
+    page,
+    totalPages,
     handleFilterChange,
     handleSearch,
     handleClearFilters,
+    handlePageChange,
 
     // Modal states
     isFormOpen,
