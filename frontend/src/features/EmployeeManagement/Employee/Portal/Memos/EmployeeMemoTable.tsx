@@ -1,11 +1,5 @@
-/**
- * EmployeeMemoTable Component
- * Table display for Employee My Memos
- */
-
 import React, { memo, useMemo, useCallback } from 'react';
 import { RefreshCw } from 'lucide-react';
-// @ts-ignore
 import { formatDate, getEmployeeStatusBadge, getEmployeeStatusText, getPriorityBadge } from './Shared/memoUtils';
 
 interface Memo {
