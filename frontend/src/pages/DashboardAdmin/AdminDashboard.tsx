@@ -257,9 +257,7 @@ export default function HDashboard(): React.ReactElement {
       action: "settings",
       children: [
         { name: "User Profile", action: "profile" },
-        { name: "Biometrics Monitor", action: "biometrics-monitor" },
-
-        { name: "Biometrics Logs", action: "biometrics-logs" },
+        { name: "Biometrics", action: "biometrics-logs" },
       ],
     },
   ], []);

@@ -23,7 +23,6 @@ const HRCalendar = lazy(() => import("./pages/TimekeepingAdmin/adminCalendar"));
 const DailyTimeRecord = lazy(() => import("./pages/TimekeepingAdmin/adminDailyTimeRecord"));
 const DTRCorrections = lazy(() => import("./pages/TimekeepingAdmin/adminDTRCorrections"));
 
-const BiometricsMonitor = lazy(() => import("./pages/SettingsAdmin/BiometricsMonitor"));
 
 //Settings Admin Pages
 const BiometricsLogsUI = lazy(() => import("./pages/SettingsAdmin/BiometricsLogs"));
@@ -303,11 +302,7 @@ export default function App() {
           />
           <Route
             path="biometrics-monitor"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <BiometricsMonitor />
-              </Suspense>
-            }
+            element={<Navigate to="/admin-dashboard/biometrics-logs" replace />}
           />
           <Route
             path="calendar"
