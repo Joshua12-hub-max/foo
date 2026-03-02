@@ -4,6 +4,7 @@ import MiniCalendar from './MiniCalendar';
 import EventsList from './EventsList';
 import { isSameDay } from '../utils/dateUtils';
 import { GridItem } from './CalendarGrid';
+import { Holiday } from '@/types/calendar';
 
 interface DrawerSidebarProps {
   isOpen: boolean;
@@ -19,7 +20,7 @@ interface DrawerSidebarProps {
   hours: { [key: string]: string };
   onEventClick: (event: GridItem) => void;
   showHolidays: boolean;
-  holidays: GridItem[];
+  holidays: Holiday[];
   announcements?: GridItem[];
   schedules?: GridItem[];
 }

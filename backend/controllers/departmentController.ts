@@ -4,14 +4,17 @@ import { alias } from 'drizzle-orm/mysql-core';
 import { db } from '../db/index.js';
 import { departments, authentication, plantillaPositions } from '../db/schema.js';
 import { eq, asc, sql, or, isNull, ne, and, like, getTableColumns } from 'drizzle-orm';
-import { DepartmentApiResponse, DepartmentDetailedApiResponse } from '../types/org.js';
+import { DepartmentApiResponse, DepartmentDetailedApiResponse, DepartmentDbModel } from '../types/org.js';
 import { EmployeeApiResponse } from '../types/employee.js';
 import { mapToEmployeeApi } from './user.controller.js';
+
+/** Input type for the department mapper — DB model with optional computed fields */
+type DepartmentMapperInput = Partial<DepartmentDbModel> & { id: number; name: string; employee_count?: number | string };
 
 /**
  * Strictly maps a Department DB model to its API response counterpart.
  */
-const mapToDepartmentApi = (dept: any): DepartmentApiResponse => {
+const mapToDepartmentApi = (dept: DepartmentMapperInput): DepartmentApiResponse => {
   return {
     id: dept.id,
     name: dept.name,
@@ -321,8 +324,9 @@ export const deleteDepartment = async (req: Request, res: Response): Promise<voi
     });
 
     res.status(200).json({ success: true, message: 'Department successfully deleted from the software and database' });
-  } catch (error: any) {
-    console.error('Delete Department Error:', error.message);
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    console.error('Delete Department Error:', errMsg);
     res.status(500).json({ success: false, message: 'Failed to delete department. Database constraint error.' });
   }
 };

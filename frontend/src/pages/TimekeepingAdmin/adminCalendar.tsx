@@ -32,7 +32,9 @@ import {
   Announcement, 
   EventFormData, 
   AnnouncementFormData,
-  CalendarItem
+  CalendarItem,
+  CalendarDisplayItem,
+  Holiday
 } from '@/types/calendar';
 import { ApiError } from '@/types';
 import {
@@ -288,7 +290,7 @@ export default function AdminCalendar() {
   }, [updateEventMutation]);
 
   // Calendar data processing
-  const calendarData = useCalendarData({ currentDate, events, showHolidays, holidays, announcements });
+  const calendarData = useCalendarData({ currentDate, events, showHolidays, holidays: holidays.map(h => ({ ...h, name: h.title })) as unknown as Holiday[], announcements });
   const { month, day, year, dayName, displayedEvents } = calendarData;
   
   const isDeleting = deleteEventMutation.isPending || deleteAnnouncementMutation.isPending;
@@ -326,7 +328,7 @@ export default function AdminCalendar() {
                 today={today}
                 onDateClick={navigation.handleDateClick}
                 showHolidays={showHolidays}
-                holidays={holidays}
+                holidays={holidays as unknown as GridItem[]}
                 announcements={announcements}
                 events={events}
                 displayedEvents={displayedEvents}
@@ -361,16 +363,16 @@ export default function AdminCalendar() {
           onNextMonth={navigation.handleNextMonth}
           displayedEvents={displayedEvents}
           hours={HOURS_12}
-          onEventClick={setShowEventDetails}
+          onEventClick={(e) => setShowEventDetails(e as unknown as CalendarDisplayItem)}
           showHolidays={showHolidays}
-          holidays={holidays}
+          holidays={holidays.map(h => ({ ...h, name: h.title })) as unknown as Holiday[]}
           announcements={announcements}
         />
 
         {/* Event Details Modal */}
         {showEventDetails && (
           <EventDetailsModal
-            event={showEventDetails}
+            event={showEventDetails as unknown as CalendarEvent}
             onClose={() => setShowEventDetails(null)}
             hours={HOURS_12}
             month={month}

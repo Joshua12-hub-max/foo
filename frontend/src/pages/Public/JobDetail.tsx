@@ -222,26 +222,9 @@ const JobDetail = () => {
         }
     }
 
-    // Mga map geography codes to names for the backend
-    const extractName = <T extends { name: string }>(arr: T[], key: keyof T, val: string): string => arr.find(x => String(x[key]) === val)?.name || '';
-    const formatAddr = (reg: string, prov: string, city: string, brgy: string, street: string) => {
-        const rName = extractName(ph.regions as Region[], 'reg_code', reg);
-        const pName = extractName(ph.provinces as Province[], 'prov_code', prov);
-        const cName = extractName(ph.city_mun as CityMunicipality[], 'mun_code', city);
-        const bName = brgy; // Barangay is already the name in the selector
-        return [street, bName, cName, pName, rName].filter(Boolean).join(', ');
-    };
-
-    const resAddress = formatAddr(data.resRegion||'', data.resProvince||'', data.resCity||'', data.resBrgy||'', data.resStreet||'');
-    const permAddress = formatAddr(data.permRegion||'', data.permProvince||'', data.permCity||'', data.permBrgy||'', data.permStreet||'');
-    
     // Final data alignment for backend schema requirements
     const finalData: JobApplicationSchema = {
         ...data,
-        address: resAddress,
-        zip_code: data.residentialZipCode || '',
-        permanent_address: permAddress,
-        permanent_zip_code: data.permanentZipCode || '',
         h_token: `v-${Math.random().toString(36).substring(2, 10)}-${Date.now()}`
     };
 

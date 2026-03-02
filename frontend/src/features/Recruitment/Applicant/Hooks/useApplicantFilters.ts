@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import type { Applicant } from '@/types/recruitment';
 
-export type ActiveTab = 'All' | 'Pending' | 'Reviewed' | 'Interview' | 'Hired' | 'Archive' | 'Inquiries' | 'Chat';
+export type ActiveTab = 'All' | 'Pending' | 'Reviewed' | 'Interview' | 'Hired' | 'Archive' | 'Inquiries' | 'Chat' | 'Security Audit';
 export type SourceFilter = 'All' | 'Web' | 'Email';
 
 const useApplicantFilters = (applicants: Applicant[], itemsPerPage = 10) => {

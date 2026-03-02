@@ -55,10 +55,6 @@ export interface Employee {
   emergency_contact: string | null;
   emergency_contact_number: string | null;
   
-  citizenship: string | null;
-  citizenship_type: string | null;
-  dual_citizenship_country: string | null;
-  
   facebook_url: string | null;
   linkedin_url: string | null;
   twitter_handle: string | null;

@@ -34,12 +34,12 @@ export const DELAYS = {
 };
 
 export const STATUS_STYLES: Record<string, string> = {
-  'Finalized': 'bg-purple-100 text-purple-800',
-  'Approved': 'bg-teal-100 text-teal-800',
-  'Acknowledged': 'bg-green-100 text-green-800',
-  'Submitted': 'bg-blue-100 text-blue-800',
-  'Draft': 'bg-gray-100 text-gray-800',
-  'Self-Rated': 'bg-orange-100 text-orange-800',
-  'Not Started': 'bg-red-100 text-red-800',
-  'Overdue': 'bg-red-200 text-red-900'
+  'Finalized': 'bg-slate-900 text-white shadow-sm font-bold',
+  'Approved': 'bg-slate-700 text-white font-bold',
+  'Acknowledged': 'bg-slate-500 text-white font-bold',
+  'Submitted': 'bg-slate-100 text-slate-700 border border-slate-200 font-bold',
+  'Draft': 'bg-slate-50 text-slate-500 border border-slate-100 font-bold',
+  'Self-Rated': 'bg-slate-200 text-slate-800 font-bold',
+  'Not Started': 'bg-red-50 text-red-600 border border-red-100 font-bold',
+  'Overdue': 'bg-red-600 text-white shadow-sm font-bold'
 };

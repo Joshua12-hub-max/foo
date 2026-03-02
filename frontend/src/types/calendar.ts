@@ -49,6 +49,58 @@ export type AnnouncementFormData = {
   end_time?: string | null;
 };
 
-export type CalendarItemType = 'event' | 'announcement';
+export type CalendarItemType = 'event' | 'announcement' | 'holiday' | 'schedule';
 
 export type CalendarItem = CalendarEvent | Announcement;
+
+/** Holiday data from API (month/day based, rendered per year) */
+export interface Holiday {
+  id: number | string;
+  name: string;
+  title?: string;
+  month: number;
+  day: number;
+  type?: string;
+  date?: string;
+}
+
+/** Employee schedule entry from API */
+export interface ScheduleEntry {
+  id: number | string;
+  duties?: string;
+  scheduleName?: string;
+  start_date?: string;
+  startDate?: string;
+  end_date?: string;
+  endDate?: string;
+  start_time?: string;
+  startTime?: string;
+  end_time?: string;
+  endTime?: string;
+  days?: string;
+}
+
+/** Unified display item for the calendar grid */
+export interface CalendarDisplayItem {
+  id: string | number;
+  title: string;
+  type?: string;
+  date?: string;
+  time?: string | number | null;
+  endTime?: string;
+  description?: string | null;
+  department?: string | null;
+  priority?: string;
+  isHoliday?: boolean;
+  isAnnouncement?: boolean;
+  isSchedule?: boolean;
+  startDate?: string;
+  endDate?: string;
+  start_date?: string;
+  end_date?: string;
+  created_at?: string;
+  originalSchedule?: ScheduleEntry;
+  name?: string;
+  color?: string;
+  content?: string;
+}

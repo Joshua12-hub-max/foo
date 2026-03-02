@@ -176,8 +176,14 @@ export default function Login() {
       }
 
       const roleName = user.role.toLowerCase();
-      if (roleName === "hr" || roleName === "admin") {
-        navigate("/admin-dashboard", { replace: true });
+      // If they are Admin or HR, default to Admin dashboard UNLESS they are specifically trying to enter the employee dashboard
+      if (roleName === "human resource" || roleName === "admin") {
+        const isTargetingEmployeeDashboard = window.location.pathname.startsWith('/employee-dashboard');
+        if (isTargetingEmployeeDashboard) {
+           navigate("/employee-dashboard", { replace: true });
+        } else {
+           navigate("/admin-dashboard", { replace: true });
+        }
       } else if (roleName === "employee" || roleName === "department head") {
         navigate("/employee-dashboard", { replace: true });
       } else {
@@ -215,7 +221,7 @@ export default function Login() {
             <span className="opacity-80">Logging in as:</span>
             <span
                 className={`capitalize px-3 py-[3px] rounded-md shadow-md font-semibold text-gray-900 ${
-                role.toLowerCase() === "admin" || role.toLowerCase() === "hr" ? "bg-gray-200" : "bg-gray-100"
+                role.toLowerCase() === "admin" || role.toLowerCase() === "human resource" ? "bg-gray-200" : "bg-gray-100"
                 }`}
             >
                 {role}

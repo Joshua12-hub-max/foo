@@ -3,7 +3,7 @@ import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 import { db } from '../db/index.js';
 import { eq, and, or, sql, desc, like, ne, InferSelectModel } from 'drizzle-orm';
-import type { AuthenticatedRequest, EmploymentStatus, Gender, CivilStatus, AppointmentType } from '../types/index.js';
+import type { AuthenticatedRequest, EmploymentStatus, Gender, CivilStatus, AppointmentType, UserRole } from '../types/index.js';
 import { UserService } from '../services/user.service.js';
 import { 
   authentication, 
@@ -38,9 +38,10 @@ import {
   EmployeeEmergencyContactResponse, 
   EmployeeCustomFieldResponse 
 } from '../types/employee.js';
+import { formatFullName } from '../utils/nameUtils.js';
 
 
-type UserRole = 'admin' | 'hr' | 'employee';
+// Standardized role type from global types
 
 interface UpdateFields {
   firstName?: string;
@@ -120,12 +121,13 @@ interface UpdateFields {
 export const mapToEmployeeApi = (emp: EmployeeMapperInput): EmployeeApiResponse => {
   return {
     id: emp.id,
+    employee_name: formatFullName(emp.lastName, emp.firstName, emp.middleName, emp.suffix),
     first_name: String(emp.firstName || ''),
     last_name: String(emp.lastName || ''),
     middle_name: emp.middleName || null,
     suffix: emp.suffix || null,
     email: String(emp.email || ''),
-    role: (emp.role || 'employee') as UserRole,
+    role: (emp.role === 'hr' ? 'Human Resource' : (emp.role || 'employee')) as UserRole,
     department: emp.department || null,
     department_id: emp.departmentId || null,
     employee_id: String(emp.employeeId || ''),
@@ -286,7 +288,8 @@ export const getEmployeeById = async (req: Request, res: Response): Promise<void
     const authReq = req as AuthenticatedRequest;
     const requester = authReq.user;
     const isSelf = requester.id === parseInt(id);
-    const isAdmin = ['admin', 'hr'].includes(requester.role?.toLowerCase());
+    const roleLower = requester.role?.toLowerCase() || '';
+    const isAdmin = ['admin', 'human resource'].includes(roleLower);
 
     if (!isSelf && !isAdmin) {
       res.status(403).json({ success: false, message: 'Access Denied: You can only view your own profile.' });
@@ -518,7 +521,7 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
        await db.insert(plantillaPositionHistory).values({
          positionId: finalPosId,
          employeeId: newEmployeeIdNum,
-         employeeName: `${first_name} ${last_name}`,
+         employeeName: formatFullName(last_name, first_name),
          positionTitle: plantillaPositionTitle,
          startDate: today
        });

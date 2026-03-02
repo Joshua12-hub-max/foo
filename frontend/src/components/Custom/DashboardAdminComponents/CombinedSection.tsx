@@ -1,11 +1,18 @@
 import { useState, useCallback, useMemo, memo, useEffect } from 'react';
 import { BarChart3, Bell, LayoutDashboard, LucideIcon } from 'lucide-react';
 import { PerformancePieChart, AnnouncementsList, EventsList, HolidaysList } from "../../CustomUI";
-// @ts-ignore
-import { holidays } from "../../../utils/holidays";
+import { holidays, Holiday as HolidayData } from "../../../utils/holidays";
 import { announcementApi } from '../../../api/announcementApi';
 import { eventApi } from '../../../api/eventApi';
 import { fetchRatingDistribution } from '../../../api/performanceApi';
+
+interface ReportData {
+  outstanding?: number;
+  exceedsExpectations?: number;
+  meetsExpectations?: number;
+  needsImprovement?: number;
+  poorPerformance?: number;
+}
 
 interface Tab {
   id: string;
@@ -59,12 +66,12 @@ LoadingOverlay.displayName = 'LoadingOverlay';
 export default function CombinedSection() {
   const [activeTab, setActiveTab] = useState('charts');
   const [isLoading, setIsLoading] = useState(false);
-  const [announcements, setAnnouncements] = useState<any[]>([]);
-  const [events, setEvents] = useState<any[]>([]);
-  const [upcomingHolidays, setUpcomingHolidays] = useState<any[]>([]);
+  const [announcements, setAnnouncements] = useState<Array<{ id: number | string; title: string; content: string; priority: 'high' | 'medium' | 'low'; date: string; start_date?: string; created_at?: string }>>([]);
+  const [events, setEvents] = useState<Array<{ id: number | string; title: string; date: string; type: string; start_date?: string; description?: string | null }>>([]);
+  const [upcomingHolidays, setUpcomingHolidays] = useState<Array<{ id: string; title: string; date: string; type: string; isHoliday: boolean }>>([]);
   
   // Performance evaluation state - real data from API
-  const [performanceData, setPerformanceData] = useState<any>(null);
+  const [performanceData, setPerformanceData] = useState<ReportData | null>(null);
   const [performanceLoading, setPerformanceLoading] = useState(true);
 
   useEffect(() => {
@@ -73,9 +80,9 @@ export default function CombinedSection() {
         // Fetch Announcements
         const annResponse = await announcementApi.getAnnouncements();
         if (annResponse.data && annResponse.data.announcements) {
-            const formattedAnnouncements = annResponse.data.announcements.map((a: any) => ({
+            const formattedAnnouncements = annResponse.data.announcements.map((a: { id: number; title: string; content: string; priority: 'high' | 'medium' | 'low'; start_date?: string; created_at?: string }) => ({
                 ...a,
-                date: a.start_date || a.created_at ? new Date(a.start_date || a.created_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
+                date: a.start_date || a.created_at ? new Date(a.start_date || a.created_at || '').toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
             }));
             setAnnouncements(formattedAnnouncements);
         }
@@ -86,7 +93,7 @@ export default function CombinedSection() {
         
         // Get current year holidays separately
         const currentYear = new Date().getFullYear();
-        const holidayEvents = holidays.map((h: any) => ({
+        const holidayEvents = holidays.map((h: HolidayData) => ({
             id: `holiday-${h.id}-${currentYear}`,
             title: h.title,
             date: new Date(currentYear, h.month, h.day).toISOString().split('T')[0],
@@ -100,14 +107,14 @@ export default function CombinedSection() {
         
         // Filter and set events (only API events)
         const upcomingApiEvents = apiEvents
-          .filter((e: any) => new Date(e.date || e.start_date) >= today)
-          .sort((a: any, b: any) => new Date(a.date || a.start_date).getTime() - new Date(b.date || b.start_date).getTime());
+          .filter((e: { date?: string; start_date?: string }) => new Date(e.date || e.start_date || '') >= today)
+          .sort((a: { date?: string; start_date?: string }, b: { date?: string; start_date?: string }) => new Date(a.date || a.start_date || '').getTime() - new Date(b.date || b.start_date || '').getTime());
         setEvents(upcomingApiEvents.slice(0, 10));
 
         // Filter and set holidays
         const upcomingHolidayList = holidayEvents
-          .filter((h: any) => new Date(h.date) >= today)
-          .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
+          .filter(h => new Date(h.date) >= today)
+          .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
         setUpcomingHolidays(upcomingHolidayList.slice(0, 10));
 
       } catch (error) {
@@ -120,10 +127,9 @@ export default function CombinedSection() {
       try {
         setPerformanceLoading(true);
         const response = await fetchRatingDistribution();
-        // @ts-ignore
-        if (response.success && response.distribution) {
-          // @ts-ignore
-          setPerformanceData(response.distribution);
+        const data = response.data as Record<string, unknown>;
+        if (data && 'distribution' in data) {
+          setPerformanceData(data.distribution as ReportData);
         }
       } catch (error) {
         console.error("Failed to fetch performance data:", error);
@@ -158,7 +164,7 @@ export default function CombinedSection() {
   const chartContent = useMemo(() => (
     <>
       <div className="mb-6">
-        <PerformancePieChart reportData={performanceData} isLoading={performanceLoading} />
+        <PerformancePieChart reportData={performanceData ?? undefined} isLoading={performanceLoading} />
       </div>
       <div className="mb-6">
         <HolidaysList holidays={upcomingHolidays} />

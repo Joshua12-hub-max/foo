@@ -5,10 +5,12 @@ import { exportAttendanceToExcel } from './utils/attendanceExcelExport';
 import { AttendanceRecord } from '@/types';
 import { attendanceApi } from '@/api/attendanceApi';
 import { employeeApi } from '@/api/employeeApi';
+import { leaveApi } from '@/api/leaveApi';
 import { AttendanceQueryValues } from '@/schemas/attendanceSchema';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Employee } from '@/types';
+import type { LeaveApplication } from '@/types/leave.types';
 
 interface AttendanceExportProps {
   data: AttendanceRecord[];
@@ -30,11 +32,16 @@ const formatDate = (dateStr: string): string => {
 };
 
 /**
- * Format time for display
+ * Format time for display — handles both Manila datetime strings ("2026-02-13 07:50:00")
+ * and bare HH:MM:SS or HH:MM formats
  */
 const formatTime = (timeStr: string): string => {
-  if (!timeStr || timeStr === '-' || timeStr === '') return '-';
+  if (!timeStr || timeStr === '-' || timeStr === '' || timeStr === 'null') return '-';
   try {
+    const date = new Date(timeStr);
+    if (!isNaN(date.getTime())) {
+      return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+    }
     const parts = timeStr.split(':');
     if (parts.length >= 2) {
       const hours = parseInt(parts[0], 10);
@@ -54,21 +61,41 @@ const formatTime = (timeStr: string): string => {
  */
 const getEmployeeName = (record: AttendanceRecord): string => {
   if (record.name) return record.name;
-  if (record.employee_name) return record.employee_name;
+  if ('employee_name' in record && typeof record.employee_name === 'string') return record.employee_name;
   return `Employee #${record.employeeId || record.employee_id}`;
 };
 
 /**
- * Format minutes to readable format
+ * Format minutes to readable format  
  */
 const formatMinutes = (value: string | number): string => {
-  if (!value || value === 0 || value === '0') return '-';
+  if (!value || value === 0 || value === '0') return '0';
   const mins = typeof value === 'string' ? parseInt(value, 10) : value;
-  if (isNaN(mins) || mins === 0) return '-';
-  const hours = Math.floor(mins / 60);
-  const remainingMins = mins % 60;
-  if (hours > 0) return `${hours}h ${remainingMins}m`;
-  return `${remainingMins}m`;
+  if (isNaN(mins) || mins === 0) return '0';
+  return String(mins);
+};
+
+/**
+ * Get a short leave type abbreviation for display
+ */
+const getLeaveAbbreviation = (leaveType: string): string => {
+  const map: Record<string, string> = {
+    'Vacation Leave': 'VL',
+    'Sick Leave': 'SL',
+    'Special Privilege Leave': 'SPL',
+    'Forced Leave': 'FL',
+    'Maternity Leave': 'ML',
+    'Paternity Leave': 'PL',
+    'Solo Parent Leave': 'SOLO',
+    'Study Leave': 'STL',
+    'Special Emergency Leave': 'SEL',
+    'VAWC Leave': 'VAWC',
+    'Rehabilitation Leave': 'RL',
+    'Special Leave Benefits for Women': 'SLBW',
+    'Wellness Leave': 'WL',
+    'Adoption Leave': 'AL',
+  };
+  return map[leaveType] || 'LV';
 };
 
 const AttendanceExport: React.FC<AttendanceExportProps> = ({ data, title, dateRange, filters }) => {
@@ -77,22 +104,51 @@ const AttendanceExport: React.FC<AttendanceExportProps> = ({ data, title, dateRa
   const [isExporting, setIsExporting] = useState(false);
   const [groupByDepartment, setGroupByDepartment] = useState(false);
   
+  let appliedStartDate = filters?.startDate || dateRange?.startDate;
+  let appliedEndDate = filters?.endDate || dateRange?.endDate;
+
+  if (!appliedStartDate || !appliedEndDate) {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    const day = now.getDate();
+    
+    if (day <= 15) {
+      appliedStartDate = new Date(year, month, 1).toISOString().split('T')[0];
+      appliedEndDate = new Date(year, month, 15).toISOString().split('T')[0];
+    } else {
+      appliedStartDate = new Date(year, month, 16).toISOString().split('T')[0];
+      appliedEndDate = new Date(year, month + 1, 0).toISOString().split('T')[0];
+    }
+  }
+
   const fetchAllData = async (): Promise<AttendanceRecord[]> => {
-    // If no filters are provided, we just export the currently visible data
-    if (!filters || !filters.startDate || !filters.endDate) return data;
-
     try {
-      const selectedDept = filters.department && filters.department !== 'All Departments' ? filters.department : null;
+      const selectedDept = filters?.department && filters?.department !== 'All Departments' ? filters.department : null;
 
-      // 1. Fetch Logs (Filtered by date and department natively by API if supported, or we filter locally)
-      const logsResponse = await attendanceApi.getLogs({
-        ...filters,
-        page: 1,
-        limit: 100000 
-      });
-
-      // 2. Fetch EMPLOYEES for the strict target department
-      const employeesResponse = await employeeApi.fetchEmployees({ department: filters.department });
+      // ═══════════════════════════════════════════════════════════════
+      // 1. Fetch ALL data sources in parallel
+      // ═══════════════════════════════════════════════════════════════
+      const [logsResponse, employeesResponse, leavesResponse] = await Promise.all([
+        // DTR Logs
+        attendanceApi.getLogs({
+          ...filters,
+          startDate: appliedStartDate,
+          endDate: appliedEndDate,
+          page: 1,
+          limit: 100000 
+        }),
+        // Employee list
+        employeeApi.fetchEmployees({ department: filters?.department }),
+        // Approved leaves for the date range
+        leaveApi.getAllApplications({
+          status: 'Approved',
+          startDate: appliedStartDate,
+          endDate: appliedEndDate,
+          limit: 100000,
+          page: 1,
+        }).catch(() => ({ data: { applications: [] } })) // Graceful fallback
+      ]);
 
       if (logsResponse.data.success && Array.isArray(logsResponse.data.data) && employeesResponse.success && Array.isArray(employeesResponse.employees)) {
         
@@ -100,41 +156,87 @@ const AttendanceExport: React.FC<AttendanceExportProps> = ({ data, title, dateRa
         const employees = employeesResponse?.employees || [];
         const validEmpIds = new Set(employees.map((e: Employee) => String(e.employee_id || e.id)));
         
-        // Strict Department Filtering: If a department is selected, remove ANY log that doesn't belong to those employees
+        // ═══════════════════════════════════════════════════════════════
+        // 2. Build Leave Lookup: employeeId → Set of { date, leaveType }
+        // ═══════════════════════════════════════════════════════════════
+        const leaveMap = new Map<string, string>(); // key: "YYYY-MM-DD_empId" → leaveType
+        
+        const approvedLeaves: LeaveApplication[] = (leavesResponse as { data?: { applications?: LeaveApplication[] } })?.data?.applications || [];
+        approvedLeaves.forEach((leave: LeaveApplication) => {
+          if (leave.status !== 'Approved') return;
+          const empId = String(leave.employee_id);
+          const leaveStart = new Date(leave.start_date);
+          const leaveEnd = new Date(leave.end_date);
+          
+          // Iterate each day of the leave period
+          for (let d = new Date(leaveStart); d <= leaveEnd; d.setDate(d.getDate() + 1)) {
+            const dateStr = d.toISOString().split('T')[0];
+            const key = `${dateStr}_${empId}`;
+            leaveMap.set(key, leave.leave_type);
+          }
+        });
+        
+        // Strict Department Filtering
         if (selectedDept) {
             logs = logs.filter((log: AttendanceRecord) => validEmpIds.has(String(log.employee_id)));
         }
 
         const fullRecords: AttendanceRecord[] = [];
 
-        // 3. Generate Exact Date Range
-        const start = new Date(filters.startDate);
-        const end = new Date(filters.endDate);
-        const dateArray: string[] = [];
+        // ═══════════════════════════════════════════════════════════════
+        // 3. Generate Exact Date Range (timezone-safe)
+        // ═══════════════════════════════════════════════════════════════
+        const startStr = appliedStartDate!;
+        const endStr = appliedEndDate!;
+        const startMs = new Date(`${startStr}T00:00:00`).getTime();
+        const endMs = new Date(`${endStr}T00:00:00`).getTime();
         
-        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-            dateArray.push(d.toISOString().split('T')[0]);
+        const dateArray: string[] = [];
+        for (let time = startMs; time <= endMs; time += 86400000) {
+            const d = new Date(time);
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            dateArray.push(`${year}-${month}-${day}`);
         }
 
-        // 4. Cross-Reference
+        // ═══════════════════════════════════════════════════════════════
+        // 4. Map DTR Logs by key: "date_employeeId"
+        // Backend returns snake_case: employee_id, employee_name, late_minutes, etc.
+        // ═══════════════════════════════════════════════════════════════
         const logMap = new Map<string, AttendanceRecord>();
         
-        logs.forEach((log: AttendanceRecord) => {
-            const logDate = new Date(log.date).toISOString().split('T')[0];
-            const empId = String(log.employee_id ?? log.employeeId ?? '');
+        const empLookup = new Map<string, Employee>();
+        employees.forEach((emp: Employee) => {
+            empLookup.set(String(emp.employee_id), emp);
+        });
+        
+        logs.forEach(log => {
+            const logDate = log.date ? new Date(log.date).toISOString().split('T')[0] : '';
+            const empId = String(log.employee_id || '');
             const key = `${logDate}_${empId}`;
+            
+            // Resolve name: use employee_name from API, then lookup from employee DB
+            let resolvedName = log.employee_name || '';
+            if (!resolvedName || resolvedName === 'Unknown Employee') {
+                const emp = empLookup.get(empId);
+                if (emp) {
+                    resolvedName = `${emp.first_name || ''} ${emp.last_name || ''}`.trim();
+                }
+            }
+            if (!resolvedName) resolvedName = `Employee ${empId}`;
             
             const record: AttendanceRecord = {
               id: log.id,
-              employeeId: log.employeeId,
-              employee_id: log.employee_id ?? Number(log.employeeId),
-              name: log.name || `Employee #${empId}`,
+              employeeId: empId,
+              employee_id: (isNaN(Number(empId)) ? empId : Number(empId)) as never,
+              name: resolvedName,
               date: logDate,
-              timeIn: log.timeIn,
-              timeOut: log.timeOut,
-              lateMinutes: log.lateMinutes,
-              undertimeMinutes: log.undertimeMinutes,
-              status: log.status,
+              timeIn: log.time_in || undefined,
+              timeOut: log.time_out || undefined,
+              lateMinutes: Number(log.late_minutes ?? 0),
+              undertimeMinutes: Number(log.undertime_minutes ?? 0),
+              status: log.status || 'Present',
               department: log.department ?? selectedDept ?? undefined,
               duties: log.duties
             };
@@ -142,32 +244,58 @@ const AttendanceExport: React.FC<AttendanceExportProps> = ({ data, title, dateRa
             logMap.set(key, record);
         });
 
-        // Loop through every day
+        // ═══════════════════════════════════════════════════════════════
+        // 5. Cross-Reference: For each date × employee, determine status
+        // ═══════════════════════════════════════════════════════════════
         dateArray.reverse().forEach(dateStr => {
             employees.forEach((emp: Employee) => {
                 const empId = String(emp.employee_id || emp.id);
                 const key = `${dateStr}_${empId}`;
                 const existingLog = logMap.get(key);
+                const leaveType = leaveMap.get(key);
+                const fullName = `${emp.first_name || ''} ${emp.last_name || ''}`.trim() || `Employee ${empId}`;
+                const isFuture = new Date(dateStr) > new Date();
 
                 if (existingLog) {
-                    fullRecords.push(existingLog);
-                } else {
-                    const isFuture = new Date(dateStr) > new Date();
-                    if (!isFuture) {
-                         fullRecords.push({
-                            id: `gen-${Math.random()}`,
-                            employee_id: Number(empId),
-                            employeeId: empId,
-                            name: `${emp.first_name || ''} ${emp.last_name || ''}`.trim() || `Employee ${empId}`,
-                            date: dateStr,
-                            timeIn: '-',
-                            timeOut: '-',
-                            status: 'Absent',
-                            lateMinutes: 0,
-                            undertimeMinutes: 0,
-                            department: emp.department || selectedDept || 'Unassigned'
-                        });
-                    }
+                    // Has DTR record — use it with corrected name
+                    fullRecords.push({
+                      ...existingLog,
+                      name: fullName,
+                      employeeId: empId,
+                      department: existingLog.department || emp.department || selectedDept || 'N/A',
+                      // If on leave AND has a log, priority is the log but annotate leave
+                      status: leaveType ? `On Leave (${getLeaveAbbreviation(leaveType)})` : existingLog.status,
+                    });
+                } else if (leaveType) {
+                    // On approved leave — no DTR expected
+                    fullRecords.push({
+                        id: `leave-${Math.random()}`,
+                        employee_id: (isNaN(Number(empId)) ? empId : Number(empId)) as never,
+                        employeeId: empId,
+                        name: fullName,
+                        date: dateStr,
+                        timeIn: '-',
+                        timeOut: '-',
+                        status: `On Leave (${getLeaveAbbreviation(leaveType)})`,
+                        lateMinutes: 0,
+                        undertimeMinutes: 0,
+                        department: emp.department || selectedDept || 'N/A'
+                    });
+                } else if (!isFuture) {
+                    // No DTR, no leave = Absent
+                    fullRecords.push({
+                        id: `absent-${Math.random()}`,
+                        employee_id: (isNaN(Number(empId)) ? empId : Number(empId)) as never,
+                        employeeId: empId,
+                        name: fullName,
+                        date: dateStr,
+                        timeIn: '-',
+                        timeOut: '-',
+                        status: 'Absent',
+                        lateMinutes: 0,
+                        undertimeMinutes: 0,
+                        department: emp.department || selectedDept || 'N/A'
+                    });
                 }
             });
         });
@@ -197,7 +325,7 @@ const AttendanceExport: React.FC<AttendanceExportProps> = ({ data, title, dateRa
 
       await exportAttendanceToExcel(exportData, {
         title,
-        dateRange,
+        dateRange: { startDate: appliedStartDate, endDate: appliedEndDate },
         groupByDepartment
       });
       showNotification("Excel report exported successfully!", "success");
@@ -230,37 +358,58 @@ const AttendanceExport: React.FC<AttendanceExportProps> = ({ data, title, dateRa
       // Subtitle
       doc.setFontSize(10);
       doc.setTextColor(100, 100, 100);
-      const dateText = dateRange 
-        ? `Period: ${formatDate(dateRange.startDate)} - ${formatDate(dateRange.endDate)}`
-        : `Generated: ${new Date().toLocaleDateString('en-PH')}`;
+      const dateText = `Period: ${formatDate(appliedStartDate)} - ${formatDate(appliedEndDate)}`;
       doc.text(dateText, 14, 22);
       doc.text(`Total Records: ${exportData.length}`, 14, 28);
 
-      // Table data
-      const tableData = exportData.map(record => [
-        getEmployeeName(record),
-        formatDate(record.date),
-        formatTime(record.timeIn || ''),
-        formatTime(record.timeOut || ''),
-        formatMinutes(record.lateMinutes || 0),
-        formatMinutes(record.undertimeMinutes || 0),
-        record.status || '-'
-      ]);
+      // Table data — 13 columns
+      const tableData = exportData.map(record => {
+        const isOnLeave = (record.status || '').startsWith('On Leave');
+        const isAbsent = record.status === 'Absent' || (!isOnLeave && (record.timeIn === '-' || record.timeIn === null));
+        const isLate = Number(record.lateMinutes) > 0;
+        const isUndertime = Number(record.undertimeMinutes) > 0;
+        const isPresent = !isAbsent && !isOnLeave && !isLate && !isUndertime;
+        
+        return [
+          record.employeeId || '',
+          getEmployeeName(record),
+          record.department || 'N/A',
+          formatDate(record.date),
+          formatTime(record.timeIn || ''),
+          formatTime(record.timeOut || ''),
+          formatMinutes(record.lateMinutes || 0),
+          formatMinutes(record.undertimeMinutes || 0),
+          isPresent ? 'X' : '',
+          isLate ? 'X' : '',
+          isUndertime ? 'X' : '',
+          isAbsent ? 'X' : '',
+          isOnLeave ? record.status?.replace('On Leave ', '').replace('(', '').replace(')', '') || 'LV' : ''
+        ]
+      });
 
       autoTable(doc, {
         startY: 35,
-        head: [['Employee', 'Date', 'Time In', 'Time Out', 'Late', 'Undertime', 'Status']],
+        head: [['ID', 'Employee Name', 'Dept', 'Date', 'Time In', 'Time Out', 'Late', 'UT', 'Present', 'Late', 'UT', 'Absent', 'On Leave']],
         body: tableData,
-        styles: { fontSize: 8 },
+        styles: { fontSize: 5.5, halign: 'center', cellPadding: 1.5 },
         headStyles: { 
           fillColor: [30, 58, 95],
           textColor: [255, 255, 255],
-          fontStyle: 'bold'
+          fontStyle: 'bold',
+          halign: 'center',
+          fontSize: 5.5
         },
         alternateRowStyles: { fillColor: [245, 245, 245] },
         columnStyles: {
-          0: { cellWidth: 50 },
-          6: { fontStyle: 'bold' }
+          0: { cellWidth: 16, halign: 'left' },
+          1: { cellWidth: 28, halign: 'left' },
+          2: { cellWidth: 28, halign: 'left' },
+          3: { cellWidth: 18 },
+          4: { cellWidth: 16 },
+          5: { cellWidth: 16 },
+          6: { cellWidth: 12 },
+          7: { cellWidth: 12 },
+          12: { cellWidth: 16 },
         }
       });
 
@@ -323,8 +472,8 @@ const AttendanceExport: React.FC<AttendanceExportProps> = ({ data, title, dateRa
       </button>
 
       {/* Record count */}
-      <span className="text-xs text-gray-500 ml-auto">
-        {!filters && `${data.length} ${data.length === 1 ? 'record' : 'records'} visible`}
+      <span className="text-xs text-gray-500 ml-auto bg-gray-100 px-2 py-1 rounded">
+        {!filters?.startDate ? `Defaults to standard 15-day period` : `Filtered date range export`}
       </span>
     </div>
   );

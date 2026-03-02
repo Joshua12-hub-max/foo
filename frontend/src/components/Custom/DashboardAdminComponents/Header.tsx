@@ -3,11 +3,12 @@ import { useNavigate } from "react-router-dom";
 import { Menu, Search, User as UserIcon, Camera } from "lucide-react";
 import NotificationMenu from "../../CustomUI/NotificationMenu";
 import { useAuth } from "../../../hooks/useAuth";
+import type { User } from "@/types";
 
 /* -------------------- Memoized Components -------------------- */
 interface ProfilePictureProps {
   hasProfilePicture: boolean;
-  user: any;
+  user: User | null;
   isHovered: boolean;
   onMouseEnter: () => void;
   onMouseLeave: () => void;
@@ -27,8 +28,8 @@ const ProfilePicture = memo<ProfilePictureProps>(
     >
       {hasProfilePicture ? (
         <img
-          src={user.avatar_url}
-          alt={`${user.name}'s profile`}
+          src={user?.avatar_url ?? undefined}
+          alt={`${user?.name ?? 'User'}'s profile`}
           className="w-full h-full object-cover transition-all group-hover:brightness-75"
           loading="lazy"
         />
@@ -56,7 +57,7 @@ interface UserInfoProps {
 const UserInfo = memo<UserInfoProps>(({ name, role }) => (
   <div className="text-right">
     <p className="text-sm font-semibold text-slate-800 leading-tight">{name}</p>
-    <p className="text-xs text-gray-500 mt-0.5 capitalize">{role === "hr" ? "HR Admin" : role}</p>
+    <p className="text-xs text-gray-500 mt-0.5 capitalize">{role === "human resource" ? "Human Resource" : role}</p>
   </div>
 ));
 UserInfo.displayName = "UserInfo";
@@ -97,7 +98,6 @@ interface HeaderProps {
 /* -------------------- Header Component -------------------- */
 export default function Header({sidebarOpen, setSidebarOpen, searchQuery = '', setSearchQuery = () => {}}: HeaderProps) {
   const navigate = useNavigate();
-  // @ts-ignore
   const { user } = useAuth();
   const [isHovered, setIsHovered] = useState(false);
 
@@ -133,7 +133,7 @@ export default function Header({sidebarOpen, setSidebarOpen, searchQuery = '', s
         <div className="flex items-center gap-3">
           <ProfilePicture
             hasProfilePicture={hasProfilePicture}
-            user={user || {}}
+            user={user}
             isHovered={isHovered}
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}

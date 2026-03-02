@@ -11,7 +11,7 @@ import type { RowDataPacket, ResultSetHeader } from 'mysql2/promise';
 export interface JwtPayload {
   id: number;
   employeeId: string;
-  role: string;
+  role: UserRole;
   iat?: number;
   exp?: number;
 }
@@ -127,7 +127,7 @@ export interface UserRow extends BaseRow {
 // Enums and Constants
 // ============================================================================
 
-export type UserRole = 'admin' | 'hr' | 'employee';
+export type UserRole = 'admin' | 'Human Resource' | 'employee';
 
 export type EmploymentStatus = 
   | 'Active'

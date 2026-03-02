@@ -105,7 +105,7 @@ export const submitInquiry = async (req: Request, res: Response): Promise<void> 
       'We received your inquiry - Meycauayan HR',
       `<div style="font-family: sans-serif; padding: 20px;">
         <h2>Hello ${safeFirstName},</h2>
-        <p>Thank you for reaching out to the City Human Resources Management Office of Meycauayan. We have received your message and our team will get back to you within 24-48 hours.</p>
+        <p>Thank you for reaching out to the City Human Resource Management Office of Meycauayan. We have received your message and our team will get back to you within 24-48 hours.</p>
         <div style="background: #f4f4f4; padding: 15px; border-radius: 8px; margin: 20px 0;">
           <strong>Your Message:</strong><br/>
           <i>"${safeMessage}"</i>

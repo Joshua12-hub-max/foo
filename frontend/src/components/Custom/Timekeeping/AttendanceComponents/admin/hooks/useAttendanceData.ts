@@ -12,48 +12,87 @@ export interface AttendanceRecord {
   time_out: string;
   late: string | number;
   undertime: string | number;
+  department?: string;
+  department_name?: string;
   status: string;
-  [key: string]: any;
 }
 
-export const useAttendanceData = (isAdmin = false) => {
-  const { data, isLoading, error, refetch } = useQuery({
+// 1. Pure Type Guards for zero-loophole runtime checks
+const isRecord = (value: unknown): value is Record<string, unknown> => {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+};
+
+// 2. Strict Extractors to guarantee primitives
+const getString = (val: unknown, fallback: string = ''): string => 
+  typeof val === 'string' ? val : fallback;
+
+const getStringOrUndefined = (val: unknown): string | undefined => 
+  typeof val === 'string' ? val : undefined;
+
+const getStringOrNumber = (val: unknown, fallback: string | number = 0): string | number => 
+  (typeof val === 'string' || typeof val === 'number') ? val : fallback;
+
+
+export const useAttendanceData = (isAdmin: boolean = false) => {
+  // 3. Define the explicit Generics for useQuery to prevent 'as' casting later
+  const { data, isLoading, error, refetch } = useQuery<AttendanceRecord[], Error>({
     queryKey: ['attendance', { isAdmin }],
-    queryFn: async () => {
-      const response = await attendanceApi.getLogs({});
-      let apiData: any[] = [];
-      if (response && response.data) {
-          const resData = response.data;
-          if (Array.isArray(resData)) {
-              apiData = resData;
-          } else if (resData.data && Array.isArray(resData.data)) {
-              apiData = resData.data;
-          }
-      } else if (Array.isArray(response)) {
-          apiData = response;
+    queryFn: async (): Promise<AttendanceRecord[]> => {
+      // Treat the response strictly as unknown instead of 'any'
+      const response: unknown = await attendanceApi.getLogs({});
+      
+      let apiData: unknown[] =[];
+
+      // Safely drill into the unknown response structure
+      if (Array.isArray(response)) {
+        apiData = response;
+      } else if (isRecord(response)) {
+        if (Array.isArray(response.data)) {
+          apiData = response.data;
+        } else if (isRecord(response.data) && Array.isArray(response.data.data)) {
+          apiData = response.data.data;
+        }
       }
       
-      return apiData.map(item => ({
-        id: item.id,
-        employee_id: item.employee_id,
-        name: item.name || `${item.first_name || ''} ${item.last_name || ''}`.trim(),
-        first_name: item.first_name,
-        last_name: item.last_name,
-        date: item.date,
-        time_in: item.time_in,
-        time_out: item.time_out,
-        late: item.late_minutes || item.late || 0,
-        undertime: item.undertime_minutes || item.undertime || 0,
-        status: item.status || 'Present'
-      })) as AttendanceRecord[];
+      // 4. Force the map function to strictly return an AttendanceRecord
+      return apiData.map((rawItem: unknown): AttendanceRecord => {
+        // Fallback to empty object if item isn't an object
+        const item = isRecord(rawItem) ? rawItem : {};
+
+        const firstName = getStringOrUndefined(item.first_name);
+        const lastName = getStringOrUndefined(item.last_name);
+        const providedName = getStringOrUndefined(item.name);
+        
+        const computedName = `${firstName || ''} ${lastName || ''}`.trim();
+        const finalName = providedName || (computedName.length > 0 ? computedName : undefined);
+
+        const late = getStringOrNumber(item.late_minutes, 0) || getStringOrNumber(item.late, 0) || 0;
+        const undertime = getStringOrNumber(item.undertime_minutes, 0) || getStringOrNumber(item.undertime, 0) || 0;
+        
+        const status = getString(item.status, 'Present');
+
+        return {
+          id: getStringOrNumber(item.id, ''),
+          employee_id: getStringOrNumber(item.employee_id, ''),
+          name: finalName,
+          first_name: firstName,
+          last_name: lastName,
+          date: getString(item.date),
+          time_in: getString(item.time_in),
+          time_out: getString(item.time_out),
+          late,
+          undertime,
+          status: status.trim() === '' ? 'Present' : status
+        };
+      });
     },
-    initialData: [] as AttendanceRecord[] 
+    initialData: [] 
   });
 
   return { 
-    data: data as AttendanceRecord[], 
+    data, // Already strictly typed as AttendanceRecord[] via useQuery Generic
     isLoading, 
-    error: error ? (error as Error).message : null, 
+    error: error ? error.message : null, 
     refetch 
   };
 };

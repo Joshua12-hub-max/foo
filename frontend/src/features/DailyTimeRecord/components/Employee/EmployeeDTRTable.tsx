@@ -8,6 +8,11 @@ interface EmployeeDTRTableProps {
   filters: EmployeeDTRFilters;
   onRequestCorrection: (record: EmployeeDTRRecord) => void;
   employeeInfo: EmployeeInfo | null;
+  totals?: {
+    lateMinutes: number;
+    undertimeMinutes: number;
+    hoursWorked: string;
+  };
 }
 
 export const EmployeeDTRTable: React.FC<EmployeeDTRTableProps> = ({ 
@@ -16,7 +21,8 @@ export const EmployeeDTRTable: React.FC<EmployeeDTRTableProps> = ({
   debouncedSearchQuery,
   filters,
   onRequestCorrection,
-  employeeInfo
+  employeeInfo,
+  totals
 }) => {
   const hasActiveFilters = debouncedSearchQuery || Object.values(filters).some(v => v);
   const headers = [...TABLE_HEADERS, "ACTIONS"];
@@ -36,33 +42,49 @@ export const EmployeeDTRTable: React.FC<EmployeeDTRTableProps> = ({
           </thead>
           <tbody className="divide-y divide-slate-100">
             {currentItems.length ? (
-              currentItems.map((item) => (
-                <tr key={`${item.id}-${item.date}`} className="hover:bg-[#F8F9FA] hover:shadow-xl transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`${getStatusBadge(item.status)} px-3 py-1 text-sm font-medium inline-block`} style={{borderRadius: '20px'}}>
-                      {item.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-800 font-medium whitespace-nowrap">{employeeInfo?.id || '-'}</td>
-                  <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">{employeeInfo?.department || '-'}</td>
-                  <td className="px-6 py-4 text-sm text-gray-800 font-medium whitespace-nowrap">{item.date}</td>
-                  <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">{item.timeIn}</td>
-                  <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">{item.timeOut}</td>
-                  <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">{item.hoursWorked}</td>
-                  <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">
-                    <button
-                      onClick={() => onRequestCorrection(item)}
-                      className="p-2 hover:bg-blue-50 text-blue-600 rounded-lg transition-colors group relative"
-                      title="Request Correction"
-                    >
-                      <SquarePen className="w-4 h-4" />
-                      <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-                        Request Correction
+              <>
+                {currentItems.map((item) => (
+                  <tr key={`${item.id}-${item.date}`} className="hover:bg-[#F8F9FA] hover:shadow-xl transition-colors">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`${getStatusBadge(item.status)} px-3 py-1 text-sm font-medium inline-block`} style={{borderRadius: '20px'}}>
+                        {item.status}
                       </span>
-                    </button>
-                  </td>
-                </tr>
-              ))
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-800 font-medium whitespace-nowrap">{employeeInfo?.id || '-'}</td>
+                    <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">{employeeInfo?.department || '-'}</td>
+                    <td className="px-6 py-4 text-sm text-gray-800 font-medium whitespace-nowrap">{item.date}</td>
+                    <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">{item.timeIn}</td>
+                    <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">{item.timeOut}</td>
+                    <td className="px-6 py-4 text-sm text-gray-800 text-center font-medium">{item.lateMinutes || 0}</td>
+                    <td className="px-6 py-4 text-sm text-gray-800 text-center font-medium">{item.undertimeMinutes || 0}</td>
+                    <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">{item.hoursWorked}</td>
+                    <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">
+                      <button
+                        onClick={() => onRequestCorrection(item)}
+                        className="p-2 hover:bg-blue-50 text-blue-600 rounded-lg transition-colors group relative"
+                        title="Request Correction"
+                      >
+                        <SquarePen className="w-4 h-4" />
+                        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                          Request Correction
+                        </span>
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {/* Summary Row */}
+                {totals && (
+                  <tr className="bg-gray-100 font-bold border-t-2 border-gray-300">
+                    <td colSpan={6} className="px-6 py-4 text-right text-gray-700 uppercase tracking-wider">
+                      Totals:
+                    </td>
+                    <td className="px-6 py-4 text-center text-red-700">{totals.lateMinutes}m</td>
+                    <td className="px-6 py-4 text-center text-orange-700">{totals.undertimeMinutes}m</td>
+                    <td className="px-6 py-4 text-center text-gray-900">{totals.hoursWorked}h</td>
+                    <td className="bg-gray-100"></td>
+                  </tr>
+                )}
+              </>
             ) : (
               <tr>
                 <td colSpan={headers.length} className="px-6 py-12 text-center">

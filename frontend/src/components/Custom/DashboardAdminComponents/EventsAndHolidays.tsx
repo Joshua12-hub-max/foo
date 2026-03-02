@@ -1,8 +1,16 @@
 import { Calendar, ArrowRight } from 'lucide-react';
 import { EventsList } from "../../CustomUI";
 
+interface DashboardEvent {
+  id?: string | number;
+  title: string;
+  date: string;
+  type: string;
+  priority?: string;
+}
+
 interface EventsAndHolidaysProps {
-  events?: any[];
+  events?: DashboardEvent[];
 }
 
 export default function EventsAndHolidays({ events = [] }: EventsAndHolidaysProps) {

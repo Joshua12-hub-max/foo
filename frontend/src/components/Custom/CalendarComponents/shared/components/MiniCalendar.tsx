@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { DAYS_SHORT, CALENDAR_STYLES } from '../constants/calendarConstants';
 import { getDaysInMonth, getPreviousMonth, isToday } from '../utils/dateUtils';
 import { getHolidaysForDay } from '../utils/eventUtils';
+import type { Holiday } from '@/types/calendar';
 
 interface MiniCalendarProps {
   currentDate: Date;
@@ -13,7 +14,7 @@ interface MiniCalendarProps {
   onPrevMonth: () => void;
   onNextMonth: () => void;
   showHolidays: boolean;
-  holidays: any[];
+  holidays: Holiday[];
 }
 
 const MiniCalendar: React.FC<MiniCalendarProps> = ({ currentDate, today, month, year, onDateClick, onPrevMonth, onNextMonth, showHolidays, holidays }) => {

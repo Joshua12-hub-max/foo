@@ -9,7 +9,6 @@ interface Employee {
   timeIn?: string;
   lateBy?: string;
   late_duration?: string;
-  [key: string]: any;
 }
 
 interface LateTableProps {

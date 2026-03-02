@@ -9,9 +9,16 @@ export interface EmployeeDTRRecord {
   timeIn: string;
   timeOut: string;
   hoursWorked: string | number;
+  lateMinutes?: number;
+  undertimeMinutes?: number;
   status: string;
   remarks: string;
+  duties?: string;
   createdAt?: string;
+  firstName?: string;
+  lastName?: string;
+  middleName?: string | null;
+  suffix?: string | null;
 }
 
 export interface EmployeeInfo {
@@ -32,16 +39,40 @@ export interface EmployeePaginationResult {
   currentItems: EmployeeDTRRecord[];
 }
 
-export const mapDTRData = (apiData: any[]): EmployeeDTRRecord[] => {
+export const mapDTRData = (apiData: {
+  id?: string | number;
+  record_id?: string | number;
+  date: string;
+  time_in?: string;
+  time_out?: string;
+  hours_worked?: string | number;
+  late_minutes?: number;
+  undertime_minutes?: number;
+  status?: string;
+  remarks?: string;
+  duties?: string;
+  created_at?: string;
+  first_name?: string;
+  last_name?: string;
+  middle_name?: string | null;
+  suffix?: string | null;
+}[]): EmployeeDTRRecord[] => {
   return apiData.map(item => ({
-    id: item.id || item.record_id,
+    id: item.id || item.record_id || '',
     date: item.date,
     timeIn: item.time_in || 'N/A',
     timeOut: item.time_out || 'N/A',
     hoursWorked: item.hours_worked || '0',
+    lateMinutes: item.late_minutes || 0,
+    undertimeMinutes: item.undertime_minutes || 0,
     status: item.status || 'Unknown',
     remarks: item.remarks || '-',
-    createdAt: item.created_at
+    duties: item.duties || 'N/A',
+    createdAt: item.created_at,
+    firstName: item.first_name,
+    lastName: item.last_name,
+    middleName: item.middle_name,
+    suffix: item.suffix
   }));
 };
 
@@ -88,7 +119,34 @@ export const calculatePagination = (data: EmployeeDTRRecord[], currentPage: numb
 /**
  * Generate PDF HTML content
  */
-export const generatePDFContent = (data: EmployeeDTRRecord[], headers: string[], employeeInfo: EmployeeInfo | null, today: string): string => {
+export const generatePDFContent = (data: EmployeeDTRRecord[], _headers: string[], employeeInfo: EmployeeInfo | null, today: string): string => {
+  const statusColors: Record<string, string> = {
+    Present: '#dcfce7',
+    Absent: '#fee2e2',
+    Late: '#fef9c3',
+    Undertime: '#ffedd5',
+    'Late/Undertime': '#ffedd5',
+    Leave: '#dbeafe',
+    Holiday: '#f3e8ff'
+  };
+
+  const statusTextColors: Record<string, string> = {
+    Present: '#166534',
+    Absent: '#991b1b',
+    Late: '#854d0e',
+    Undertime: '#9a3412',
+    'Late/Undertime': '#9a3412',
+    Leave: '#1e40af',
+    Holiday: '#6b21a8'
+  };
+
+  const headers = ['Status', 'Date', 'Time In', 'Time Out', 'Late (m)', 'UT (m)', 'Hours', 'Remarks'];
+
+  // Calculate totals
+  const totalLate = data.reduce((sum, row) => sum + (Number(row.lateMinutes) || 0), 0);
+  const totalUT = data.reduce((sum, row) => sum + (Number(row.undertimeMinutes) || 0), 0);
+  const totalHours = data.reduce((sum, row) => sum + (Number(row.hoursWorked) || 0), 0);
+
   return `
     <!DOCTYPE html>
     <html>
@@ -96,13 +154,18 @@ export const generatePDFContent = (data: EmployeeDTRRecord[], headers: string[],
       <meta charset="UTF-8">
       <title>Daily Time Record Report</title>
       <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        h1 { color: #333; font-size: 24px; margin-bottom: 10px; }
-        .meta { color: #666; font-size: 14px; margin-bottom: 20px; }
-        table { width: 100%; border-collapse: collapse; font-size: 12px; }
-        th { background-color: #1e293b; color: white; padding: 10px; text-align: left; font-weight: bold; }
+        body { font-family: Arial, sans-serif; margin: 20px; color: #1e293b; }
+        .header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; }
+        h1 { color: #0f172a; font-size: 24px; margin: 0; }
+        .emp-info { margin-bottom: 20px; font-size: 14px; }
+        .meta { color: #64748b; font-size: 12px; }
+        table { width: 100%; border-collapse: collapse; font-size: 11px; }
+        th { background-color: #1e293b; color: white; padding: 10px 8px; text-align: left; font-weight: bold; text-transform: uppercase; }
         td { padding: 8px; border-bottom: 1px solid #e2e8f0; }
-        tr:hover { background-color: #f8fafc; }
+        .status-pill { padding: 2px 8px; border-radius: 9999px; font-weight: bold; font-size: 10px; display: inline-block; }
+        .summary-row { background-color: #f1f5f9 !important; font-weight: bold; }
+        .summary-label { text-align: right; padding-right: 20px; }
+        tr:nth-child(even) { background-color: #f8fafc; }
         @media print {
           body { margin: 0; }
           @page { margin: 1cm; }
@@ -110,10 +173,14 @@ export const generatePDFContent = (data: EmployeeDTRRecord[], headers: string[],
       </style>
     </head>
     <body>
-      <h1>Daily Time Record Report</h1>
-      <div class="meta">Employee: ${employeeInfo?.name || 'N/A'} (${employeeInfo?.id || 'N/A'})</div>
-      <div class="meta">Department: ${employeeInfo?.department || 'N/A'}</div>
-      <div class="meta">Generated on: ${today}</div>
+      <div class="header">
+        <h1>Daily Time Record Report</h1>
+        <div class="meta">Generated on: ${today}</div>
+      </div>
+      <div class="emp-info">
+        <strong>Employee:</strong> ${employeeInfo?.name || 'N/A'} (${employeeInfo?.id || 'N/A'})<br>
+        <strong>Department:</strong> ${employeeInfo?.department || 'N/A'}
+      </div>
       <table>
         <thead>
           <tr>
@@ -121,19 +188,31 @@ export const generatePDFContent = (data: EmployeeDTRRecord[], headers: string[],
           </tr>
         </thead>
         <tbody>
-          ${data.map(row => `
+          ${data.map(row => {
+            const bgColor = statusColors[row.status] || '#f1f5f9';
+            const textColor = statusTextColors[row.status] || '#475569';
+            return `
             <tr>
-              <td>${row.status}</td>
-              <td>${employeeInfo?.id || '-'}</td>
-              <td>${employeeInfo?.department || '-'}</td>
+              <td><span class="status-pill" style="background-color: ${bgColor}; color: ${textColor};">${row.status}</span></td>
               <td>${row.date}</td>
-              <td>${row.timeIn}</td>
-              <td>${row.timeOut}</td>
-              <td>${row.hoursWorked}</td>
+              <td style="font-family: monospace;">${row.timeIn}</td>
+              <td style="font-family: monospace;">${row.timeOut}</td>
+              <td style="text-align: center; color: ${row.lateMinutes ? '#991b1b' : '#64748b'}">${row.lateMinutes || 0}</td>
+              <td style="text-align: center; color: ${row.undertimeMinutes ? '#991b1b' : '#64748b'}">${row.undertimeMinutes || 0}</td>
+              <td style="font-weight: bold; text-align: center;">${row.hoursWorked}</td>
               <td>${row.remarks}</td>
             </tr>
-          `).join('')}
+          `}).join('')}
         </tbody>
+        <tfoot>
+          <tr class="summary-row">
+            <td colspan="4" class="summary-label">TOTALS</td>
+            <td style="text-align: center;">${totalLate}</td>
+            <td style="text-align: center;">${totalUT}</td>
+            <td style="text-align: center;">${totalHours.toFixed(2)}</td>
+            <td></td>
+          </tr>
+        </tfoot>
       </table>
     </body>
     </html>
@@ -146,42 +225,51 @@ export const generatePDFContent = (data: EmployeeDTRRecord[], headers: string[],
 // Native CSV export to remove dependency on ExcelJS
 export const exportToCSV = async (data: EmployeeDTRRecord[], _headers: string[], employeeInfo: EmployeeInfo | null, filename: string): Promise<void> => {
   try {
-    const headers = ['Status', 'Employee ID', 'Department', 'Date', 'Time In', 'Time Out', 'Hours Worked', 'Remarks'];
-    const keys = ['status', 'date', 'timeIn', 'timeOut', 'hoursWorked', 'remarks'];
-
+    const headers = ['Status', 'Employee ID', 'Name', 'Department', 'Date', 'Time In', 'Time Out', 'Late (m)', 'UT (m)', 'Hours Worked', 'Remarks'];
     const csvRows = [headers.join(',')];
 
     data.forEach(row => {
-      // Prepend Employee Info
-      const empId = `"${String(employeeInfo?.id || '').replace(/"/g, '""')}"`;
-      const dept = `"${String(employeeInfo?.department || '').replace(/"/g, '""')}"`;
-      
-      const rowData = keys.map(key => {
-        const val = String((row as unknown as Record<string, string>)[key] || '');
-        return `"${String(val).replace(/"/g, '""')}"`;
-      });
-      // order: status (keys[0]), empId, dept, date (keys[1]), etc...
-      // Wait, let's map it manually to be safe
-      const status = `"${String(row.status || '').replace(/"/g, '""')}"`;
-      const date = `"${String(row.date || '').replace(/"/g, '""')}"`;
-      const timeIn = `"${String(row.timeIn || '').replace(/"/g, '""')}"`;
-      const timeOut = `"${String(row.timeOut || '').replace(/"/g, '""')}"`;
-      const hours = `"${String(row.hoursWorked || '').replace(/"/g, '""')}"`;
-      const remarks = `"${String(row.remarks || '').replace(/"/g, '""')}"`;
-
-      csvRows.push([status, empId, dept, date, timeIn, timeOut, hours, remarks].join(','));
+      const rowData = [
+        `"${String(row.status || '').replace(/"/g, '""')}"`,
+        `"${String(employeeInfo?.id || '').replace(/"/g, '""')}"`,
+        `"${String(employeeInfo?.name || '').replace(/"/g, '""')}"`,
+        `"${String(employeeInfo?.department || '').replace(/"/g, '""')}"`,
+        `"${String(row.date || '').replace(/"/g, '""')}"`,
+        `"${String(row.timeIn || '').replace(/"/g, '""')}"`,
+        `"${String(row.timeOut || '').replace(/"/g, '""')}"`,
+        `"${String(row.lateMinutes || 0).replace(/"/g, '""')}"`,
+        `"${String(row.undertimeMinutes || 0).replace(/"/g, '""')}"`,
+        `"${String(row.hoursWorked || '').replace(/"/g, '""')}"`,
+        `"${String(row.remarks || '').replace(/"/g, '""')}"`
+      ];
+      csvRows.push(rowData.join(','));
     });
 
-    const csvContent = "data:text/csv;charset=utf-8," + csvRows.join('\n');
-    const encodedUri = encodeURI(csvContent);
+    // Add totals to CSV
+    const totalLate = data.reduce((sum, row) => sum + (Number(row.lateMinutes) || 0), 0);
+    const totalUT = data.reduce((sum, row) => sum + (Number(row.undertimeMinutes) || 0), 0);
+    const totalHours = data.reduce((sum, row) => sum + (Number(row.hoursWorked) || 0), 0);
+    
+    const summaryRow = Array(7).fill('""');
+    summaryRow[6] = '"TOTALS"';
+    summaryRow.push(`"${totalLate}"`);
+    summaryRow.push(`"${totalUT}"`);
+    summaryRow.push(`"${totalHours.toFixed(2)}"`);
+    summaryRow.push('""');
+
+    csvRows.push(summaryRow.join(','));
+
+    const csvContent = "\uFEFF" + csvRows.join('\n'); // Add BOM
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    // Ensure filename ends with .csv
+    link.setAttribute("href", url);
     const finalFilename = filename.endsWith('.csv') ? filename : `${filename}.csv`;
     link.setAttribute("download", finalFilename);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   } catch (err) {
     console.error('Error generating CSV:', err);
     throw err;

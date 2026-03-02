@@ -3,20 +3,20 @@ import { ApiResponse } from '../types';
 
 export interface Memo {
   id: number;
-  employee_id: number;
-  employee_name?: string;
-  author_name?: string;
-  memo_number: string;
-  memo_type: string;
+  employeeId: number;
+  employeeName?: string;
+  authorName?: string;
+  memoNumber: string;
+  memoType: string;
   subject: string;
   content?: string;
   priority: string;
   status: string;
-  effective_date?: string;
-  acknowledgment_required?: boolean;
-  acknowledged_at?: string;
-  created_at: string;
-  reviewer_name?: string;
+  effectiveDate?: string;
+  acknowledgmentRequired?: boolean;
+  acknowledgedAt?: string;
+  createdAt: string;
+  reviewerName?: string;
 }
 
 // Fetch all memos with filters
@@ -50,7 +50,7 @@ export const fetchMemoById = async (id: string | number): Promise<ApiResponse<{ 
 };
 
 // Create memo
-export const createMemo = async (data: Partial<Memo>): Promise<ApiResponse<{ success: boolean; id: number }>> => {
+export const createMemo = async (data: Record<string, any>): Promise<ApiResponse<{ success: boolean; id: number }>> => {
   try {
     const response = await axios.post('/memos', data);
     return response.data;
@@ -60,7 +60,7 @@ export const createMemo = async (data: Partial<Memo>): Promise<ApiResponse<{ suc
 };
 
 // Update memo
-export const updateMemo = async (id: string | number, data: Partial<Memo>): Promise<ApiResponse<{ success: boolean }>> => {
+export const updateMemo = async (id: string | number, data: Record<string, any>): Promise<ApiResponse<{ success: boolean }>> => {
   try {
     const response = await axios.put(`/memos/${id}`, data);
     return response.data;

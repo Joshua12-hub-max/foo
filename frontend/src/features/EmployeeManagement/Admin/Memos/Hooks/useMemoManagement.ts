@@ -10,6 +10,7 @@ import { fetchMemos, createMemo, updateMemo, deleteMemo } from '@api/memoApi';
 // @ts-ignore
 import { fetchEmployees } from '@api/employeeApi';
 import { INITIAL_FORM_DATA, INITIAL_FILTERS, MemoFormData, MemoFilters } from '../Constants/memoConstants';
+import { formatFullName } from '@/utils/nameUtils';
 
 export interface Memo {
   id: number;
@@ -260,7 +261,7 @@ export const useMemoManagement = (): UseMemoManagementReturn => {
   const employeeOptions = useMemo<EmployeeOption[]>(() => {
     return employees.map(emp => ({
       value: emp.id,
-      label: `${emp.firstName} ${emp.lastName}`
+      label: formatFullName(emp.lastName, emp.firstName)
     }));
   }, [employees]);
 

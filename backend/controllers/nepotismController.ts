@@ -9,6 +9,7 @@ import {
 } from '../schemas/plantillaComplianceSchema.js';
 import { alias } from 'drizzle-orm/mysql-core';
 import { ZodError } from 'zod';
+import { formatFullName } from '../utils/nameUtils.js';
 
 /**
  * Get all nepotism relationships
@@ -44,9 +45,18 @@ export const getNepotismRelationships = async (req: Request, res: Response): Pro
       verifiedAt: nepotismRelationships.verifiedAt,
       notes: nepotismRelationships.notes,
       createdAt: nepotismRelationships.createdAt,
-      employee1Name: sql<string>`CONCAT(${e1.firstName}, ' ', ${e1.lastName})`,
-      employee2Name: sql<string>`CONCAT(${e2.firstName}, ' ', ${e2.lastName})`,
-      verifierName: sql<string>`CONCAT(${v.firstName}, ' ', ${v.lastName})`
+      e1_first: e1.firstName,
+      e1_last: e1.lastName,
+      e1_middle: e1.middleName,
+      e1_suffix: e1.suffix,
+      e2_first: e2.firstName,
+      e2_last: e2.lastName,
+      e2_middle: e2.middleName,
+      e2_suffix: e2.suffix,
+      v_first: v.firstName,
+      v_last: v.lastName,
+      v_middle: v.middleName,
+      v_suffix: v.suffix
     })
     .from(nepotismRelationships)
     .leftJoin(e1, eq(nepotismRelationships.employeeId1, e1.id))
@@ -55,9 +65,16 @@ export const getNepotismRelationships = async (req: Request, res: Response): Pro
     .where(conditions.length > 0 ? and(...conditions) : undefined)
     .orderBy(desc(nepotismRelationships.createdAt));
 
+    const formattedRelationships = relationships.map(r => ({
+        ...r,
+        employee1Name: formatFullName(r.e1_last, r.e1_first, r.e1_middle, r.e1_suffix),
+        employee2Name: formatFullName(r.e2_last, r.e2_first, r.e2_middle, r.e2_suffix),
+        verifierName: r.verifiedBy ? formatFullName(r.v_last, r.v_first, r.v_middle, r.v_suffix) : null
+    }));
+
     res.json({
       success: true,
-      relationships
+      relationships: formattedRelationships
     });
   } catch (error) {
     console.error('Get Nepotism Relationships Error:', error);
@@ -91,9 +108,18 @@ export const getEmployeeRelationships = async (req: Request, res: Response): Pro
       verifiedAt: nepotismRelationships.verifiedAt,
       notes: nepotismRelationships.notes,
       createdAt: nepotismRelationships.createdAt,
-      employee1Name: sql<string>`CONCAT(${e1.firstName}, ' ', ${e1.lastName})`,
-      employee2Name: sql<string>`CONCAT(${e2.firstName}, ' ', ${e2.lastName})`,
-      verifierName: sql<string>`CONCAT(${v.firstName}, ' ', ${v.lastName})`
+      e1_first: e1.firstName,
+      e1_last: e1.lastName,
+      e1_middle: e1.middleName,
+      e1_suffix: e1.suffix,
+      e2_first: e2.firstName,
+      e2_last: e2.lastName,
+      e2_middle: e2.middleName,
+      e2_suffix: e2.suffix,
+      v_first: v.firstName,
+      v_last: v.lastName,
+      v_middle: v.middleName,
+      v_suffix: v.suffix
     })
     .from(nepotismRelationships)
     .leftJoin(e1, eq(nepotismRelationships.employeeId1, e1.id))
@@ -105,9 +131,16 @@ export const getEmployeeRelationships = async (req: Request, res: Response): Pro
     ))
     .orderBy(asc(nepotismRelationships.degree), desc(nepotismRelationships.createdAt));
 
+    const formattedRelationships = relationships.map(r => ({
+        ...r,
+        employee1Name: formatFullName(r.e1_last, r.e1_first, r.e1_middle, r.e1_suffix),
+        employee2Name: formatFullName(r.e2_last, r.e2_first, r.e2_middle, r.e2_suffix),
+        verifierName: r.verifiedBy ? formatFullName(r.v_last, r.v_first, r.v_middle, r.v_suffix) : null
+    }));
+
     res.json({
       success: true,
-      relationships
+      relationships: formattedRelationships
     });
   } catch (error) {
     console.error('Get Employee Relationships Error:', error);
@@ -205,7 +238,7 @@ export const checkNepotism = async (req: Request, res: Response): Promise<void> 
     // Get employee details
     const employee = await db.query.authentication.findFirst({
       where: eq(authentication.id, employee_id),
-      columns: { id: true, firstName: true, lastName: true, employeeId: true, department: true }
+      columns: { id: true, firstName: true, lastName: true, middleName: true, suffix: true, employeeId: true, department: true }
     });
 
     if (!employee) {
@@ -239,8 +272,14 @@ export const checkNepotism = async (req: Request, res: Response): Promise<void> 
       degree: nepotismRelationships.degree,
       employeeId1: nepotismRelationships.employeeId1,
       employeeId2: nepotismRelationships.employeeId2,
-      employee1Name: sql<string>`CONCAT(${e1.firstName}, ' ', ${e1.lastName})`,
-      employee2Name: sql<string>`CONCAT(${e2.firstName}, ' ', ${e2.lastName})`
+      e1_first: e1.firstName,
+      e1_last: e1.lastName,
+      e1_middle: e1.middleName,
+      e1_suffix: e1.suffix,
+      e2_first: e2.firstName,
+      e2_last: e2.lastName,
+      e2_middle: e2.middleName,
+      e2_suffix: e2.suffix
     })
     .from(nepotismRelationships)
     .leftJoin(e1, eq(nepotismRelationships.employeeId1, e1.id))
@@ -249,6 +288,12 @@ export const checkNepotism = async (req: Request, res: Response): Promise<void> 
       or(eq(nepotismRelationships.employeeId1, employee_id), eq(nepotismRelationships.employeeId2, employee_id)),
       sql`${nepotismRelationships.degree} <= 3`
     ));
+
+    const mappedRelationships = relationships.map(r => ({
+        ...r,
+        employee1Name: formatFullName(r.e1_last, r.e1_first, r.e1_middle, r.e1_suffix),
+        employee2Name: formatFullName(r.e2_last, r.e2_first, r.e2_middle, r.e2_suffix)
+    }));
 
     // Find department head for the position's department
     let departmentHeadId: number | null = null;
@@ -274,7 +319,7 @@ export const checkNepotism = async (req: Request, res: Response): Promise<void> 
     // Check for violations
     const violations: { type: string; relationship: string; degree: number; related_person: string; severity: 'CRITICAL' | 'WARNING' | 'INFO' }[] = [];
 
-    for (const rel of relationships) {
+    for (const rel of mappedRelationships) {
       const relatedPersonId = rel.employeeId1 === employee_id ? rel.employeeId2 : rel.employeeId1;
       const relatedPersonName = rel.employeeId1 === employee_id ? rel.employee2Name : rel.employee1Name;
 
@@ -325,7 +370,7 @@ export const checkNepotism = async (req: Request, res: Response): Promise<void> 
       violations,
       employee: {
         id: employee.id,
-        name: `${employee.firstName} ${employee.lastName}`,
+        name: formatFullName(employee.lastName, employee.firstName, employee.middleName, employee.suffix),
         employee_id: employee.employeeId
       },
       position: {

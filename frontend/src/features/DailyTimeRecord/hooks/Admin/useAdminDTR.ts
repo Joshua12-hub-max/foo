@@ -1,4 +1,3 @@
-
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useUIStore } from '@/stores';
 import { attendanceApi } from "@api/attendanceApi";
@@ -64,10 +63,14 @@ export const useAdminDTR = () => {
             const timeIn = item.time_in;
             const timeOut = item.time_out;
             
+            // Normalize for Safari/cross-browser compatibility (YYYY-MM-DD HH:mm:ss -> YYYY-MM-DDTHH:mm:ss)
+            const safeTimeIn = timeIn ? timeIn.replace(' ', 'T') : null;
+            const safeTimeOut = timeOut ? timeOut.replace(' ', 'T') : null;
+            
             let hoursWorked = '0';
-            if (timeIn && timeOut) {
-              const start = new Date(timeIn).getTime();
-              const end = new Date(timeOut).getTime();
+            if (safeTimeIn && safeTimeOut) {
+              const start = new Date(safeTimeIn).getTime();
+              const end = new Date(safeTimeOut).getTime();
               let duration = (end - start) / (1000 * 60 * 60);
 
               // Policy: Deduct 1 hour break for shifts > 5 hours
@@ -100,9 +103,11 @@ export const useAdminDTR = () => {
               department: item.department || 'N/A',
               date: formattedDate || "N/A",
               rawDate: rawDate, // Use for filtering
-              timeIn: timeIn ? new Date(timeIn).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--',
-              timeOut: timeOut ? new Date(timeOut).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--',
+              timeIn: safeTimeIn ? new Date(safeTimeIn).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--',
+              timeOut: safeTimeOut ? new Date(safeTimeOut).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--',
               hoursWorked: hoursWorked,
+              lateMinutes: item.late_minutes || 0,
+              undertimeMinutes: item.undertime_minutes || 0,
               status: item.status || 'Absent',
               duties: item.duties || 'No Schedule',
               remarks: '-',
@@ -115,9 +120,11 @@ export const useAdminDTR = () => {
             };
         });
 
+        const resData = response.data as { totals?: { lateMinutes: number; undertimeMinutes: number; hoursWorked: string }, pagination?: { totalPages: number; total: number } };
         return {
             items: mappedLogs,
-            pagination: response.data.pagination
+            totals: resData.totals,
+            pagination: resData.pagination
         };
     },
     staleTime: 5000,
@@ -125,6 +132,7 @@ export const useAdminDTR = () => {
 
   const dtrData = data?.items || [];
   const serverPagination = data?.pagination;
+  const totals = data?.totals || { lateMinutes: 0, undertimeMinutes: 0, hoursWorked: '0.00' };
   const error = queryError ? (queryError as Error).message : errorLocal;
 
   // React Query: Mutation
@@ -196,18 +204,100 @@ export const useAdminDTR = () => {
     setStorePage(Math.min(storePagination.page + 1, serverPagination?.totalPages || 1));
   }, [storePagination.page, serverPagination?.totalPages, setStorePage]);
 
+  const fetchAllDTRData = async (): Promise<DTRRecord[]> => {
+    let appliedStartDate = storeFilters.startDate;
+    let appliedEndDate = storeFilters.endDate;
+
+    if (!appliedStartDate || !appliedEndDate) {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = now.getMonth();
+      const day = now.getDate();
+      
+      if (day <= 15) {
+        appliedStartDate = new Date(year, month, 1).toISOString().split('T')[0];
+        appliedEndDate = new Date(year, month, 15).toISOString().split('T')[0];
+      } else {
+        appliedStartDate = new Date(year, month, 16).toISOString().split('T')[0];
+        appliedEndDate = new Date(year, month + 1, 0).toISOString().split('T')[0];
+      }
+    }
+
+    const response = await attendanceApi.getLogs({
+        page: 1,
+        limit: 100000,
+        department: storeFilters.department,
+        employeeId: storeFilters.employeeId,
+        startDate: appliedStartDate,
+        endDate: appliedEndDate,
+        search: storeSearch
+    });
+    
+    const logs = response.data.data || [];
+    return logs.map((item: DTRApiResponse): DTRRecord => {
+        const timeIn = item.time_in;
+        const timeOut = item.time_out;
+        
+        // Normalize for Safari/cross-browser compatibility
+        const safeTimeIn = timeIn ? timeIn.replace(' ', 'T') : null;
+        const safeTimeOut = timeOut ? timeOut.replace(' ', 'T') : null;
+        
+        let hoursWorked = '0';
+        if (safeTimeIn && safeTimeOut) {
+          const start = new Date(safeTimeIn).getTime();
+          const end = new Date(safeTimeOut).getTime();
+          let duration = (end - start) / (1000 * 60 * 60);
+          
+          // Policy: Deduct 1 hour break for shifts > 5 hours
+          if (duration > 5) duration -= 1;
+          
+          hoursWorked = Math.max(0, duration).toFixed(2);
+        }
+        
+        let formattedDate = item.date;
+        const rawDate = item.date;
+        if (item.date) {
+          const dateObj = new Date(item.date);
+          formattedDate = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        }
+        
+        return {
+          id: item.id || 0, 
+          employeeId: String(item.employee_id || "N/A"),
+          name: item.employee_name || 'Unknown Employee',
+          department: item.department || 'N/A',
+          date: formattedDate || "N/A",
+          rawDate: rawDate,
+          timeIn: safeTimeIn ? new Date(safeTimeIn).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--',
+          timeOut: safeTimeOut ? new Date(safeTimeOut).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--',
+          hoursWorked: hoursWorked,
+          lateMinutes: item.late_minutes || 0,
+          undertimeMinutes: item.undertime_minutes || 0,
+          status: item.status || 'Absent',
+          duties: item.duties || 'No Schedule',
+          remarks: '-',
+          correctionId: item.correction_id ?? null,
+          correctionStatus: item.correction_status ?? null,
+          correctionReason: item.correction_reason ?? null,
+          correctionTimeIn: item.correction_time_in ?? null,
+          correctionTimeOut: item.correction_time_out ?? null,
+        };
+    });
+  };
+
   // Export handlers
   const handleExportCSV = useCallback(async () => {
-    if (dtrData.length === 0) {
-      setErrorLocal(MESSAGES.ERROR_NO_DATA);
-      return;
-    }
     setLoadingType("CSV");
     setErrorLocal(null);
     try {
+      const exportData = await fetchAllDTRData();
+      if (exportData.length === 0) {
+        setErrorLocal(MESSAGES.ERROR_NO_DATA);
+        return;
+      }
       await new Promise(resolve => setTimeout(resolve, DELAYS.EXPORT_DELAY));
       const filename = `dtr_${today.replace(/\//g, '-')}.csv`;
-      await exportToCSV(dtrData, EXPORT_HEADERS, filename);
+      await exportToCSV(exportData, EXPORT_HEADERS, filename);
       setSuccessMessage(MESSAGES.CSV_EXPORTED);
     } catch (err) {
       const error = err as Error;
@@ -216,18 +306,19 @@ export const useAdminDTR = () => {
     } finally {
       setLoadingType("");
     }
-  }, [dtrData, today]);
+  }, [storeFilters, storeSearch, today]);
 
   const handleExportPDF = useCallback(async () => {
-    if (dtrData.length === 0) {
-      setErrorLocal(MESSAGES.ERROR_NO_DATA);
-      return;
-    }
     setLoadingType("PDF");
     setErrorLocal(null);
     try {
+      const exportData = await fetchAllDTRData();
+      if (exportData.length === 0) {
+        setErrorLocal(MESSAGES.ERROR_NO_DATA);
+        return;
+      }
       await new Promise(resolve => setTimeout(resolve, DELAYS.EXPORT_DELAY));
-      await exportToPDF(dtrData, EXPORT_HEADERS, today, DELAYS.PDF_PRINT_DELAY);
+      await exportToPDF(exportData, EXPORT_HEADERS, today, DELAYS.PDF_PRINT_DELAY);
       setSuccessMessage(MESSAGES.PDF_EXPORTED);
     } catch (err) {
       const error = err as Error;
@@ -236,7 +327,7 @@ export const useAdminDTR = () => {
     } finally {
       setLoadingType("");
     }
-  }, [dtrData, today]);
+  }, [storeFilters, storeSearch, today]);
 
   const getStatusBadge = useCallback((status: string) => {
     return getStatusBadgeUtil(status, STATUS_STYLES);
@@ -286,6 +377,7 @@ export const useAdminDTR = () => {
     dtrData,
     filteredData: dtrData,
     paginationData,
+    totals,
     uniqueDepartments,
     uniqueEmployees,
     editingRecord,

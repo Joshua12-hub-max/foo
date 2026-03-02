@@ -3,7 +3,8 @@ import { TrendingUp } from "lucide-react";
 interface WelcomeBannerProps {
   user?: {
     name?: string;
-    [key: string]: any;
+    role?: string;
+    avatar_url?: string | null;
   };
 }
 

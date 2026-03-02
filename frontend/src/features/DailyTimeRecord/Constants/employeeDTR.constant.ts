@@ -7,6 +7,8 @@ export const TABLE_HEADERS = [
   'Date',
   'Time In',
   'Time Out',
+  'Late (m)',
+  'UT (m)',
   'Hours Worked'
 ];
 

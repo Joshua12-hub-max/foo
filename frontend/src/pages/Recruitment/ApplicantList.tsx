@@ -3,7 +3,8 @@ import { useUIStore } from '@/stores';
 import { useToastStore } from '@/stores';
 import { useApplicantData, useApplicantFilters, useApplicantActions, Applicant } from '@applicant/Hooks';
 import { AssignInterviewerModal, ScheduleInterviewModal } from '@applicant/Modals';
-import { ApplicantTabs, ApplicantFilters, ApplicantTable, InterviewPanel, PublicInquiries, LiveSupportChat } from '@applicant/Components';
+import { ApplicantTabs, ApplicantFilters, ApplicantTable, InterviewPanel, PublicInquiries, LiveSupportChat, SecurityAuditLogs } from '@applicant/Components';
+import ConfirmDialog from '@/components/Custom/Shared/ConfirmDialog';
 import Pagination from '@/components/CustomUI/Pagination';
 import type { ScheduleInterviewFormData } from '@/schemas/recruitmentSchema';
 
@@ -22,13 +23,21 @@ const ApplicantList = () => {
     filteredApplicants, currentItems, totalPages 
   } = useApplicantFilters(applicants);
   
-  const { handleAssignInterviewer, handleScheduleInterview, handleRejectApplicant, handleRestoreApplicant } = useApplicantActions(fetchData, showNotification);
+  const { handleAssignInterviewer, handleScheduleInterview, handleRejectApplicant, handleRestoreApplicant, handleDeleteApplicant } = useApplicantActions(fetchData, showNotification);
 
   // Modal State - Properly typed
   const [showAssignModal, setShowAssignModal] = useState<boolean>(false);
   const [showScheduleModal, setShowScheduleModal] = useState<boolean>(false);
   const [selectedApplicant, setSelectedApplicant] = useState<Applicant | null>(null);
   const [selectedInterviewer, setSelectedInterviewer] = useState<string>('');
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    isDestructive: false,
+    confirmText: 'Confirm',
+    onConfirm: () => {}
+  });
   
   // Interview State
   const [showInterview, setShowInterview] = useState<boolean>(false);
@@ -58,15 +67,36 @@ const ApplicantList = () => {
   };
   
   const onRejectClick = (applicant: Applicant): void => {
-    if (window.confirm(`Are you sure you want to reject and archive ${applicant.first_name} ${applicant.last_name}?`)) {
-        handleRejectApplicant(Number(applicant.id));
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: 'Reject and Archive Applicant',
+      message: `Are you sure you want to reject and archive ${applicant.first_name} ${applicant.last_name}?`,
+      isDestructive: true,
+      confirmText: 'Reject',
+      onConfirm: () => handleRejectApplicant(Number(applicant.id))
+    });
   };
 
   const onRestoreClick = (applicant: Applicant): void => {
-    if (window.confirm(`Are you sure you want to restore ${applicant.first_name} ${applicant.last_name} to the active pipeline?`)) {
-        handleRestoreApplicant(Number(applicant.id));
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: 'Restore Applicant',
+      message: `Are you sure you want to restore ${applicant.first_name} ${applicant.last_name} to the active pipeline?`,
+      isDestructive: false,
+      confirmText: 'Restore',
+      onConfirm: () => handleRestoreApplicant(Number(applicant.id))
+    });
+  };
+
+  const onDeleteClick = (applicant: Applicant): void => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Permanently Delete Applicant',
+      message: `WARNING: Are you sure you want to PERMANENTLY delete ${applicant.first_name} ${applicant.last_name}? This cannot be undone.`,
+      isDestructive: true,
+      confirmText: 'Delete',
+      onConfirm: () => handleDeleteApplicant(Number(applicant.id))
+    });
   };
 
   const onConfirmAssign = (): void => {
@@ -114,7 +144,7 @@ const ApplicantList = () => {
 
       <ApplicantTabs activeTab={activeTab} setActiveTab={setActiveTab} />
       
-      {activeTab !== 'Inquiries' && activeTab !== 'Chat' ? (
+      {activeTab !== 'Inquiries' && activeTab !== 'Chat' && activeTab !== 'Security Audit' ? (
         <>
           <ApplicantFilters 
             searchTerm={searchTerm} 
@@ -133,6 +163,7 @@ const ApplicantList = () => {
             onReject={onRejectClick}
             onRestore={onRestoreClick}
             onViewDetails={onViewDetailsClick}
+            onDelete={onDeleteClick}
           />
 
           <Pagination 
@@ -145,8 +176,10 @@ const ApplicantList = () => {
         </>
       ) : activeTab === 'Inquiries' ? (
         <PublicInquiries />
-      ) : (
+      ) : activeTab === 'Chat' ? (
         <LiveSupportChat />
+      ) : (
+        <SecurityAuditLogs />
       )}
 
       {/* Modals */}
@@ -165,6 +198,16 @@ const ApplicantList = () => {
         onClose={() => setShowScheduleModal(false)}
         onConfirm={onConfirmSchedule}
         selectedApplicant={selectedApplicant}
+      />
+
+      <ConfirmDialog
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        isDestructive={confirmModal.isDestructive}
+        confirmText={confirmModal.confirmText}
+        onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmModal.onConfirm}
       />
 
     </div>

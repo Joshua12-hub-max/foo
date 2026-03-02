@@ -1,6 +1,6 @@
 import { db } from '../db/index.js';
 import { internalPolicies } from '../db/schema.js';
-import { sql } from 'drizzle-orm';
+
 
 
 async function seedPolicies() {

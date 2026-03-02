@@ -80,6 +80,14 @@ export const recruitmentApi = {
             throw error;
         }
     },
+    deleteApplicant: async (id: string | number): Promise<AxiosResponse> => {
+        try {
+            const response = await api.delete(`/recruitment/applicants/${id}`);
+            return response;
+        } catch (error) {
+            throw error;
+        }
+    },
     
     // Email Applications
     checkEmails: async (): Promise<AxiosResponse<{ success: boolean; processed: number; errors: string[] }>> => {
@@ -151,6 +159,16 @@ export const recruitmentApi = {
                 date,
                 duration: duration || 60
             });
+            return response;
+        } catch (error) {
+            throw error;
+        }
+    },
+
+    // Security Audit
+    getSecurityLogs: async (): Promise<AxiosResponse<{ success: boolean; logs: any[] }>> => {
+        try {
+            const response = await api.get('/recruitment/security-logs');
             return response;
         } catch (error) {
             throw error;

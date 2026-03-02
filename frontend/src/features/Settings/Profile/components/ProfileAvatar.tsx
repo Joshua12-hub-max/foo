@@ -50,7 +50,7 @@ const ProfileAvatar: React.FC<ProfileAvatarProps> = ({ profile, formData, isEdit
           <h2 className="text-lg font-bold text-gray-900">{profile?.name || 'User'}</h2>
           <div className="flex items-center gap-2 mt-1.5 flex-wrap">
             <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold ${
-              profile?.role === 'admin' || profile?.role === 'hr' 
+              profile?.role === 'admin' || profile?.role === 'Human Resource' 
                 ? 'bg-purple-100 text-purple-700' 
                 : 'bg-gray-200 text-gray-700'
             }`}>

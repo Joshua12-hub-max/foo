@@ -4,6 +4,7 @@ import { fetchEmployees } from "../../../../../api/employeeApi";
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { scheduleSchema, ScheduleSchema } from '@/schemas/calendar';
+import { formatFullName } from '@/utils/nameUtils';
 
 interface EmployeeOption {
   id: number | string;
@@ -108,7 +109,7 @@ export default function ScheduleModal({ show, onClose, onCreate, hours = [] }: S
                     <option value="">Select an employee...</option>
                     {employees.map((emp) => (
                         <option key={emp.id} value={emp.employeeId}>
-                        {emp.firstName} {emp.lastName} ({emp.employeeId})
+                        {formatFullName(emp.lastName, emp.firstName)} ({emp.employeeId})
                         </option>
                     ))}
                     </select>

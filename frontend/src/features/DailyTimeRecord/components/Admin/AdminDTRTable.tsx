@@ -10,6 +10,11 @@ interface AdminDTRTableProps {
   filters: DTRFilters;
   onEdit: (item: DTRRecord) => void;
   onReview?: (item: DTRRecord) => void;
+  totals?: {
+    lateMinutes: number;
+    undertimeMinutes: number;
+    hoursWorked: string;
+  };
 }
 
 // Helper to get alignment class
@@ -81,7 +86,8 @@ export const AdminDTRTable: React.FC<AdminDTRTableProps> = ({
   debouncedSearchQuery, 
   filters,
   onEdit,
-  onReview
+  onReview,
+  totals
 }) => {
   const hasActiveFilters = debouncedSearchQuery || Object.values(filters).some(v => v);
   
@@ -106,38 +112,52 @@ export const AdminDTRTable: React.FC<AdminDTRTableProps> = ({
           </thead>
           <tbody className="divide-y divide-slate-100">
             {currentItems.length > 0 ? (
-              currentItems.map((item) => (
-                <tr key={item.id} className="hover:bg-[#F8F9FA] hover:shadow-xl transition-colors">
-                  {TABLE_COLUMNS.map((column) => (
-                    <td 
-                      key={column.key} 
-                      className={`px-6 py-4 text-sm text-gray-800 whitespace-nowrap ${getAlignClass(column.align)}`}
-                    >
-                      {renderCell(item, column, getStatusBadge)}
-                    </td>
-                  ))}
-                  <td className="px-6 py-4 text-sm text-gray-800 text-center whitespace-nowrap">
-                    <div className="flex justify-center space-x-2">
-                      {item.correctionStatus === 'Pending' && (
-                        <button
-                          onClick={() => onReview && onReview(item)}
-                          className="p-2 text-orange-600 hover:bg-orange-50 rounded-full transition-colors"
-                          title="Review Correction Request"
-                        >
-                          <FileText size={18} />
-                        </button>
-                      )}
-                      <button
-                        onClick={() => onEdit(item)}
-                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
-                        title="Edit Record"
+              <>
+                {currentItems.map((item) => (
+                  <tr key={item.id} className="hover:bg-[#F8F9FA] hover:shadow-xl transition-colors">
+                    {TABLE_COLUMNS.map((column) => (
+                      <td 
+                        key={column.key} 
+                        className={`px-6 py-4 text-sm text-gray-800 whitespace-nowrap ${getAlignClass(column.align)}`}
                       >
-                        <Edit size={18} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
+                        {renderCell(item, column, getStatusBadge)}
+                      </td>
+                    ))}
+                    <td className="px-6 py-4 text-sm text-gray-800 text-center whitespace-nowrap">
+                      <div className="flex justify-center space-x-2">
+                        {item.correctionStatus === 'Pending' && (
+                          <button
+                            onClick={() => onReview && onReview(item)}
+                            className="p-2 text-orange-600 hover:bg-orange-50 rounded-full transition-colors"
+                            title="Review Correction Request"
+                          >
+                            <FileText size={18} />
+                          </button>
+                        )}
+                        <button
+                          onClick={() => onEdit(item)}
+                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
+                          title="Edit Record"
+                        >
+                          <Edit size={18} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {/* Summary Row */}
+                {totals && (
+                  <tr className="bg-gray-100 font-bold border-t-2 border-gray-300">
+                    <td colSpan={7} className="px-6 py-4 text-right text-gray-700 uppercase tracking-wider">
+                      Totals for filtered results:
+                    </td>
+                    <td className="px-6 py-4 text-center text-red-700">{totals.lateMinutes}m</td>
+                    <td className="px-6 py-4 text-center text-orange-700">{totals.undertimeMinutes}m</td>
+                    <td className="px-6 py-4 text-center text-gray-900">{totals.hoursWorked}h</td>
+                    <td className="bg-gray-100"></td>
+                  </tr>
+                )}
+              </>
             ) : (
               <tr>
                 <td colSpan={TABLE_COLUMNS.length + 1} className="px-6 py-12 text-center">
@@ -158,4 +178,3 @@ export const AdminDTRTable: React.FC<AdminDTRTableProps> = ({
     </div>
   );
 };
-

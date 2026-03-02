@@ -13,7 +13,7 @@ import { DTRCorrectionModal } from "@features/DailyTimeRecord/components/Employe
 import { EmployeeDTRRecord } from "@features/DailyTimeRecord/Utils/employeeDTRUtils";
 
 const EmployeeDailyTimeRecord = () => {
-  const { today, filters, searchQuery, debouncedSearchQuery, currentPage, isLoading, loadingType, error, successMessage, employeeInfo, filteredData, paginationData, 
+  const { today, filters, searchQuery, debouncedSearchQuery, currentPage, isLoading, loadingType, error, successMessage, employeeInfo, filteredData, paginationData, totals,
     setError, setSuccessMessage, handleFilterChange, handleApply, handleClear, handleSearchChange, handleRefresh, handlePrevPage, handleNextPage, handleExportCSV, 
     handleExportPDF, getStatusBadge } = useEmployeeDTR();
   
@@ -97,6 +97,7 @@ const EmployeeDailyTimeRecord = () => {
         filters={filters}
         onRequestCorrection={handleRequestCorrection}
         employeeInfo={employeeInfo}
+        totals={totals}
       />
 
       {!isLoading && filteredData.length > 0 && (

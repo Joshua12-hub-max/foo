@@ -13,7 +13,7 @@ import bcrypt from 'bcryptjs';
 import { updateTardinessSummary } from '../utils/tardinessUtils.js';
 import { checkPolicyViolations } from '../services/violationService.js';
 
-const CHRMO_DEPARTMENT = 'City Human Resources Management Office';
+const CHRMO_DEPARTMENT = 'City Human Resource Management Office';
 const START_DATE = new Date('2026-01-05');
 const END_DATE = new Date(); // until today
 

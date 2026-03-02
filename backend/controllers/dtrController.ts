@@ -9,18 +9,38 @@ import { updateTardinessSummary } from '../utils/tardinessUtils.js';
 import { DTRApiResponse } from '../types/attendance.js';
 import { formatToManilaDateTime } from '../utils/dateUtils.js';
 
+/** Shape returned by the getAllRecords db.select() query */
+interface DTRRecordRow {
+  id: number;
+  employee_id: string;
+  date: string;
+  time_in: string | Date | null;
+  time_out: string | Date | null;
+  late_minutes: number | null;
+  undertime_minutes: number | null;
+  overtime_minutes?: number | null;
+  status: string | null;
+  created_at: string | Date | null;
+  updated_at: string | Date | null;
+  employee_name: string;
+  first_name: string;
+  last_name: string;
+  middle_name: string | null;
+  suffix: string | null;
+  department: string;
+  duties: string;
+  correction_id: number | null;
+  correction_status: string | null;
+  correction_reason: string | null;
+  correction_time_in: string | Date | null;
+  correction_time_out: string | Date | null;
+}
 
 const toMySQLDatetime = (isoStr: string | null | undefined): string | null => {
   if (!isoStr) return null;
   try {
     const date = new Date(isoStr);
     if (isNaN(date.getTime())) return null;
-    
-    // Use proper timezone aware formatting or just simple ISO if database handles it
-    // But since the original code had specific formatting, let's keep it but arguably cleaner
-    // For now, let's trust the logic but maybe use dateUtils if applicable?
-    // dateUtils has formatToManilaDateTime which returns "YYYY-MM-DD HH:mm:ss"
-    // Let's use that one to be consistent
     return formatToManilaDateTime(date);
   } catch (e: unknown) {
     console.error('toMySQLDatetime error:', e);
@@ -28,20 +48,24 @@ const toMySQLDatetime = (isoStr: string | null | undefined): string | null => {
   }
 };
 
-const mapToDtrApi = (record: any): DTRApiResponse => {
+const mapToDtrApi = (record: DTRRecordRow): DTRApiResponse => {
     return {
         id: record.id,
-        employee_id: record.employee_id || record.employeeId,
+        employee_id: record.employee_id,
         date: record.date ? new Date(record.date).toISOString().split('T')[0] : '',
-        time_in: record.time_in ? formatToManilaDateTime(record.time_in) : (record.timeIn ? formatToManilaDateTime(record.timeIn) : null),
-        time_out: record.time_out ? formatToManilaDateTime(record.time_out) : (record.timeOut ? formatToManilaDateTime(record.timeOut) : null),
-        late_minutes: record.late_minutes ?? record.lateMinutes ?? 0,
-        undertime_minutes: record.undertime_minutes ?? record.undertimeMinutes ?? 0,
-        overtime_minutes: record.overtime_minutes ?? record.overtimeMinutes ?? 0,
+        time_in: record.time_in ? formatToManilaDateTime(record.time_in) : null,
+        time_out: record.time_out ? formatToManilaDateTime(record.time_out) : null,
+        late_minutes: record.late_minutes ?? 0,
+        undertime_minutes: record.undertime_minutes ?? 0,
+        overtime_minutes: record.overtime_minutes ?? 0,
         status: record.status || 'Pending',
-        created_at: record.created_at ? new Date(record.created_at).toISOString() : (record.createdAt ? new Date(record.createdAt).toISOString() : null),
-        updated_at: record.updated_at ? new Date(record.updated_at).toISOString() : (record.updatedAt ? new Date(record.updatedAt).toISOString() : null),
+        created_at: record.created_at ? new Date(record.created_at).toISOString() : null,
+        updated_at: record.updated_at ? new Date(record.updated_at).toISOString() : null,
         employee_name: record.employee_name || 'Unknown Employee',
+        first_name: record.first_name || '',
+        last_name: record.last_name || '',
+        middle_name: record.middle_name || null,
+        suffix: record.suffix || null,
         department: record.department || 'N/A',
         duties: record.duties || 'No Schedule',
         correction_id: record.correction_id,
@@ -99,7 +123,7 @@ export const getAllRecords = async (req: Request, res: Response): Promise<void> 
             status: dailyTimeRecords.status,
             created_at: dailyTimeRecords.createdAt,
             updated_at: dailyTimeRecords.updatedAt,
-            employee_name: sql<string>`COALESCE(CONCAT(${authentication.firstName}, ' ', ${authentication.lastName}), 'Unknown Employee')`,
+            employee_name: sql<string>`COALESCE(TRIM(CONCAT(${authentication.lastName}, ', ', ${authentication.firstName}, IF(${authentication.middleName} IS NOT NULL && ${authentication.middleName} != '', CONCAT(' ', SUBSTRING(${authentication.middleName}, 1, 1), '.'), ''), IF(${authentication.suffix} IS NOT NULL && ${authentication.suffix} != '', CONCAT(' ', ${authentication.suffix}), ''))), 'Unknown Employee')`,
             department: sql<string>`COALESCE(${departments.name}, 'N/A')`,
             duties: sql<string>`COALESCE((SELECT schedule_title FROM schedules WHERE employee_id = ${dailyTimeRecords.employeeId} ORDER BY updated_at DESC LIMIT 1), 'No Schedule')`,
             // Correction info via LEFT JOIN
@@ -132,8 +156,7 @@ export const getAllRecords = async (req: Request, res: Response): Promise<void> 
             
         const total = countResult.total;
 
-        // @ts-ignore
-        const formattedRecords = records.map(mapToDtrApi);
+        const formattedRecords = (records as DTRRecordRow[]).map(mapToDtrApi);
 
         res.status(200).json({
             success: true,
@@ -397,8 +420,7 @@ const parseTimeInput = (timeStr: string | null | undefined, dateStr: string): st
     });
   } catch (err: unknown) {
     console.error('Request DTR correction error:', err);
-    // @ts-ignore
-    if (err.sqlMessage) console.error('SQL Error:', err.sqlMessage);
+    if (err instanceof Error && 'sqlMessage' in err) console.error('SQL Error:', (err as Error & { sqlMessage: string }).sqlMessage);
     res.status(500).json({ success: false, message: 'Failed to submit correction request' });
   }
 };
@@ -412,8 +434,7 @@ export const getCorrectionRequests = async (req: Request, res: Response): Promis
     // Build query conditions
     const conditions = [];
     if (status && typeof status === 'string' && status !== 'All') {
-        // @ts-ignore
-        conditions.push(eq(dtrCorrections.status, status));
+        conditions.push(eq(dtrCorrections.status, status as 'Pending' | 'Approved' | 'Rejected'));
     }
     
     const requests = await db.select({
@@ -460,8 +481,7 @@ export const updateCorrectionStatus = async (req: Request, res: Response): Promi
 
   const { ids, status, rejectionReason } = validation.data.body;
   
-  // @ts-ignore
-  const adminId = req.user?.employeeId || 'ADMIN'; 
+  const adminId = (req as AuthenticatedRequest).user?.employeeId || 'ADMIN';
 
   try {
       for (const id of ids) {

@@ -7,7 +7,7 @@ export interface SelectOption {
 // Role options for employee forms (no supervisor portal in this system)
 export const ROLE_OPTIONS: SelectOption[] = [
   { value: 'employee', label: 'Employee' },
-  { value: 'hr', label: 'Human Resource (HR)' },
+  { value: 'Human Resource', label: 'Human Resource (HR)' },
   { value: 'admin', label: 'Admin' }
 ];
 

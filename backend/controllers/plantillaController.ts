@@ -28,6 +28,7 @@ import {
 import { z } from 'zod';
 import { InferSelectModel } from 'drizzle-orm';
 import { QualificationService } from '../services/qualificationService.js';
+import { formatFullName } from '../utils/nameUtils.js';
 
 interface PlantillaSelectRow {
   id: number;
@@ -134,7 +135,7 @@ const mapToAuditLogApi = (log: AuditLogSelectRow): PlantillaAuditLogApiResponse 
     created_at: log.createdAt ? new Date(String(log.createdAt)).toISOString() : null,
     item_number: log.itemNumber ? String(log.itemNumber) : undefined,
     position_title: log.positionTitle ? String(log.positionTitle) : undefined,
-    actor_name: (log.actor_first_name || log.actor_last_name) ? `${log.actor_first_name} ${log.actor_last_name}`.trim() : 'Unknown'
+    actor_name: (log.actor_first_name || log.actor_last_name) ? `${log.actor_last_name}, ${log.actor_first_name}`.trim() : 'Unknown'
   };
 };
 
@@ -540,7 +541,7 @@ export const assignEmployee = async (req: Request, res: Response): Promise<void>
       await tx.insert(plantillaPositionHistory).values({
         positionId: Number(id),
         employeeId: Number(employee_id),
-        employeeName: `${employee.firstName} ${employee.lastName}`,
+        employeeName: formatFullName(employee.lastName, employee.firstName, employee.middleName, employee.suffix),
         positionTitle: position.positionTitle,
         startDate: assignDate
       });

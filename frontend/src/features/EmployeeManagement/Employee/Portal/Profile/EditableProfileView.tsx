@@ -636,10 +636,6 @@ const EditableProfileView: React.FC<EmployeeProfileViewProps> = ({ profile, load
           <EditableDataField label="Gender" value={profile.gender} fieldName="gender" inputType="select" options={genderOptions} onSave={handleFieldSave} />
           <EditableDataField label="Civil Status" value={profile.civil_status} fieldName="civil_status" inputType="select" options={civilStatusOptions} onSave={handleFieldSave} />
           <EditableDataField label="Nationality" value={profile.nationality} fieldName="nationality" onSave={handleFieldSave} />
-          <EditableDataField label="Citizenship" value={profile.citizenship} fieldName="citizenship" onSave={handleFieldSave} />
-          <EditableDataField label="Citizenship Type" value={profile.citizenship_type} fieldName="citizenship_type" inputType="select" options={[
-            {value:'By Birth',label:'By Birth'},{value:'By Naturalization',label:'By Naturalization'}
-          ]} onSave={handleFieldSave} />
           <EditableDataField label="Blood Type" value={profile.blood_type} fieldName="blood_type" inputType="select" options={bloodTypeOptions} onSave={handleFieldSave} />
           <EditableDataField label="Height (m)" value={profile.height_m} fieldName="height_m" inputType="number" step="0.01" placeholder="e.g. 1.70" onSave={handleFieldSave} />
           <EditableDataField label="Weight (kg)" value={profile.weight_kg} fieldName="weight_kg" inputType="number" step="0.01" placeholder="e.g. 65.5" onSave={handleFieldSave} />

@@ -71,7 +71,7 @@ const EmployeeModal: React.FC<EmployeeModalProps> = ({ isOpen, onClose, onSubmit
         first_name: initialData.first_name || '',
         last_name: initialData.last_name || '',
         email: initialData.email || '',
-        role: (initialData.role as 'admin' | 'hr' | 'employee') || 'employee',
+        role: (initialData.role as 'admin' | 'Human Resource' | 'employee') || 'employee',
         department: initialData.department || '',
         job_title: initialData.job_title || '',
         employment_status: (initialData.employment_status as 'Active' | 'Inactive' | 'Terminated' | 'Resigned') || 'Active',
@@ -216,7 +216,7 @@ const EmployeeModal: React.FC<EmployeeModalProps> = ({ isOpen, onClose, onSubmit
                       className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent outline-none appearance-none bg-white"
                     >
                       <option value="employee">Employee</option>
-                      <option value="hr">HR</option>
+                      <option value="Human Resource">Human Resource</option>
                       <option value="admin">Admin</option>
                     </select>
                   </div>

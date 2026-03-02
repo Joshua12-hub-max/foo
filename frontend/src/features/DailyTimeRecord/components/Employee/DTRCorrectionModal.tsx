@@ -81,9 +81,10 @@ export const DTRCorrectionModal: React.FC<DTRCorrectionModalProps> = ({
       } else {
         toast.error(res.data.message || 'Failed to submit request');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } }, message?: string };
       console.error("Failed to submit DTR correction", error);
-      toast.error(error.response?.data?.message || 'Something went wrong');
+      toast.error(err.response?.data?.message || err.message || 'Something went wrong');
     }
   };
 

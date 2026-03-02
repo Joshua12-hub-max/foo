@@ -51,7 +51,7 @@ export const getEvents = async (req: Request, res: Response): Promise<void> => {
         userDept ? eq(events.department, userDept) : undefined
       );
       
-      conditions.push(deptCondition as any);
+      if (deptCondition) conditions.push(deptCondition);
     }
 
     const result = await db.select()

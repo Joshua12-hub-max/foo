@@ -1,6 +1,6 @@
 import { db } from '../db/index.js';
 import { dailyTimeRecords, authentication } from '../db/schema.js';
-import { eq, sql, like } from 'drizzle-orm';
+import { eq, like } from 'drizzle-orm';
 
 async function checkAttendance() {
     try {

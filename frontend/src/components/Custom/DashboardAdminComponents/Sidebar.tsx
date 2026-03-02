@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LogOut, ChevronDown, ChevronRight, LucideIcon } from 'lucide-react';
+import { LogOut, ChevronDown, ChevronRight, LucideIcon, Users } from 'lucide-react';
 
 interface NavItem {
   name: string;
@@ -15,9 +15,10 @@ interface SidebarProps {
   navItems: NavItem[];
   handleLogout: () => void;
   onSectionChange?: (section: string) => void;
+  userRole?: string;
 }
 
-export default function Sidebar({ sidebarOpen, navItems, handleLogout, onSectionChange }: SidebarProps) {
+export default function Sidebar({ sidebarOpen, navItems, handleLogout, onSectionChange, userRole }: SidebarProps) {
   const [openDropdowns, setOpenDropdowns] = useState<Record<string, boolean>>({});
   const location = useLocation();
 
@@ -51,7 +52,9 @@ export default function Sidebar({ sidebarOpen, navItems, handleLogout, onSection
               sidebarOpen ? 'px-6' : 'px-2'}`}>
             <img src="/Logo.Municipal of Meycuayan.png" alt="Meycauayan Logo" className={`transition-all duration-300 ${sidebarOpen ? 'w-20 h-20' : 'w-12 h-12'} rounded-full flex-shrink-0 shadow-lg ring-2 ring-slate-800`}/>
              {sidebarOpen && (<div className="mt-4 text-center transition-all duration-300">
-                <h1 className="text-base font-bold leading-tight tracking-wide text-white">Administrator Portal</h1>
+                <h1 className="text-base font-bold leading-tight tracking-wide text-white">
+                  {userRole?.toLowerCase() === 'human resource' ? 'Human Resource Portal' : 'Administrator Portal'}
+                </h1>
                 <p className="text-[10px] font-medium text-gray-400 leading-tight mt-1 uppercase tracking-wider">City Human Resources Management Office</p>
               </div>
             )}
@@ -133,7 +136,14 @@ export default function Sidebar({ sidebarOpen, navItems, handleLogout, onSection
         </nav>
       </div>
 
-      <div className="p-4 border-t border-green-900/50 rounded-b-lg flex-shrink-0 bg-green-900/30">
+      <div className="p-4 border-t border-green-900/50 rounded-b-lg flex-shrink-0 bg-green-900/30 space-y-3">
+        <Link 
+          to="/employee-dashboard"
+          className="w-full flex items-center justify-center gap-2 py-2.5 text-gray-300 font-semibold bg-slate-800/50 hover:bg-slate-800 rounded-md transition-all border border-slate-700 hover:border-slate-600 hover:text-white text-sm"
+        >
+          <Users className="w-4 h-4 flex-shrink-0" />
+          {sidebarOpen && 'Switch to Employee Portal'}
+        </Link>
         <button
           onClick={handleLogout}
           className="w-full flex items-center justify-center gap-2 py-2.5 text-[#F8F9FA] font-semibold bg-slate-950 hover:bg-slate-950/20 rounded-md transition-all border border-slate-950/10 hover:border-slate-950/20 focus:ring-2 focus:ring-slate-950/20 active:scale-95 text-sm"

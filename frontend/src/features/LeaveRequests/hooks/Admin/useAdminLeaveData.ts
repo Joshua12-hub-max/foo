@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { leaveApi } from "@api/leaveApi";
 import { AdminLeaveRequest } from '../../types';
 import type { LeaveApplication } from '@/types/leave.types';
+import { formatFullName } from '@/utils/nameUtils';
 
 interface AdminLeaveDataResponse {
   leaves: AdminLeaveRequest[];
@@ -45,7 +46,7 @@ export const useAdminLeaveData = (initialFilters?: Record<string, string>) => {
         // Build employee name with fallbacks
         const firstName = l.first_name || '';
         const lastName = l.last_name || '';
-        const fullName = `${firstName} ${lastName}`.trim();
+        const fullName = formatFullName(lastName, firstName).trim();
         const displayName = fullName || l.employee_id || 'Unknown Employee';
 
         return {

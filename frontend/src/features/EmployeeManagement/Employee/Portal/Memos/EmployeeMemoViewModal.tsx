@@ -5,16 +5,16 @@ import { formatDate, getEmployeeStatusBadge, getEmployeeStatusText, getPriorityB
 
 interface MemoData {
   id: number;
-  memo_number: string;
-  memo_type: string;
+  memoNumber: string;
+  memoType: string;
   subject: string;
   content?: string;
   priority: string;
   status: string;
-  created_at: string;
-  acknowledged_at?: string;
-  acknowledgment_required?: boolean;
-  author_name?: string;
+  createdAt: string;
+  acknowledgedAt?: string;
+  acknowledgmentRequired?: boolean;
+  authorName?: string;
 }
 
 interface EmployeeMemoViewModalProps {
@@ -28,7 +28,7 @@ interface EmployeeMemoViewModalProps {
 const EmployeeMemoViewModal: React.FC<EmployeeMemoViewModalProps> = memo(({ isOpen, onClose, memo, onAcknowledge, acknowledging }) => {
   if (!isOpen || !memo) return null;
 
-  const showAcknowledgeButton = memo.acknowledgment_required && !memo.acknowledged_at;
+  const showAcknowledgeButton = memo.acknowledgmentRequired && !memo.acknowledgedAt;
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 transition-all">
@@ -58,19 +58,19 @@ const EmployeeMemoViewModal: React.FC<EmployeeMemoViewModalProps> = memo(({ isOp
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-0.5">Memo #</label>
-                <p className="text-sm font-bold text-gray-900">{memo.memo_number}</p>
+                <p className="text-sm font-bold text-gray-900">{memo.memoNumber}</p>
               </div>
               <div>
                 <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-0.5">Type</label>
-                <p className="text-sm font-bold text-gray-900">{memo.memo_type}</p>
+                <p className="text-sm font-bold text-gray-900">{memo.memoType}</p>
               </div>
               <div>
                 <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-0.5">From</label>
-                <p className="text-sm font-medium text-gray-900">{memo.author_name || 'HR Admin'}</p>
+                <p className="text-sm font-medium text-gray-900">{memo.authorName || 'HR Admin'}</p>
               </div>
               <div>
                 <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-0.5">Date</label>
-                <p className="text-sm font-medium text-gray-900">{formatDate(memo.created_at)}</p>
+                <p className="text-sm font-medium text-gray-900">{formatDate(memo.createdAt)}</p>
               </div>
             </div>
             <div className="pt-2 border-t border-gray-200">
@@ -87,10 +87,10 @@ const EmployeeMemoViewModal: React.FC<EmployeeMemoViewModalProps> = memo(({ isOp
             </div>
           </div>
 
-          {memo.acknowledged_at && (
+          {memo.acknowledgedAt && (
             <div className="bg-green-50 p-3 rounded-lg border border-green-100 text-center">
               <p className="text-sm font-bold text-green-700">
-                ✓ Acknowledged on {formatDate(memo.acknowledged_at)}
+                ✓ Acknowledged on {formatDate(memo.acknowledgedAt)}
               </p>
             </div>
           )}

@@ -8,7 +8,7 @@ interface FiltersState {
   department: string;
   employee: string;
   status: string;
-  [key: string]: any;
+  // Removed generic index signature
 }
 
 interface PerformanceTableProps {
@@ -87,10 +87,10 @@ export const PerformanceTable: React.FC<PerformanceTableProps> = ({
                   </td>
                   <td className="px-6 py-4 text-xs font-bold text-gray-900">{item.employee_id || item.id}</td>
                   <td className="px-6 py-4">
-                      <div className="text-sm font-bold text-gray-900">{item.name}</div>
+                      <div className="text-xs font-bold text-gray-900">{item.name}</div>
                   </td>
                   <td className="px-6 py-4">
-                      <span className="text-xs font-bold text-blue-600 uppercase tracking-tighter whitespace-nowrap">
+                      <span className="text-xs font-bold text-slate-800 uppercase tracking-tighter whitespace-nowrap">
                           {item.duties || 'Regular'}
                       </span>
                   </td>
@@ -98,7 +98,11 @@ export const PerformanceTable: React.FC<PerformanceTableProps> = ({
                   <td className="px-6 py-4 text-xs text-gray-500 font-medium whitespace-nowrap">{item.position_title || item.jobTitle}</td>
                   <td className="px-6 py-4 text-xs text-gray-400 font-medium">{item.lastEvaluation}</td>
                   <td className="px-6 py-4">
-                      {item.score ? <span className="text-lg font-black text-gray-900">{item.score}</span> : <span className="text-gray-300 text-xs italic">Pending</span>}
+                      {item.score && item.score !== 'N/A' ? (
+                        <span className="text-sm font-black text-gray-900">{item.score}</span>
+                      ) : (
+                        <span className="text-gray-300 text-[10px] font-black uppercase tracking-widest">N/A</span>
+                      )}
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-white border border-gray-100 text-gray-300 group-hover:border-gray-300 group-hover:text-gray-900 transition-all">

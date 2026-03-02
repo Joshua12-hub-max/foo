@@ -79,11 +79,27 @@ const useApplicantActions = (
     }
   };
 
+  const handleDeleteApplicant = async (
+    applicantId: number,
+    onSuccess?: () => void
+  ): Promise<void> => {
+    try {
+      await recruitmentApi.deleteApplicant(applicantId);
+      showNotification('Applicant permanently deleted', 'success');
+      if (onSuccess) onSuccess();
+      fetchData(true);
+    } catch (err) {
+      console.error(err);
+      showNotification('Failed to permanently delete applicant', 'error');
+    }
+  };
+
   return {
     handleAssignInterviewer,
     handleScheduleInterview,
     handleRejectApplicant,
-    handleRestoreApplicant
+    handleRestoreApplicant,
+    handleDeleteApplicant
   };
 };
 

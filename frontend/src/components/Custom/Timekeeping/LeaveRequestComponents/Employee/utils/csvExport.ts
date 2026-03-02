@@ -6,7 +6,7 @@ import { EmployeeLeaveRequest } from '../types';
  * @param {Array} data - Array of leave request objects
  * @param {string} filename - Name of the file
  */
-export const exportToCSV = async (data: any[], filename = 'leave_requests') => {
+export const exportToCSV = async (data: Record<string, unknown>[], filename = 'leave_requests') => {
   if (!data || data.length === 0) {
     console.warn('No data to export');
     return false;

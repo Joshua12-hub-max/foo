@@ -14,6 +14,7 @@ interface ApplicantTableProps {
   onReject: (applicant: Applicant) => void;
   onRestore: (applicant: Applicant) => void;
   onViewDetails: (applicant: Applicant) => void;
+  onDelete: (applicant: Applicant) => void;
 }
 
 const ApplicantTable: React.FC<ApplicantTableProps> = ({ 
@@ -25,7 +26,8 @@ const ApplicantTable: React.FC<ApplicantTableProps> = ({
   onJoinInterview,
   onReject,
   onRestore,
-  onViewDetails
+  onViewDetails,
+  onDelete
 }) => {
 
   const formatDate = (dateString: string | undefined): string => {
@@ -212,6 +214,17 @@ const ApplicantTable: React.FC<ApplicantTableProps> = ({
                                 title="Restore Applicant"
                             >
                                 <RotateCcw size={16} />
+                            </button>
+                        )}
+
+                         {/* Permanent Delete Button (only in Archive/Rejected) */}
+                         {app.stage === 'Rejected' && (
+                            <button 
+                                onClick={() => onDelete(app)}
+                                className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg tooltip"
+                                title="Permanently Delete Applicant"
+                            >
+                                <Trash2 size={16} />
                             </button>
                         )}
                     </div>

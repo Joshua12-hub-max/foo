@@ -21,7 +21,7 @@ export const RegisterSchema = z.object({
   password: z.string()
     .min(8, "Password must be at least 8 characters")
     .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, "Password must contain at least one uppercase letter, one lowercase letter, and one number"),
-  role: z.enum(["admin", "hr", "employee"]).optional(),
+  role: z.enum(["admin", "Human Resource", "employee"]).optional(),
   department: z.string().optional(),
   position: z.string().optional(),
   duties: z.enum(["Standard", "Irregular Duties"]).optional(),

@@ -61,7 +61,7 @@ const PerformanceLayout: React.FC<PerformanceLayoutProps> = ({ children, title, 
               onClick={() => navigate(tab.path)}
               className={`flex items-center gap-2 px-4 py-2 rounded-t-lg font-medium text-sm transition-all whitespace-nowrap
                 ${active 
-                  ? 'bg-white border-x border-t border-gray-200 text-green-800 shadow-sm relative top-[1px]' 
+                  ? 'bg-white border-x border-t border-gray-200 text-slate-900 shadow-sm relative top-[1px] font-black' 
                   : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
                 }`}
             >

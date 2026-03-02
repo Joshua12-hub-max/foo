@@ -10,3 +10,4 @@ export * from './tables/payroll.ts';
 export * from './tables/internal_policies.ts';
 export * from './tables/violations.ts';
 export * from './tables/common.ts';
+export * from './relations.ts';

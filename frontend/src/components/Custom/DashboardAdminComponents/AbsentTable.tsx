@@ -7,7 +7,6 @@ interface Employee {
   department?: string;
   status?: string;
   date?: string;
-  [key: string]: any;
 }
 
 interface AbsentTableProps {

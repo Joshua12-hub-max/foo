@@ -7,6 +7,7 @@ import { fetchReviews, deleteReview } from '@api';
 import { InternalReview } from '@/types/performance';
 import { useFilterOptions } from '@/hooks/useFilterOptions';
 import PerformanceLayout from '@components/Custom/Performance/PerformanceLayout';
+import { formatFullName } from '../../utils/nameUtils';
 
 import { useToastStore } from '@/stores';
 
@@ -93,7 +94,8 @@ const EvaluationHistory = () => {
     return reviews.filter(review => {
       const firstName = review.employee_first_name || review.employee_first || '';
       const lastName = review.employee_last_name || review.employee_last || '';
-      const employeeName = `${firstName} ${lastName}`.toLowerCase();
+      // Evaluation API returns flattened strings; if no mid/suffix assume empty
+      const employeeName = formatFullName(lastName, firstName).toLowerCase();
       const matchesSearch = employeeName.includes(searchTerm.toLowerCase());
       const matchesDept = selectedDepartment === 'All' || review.employee_department === selectedDepartment;
       return matchesSearch && matchesDept;
@@ -127,12 +129,12 @@ const EvaluationHistory = () => {
 
   const getStatusStyle = (status: string) => {
     switch (status) {
-      case 'Draft': return 'bg-gray-100 text-gray-600 border-gray-200';
-      case 'Submitted': return 'bg-blue-100 text-blue-700 border-blue-200';
-      case 'Finalized': return 'bg-green-100 text-green-700 border-green-200';
-      case 'Acknowledged': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
-      case 'Approved': return 'bg-purple-100 text-purple-700 border-purple-200';
-      default: return 'bg-gray-100 text-gray-500 border-gray-200';
+      case 'Finalized': return 'bg-slate-900 text-white border-transparent shadow-sm';
+      case 'Approved': return 'bg-slate-700 text-white border-transparent';
+      case 'Acknowledged': return 'bg-slate-500 text-white border-transparent';
+      case 'Submitted': return 'bg-slate-100 text-slate-700 border-slate-200';
+      case 'Draft': return 'bg-white text-slate-500 border-gray-200';
+      default: return 'bg-gray-50 text-gray-400 border-gray-100';
     }
   };
 
@@ -281,14 +283,17 @@ const EvaluationHistory = () => {
                         </div>
                         <div>
                           <p className="font-bold text-gray-800 text-sm">
-                            {review.employee_first_name || review.employee_first} {review.employee_last_name || review.employee_last}
+                            {formatFullName(
+                                review.employee_last_name || review.employee_last,
+                                review.employee_first_name || review.employee_first
+                            )}
                           </p>
                           <p className="text-[10px] text-gray-500 font-mono">{formatDate(review.created_at)}</p>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="text-sm text-gray-800">
+                      <span className="text-xs text-gray-800">
                         {review.employee_department || 'N/A'}
                       </span>
                     </td>

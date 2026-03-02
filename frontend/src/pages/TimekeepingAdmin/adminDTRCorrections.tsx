@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAdminDTRCorrections } from '@features/DailyTimeRecord/hooks/Admin/useAdminDTRCorrections';
+import { formatFullName } from '../../utils/nameUtils';
 
 const AdminDTRCorrections = () => {
     const { requests, isLoading, error, filterStatus, setFilterStatus, updateStatus, refresh } = useAdminDTRCorrections();
@@ -78,7 +79,7 @@ const AdminDTRCorrections = () => {
                             requests.map((req) => (
                                 <tr key={req.id} className="border-b hover:bg-gray-50">
                                     <td className="p-3">
-                                        <div className="font-medium">{req.firstName} {req.lastName}</div>
+                                        <div className="font-medium">{formatFullName(req.lastName, req.firstName)}</div>
                                         <div className="text-xs text-gray-500">{req.employeeId}</div>
                                     </td>
                                     <td className="p-3">{new Date(req.date).toLocaleDateString()}</td>

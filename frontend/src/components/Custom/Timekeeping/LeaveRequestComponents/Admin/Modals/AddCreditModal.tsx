@@ -2,12 +2,13 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { X, Loader2 } from 'lucide-react';
 import { addCreditSchema, AddCreditInput, CREDIT_TYPES } from '@/schemas/creditsSchema';
+import { formatFullName } from '@/utils/nameUtils';
 
 interface AddCreditModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: AddCreditInput) => Promise<void>;
-  employees: any[];
+  employees: { id?: string | number; employee_id?: string | number; employeeId?: string | number; first_name?: string; firstName?: string; last_name?: string; lastName?: string; }[];
   isLoadingEmployees: boolean;
   isSubmitting: boolean;
 }
@@ -85,7 +86,7 @@ const AddCreditModal = ({ isOpen, onClose, onSubmit, employees, isLoadingEmploye
                   const lastName = emp.lastName || emp.last_name || '';
                   return (
                     <option key={empId} value={empId}>
-                      {firstName} {lastName} ({empId})
+                      {formatFullName(lastName, firstName)} ({empId})
                     </option>
                   );
                 })}

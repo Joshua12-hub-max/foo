@@ -23,9 +23,7 @@ export const dtrApi = {
         if (params.limit) queryParams.append('limit', params.limit.toString());
         if (params.employeeId) queryParams.append('employeeId', params.employeeId);
         if (params.startDate) queryParams.append('startDate', params.startDate);
-        if (params.endDate) queryParams.append('endDate', params.endDate);
-
-        return await api.get('/dtr', { params: queryParams });
+        return await api.get('/dtr/all', { params: queryParams });
     },
 
     updateRecord: async (id: string, data: UpdateDTRValues): Promise<AxiosResponse<{ success: boolean; message: string }>> => {

@@ -51,9 +51,9 @@ export const useEmployeeMemos = (): UseEmployeeMemosReturn => {
       setLoading(true);
       setError(null);
       const res = await fetchMyMemos();
-      // Handle different API response structures from backend without casting to any
-      const dataPayload = res.data as { memos?: Memo[] } | undefined;
-      const directMemos = ('memos' in res) ? (res as { memos?: Memo[] }).memos : undefined;
+      // Handle different API response structures from backend safely with 'unknown' middle cast
+      const dataPayload = res.data as unknown as { memos?: Memo[] } | undefined;
+      const directMemos = ('memos' in res) ? (res as unknown as { memos?: Memo[] }).memos : undefined;
       setMemos(directMemos || dataPayload?.memos || []);
     } catch (err) {
       setError('Failed to load memos');

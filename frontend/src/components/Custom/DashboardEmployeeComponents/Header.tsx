@@ -3,10 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { Menu, Search, User, Camera } from "lucide-react";
 import EmployeeNotificationMenu from "../../CustomUI/EmployeeNotificationMenu";
 import { useAuth } from "../../../hooks/useAuth";
+import type { User as UserType } from "@/types";
 
 interface ProfilePictureProps {
   hasProfilePicture: boolean;
-  user: any;
+  user: UserType | null;
   isHovered: boolean;
   onMouseEnter: () => void;
   onMouseLeave: () => void;
@@ -27,8 +28,8 @@ const ProfilePicture = memo<ProfilePictureProps>(
     >
       {hasProfilePicture ? (
         <img
-          src={user.avatar_url}
-          alt={`${user.name}'s profile`}
+          src={user?.avatar_url ?? undefined}
+          alt={`${user?.name ?? 'User'}'s profile`}
           className="w-full h-full object-cover transition-all group-hover:brightness-75"
           loading="lazy"
         />
@@ -100,7 +101,6 @@ export default function Header({
   setSearchQuery,
 }: HeaderProps) {
   const navigate = useNavigate();
-  // @ts-ignore
   const { user } = useAuth();
   const [isHovered, setIsHovered] = useState(false);
 
@@ -139,7 +139,7 @@ export default function Header({
         <div className="flex items-center gap-3">
           <ProfilePicture
             hasProfilePicture={hasProfilePicture}
-            user={user || {}}
+            user={user}
             isHovered={isHovered}
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}

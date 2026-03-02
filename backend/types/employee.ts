@@ -77,6 +77,7 @@ export interface EmployeeMapperInput {
  */
 export interface EmployeeApiResponse {
   id: number;
+  employee_name: string;
   first_name: string;
   last_name: string;
   middle_name: string | null;

@@ -110,8 +110,11 @@ const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
     if (userRole === "employee") {
       return <Navigate to="/employee-dashboard" replace />;
     }
-    if (userRole === "hr" || userRole === "admin") {
-      return <Navigate to="/admin-dashboard" replace />;
+    if (userRole === "human resource" || userRole === "admin") {
+      // Don't auto-redirect them if they are actively trying to access the employee dashboard
+      if (!window.location.pathname.startsWith('/employee-dashboard')) {
+        return <Navigate to="/admin-dashboard" replace />;
+      }
     }
     return <Navigate to="/login" replace />;
   }
@@ -132,7 +135,7 @@ const PublicRoute = ({ children }: PublicRouteProps) => {
   if (user) {
     const userRole = user?.role?.toLowerCase() || '';
     if (userRole === "employee") return <Navigate to="/employee-dashboard" replace />;
-    if (userRole === "admin" || userRole === "hr") return <Navigate to="/admin-dashboard" replace />;
+    if (userRole === "admin" || userRole === "human resource") return <Navigate to="/admin-dashboard" replace />;
   }
   
   return children;
@@ -284,7 +287,7 @@ export default function App() {
         <Route
           path="/admin-dashboard"
           element={
-              <ProtectedRoute allowedRoles={["admin", "hr"]}>
+              <ProtectedRoute allowedRoles={["admin", "Human Resource"]}>
                 <ErrorBoundary>
                   <AdminDashboard />
                 </ErrorBoundary>
@@ -504,7 +507,7 @@ export default function App() {
         <Route
           path="/employee-dashboard"
           element={
-            <ProtectedRoute allowedRoles={["employee"]}>
+            <ProtectedRoute allowedRoles={["employee", "admin", "Human Resource"]}>
               <Suspense fallback={<PageLoader />}>
                 <EmployeeDashboard />
               </Suspense>

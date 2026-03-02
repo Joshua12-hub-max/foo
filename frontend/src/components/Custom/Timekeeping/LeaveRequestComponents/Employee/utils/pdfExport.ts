@@ -2,10 +2,10 @@ import { EmployeeLeaveRequest } from "../types";
 
 /**
  * Export data to PDF file (using browser print dialog)
- * @param {Array<any>} data - Array of objects to export
+ * @param {Array<Record<string, unknown>>} data - Array of objects to export
  * @param {string} title - Title for the PDF document
  */
-export const exportToPDF = (data: any[], title = 'Leave Requests Report') => {
+export const exportToPDF = (data: Record<string, unknown>[], title = 'Leave Requests Report') => {
   if (!data || data.length === 0) {
     console.warn('No data to export');
     return false;

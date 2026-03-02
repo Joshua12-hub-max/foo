@@ -5,6 +5,7 @@ import { eq, and, sql, desc, or, like } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/mysql-core';
 import { createNotification } from './notificationController.js';
 import type { AuthenticatedRequest, MemoType, MemoStatus, MemoPriority, EmploymentStatus } from '../types/index.js';
+import { formatFullName } from '../utils/nameUtils.js';
 
 const MEMO_TYPE_TO_STATUS: Record<MemoType, EmploymentStatus | undefined> = {
   'Termination Notice': 'Terminated',
@@ -18,12 +19,7 @@ const generateMemoNumber = async (): Promise<string> => {
   const year = new Date().getFullYear();
   
   return await db.transaction(async (tx) => {
-    // Lock the row for update if possible, or just optimistic concurrency if not strictly critical to be gapless
-    // Drizzle doesn't support FOR UPDATE directly in simple select builder yet in all drivers easily without sql operator
-    // We can use raw sql within transaction or just logical update
-    
-    // Attempt to get existing sequence
-    const existing = await tx.select().from(memoSequences).where(eq(memoSequences.year, year));
+     const existing = await tx.select().from(memoSequences).where(eq(memoSequences.year, year));
     
     let nextNumber: number;
     if (existing.length === 0) {
@@ -91,7 +87,7 @@ const notifyAuthorOfAcknowledgment = async (employeeId: number, authorId: number
   try {
     const empData = await db.query.authentication.findFirst({
       where: eq(authentication.id, employeeId),
-      columns: { employeeId: true, firstName: true, lastName: true }
+      columns: { employeeId: true, firstName: true, lastName: true, middleName: true, suffix: true }
     });
     const authorData = await db.query.authentication.findFirst({
       where: eq(authentication.id, authorId),
@@ -99,7 +95,7 @@ const notifyAuthorOfAcknowledgment = async (employeeId: number, authorId: number
     });
 
     if (empData && authorData) {
-      const empName = `${empData.firstName} ${empData.lastName}`;
+      const empName = formatFullName(empData.lastName, empData.firstName, empData.middleName, empData.suffix);
       await createNotification({ 
         recipientId: authorData.employeeId, 
         senderId: empData.employeeId, 
@@ -168,10 +164,16 @@ export const getAllMemos = async (req: Request, res: Response): Promise<void> =>
       acknowledgedAt: employeeMemos.acknowledgedAt,
       createdAt: employeeMemos.createdAt,
       updatedAt: employeeMemos.updatedAt,
-      employeeName: sql<string>`COALESCE(CONCAT(${employee.firstName}, ' ', ${employee.lastName}), 'Unknown Employee')`,
+      first_name: employee.firstName,
+      last_name: employee.lastName,
+      middle_name: employee.middleName,
+      suffix: employee.suffix,
       employeeNumber: employee.employeeId,
       department: sql<string>`COALESCE(${department.name}, 'N/A')`,
-      authorName: sql<string>`COALESCE(CONCAT(${author.firstName}, ' ', ${author.lastName}), 'Unknown Author')`
+      author_first: author.firstName,
+      author_last: author.lastName,
+      author_middle: author.middleName,
+      author_suffix: author.suffix
     })
     .from(employeeMemos)
     .leftJoin(employee, eq(employeeMemos.employeeId, employee.id))
@@ -182,7 +184,13 @@ export const getAllMemos = async (req: Request, res: Response): Promise<void> =>
     .limit(Number(limit))
     .offset(offset);
 
-    res.json({ success: true, memos, pagination: { total, page: Number(page), limit: Number(limit), totalPages } });
+    const formattedMemos = memos.map(m => ({
+        ...m,
+        employeeName: formatFullName(m.last_name, m.first_name, m.middle_name, m.suffix),
+        authorName: formatFullName(m.author_last, m.author_first, m.author_middle, m.author_suffix)
+    }));
+
+    res.json({ success: true, memos: formattedMemos, pagination: { total, page: Number(page), limit: Number(limit), totalPages } });
   } catch (error) { 
     console.error('Error fetching memos:', error); 
     res.status(500).json({ success: false, message: 'Failed to fetch memos' }); 
@@ -192,6 +200,7 @@ export const getAllMemos = async (req: Request, res: Response): Promise<void> =>
 export const getMyMemos = async (req: Request, res: Response): Promise<void> => {
   try {
     const authReq = req as AuthenticatedRequest; 
+    // The database column `employeeMemos.employeeId` actually stores the surrogate integer `id` of the `authentication` row, NOT the string 'EMP-XX'
     const employee_id = authReq.user.id;
     const author = alias(authentication, 'author');
 
@@ -209,7 +218,10 @@ export const getMyMemos = async (req: Request, res: Response): Promise<void> => 
       acknowledgmentRequired: employeeMemos.acknowledgmentRequired,
       acknowledgedAt: employeeMemos.acknowledgedAt,
       createdAt: employeeMemos.createdAt,
-      authorName: sql<string>`CONCAT(${author.firstName}, ' ', ${author.lastName})`
+      author_first: author.firstName,
+      author_last: author.lastName,
+      author_middle: author.middleName,
+      author_suffix: author.suffix
     })
     .from(employeeMemos)
     .innerJoin(author, eq(employeeMemos.authorId, author.id))
@@ -219,7 +231,12 @@ export const getMyMemos = async (req: Request, res: Response): Promise<void> => 
     ))
     .orderBy(desc(employeeMemos.createdAt));
 
-    res.json({ success: true, memos });
+    const formattedMemos = memos.map(m => ({
+        ...m,
+        authorName: formatFullName(m.author_last, m.author_first, m.author_middle, m.author_suffix)
+    }));
+
+    res.json({ success: true, memos: formattedMemos });
   } catch (error) { 
     res.status(500).json({ success: false, message: 'Failed to fetch memos' }); 
   }
@@ -246,11 +263,17 @@ export const getMemoById = async (req: Request, res: Response): Promise<void> =>
       acknowledgmentRequired: employeeMemos.acknowledgmentRequired,
       acknowledgedAt: employeeMemos.acknowledgedAt,
       createdAt: employeeMemos.createdAt,
-      employeeName: sql<string>`CONCAT(${employee.firstName}, ' ', ${employee.lastName})`,
+      first_name: employee.firstName,
+      last_name: employee.lastName,
+      middle_name: employee.middleName,
+      suffix: employee.suffix,
       employeeNumber: employee.employeeId,
       employeeEmail: employee.email,
       department: department.name,
-      authorName: sql<string>`CONCAT(${author.firstName}, ' ', ${author.lastName})`
+      author_first: author.firstName,
+      author_last: author.lastName,
+      author_middle: author.middleName,
+      author_suffix: author.suffix
     })
     .from(employeeMemos)
     .innerJoin(employee, eq(employeeMemos.employeeId, employee.id))
@@ -262,7 +285,15 @@ export const getMemoById = async (req: Request, res: Response): Promise<void> =>
       res.status(404).json({ success: false, message: 'Memo not found' }); 
       return; 
     }
-    res.json({ success: true, memo: result[0] });
+    
+    const m = result[0];
+    const formattedMemo = {
+        ...m,
+        employeeName: formatFullName(m.last_name, m.first_name, m.middle_name, m.suffix),
+        authorName: formatFullName(m.author_last, m.author_first, m.author_middle, m.author_suffix)
+    };
+
+    res.json({ success: true, memo: formattedMemo });
   } catch (error) { 
     res.status(500).json({ success: false, message: 'Failed to fetch memo' }); 
   }

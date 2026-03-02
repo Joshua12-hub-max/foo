@@ -7,6 +7,7 @@ import React, { memo, FormEvent } from 'react';
 import { X } from 'lucide-react';
 // @ts-ignore
 import { MEMO_TYPES, MEMO_PRIORITIES, MEMO_STATUSES } from '../Constants/memoConstants';
+import { formatFullName } from '@/utils/nameUtils';
 
 interface Employee {
   id: number;
@@ -83,7 +84,7 @@ const MemoFormModal: React.FC<MemoFormModalProps> = memo(({
                 <option value="">Select Employee</option>
                 {employees.map(emp => (
                   <option key={emp.id} value={emp.id}>
-                    {emp.firstName} {emp.lastName}
+                    {formatFullName(emp.lastName, emp.firstName)}
                   </option>
                 ))}
               </select>

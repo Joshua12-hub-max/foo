@@ -117,50 +117,60 @@ const PerformanceCriteria = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredCriteria.map((item) => {
               const borderColors: Record<string, string> = {
-                'Strategic Priorities': 'border-blue-500',
-                'Core Functions': 'border-green-500',
-                'Support Functions': 'border-amber-500',
-                'General': 'border-purple-500'
+                'Strategic Priorities': 'border-l-slate-800',
+                'Core Functions': 'border-l-slate-600',
+                'Support Functions': 'border-l-slate-400',
+                'General': 'border-l-slate-200'
               };
               const borderColor = borderColors[item.category] || 'border-gray-300';
               
               return (
                 <div
                   key={item.id}
-                  className={`bg-white p-6 rounded-xl border border-gray-200 hover:border-gray-300 transition-all group border-l-4 ${borderColor} animate-in fade-in zoom-in duration-300`}
+                  className={`bg-white p-6 rounded-2xl border border-gray-100 hover:border-gray-200 hover:shadow-lg transition-all group border-l-4 ${borderColor} animate-in fade-in zoom-in duration-300 shadow-sm flex flex-col h-full`}
                 >
-                  <div className="flex justify-between items-start mb-3">
-                    <div className="flex flex-col gap-1">
-                        <span className="px-3 py-1 w-fit bg-gray-50 text-gray-700 rounded-full text-xs font-bold uppercase tracking-wide border border-gray-100">
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="flex flex-col gap-1.5">
+                        <span className="px-3 py-1 w-fit bg-gray-50 text-gray-500 rounded-lg text-[9px] font-black uppercase tracking-widest border border-gray-100">
                         {item.category}
                         </span>
                         {item.section && (
-                            <span className="text-[10px] items-start text-gray-400 font-semibold uppercase tracking-wider ml-1">
+                            <span className="text-[9px] items-start text-gray-400 font-bold uppercase tracking-widest ml-1">
                                 {item.section}
                             </span>
                         )}
                     </div>
-                    <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => handleEdit(item)} className="text-gray-400 hover:text-blue-600 p-1">
-                        <SquarePen size={16} />
+                    <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
+                      <button onClick={() => handleEdit(item)} className="text-gray-400 hover:text-gray-900 p-2 bg-gray-50 rounded-xl transition-all border border-gray-100 hover:shadow-sm">
+                        <SquarePen size={14} />
                       </button>
-                      <button onClick={() => handleDeleteClick(item)} className="text-gray-400 hover:text-red-600 p-1">
-                        <Trash2 size={16} />
+                      <button onClick={() => handleDeleteClick(item)} className="text-gray-400 hover:text-red-600 p-2 bg-gray-50 rounded-xl transition-all border border-gray-100 hover:shadow-sm">
+                        <Trash2 size={14} />
                       </button>
                     </div>
                   </div>
 
-                  <h3 className="text-lg font-bold text-gray-800 mb-2">{item.title}</h3>
-                  <p className="text-gray-500 text-sm mb-4 line-clamp-2 min-h-[2.5em]">{item.description}</p>
+                  <h3 className="text-base font-bold text-gray-900 mb-2 tracking-tight group-hover:text-blue-900 transition-colors">{item.title}</h3>
+                  <p className="text-gray-500 text-xs mb-6 line-clamp-2 min-h-[2.5em] leading-relaxed flex-1">{item.description}</p>
 
-                  <div className="flex items-center justify-between pt-4 border-t border-gray-50 text-sm">
-                    <div className="flex items-center gap-2 text-gray-600">
-                      <Sliders size={16} className="text-gray-400" />
-                      <span>Weight: <span className="font-bold text-gray-800">{item.weight}%</span></span>
+                  <div className="flex items-center justify-between pt-5 border-t border-gray-50 mt-auto">
+                    <div className="flex items-center gap-2.5 text-gray-500">
+                      <div className="p-2 bg-gray-50 rounded-xl border border-gray-100 group-hover:bg-blue-50 group-hover:border-blue-100 transition-colors">
+                        <Sliders size={14} className="text-gray-400 group-hover:text-blue-600 transition-colors" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Weight</span>
+                        <span className="font-black text-gray-900 text-sm">{item.weight}%</span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 text-gray-600">
-                      <CheckCircle size={16} className="text-gray-400" />
-                      <span>Max Score: <span className="font-bold text-gray-800">{item.maxScore}</span></span>
+                    <div className="flex items-center gap-2.5 text-gray-500">
+                      <div className="p-2 bg-gray-50 rounded-xl border border-gray-100 group-hover:bg-purple-50 group-hover:border-purple-100 transition-colors">
+                        <CheckCircle size={14} className="text-gray-400 group-hover:text-purple-600 transition-colors" />
+                      </div>
+                      <div className="flex flex-col items-end text-right">
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Max Score</span>
+                        <span className="font-black text-gray-900 text-sm">{item.maxScore}</span>
+                      </div>
                     </div>
                   </div>
                 </div>

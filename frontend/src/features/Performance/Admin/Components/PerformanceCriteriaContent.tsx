@@ -66,7 +66,7 @@ const PerformanceCriteriaContent: React.FC = () => {
     }
   };
 
-  const handleSave = async (formData: any) => {
+  const handleSave = async (formData: Record<string, unknown>) => {
     try {
       if (selectedCriteria && selectedCriteria.id) {
         await updateCriteria(selectedCriteria.id, formData);
@@ -128,10 +128,10 @@ const PerformanceCriteriaContent: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredCriteria.map((item) => {
             const borderColors: Record<string, string> = {
-              'Strategic Priorities': 'border-l-blue-500',
-              'Core Functions': 'border-l-green-500',
-              'Support Functions': 'border-l-amber-500',
-              'General': 'border-l-purple-500'
+              'Strategic Priorities': 'border-l-slate-800',
+              'Core Functions': 'border-l-slate-600',
+              'Support Functions': 'border-l-slate-400',
+              'General': 'border-l-slate-200'
             };
             const borderColor = (item.category && borderColors[item.category]) ? borderColors[item.category] : 'border-l-gray-300';
 
@@ -140,33 +140,43 @@ const PerformanceCriteriaContent: React.FC = () => {
                 key={item.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className={`bg-white p-6 rounded-xl border border-gray-200 hover:border-gray-300 hover:shadow-md transition-all group border-l-4 ${borderColor}`}
+                className={`bg-white p-6 rounded-2xl border border-gray-100 hover:border-gray-200 hover:shadow-lg transition-all group border-l-4 ${borderColor} flex flex-col h-full shadow-sm`}
               >
-                <div className="flex justify-between items-start mb-3">
-                  <span className="px-2.5 py-1 bg-gray-50 text-gray-600 rounded-full text-[10px] font-bold uppercase tracking-wider border border-gray-100">
+                <div className="flex justify-between items-start mb-4">
+                  <span className="px-3 py-1 bg-gray-50 text-gray-500 rounded-lg text-[9px] font-black uppercase tracking-widest border border-gray-100">
                     {item.category}
                   </span>
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => handleEdit(item)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
-                      <SquarePen size={16} />
+                  <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
+                    <button onClick={() => handleEdit(item)} className="p-2 text-gray-400 hover:text-gray-900 bg-gray-50 rounded-xl transition-all border border-gray-100 hover:shadow-sm">
+                      <SquarePen size={14} />
                     </button>
-                    <button onClick={() => handleDeleteClick(item)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-                      <Trash2 size={16} />
+                    <button onClick={() => handleDeleteClick(item)} className="p-2 text-gray-400 hover:text-red-600 bg-gray-50 rounded-xl transition-all border border-gray-100 hover:shadow-sm">
+                      <Trash2 size={14} />
                     </button>
                   </div>
                 </div>
 
-                <h3 className="text-lg font-bold text-gray-800 mb-2 leading-tight">{item.title || item.criteria_title}</h3>
-                <p className="text-gray-500 text-xs mb-4 line-clamp-3 leading-relaxed min-h-[3em]">{item.description || item.criteria_description}</p>
+                <h3 className="text-base font-bold text-gray-900 mb-2 leading-tight group-hover:text-blue-900 transition-colors tracking-tight">{item.title || item.criteria_title}</h3>
+                <p className="text-gray-500 text-xs mb-6 line-clamp-3 leading-relaxed min-h-[3em] flex-1">{item.description || item.criteria_description}</p>
 
-                <div className="flex items-center justify-between pt-4 border-t border-gray-50 text-xs">
-                  <div className="flex items-center gap-1.5 text-gray-500">
-                    <Sliders size={14} className="text-gray-400" />
-                    <span>Weight: <span className="font-bold text-gray-700">{item.weight}%</span></span>
+                <div className="flex items-center justify-between pt-5 border-t border-gray-50 text-xs mt-auto">
+                  <div className="flex items-center gap-2.5 text-gray-500 font-medium">
+                    <div className="p-2 bg-gray-50 rounded-xl border border-gray-100 group-hover:bg-blue-50 group-hover:border-blue-100 transition-colors">
+                      <Sliders size={14} className="text-gray-400 group-hover:text-blue-600 transition-colors" />
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter leading-none mb-1">Weight</span>
+                      <span className="font-black text-gray-900 text-sm leading-none">{item.weight}%</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1.5 text-gray-500">
-                    <CheckCircle size={14} className="text-gray-400" />
-                    <span>Max: <span className="font-bold text-gray-700">{String(item.maxScore)}</span></span>
+                  <div className="flex items-center gap-2.5 text-gray-500 font-medium text-right items-end justify-end">
+                    <div className="p-2 bg-gray-50 rounded-xl border border-gray-100 group-hover:bg-purple-50 group-hover:border-purple-100 transition-colors">
+                      <CheckCircle size={14} className="text-gray-400 group-hover:text-purple-600 transition-colors" />
+                    </div>
+                    <div className="flex flex-col items-end">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter leading-none mb-1">Max Score</span>
+                      <span className="font-black text-gray-900 text-sm leading-none">{String(item.maxScore)}</span>
+                    </div>
                   </div>
                 </div>
               </motion.div>

@@ -4,7 +4,7 @@ interface FiltersState {
   department: string;
   employee: string;
   status: string;
-  [key: string]: any;
+  // Removed generic index signature
 }
 
 interface PerformanceFiltersProps {

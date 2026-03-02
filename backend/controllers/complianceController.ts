@@ -118,7 +118,7 @@ export const getAllViolations = async (_req: Request, res: Response): Promise<vo
         const violations = await db.select({
             id: policyViolations.id,
             employeeId: policyViolations.employeeId,
-            employeeName: sql`CONCAT(${authentication.firstName}, ' ', ${authentication.lastName})`,
+            employeeName: sql`TRIM(CONCAT(${authentication.lastName}, ', ', ${authentication.firstName}, IF(${authentication.middleName} IS NOT NULL && ${authentication.middleName} != '', CONCAT(' ', SUBSTRING(${authentication.middleName}, 1, 1), '.'), ''), IF(${authentication.suffix} IS NOT NULL && ${authentication.suffix} != '', CONCAT(' ', ${authentication.suffix}), '')))`,
             violationDate: policyViolations.createdAt,
             status: policyViolations.status,
             penalty: employeeMemos.memoType,

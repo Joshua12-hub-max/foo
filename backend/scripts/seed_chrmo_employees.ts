@@ -4,7 +4,7 @@ import { authentication, departments, bioEnrolledUsers } from '../db/schema.js';
 import { eq, or } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 
-const CHRMO_DEPARTMENT = 'City Human Resources Management Office';
+const CHRMO_DEPARTMENT = 'City Human Resource Management Office';
 
 const employees = [
   // Department Head

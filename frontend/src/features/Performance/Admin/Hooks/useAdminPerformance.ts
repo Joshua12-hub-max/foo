@@ -65,7 +65,7 @@ export const useAdminPerformance = (): AdminPerformanceHookReturn => {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [performanceData, setPerformanceData] = useState<PerformanceTableItem[]>([]);
-  const [stats, setStats] = useState<any>({});
+  const [stats, setStats] = useState<Record<string, number>>({});
 
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 

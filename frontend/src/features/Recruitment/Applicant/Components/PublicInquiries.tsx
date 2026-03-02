@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { inquiryApi, Inquiry } from '@/api/inquiryApi';
 import { useToastStore } from '@/stores';
 import { Mail, CheckCircle, Clock, Trash2, Search, Filter } from 'lucide-react';
+import ConfirmDialog from '@/components/Custom/Shared/ConfirmDialog';
 
 const PublicInquiries: React.FC = () => {
     const [inquiries, setInquiries] = useState<Inquiry[]>([]);
@@ -9,6 +10,12 @@ const PublicInquiries: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState<string>('All');
     const showToast = useToastStore((state) => state.showToast);
+    
+    // Custom Confirm Modal State
+    const [confirmModal, setConfirmModal] = useState({
+        isOpen: false,
+        idToDelete: 0
+    });
 
     const fetchInquiries = async () => {
         try {
@@ -42,7 +49,13 @@ const PublicInquiries: React.FC = () => {
     };
 
     const handleDelete = async (id: number) => {
-        if (!window.confirm('Are you sure you want to delete this inquiry?')) return;
+        setConfirmModal({ isOpen: true, idToDelete: id });
+    };
+
+    const confirmDelete = async () => {
+        const id = confirmModal.idToDelete;
+        if (!id) return;
+        
         try {
             const response = await inquiryApi.delete(id);
             if (response.data.success) {
@@ -51,6 +64,8 @@ const PublicInquiries: React.FC = () => {
             }
         } catch (error) {
             showToast('Failed to delete inquiry', 'error');
+        } finally {
+            setConfirmModal({ isOpen: false, idToDelete: 0 });
         }
     };
 
@@ -166,6 +181,16 @@ const PublicInquiries: React.FC = () => {
                     ))}
                 </div>
             )}
+
+            <ConfirmDialog
+                isOpen={confirmModal.isOpen}
+                title="Delete Inquiry"
+                message="Are you sure you want to permanently delete this inquiry? This cannot be undone."
+                isDestructive={true}
+                confirmText="Delete"
+                onClose={() => setConfirmModal({ isOpen: false, idToDelete: 0 })}
+                onConfirm={confirmDelete}
+            />
         </div>
     );
 };

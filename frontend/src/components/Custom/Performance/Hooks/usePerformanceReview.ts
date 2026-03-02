@@ -262,7 +262,7 @@ export const usePerformanceReview = () => {
   
   const permissions = useMemo(() => {
     const role = user?.role?.toLowerCase() || '';
-    const isReviewer = ['admin', 'hr', 'supervisor'].includes(role);
+    const isReviewer = ['admin', 'Human Resource', 'supervisor'].includes(role);
     const isEmployee = role === 'employee';
     return {
       role,

@@ -1,4 +1,3 @@
-
 import { Request, Response } from 'express';
 import { db } from '../db/index.js';
 import { holidays, leaveBalances, leaveLedger, lwopSummary, serviceRecords, tardinessSummary, leaveApplications, dailyTimeRecords, authentication } from '../db/schema.js';
@@ -13,6 +12,7 @@ import { type CreditType, type LeaveType, type PaymentStatus, type TransactionTy
 import { applyLeaveSchema, rejectLeaveSchema, creditUpdateSchema, accrueCreditsSchema, validateVLAdvanceFiling,
   requiresMedicalCertificate,
 } from '../schemas/leaveSchema.js';
+import { formatFullName } from '../utils/nameUtils.js';
 
 // ============================================================================
 // Utility Functions
@@ -820,6 +820,8 @@ export const getMyLeaves = async (req: Request, res: Response): Promise<void> =>
       created_at: leaveApplications.createdAt,
       first_name: authentication.firstName,
       last_name: authentication.lastName,
+      middle_name: authentication.middleName,
+      suffix: authentication.suffix,
       department: authentication.department,
       with_pay: leaveApplications.isWithPay,
       attachment_path: leaveApplications.attachmentPath
@@ -831,8 +833,13 @@ export const getMyLeaves = async (req: Request, res: Response): Promise<void> =>
     .limit(limit)
     .offset(offset);
 
+    const formattedLeaves = leaves.map(l => ({
+        ...l,
+        employee_name: formatFullName(l.last_name, l.first_name, l.middle_name, l.suffix)
+    }));
+
     res.status(200).json({
-      leaves,
+      leaves: formattedLeaves,
       pagination: { page, limit, totalItems, totalPages },
     });
   } catch (err) {
@@ -959,7 +966,7 @@ export const getAllLeaves = async (req: Request, res: Response): Promise<void> =
     const totalPages = Math.ceil(totalItems / limit);
 
     // Fetch applications
-    const applications = await db.select({
+    const leaves = await db.select({
       id: leaveApplications.id,
       employee_id: leaveApplications.employeeId,
       leave_type: leaveApplications.leaveType,
@@ -971,6 +978,8 @@ export const getAllLeaves = async (req: Request, res: Response): Promise<void> =
       with_pay: leaveApplications.isWithPay, 
       first_name: sql<string>`COALESCE(${authentication.firstName}, '')`,
       last_name: sql<string>`COALESCE(${authentication.lastName}, '')`,
+      middle_name: authentication.middleName,
+      suffix: authentication.suffix,
       department: sql<string>`COALESCE(${authentication.department}, 'N/A')`,
       current_balance: sql<number>`COALESCE(${leaveBalances.balance}, 0)`
     })
@@ -987,9 +996,14 @@ export const getAllLeaves = async (req: Request, res: Response): Promise<void> =
     .limit(limit)
     .offset(offset);
 
+    const formattedLeaves = leaves.map(l => ({
+        ...l,
+        employee_name: formatFullName(l.last_name, l.first_name, l.middle_name, l.suffix)
+    }));
+
     res.status(200).json({
-      leaves: applications,
-      applications, // Keep for backward compatibility if any other part uses it
+      leaves: formattedLeaves,
+      applications: formattedLeaves, // Keep for backward compatibility if any other part uses it
       pagination: { page, limit, totalItems, totalPages },
     });
   } catch (err) {
@@ -1272,6 +1286,8 @@ export const getMyCredits = async (req: Request, res: Response): Promise<void> =
       updatedAt: leaveBalances.updatedAt,
       firstName: authentication.firstName,
       lastName: authentication.lastName,
+      middleName: authentication.middleName,
+      suffix: authentication.suffix,
       department: authentication.department
     })
     .from(leaveBalances)
@@ -1281,7 +1297,12 @@ export const getMyCredits = async (req: Request, res: Response): Promise<void> =
       eq(leaveBalances.year, year)
     ));
 
-    res.status(200).json({ credits, year });
+    const formattedCredits = credits.map(c => ({
+        ...c,
+        employee_name: formatFullName(c.lastName, c.firstName, c.middleName, c.suffix)
+    }));
+
+    res.status(200).json({ credits: formattedCredits, year });
   } catch (err) {
     console.error('getMyCredits error:', err);
     res.status(500).json({ message: 'Something went wrong!' });
@@ -1305,6 +1326,8 @@ export const getEmployeeCredits = async (req: Request, res: Response): Promise<v
       updatedAt: leaveBalances.updatedAt,
       firstName: authentication.firstName,
       lastName: authentication.lastName,
+      middleName: authentication.middleName,
+      suffix: authentication.suffix,
       department: authentication.department
     })
     .from(leaveBalances)
@@ -1314,7 +1337,12 @@ export const getEmployeeCredits = async (req: Request, res: Response): Promise<v
       eq(leaveBalances.year, year)
     ));
 
-    res.status(200).json({ credits, year });
+    const formattedCredits = credits.map(c => ({
+        ...c,
+        employee_name: formatFullName(c.lastName, c.firstName, c.middleName, c.suffix)
+    }));
+
+    res.status(200).json({ credits: formattedCredits, year });
   } catch (err) {
     console.error('getEmployeeCredits error:', err);
     res.status(500).json({ message: 'Something went wrong!' });
@@ -1337,7 +1365,7 @@ export const getAllEmployeeCredits = async (req: Request, res: Response): Promis
       conditions.push(or(
         sql`COALESCE(${authentication.firstName}, '') LIKE ${`%${search}%`}`,
         sql`COALESCE(${authentication.lastName}, '') LIKE ${`%${search}%`}`,
-        sql`CONCAT(COALESCE(${authentication.firstName}, ''), ' ', COALESCE(${authentication.lastName}, '')) LIKE ${`%${search}%`}`,
+        sql`TRIM(CONCAT(${authentication.lastName}, ', ', ${authentication.firstName}, IF(${authentication.middleName} IS NOT NULL && ${authentication.middleName} != '', CONCAT(' ', SUBSTRING(${authentication.middleName}, 1, 1), '.'), ''), IF(${authentication.suffix} IS NOT NULL && ${authentication.suffix} != '', CONCAT(' ', ${authentication.suffix}), ''))) LIKE ${`%${search}%`}`,
         sql`COALESCE(${leaveBalances.employeeId}, '') LIKE ${`%${search}%`}`
       )!);
     }
@@ -1366,6 +1394,8 @@ export const getAllEmployeeCredits = async (req: Request, res: Response): Promis
       updated_at: leaveBalances.updatedAt,
       first_name: sql<string>`COALESCE(${authentication.firstName}, '')`,
       last_name: sql<string>`COALESCE(${authentication.lastName}, '')`,
+      middle_name: authentication.middleName,
+      suffix: authentication.suffix,
       department: sql<string>`COALESCE(${authentication.department}, 'N/A')`,
       // Calculate usage from ledger for this year
       days_used_with_pay: sql<number>`(
@@ -1393,8 +1423,13 @@ export const getAllEmployeeCredits = async (req: Request, res: Response): Promis
     .limit(limit)
     .offset(offset);
 
+    const formattedCredits = credits.map(c => ({
+        ...c,
+        employee_name: formatFullName(c.last_name, c.first_name, c.middle_name, c.suffix)
+    }));
+
     res.status(200).json({
-      credits,
+      credits: formattedCredits,
       year,
       pagination: { page, limit, totalItems, totalPages },
     });

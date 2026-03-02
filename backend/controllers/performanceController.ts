@@ -1,7 +1,6 @@
 import { Request, Response } from 'express';
 import { db } from '../db/index.js';
-import { 
-  performanceReviews, 
+import { performanceReviews, 
   performanceReviewCycles, 
   authentication, 
   performanceReviewItems, 
@@ -188,6 +187,8 @@ export const getEvaluationSummary = async (_req: Request, res: Response): Promis
       id: authentication.id,
       first_name: authentication.firstName,
       last_name: authentication.lastName,
+      middleName: authentication.middleName,
+      suffix: authentication.suffix,
       department: authentication.department,
       job_title: authentication.jobTitle,
       position_title: authentication.positionTitle,
@@ -212,9 +213,11 @@ export const getEvaluationSummary = async (_req: Request, res: Response): Promis
 
     const formattedEmployees = employees.map(emp => {
       const storedScore = emp.total_score || emp.supervisor_rating_score || emp.self_rating_score;
+      const middleInitial = emp.middleName && emp.middleName.trim() ? ` ${emp.middleName.trim().charAt(0)}.` : "";
+      const suffixStr = emp.suffix && emp.suffix.trim() ? ` ${emp.suffix.trim()}` : "";
       return {
         id: emp.id,
-        name: `${emp.first_name} ${emp.last_name}`,
+        name: `${emp.last_name}, ${emp.first_name}${middleInitial}${suffixStr}`.trim() || 'Unknown Employee',
         first_name: emp.first_name,
         last_name: emp.last_name,
         department: emp.department,
@@ -240,7 +243,7 @@ export const getEvaluationSummary = async (_req: Request, res: Response): Promis
 export const getRatingDistribution = async (_req: Request, res: Response): Promise<void> => {
   try {
     // statuses to include
-    const statuses = ['Approved', 'Finalized', 'Acknowledged', 'Submitted'];
+    const statuses: ReviewStatus[] = ['Approved', 'Finalized', 'Acknowledged', 'Submitted'];
     
     // Fetch all relevant reviews
     const allReviews = await db.select({
@@ -252,7 +255,7 @@ export const getRatingDistribution = async (_req: Request, res: Response): Promi
       status: performanceReviews.status
     })
     .from(performanceReviews)
-    .where(inArray(performanceReviews.status, statuses as any));
+    .where(inArray(performanceReviews.status, statuses));
 
     // Group by employee to find latest review per employee
     const latestReviewsMap = new Map<number, typeof allReviews[0]>();
@@ -312,7 +315,7 @@ export const getReviews = async (req: Request, res: Response): Promise<void> => 
     const authReq = req as AuthenticatedRequest;
     let { employee_id, cycle_id, status, department } = req.query;
 
-    if (authReq.user.role !== 'admin' && authReq.user.role !== 'hr') {
+    if (authReq.user.role !== 'admin' && authReq.user.role !== 'Human Resource') {
       employee_id = String(authReq.user.id);
     }
 
@@ -375,7 +378,7 @@ export const getReview = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    if (authReq.user.role !== 'admin' && authReq.user.role !== 'hr') {
+    if (authReq.user.role !== 'admin' && authReq.user.role !== 'Human Resource') {
       if (review.employeeId != authReq.user.id && review.reviewerId != authReq.user.id) {
         res.status(403).json({ success: false, message: 'Unauthorized access to this review' });
         return;

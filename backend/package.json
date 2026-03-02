@@ -11,6 +11,9 @@
     "seed:reset": "node db/seed.js --reset",
     "wipe-data": "node --import @swc-node/register/esm-register scripts/wipe_clean.ts",
     "db:reset": "node --import @swc-node/register/esm-register scripts/reset_db.ts",
+    "db:generate": "drizzle-kit generate",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio",
     "clean": "rimraf node_modules package-lock.json dist && npm install",
     "type-check": "tsc --noEmit",
     "build": "swc src -d dist"
@@ -35,7 +38,6 @@
     "ics": "^3.8.1",
     "imap": "^0.8.19",
     "jsonwebtoken": "^9.0.2",
-    "kysely": "^0.28.10",
     "mailparser": "^3.9.1",
     "moment": "^2.30.1",
     "multer": "^2.0.2",

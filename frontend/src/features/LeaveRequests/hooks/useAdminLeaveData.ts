@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tansta
 import { leaveApi } from "@api";
 import { AdminLeaveRequest } from '@/components/Custom/Timekeeping/LeaveRequestComponents/Admin/types';
 import type { LeaveApplication } from '@/types/leave.types';
+import { formatFullName } from '@/utils/nameUtils';
 
 export const useAdminLeaveData = (initialFilters?: Record<string, string>) => {
   const queryClient = useQueryClient();
@@ -34,7 +35,7 @@ export const useAdminLeaveData = (initialFilters?: Record<string, string>) => {
         // Build employee name with fallbacks
         const firstName = l.first_name || '';
         const lastName = l.last_name || '';
-        const fullName = `${firstName} ${lastName}`.trim();
+        const fullName = formatFullName(lastName, firstName).trim();
         const displayName = fullName || l.employee_id || 'Unknown Employee';
 
         return {

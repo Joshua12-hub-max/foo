@@ -284,11 +284,6 @@ const MasterProfileView: React.FC<EmployeeProfileViewProps> = ({ profile, loadin
           <DataField label="Gender" value={profile.gender} />
           <DataField label="Civil Status" value={profile.civil_status} />
           <DataField label="Nationality" value={profile.nationality} icon={Flag} />
-          <DataField label="Citizenship" value={
-            profile.citizenship_type === 'Dual Citizenship' 
-              ? `${profile.citizenship} (${profile.dual_citizenship_country})` 
-              : profile.citizenship
-          } icon={Flag} />
           
           <DataField label="Blood Type" value={profile.blood_type} />
           <DataField label="Height (m)" value={profile.height_m} icon={Ruler} />

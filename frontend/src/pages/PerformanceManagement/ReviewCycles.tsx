@@ -144,46 +144,68 @@ const ReviewCycles = () => {
             const status = getStatus(cycle.startDate, cycle.endDate);
             const StatusIcon = status.icon;
             
+            const statusColors: Record<string, string> = {
+              'Upcoming': 'border-l-slate-300 bg-slate-50 text-slate-500',
+              'Active': 'border-l-slate-800 bg-slate-900 text-white',
+              'Completed': 'border-l-slate-500 bg-slate-100 text-slate-600'
+            };
+
+            const borderLColor: Record<string, string> = {
+              'Upcoming': 'border-l-slate-200',
+              'Active': 'border-l-slate-800',
+              'Completed': 'border-l-slate-400'
+            };
+
             return (
               <motion.div
                 key={cycle.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-white p-6 rounded-xl border border-gray-200 hover:border-gray-300 transition-all group border-l-4 border-gray-300"
+                className={`bg-white p-6 rounded-2xl border border-gray-100 hover:border-gray-200 hover:shadow-lg transition-all group border-l-4 ${borderLColor[status.label] || 'border-l-slate-300'} shadow-sm flex flex-col h-full`}
               >
-                <div className="flex justify-between items-start mb-3">
-                  <span className="px-3 py-1 bg-gray-50 text-gray-700 rounded-full text-xs font-bold uppercase tracking-wide border border-gray-100">
+                <div className="flex justify-between items-start mb-4">
+                  <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border border-gray-100 ${statusColors[status.label] || 'bg-gray-50 text-gray-500'}`}>
                     {status.label}
                   </span>
-                  <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
                     <button 
                       onClick={() => handleEditCycle(cycle)}
-                      className="text-gray-400 hover:text-blue-600 p-1"
+                      className="p-2 text-gray-400 hover:text-gray-900 bg-gray-50 rounded-xl transition-all border border-gray-100 hover:shadow-sm"
                       title="Edit Cycle"
                     >
-                      <SquarePen size={16} />
+                      <SquarePen size={14} />
                     </button>
                     <button 
                       onClick={() => handleDeleteCycle(cycle.id)}
-                      className="text-gray-400 hover:text-red-600 p-1"
+                      className="p-2 text-gray-400 hover:text-red-600 bg-gray-50 rounded-xl transition-all border border-gray-100 hover:shadow-sm"
                       title="Delete Cycle"
                     >
-                      <Trash2 size={16} />
+                      <Trash2 size={14} />
                     </button>
                   </div>
                 </div>
 
-                <h3 className="text-lg font-bold text-gray-800 mb-2">{cycle.title}</h3>
-                <p className="text-gray-500 text-sm mb-4 line-clamp-2">{cycle.description || 'No description provided.'}</p>
+                <h3 className="text-base font-bold text-gray-900 mb-2 tracking-tight group-hover:text-blue-900 transition-colors leading-tight">{cycle.title}</h3>
+                <p className="text-gray-500 text-xs mb-6 line-clamp-2 min-h-[2.5em] leading-relaxed flex-1">{cycle.description || 'No description provided.'}</p>
 
-                <div className="flex items-center justify-between pt-4 border-t border-gray-50 text-sm">
-                  <div className="flex items-center gap-2 text-gray-600">
-                    <Calendar size={16} className="text-gray-400" />
-                    <span>Start: <span className="font-bold text-gray-800">{new Date(cycle.startDate).toLocaleDateString()}</span></span>
+                <div className="flex items-center justify-between pt-5 border-t border-gray-50 mt-auto">
+                  <div className="flex items-center gap-2.5 text-gray-500 font-medium">
+                    <div className="p-2 bg-gray-50 rounded-xl border border-gray-100 group-hover:bg-blue-50 group-hover:border-blue-100 transition-colors">
+                      <Calendar size={14} className="text-gray-400 group-hover:text-blue-600 transition-colors" />
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter leading-none mb-1">Start Date</span>
+                      <span className="font-black text-gray-900 text-[11px] leading-none">{new Date(cycle.startDate).toLocaleDateString()}</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 text-gray-600">
-                    <CheckCircle size={16} className="text-gray-400" />
-                    <span>End: <span className="font-bold text-gray-800">{new Date(cycle.endDate).toLocaleDateString()}</span></span>
+                  <div className="flex items-center gap-2.5 text-gray-500 font-medium text-right items-end justify-end">
+                    <div className="p-2 bg-gray-50 rounded-xl border border-gray-100 group-hover:bg-purple-50 group-hover:border-purple-100 transition-colors">
+                      <StatusIcon size={14} className="text-gray-400 group-hover:text-purple-600 transition-colors" />
+                    </div>
+                    <div className="flex flex-col items-end">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter leading-none mb-1">End Date</span>
+                      <span className="font-black text-gray-900 text-[11px] leading-none">{new Date(cycle.endDate).toLocaleDateString()}</span>
+                    </div>
                   </div>
                 </div>
               </motion.div>
@@ -195,80 +217,83 @@ const ReviewCycles = () => {
       {/* Create/Edit Modal */}
       <AnimatePresence>
         {isModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/5 backdrop-blur-sm">
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden"
+              initial={{ opacity: 0, y: 20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 20, scale: 0.95 }}
+              className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-gray-100"
             >
-              <div className="bg-gray-200 px-6 py-3 flex justify-between items-center border-b border-gray-200">
-                <h2 className="text-xl font-bold text-gray-800">
-                  {editingCycle ? 'Edit Review Cycle' : 'Create Review Cycle'}
-                </h2>
-                <button onClick={closeModal} className="p-1 hover:text-red-800 rounded-lg transition-colors text-gray-500">
-                  <X size={20} />
+              <div className="px-6 py-4 flex justify-between items-center border-b border-gray-50">
+                <div>
+                  <h2 className="text-lg font-bold text-gray-900">
+                    {editingCycle ? 'Edit Review Cycle' : 'Create Review Cycle'}
+                  </h2>
+                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">Performance Management</p>
+                </div>
+                <button onClick={closeModal} className="p-2 hover:bg-red-50 hover:text-red-600 rounded-xl transition-all text-gray-400 border border-transparent hover:border-red-100">
+                  <X size={18} />
                 </button>
               </div>
               <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-3">
+                <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1">Title *</label>
+                    <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Cycle Title</label>
                     <input
                       type="text"
                       required
                       value={formData.title}
                       onChange={(e) => setFormData({...formData, title: e.target.value})}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-200 focus:border-transparent outline-none transition-all"
+                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-gray-100 focus:border-gray-300 outline-none transition-all text-gray-900 font-medium placeholder-gray-400"
                       placeholder="e.g. 2nd Semester 2025"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1">Description</label>
+                    <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Description</label>
                     <textarea
                       rows={3}
                       value={formData.description}
                       onChange={(e) => setFormData({...formData, description: e.target.value})}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-200 focus:border-transparent outline-none resize-none transition-all"
+                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-gray-100 focus:border-gray-300 outline-none resize-none transition-all text-gray-900 font-medium placeholder-gray-400"
                       placeholder="Evaluation period for July to December 2025"
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-1">Start Date *</label>
+                      <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Start Date</label>
                       <input
                         type="date"
                         required
                         value={formData.startDate}
                         onChange={(e) => setFormData({...formData, startDate: e.target.value})}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-200 focus:border-transparent outline-none transition-all"
+                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-gray-100 focus:border-gray-300 outline-none transition-all text-gray-900 font-medium"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-1">End Date *</label>
+                      <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">End Date</label>
                       <input
                         type="date"
                         required
                         value={formData.endDate}
                         onChange={(e) => setFormData({...formData, endDate: e.target.value})}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-200 focus:border-transparent outline-none transition-all"
+                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-gray-100 focus:border-gray-300 outline-none transition-all text-gray-900 font-medium"
                       />
                     </div>
                   </div>
                 </div>
-                <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 mt-4">
+                <div className="flex justify-end gap-3 pt-6">
                   <button
                     type="button"
                     onClick={closeModal}
-                    className="flex-1 px-3 py-1.5 bg-[#F8F9FA] text-gray-700 font-medium rounded-lg hover:bg-gray-100 hover:text-red-800 transition-colors border border-gray-200"
+                    className="flex-1 px-4 py-2.5 bg-white text-gray-500 font-bold rounded-xl hover:bg-gray-50 hover:text-gray-900 transition-all border border-gray-200 text-xs uppercase tracking-widest"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 px-3 py-1.5 bg-[#F8F9FA] text-gray-700 font-medium rounded-lg border border-gray-200 hover:text-green-800 transition-all"
+                    className="flex-1 px-4 py-2.5 bg-gray-900 text-white font-bold rounded-xl hover:bg-gray-800 transition-all shadow-md shadow-gray-200 text-xs uppercase tracking-widest"
                   >
-                    {editingCycle ? 'Save Changes' : 'Create Cycle'}
+                    {editingCycle ? 'Update Cycle' : 'Create Cycle'}
                   </button>
                 </div>
               </form>

@@ -398,21 +398,6 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
                </div>
              </div>
 
-             {/* Citizenship */}
-             <div className="grid grid-cols-2 gap-2">
-                <div>
-                   <label className="text-xs font-semibold text-gray-700 mb-1 block">Citizenship Type</label>
-                   <select {...register('citizenship_type')} className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200">
-                        <option value="Filipino">Filipino</option>
-                        <option value="Dual Citizenship">Dual Citizenship</option>
-                   </select>
-                </div>
-                <div>
-                   <label className="text-xs font-semibold text-gray-700 mb-1 block">Country (If Dual)</label>
-                   <input type="text" {...register('dual_citizenship_country')} placeholder="N/A" className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200" />
-                </div>
-             </div>
-
              {/* Contact Info */}
               <div className="grid grid-cols-2 gap-2">
                 <div>

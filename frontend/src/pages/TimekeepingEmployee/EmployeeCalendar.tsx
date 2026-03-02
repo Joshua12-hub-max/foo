@@ -1,4 +1,3 @@
-import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   useCalendarState,
@@ -17,7 +16,7 @@ import {
 import { EmployeeCalendarActions } from '@components/Custom/CalendarComponents/employee/components';
 import { holidays } from '@utils';
 import { announcementApi, eventApi } from '@api';
-import { CalendarEvent } from '@/types/calendar';
+import { CalendarEvent, Holiday } from '@/types/calendar';
 
 export default function EmployeeCalendar() {
   // Calendar state management
@@ -63,7 +62,7 @@ export default function EmployeeCalendar() {
     currentDate,
     events,
     showHolidays,
-    holidays,
+    holidays: holidays.map(h => ({ ...h, name: h.title })) as unknown as Holiday[],
     announcements
   });
   const { month, day, year, dayName, displayedEvents } = calendarData;
@@ -94,7 +93,7 @@ export default function EmployeeCalendar() {
             today={today}
             onDateClick={navigation.handleDateClick}
             showHolidays={showHolidays}
-            holidays={holidays}
+            holidays={holidays as unknown as import('@components/Custom/CalendarComponents/shared/components/CalendarGrid').GridItem[]}
             announcements={announcements}
             displayedEvents={displayedEvents}
           />
@@ -114,16 +113,16 @@ export default function EmployeeCalendar() {
         onNextMonth={navigation.handleNextMonth}
         displayedEvents={displayedEvents}
         hours={HOURS_12}
-        onEventClick={setShowEventDetails}
+        onEventClick={(e) => setShowEventDetails(e as unknown as typeof showEventDetails)}
         showHolidays={showHolidays}
-        holidays={holidays}
+        holidays={holidays.map(h => ({ ...h, name: h.title })) as unknown as Holiday[]}
         announcements={announcements}
       />
 
       {/* Event Details Modal */}
       {showEventDetails && (
         <EventDetailsModal
-          event={showEventDetails}
+          event={showEventDetails as unknown as CalendarEvent}
           onClose={() => setShowEventDetails(null)}
           hours={HOURS_12}
           month={month}

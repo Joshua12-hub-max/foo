@@ -183,7 +183,7 @@ export const verifyAdmin: MiddlewareFunction = (
           return;
         }
         
-        const adminRoles: UserRole[] = ['admin', 'hr'];
+        const adminRoles: UserRole[] = ['admin', 'hr', 'human resource' as UserRole];
         
         if (adminRoles.includes(userRole)) {
           next();
@@ -230,7 +230,7 @@ export const verifyOwnerOrAdmin: MiddlewareFunction = (
         }
 
         const userRole = user.role?.toLowerCase();
-        const isAdmin = ['admin', 'hr'].includes(userRole || '');
+        const isAdmin = ['admin', 'hr', 'human resource'].includes(userRole || '');
         
         const targetIdString = req.params.id as string;
         const targetId = parseInt(targetIdString);

@@ -5,3 +5,4 @@ export { default as InterviewPanel } from './InterviewPanel';
 export { default as PublicInquiries } from './PublicInquiries';
 export { default as LiveSupportChat } from './LiveSupportChat';
 export { default as ApplicantDetailModal } from './ApplicantDetailModal';
+export { default as SecurityAuditLogs } from './SecurityAuditLogs';

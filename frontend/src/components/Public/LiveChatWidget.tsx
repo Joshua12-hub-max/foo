@@ -3,8 +3,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { MessageCircle, X, Send, User, Loader2, Info } from 'lucide-react';
 import { chatApi, ChatMessage, ChatConversation } from '@/api/chatApi';
 import { useChatStore } from '@/stores/chatStore';
+import { useAuthStore } from '@/stores/authStore';
+import { formatFullName } from '@/utils/nameUtils';
 
 const LiveChatWidget = () => {
+    const user = useAuthStore(state => state.user);
+    const isAuthenticated = useAuthStore(state => state.isAuthenticated);
+    
     const { isOpen, setIsOpen } = { 
         isOpen: useChatStore(state => state.isOpen), 
         setIsOpen: (open: boolean) => {
@@ -22,6 +27,30 @@ const LiveChatWidget = () => {
     // Form for onboarding
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
+
+    // Auto-onboard if authenticated
+    useEffect(() => {
+        if (isAuthenticated && user && !onboarded && !loading && isOpen) {
+            const autoOnboard = async () => {
+                setLoading(true);
+                try {
+                    const userName = formatFullName(user.lastName, user.firstName);
+                    const res = await chatApi.start(userName, user.email);
+                    if (res.data.success) {
+                        setConversation(res.data.conversation);
+                        setOnboarded(true);
+                        const msgRes = await chatApi.getMessages(res.data.conversation.id);
+                        setMessages(msgRes.data.messages);
+                    }
+                } catch (err) {
+                    console.error('Auto-onboard failed:', err);
+                } finally {
+                    setLoading(false);
+                }
+            };
+            autoOnboard();
+        }
+    }, [isAuthenticated, user, onboarded, isOpen]);
 
     // Poll for new messages when open
     useEffect(() => {

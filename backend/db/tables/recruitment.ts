@@ -144,4 +144,20 @@ export const recruitmentEmailTemplates = mysqlTable("recruitment_email_templates
 	unique("stage_name").on(table.stage_name),
 ]);
 
+export const recruitmentSecurityLogs = mysqlTable("recruitment_security_logs", {
+	id: int().autoincrement().notNull(),
+	job_id: int("job_id"),
+	first_name: varchar("first_name", { length: 100 }),
+	last_name: varchar("last_name", { length: 100 }),
+	email: varchar({ length: 255 }),
+	violation_type: varchar("violation_type", { length: 100 }), // e.g., 'Identity Fraud', 'Duplicate', 'Spam Bot'
+	details: text("details"),
+	ip_address: varchar("ip_address", { length: 45 }),
+	created_at: timestamp("created_at", { mode: 'string' }).defaultNow(),
+},
+(table) => [
+	index("idx_violation").on(table.violation_type),
+	primaryKey({ columns: [table.id], name: "recruitment_security_logs_id"}),
+]);
+
 

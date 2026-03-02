@@ -51,8 +51,9 @@ router.delete('/jobs/:id', verifyAdmin, recruitmentController.deleteJob as Reque
 router.get('/applicants', verifyAdmin, recruitmentController.getApplicants as RequestHandler);
 router.get('/applicants/:id/pdf', verifyAdmin, recruitmentController.generateApplicationPDF as RequestHandler);
 router.put('/applicants/:id/stage', verifyAdmin, recruitmentController.updateApplicantStage as RequestHandler);
+router.delete('/applicants/:id', verifyAdmin, recruitmentController.deleteApplicant as RequestHandler);
 
-// Email Application Routes
+
 router.post('/check-emails', verifyAdmin, async (_req: Request, res: Response): Promise<void> => {
   try {
     const result = await manualCheckEmails();
@@ -75,6 +76,9 @@ router.post('/generate-meeting-link', verifyAdmin, recruitmentController.generat
 
 // Interview Notes
 router.post('/applicants/:id/interview-notes', verifyAdmin, recruitmentController.saveInterviewNotes as RequestHandler);
+
+// Security Audit
+router.get('/security-logs', verifyAdmin, recruitmentController.getSecurityLogs as RequestHandler);
 
 
 

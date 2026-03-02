@@ -27,9 +27,14 @@ const formatDate = (dateStr: string): string => {
  * Format time string for display
  */
 const formatTime = (timeStr: string): string => {
-  if (!timeStr || timeStr === '-' || timeStr === '') return '-';
+  if (!timeStr || timeStr === '-' || timeStr === '' || timeStr === 'null') return '-';
   try {
-    // Handle HH:MM:SS or HH:MM format
+    // Backend returns Manila datetime strings like "2026-02-13 07:50:00"
+    const date = new Date(timeStr);
+    if (!isNaN(date.getTime())) {
+      return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+    }
+    // Fallback: parse bare HH:MM or HH:MM:SS
     const parts = timeStr.split(':');
     if (parts.length >= 2) {
       const hours = parseInt(parts[0], 10);
@@ -49,6 +54,7 @@ const formatTime = (timeStr: string): string => {
  */
 const getEmployeeName = (record: AttendanceRecord): string => {
   if (record.name) return record.name;
+  if ('employee_name' in record && typeof record.employee_name === 'string') return record.employee_name;
   return `Employee #${record.employeeId || record.id}`;
 };
 
@@ -145,19 +151,25 @@ export const exportAttendanceToExcel = async (
       views: [{ state: 'frozen', ySplit: 4 }] // Freeze top rows
     });
 
-    // Set column widths (optimized for content)
+    // Set column widths (13 columns: A-M)
     worksheet.columns = [
-      { header: 'Employee', key: 'employee', width: 25 },
+      { header: 'Employee ID', key: 'employeeId', width: 15 },
+      { header: 'Employee Name', key: 'employee', width: 25 },
+      { header: 'Department', key: 'department', width: 30 },
       { header: 'Date', key: 'date', width: 14 },
       { header: 'Time In', key: 'timeIn', width: 12 },
       { header: 'Time Out', key: 'timeOut', width: 12 },
-      { header: 'Late', key: 'late', width: 10 },
-      { header: 'Undertime', key: 'undertime', width: 12 },
-      { header: 'Status', key: 'status', width: 12 }
+      { header: 'Late (min)', key: 'late', width: 10 },
+      { header: 'Undertime (min)', key: 'undertime', width: 14 },
+      { header: 'Present', key: 'present', width: 10 },
+      { header: 'Late', key: 'lateStatus', width: 10 },
+      { header: 'Undertime', key: 'undertimeStatus', width: 12 },
+      { header: 'Absent', key: 'absent', width: 10 },
+      { header: 'On Leave', key: 'onLeave', width: 14 }
     ];
 
     // Add title row
-    worksheet.mergeCells('A1:G1');
+    worksheet.mergeCells('A1:M1');
     const titleCell = worksheet.getCell('A1');
     titleCell.value = title;
     titleCell.font = { bold: true, size: 16, color: { argb: 'FF1E3A5F' } };
@@ -169,7 +181,7 @@ export const exportAttendanceToExcel = async (
       ? `Period: ${formatDate(dateRange.startDate)} - ${formatDate(dateRange.endDate)}`
       : `Generated: ${new Date().toLocaleDateString('en-PH')}`;
     
-    worksheet.mergeCells('A2:G2');
+    worksheet.mergeCells('A2:M2');
     const metaCell = worksheet.getCell('A2');
     metaCell.value = dateRangeText;
     metaCell.font = { size: 10, italic: true, color: { argb: 'FF666666' } };
@@ -177,7 +189,7 @@ export const exportAttendanceToExcel = async (
     worksheet.getRow(2).height = 18;
 
     // Add record count
-    worksheet.mergeCells('A3:G3');
+    worksheet.mergeCells('A3:M3');
     const countCell = worksheet.getCell('A3');
     countCell.value = `Total Records: ${data.length}`;
     countCell.font = { size: 10, color: { argb: 'FF666666' } };
@@ -185,7 +197,7 @@ export const exportAttendanceToExcel = async (
     worksheet.getRow(3).height = 18;
 
     // Add header row
-    const headerRow = worksheet.addRow(['Employee', 'Date', 'Time In', 'Time Out', 'Late', 'Undertime', 'Status']);
+    const headerRow = worksheet.addRow(['Employee ID', 'Employee Name', 'Department', 'Date', 'Time In', 'Time Out', 'Late (min)', 'Undertime (min)', 'Present', 'Late', 'Undertime', 'Absent', 'On Leave']);
     applyHeaderStyle(headerRow);
 
     // Group data by department if requested
@@ -210,7 +222,7 @@ export const exportAttendanceToExcel = async (
         if (dept !== currentDepartment) {
           currentDepartment = dept;
           const deptRow = worksheet.addRow([`Department: ${dept}`]);
-          worksheet.mergeCells(`A${deptRow.number}:G${deptRow.number}`);
+          worksheet.mergeCells(`A${deptRow.number}:M${deptRow.number}`);
           deptRow.getCell(1).font = { bold: true, size: 11, color: { argb: 'FF1E3A5F' } };
           deptRow.getCell(1).fill = {
             type: 'pattern',
@@ -223,42 +235,71 @@ export const exportAttendanceToExcel = async (
 
       const rawLate = record.lateMinutes || 0;
       const rawUndertime = record.undertimeMinutes || 0;
+      const isOnLeave = (record.status || '').startsWith('On Leave');
+      const isAbsent = record.status === 'Absent' || (!isOnLeave && (record.timeIn === '-' || record.timeIn === null));
+      const isLate = Number(rawLate) > 0;
+      const isUndertime = Number(rawUndertime) > 0;
+      const isPresent = !isAbsent && !isOnLeave && !isLate && !isUndertime;
+
+      // Extract leave abbreviation from status like "On Leave (VL)"
+      const leaveAbbr = isOnLeave ? (record.status || '').replace('On Leave ', '').replace('(', '').replace(')', '') : '';
 
       const row = worksheet.addRow([
+        record.employeeId || '',
         getEmployeeName(record),
+        record.department || 'N/A',
         formatDate(record.date),
         formatTime(record.timeIn || ''),
         formatTime(record.timeOut || ''),
         Number(formatMinutes(rawLate)),
         Number(formatMinutes(rawUndertime)),
-        record.status || '-'
+        isPresent ? 'X' : '',
+        isLate ? 'X' : '',
+        isUndertime ? 'X' : '',
+        isAbsent ? 'X' : '',
+        leaveAbbr
       ]);
       
       applyDataStyle(row, index % 2 === 0);
 
-      // Apply status color
-      const statusCell = row.getCell(7);
-      statusCell.font = { 
-        size: 10, 
-        bold: true,
-        color: { argb: 'FFFFFFFF' }
+      // Apply specific background colors to the X markings
+      const markColorMap: Record<number, string> = {
+        9: 'FF28A745', // Green (Present)
+        10: 'FFFD7E14', // Orange (Late)
+        11: 'FF007BFF', // Blue (Undertime)
+        12: 'FFDC3545', // Red (Absent)
+        13: 'FF6F42C1'  // Purple (On Leave)
       };
-      statusCell.fill = {
-        type: 'pattern',
-        pattern: 'solid',
-        fgColor: { argb: getStatusColor(record.status || '-') }
-      };
+
+      for (let col = 9; col <= 13; col++) {
+        const cell = row.getCell(col);
+        if (cell.value && cell.value !== '') {
+          cell.font = { size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
+          cell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: markColorMap[col] }
+          };
+          cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        }
+      }
     });
 
     // Add a final Auto-Calculation row at the very bottom
     const totalRow = worksheet.addRow([
-      'TOTAL CALCULATION',
+      'TOTALS',
       '',
       '',
       '',
-      { formula: `SUM(E5:E${worksheet.rowCount - 1})`, result: 0 },
-      { formula: `SUM(F5:F${worksheet.rowCount - 1})`, result: 0 },
-      ''
+      '',
+      '',
+      { formula: `SUM(G5:G${worksheet.rowCount - 1})`, result: 0 },
+      { formula: `SUM(H5:H${worksheet.rowCount - 1})`, result: 0 },
+      { formula: `COUNTIF(I5:I${worksheet.rowCount - 1},"X")`, result: 0 },
+      { formula: `COUNTIF(J5:J${worksheet.rowCount - 1},"X")`, result: 0 },
+      { formula: `COUNTIF(K5:K${worksheet.rowCount - 1},"X")`, result: 0 },
+      { formula: `COUNTIF(L5:L${worksheet.rowCount - 1},"X")`, result: 0 },
+      { formula: `COUNTA(M5:M${worksheet.rowCount - 1})-COUNTBLANK(M5:M${worksheet.rowCount - 1})`, result: 0 }
     ]);
     
     // Style the Total Row
@@ -278,12 +319,12 @@ export const exportAttendanceToExcel = async (
       };
     });
     totalRow.getCell(1).alignment = { horizontal: 'right', vertical: 'middle' };
-    worksheet.mergeCells(`A${totalRow.number}:D${totalRow.number}`);
+    worksheet.mergeCells(`A${totalRow.number}:F${totalRow.number}`);
 
     // Add warning if data was truncated
     if (data.length > MAX_ROWS) {
       const warnRow = worksheet.addRow([`Note: Showing ${MAX_ROWS} of ${data.length} records to optimize file size.`]);
-      worksheet.mergeCells(`A${warnRow.number}:G${warnRow.number}`);
+      worksheet.mergeCells(`A${warnRow.number}:M${warnRow.number}`);
       warnRow.getCell(1).font = { italic: true, color: { argb: 'FFFF6600' } };
     }
 
@@ -325,20 +366,35 @@ export const exportAttendanceToCSV = (
     const { title = 'Attendance Report' } = options;
 
     // CSV header
-    const headers = ['Employee', 'Date', 'Time In', 'Time Out', 'Late', 'Undertime', 'Status'];
+    const headers = ['Employee ID', 'Employee Name', 'Department', 'Date', 'Time In', 'Time Out', 'Late', 'Undertime', 'Present', 'Late', 'Undertime', 'Absent', 'On Leave'];
     
     // Build CSV content
     const csvContent = [
       headers.join(','),
-      ...data.map(record => [
-        `"${getEmployeeName(record)}"`,
-        `"${formatDate(record.date)}"`,
-        `"${formatTime(record.timeIn || '')}"`,
-        `"${formatTime(record.timeOut || '')}"`,
-        `"${formatMinutes(record.lateMinutes || 0)}"`,
-        `"${formatMinutes(record.undertimeMinutes || 0)}"`,
-        `"${record.status || '-'}"`
-      ].join(','))
+      ...data.map(record => {
+        const isOnLeave = (record.status || '').startsWith('On Leave');
+        const isAbsent = record.status === 'Absent' || (!isOnLeave && (record.timeIn === '-' || record.timeIn === null));
+        const isLate = Number(record.lateMinutes || 0) > 0;
+        const isUndertime = Number(record.undertimeMinutes || 0) > 0;
+        const isPresent = !isAbsent && !isOnLeave && !isLate && !isUndertime;
+        const leaveAbbr = isOnLeave ? (record.status || '').replace('On Leave ', '').replace('(', '').replace(')', '') : '';
+        
+        return [
+          `"${record.employeeId || ''}"`,
+          `"${getEmployeeName(record)}"`,
+          `"${record.department || 'N/A'}"`,
+          `"${formatDate(record.date)}"`,
+          `"${formatTime(record.timeIn || '')}"`,
+          `"${formatTime(record.timeOut || '')}"`,
+          `"${formatMinutes(record.lateMinutes || 0)}"`,
+          `"${formatMinutes(record.undertimeMinutes || 0)}"`,
+          `"${isPresent ? 'X' : ''}"`,
+          `"${isLate ? 'X' : ''}"`,
+          `"${isUndertime ? 'X' : ''}"`,
+          `"${isAbsent ? 'X' : ''}"`,
+          `"${leaveAbbr}"`
+        ].join(',')
+      })
     ].join('\n');
 
     // Create and download

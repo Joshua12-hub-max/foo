@@ -21,6 +21,10 @@ export interface DTRApiResponse {
   created_at: string | null;
   updated_at: string | null;
   employee_name: string;
+  first_name: string;
+  last_name: string;
+  middle_name: string | null;
+  suffix: string | null;
   department: string;
   duties: string;
   correction_id?: number | null;

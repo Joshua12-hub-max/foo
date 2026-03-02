@@ -41,10 +41,10 @@ const TRANCHE_2_SCHEDULE = generateSalarySchedule(2);
 const POSITIONS = [
     { title: 'Administrative Aide I', grade: 1, department: 'City Mayor\'s Office' },
     { title: 'Administrative Aide III', grade: 3, department: 'City Mayor\'s Office' },
-    { title: 'Administrative Aide VI', grade: 6, department: 'City Human Resources Management Office' },
-    { title: 'Human Resource Management Officer I', grade: 11, department: 'City Human Resources Management Office' },
-    { title: 'Human Resource Management Officer III', grade: 18, department: 'City Human Resources Management Office' },
-    { title: 'Department Head', grade: 26, department: 'City Human Resources Management Office' },
+    { title: 'Administrative Aide VI', grade: 6, department: 'City Human Resource Management Office' },
+    { title: 'Human Resource Management Officer I', grade: 11, department: 'City Human Resource Management Office' },
+    { title: 'Human Resource Management Officer III', grade: 18, department: 'City Human Resource Management Office' },
+    { title: 'Department Head', grade: 26, department: 'City Human Resource Management Office' },
     { title: 'City Accountant', grade: 26, department: 'City Accountant\'s Office' },
     { title: 'Nurse I', grade: 15, department: 'City Health Office' },
 ];

@@ -8,7 +8,6 @@ interface Employee {
   status?: string;
   timeIn?: string;
   timeOut?: string;
-  [key: string]: any;
 }
 
 interface PresentTableProps {

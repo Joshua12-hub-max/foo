@@ -17,6 +17,7 @@ import {
   StepIncrementTrackerSchema,
   ProcessStepIncrementSchema
 } from '../schemas/plantillaComplianceSchema.js';
+import { formatFullName } from '../utils/nameUtils.js';
 
 /**
  * Get all step increment records
@@ -47,11 +48,17 @@ export const getStepIncrements = async (req: Request, res: Response): Promise<vo
         processedAt: stepIncrementTracker.processedAt,
         processedBy: stepIncrementTracker.processedBy,
         remarks: stepIncrementTracker.remarks,
-        employeeName: sql<string>`CONCAT(${authentication.firstName}, ' ', ${authentication.lastName})`,
+        first_name: authentication.firstName,
+        last_name: authentication.lastName,
+        middle_name: authentication.middleName,
+        suffix: authentication.suffix,
         employeeEmployeeId: authentication.employeeId,
         positionTitle: plantillaPositions.positionTitle,
         salaryGrade: plantillaPositions.salaryGrade,
-        processorName: sql<string>`CONCAT(${processor.firstName}, ' ', ${processor.lastName})`
+        proc_first: processor.firstName,
+        proc_last: processor.lastName,
+        proc_middle: processor.middleName,
+        proc_suffix: processor.suffix
       })
       .from(stepIncrementTracker)
       .leftJoin(authentication, eq(stepIncrementTracker.employeeId, authentication.id))
@@ -60,9 +67,15 @@ export const getStepIncrements = async (req: Request, res: Response): Promise<vo
       .where(filters.length > 0 ? and(...filters) : undefined)
       .orderBy(asc(stepIncrementTracker.eligibleDate), desc(stepIncrementTracker.createdAt));
 
+    const formattedIncrements = increments.map(i => ({
+        ...i,
+        employeeName: formatFullName(i.last_name, i.first_name, i.middle_name, i.suffix),
+        processorName: i.processedBy ? formatFullName(i.proc_last, i.proc_first, i.proc_middle, i.proc_suffix) : null
+    }));
+
     res.json({
       success: true,
-      increments
+      increments: formattedIncrements
     });
   } catch (error) {
     console.error('Get Step Increments Error:', error);
@@ -90,6 +103,8 @@ export const getEligibleEmployees = async (_req: Request, res: Response): Promis
       employee_id: authentication.id,
       first_name: authentication.firstName,
       last_name: authentication.lastName,
+      middle_name: authentication.middleName,
+      suffix: authentication.suffix,
       employee_employee_id: authentication.employeeId,
       position_id: plantillaPositions.id,
       position_title: plantillaPositions.positionTitle,
@@ -189,7 +204,7 @@ export const getEligibleEmployees = async (_req: Request, res: Response): Promis
         if (!isDuplicate) {
           eligibleEmployees.push({
             employee_id: emp.employee_id,
-            employee_name: `${emp.first_name} ${emp.last_name}`,
+            employee_name: formatFullName(emp.last_name, emp.first_name, emp.middle_name, emp.suffix),
             employee_employee_id: emp.employee_employee_id,
             position_title: emp.position_title,
             salary_grade: Number(emp.salary_grade),

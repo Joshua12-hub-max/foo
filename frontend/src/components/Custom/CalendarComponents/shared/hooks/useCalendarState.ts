@@ -1,4 +1,5 @@
 import { useState, useMemo, Dispatch, SetStateAction } from 'react';
+import type { CalendarDisplayItem } from '@/types/calendar';
 
 interface CalendarState {
   today: Date;
@@ -8,8 +9,8 @@ interface CalendarState {
   setIsDrawerOpen: Dispatch<SetStateAction<boolean>>;
   showHolidays: boolean;
   setShowHolidays: Dispatch<SetStateAction<boolean>>;
-  showEventDetails: any | null;
-  setShowEventDetails: Dispatch<SetStateAction<any | null>>;
+  showEventDetails: CalendarDisplayItem | null;
+  setShowEventDetails: Dispatch<SetStateAction<CalendarDisplayItem | null>>;
 }
 
 /**
@@ -21,7 +22,7 @@ export const useCalendarState = (): CalendarState => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [showHolidays, setShowHolidays] = useState(false);
-  const [showEventDetails, setShowEventDetails] = useState<any | null>(null);
+  const [showEventDetails, setShowEventDetails] = useState<CalendarDisplayItem | null>(null);
 
   return {
     today,

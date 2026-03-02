@@ -1,4 +1,5 @@
 import { getDaysInMonth, isSameDay } from './dateUtils'; 
+import type { CalendarDisplayItem, Holiday, Announcement, ScheduleEntry } from '@/types/calendar';
 
 /**
  * Filter events for a specific date
@@ -6,12 +7,11 @@ import { getDaysInMonth, isSameDay } from './dateUtils';
  * @param {Date} date - Date to filter for
  * @returns {Array} - Filtered events
  */
-export const filterEventsByDate = (events: any[], date: Date): any[] => {
+export const filterEventsByDate = (events: CalendarDisplayItem[], date: Date): CalendarDisplayItem[] => {
   if (!events || !Array.isArray(events)) return [];
   
   return events.filter(item => {
-    // @ts-ignore
-    const itemDate = new Date(item.date);
+    const itemDate = new Date(item.date || '');
     return isSameDay(itemDate, date);
   });
 };
@@ -21,14 +21,12 @@ export const filterEventsByDate = (events: any[], date: Date): any[] => {
  * @param {Array} items - Array of calendar items (events, holidays, schedules)
  * @returns {Array} - Sorted items
  */
-export const sortCalendarItemsByTime = (items: any[]): any[] => {
+export const sortCalendarItemsByTime = (items: CalendarDisplayItem[]): CalendarDisplayItem[] => {
   if (!items || !Array.isArray(items)) return [];
   return [...items].sort((a, b) => {
     // Convert times to a comparable format (e.g., minutes from midnight)
-    // @ts-ignore
-    const timeA = a.time ? parseInt(a.time.toString().split(':')[0]) * 60 + parseInt(a.time.toString().split(':')[1] || 0) : 0;
-    // @ts-ignore
-    const timeB = b.time ? parseInt(b.time.toString().split(':')[0]) * 60 + parseInt(b.time.toString().split(':')[1] || 0) : 0;
+    const timeA = a.time ? parseInt(String(a.time).split(':')[0]) * 60 + parseInt(String(a.time).split(':')[1] || '0') : 0;
+    const timeB = b.time ? parseInt(String(b.time).split(':')[0]) * 60 + parseInt(String(b.time).split(':')[1] || '0') : 0;
     return timeA - timeB;
   });
 };
@@ -43,16 +41,17 @@ export const sortCalendarItemsByTime = (items: any[]): any[] => {
  * @param {Array} schedules - Employee schedules
  * @returns {Array} - Combined and sorted calendar items
  */
-export const combineCalendarItems = (events: any[], holidays: any[], showHolidays: boolean, announcements: any[], currentDate: Date, schedules: any[] = []): any[] => {
+export const combineCalendarItems = (events: CalendarDisplayItem[], holidays: Holiday[], showHolidays: boolean, announcements: Announcement[], currentDate: Date, schedules: ScheduleEntry[] = []): CalendarDisplayItem[] => {
   let allItems = [...events];
   const currentYear = currentDate.getFullYear();
   const currentMonth = currentDate.getMonth();
 
   // Add holidays
   if (showHolidays && holidays && Array.isArray(holidays)) {
-    const holidayItems = holidays.map(h => ({
+    const holidayItems: CalendarDisplayItem[] = holidays.map(h => ({
       ...h,
       id: `holiday-${h.id}-${currentYear}`,
+      title: h.title || h.name || 'Holiday',
       type: 'holiday', // Explicit type
       time: '00:00', // All day
       isHoliday: true,
@@ -76,7 +75,7 @@ export const combineCalendarItems = (events: any[], holidays: any[], showHoliday
 
   // Add schedules - expand each schedule to show on relevant days
   if (schedules && Array.isArray(schedules) && schedules.length > 0) {
-    const scheduleItems: any[] = [];
+    const scheduleItems: CalendarDisplayItem[] = [];
     console.log('📅 Processing schedules for calendar:', schedules);
     
     schedules.forEach(schedule => {
@@ -94,8 +93,7 @@ export const combineCalendarItems = (events: any[], holidays: any[], showHoliday
       
       if (hasValidDates) {
         // Parse dates as local time to avoid timezone offset issues
-        // @ts-ignore
-        const parseLocalDate = (dateStr) => {
+        const parseLocalDate = (dateStr: string | Date) => {
           const str = String(dateStr).split('T')[0]; // Get just the date part
           const [year, month, day] = str.split('-').map(Number);
           return new Date(year, month - 1, day); // month is 0-indexed

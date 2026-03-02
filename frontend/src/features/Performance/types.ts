@@ -48,5 +48,5 @@ export interface PerformanceItem {
   evidenceRequirements?: string;
   evidenceFilePath?: string;
   evidenceDescription?: string | null;
-  [key: string]: string | number | boolean | null | undefined | object | any[];
+  [key: string]: string | number | boolean | null | undefined | object | unknown[];
 }

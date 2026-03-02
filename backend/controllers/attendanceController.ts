@@ -9,7 +9,8 @@ import {
   recruitmentApplicants, 
   recruitmentJobs,
   bioEnrolledUsers,
-  dtrCorrections
+  dtrCorrections,
+  departments
 } from "../db/schema.js";
 import { eq, and, sql, desc, between, ne, or, like } from "drizzle-orm";
 import type { AuthenticatedRequest } from "../types/index.js";
@@ -56,6 +57,14 @@ const formatDate = (dateString: string | null | undefined): string => {
     month: "short",
     day: "numeric",
   });
+};
+
+// Helper to enforce Normal Case (Title Case)
+const toTitleCase = (str: string | null | undefined): string => {
+  if (!str) return "";
+  return str.trim().split(/\s+/).map(word => 
+    word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+  ).join(" ");
 };
 
 interface AttendanceLog {
@@ -111,7 +120,7 @@ export const getLogs = async (req: Request, res: Response): Promise<void> => {
   const { query } = validation.data;
   const authReq = req as AuthenticatedRequest;
   const user = authReq.user;
-  const isAdminOrHr = ["admin", "hr"].includes(user.role?.toLowerCase());
+  const isAdminOrHr = ["admin", "hr", "human resource"].includes(user.role?.toLowerCase());
 
   // Extract query parameters
   const { 
@@ -126,9 +135,10 @@ export const getLogs = async (req: Request, res: Response): Promise<void> => {
   } = query;
 
   // Determine which employee's logs to fetch
-  const targetEmployeeId = isAdminOrHr
-    ? queryEmployeeId || queryId
-    : user.employeeId;
+  let targetEmployeeId = queryEmployeeId || queryId;
+  if (!targetEmployeeId && !isAdminOrHr) {
+    targetEmployeeId = user.employeeId;
+  }
 
   const page = qPage;
   const limit = qLimit;
@@ -136,24 +146,14 @@ export const getLogs = async (req: Request, res: Response): Promise<void> => {
 
   try {
     const whereConditions = [];
-    if (targetEmployeeId) {
-      whereConditions.push(eq(dailyTimeRecords.employeeId, targetEmployeeId));
+    if (targetEmployeeId && targetEmployeeId !== 'all' && targetEmployeeId !== 'All Employees') {
+      whereConditions.push(eq(dailyTimeRecords.employeeId, targetEmployeeId as string));
     }
     if (startDate && endDate) {
-      // Robust date parsing (Handle MM/DD/YYYY or YYYY-MM-DD)
-      const parseDate = (dateStr: string) => {
-          const d = new Date(dateStr);
-          if (isNaN(d.getTime())) return dateStr; // Fallback to original if invalid
-          return d.toISOString().split('T')[0];
-      };
-      
-      const safeStartDate = parseDate(startDate);
-      const safeEndDate = parseDate(endDate);
-
-      whereConditions.push(between(dailyTimeRecords.date, safeStartDate, safeEndDate));
+      whereConditions.push(between(dailyTimeRecords.date, startDate, endDate));
     }
     if (department && department !== 'all') {
-      whereConditions.push(eq(authentication.department, department));
+      whereConditions.push(eq(departments.name, department));
     }
     if (search) {
       const searchStr = `%${search}%`;
@@ -179,10 +179,12 @@ export const getLogs = async (req: Request, res: Response): Promise<void> => {
       status: dailyTimeRecords.status,
       createdAt: dailyTimeRecords.createdAt,
       updatedAt: dailyTimeRecords.updatedAt,
-      employee_name: sql<string>`CONCAT(${authentication.firstName}, ' ', ${authentication.lastName})`,
-      department: authentication.department,
+      first_name: authentication.firstName,
+      last_name: authentication.lastName,
+      middle_name: authentication.middleName,
+      suffix: authentication.suffix,
+      department: departments.name,
       duties: sql<string>`(SELECT schedule_title FROM schedules WHERE employee_id = ${dailyTimeRecords.employeeId} ORDER BY updated_at DESC LIMIT 1)`,
-      // Correction info
       correction_id: dtrCorrections.id,
       correction_status: dtrCorrections.status,
       correction_reason: dtrCorrections.reason,
@@ -191,6 +193,7 @@ export const getLogs = async (req: Request, res: Response): Promise<void> => {
     })
     .from(dailyTimeRecords)
     .leftJoin(authentication, eq(dailyTimeRecords.employeeId, authentication.employeeId))
+    .leftJoin(departments, eq(authentication.departmentId, departments.id))
     .leftJoin(
       dtrCorrections,
       and(
@@ -204,41 +207,83 @@ export const getLogs = async (req: Request, res: Response): Promise<void> => {
     .limit(limit)
     .offset(offset);
 
+    // Calculate totals with the 1-hour break policy included in the SQL
+    const [totalsResult] = await db.select({
+      totalLate: sql<string>`SUM(COALESCE(${dailyTimeRecords.lateMinutes}, 0))`,
+      totalUndertime: sql<string>`SUM(COALESCE(${dailyTimeRecords.undertimeMinutes}, 0))`,
+      totalSeconds: sql<string>`SUM(
+        COALESCE(
+          CASE 
+            WHEN TIMESTAMPDIFF(SECOND, ${dailyTimeRecords.timeIn}, ${dailyTimeRecords.timeOut}) > 18000 
+            THEN TIMESTAMPDIFF(SECOND, ${dailyTimeRecords.timeIn}, ${dailyTimeRecords.timeOut}) - 3600
+            ELSE TIMESTAMPDIFF(SECOND, ${dailyTimeRecords.timeIn}, ${dailyTimeRecords.timeOut})
+          END, 
+          0
+        )
+      )`
+    })
+    .from(dailyTimeRecords)
+    .leftJoin(authentication, eq(dailyTimeRecords.employeeId, authentication.employeeId))
+    .leftJoin(departments, eq(authentication.departmentId, departments.id))
+    .where(whereClause);
+
     const [countResult] = await db.select({
       total: sql<number>`count(*)`
     })
     .from(dailyTimeRecords)
     .leftJoin(authentication, eq(dailyTimeRecords.employeeId, authentication.employeeId))
+    .leftJoin(departments, eq(authentication.departmentId, departments.id))
     .where(whereClause);
 
     const total = Number(countResult.total || 0);
 
-    const formattedLogs: DTRApiResponse[] = logs.map((log) => ({
-      id: log.id,
-      employee_id: log.employeeId,
-      date: log.date ? new Date(log.date).toISOString().split('T')[0] : '',
-      time_in: log.timeIn ? formatToManilaDateTime(log.timeIn) : null,
-      time_out: log.timeOut ? formatToManilaDateTime(log.timeOut) : null,
-      late_minutes: log.lateMinutes || 0,
-      undertime_minutes: log.undertimeMinutes || 0,
-      overtime_minutes: log.overtimeMinutes || 0,
-      status: log.status || 'Pending',
-      created_at: log.createdAt ? new Date(log.createdAt).toISOString() : null,
-      updated_at: log.updatedAt ? new Date(log.updatedAt).toISOString() : null,
-      employee_name: log.employee_name || "Unknown Employee",
-      department: log.department || "N/A",
-      duties: log.duties || 'No Schedule',
-      correction_id: log.correction_id ?? null,
-      correction_status: log.correction_status ?? null,
-      correction_reason: log.correction_reason ?? null,
-      correction_time_in: log.correction_time_in ? formatToManilaDateTime(log.correction_time_in) : null,
-      correction_time_out: log.correction_time_out ? formatToManilaDateTime(log.correction_time_out) : null,
-    }));
+    const formattedLogs: DTRApiResponse[] = logs.map((log) => {
+      // Precise Name Formatting: Normal Case (Title Case)
+      let fullName = "Unknown Employee";
+      if (log.first_name && log.last_name) {
+          const last = toTitleCase(log.last_name);
+          const first = toTitleCase(log.first_name);
+          const middle = log.middle_name ? ` ${toTitleCase(log.middle_name)}` : "";
+          const suffix = log.suffix ? ` ${log.suffix}` : ""; // Suffix like Jr. usually kept as provided
+          fullName = `${last}, ${first}${middle}${suffix}`;
+      }
+
+      return {
+        id: log.id,
+        employee_id: log.employeeId,
+        date: log.date, 
+        time_in: log.timeIn ? formatToManilaDateTime(log.timeIn) : null,
+        time_out: log.timeOut ? formatToManilaDateTime(log.timeOut) : null,
+        late_minutes: log.lateMinutes || 0,
+        undertime_minutes: log.undertimeMinutes || 0,
+        overtime_minutes: log.overtimeMinutes || 0,
+        status: log.status || 'Pending',
+        created_at: log.createdAt ? new Date(log.createdAt).toISOString() : null,
+        updated_at: log.updatedAt ? new Date(log.updatedAt).toISOString() : null,
+        employee_name: fullName,
+        first_name: log.first_name || '',
+        last_name: log.last_name || '',
+        middle_name: log.middle_name || null,
+        suffix: log.suffix || null,
+        department: log.department || "N/A",
+        duties: log.duties || 'No Schedule',
+        correction_id: log.correction_id ?? null,
+        correction_status: log.correction_status ?? null,
+        correction_reason: log.correction_reason ?? null,
+        correction_time_in: log.correction_time_in ? formatToManilaDateTime(log.correction_time_in) : null,
+        correction_time_out: log.correction_time_out ? formatToManilaDateTime(log.correction_time_out) : null,
+      };
+    });
 
     res.status(200).json({
       success: true,
       message: formattedLogs.length > 0 ? "Logs retrieved successfully." : "No logs found.",
       data: formattedLogs,
+      totals: {
+        lateMinutes: Number(totalsResult?.totalLate || 0),
+        undertimeMinutes: Number(totalsResult?.totalUndertime || 0),
+        hoursWorked: (Number(totalsResult?.totalSeconds || 0) / 3600).toFixed(2)
+      },
       pagination: { total, page, limit, totalPages: Math.ceil(total / limit) },
     });
   } catch (err) {
@@ -258,6 +303,8 @@ export const getRecentActivity = async (_req: Request, res: Response): Promise<v
       updatedAt: dailyTimeRecords.updatedAt,
       firstName: authentication.firstName,
       lastName: authentication.lastName,
+      middleName: authentication.middleName,
+      suffix: authentication.suffix,
       department: authentication.department
     })
     .from(dailyTimeRecords)
@@ -265,22 +312,37 @@ export const getRecentActivity = async (_req: Request, res: Response): Promise<v
     .orderBy(desc(dailyTimeRecords.updatedAt))
     .limit(20);
 
-    const formattedLogs: DTRApiResponse[] = logs.map((log) => ({
-      id: log.id,
-      employee_id: log.employeeId,
-      date: log.date ? new Date(log.date).toLocaleDateString('en-US') : '',
-      time_in: log.timeIn ? formatToManilaDateTime(log.timeIn) : null,
-      time_out: log.timeOut ? formatToManilaDateTime(log.timeOut) : null,
-      late_minutes: 0, // Recent activity doesn't usually feature this, but interface requires it
-      undertime_minutes: 0,
-      overtime_minutes: 0,
-      status: log.status || 'Pending',
-      created_at: null,
-      updated_at: log.updatedAt || null,
-      employee_name: (log.firstName && log.lastName) ? `${log.firstName} ${log.lastName}` : "Unknown Employee",
-      department: log.department || "N/A",
-      duties: 'No Schedule' // Recent activity doesn't fetch schedule
-    }));
+    const formattedLogs: DTRApiResponse[] = logs.map((log) => {
+      let fullName = "Unknown Employee";
+      if (log.firstName && log.lastName) {
+          const last = toTitleCase(log.lastName);
+          const first = toTitleCase(log.firstName);
+          const middle = log.middleName ? ` ${toTitleCase(log.middleName)}` : "";
+          const suffix = log.suffix ? ` ${log.suffix}` : "";
+          fullName = `${last}, ${first}${middle}${suffix}`;
+      }
+
+      return {
+        id: log.id,
+        employee_id: log.employeeId,
+        date: log.date,
+        time_in: log.timeIn ? formatToManilaDateTime(log.timeIn) : null,
+        time_out: log.timeOut ? formatToManilaDateTime(log.timeOut) : null,
+        late_minutes: 0, 
+        undertime_minutes: 0,
+        overtime_minutes: 0,
+        status: log.status || 'Pending',
+        created_at: null,
+        updated_at: log.updatedAt || null,
+        employee_name: fullName,
+        first_name: log.firstName || '',
+        last_name: log.lastName || '',
+        middle_name: log.middleName || null,
+        suffix: log.suffix || null,
+        department: log.department || "N/A",
+        duties: 'No Schedule' 
+      };
+    });
 
     res.status(200).json({ success: true, data: formattedLogs });
   } catch (err) {
@@ -303,12 +365,8 @@ export const getTodayStatus = async (req: Request, res: Response): Promise<void>
   const { query } = validation.data;
   const authReq = req as AuthenticatedRequest;
   const user = authReq.user;
-  const isAdminOrHr = ["admin", "hr"].includes(user.role?.toLowerCase());
 
-  let employeeId = query.employeeId;
-  if (!isAdminOrHr || !employeeId) {
-    employeeId = user.employeeId;
-  }
+  let employeeId = query.employeeId || user.employeeId;
 
   if (!employeeId) {
     res.status(400).json({
@@ -357,7 +415,7 @@ export const getRawLogs = async (req: Request, res: Response): Promise<void> => 
 
     const whereConditions = [];
 
-    if (employeeId) {
+    if (employeeId && employeeId !== 'all' && employeeId !== 'All Employees') {
       whereConditions.push(eq(attendanceLogs.employeeId, String(employeeId)));
     }
 
@@ -389,7 +447,6 @@ export const getRawLogs = async (req: Request, res: Response): Promise<void> => 
       scan_time: attendanceLogs.scanTime,
       type: attendanceLogs.type,
       source: attendanceLogs.source,
-      // COALESCE: try authentication first, fallback to bio_enrolled_users
       first_name: sql<string>`COALESCE(
         ${authentication.firstName},
         SUBSTRING_INDEX(${bioEnrolledUsers.fullName}, ' ', 1)
@@ -427,7 +484,6 @@ export const getDashboardStats = async (_req: Request, res: Response): Promise<v
     const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
     const dayName = days[now.getDay()];
 
-    // 1. Get All Registered Employees (for Absent checking)
     const allEmployees = await db.select({
       employeeId: authentication.employeeId,
       firstName: authentication.firstName,
@@ -447,30 +503,23 @@ export const getDashboardStats = async (_req: Request, res: Response): Promise<v
     .where(ne(authentication.role, 'admin'))
     .orderBy(desc(authentication.dateHired));
 
-    // 2. Get DTR Records (LEFT JOIN to include those without Auth profile)
-    // We also join BioEnrolledUsers to get names for unregistered people
     const dtrRecords = await db.select({
       employeeId: dailyTimeRecords.employeeId,
       status: dailyTimeRecords.status,
       timeIn: dailyTimeRecords.timeIn,
       timeOut: dailyTimeRecords.timeOut,
       lateMinutes: dailyTimeRecords.lateMinutes,
-      // Auth Details
       firstName: authentication.firstName,
       lastName: authentication.lastName,
       department: authentication.department,
-      // Bio Details (Fallback)
       bioFullName: bioEnrolledUsers.fullName,
       bioDepartment: bioEnrolledUsers.department
     })
     .from(dailyTimeRecords)
     .leftJoin(authentication, eq(dailyTimeRecords.employeeId, authentication.employeeId))
-    // Join Bio Users: Try to match ID (Bio uses int, Auth uses string/int mix, we cast for join)
-    // Note: Drizzle SQL template for complex join condition
     .leftJoin(bioEnrolledUsers, sql`${dailyTimeRecords.employeeId} = CAST(${bioEnrolledUsers.employeeId} AS CHAR)`)
     .where(eq(dailyTimeRecords.date, todayStr));
 
-    // 3. Get Approved Leaves
     const leaves = await db.select({
       employeeId: leaveApplications.employeeId,
       firstName: authentication.firstName,
@@ -503,7 +552,6 @@ export const getDashboardStats = async (_req: Request, res: Response): Promise<v
     .where(eq(recruitmentApplicants.stage, 'Hired'))
     .orderBy(desc(recruitmentApplicants.hired_date), desc(recruitmentApplicants.created_at));
 
-    // Data Structures for Processing
     interface StatusRecord {
       id: string;
       name: string;
@@ -522,9 +570,8 @@ export const getDashboardStats = async (_req: Request, res: Response): Promise<v
     const lateList: StatusRecord[] = [];
     const absentList: StatusRecord[] = [];
 
-    // Helper to get name
     const getName = (first: string | null, last: string | null, bioName: string | null) => {
-        if (first && last) return `${first} ${last}`;
+        if (first && last) return `${toTitleCase(first)} ${toTitleCase(last)}`;
         if (bioName) return bioName;
         return "Unknown Employee";
     };
@@ -533,14 +580,12 @@ export const getDashboardStats = async (_req: Request, res: Response): Promise<v
         return authDept || bioDept || "N/A";
     };
 
-    // Track processed IDs to avoid duplicates between DTR loop and Auth loop
     const processedIds = new Set<string>();
     const onLeaveEmployeeIds = new Set(leaves.map((l) => l.employeeId));
 
-    // A. Process DTRs (Present/Late) - Includes Unregistered
     dtrRecords.forEach(record => {
         processedIds.add(record.employeeId);
-        if (onLeaveEmployeeIds.has(record.employeeId)) return; // Don't double count if acceptable
+        if (onLeaveEmployeeIds.has(record.employeeId)) return; 
 
         const name = getName(record.firstName, record.lastName, record.bioFullName);
         const dept = getDept(record.department, record.bioDepartment);
@@ -560,22 +605,17 @@ export const getDashboardStats = async (_req: Request, res: Response): Promise<v
             lateList.push(statusItem);
             presentList.push(statusItem);
         } else if (record.status === 'Present' || record.status === 'Undertime' || record.status === 'Late/Undertime') {
-             // Treat all clocked-in as present for the dashboard list
             presentList.push(statusItem);
         }
     });
 
-    // B. Process Absent Employees (From Auth List)
     allEmployees.forEach((emp) => {
       const employeeId = emp.employeeId;
-      
-      // If already processed via DTR or is on leave, skip
       if (processedIds.has(employeeId)) return;
       if (onLeaveEmployeeIds.has(employeeId)) return;
 
-      const name = `${emp.firstName} ${emp.lastName}`;
+      const name = `${toTitleCase(emp.firstName)} ${toTitleCase(emp.lastName)}`;
 
-      // If they have a schedule but no DTR, they are absent
       if (emp.startTime) {
         absentList.push({
           id: employeeId,
@@ -604,14 +644,14 @@ export const getDashboardStats = async (_req: Request, res: Response): Promise<v
           late: lateList,
           hired: hiredApplicants.map((a) => ({
             id: `EMP-${a.id}`,
-            name: `${a.firstName} ${a.lastName}`,
+            name: `${toTitleCase(a.firstName)} ${toTitleCase(a.lastName)}`,
             department: a.departmentName || "-",
             position: a.jobTitle || "-",
             date_hired: formatDate(a.hiredDate || a.createdAt),
           })),
           onLeave: leaves.map((l) => ({
             id: l.employeeId,
-            name: `${l.firstName} ${l.lastName}`,
+            name: `${toTitleCase(l.firstName)} ${toTitleCase(l.lastName)}`,
             department: l.department || "-",
             leaveType: l.leaveType,
             startDate: l.startDate,

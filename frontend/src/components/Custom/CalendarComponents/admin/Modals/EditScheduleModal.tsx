@@ -4,6 +4,7 @@ import { fetchEmployees } from '../../../../../api/employeeApi';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { scheduleSchema, ScheduleSchema } from '@/schemas/calendar';
+import { formatFullName } from '@/utils/nameUtils';
 
 import { formatHour12 } from '../../shared/utils/eventUtils';
 
@@ -128,7 +129,7 @@ export default function EditScheduleModal({ show, schedule, onClose, onUpdate, h
                     <option value="">Select an employee...</option>
                     {employees.map((emp) => (
                         <option key={emp.id} value={emp.employeeId}>
-                        {emp.firstName} {emp.lastName} ({emp.employeeId})
+                        {formatFullName(emp.lastName, emp.firstName)} ({emp.employeeId})
                         </option>
                     ))}
                     </select>

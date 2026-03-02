@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { chatApi, ChatConversation, ChatMessage } from '@/api/chatApi';
 import { useToastStore } from '@/stores';
-import { MessageSquare, Send, User, Clock, CheckCircle2, ChevronLeft, Loader2, Search } from 'lucide-react';
+import { MessageSquare, Send, Clock, CheckCircle2, ChevronLeft, Loader2, Search } from 'lucide-react';
+import ConfirmDialog from '@/components/Custom/Shared/ConfirmDialog';
 
 const LiveSupportChat: React.FC = () => {
     const [conversations, setConversations] = useState<ChatConversation[]>([]);
@@ -14,6 +15,11 @@ const LiveSupportChat: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const showToast = useToastStore((state) => state.showToast);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    
+    const [confirmModal, setConfirmModal] = useState({
+        isOpen: false,
+        idToClose: 0
+    });
 
     const fetchConversations = async () => {
         try {
@@ -91,7 +97,12 @@ const LiveSupportChat: React.FC = () => {
     };
 
     const handleCloseConversation = async (id: number) => {
-        if (!window.confirm('Are you sure you want to close this chat?')) return;
+        setConfirmModal({ isOpen: true, idToClose: id });
+    };
+
+    const confirmCloseChat = async () => {
+        const id = confirmModal.idToClose;
+        if (!id) return;
         try {
             const response = await chatApi.close(id);
             if (response.data.success) {
@@ -101,6 +112,8 @@ const LiveSupportChat: React.FC = () => {
             }
         } catch (error) {
             showToast('Failed to close chat', 'error');
+        } finally {
+            setConfirmModal({ isOpen: false, idToClose: 0 });
         }
     };
 
@@ -136,8 +149,7 @@ const LiveSupportChat: React.FC = () => {
                             <Loader2 className="animate-spin text-gray-400" size={24} />
                         </div>
                     ) : filteredConversations.length === 0 ? (
-                        <div className="p-8 text-center text-gray-500 text-sm">
-                            <User className="mx-auto mb-2 text-gray-300" size={32} />
+                        <div className="p-8 text-center text-gray-400 text-sm italic font-medium">
                             No active chats
                         </div>
                     ) : (
@@ -242,14 +254,21 @@ const LiveSupportChat: React.FC = () => {
                     </>
                 ) : (
                     <div className="flex-1 flex flex-col items-center justify-center text-gray-400 animate-in fade-in duration-500">
-                        <div className="p-6 bg-white rounded-full shadow-xl shadow-slate-200/50 mb-6">
-                            <MessageSquare size={48} className="text-blue-200" />
-                        </div>
-                        <h3 className="text-xl font-bold text-gray-600">Select a conversation</h3>
+                        <h3 className="text-xl font-bold text-gray-600 mb-1">Select a conversation</h3>
                         <p className="text-sm">Choose an active session from the left to start chatting.</p>
                     </div>
                 )}
             </div>
+
+            <ConfirmDialog
+                isOpen={confirmModal.isOpen}
+                title="Close Chat Session"
+                message="Are you sure you want to close this chat session? The applicant will no longer be able to reply."
+                isDestructive={false}
+                confirmText="Close Session"
+                onClose={() => setConfirmModal({ isOpen: false, idToClose: 0 })}
+                onConfirm={confirmCloseChat}
+            />
         </div>
     );
 };

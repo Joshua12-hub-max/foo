@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { db } from '../db/index.js';
 import { plantillaPositions, qualificationStandards, authentication } from '../db/schema.js';
 import { eq, and, desc, asc, sql } from 'drizzle-orm';
+import { formatFullName } from '../utils/nameUtils.js';
 
 /**
  * Get Data for CSC Form 9 (Publication of Vacant Positions)
@@ -90,6 +91,7 @@ export const getForm33Data = async (req: Request, res: Response): Promise<void> 
       first_name: authentication.firstName,
       last_name: authentication.lastName,
       middle_name: authentication.middleName, // Added for completeness
+      suffix: authentication.suffix,
       employee_id: authentication.employeeId,
       date_of_signing: plantillaPositions.filledDate,
       // Dynamic Status from Employee Record
@@ -139,6 +141,7 @@ export const getForm33Data = async (req: Request, res: Response): Promise<void> 
         salary_grade: row.salary_grade,
         monthly_salary: row.monthly_salary,
         department: row.department,
+        employee_name: formatFullName(row.last_name, row.first_name, row.middle_name, row.suffix),
         first_name: row.first_name,
         last_name: row.last_name,
         employee_id: row.employee_id,
@@ -191,7 +194,10 @@ export const getPSIPOPData = async (_req: Request, res: Response): Promise<void>
       monthly_salary: sql<string>`COALESCE(${salarySchedule.monthlySalary}, ${plantillaPositions.monthlySalary})`, 
       department: plantillaPositions.department,
       is_vacant: plantillaPositions.isVacant,
-      incumbent_name: sql<string>`CONCAT(${authentication.firstName}, ' ', ${authentication.lastName})`,
+      first_name: authentication.firstName,
+      last_name: authentication.lastName,
+      middle_name: authentication.middleName,
+      suffix: authentication.suffix,
       employee_id: authentication.employeeId,
       position_status: plantillaPositions.status
     })
@@ -205,9 +211,14 @@ export const getPSIPOPData = async (_req: Request, res: Response): Promise<void>
     ))
     .orderBy(asc(plantillaPositions.department), desc(plantillaPositions.salaryGrade));
     
+    const formattedRows = rows.map(r => ({
+        ...r,
+        incumbent_name: r.is_vacant ? '(VACANT)' : formatFullName(r.last_name, r.first_name, r.middle_name, r.suffix)
+    }));
+
     res.json({
       success: true,
-      data: rows,
+      data: formattedRows,
       meta: {
         form_name: 'PSI-POP',
         title: 'Personal Services Itemization and Plantilla of Personnel',

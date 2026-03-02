@@ -12,7 +12,7 @@ export interface EmployeePerformanceData {
   lastUpdate: string;
   status: string;
   selfRatingStatus: string;
-  [key: string]: any;
+  // Removed generic index signature
 }
 
 export interface PerformanceApiResponse {

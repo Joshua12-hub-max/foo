@@ -916,7 +916,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       { 
         id: Number(user.id), 
         employeeId: String(user.employeeId),
-        role: String(user.role).toLowerCase()
+        role: String(user.role)
       },
       jwtSecret,
       { expiresIn: '1d' }
@@ -1212,7 +1212,6 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
     if (updates.gender !== undefined) mappedUpdates.gender = updates.gender as "Male" | "Female";
     if (updates.civil_status !== undefined) mappedUpdates.civilStatus = updates.civil_status as "Single" | "Married" | "Widowed" | "Separated" | "Annulled";
     if (updates.nationality !== undefined) mappedUpdates.nationality = String(updates.nationality);
-    if (updates.citizenship !== undefined) mappedUpdates.citizenship = String(updates.citizenship);
     
     if (updates.address !== undefined) mappedUpdates.address = String(updates.address);
     if (updates.residential_address !== undefined) mappedUpdates.residentialAddress = String(updates.residential_address);

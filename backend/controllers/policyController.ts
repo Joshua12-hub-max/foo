@@ -3,10 +3,13 @@ import { db } from '../db/index.js';
 import { internalPolicies } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
 
+type PolicyCategory = "hours" | "tardiness" | "penalties" | "csc" | "leave" | "plantilla";
+
 export const getPolicies = async (req: Request, res: Response): Promise<void> => {
     try {
         const { category } = req.query;
-        const where = category ? eq(internalPolicies.category, category as any) : undefined;
+        const validCategory = category as PolicyCategory | undefined;
+        const where = validCategory ? eq(internalPolicies.category, validCategory) : undefined;
         
         const policies = await db.select().from(internalPolicies).where(where);
         

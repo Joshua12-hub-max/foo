@@ -1,16 +1,15 @@
 import { Request, Response } from 'express';
-import dns from 'dns';
-import fs from 'fs';
-import path from 'path';
 import { db } from '../db/index.js';
-import { recruitmentJobs, recruitmentApplicants, authentication } from '../db/schema.js';
+import { recruitmentJobs, recruitmentApplicants, authentication, recruitmentSecurityLogs } from '../db/schema.js';
 import { eq, and, sql, desc, or, inArray, isNull, getTableColumns } from 'drizzle-orm';
 import PDFDocument from 'pdfkit';
+import path from 'path';
+import fs from 'fs';
 import * as ics from 'ics';
 import { getTemplateForStage, replaceVariables, sendEmailNotification } from '../utils/emailHelpers.js';
 import { generateGoogleMeetLink } from '../services/meetingService.js';
 import { currentManilaDateTime } from '../utils/dateUtils.js';
-import { sanitizeInput } from '../utils/spamUtils.js';
+import { sanitizeInput, isDisposableEmail } from '../utils/spamUtils.js';
 import type { JobStatus, ApplicantStage, ApplicantStatus } from '../types/index.js';
 
 import {
@@ -23,7 +22,15 @@ import {
   assignInterviewerSchema,
   createStrictApplyJobSchema
 } from '../schemas/recruitmentSchema.js';
-import { notifyAdmins } from '../controllers/notificationController.js';
+import { 
+  verifyFileHeader, 
+  verifyEmailDomain, 
+  logSecurityViolation 
+} from '../utils/recruitmentUtils.js';
+import { 
+  checkDuplicateApplication, 
+  sendApplicationNotifications 
+} from '../services/recruitmentService.js';
 import type { AuthenticatedHandler } from '../types/index.js';
 
 function isApplicantStage(val: string): val is ApplicantStage {
@@ -120,14 +127,13 @@ export const getJob = async (req: Request, res: Response): Promise<void> => {
 
 export const applyJob = async (req: Request, res: Response): Promise<void> => {
   try {
-    const req_job_id = req.body.job_id;
+    const { job_id: req_job_id } = req.body;
     if (!req_job_id) {
         res.status(400).json({ success: false, message: 'job_id is required' });
         return;
     }
 
     const jobConfig = await db.query.recruitmentJobs.findFirst({ where: eq(recruitmentJobs.id, Number(req_job_id)) });
-
     if (!jobConfig) {
         res.status(404).json({ success: false, message: 'Job not found' });
         return;
@@ -142,240 +148,161 @@ export const applyJob = async (req: Request, res: Response): Promise<void> => {
     const parseResult = dynamicSchema.safeParse(req.body);
 
     if (!parseResult.success) {
-       console.error("Zod Validation Error:", parseResult.error.flatten().fieldErrors);
-       res.status(400).json({
-         success: false,
-         message: 'Validation failed',
-         errors: parseResult.error.flatten().fieldErrors
-       });
+       res.status(400).json({ success: false, message: 'Validation failed', errors: parseResult.error.flatten().fieldErrors });
        return;
     }
 
-        const { 
-          job_id, first_name, last_name, middle_name, suffix, email, phone_number, 
-          address, zip_code, permanent_address, permanent_zip_code, is_meycauayan_resident,
-          birth_date, birth_place, sex, civil_status, height, 
-          weight, blood_type, gsis_no, pagibig_no, philhealth_no, umid_no, philsys_id, tin_no, 
-          eligibility, eligibility_type, eligibility_date, eligibility_rating, eligibility_place, license_no, total_experience_years,
-          education, experience, skills, hp_field, h_token
-        } = parseResult.data;        // 100% Verification - File Integrity Check
-        const files = req.files as { [fieldname: string]: Express.Multer.File[] };
-        const resume = files?.['resume']?.[0];
-        const eligibilityCert = files?.['eligibility_cert']?.[0];
-        const photo = files?.['photo']?.[0];
-    
-        const verifyFileHeader = (file: Express.Multer.File) => {
-            const buffer = fs.readFileSync(file.path, { encoding: null });
-            const header = buffer.toString('hex', 0, 4);
-            const isPDF = header === '25504446'; // %PDF
-            const isDOCX = header === '504b0304'; // PK.. (ZIP)
-            const isIMG = header.startsWith('ffd8') || header.startsWith('8950'); // JPEG or PNG
-            return isPDF || isDOCX || isIMG;
-        };
-    
-        if (resume && !verifyFileHeader(resume)) {
-            res.status(400).json({ success: false, message: 'Invalid resume file integrity. Please upload a real PDF or Word document.' });
+    const { 
+      job_id, first_name, last_name, middle_name, suffix, email, phone_number, 
+      address, zip_code, permanent_address, permanent_zip_code, is_meycauayan_resident,
+      birth_date, birth_place, sex, civil_status, height, 
+      weight, blood_type, gsis_no, pagibig_no, philhealth_no, umid_no, philsys_id, tin_no, 
+      eligibility, eligibility_type, eligibility_date, eligibility_rating, eligibility_place, license_no, total_experience_years,
+      education, experience, skills, hp_field, website_url, h_token
+    } = parseResult.data;
+
+    // File Integrity Audit
+    const files = req.files as { [fieldname: string]: Express.Multer.File[] } | undefined;
+    const resume = files?.['resume']?.[0];
+    const eligibilityCert = files?.['eligibility_cert']?.[0];
+    const photo = files?.['photo']?.[0];
+
+    if (resume && !(await verifyFileHeader(resume.path))) {
+        res.status(400).json({ success: false, message: 'Invalid resume file integrity. Please upload a real PDF or Word document.' });
+        return;
+    }
+    if (eligibilityCert && !(await verifyFileHeader(eligibilityCert.path))) {
+        res.status(400).json({ success: false, message: 'Invalid eligibility certificate file integrity.' });
+        return;
+    }
+    if (photo && !(await verifyFileHeader(photo.path))) {
+        res.status(400).json({ success: false, message: 'Invalid photo file integrity. Please upload a real image.' });
+        return;
+    }
+
+    // CSC Compliance Check
+    const isCSCRequired = ['Permanent', 'Temporary', 'Probationary'].includes(jobConfig.employment_type || '');
+    if (isCSCRequired) {
+        if (!eligibility_type || !eligibility_date) {
+            res.status(400).json({ success: false, message: 'CSC/Permanent positions require precise Eligibility details (Type and Date).' });
             return;
         }
-        if (eligibilityCert && !verifyFileHeader(eligibilityCert)) {
-            res.status(400).json({ success: false, message: 'Invalid eligibility certificate file integrity.' });
+        if (!eligibilityCert) {
+            res.status(400).json({ success: false, message: 'CSC/Permanent positions require a Certificate of Eligibility upload.' });
             return;
         }
-        if (photo && !verifyFileHeader(photo)) {
-            res.status(400).json({ success: false, message: 'Invalid photo file integrity. Please upload a real image.' });
-            return;
-        }
-    
-        // CSC Strictness Check
-        const isCSC = jobConfig?.employment_type === 'Permanent' || jobConfig?.employment_type === 'Temporary' || jobConfig?.employment_type === 'Probationary';
-        
-        if (isCSC) {
-            if (!eligibility_type || !eligibility_date) {
-                res.status(400).json({ success: false, message: 'CSC/Permanent positions require precise Eligibility details (Type and Date).' });
-                return;
-            }
-            if (!eligibilityCert) {
-                res.status(400).json({ success: false, message: 'CSC/Permanent positions require a Certificate of Eligibility upload.' });
-                return;
-            }
-        }
-    
-        // 100% Verification - Honeypot Check (Dual-Layer Trap)
-        if (hp_field || parseResult.data.website_url) {
-            console.warn(`Spam bot detected (honeypot filled: ${hp_field ? 'Primary' : 'Secondary'}) from IP: ${req.ip}`);
-            // Silent Reject: Return success to mislead the bot, but do not save to database.
-            res.status(201).json({ success: true, message: 'Application submitted successfully' }); 
-            return;
-        }
-    
-        // 100% Verification - Human Token Audit
-        if (!h_token || !h_token.startsWith('v-')) {
-            res.status(400).json({ success: false, message: 'Security protocol failed. Please use a real browser.' });
-            return;
-        }
-    
-        // 100% Verification - Email Audit
-        const domain = email.split('@')[1];
-        const tempMailDomains = ['tempmail.com', '10minutemail.com', 'guerrillamail.com', 'sharklasers.com', 'dispostable.com'];
-        
-        if (tempMailDomains.includes(domain)) {
-            res.status(400).json({ success: false, message: 'Disposable email addresses are not allowed.' });
-            return;
-        }
-    
-        try {
-            const mxRecords = await dns.promises.resolveMx(domain);
-            if (!mxRecords || mxRecords.length === 0) {
-                res.status(400).json({ success: false, message: 'Invalid email domain. Please use a verified provider.' });
-                return;
-            }
-        } catch (e) {
-            res.status(400).json({ success: false, message: 'Could not verify email domain. Please check your email.' });
-            return;
-        }
-    
-        const cooldownDate = new Date();
-        cooldownDate.setMonth(cooldownDate.getMonth() - 3); // 3 months ago
-        const cooldownStr = cooldownDate.toISOString().split('T')[0];
-    
-        // Check for duplicates within the last 3 months
-        // We check by Email OR (Name + Birth Date) OR Government IDs
-        const duplicateConditions = [
-            eq(recruitmentApplicants.email, email),
-            and(
-                eq(recruitmentApplicants.first_name, first_name),
-                eq(recruitmentApplicants.last_name, last_name),
-                eq(recruitmentApplicants.middle_name, middle_name || ''),
-                eq(recruitmentApplicants.suffix, suffix || ''),
-                eq(recruitmentApplicants.birth_date, birth_date)
-            )
-        ];
-    
-        // Add Gov IDs to duplicate check if provided
-        if (tin_no) duplicateConditions.push(eq(recruitmentApplicants.tin_no, tin_no));
-        if (gsis_no) duplicateConditions.push(eq(recruitmentApplicants.gsis_no, gsis_no));
-        if (philsys_id) duplicateConditions.push(eq(recruitmentApplicants.philsys_id, philsys_id));
-    
-        const existingApplication = await db.query.recruitmentApplicants.findFirst({
-            where: and(
-                or(...duplicateConditions),
-                sql`${recruitmentApplicants.created_at} >= ${cooldownStr}`
-            )
+    }
+
+    // Spam Guard: Honeypot & Human Token
+    if (hp_field || website_url) {
+        await logSecurityViolation({
+            job_id: Number(job_id), first_name, last_name, email,
+            violation_type: 'Spam Bot', details: `Honeypot filled (${hp_field ? 'Primary' : 'Secondary'})`,
+            ip_address: req.ip || 'Unknown'
         });
-    
-        if (existingApplication) {
-            // Strict Enforcement - Same person, different name, same ID?
-            const isSameIDDifferentName = (existingApplication.tin_no === tin_no && tin_no) && 
-                                          (existingApplication.first_name !== first_name || existingApplication.last_name !== last_name);
-            
-            if (isSameIDDifferentName) {
-                console.warn(`Potential Identity Fraud: ID ${tin_no} shared between ${first_name} and ${existingApplication.first_name}`);
-                res.status(409).json({ success: false, message: 'Identity verification failed. This ID is already registered.' });
-                return;
-            }
-    
-            res.status(409).json({ success: false, message: 'You have recently applied. Please wait 3 months before submitting a new application.' });
+        res.status(201).json({ success: true, message: 'Application submitted successfully' }); 
+        return;
+    }
+
+    if (!h_token || !h_token.startsWith('v-')) {
+        await logSecurityViolation({
+            job_id: Number(job_id), first_name, last_name, email,
+            violation_type: 'Automated Script', details: `Missing/invalid human token '${h_token}'`,
+            ip_address: req.ip || 'Unknown'
+        });
+        res.status(400).json({ success: false, message: 'Security protocol failed. Please use a real browser.' });
+        return;
+    }
+
+    // Email Domain Audit
+    if (isDisposableEmail(email)) {
+        await logSecurityViolation({
+            job_id: Number(job_id), first_name, last_name, email,
+            violation_type: 'Disposable Email', details: `Blocked temporary mail provider`,
+            ip_address: req.ip || 'Unknown'
+        });
+        res.status(400).json({ success: false, message: 'Disposable email addresses are not allowed.' });
+        return;
+    }
+
+    if (!(await verifyEmailDomain(email))) {
+        await logSecurityViolation({
+            job_id: Number(job_id), first_name, last_name, email,
+            violation_type: 'Invalid Email Domain', details: `No MX records found`,
+            ip_address: req.ip || 'Unknown'
+        });
+        res.status(400).json({ success: false, message: 'Invalid email domain. Please use a verified provider.' });
+        return;
+    }
+
+    // Duplicate & Identity Fraud Check
+    const existingApplication = await checkDuplicateApplication({
+        first_name, last_name, middle_name, suffix, email, birth_date, tin_no, gsis_no, philsys_id
+    });
+
+    if (existingApplication) {
+        const isIdentityFraud = (existingApplication.tin_no === tin_no && tin_no) && 
+                                (existingApplication.first_name !== first_name || existingApplication.last_name !== last_name);
+        
+        if (isIdentityFraud) {
+            await logSecurityViolation({
+                job_id: Number(job_id), first_name, last_name, email,
+                violation_type: 'Identity Fraud', details: `ID ${tin_no} mismatch with name`,
+                ip_address: req.ip || 'Unknown'
+            });
+            res.status(409).json({ success: false, message: 'Identity verification failed. This ID is already registered.' });
             return;
         }
-    
-            const resume_path = resume ? resume.filename : null;
-            const eligibility_path = eligibilityCert ? eligibilityCert.filename : null;
-            const photo_path = photo ? photo.filename : null;
 
-            // Anti-Spam: Sanitize all user-submitted text fields (XSS prevention)
-            const safeFirstName = sanitizeInput(first_name);
-            const safeLastName = sanitizeInput(last_name);
-            const safeMiddleName = middle_name ? sanitizeInput(middle_name) : middle_name;
-            const safeSuffix = suffix ? sanitizeInput(suffix) : suffix;
-            const safeAddress = sanitizeInput(address);
-            const safePermanentAddress = permanent_address ? sanitizeInput(permanent_address) : permanent_address;
-            const safeBirthPlace = sanitizeInput(birth_place);
-            const safeEligibility = eligibility ? sanitizeInput(eligibility) : eligibility;
-            const safeEligibilityPlace = eligibility_place ? sanitizeInput(eligibility_place) : eligibility_place;
-            const safeEducation = education ? sanitizeInput(education) : education;
-            const safeExperience = experience ? sanitizeInput(experience) : experience;
-            const safeSkills = skills ? sanitizeInput(skills) : skills;
-
-            await db.insert(recruitmentApplicants).values({
-              job_id: Number(job_id),
-              first_name: safeFirstName,
-              last_name: safeLastName,
-              middle_name: safeMiddleName,
-              suffix: safeSuffix,
-              email,
-              phone_number,
-              address: safeAddress,
-              zip_code,
-              permanent_address: safePermanentAddress,
-              permanent_zip_code,
-              is_meycauayan_resident: is_meycauayan_resident ? 1 : 0,
-              birth_date,
-              birth_place: safeBirthPlace,
-              sex,
-              civil_status,
-              height,
-              weight,
-              blood_type,
-              gsis_no,
-              pagibig_no,
-              philhealth_no,
-              umid_no,
-              philsys_id,
-              tin_no,
-              eligibility: safeEligibility,
-              eligibility_type,
-              eligibility_date,
-              eligibility_rating,
-              eligibility_place: safeEligibilityPlace,
-              license_no,
-              eligibility_path,
-              total_experience_years,
-              education: safeEducation,
-              experience: safeExperience,
-              skills: safeSkills,
-              resume_path: resume_path,
-              photo_path: photo_path,
-              created_at: currentManilaDateTime()
-            });
-
-    // Send "Applied" email notification
-    try {
-      const job = await db.query.recruitmentJobs.findFirst({
-        where: eq(recruitmentJobs.id, Number(job_id)),
-        columns: { title: true }
-      });
-
-      const template = await getTemplateForStage(db, 'Applied');
-      if (template && job) {
-        const variables = {
-          applicant_first_name: first_name,
-          applicant_last_name: last_name,
-          job_title: job.title,
-          interview_date: '',
-          interview_link: '',
-          interview_platform: ''
-        };
-
-        const subject = replaceVariables(template.subject_template, variables);
-        const body = replaceVariables(template.body_template, variables);
-        await sendEmailNotification(email, subject, body);
-      }
-    } catch (emailError) {
-      console.error('Failed to send application email:', emailError);
-      // Continue execution, don't fail the request
+        res.status(409).json({ success: false, message: 'You have recently applied. Please wait 3 months before submitting a new application.' });
+        return;
     }
 
-    // Notify admins about the new application
-    try {
-      await notifyAdmins({
-        title: 'New Job Application',
-        message: `${first_name} ${last_name} has applied for a position.`,
-        type: 'recruitment',
-        referenceId: Number(job_id)
-      });
-    } catch (notifError) {
-      console.error('Failed to send admin notification:', notifError);
-    }
+    // Process Application
+    await db.insert(recruitmentApplicants).values({
+        job_id: Number(job_id),
+        first_name: sanitizeInput(first_name),
+        last_name: sanitizeInput(last_name),
+        middle_name: middle_name ? sanitizeInput(middle_name) : null,
+        suffix: suffix ? sanitizeInput(suffix) : null,
+        email,
+        phone_number,
+        address: sanitizeInput(address),
+        zip_code,
+        permanent_address: permanent_address ? sanitizeInput(permanent_address) : null,
+        permanent_zip_code,
+        is_meycauayan_resident: is_meycauayan_resident ? 1 : 0,
+        birth_date,
+        birth_place: sanitizeInput(birth_place),
+        sex,
+        civil_status,
+        height,
+        weight,
+        blood_type,
+        gsis_no,
+        pagibig_no,
+        philhealth_no,
+        umid_no,
+        philsys_id,
+        tin_no,
+        eligibility: eligibility ? sanitizeInput(eligibility) : null,
+        eligibility_type,
+        eligibility_date,
+        eligibility_rating,
+        eligibility_place: eligibility_place ? sanitizeInput(eligibility_place) : null,
+        license_no,
+        eligibility_path: eligibilityCert?.filename || null,
+        total_experience_years,
+        education: education ? sanitizeInput(education) : null,
+        experience: experience ? sanitizeInput(experience) : null,
+        skills: skills ? sanitizeInput(skills) : null,
+        resume_path: resume?.filename || null,
+        photo_path: photo?.filename || null,
+        created_at: currentManilaDateTime()
+    });
+
+    // Trigger Notifications
+    await sendApplicationNotifications({ job_id: Number(job_id), first_name, last_name, email });
 
     res.status(201).json({ success: true, message: 'Application submitted successfully' });
   } catch (error) {
@@ -384,6 +311,7 @@ export const applyJob = async (req: Request, res: Response): Promise<void> => {
     res.status(500).json({ success: false, message: 'Failed to submit application', error: err.message });
   }
 };
+
 
 export const getApplicants = async (req: Request, res: Response): Promise<void> => {
   try { 
@@ -463,7 +391,7 @@ export const getApplicants = async (req: Request, res: Response): Promise<void> 
       job_requirements: sql`COALESCE(${recruitmentJobs.requirements}, '')`,
       job_department: sql`COALESCE(${recruitmentJobs.department}, 'HR')`,
       job_status: sql`COALESCE(${recruitmentJobs.status}, 'Open')`,
-      interviewer_name: sql`CONCAT(COALESCE(${authentication.firstName}, ''), ' ', COALESCE(${authentication.lastName}, ''))`
+      interviewer_name: sql`TRIM(CONCAT(${authentication.lastName}, ', ', ${authentication.firstName}, IF(${authentication.middleName} IS NOT NULL && ${authentication.middleName} != '', CONCAT(' ', SUBSTRING(${authentication.middleName}, 1, 1), '.'), ''), IF(${authentication.suffix} IS NOT NULL && ${authentication.suffix} != '', CONCAT(' ', ${authentication.suffix}), '')))`
     })
     .from(recruitmentApplicants)
     .leftJoin(recruitmentJobs, eq(recruitmentApplicants.job_id, recruitmentJobs.id))
@@ -1117,4 +1045,65 @@ export const saveInterviewNotes = async (req: Request, res: Response): Promise<v
     console.error('Error saving interview notes:', error);
     res.status(500).json({ success: false, message: 'Failed to save interview notes' });
   }
+};
+
+export const getSecurityLogs = async (_req: Request, res: Response): Promise<void> => {
+    try {
+        const logs = await db.select({
+            id: recruitmentSecurityLogs.id,
+            job_id: recruitmentSecurityLogs.job_id,
+            first_name: recruitmentSecurityLogs.first_name,
+            last_name: recruitmentSecurityLogs.last_name,
+            email: recruitmentSecurityLogs.email,
+            violation_type: recruitmentSecurityLogs.violation_type,
+            details: recruitmentSecurityLogs.details,
+            ip_address: recruitmentSecurityLogs.ip_address,
+            created_at: recruitmentSecurityLogs.created_at,
+            job_title: recruitmentJobs.title
+        })
+        .from(recruitmentSecurityLogs)
+        .leftJoin(recruitmentJobs, eq(recruitmentSecurityLogs.job_id, recruitmentJobs.id))
+        .orderBy(desc(recruitmentSecurityLogs.created_at))
+        .limit(100);
+
+        res.status(200).json({ success: true, logs });
+    } catch (error) {
+        console.error('Failed to fetch security logs:', error);
+        res.status(500).json({ success: false, message: 'Failed to fetch security logs' });
+    }
+};
+
+export const deleteApplicant = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { id } = req.params;
+        const applicantId = Number(id);
+
+        if (isNaN(applicantId)) {
+            res.status(400).json({ success: false, message: 'Invalid applicant ID' });
+            return;
+        }
+
+        // Fetch the applicant to check their current stage
+        const [applicant] = await db.select({
+            stage: recruitmentApplicants.stage
+        }).from(recruitmentApplicants).where(eq(recruitmentApplicants.id, applicantId));
+
+        if (!applicant) {
+            res.status(404).json({ success: false, message: 'Applicant not found' });
+            return;
+        }
+
+        // Ensure only rejected applicants can be deleted (optional but good practice)
+        if (applicant.stage !== 'Rejected') {
+            res.status(400).json({ success: false, message: 'Only rejected/archived applicants can be permanently deleted.' });
+            return;
+        }
+
+        await db.delete(recruitmentApplicants).where(eq(recruitmentApplicants.id, applicantId));
+        
+        res.status(200).json({ success: true, message: 'Applicant permanently deleted' });
+    } catch (error) {
+        console.error('Failed to delete applicant:', error);
+        res.status(500).json({ success: false, message: 'Failed to delete applicant' });
+    }
 };

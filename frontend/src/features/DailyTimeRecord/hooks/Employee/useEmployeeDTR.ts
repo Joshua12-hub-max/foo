@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { attendanceApi } from "@/api/attendanceApi";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from '@tanstack/react-query';
+import { formatFullName } from '@/utils/nameUtils';
 import { 
   filterDTRData, 
   calculatePagination, 
@@ -14,6 +15,26 @@ import {
   EmployeeInfo
 } from "../../Utils/employeeDTRUtils";
 import { ITEMS_PER_PAGE, MESSAGES, DELAYS, EXPORT_HEADERS, STATUS_STYLES } from "../../Constants/employeeDTR.constant";
+
+interface RawDTRRecord {
+  id?: string | number;
+  record_id?: string | number;
+  date: string;
+  time_in?: string;
+  timeIn?: string;
+  time_out?: string;
+  timeOut?: string;
+  hours_worked?: string | number;
+  late_minutes?: number;
+  undertime_minutes?: number;
+  status?: string;
+  remarks?: string;
+  first_name?: string;
+  last_name?: string;
+  middle_name?: string | null;
+  suffix?: string | null;
+  employee_name?: string;
+}
 
 export const useEmployeeDTR = () => {
   const { user } = useAuth();
@@ -33,11 +54,18 @@ export const useEmployeeDTR = () => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   
   // Employee info for exports
-  const employeeInfo = useMemo<EmployeeInfo | null>(() => user ? {
+  const employeeInfo = useMemo<EmployeeInfo | null>(() => {
+    if (!user) return null;
+    
+    // Format name: LastName, FirstName M. Suffix
+    const fullName = formatFullName(user.lastName, user.firstName);
+
+    return {
       id: user.employeeId as string | number,
-      name: `${user.firstName} ${user.lastName}`,
+      name: fullName,
       department: user.department || 'N/A'
-  } : null, [user]);
+    };
+  }, [user]);
 
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -58,14 +86,18 @@ export const useEmployeeDTR = () => {
         const data = response.data.data || [];
         
         // Map data
-        return data.map((item: any): EmployeeDTRRecord => {
+        return (data as unknown as RawDTRRecord[]).map((item): EmployeeDTRRecord => {
             const timeIn = item.time_in || item.timeIn;
             const timeOut = item.time_out || item.timeOut;
             
+            // Normalize for Safari/cross-browser compatibility (YYYY-MM-DD HH:mm:ss -> YYYY-MM-DDTHH:mm:ss)
+            const safeTimeIn = timeIn ? timeIn.replace(' ', 'T') : null;
+            const safeTimeOut = timeOut ? timeOut.replace(' ', 'T') : null;
+            
             let hoursWorked = item.hours_worked || '0';
-            if (!item.hours_worked && timeIn && timeOut) {
-              const start = new Date(timeIn).getTime();
-              const end = new Date(timeOut).getTime();
+            if (!item.hours_worked && safeTimeIn && safeTimeOut) {
+              const start = new Date(safeTimeIn).getTime();
+              const end = new Date(safeTimeOut).getTime();
               let duration = (end - start) / (1000 * 60 * 60);
 
               // Policy: Deduct 1 hour break for shifts > 5 hours
@@ -76,13 +108,19 @@ export const useEmployeeDTR = () => {
               hoursWorked = Math.max(0, duration).toFixed(2);
             }
             return {
-              id: item.id || item.record_id,
+              id: (item.id || item.record_id || '') as string | number,
               date: item.date, // Assuming format YYYY-MM-DD
-              timeIn: timeIn ? new Date(timeIn).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--',
-              timeOut: timeOut ? new Date(timeOut).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--',
+              timeIn: safeTimeIn ? new Date(safeTimeIn).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--',
+              timeOut: safeTimeOut ? new Date(safeTimeOut).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--',
               hoursWorked: hoursWorked,
+              lateMinutes: item.late_minutes || 0,
+              undertimeMinutes: item.undertime_minutes || 0,
               status: item.status || 'Absent',
-              remarks: item.remarks || '-'
+              remarks: item.remarks || '-',
+              firstName: item.first_name,
+              lastName: item.last_name,
+              middleName: item.middle_name,
+              suffix: item.suffix
             };
         });
     },
@@ -101,6 +139,17 @@ export const useEmployeeDTR = () => {
     () => calculatePagination(filteredData, currentPage, ITEMS_PER_PAGE),
     [filteredData, currentPage]
   );
+
+  const totals = useMemo(() => {
+    const late = filteredData.reduce((sum, item) => sum + (item.lateMinutes || 0), 0);
+    const ut = filteredData.reduce((sum, item) => sum + (item.undertimeMinutes || 0), 0);
+    const hours = filteredData.reduce((sum, item) => sum + parseFloat(String(item.hoursWorked || 0)), 0);
+    return {
+      lateMinutes: late,
+      undertimeMinutes: ut,
+      hoursWorked: hours.toFixed(2)
+    };
+  }, [filteredData]);
 
   // Event handlers
   const handleFilterChange = useCallback((field: keyof EmployeeDTRFilters, value: string) => {
@@ -153,9 +202,9 @@ export const useEmployeeDTR = () => {
       const filename = `my_dtr_${today.replace(/\//g, '-')}.csv`;
       await exportToCSV(filteredData, EXPORT_HEADERS, employeeInfo, filename);
       setSuccessMessage(MESSAGES.CSV_EXPORTED);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Export to CSV failed:', err);
-      setErrorLocal(`${MESSAGES.ERROR_EXPORT_CSV}: ${err.message || 'Unknown error. Please try again.'}`);
+      setErrorLocal(`${MESSAGES.ERROR_EXPORT_CSV}: ${err instanceof Error ? err.message : 'Unknown error. Please try again.'}`);
     } finally {
       setLoadingType("");
     }
@@ -172,9 +221,9 @@ export const useEmployeeDTR = () => {
       await new Promise(resolve => setTimeout(resolve, DELAYS.EXPORT_DELAY));
       await exportToPDF(filteredData, EXPORT_HEADERS, employeeInfo, today, DELAYS.PDF_PRINT_DELAY);
       setSuccessMessage(MESSAGES.PDF_EXPORTED);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Export to PDF failed:', err);
-      setErrorLocal(`${MESSAGES.ERROR_EXPORT_PDF}: ${err.message || 'Unknown error. Please try again.'}`);
+      setErrorLocal(`${MESSAGES.ERROR_EXPORT_PDF}: ${err instanceof Error ? err.message : 'Unknown error. Please try again.'}`);
     } finally {
       setLoadingType("");
     }
@@ -233,6 +282,7 @@ export const useEmployeeDTR = () => {
     employeeInfo,
     filteredData,
     paginationData,
+    totals,
     
     // Setters
     setCurrentPage,

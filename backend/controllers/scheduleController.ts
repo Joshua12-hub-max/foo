@@ -1,50 +1,24 @@
 import { Request, Response } from 'express';
 import { db } from '../db/index.js';
 import { schedules, authentication } from '../db/schema.js';
-import { eq, sql } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { scheduleSchema, updateScheduleSchema } from '../schemas/scheduleSchema.js';
 import type { AuthenticatedRequest } from '../types/index.js';
 import { createNotification } from './notificationController.js';
+import { formatFullName } from '../utils/nameUtils.js';
 
-const DAYS_OF_WEEK = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-
-// Helper to map date to day name
-const getDayName = (dateStr: string) => {
-  const date = new Date(dateStr);
-  return DAYS_OF_WEEK[date.getDay()];
+const convertTo24Hour = (time12h: string): string => {
+  const [time, modifier] = time12h.split(' ');
+  if (!time || !modifier) return time12h;
+  let [hours, minutes] = time.split(':');
+  if (hours === '12') hours = '00';
+  if (modifier.toUpperCase() === 'PM') hours = String(parseInt(hours, 10) + 12);
+  return `${hours.padStart(2, '0')}:${minutes}:00`;
 };
 
-/**
- * Convert 12-hour time format to 24-hour format for MySQL TIME column
- * @param time12h - Time in "9:00 AM" or "5:00 PM" format
- * @returns Time in "HH:MM:SS" format (e.g., "09:00:00", "17:00:00")
- */
-const convertTo24Hour = (time12h: string): string => {
-  try {
-    if (!time12h) return '09:00:00';
-    
-    // If already in 24h format (e.g., "09:00" or "17:00:00"), return as-is with seconds
-    if (!time12h.toLowerCase().includes('am') && !time12h.toLowerCase().includes('pm')) {
-      const parts = time12h.split(':');
-      const hours = parts[0].padStart(2, '0');
-      const minutes = parts[1] || '00';
-      return `${hours}:${minutes}:00`;
-    }
-    
-    const [time, period] = time12h.split(' ');
-    let [hours, minutes] = time.split(':').map(Number);
-    
-    if (period?.toLowerCase() === 'pm' && hours !== 12) {
-      hours += 12;
-    } else if (period?.toLowerCase() === 'am' && hours === 12) {
-      hours = 0;
-    }
-    
-    return `${hours.toString().padStart(2, '0')}:${(minutes || 0).toString().padStart(2, '0')}:00`;
-  } catch (error) {
-    console.error('Error converting time:', time12h, error);
-    return '09:00:00'; // Default fallback
-  }
+const getDayName = (dateString: string): string => {
+  const date = new Date(dateString);
+  return date.toLocaleDateString('en-US', { weekday: 'long' });
 };
 
 export const getSchedules = async (_req: Request, res: Response) => {
@@ -57,13 +31,19 @@ export const getSchedules = async (_req: Request, res: Response) => {
       end_time: schedules.endTime,
       first_name: authentication.firstName,
       last_name: authentication.lastName,
-      employee_name: sql<string>`CONCAT(${authentication.firstName}, ' ', ${authentication.lastName})`,
+      middle_name: authentication.middleName,
+      suffix: authentication.suffix,
       department: authentication.department
     })
     .from(schedules)
     .leftJoin(authentication, eq(schedules.employeeId, authentication.employeeId));
     
-    res.json({ schedules: result });
+    const formattedSchedules = result.map(s => ({
+        ...s,
+        employee_name: formatFullName(s.last_name, s.first_name, s.middle_name, s.suffix)
+    }));
+
+    res.json({ schedules: formattedSchedules });
   } catch (error) {
     console.error('Get Schedules Error:', error);
     res.status(500).json({ message: 'Failed to fetch schedules' });
