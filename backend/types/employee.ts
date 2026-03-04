@@ -22,7 +22,7 @@ export interface EmployeeMapperInput {
   dateHired?: string | null;
   contractEndDate?: string | null;
   regularizationDate?: string | null;
-  isRegular?: number | null;
+  isRegular?: boolean | null;
   birthDate?: string | null;
   gender?: string | null;
   civilStatus?: string | null;
@@ -61,7 +61,7 @@ export interface EmployeeMapperInput {
   eligibilityNumber?: string | null;
   eligibilityDate?: string | null;
   highestEducation?: string | null;
-  yearsOfExperience?: number | null;
+  yearsOfExperience?: string | null;
   facebookUrl?: string | null;
   linkedinUrl?: string | null;
   twitterHandle?: string | null;
@@ -168,7 +168,7 @@ export interface EmployeeEducationResponse {
   field_of_study: string | null;
   start_date: string | null;
   end_date: string | null;
-  is_current: number;
+  is_current: boolean;
 }
 
 export interface EmployeeEmergencyContactResponse {
@@ -178,7 +178,7 @@ export interface EmployeeEmergencyContactResponse {
   phone_number: string;
   email: string | null;
   address: string | null;
-  is_primary: number;
+  is_primary: boolean;
 }
 
 export interface EmployeeCustomFieldResponse {

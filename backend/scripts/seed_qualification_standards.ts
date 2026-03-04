@@ -11,7 +11,7 @@ const qsData = [
     experienceYears: 0,
     trainingHours: 0,
     eligibilityRequired: "Career Service (Professional) Second Level Eligibility",
-    isActive: 1
+    isActive: true
   },
   {
     positionTitle: "Administrative Assistant II",
@@ -20,7 +20,7 @@ const qsData = [
     experienceYears: 1,
     trainingHours: 4,
     eligibilityRequired: "Career Service (Subprofessional) First Level Eligibility",
-    isActive: 1
+    isActive: true
   },
   {
     positionTitle: "Project Development Officer I",
@@ -29,7 +29,7 @@ const qsData = [
     experienceYears: 0,
     trainingHours: 0,
     eligibilityRequired: "Career Service (Professional) Second Level Eligibility",
-    isActive: 1
+    isActive: true
   },
   {
     positionTitle: "Information Technology Officer I",
@@ -38,7 +38,7 @@ const qsData = [
     experienceYears: 2,
     trainingHours: 8,
     eligibilityRequired: "Career Service (Professional) Second Level Eligibility",
-    isActive: 1
+    isActive: true
   },
   {
     positionTitle: "Computer Programmer II",
@@ -47,7 +47,7 @@ const qsData = [
     experienceYears: 1,
     trainingHours: 4,
     eligibilityRequired: "Career Service (Professional) Second Level Eligibility",
-    isActive: 1
+    isActive: true
   },
   {
     positionTitle: "Accountant III",
@@ -56,7 +56,7 @@ const qsData = [
     experienceYears: 2,
     trainingHours: 8,
     eligibilityRequired: "RA 1080 (CPA)",
-    isActive: 1
+    isActive: true
   },
   {
     positionTitle: "Nurse I",
@@ -65,7 +65,7 @@ const qsData = [
     experienceYears: 0,
     trainingHours: 0,
     eligibilityRequired: "RA 1080 (Nurse)",
-    isActive: 1
+    isActive: true
   },
   {
     positionTitle: "Engineer II",
@@ -74,7 +74,7 @@ const qsData = [
     experienceYears: 1,
     trainingHours: 4,
     eligibilityRequired: "RA 1080 (Engineer)",
-    isActive: 1
+    isActive: true
   },
   {
     positionTitle: "Human Resource Management Officer I",
@@ -83,7 +83,7 @@ const qsData = [
     experienceYears: 0,
     trainingHours: 0,
     eligibilityRequired: "Career Service (Professional) Second Level Eligibility",
-    isActive: 1
+    isActive: true
   },
   {
     positionTitle: "Budget Officer I",
@@ -92,7 +92,7 @@ const qsData = [
     experienceYears: 0,
     trainingHours: 0,
     eligibilityRequired: "Career Service (Professional) Second Level Eligibility",
-    isActive: 1
+    isActive: true
   },
   {
     positionTitle: "Planning Officer II",
@@ -101,7 +101,7 @@ const qsData = [
     experienceYears: 1,
     trainingHours: 4,
     eligibilityRequired: "Career Service (Professional) Second Level Eligibility",
-    isActive: 1
+    isActive: true
   },
   {
     positionTitle: "Records Officer I",
@@ -110,7 +110,7 @@ const qsData = [
     experienceYears: 0,
     trainingHours: 0,
     eligibilityRequired: "Career Service (Professional) Second Level Eligibility",
-    isActive: 1
+    isActive: true
   },
   {
     positionTitle: "Supply Officer II",
@@ -119,7 +119,7 @@ const qsData = [
     experienceYears: 1,
     trainingHours: 4,
     eligibilityRequired: "Career Service (Professional) Second Level Eligibility",
-    isActive: 1
+    isActive: true
   },
   {
     positionTitle: "Cashier I",
@@ -128,7 +128,7 @@ const qsData = [
     experienceYears: 0,
     trainingHours: 0,
     eligibilityRequired: "Career Service (Professional) Second Level Eligibility",
-    isActive: 1
+    isActive: true
   },
   {
     positionTitle: "Utility Worker I",
@@ -137,7 +137,7 @@ const qsData = [
     experienceYears: 0,
     trainingHours: 0,
     eligibilityRequired: "None required (MC 11, s. 1996 - Cat. III)",
-    isActive: 1
+    isActive: true
   },
   {
     positionTitle: "Driver II",
@@ -146,7 +146,7 @@ const qsData = [
     experienceYears: 0,
     trainingHours: 0,
     eligibilityRequired: "Professional Driver's License (MC 11, s. 1996 - Cat. II)",
-    isActive: 1
+    isActive: true
   },
   {
     positionTitle: "Security Guard II",
@@ -155,7 +155,7 @@ const qsData = [
     experienceYears: 1,
     trainingHours: 4,
     eligibilityRequired: "Security Guard License (MC 11, s. 1996 - Cat. II)",
-    isActive: 1
+    isActive: true
   },
   {
     positionTitle: "Data Entry Machine Operator II",
@@ -164,7 +164,7 @@ const qsData = [
     experienceYears: 1,
     trainingHours: 4,
     eligibilityRequired: "Career Service (Subprofessional) First Level Eligibility",
-    isActive: 1
+    isActive: true
   },
   {
     positionTitle: "Clerk III",
@@ -173,7 +173,7 @@ const qsData = [
     experienceYears: 1,
     trainingHours: 4,
     eligibilityRequired: "Career Service (Subprofessional) First Level Eligibility",
-    isActive: 1
+    isActive: true
   },
   {
     positionTitle: "Attorney III",
@@ -182,7 +182,7 @@ const qsData = [
     experienceYears: 1,
     trainingHours: 4,
     eligibilityRequired: "RA 1080 (Bar)",
-    isActive: 1
+    isActive: true
   }
 ];
 

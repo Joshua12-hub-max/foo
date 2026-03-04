@@ -173,7 +173,7 @@ export const verifyAdmin: MiddlewareFunction = (
     verifyToken(req, res, () => {
       try {
         const authReq = req as AuthenticatedRequest;
-        const userRole = authReq.user?.role?.toLowerCase() as UserRole | undefined;
+        const userRole = authReq.user?.role as UserRole | undefined;
         
         if (!userRole) {
           res.status(403).json({ 
@@ -183,7 +183,7 @@ export const verifyAdmin: MiddlewareFunction = (
           return;
         }
         
-        const adminRoles: UserRole[] = ['admin', 'hr', 'human resource' as UserRole];
+        const adminRoles: UserRole[] = ['Admin', 'Human Resource'];
         
         if (adminRoles.includes(userRole)) {
           next();
@@ -229,8 +229,8 @@ export const verifyOwnerOrAdmin: MiddlewareFunction = (
            return;
         }
 
-        const userRole = user.role?.toLowerCase();
-        const isAdmin = ['admin', 'hr', 'human resource'].includes(userRole || '');
+        const userRole = user.role;
+        const isAdmin = ['Admin', 'Human Resource'].includes(userRole || '');
         
         const targetIdString = req.params.id as string;
         const targetId = parseInt(targetIdString);
@@ -276,8 +276,8 @@ export const requireRole = (allowedRoles: readonly UserRole[]): MiddlewareFuncti
     throw new Error('[AUTH] requireRole: allowedRoles must be a non-empty array');
   }
 
-  // Pre-normalize roles for performance
-  const normalizedRoles = new Set(allowedRoles.map(role => role.toLowerCase()));
+  // Pre-normalize roles for performance (case-sensitive)
+  const normalizedRoles = new Set(allowedRoles);
 
   return (req: Request, res: Response, next: NextFunction): void => {
     try {
@@ -292,7 +292,7 @@ export const requireRole = (allowedRoles: readonly UserRole[]): MiddlewareFuncti
         return;
       }
 
-      const userRole = authReq.user.role?.toLowerCase();
+      const userRole = authReq.user.role;
       
       if (!userRole) {
         res.status(403).json({ 

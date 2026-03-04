@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { EDUCATION_LEVELS } from './recruitment';
 
 export const LoginSchema = z.object({
   identifier: z.string().min(1, "Email or Employee ID is required"),
@@ -68,7 +69,19 @@ export const RegisterSchema = z.object({
   agencyEmployeeNo: z.string().optional(),
 
   // Educational Background
-  educationalBackground: z.string().optional(),
+  educationalBackground: z.enum(EDUCATION_LEVELS).or(z.literal('')).optional(),
+  schoolName: z.string().optional(),
+  course: z.string().optional(),
+  yearGraduated: z.string().optional(),
+  highestEducation: z.string().optional(),
+  yearsOfExperience: z.string().optional(),
+  experience: z.string().optional(),
+  skills: z.string().optional(),
+
+  // Eligibility
+  eligibilityType: z.string().optional(),
+  eligibilityNumber: z.string().optional(),
+  eligibilityDate: z.string().optional(),
 
   // Social & Others
   facebookUrl: z.string().optional(),

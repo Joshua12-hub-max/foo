@@ -51,11 +51,29 @@ export const useJobApplication = (onSuccess?: () => void, onError?: (error: Erro
         mutationFn: async ({ id, data }: { id: string; data: JobApplicationSchema }) => {
             const formData = new FormData();
             formData.append('job_id', id);
+
+            // Fields that are frontend-only and should NOT be sent to the backend
+            const skipFields = new Set(['photo_preview', 'job_id']);
+            // File fields need special handling
+            const fileFields = new Set(['resume', 'photo', 'eligibility_cert']);
             
             Object.keys(data).forEach(key => {
+                if (skipFields.has(key)) return;
+
                 const value = data[key as keyof JobApplicationSchema];
-                if (value !== null && value !== undefined) {
-                     formData.append(key, value as string | Blob);
+                if (value === null || value === undefined) return;
+
+                if (fileFields.has(key)) {
+                    // Only append if it's actually a File object
+                    if (value instanceof File) {
+                        formData.append(key, value);
+                    }
+                } else if (typeof value === 'boolean') {
+                    formData.append(key, value ? 'true' : 'false');
+                } else if (typeof value === 'number') {
+                    formData.append(key, String(value));
+                } else if (typeof value === 'string' && value !== '') {
+                    formData.append(key, value);
                 }
             });
             

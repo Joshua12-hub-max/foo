@@ -41,7 +41,7 @@ interface ReviewItemInput {
 const getStats = async () => {
   const [totalEmployees] = await db.select({ count: count() })
     .from(authentication)
-    .where(sql`${authentication.role} != 'admin'`);
+    .where(sql`${authentication.role} != 'Admin'`);
 
   const [pendingReviews] = await db.select({ count: count() })
     .from(performanceReviews)
@@ -208,7 +208,7 @@ export const getEvaluationSummary = async (_req: Request, res: Response): Promis
       eq(authentication.id, performanceReviews.employeeId),
       eq(performanceReviews.id, maxReviewIdSubquery)
     ))
-    .where(sql`${authentication.role} != 'admin'`)
+    .where(sql`${authentication.role} != 'Admin'`)
     .orderBy(authentication.lastName);
 
     const formattedEmployees = employees.map(emp => {
@@ -315,7 +315,7 @@ export const getReviews = async (req: Request, res: Response): Promise<void> => 
     const authReq = req as AuthenticatedRequest;
     let { employee_id, cycle_id, status, department } = req.query;
 
-    if (authReq.user.role !== 'admin' && authReq.user.role !== 'Human Resource') {
+    if (authReq.user.role !== 'Admin' && authReq.user.role !== 'Human Resource') {
       employee_id = String(authReq.user.id);
     }
 
@@ -378,7 +378,7 @@ export const getReview = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    if (authReq.user.role !== 'admin' && authReq.user.role !== 'Human Resource') {
+    if (authReq.user.role !== 'Admin' && authReq.user.role !== 'Human Resource') {
       if (review.employeeId != authReq.user.id && review.reviewerId != authReq.user.id) {
         res.status(403).json({ success: false, message: 'Unauthorized access to this review' });
         return;
@@ -547,7 +547,7 @@ export const disagreeWithReview = async (req: Request, res: Response): Promise<v
 
     await db.update(performanceReviews)
       .set({
-        disagreed: 1,
+        disagreed: true,
         disagreeRemarks: disagree_remarks || null,
         employeeRemarks: disagree_remarks || null
       })
@@ -633,7 +633,7 @@ export const createReview = async (req: Request, res: Response): Promise<void> =
 
     // Add criteria
     const criteria = await db.select().from(performanceCriteria).where(or(
-      eq(performanceCriteria.isActive, 1),
+      eq(performanceCriteria.isActive, true),
       isNull(performanceCriteria.isActive)
     ));
 
@@ -676,7 +676,7 @@ export const updateReview = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
-    const isReviewer = ['admin', 'hr'].includes(authReq.user.role.toLowerCase()) || review.reviewerId == authReq.user.id;
+    const isReviewer = ['admin', 'human resource'].includes(authReq.user.role.toLowerCase()) || review.reviewerId == authReq.user.id;
     const isEmployee = review.employeeId == authReq.user.id;
 
     if (!isReviewer && !isEmployee) {
@@ -828,7 +828,7 @@ export const deleteReview = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
-    if (!['admin', 'hr'].includes(authReq.user.role.toLowerCase()) && review.reviewerId != authReq.user.id) {
+    if (!['admin', 'human resource'].includes(authReq.user.role.toLowerCase()) && review.reviewerId != authReq.user.id) {
       res.status(403).json({ success: false, message: 'Unauthorized to delete this review' });
       return;
     }
@@ -850,7 +850,7 @@ export const getCriteria = async (req: Request, res: Response): Promise<void> =>
     const conditions = [];
     
     if (criteria_type) conditions.push(eq(performanceCriteria.criteriaType, criteria_type as PerformanceCriteriaType));
-    if (is_active !== undefined) conditions.push(eq(performanceCriteria.isActive, is_active === 'true' ? 1 : 0));
+    if (is_active !== undefined) conditions.push(eq(performanceCriteria.isActive, is_active === 'true' ? true : false));
 
     const criteria = await db.select()
       .from(performanceCriteria)
@@ -1034,7 +1034,7 @@ export const submitSupervisorRating = async (req: Request, res: Response): Promi
   const { items, supervisor_remarks, overall_feedback } = req.body;
 
   try {
-    if (!['admin', 'hr', 'supervisor'].includes(authReq.user.role.toLowerCase())) {
+    if (!['admin', 'human resource', 'supervisor'].includes(authReq.user.role.toLowerCase())) {
       res.status(403).json({ success: false, message: 'Only supervisors can submit ratings' });
       return;
     }
@@ -1048,7 +1048,7 @@ export const submitSupervisorRating = async (req: Request, res: Response): Promi
       return;
     }
 
-    if (review.reviewerId != authReq.user.id && !['admin', 'hr'].includes(authReq.user.role.toLowerCase())) {
+    if (review.reviewerId != authReq.user.id && !['admin', 'human resource'].includes(authReq.user.role.toLowerCase())) {
       res.status(403).json({ success: false, message: 'Unauthorized: You are not the assigned reviewer for this employee.' });
       return;
     }
@@ -1105,7 +1105,7 @@ export const approveReview = async (req: Request, res: Response): Promise<void> 
   const { head_remarks, final_rating_score } = req.body;
 
   try {
-    if (!['admin', 'hr'].includes(authReq.user.role.toLowerCase())) {
+    if (!['admin', 'human resource'].includes(authReq.user.role.toLowerCase())) {
       res.status(403).json({ success: false, message: 'Only Head of Office can approve reviews' });
       return;
     }
@@ -1148,7 +1148,7 @@ export const finalizeReview = async (req: Request, res: Response): Promise<void>
   const authReq = req as AuthenticatedRequest;
 
   try {
-    if (!['admin', 'hr'].includes(authReq.user.role.toLowerCase())) {
+    if (!['admin', 'human resource'].includes(authReq.user.role.toLowerCase())) {
       res.status(403).json({ success: false, message: 'Only Admin/HR can finalize reviews' });
       return;
     }

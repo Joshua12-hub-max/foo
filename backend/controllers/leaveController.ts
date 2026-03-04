@@ -1,26 +1,50 @@
 import { Request, Response } from 'express';
 import { db } from '../db/index.js';
-import { holidays, leaveBalances, leaveLedger, lwopSummary, serviceRecords, tardinessSummary, leaveApplications, dailyTimeRecords, authentication } from '../db/schema.js';
+import { holidays, leaveBalances, leaveLedger, lwopSummary, serviceRecords, tardinessSummary, leaveApplications, dailyTimeRecords, authentication, internalPolicies } from '../db/schema.js';
 import { eq, and, between, ne, or, sql, desc, lt, lte, gte } from 'drizzle-orm';
 import { createNotification, notifyAdmins } from './notificationController.js';
 import { accrueCreditsForMonth } from '../services/leaveAccrualService.js';
 import type { AuthenticatedRequest } from '../types/index.js';
-import { type CreditType, type LeaveType, type PaymentStatus, type TransactionType, SPECIAL_LEAVES_NO_DEDUCTION, CROSS_CHARGE_MAP,
-  LEAVE_TO_CREDIT_MAP, VL_ADVANCE_FILING_DAYS, WORKING_DAYS_PER_MONTH, PATERNITY_LEAVE_DAYS, VAWC_LEAVE_DAYS, SPECIAL_LEAVE_WOMEN_DAYS,
-  MATERNITY_LEAVE_DAYS, ADOPTION_LEAVE_DAYS, SPECIAL_EMERGENCY_LEAVE_DAYS, FORCED_LEAVE_DAYS,
+import { type CreditType, type LeaveType, type PaymentStatus, type TransactionType, SPECIAL_LEAVES_NO_DEDUCTION,
+  LEAVE_TO_CREDIT_MAP, WORKING_DAYS_PER_MONTH,
 } from '../types/leave.types.js';
 import { applyLeaveSchema, rejectLeaveSchema, creditUpdateSchema, accrueCreditsSchema, validateVLAdvanceFiling,
-  requiresMedicalCertificate,
 } from '../schemas/leaveSchema.js';
 import { formatFullName } from '../utils/nameUtils.js';
 
 // ============================================================================
-// Utility Functions
+// Types & Interfaces
 // ============================================================================
 
-/**
- * Get holidays for a date range
- */
+interface LeavePolicyContent {
+  types: string[];
+  annualLimits: Record<string, number>;
+  advanceFilingDays: {
+    days: number;
+    appliesTo: string[];
+    description?: string;
+  };
+  sickLeaveWindow: {
+    maxDaysAfterReturn: number;
+    description?: string;
+  };
+  crossChargeMap: Record<string, CreditType>;
+  leaveToCreditMap: Record<string, CreditType>;
+  specialLeavesNoDeduction: string[];
+  requiredAttachments: Record<string, { condition: string; required: string }>;
+  forcedLeaveRule: {
+    minimumVLRequired: number;
+    description: string;
+  };
+  deemedApprovalGracePeriod: number;
+  deemedApproval: {
+    days: number;
+    description: string;
+    reference: string;
+  };
+}
+
+
 const getHolidaysInRange = async (startDate: string, endDate: string): Promise<string[]> => {
   try {
     const rows = await db.select({
@@ -68,6 +92,130 @@ const calculateWorkingDays = async (startDate: string, endDate: string): Promise
  * Get current year
  */
 const getCurrentYear = (): number => new Date().getFullYear();
+
+/**
+ * Process any pending leave applications that are "Deemed Approved" per CSC rules.
+ * Rule: Pending action for >= 5 working days.
+ */
+const processDeemedApprovedLeaves = async (): Promise<void> => {
+    try {
+        const policy = await getLeavePolicy();
+        if (!policy) return;
+
+        const gracePeriod = policy.deemedApprovalGracePeriod || 5;
+        const today = new Date();
+        const todayStr = today.toISOString().split('T')[0];
+
+        // 1. Fetch ALL pending leaves
+        const pendingLeaves = await db.query.leaveApplications.findMany({
+            where: eq(leaveApplications.status, 'Pending'),
+        });
+
+        if (pendingLeaves.length === 0) return;
+
+        // 2. Identify date range for holidays
+        let oldestDate = today;
+        for (const app of pendingLeaves) {
+            const createdDate = new Date(app.createdAt!);
+            if (createdDate < oldestDate) oldestDate = createdDate;
+        }
+        
+        const startDateStr = oldestDate.toISOString().split('T')[0];
+        const holidaysInRange = await getHolidaysInRange(startDateStr, todayStr);
+        const holidaySet = new Set(holidaysInRange);
+
+        // 3. Helper for working days within this context
+        const countWorkingDaysFast = (start: string, end: string): number => {
+            let count = 0;
+            const cur = new Date(start);
+            const stop = new Date(end);
+            while (cur <= stop) {
+                const dateStr = cur.toISOString().split('T')[0];
+                const dayOfWeek = cur.getDay();
+                if (dayOfWeek !== 0 && dayOfWeek !== 6 && !holidaySet.has(dateStr)) {
+                    count++;
+                }
+                cur.setDate(cur.getDate() + 1);
+            }
+            return count;
+        };
+
+        const approvedBy = 'SYSTEM (Deemed Approved)';
+
+        for (const application of pendingLeaves) {
+            const createdDate = new Date(application.createdAt!);
+            const createdStr = createdDate.toISOString().split('T')[0];
+            
+            const workingDaysPassed = countWorkingDaysFast(createdStr, todayStr);
+
+            if (workingDaysPassed >= gracePeriod) {
+                console.log(`[AUTO-APPROVE] Processing Leave ID ${application.id} (Employee: ${application.employeeId})`);
+                
+                const isSpecialLeave = policy.specialLeavesNoDeduction.includes(application.leaveType);
+
+                // Credit Deduction
+                if ((application.actualPaymentStatus === 'WITH_PAY' || application.actualPaymentStatus === 'PARTIAL') && !isSpecialLeave) {
+                    const primaryCreditType = policy.leaveToCreditMap[application.leaveType] as CreditType || 'Vacation Leave';
+                    if (application.crossChargedFrom) {
+                        await updateBalance(application.employeeId, application.crossChargedFrom as CreditType, -Number(application.daysWithPay), 'DEDUCTION', application.id, 'leave_application', `${application.leaveType} cross-charged (Deemed Approved)`, approvedBy);
+                    } else {
+                        await updateBalance(application.employeeId, primaryCreditType, -Number(application.daysWithPay), 'DEDUCTION', application.id, 'leave_application', `${application.leaveType} (Deemed Approved)`, approvedBy);
+                    }
+                }
+
+                // LWOP Tracking
+                if (Number(application.daysWithoutPay) > 0) {
+                    await updateLWOPSummary(application.employeeId, Number(application.daysWithoutPay));
+                }
+
+                // Status Update
+                await db.update(leaveApplications)
+                    .set({ status: 'Approved', approvedBy, approvedAt: sql`CURRENT_TIMESTAMP`, updatedAt: sql`CURRENT_TIMESTAMP` })
+                    .where(eq(leaveApplications.id, application.id));
+
+                // DTR Update
+                const dtrStart = new Date(application.startDate);
+                const dtrEnd = new Date(application.endDate);
+                const dtrCur = new Date(dtrStart);
+                while (dtrCur <= dtrEnd) {
+                    const dateStr = dtrCur.toISOString().split('T')[0];
+                    const dayOfWeek = dtrCur.getDay();
+                    if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+                        await db.insert(dailyTimeRecords).values({ employeeId: application.employeeId, date: dateStr, status: 'Leave' })
+                            .onDuplicateKeyUpdate({ set: { status: 'Leave', updatedAt: sql`CURRENT_TIMESTAMP` } });
+                    }
+                    dtrCur.setDate(dtrCur.getDate() + 1);
+                }
+
+                // Service Record
+                const eventType = Number(application.daysWithoutPay) > 0 ? 'LWOP' : 'Leave';
+                await logToServiceRecord(application.employeeId, eventType as 'LWOP' | 'Leave', String(application.startDate).split('T')[0], String(application.endDate).split('T')[0], application.leaveType, Number(application.workingDays), application.actualPaymentStatus !== 'WITHOUT_PAY', `${application.leaveType} - Deemed Approved`, application.id, 'leave_application', approvedBy);
+            }
+        }
+    } catch (error) {
+        console.error('[AUTO-APPROVE] Fatal Error:', error);
+    }
+};
+
+/**
+ * Get dynamic leave policy from database
+ */
+const getLeavePolicy = async (): Promise<LeavePolicyContent | null> => {
+  try {
+    const policy = await db.query.internalPolicies.findFirst({
+      where: eq(internalPolicies.category, 'leave')
+    });
+
+    if (!policy) return null;
+
+    return typeof policy.content === 'string' 
+      ? JSON.parse(policy.content) 
+      : policy.content as LeavePolicyContent;
+  } catch (error) {
+    console.error('Error fetching leave policy:', error);
+    return null;
+  }
+};
 
 /**
  * Get employee's current credit balance
@@ -208,7 +356,7 @@ const logToServiceRecord = async (
       endDate,
       leaveType,
       daysCount: daysCount.toString(),
-      isWithPay: isWithPay ? 1 : 0,
+      isWithPay: isWithPay ? true : false,
       remarks,
       referenceId,
       referenceType,
@@ -360,21 +508,22 @@ export const applyLeave = async (req: Request, res: Response): Promise<void> => 
       return;
     }
 
-    // Validate advance filing (5 days before)
-    const requiresAdvanceNotice = [
-      'Vacation Leave', 'Forced Leave', 'Adoption Leave', 'Special Privilege Leave',
-      'Solo Parent Leave', 'Special Leave Benefits for Women', 'Paternity Leave',
-      'Rehabilitation Leave', 'Wellness Leave'
-    ];
+    const policy = await getLeavePolicy();
+    if (!policy) {
+      res.status(500).json({ message: 'Internal Error: Leave policy not configured.' });
+      return;
+    }
 
-    if (requiresAdvanceNotice.includes(leaveType) && !validateVLAdvanceFiling(startDate)) {
+    // Validate advance filing
+    const advanceFiling = policy.advanceFilingDays;
+    if (advanceFiling.appliesTo.includes(leaveType) && !validateVLAdvanceFiling(startDate)) {
       res.status(400).json({
-        message: `${leaveType} must be filed at least ${VL_ADVANCE_FILING_DAYS} days in advance per CSC rules.`,
+        message: `${leaveType} must be filed at least ${advanceFiling.days} days in advance per policy.`,
       });
       return;
     }
 
-    // Validate Sick Leave (can be post-filed, but max 3 days upon return)
+    // Validate Sick Leave window
     if (leaveType === 'Sick Leave') {
       const start = new Date(startDate);
       const today = new Date();
@@ -382,268 +531,76 @@ export const applyLeave = async (req: Request, res: Response): Promise<void> => 
       const diffTime = today.getTime() - start.getTime();
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
       
-      if (diffDays > 3) { // Strict filing deadline upon return from work
+      const window = policy.sickLeaveWindow.maxDaysAfterReturn;
+      if (diffDays > window) {
         res.status(400).json({
-          message: 'Sick Leave must be filed immediately upon return to work or up to 3 days maximum.',
+          message: `Sick Leave must be filed within ${window} days of returning to work.`,
+        });
+        return;
+      }
+    }
+
+    // Check annual limits from policy
+    const annualLimit = policy.annualLimits[leaveType];
+    if (annualLimit !== undefined) {
+      const year = new Date(startDate).getFullYear();
+      
+      const usageResult = await db.select({ 
+        totalDays: sql<string>`sum(${leaveApplications.workingDays})` 
+      })
+      .from(leaveApplications)
+      .where(and(
+        eq(leaveApplications.employeeId, String(employeeId)),
+        eq(leaveApplications.leaveType, leaveType as LeaveType),
+        sql`YEAR(${leaveApplications.startDate}) = ${year}`,
+        ne(leaveApplications.status, 'Rejected'),
+        ne(leaveApplications.status, 'Cancelled')
+      ));
+      
+      const usedDays = Number(usageResult[0]?.totalDays || 0);
+      const newTotal = usedDays + workingDays;
+
+      if (newTotal > annualLimit) {
+        res.status(400).json({
+          message: `You have reached the annual limit of ${annualLimit} days for ${leaveType}. (Used: ${usedDays}, Requested: ${workingDays})`,
         });
         return;
       }
     }
 
     // Check SL medical certificate requirement (>= 5 days)
-    const needsMedCert = leaveType === 'Sick Leave' && requiresMedicalCertificate(workingDays);
+    // Check for mandatory attachments based on policy
+    let needsMedCert = false;
+    let requiredDocLabel = 'supporting document';
 
-    // 3. Enforce Special Privilege Leave limit (3 working days per year)
-    if (leaveType === 'Special Privilege Leave') {
-      const year = new Date(startDate).getFullYear();
-      
-      const splResult = await db.select({ 
-        totalDays: sql<string>`sum(${leaveApplications.workingDays})` 
-      })
-      .from(leaveApplications)
-      .where(and(
-        eq(leaveApplications.employeeId, String(employeeId)),
-        eq(leaveApplications.leaveType, 'Special Privilege Leave'),
-        sql`YEAR(${leaveApplications.startDate}) = ${year}`,
-        ne(leaveApplications.status, 'Rejected'),
-        ne(leaveApplications.status, 'Cancelled')
-      ));
-      
-      const usedDays = Number(splResult[0]?.totalDays || 0);
-      const newTotal = usedDays + workingDays;
+    if (policy.requiredAttachments) {
+      for (const [key, requirement] of Object.entries(policy.requiredAttachments)) {
+        const isSickLeaveRule = key.startsWith('sickLeave') && leaveType === 'Sick Leave';
+        const isSpecificTypeRule = key === leaveType.charAt(0).toLowerCase() + leaveType.slice(1).replace(/\s/g, '');
+        const isMatch = isSpecificTypeRule || isSickLeaveRule;
 
-      if (newTotal > 3) {
-        res.status(400).json({
-          message: `You have reached the annual limit of 3 Special Privilege Leave days. (Used: ${usedDays}, Requested: ${workingDays}, Remaining: ${Math.max(0, 3 - usedDays)})`,
-        });
-        return;
-      }
-    }
-
-    // 3.1 Enforce Forced Leave limit (5 working days per year)
-    if (leaveType === 'Forced Leave') {
-      const year = new Date(startDate).getFullYear();
-      
-      const flResult = await db.select({ 
-        totalDays: sql<string>`sum(${leaveApplications.workingDays})` 
-      })
-      .from(leaveApplications)
-      .where(and(
-         eq(leaveApplications.employeeId, String(employeeId)),
-         eq(leaveApplications.leaveType, 'Forced Leave'),
-         sql`YEAR(${leaveApplications.startDate}) = ${year}`,
-         ne(leaveApplications.status, 'Rejected'),
-         ne(leaveApplications.status, 'Cancelled')
-      ));
-      
-      const usedDays = Number(flResult[0]?.totalDays || 0);
-      const newTotal = usedDays + workingDays;
-
-      if (newTotal > FORCED_LEAVE_DAYS) {
-        res.status(400).json({
-          message: `You have reached the annual limit of ${FORCED_LEAVE_DAYS} Forced Leave days. (Used: ${usedDays}, Requested: ${workingDays}, Remaining: ${Math.max(0, FORCED_LEAVE_DAYS - usedDays)})`,
-        });
-        return;
-      }
-    }
-
-    // 3.2 Enforce Special Emergency Leave limit (5 working days per year)
-    if (leaveType === 'Special Emergency Leave') {
-      const year = new Date(startDate).getFullYear();
-      
-      const selResult = await db.select({ 
-        totalDays: sql<string>`sum(${leaveApplications.workingDays})` 
-      })
-      .from(leaveApplications)
-      .where(and(
-         eq(leaveApplications.employeeId, String(employeeId)),
-         eq(leaveApplications.leaveType, 'Special Emergency Leave'),
-         sql`YEAR(${leaveApplications.startDate}) = ${year}`,
-         ne(leaveApplications.status, 'Rejected'),
-         ne(leaveApplications.status, 'Cancelled')
-      ));
-      
-      const usedDays = Number(selResult[0]?.totalDays || 0);
-      const newTotal = usedDays + workingDays;
-
-      if (newTotal > SPECIAL_EMERGENCY_LEAVE_DAYS) {
-        res.status(400).json({
-          message: `You have reached the annual limit of ${SPECIAL_EMERGENCY_LEAVE_DAYS} Special Emergency Leave days. (Used: ${usedDays}, Requested: ${workingDays}, Remaining: ${Math.max(0, SPECIAL_EMERGENCY_LEAVE_DAYS - usedDays)})`,
-        });
-        return;
-      }
-    }
-
-    // 3.3 Enforce Adoption Leave limit (60 working days per year)
-    if (leaveType === 'Adoption Leave') {
-        const year = new Date(startDate).getFullYear();
-        
-        const adpResult = await db.select({ 
-          totalDays: sql<string>`sum(${leaveApplications.workingDays})` 
-        })
-        .from(leaveApplications)
-        .where(and(
-           eq(leaveApplications.employeeId, String(employeeId)),
-           eq(leaveApplications.leaveType, 'Adoption Leave'),
-           sql`YEAR(${leaveApplications.startDate}) = ${year}`,
-           ne(leaveApplications.status, 'Rejected'),
-           ne(leaveApplications.status, 'Cancelled')
-        ));
-        
-        const usedDays = Number(adpResult[0]?.totalDays || 0);
-        const newTotal = usedDays + workingDays;
-  
-        if (newTotal > ADOPTION_LEAVE_DAYS) {
-          res.status(400).json({
-            message: `You have reached the annual limit of ${ADOPTION_LEAVE_DAYS} Adoption Leave days. (Used: ${usedDays}, Requested: ${workingDays}, Remaining: ${Math.max(0, ADOPTION_LEAVE_DAYS - usedDays)})`,
-          });
-          return;
+        if (isMatch) {
+          if (isSickLeaveRule) {
+            if (workingDays >= 5) {
+              needsMedCert = true;
+              requiredDocLabel = requirement.required;
+            }
+          } else {
+            needsMedCert = true;
+            requiredDocLabel = requirement.required;
+          }
         }
-    }
-
-    // 4. Enforce Solo Parent Leave limit (7 working days per year)
-    if (leaveType === 'Solo Parent Leave') {
-      const year = new Date(startDate).getFullYear();
-      
-      const spResult = await db.select({ 
-        totalDays: sql<string>`sum(${leaveApplications.workingDays})` 
-      })
-      .from(leaveApplications)
-      .where(and(
-        eq(leaveApplications.employeeId, String(employeeId)),
-        eq(leaveApplications.leaveType, 'Solo Parent Leave'),
-        sql`YEAR(${leaveApplications.startDate}) = ${year}`,
-        ne(leaveApplications.status, 'Rejected'),
-        ne(leaveApplications.status, 'Cancelled')
-      ));
-      
-      const usedDays = Number(spResult[0]?.totalDays || 0);
-      const newTotal = usedDays + workingDays;
-
-      if (newTotal > 7) {
-        res.status(400).json({
-          message: `You have reached the annual limit of 7 Solo Parent Leave days. (Used: ${usedDays}, Requested: ${workingDays}, Remaining: ${Math.max(0, 7 - usedDays)})`,
-        });
-        return;
       }
     }
-
-    // 5. Enforce Paternity Leave limit (7 days per year)
-    if (leaveType === 'Paternity Leave') {
-      const year = new Date(startDate).getFullYear();
-      
-      const patResult = await db.select({ 
-        totalDays: sql<string>`sum(${leaveApplications.workingDays})` 
-      })
-      .from(leaveApplications)
-      .where(and(
-        eq(leaveApplications.employeeId, String(employeeId)),
-        eq(leaveApplications.leaveType, 'Paternity Leave'),
-        sql`YEAR(${leaveApplications.startDate}) = ${year}`,
-        ne(leaveApplications.status, 'Rejected'),
-        ne(leaveApplications.status, 'Cancelled')
-      ));
-      
-      const usedDays = Number(patResult[0]?.totalDays || 0);
-      const newTotal = usedDays + workingDays;
-
-      if (newTotal > PATERNITY_LEAVE_DAYS) {
-        res.status(400).json({
-          message: `You have reached the annual limit of ${PATERNITY_LEAVE_DAYS} Paternity Leave days. (Used: ${usedDays}, Requested: ${workingDays}, Remaining: ${Math.max(0, PATERNITY_LEAVE_DAYS - usedDays)})`,
-        });
-        return;
-      }
-    }
-
-    // 6. Enforce VAWC Leave limit (10 days per year)
-    if (leaveType === 'VAWC Leave') {
-      const year = new Date(startDate).getFullYear();
-      
-      const vawcResult = await db.select({ 
-        totalDays: sql<string>`sum(${leaveApplications.workingDays})` 
-      })
-      .from(leaveApplications)
-      .where(and(
-        eq(leaveApplications.employeeId, String(employeeId)),
-        eq(leaveApplications.leaveType, 'VAWC Leave'),
-        sql`YEAR(${leaveApplications.startDate}) = ${year}`,
-        ne(leaveApplications.status, 'Rejected'),
-        ne(leaveApplications.status, 'Cancelled')
-      ));
-      
-      const usedDays = Number(vawcResult[0]?.totalDays || 0);
-      const newTotal = usedDays + workingDays;
-
-      if (newTotal > VAWC_LEAVE_DAYS) {
-        res.status(400).json({
-          message: `You have reached the annual limit of ${VAWC_LEAVE_DAYS} VAWC Leave days. (Used: ${usedDays}, Requested: ${workingDays}, Remaining: ${Math.max(0, VAWC_LEAVE_DAYS - usedDays)})`,
-        });
-        return;
-      }
-    }
-
-    // 7. Enforce Special Leave Benefits for Women limit (60 days per year/instance typically per year/surgery)
-    if (leaveType === 'Special Leave Benefits for Women') {
-      const year = new Date(startDate).getFullYear();
-      
-      const womenResult = await db.select({ 
-        totalDays: sql<string>`sum(${leaveApplications.workingDays})` 
-      })
-      .from(leaveApplications)
-      .where(and(
-        eq(leaveApplications.employeeId, String(employeeId)),
-        eq(leaveApplications.leaveType, 'Special Leave Benefits for Women'),
-        sql`YEAR(${leaveApplications.startDate}) = ${year}`,
-        ne(leaveApplications.status, 'Rejected'),
-        ne(leaveApplications.status, 'Cancelled')
-      ));
-      
-      const usedDays = Number(womenResult[0]?.totalDays || 0);
-      const newTotal = usedDays + workingDays;
-
-      if (newTotal > SPECIAL_LEAVE_WOMEN_DAYS) {
-        res.status(400).json({
-          message: `You have reached the annual limit of ${SPECIAL_LEAVE_WOMEN_DAYS} days for Special Leave Benefits for Women. (Used: ${usedDays}, Requested: ${workingDays})`,
-        });
-        return;
-      }
-    }
-
-    // 8. Enforce Maternity Leave Duration (Max 105 days per request)
-    if (leaveType === 'Maternity Leave') {
-        const start = new Date(startDate);
-        const end = new Date(endDate);
-        const diffTime = Math.abs(end.getTime() - start.getTime());
-        const calendarDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // Inclusive
-
-        if (calendarDays > MATERNITY_LEAVE_DAYS) {
-             res.status(400).json({
-                message: `Maternity Leave cannot exceed ${MATERNITY_LEAVE_DAYS} calendar days. You requested ${calendarDays} days.`,
-            });
-            return;
-        }
-    }
-
-    // Proof requirements checking based on CGM Internal Policies
-    const needsAttachment = 
-      (leaveType === 'Sick Leave' && requiresMedicalCertificate(workingDays)) ||
-      leaveType === 'Maternity Leave' ||
-      leaveType === 'Special Leave Benefits for Women' ||
-      leaveType === 'VAWC Leave' ||
-      leaveType === 'Adoption Leave';
 
     // Validate attachment
-    if (needsAttachment && !req.file) {
-      let docType = 'supporting document';
-      if (leaveType === 'Sick Leave' || leaveType === 'Maternity Leave' || leaveType === 'Special Leave Benefits for Women') {
-        docType = 'medical certificate';
-      }
-      res.status(400).json({ message: `A valid ${docType} is strictly required for ${leaveType}.` });
+    if (needsMedCert && !req.file) {
+      res.status(400).json({ message: `A valid ${requiredDocLabel} is strictly required for ${leaveType}.` });
       return;
     }
 
     // Determine payment status
-    const isSpecialLeave = SPECIAL_LEAVES_NO_DEDUCTION.includes(leaveType);
+    const isSpecialLeave = policy.specialLeavesNoDeduction.includes(leaveType);
     let actualPaymentStatus: PaymentStatus = 'WITH_PAY';
     let daysWithPay = 0;
     let daysWithoutPay = 0;
@@ -651,7 +608,7 @@ export const applyLeave = async (req: Request, res: Response): Promise<void> => 
 
     if (isWithPay && !isSpecialLeave) {
       // Get credit type to deduct from
-      const primaryCreditType = LEAVE_TO_CREDIT_MAP[leaveType] as CreditType || leaveType as CreditType;
+      const primaryCreditType = policy.leaveToCreditMap[leaveType as keyof typeof policy.leaveToCreditMap] || leaveType as CreditType;
       const primaryBalance = await getEmployeeBalance(String(employeeId), primaryCreditType);
 
       if (primaryBalance >= workingDays) {
@@ -663,7 +620,7 @@ export const applyLeave = async (req: Request, res: Response): Promise<void> => 
         daysWithPay = primaryBalance;
 
         // Check cross-charging for remaining
-        const crossChargeType = CROSS_CHARGE_MAP[leaveType];
+        const crossChargeType = policy.crossChargeMap[leaveType as keyof typeof policy.crossChargeMap];
         if (crossChargeType) {
           const crossBalance = await getEmployeeBalance(String(employeeId), crossChargeType);
           const remaining = workingDays - primaryBalance;
@@ -684,7 +641,7 @@ export const applyLeave = async (req: Request, res: Response): Promise<void> => 
         }
       } else {
         // No primary credits, check cross-charging
-        const crossChargeType = CROSS_CHARGE_MAP[leaveType];
+        const crossChargeType = policy.crossChargeMap[leaveType as keyof typeof policy.crossChargeMap];
         if (crossChargeType) {
           const crossBalance = await getEmployeeBalance(String(employeeId), crossChargeType);
           if (crossBalance >= workingDays) {
@@ -724,7 +681,7 @@ export const applyLeave = async (req: Request, res: Response): Promise<void> => 
       startDate,
       endDate,
       workingDays: workingDays.toString(),
-      isWithPay: isWithPay ? 1 : 0,
+      isWithPay: isWithPay ? true : false,
       actualPaymentStatus,
       daysWithPay: daysWithPay.toString(),
       daysWithoutPay: daysWithoutPay.toString(),
@@ -849,7 +806,7 @@ export const getMyLeaves = async (req: Request, res: Response): Promise<void> =>
 };
 
 /**
- * Get all leave applications (admin)
+ * Get all leave applications (Admin)
  */
 export const getAllLeaves = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -860,64 +817,9 @@ export const getAllLeaves = async (req: Request, res: Response): Promise<void> =
     const status = (req.query.status as string) || '';
     const offset = (page - 1) * limit;
 
-    // --- DEEMED APPROVED AUTO-BYPASS (CGM Policy) ---
-    // Any leave pending for >= 5 days is automatically approved.
-    try {
-      const fiveDaysAgo = new Date();
-      fiveDaysAgo.setDate(fiveDaysAgo.getDate() - 5);
-      
-      const staleLeaves = await db.query.leaveApplications.findMany({
-        where: and(
-          eq(leaveApplications.status, 'Pending'),
-          lte(leaveApplications.createdAt, fiveDaysAgo.toISOString().slice(0, 19).replace('T', ' '))
-        )
-      });
-      
-      for (const application of staleLeaves) {
-        const approvedBy = 'SYSTEM (Deemed Approved)';
-        const isSpecialLeave = SPECIAL_LEAVES_NO_DEDUCTION.includes(application.leaveType);
-
-        // 1. Deduct credits
-        if ((application.actualPaymentStatus === 'WITH_PAY' || application.actualPaymentStatus === 'PARTIAL') && !isSpecialLeave) {
-          const primaryCreditType = LEAVE_TO_CREDIT_MAP[application.leaveType] as CreditType || 'Vacation Leave';
-          if (application.crossChargedFrom) {
-            await updateBalance(application.employeeId, application.crossChargedFrom as CreditType, -Number(application.daysWithPay), 'DEDUCTION', application.id, 'leave_application', `${application.leaveType} cross-charged (Deemed Approved)`, approvedBy);
-          } else {
-            await updateBalance(application.employeeId, primaryCreditType, -Number(application.daysWithPay), 'DEDUCTION', application.id, 'leave_application', `${application.leaveType} (Deemed Approved)`, approvedBy);
-          }
-        }
-        
-        // 2. Track LWOP
-        if (Number(application.daysWithoutPay) > 0) {
-          await updateLWOPSummary(application.employeeId, Number(application.daysWithoutPay));
-        }
-
-        // 3. Update Status
-        await db.update(leaveApplications)
-          .set({ status: 'Approved', approvedBy, approvedAt: sql`CURRENT_TIMESTAMP`, updatedAt: sql`CURRENT_TIMESTAMP` })
-          .where(eq(leaveApplications.id, application.id));
-
-        // 4. Update DTR
-        const startDate = new Date(application.startDate);
-        const endDate = new Date(application.endDate);
-        const currentDate = new Date(startDate);
-        while (currentDate <= endDate) {
-          const dateStr = currentDate.toISOString().split('T')[0];
-          const dayOfWeek = currentDate.getDay();
-          if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-            await db.insert(dailyTimeRecords).values({ employeeId: application.employeeId, date: dateStr, status: 'Leave' })
-              .onDuplicateKeyUpdate({ set: { status: 'Leave', updatedAt: sql`CURRENT_TIMESTAMP` } });
-          }
-          currentDate.setDate(currentDate.getDate() + 1);
-        }
-
-        // 5. Service Record
-        const eventType = Number(application.daysWithoutPay) > 0 ? 'LWOP' : 'Leave';
-        await logToServiceRecord(application.employeeId, eventType as 'LWOP' | 'Leave', String(application.startDate).split('T')[0], String(application.endDate).split('T')[0], application.leaveType, Number(application.workingDays), application.actualPaymentStatus !== 'WITHOUT_PAY', `${application.leaveType} - Deemed Approved`, application.id, 'leave_application', approvedBy);
-      }
-    } catch (autoErr) {
-      console.error('[AUTO-APPROVE] Error processing Deemed Approved leaves:', autoErr);
-    }
+    // --- DEEMED APPROVED AUTO-BYPASS (CSC Rule) ---
+    // Any leave pending for >= 5 working days is automatically approved.
+    await processDeemedApprovedLeaves();
     // --- END DEEMED APPROVED AUTO-BYPASS ---
 
     const conditions = [];
@@ -940,11 +842,16 @@ export const getAllLeaves = async (req: Request, res: Response): Promise<void> =
     const endDate = (req.query.endDate as string) || '';
     const employeeId = (req.query.employeeId as string) || ''; // Can be name or ID
 
-    if (startDate) {
-      conditions.push(gte(leaveApplications.startDate, startDate));
-    }
-    if (endDate) {
-      conditions.push(lte(leaveApplications.endDate, endDate));
+    if (startDate && endDate) {
+      // Overlap logic: application starts before report ends AND ends after report starts
+      conditions.push(and(
+        lte(leaveApplications.startDate, endDate),
+        gte(leaveApplications.endDate, startDate)
+      )); 
+    } else if (startDate) {
+      conditions.push(gte(leaveApplications.endDate, startDate));
+    } else if (endDate) {
+      conditions.push(lte(leaveApplications.startDate, endDate));
     }
     if (employeeId) {
        // Check if it matches ID or Name (since frontend sends Name often)
@@ -1037,7 +944,7 @@ export const processLeave = async (req: Request, res: Response): Promise<void> =
         recipientId: application.employeeId,
         senderId: adminId,
         title: 'Leave Request Processing',
-        message: 'Your leave request is being processed. Please check for the admin form.',
+        message: 'Your leave request is being processed. Please check for the Admin form.',
         type: 'leave_process',
         referenceId: parseInt(id),
       });
@@ -1100,11 +1007,14 @@ export const approveLeave = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
-    const isSpecialLeave = SPECIAL_LEAVES_NO_DEDUCTION.includes(application.leaveType);
+    const policy = await getLeavePolicy();
+    const isSpecialLeave = policy?.specialLeavesNoDeduction.includes(application.leaveType) ?? SPECIAL_LEAVES_NO_DEDUCTION.includes(application.leaveType);
 
     // Deduct credits if WITH_PAY and not special leave
     if ((application.actualPaymentStatus === 'WITH_PAY' || application.actualPaymentStatus === 'PARTIAL') && !isSpecialLeave) {
-      const primaryCreditType = LEAVE_TO_CREDIT_MAP[application.leaveType] as CreditType || 'Vacation Leave';
+      const primaryCreditType = (policy?.leaveToCreditMap[application.leaveType as keyof typeof policy.leaveToCreditMap] as CreditType) 
+        || (LEAVE_TO_CREDIT_MAP[application.leaveType] as CreditType) 
+        || 'Vacation Leave';
       
       if (application.crossChargedFrom) {
         // Cross-charging: deduct from fallback credit type
@@ -1310,7 +1220,7 @@ export const getMyCredits = async (req: Request, res: Response): Promise<void> =
 };
 
 /**
- * Get specific employee's credits (admin)
+ * Get specific employee's credits (Admin)
  */
 export const getEmployeeCredits = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -1350,7 +1260,7 @@ export const getEmployeeCredits = async (req: Request, res: Response): Promise<v
 };
 
 /**
- * Get all employee credits (admin)
+ * Get all employee credits (Admin)
  */
 export const getAllEmployeeCredits = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -1440,7 +1350,7 @@ export const getAllEmployeeCredits = async (req: Request, res: Response): Promis
 };
 
 /**
- * Update employee credit (admin)
+ * Update employee credit (Admin)
  */
 export const updateEmployeeCredit = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -1493,7 +1403,7 @@ export const updateEmployeeCredit = async (req: Request, res: Response): Promise
 };
 
 /**
- * Delete employee credit record (admin)
+ * Delete employee credit record (Admin)
  */
 export const deleteEmployeeCredit = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -1641,7 +1551,7 @@ export const getMyLedger = async (req: Request, res: Response): Promise<void> =>
 };
 
 /**
- * Get specific employee's ledger (admin)
+ * Get specific employee's ledger (Admin)
  */
 export const getEmployeeLedger = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -1707,7 +1617,7 @@ export const getHolidays = async (req: Request, res: Response): Promise<void> =>
 };
 
 /**
- * Add a holiday (admin)
+ * Add a holiday (Admin)
  */
 export const addHoliday = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -1740,7 +1650,7 @@ export const addHoliday = async (req: Request, res: Response): Promise<void> => 
 };
 
 /**
- * Delete a holiday (admin)
+ * Delete a holiday (Admin)
  */
 export const deleteHoliday = async (req: Request, res: Response): Promise<void> => {
   try {

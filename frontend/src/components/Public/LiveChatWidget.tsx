@@ -228,7 +228,7 @@ const LiveChatWidget = () => {
                                                 type="text" 
                                                 value={input}
                                                 onChange={(e) => setInput(e.target.value)}
-                                                onKeyPress={(e) => e.key === 'Enter' && handleSend()}
+                                                onKeyDown={(e) => e.key === 'Enter' && handleSend()}
                                                 placeholder="Message HR..."
                                                 className="w-full pl-5 pr-12 py-3.5 bg-[#1e1e1f] border border-[#444746] rounded-xl focus:ring-1 focus:ring-green-500/50 transition-all outline-none font-bold text-[13px] text-white placeholder:text-slate-500"
                                             />

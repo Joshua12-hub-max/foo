@@ -51,7 +51,7 @@ const updateEmployeeStatus = async (employeeId: number, newStatus: string): Prom
     
     if (emp && emp.itemNumber && emp.itemNumber !== 'N/A') {
       await db.update(plantillaPositions)
-        .set({ isVacant: 1 })
+        .set({ isVacant: true })
         .where(eq(plantillaPositions.itemNumber, emp.itemNumber));
     }
   }
@@ -315,7 +315,7 @@ export const createMemo = async (req: Request, res: Response): Promise<void> => 
       content,
       priority: priority as MemoPriority,
       effectiveDate: effective_date || null,
-      acknowledgmentRequired: acknowledgment_required ? 1 : 0,
+      acknowledgmentRequired: acknowledgment_required ? true : false,
       status: status as MemoStatus
     });
 
@@ -355,7 +355,7 @@ export const updateMemo = async (req: Request, res: Response): Promise<void> => 
     if (content) updates.content = content;
     if (priority) updates.priority = priority as MemoPriority;
     if (effective_date !== undefined) updates.effectiveDate = effective_date;
-    if (acknowledgment_required !== undefined) updates.acknowledgmentRequired = acknowledgment_required ? 1 : 0;
+    if (acknowledgment_required !== undefined) updates.acknowledgmentRequired = acknowledgment_required ? true : false;
     if (status) updates.status = status as MemoStatus;
 
     await db.update(employeeMemos)

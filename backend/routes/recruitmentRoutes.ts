@@ -49,6 +49,7 @@ router.post('/jobs', verifyAdmin, uploadGeneral.single('file'), handleMulterErro
 router.put('/jobs/:id', verifyAdmin, uploadGeneral.single('file'), handleMulterError, recruitmentController.updateJob as RequestHandler);
 router.delete('/jobs/:id', verifyAdmin, recruitmentController.deleteJob as RequestHandler);
 router.get('/applicants', verifyAdmin, recruitmentController.getApplicants as RequestHandler);
+router.get('/hired-by-duty', verifyAdmin, recruitmentController.getHiredByDuty as RequestHandler);
 router.get('/applicants/:id/pdf', verifyAdmin, recruitmentController.generateApplicationPDF as RequestHandler);
 router.put('/applicants/:id/stage', verifyAdmin, recruitmentController.updateApplicantStage as RequestHandler);
 router.delete('/applicants/:id', verifyAdmin, recruitmentController.deleteApplicant as RequestHandler);

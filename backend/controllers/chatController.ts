@@ -125,7 +125,7 @@ export const sendMessage = async (req: Request, res: Response): Promise<void> =>
       senderType: sender_type,
       senderId: sender_id,
       message: sanitizedMessage,
-      isRead: 0
+      isRead: false
     });
 
     // Update conversation's updated_at
@@ -158,7 +158,7 @@ export const getMessages = async (req: Request, res: Response): Promise<void> =>
     if (mark_read === 'true' && typeof reader === 'string' && isSenderType(reader)) {
         const sender_type_to_mark: SenderType = reader === 'Admin' ? 'Applicant' : 'Admin';
         await db.update(chatMessages)
-          .set({ isRead: 1 })
+          .set({ isRead: true })
           .where(and(
             eq(chatMessages.conversationId, Number(conversationId)),
             eq(chatMessages.senderType, sender_type_to_mark)

@@ -33,7 +33,13 @@ export interface HiredApplicant {
   permanent_zip_code: string | null;
   is_meycauayan_resident: number | null;
   education: string | null;
+  school_name: string | null;
+  course: string | null;
+  year_graduated: string | null;
   experience: string | null;
   skills: string | null;
+  total_experience_years: string | number | null;
   hired_date: string | null;
+  department?: string | null;
+  job_title?: string | null;
 }

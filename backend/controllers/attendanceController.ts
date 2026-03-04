@@ -153,7 +153,10 @@ export const getLogs = async (req: Request, res: Response): Promise<void> => {
       whereConditions.push(between(dailyTimeRecords.date, startDate, endDate));
     }
     if (department && department !== 'all') {
-      whereConditions.push(eq(departments.name, department));
+      whereConditions.push(or(
+        eq(departments.name, department),
+        eq(authentication.department, department)
+      ));
     }
     if (search) {
       const searchStr = `%${search}%`;
@@ -183,7 +186,7 @@ export const getLogs = async (req: Request, res: Response): Promise<void> => {
       last_name: authentication.lastName,
       middle_name: authentication.middleName,
       suffix: authentication.suffix,
-      department: departments.name,
+      department: sql<string>`COALESCE(${departments.name}, ${authentication.department}, 'N/A')`,
       duties: sql<string>`(SELECT schedule_title FROM schedules WHERE employee_id = ${dailyTimeRecords.employeeId} ORDER BY updated_at DESC LIMIT 1)`,
       correction_id: dtrCorrections.id,
       correction_status: dtrCorrections.status,

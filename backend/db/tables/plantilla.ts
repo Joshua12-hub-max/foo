@@ -1,4 +1,4 @@
-import { mysqlTable, varchar, int, date, timestamp, decimal, mysqlEnum, tinyint, primaryKey, json, unique, text, foreignKey, index } from 'drizzle-orm/mysql-core';
+import { mysqlTable, varchar, int, date, timestamp, decimal, mysqlEnum, boolean, primaryKey, json, unique, text, foreignKey, index } from 'drizzle-orm/mysql-core';
 import { departments } from './hr.js';
 
 export const qualificationStandards = mysqlTable("qualification_standards", {
@@ -10,7 +10,7 @@ export const qualificationStandards = mysqlTable("qualification_standards", {
 	trainingHours: int("training_hours").default(0),
 	eligibilityRequired: varchar("eligibility_required", { length: 255 }).notNull(),
 	competencyRequirements: text("competency_requirements"),
-	isActive: tinyint("is_active").default(1),
+	isActive: boolean("is_active").default(true),
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
 	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow(),
 },
@@ -29,7 +29,7 @@ export const plantillaPositions = mysqlTable("plantilla_positions", {
 	stepIncrement: int("step_increment").default(1),
 	department: varchar({ length: 100 }),
 	departmentId: int("department_id").references(() => departments.id, { onDelete: "set null" } ),
-	isVacant: tinyint("is_vacant").default(1),
+	isVacant: boolean("is_vacant").default(true),
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
 	incumbentId: int("incumbent_id"),
 	monthlySalary: decimal("monthly_salary", { precision: 12, scale: 2 }),
@@ -42,7 +42,7 @@ export const plantillaPositions = mysqlTable("plantilla_positions", {
 	abolishmentDate: date("abolishment_date", { mode: 'string' }),
 	qualificationStandardsId: int("qualification_standards_id"),
 	budgetSource: varchar("budget_source", { length: 100 }).default('Regular'),
-	isCoterminous: tinyint("is_coterminous").default(0),
+	isCoterminous: boolean("is_coterminous").default(false),
 	status: mysqlEnum(['Active','Abolished','Frozen']).default('Active'),
 	areaCode: varchar("area_code", { length: 50 }),
 	areaType: mysqlEnum("area_type", ['R','P','D','M','F','B']),

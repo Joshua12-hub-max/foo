@@ -3,6 +3,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { X, Loader2 } from 'lucide-react';
 import { useLeavePolicy } from '@/hooks/useLeavePolicy';
 import { addCreditSchema, AddCreditInput } from '@/schemas/creditsSchema';
+import Combobox from '@/components/Custom/Combobox';
 
 interface EmployeeOption {
   employee_id: string;
@@ -20,13 +21,15 @@ interface AddCreditModalProps {
 }
 
 const AddCreditModal = ({ isOpen, onClose, onSubmit, employees, isLoadingEmployees, isSubmitting }: AddCreditModalProps) => {
-  const { data: leaveTypes = [], isLoading: isLoadingPolicy } = useLeavePolicy();
+  const { data: policy, isLoading: isLoadingPolicy } = useLeavePolicy();
+  const creditTypes = policy ? Array.from(new Set(Object.values(policy.leaveToCreditMap))) : [];
 
   const {
     register,
-// ... (rest of hook usage)
     handleSubmit,
     reset,
+    setValue,
+    watch,
     formState: { errors }
   } = useForm<AddCreditInput>({
     resolver: zodResolver(addCreditSchema),
@@ -75,17 +78,16 @@ const AddCreditModal = ({ isOpen, onClose, onSubmit, employees, isLoadingEmploye
                 Loading employees...
               </div>
             ) : (
-              <select
-                {...register('employee_id')}
-                className={`w-full border ${errors.employee_id ? 'border-red-300' : 'border-gray-200'} rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-600/20 focus:border-gray-600 outline-none transition-all`}
-              >
-                <option value="">Select an employee...</option>
-                {employees.map((emp, index) => (
-                  <option key={`${emp.employee_id}-${index}`} value={emp.employee_id}>
-                    {emp.first_name} {emp.last_name} ({emp.employee_id})
-                  </option>
-                ))}
-              </select>
+              <Combobox
+                options={employees.map(emp => ({ 
+                  value: emp.employee_id, 
+                  label: `${emp.first_name} ${emp.last_name} (${emp.employee_id})` 
+                }))}
+                value={watch('employee_id') || ''}
+                onChange={(val) => setValue('employee_id', val, { shouldValidate: true })}
+                placeholder="Search and select employee..."
+                error={!!errors.employee_id}
+              />
             )}
             {errors.employee_id && (
               <p className="mt-1 text-xs text-red-500 font-medium">{errors.employee_id.message}</p>
@@ -97,18 +99,13 @@ const AddCreditModal = ({ isOpen, onClose, onSubmit, employees, isLoadingEmploye
             <label className="block text-sm font-semibold text-gray-700 mb-1.5">
               Credit Type <span className="text-red-500"></span>
             </label>
-            <select
-              {...register('creditType')}
-              disabled={isLoadingPolicy}
-              className={`w-full border ${errors.creditType ? 'border-red-300' : 'border-gray-200'} rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-600/20 focus:border-gray-600 outline-none transition-all`}
-            >
-              <option value="">
-                {isLoadingPolicy ? "Loading leave types..." : "Select credit type..."}
-              </option>
-              {leaveTypes.map((type: string) => (
-                <option key={type} value={type}>{type}</option>
-              ))}
-            </select>
+            <Combobox
+              options={creditTypes.map(type => ({ value: type, label: type }))}
+              value={watch('creditType') || ''}
+              onChange={(val) => setValue('creditType', val, { shouldValidate: true })}
+              placeholder={isLoadingPolicy ? "Loading policy..." : "Select credit type..."}
+              error={!!errors.creditType}
+            />
             {errors.creditType && (
               <p className="mt-1 text-xs text-red-500 font-medium">{errors.creditType.message}</p>
             )}

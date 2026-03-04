@@ -37,7 +37,63 @@ function isApplicantStage(val: string): val is ApplicantStage {
   return ['Applied', 'Screening', 'Initial Interview', 'Final Interview', 'Offer', 'Hired', 'Rejected'].includes(val);
 }
 
+export const getHiredByDuty: AuthenticatedHandler = async (req, res) => {
+  try {
+    const { duty } = req.query; // 'Standard' | 'Irregular Duties'
 
+    if (!duty || (duty !== 'Standard' && duty !== 'Irregular Duties')) {
+      res.status(400).json({ success: false, message: 'Invalid duty type. Must be Standard or Irregular Duties.' });
+      return;
+    }
+
+    // Mapping duty categories to the specific db employment_type enums
+    const standardTypes = ['Permanent', 'Full-time', 'Temporary', 'Probationary'] as const;
+    const irregularTypes = ['Job Order', 'Contractual', 'Casual', 'Coterminous', 'Part-time'] as const;
+    
+    // We assert targetTypes to any because Drizzle's inArray has strict literal typing 
+    // for this MySQL enum.
+    const targetTypes: any = duty === 'Standard' ? standardTypes : irregularTypes;
+
+    // Fetch hired applicants whose job corresponds to the target employment types,
+    // AND who DO NOT already exist in the authentication table (determined by applicant_id if we added one, 
+    // but typically matched by email since authentication doesn't explicitly store applicantId. 
+    // We will check by email or just fetch and let the frontend link).
+    
+    // For now we'll fetch all Hired applicants for these job types
+    // Let's use the query builder with joins
+    const results = await db.select({
+      applicant: recruitmentApplicants,
+      job: recruitmentJobs
+    })
+    .from(recruitmentApplicants)
+    .innerJoin(recruitmentJobs, eq(recruitmentApplicants.job_id, recruitmentJobs.id))
+    .where(
+      and(
+        eq(recruitmentApplicants.stage, 'Hired'),
+        inArray(recruitmentJobs.employment_type, targetTypes)
+      )
+    )
+    .orderBy(desc(recruitmentApplicants.hired_date));
+
+    // To prevent registering the same applicant twice, we should ideally exclude those whose emails 
+    // are already in the authentication table.
+    const allAuthEmailsRes = await db.select({ email: authentication.email }).from(authentication);
+    const existingEmails = new Set(allAuthEmailsRes.map(a => a.email.toLowerCase()));
+
+    const filteredApplicants = results
+      .filter(row => !existingEmails.has(row.applicant.email.toLowerCase()))
+      .map(row => ({
+        ...row.applicant,
+        job_title: row.job.title,
+        employment_type: row.job.employment_type
+      }));
+
+    res.status(200).json({ success: true, applicants: filteredApplicants });
+  } catch (error: any) {
+    console.error('Error fetching hired applicants by duty:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch hired applicants', error: error.message });
+  }
+};
 
 export const createJob: AuthenticatedHandler = async (req, res) => {
   try {
@@ -68,9 +124,9 @@ export const createJob: AuthenticatedHandler = async (req, res) => {
       application_email: application_email,
       status: jobStatus,
       attachment_path: attachmentPath,
-      require_civil_service: require_civil_service ? 1 : 0,
-      require_government_ids: require_government_ids ? 1 : 0,
-      require_education_experience: require_education_experience ? 1 : 0,
+      require_civil_service: require_civil_service ? true : false,
+      require_government_ids: require_government_ids ? true : false,
+      require_education_experience: require_education_experience ? true : false,
       posted_by: req.user.id,
       posted_at: postedAt,
       created_at: currentManilaDateTime()
@@ -140,9 +196,9 @@ export const applyJob = async (req: Request, res: Response): Promise<void> => {
     }
 
     const isPermanent = jobConfig.employment_type === 'Permanent';
-    const requireIds = isPermanent || jobConfig.require_government_ids === 1;
-    const requireCsc = isPermanent || jobConfig.require_civil_service === 1;
-    const requireEdu = isPermanent || jobConfig.require_education_experience === 1;
+    const requireIds = isPermanent || jobConfig.require_government_ids === true;
+    const requireCsc = isPermanent || jobConfig.require_civil_service === true;
+    const requireEdu = isPermanent || jobConfig.require_education_experience === true;
 
     const dynamicSchema = createStrictApplyJobSchema(Boolean(requireIds), Boolean(requireCsc), Boolean(requireEdu));
     const parseResult = dynamicSchema.safeParse(req.body);
@@ -271,7 +327,7 @@ export const applyJob = async (req: Request, res: Response): Promise<void> => {
         zip_code,
         permanent_address: permanent_address ? sanitizeInput(permanent_address) : null,
         permanent_zip_code,
-        is_meycauayan_resident: is_meycauayan_resident ? 1 : 0,
+        is_meycauayan_resident: is_meycauayan_resident ? true : false,
         birth_date,
         birth_place: sanitizeInput(birth_place),
         sex,
@@ -308,6 +364,7 @@ export const applyJob = async (req: Request, res: Response): Promise<void> => {
   } catch (error) {
     const err = error instanceof Error ? error : new Error('Unknown error');
     console.error('Error in applyJob:', err.message);
+    console.error('Full stack:', err.stack);
     res.status(500).json({ success: false, message: 'Failed to submit application', error: err.message });
   }
 };
@@ -553,9 +610,9 @@ export const updateJob = async (req: Request, res: Response): Promise<void> => {
       status, 
       employment_type, 
       application_email: application_email,
-      require_civil_service: typeof require_civil_service !== 'undefined' ? (require_civil_service ? 1 : 0) : undefined,
-      require_government_ids: typeof require_government_ids !== 'undefined' ? (require_government_ids ? 1 : 0) : undefined,
-      require_education_experience: typeof require_education_experience !== 'undefined' ? (require_education_experience ? 1 : 0) : undefined,
+      require_civil_service: typeof require_civil_service !== 'undefined' ? (require_civil_service ? true : false) : undefined,
+      require_government_ids: typeof require_government_ids !== 'undefined' ? (require_government_ids ? true : false) : undefined,
+      require_education_experience: typeof require_education_experience !== 'undefined' ? (require_education_experience ? true : false) : undefined,
       updated_at: currentManilaDateTime()
     };
 
@@ -616,7 +673,7 @@ export const getPotentialInterviewers = async (_req: Request, res: Response): Pr
     job_title: authentication.jobTitle
   })
   .from(authentication)
-  .where(inArray(authentication.role, ['admin', 'employee']))
+  .where(inArray(authentication.role, ['Admin', 'Employee']))
   .orderBy(authentication.firstName);
   
   res.json(users); 

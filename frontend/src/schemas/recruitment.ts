@@ -1,5 +1,17 @@
 import { z } from 'zod';
 
+export const EDUCATION_LEVELS = [
+  "Elementary School Graduate",
+  "High School Graduate",
+  "Senior High School Graduate",
+  "Vocational / Technical Course",
+  "Some College Units",
+  "College Graduate (Bachelor's Degree)",
+  "Some Graduate Studies (Master's)",
+  "Master's Degree Graduate",
+  "Some Doctoral Studies",
+  "Doctorate Degree Graduate"
+] as const;
 
 export const jobApplicationSchema = z.object({
   job_id: z.string().or(z.number()).optional(),
@@ -20,6 +32,7 @@ export const jobApplicationSchema = z.object({
   height: z.string().or(z.number()).optional(),
   weight: z.string().or(z.number()).optional(),
   blood_type: z.enum(['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'none']),
+  nationality: z.string().optional().default('Filipino'),
   
   // Residency Format matching Registration
   is_meycauayan_resident: z.boolean(),
@@ -64,7 +77,10 @@ export const jobApplicationSchema = z.object({
 
   // Background
   total_experience_years: z.string().or(z.number()).optional(),
-  education: z.string().optional(),
+  education: z.enum(EDUCATION_LEVELS).or(z.literal('')).optional(),
+  school_name: z.string().optional(),
+  course: z.string().optional(),
+  year_graduated: z.string().optional(),
   experience: z.string().optional(),
   skills: z.string().optional(),
 
@@ -103,7 +119,7 @@ export const createDynamicJobApplicationSchema = (
     
     eligibility_type: needCsc ? z.enum(['csc_prof', 'csc_sub', 'ra_1080', 'special_laws', 'drivers_license', 'tesda', 'others']) : jobApplicationSchema.shape.eligibility_type,
     
-    education: needEdu ? z.string().min(1, 'Academic background is required') : z.string().optional(),
+    education: needEdu ? z.enum(EDUCATION_LEVELS) : jobApplicationSchema.shape.education,
     experience: needEdu ? z.string().min(1, 'Professional experience is required') : z.string().optional(),
     skills: needEdu ? z.string().min(1, 'Relevant skills are required') : z.string().optional(),
   });

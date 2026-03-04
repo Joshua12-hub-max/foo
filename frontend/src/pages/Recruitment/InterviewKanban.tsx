@@ -1,4 +1,3 @@
-import React from 'react';
 import { useUIStore } from '@/stores';
 import { useToastStore } from '@/stores';
 import { KanbanSkeleton } from '../../components/Custom/Shared';

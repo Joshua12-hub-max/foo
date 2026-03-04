@@ -16,6 +16,7 @@ export const CREDIT_TYPES = [
   'Paternity Leave',
   'Solo Parent Leave',
   'Study Leave',
+  'Adoption Leave',
 ] as const;
 
 export type CreditType = typeof CREDIT_TYPES[number];
@@ -35,6 +36,7 @@ export const LEAVE_TYPES = [
   'Rehabilitation Leave',
   'Special Leave Benefits for Women',
   'Wellness Leave',
+  'Adoption Leave',
 ] as const;
 
 export type LeaveType = typeof LEAVE_TYPES[number];
@@ -334,6 +336,7 @@ export const SPECIAL_LEAVES_NO_DEDUCTION: LeaveType[] = [
   'Paternity Leave',
   'Solo Parent Leave',
   'Special Leave Benefits for Women',
+  'Adoption Leave',
 ];
 
 /** Cross-charging rules: SL can use VL, VL cannot use SL */

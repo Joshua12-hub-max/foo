@@ -185,7 +185,7 @@ export const recalculateBudgetUtilization = async (req: Request, res: Response):
     .from(plantillaPositions)
     .where(and(
       eq(plantillaPositions.department, department),
-      eq(plantillaPositions.isVacant, 0),
+      eq(plantillaPositions.isVacant, false),
       eq(plantillaPositions.status, 'Active')
     ));
 

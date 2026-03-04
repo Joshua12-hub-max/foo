@@ -66,12 +66,12 @@ async function seedPlantillaTranche2() {
                 circularNumber: 'NBC 579',
                 effectiveDate: '2024-01-01',
                 dateIssued: '2024-01-01',
-                isActive: 1, // Set as Active
+                isActive: true, // Set as Active
                 applicableTo: 'Civilian Government Personnel'
             });
         } else {
              // Ensure it is active
-             await tx.update(salaryTranches).set({ isActive: 1 }).where(eq(salaryTranches.trancheNumber, 2));
+             await tx.update(salaryTranches).set({ isActive: true }).where(eq(salaryTranches.trancheNumber, 2));
         }
 
         // Deactivate others
@@ -135,7 +135,7 @@ async function seedPlantillaTranche2() {
                      department: pos.department,
                      departmentId: deptMap.get(pos.department),
                      monthlySalary: salary?.monthlySalary || '0',
-                     isVacant: 1,
+                     isVacant: true,
                      status: 'Active'
                  });
              }
@@ -183,7 +183,7 @@ async function seedPlantillaTranche2() {
                 }).where(eq(authentication.id, employee.id));
 
                 await tx.update(plantillaPositions).set({
-                    isVacant: 0,
+                    isVacant: false,
                     incumbentId: employee.id,
                     stepIncrement: 2,
                     monthlySalary: step2Salary?.monthlySalary,

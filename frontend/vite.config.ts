@@ -20,7 +20,6 @@ export default defineConfig({
     strictPort: true, // Forces app to crash if 5173 is taken, preventing silent port switches that break Google Auth
     headers: {
       'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
-      'Cross-Origin-Embedder-Policy': 'require-corp',
     },
   },
   // Exclude large libraries from pre-bundling - they load on-demand only

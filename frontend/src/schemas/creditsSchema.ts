@@ -21,4 +21,11 @@ export const CREDIT_TYPES = [
   'Maternity Leave',
   'Paternity Leave',
   'Solo Parent Leave',
+  'Study Leave',
+  'Adoption Leave',
+  'Special Emergency Leave',
+  'VAWC Leave',
+  'Rehabilitation Leave',
+  'Special Leave Benefits for Women',
+  'Wellness Leave',
 ];

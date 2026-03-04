@@ -481,7 +481,7 @@ export const updateCorrectionStatus = async (req: Request, res: Response): Promi
 
   const { ids, status, rejectionReason } = validation.data.body;
   
-  const adminId = (req as AuthenticatedRequest).user?.employeeId || 'ADMIN';
+  const adminId = (req as AuthenticatedRequest).user?.employeeId || 'System';
 
   try {
       for (const id of ids) {

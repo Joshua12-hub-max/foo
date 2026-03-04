@@ -22,44 +22,24 @@ export interface InquirySubmission {
 
 export const inquiryApi = {
   
-  submit: async (data: InquirySubmission): Promise<AxiosResponse<{ success: boolean; message: string }>> => {
-    try {
-      return await api.post('/inquiries', data);
-    } catch (error) {
-      throw error;
-    }
-  },
+  submit: async (data: InquirySubmission): Promise<AxiosResponse<{ success: boolean; message: string }>> =>
+    api.post('/inquiries', data),
 
   /**
    * Admin: Get all inquiries
    */
-  getAll: async (status?: string): Promise<AxiosResponse<{ success: boolean; inquiries: Inquiry[] }>> => {
-    try {
-      return await api.get('/inquiries', { params: { status } });
-    } catch (error) {
-      throw error;
-    }
-  },
+  getAll: async (status?: string): Promise<AxiosResponse<{ success: boolean; inquiries: Inquiry[] }>> =>
+    api.get('/inquiries', { params: { status } }),
 
   /**
    * Admin: Update inquiry status
    */
-  updateStatus: async (id: number, data: { status: string; admin_notes?: string }): Promise<AxiosResponse<{ success: boolean; message: string }>> => {
-    try {
-      return await api.patch(`/inquiries/${id}/status`, data);
-    } catch (error) {
-      throw error;
-    }
-  },
+  updateStatus: async (id: number, data: { status: string; admin_notes?: string }): Promise<AxiosResponse<{ success: boolean; message: string }>> =>
+    api.patch(`/inquiries/${id}/status`, data),
 
   /**
    * Admin: Delete an inquiry
    */
-  delete: async (id: number): Promise<AxiosResponse<{ success: boolean; message: string }>> => {
-    try {
-      return await api.delete(`/inquiries/${id}`);
-    } catch (error) {
-      throw error;
-    }
-  }
+  delete: async (id: number): Promise<AxiosResponse<{ success: boolean; message: string }>> =>
+    api.delete(`/inquiries/${id}`)
 };

@@ -58,7 +58,7 @@ export const notifyAdmins = async ({
   try {
     const admins = await db.select({ employeeId: authentication.employeeId })
       .from(authentication)
-      .where(inArray(authentication.role, ['admin', 'hr', 'supervisor']));
+      .where(inArray(authentication.role, ['Admin', 'Human Resource', 'supervisor']));
 
     const notificationPromises = admins.map((admin) =>
       createNotification({

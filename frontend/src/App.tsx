@@ -5,6 +5,7 @@ import ErrorBoundary from "@components/ErrorBoundary";
 //lazy load authentication
 const Login = lazy(() => import("./Authentication/Login"));
 const Register = lazy(() => import("./Authentication/Register"));
+const SetupPortal = lazy(() => import("./Authentication/SetupPortal"));
 const VerifyAccount = lazy(() => import("./Authentication/VerifyAccount"));
 const ForgotPassword = lazy(() => import("./Authentication/ForgotPassword"));
 const ResetPassword = lazy(() => import("./Authentication/ResetPassword"));
@@ -41,6 +42,7 @@ const EmployeeMemos = lazy(() => import("./pages/EmployeeManagementAdmin/AdminMe
 const PlantillaManagement = lazy(() => import("./pages/EmployeeManagementAdmin/PlantillaManagementPage"));
 const OrgChart = lazy(() => import("./pages/EmployeeManagementAdmin/OrgChartPage"));
 const CentralizedManagement = lazy(() => import("./pages/EmployeeManagementAdmin/EmployeeManagementHub"));
+const AdminRegister = lazy(() => import("./pages/EmployeeManagementAdmin/AdminRegister"));
 
 // Recruitment Pages
 const JobPosting = lazy(() => import("./pages/Recruitment/JobPosting"));
@@ -233,21 +235,21 @@ export default function App() {
 
         {/* Public routes */}
         <Route
-          path="/login"
+          path="/setup-portal"
           element={
             <PublicRoute>
               <Suspense fallback={<PageLoader />}>
-                <Login />
+                <SetupPortal />
               </Suspense>
             </PublicRoute>
           }
         />
         <Route
-          path="/register"
+          path="/login"
           element={
             <PublicRoute>
               <Suspense fallback={<PageLoader />}>
-                <Register />
+                <Login />
               </Suspense>
             </PublicRoute>
           }
@@ -368,6 +370,14 @@ export default function App() {
             element={
               <Suspense fallback={<PageLoader />}>
                 <EmployeeList />
+              </Suspense>
+            }
+          />
+          <Route
+            path="register"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <AdminRegister />
               </Suspense>
             }
           />

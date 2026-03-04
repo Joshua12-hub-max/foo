@@ -4,13 +4,13 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@/lib/zodResolver';
 import { submitLeaveRequestSchema, SubmitLeaveRequestSchema } from '@/schemas/leave';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { LEAVE_TYPES, SPECIAL_LEAVES_NO_DEDUCTION, CROSS_CHARGE_MAP, LEAVE_TO_CREDIT_MAP } from '@/components/Custom/Timekeeping/LeaveRequestComponents/Employee/Modals/constants/modalConstants';
 import ModalHeader from '@/components/Custom/Timekeeping/LeaveRequestComponents/Employee/Modals/components/ModalHeader';
 import FormInput from '@/components/Custom/Timekeeping/LeaveRequestComponents/Employee/Modals/components/FormInput';
 import DateInput from '@/components/Custom/Timekeeping/LeaveRequestComponents/Employee/Modals/components/DateInput';
 import FileUpload from '@/components/Custom/Timekeeping/LeaveRequestComponents/Employee/Modals/components/FileUpload';
 import { AlertTriangle, CheckCircle, Info, XCircle } from 'lucide-react';
 import { useLeavePolicy } from '@/hooks/useLeavePolicy';
+import Combobox from '@/components/Custom/Combobox';
 import { useAuth } from '@/hooks/useAuth';
 
 // ... (interfaces remain same)
@@ -30,11 +30,20 @@ export const SubmitLeaveRequestModal: React.FC<SubmitLeaveRequestModalProps> = (
   onClose, 
   credits = [] 
 }) => {
-  const { data: leaveTypes = [], isLoading: isLoadingPolicy } = useLeavePolicy();
+  const { data: policy, isLoading: isLoadingPolicy } = useLeavePolicy();
+  const leaveTypes = policy?.types || [];
   const { user, department: userDepartment } = useAuth();
   const queryClient = useQueryClient();
 
-  const { register, control, handleSubmit, watch, reset, setValue, formState: { errors } } = useForm<SubmitLeaveRequestSchema>({
+  const { 
+    register, 
+    control,
+    handleSubmit, 
+    watch, 
+    reset,
+    setValue,
+    formState: { errors } 
+  } = useForm<SubmitLeaveRequestSchema>({
     resolver: zodResolver(submitLeaveRequestSchema),
     defaultValues: {
       leaveType: '',
@@ -77,13 +86,13 @@ export const SubmitLeaveRequestModal: React.FC<SubmitLeaveRequestModalProps> = (
 
   // Get credit info including cross-charging details
   const creditInfo = useMemo(() => {
-    if (!leaveType) return null;
+    if (!leaveType || !policy) return null;
 
     // Check if special leave (no deduction)
-    const isSpecialLeave = (SPECIAL_LEAVES_NO_DEDUCTION as readonly string[]).includes(leaveType);
+    const isSpecialLeave = policy.specialLeavesNoDeduction.includes(leaveType);
     
     // Identify primary credit type
-    const primaryCreditType = LEAVE_TO_CREDIT_MAP[leaveType] || leaveType;
+    const primaryCreditType = policy.leaveToCreditMap[leaveType] || leaveType;
     
     // Helper to get balance
     const getBalance = (type: string | null) => {
@@ -106,7 +115,7 @@ export const SubmitLeaveRequestModal: React.FC<SubmitLeaveRequestModalProps> = (
     let fallbackBalance = 0;
 
     // Check for cross-charging (e.g., SL can use VL)
-    const crossChargeType = CROSS_CHARGE_MAP[leaveType];
+    const crossChargeType = policy.crossChargeMap[leaveType];
     if (crossChargeType) {
       fallbackType = crossChargeType;
       fallbackBalance = getBalance(crossChargeType);
@@ -318,19 +327,13 @@ export const SubmitLeaveRequestModal: React.FC<SubmitLeaveRequestModalProps> = (
             {/* Leave Type - Full Width */}
             <div className="grid grid-cols-1">
               <FormInput label="Leave Type" error={errors.leaveType?.message} required>
-                <select
-                  {...register('leaveType')}
-                  className={`w-full px-3 py-2 text-sm border ${
-                    errors.leaveType ? 'border-red-500' : 'border-gray-200'
-                  } rounded-lg focus:outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100 transition-all bg-white`}
-                >
-                  <option value="">
-                    {isLoadingPolicy ? "Loading leave types..." : "Select leave type..."}
-                  </option>
-                  {leaveTypes.map((type: string) => (
-                    <option key={type} value={type}>{type}</option>
-                  ))}
-                </select>
+                <Combobox
+                  options={leaveTypes.map(type => ({ value: type, label: type }))}
+                  value={watch('leaveType') || ''}
+                  onChange={(val) => setValue('leaveType', val, { shouldValidate: true })}
+                  placeholder={isLoadingPolicy ? "Loading leave types..." : "Select leave type..."}
+                  error={!!errors.leaveType}
+                />
               </FormInput>
             </div>
 
@@ -387,15 +390,24 @@ export const SubmitLeaveRequestModal: React.FC<SubmitLeaveRequestModalProps> = (
                   <div className="flex justify-between items-center">
                     <label className="text-sm font-medium text-gray-700">Supporting Document</label>
                     <span className={`text-xs ${
-                      leaveType === 'Sick Leave' && duration > 5 
+                      (() => {
+                        if (!policy || !leaveType) return false;
+                        if (leaveType === 'Sick Leave' && duration >= 5) return true;
+                        const key = leaveType.charAt(0).toLowerCase() + leaveType.slice(1).replace(/\s/g, '');
+                        return !!policy.requiredAttachments[key];
+                      })()
                         ? 'text-red-500 font-medium' 
                         : 'text-gray-400'
                     }`}>
-                      {leaveType === 'Sick Leave' && duration > 5 
-                        ? 'Required (Medical Certificate)' 
-                        : leaveType === 'Sick Leave' 
-                        ? 'Optional (Required if > 5 days)'
-                        : 'Optional'}
+                      {(() => {
+                        if (!policy || !leaveType) return 'Optional';
+                        if (leaveType === 'Sick Leave') {
+                          return duration >= 5 ? 'Required (Medical Certificate)' : 'Optional (Required if ≥ 5 days)';
+                        }
+                        const key = leaveType.charAt(0).toLowerCase() + leaveType.slice(1).replace(/\s/g, '');
+                        const req = policy.requiredAttachments[key];
+                        return req ? `Required (${req.required})` : 'Optional';
+                      })()}
                     </span>
                   </div>
                   <FileUpload

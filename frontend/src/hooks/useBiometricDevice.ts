@@ -74,7 +74,6 @@ export const useBiometricDevice = ({
         } else if (msg === 'DEVICE_DISCONNECTED') {
           setDeviceConnected(false);
         } else if (msg.startsWith('SCAN_MATCH:')) {
-          // Format: SCAN_MATCH:123|Joshua
           const parts = msg.replace('SCAN_MATCH:', '').split('|');
           if (parts.length >= 2) {
             onMatchRef.current?.(parts[0], parts[1]);
@@ -82,13 +81,12 @@ export const useBiometricDevice = ({
         } else if (msg === 'ENROLL_SUCCESS') {
           onEnrollSuccessRef.current?.();
         } else if (msg.startsWith('ENROLL_PROGRESS')) {
-          // Handle ENROLL_PROGRESS:STEP_1 or just ENROLL_PROGRESS
           if (msg.includes('STEP_1')) {
              onEnrollProgressRef.current?.(1);
           } else if (msg.includes('STEP_2')) {
              onEnrollProgressRef.current?.(2);
           } else {
-             onEnrollProgressRef.current?.(1); // Default
+             onEnrollProgressRef.current?.(1);
           }
         } else if (msg.startsWith('ENROLL_ERROR') || msg === 'ENROLL_FAIL' || msg === 'ENROLL_CANCELLED') {
           onEnrollFailRef.current?.(msg);
@@ -100,7 +98,7 @@ export const useBiometricDevice = ({
       console.error('WS Setup Error', err);
       setStatus('ERROR');
     }
-  }, []); // ID empty dependency array - connect never changes now
+  }, []); // Empty dependency array - connect never changes now
 
   useEffect(() => {
     connect();

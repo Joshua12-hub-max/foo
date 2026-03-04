@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 import { db } from '../db/index.js';
-import { eq, and, or, sql, desc, like, ne, InferSelectModel } from 'drizzle-orm';
+import { eq, and, or, sql, desc, like, ne, InferSelectModel, SQL } from 'drizzle-orm';
 import type { AuthenticatedRequest, EmploymentStatus, Gender, CivilStatus, AppointmentType, UserRole } from '../types/index.js';
 import { UserService } from '../services/user.service.js';
 import { 
@@ -82,7 +82,7 @@ interface UpdateFields {
   avatarUrl?: string | null;
   contractEndDate?: string | null;
   regularizationDate?: string | null;
-  isRegular?: number;
+  isRegular?: boolean;
   employmentType?: string;
   heightM?: string | null;
   weightKg?: string | null;
@@ -101,7 +101,7 @@ interface UpdateFields {
   eligibilityNumber?: string | null;
   eligibilityDate?: string | null;
   highestEducation?: string | null;
-  yearsOfExperience?: number;
+  yearsOfExperience?: string | null;
   facebookUrl?: string | null;
   linkedinUrl?: string | null;
   twitterHandle?: string | null;
@@ -111,7 +111,7 @@ interface UpdateFields {
   officeAddress?: string | null;
   originalAppointmentDate?: string | null;
   lastPromotionDate?: string | null;
-  [key: string]: string | number | null | undefined;
+  [key: string]: string | number | boolean | null | undefined;
 }
 
 // ============================================================================
@@ -127,7 +127,7 @@ export const mapToEmployeeApi = (emp: EmployeeMapperInput): EmployeeApiResponse 
     middle_name: emp.middleName || null,
     suffix: emp.suffix || null,
     email: String(emp.email || ''),
-    role: (emp.role === 'hr' ? 'Human Resource' : (emp.role || 'employee')) as UserRole,
+    role: (emp.role === 'hr' ? 'Human Resource' : (emp.role === 'admin' ? 'Admin' : 'Employee')) as UserRole,
     department: emp.department || null,
     department_id: emp.departmentId || null,
     employee_id: String(emp.employeeId || ''),
@@ -138,7 +138,7 @@ export const mapToEmployeeApi = (emp: EmployeeMapperInput): EmployeeApiResponse 
     date_hired: emp.dateHired || null,
     contract_end_date: emp.contractEndDate || null,
     regularization_date: emp.regularizationDate || null,
-    is_regular: emp.isRegular || 0,
+    is_regular: emp.isRegular ? 1 : 0,
     birth_date: emp.birthDate || null,
     gender: emp.gender as Gender || null,
     civil_status: emp.civilStatus as CivilStatus || null,
@@ -179,7 +179,7 @@ export const mapToEmployeeApi = (emp: EmployeeMapperInput): EmployeeApiResponse 
     eligibility_number: emp.eligibilityNumber || null,
     eligibility_date: emp.eligibilityDate || null,
     highest_education: emp.highestEducation || null,
-    years_of_experience: emp.yearsOfExperience || 0,
+    years_of_experience: emp.yearsOfExperience ? Number(emp.yearsOfExperience) : 0,
 
     facebook_url: emp.facebookUrl || null,
     linkedin_url: emp.linkedinUrl || null,
@@ -205,7 +205,7 @@ const mapToEducationApi = (edu: InferSelectModel<typeof employeeEducation>): Emp
   field_of_study: edu.fieldOfStudy || null,
   start_date: edu.startDate || null,
   end_date: edu.endDate || null,
-  is_current: edu.isCurrent || 0
+  is_current: edu.isCurrent || false
 });
 
 const mapToContactApi = (contact: InferSelectModel<typeof employeeEmergencyContacts>): EmployeeEmergencyContactResponse => ({
@@ -215,7 +215,7 @@ const mapToContactApi = (contact: InferSelectModel<typeof employeeEmergencyConta
   phone_number: contact.phoneNumber,
   email: contact.email || null,
   address: contact.address || null,
-  is_primary: contact.isPrimary || 0
+  is_primary: contact.isPrimary || false
 });
 
 const mapToCustomFieldApi = (field: InferSelectModel<typeof employeeCustomFields>): EmployeeCustomFieldResponse => ({
@@ -255,12 +255,16 @@ export const getAllEmployees = async (req: Request, res: Response): Promise<void
     
     const conditions = [];
     if (department_id) {
-      conditions.push(eq(authentication.departmentId, Number(department_id)));
+      conditions.push(or(
+        eq(authentication.departmentId, Number(department_id)),
+        // Fallback to name match if ID is set but maybe name is also provided/needed
+        department ? eq(authentication.department, department as string) : sql`1=1`
+      ));
     } else if (department && department !== 'All Departments') {
       conditions.push(eq(authentication.department, department as string));
     }
 
-    const employees = await UserService.getAllEmployees(conditions);
+    const employees = await UserService.getAllEmployees(conditions.filter((c): c is SQL => !!c));
 
     const mappedEmployees = employees.map(mapToEmployeeApi);
     res.json({ success: true, employees: mappedEmployees });
@@ -467,7 +471,7 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
       employmentType: (sanitizedData.employment_type || 'Probationary') as string,
       employeeId: finalEmployeeId,
       passwordHash: hashedPassword,
-      isVerified: 1, // tinyint
+      isVerified: true, // boolean
       birthDate: birth_date ? String(birth_date) : null, // date mode string
       gender: gender as Gender,
       civilStatus: civil_status as CivilStatus,
@@ -489,7 +493,7 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
       positionId: finalPosId,
       contractEndDate: sanitizedData.contract_end_date ? String(sanitizedData.contract_end_date) : null,
       regularizationDate: finalRegularizationDate ? finalRegularizationDate.toISOString().split('T')[0] : null,
-      isRegular: sanitizedData.is_regular ? 1 : 0, // tinyint
+      isRegular: !!sanitizedData.is_regular, // boolean
       heightCm: sanitizedData.height_m ? String(sanitizedData.height_m) : null,
       heightM: sanitizedData.height_m ? String(sanitizedData.height_m) : null,
       weightKg: sanitizedData.weight_kg ? String(sanitizedData.weight_kg) : null,
@@ -507,7 +511,7 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
       eligibilityNumber: sanitizedData.eligibility_number || null,
       eligibilityDate: sanitizedData.eligibility_date ? String(sanitizedData.eligibility_date) : null,
       highestEducation: sanitizedData.highest_education || null,
-      yearsOfExperience: sanitizedData.years_of_experience ? Number(sanitizedData.years_of_experience) : 0
+      yearsOfExperience: sanitizedData.years_of_experience ? String(sanitizedData.years_of_experience) : '0'
     });
 
     const newEmployeeIdNum = result.insertId;
@@ -515,7 +519,7 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
     if (finalPosId && newEmployeeIdNum) {
        const today = new Date().toISOString().split('T')[0];
        await db.update(plantillaPositions)
-         .set({ incumbentId: newEmployeeIdNum, isVacant: 0, filledDate: today })
+         .set({ incumbentId: newEmployeeIdNum, isVacant: false, filledDate: today })
          .where(eq(plantillaPositions.id, finalPosId));
 
        await db.insert(plantillaPositionHistory).values({
@@ -555,11 +559,11 @@ export const deleteEmployee = async (req: Request, res: Response): Promise<void>
     if (emp) {
       if (emp.positionId) {
         await db.update(plantillaPositions)
-          .set({ isVacant: 1, incumbentId: null })
+          .set({ isVacant: true, incumbentId: null })
           .where(eq(plantillaPositions.id, emp.positionId));
       } else if (emp.itemNumber && emp.itemNumber !== 'N/A') {
         await db.update(plantillaPositions)
-          .set({ isVacant: 1, incumbentId: null })
+          .set({ isVacant: true, incumbentId: null })
           .where(eq(plantillaPositions.itemNumber, emp.itemNumber));
       }
     }
@@ -677,9 +681,9 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
            if (['birthDate', 'dateHired', 'contractEndDate', 'regularizationDate', 'eligibilityDate', 'originalAppointmentDate', 'lastPromotionDate'].includes(drizzleKey) && processedVal) {
              processedVal = String(processedVal);
            }
-           // Handle booleans (tinyint)
+           // Handle booleans
            if (['isRegular'].includes(drizzleKey)) {
-             processedVal = processedVal ? 1 : 0;
+             processedVal = processedVal ? true : false;
            }
            // Handle salaryGrade (varchar in authentication)
            if (drizzleKey === 'salaryGrade' && processedVal !== null) {
@@ -692,8 +696,12 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
               processedVal = String(processedVal);
            }
            // Handle int
-           if (['yearsOfExperience', 'stepIncrement'].includes(drizzleKey) && processedVal !== null) {
+           if (['stepIncrement'].includes(drizzleKey) && processedVal !== null) {
               processedVal = Number(processedVal);
+           }
+           // Handle varchar
+           if (['yearsOfExperience'].includes(drizzleKey) && processedVal !== null) {
+              processedVal = String(processedVal);
            }
            // Validate MySQL ENUM fields — skip invalid values to prevent DB crash
            const enumValidation: Record<string, string[]> = {
@@ -790,7 +798,7 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
     if (newPosId !== undefined && newPosId !== oldPosId) {
       if (oldPosId) {
         await db.update(plantillaPositions)
-          .set({ isVacant: 1, incumbentId: null })
+          .set({ isVacant: true, incumbentId: null })
           .where(eq(plantillaPositions.id, oldPosId));
       }
       if (newPosId) {
@@ -803,7 +811,7 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
             return;
           }
           await db.update(plantillaPositions)
-            .set({ isVacant: 0, incumbentId: parseInt(id) })
+            .set({ isVacant: false, incumbentId: parseInt(id) })
             .where(eq(plantillaPositions.id, newPosId));
           
           if (updates.item_number === undefined) updateFields.itemNumber = plantilla.itemNumber;
@@ -1019,7 +1027,7 @@ export const addEmployeeEducation = async (req: Request, res: Response): Promise
       fieldOfStudy: field_of_study || null,
       startDate: start_date ? String(start_date) : null,
       endDate: end_date ? String(end_date) : null,
-      isCurrent: is_current ? 1 : 0, // tinyint
+      isCurrent: is_current ? true : false, // tinyint
       type: (type || 'Education') as 'Education' | 'Certification' | 'Training',
       description: description || null
     });
@@ -1046,7 +1054,7 @@ export const updateEmployeeEducation = async (req: Request, res: Response): Prom
     if (updates.field_of_study !== undefined) drizzleUpdates.fieldOfStudy = updates.field_of_study || null;
     if (updates.start_date !== undefined) drizzleUpdates.startDate = updates.start_date ? String(updates.start_date) : null;
     if (updates.end_date !== undefined) drizzleUpdates.endDate = updates.end_date ? String(updates.end_date) : null;
-    if (updates.is_current !== undefined) drizzleUpdates.isCurrent = updates.is_current ? 1 : 0;
+    if (updates.is_current !== undefined) drizzleUpdates.isCurrent = updates.is_current ? true : false;
     if (updates.type) drizzleUpdates.type = updates.type as 'Education' | 'Certification' | 'Training';
     if (updates.description !== undefined) drizzleUpdates.description = updates.description || null;
 
@@ -1104,7 +1112,7 @@ export const addEmployeeContact = async (req: Request, res: Response): Promise<v
 
     if (is_primary) {
       await db.update(employeeEmergencyContacts)
-        .set({ isPrimary: 0 })
+        .set({ isPrimary: false })
         .where(eq(employeeEmergencyContacts.employeeId, parseInt(id)));
     }
 
@@ -1115,7 +1123,7 @@ export const addEmployeeContact = async (req: Request, res: Response): Promise<v
       phoneNumber: phone_number,
       email: email || null,
       address: address || null,
-      isPrimary: is_primary ? 1 : 0 // tinyint
+      isPrimary: is_primary ? true : false // tinyint
     });
 
     res.status(201).json({ success: true, message: 'Contact added', contactId: result.insertId });
@@ -1136,7 +1144,7 @@ export const updateEmployeeContact = async (req: Request, res: Response): Promis
 
     if (updates.is_primary) {
       await db.update(employeeEmergencyContacts)
-        .set({ isPrimary: 0 })
+        .set({ isPrimary: false })
         .where(eq(employeeEmergencyContacts.employeeId, parseInt(id)));
     }
 
@@ -1146,14 +1154,14 @@ export const updateEmployeeContact = async (req: Request, res: Response): Promis
       phoneNumber?: string;
       email?: string | null;
       address?: string | null;
-      isPrimary?: number;
+      isPrimary?: boolean;
     } = {};
     if (updates.name) drizzleUpdates.name = updates.name;
     if (updates.relationship) drizzleUpdates.relationship = updates.relationship;
     if (updates.phone_number) drizzleUpdates.phoneNumber = updates.phone_number;
     if (updates.email !== undefined) drizzleUpdates.email = updates.email || null;
     if (updates.address !== undefined) drizzleUpdates.address = updates.address || null;
-    if (updates.is_primary !== undefined) drizzleUpdates.isPrimary = updates.is_primary ? 1 : 0;
+    if (updates.is_primary !== undefined) drizzleUpdates.isPrimary = updates.is_primary ? true : false;
 
     await db.update(employeeEmergencyContacts)
       .set(drizzleUpdates)

@@ -105,7 +105,7 @@ app.use(
   helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" },
     crossOriginEmbedderPolicy: false,
-    crossOriginOpenerPolicy: { policy: "unsafe-none" },
+    crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" },
     contentSecurityPolicy: {
       useDefaults: true,
       directives: {
@@ -116,7 +116,12 @@ app.use(
   })
 );
 app.use(cors({
-  origin: ["http://localhost:5173", "http://localhost:5174"],
+  origin: [
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "https://localhost:5173",
+    "https://localhost:5174",
+  ],
   credentials: true
 }));
 app.use(express.json());

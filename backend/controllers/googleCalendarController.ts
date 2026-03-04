@@ -182,13 +182,13 @@ export const handleGoogleCallback = async (req: Request, res: Response): Promise
       accessToken: tokens.access_token!,
       refreshToken: tokens.refresh_token!,
       tokenExpiry: formattedExpiry,
-      syncEnabled: 1
+      syncEnabled: true
     }).onDuplicateKeyUpdate({
       set: {
         accessToken: tokens.access_token!,
         refreshToken: tokens.refresh_token!,
         tokenExpiry: formattedExpiry,
-        syncEnabled: 1
+        syncEnabled: true
       }
     });
 

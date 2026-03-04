@@ -36,8 +36,8 @@ const Marquee: React.FC<MarqueeProps> = ({
         className="inline-block"
         variants={containerVariants}
         animate="animate"
-        whileHover={pauseOnHover ? { scale: 1 } : undefined}
-        style={{ display: 'flex', animationPlayState: pauseOnHover ? undefined : undefined }}
+        whileHover={pauseOnHover ? { animationPlayState: 'paused' } : undefined}
+        style={{ display: 'flex' }}
       >
         <div className="flex shrink-0">
           {children}

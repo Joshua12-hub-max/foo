@@ -4,6 +4,8 @@ import { useUIStore } from '@/stores';
 import { RefreshCw, Plus } from 'lucide-react';
 import { useDepartments, DepartmentSearch, DepartmentTable, DepartmentFormModal, DepartmentDeleteModal, RemoveEmployeeModal } from '@features/EmployeeManagement/Admin/Departments';
 import { useState } from 'react';
+import RegistrationTypeModal from '@/components/Custom/EmployeeManagement/Admin/Modals/RegistrationTypeModal';
+import { Department } from '@/types/org';
 
 import { Employee } from '@/types';
 
@@ -64,6 +66,27 @@ const DepartmentList = forwardRef<DepartmentListRef, DepartmentListProps>(({ hid
     openAddModal: () => handleAdd()
   }));
 
+  // Registration Flow
+  const [isRegModalOpen, setIsRegModalOpen] = useState(false);
+  const [registeringDepartment, setRegisteringDepartment] = useState<Department | null>(null);
+  const navigate = useNavigate();
+
+  const handleRegisterClick = (dept: Department) => {
+    setRegisteringDepartment(dept);
+    setIsRegModalOpen(true);
+  };
+
+  const handleSelectRegistrationType = (isOld: boolean, duties: string) => {
+    setIsRegModalOpen(false);
+    if (!registeringDepartment) return;
+    const params = new URLSearchParams({
+      duties,
+      type: isOld ? 'old' : 'hired',
+      dept: registeringDepartment.name || ''
+    });
+    navigate(`/admin-dashboard/register?${params.toString()}`);
+  };
+
   return (
     <div className="w-full">
       {/* Header Section - Modernized */}
@@ -111,6 +134,7 @@ const DepartmentList = forwardRef<DepartmentListRef, DepartmentListProps>(({ hid
         onEdit={handleEdit}
         onDelete={handleDeleteClick}
         onRemoveEmployee={handleRemoveEmployeeClick}
+        onRegister={handleRegisterClick}
       />
 
       {/* Add/Edit Modal */}
@@ -150,6 +174,14 @@ const DepartmentList = forwardRef<DepartmentListRef, DepartmentListProps>(({ hid
           onSuccess={handleRemoveEmployeeSuccess}
         />
       )}
+
+      {/* Registration Type Selection Modal */}
+      <RegistrationTypeModal
+        isOpen={isRegModalOpen}
+        onClose={() => setIsRegModalOpen(false)}
+        departmentName={registeringDepartment?.name || ''}
+        onSelectType={handleSelectRegistrationType}
+      />
       </div>
     </div>
   );

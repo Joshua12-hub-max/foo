@@ -1,0 +1,35 @@
+﻿Γ£à Database connected successfully
+≡ƒöô FK checks disabled
+
+≡ƒôï departments:
+  Γ£à DROP FK fk_parent_dept
+  Γ£à DROP INDEX fk_parent_dept
+≡ƒôï performance_goals:
+  Γ£à DROP FK fk_pg_rc
+≡ƒôï performance_review_items:
+pnpx :   Γ¥î DROP INDEX fk_criteria_id: 
+ER_DROP_INDEX_FK - Cannot drop index 
+'fk_criteria_id': needed in a foreign key 
+constraint
+At line:1 char:1
++ pnpx tsx scripts/drop_all_legacy_fks.ts 2>&1 | 
+Out-File -Encoding utf ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (  Γ¥î 
+D    ROP INDE... key constraint:String) [], 
+RemoteExc    eption
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+≡ƒôï performance_reviews:
+  Γ£à DROP INDEX fk_review_cycle
+≡ƒôï plantilla_positions:
+  Γ£à DROP INDEX fk_plantilla_incumbent
+  Γ£à DROP INDEX fk_plantilla_qs
+  Γ£à DROP INDEX fk_plantilla_department
+≡ƒôï recruitment_applicants:
+  Γ£à DROP INDEX fk_interviewer
+
+≡ƒöÆ FK checks re-enabled
+
+=== Done! Dropped 2 FKs and 7 indexes ===
+Run: pnpx tsx node_modules/drizzle-kit/bin.cjs push

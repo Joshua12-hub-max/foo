@@ -16,7 +16,9 @@ import { useRegisterMutation } from "@/hooks/useAuthQueries";
 import { useBarangaysQuery, useDepartmentsQuery, usePositionsQuery, useNextEmployeeIdQuery, useHiredApplicantSearch } from "@/hooks/useCommonQueries";
 import { HiredApplicant } from "@/types/recruitment_applicant";
 import ph from 'phil-reg-prov-mun-brgy';
+import { EDUCATION_LEVELS } from "../schemas/recruitment";
 
+type EducationLevel = typeof EDUCATION_LEVELS[number] | "";
 type RegisterFormValues = z.infer<typeof RegisterSchema>;
 
 export default function Register() {
@@ -31,7 +33,6 @@ export default function Register() {
   const [isResetModalOpen, setResetModalOpen] = useState(false);
   const [enrollStep, setEnrollStep] = useState(0);
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPreFillModal, setShowPreFillModal] = useState(false);
   const [matchedApplicant, setMatchedApplicant] = useState<HiredApplicant | null>(null);
   const [hasAutomaticallyChecked, setHasAutomaticallyChecked] = useState(false);
@@ -39,6 +40,11 @@ export default function Register() {
   const { data: barangays = [] } = useBarangaysQuery();
   const { data: departments = [] } = useDepartmentsQuery();
   const { data: positions = [] } = usePositionsQuery();
+
+  // Track if address is pre-filled as a raw string from Applicant record
+  const [isAddressPrefilled, setIsAddressPrefilled] = useState(false);
+  const [prefilledAddress, setPrefilledAddress] = useState("");
+  const [prefilledPermanentAddress, setPrefilledPermanentAddress] = useState("");
 
   const [enrollError, setEnrollError] = useState<string | null>(null);
 
@@ -94,6 +100,12 @@ export default function Register() {
       email: "",
       password: "",
       educationalBackground: "",
+      yearsOfExperience: "",
+      experience: "",
+      skills: "",
+      eligibilityType: "",
+      eligibilityNumber: "",
+      eligibilityDate: "",
       address: "",
       residentialZipCode: "",
       permanentAddress: "",
@@ -156,13 +168,32 @@ export default function Register() {
     setValue("philsysId", matchedApplicant.philsys_id || "");
     setValue("tinNo", matchedApplicant.tin_no || "");
     
-    // Education
-    setValue("educationalBackground", matchedApplicant.education || "");
+    // Education & Background
+    setValue("educationalBackground", (matchedApplicant.education as EducationLevel) || "");
+    setValue("schoolName", matchedApplicant.school_name || "");
+    setValue("course", matchedApplicant.course || "");
+    setValue("yearGraduated", matchedApplicant.year_graduated || "");
+    setValue("experience", matchedApplicant.experience || "");
+    setValue("skills", matchedApplicant.skills || "");
+    setValue("yearsOfExperience", matchedApplicant.total_experience_years?.toString() || "");
+
+    // Eligibility
+    setValue("eligibilityType", matchedApplicant.eligibility_type || "");
+    setValue("eligibilityNumber", matchedApplicant.license_no || "");
+    if (matchedApplicant.eligibility_date) {
+        setValue("eligibilityDate", matchedApplicant.eligibility_date.split('T')[0]);
+    }
     
     // Residential Address
     if (matchedApplicant.address) {
-        setValue("address", matchedApplicant.address);
-        setValue("residentialAddress", matchedApplicant.address);
+        setIsAddressPrefilled(true);
+        setPrefilledAddress(matchedApplicant.address);
+        // We defer setting form values for the dropdowns because that breaks the UI toggles.
+        // On submit, if isAddressPrefilled is true, we will inject this string payload.
+        setValue("resStreet", "");
+    } else {
+        setIsAddressPrefilled(false);
+        setPrefilledAddress("");
     }
     if (matchedApplicant.zip_code) {
         setValue("residentialZipCode", matchedApplicant.zip_code);
@@ -170,14 +201,18 @@ export default function Register() {
 
     // Permanent Address
     if (matchedApplicant.permanent_address) {
-        setValue("permanentAddress", matchedApplicant.permanent_address);
+        setPrefilledPermanentAddress(matchedApplicant.permanent_address);
+        // Defer form hook population logic to onSubmit identical to residential address parsing
+        setValue("permStreet", "");
+    } else {
+        setPrefilledPermanentAddress("");
     }
     if (matchedApplicant.permanent_zip_code) {
         setValue("permanentZipCode", matchedApplicant.permanent_zip_code);
     }
 
     // Meycauayan Resident
-    setValue("isMeycauayan", matchedApplicant.is_meycauayan_resident === 1 ? "true" : "false");
+    setValue("isMeycauayan", matchedApplicant.is_meycauayan_resident ? "true" : "false");
 
     // Photo — display applicant's ID photo as avatar preview
     if (matchedApplicant.photo_url) {
@@ -224,12 +259,23 @@ export default function Register() {
         return [street, bName, cName, pName, rName].filter(Boolean).join(', ');
     };
 
-    const resAddress = formatAddr(data.resRegion||'', data.resProvince||'', data.resCity||'', data.resBrgy||'', data.resStreet||'');
-    const permAddress = formatAddr(data.permRegion||'', data.permProvince||'', data.permCity||'', data.permBrgy||'', data.permStreet||'');
+    // If address was pre-filled and never cleared by the user, we keep the original string
+    // Otherwise we format it from the PhilippineAddressSelector fields
+    if (isAddressPrefilled) {
+        data.address = prefilledAddress;
+        data.residentialAddress = prefilledAddress;
+        
+        // Use prefilled permanent address if available, otherwise fallback to residential
+        const finalPerm = prefilledPermanentAddress || prefilledAddress;
+        data.permanentAddress = finalPerm;
+    } else {
+        const resAddress = formatAddr(data.resRegion||'', data.resProvince||'', data.resCity||'', data.resBrgy||'', data.resStreet||'');
+        const permAddress = formatAddr(data.permRegion||'', data.permProvince||'', data.permCity||'', data.permBrgy||'', data.permStreet||'');
 
-    data.address = resAddress;
-    data.residentialAddress = resAddress;
-    data.permanentAddress = permAddress;
+        data.address = resAddress;
+        data.residentialAddress = resAddress;
+        data.permanentAddress = permAddress;
+    }
 
     const ignoreKeys = ['avatar', 'employee_id', 'resRegion', 'resProvince', 'resCity', 'resBrgy', 'resStreet', 'permRegion', 'permProvince', 'permCity', 'permBrgy', 'permStreet'];
 
@@ -251,7 +297,6 @@ export default function Register() {
     if (data.applicantPhotoPath) formData.append("applicantPhotoPath", data.applicantPhotoPath);
 
     try {
-      setIsSubmitting(true);
       await registerMutation.mutateAsync(formData);
       toast.success("Registration Successful! Please check your email.");
       navigate("/verify-account", { state: { email: data.email } });
@@ -270,7 +315,6 @@ export default function Register() {
 
       if (resData?.code === 'DUPLICATE_NAME') {
           setShowDuplicateModal(true);
-          setIsSubmitting(false);
           return;
       }
 
@@ -283,8 +327,6 @@ export default function Register() {
       }
       
       toast.error(msg, { duration: 5000 });
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -474,7 +516,33 @@ export default function Register() {
                    </div>
                </div>
 
-               {isMeycauayan ? (
+               {prefilledAddress ? (
+                   <div className="pb-4 border-b border-gray-100 relative">
+                      <div className="flex justify-between items-center mb-2">
+                          <h5 className="text-sm font-bold text-gray-700">Residential Address</h5>
+                          <button 
+                            type="button" 
+                            onClick={() => {
+                                setIsAddressPrefilled(false);
+                                setPrefilledAddress("");
+                                setValue("address", "");
+                                setValue("residentialAddress", "");
+                            }}
+                            className="text-xs text-blue-600 hover:text-blue-800 font-semibold underline"
+                          >
+                             Edit Details
+                          </button>
+                      </div>
+                      <textarea
+                        readOnly
+                        value={prefilledAddress}
+                        className={`${inputClass} !pl-3 h-20 bg-gray-100 cursor-not-allowed resize-none`}
+                      />
+                      <p className="text-[10px] text-gray-500 mt-1 italic">
+                        This address was auto-populated from your application. Click Edit to change location branches.
+                      </p>
+                   </div>
+               ) : isMeycauayan ? (
                   <div className="pb-4 border-b border-gray-100">
                       <h5 className="text-sm font-bold text-gray-700 mb-2">Residential Address (Meycauayan)</h5>
                       <PhilippineAddressSelector 
@@ -502,15 +570,28 @@ export default function Register() {
                )}
 
            <div className="pt-4 border-b border-gray-100 pb-4">
-               <h5 className="text-sm font-bold text-gray-700 mb-2">Permanent Address</h5>
-               <PhilippineAddressSelector 
-                  prefix="perm" 
-                  register={register} 
-                  watch={watch} 
-                  setValue={setValue} 
-                  errors={errors} 
-                  inputClass={inputClass} 
-               />
+               {prefilledPermanentAddress ? (
+                   <div>
+                      <h5 className="text-sm font-bold text-gray-700 mb-2">Permanent Address</h5>
+                      <textarea
+                        readOnly
+                        value={prefilledPermanentAddress}
+                        className={`${inputClass} !pl-3 h-20 bg-gray-100 cursor-not-allowed resize-none`}
+                      />
+                   </div>
+               ) : (
+                   <>
+                       <h5 className="text-sm font-bold text-gray-700 mb-2">Permanent Address</h5>
+                       <PhilippineAddressSelector 
+                          prefix="perm" 
+                          register={register} 
+                          watch={watch} 
+                          setValue={setValue} 
+                          errors={errors} 
+                          inputClass={inputClass} 
+                       />
+                   </>
+               )}
            </div>
            </div>
 
@@ -579,9 +660,85 @@ export default function Register() {
         {/* Educational Background */}
         <div className={cardClass}>
            <h4 className={cardHeaderClass}>Educational Background</h4>
-           <div className="space-y-1">
-              <label className="text-xs font-semibold text-gray-600 ml-1">Highest Degree/Level Attained</label>
-              <textarea {...register("educationalBackground")} className={`${inputClass} !pl-3 min-h-[80px] resize-y`} placeholder="" />
+           <div className="space-y-4">
+              <div className="space-y-1">
+                 <label className="text-xs font-semibold text-gray-600 ml-1">Highest Degree/Level Attained</label>
+                 <select 
+                    {...register("educationalBackground")} 
+                    className={`${inputClass} !pl-3`}
+                 >
+                    <option value="">Select highest education attained</option>
+                    {EDUCATION_LEVELS.map((level) => (
+                        <option key={level} value={level}>{level}</option>
+                    ))}
+                 </select>
+                 {errors.educationalBackground && (
+                    <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.educationalBackground.message}</p>
+                 )}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                 <div className="space-y-1">
+                    <label className="text-xs font-semibold text-gray-600 ml-1">School / University Name</label>
+                    <input {...register("schoolName")} className={`${inputClass} !pl-3`} placeholder="e.g. Bulacan State University" />
+                 </div>
+                 <div className="space-y-1">
+                    <label className="text-xs font-semibold text-gray-600 ml-1">Year Graduated</label>
+                    <input {...register("yearGraduated")} className={`${inputClass} !pl-3`} placeholder="e.g. 2020" />
+                 </div>
+              </div>
+
+              {watch("educationalBackground") && !["Elementary School Graduate", "High School Graduate", "Senior High School Graduate"].includes(watch("educationalBackground") || "") && (
+                  <div className="space-y-1">
+                     <label className="text-xs font-semibold text-gray-600 ml-1">Course / Degree</label>
+                     <input {...register("course")} className={`${inputClass} !pl-3`} placeholder="e.g. BS in Information Technology" />
+                  </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                 <div className="space-y-1">
+                    <label className="text-xs font-semibold text-gray-600 ml-1">Years of Experience</label>
+                    <input type="number" {...register("yearsOfExperience")} className={`${inputClass} !pl-3`} placeholder="e.g. 5" />
+                 </div>
+                 <div className="space-y-1">
+                    <label className="text-xs font-semibold text-gray-600 ml-1">Relevant Skills</label>
+                    <textarea {...register("skills")} className={`${inputClass} !pl-3 min-h-[40px] resize-y`} placeholder="e.g. JavaScript, Project Management" />
+                 </div>
+              </div>
+
+              <div className="space-y-1">
+                 <label className="text-xs font-semibold text-gray-600 ml-1">Work Experience Summary</label>
+                 <textarea {...register("experience")} className={`${inputClass} !pl-3 min-h-[80px] resize-y`} placeholder="Summarize your previous roles..." />
+              </div>
+           </div>
+        </div>
+
+        {/* Eligibility */}
+        <div className={cardClass}>
+           <h4 className={cardHeaderClass}>Eligibility / Civil Service</h4>
+           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-1">
+                 <label className="text-xs font-semibold text-gray-600 ml-1">Eligibility Type</label>
+                 <select {...register("eligibilityType")} className={`${inputClass} !pl-3`}>
+                    <option value="">Select eligibility...</option>
+                    <option value="csc_prof">CSC Professional</option>
+                    <option value="csc_sub">CSC Sub-Professional</option>
+                    <option value="ra_1080">RA 1080 (Board/Bar)</option>
+                    <option value="special_laws">Special Laws</option>
+                    <option value="drivers_license">Driver's License</option>
+                    <option value="tesda">TESDA NC II/III</option>
+                    <option value="none">None / N/A</option>
+                    <option value="others">Others</option>
+                 </select>
+              </div>
+              <div className="space-y-1">
+                 <label className="text-xs font-semibold text-gray-600 ml-1">License/ID Number</label>
+                 <input {...register("eligibilityNumber")} className={`${inputClass} !pl-3`} placeholder="e.g. 1234567" />
+              </div>
+              <div className="space-y-1">
+                 <label className="text-xs font-semibold text-gray-600 ml-1">Date of Validity</label>
+                 <input type="date" {...register("eligibilityDate")} className={`${inputClass} !pl-3`} />
+              </div>
            </div>
         </div>
 
@@ -758,7 +915,7 @@ export default function Register() {
 
             <button 
               type="submit" 
-              disabled={loading || !bioEnrolled}
+              disabled={loading || isSubmitting}
               className="w-full bg-gray-900 text-white py-3.5 rounded-xl text-[15px] font-extrabold hover:bg-gray-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md flex justify-center items-center gap-2 active:scale-[0.98]"
             >
               {loading ? <Loader2 className="animate-spin h-5 w-5" /> : <CheckCircle2 size={18} />}

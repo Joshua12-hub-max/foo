@@ -3,10 +3,8 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import logo from '@/assets/meycauayan-logo.png';
 import { Menu, X, LogIn } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useAuth } from "@hooks/useAuth";
 
 const PublicHeader = () => {
-  const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [isScrolled, setIsScrolled] = useState(false);

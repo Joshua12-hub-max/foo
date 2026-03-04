@@ -12,7 +12,7 @@ export const getForm9Data = async (req: Request, res: Response): Promise<void> =
     const { department } = req.query;
     
     const conditions = [
-      eq(plantillaPositions.isVacant, 1),
+      eq(plantillaPositions.isVacant, true),
       eq(plantillaPositions.status, 'Active')
     ];
 
@@ -23,7 +23,7 @@ export const getForm9Data = async (req: Request, res: Response): Promise<void> =
     // 1. Get Active Tranche (Reuse logic or make a helper, but inline is fine for now)
     const [activeTranche] = await db.select()
         .from(salaryTranches)
-        .where(eq(salaryTranches.isActive, 1))
+        .where(eq(salaryTranches.isActive, true))
         .limit(1);
 
     const currentTrancheNumber = activeTranche ? activeTranche.trancheNumber : 2;
@@ -178,7 +178,7 @@ export const getPSIPOPData = async (_req: Request, res: Response): Promise<void>
     // 1. Get Active Tranche
     const [activeTranche] = await db.select()
         .from(salaryTranches)
-        .where(eq(salaryTranches.isActive, 1))
+        .where(eq(salaryTranches.isActive, true))
         .limit(1);
 
 

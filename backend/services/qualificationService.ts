@@ -76,7 +76,7 @@ export class QualificationService {
                 name: `${employee.firstName} ${employee.lastName}`,
                 employee_id: employee.employee_id,
                 education: employee.highestEducation,
-                experienceYears: employee.yearsOfExperience || 0,
+                experienceYears: Number(employee.yearsOfExperience) || 0,
                 eligibility: employee.eligibilityType
             },
             positionDetails: {
@@ -115,7 +115,7 @@ export class QualificationService {
     }
 
     // Experience (25%)
-    const empExp = employee.yearsOfExperience || 0;
+    const empExp = Number(employee.yearsOfExperience) || 0;
     const requiredExp = qs.experienceYears || 0;
     if (empExp >= requiredExp) {
         score += 1;

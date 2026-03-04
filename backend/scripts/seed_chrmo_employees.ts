@@ -130,7 +130,7 @@ async function seedCHRMO() {
             departmentId: deptId,
             employeeId,
             passwordHash: genericPassword,
-            isVerified: 1, // Auto verified
+            isVerified: true, // Auto verified
             jobTitle: emp.title,
             employmentStatus: 'Active',
             employmentType: emp.title === 'Job Order' ? 'Job Order' : 'Permanent',

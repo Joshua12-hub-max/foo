@@ -235,11 +235,12 @@ export const exportAttendanceToExcel = async (
 
       const rawLate = record.lateMinutes || 0;
       const rawUndertime = record.undertimeMinutes || 0;
+      const hasTimes = record.timeIn && record.timeIn !== '-' && record.timeIn !== 'null';
       const isOnLeave = (record.status || '').startsWith('On Leave');
-      const isAbsent = record.status === 'Absent' || (!isOnLeave && (record.timeIn === '-' || record.timeIn === null));
+      const isAbsent = record.status === 'Absent' || (!isOnLeave && !hasTimes);
       const isLate = Number(rawLate) > 0;
       const isUndertime = Number(rawUndertime) > 0;
-      const isPresent = !isAbsent && !isOnLeave && !isLate && !isUndertime;
+      const isPresent = !isAbsent && !isOnLeave && hasTimes;
 
       // Extract leave abbreviation from status like "On Leave (VL)"
       const leaveAbbr = isOnLeave ? (record.status || '').replace('On Leave ', '').replace('(', '').replace(')', '') : '';

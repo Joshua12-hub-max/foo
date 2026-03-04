@@ -1,4 +1,4 @@
-import { mysqlTable, varchar, int, text, mysqlEnum, datetime, tinyint, primaryKey, timestamp, index, unique } from 'drizzle-orm/mysql-core';
+import { mysqlTable, varchar, int, text, mysqlEnum, datetime, boolean, primaryKey, timestamp, index, unique } from 'drizzle-orm/mysql-core';
 import { authentication } from './auth.js';
 
 export const chatConversations = mysqlTable("chat_conversations", {
@@ -21,7 +21,7 @@ export const chatMessages = mysqlTable("chat_messages", {
 	senderType: mysqlEnum("sender_type", ['Applicant','Admin']).notNull(),
 	senderId: int("sender_id"),
 	message: text().notNull(),
-	isRead: tinyint("is_read").default(0),
+	isRead: boolean("is_read").default(false),
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
 },
 (table) => [
@@ -65,9 +65,9 @@ export const recruitmentJobs = mysqlTable("recruitment_jobs", {
 	created_at: timestamp("created_at", { mode: 'string' }).defaultNow(),
 	updated_at: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow(),
 	attachment_path: varchar("attachment_path", { length: 255 }),
-	require_civil_service: tinyint("require_civil_service").default(0),
-	require_government_ids: tinyint("require_government_ids").default(0),
-	require_education_experience: tinyint("require_education_experience").default(0),
+	require_civil_service: boolean("require_civil_service").default(false),
+	require_government_ids: boolean("require_government_ids").default(false),
+	require_education_experience: boolean("require_education_experience").default(false),
 },
 (table) => [
 	primaryKey({ columns: [table.id], name: "recruitment_jobs_id"}),
@@ -121,10 +121,13 @@ export const recruitmentApplicants = mysqlTable("recruitment_applicants", {
 	permanent_address: text("permanent_address"),
 	permanent_zip_code: varchar("permanent_zip_code", { length: 10 }),
 	education: text(),
+	school_name: varchar("school_name", { length: 255 }),
+	course: varchar("course", { length: 255 }),
+	year_graduated: varchar("year_graduated", { length: 10 }),
 	experience: text(),
 	skills: text(),
 	hired_date: datetime("hired_date", { mode: 'string'}),
-	is_meycauayan_resident: tinyint("is_meycauayan_resident").default(0),
+	is_meycauayan_resident: boolean("is_meycauayan_resident").default(false),
 },
 (table) => [
 	index("job_id").on(table.job_id),

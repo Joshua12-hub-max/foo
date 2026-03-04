@@ -1,5 +1,4 @@
-import React from 'react';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useUIStore } from '@/stores';
 import { useToastStore } from '@/stores';
 import { useJobData, useJobForm, useJobFilters, useJobActions } from '../../features/Recruitment/JobPosting/Hooks';

@@ -58,6 +58,18 @@ export const RegisterSchema = z.object({
 
   // Educational Background
   educationalBackground: z.string().optional(),
+  schoolName: z.string().optional(),
+  course: z.string().optional(),
+  yearGraduated: z.string().optional(),
+  highestEducation: z.string().optional(),
+  yearsOfExperience: z.string().optional(),
+  experience: z.string().optional(),
+  skills: z.string().optional(),
+
+  // Eligibility
+  eligibilityType: z.string().optional(),
+  eligibilityNumber: z.string().optional(),
+  eligibilityDate: z.string().optional(),
 
   // Social & Others
   facebookUrl: z.string().optional(),

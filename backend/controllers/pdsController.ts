@@ -40,7 +40,7 @@ export const getPDSSection = async (req: Request, res: Response) => {
     // Determine whose data to fetch
     let userId = requesterId;
     if (targetEmployeeId && targetEmployeeId !== requesterId.toString()) {
-      if (!['admin', 'hr'].includes(requesterRole)) {
+      if (!['admin', 'human resource'].includes(requesterRole)) {
         res.status(403).json({ success: false, message: 'Access Denied' });
         return;
       }
@@ -79,7 +79,7 @@ export const getPDSSection = async (req: Request, res: Response) => {
       // Determine whose data to update
       let userId = requesterId;
       if (targetEmployeeId && targetEmployeeId.toString() !== requesterId.toString()) {
-        if (!['admin', 'hr'].includes(requesterRole)) {
+        if (!['admin', 'human resource'].includes(requesterRole)) {
           return res.status(403).json({ success: false, message: 'Access Denied' });
         }
         userId = parseInt(targetEmployeeId.toString());

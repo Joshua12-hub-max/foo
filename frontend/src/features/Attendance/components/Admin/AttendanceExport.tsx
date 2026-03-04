@@ -10,6 +10,7 @@ import { AttendanceQueryValues } from '@/schemas/attendanceSchema';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Employee } from '@/types';
+import { DTRApiResponse } from '@/types/attendance';
 import type { LeaveApplication } from '@/types/leave.types';
 
 interface AttendanceExportProps {
@@ -164,15 +165,17 @@ const AttendanceExport: React.FC<AttendanceExportProps> = ({ data, title, dateRa
         const approvedLeaves: LeaveApplication[] = (leavesResponse as { data?: { applications?: LeaveApplication[] } })?.data?.applications || [];
         approvedLeaves.forEach((leave: LeaveApplication) => {
           if (leave.status !== 'Approved') return;
-          const empId = String(leave.employee_id);
+          const empId = String(leave.employee_id || leave.employee_id); // Ensure string ID
           const leaveStart = new Date(leave.start_date);
           const leaveEnd = new Date(leave.end_date);
           
-          // Iterate each day of the leave period
-          for (let d = new Date(leaveStart); d <= leaveEnd; d.setDate(d.getDate() + 1)) {
+          // Iterate each day of the leave period safely
+          const d = new Date(leaveStart);
+          while (d <= leaveEnd) {
             const dateStr = d.toISOString().split('T')[0];
             const key = `${dateStr}_${empId}`;
             leaveMap.set(key, leave.leave_type);
+            d.setDate(d.getDate() + 1);
           }
         });
         
@@ -186,18 +189,13 @@ const AttendanceExport: React.FC<AttendanceExportProps> = ({ data, title, dateRa
         // ═══════════════════════════════════════════════════════════════
         // 3. Generate Exact Date Range (timezone-safe)
         // ═══════════════════════════════════════════════════════════════
-        const startStr = appliedStartDate!;
-        const endStr = appliedEndDate!;
-        const startMs = new Date(`${startStr}T00:00:00`).getTime();
-        const endMs = new Date(`${endStr}T00:00:00`).getTime();
-        
         const dateArray: string[] = [];
-        for (let time = startMs; time <= endMs; time += 86400000) {
-            const d = new Date(time);
-            const year = d.getFullYear();
-            const month = String(d.getMonth() + 1).padStart(2, '0');
-            const day = String(d.getDate()).padStart(2, '0');
-            dateArray.push(`${year}-${month}-${day}`);
+        let current = new Date(appliedStartDate! + 'T00:00:00');
+        const end = new Date(appliedEndDate! + 'T00:00:00');
+        
+        while (current <= end) {
+          dateArray.push(current.toISOString().split('T')[0]);
+          current.setDate(current.getDate() + 1);
         }
 
         // ═══════════════════════════════════════════════════════════════
@@ -208,36 +206,34 @@ const AttendanceExport: React.FC<AttendanceExportProps> = ({ data, title, dateRa
         
         const empLookup = new Map<string, Employee>();
         employees.forEach((emp: Employee) => {
-            empLookup.set(String(emp.employee_id), emp);
+            const empId = String(emp.employee_id || emp.id);
+            empLookup.set(empId, emp);
         });
         
-        logs.forEach(log => {
-            const logDate = log.date ? new Date(log.date).toISOString().split('T')[0] : '';
+        logs.forEach((log: DTRApiResponse) => {
+            // Backend might return log.date as ISO string or YYYY-MM-DD
+            const logDateVal = log.date ? (String(log.date).includes('T') ? log.date.split('T')[0] : log.date) : '';
             const empId = String(log.employee_id || '');
-            const key = `${logDate}_${empId}`;
+            if (!empId || !logDateVal) return;
             
-            // Resolve name: use employee_name from API, then lookup from employee DB
-            let resolvedName = log.employee_name || '';
-            if (!resolvedName || resolvedName === 'Unknown Employee') {
-                const emp = empLookup.get(empId);
-                if (emp) {
-                    resolvedName = `${emp.first_name || ''} ${emp.last_name || ''}`.trim();
-                }
-            }
-            if (!resolvedName) resolvedName = `Employee ${empId}`;
+            const key = `${logDateVal}_${empId}`;
+            
+            // Resolve name: prioritize exact match from employee DB
+            const emp = empLookup.get(empId);
+            const resolvedName = emp ? `${emp.first_name || ''} ${emp.last_name || ''}`.trim() : (log.employee_name || `Employee ${empId}`);
             
             const record: AttendanceRecord = {
               id: log.id,
               employeeId: empId,
-              employee_id: (isNaN(Number(empId)) ? empId : Number(empId)) as never,
+              employee_id: empId as never, // Compatibility
               name: resolvedName,
-              date: logDate,
+              date: String(logDateVal),
               timeIn: log.time_in || undefined,
               timeOut: log.time_out || undefined,
               lateMinutes: Number(log.late_minutes ?? 0),
               undertimeMinutes: Number(log.undertime_minutes ?? 0),
               status: log.status || 'Present',
-              department: log.department ?? selectedDept ?? undefined,
+              department: log.department || emp?.department || selectedDept || undefined,
               duties: log.duties
             };
             
@@ -257,14 +253,23 @@ const AttendanceExport: React.FC<AttendanceExportProps> = ({ data, title, dateRa
                 const isFuture = new Date(dateStr) > new Date();
 
                 if (existingLog) {
+                    // Robust check for Presence vs Absence
+                    const hasTimes = existingLog.timeIn && existingLog.timeIn !== '-' && existingLog.timeIn !== 'null';
+                    let finalStatus = existingLog.status;
+                    if (!hasTimes && finalStatus === 'Present' && !leaveType) {
+                        finalStatus = 'Absent';
+                    }
+                    if (leaveType) {
+                        finalStatus = `On Leave (${getLeaveAbbreviation(leaveType)})`;
+                    }
+
                     // Has DTR record — use it with corrected name
                     fullRecords.push({
                       ...existingLog,
                       name: fullName,
                       employeeId: empId,
                       department: existingLog.department || emp.department || selectedDept || 'N/A',
-                      // If on leave AND has a log, priority is the log but annotate leave
-                      status: leaveType ? `On Leave (${getLeaveAbbreviation(leaveType)})` : existingLog.status,
+                      status: finalStatus,
                     });
                 } else if (leaveType) {
                     // On approved leave — no DTR expected
@@ -364,11 +369,12 @@ const AttendanceExport: React.FC<AttendanceExportProps> = ({ data, title, dateRa
 
       // Table data — 13 columns
       const tableData = exportData.map(record => {
+        const hasTimes = record.timeIn && record.timeIn !== '-' && record.timeIn !== 'null';
         const isOnLeave = (record.status || '').startsWith('On Leave');
-        const isAbsent = record.status === 'Absent' || (!isOnLeave && (record.timeIn === '-' || record.timeIn === null));
+        const isAbsent = record.status === 'Absent' || (!isOnLeave && !hasTimes);
         const isLate = Number(record.lateMinutes) > 0;
         const isUndertime = Number(record.undertimeMinutes) > 0;
-        const isPresent = !isAbsent && !isOnLeave && !isLate && !isUndertime;
+        const isPresent = !isAbsent && !isOnLeave && hasTimes;
         
         return [
           record.employeeId || '',

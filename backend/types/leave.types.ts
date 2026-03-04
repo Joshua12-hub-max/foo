@@ -299,6 +299,7 @@ export const SPECIAL_LEAVES_NO_DEDUCTION: LeaveType[] = [
   'Paternity Leave',
   'Solo Parent Leave',
   'Special Leave Benefits for Women',
+  'Adoption Leave',
 ];
 
 /**

@@ -1,4 +1,4 @@
-import { mysqlTable, varchar, int, bigint, date, timestamp, decimal, mysqlEnum, datetime, unique, longtext, primaryKey, text, index, time } from 'drizzle-orm/mysql-core';
+import { mysqlTable, varchar, int, bigint, date, timestamp, decimal, mysqlEnum, datetime, unique, longtext, primaryKey, text, index, time, boolean } from 'drizzle-orm/mysql-core';
 import { sql } from 'drizzle-orm';
 
 export const attendanceLogs = mysqlTable("attendance_logs", {
@@ -71,8 +71,8 @@ export const schedules = mysqlTable("schedules", {
 	startTime: time("start_time").notNull(),
 	endTime: time("end_time").notNull(),
 	repeatPattern: varchar("repeat_pattern", { length: 50 }).default('Weekly'),
-	// isRestDay: tinyint("is_rest_day").default(0), // Removed as it caused unknown column error during seeding
-	// isSpecial: tinyint("is_special").default(0), // Removed as it caused unknown column error during seeding
+	isRestDay: boolean("is_rest_day").default(false),
+	isSpecial: boolean("is_special").default(false),
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
 	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow(),
 },
@@ -113,19 +113,16 @@ export const tardinessSummary = mysqlTable("tardiness_summary", {
 // =============================================================================
 
 export const bioEnrolledUsers = mysqlTable("bio_enrolled_users", {
-	employeeId: int("employee_id").notNull(),
+	employeeId: int("employee_id").primaryKey().notNull(),
 	fullName: varchar("full_name", { length: 150 }).notNull(),
 	department: varchar({ length: 100 }),
 	userStatus: mysqlEnum("user_status", ['active', 'inactive']).notNull().default('active'),
 	enrolledAt: datetime("enrolled_at", { mode: 'string' }).default(sql`(CURRENT_TIMESTAMP)`),
 	updatedAt: datetime("updated_at", { mode: 'string' }).default(sql`(CURRENT_TIMESTAMP)`),
-},
-(table) => [
-	primaryKey({ columns: [table.employeeId], name: "bio_enrolled_users_pk" }),
-]);
+});
 
 export const bioAttendanceLogs = mysqlTable("bio_attendance_logs", {
-	id: bigint({ mode: 'number' }).autoincrement().notNull(),
+	id: bigint({ mode: 'number' }).primaryKey().autoincrement().notNull(),
 	employeeId: int("employee_id").notNull(),
 	cardType: mysqlEnum("card_type", ['IN', 'OUT']).notNull(),
 	logDate: date("log_date", { mode: 'string' }).notNull(),
@@ -133,7 +130,6 @@ export const bioAttendanceLogs = mysqlTable("bio_attendance_logs", {
 	createdAt: datetime("created_at", { mode: 'string' }).default(sql`(CURRENT_TIMESTAMP)`),
 },
 (table) => [
-	primaryKey({ columns: [table.id], name: "bio_attendance_logs_pk" }),
 	index("idx_emp_date").on(table.employeeId, table.logDate),
 	index("idx_date_time").on(table.logDate, table.logTime),
 ]);

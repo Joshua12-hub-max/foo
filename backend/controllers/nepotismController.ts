@@ -304,7 +304,7 @@ export const checkNepotism = async (req: Request, res: Response): Promise<void> 
         .where(and(
           eq(authentication.department, position.department),
           or(
-            eq(authentication.role, 'admin'),
+            eq(authentication.role, 'Admin'),
             like(plantillaPositions.positionTitle, '%Head%'),
             like(plantillaPositions.positionTitle, '%Chief%')
           )

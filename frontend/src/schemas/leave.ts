@@ -19,6 +19,7 @@ const LEAVE_TYPE_VALUES = [
   'Rehabilitation Leave',
   'Special Leave Benefits for Women',
   'Wellness Leave',
+  'Adoption Leave',
 ] as const;
 
 const CREDIT_TYPE_VALUES = [
@@ -30,6 +31,12 @@ const CREDIT_TYPE_VALUES = [
   'Paternity Leave',
   'Solo Parent Leave',
   'Study Leave',
+  'Adoption Leave',
+  'Special Emergency Leave',
+  'VAWC Leave',
+  'Rehabilitation Leave',
+  'Special Leave Benefits for Women',
+  'Wellness Leave',
 ] as const;
 
 const MONETIZATION_PURPOSE_VALUES = ['Health', 'Medical', 'Financial Emergency'] as const;

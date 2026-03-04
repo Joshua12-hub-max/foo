@@ -188,8 +188,38 @@ async function seedPolicies() {
     {
       category: 'leave' as const,
       title: 'Leave Filing & Approval Policies (CGM Internal + CSC)',
-      versionLabel: 'v2.0 - CGM 2026',
+      versionLabel: 'v2.1 - CGM 2026',
       content: JSON.stringify({
+        types: [
+          'Vacation Leave',
+          'Sick Leave',
+          'Special Privilege Leave',
+          'Forced Leave',
+          'Maternity Leave',
+          'Paternity Leave',
+          'Solo Parent Leave',
+          'Study Leave',
+          'Special Emergency Leave',
+          'VAWC Leave',
+          'Rehabilitation Leave',
+          'Special Leave Benefits for Women',
+          'Wellness Leave',
+          'Adoption Leave'
+        ],
+        annualLimits: {
+          'Special Privilege Leave': 3,
+          'Forced Leave': 5,
+          'Special Emergency Leave': 5,
+          'Adoption Leave': 60,
+          'Solo Parent Leave': 7,
+          'Paternity Leave': 7,
+          'VAWC Leave': 10,
+          'Special Leave Benefits for Women': 60,
+          'Maternity Leave': 105,
+          'Rehabilitation Leave': 180,
+          'Wellness Leave': 1,
+          'Study Leave': 180
+        },
         advanceFilingDays: {
           days: 5,
           appliesTo: [
@@ -204,6 +234,39 @@ async function seedPolicies() {
           maxDaysAfterReturn: 3,
           description: 'Sick Leave application must be filed within 3 working days of returning to work.'
         },
+        crossChargeMap: {
+          'Sick Leave': 'Vacation Leave',
+          'Forced Leave': 'Vacation Leave'
+        },
+        leaveToCreditMap: {
+          'Vacation Leave': 'Vacation Leave',
+          'Sick Leave': 'Sick Leave',
+          'Special Privilege Leave': 'Special Privilege Leave',
+          'Forced Leave': 'Vacation Leave',
+          'Maternity Leave': 'Maternity Leave',
+          'Paternity Leave': 'Paternity Leave',
+          'Solo Parent Leave': 'Solo Parent Leave',
+          'Study Leave': 'Study Leave',
+          'Adoption Leave': 'Adoption Leave',
+          'Special Emergency Leave': 'Special Emergency Leave',
+          'VAWC Leave': 'VAWC Leave',
+          'Rehabilitation Leave': 'Rehabilitation Leave',
+          'Special Leave Benefits for Women': 'Special Leave Benefits for Women',
+          'Wellness Leave': 'Wellness Leave'
+        },
+        specialLeavesNoDeduction: [
+          'Special Privilege Leave',
+          'Special Emergency Leave',
+          'Wellness Leave',
+          'Study Leave',
+          'VAWC Leave',
+          'Rehabilitation Leave',
+          'Maternity Leave',
+          'Paternity Leave',
+          'Solo Parent Leave',
+          'Special Leave Benefits for Women',
+          'Adoption Leave'
+        ],
         requiredAttachments: {
           sickLeave5Days: {
             condition: 'Sick Leave of 5 or more consecutive working days',
@@ -227,15 +290,13 @@ async function seedPolicies() {
             required: 'Proof of legal adoption process (DSWD endorsement or court order)'
           }
         },
+        deemedApprovalGracePeriod: 5,
         deemedApproval: {
           days: 5,
           description: 'Any leave application pending action for 5 or more days is automatically deemed approved per CSC rules.',
           reference: 'CSC MC No. 41, s. 1998, Section 49'
         },
-        forcedLeave: {
-          annualDays: 5,
-          deductFrom: 'Vacation Leave',
-          enforcement: 'Use-it-or-lose-it. Auto-deducted on December 31st.',
+        forcedLeaveRule: {
           minimumVLRequired: 10,
           description: 'Employees with 10 or more Vacation Leave credits must use at least 5 days as Forced Leave annually.',
           reference: 'CSC MC No. 41, s. 1998, Section 25'

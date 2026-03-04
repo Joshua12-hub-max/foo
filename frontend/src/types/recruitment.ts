@@ -55,6 +55,9 @@ export interface Applicant {
   interviewer_id?: number;
   interviewer_name?: string;
   education?: string;
+  school_name?: string;
+  course?: string;
+  year_graduated?: string;
   experience?: string;
   skills?: string;
   total_experience_years?: number | string | null;

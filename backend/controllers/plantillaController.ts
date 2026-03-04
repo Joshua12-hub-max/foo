@@ -38,7 +38,7 @@ interface PlantillaSelectRow {
   step_increment: number | null;
   department: string | null;
   department_id: number | null;
-  is_vacant: number | null;
+  is_vacant: boolean | null;
   incumbent_id: number | null;
   monthly_salary: string | null;
   filled_date: string | null;
@@ -60,7 +60,7 @@ interface PlantillaSelectRow {
   abolishment_date?: string | null;
   qualification_standards_id?: number | null;
   budget_source?: string | null;
-  is_coterminous?: number | null;
+  is_coterminous?: boolean | null;
   [key: string]: unknown;
 }
 
@@ -188,7 +188,7 @@ export const getPlantilla = async (req: Request, res: Response): Promise<void> =
       whereConditions.push(eq(plantillaPositions.departmentId, Number(department_id)));
     }
     if (is_vacant !== undefined) {
-      whereConditions.push(eq(plantillaPositions.isVacant, is_vacant === 'true' || is_vacant === '1' ? 1 : 0));
+      whereConditions.push(eq(plantillaPositions.isVacant, is_vacant === 'true' || is_vacant === '1' ? true : false));
     }
 
     const positions = await db.select({
@@ -315,7 +315,7 @@ export const createPosition = async (req: Request, res: Response): Promise<void>
       areaCode: validatedData.area_code || null,
       areaType: validatedData.area_type || null,
       areaLevel: validatedData.area_level || null,
-      isVacant: validatedData.is_vacant ? 1 : 0
+      isVacant: validatedData.is_vacant ? true : false
     });
 
     const insertId = result[0].insertId;
@@ -366,7 +366,7 @@ export const updatePosition = async (req: Request, res: Response): Promise<void>
         stepIncrement: updates.step_increment,
         departmentId: updates.department_id,
         department: dept?.name || oldData.department, // Keep old department name if not updating department_id
-        isVacant: updates.is_vacant ? 1 : 0,
+        isVacant: updates.is_vacant ? true : false,
         monthlySalary: updates.monthly_salary ? String(updates.monthly_salary) : null,
         areaCode: updates.area_code || null,
         areaType: updates.area_type || null,
@@ -462,7 +462,7 @@ export const assignEmployee = async (req: Request, res: Response): Promise<void>
     // 3. Calculate Salary for Promotion
     const newGrade = position.salaryGrade;
     const activeTranche = await db.query.salaryTranches.findFirst({
-      where: eq(salaryTranches.isActive, 1)
+      where: eq(salaryTranches.isActive, true)
     });
     const trancheNum = activeTranche?.trancheNumber || 2;
 
@@ -515,7 +515,7 @@ export const assignEmployee = async (req: Request, res: Response): Promise<void>
       await tx.update(plantillaPositions)
         .set({ 
           incumbentId: Number(employee_id), 
-          isVacant: 0, 
+          isVacant: false, 
           filledDate: assignDate, 
           vacatedDate: null, 
           stepIncrement: targetStep, 
@@ -547,8 +547,8 @@ export const assignEmployee = async (req: Request, res: Response): Promise<void>
       });
 
       await logAudit(Number(id), 'assigned', authReq.user.id, 
-        { isVacant: 1, incumbentId: null }, 
-        { isVacant: 0, incumbentId: employee_id, step: targetStep, salary: targetSalary }
+        { isVacant: true, incumbentId: null }, 
+        { isVacant: false, incumbentId: employee_id, step: targetStep, salary: targetSalary }
       );
     });
     
@@ -590,7 +590,7 @@ export const vacatePosition = async (req: Request, res: Response): Promise<void>
         ));
 
       await tx.update(plantillaPositions)
-        .set({ incumbentId: null, isVacant: 1, vacatedDate: vacateDate })
+        .set({ incumbentId: null, isVacant: true, vacatedDate: vacateDate })
         .where(eq(plantillaPositions.id, Number(id)));
 
       await tx.update(authentication)
@@ -598,8 +598,8 @@ export const vacatePosition = async (req: Request, res: Response): Promise<void>
         .where(eq(authentication.id, position.incumbentId!));
 
       await logAudit(Number(id), 'vacated', authReq.user.id, 
-        { isVacant: 0, incumbentId: position.incumbentId }, 
-        { isVacant: 1, incumbentId: null, reason }
+        { isVacant: false, incumbentId: position.incumbentId }, 
+        { isVacant: true, incumbentId: null, reason }
       );
     });
 
@@ -673,7 +673,7 @@ export const getAvailableEmployees = async (_req: Request, res: Response): Promi
     .from(authentication)
     .leftJoin(plantillaPositions, eq(authentication.id, plantillaPositions.incumbentId))
     .where(and(
-      ne(authentication.role, 'admin'),
+      ne(authentication.role, 'Admin'),
       isNull(plantillaPositions.id)
     ))
     .orderBy(asc(authentication.lastName), asc(authentication.firstName));
@@ -700,7 +700,7 @@ export const getSalarySchedule = async (req: Request, res: Response): Promise<vo
     let trancheNum = Number(tranche);
     if (!trancheNum) {
       const activeTranche = await db.query.salaryTranches.findFirst({
-        where: eq(salaryTranches.isActive, 1)
+        where: eq(salaryTranches.isActive, true)
       });
       trancheNum = activeTranche?.trancheNumber || 2;
     }
@@ -751,8 +751,8 @@ export const setActiveTranche = async (req: Request, res: Response): Promise<voi
     const { id } = req.params;
     
     await db.transaction(async (tx) => {
-      await tx.update(salaryTranches).set({ isActive: 0 });
-      await tx.update(salaryTranches).set({ isActive: 1 }).where(eq(salaryTranches.id, Number(id)));
+      await tx.update(salaryTranches).set({ isActive: false });
+      await tx.update(salaryTranches).set({ isActive: true }).where(eq(salaryTranches.id, Number(id)));
     });
     
     res.json({ success: true, message: 'Active tranche updated' });
@@ -765,7 +765,7 @@ export const setActiveTranche = async (req: Request, res: Response): Promise<voi
 export const getActiveTranche = async (_req: Request, res: Response): Promise<void> => {
   try {
     let tranche = await db.query.salaryTranches.findFirst({
-      where: eq(salaryTranches.isActive, 1)
+      where: eq(salaryTranches.isActive, true)
     });
     
     if (!tranche) {
@@ -801,7 +801,7 @@ export const createTranche = async (req: Request, res: Response): Promise<void> 
             effectiveDate: effective_date,
             dateIssued: new Date().toISOString(),
             applicableTo: 'Civilian Government Personnel',
-            isActive: 0
+            isActive: false
         });
 
         const newTranche = await db.query.salaryTranches.findFirst({

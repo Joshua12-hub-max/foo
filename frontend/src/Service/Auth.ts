@@ -91,4 +91,9 @@ export const verifyRegistrationOTP = async (data: EmailVerifyInput) => {
     return response.data;
 };
 
+export const setupAdminHR = async (data: any) => {
+    const response = await api.post("/auth/setup-admin-hr", data);
+    return response.data;
+};
+
 export default api;

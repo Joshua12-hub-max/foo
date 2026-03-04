@@ -1,4 +1,4 @@
-import { mysqlTable, varchar, int, date, timestamp, decimal, mysqlEnum, tinyint, primaryKey, index, unique, text, datetime } from 'drizzle-orm/mysql-core';
+import { mysqlTable, varchar, int, date, timestamp, decimal, mysqlEnum, boolean, primaryKey, index, unique, text, datetime } from 'drizzle-orm/mysql-core';
 import { authentication } from './auth.js';
 
 export const pdsEducation = mysqlTable("pds_education", {
@@ -122,7 +122,7 @@ export const pdsWorkExperience = mysqlTable("pds_work_experience", {
 	monthlySalary: decimal("monthly_salary", { precision: 12, scale: 2 }),
 	salaryGrade: varchar("salary_grade", { length: 20 }),
 	appointmentStatus: varchar("appointment_status", { length: 50 }),
-	isGovernment: tinyint("is_government").default(0),
+	isGovernment: boolean("is_government").default(false),
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
 },
 (table) => [
@@ -169,7 +169,7 @@ export const employeeEducation = mysqlTable("employee_education", {
 	fieldOfStudy: varchar("field_of_study", { length: 255 }),
 	startDate: date("start_date", { mode: 'string' }),
 	endDate: date("end_date", { mode: 'string' }),
-	isCurrent: tinyint("is_current").default(0),
+	isCurrent: boolean("is_current").default(false),
 	description: text(),
 	type: mysqlEnum(['Education','Certification','Training']).default('Education'),
 	expiryDate: date("expiry_date", { mode: 'string' }),
@@ -189,7 +189,7 @@ export const employeeEmergencyContacts = mysqlTable("employee_emergency_contacts
 	phoneNumber: varchar("phone_number", { length: 20 }).notNull(),
 	email: varchar({ length: 100 }),
 	address: text(),
-	isPrimary: tinyint("is_primary").default(0),
+	isPrimary: boolean("is_primary").default(false),
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
 },
 (table) => [
@@ -204,7 +204,7 @@ export const employeeEmploymentHistory = mysqlTable("employee_employment_history
 	jobTitle: varchar("job_title", { length: 100 }).notNull(),
 	startDate: date("start_date", { mode: 'string' }).notNull(),
 	endDate: date("end_date", { mode: 'string' }),
-	isCurrent: tinyint("is_current").default(0),
+	isCurrent: boolean("is_current").default(false),
 	description: text(),
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
 },
@@ -224,7 +224,7 @@ export const employeeMemos = mysqlTable("employee_memos", {
 	priority: mysqlEnum(['Low','Normal','High','Urgent']).default('Normal').notNull(),
 	severity: mysqlEnum("severity", ['minor','moderate','major','grave','terminal']).default('minor').notNull(),
 	effectiveDate: date("effective_date", { mode: 'string' }),
-	acknowledgmentRequired: tinyint("acknowledgment_required").default(0),
+	acknowledgmentRequired: boolean("acknowledgment_required").default(false),
 	acknowledgedAt: datetime("acknowledged_at", { mode: 'string'}),
 	status: mysqlEnum(['Draft','Sent','Acknowledged','Archived']).default('Draft').notNull(),
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
@@ -245,7 +245,7 @@ export const employeeNotes = mysqlTable("employee_notes", {
 	authorId: int("author_id").notNull().references(() => authentication.id, { onDelete: "cascade" } ),
 	noteContent: text("note_content").notNull(),
 	category: varchar({ length: 50 }).default('General'),
-	isPrivate: tinyint("is_private").default(1),
+	isPrivate: boolean("is_private").default(true),
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
 },
 (table) => [
@@ -277,7 +277,7 @@ export const serviceRecords = mysqlTable("service_records", {
 	endDate: date("end_date", { mode: 'string' }),
 	leaveType: varchar("leave_type", { length: 50 }),
 	daysCount: decimal("days_count", { precision: 5, scale: 1 }),
-	isWithPay: tinyint("is_with_pay").default(1),
+	isWithPay: boolean("is_with_pay").default(true),
 	remarks: text(),
 	referenceId: int("reference_id"),
 	referenceType: varchar("reference_type", { length: 50 }),

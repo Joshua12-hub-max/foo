@@ -1,0 +1,18 @@
+﻿Γ£à Database connected successfully
+Γ£à Disable FK checks
+
+Found 2 FK constraints on authentication:
+  - authentication_department_id_departments_id_fk
+Γ£à Drop FK authentication_department_id_departments_id_fk
+  - fk_manager
+Γ£à Drop FK fk_manager
+
+Found 2 legacy indexes (fk_*) on authentication:
+  - fk_manager
+Γ£à Drop index fk_manager
+  - fk_auth_department
+Γ£à Drop index fk_auth_department
+Γ£à 
+Re-enable FK checks
+
+=== Done! All legacy FKs/indexes dropped. Run drizzle push again. ===

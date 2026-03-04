@@ -30,7 +30,7 @@ export const getQualificationStandards = async (req: Request, res: Response): Pr
       conditions.push(eq(qualificationStandards.salaryGrade, parseInt(salary_grade)));
     }
     if (is_active !== undefined) {
-      conditions.push(eq(qualificationStandards.isActive, is_active === 'true' || is_active === '1' ? 1 : 0));
+      conditions.push(eq(qualificationStandards.isActive, is_active === 'true' || is_active === '1' ? true : false));
     }
 
     const standards = await db.select()
@@ -102,7 +102,7 @@ export const createQualificationStandard = async (req: Request, res: Response): 
       trainingHours: validatedData.trainingHours,
       eligibilityRequired: validatedData.eligibilityRequired,
       competencyRequirements: validatedData.competencyRequirements || null,
-      isActive: validatedData.isActive ? 1 : 0
+      isActive: validatedData.isActive ? true : false
     });
 
     res.status(201).json({
@@ -168,7 +168,7 @@ export const updateQualificationStandard = async (req: Request, res: Response): 
     if (validatedData.trainingHours !== undefined) updates.trainingHours = validatedData.trainingHours;
     if (validatedData.eligibilityRequired) updates.eligibilityRequired = validatedData.eligibilityRequired;
     if (validatedData.competencyRequirements !== undefined) updates.competencyRequirements = validatedData.competencyRequirements;
-    if (validatedData.isActive !== undefined) updates.isActive = validatedData.isActive ? 1 : 0;
+    if (validatedData.isActive !== undefined) updates.isActive = validatedData.isActive ? true : false;
 
     if (Object.keys(updates).length === 0) {
       res.status(400).json({

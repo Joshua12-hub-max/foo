@@ -17,9 +17,10 @@ interface DepartmentTableProps {
   onEdit: (dept: Department) => void;
   onDelete: (dept: Department) => void;
   onRemoveEmployee: (employee: Employee, deptId: number) => void;
+  onRegister: (dept: Department) => void;
 }
 
-const DepartmentTable: React.FC<DepartmentTableProps> = memo(({ departments, loading, onEdit, onDelete, onRemoveEmployee }) => {
+const DepartmentTable: React.FC<DepartmentTableProps> = memo(({ departments, loading, onEdit, onDelete, onRemoveEmployee, onRegister }) => {
   const navigate = useNavigate();
   const [expandedRows, setExpandedRows] = useState<Record<number, boolean>>({});
   const [departmentEmployees, setDepartmentEmployees] = useState<Record<number, Employee[]>>({});
@@ -127,6 +128,13 @@ const DepartmentTable: React.FC<DepartmentTableProps> = memo(({ departments, loa
                                     >
                                         <Users size={14} />
                                         <span>{isExpanded ? 'Hide Employees' : 'View Employees'}</span>
+                                    </button>
+                                    <button 
+                                        onClick={() => onRegister(dept)}
+                                        className="p-1.5 border border-gray-200 rounded-lg text-gray-500 hover:text-green-600 hover:bg-green-50 transition-all"
+                                        title="Register Employee"
+                                    >
+                                        <Users size={14} />
                                     </button>
                                     <button 
                                         onClick={() => onEdit(dept)}

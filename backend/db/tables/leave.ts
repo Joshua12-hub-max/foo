@@ -1,4 +1,4 @@
-import { mysqlTable, varchar, int, date, timestamp, decimal, text, mysqlEnum, tinyint, primaryKey, index, unique } from 'drizzle-orm/mysql-core';
+import { mysqlTable, varchar, int, date, timestamp, decimal, text, mysqlEnum, boolean, primaryKey, index, unique } from 'drizzle-orm/mysql-core';
 
 
 export const leaveApplications = mysqlTable("leave_applications", {
@@ -8,7 +8,7 @@ export const leaveApplications = mysqlTable("leave_applications", {
 	startDate: date("start_date", { mode: 'string' }).notNull(),
 	endDate: date("end_date", { mode: 'string' }).notNull(),
 	workingDays: decimal("working_days", { precision: 10, scale: 3 }).notNull(),
-	isWithPay: tinyint("is_with_pay").default(1).notNull(),
+	isWithPay: boolean("is_with_pay").default(true).notNull(),
 	actualPaymentStatus: mysqlEnum("actual_payment_status", ['WITH_PAY','WITHOUT_PAY','PARTIAL']).default('WITH_PAY').notNull(),
 	daysWithPay: decimal("days_with_pay", { precision: 10, scale: 3 }).default('0.000'),
 	daysWithoutPay: decimal("days_without_pay", { precision: 10, scale: 3 }).default('0.000'),
@@ -113,7 +113,7 @@ export const leaveRequests = mysqlTable("leave_requests", {
 	attachmentPath: varchar("attachment_path", { length: 255 }),
 	adminFormPath: varchar("admin_form_path", { length: 255 }),
 	finalAttachmentPath: varchar("final_attachment_path", { length: 255 }),
-	withPay: tinyint("with_pay").default(0),
+	withPay: boolean("with_pay").default(false),
 },
 (table) => [
 	primaryKey({ columns: [table.id], name: "leave_requests_id"}),

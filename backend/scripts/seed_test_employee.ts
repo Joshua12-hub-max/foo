@@ -139,7 +139,7 @@ async function seedMassTestEmployees() {
               departmentId: deptId,
               employeeId: emp.empId,
               passwordHash: genericPassword,
-              isVerified: 1, 
+              isVerified: true, 
               jobTitle: 'Seeded Staff',
               employmentStatus: 'Active',
               employmentType: 'Permanent',

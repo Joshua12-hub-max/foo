@@ -6,9 +6,10 @@ import {
   leaveApplications,
   tardinessSummary
 } from '../db/schema.js';
-import { eq, and, ne, sql } from 'drizzle-orm';
+import { eq, and, ne, sql, inArray } from 'drizzle-orm';
 import { 
   CSC_CREDIT_EARNINGS_TABLE, 
+  type CreditType,
 } from '../types/leave.types.js';
 
 /**
@@ -70,7 +71,7 @@ export const getLWOPDays = async (employeeId: string, month: number, year: numbe
   let totalLWOP = 0;
 
   for (const leave of leaves) {
-      if (leave.isWithPay === 0) {
+      if (leave.isWithPay === false) {
           totalLWOP += Number(leave.workingDays);
       } else {
           totalLWOP += Number(leave.daysWithoutPay || 0);
@@ -104,15 +105,22 @@ export const accrueCreditsForMonth = async (month: number, year: number, specifi
     // Let's assume anyone NOT 'admin' and validation handled by employment_type if needed.
     // For now, getting all non-admin.
 
-    const conditions = [ne(authentication.role, 'admin')];
+    const accruingTypes = ['Permanent', 'Contractual', 'Casual', 'Temporary', 'Coterminous'] as const;
+
+    const conditions = [
+      ne(authentication.role, 'admin'),
+      inArray(authentication.appointmentType, accruingTypes as ['Permanent', 'Contractual', 'Casual', 'Temporary', 'Coterminous'])
+    ];
+    
     if (specificEmployeeIds.length > 0) {
-      conditions.push(sql`${authentication.employeeId} IN (${specificEmployeeIds})`);
+      conditions.push(inArray(authentication.employeeId, specificEmployeeIds));
     }
 
     const employees = await db.select({
       employeeId: authentication.employeeId,
       firstName: authentication.firstName,
-      lastName: authentication.lastName
+      lastName: authentication.lastName,
+      appointmentType: authentication.appointmentType
     })
     .from(authentication)
     .where(and(...conditions));
@@ -177,7 +185,7 @@ export const accrueCreditsForMonth = async (month: number, year: number, specifi
 
 const updateBalanceInternal = async (
     employeeId: string, 
-    creditType: any, 
+    creditType: CreditType, 
     amount: number, 
     remarks: string
 ) => {

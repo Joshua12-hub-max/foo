@@ -63,7 +63,7 @@ const ApplicantList = () => {
   };
 
   const onViewDetailsClick = (applicant: Applicant): void => {
-    window.open(`http://localhost:5000/api/recruitment/applicants/${applicant.id}/pdf`, '_blank');
+    window.open(`${import.meta.env.VITE_API_URL || ''}/api/recruitment/applicants/${applicant.id}/pdf`, '_blank');
   };
   
   const onRejectClick = (applicant: Applicant): void => {

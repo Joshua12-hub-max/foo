@@ -190,7 +190,7 @@ async function seedActivity() {
               category: c.category,
               weight: String(c.weight),
               criteriaType: c.type as any,
-              isActive: 1,
+              isActive: true,
               maxScore: 5
           } as any);
       }
@@ -245,7 +245,7 @@ async function seedActivity() {
       // Ensure items exist
       const reviewItems = await db.select().from(performanceReviewItems).where(eq(performanceReviewItems.reviewId, reviewId));
       if (reviewItems.length === 0) {
-          const allCriteria = await db.select().from(performanceCriteria).where(eq(performanceCriteria.isActive, 1));
+          const allCriteria = await db.select().from(performanceCriteria).where(eq(performanceCriteria.isActive, true));
           for (const c of allCriteria) {
                const score = (Math.random() * (5 - 3) + 3).toFixed(2);
                const selfScore = (Math.random() * (5 - 4) + 4).toFixed(2);

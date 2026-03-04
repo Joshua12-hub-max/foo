@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Users, Search, UserPlus } from 'lucide-react';
+import { ArrowLeft, Users, Search, UserPlus, UserPlus2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useUIStore } from '@/stores';
 import { useDepartmentDetails, DepartmentEmployeeTable, RemoveEmployeeModal, AddEmployeeToDepartment } from '@features/EmployeeManagement/Admin/Departments';
 import { Employee as GlobalEmployee } from '@/types';
 import Pagination from '@/components/CustomUI/Pagination';
+import RegistrationTypeModal from '@/components/Custom/EmployeeManagement/Admin/Modals/RegistrationTypeModal';
 
 interface OutletContext {
   sidebarOpen?: boolean;
@@ -54,6 +55,19 @@ const DepartmentDetail: React.FC = () => {
     openDeleteConfirm,
     closeDeleteConfirm
   } = useDepartmentDetails();
+
+  // Registration modal state
+  const [isRegModalOpen, setIsRegModalOpen] = useState(false);
+
+  const handleSelectRegistrationType = (isOld: boolean, duties: string) => {
+    setIsRegModalOpen(false);
+    const params = new URLSearchParams({
+      duties,
+      type: isOld ? 'old' : 'hired',
+      dept: department?.name || ''
+    });
+    navigate(`/admin-dashboard/register?${params.toString()}`);
+  };
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -148,13 +162,22 @@ const DepartmentDetail: React.FC = () => {
             <h2 className="text-base font-bold text-gray-800">Employee Management</h2>
             <p className="text-gray-500 text-xs">Manage employees in the {department.name} department</p>
           </div>
-          <button
-            onClick={openAddEmployeeModal}
-            className="bg-white hover:bg-gray-50 text-gray-900 border border-gray-300 px-5 py-2.5 rounded-lg flex items-center gap-2 shadow-sm transition-all active:scale-95 text-sm font-bold"
-          >
-            <UserPlus size={16} />
-            <span>Add Employee</span>
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setIsRegModalOpen(true)}
+              className="bg-gray-900 hover:bg-gray-800 text-white px-5 py-2.5 rounded-lg flex items-center gap-2 shadow-sm transition-all active:scale-95 text-sm font-bold"
+            >
+              <UserPlus2 size={16} />
+              <span>Register Employee</span>
+            </button>
+            <button
+              onClick={openAddEmployeeModal}
+              className="bg-white hover:bg-gray-50 text-gray-900 border border-gray-300 px-5 py-2.5 rounded-lg flex items-center gap-2 shadow-sm transition-all active:scale-95 text-sm font-bold"
+            >
+              <UserPlus size={16} />
+              <span>Add Employee</span>
+            </button>
+          </div>
         </div>
 
         {/* Search */}
@@ -214,6 +237,14 @@ const DepartmentDetail: React.FC = () => {
             onClose={closeAddEmployeeModal}
             department={department}
             onSuccess={loadData}
+        />
+
+        {/* Registration Type Selection Modal */}
+        <RegistrationTypeModal
+          isOpen={isRegModalOpen}
+          onClose={() => setIsRegModalOpen(false)}
+          departmentName={department?.name || ''}
+          onSelectType={handleSelectRegistrationType}
         />
       </div>
     </div>

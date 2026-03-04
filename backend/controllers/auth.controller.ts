@@ -3,7 +3,7 @@ import { z } from 'zod';
 import fs from 'fs';
 import path from 'path';
 import { db } from '../db/index.js';
-import { authentication, bioEnrolledUsers, schedules, recruitmentApplicants } from '../db/schema.js';
+import { authentication, bioEnrolledUsers, schedules, recruitmentApplicants, departments, plantillaPositions, recruitmentJobs } from '../db/schema.js';
 import { eq, or, and, sql, gt, getTableColumns, desc } from 'drizzle-orm';
 import { AuthService } from '../services/auth.service.js';
 import bcrypt from 'bcryptjs';
@@ -52,7 +52,7 @@ interface UserData {
   avatarUrl: string | null;
   jobTitle: string | null;
   employmentStatus: string | null;
-  twoFactorEnabled: number | null;
+  twoFactorEnabled: boolean | null;
   dateHired: string | null;
   address: string | null;
   residentialAddress: string | null;
@@ -481,7 +481,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       department,
       employeeId,
       passwordHash: hashedPassword,
-      isVerified: 0,
+      isVerified: false,
       verificationToken: verificationOTP,
       avatarUrl,
       // Work Info
@@ -525,6 +525,17 @@ export const register = async (req: Request, res: Response): Promise<void> => {
 
       // Others
       educationalBackground: validatedData.educationalBackground,
+      schoolName: validatedData.schoolName,
+      course: validatedData.course,
+      yearGraduated: validatedData.yearGraduated,
+      highestEducation: validatedData.highestEducation,
+      yearsOfExperience: validatedData.yearsOfExperience,
+      experience: validatedData.experience,
+      skills: validatedData.skills,
+      eligibilityType: validatedData.eligibilityType,
+      eligibilityNumber: validatedData.eligibilityNumber,
+      eligibilityDate: validatedData.eligibilityDate,
+
       facebookUrl: validatedData.facebookUrl,
       linkedinUrl: validatedData.linkedinUrl,
       twitterHandle: validatedData.twitterHandle,
@@ -588,7 +599,7 @@ export const verifyRegistrationOTP = async (req: Request, res: Response): Promis
       return;
     }
 
-    await AuthService.updateUser(user.id, { isVerified: 1, verificationToken: null });
+    await AuthService.updateUser(user.id, { isVerified: true, verificationToken: null });
 
     res.status(200).json({ success: true, message: 'Email verified successfully. You can now login.' });
   } catch (err) {
@@ -1031,7 +1042,7 @@ export const enableTwoFactor = async (req: Request, res: Response): Promise<void
 
   try {
     await db.update(authentication)
-      .set({ twoFactorEnabled: 1 })
+      .set({ twoFactorEnabled: true })
       .where(eq(authentication.id, userId));
     res.status(200).json({ success: true, message: 'Two-factor authentication enabled.' });
   } catch (err) {
@@ -1046,7 +1057,7 @@ export const disableTwoFactor = async (req: Request, res: Response): Promise<voi
 
   try {
     await db.update(authentication)
-      .set({ twoFactorEnabled: 0 })
+      .set({ twoFactorEnabled: false })
       .where(eq(authentication.id, userId));
     res.status(200).json({ success: true, message: 'Two-factor authentication disabled.' });
   } catch (err) {
@@ -1197,7 +1208,7 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
     // Only reset verification if email CHANGED
     if (updates.email && updates.email !== currentUser.email) {
       mappedUpdates.email = String(updates.email);
-      mappedUpdates.isVerified = 0;
+      mappedUpdates.isVerified = false;
       mappedUpdates.verificationToken = null;
     }
 
@@ -1243,11 +1254,14 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
     if (updates.agency_employee_no !== undefined) mappedUpdates.agencyEmployeeNo = String(updates.agency_employee_no);
     
     if (updates.educational_background !== undefined) mappedUpdates.educationalBackground = String(updates.educational_background);
+    if (updates.school_name !== undefined) mappedUpdates.schoolName = String(updates.school_name);
+    if (updates.course !== undefined) mappedUpdates.course = String(updates.course);
+    if (updates.year_graduated !== undefined) mappedUpdates.yearGraduated = String(updates.year_graduated);
     if (updates.highest_education !== undefined) mappedUpdates.highestEducation = String(updates.highest_education);
     if (updates.eligibility_type !== undefined) mappedUpdates.eligibilityType = String(updates.eligibility_type);
     if (updates.eligibility_number !== undefined) mappedUpdates.eligibilityNumber = String(updates.eligibility_number);
     if (updates.eligibility_date !== undefined) mappedUpdates.eligibilityDate = String(updates.eligibility_date);
-    if (updates.years_of_experience !== undefined) mappedUpdates.yearsOfExperience = Number(updates.years_of_experience);
+    if (updates.years_of_experience !== undefined) mappedUpdates.yearsOfExperience = String(updates.years_of_experience);
     
     if (updates.blood_type !== undefined) mappedUpdates.bloodType = String(updates.blood_type);
     if (updates.height_m !== undefined) mappedUpdates.heightM = String(updates.height_m);
@@ -1368,6 +1382,9 @@ export const findHiredApplicant = async (req: Request, res: Response): Promise<v
       permanent_zip_code: recruitmentApplicants.permanent_zip_code,
       is_meycauayan_resident: recruitmentApplicants.is_meycauayan_resident,
       education: recruitmentApplicants.education,
+      school_name: recruitmentApplicants.school_name,
+      course: recruitmentApplicants.course,
+      year_graduated: recruitmentApplicants.year_graduated,
       experience: recruitmentApplicants.experience,
       skills: recruitmentApplicants.skills,
       hired_date: recruitmentApplicants.hired_date,
@@ -1377,8 +1394,12 @@ export const findHiredApplicant = async (req: Request, res: Response): Promise<v
       eligibility_rating: recruitmentApplicants.eligibility_rating,
       eligibility_place: recruitmentApplicants.eligibility_place,
       license_no: recruitmentApplicants.license_no,
+      total_experience_years: recruitmentApplicants.total_experience_years,
+      job_title: recruitmentJobs.title,
+      department: recruitmentJobs.department,
     })
     .from(recruitmentApplicants)
+    .leftJoin(recruitmentJobs, eq(recruitmentApplicants.job_id, recruitmentJobs.id))
     .where(
       and(
         eq(recruitmentApplicants.first_name, String(firstName)),
@@ -1420,4 +1441,133 @@ export const logout = (_req: Request, res: Response): void => {
   });
 
   res.status(200).json({ success: true, message: 'Logged out successfully.' });
+};
+
+export const getSetupPositions = async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const hrDept = await db.query.departments.findFirst({
+      where: or(
+        eq(departments.name, "Human Resource Management Office"),
+        eq(departments.name, "City Human Resource Management Office"),
+        eq(departments.name, "Human Resource"),
+        eq(departments.name, "CHRMO")
+      )
+    });
+
+    if (!hrDept) {
+      res.status(404).json({ success: false, message: "HR Department not found." });
+      return;
+    }
+
+    const positions = await db.query.plantillaPositions.findMany({
+      where: and(
+        eq(plantillaPositions.departmentId, hrDept.id),
+        eq(plantillaPositions.isVacant, true)
+      ),
+      orderBy: [desc(plantillaPositions.salaryGrade)],
+      limit: 2
+    });
+
+    res.status(200).json({ success: true, departmentId: hrDept.id, positions });
+  } catch (error) {
+    console.error("Setup Positions Error:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
+export const setupAdminHR = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { firstName, lastName, email, password, departmentId, positionId } = req.body;
+
+    const hrDept = await db.query.departments.findFirst({
+      where: eq(departments.id, parseInt(departmentId, 10))
+    });
+
+    if (!hrDept || (!hrDept.name.includes("Human Resource") && !hrDept.name.includes("CHRMO") && !hrDept.name.includes("HR"))) {
+      res.status(400).json({ success: false, message: "Invalid department for setup." });
+      return;
+    }
+
+    const availablePositions = await db.query.plantillaPositions.findMany({
+      where: and(
+        eq(plantillaPositions.departmentId, hrDept.id),
+        eq(plantillaPositions.isVacant, true)
+      ),
+      orderBy: [desc(plantillaPositions.salaryGrade)],
+      limit: 2
+    });
+
+    const selectedPosition = availablePositions.find(p => p.id === parseInt(positionId, 10));
+    
+    if (!selectedPosition) {
+      res.status(400).json({ success: false, message: "Invalid or unavailable position." });
+      return;
+    }
+
+    // Determine role: highest sg -> 'Human Resource', 2nd -> 'admin'
+    // since ordered by desc salary grade, index 0 is highest
+    const isHighest = availablePositions[0].id === selectedPosition.id;
+    const assignedRole = isHighest ? 'Human Resource' : 'admin';
+
+    // check if email exists
+    const existing = await db.query.authentication.findFirst({ where: eq(authentication.email, email) });
+    if(existing) {
+        res.status(400).json({ success: false, message: "Email already exists." });
+        return;
+    }
+    
+    // next id
+    const authRecords = await db.query.authentication.findMany({
+      columns: { employeeId: true }
+    });
+    
+    let maxId = 0;
+    for (const record of authRecords) {
+        if (record.employeeId) {
+            const numericPart = parseInt(record.employeeId.replace(/\D/g, ''), 10);
+            if (!isNaN(numericPart) && numericPart > maxId) {
+                maxId = numericPart;
+            }
+        }
+    }
+    const nextNumericId = maxId + 1;
+    const newEmployeeId = `EMP-${String(nextNumericId).padStart(3, '0')}`;
+
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(password, salt);
+
+    const [authResult] = await db.insert(authentication).values({
+      firstName,
+      lastName,
+      email,
+      passwordHash,
+      role: assignedRole,
+      department: hrDept.name,
+      departmentId: hrDept.id,
+      positionId: selectedPosition.id,
+      jobTitle: selectedPosition.positionTitle,
+      salaryGrade: selectedPosition.salaryGrade.toString(),
+      stepIncrement: selectedPosition.stepIncrement ?? 1,
+      dutyType: 'Standard',
+      employmentStatus: 'Active',
+      isVerified: true,
+      employeeId: newEmployeeId,
+      firstDayOfService: new Date().toISOString().split('T')[0]
+    });
+
+    const newUserId = authResult.insertId;
+
+    await db.update(plantillaPositions)
+      .set({ 
+        isVacant: false, 
+        incumbentId: newUserId,
+        filledDate: new Date().toISOString().split('T')[0]
+      })
+      .where(eq(plantillaPositions.id, selectedPosition.id));
+
+    res.status(201).json({ success: true, message: "Setup completed successfully." });
+  } catch (error) {
+    console.error("Setup Admin HR Error:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
 };

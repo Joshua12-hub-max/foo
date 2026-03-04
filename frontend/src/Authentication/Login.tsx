@@ -18,6 +18,7 @@ import { LoginSchema, LoginInput, VerifyOTPInput, ResendOTPInput } from "@/schem
 import { ApiResponse, User } from "@/types";
 import { AxiosResponse } from "axios";
 import { CredentialResponse } from "@react-oauth/google";
+import api from "@/api/axios";
 
 // Main component for the login page.
 export default function Login() {
@@ -42,6 +43,7 @@ export default function Login() {
   const [maskedEmail, setMaskedEmail] = useState("");
   const [resendTimer, setResendTimer] = useState(0);
   const [authIdentifier, setAuthIdentifier] = useState(""); 
+  const [setupAvailable, setSetupAvailable] = useState(false);
 
   // Combined Loading/Error State derived from Mutations
   const loading = loginMutation.isPending || googleLoginMutation.isPending;
@@ -92,6 +94,21 @@ export default function Login() {
     }
     return () => clearInterval(interval);
   }, [resendTimer]);
+
+  // Check if system initialization is needed
+  useEffect(() => {
+    const checkSetup = async () => {
+      try {
+        const res = await api.get('/auth/setup-positions');
+        if (res.data.positions && res.data.positions.length > 0) {
+          setSetupAvailable(true);
+        }
+      } catch (err) {
+        setSetupAvailable(false);
+      }
+    };
+    checkSetup();
+  }, []);
 
   // Handles form submission via RHF
   const onSubmit = (data: LoginInput) => {
@@ -296,16 +313,19 @@ export default function Login() {
                 size="large"
                 width="350"
                 text="signin_with"
+                use_fedcm_for_prompt={true}
+                use_fedcm_for_button={true}
             />
         </div>
 
-        {/* Link for registration */}
-        <p className="text-center mt-5 text-gray-700 text-sm">
-            Don't have an account?{" "}
-            <Link to="/register" className="font-semibold text-black hover:underline">
-            Register here
+        {setupAvailable && (
+          <p className="text-center mt-5 text-gray-700 text-sm">
+            Initial System Setup:{" "}
+            <Link to="/setup-portal" className="font-semibold text-black hover:underline">
+              Configure Portals
             </Link>
-        </p>
+          </p>
+        )}
 
         <p className="text-center mt-2 text-gray-500 text-xs">
             Looking for a job?{" "}

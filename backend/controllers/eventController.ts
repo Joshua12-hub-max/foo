@@ -28,7 +28,7 @@ const notifyDepartmentEmployees = async (params: { senderId: string; title: stri
 export const getEvents = async (req: Request, res: Response): Promise<void> => {
   try {
     const authReq = req as AuthenticatedRequest;
-    const isAdminOrHr = ['admin', 'hr'].includes(authReq.user.role?.toLowerCase() || '');
+    const isAdminOrHr = ['Admin', 'Human Resource'].includes(authReq.user.role || '');
 
     const baseCondition = or(
       gte(events.endDate, sql`CURDATE()`),

@@ -1,4 +1,4 @@
-import { mysqlTable, varchar, int, date, timestamp, decimal, text, mysqlEnum, tinyint, primaryKey, index, unique } from 'drizzle-orm/mysql-core';
+import { mysqlTable, varchar, int, date, timestamp, decimal, text, mysqlEnum, boolean, primaryKey, index, unique } from 'drizzle-orm/mysql-core';
 import { authentication } from './auth.js';
 
 export const salarySchedule = mysqlTable("salary_schedule", {
@@ -23,7 +23,7 @@ export const salaryTranches = mysqlTable("salary_tranches", {
 	effectiveDate: date("effective_date", { mode: 'string' }),
 	dateIssued: date("date_issued", { mode: 'string' }),
 	applicableTo: varchar("applicable_to", { length: 255 }),
-	isActive: tinyint("is_active").default(0),
+	isActive: boolean("is_active").default(false),
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
 	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow(),
 },

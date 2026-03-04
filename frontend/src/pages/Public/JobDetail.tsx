@@ -5,11 +5,11 @@ import { zodResolver } from '@/lib/zodResolver';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ArrowLeft, Loader2, ChevronRight, Fingerprint, ShieldCheck, 
-  Briefcase, Send, Mail, Minus, Plus, UserSquare2
+  Briefcase, Send, Mail, Plus, Minus, UserSquare2
 } from 'lucide-react';
 import { useToastStore } from '@/stores';
 import PublicLayout from '@components/Public/PublicLayout';
-import { jobApplicationSchema, JobApplicationSchema, PublicJob, createDynamicJobApplicationSchema } from '@/schemas/recruitment';
+import { jobApplicationSchema, JobApplicationSchema, PublicJob, createDynamicJobApplicationSchema, EDUCATION_LEVELS } from '@/schemas/recruitment';
 import { usePublicJobDetail, useJobApplication } from '@/features/Recruitment/hooks/usePublicJobs';
 import { PhilippineAddressSelector } from '@/components/Custom/Shared/PhilippineAddressSelector';
 import ph from 'phil-reg-prov-mun-brgy';
@@ -173,8 +173,11 @@ const JobDetail = () => {
       window.scrollTo(0, 0);
     },
     (err: Error) => {
-        console.error(err.message);
-        showToast("Failed to submit application. Please try again.", "error");
+        const axiosErr = err as Error & { response?: { data?: { message?: string; error?: string; errors?: Record<string, string[]> } } };
+        const serverMsg = axiosErr.response?.data?.error || axiosErr.response?.data?.message || err.message;
+        const fieldErrors = axiosErr.response?.data?.errors;
+        console.error('Application submission error:', serverMsg, fieldErrors);
+        showToast(serverMsg || "Failed to submit application. Please try again.", "error");
     }
   );
 
@@ -196,7 +199,7 @@ const JobDetail = () => {
     });
   };
 
-  const onSubmit = async (data: any) => {
+  const onSubmit = async (data: JobApplicationSchema) => {
     if (!id) return;
 
     // 100% Verification - Submission Timer (Min 30s)
@@ -231,10 +234,33 @@ const JobDetail = () => {
     mutation.mutate({ id, data: finalData });
   };
 
+  // Show validation errors when form fails to submit
+  const onFormError = (fieldErrors: Record<string, { message?: string }>) => {
+    console.error('Form validation errors:', fieldErrors);
+    const firstKey = Object.keys(fieldErrors)[0];
+    const firstError = fieldErrors[firstKey];
+    const label = firstKey.replace(/_/g, ' ');
+    showToast(
+      firstError?.message || `Please fill in: ${label}`,
+      'error'
+    );
+    // Scroll to the first error field
+    const el = document.querySelector(`[name="${firstKey}"]`);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
+
   // Start the anti-bot timer on mount
   useEffect(() => {
     setStartTime(Date.now());
   }, []);
+
+  // Update document title when job loads
+  useEffect(() => {
+    if (job) {
+      document.title = `${job.title} - Careers`;
+    }
+    return () => { document.title = 'Careers'; };
+  }, [job]);
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return 'Recently';
@@ -261,9 +287,7 @@ const JobDetail = () => {
     </div>
   );
 
-  if (job) {
-    document.title = `${job.title} - Careers`;
-  }
+
 
   return (
     <PublicLayout>
@@ -388,7 +412,7 @@ const JobDetail = () => {
             {!success && (
                 <div id="application-form" className="mt-12 sm:mt-20 max-w-4xl mx-auto px-4 sm:px-0">
                     <div className="bg-white border border-gray-300 overflow-hidden rounded-none shadow-none text-slate-900 font-sans">
-                        <form onSubmit={handleSubmit(onSubmit)} className="p-6 sm:p-12 space-y-0 relative">
+                        <form onSubmit={handleSubmit(onSubmit, onFormError)} className="p-6 sm:p-12 space-y-0 relative">
                         {/* Anti-bot fields (hidden) */}
                         <div className="hidden" aria-hidden="true" style={{ display: 'none', opacity: 0, position: 'absolute', left: '-9999px', zIndex: -1 }}>
                             <input type="text" {...register('hp_field')} tabIndex={-1} autoComplete="off" />
@@ -412,104 +436,54 @@ const JobDetail = () => {
                                 </div>
                             }
                         >
-                            <div className="flex flex-col-reverse md:flex-row gap-8 mb-2">
-                                <div className="flex-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-2">
                                     <div className="space-y-2">
-                                        <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Last name</label>
-                                        <input type="text" {...register('last_name')} className={`w-full px-3 py-2 bg-white border border-gray-300 ${errors.last_name ? 'border-red-500' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`} placeholder="Last name" />
+                                        <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Last name <span className="text-red-500">*</span></label>
+                                        <input type="text" {...register('last_name')} className={`w-full px-3 py-2 bg-white border ${errors.last_name ? 'border-red-500' : 'border-gray-300'} rounded-md outline-none font-medium text-sm text-slate-700`} placeholder="Last name" />
                                         {errors.last_name && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.last_name.message}</p>}
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">First name</label>
-                                        <input type="text" {...register('first_name')} className={`w-full px-3 py-2 bg-white border border-gray-300 ${errors.first_name ? 'border-red-500' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`} placeholder="First name" />
+                                        <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">First name <span className="text-red-500">*</span></label>
+                                        <input type="text" {...register('first_name')} className={`w-full px-3 py-2 bg-white border ${errors.first_name ? 'border-red-500' : 'border-gray-300'} rounded-md outline-none font-medium text-sm text-slate-700`} placeholder="First name" />
                                         {errors.first_name && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.first_name.message}</p>}
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Middle name</label>
-                                        <input type="text" {...register('middle_name')} className="w-full px-3 py-2 bg-white border border-gray-300 border-gray-200 rounded-md outline-none font-medium text-sm text-slate-700" placeholder="Middle name" />
+                                        <input type="text" {...register('middle_name')} className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md outline-none font-medium text-sm text-slate-700" placeholder="Middle name" />
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Suffix</label>
-                                        <input type="text" {...register('suffix')} className="w-full px-3 py-2 bg-white border border-gray-300 border-gray-200 rounded-md outline-none font-medium text-sm text-slate-700" placeholder="e.g. Jr., III" />
+                                        <input type="text" {...register('suffix')} className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md outline-none font-medium text-sm text-slate-700" placeholder="e.g. Jr., III" />
                                     </div>
-                                </div>
-
-                                {/* 2x2 Photo Slot */}
-                                <div className="shrink-0">
-                                    <label className="text-[11px] font-bold text-slate-500 tracking-tight mb-2 block ml-0.5">2x2 Photo (Formal)</label>
-                                    <div className="relative group">
-                                        <div className={`w-[140px] h-[140px] border-2 border-dashed ${errors.photo ? 'border-red-500 bg-red-50/10' : 'border-gray-200 bg-gray-50/50'} rounded-md flex flex-col items-center justify-center overflow-hidden group-hover:bg-white group-hover:border-green-600 shadow-sm`}>
-                                            {watch('photo_preview') ? (
-                                                <img src={String(watch('photo_preview'))} alt="Preview" className="w-full h-full object-cover" />
-                                            ) : (
-                                                <div className="flex flex-col items-center justify-center p-4 text-center">
-                                                    <div className="w-8 h-8 rounded-full bg-white border border-gray-300 flex items-center justify-center mb-2">
-                                                        <Plus size={14} className="text-slate-400 group-hover:text-white transition-colors" />
-                                                    </div>
-                                                    <p className="text-[9px] font-bold text-slate-400 tracking-tight leading-tight">Click to upload 2x2 photo</p>
-                                                </div>
-                                            )}
-                                        </div>
-                                        <input 
-                                            type="file" 
-                                            accept="image/*" 
-                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
-                                            onChange={(e) => {
-                                                const file = e.target.files?.[0];
-                                                if (file) {
-                                                    const reader = new FileReader();
-                                                    reader.onloadend = () => {
-                                                        setValue('photo_preview', reader.result as string);
-                                                        setValue('photo', file);
-                                                    };
-                                                    reader.readAsDataURL(file);
-                                                }
-                                            }}
-                                        />
-                                        {watch('photo_preview') && (
-                                            <button 
-                                                type="button"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setValue('photo_preview', '');
-                                                    setValue('photo', undefined);
-                                                }}
-                                                className="absolute -top-2 -right-2 w-6 h-6 bg-slate-900 text-white rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform"
-                                            >
-                                                <Minus size={12} />
-                                            </button>
-                                        )}
-                                    </div>
-                                    {errors.photo && <p className="text-red-500 text-[10px] font-bold mt-2 ml-1">Photo is required</p>}
-                                </div>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-y-3 gap-x-6">
                                 <div className="space-y-2">
-                                    <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Birth date</label>
+                                    <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Birth date <span className="text-red-500">*</span></label>
                                     <input type="date" {...register('birth_date')} className={`w-full px-3 py-2 bg-white border border-gray-300 ${errors.birth_date ? 'border-red-500' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`} />
                                 </div>
                                 <div className="md:col-span-2 space-y-2">
-                                    <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Place of birth</label>
+                                    <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Place of birth <span className="text-red-500">*</span></label>
                                     <input type="text" {...register('birth_place')} className={`w-full px-3 py-2 bg-white border border-gray-300 ${errors.birth_place ? 'border-red-500' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`} placeholder="City/municipality, province" />
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-2 md:grid-cols-5 gap-y-4 gap-x-6">
+                            <div className="grid grid-cols-2 lg:grid-cols-6 gap-y-4 gap-x-6">
                                 <div className="space-y-2">
-                                    <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Gender</label>
-                                    <select {...register('sex')} className="w-full px-3 py-2 bg-white border border-gray-300 border-gray-200 rounded-md outline-none font-medium text-sm text-slate-700">
+                                    <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Gender <span className="text-red-500">*</span></label>
+                                    <select {...register('sex')} className={`w-full px-3 py-2 bg-white border ${errors.sex ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`}>
                                         <option value="Male">Male</option>
                                         <option value="Female">Female</option>
                                     </select>
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Civil status</label>
-                                    <select {...register('civil_status')} className="w-full px-3 py-2 bg-white border border-gray-300 border-gray-200 rounded-md outline-none font-medium text-sm text-slate-700">
+                                    <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Civil status <span className="text-red-500">*</span></label>
+                                    <select {...register('civil_status')} className={`w-full px-3 py-2 bg-white border ${errors.civil_status ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`}>
                                         <option value="Single">Single</option>
                                         <option value="Married">Married</option>
                                         <option value="Widowed">Widowed</option>
                                         <option value="Separated">Separated</option>
+                                        <option value="Annulled">Annulled</option>
                                     </select>
                                 </div>
                                 
@@ -527,7 +501,7 @@ const JobDetail = () => {
                                         <input 
                                             type="text" 
                                             {...register('height')} 
-                                            className="w-full px-8 py-2 border-gray-300 bg-white border border-gray-200 rounded-md outline-none font-bold text-sm text-slate-700 text-center" 
+                                            className="w-full px-8 py-2 bg-white border border-gray-300 rounded-md outline-none font-bold text-sm text-slate-700 text-center" 
                                             placeholder="0.00"
                                         />
                                         <button 
@@ -554,7 +528,7 @@ const JobDetail = () => {
                                         <input 
                                             type="text" 
                                             {...register('weight')} 
-                                            className="w-full px-8 py-2 border-gray-300 bg-white border border-gray-200 rounded-md outline-none font-bold text-sm text-slate-700 text-center" 
+                                            className="w-full px-8 py-2 bg-white border border-gray-300 rounded-md outline-none font-bold text-sm text-slate-700 text-center" 
                                             placeholder="0"
                                         />
                                         <button 
@@ -569,7 +543,7 @@ const JobDetail = () => {
 
                                 <div className="space-y-2">
                                     <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Blood type</label>
-                                    <select {...register('blood_type')} className="w-full px-3 py-2 bg-white border border-gray-300 border-gray-200 rounded-md outline-none font-medium text-sm text-slate-700">
+                                    <select {...register('blood_type')} className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md outline-none font-medium text-sm text-slate-700">
                                         <option value="none">Select Type</option>
                                         <option value="A+">A+</option>
                                         <option value="A-">A-</option>
@@ -580,6 +554,17 @@ const JobDetail = () => {
                                         <option value="O+">O+</option>
                                         <option value="O-">O-</option>
                                     </select>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Nationality</label>
+                                    <input 
+                                        type="text" 
+                                        {...register('nationality')} 
+                                        className={`w-full px-3 py-2 bg-white border border-gray-300 ${errors.nationality ? 'border-red-500' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`} 
+                                        placeholder="Filipino" 
+                                    />
+                                    {errors.nationality && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.nationality.message as string}</p>}
                                 </div>
                             </div>
                         </FormSection>
@@ -648,11 +633,11 @@ const JobDetail = () => {
                             
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
                                 <div className="space-y-2">
-                                    <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Email address</label>
+                                    <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Email address <span className="text-red-500">*</span></label>
                                     <input type="email" {...register('email')} className={`w-full px-3 py-2 bg-white border border-gray-300 ${errors.email ? 'border-red-500' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`} placeholder="email@address.com" />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Contact number</label>
+                                    <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Contact number <span className="text-red-500">*</span></label>
                                     <input type="text" {...register('phone_number')} className={`w-full px-3 py-2 bg-white border border-gray-300 ${errors.phone_number ? 'border-red-500' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`} placeholder="+63 9XX XXX XXXX" />
                                 </div>
                             </div>
@@ -665,32 +650,32 @@ const JobDetail = () => {
                         >
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 <div className="space-y-2">
-                                    <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">GSIS Number</label>
+                                    <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">GSIS Number {requireIds && <span className="text-red-500 ml-1">*</span>}</label>
                                     <input type="text" {...register('gsis_no')} className={`w-full px-3 py-2 bg-white border ${errors.gsis_no ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`} placeholder={requireIds ? "Required" : "Optional"} />
                                     {errors.gsis_no && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.gsis_no.message}</p>}
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Pag-IBIG Number</label>
+                                    <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Pag-IBIG Number {requireIds && <span className="text-red-500 ml-1">*</span>}</label>
                                     <input type="text" {...register('pagibig_no')} className={`w-full px-3 py-2 bg-white border ${errors.pagibig_no ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`} placeholder={requireIds ? "Required" : "Optional"} />
                                     {errors.pagibig_no && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.pagibig_no.message}</p>}
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">PhilHealth Number</label>
+                                    <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">PhilHealth Number {requireIds && <span className="text-red-500 ml-1">*</span>}</label>
                                     <input type="text" {...register('philhealth_no')} className={`w-full px-3 py-2 bg-white border ${errors.philhealth_no ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`} placeholder={requireIds ? "Required" : "Optional"} />
                                     {errors.philhealth_no && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.philhealth_no.message}</p>}
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">UMID Number</label>
+                                    <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">UMID Number {requireIds && <span className="text-red-500 ml-1">*</span>}</label>
                                     <input type="text" {...register('umid_no')} className={`w-full px-3 py-2 bg-white border ${errors.umid_no ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`} placeholder={requireIds ? "Required" : "Optional"} />
                                     {errors.umid_no && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.umid_no.message}</p>}
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">PhilSys ID (National ID)</label>
+                                    <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">PhilSys ID (National ID) {requireIds && <span className="text-red-500 ml-1">*</span>}</label>
                                     <input type="text" {...register('philsys_id')} className={`w-full px-3 py-2 bg-white border ${errors.philsys_id ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`} placeholder={requireIds ? "Required" : "Optional"} />
                                     {errors.philsys_id && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.philsys_id.message}</p>}
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">TIN Number</label>
+                                    <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">TIN Number {requireIds && <span className="text-red-500 ml-1">*</span>}</label>
                                     <input type="text" {...register('tin_no')} className={`w-full px-3 py-2 bg-white border ${errors.tin_no ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`} placeholder={requireIds ? "Required" : "Optional"} />
                                     {errors.tin_no && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.tin_no.message}</p>}
                                 </div>
@@ -710,11 +695,11 @@ const JobDetail = () => {
                                     </h4>
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
                                         <div className="space-y-2">
-                                            <label className="text-[11px] font-bold text-slate-500 tracking-tight">Eligibility Name / Title</label>
+                                            <label className="text-[11px] font-bold text-slate-500 tracking-tight">Eligibility Name / Title {requireCsc && <span className="text-red-500 ml-1">*</span>}</label>
                                             <input type="text" {...register('eligibility')} className="w-full px-3 py-2 bg-white border border-gray-300 border-gray-200 rounded-lg focus:border-green-600 outline-none text-sm font-medium text-slate-700 placeholder:text-slate-300 shadow-sm" placeholder="e.g. CSR Prof, CPA, Driver's License" />
                                         </div>
                                         <div className="space-y-2">
-                                            <label className="text-[11px] font-bold text-slate-500 tracking-tight">Eligibility Category</label>
+                                            <label className="text-[11px] font-bold text-slate-500 tracking-tight">Eligibility Category {requireCsc && <span className="text-red-500 ml-1">*</span>}</label>
                                             <select {...register('eligibility_type')} className="w-full px-3 py-2 bg-white border border-gray-300 border-gray-200 rounded-lg focus:border-green-600 outline-none text-sm font-medium text-slate-700 shadow-sm">
                                                 <option value="none">Not Applicable / None</option>
                                                 <optgroup label="Government (CSC/RA)">
@@ -738,24 +723,64 @@ const JobDetail = () => {
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                         <div className="space-y-2">
-                                            <label className="text-[11px] font-bold text-slate-500 tracking-tight">Date of Release / Validity</label>
+                                            <label className="text-[11px] font-bold text-slate-500 tracking-tight">Date of Release / Validity {requireCsc && <span className="text-red-500 ml-1">*</span>}</label>
                                             <input type="date" {...register('eligibility_date')} className="w-full px-3 py-2 bg-white border border-gray-300 border-gray-200 rounded-lg focus:border-green-600 outline-none text-sm font-medium text-slate-700 shadow-sm" />
                                         </div>
                                         <div className="space-y-2">
-                                            <label className="text-[11px] font-bold text-slate-500 tracking-tight">Place of Examination / Issue</label>
+                                            <label className="text-[11px] font-bold text-slate-500 tracking-tight">Place of Examination / Issue {requireCsc && <span className="text-red-500 ml-1">*</span>}</label>
                                             <input type="text" {...register('eligibility_place')} className="w-full px-3 py-2 bg-white border border-gray-300 border-gray-200 rounded-lg focus:border-green-600 outline-none text-sm font-medium text-slate-700 placeholder:text-slate-300 shadow-sm" placeholder="City or Region" />
                                         </div>
                                         <div className="space-y-2">
-                                            <label className="text-[11px] font-bold text-slate-500 tracking-tight">License / ID Number</label>
+                                            <label className="text-[11px] font-bold text-slate-500 tracking-tight">License / ID Number {requireCsc && <span className="text-red-500 ml-1">*</span>}</label>
                                             <input type="text" {...register('license_no')} className="w-full px-3 py-2 bg-white border border-gray-300 border-gray-200 rounded-lg focus:border-green-600 outline-none text-sm font-medium text-slate-700 placeholder:text-slate-300 shadow-sm" placeholder="ID or License Number" />
                                         </div>
                                     </div>
                                 </div>
 
-                                <div className="space-y-2">
-                                    <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Education History {requireEdu && <span className="text-red-500">*</span>}</label>
-                                    <textarea {...register('education')} rows={2} className={`w-full px-3 py-2 bg-white border border-gray-300 ${errors.education ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`} placeholder={requireEdu ? "Major, School, Graduation Year... (Required)" : "Major, School, Graduation Year..."} />
-                                    {errors.education && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.education.message}</p>}
+                                <div className="space-y-4">
+                                    <div className="space-y-2">
+                                        <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Highest Level Attained {requireEdu && <span className="text-red-500">*</span>}</label>
+                                        <select 
+                                            {...register('education')} 
+                                            className={`w-full px-3 py-2 bg-white border border-gray-300 ${errors.education ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`}
+                                        >
+                                            <option value="">Select highest education attained</option>
+                                            {EDUCATION_LEVELS.map((level) => (
+                                                <option key={level} value={level}>{level}</option>
+                                            ))}
+                                        </select>
+                                        {errors.education && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.education.message}</p>}
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">School Name {requireEdu && <span className="text-red-500">*</span>}</label>
+                                            <input 
+                                                {...register('school_name')} 
+                                                className={`w-full px-3 py-2 bg-white border border-gray-300 ${errors.school_name ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`}
+                                                placeholder="e.g. Bulacan State University"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Year Graduated {requireEdu && <span className="text-red-500">*</span>}</label>
+                                            <input 
+                                                {...register('year_graduated')} 
+                                                className={`w-full px-3 py-2 bg-white border border-gray-300 ${errors.year_graduated ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`}
+                                                placeholder="e.g. 2020"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {watch('education') && !["Elementary School Graduate", "High School Graduate", "Senior High School Graduate"].includes(watch('education') || "") && (
+                                        <div className="space-y-2">
+                                            <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Course / Degree {requireEdu && <span className="text-red-500">*</span>}</label>
+                                            <input 
+                                                {...register('course')} 
+                                                className={`w-full px-3 py-2 bg-white border border-gray-300 ${errors.course ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`}
+                                                placeholder="e.g. BS in Information Technology"
+                                            />
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="space-y-2">

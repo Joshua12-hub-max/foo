@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { X, Loader2 } from 'lucide-react';
 import { creditUpdateSchema, CreditUpdateInput } from '@/schemas/creditsSchema';
 import { useLeavePolicy } from '@/hooks/useLeavePolicy';
+import Combobox from '@/components/Custom/Combobox';
 
 interface EditCreditModalProps {
   isOpen: boolean;
@@ -14,12 +15,15 @@ interface EditCreditModalProps {
 }
 
 const EditCreditModal = ({ isOpen, onClose, onSubmit, credit, isSubmitting }: EditCreditModalProps) => {
-  const { data: leaveTypes = [] } = useLeavePolicy(); // Fetch, even if disabled, for potential validation/future use
+  const { data: policy } = useLeavePolicy();
+  const creditTypes = policy ? Array.from(new Set(Object.values(policy.leaveToCreditMap))) : [];
 
   const {
     register,
     handleSubmit,
     reset,
+    setValue,
+    watch,
     formState: { errors }
   } = useForm<CreditUpdateInput>({
     resolver: zodResolver(creditUpdateSchema),
@@ -74,11 +78,13 @@ const EditCreditModal = ({ isOpen, onClose, onSubmit, credit, isSubmitting }: Ed
             <label className="block text-sm font-semibold text-gray-700 mb-1.5">
               Credit Type
             </label>
-            <input
-              type="text"
-              {...register('creditType')}
-              disabled
-              className="w-full border border-gray-200 bg-gray-50 rounded-xl px-4 py-2.5 text-sm text-gray-500 cursor-not-allowed outline-none"
+            <Combobox
+              options={creditTypes.map(type => ({ value: type, label: type }))}
+              value={watch('creditType') || ''}
+              onChange={(val) => setValue('creditType', val, { shouldValidate: true })}
+              placeholder="Select credit type..."
+              error={!!errors.creditType}
+              className="opacity-60 pointer-events-none" // Kept disabled as per original
             />
           </div>
 

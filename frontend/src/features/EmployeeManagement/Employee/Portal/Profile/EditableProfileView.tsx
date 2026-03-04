@@ -192,7 +192,7 @@ const EditableDataField: React.FC<EditableDataFieldProps> = ({
       ) : (
         <div className="group/value relative h-full">
             <span className={`text-sm font-semibold break-words whitespace-pre-wrap ${highlight ? 'text-gray-900' : 'text-gray-700'} block min-h-[20px]`}>
-            {formattedValue || value || <span className="text-gray-300 font-normal">â€”</span>}
+            {formattedValue || value || <span className="text-gray-300 font-normal">-</span>}
             </span>
             {editable && (
             <div 
@@ -283,7 +283,7 @@ const CustomEditableDataField: React.FC<CustomEditableDataFieldProps> = ({
       ) : (
         <div className="group/value relative h-full">
              <span className="text-sm font-semibold break-words whitespace-pre-wrap text-gray-700 block min-h-[20px]">
-               {value || <span className="text-gray-300 font-normal">â€”</span>}
+               {value || <span className="text-gray-300 font-normal">-</span>}
              </span>
              <button
                 onClick={() => { setEditValue(String(value||'')); setIsEditing(true); }}
@@ -317,7 +317,7 @@ const DataField: React.FC<{label: string; value?: string | number | null; icon?:
     <div className={`flex flex-col rounded-lg p-3 ${getColSpanClass()} ${highlight ? 'bg-gray-50 border border-gray-200' : 'bg-white'}`}>
       <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1">{label}</span>
       <span className={`text-sm font-semibold truncate ${highlight ? 'text-gray-900' : 'text-gray-700'}`}>
-        {value || <span className="text-gray-300 font-normal">â€”</span>}
+        {value || <span className="text-gray-300 font-normal">-</span>}
       </span>
     </div>
   );

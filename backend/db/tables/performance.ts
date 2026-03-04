@@ -1,4 +1,4 @@
-import { mysqlTable, varchar, int, date, timestamp, decimal, text, mysqlEnum, tinyint, primaryKey, index, json, foreignKey } from 'drizzle-orm/mysql-core';
+import { mysqlTable, varchar, int, date, timestamp, decimal, text, mysqlEnum, boolean, primaryKey, index, json, foreignKey } from 'drizzle-orm/mysql-core';
 import { authentication } from './auth.js';
 
 export const performanceCriteria = mysqlTable("performance_criteria", {
@@ -18,7 +18,7 @@ export const performanceCriteria = mysqlTable("performance_criteria", {
     // Evidence Support
     evidenceRequirements: text("evidence_requirements"),
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
-	isActive: tinyint("is_active").default(1),
+	isActive: boolean("is_active").default(true),
 },
 (table) => [
 	primaryKey({ columns: [table.id], name: "performance_criteria_id"}),
@@ -34,7 +34,7 @@ export const performanceReviewCycles = mysqlTable("performance_review_cycles", {
 	createdBy: int("created_by").references(() => authentication.id, { onDelete: "set null" } ),
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
 	ratingPeriod: mysqlEnum("rating_period", ['1st_sem','2nd_sem','annual']).default('annual'),
-	isActive: tinyint("is_active").default(1),
+	isActive: boolean("is_active").default(true),
 	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow(),
 },
 (table) => [
@@ -61,12 +61,12 @@ export const performanceReviews = mysqlTable("performance_reviews", {
 	disagreeRemarks: text("disagree_remarks"),
 	approvedBy: int("approved_by"),
 	approvedAt: timestamp("approved_at", { mode: 'string' }),
-	disagreed: tinyint().default(0),
+	disagreed: boolean().default(false),
 	ratingPeriod: mysqlEnum("rating_period", ['1st_sem','2nd_sem','annual']).default('annual'),
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
 	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow(),
-	reviewCycleId: int("review_cycle_id").references(() => performanceReviewCycles.id, { onDelete: "set null" } ),
-	isSelfAssessment: tinyint("is_self_assessment").default(0),
+	reviewCycleId: int("review_cycle_id"),
+	isSelfAssessment: boolean("is_self_assessment").default(false),
 	cycleId: int("cycle_id"),
 	evaluationMode: mysqlEnum("evaluation_mode", ['CSC','IPCR']).default('CSC'),
 },

@@ -1,14 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { 
-  login, 
-  googleLogin, 
-  logout, 
-  verifyTwoFactorOTP, 
-  resendTwoFactorOTP,
-  register,
-  forgotPassword,
-  resetPassword
-} from '@/Service/Auth';
+import { login, googleLogin, logout, verifyTwoFactorOTP, resendTwoFactorOTP, register, forgotPassword, resetPassword, setupAdminHR } from '@/Service/Auth';
 import { useAuthStore } from '@/stores/authStore';
 import { useNavigate } from 'react-router-dom';
 import { LoginInput, RegisterInput, VerifyOTPInput, ResendOTPInput } from '@/schemas/authSchema';
@@ -19,8 +10,6 @@ export const useLoginMutation = () => {
     return useMutation({
         mutationFn: (data: LoginInput) => login(data),
         onSuccess: (response) => {
-            // Check for 2FA in response (handled in component usually, but we can return data)
-            // If success without 2FA, update store
             if (!response.data.requires2FA) {
                 const userData = response.data.data;
                 setUser(userData);
@@ -95,3 +84,10 @@ export const useRegisterMutation = () => {
         mutationFn: (data: RegisterInput | FormData) => register(data)
     });
 };
+
+export const useSetupPortalMutation = () => {
+    return useMutation({
+        mutationFn: (data: any) => setupAdminHR(data)
+    });
+};
+

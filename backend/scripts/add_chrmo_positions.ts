@@ -58,7 +58,7 @@ async function seedPositions() {
         salaryGrade: p.sg,
         department: dept.name,
         departmentId: dept.id,
-        isVacant: 1
+        isVacant: true
     }));
 
      // Using simple loop to avoid duplicate item number errors if re-run (ignoring duplicates would be better but keeping simple)

@@ -127,7 +127,7 @@ export interface UserRow extends BaseRow {
 // Enums and Constants
 // ============================================================================
 
-export type UserRole = 'admin' | 'Human Resource' | 'employee';
+export type UserRole = 'Admin' | 'Human Resource' | 'Employee';
 
 export type EmploymentStatus = 
   | 'Active'

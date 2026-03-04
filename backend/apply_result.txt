@@ -1,0 +1,49 @@
+﻿=== Applying Remaining Schema Changes ===
+
+Γ£à Database connected successfully
+Γ£à Disable FK checks
+Γ£à Update recruitment_jobs.employment_type enum
+Γ£à Update recruitment_applicants.interview_platform enum
+Γ£à Update leave_balances.credit_type enum
+Γ£à Update leave_ledger.credit_type enum
+Γ£à Fix recruitment_jobs.require_civil_service
+Γ£à Fix recruitment_jobs.require_government_ids
+Γ£à Fix recruitment_jobs.require_education_experience
+Γ£à Fix chat_messages.is_read
+Γ£à Fix recruitment_applicants.is_meycauayan_resident
+Γ£à Fix qualification_standards.is_active
+Γ£à Fix plantilla_positions.is_vacant
+Γ£à Fix plantilla_positions.is_coterminous
+Γ£à Fix performance_criteria.is_active
+Γ£à Fix performance_review_cycles.is_active
+Γ£à Fix performance_reviews.disagreed
+Γ£à Fix performance_reviews.is_self_assessment
+Γ£à Fix pds_work_experience.is_government
+Γ£à Fix employee_education.is_current
+Γ£à Fix employee_emergency_contacts.is_primary
+Γ£à Fix employee_employment_history.is_current
+Γ£à Fix employee_memos.acknowledgment_required
+Γ£à Fix employee_notes.is_private
+Γ£à Fix service_records.is_with_pay
+Γ£à Fix salary_tranches.is_active
+Γ£à Fix leave_applications.is_with_pay
+Γ£à Fix leave_requests.with_pay
+ΓÅ¡∩╕Å  Drop recruitment_applicants.nationality (already done: ER_CANT_DROP_FIELD_OR_KEY)
+ΓÅ¡∩╕Å  Drop recruitment_applicants.telephone_no (already done: ER_CANT_DROP_FIELD_OR_KEY)
+ΓÅ¡∩╕Å  Drop recruitment_applicants.emergency_contact (already done: ER_CANT_DROP_FIELD_OR_KEY)
+ΓÅ¡∩╕Å  Drop recruitment_applicants.emergency_contact_number (already done: ER_CANT_DROP_FIELD_OR_KEY)
+ΓÅ¡∩╕Å  Drop recruitment_applicants.facebook_url (already done: ER_CANT_DROP_FIELD_OR_KEY)
+ΓÅ¡∩╕Å  Drop recruitment_applicants.linkedin_url (already done: ER_CANT_DROP_FIELD_OR_KEY)
+ΓÅ¡∩╕Å  Drop recruitment_applicants.twitter_handle (already done: ER_CANT_DROP_FIELD_OR_KEY)
+ΓÅ¡∩╕Å  Drop internal_policies.created_at (already done: ER_CANT_DROP_FIELD_OR_KEY)
+Γ£à Create fingerprints table
+Γ£à Create recruitment_security_logs table
+ΓÅ¡∩╕Å  Add experience to authentication (already done: ER_DUP_FIELDNAME)
+ΓÅ¡∩╕Å  Add skills to authentication (already done: ER_DUP_FIELDNAME)
+Γ£à Fix authentication.years_of_experience type
+ΓÅ¡∩╕Å  Add is_rest_day to schedules (already done: ER_DUP_FIELDNAME)
+ΓÅ¡∩╕Å  Add is_special to schedules (already done: ER_DUP_FIELDNAME)
+Γ£à Re-enable FK checks
+
+=== All Changes Applied! ===
+Run `pnpx tsx node_modules/drizzle-kit/bin.cjs push` again to verify schema is in sync.

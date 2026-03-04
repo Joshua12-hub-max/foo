@@ -1,4 +1,4 @@
-import { mysqlTable, varchar, int, date, timestamp, decimal, text, mysqlEnum, datetime, unique, tinyint, foreignKey, primaryKey, json } from 'drizzle-orm/mysql-core';
+import { mysqlTable, varchar, int, date, timestamp, decimal, text, mysqlEnum, datetime, unique, boolean, foreignKey, primaryKey, json } from 'drizzle-orm/mysql-core';
 import { sql } from 'drizzle-orm';
 import { departments } from './hr.js';
 import { plantillaPositions } from './plantilla.js';
@@ -16,7 +16,7 @@ export const authentication = mysqlTable("authentication", {
 	rfidCardUid: varchar("rfid_card_uid", { length: 50 }),
 	passwordHash: varchar("password_hash", { length: 255 }),
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
-	isVerified: tinyint("is_verified").default(0),
+	isVerified: boolean("is_verified").default(false),
 	verificationToken: varchar("verification_token", { length: 255 }),
 	resetPasswordToken: varchar("reset_password_token", { length: 255 }),
 	resetPasswordExpires: datetime("reset_password_expires", { mode: 'string'}),
@@ -28,7 +28,7 @@ export const authentication = mysqlTable("authentication", {
 	dateHired: date("date_hired", { mode: 'string' }),
 	contractEndDate: date("contract_end_date", { mode: 'string' }),
 	regularizationDate: date("regularization_date", { mode: 'string' }),
-	isRegular: tinyint("is_regular").default(0),
+	isRegular: boolean("is_regular").default(false),
 	managerId: int("manager_id"),
 	birthDate: date("birth_date", { mode: 'string' }),
 	gender: mysqlEnum(['Male','Female']),
@@ -59,7 +59,7 @@ export const authentication = mysqlTable("authentication", {
 	firstDayOfService: date("first_day_of_service", { mode: 'string' }),
 	supervisor: varchar({ length: 100 }),
 	refreshToken: text("refresh_token"),
-	twoFactorEnabled: tinyint("two_factor_enabled").default(0),
+	twoFactorEnabled: boolean("two_factor_enabled").default(false),
 	twoFactorOtp: varchar("two_factor_otp", { length: 6 }),
 	twoFactorOtpExpires: datetime("two_factor_otp_expires", { mode: 'string'}),
 	eligibilityType: varchar("eligibility_type", { length: 255 }),
@@ -67,7 +67,12 @@ export const authentication = mysqlTable("authentication", {
 	eligibilityDate: date("eligibility_date", { mode: 'string' }),
 	highestEducation: varchar("highest_education", { length: 255 }),
 	educationalBackground: text("educational_background"),
-	yearsOfExperience: int("years_of_experience").default(0),
+	schoolName: varchar("school_name", { length: 255 }),
+	course: varchar("course", { length: 255 }),
+	yearGraduated: varchar("year_graduated", { length: 10 }),
+	yearsOfExperience: varchar("years_of_experience", { length: 50 }),
+	experience: text("experience"),
+	skills: text("skills"),
 	placeOfBirth: varchar("place_of_birth", { length: 255 }),
 	dateOfBirth: date("date_of_birth", { mode: 'string' }),
 	heightM: decimal("height_m", { precision: 4, scale: 2 }),
@@ -112,7 +117,7 @@ export const googleCalendarTokens = mysqlTable("google_calendar_tokens", {
 	accessToken: text("access_token").notNull(),
 	refreshToken: text("refresh_token").notNull(),
 	tokenExpiry: datetime("token_expiry", { mode: 'string'}).notNull(),
-	syncEnabled: tinyint("sync_enabled").default(1),
+	syncEnabled: boolean("sync_enabled").default(true),
 	calendarId: varchar("calendar_id", { length: 255 }).default('primary'),
 	lastSync: datetime("last_sync", { mode: 'string'}).default(sql`(CURRENT_TIMESTAMP)`),
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),

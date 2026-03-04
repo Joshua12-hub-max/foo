@@ -13,7 +13,7 @@ async function verifyPlantillaAccuracy() {
     
     // 1. Check Active Tranche
     const activeTranche = await db.query.salaryTranches.findFirst({
-        where: eq(salaryTranches.isActive, 1)
+        where: eq(salaryTranches.isActive, true)
     });
 
     if (!activeTranche) {
