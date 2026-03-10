@@ -6,34 +6,29 @@ import { formatFullName } from '@/utils/nameUtils';
 import { 
   filterDTRData, 
   calculatePagination, 
-  exportToCSV, 
-  exportToPDF, 
   getStatusBadge as getStatusBadgeUtil,
   EmployeeDTRRecord,
   EmployeeDTRFilters,
   EmployeePaginationResult,
   EmployeeInfo
 } from "../../Utils/employeeDTRUtils";
-import { ITEMS_PER_PAGE, MESSAGES, DELAYS, EXPORT_HEADERS, STATUS_STYLES } from "../../Constants/employeeDTR.constant";
+import { ITEMS_PER_PAGE, MESSAGES, DELAYS, STATUS_STYLES } from "../../Constants/employeeDTR.constant";
 
 interface RawDTRRecord {
   id?: string | number;
-  record_id?: string | number;
   date: string;
-  time_in?: string;
-  timeIn?: string;
-  time_out?: string;
-  timeOut?: string;
-  hours_worked?: string | number;
-  late_minutes?: number;
-  undertime_minutes?: number;
-  status?: string;
-  remarks?: string;
-  first_name?: string;
-  last_name?: string;
-  middle_name?: string | null;
+  timeIn?: string | null;
+  timeOut?: string | null;
+  hoursWorked?: string | number | null;
+  lateMinutes?: number | null;
+  undertimeMinutes?: number | null;
+  status?: string | null;
+  remarks?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  middleName?: string | null;
   suffix?: string | null;
-  employee_name?: string;
+  employeeName?: string | null;
 }
 
 export const useEmployeeDTR = () => {
@@ -49,15 +44,14 @@ export const useEmployeeDTR = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [loadingType, setLoadingType] = useState<string>(""); // For export loading
-  const [errorLocal, setErrorLocal] = useState<string | null>(null); // For non-query errors
+  const [loadingType, setLoadingType] = useState<string>(""); 
+  const [errorLocal, setErrorLocal] = useState<string | null>(null); 
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   
   // Employee info for exports
   const employeeInfo = useMemo<EmployeeInfo | null>(() => {
     if (!user) return null;
     
-    // Format name: LastName, FirstName M. Suffix
     const fullName = formatFullName(user.lastName, user.firstName);
 
     return {
@@ -75,32 +69,30 @@ export const useEmployeeDTR = () => {
     queryFn: async () => {
         if (!user?.employeeId) return [];
         
-        // Fetch with filters and a high limit to get "permanent" historical data
         const response = await attendanceApi.getLogs({ 
           employeeId: String(user.employeeId),
           startDate: filters.fromDate || undefined,
           endDate: filters.toDate || undefined,
-          limit: 1000 // Get up to 1000 records for the employee portal view
+          limit: 1000
         });
         
-        const data = response.data.data || [];
+        const data = (response.data.data || []) as RawDTRRecord[];
         
         // Map data
-        return (data as unknown as RawDTRRecord[]).map((item): EmployeeDTRRecord => {
-            const timeIn = item.time_in || item.timeIn;
-            const timeOut = item.time_out || item.timeOut;
+        return data.map((item): EmployeeDTRRecord => {
+            const timeIn = item.timeIn;
+            const timeOut = item.timeOut;
             
-            // Normalize for Safari/cross-browser compatibility (YYYY-MM-DD HH:mm:ss -> YYYY-MM-DDTHH:mm:ss)
+            // Normalize for Safari/cross-browser compatibility
             const safeTimeIn = timeIn ? timeIn.replace(' ', 'T') : null;
             const safeTimeOut = timeOut ? timeOut.replace(' ', 'T') : null;
             
-            let hoursWorked = item.hours_worked || '0';
-            if (!item.hours_worked && safeTimeIn && safeTimeOut) {
+            let hoursWorked = String(item.hoursWorked || '0');
+            if (!item.hoursWorked && safeTimeIn && safeTimeOut) {
               const start = new Date(safeTimeIn).getTime();
               const end = new Date(safeTimeOut).getTime();
               let duration = (end - start) / (1000 * 60 * 60);
 
-              // Policy: Deduct 1 hour break for shifts > 5 hours
               if (duration > 5) {
                 duration -= 1;
               }
@@ -108,24 +100,25 @@ export const useEmployeeDTR = () => {
               hoursWorked = Math.max(0, duration).toFixed(2);
             }
             return {
-              id: (item.id || item.record_id || '') as string | number,
-              date: item.date, // Assuming format YYYY-MM-DD
+              id: (item.id || '') as string | number,
+              date: item.date, 
               timeIn: safeTimeIn ? new Date(safeTimeIn).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--',
               timeOut: safeTimeOut ? new Date(safeTimeOut).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--',
               hoursWorked: hoursWorked,
-              lateMinutes: item.late_minutes || 0,
-              undertimeMinutes: item.undertime_minutes || 0,
+              lateMinutes: item.lateMinutes || 0,
+              undertimeMinutes: item.undertimeMinutes || 0,
               status: item.status || 'Absent',
               remarks: item.remarks || '-',
-              firstName: item.first_name,
-              lastName: item.last_name,
-              middleName: item.middle_name,
-              suffix: item.suffix
+              firstName: item.firstName || '',
+              lastName: item.lastName || '',
+              middleName: item.middleName || null,
+              suffix: item.suffix || null
             };
         });
     },
     enabled: !!user?.employeeId,
   });
+
 
   const error = queryError ? (queryError as Error).message : errorLocal;
 
@@ -188,46 +181,6 @@ export const useEmployeeDTR = () => {
   const handleNextPage = useCallback(() => {
     setCurrentPage((prev) => Math.min(prev + 1, paginationData.totalPages));
   }, [paginationData.totalPages]);
-
-  // Export handlers
-  const handleExportCSV = useCallback(async () => {
-    if (filteredData.length === 0) {
-      setErrorLocal(MESSAGES.ERROR_NO_DATA);
-      return;
-    }
-    setLoadingType("CSV");
-    setErrorLocal(null);
-    try {
-      await new Promise(resolve => setTimeout(resolve, DELAYS.EXPORT_DELAY));
-      const filename = `my_dtr_${today.replace(/\//g, '-')}.csv`;
-      await exportToCSV(filteredData, EXPORT_HEADERS, employeeInfo, filename);
-      setSuccessMessage(MESSAGES.CSV_EXPORTED);
-    } catch (err: unknown) {
-      console.error('Export to CSV failed:', err);
-      setErrorLocal(`${MESSAGES.ERROR_EXPORT_CSV}: ${err instanceof Error ? err.message : 'Unknown error. Please try again.'}`);
-    } finally {
-      setLoadingType("");
-    }
-  }, [filteredData, today, employeeInfo]);
-
-  const handleExportPDF = useCallback(async () => {
-    if (filteredData.length === 0) {
-      setErrorLocal(MESSAGES.ERROR_NO_DATA);
-      return;
-    }
-    setLoadingType("PDF");
-    setErrorLocal(null);
-    try {
-      await new Promise(resolve => setTimeout(resolve, DELAYS.EXPORT_DELAY));
-      await exportToPDF(filteredData, EXPORT_HEADERS, employeeInfo, today, DELAYS.PDF_PRINT_DELAY);
-      setSuccessMessage(MESSAGES.PDF_EXPORTED);
-    } catch (err: unknown) {
-      console.error('Export to PDF failed:', err);
-      setErrorLocal(`${MESSAGES.ERROR_EXPORT_PDF}: ${err instanceof Error ? err.message : 'Unknown error. Please try again.'}`);
-    } finally {
-      setLoadingType("");
-    }
-  }, [filteredData, today, employeeInfo]);
 
   const getStatusBadge = useCallback((status: string) => {
     return getStatusBadgeUtil(status, STATUS_STYLES);
@@ -297,8 +250,6 @@ export const useEmployeeDTR = () => {
     handleRefresh,
     handlePrevPage,
     handleNextPage,
-    handleExportCSV,
-    handleExportPDF,
     getStatusBadge
   };
 };

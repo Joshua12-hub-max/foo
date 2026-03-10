@@ -19,7 +19,7 @@ async function runMigration() {
         try {
             await pool.query(query);
             console.log('Success.');
-        } catch (err: any) {
+        } catch (err: unknown) {
             if (err.code === 'ER_DUP_FIELDNAME') {
                 console.log('Column already exists, skipping.');
             } else {

@@ -71,7 +71,7 @@ export const updateMonthlyTardinessSummary = async (
       }
     });
 
-    console.log(`Updated Monthly Summary for ${employeeId} (${month}/${year}): Lates=${lateCount}, Minutes=${totalLateMinutes}`);
+    console.warn(`Updated Monthly Summary for ${employeeId} (${month}/${year}): Lates=${lateCount}, Minutes=${totalLateMinutes}`);
   } catch (error) {
     console.error('Error updating monthly tardiness summary:', error);
     throw error;

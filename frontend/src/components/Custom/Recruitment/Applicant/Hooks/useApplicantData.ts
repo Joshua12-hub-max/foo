@@ -3,22 +3,22 @@ import { recruitmentApi } from '@/api/recruitmentApi';
 
 export interface Applicant {
   id: number;
-  first_name: string;
-  last_name: string;
+  firstName: string;
+  lastName: string;
   email: string;
-  job_title?: string;
-  email_subject?: string;
+  jobTitle?: string;
+  emailSubject?: string;
   source?: string;
   stage: string;
   status?: string;
-  resume_path?: string;
-  interview_date?: string;
-  interview_link?: string;
-  interview_platform?: string;
-  interviewer_id?: number;
-  interviewer_name?: string;
+  resumePath?: string;
+  interviewDate?: string;
+  interviewLink?: string;
+  interviewPlatform?: string;
+  interviewerId?: number;
+  interviewerName?: string;
   notes?: string;
-  created_at?: string;
+  createdAt?: string;
 }
 
 export interface Interviewer {
@@ -46,7 +46,7 @@ const useApplicantData = (showNotification?: (message: string, type: 'success' |
       setApplicants(appRes.data.applicants || []);
       const mappedInterviewers: Interviewer[] = (intRes.data || []).map(i => ({
         id: i.id,
-        name: i.name || `${i.first_name || ''} ${i.last_name || ''}`.trim() || 'Unknown',
+        name: i.name || `${i.firstName || ''} ${i.lastName || ''}`.trim() || 'Unknown',
         email: i.email,
         department: i.department
       }));

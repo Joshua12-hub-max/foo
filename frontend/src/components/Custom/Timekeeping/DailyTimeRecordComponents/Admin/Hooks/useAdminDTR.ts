@@ -52,9 +52,9 @@ export const useAdminDTR = () => {
         
         return data.map((item: AdminDTRApiResponse): DTRRecord => {
             let hoursWorked = '0';
-            if (item.time_in && item.time_out) {
-              const start = new Date(String(item.time_in)).getTime();
-              const end = new Date(String(item.time_out)).getTime();
+            if (item.timeIn && item.timeOut) {
+              const start = new Date(String(item.timeIn)).getTime();
+              const end = new Date(String(item.timeOut)).getTime();
               hoursWorked = ((end - start) / (1000 * 60 * 60)).toFixed(2);
             }
             
@@ -69,13 +69,13 @@ export const useAdminDTR = () => {
             }
             
             return {
-              id: item.id ?? item.record_id ?? '',
-              employeeId: item.employee_id ?? '',
-              name: item.employee_name ? String(item.employee_name) : `${item.first_name ?? ''} ${item.last_name ?? ''}`.trim(),
+              id: item.id ?? item.recordId ?? '',
+              employeeId: item.employeeId ?? '',
+              name: item.employeeName ? String(item.employeeName) : `${item.firstName ?? ''} ${item.lastName ?? ''}`.trim(),
               department: item.department ? String(item.department) : 'N/A',
               date: formattedDate,
-              timeIn: item.time_in ? new Date(String(item.time_in)).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--',
-              timeOut: item.time_out ? new Date(String(item.time_out)).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--',
+              timeIn: item.timeIn ? new Date(String(item.timeIn)).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--',
+              timeOut: item.timeOut ? new Date(String(item.timeOut)).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--',
               hoursWorked: hoursWorked,
               status: item.status ? String(item.status) : 'Absent',
               remarks: '-'

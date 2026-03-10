@@ -1,394 +1,337 @@
-// Required imports from React and other libraries.
-import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { IdCardLanyard, FileLock, ShieldCheck, ArrowRight, Loader2 } from "lucide-react";
-import AuthLayout from "@components/Custom/Auth/AuthLayout";
-import { useAuth } from "@hooks/useAuth";
-import { 
-  useLoginMutation, 
-  useGoogleLoginMutation, 
-  useVerify2FAMutation, 
-  useResend2FAMutation 
-} from "@/hooks/useAuthQueries";
-import OTPInput from "./OTPInput";
-import { GoogleLogin } from '@react-oauth/google';
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { LoginSchema, LoginInput, VerifyOTPInput, ResendOTPInput } from "@/schemas/authSchema";
-import { ApiResponse, User } from "@/types";
-import { AxiosResponse } from "axios";
-import { CredentialResponse } from "@react-oauth/google";
+import { useState, FormEvent, useEffect } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import { Mail, Lock, Eye, EyeOff, Loader2, CheckCircle, ArrowLeft } from "lucide-react";
+import AuthLayout from "@/components/Custom/Auth/AuthLayout";
+import { useAuthStore, useToastStore, useFormWizardStore } from "@/stores";
 import api from "@/api/axios";
+import axios from "axios";
+import OTPInput from "./OTPInput";
+import { User, ApiError } from "@/types";
+import { useVerify2FAMutation, useResend2FAMutation } from "@/hooks/useAuthQueries";
 
-// Main component for the login page.
-export default function Login() {
-  // Navigation and Auth State
+interface AuthData {
+  requires2FA?: boolean;
+  maskedEmail?: string;
+  identifier?: string;
+  token?: string;
+  user?: User;
+}
+
+interface AuthPayload {
+  success: boolean;
+  data: AuthData;
+  message?: string;
+}
+
+interface SetupPositionsResponse {
+  positions: unknown[];
+}
+
+const Login: React.FC = () => {
   const navigate = useNavigate();
-  const { setUser } = useAuth(); // Only need non-async actions from store if any, or setUser for manual updates? 
-                                 // Actually mutation handles setUser, but verify2FA might need it if we handle it manually.
-                                 // useAuthQueries handles setUser on success.
+  const setUser = useAuthStore((state) => state.setUser);
+  const logout = useAuthStore((state) => state.logout);
+  const resetWizard = useFormWizardStore((state) => state.resetWizard);
+  const showToast = useToastStore((state) => state.showToast);
 
-  // React Query Mutations
-  const loginMutation = useLoginMutation();
-  const googleLoginMutation = useGoogleLoginMutation();
+  const [identifier, setIdentifier] = useState("");
+  const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  
+  // 2FA state
+  const [show2FA, setShow2FA] = useState(false);
+  const [maskedEmail, setMaskedEmail] = useState("");
+  const [loginIdentifier, setLoginIdentifier] = useState("");
+  const [otpValue, setOtpValue] = useState("");
+
   const verify2FAMutation = useVerify2FAMutation();
   const resend2FAMutation = useResend2FAMutation();
 
-  // Local State for UI
-  const [role, setRole] = useState("");
-  
-  // 2FA State
-  const [showOTP, setShowOTP] = useState(false);
-  const [otp, setOtp] = useState(""); 
-  const [maskedEmail, setMaskedEmail] = useState("");
-  const [resendTimer, setResendTimer] = useState(0);
-  const [authIdentifier, setAuthIdentifier] = useState(""); 
-  const [setupAvailable, setSetupAvailable] = useState(false);
+  const [showSetupLink, setShowSetupLink] = useState(false);
 
-  // Combined Loading/Error State derived from Mutations
-  const loading = loginMutation.isPending || googleLoginMutation.isPending;
-  const error = loginMutation.error?.message || googleLoginMutation.error?.message || "";
-  
-  // 2FA Loading/Error
-  const otpLoading = verify2FAMutation.isPending;
-  const otpError = verify2FAMutation.error?.message || "";
-
-  // React Hook Form for Main Login
-  const { 
-    register, 
-    handleSubmit, 
-    setValue, 
-    formState: { errors } 
-  } = useForm<LoginInput>({
-    resolver: zodResolver(LoginSchema),
-    defaultValues: {
-      identifier: "",
-      password: ""
-    }
-  });
-
-  // 'useEffect' runs when the component mounts. It checks if the user is already logged in.
-  useEffect(() => {
-    // Automatically populates the employee ID from the last registration.
-    const lastUser = localStorage.getItem("lastRegisteredUser");
-    if (lastUser) {
-      try {
-        const user = JSON.parse(lastUser);
-        setValue("identifier", user.email || "");
-        setRole(user.role);
-        localStorage.removeItem("lastRegisteredUser");
-      } catch (error) {
-        console.error("Error parsing last user:", error);
-        localStorage.removeItem("lastRegisteredUser");
-      }
-    }
-  }, [setValue]);
-
-  // Timer for Resend OTP
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (resendTimer > 0) {
-      interval = setInterval(() => {
-        setResendTimer((prev) => prev - 1);
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [resendTimer]);
-
-  // Check if system initialization is needed
   useEffect(() => {
     const checkSetup = async () => {
       try {
-        const res = await api.get('/auth/setup-positions');
+        const res = await api.get<SetupPositionsResponse>("/auth/setup-positions");
         if (res.data.positions && res.data.positions.length > 0) {
-          setSetupAvailable(true);
+          setShowSetupLink(true);
         }
-      } catch (err) {
-        setSetupAvailable(false);
+      } catch {
+        setShowSetupLink(false);
       }
     };
     checkSetup();
   }, []);
 
-  // Handles form submission via RHF
-  const onSubmit = (data: LoginInput) => {
-    console.log("Submitting Login:", { identifier: data.identifier, password: data.password });
-    loginMutation.mutate(
-      { identifier: data.identifier.trim(), password: data.password },
-      {
-        onSuccess: (response: AxiosResponse<ApiResponse<{ requires2FA?: boolean; maskedEmail?: string; identifier?: string } | User>>) => {
-             const payload = response.data;
-             const authData = payload.data as { requires2FA?: boolean; maskedEmail?: string; identifier?: string };
+  /**
+   * 100% Client-Side Cleanup:
+   * Wipes all persistent data before entering setup to prevent data leaks or state conflicts.
+   */
+  const handleSetupClick = (e: React.MouseEvent) => {
+    // Prevent default Link behavior to handle cleanup first
+    e.preventDefault();
 
-             if (authData?.requires2FA) {
-                setMaskedEmail(authData.maskedEmail || "");
-                setAuthIdentifier(authData.identifier || "");
-                setShowOTP(true);
-             } else if (payload.data) {
-                handleLoginSuccess(payload.data as User);
-             }
-        },
-        onError: (err: Error) => {
-            console.error("Login failed", err);
-            const axiosErr = err as { response?: { data?: { code?: string } } };
-            const response = axiosErr.response?.data;
-            if (response?.code === 'BIOMETRIC_NOT_ENROLLED') {
-                console.warn("User blocked: Biometric registration required.");
-                // Optionally redirect to an info page or show a specific modal
-            }
-        }
-      }
-    );
+    // 1. Clear Zustand Stores
+    logout(); // Resets authStore
+    resetWizard(); // Resets registration/PDS wizard
+
+    // 2. Wipe Browser Storage
+    localStorage.clear();
+    sessionStorage.clear();
+
+    // 3. Force redirect to setup
+    navigate("/setup-portal");
   };
 
-  const handleGoogleSuccess = (credentialResponse: CredentialResponse) => {
-     if (!credentialResponse.credential) return;
-     googleLoginMutation.mutate(credentialResponse.credential, {
-        onSuccess: (response: AxiosResponse<ApiResponse<{ requires2FA?: boolean; maskedEmail?: string; identifier?: string } | User>>) => {
-            const payload = response.data;
-            const authData = payload.data as { requires2FA?: boolean; maskedEmail?: string; identifier?: string };
+  const handleLogin = async (e: FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
 
-             if (authData?.requires2FA) {
-                setMaskedEmail(authData.maskedEmail || "");
-                setAuthIdentifier(authData.identifier || "");
-                setShowOTP(true);
-             } else if (payload.data) {
-                handleLoginSuccess(payload.data as User);
-             }
-        }
-     });
-  };
-
-  const handleOTPSubmit = (e: React.FormEvent) => {
-      e.preventDefault();
-      if(otp.length !== 6) return; // Basic check, real validation in mutation if needed or schema
+    try {
+      const response = await api.post<AuthPayload>("/auth/login", { 
+        identifier, 
+        password,
+        rememberMe 
+      });
       
-      verify2FAMutation.mutate(
-        { identifier: authIdentifier, otp },
-        {
-            onSuccess: (response: ApiResponse<User>) => {
-                 handleLoginSuccess(response.data);
-            }
-        }
-      );
-  };
+      const payload = response.data;
+      const authData = payload.data;
 
-  const handleResendOTP = () => {
-      if (resendTimer > 0) return;
-      resend2FAMutation.mutate(
-          { identifier: authIdentifier },
-          {
-              onSuccess: () => {
-                  setResendTimer(60);
-              }
-              // Error handled by mutation state if we want to show it
-          }
-      );
-  };
-
-  const handleLoginSuccess = (user: User) => {
-      if (!user || !user.role) {
-         console.error("Invalid user data", user);
-         return;
-      }
-
-      const roleName = user.role.toLowerCase();
-      // If they are Admin or HR, default to Admin dashboard UNLESS they are specifically trying to enter the employee dashboard
-      if (roleName === "human resource" || roleName === "admin") {
-        const isTargetingEmployeeDashboard = window.location.pathname.startsWith('/employee-dashboard');
-        if (isTargetingEmployeeDashboard) {
-           navigate("/employee-dashboard", { replace: true });
+      if (authData.requires2FA) {
+        setMaskedEmail(authData.maskedEmail || "");
+        setLoginIdentifier(authData.identifier || identifier);
+        setShow2FA(true);
+        showToast("Verification code sent to your email", "success");
+      } else if (authData.user) {
+        const user = authData.user;
+        
+        // Ensure persistence layer is synced
+        localStorage.setItem('isLoggedIn', 'true');
+        
+        setUser(user);
+        showToast("Login successful!", "success");
+        
+        if (user.profileStatus === 'Initial') {
+          navigate("/admin-dashboard/register?mode=finalize-setup&type=old&duties=Standard");
         } else {
-           navigate("/admin-dashboard", { replace: true });
+          const role = user.role?.toLowerCase();
+          if (role === 'administrator' || role === 'human resource') {
+            navigate("/admin-dashboard");
+          } else {
+            navigate("/employee-dashboard");
+          }
         }
-      } else if (roleName === "employee" || roleName === "department head") {
-        navigate("/employee-dashboard", { replace: true });
-      } else {
-        console.error("Unknown role", roleName);
       }
+    } catch (err: unknown) {
+      let message = "Invalid credentials";
+      if (axios.isAxiosError(err)) {
+          message = err.response?.data?.message || message;
+      }
+      setError(message);
+      showToast(message, "error");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Helper to extract error message from error object (Axios error usually)
-  const getErrorMessage = (error: unknown) => {
-      if (error && typeof error === 'object' && 'response' in error) {
-          const axiosError = error as { response?: { data?: { message?: string } } };
-          return axiosError.response?.data?.message || "An error occurred";
-      }
-      return (error as Error)?.message || "An error occurred";
+  const handle2FASuccess = (user: User) => {
+    setUser(user);
+    showToast("Login successful!", "success");
+    if (!user.employeeId) {
+      navigate("/admin-dashboard/register?mode=finalize-setup");
+    } else {
+      navigate("/admin-dashboard");
+    }
   };
 
-  const displayedError = error ? getErrorMessage(loginMutation.error || googleLoginMutation.error) : "";
-  const displayedOtpError = otpError ? getErrorMessage(verify2FAMutation.error) : "";
+  const labelClass = "text-xs font-semibold text-gray-600 mb-1.5 ml-1 block";
+  const inputContainerClass = "relative flex items-center bg-white border border-gray-300 rounded-lg focus-within:ring-2 focus-within:ring-blue-500/10 focus-within:border-blue-500 transition-all overflow-hidden shadow-sm";
+  const iconClass = "absolute left-3.5 text-gray-400";
+  const inputClass = "w-full bg-transparent pl-11 pr-4 py-2.5 text-sm text-gray-900 outline-none placeholder:text-gray-400 font-medium";
+  const buttonClass = "w-full bg-slate-900 text-white py-3 rounded-lg font-bold text-sm hover:bg-black transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md flex justify-center items-center gap-2 active:scale-[0.98]";
 
-  // Renders the login form UI.
-  return (
-    <AuthLayout title={showOTP ? "Two-Factor Authentication" : "Welcome Back!"}>
-      {/* Displays error message if any */}
-      {(displayedError || displayedOtpError) && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm animate-in fade-in slide-in-from-top-2">
-          {displayedError || displayedOtpError}
-        </div>
-      )}
-
-      {!showOTP ? (
-      <>
-        {/* Displays user role if available */}
-        {role && (
-            <div className="flex items-center justify-center gap-2 mb-5 py-2 px-4 rounded-[10px] border-[2px] border-gray-200 text-sm font-medium text-gray-900 shadow-md">
-            <span className="opacity-80">Logging in as:</span>
-            <span
-                className={`capitalize px-3 py-[3px] rounded-md shadow-md font-semibold text-gray-900 ${
-                role.toLowerCase() === "admin" || role.toLowerCase() === "human resource" ? "bg-gray-200" : "bg-gray-100"
-                }`}
-            >
-                {role}
-            </span>
+  if (show2FA) {
+    return (
+      <AuthLayout 
+        title="Verification Required" 
+        subtitle={`Enter the 6-digit code sent to ${maskedEmail}`}
+      >
+        <div className="space-y-6">
+          <div className="flex justify-center">
+            <div className="bg-blue-50 p-4 rounded-full border border-blue-100">
+              <CheckCircle className="text-blue-600 w-8 h-8" />
             </div>
+          </div>
+          
+          <OTPInput 
+            length={6}
+            value={otpValue}
+            onChange={(val) => {
+              setOtpValue(val);
+              if (val.length === 6) {
+                verify2FAMutation.mutate({ identifier: loginIdentifier, otp: val }, {
+                  onSuccess: (response) => {
+                    const payload = response.data as AuthPayload;
+                    const userData = payload.data.user;
+                    if (userData) {
+                        handle2FASuccess(userData);
+                    }
+                  },
+                  onError: (err: unknown) => {
+                    let message = "Invalid verification code";
+                    if (axios.isAxiosError(err)) {
+                        message = err.response?.data?.message || message;
+                    }
+                    showToast(message, "error");
+                  }
+                });
+              }
+            }}
+          />
+
+          <div className="flex flex-col gap-4">
+            <button
+              onClick={() => verify2FAMutation.mutate({ identifier: loginIdentifier, otp: otpValue }, {
+                onSuccess: (response) => {
+                  const payload = response.data as AuthPayload;
+                  const userData = payload.data.user;
+                  if (userData) {
+                      handle2FASuccess(userData);
+                  }
+                }
+              })}
+              disabled={verify2FAMutation.isPending || otpValue.length !== 6}
+              className={buttonClass}
+            >
+              {verify2FAMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : "Verify Identity"}
+            </button>
+
+            <button
+              onClick={() => resend2FAMutation.mutate({ identifier: loginIdentifier }, {
+                onSuccess: () => showToast("New code sent!", "success")
+              })}
+              disabled={resend2FAMutation.isPending}
+              className="text-xs font-bold text-blue-600 hover:text-blue-700 disabled:opacity-50 transition-colors"
+            >
+              {resend2FAMutation.isPending ? "Sending code..." : "Resend verification code"}
+            </button>
+
+            <button
+              onClick={() => setShow2FA(false)}
+              className="flex items-center justify-center gap-2 text-xs font-semibold text-gray-400 hover:text-gray-600 transition-colors pt-2"
+            >
+              <ArrowLeft size={14} />
+              Back to login
+            </button>
+          </div>
+        </div>
+      </AuthLayout>
+    );
+  }
+
+  return (
+    <AuthLayout 
+      title="Employee Portal" 
+      subtitle="Sign in to access your HR dashboard"
+    >
+      <div className="space-y-5">
+        {error && (
+          <div className="bg-red-50 text-red-600 p-3 rounded-lg text-xs font-medium flex items-center gap-2 border border-red-100">
+            <span className="w-1 h-1 bg-red-600 rounded-full shrink-0" />
+            {error}
+          </div>
         )}
 
-        {/* The login form itself */}
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <div>
-            <label className="text-sm text-gray-700 mb-1 block">Email or Employee ID</label>
-            <div className="relative">
-                <IdCardLanyard className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={17} />
-                <input
+        <form onSubmit={handleLogin} className="space-y-4">
+          <div>
+            <label className={labelClass}>Email or Employee ID</label>
+            <div className={inputContainerClass}>
+              <Mail className={iconClass} size={16} />
+              <input
                 type="text"
-                autoComplete="username"
-                {...register("identifier")}
-                className={`w-full pl-10 pr-3 py-2 border-[2px] rounded-[15px] shadow-md bg-white focus:ring focus:ring-gray-100 focus:outline-none ${errors.identifier ? 'border-red-500' : 'border-gray-300'}`}
-                placeholder=""
-                disabled={loading}
-                />
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
+                className={inputClass}
+                placeholder="name@agency.gov.ph"
+                required
+              />
             </div>
-            {errors.identifier && <p className="text-red-500 text-xs mt-1 ml-1">{errors.identifier.message}</p>}
-            </div>
+          </div>
 
-            <div>
-            <label className="text-sm text-gray-700 mb-1 block">Password</label>
-            <div className="relative">
-                <FileLock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={17} />
+          <div>
+            <div className="flex justify-between items-center">
+              <label className={labelClass}>Password</label>
+              <Link to="/forgot-password" className="text-xs font-semibold text-blue-600 hover:text-blue-700 mb-1.5 mr-1">
+                Forgot?
+              </Link>
+            </div>
+            <div className={inputContainerClass}>
+              <Lock className={iconClass} size={16} />
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className={inputClass}
+                placeholder="••••••••"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3.5 text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+          </div>
+
+          <div className="flex items-center py-1">
+            <label className="flex items-center gap-2 cursor-pointer group">
+              <div className="relative flex items-center">
                 <input
-                type="password"
-                autoComplete="current-password"
-                {...register("password")}
-                className={`w-full pl-10 pr-3 py-2 border-[2px] rounded-[15px] shadow-md bg-white focus:ring focus:ring-gray-100 focus:outline-none ${errors.password ? 'border-red-500' : 'border-gray-300'}`}
-                placeholder=""
-                disabled={loading}
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="peer sr-only"
                 />
-            </div>
-            {errors.password && <p className="text-red-500 text-xs mt-1 ml-1">{errors.password.message}</p>}
-             <div className="mt-1 flex justify-end">
-                <Link to="/forgot-password" className="text-xs font-medium text-gray-500 hover:text-gray-900">
-                    Forgot Password?
-                </Link>
-             </div>
-            </div>
+                <div className="w-4 h-4 border-2 border-gray-300 rounded peer-checked:bg-slate-900 peer-checked:border-slate-900 transition-all" />
+                <CheckCircle className="absolute inset-0 text-white opacity-0 peer-checked:opacity-100 scale-50 peer-checked:scale-75 transition-all" size={16} />
+              </div>
+              <span className="text-xs font-medium text-gray-500 group-hover:text-gray-900 transition-colors">Keep me signed in</span>
+            </label>
+          </div>
 
-            {/* Submit button */}
-            <button
+          <button
             type="submit"
             disabled={loading}
-            className="w-full bg-gray-900 text-white py-2 rounded-[10px] font-bold hover:bg-gray-800 transition disabled:opacity-50 disabled:cursor-not-allowed shadow-md flex justify-center items-center"
-            >
-            {loading ? <Loader2 className="animate-spin h-5 w-5" /> : "Login"}
-            </button>
+            className={buttonClass}
+          >
+            {loading ? (
+              <Loader2 className="animate-spin" size={18} />
+            ) : (
+              "Sign In"
+            )}
+          </button>
         </form>
 
-        <div className="relative mt-6">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-gray-200"></div>
-          </div>
-          <div className="relative flex justify-center text-sm">
-            <span className="px-2 bg-white text-gray-500">Or continue with</span>
-          </div>
-        </div>
-
-        <div className="mt-6 flex justify-center">
-            <GoogleLogin
-                onSuccess={handleGoogleSuccess}
-                onError={() => console.error("Google Login Failed")}
-                theme="outline"
-                shape="pill"
-                size="large"
-                width="350"
-                text="signin_with"
-                use_fedcm_for_prompt={true}
-                use_fedcm_for_button={true}
-            />
-        </div>
-
-        {setupAvailable && (
-          <p className="text-center mt-5 text-gray-700 text-sm">
-            Initial System Setup:{" "}
-            <Link to="/setup-portal" className="font-semibold text-black hover:underline">
-              Configure Portals
+        <div className="text-center pt-2">
+          {showSetupLink && (
+            <Link 
+              to="/setup-portal" 
+              onClick={handleSetupClick}
+              className="text-xs font-bold text-gray-400 hover:text-gray-900 transition-colors uppercase tracking-wider"
+            >
+              Initialize Portal
             </Link>
-          </p>
-        )}
-
-        <p className="text-center mt-2 text-gray-500 text-xs">
-            Looking for a job?{" "}
-            <Link to="/careers" className="font-semibold text-blue-600 hover:underline">
-            View Job Openings
-            </Link>
-        </p>
-
-      </>
-      ) : (
-        /* 2FA Form */
-        <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
-            <div className="text-center space-y-2">
-                <div className="mx-auto w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                    <ShieldCheck className="h-6 w-6 text-blue-600" />
-                </div>
-                <h3 className="text-lg font-medium text-gray-900">Verify it's you</h3>
-                <p className="text-sm text-gray-500">
-                    We've sent a code to <span className="font-medium text-gray-900">{maskedEmail}</span>
-                </p>
-            </div>
-
-            <form onSubmit={handleOTPSubmit} className="space-y-6">
-                 <OTPInput length={6} value={otp} onChange={setOtp} />
-                 
-                 <div className="flex flex-col gap-3">
-                    <button
-                        type="submit"
-                        disabled={otpLoading || otp.length !== 6}
-                        className="w-full bg-slate-900 text-white py-2.5 rounded-xl font-bold hover:bg-slate-800 transition disabled:opacity-50 disabled:cursor-not-allowed shadow-md flex justify-center items-center gap-2"
-                    >
-                        {otpLoading ? (
-                            <>
-                                <Loader2 className="animate-spin h-4 w-4" />
-                                Verifying...
-                            </>
-                        ) : (
-                            <>
-                                Verify & Login
-                                <ArrowRight size={16} />
-                            </>
-                        )}
-                    </button>
-
-                     <button
-                        type="button"
-                        onClick={handleResendOTP}
-                        disabled={resendTimer > 0}
-                        className="text-sm text-slate-600 hover:text-slate-900 font-medium disabled:opacity-50"
-                    >
-                        {resendTimer > 0 ? `Resend code in ${resendTimer}s` : "Resend code"}
-                    </button>
-                 </div>
-            </form>
-
-             <button 
-                onClick={() => setShowOTP(false)}
-                className="w-full text-center text-sm text-gray-500 hover:text-gray-900 mt-4"
-             >
-                Back to Login
-             </button>
+          )}
         </div>
-      )}
+      </div>
     </AuthLayout>
   );
-}
+};
+
+export default Login;

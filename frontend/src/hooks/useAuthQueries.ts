@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { login, googleLogin, logout, verifyTwoFactorOTP, resendTwoFactorOTP, register, forgotPassword, resetPassword, setupAdminHR } from '@/Service/Auth';
+import { login, googleLogin, logout, verifyTwoFactorOTP, resendTwoFactorOTP, register, forgotPassword, resetPassword, setupPortal } from '@/Service/Auth';
 import { useAuthStore } from '@/stores/authStore';
 import { useNavigate } from 'react-router-dom';
 import { LoginInput, RegisterInput, VerifyOTPInput, ResendOTPInput } from '@/schemas/authSchema';
@@ -81,13 +81,13 @@ export const useResend2FAMutation = () => {
 
 export const useRegisterMutation = () => {
     return useMutation({
-        mutationFn: (data: RegisterInput | FormData) => register(data)
+        mutationFn: ({ data, mode }: { data: RegisterInput | FormData; mode?: string }) => register(data, mode)
     });
 };
 
 export const useSetupPortalMutation = () => {
     return useMutation({
-        mutationFn: (data: any) => setupAdminHR(data)
+        mutationFn: (data: Record<string, unknown>) => setupPortal(data)
     });
 };
 

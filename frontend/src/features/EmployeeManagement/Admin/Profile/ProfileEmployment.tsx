@@ -3,11 +3,12 @@ import { DollarSign, Briefcase, User, Calendar, FileText } from 'lucide-react';
 
 interface Profile {
   salary?: number;
-  job_title?: string;
-  supervisor?: string;
-  date_hired?: string;
-  employment_status?: string;
+  jobTitle?: string;
+  dateHired?: string;
+  employmentStatus?: string;
   department?: string;
+  dutyType?: 'Standard' | 'Irregular';
+  appointmentType?: string;
 }
 
 interface ProfileEmploymentProps {
@@ -57,16 +58,16 @@ const ProfileEmployment: React.FC<ProfileEmploymentProps> = ({ profile }) => {
                 <Briefcase size={18} />
                 <span className="text-sm font-medium">Position</span>
             </div>
-            <p className="text-xl font-bold text-gray-800">{profile.job_title || 'N/A'}</p>
+            <p className="text-xl font-bold text-gray-800">{profile.jobTitle || 'N/A'}</p>
         </div>
 
-        {/* Supervisor */}
+        {/* Department */}
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
             <div className="flex items-center gap-2 text-purple-600 mb-2">
-                <User size={18} />
-                <span className="text-sm font-medium">Direct Supervisor</span>
+                <Briefcase size={18} />
+                <span className="text-sm font-medium">Department</span>
             </div>
-            <p className="text-xl font-bold text-gray-800">{profile.supervisor || 'Robert Taylor'}</p>
+            <p className="text-xl font-bold text-gray-800">{profile.department || 'N/A'}</p>
         </div>
 
         {/* Employment Length */}
@@ -75,7 +76,7 @@ const ProfileEmployment: React.FC<ProfileEmploymentProps> = ({ profile }) => {
                 <Calendar size={18} />
                 <span className="text-sm font-medium">Employment Length</span>
             </div>
-            <p className="text-xl font-bold text-gray-800">{calculateServiceLength(profile.date_hired)}</p>
+            <p className="text-xl font-bold text-gray-800">{calculateServiceLength(profile.dateHired)}</p>
         </div>
       </div>
 
@@ -86,14 +87,22 @@ const ProfileEmployment: React.FC<ProfileEmploymentProps> = ({ profile }) => {
             <h2>Employment Status</h2>
         </div>
         
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center">
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 grid grid-cols-2 md:grid-cols-4 gap-6 items-center">
             <div>
                 <p className="text-sm text-gray-500 mb-1">Current Status</p>
                 <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                    profile.employment_status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                    profile.employmentStatus === 'Active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
                 }`}>
-                    {profile.employment_status}
+                    {profile.employmentStatus}
                 </span>
+            </div>
+            <div>
+                <p className="text-sm text-gray-500 mb-1">Duty Type</p>
+                <p className="font-bold text-gray-800">{profile.dutyType || 'Standard'}</p>
+            </div>
+            <div>
+                <p className="text-sm text-gray-500 mb-1">Appointment</p>
+                <p className="font-bold text-gray-800">{profile.appointmentType || 'N/A'}</p>
             </div>
             <div className="text-right">
                 <p className="text-sm text-gray-500 mb-1">Department</p>

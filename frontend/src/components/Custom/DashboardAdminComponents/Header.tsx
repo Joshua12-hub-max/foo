@@ -28,7 +28,7 @@ const ProfilePicture = memo<ProfilePictureProps>(
     >
       {hasProfilePicture ? (
         <img
-          src={user?.avatar_url ?? undefined}
+          src={user?.avatarUrl ?? undefined}
           alt={`${user?.name ?? 'User'}'s profile`}
           className="w-full h-full object-cover transition-all group-hover:brightness-75"
           loading="lazy"
@@ -101,7 +101,7 @@ export default function Header({sidebarOpen, setSidebarOpen, searchQuery = '', s
   const { user } = useAuth();
   const [isHovered, setIsHovered] = useState(false);
 
-  const hasProfilePicture = useMemo(() => !!(user?.avatar_url), [user]);
+  const hasProfilePicture = useMemo(() => !!(user?.avatarUrl), [user]);
 
   const handleProfileClick = useCallback(() => {
      navigate('/admin-dashboard/profile');

@@ -14,8 +14,8 @@ export const getPolicies = async (req: Request, res: Response): Promise<void> =>
         const policies = await db.select().from(internalPolicies).where(where);
         
         res.json({ success: true, policies });
-    } catch (error) {
-        console.error('Get Policies Error:', error);
+    } catch (_error) {
+
         res.status(500).json({ success: false, message: 'Failed to fetch policies' });
     }
 };
@@ -23,7 +23,7 @@ export const getPolicies = async (req: Request, res: Response): Promise<void> =>
 export const updatePolicy = async (req: Request, res: Response): Promise<void> => {
     try {
         const { id } = req.params;
-        const { title, content, category, versionLabel } = req.body;
+        const { title, content, category, versionLabel } = req.body as { title?: string; content?: unknown; category?: PolicyCategory; versionLabel?: string };
         
         await db.update(internalPolicies)
             .set({ 
@@ -36,15 +36,15 @@ export const updatePolicy = async (req: Request, res: Response): Promise<void> =
             .where(eq(internalPolicies.id, Number(id)));
             
         res.json({ success: true, message: 'Policy updated successfully' });
-    } catch (error) {
-        console.error('Update Policy Error:', error);
+    } catch (_error) {
+
         res.status(500).json({ success: false, message: 'Failed to update policy' });
     }
 };
 
 export const createPolicy = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { title, content, category, versionLabel } = req.body;
+        const { title, content, category, versionLabel } = req.body as { title: string; content: unknown; category: PolicyCategory; versionLabel: string };
         
         const [result] = await db.insert(internalPolicies).values({
             title,
@@ -54,8 +54,10 @@ export const createPolicy = async (req: Request, res: Response): Promise<void> =
         });
         
         res.status(201).json({ success: true, message: 'Policy created successfully', id: result.insertId });
-    } catch (error) {
-        console.error('Create Policy Error:', error);
+    } catch (_error) {
+
         res.status(500).json({ success: false, message: 'Failed to create policy' });
     }
 };
+
+

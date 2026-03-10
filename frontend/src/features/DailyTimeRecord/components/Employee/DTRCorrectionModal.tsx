@@ -63,7 +63,7 @@ export const DTRCorrectionModal: React.FC<DTRCorrectionModalProps> = ({
       // Reconstruct ISO DateTimes for the submission
       // We send the date and the new times
       const payload = {
-        employee_id: '',
+        employeeId: '',
         date: record.date, // Assumes record.date is "YYYY-MM-DD" or similar stable format
         originalTimeIn: record.timeIn !== '-' ? record.timeIn : null,
         originalTimeOut: record.timeOut !== '-' ? record.timeOut : null,

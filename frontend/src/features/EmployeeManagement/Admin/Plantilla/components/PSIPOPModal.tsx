@@ -206,29 +206,29 @@ const PSIPOPModal: React.FC<PSIPOPModalProps> = memo(({ isOpen, onClose, positio
                   <tbody>
                     {positions.map((pos, idx) => {
                        const { last, first, middle } = parseName(pos.incumbent_name);
-                       const annualSalary = pos.monthly_salary ? Number(pos.monthly_salary) * 12 : 0;
+                       const annualSalary = pos.monthlySalary ? Number(pos.monthlySalary) * 12 : 0;
                        const annualSalaryStr = annualSalary.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                       const actualSalaryStr = pos.is_vacant ? '-' : annualSalaryStr;
+                       const actualSalaryStr = pos.isVacant ? '-' : annualSalaryStr;
                        
                        let status = 'P';
-                       if (pos.is_vacant) status = 'V';
+                       if (pos.isVacant) status = 'V';
                        else if (pos.status && pos.status !== 'Active') status = pos.status.substring(0, 2).toUpperCase();
     
                        return (
-                         <tr key={idx} className={pos.is_vacant ? 'bg-yellow-50 print:bg-transparent' : ''}>
-                           <td className="border border-black p-1 text-center font-bold text-black">{pos.item_number}</td>
-                           <td className="border border-black p-1 leading-tight text-black">{pos.position_title}</td>
-                           <td className="border border-black p-1 text-center text-black">{pos.salary_grade}</td>
+                         <tr key={idx} className={pos.isVacant ? 'bg-yellow-50 print:bg-transparent' : ''}>
+                           <td className="border border-black p-1 text-center font-bold text-black">{pos.itemNumber}</td>
+                           <td className="border border-black p-1 leading-tight text-black">{pos.positionTitle}</td>
+                           <td className="border border-black p-1 text-center text-black">{pos.salaryGrade}</td>
                            <td className="border border-black p-1 text-right text-black">{annualSalaryStr}</td>
                            <td className="border border-black p-1 text-right text-black">{actualSalaryStr}</td>
-                           <td className="border border-black p-1 text-center text-black">{pos.step_increment || 1}</td>
+                           <td className="border border-black p-1 text-center text-black">{pos.stepIncrement || 1}</td>
                            <td className="border border-black p-1 text-center text-black">{pos.area_code}</td>
                            <td className="border border-black p-1 text-center text-black">{pos.area_type}</td>
                            <td className="border border-black p-1 text-center text-black">{pos.area_level}</td>
                            <td className="border border-black p-1 truncate text-black font-semibold">{last}</td>
                            <td className="border border-black p-1 truncate text-black font-semibold">{first}</td>
                            <td className="border border-black p-1 truncate text-black font-semibold">{middle}</td>
-                           <td className="border border-black p-1 text-center text-[8.5pt] print:text-[7.5pt] text-black">{formatDate(pos.birth_date)}</td>
+                           <td className="border border-black p-1 text-center text-[8.5pt] print:text-[7.5pt] text-black">{formatDate(pos.birthDate)}</td>
                            <td className="border border-black p-1 text-center text-[8.5pt] print:text-[7.5pt] text-black">{formatDate(pos.original_appointment_date)}</td>
                            <td className="border border-black p-1 text-center text-[8.5pt] print:text-[7.5pt] text-black">{formatDate(pos.last_promotion_date)}</td>
                            <td className="border border-black p-1 text-center font-bold text-black">{status}</td>

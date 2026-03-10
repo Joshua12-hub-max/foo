@@ -14,32 +14,34 @@ export const EDUCATION_LEVELS = [
 ] as const;
 
 export const jobApplicationSchema = z.object({
-  job_id: z.string().or(z.number()).optional(),
-  first_name: z.string().min(1, 'First name is required'),
-  last_name: z.string().min(1, 'Last name is required'),
-  middle_name: z.string().optional(),
+  jobId: z.string().or(z.number()).optional(),
+  firstName: z.string().min(1, 'First name is required'),
+  lastName: z.string().min(1, 'Last name is required'),
+  middleName: z.string().optional(),
   suffix: z.string().optional(),
   email: z.string().email('Invalid email address'),
-  phone_number: z.string().min(1, 'Phone number is required'),
+  phoneNumber: z.string().min(1, 'Phone number is required'),
   address: z.string().min(1, 'Address is required'),
-  zip_code: z.string().min(1, 'Zip code is required'),
-  permanent_address: z.string().optional(),
-  permanent_zip_code: z.string().optional(),
-  birth_date: z.string().min(1, 'Birth date is required'),
-  birth_place: z.string().min(1, 'Birth place is required'),
+  zipCode: z.string().min(1, 'Zip code is required'),
+  permanentAddress: z.string().optional(),
+  permanentZipCode: z.string().optional(),
+  birthDate: z.string().min(1, 'Birth date is required'),
+  birthPlace: z.string().min(1, 'Birth place is required'),
   sex: z.enum(['Male', 'Female']),
-  civil_status: z.enum(['Single', 'Married', 'Widowed', 'Separated', 'Annulled']),
+  civilStatus: z.enum(['Single', 'Married', 'Widowed', 'Separated', 'Annulled']),
   height: z.string().or(z.number()).optional(),
   weight: z.string().or(z.number()).optional(),
-  blood_type: z.enum(['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'none']),
+  bloodType: z.enum(['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'none']),
   nationality: z.string().optional().default('Filipino'),
   
   // Residency Format matching Registration
-  is_meycauayan_resident: z.boolean(),
+  isMeycauayanResident: z.boolean(),
   resRegion: z.string().optional(),
   resProvince: z.string().optional(),
   resCity: z.string().min(1, 'City/Municipality is required'),
   resBrgy: z.string().min(1, 'Barangay is required'),
+  resHouseBlockLot: z.string().optional(),
+  resSubdivision: z.string().optional(),
   resStreet: z.string().optional(),
   residentialZipCode: z.string().optional(),
 
@@ -47,19 +49,20 @@ export const jobApplicationSchema = z.object({
   permProvince: z.string().optional(),
   permCity: z.string().optional(),
   permBrgy: z.string().optional(),
+  permHouseBlockLot: z.string().optional(),
+  permSubdivision: z.string().optional(),
   permStreet: z.string().optional(),
-  permanentZipCode: z.string().optional(),
   // Gov IDs with masking/format hints
-  gsis_no: z.string().optional(),
-  pagibig_no: z.string().optional(),
-  philhealth_no: z.string().optional(),
-  umid_no: z.string().optional(),
-  philsys_id: z.string().optional(),
-  tin_no: z.string().optional(),
+  gsisNumber: z.string().optional(),
+  pagibigNumber: z.string().optional(),
+  philhealthNumber: z.string().optional(),
+  umidNumber: z.string().optional(),
+  philsysId: z.string().optional(),
+  tinNumber: z.string().optional(),
 
   // Eligibility (Refined for CSC/JO)
   eligibility: z.string().optional(),
-  eligibility_type: z.enum([
+  eligibilityType: z.enum([
     'none', 
     'csc_prof', 
     'csc_sub', 
@@ -70,29 +73,31 @@ export const jobApplicationSchema = z.object({
     'nbi_clearance', 
     'others'
   ]),
-  eligibility_date: z.string().optional(),
-  eligibility_rating: z.string().optional(),
-  eligibility_place: z.string().optional(),
-  license_no: z.string().optional(),
+  eligibilityDate: z.string().optional(),
+  eligibilityRating: z.string().optional(),
+  eligibilityPlace: z.string().optional(),
+  licenseNo: z.string().optional(),
 
   // Background
-  total_experience_years: z.string().or(z.number()).optional(),
-  education: z.enum(EDUCATION_LEVELS).or(z.literal('')).optional(),
-  school_name: z.string().optional(),
+  totalExperienceYears: z.string().or(z.number()).optional(),
+  educationalBackground: z.enum(EDUCATION_LEVELS).or(z.literal('')).optional(),
+  schoolName: z.string().optional(),
   course: z.string().optional(),
-  year_graduated: z.string().optional(),
+  yearGraduated: z.string().optional(),
   experience: z.string().optional(),
   skills: z.string().optional(),
+  emergencyContact: z.string().min(1, 'Emergency contact person is required'),
+  emergencyContactNumber: z.string().min(1, 'Emergency contact number is required'),
 
   // Anti-Spam
-  hp_field: z.string().max(0, 'Spam detected').optional(),
-  website_url: z.string().max(0, 'Spam detected').optional(),
-  h_token: z.string().optional(),
+  hpField: z.string().max(0, 'Spam detected').optional(),
+  websiteUrl: z.string().max(0, 'Spam detected').optional(),
+  hToken: z.string().optional(),
   
   photo: z.instanceof(File).optional(),
-  photo_preview: z.string().optional(),
+  photoPreview: z.string().optional(),
   resume: z.instanceof(File).optional(),
-  eligibility_cert: z.instanceof(File).optional(),
+  eligibilityCert: z.instanceof(File).optional(),
 });
 
 export type JobApplicationSchema = z.infer<typeof jobApplicationSchema>;
@@ -110,16 +115,16 @@ export const createDynamicJobApplicationSchema = (
   const needEdu = isPermanent || requireEdu;
 
   return jobApplicationSchema.extend({
-    gsis_no: needIds ? z.string().min(1, 'GSIS Number is required') : z.string().optional(),
-    pagibig_no: needIds ? z.string().min(1, 'Pag-IBIG is required') : z.string().optional(),
-    philhealth_no: needIds ? z.string().min(1, 'PhilHealth is required') : z.string().optional(),
-    umid_no: needIds ? z.string().min(1, 'UMID is required') : z.string().optional(),
-    philsys_id: needIds ? z.string().min(1, 'PhilSys ID is required') : z.string().optional(),
-    tin_no: needIds ? z.string().min(1, 'TIN is required') : z.string().optional(),
+    gsisNumber: needIds ? z.string().min(1, 'GSIS Number is required') : z.string().optional(),
+    pagibigNumber: needIds ? z.string().min(1, 'Pag-IBIG is required') : z.string().optional(),
+    philhealthNumber: needIds ? z.string().min(1, 'PhilHealth is required') : z.string().optional(),
+    umidNumber: needIds ? z.string().min(1, 'UMID is required') : z.string().optional(),
+    philsysId: needIds ? z.string().min(1, 'PhilSys ID is required') : z.string().optional(),
+    tinNumber: needIds ? z.string().min(1, 'TIN is required') : z.string().optional(),
     
-    eligibility_type: needCsc ? z.enum(['csc_prof', 'csc_sub', 'ra_1080', 'special_laws', 'drivers_license', 'tesda', 'others']) : jobApplicationSchema.shape.eligibility_type,
+    eligibilityType: needCsc ? z.enum(['csc_prof', 'csc_sub', 'ra_1080', 'special_laws', 'drivers_license', 'tesda', 'others']) : jobApplicationSchema.shape.eligibilityType,
     
-    education: needEdu ? z.enum(EDUCATION_LEVELS) : jobApplicationSchema.shape.education,
+    educationalBackground: needEdu ? z.enum(EDUCATION_LEVELS) : jobApplicationSchema.shape.educationalBackground,
     experience: needEdu ? z.string().min(1, 'Professional experience is required') : z.string().optional(),
     skills: needEdu ? z.string().min(1, 'Relevant skills are required') : z.string().optional(),
   });
@@ -131,15 +136,16 @@ export interface PublicJob {
     title: string;
     department: string;
     location?: string;
-    employment_type?: string;
-    salary_range?: string;
-    posted_at?: string;
-    created_at?: string;
-    job_description: string;
+    employmentType?: string;
+    dutyType?: 'Standard' | 'Irregular';
+    salaryRange?: string;
+    postedAt?: string;
+    createdAt?: string;
+    jobDescription: string;
     requirements: string;
     status: string;
-    require_civil_service: boolean;
-    require_government_ids: boolean;
-    require_education_experience: boolean;
+    requireCivilService: boolean;
+    requireGovernmentIds: boolean;
+    requireEducationExperience: boolean;
 }
 

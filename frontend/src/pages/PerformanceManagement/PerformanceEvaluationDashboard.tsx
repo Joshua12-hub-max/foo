@@ -1,11 +1,11 @@
-import { useAdminPerformance } from "@/features/Performance/Admin/Hooks/useAdminPerformance";
-import { PerformanceNotification } from "@/features/Performance/Admin/Components/PerformanceNotification";
-import { PerformanceFilters } from "@/features/Performance/Admin/Components/PerformanceFilters";
-import { PerformanceSearchBar } from "@/features/Performance/Admin/Components/PerformanceSearchBar";
+import { useAdminPerformance } from "@/components/Custom/Performance/Admin/Hooks/useAdminPerformance";
+import { PerformanceNotification } from "@/components/Custom/Performance/Admin/Components/PerformanceNotification";
+import { PerformanceFilters } from "@/components/Custom/Performance/Admin/Components/PerformanceFilters";
+import { PerformanceSearchBar } from "@/components/Custom/Performance/Admin/Components/PerformanceSearchBar";
 
-import { PerformanceTable } from "@/features/Performance/Admin/Components/PerformanceTable";
-import { PerformanceLoadingSpinner } from "@/features/Performance/Admin/Components/PerformanceLoadingSpinner";
-import PerformanceLayout from "@/features/Performance/PerformanceLayout";
+import { PerformanceTable } from "@/components/Custom/Performance/Admin/Components/PerformanceTable";
+import { PerformanceLoadingSpinner } from "@/components/Custom/Performance/Admin/Components/PerformanceLoadingSpinner";
+import PerformanceLayout from "@/components/Custom/Performance/PerformanceLayout";
 import Pagination from '@/components/CustomUI/Pagination';
 
 const PerformanceEvaluationDashboard = () => {

@@ -55,9 +55,9 @@ const EmployeeList = forwardRef<EmployeeListRef, EmployeeListProps>(({ hideHeade
   const filteredEmployees = useMemo(() => {
     return employees.filter((emp: Employee) => {
       const matchesSearch = 
-        (emp.first_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (emp.last_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (emp.employee_id || '').toLowerCase().includes(searchTerm.toLowerCase());
+        (emp.firstName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (emp.lastName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (emp.employeeId || '').toLowerCase().includes(searchTerm.toLowerCase());
       const matchesDept = filterDepartment === 'All' || emp.department === filterDepartment;
       return matchesSearch && matchesDept;
     });

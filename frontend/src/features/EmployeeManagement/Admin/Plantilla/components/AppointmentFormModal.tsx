@@ -39,22 +39,22 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = memo(({ isOpen
   // Pre-fill data when position changes
   useEffect(() => {
     if (isOpen && position) {
-        const salaryStr = position.monthly_salary 
-            ? parseFloat(position.monthly_salary.toString()).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+        const salaryStr = position.monthlySalary 
+            ? parseFloat(position.monthlySalary.toString()).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
             : '';
         
-        const sgStr = position.salary_grade.toString().startsWith('SG') 
-            ? position.salary_grade.toString()
-            : `SG ${position.salary_grade.toString()}`;
+        const sgStr = position.salaryGrade.toString().startsWith('SG') 
+            ? position.salaryGrade.toString()
+            : `SG ${position.salaryGrade.toString()}`;
 
         setFormData(prev => ({
             ...prev,
-            appointeeName: position.incumbent_name || '',
-            positionTitle: position.position_title || '',
+            appointeeName: position.incumbentName || '',
+            positionTitle: position.positionTitle || '',
             salaryGrade: sgStr,
             department: position.department || '',
             compensationRate: salaryStr,
-            plantillaItemNo: position.item_number || '',
+            plantillaItemNo: position.itemNumber || '',
         }));
     }
   }, [isOpen, position]);

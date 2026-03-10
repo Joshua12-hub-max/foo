@@ -37,12 +37,12 @@ const SecurityAuditLogs = () => {
 
   const filteredLogs = logs.filter((log) => {
     const matchesSearch =
-      `${log.first_name} ${log.last_name}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      `${log.firstName} ${log.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
       log.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (log.details || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (log.ip_address || '').includes(searchTerm);
+      (log.ipAddress || '').includes(searchTerm);
 
-    const matchesFilter = filterType === 'All' || log.violation_type === filterType;
+    const matchesFilter = filterType === 'All' || log.violationType === filterType;
     return matchesSearch && matchesFilter;
   });
 
@@ -52,8 +52,8 @@ const SecurityAuditLogs = () => {
   const statCounts = {
     total: logs.length,
     today: logs.filter(l => {
-      if (!l.created_at) return false;
-      const d = new Date(l.created_at);
+      if (!l.createdAt) return false;
+      const d = new Date(l.createdAt);
       const now = new Date();
       return d.toDateString() === now.toDateString();
     }).length,
@@ -152,7 +152,7 @@ const SecurityAuditLogs = () => {
               </thead>
               <tbody className="divide-y divide-slate-50">
                 {filteredLogs.map((log) => {
-                  const config = getViolationConfig(log.violation_type);
+                  const config = getViolationConfig(log.violationType);
                   const ViolationIcon = config.icon;
                   return (
                     <tr key={log.id} className="hover:bg-slate-50/50 transition-colors">
@@ -161,10 +161,10 @@ const SecurityAuditLogs = () => {
                           <Clock size={12} className="text-slate-300" />
                           <div>
                             <p className="text-xs font-bold text-slate-700">
-                              {log.created_at ? new Date(log.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+                              {log.createdAt ? new Date(log.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
                             </p>
                             <p className="text-[10px] font-bold text-slate-400">
-                              {log.created_at ? new Date(log.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : ''}
+                              {log.createdAt ? new Date(log.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : ''}
                             </p>
                           </div>
                         </div>
@@ -175,7 +175,7 @@ const SecurityAuditLogs = () => {
                             <User size={14} className="text-slate-400" />
                           </div>
                           <div className="min-w-0">
-                            <p className="text-xs font-black text-slate-900 truncate">{log.first_name} {log.last_name}</p>
+                            <p className="text-xs font-black text-slate-900 truncate">{log.firstName} {log.lastName}</p>
                             <p className="text-[10px] font-bold text-slate-400 truncate">{log.email}</p>
                           </div>
                         </div>
@@ -193,13 +193,13 @@ const SecurityAuditLogs = () => {
                       </td>
                       <td className="px-6 py-4">
                         <p className="text-xs font-bold text-slate-700 max-w-[150px] truncate">
-                          {log.job_title || 'N/A'}
+                          {log.jobTitle || 'N/A'}
                         </p>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-1.5">
                           <Wifi size={10} className="text-slate-300" />
-                          <span className="text-[11px] font-mono font-bold text-slate-500">{log.ip_address || '—'}</span>
+                          <span className="text-[11px] font-mono font-bold text-slate-500">{log.ipAddress || '—'}</span>
                         </div>
                       </td>
                     </tr>

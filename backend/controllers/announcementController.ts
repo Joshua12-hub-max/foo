@@ -15,8 +15,8 @@ export const getAnnouncements = async (_req: Request, res: Response): Promise<vo
       .orderBy(desc(announcements.createdAt));
       
     res.status(200).json({ success: true, announcements: result });
-  } catch (error) {
-    console.error('Error fetching announcements:', error);
+  } catch (_error) {
+
     res.status(500).json({ success: false, message: 'Failed to fetch announcements' });
   }
 };
@@ -27,8 +27,9 @@ const convertTo24Hour = (timeStr: string | null | undefined): string | null => {
   const [time, modifier] = timeStr.trim().split(' ');
   if (!modifier) return timeStr; // Assume already correct if no AM/PM
 
-  let [hours, minutes] = time.split(':');
+  const [hours, minutes] = time.split(':');
   let h = parseInt(hours, 10);
+
 
   if (modifier === 'PM' && h < 12) h += 12;
   if (modifier === 'AM' && h === 12) h = 0;
@@ -39,13 +40,13 @@ const convertTo24Hour = (timeStr: string | null | undefined): string | null => {
 export const createAnnouncement = async (req: Request, res: Response): Promise<void> => {
   try {
     const validatedData = CreateAnnouncementSchema.parse(req.body);
-    const { title, content, priority, start_date, end_date, start_time, end_time } = validatedData;
+    const { title, content, priority, startDate, endDate, startTime, endTime } = validatedData;
 
     // Handle empty strings as null for all date/time fields
-    const formattedStartTime = convertTo24Hour(start_time);
-    const formattedEndTime = convertTo24Hour(end_time);
-    const formattedStartDate = (start_date && start_date.trim() !== '') ? start_date : null;
-    const formattedEndDate = (end_date && end_date.trim() !== '') ? end_date : null;
+    const formattedStartTime = convertTo24Hour(startTime);
+    const formattedEndTime = convertTo24Hour(endTime);
+    const formattedStartDate = (startDate && startDate.trim() !== '') ? startDate : null;
+    const formattedEndDate = (endDate && endDate.trim() !== '') ? endDate : null;
 
     const [result] = await db.insert(announcements).values({
       title,
@@ -63,10 +64,10 @@ export const createAnnouncement = async (req: Request, res: Response): Promise<v
       title, 
       content, 
       priority: priority || 'normal', 
-      start_date: formattedStartDate, 
-      end_date: formattedEndDate, 
-      start_time: formattedStartTime, 
-      end_time: formattedEndTime 
+      startDate: formattedStartDate, 
+      endDate: formattedEndDate, 
+      startTime: formattedStartTime, 
+      endTime: formattedEndTime 
     };
 
     // Send notifications to all users
@@ -82,8 +83,8 @@ export const createAnnouncement = async (req: Request, res: Response): Promise<v
         type: 'announcement_created',
         referenceId: result.insertId
       });
-    } catch (notificationError) {
-      console.error('Failed to send announcement notifications:', notificationError);
+    } catch (_notificationError) {
+      /* empty */
     }
 
     res.status(201).json({ success: true, message: 'Announcement created successfully', announcement: newAnnouncement });
@@ -92,7 +93,7 @@ export const createAnnouncement = async (req: Request, res: Response): Promise<v
       res.status(400).json({ success: false, message: 'Validation failed', errors: error.issues });
       return;
     }
-    console.error('Error creating announcement:', error);
+
     const message = error instanceof Error ? error.message : 'Unknown database error';
     res.status(500).json({ 
       success: false,
@@ -106,7 +107,7 @@ export const updateAnnouncement = async (req: Request, res: Response): Promise<v
   try {
     const { id } = req.params;
     const validatedData = UpdateAnnouncementSchema.parse(req.body);
-    const { title, content, priority, start_date, end_date, start_time, end_time } = validatedData;
+    const { title, content, priority, startDate, endDate, startTime, endTime } = validatedData;
 
     const existing = await db.query.announcements.findFirst({
       where: eq(announcements.id, Number(id))
@@ -122,17 +123,17 @@ export const updateAnnouncement = async (req: Request, res: Response): Promise<v
     if (content !== undefined) updates.content = content;
     if (priority !== undefined) updates.priority = priority as 'normal' | 'high' | 'urgent';
 
-    if (start_time !== undefined) {
-      updates.startTime = convertTo24Hour(start_time);
+    if (startTime !== undefined) {
+      updates.startTime = convertTo24Hour(startTime);
     }
-    if (end_time !== undefined) {
-      updates.endTime = convertTo24Hour(end_time);
+    if (endTime !== undefined) {
+      updates.endTime = convertTo24Hour(endTime);
     }
-    if (start_date !== undefined) {
-      updates.startDate = (start_date && start_date.trim() !== '') ? start_date : null;
+    if (startDate !== undefined) {
+      updates.startDate = (startDate && startDate.trim() !== '') ? startDate : null;
     }
-    if (end_date !== undefined) {
-      updates.endDate = (end_date && end_date.trim() !== '') ? end_date : null;
+    if (endDate !== undefined) {
+      updates.endDate = (endDate && endDate.trim() !== '') ? endDate : null;
     }
 
     await db.update(announcements)
@@ -145,7 +146,7 @@ export const updateAnnouncement = async (req: Request, res: Response): Promise<v
       res.status(400).json({ success: false, message: 'Validation failed', errors: error.issues });
       return;
     }
-    console.error('Error updating announcement:', error);
+
     res.status(500).json({ success: false, message: 'Failed to update announcement' });
   }
 };
@@ -160,15 +161,15 @@ export const deleteAnnouncement = async (req: Request, res: Response): Promise<v
     });
 
     if (!existing) {
-      res.status(404).json({ message: 'Announcement not found' });
+      res.status(404).json({ success: false, message: 'Announcement not found' });
       return;
     }
 
     await db.delete(announcements).where(eq(announcements.id, Number(id)));
 
-    res.status(200).json({ message: 'Announcement deleted successfully' });
-  } catch (error) {
-    console.error('Error deleting announcement:', error);
-    res.status(500).json({ message: 'Failed to delete announcement' });
+    res.status(200).json({ success: true, message: 'Announcement deleted successfully' });
+  } catch (_error) {
+
+    res.status(500).json({ success: false, message: 'Failed to delete announcement' });
   }
 };

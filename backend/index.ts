@@ -41,7 +41,8 @@ import complianceRoutes from './routes/complianceRoutes.js';
 import devRoutes from './routes/devRoutes.js';
 import biometricRoutes from './routes/biometricRoutes.js';
 import commonRoutes from './routes/commonRoutes.js';
-import { waitForDatabase } from './db/index.js';
+import { waitForDatabase, runMigrations } from './db/index.js';
+import { namingMiddleware } from './middleware/namingMiddleware.js';
 
 
 dotenv.config();
@@ -59,7 +60,7 @@ import { startForcedLeaveCron } from './jobs/forcedLeaveDeduction.js';
 
 // Email application checker scheduled (every 5 minutes)
 const startServices = async () => {
-    console.log('Waiting for database to be ready...');
+    console.warn('Waiting for database to be ready...');
     const isReady = await waitForDatabase(20, 3000); // 20 attempts, 3s each = 1 minute total
 
     if (!isReady) {
@@ -67,7 +68,14 @@ const startServices = async () => {
         return;
     }
 
-    // Initialize Employment Cron Jobs
+    // Run pending migrations
+    try {
+        await runMigrations();
+    } catch (__err) {
+        // Errors are already handled/logged in runMigrations()
+    }
+
+    console.warn('Initializing jobs and services...');
     initCronJobs();
     initLeaveAccrualJob();
     startForcedLeaveCron();
@@ -76,18 +84,18 @@ const startServices = async () => {
     startPollingService(5000);
 
     cron.schedule('*/5 * * * *', async () => {
-        console.log('[CRON] Checking for email applications...');
+        console.warn('[CRON] Checking for email applications...');
         try {
             const result = await checkForNewApplications();
             if (result.processed > 0) {
-                console.log(`[CRON] Processed ${result.processed} new application(s) from email`);
+                console.warn(`[CRON] Processed ${result.processed} new application(s) from email`);
             }
         } catch (err) {
             const error = err as Error;
             console.error('[CRON] Email check failed:', error.message);
         }
     });
-    console.log('Background services initialized');
+    console.warn('Background services initialized');
 };
 
 startServices();
@@ -125,13 +133,23 @@ app.use(cors({
   credentials: true
 }));
 app.use(express.json());
+app.use(namingMiddleware);
 app.use(cookieParser());
 app.use(compression());
 
-// Serve uploaded files with CORS headers
-app.use('/uploads', (_req, res, next) => {
+import { verifyToken } from './middleware/authMiddleware.js';
+
+// Serve public uploaded files (Avatars only) with CORS headers
+app.use('/uploads/avatars', (_req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  next();
+}, express.static(path.join(__dirname, 'uploads/avatars')));
+
+// 100% Data Leak Prevention: Protect sensitive uploads (Resumes, Leaves, PDS)
+app.use('/uploads', verifyToken, (_req, res, next) => {
+  // Enforce same-site origin policy for sensitive documents
+  res.setHeader('Cross-Origin-Resource-Policy', 'same-site');
   next();
 }, express.static(path.join(__dirname, 'uploads')));
 
@@ -185,7 +203,8 @@ app.get("/", (_req, res) => {
 import { errorHandler } from './middleware/errorMiddleware.js';
 app.use(errorHandler);
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+const PORT = Number(process.env.PORT) || 5000;
+app.listen(PORT, '0.0.0.0', () => {
+  console.warn(`Server running on port ${PORT} (IPv4/IPv6)`);
 });
+ 

@@ -82,8 +82,8 @@ const InformationGrid: React.FC<InformationGridProps> = ({
               <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Last Name</label>
               <input
                 type="text"
-                name="last_name"
-                value={formData.last_name}
+                name="lastName"
+                value={formData.lastName}
                 onChange={handleChange}
                 className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-200 transition-all"
                 placeholder="Enter last name"
@@ -93,8 +93,8 @@ const InformationGrid: React.FC<InformationGridProps> = ({
               <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">First Name</label>
               <input
                 type="text"
-                name="first_name"
-                value={formData.first_name}
+                name="firstName"
+                value={formData.firstName}
                 onChange={handleChange}
                 className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-200 transition-all"
                 placeholder="Enter first name"

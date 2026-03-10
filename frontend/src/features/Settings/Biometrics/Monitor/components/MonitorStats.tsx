@@ -4,10 +4,10 @@ import { CheckCircle, AlertTriangle, RefreshCw } from 'lucide-react';
 interface LogItem {
   id?: number | string;
   status?: string;
-  employee_id?: string | number;
-  employee_name?: string;
+  employeeId?: string | number;
+  employeeName?: string;
   timestamp?: string;
-  created_at?: string;
+  createdAt?: string;
   updated_at?: string;
   name?: string;
   department?: string;

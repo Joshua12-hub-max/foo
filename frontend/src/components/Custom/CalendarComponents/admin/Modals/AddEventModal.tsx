@@ -32,19 +32,19 @@ export default function AddEventModal({ show, onClose, onAdd, hours = [], depart
     defaultValues: {
       title: '',
       date: '',
-      start_date: '',
-      end_date: '',
+      startDate: '',
+      endDate: '',
       time: '9:00 AM',
       description: '',
       department: '',
-      recurring_pattern: 'none'
+      recurringPattern: 'none'
     }
   });
 
   const watchedTime = watch('time');
   const watchedDepartment = watch('department');
   // Sync date fields
-  const watchedStartDate = watch('start_date');
+  const watchedStartDate = watch('startDate');
 
   useEffect(() => {
     if (watchedStartDate) {
@@ -58,12 +58,12 @@ export default function AddEventModal({ show, onClose, onAdd, hours = [], depart
         reset({
             title: '',
             date: new Date().toISOString().split('T')[0],
-            start_date: new Date().toISOString().split('T')[0],
-            end_date: new Date().toISOString().split('T')[0],
+            startDate: new Date().toISOString().split('T')[0],
+            endDate: new Date().toISOString().split('T')[0],
             time: '9:00 AM',
             description: '',
             department: '',
-            recurring_pattern: 'none'
+            recurringPattern: 'none'
         });
     }
   }, [show, reset]);
@@ -129,10 +129,10 @@ export default function AddEventModal({ show, onClose, onAdd, hours = [], depart
                     </label>
                     <input
                     type="date"
-                    {...register('start_date')}
-                    className={`w-full px-4 py-2 border ${errors.start_date ? 'border-red-500' : 'border-gray-200'} rounded-lg focus:outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100 transition-all text-sm`}
+                    {...register('startDate')}
+                    className={`w-full px-4 py-2 border ${errors.startDate ? 'border-red-500' : 'border-gray-200'} rounded-lg focus:outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100 transition-all text-sm`}
                     />
-                     {errors.start_date && <p className="text-red-500 text-xs mt-1">{errors.start_date.message}</p>}
+                     {errors.startDate && <p className="text-red-500 text-xs mt-1">{errors.startDate.message}</p>}
                 </div>
                 <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-1">
@@ -140,11 +140,11 @@ export default function AddEventModal({ show, onClose, onAdd, hours = [], depart
                     </label>
                     <input
                     type="date"
-                    {...register('end_date')}
+                    {...register('endDate')}
                     min={watchedStartDate}
-                    className={`w-full px-4 py-2 border ${errors.end_date ? 'border-red-500' : 'border-gray-200'} rounded-lg focus:outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100 transition-all text-sm`}
+                    className={`w-full px-4 py-2 border ${errors.endDate ? 'border-red-500' : 'border-gray-200'} rounded-lg focus:outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100 transition-all text-sm`}
                     />
-                     {errors.end_date && <p className="text-red-500 text-xs mt-1">{errors.end_date.message}</p>}
+                     {errors.endDate && <p className="text-red-500 text-xs mt-1">{errors.endDate.message}</p>}
                 </div>
                 </div>
 

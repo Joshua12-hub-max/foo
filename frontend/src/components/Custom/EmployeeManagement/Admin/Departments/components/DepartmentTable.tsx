@@ -7,8 +7,8 @@ import { DEPARTMENT_TABLE_HEADERS } from '@/components/Custom/EmployeeManagement
 interface Department {
   id: number;
   name: string;
-  head_of_department?: string;
-  employee_count?: number;
+  headOfDepartment?: string;
+  employeeCount?: number;
 }
 
 interface DepartmentTableProps {
@@ -61,15 +61,15 @@ const DepartmentTable: React.FC<DepartmentTableProps> = memo(({ departments, loa
                    <div className="text-sm font-medium text-gray-800">{dept.name}</div>
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-700 font-medium">
-                   {dept.head_of_department || <span className="text-gray-400 italic">Not Assigned</span>}
+                   {dept.headOfDepartment || <span className="text-gray-400 italic">Not Assigned</span>}
                 </td>
                 <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
                          <div className="h-2 w-16 bg-gray-100 rounded-full overflow-hidden">
-                            <div className="h-full bg-gray-800" style={{ width: `${Math.min((dept.employee_count || 0) * 5, 100)}%` }}></div>
+                            <div className="h-full bg-gray-800" style={{ width: `${Math.min((dept.employeeCount || 0) * 5, 100)}%` }}></div>
                          </div>
                          <span className="text-xs font-medium text-gray-600">
-                            {dept.employee_count || 0} Members
+                            {dept.employeeCount || 0} Members
                         </span>
                     </div>
                 </td>

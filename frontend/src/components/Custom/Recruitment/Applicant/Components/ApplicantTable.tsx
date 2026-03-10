@@ -69,20 +69,20 @@ const ApplicantTable: React.FC<ApplicantTableProps> = ({
                   <div className="flex items-center gap-3">
                     <div className="bg-gray-100 p-2 rounded-full text-gray-500"><User size={18} /></div>
                     <div>
-                      <div className="font-medium text-gray-900">{app.first_name} {app.last_name}</div>
+                      <div className="font-medium text-gray-900">{app.firstName} {app.lastName}</div>
                       <div className="text-sm text-gray-500">{app.email}</div>
                       <div className="mt-1">{getSourceBadge(app.source)}</div>
                     </div>
                   </div>
                 </td>
                 <td className="px-6 py-4">
-                  <div className="text-sm font-medium text-gray-900">{app.job_title || 'General Application'}</div>
-                  <div className="text-xs text-gray-500">{formatDate(app.created_at)}</div>
+                  <div className="text-sm font-medium text-gray-900">{app.jobTitle || 'General Application'}</div>
+                  <div className="text-xs text-gray-500">{formatDate(app.createdAt)}</div>
                 </td>
                 <td className="px-6 py-4">
-                  {app.interviewer_name ? (
+                  {app.interviewerName ? (
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-indigo-50 text-indigo-700 text-xs font-medium border border-indigo-100">
-                      <User size={12} /> {app.interviewer_name}
+                      <User size={12} /> {app.interviewerName}
                     </span>
                   ) : (
                     <span className="text-xs text-gray-400 italic">Unassigned</span>
@@ -91,9 +91,9 @@ const ApplicantTable: React.FC<ApplicantTableProps> = ({
                 <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
                          {/* Resume Link */}
-                         {app.resume_path ? (
+                         {app.resumePath ? (
                             <a 
-                                href={`http://localhost:5000/uploads/resumes/${app.resume_path}`} 
+                                href={`http://localhost:5000/uploads/resumes/${app.resumePath}`} 
                                 target="_blank" rel="noopener noreferrer"
                                 className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg"
                                 title="View Resume"
@@ -140,7 +140,7 @@ const ApplicantTable: React.FC<ApplicantTableProps> = ({
                 <td className="px-6 py-4 text-center">
                     <div className="flex justify-center gap-2">
                          {/* Assign Interviewer Button */}
-                        {!app.interviewer_name && (
+                        {!app.interviewerName && (
                             <button 
                                 onClick={() => onAssign(app)}
                                 className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg tooltip"
@@ -151,7 +151,7 @@ const ApplicantTable: React.FC<ApplicantTableProps> = ({
                         )}
 
                          {/* Schedule Interview Button */}
-                         {app.interviewer_name && !['Hired', 'Rejected'].includes(app.stage) && (
+                         {app.interviewerName && !['Hired', 'Rejected'].includes(app.stage) && (
                             <button 
                                 onClick={() => onSchedule(app)}
                                 className="p-1.5 text-purple-600 hover:bg-purple-50 rounded-lg"

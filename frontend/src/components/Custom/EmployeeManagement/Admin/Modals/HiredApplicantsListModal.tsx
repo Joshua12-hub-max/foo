@@ -7,7 +7,7 @@ import { HiredApplicant } from '@/types/recruitment_applicant';
 interface HiredApplicantsListModalProps {
   isOpen: boolean;
   onClose: () => void;
-  dutyType: 'Standard' | 'Irregular Duties';
+  dutyType: 'Standard' | 'Irregular';
   departmentName: string;
   onSelectApplicant: (applicantId: number) => void;
 }
@@ -28,11 +28,11 @@ const HiredApplicantsListModal: React.FC<HiredApplicantsListModalProps> = ({
     staleTime: 1000 * 60, // 1 minute
   });
 
-  const applicants: (HiredApplicant & { job_title?: string; employment_type?: string })[] = (response?.data?.applicants as any[]) || [];
+  const applicants: HiredApplicant[] = (response?.data?.applicants as any[]) || [];
   const filteredApplicants = applicants.filter(app => {
-    const fullName = `${app.first_name} ${app.last_name} ${app.middle_name || ''}`.toLowerCase();
+    const fullName = `${app.firstName} ${app.lastName} ${app.middleName || ''}`.toLowerCase();
     return fullName.includes(searchTerm.toLowerCase()) || 
-           (app.job_title || '').toLowerCase().includes(searchTerm.toLowerCase());
+           (app.jobTitle || '').toLowerCase().includes(searchTerm.toLowerCase());
   });
 
   if (!isOpen) return null;
@@ -118,21 +118,21 @@ const HiredApplicantsListModal: React.FC<HiredApplicantsListModalProps> = ({
                             <td className="px-5 py-4">
                                <div className="flex items-center gap-3">
                                   <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 font-bold border border-gray-200 flex-shrink-0 text-xs">
-                                     {applicant.first_name.charAt(0)}{applicant.last_name.charAt(0)}
+                                     {applicant.firstName.charAt(0)}{applicant.lastName.charAt(0)}
                                   </div>
                                   <div>
                                      <p className="font-bold text-gray-900">
-                                        {applicant.last_name}, {applicant.first_name} {applicant.middle_name || ''}
+                                        {applicant.lastName}, {applicant.firstName} {applicant.middleName || ''}
                                      </p>
-                                     <p className="text-[10px] text-gray-500 uppercase tracking-wider">APP-{String(applicant.id).padStart(4, '0')} • Hired {new Date(applicant.hired_date || '').toLocaleDateString()}</p>
+                                     <p className="text-[10px] text-gray-500 uppercase tracking-wider">APP-{String(applicant.id).padStart(4, '0')} • Hired {new Date(applicant.hiredDate || '').toLocaleDateString()}</p>
                                   </div>
                                </div>
                             </td>
                             <td className="px-5 py-4">
                                <div>
-                                 <span className="font-medium text-gray-700 block">{applicant.job_title}</span>
+                                 <span className="font-medium text-gray-700 block">{applicant.jobTitle}</span>
                                  <span className="text-gray-500 text-xs tracking-wide">
-                                    {applicant.employment_type}
+                                    {applicant.employmentType}
                                  </span>
                                </div>
                             </td>

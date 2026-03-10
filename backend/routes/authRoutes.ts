@@ -20,7 +20,7 @@ import {
   getNextId,
   findHiredApplicant,
   getSetupPositions,
-  setupAdminHR
+  setupPortal
 } from '../controllers/auth.controller.js';
 import { verifyToken, verifyAdmin, restrictSuspended } from '../middleware/authMiddleware.js';
 import { uploadAvatar } from '../middleware/uploadMiddleware.js';
@@ -32,8 +32,8 @@ const router: Router = Router();
 router.get('/next-id', authLimiter, getNextId);
 router.get('/hired-applicant-search', authLimiter, findHiredApplicant);
 router.get('/setup-positions', authLimiter, getSetupPositions);
-router.post('/setup-admin-hr', authLimiter, setupAdminHR);
-router.get('/verify-enrollment/:employeeId', verifyEnrollment);
+router.post('/setup-portal', strictAuthLimiter, setupPortal);
+router.get('/verify-enrollment/:employeeId', authLimiter, verifyEnrollment);
 router.post('/register', uploadAvatar.single('avatar'), strictAuthLimiter, register);
 router.post('/login', strictAuthLimiter, login);
 router.post('/logout', logout);

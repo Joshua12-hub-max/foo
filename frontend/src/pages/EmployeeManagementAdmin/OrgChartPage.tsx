@@ -55,7 +55,7 @@ const OrgChartPage: React.FC = () => {
     const deptNodes: DepartmentNode[] = Array.from(deptMap.entries()).map(([name, posts], index) => {
       // Find highest ranking position (highest SG) to assume as Head if not explicit
       // Sort by SG desc, Step desc, Item No asc
-      const sorted = [...posts].sort((a, b) => b.salary_grade - a.salary_grade || b.step_increment - a.step_increment);
+      const sorted = [...posts].sort((a, b) => b.salaryGrade - a.salaryGrade || b.stepIncrement - a.stepIncrement);
       
       return {
         id: index,
@@ -77,8 +77,8 @@ const OrgChartPage: React.FC = () => {
 
   const filteredDepartments = departments.filter(dept => 
     dept.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    dept.head?.position_title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    dept.head?.incumbent_name?.toLowerCase().includes(searchTerm.toLowerCase())
+    dept.head?.positionTitle.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    dept.head?.incumbentName?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -166,10 +166,10 @@ const DepartmentCard: React.FC<{ dept: DepartmentNode; expanded: boolean; onTogg
               <User size={20} className="text-blue-100" />
            </div>
            <div>
-              <p className="font-bold text-sm leading-tight">{dept.head?.incumbent_name || 'Vacant'}</p>
-              <p className="text-[10px] text-blue-200 font-medium">{dept.head?.position_title || 'Head of Office'}</p>
+              <p className="font-bold text-sm leading-tight">{dept.head?.incumbentName || 'Vacant'}</p>
+              <p className="text-[10px] text-blue-200 font-medium">{dept.head?.positionTitle || 'Head of Office'}</p>
               <span className="inline-block mt-1 px-1.5 py-0.5 bg-blue-950/50 rounded text-[9px] text-blue-300">
-                 SG {dept.head?.salary_grade}
+                 SG {dept.head?.salaryGrade}
               </span>
            </div>
         </div>
@@ -193,15 +193,15 @@ const DepartmentCard: React.FC<{ dept: DepartmentNode; expanded: boolean; onTogg
             <div className="max-h-[300px] overflow-y-auto p-2 scrollbar-thin">
               {dept.positions.map((pos) => (
                 <div key={pos.id} className="flex items-center gap-3 p-2 hover:bg-white rounded-lg transition-colors border border-transparent hover:border-gray-100 group">
-                   <div className={`w-2 h-2 rounded-full ${pos.is_vacant ? 'bg-amber-400' : 'bg-green-500'}`}></div>
+                   <div className={`w-2 h-2 rounded-full ${pos.isVacant ? 'bg-amber-400' : 'bg-green-500'}`}></div>
                    <div className="flex-1 min-w-0">
-                      <p className={`text-xs font-bold truncate ${pos.is_vacant ? 'text-gray-400 italic' : 'text-gray-800'}`}>
-                        {pos.incumbent_name || 'Vacant'}
+                      <p className={`text-xs font-bold truncate ${pos.isVacant ? 'text-gray-400 italic' : 'text-gray-800'}`}>
+                        {pos.incumbentName || 'Vacant'}
                       </p>
-                      <p className="text-[10px] text-gray-500 truncate">{pos.position_title}</p>
+                      <p className="text-[10px] text-gray-500 truncate">{pos.positionTitle}</p>
                    </div>
                    <div className="text-[9px] text-gray-400 font-mono bg-gray-100 px-1 rounded opacity-50 group-hover:opacity-100">
-                      SG{pos.salary_grade}
+                      SG{pos.salaryGrade}
                    </div>
                 </div>
               ))}

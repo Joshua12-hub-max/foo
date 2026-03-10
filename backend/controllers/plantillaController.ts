@@ -32,36 +32,35 @@ import { formatFullName } from '../utils/nameUtils.js';
 
 interface PlantillaSelectRow {
   id: number;
-  item_number: string;
-  position_title: string;
-  salary_grade: number;
-  step_increment: number | null;
+  itemNumber: string;
+  positionTitle: string;
+  salaryGrade: number;
+  stepIncrement: number | null;
   department: string | null;
-  department_id: number | null;
-  is_vacant: boolean | null;
-  incumbent_id: number | null;
-  monthly_salary: string | null;
-  filled_date: string | null;
-  vacated_date: string | null;
+  departmentId: number | null;
+  isVacant: boolean | null;
+  incumbentId: number | null;
+  monthlySalary: string | null;
+  filledDate: string | null;
+  vacatedDate: string | null;
   status: 'Active' | 'Abolished' | 'Frozen' | null;
-  area_code: string | null;
-  area_type: 'R' | 'P' | 'D' | 'M' | 'F' | 'B' | null;
-  area_level: 'K' | 'T' | 'S' | 'A' | null;
-  last_promotion_date: string | null;
-  department_name: string | null;
-  incumbent_first_name: string | null;
-  incumbent_last_name: string | null;
-  incumbent_middle_name: string | null;
-  incumbent_employee_id: string | null;
-  emp_last_promotion_date?: string | null;
-  ordinance_number?: string | null;
-  ordinance_date?: string | null;
-  abolishment_ordinance?: string | null;
-  abolishment_date?: string | null;
-  qualification_standards_id?: number | null;
-  budget_source?: string | null;
-  is_coterminous?: boolean | null;
-  [key: string]: unknown;
+  areaCode: string | null;
+  areaType: 'R' | 'P' | 'D' | 'M' | 'F' | 'B' | null;
+  areaLevel: 'K' | 'T' | 'S' | 'A' | null;
+  lastPromotionDate: string | null;
+  departmentName: string | null;
+  incumbentFirstName: string | null;
+  incumbentLastName: string | null;
+  incumbentMiddleName: string | null;
+  incumbentEmployeeId: string | null;
+  empLastPromotionDate?: string | null;
+  ordinanceNumber?: string | null;
+  ordinanceDate?: string | null;
+  abolishmentOrdinance?: string | null;
+  abolishmentDate?: string | null;
+  qualificationStandardsId?: number | null;
+  budgetSource?: string | null;
+  isCoterminous?: boolean | null;
 }
 
 interface AuditLogSelectRow {
@@ -74,9 +73,8 @@ interface AuditLogSelectRow {
   createdAt: string | null;
   itemNumber: string | null;
   positionTitle: string | null;
-  actor_first_name: string | null;
-  actor_last_name: string | null;
-  [key: string]: unknown;
+  actorFirstName: string | null;
+  actorLastName: string | null;
 }
 
 /**
@@ -85,39 +83,39 @@ interface AuditLogSelectRow {
 const mapToPlantillaApi = (pos: PlantillaSelectRow): PlantillaPositionApiResponse => {
   return {
     id: pos.id,
-    item_number: String(pos.item_number || pos.itemNumber || ''),
-    position_title: String(pos.position_title || pos.positionTitle || ''),
-    salary_grade: Number(pos.salary_grade || pos.salaryGrade),
-    step_increment: (pos.step_increment || pos.stepIncrement) ? Number(pos.step_increment || pos.stepIncrement) : null,
-    department: String(pos.department_name || pos.department || ''),
-    department_id: (pos.department_id || pos.departmentId) ? Number(pos.department_id || pos.departmentId) : null,
-    is_vacant: pos.is_vacant !== undefined && pos.is_vacant !== null ? Number(pos.is_vacant) : 1,
-    incumbent_id: (pos.incumbent_id || pos.incumbentId) ? Number(pos.incumbent_id || pos.incumbentId) : null,
-    monthly_salary: (pos.monthly_salary || pos.monthlySalary) ? String(pos.monthly_salary || pos.monthlySalary) : null,
-    filled_date: (pos.filled_date || pos.filledDate) ? String(pos.filled_date || pos.filledDate) : null,
-    vacated_date: (pos.vacated_date || pos.vacatedDate) ? String(pos.vacated_date || pos.vacatedDate) : null,
-    ordinance_number: (pos.ordinance_number || pos.ordinanceNumber) ? String(pos.ordinance_number || pos.ordinanceNumber) : null,
-    ordinance_date: (pos.ordinance_date || pos.ordinanceDate) ? String(pos.ordinance_date || pos.ordinanceDate) : null,
-    abolishment_ordinance: (pos.abolishment_ordinance || pos.abolishmentOrdinance) ? String(pos.abolishment_ordinance || pos.abolishmentOrdinance) : null,
-    abolishment_date: (pos.abolishment_date || pos.abolishmentDate) ? String(pos.abolishment_date || pos.abolishmentDate) : null,
-    qualification_standards_id: (pos.qualification_standards_id || pos.qualificationStandardsId) ? Number(pos.qualification_standards_id || pos.qualificationStandardsId) : null,
-    budget_source: String(pos.budget_source || pos.budgetSource || 'Regular'),
-    is_coterminous: pos.is_coterminous !== undefined && pos.is_coterminous !== null ? Number(pos.is_coterminous) : 0,
+    itemNumber: String(pos.itemNumber || ''),
+    positionTitle: String(pos.positionTitle || ''),
+    salaryGrade: Number(pos.salaryGrade),
+    stepIncrement: pos.stepIncrement ? Number(pos.stepIncrement) : null,
+    department: String(pos.departmentName || pos.department || ''),
+    departmentId: pos.departmentId ? Number(pos.departmentId) : null,
+    isVacant: pos.isVacant !== undefined && pos.isVacant !== null ? (pos.isVacant ? 1 : 0) : 1,
+    incumbentId: pos.incumbentId ? Number(pos.incumbentId) : null,
+    monthlySalary: pos.monthlySalary ? String(pos.monthlySalary) : null,
+    filledDate: pos.filledDate ? String(pos.filledDate) : null,
+    vacatedDate: pos.vacatedDate ? String(pos.vacatedDate) : null,
+    ordinanceNumber: pos.ordinanceNumber ? String(pos.ordinanceNumber) : null,
+    ordinanceDate: pos.ordinanceDate ? String(pos.ordinanceDate) : null,
+    abolishmentOrdinance: pos.abolishmentOrdinance ? String(pos.abolishmentOrdinance) : null,
+    abolishmentDate: pos.abolishmentDate ? String(pos.abolishmentDate) : null,
+    qualificationStandardsId: pos.qualificationStandardsId ? Number(pos.qualificationStandardsId) : null,
+    budgetSource: String(pos.budgetSource || 'Regular'),
+    isCoterminous: pos.isCoterminous !== undefined && pos.isCoterminous !== null ? (pos.isCoterminous ? 1 : 0) : 0,
     status: (pos.status || 'Active') as 'Active' | 'Abolished' | 'Frozen',
-    area_code: (pos.area_code || pos.areaCode) ? String(pos.area_code || pos.areaCode) : null,
-    area_type: (pos.area_type || pos.areaType) ? (pos.area_type || pos.areaType) as 'R' | 'P' | 'D' | 'M' | 'F' | 'B' : null,
-    area_level: (pos.area_level || pos.areaLevel) ? (pos.area_level || pos.areaLevel) as 'K' | 'T' | 'S' | 'A' : null,
-    last_promotion_date: (pos.emp_last_promotion_date || pos.last_promotion_date) ? String(pos.emp_last_promotion_date || pos.last_promotion_date) : null,
+    areaCode: pos.areaCode ? String(pos.areaCode) : null,
+    areaType: pos.areaType ? pos.areaType as 'R' | 'P' | 'D' | 'M' | 'F' | 'B' : null,
+    areaLevel: pos.areaLevel ? pos.areaLevel as 'K' | 'T' | 'S' | 'A' : null,
+    lastPromotionDate: (pos.empLastPromotionDate || pos.lastPromotionDate) ? String(pos.empLastPromotionDate || pos.lastPromotionDate) : null,
     
     // Joined fields
-    incumbent_name: String(pos.incumbent_name || (pos.incumbent_last_name 
-      ? `${pos.incumbent_last_name}, ${pos.incumbent_first_name} ${pos.incumbent_middle_name || ''}`.trim() 
-      : '')),
-    incumbent_employee_id: (pos.incumbent_employee_id || pos.incumbentEmployeeId) ? String(pos.incumbent_employee_id || pos.incumbentEmployeeId) : null,
-    incumbent_first_name: (pos.incumbent_first_name) ? String(pos.incumbent_first_name) : null,
-    incumbent_last_name: (pos.incumbent_last_name) ? String(pos.incumbent_last_name) : null,
-    incumbent_middle_name: (pos.incumbent_middle_name) ? String(pos.incumbent_middle_name) : null,
-    department_name: (pos.department_name) ? String(pos.department_name) : null
+    incumbentName: String(pos.incumbentLastName 
+      ? `${pos.incumbentLastName}, ${pos.incumbentFirstName} ${pos.incumbentMiddleName || ''}`.trim() 
+      : ''),
+    incumbentEmployeeId: pos.incumbentEmployeeId ? String(pos.incumbentEmployeeId) : null,
+    incumbentFirstName: pos.incumbentFirstName ? String(pos.incumbentFirstName) : null,
+    incumbentLastName: pos.incumbentLastName ? String(pos.incumbentLastName) : null,
+    incumbentMiddleName: pos.incumbentMiddleName ? String(pos.incumbentMiddleName) : null,
+    departmentName: pos.departmentName ? String(pos.departmentName) : null
   };
 };
 
@@ -127,15 +125,15 @@ const mapToPlantillaApi = (pos: PlantillaSelectRow): PlantillaPositionApiRespons
 const mapToAuditLogApi = (log: AuditLogSelectRow): PlantillaAuditLogApiResponse => {
   return {
     id: log.id,
-    position_id: Number(log.positionId),
+    positionId: Number(log.positionId),
     action: String(log.action),
-    actor_id: Number(log.actorId),
-    old_values: (log.oldValues as Record<string, unknown> | null) || null,
-    new_values: (log.newValues as Record<string, unknown> | null) || null,
-    created_at: log.createdAt ? new Date(String(log.createdAt)).toISOString() : null,
-    item_number: log.itemNumber ? String(log.itemNumber) : undefined,
-    position_title: log.positionTitle ? String(log.positionTitle) : undefined,
-    actor_name: (log.actor_first_name || log.actor_last_name) ? `${log.actor_last_name}, ${log.actor_first_name}`.trim() : 'Unknown'
+    actorId: Number(log.actorId),
+    oldValues: (log.oldValues as Record<string, unknown> | null) || null,
+    newValues: (log.newValues as Record<string, unknown> | null) || null,
+    createdAt: log.createdAt ? new Date(String(log.createdAt)).toISOString() : null,
+    itemNumber: log.itemNumber ? String(log.itemNumber) : undefined,
+    positionTitle: log.positionTitle ? String(log.positionTitle) : undefined,
+    actorName: (log.actorFirstName || log.actorLastName) ? `${log.actorLastName}, ${log.actorFirstName}`.trim() : 'Unknown'
   };
 };
 
@@ -145,14 +143,14 @@ const mapToAuditLogApi = (log: AuditLogSelectRow): PlantillaAuditLogApiResponse 
 const mapToHistoryApi = (history: InferSelectModel<typeof plantillaPositionHistory>): PlantillaHistoryApiResponse => {
   return {
     id: history.id,
-    position_id: history.positionId,
-    employee_id: history.employeeId,
-    employee_name: history.employeeName || null,
-    position_title: history.positionTitle || null,
-    start_date: String(history.startDate),
-    end_date: history.endDate ? String(history.endDate) : null,
+    positionId: history.positionId,
+    employeeId: history.employeeId,
+    employeeName: history.employeeName || null,
+    positionTitle: history.positionTitle || null,
+    startDate: String(history.startDate),
+    endDate: history.endDate ? String(history.endDate) : null,
     reason: history.reason || null,
-    created_at: history.createdAt ? new Date(String(history.createdAt)).toISOString() : null
+    createdAt: history.createdAt ? new Date(String(history.createdAt)).toISOString() : null
   };
 };
 
@@ -174,52 +172,53 @@ const logAudit = async (
       oldValues,
       newValues
     });
-  } catch (error) { 
-    console.error('Audit log error:', error); 
+  } catch (_error) { 
+      /* empty */
+
   }
 };
 
 export const getPlantilla = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { department_id, is_vacant } = req.query;
+    const { departmentId, isVacant } = req.query;
     
     const whereConditions = [];
-    if (department_id && department_id !== 'All') {
-      whereConditions.push(eq(plantillaPositions.departmentId, Number(department_id)));
+    if (departmentId && departmentId !== 'All') {
+      whereConditions.push(eq(plantillaPositions.departmentId, Number(departmentId)));
     }
-    if (is_vacant !== undefined) {
-      whereConditions.push(eq(plantillaPositions.isVacant, is_vacant === 'true' || is_vacant === '1' ? true : false));
+    if (isVacant !== undefined) {
+      whereConditions.push(eq(plantillaPositions.isVacant, isVacant === 'true' || isVacant === '1' ? true : false));
     }
 
     const positions = await db.select({
       id: plantillaPositions.id,
-      item_number: plantillaPositions.itemNumber,
-      position_title: plantillaPositions.positionTitle,
-      salary_grade: plantillaPositions.salaryGrade,
-      step_increment: plantillaPositions.stepIncrement,
-      department_id: plantillaPositions.departmentId,
+      itemNumber: plantillaPositions.itemNumber,
+      positionTitle: plantillaPositions.positionTitle,
+      salaryGrade: plantillaPositions.salaryGrade,
+      stepIncrement: plantillaPositions.stepIncrement,
+      departmentId: plantillaPositions.departmentId,
       department: plantillaPositions.department,
-      is_vacant: plantillaPositions.isVacant,
-      incumbent_id: plantillaPositions.incumbentId,
-      monthly_salary: plantillaPositions.monthlySalary,
-      filled_date: plantillaPositions.filledDate,
-      vacated_date: plantillaPositions.vacatedDate,
+      isVacant: plantillaPositions.isVacant,
+      incumbentId: plantillaPositions.incumbentId,
+      monthlySalary: plantillaPositions.monthlySalary,
+      filledDate: plantillaPositions.filledDate,
+      vacatedDate: plantillaPositions.vacatedDate,
       status: plantillaPositions.status,
-      area_code: plantillaPositions.areaCode,
-      area_type: plantillaPositions.areaType,
-      area_level: plantillaPositions.areaLevel,
-      last_promotion_date: plantillaPositions.lastPromotionDate,
-      department_name: departments.name,
-      incumbent_first_name: authentication.firstName,
-      incumbent_last_name: authentication.lastName,
-      incumbent_middle_name: authentication.middleName,
-      incumbent_employee_id: authentication.employeeId,
-      birth_date: authentication.birthDate,
-      date_hired: authentication.dateHired,
+      areaCode: plantillaPositions.areaCode,
+      areaType: plantillaPositions.areaType,
+      areaLevel: plantillaPositions.areaLevel,
+      lastPromotionDate: plantillaPositions.lastPromotionDate,
+      departmentName: departments.name,
+      incumbentFirstName: authentication.firstName,
+      incumbentLastName: authentication.lastName,
+      incumbentMiddleName: authentication.middleName,
+      incumbentEmployeeId: authentication.employeeId,
+      birthDate: authentication.birthDate,
+      dateHired: authentication.dateHired,
       gender: authentication.gender,
       eligibility: authentication.eligibilityType,
-      original_appointment_date: authentication.originalAppointmentDate,
-      emp_last_promotion_date: authentication.lastPromotionDate
+      originalAppointmentDate: authentication.originalAppointmentDate,
+      empLastPromotionDate: authentication.lastPromotionDate
     })
     .from(plantillaPositions)
     .leftJoin(departments, eq(plantillaPositions.departmentId, departments.id))
@@ -230,33 +229,28 @@ export const getPlantilla = async (req: Request, res: Response): Promise<void> =
     const formattedPositions = positions.map(mapToPlantillaApi);
 
     res.json({ success: true, positions: formattedPositions });
-  } catch (error) { 
-    console.error('Get Plantilla Error:', error); 
+  } catch (_error) { 
+
     res.status(500).json({ success: false, message: 'Failed to fetch plantilla' }); 
   }
 };
+
 
 export const getPublicPositions = async (_req: Request, res: Response): Promise<void> => {
   try {
     const result = await db
       .select({ 
         id: plantillaPositions.id, 
-        position_title: plantillaPositions.positionTitle,
-        item_number: plantillaPositions.itemNumber,
+        positionTitle: plantillaPositions.positionTitle,
+        itemNumber: plantillaPositions.itemNumber,
         department: plantillaPositions.department
       })
       .from(plantillaPositions)
       .orderBy(asc(plantillaPositions.positionTitle));
       
-    // Return unique titles/departments or just raw list? 
-    // Let's return raw list for now, simpler for dropdown to pick "Item 1 - Title". 
-    // Actually, user probably just wants "Position Title". 
-    // But duplicate titles exist for multiple items.
-    // Let's return the list.
-    
     res.status(200).json({ success: true, positions: result });
-  } catch (error) {
-    console.error('Get Public Positions Error:', error);
+  } catch (_error) {
+
     res.status(500).json({ success: false, message: 'Failed to fetch positions' });
   }
 };
@@ -267,13 +261,13 @@ export const getPlantillaSummary = async (_req: Request, res: Response): Promise
       total: sql<number>`count(*)`,
       vacant: sql<number>`sum(case when ${plantillaPositions.isVacant} = 1 then 1 else 0 end)`,
       filled: sql<number>`sum(case when ${plantillaPositions.isVacant} = 0 then 1 else 0 end)`,
-      total_monthly_salary: sql<number>`sum(coalesce(${plantillaPositions.monthlySalary}, 0))`
+      totalMonthlySalary: sql<number>`sum(coalesce(${plantillaPositions.monthlySalary}, 0))`
     }).from(plantillaPositions);
     
     const total = Number(summary.total || 0);
     const vacant = Number(summary.vacant || 0);
     const filled = Number(summary.filled || 0);
-    const totalSalary = Number(summary.total_monthly_salary || 0);
+    const totalSalary = Number(summary.totalMonthlySalary || 0);
     
     res.json({ 
       success: true, 
@@ -281,13 +275,13 @@ export const getPlantillaSummary = async (_req: Request, res: Response): Promise
         total, 
         vacant, 
         filled, 
-        vacancy_rate: total > 0 ? Number(((vacant / total) * 100).toFixed(1)) : 0, 
-        total_monthly_salary: totalSalary, 
-        annual_budget: totalSalary * 12 
+        vacancyRate: total > 0 ? Number(((vacant / total) * 100).toFixed(1)) : 0, 
+        totalMonthlySalary: totalSalary, 
+        annualBudget: totalSalary * 12 
       } 
     });
-  } catch (error) { 
-    console.error('Get Summary Error:', error);
+  } catch (_error) { 
+
     res.status(500).json({ success: false, message: 'Failed to fetch summary' }); 
   }
 };
@@ -300,22 +294,22 @@ export const createPosition = async (req: Request, res: Response): Promise<void>
     const validatedData = createPositionSchema.parse(req.body);
 
     const dept = await db.query.departments.findFirst({
-      where: eq(departments.id, validatedData.department_id),
+      where: eq(departments.id, validatedData.departmentId),
       columns: { name: true }
     });
 
     const result = await db.insert(plantillaPositions).values({
-      itemNumber: validatedData.item_number,
-      positionTitle: validatedData.position_title,
-      salaryGrade: validatedData.salary_grade,
-      stepIncrement: validatedData.step_increment,
-      departmentId: validatedData.department_id,
+      itemNumber: validatedData.itemNumber,
+      positionTitle: validatedData.positionTitle,
+      salaryGrade: validatedData.salaryGrade,
+      stepIncrement: validatedData.stepIncrement,
+      departmentId: validatedData.departmentId,
       department: dept?.name || null,
-      monthlySalary: validatedData.monthly_salary ? String(validatedData.monthly_salary) : null,
-      areaCode: validatedData.area_code || null,
-      areaType: validatedData.area_type || null,
-      areaLevel: validatedData.area_level || null,
-      isVacant: validatedData.is_vacant ? true : false
+      monthlySalary: validatedData.monthlySalary ? String(validatedData.monthlySalary) : null,
+      areaCode: validatedData.areaCode || null,
+      areaType: validatedData.areaType || null,
+      areaLevel: validatedData.areaLevel || null,
+      isVacant: validatedData.isVacant ? true : false
     });
 
     const insertId = result[0].insertId;
@@ -331,7 +325,7 @@ export const createPosition = async (req: Request, res: Response): Promise<void>
       res.status(409).json({ success: false, message: 'Item number already exists' }); 
       return; 
     }
-    console.error('Create Position Error:', error);
+
     res.status(500).json({ success: false, message: 'Failed to create position' });
   }
 };
@@ -353,25 +347,25 @@ export const updatePosition = async (req: Request, res: Response): Promise<void>
       return; 
     }
 
-    const dept = updates.department_id ? await db.query.departments.findFirst({
-      where: eq(departments.id, updates.department_id),
+    const dept = updates.departmentId ? await db.query.departments.findFirst({
+      where: eq(departments.id, updates.departmentId),
       columns: { name: true }
     }) : null;
 
     await db.update(plantillaPositions)
       .set({
-        itemNumber: updates.item_number,
-        positionTitle: updates.position_title,
-        salaryGrade: updates.salary_grade,
-        stepIncrement: updates.step_increment,
-        departmentId: updates.department_id,
-        department: dept?.name || oldData.department, // Keep old department name if not updating department_id
-        isVacant: updates.is_vacant ? true : false,
-        monthlySalary: updates.monthly_salary ? String(updates.monthly_salary) : null,
-        areaCode: updates.area_code || null,
-        areaType: updates.area_type || null,
-        areaLevel: updates.area_level || null,
-        lastPromotionDate: updates.last_promotion_date || null
+        itemNumber: updates.itemNumber,
+        positionTitle: updates.positionTitle,
+        salaryGrade: updates.salaryGrade,
+        stepIncrement: updates.stepIncrement,
+        departmentId: updates.departmentId,
+        department: dept?.name || oldData.department, // Keep old department name if not updating departmentId
+        isVacant: updates.isVacant ? true : false,
+        monthlySalary: updates.monthlySalary ? String(updates.monthlySalary) : null,
+        areaCode: updates.areaCode || null,
+        areaType: updates.areaType || null,
+        areaLevel: updates.areaLevel || null,
+        lastPromotionDate: updates.lastPromotionDate || null
       })
       .where(eq(plantillaPositions.id, Number(id)));
 
@@ -382,7 +376,7 @@ export const updatePosition = async (req: Request, res: Response): Promise<void>
         res.status(400).json({ success: false, message: 'Validation Error', errors: (error as z.ZodError).issues });
         return;
     }
-    console.error('Update Position Error:', error);
+
     res.status(500).json({ success: false, message: 'Failed to update position' }); 
   }
 };
@@ -410,8 +404,8 @@ export const deletePosition = async (req: Request, res: Response): Promise<void>
     await logAudit(Number(id), 'deleted', authReq.user.id, oldData, null);
     
     res.json({ success: true, message: 'Position deleted successfully' });
-  } catch (error) { 
-    console.error('Delete Position Error:', error);
+  } catch (_error) { 
+
     res.status(500).json({ success: false, message: 'Failed to delete position' }); 
   }
 };
@@ -422,7 +416,7 @@ export const assignEmployee = async (req: Request, res: Response): Promise<void>
     const { id } = req.params;
     
     // Zod Validation
-    const { employee_id, start_date } = assignEmployeeSchema.parse(req.body);
+    const { employeeId, startDate } = assignEmployeeSchema.parse(req.body);
 
     // 1. Get Target Position
     const position = await db.query.plantillaPositions.findFirst({
@@ -440,7 +434,7 @@ export const assignEmployee = async (req: Request, res: Response): Promise<void>
 
     // 2. Get Employee and their Current Salary
     const employee = await db.query.authentication.findFirst({
-      where: eq(authentication.id, Number(employee_id))
+      where: eq(authentication.id, Number(employeeId))
     });
 
     if (!employee) { 
@@ -474,7 +468,7 @@ export const assignEmployee = async (req: Request, res: Response): Promise<void>
       ))
       .orderBy(asc(salarySchedule.step));
 
-    let targetStep = 1;
+    const targetStep = 1;
     let targetSalary = 0;
 
     if (salarySteps.length > 0) {
@@ -496,25 +490,25 @@ export const assignEmployee = async (req: Request, res: Response): Promise<void>
     // It's already imported in `qualificationStandardsController.ts`, so I need to import `QualificationService` in `plantillaController.ts`.
     
     // Logic insertion:
-    const validationResult = await QualificationService.validate(Number(employee_id), Number(id));
+    const validationResult = await QualificationService.validate(Number(employeeId), Number(id));
     
     if (!validationResult.qualified) {
         res.status(400).json({ 
             success: false, 
             message: 'Employee does not meet the Qualification Standards for this position',
-            missing_requirements: validationResult.missingRequirements,
+            missingRequirements: validationResult.missingRequirements,
             score: validationResult.score
         });
         return;
     }
 
-    const assignDate = start_date || new Date().toISOString().split('T')[0];
+    const assignDate = startDate || new Date().toISOString().split('T')[0];
 
     await db.transaction(async (tx) => {
       // 4. Update Position Table
       await tx.update(plantillaPositions)
         .set({ 
-          incumbentId: Number(employee_id), 
+          incumbentId: Number(employeeId), 
           isVacant: false, 
           filledDate: assignDate, 
           vacatedDate: null, 
@@ -535,12 +529,12 @@ export const assignEmployee = async (req: Request, res: Response): Promise<void>
           salaryGrade: String(position.salaryGrade), 
           stepIncrement: targetStep 
         })
-        .where(eq(authentication.id, Number(employee_id)));
+        .where(eq(authentication.id, Number(employeeId)));
 
       // 6. Record History
       await tx.insert(plantillaPositionHistory).values({
         positionId: Number(id),
-        employeeId: Number(employee_id),
+        employeeId: Number(employeeId),
         employeeName: formatFullName(employee.lastName, employee.firstName, employee.middleName, employee.suffix),
         positionTitle: position.positionTitle,
         startDate: assignDate
@@ -548,7 +542,7 @@ export const assignEmployee = async (req: Request, res: Response): Promise<void>
 
       await logAudit(Number(id), 'assigned', authReq.user.id, 
         { isVacant: true, incumbentId: null }, 
-        { isVacant: false, incumbentId: employee_id, step: targetStep, salary: targetSalary }
+        { isVacant: false, incumbentId: employeeId, step: targetStep, salary: targetSalary }
       );
     });
     
@@ -558,7 +552,7 @@ export const assignEmployee = async (req: Request, res: Response): Promise<void>
         res.status(400).json({ success: false, message: 'Validation Error', errors: (error as z.ZodError).issues });
         return;
     }
-    console.error('Assign Employee Error:', error); 
+
     res.status(500).json({ success: false, message: 'Failed to assign employee' }); 
   }
 };
@@ -569,7 +563,7 @@ export const vacatePosition = async (req: Request, res: Response): Promise<void>
     const { id } = req.params;
 
     // Zod Validation
-    const { reason, end_date } = vacatePositionSchema.parse(req.body);
+    const { reason, endDate } = vacatePositionSchema.parse(req.body);
 
     const position = await db.query.plantillaPositions.findFirst({
       where: eq(plantillaPositions.id, Number(id))
@@ -578,7 +572,7 @@ export const vacatePosition = async (req: Request, res: Response): Promise<void>
     if (!position) { res.status(404).json({ success: false, message: 'Position not found' }); return; }
     if (position.isVacant) { res.status(400).json({ success: false, message: 'Position is already vacant' }); return; }
 
-    const vacateDate = end_date || new Date().toISOString().split('T')[0];
+    const vacateDate = endDate || new Date().toISOString().split('T')[0];
 
     await db.transaction(async (tx) => {
       await tx.update(plantillaPositionHistory)
@@ -609,7 +603,7 @@ export const vacatePosition = async (req: Request, res: Response): Promise<void>
         res.status(400).json({ success: false, message: 'Validation Error', errors: (error as z.ZodError).issues });
         return;
     }
-    console.error('Vacate Position Error:', error);
+
     res.status(500).json({ success: false, message: 'Failed to vacate position' }); 
   }
 };
@@ -622,15 +616,15 @@ export const getPositionHistory = async (req: Request, res: Response): Promise<v
       .where(eq(plantillaPositionHistory.positionId, Number(id)))
     const formattedHistory = history.map(mapToHistoryApi);
     res.json({ success: true, history: formattedHistory }); 
-  } catch (error) { 
-    console.error('Get Position History Error:', error);
+  } catch (_error) { 
+
     res.status(500).json({ success: false, message: 'Failed to fetch position history' }); 
   }
 };
 
 export const getAuditLog = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { position_id, limit = '50' } = req.query;
+    const { positionId, limit = '50' } = req.query;
     
     const logs = await db.select({
       id: plantillaAuditLog.id,
@@ -642,21 +636,21 @@ export const getAuditLog = async (req: Request, res: Response): Promise<void> =>
       createdAt: plantillaAuditLog.createdAt,
       itemNumber: plantillaPositions.itemNumber,
       positionTitle: plantillaPositions.positionTitle,
-      actor_first_name: authentication.firstName,
-      actor_last_name: authentication.lastName
+      actorFirstName: authentication.firstName,
+      actorLastName: authentication.lastName
     })
     .from(plantillaAuditLog)
     .leftJoin(plantillaPositions, eq(plantillaAuditLog.positionId, plantillaPositions.id))
     .leftJoin(authentication, eq(plantillaAuditLog.actorId, authentication.id))
-    .where(position_id ? eq(plantillaAuditLog.positionId, Number(position_id)) : undefined)
+    .where(positionId ? eq(plantillaAuditLog.positionId, Number(positionId)) : undefined)
     .orderBy(desc(plantillaAuditLog.createdAt))
     .limit(Number(limit));
 
     const formattedLogs = logs.map(mapToAuditLogApi);
 
     res.json({ success: true, logs: formattedLogs });
-  } catch (error) { 
-    console.error('Get Audit Log Error:', error);
+  } catch (_error) { 
+
     res.status(500).json({ success: false, message: 'Failed to fetch audit log' }); 
   }
 };
@@ -673,22 +667,22 @@ export const getAvailableEmployees = async (_req: Request, res: Response): Promi
     .from(authentication)
     .leftJoin(plantillaPositions, eq(authentication.id, plantillaPositions.incumbentId))
     .where(and(
-      ne(authentication.role, 'Admin'),
+      ne(authentication.role, 'Administrator'),
       isNull(plantillaPositions.id)
     ))
     .orderBy(asc(authentication.lastName), asc(authentication.firstName));
 
     const formattedEmployees = employees.map(emp => ({
       id: emp.id,
-      first_name: emp.firstName,
-      last_name: emp.lastName,
-      employee_id: emp.employeeId,
+      firstName: emp.firstName,
+      lastName: emp.lastName,
+      employeeId: emp.employeeId,
       department: emp.department
     }));
 
     res.json({ success: true, employees: formattedEmployees });
-  } catch (error) { 
-    console.error('Get Available Employees Error:', error);
+  } catch (_error) { 
+
     res.status(500).json({ success: false, message: 'Failed to fetch available employees' }); 
   }
 };
@@ -727,9 +721,9 @@ export const getSalarySchedule = async (req: Request, res: Response): Promise<vo
       res.status(404).json({ success: false, message: 'Salary not found for this grade/step/tranche' }); 
       return; 
     }
-    res.json({ success: true, monthly_salary: result.monthlySalary, tranche: trancheNum });
-  } catch (error) { 
-    console.error('Get Salary Schedule Error:', error);
+    res.json({ success: true, monthlySalary: result.monthlySalary, tranche: trancheNum });
+  } catch (_error) { 
+
     res.status(500).json({ success: false, message: 'Failed to fetch salary schedule' }); 
   }
 };
@@ -740,8 +734,8 @@ export const getTranches = async (_req: Request, res: Response): Promise<void> =
       orderBy: [asc(salaryTranches.trancheNumber)]
     });
     res.json({ success: true, tranches });
-  } catch (error) {
-    console.error('Get Tranches Error:', error);
+  } catch (_error) {
+
     res.status(500).json({ success: false, message: 'Failed to fetch tranches' });
   }
 };
@@ -756,8 +750,8 @@ export const setActiveTranche = async (req: Request, res: Response): Promise<voi
     });
     
     res.json({ success: true, message: 'Active tranche updated' });
-  } catch (error) {
-    console.error('Set Active Tranche Error:', error);
+  } catch (_error) {
+
     res.status(500).json({ success: false, message: 'Failed to update active tranche' });
   }
 };
@@ -775,18 +769,18 @@ export const getActiveTranche = async (_req: Request, res: Response): Promise<vo
     }
     
     res.json({ success: true, tranche: tranche || null });
-  } catch (error) {
-    console.error('Get Active Tranche Error:', error);
+  } catch (_error) {
+
     res.status(500).json({ success: false, message: 'Failed to fetch active tranche' });
   }
 };
 
 export const createTranche = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { name, tranche_number, circular_number, effective_date } = createTrancheSchema.parse(req.body);
+        const { name, trancheNumber, circularNumber, effectiveDate } = createTrancheSchema.parse(req.body);
 
         const existing = await db.query.salaryTranches.findFirst({
-            where: eq(salaryTranches.trancheNumber, tranche_number)
+            where: eq(salaryTranches.trancheNumber, trancheNumber)
         });
 
         if (existing) {
@@ -796,9 +790,9 @@ export const createTranche = async (req: Request, res: Response): Promise<void> 
 
         const [result] = await db.insert(salaryTranches).values({
             name,
-            trancheNumber: tranche_number,
-            circularNumber: circular_number,
-            effectiveDate: effective_date,
+            trancheNumber: trancheNumber,
+            circularNumber: circularNumber,
+            effectiveDate: effectiveDate,
             dateIssued: new Date().toISOString(),
             applicableTo: 'Civilian Government Personnel',
             isActive: false
@@ -810,7 +804,10 @@ export const createTranche = async (req: Request, res: Response): Promise<void> 
 
         res.status(201).json({ success: true, tranche: newTranche });
     } catch (error) {
-        console.error('Create Tranche Error:', error);
+        if (error instanceof z.ZodError) {
+            res.status(400).json({ success: false, message: 'Validation Error', errors: (error as z.ZodError).issues });
+            return;
+        }
         res.status(500).json({ success: false, message: 'Failed to create tranche' });
     }
 };
@@ -821,7 +818,7 @@ export const abolishPosition = async (req: Request, res: Response): Promise<void
     const { id } = req.params;
 
     // Zod Validation
-    const { abolishment_ordinance, abolishment_date, reason } = abolishPositionSchema.parse(req.body);
+    const { abolishmentOrdinance, abolishmentDate, reason } = abolishPositionSchema.parse(req.body);
 
     const position = await db.query.plantillaPositions.findFirst({
       where: eq(plantillaPositions.id, Number(id))
@@ -840,8 +837,8 @@ export const abolishPosition = async (req: Request, res: Response): Promise<void
     await db.update(plantillaPositions)
       .set({ 
         status: 'Abolished', 
-        abolishmentOrdinance: abolishment_ordinance, 
-        abolishmentDate: abolishment_date 
+        abolishmentOrdinance: abolishmentOrdinance, 
+        abolishmentDate: abolishmentDate 
       })
       .where(eq(plantillaPositions.id, Number(id)));
 
@@ -850,7 +847,7 @@ export const abolishPosition = async (req: Request, res: Response): Promise<void
       'abolished',
       authReq.user.id,
       { status: position.status, abolishmentOrdinance: position.abolishmentOrdinance },
-      { status: 'Abolished', abolishmentOrdinance: abolishment_ordinance, abolishmentDate: abolishment_date, reason }
+      { status: 'Abolished', abolishmentOrdinance: abolishmentOrdinance, abolishmentDate: abolishmentDate, reason }
     );
 
     res.json({ success: true, message: 'Position abolished successfully' });
@@ -859,7 +856,7 @@ export const abolishPosition = async (req: Request, res: Response): Promise<void
         res.status(400).json({ success: false, message: 'Validation Error', errors: (error as z.ZodError).issues });
         return;
     }
-    console.error('Abolish Position Error:', error);
+
     res.status(500).json({ success: false, message: 'Failed to abolish position' });
   }
 };
@@ -874,9 +871,9 @@ export const uploadSalarySchedule = async (req: Request, res: Response): Promise
 
       for (const item of salaryData) {
         await tx.insert(salarySchedule).values({
-          salaryGrade: item.salary_grade,
+          salaryGrade: item.salaryGrade,
           step: item.step,
-          monthlySalary: String(item.monthly_salary),
+          monthlySalary: String(item.monthlySalary),
           tranche: Number(tranche)
         });
       }
@@ -892,7 +889,7 @@ export const uploadSalarySchedule = async (req: Request, res: Response): Promise
         res.status(400).json({ success: false, message: 'Validation Error', errors: (error as z.ZodError).issues });
         return;
     }
-    console.error('Upload Salary Schedule Error:', error);
+
     res.status(500).json({ success: false, message: 'Failed to upload salary schedule' });
   }
 };
@@ -908,11 +905,8 @@ export const deleteSalaryScheduleByTranche = async (req: Request, res: Response)
       message: `Deleted salary entries for Tranche ${tranche}`,
       deletedCount: result[0].affectedRows
     });
-  } catch (error) {
-    console.error('Delete Salary Schedule Error:', error);
+  } catch (_error) {
+
     res.status(500).json({ success: false, message: 'Failed to delete salary schedule' });
   }
 };
-
-
-

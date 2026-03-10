@@ -62,9 +62,9 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({ event, onClose, h
               {event.description}
             </div>
           )}
-          {event.recurring_pattern && event.recurring_pattern !== 'none' && (
+          {event.recurringPattern && event.recurringPattern !== 'none' && (
             <div className="mt-2 text-xs text-blue-700 bg-blue-50 px-3 py-1.5 rounded-full inline-block font-medium border border-blue-100">
-              Recurring: {event.recurring_pattern.charAt(0).toUpperCase() + event.recurring_pattern.slice(1)}
+              Recurring: {event.recurringPattern.charAt(0).toUpperCase() + event.recurringPattern.slice(1)}
             </div>
           )}
         </div>

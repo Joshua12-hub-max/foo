@@ -10,19 +10,19 @@ import { MEMO_TYPES, MEMO_PRIORITIES, MEMO_STATUSES } from '../Constants/memoCon
 
 interface Employee {
   id: number;
-  first_name: string;
-  last_name: string;
+  firstName: string;
+  lastName: string;
 }
 
 interface FormData {
-  employee_id: string;
-  memo_type: string;
+  employeeId: string;
+  memoType: string;
   priority: string;
   subject: string;
   content: string;
-  effective_date: string;
+  effectiveDate: string;
   status: string;
-  acknowledgment_required: boolean;
+  acknowledgmentRequired: boolean;
 }
 
 interface SelectedMemo {
@@ -76,14 +76,14 @@ const MemoFormModal: React.FC<MemoFormModalProps> = memo(({
               <label className="block text-xs font-bold text-gray-700 mb-1">Employee</label>
               <select
                 required
-                value={formData.employee_id}
-                onChange={(e) => onFormChange('employee_id', e.target.value)}
+                value={formData.employeeId}
+                onChange={(e) => onFormChange('employeeId', e.target.value)}
                 className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-100 transition-all"
               >
                 <option value="">Select Employee</option>
                 {employees.map(emp => (
                   <option key={emp.id} value={emp.id}>
-                    {emp.first_name} {emp.last_name}
+                    {emp.firstName} {emp.lastName}
                   </option>
                 ))}
               </select>
@@ -94,8 +94,8 @@ const MemoFormModal: React.FC<MemoFormModalProps> = memo(({
                 <label className="block text-xs font-bold text-gray-700 mb-1">Type</label>
                 <select
                   required
-                  value={formData.memo_type}
-                  onChange={(e) => onFormChange('memo_type', e.target.value)}
+                  value={formData.memoType}
+                  onChange={(e) => onFormChange('memoType', e.target.value)}
                   className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-100 transition-all"
                 >
                   {MEMO_TYPES.map((t: { value: string; label: string }) => (
@@ -146,8 +146,8 @@ const MemoFormModal: React.FC<MemoFormModalProps> = memo(({
                 <label className="block text-xs font-bold text-gray-700 mb-1">Effective Date</label>
                 <input
                   type="date"
-                  value={formData.effective_date}
-                  onChange={(e) => onFormChange('effective_date', e.target.value)}
+                  value={formData.effectiveDate}
+                  onChange={(e) => onFormChange('effectiveDate', e.target.value)}
                   className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-100 transition-all"
                 />
               </div>
@@ -169,8 +169,8 @@ const MemoFormModal: React.FC<MemoFormModalProps> = memo(({
               <input
                 type="checkbox"
                 id="ack_required"
-                checked={formData.acknowledgment_required}
-                onChange={(e) => onFormChange('acknowledgment_required', e.target.checked)}
+                checked={formData.acknowledgmentRequired}
+                onChange={(e) => onFormChange('acknowledgmentRequired', e.target.checked)}
                 className="rounded text-gray-900 focus:ring-gray-900"
               />
               <label htmlFor="ack_required" className="text-sm font-medium text-gray-700 select-none cursor-pointer">

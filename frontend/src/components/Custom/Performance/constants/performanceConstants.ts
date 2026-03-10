@@ -47,17 +47,17 @@ export const getAdjectivalRating = (score: number | string) => {
 
 // Initial form state for reviews
 export const INITIAL_REVIEW_FORM = {
-  employee_id: '',
-  review_cycle_id: '',
-  reviewer_id: '',
+  employeeId: '',
+  reviewCycleId: '',
+  reviewerId: '',
   status: 'Draft',
   items: [],
   strengths: '',
   improvements: '',
   goals: '',
-  training_recommendations: '',
-  action_plan: '',
-  additional_comments: ''
+  trainingRecommendations: '',
+  actionPlan: '',
+  additionalComments: ''
 };
 
 // Tab configurations

@@ -1,0 +1,1 @@
+ALTER TABLE `performance_reviews` MODIFY COLUMN `evaluation_mode` enum('CSC','IPCR','Senior') DEFAULT 'CSC';

@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { X, Loader } from 'lucide-react';
-import { plantillaApi, type Position } from '@api/plantillaApi';
+import { plantillaApi, type Position } from '@/api/plantillaApi';
 import { plantillaSchema, PlantillaSchema } from '@/schemas/plantilla';
 
 interface PlantillaFormModalProps {
@@ -27,56 +27,56 @@ const PlantillaFormModal: React.FC<PlantillaFormModalProps> = ({
   const form = useForm<PlantillaSchema>({
     resolver: zodResolver(plantillaSchema),
     defaultValues: {
-      item_number: '',
-      position_title: '',
-      salary_grade: 1,
-      step_increment: 1,
-      monthly_salary: 0,
-      department_id: 0, 
+      itemNumber: '',
+      positionTitle: '',
+      salaryGrade: 1,
+      stepIncrement: 1,
+      monthlySalary: 0,
+      departmentId: 0, 
       department: '',
-      is_vacant: true,
-      area_code: '',
-      area_type: 'M',
-      area_level: 'S'
+      isVacant: true,
+      areaCode: '',
+      areaType: 'M',
+      areaLevel: 'S'
     }
   });
 
   const { register, handleSubmit, formState: { errors }, reset, watch, setValue } = form;
 
-  const salaryGrade = watch('salary_grade');
-  const stepIncrement = watch('step_increment');
+  const salaryGrade = watch('salaryGrade');
+  const stepIncrement = watch('stepIncrement');
 
   // Reset form when modal opens or mode changes
   useEffect(() => {
     if (isOpen) {
       if (mode === 'edit' && position) {
         reset({
-          item_number: position.item_number,
-          position_title: position.position_title,
-          salary_grade: Number(position.salary_grade),
-          step_increment: Number(position.step_increment),
-          monthly_salary: Number(position.monthly_salary),
-          department_id: position.department_id ? Number(position.department_id) : 0,
+          itemNumber: position.itemNumber,
+          positionTitle: position.positionTitle,
+          salaryGrade: Number(position.salaryGrade),
+          stepIncrement: Number(position.stepIncrement),
+          monthlySalary: Number(position.monthlySalary),
+          departmentId: position.departmentId ? Number(position.departmentId) : 0,
           department: position.department || '',
-          is_vacant: Boolean(position.is_vacant),
-          area_code: position.area_code || '',
-          area_type: position.area_type || 'M',
-          area_level: position.area_level || 'S'
+          isVacant: Boolean(position.isVacant),
+          areaCode: position.areaCode || '',
+          areaType: position.areaType || 'M',
+          areaLevel: position.areaLevel || 'S'
         });
       } else {
         // Strict reset for create mode
         reset({
-           item_number: '',
-           position_title: '',
-           salary_grade: 1,
-           step_increment: 1,
-           monthly_salary: 0,
-           department_id: 0,
+           itemNumber: '',
+           positionTitle: '',
+           salaryGrade: 1,
+           stepIncrement: 1,
+           monthlySalary: 0,
+           departmentId: 0,
            department: '',
-           is_vacant: true,
-           area_code: '',
-           area_type: 'M',
-           area_level: 'S'
+           isVacant: true,
+           areaCode: '',
+           areaType: 'M',
+           areaLevel: 'S'
         });
       }
     }
@@ -92,8 +92,8 @@ const PlantillaFormModal: React.FC<PlantillaFormModalProps> = ({
             try {
                 // Assuming getSalarySchedule might support signal in future, or we just ignore result
                 const res = await plantillaApi.getSalarySchedule(salaryGrade, stepIncrement);
-                if (isMounted && res.data.success && res.data.monthly_salary) {
-                    setValue('monthly_salary', Number(res.data.monthly_salary));
+                if (isMounted && res.data.success && res.data.monthlySalary) {
+                    setValue('monthlySalary', Number(res.data.monthlySalary));
                 }
             } catch (err) {
                 if (isMounted) {
@@ -116,10 +116,10 @@ const PlantillaFormModal: React.FC<PlantillaFormModalProps> = ({
     // Ensure numeric types are strictly numbers before sending
     const formattedData: PlantillaSchema = {
         ...data,
-        salary_grade: Number(data.salary_grade),
-        step_increment: Number(data.step_increment),
-        monthly_salary: Number(data.monthly_salary),
-        department_id: Number(data.department_id)
+        salaryGrade: Number(data.salaryGrade),
+        stepIncrement: Number(data.stepIncrement),
+        monthlySalary: Number(data.monthlySalary),
+        departmentId: Number(data.departmentId)
     };
     await onSubmit(formattedData);
   };
@@ -156,20 +156,20 @@ const PlantillaFormModal: React.FC<PlantillaFormModalProps> = ({
                 <label className="block text-xs font-bold text-gray-700 mb-1">Item Number*</label>
                 <input 
                   type="text"
-                  {...register('item_number')}
-                  className={`w-full px-3 py-2 bg-gray-50 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all ${errors.item_number ? 'border-red-500' : 'border-gray-200'}`}
+                  {...register('itemNumber')}
+                  className={`w-full px-3 py-2 bg-gray-50 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all ${errors.itemNumber ? 'border-red-500' : 'border-gray-200'}`}
                   placeholder="e.g. ADOF3-1"
                 />
-                {errors.item_number && <p className="text-xs text-red-500 mt-1">{errors.item_number.message}</p>}
+                {errors.itemNumber && <p className="text-xs text-red-500 mt-1">{errors.itemNumber.message}</p>}
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">Salary Grade (1-33)*</label>
                 <input 
                   type="number" min={1} max={33}
-                  {...register('salary_grade', { valueAsNumber: true })}
-                  className={`w-full px-3 py-2 bg-gray-50 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all ${errors.salary_grade ? 'border-red-500' : 'border-gray-200'}`}
+                  {...register('salaryGrade', { valueAsNumber: true })}
+                  className={`w-full px-3 py-2 bg-gray-50 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all ${errors.salaryGrade ? 'border-red-500' : 'border-gray-200'}`}
                 />
-                 {errors.salary_grade && <p className="text-xs text-red-500 mt-1">{errors.salary_grade.message}</p>}
+                 {errors.salaryGrade && <p className="text-xs text-red-500 mt-1">{errors.salaryGrade.message}</p>}
               </div>
             </div>
 
@@ -177,11 +177,11 @@ const PlantillaFormModal: React.FC<PlantillaFormModalProps> = ({
               <label className="block text-xs font-bold text-gray-700 mb-1">Position Title*</label>
               <input 
                 type="text" 
-                {...register('position_title')}
-                className={`w-full px-3 py-2 bg-gray-50 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all ${errors.position_title ? 'border-red-500' : 'border-gray-200'}`}
+                {...register('positionTitle')}
+                className={`w-full px-3 py-2 bg-gray-50 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all ${errors.positionTitle ? 'border-red-500' : 'border-gray-200'}`}
                 placeholder="e.g. Administrative Officer III"
               />
-              {errors.position_title && <p className="text-xs text-red-500 mt-1">{errors.position_title.message}</p>}
+              {errors.positionTitle && <p className="text-xs text-red-500 mt-1">{errors.positionTitle.message}</p>}
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -189,7 +189,7 @@ const PlantillaFormModal: React.FC<PlantillaFormModalProps> = ({
                 <label className="block text-xs font-bold text-gray-700 mb-1">Step Increment</label>
                 <input 
                   type="number" min={1} max={8}
-                  {...register('step_increment', { valueAsNumber: true })}
+                  {...register('stepIncrement', { valueAsNumber: true })}
                   className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all"
                 />
               </div>
@@ -197,7 +197,7 @@ const PlantillaFormModal: React.FC<PlantillaFormModalProps> = ({
                 <label className="block text-xs font-bold text-gray-700 mb-1">Monthly Salary</label>
                 <input 
                   type="number" step="0.01"
-                  {...register('monthly_salary', { valueAsNumber: true })}
+                  {...register('monthlySalary', { valueAsNumber: true })}
                   readOnly
                   className="w-full px-3 py-2 bg-gray-100 border border-gray-200 rounded-lg text-sm text-gray-600 focus:outline-none cursor-not-allowed"
                 />
@@ -207,15 +207,15 @@ const PlantillaFormModal: React.FC<PlantillaFormModalProps> = ({
             <div>
               <label className="block text-xs font-bold text-gray-700 mb-1">Department*</label>
               <select 
-                {...register('department_id', { valueAsNumber: true })}
-                className={`w-full px-3 py-2 bg-gray-50 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all ${errors.department_id ? 'border-red-500' : 'border-gray-200'}`}
+                {...register('departmentId', { valueAsNumber: true })}
+                className={`w-full px-3 py-2 bg-gray-50 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all ${errors.departmentId ? 'border-red-500' : 'border-gray-200'}`}
               >
                 <option value={0}>Select Department</option>
                 {departments.map(dept => (
                   <option key={dept.id} value={dept.id}>{dept.name}</option>
                 ))}
               </select>
-               {errors.department_id && <p className="text-xs text-red-500 mt-1">{errors.department_id.message}</p>}
+               {errors.departmentId && <p className="text-xs text-red-500 mt-1">{errors.departmentId.message}</p>}
              </div>
 
             <div className="pt-4 border-t border-gray-100">
@@ -225,7 +225,7 @@ const PlantillaFormModal: React.FC<PlantillaFormModalProps> = ({
                    <label className="block text-xs font-bold text-gray-700 mb-1">Area Code</label>
                    <input 
                      type="text"
-                     {...register('area_code')}
+                     {...register('areaCode')}
                      className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all"
                      placeholder="e.g. REG-01"
                    />
@@ -233,7 +233,7 @@ const PlantillaFormModal: React.FC<PlantillaFormModalProps> = ({
                  <div>
                    <label className="block text-xs font-bold text-gray-700 mb-1">Area Type</label>
                    <select 
-                     {...register('area_type')}
+                     {...register('areaType')}
                      className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all"
                    >
                      <option value="R">Region</option>
@@ -247,7 +247,7 @@ const PlantillaFormModal: React.FC<PlantillaFormModalProps> = ({
                  <div>
                    <label className="block text-xs font-bold text-gray-700 mb-1">Level</label>
                    <select 
-                     {...register('area_level')}
+                     {...register('areaLevel')}
                      className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all"
                    >
                      <option value="K">Key</option>

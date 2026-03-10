@@ -110,59 +110,59 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
       loadPlantillaOptions();
       // Reset form with employee data
       reset({
-        first_name: employee.first_name || '',
-        last_name: employee.last_name || '',
+        firstName: employee.firstName || '',
+        lastName: employee.lastName || '',
         email: employee.email || '',
         department: employee.department || '',
         role: employee.role || 'employee',
-        employment_status: employee.employment_status || 'Active',
-        item_number: employee.item_number || '',
-        position_title: employee.position_title || employee.job_title || '',
-        salary_grade: employee.salary_grade ? Number(employee.salary_grade) : undefined,
-        step_increment: employee.step_increment ? Number(employee.step_increment) : 1,
-        appointment_type: employee.appointment_type || '',
+        employmentStatus: employee.employmentStatus || 'Active',
+        itemNumber: employee.itemNumber || '',
+        positionTitle: employee.positionTitle || employee.jobTitle || '',
+        salaryGrade: employee.salaryGrade ? Number(employee.salaryGrade) : undefined,
+        stepIncrement: employee.stepIncrement ? Number(employee.stepIncrement) : 1,
+        appointmentType: employee.appointmentType || '',
         station: employee.station || '',
-        birth_date: employee.birth_date ? new Date(employee.birth_date).toISOString().split('T')[0] : null,
+        birthDate: employee.birthDate ? new Date(employee.birthDate).toISOString().split('T')[0] : null,
         gender: employee.gender || '',
-        civil_status: employee.civil_status || '',
+        civilStatus: employee.civilStatus || '',
         nationality: employee.nationality || 'Filipino',
-        phone_number: employee.phone_number || '',
-        permanent_address: employee.permanent_address || '',
-        gsis_number: employee.gsis_number || '',
-        philhealth_number: employee.philhealth_number || '',
-        pagibig_number: employee.pagibig_number || '',
-        tin_number: employee.tin_number || '',
+        phoneNumber: employee.phoneNumber || '',
+        permanentAddress: employee.permanentAddress || '',
+        gsisNumber: employee.gsisNumber || '',
+        philhealthNumber: employee.philhealthNumber || '',
+        pagibigNumber: employee.pagibigNumber || '',
+        tinNumber: employee.tinNumber || '',
         address: employee.address || '',
         // Plantilla-required eligibility fields
-        eligibility_type: employee.eligibility_type || '',
-        eligibility_number: employee.eligibility_number || '',
-        eligibility_date: employee.eligibility_date ? new Date(employee.eligibility_date).toISOString().split('T')[0] : null,
-        highest_education: employee.highest_education || '',
-        years_of_experience: employee.years_of_experience || 0,
+        eligibilityType: employee.eligibilityType || '',
+        eligibilityNumber: employee.eligibilityNumber || '',
+        eligibilityDate: employee.eligibilityDate ? new Date(employee.eligibilityDate).toISOString().split('T')[0] : null,
+        educationalBackground: employee.educationalBackground || '',
+        yearsOfExperience: employee.yearsOfExperience || 0,
         // Social Media
-        facebook_url: employee.facebook_url || '',
-        linkedin_url: employee.linkedin_url || '',
-        twitter_handle: employee.twitter_handle || '',
+        facebookUrl: employee.facebookUrl || '',
+        linkedinUrl: employee.linkedinUrl || '',
+        twitterHandle: employee.twitterHandle || '',
       });
     }
   }, [isOpen, employee, reset]); 
 
   const loadPlantillaOptions = async () => {
     try {
-      const res = await plantillaApi.getPositions({ is_vacant: true });
+      const res = await plantillaApi.getPositions({ isVacant: true });
       let positions: Position[] = res.data.success ? res.data.positions : [];
-      if (employee?.item_number) {
+      if (employee?.itemNumber) {
          const currentPos: Position = {
              id: 0,
-             item_number: employee.item_number,
-             position_title: employee.position_title || '',
-             salary_grade: Number(employee.salary_grade || 0), // number
-             step_increment: employee.step_increment,
-             department: employee.department,
-             is_vacant: false
+             itemNumber: employee.itemNumber,
+             positionTitle: employee.positionTitle || '',
+             salaryGrade: Number(employee.salaryGrade || 0),
+             stepIncrement: employee.stepIncrement || 1,
+             department: employee.department || '',
+             isVacant: false
          };
          // Add current position if not in list
-         if (!positions.find(p => p.item_number === employee.item_number)) {
+         if (!positions.find(p => p.itemNumber === employee.itemNumber)) {
              positions = [currentPos, ...positions];
          }
       }
@@ -174,13 +174,13 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
 
   const handlePlantillaChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const itemNo = e.target.value;
-    setValue('item_number', itemNo);
+    setValue('itemNumber', itemNo);
     if (itemNo) {
-      const position = vacantPositions.find(p => p.item_number === itemNo);
+      const position = vacantPositions.find(p => p.itemNumber === itemNo);
       if (position) {
-        setValue('position_title', position.position_title);
-        setValue('salary_grade', Number(position.salary_grade));
-        setValue('step_increment', position.step_increment || 1);
+        setValue('positionTitle', position.positionTitle);
+        setValue('salaryGrade', Number(position.salaryGrade));
+        setValue('stepIncrement', position.stepIncrement || 1);
         if (position.department) setValue('department', position.department);
       }
     }
@@ -217,18 +217,18 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
               <div>
                 <label className="text-xs font-semibold text-gray-700 mb-1 block">First Name <span className="text-red-400">*</span></label>
                 <input 
-                  {...register('first_name')}
-                  className={`w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 ${errors.first_name ? 'border-red-500' : ''}`}
+                  {...register('firstName')}
+                  className={`w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 ${errors.firstName ? 'border-red-500' : ''}`}
                 />
-                 {errors.first_name && <p className="text-[10px] text-red-500">{errors.first_name.message}</p>}
+                 {errors.firstName && <p className="text-[10px] text-red-500">{errors.firstName.message}</p>}
               </div>
               <div>
                 <label className="text-xs font-semibold text-gray-700 mb-1 block">Last Name <span className="text-red-400">*</span></label>
                 <input 
-                  {...register('last_name')}
-                  className={`w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 ${errors.last_name ? 'border-red-500' : ''}`}
+                  {...register('lastName')}
+                  className={`w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 ${errors.lastName ? 'border-red-500' : ''}`}
                 />
-                {errors.last_name && <p className="text-[10px] text-red-500">{errors.last_name.message}</p>}
+                {errors.lastName && <p className="text-[10px] text-red-500">{errors.lastName.message}</p>}
               </div>
             </div>
 
@@ -269,7 +269,7 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
             <div>
                  <label className="text-xs font-semibold text-gray-700 mb-1 block">Employment Status</label>
                  <select 
-                    {...register('employment_status')}
+                    {...register('employmentStatus')}
                     className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200"
                  >
                     {EMPLOYMENT_STATUS_OPTIONS.map(opt => (<option key={opt.value} value={opt.value}>{opt.label}</option>))}
@@ -285,13 +285,13 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
                </label>
                <select 
                  className="w-full px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-100 bg-white" 
-                 {...register('item_number')}
+                 {...register('itemNumber')}
                  onChange={handlePlantillaChange}
                >
                  <option value="">Select position...</option>
                  {vacantPositions.map(pos => (
-                   <option key={pos.id} value={pos.item_number}>
-                     {pos.item_number} - {pos.position_title} (SG-{pos.salary_grade})
+                   <option key={pos.id} value={pos.itemNumber}>
+                     {pos.itemNumber} - {pos.positionTitle} (SG-{pos.salaryGrade})
                    </option>
                  ))}
                </select>
@@ -299,11 +299,11 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
              <div className="grid grid-cols-2 gap-2">
                <div>
                   <label className="text-xs font-semibold text-gray-700 mb-1 block">Position Title</label>
-                  <input {...register('position_title')} className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200" />
+                  <input {...register('positionTitle')} className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200" />
                </div>
                <div>
                  <label className="text-xs font-semibold text-gray-700 mb-1 block">Appointment Type</label>
-                 <select {...register('appointment_type')} className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200">
+                 <select {...register('appointmentType')} className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200">
                     <option value="">Select...</option>
                     {APPOINTMENT_TYPE_OPTIONS.map(opt => (<option key={opt.value} value={opt.value}>{opt.label}</option>))}
                  </select>
@@ -312,14 +312,14 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
              <div className="grid grid-cols-2 gap-2">
                <div>
                  <label className="text-xs font-semibold text-gray-700 mb-1 block">Salary Grade</label>
-                 <select {...register('salary_grade')} className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200">
+                 <select {...register('salaryGrade')} className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200">
                     <option value="">Select...</option>
                     {SALARY_GRADE_OPTIONS.map(opt => (<option key={opt.value} value={Number(opt.value)}>{opt.label}</option>))}
                  </select>
                </div>
                <div>
                  <label className="text-xs font-semibold text-gray-700 mb-1 block">Step Increment</label>
-                 <select {...register('step_increment')} className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200">
+                 <select {...register('stepIncrement')} className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200">
                     {[1, 2, 3, 4, 5, 6, 7, 8].map(s => (<option key={s} value={s}>Step {s}</option>))}
                  </select>
                </div>
@@ -335,7 +335,7 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
              <div className="grid grid-cols-2 gap-2">
                <div>
                   <label className="text-xs font-semibold text-gray-700 mb-1 block">Birth Date</label>
-                  <input type="date" {...register('birth_date')} className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200" />
+                  <input type="date" {...register('birthDate')} className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200" />
                </div>
                <div>
                  <label className="text-xs font-semibold text-gray-700 mb-1 block">Gender</label>
@@ -348,7 +348,7 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
              <div className="grid grid-cols-2 gap-2">
                <div>
                   <label className="text-xs font-semibold text-gray-700 mb-1 block">Civil Status</label>
-                  <select {...register('civil_status')} className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200">
+                  <select {...register('civilStatus')} className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200">
                      <option value="">Select...</option>
                      {CIVIL_STATUS_OPTIONS.map(opt => (<option key={opt.value} value={opt.value}>{opt.label}</option>))}
                   </select>
@@ -363,11 +363,11 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
              </div>
               <div>
                   <label className="text-xs font-semibold text-gray-700 mb-1 block">Phone Number</label>
-                  <input type="tel" {...register('phone_number')} className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200" />
+                  <input type="tel" {...register('phoneNumber')} className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200" />
               </div>
               <div>
                   <label className="text-xs font-semibold text-gray-700 mb-1 block">Permanent Address</label>
-                  <textarea rows={2} {...register('permanent_address')} className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200 resize-none" />
+                  <textarea rows={2} {...register('permanentAddress')} className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200 resize-none" />
               </div>
            </CollapsibleSection>
  
@@ -376,21 +376,21 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
              <div className="grid grid-cols-2 gap-2">
                <div>
                   <label className="text-xs font-semibold text-gray-700 mb-1 block">GSIS Number</label>
-                  <input type="text" {...register('gsis_number')} className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200" />
+                  <input type="text" {...register('gsisNumber')} className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200" />
                </div>
                <div>
                   <label className="text-xs font-semibold text-gray-700 mb-1 block">PhilHealth</label>
-                  <input type="text" {...register('philhealth_number')} className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200" />
+                  <input type="text" {...register('philhealthNumber')} className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200" />
                </div>
              </div>
              <div className="grid grid-cols-2 gap-2">
                <div>
                   <label className="text-xs font-semibold text-gray-700 mb-1 block">Pag-IBIG</label>
-                  <input type="text" {...register('pagibig_number')} className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200" />
+                  <input type="text" {...register('pagibigNumber')} className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200" />
                </div>
                <div>
                   <label className="text-xs font-semibold text-gray-700 mb-1 block">TIN</label>
-                  <input type="text" {...register('tin_number')} className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200" />
+                  <input type="text" {...register('tinNumber')} className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200" />
                </div>
              </div>
            </CollapsibleSection>
@@ -400,29 +400,29 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
              <div className="grid grid-cols-2 gap-2">
                <div>
                   <label className="text-xs font-semibold text-gray-700 mb-1 block">Eligibility Type</label>
-                  <select {...register('eligibility_type')} className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200">
+                  <select {...register('eligibilityType')} className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200">
                      <option value="">Select...</option>
                      {ELIGIBILITY_TYPE_OPTIONS.map(opt => (<option key={opt.value} value={opt.value}>{opt.label}</option>))}
                   </select>
                </div>
                <div>
                   <label className="text-xs font-semibold text-gray-700 mb-1 block">Eligibility Number</label>
-                  <input type="text" {...register('eligibility_number')} placeholder="License/Eligibility No." className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200" />
+                  <input type="text" {...register('eligibilityNumber')} placeholder="License/Eligibility No." className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200" />
                </div>
              </div>
              <div className="grid grid-cols-2 gap-2">
                <div>
                   <label className="text-xs font-semibold text-gray-700 mb-1 block">Eligibility Date</label>
-                  <input type="date" {...register('eligibility_date')} className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200" />
+                  <input type="date" {...register('eligibilityDate')} className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200" />
                </div>
                <div>
                   <label className="text-xs font-semibold text-gray-700 mb-1 block">Years of Experience</label>
-                  <input type="number" {...register('years_of_experience')} min="0" className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200" />
+                  <input type="number" {...register('yearsOfExperience')} min="0" className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200" />
                </div>
              </div>
              <div>
                 <label className="text-xs font-semibold text-gray-700 mb-1 block">Highest Education</label>
-                <input type="text" {...register('highest_education')} placeholder="e.g., Bachelor of Science in Accountancy" className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200" />
+                <input type="text" {...register('educationalBackground')} placeholder="e.g., Bachelor of Science in Accountancy" className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200" />
              </div>
            </CollapsibleSection>
 
@@ -431,15 +431,15 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
              <div className="grid grid-cols-1 gap-2">
                <div>
                   <label className="text-xs font-semibold text-gray-700 mb-1 block">Facebook URL</label>
-                  <input type="url" {...register('facebook_url')} placeholder="https://facebook.com/username" className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200" />
+                  <input type="url" {...register('facebookUrl')} placeholder="https://facebook.com/username" className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200" />
                </div>
                <div>
                   <label className="text-xs font-semibold text-gray-700 mb-1 block">LinkedIn URL</label>
-                  <input type="url" {...register('linkedin_url')} placeholder="https://linkedin.com/in/username" className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200" />
+                  <input type="url" {...register('linkedinUrl')} placeholder="https://linkedin.com/in/username" className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200" />
                </div>
                <div>
                   <label className="text-xs font-semibold text-gray-700 mb-1 block">Twitter/X Handle</label>
-                  <input type="text" {...register('twitter_handle')} placeholder="username (without @)" className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200" />
+                  <input type="text" {...register('twitterHandle')} placeholder="username (without @)" className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200" />
                </div>
              </div>
            </CollapsibleSection>

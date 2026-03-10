@@ -46,15 +46,15 @@ const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
   const queryClient = useQueryClient();
   const showToast = useToastStore((state) => state.showToast);
 
-  const { register, handleSubmit, formState: { errors }, setValue, reset, watch } = useForm<CreateEmployeeInput>({
+  const { register, handleSubmit, formState: { errors }, setValue, reset } = useForm<CreateEmployeeInput>({
     resolver: zodResolver(CreateEmployeeSchema),
     defaultValues: {
-      first_name: '',
-      last_name: '',
+      firstName: '',
+      lastName: '',
       email: '',
       department: '',
-      role: 'employee',
-      step_increment: 1,
+      role: 'Employee',
+      stepIncrement: 1,
       nationality: 'Filipino'
     }
   });
@@ -86,7 +86,7 @@ const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
 
   const loadVacantPositions = async () => {
     try {
-      const res = await plantillaApi.getPositions({ is_vacant: true });
+      const res = await plantillaApi.getPositions({ isVacant: true });
       if (res.data.success) {
         setVacantPositions(res.data.positions);
       }
@@ -97,15 +97,15 @@ const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
 
   const handlePlantillaChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const itemNo = e.target.value;
-    setValue('item_number', itemNo);
+    setValue('itemNumber', itemNo);
     
     if (itemNo) {
-      const position = vacantPositions.find(p => p.item_number === itemNo);
+      const position = vacantPositions.find(p => p.itemNumber === itemNo);
       if (position) {
-        setValue('position_title', position.position_title || '');
-        const sg = parserSalaryGrade(position.salary_grade);
-        if (sg !== undefined) setValue('salary_grade', sg);
-        setValue('step_increment', position.step_increment || 1);
+        setValue('positionTitle', position.positionTitle || '');
+        const sg = parserSalaryGrade(position.salaryGrade);
+        if (sg !== undefined) setValue('salaryGrade', sg);
+        setValue('stepIncrement', position.stepIncrement || 1);
         if (position.department) setValue('department', position.department);
       }
     }
@@ -167,22 +167,22 @@ const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
                     <User size={14} className="text-gray-400" /> First Name *
                   </label>
                   <input 
-                    {...register('first_name')}
-                    className={`w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm ${errors.first_name ? 'border-red-500' : ''}`}
+                    {...register('firstName')}
+                    className={`w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm ${errors.firstName ? 'border-red-500' : ''}`}
                     placeholder="e.g. Juan"
                   />
-                  {errors.first_name && <p className="text-red-500 text-xs mt-1">{errors.first_name.message}</p>}
+                  {errors.firstName && <p className="text-red-500 text-xs mt-1">{errors.firstName.message}</p>}
                 </div>
                 <div>
                   <label className="text-sm text-gray-600 mb-1 block flex items-center gap-1">
                     <User size={14} className="text-gray-400" /> Last Name *
                   </label>
                   <input 
-                    {...register('last_name')}
-                    className={`w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm ${errors.last_name ? 'border-red-500' : ''}`}
+                    {...register('lastName')}
+                    className={`w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm ${errors.lastName ? 'border-red-500' : ''}`}
                     placeholder="e.g. Dela Cruz"
                   />
-                   {errors.last_name && <p className="text-red-500 text-xs mt-1">{errors.last_name.message}</p>}
+                   {errors.lastName && <p className="text-red-500 text-xs mt-1">{errors.lastName.message}</p>}
                 </div>
               </div>
               
@@ -241,7 +241,7 @@ const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
                   </label>
                   <input 
                     type="date" 
-                    {...register('birth_date')}
+                    {...register('birthDate')}
                     className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm" 
                   />
                 </div>
@@ -263,7 +263,7 @@ const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
                 <div>
                   <label className="text-sm text-gray-600 mb-1 block">Civil Status</label>
                   <select 
-                    {...register('civil_status')}
+                    {...register('civilStatus')}
                     className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm" 
                   >
                     <option value="">Select...</option>
@@ -278,7 +278,7 @@ const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
                     type="text" 
                     {...register('nationality')}
                     placeholder="Filipino"
-                    className="w-full px-3 py-2 xmlns:bg-[#F8F9FA] border border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm" 
+                    className="w-full px-3 py-2 bg-[#F8F9FA] border border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm" 
                   />
                 </div>
               </div>
@@ -289,7 +289,7 @@ const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
                 </label>
                 <input 
                   type="tel" 
-                  {...register('phone_number')}
+                  {...register('phoneNumber')}
                   className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm" 
                   placeholder="e.g. 09171234567"
                 />
@@ -319,7 +319,7 @@ const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
                   </label>
                   <input 
                     type="text" 
-                    {...register('gsis_number')}
+                    {...register('gsisNumber')}
                     className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm" 
                     placeholder="GSIS ID"
                   />
@@ -328,7 +328,7 @@ const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
                   <label className="text-sm text-gray-600 mb-1 block">PhilHealth Number</label>
                   <input 
                     type="text" 
-                    {...register('philhealth_number')}
+                    {...register('philhealthNumber')}
                     className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm" 
                     placeholder="XX-XXXXXXXXX-X"
                   />
@@ -340,7 +340,7 @@ const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
                   <label className="text-sm text-gray-600 mb-1 block">Pag-IBIG Number</label>
                   <input 
                     type="text" 
-                    {...register('pagibig_number')}
+                    {...register('pagibigNumber')}
                     className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm" 
                     placeholder="XXXX-XXXX-XXXX"
                   />
@@ -349,7 +349,7 @@ const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
                   <label className="text-sm text-gray-600 mb-1 block">TIN</label>
                   <input 
                     type="text" 
-                    {...register('tin_number')}
+                    {...register('tinNumber')}
                     className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm" 
                     placeholder="XXX-XXX-XXX-XXX"
                   />
@@ -368,13 +368,13 @@ const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
                 </label>
                 <select 
                   className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-gray-400 text-sm" 
-                   {...register('item_number')}
+                   {...register('itemNumber')}
                    onChange={handlePlantillaChange}
                 >
                   <option value="">Select available position...</option>
                   {vacantPositions.map(pos => (
-                    <option key={pos.id} value={pos.item_number}>
-                      {pos.item_number} - {pos.position_title} (SG-{pos.salary_grade})
+                    <option key={pos.id} value={pos.itemNumber}>
+                      {pos.itemNumber} - {pos.positionTitle} (SG-{pos.salaryGrade})
                     </option>
                   ))}
                 </select>
@@ -390,7 +390,7 @@ const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
                   </label>
                   <input 
                     type="text" 
-                    {...register('position_title')}
+                    {...register('positionTitle')}
                     className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm" 
                     placeholder="e.g. Administrative Officer III"
                   />
@@ -398,7 +398,7 @@ const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
                 <div>
                   <label className="text-sm text-gray-600 mb-1 block">Appointment Type</label>
                   <select 
-                     {...register('appointment_type')}
+                     {...register('appointmentType')}
                     className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm" 
                   >
                     <option value="">Select...</option>
@@ -413,19 +413,19 @@ const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
                 <div>
                   <label className="text-sm text-gray-600 mb-1 block">Salary Grade</label>
                   <select 
-                     {...register('salary_grade')}
+                     {...register('salaryGrade')}
                     className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm" 
                   >
                     <option value="">Select...</option>
                     {SALARY_GRADE_OPTIONS.map((option: { value: string; label: string }) => (
-                      <option key={option.value} value={Number(option.value)}>{option.label}</option>
+                      <option key={option.value} value={Number(option.value.replace('SG-', ''))}>{option.label}</option>
                     ))}
                   </select>
                 </div>
                 <div>
                   <label className="text-sm text-gray-600 mb-1 block">Step Increment</label>
                   <select 
-                     {...register('step_increment')}
+                     {...register('stepIncrement')}
                     className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm" 
                   >
                     {[1, 2, 3, 4, 5, 6, 7, 8].map(step => (

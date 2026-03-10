@@ -11,7 +11,7 @@ interface RequirementsModalProps {
 const RequirementsModal: React.FC<RequirementsModalProps> = memo(({ isOpen, onClose, applicant }) => {
   if (!isOpen || !applicant) return null;
 
-  const requirements = applicant.job_requirements || 'No requirements specified for this position.';
+  const requirements = applicant.jobRequirements || 'No requirements specified for this position.';
   const requirementsList = requirements.split('\n').filter(r => r.trim());
 
   return (
@@ -25,7 +25,7 @@ const RequirementsModal: React.FC<RequirementsModalProps> = memo(({ isOpen, onCl
           <div>
             <h2 className="text-xl font-bold text-gray-900 leading-tight">Job Requirements</h2>
             <p className="text-sm text-gray-500 mt-1">
-              {applicant.job_title || 'Position Not Specified'}
+              {applicant.jobTitle || 'Position Not Specified'}
             </p>
           </div>
           <button 
@@ -45,18 +45,18 @@ const RequirementsModal: React.FC<RequirementsModalProps> = memo(({ isOpen, onCl
             </div>
             <div className="min-w-0">
               <p className="font-bold text-gray-900 text-sm truncate">
-                {applicant.first_name} {applicant.last_name}
+                {applicant.firstName} {applicant.lastName}
               </p>
               <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 text-xs text-gray-500 mt-0.5">
                 <span className="flex items-center gap-1.5 truncate">
                   <Mail size={12} className="flex-shrink-0" /> {applicant.email}
                 </span>
-                {applicant.job_department && (
+                {applicant.jobDepartment && (
                   <span className="hidden sm:inline text-gray-300">•</span>
                 )}
-                {applicant.job_department && (
+                {applicant.jobDepartment && (
                   <span className="flex items-center gap-1.5 truncate">
-                    <Building size={12} className="flex-shrink-0" /> {applicant.job_department}
+                    <Building size={12} className="flex-shrink-0" /> {applicant.jobDepartment}
                   </span>
                 )}
               </div>

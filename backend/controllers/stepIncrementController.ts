@@ -25,15 +25,15 @@ import { formatFullName } from '../utils/nameUtils.js';
  */
 export const getStepIncrements = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { status, employee_id } = req.query;
+    const { status, employeeId } = req.query;
     const processor = alias(authentication, 'processor');
 
     const filters = [];
     if (status) {
       filters.push(eq(stepIncrementTracker.status, status as 'Pending' | 'Approved' | 'Denied' | 'Processed'));
     }
-    if (employee_id) {
-      filters.push(eq(stepIncrementTracker.employeeId, parseInt(employee_id as string)));
+    if (employeeId) {
+      filters.push(eq(stepIncrementTracker.employeeId, parseInt(employeeId as string)));
     }
 
     const increments = await db
@@ -48,17 +48,17 @@ export const getStepIncrements = async (req: Request, res: Response): Promise<vo
         processedAt: stepIncrementTracker.processedAt,
         processedBy: stepIncrementTracker.processedBy,
         remarks: stepIncrementTracker.remarks,
-        first_name: authentication.firstName,
-        last_name: authentication.lastName,
-        middle_name: authentication.middleName,
+        firstName: authentication.firstName,
+        lastName: authentication.lastName,
+        middleName: authentication.middleName,
         suffix: authentication.suffix,
         employeeEmployeeId: authentication.employeeId,
         positionTitle: plantillaPositions.positionTitle,
         salaryGrade: plantillaPositions.salaryGrade,
-        proc_first: processor.firstName,
-        proc_last: processor.lastName,
-        proc_middle: processor.middleName,
-        proc_suffix: processor.suffix
+        procFirstName: processor.firstName,
+        procLastName: processor.lastName,
+        procMiddleName: processor.middleName,
+        procSuffix: processor.suffix
       })
       .from(stepIncrementTracker)
       .leftJoin(authentication, eq(stepIncrementTracker.employeeId, authentication.id))
@@ -69,16 +69,16 @@ export const getStepIncrements = async (req: Request, res: Response): Promise<vo
 
     const formattedIncrements = increments.map(i => ({
         ...i,
-        employeeName: formatFullName(i.last_name, i.first_name, i.middle_name, i.suffix),
-        processorName: i.processedBy ? formatFullName(i.proc_last, i.proc_first, i.proc_middle, i.proc_suffix) : null
+        employeeName: formatFullName(i.lastName, i.firstName, i.middleName, i.suffix),
+        processorName: i.processedBy ? formatFullName(i.procLastName, i.procFirstName, i.procMiddleName, i.procSuffix) : null
     }));
 
     res.json({
       success: true,
       increments: formattedIncrements
     });
-  } catch (error) {
-    console.error('Get Step Increments Error:', error);
+  } catch (_error) {
+
     res.status(500).json({
       success: false,
       message: 'Failed to fetch step increments'
@@ -100,19 +100,19 @@ export const getEligibleEmployees = async (_req: Request, res: Response): Promis
     // 1. Fetch all active regular employees with their position details
     // We use leftJoin for history because it might not exist for initial appointments
     const employees = await db.select({
-      employee_id: authentication.id,
-      first_name: authentication.firstName,
-      last_name: authentication.lastName,
-      middle_name: authentication.middleName,
+      employeeId: authentication.id,
+      firstName: authentication.firstName,
+      lastName: authentication.lastName,
+      middleName: authentication.middleName,
       suffix: authentication.suffix,
-      employee_employee_id: authentication.employeeId,
-      position_id: plantillaPositions.id,
-      position_title: plantillaPositions.positionTitle,
-      salary_grade: plantillaPositions.salaryGrade,
-      current_step: authentication.stepIncrement,
-      date_hired: authentication.dateHired,
-      history_start_date: plantillaPositionHistory.startDate,
-      contact_number: authentication.mobileNo
+      employeeEmployeeId: authentication.employeeId,
+      positionId: plantillaPositions.id,
+      positionTitle: plantillaPositions.positionTitle,
+      salaryGrade: plantillaPositions.salaryGrade,
+      currentStep: authentication.stepIncrement,
+      dateHired: authentication.dateHired,
+      historyStartDate: plantillaPositionHistory.startDate,
+      contactNumber: authentication.mobileNo
     })
     .from(authentication)
     .innerJoin(plantillaPositions, eq(authentication.id, plantillaPositions.incumbentId))
@@ -127,23 +127,22 @@ export const getEligibleEmployees = async (_req: Request, res: Response): Promis
     ));
 
     const eligibleEmployees: {
-      employee_id: number;
-      employee_name: string;
-      employee_employee_id: string;
-      position_title: string | null;
-      salary_grade: number;
-      current_step: number;
-      years_in_position: number;
-      eligible_date: string;
-      next_step: number;
+      employeeId: number;
+      employeeName: string;
+      employeeEmployeeId: string;
+      positionTitle: string | null;
+      salaryGrade: number;
+      currentStep: number;
+      yearsInPosition: number;
+      eligibleDate: string;
+      nextStep: number;
     }[] = [];
     const currentTime = new Date();
-    console.log('[DEBUG] getEligibleEmployees executing with updated logic');
 
     for (const emp of employees) {
       // Determine Start Date
       // Priority: History Start Date -> Date Hired
-      let startDateStr = emp.history_start_date || emp.date_hired;
+      const startDateStr = emp.historyStartDate || emp.dateHired;
       if (!startDateStr) continue; // Cannot determine tenure
 
       const startDate = new Date(startDateStr);
@@ -152,7 +151,7 @@ export const getEligibleEmployees = async (_req: Request, res: Response): Promis
       const lwopRecords = await db.select({ total: sql<number>`SUM(CAST(total_lwop_days AS DECIMAL(10,3)))` })
         .from(lwopSummary)
         .where(and(
-            eq(lwopSummary.employeeId, String(emp.employee_id)),
+            eq(lwopSummary.employeeId, String(emp.employeeId)),
             sql`year >= YEAR(${startDateStr})`
         ));
       
@@ -168,7 +167,7 @@ export const getEligibleEmployees = async (_req: Request, res: Response): Promis
       // Check for Pending or Recent Approved Increments
       const existingTracker = await db.select()
         .from(stepIncrementTracker)
-        .where(eq(stepIncrementTracker.employeeId, Number(emp.employee_id)))
+        .where(eq(stepIncrementTracker.employeeId, Number(emp.employeeId)))
         .orderBy(desc(stepIncrementTracker.processedAt));
 
       // Check 1: Pending Request Exists
@@ -200,35 +199,33 @@ export const getEligibleEmployees = async (_req: Request, res: Response): Promis
 
       if (isEligible) {
         // Deduplicate: Check if employee already exists in the list
-        const isDuplicate = eligibleEmployees.some(e => e.employee_id === emp.employee_id);
+        const isDuplicate = eligibleEmployees.some(e => e.employeeId === emp.employeeId);
         if (!isDuplicate) {
           eligibleEmployees.push({
-            employee_id: emp.employee_id,
-            employee_name: formatFullName(emp.last_name, emp.first_name, emp.middle_name, emp.suffix),
-            employee_employee_id: emp.employee_employee_id,
-            position_title: emp.position_title,
-            salary_grade: Number(emp.salary_grade),
-            current_step: Number(emp.current_step),
-            years_in_position: parseFloat(adjustedTenureYears.toFixed(2)),
-            eligible_date: eligibleDate.toISOString().split('T')[0],
-            next_step: Number(emp.current_step) + 1
+            employeeId: emp.employeeId,
+            employeeName: formatFullName(emp.lastName, emp.firstName, emp.middleName, emp.suffix),
+            employeeEmployeeId: emp.employeeEmployeeId,
+            positionTitle: emp.positionTitle,
+            salaryGrade: Number(emp.salaryGrade),
+            currentStep: Number(emp.currentStep),
+            yearsInPosition: parseFloat(adjustedTenureYears.toFixed(2)),
+            eligibleDate: eligibleDate.toISOString().split('T')[0],
+            nextStep: Number(emp.currentStep) + 1
           });
         }
       }
     }
 
     // Sort by name
-    eligibleEmployees.sort((a, b) => a.employee_name.localeCompare(b.employee_name));
-
-    console.log(`[DEBUG: DEDUPLICATION ACTIVE] Found ${eligibleEmployees.length} unique eligible employees.`);
+    eligibleEmployees.sort((a, b) => a.employeeName.localeCompare(b.employeeName));
 
     res.json({
       success: true,
-      eligible_employees: eligibleEmployees,
+      eligibleEmployees: eligibleEmployees,
       count: eligibleEmployees.length
     });
-  } catch (error) {
-    console.error('Get Eligible Employees Error:', error);
+  } catch (_error) {
+
     res.status(500).json({
       success: false,
       message: 'Failed to fetch eligible employees'
@@ -274,7 +271,6 @@ export const createStepIncrement = async (req: Request, res: Response): Promise<
       id: result[0].insertId
     });
   } catch (error) {
-    console.error('Create Step Increment Error:', error);
 
     if (error instanceof ZodError) {
       res.status(400).json({
@@ -384,7 +380,6 @@ export const processStepIncrement = async (req: Request, res: Response): Promise
       message: `Step increment ${status.toLowerCase()} successfully`
     });
   } catch (error) {
-    console.error('Process Step Increment Error:', error);
 
     if (error instanceof ZodError) {
       res.status(400).json({
@@ -413,11 +408,11 @@ export const getNextStepIncrement = async (req: Request, res: Response): Promise
 
     // 1. Get Employee Position & Start Date
     const employee = await db.select({
-      employee_id: authentication.id,
-      date_hired: authentication.dateHired,
-      history_start_date: plantillaPositionHistory.startDate,
-      last_promotion_date: plantillaPositions.lastPromotionDate,
-      current_step: authentication.stepIncrement,
+      employeeId: authentication.id,
+      dateHired: authentication.dateHired,
+      historyStartDate: plantillaPositionHistory.startDate,
+      lastPromotionDate: plantillaPositions.lastPromotionDate,
+      currentStep: authentication.stepIncrement,
     })
     .from(authentication)
     .leftJoin(plantillaPositions, eq(authentication.id, plantillaPositions.incumbentId))
@@ -437,7 +432,7 @@ export const getNextStepIncrement = async (req: Request, res: Response): Promise
     const emp = employee[0];
     
     // Determine Base Date for calculation
-    let baseDateStr = emp.last_promotion_date || emp.history_start_date || emp.date_hired;
+    const baseDateStr = emp.lastPromotionDate || emp.historyStartDate || emp.dateHired;
     
     if (!baseDateStr) {
       res.json({ success: true, nextStepDate: null, reason: 'No start date found' });
@@ -461,7 +456,7 @@ export const getNextStepIncrement = async (req: Request, res: Response): Promise
 
     // 3. Calculate Next Step Date
     // Formula: Base Date + 3 Years + Total LWOP Days
-    let nextStepDate = new Date(baseDate);
+    const nextStepDate = new Date(baseDate);
     nextStepDate.setFullYear(nextStepDate.getFullYear() + 3);
     
     if (totalLwopDays > 0) {
@@ -470,15 +465,17 @@ export const getNextStepIncrement = async (req: Request, res: Response): Promise
 
     res.json({
       success: true,
-      currentStep: emp.current_step,
+      currentStep: emp.currentStep,
       baseDate: baseDateStr,
       totalLwopDays,
       nextStepDate: nextStepDate.toISOString().split('T')[0]
     });
 
-  } catch (error) {
-    console.error('Get Next Step Increment Error:', error);
+  } catch (_error) {
+
     res.status(500).json({ success: false, message: 'Failed to calculate next step increment' });
   }
 };
+
+
 

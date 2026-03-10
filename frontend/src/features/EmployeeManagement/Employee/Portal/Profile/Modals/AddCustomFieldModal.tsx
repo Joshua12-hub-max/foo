@@ -36,7 +36,7 @@ const AddCustomFieldModal: React.FC<AddCustomFieldModalProps> = ({
   // Reset/Update section when modal opens or section changes
   React.useEffect(() => {
     if (isOpen) {
-      reset({ section: section, field_name: '', field_value: '' });
+      reset({ section: section, fieldName: '', fieldValue: '' });
     }
   }, [isOpen, section, reset]);
 
@@ -80,18 +80,18 @@ const AddCustomFieldModal: React.FC<AddCustomFieldModalProps> = ({
           <div>
             <label className="text-xs font-semibold text-gray-700 mb-1 block">Field Label <span className="text-red-400">*</span></label>
             <input 
-              {...register('field_name')}
-              className={`w-full px-3 py-2 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 ${errors.field_name ? 'border-red-500' : ''}`}
+              {...register('fieldName')}
+              className={`w-full px-3 py-2 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 ${errors.fieldName ? 'border-red-500' : ''}`}
               placeholder="e.g. Nickname, Project Name, License No."
               autoFocus
             />
-            {errors.field_name && <p className="text-[10px] text-red-500 mt-1">{errors.field_name.message}</p>}
+            {errors.fieldName && <p className="text-[10px] text-red-500 mt-1">{errors.fieldName.message}</p>}
           </div>
 
           <div>
              <label className="text-xs font-semibold text-gray-700 mb-1 block">Value</label>
             <textarea 
-              {...register('field_value')}
+              {...register('fieldValue')}
               className="w-full px-3 py-2 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 resize-none"
               rows={3}
               placeholder="Enter the details..."

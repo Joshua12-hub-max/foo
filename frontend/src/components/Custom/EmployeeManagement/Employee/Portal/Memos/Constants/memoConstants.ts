@@ -4,18 +4,18 @@ export interface SelectOption {
 }
 
 export interface MemoFormData {
-  employee_id: string;
-  memo_type: string;
+  employeeId: string;
+  memoType: string;
   subject: string;
   content: string;
   priority: string;
-  effective_date: string;
-  acknowledgment_required: boolean;
+  effectiveDate: string;
+  acknowledgmentRequired: boolean;
   status: string;
 }
 
 export interface MemoFilters {
-  memo_type: string;
+  memoType: string;
   status: string;
   search: string;
 }
@@ -62,19 +62,19 @@ export const PRIORITY_BADGE_STYLES: Record<string, string> = {
 
 // Initial form data for creating new memos
 export const INITIAL_FORM_DATA: MemoFormData = {
-  employee_id: '',
-  memo_type: 'Written Warning',
+  employeeId: '',
+  memoType: 'Written Warning',
   subject: '',
   content: '',
   priority: 'Normal',
-  effective_date: '',
-  acknowledgment_required: false,
+  effectiveDate: '',
+  acknowledgmentRequired: false,
   status: 'Draft'
 };
 
 // Initial filter state
 export const INITIAL_FILTERS: MemoFilters = {
-  memo_type: '',
+  memoType: '',
   status: '',
   search: ''
 };

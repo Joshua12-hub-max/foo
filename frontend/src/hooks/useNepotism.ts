@@ -9,7 +9,7 @@ export const nepotismKeys = {
   employeeRelationships: (id: number) => [...nepotismKeys.all, 'employee', id] as const,
 };
 
-export const useNepotismRelationships = (params?: { employee_id?: number; degree?: number }) => {
+export const useNepotismRelationships = (params?: { employeeId?: number; degree?: number }) => {
   return useQuery({
     queryKey: nepotismKeys.relationship(params || {}),
     queryFn: async () => {
@@ -19,20 +19,20 @@ export const useNepotismRelationships = (params?: { employee_id?: number; degree
   });
 };
 
-export const useEmployeeRelationships = (employee_id: number) => {
+export const useEmployeeRelationships = (employeeId: number) => {
   return useQuery({
-    queryKey: nepotismKeys.employeeRelationships(employee_id),
+    queryKey: nepotismKeys.employeeRelationships(employeeId),
     queryFn: async () => {
-      const response = await nepotismApi.getEmployeeRelationships(employee_id);
+      const response = await nepotismApi.getEmployeeRelationships(employeeId);
       return response.data.relationships;
     },
-    enabled: !!employee_id,
+    enabled: !!employeeId,
   });
 };
 
 export const useCheckNepotism = () => {
   return useMutation({
-    mutationFn: async (data: { employee_id: number; position_id: number; appointing_authority_id?: number }) => {
+    mutationFn: async (data: { employeeId: number; positionId: number; appointingAuthorityId?: number }) => {
       const response = await nepotismApi.checkNepotism(data);
       return response.data;
     },
@@ -44,9 +44,9 @@ export const useCreateNepotismRelationship = () => {
 
   return useMutation({
     mutationFn: async (data: {
-      employee_id_1: number;
-      employee_id_2: number;
-      relationship_type: string;
+      employeeId1: number;
+      employeeId2: number;
+      relationshipType: string;
       degree: number;
       notes?: string;
     }) => {

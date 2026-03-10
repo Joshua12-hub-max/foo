@@ -28,15 +28,15 @@ const AdminAttendance = () => {
   // 2. Transform snake_case API fields → camelCase for AttendanceTable
   const logs = useMemo(() => rawLogs.map((item: DTRApiResponse) => ({
     id: item.id,
-    employeeId: formatEmployeeId(item.employee_id),
-    employee_name: item.employee_name || 'Unknown',
+    employeeId: formatEmployeeId(item.employeeId),
+    employeeName: item.employeeName || 'Unknown',
     department: item.department || 'N/A',
     date: item.date,
-    timeIn: item.time_in ?? undefined,
-    timeOut: item.time_out ?? undefined,
-    lateMinutes: Number(item.late_minutes ?? 0),
-    undertimeMinutes: Number(item.undertime_minutes ?? 0),
-    overtimeMinutes: Number(item.overtime_minutes ?? 0),
+    timeIn: item.timeIn ?? undefined,
+    timeOut: item.timeOut ?? undefined,
+    lateMinutes: Number(item.lateMinutes ?? 0),
+    undertimeMinutes: Number(item.undertimeMinutes ?? 0),
+    overtimeMinutes: Number(item.overtimeMinutes ?? 0),
     status: item.status || 'Absent',
     duties: item.duties || 'No Schedule',
   })), [rawLogs]);

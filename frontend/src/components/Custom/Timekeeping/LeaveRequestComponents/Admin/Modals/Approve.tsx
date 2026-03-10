@@ -35,13 +35,13 @@ const ApproveModal: React.FC<ApproveModalProps> = ({
 
   // Fetch credits
   const { data: credits = [] } = useQuery({
-    queryKey: ['leave-credits', request?.employee_id],
+    queryKey: ['leave-credits', request?.employeeId],
     queryFn: async () => {
-      if (!request?.employee_id) return [];
-      const res = await leaveApi.getEmployeeCredits(request.employee_id);
+      if (!request?.employeeId) return [];
+      const res = await leaveApi.getEmployeeCredits(request.employeeId);
       return res.data.credits || [];
     },
-    enabled: isOpen && !!request?.employee_id,
+    enabled: isOpen && !!request?.employeeId,
     staleTime: 1000 * 60 * 5
   });
 
@@ -65,8 +65,8 @@ const ApproveModal: React.FC<ApproveModalProps> = ({
   // Calculate working days duration
   const duration = useMemo(() => {
     if (!request) return 0;
-    const start = new Date(request.start_date || request.fromDate);
-    const end = new Date(request.end_date || request.toDate);
+    const start = new Date(request.startDate || request.fromDate);
+    const end = new Date(request.endDate || request.toDate);
     if (isNaN(start.getTime()) || isNaN(end.getTime())) return 0;
 
     let count = 0;
@@ -84,23 +84,23 @@ const ApproveModal: React.FC<ApproveModalProps> = ({
     if (!request) return null;
     
     // Check special leave
-    const isSpecialLeave = SPECIAL_LEAVES_NO_DEDUCTION.includes((request.leaveType || request.leave_type) as unknown as typeof SPECIAL_LEAVES_NO_DEDUCTION[number]);
+    const isSpecialLeave = SPECIAL_LEAVES_NO_DEDUCTION.includes((request.leaveType || request.leaveType) as unknown as typeof SPECIAL_LEAVES_NO_DEDUCTION[number]);
     if (isSpecialLeave) {
       return { type: 'special', label: 'Special Leave (No Deduction)' };
     }
 
-    if (!request.with_pay) {
+    if (!request.withPay) {
       return { type: 'lwop', label: 'Leave Without Pay' };
     }
 
     // Determine credit type
-    const leaveType = request.leaveType || request.leave_type;
+    const leaveType = request.leaveType || request.leaveType;
     const primaryType = LEAVE_TO_CREDIT_MAP[leaveType] || leaveType;
     
     // Helper to get balance
     const getBalance = (type: string | null) => {
       if (!type) return 0;
-      const credit = credits.find((c: { credit_type: string; balance: string | number }) => c.credit_type === type);
+      const credit = credits.find((c: { creditType: string; balance: string | number }) => c.creditType === type);
       return credit ? parseFloat(String(credit.balance)) : 0;
     };
 
@@ -171,10 +171,10 @@ const ApproveModal: React.FC<ApproveModalProps> = ({
   };
 
   // Helper to get display values (handling potential prop naming diffs)
-  const getName = () => request.name || `${request.first_name} ${request.last_name}`;
-  const getLeaveType = () => request.leaveType || request.leave_type;
-  const getFromDate = () => formatDate(request.fromDate || request.start_date);
-  const getToDate = () => formatDate(request.toDate || request.end_date);
+  const getName = () => request.name || `${request.firstName} ${request.lastName}`;
+  const getLeaveType = () => request.leaveType || request.leaveType;
+  const getFromDate = () => formatDate(request.fromDate || request.startDate);
+  const getToDate = () => formatDate(request.toDate || request.endDate);
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 transition-all">
@@ -217,10 +217,10 @@ const ApproveModal: React.FC<ApproveModalProps> = ({
                   <span className="text-sm text-gray-500">To Date</span>
                   <span className="text-sm font-semibold text-gray-900">{getToDate()}</span>
                 </div>
-                {request.final_attachment_path && (
+                {request.finalAttachmentPath && (
                       <div className="mt-3 pt-3 border-t border-gray-100">
                         <p className="mb-2 text-xs font-medium text-gray-500">Signed Form</p>
-                        <a href={`${import.meta.env.VITE_API_URL?.replace('/api', '') ?? ''}/uploads/${request.final_attachment_path}`} target="_blank" rel="noreferrer" className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors text-sm font-medium border border-green-200">
+                        <a href={`${import.meta.env.VITE_API_URL?.replace('/api', '') ?? ''}/uploads/${request.finalAttachmentPath}`} target="_blank" rel="noreferrer" className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors text-sm font-medium border border-green-200">
                             <Download className="w-4 h-4" /> View Signed Document
                         </a>
                       </div>

@@ -10,8 +10,6 @@ import { useDTRStore } from "@/stores/dtrStore";
 import { DTRFilterValues, DTRQueryValues, UpdateDTRValues } from "@/schemas/dtrSchema";
 
 import { 
-  exportToCSV, 
-  exportToPDF, 
   getStatusBadge as getStatusBadgeUtil,
   DTRRecord,
   DTRFilters,
@@ -19,7 +17,7 @@ import {
 } from "../../Utils/adminDTRUtils";
 import { DTRApiResponse } from "@/types/attendance";
 import { AttendanceRecord } from "@/types";
-import { ITEMS_PER_PAGE, MESSAGES, DELAYS, EXPORT_HEADERS, STATUS_STYLES } from "../../Constants/adminDTR.constant";
+import { ITEMS_PER_PAGE, MESSAGES, DELAYS, STATUS_STYLES } from "../../Constants/adminDTR.constant";
 
 export const useAdminDTR = () => {
   const today = useMemo(() => new Date().toLocaleDateString("en-US"), []);
@@ -60,8 +58,8 @@ export const useAdminDTR = () => {
         
         const logs = response.data.data || [];
         const mappedLogs = logs.map((item: DTRApiResponse): DTRRecord => {
-            const timeIn = item.time_in;
-            const timeOut = item.time_out;
+            const timeIn = item.timeIn;
+            const timeOut = item.timeOut;
             
             // Normalize for Safari/cross-browser compatibility (YYYY-MM-DD HH:mm:ss -> YYYY-MM-DDTHH:mm:ss)
             const safeTimeIn = timeIn ? timeIn.replace(' ', 'T') : null;
@@ -74,17 +72,14 @@ export const useAdminDTR = () => {
               let duration = (end - start) / (1000 * 60 * 60);
 
               // Policy: Deduct 1 hour break for shifts > 5 hours
-              // This aligns with the "dedicated working hours" policy (e.g., 8-5 shift = 9h span - 1h break = 8h)
               if (duration > 5) {
                 duration -= 1;
               }
               
-              // Ensure we don't display negative values in edge cases
               hoursWorked = Math.max(0, duration).toFixed(2);
             }
             
             let formattedDate = item.date;
-            // Store raw ISO date for filtering (item.date is now ISO YYYY-MM-DD from backend)
             const rawDate = item.date;
 
             if (item.date) {
@@ -98,27 +93,28 @@ export const useAdminDTR = () => {
             
             return {
               id: item.id || 0, 
-              employeeId: String(item.employee_id || "N/A"),
-              name: item.employee_name || 'Unknown Employee',
+              employeeId: String(item.employeeId || "N/A"),
+              name: item.employeeName || 'Unknown Employee',
               department: item.department || 'N/A',
               date: formattedDate || "N/A",
-              rawDate: rawDate, // Use for filtering
+              rawDate: rawDate,
               timeIn: safeTimeIn ? new Date(safeTimeIn).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--',
               timeOut: safeTimeOut ? new Date(safeTimeOut).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--',
               hoursWorked: hoursWorked,
-              lateMinutes: item.late_minutes || 0,
-              undertimeMinutes: item.undertime_minutes || 0,
+              lateMinutes: item.lateMinutes || 0,
+              undertimeMinutes: item.undertimeMinutes || 0,
               status: item.status || 'Absent',
               duties: item.duties || 'No Schedule',
               remarks: '-',
               // Correction fields
-              correctionId: item.correction_id ?? null,
-              correctionStatus: item.correction_status ?? null,
-              correctionReason: item.correction_reason ?? null,
-              correctionTimeIn: item.correction_time_in ?? null,
-              correctionTimeOut: item.correction_time_out ?? null,
+              correctionId: item.correctionId ?? null,
+              correctionStatus: item.correctionStatus ?? null,
+              correctionReason: item.correctionReason ?? null,
+              correctionTimeIn: item.correctionTimeIn ?? null,
+              correctionTimeOut: item.correctionTimeOut ?? null,
             };
         });
+
 
         const resData = response.data as { totals?: { lateMinutes: number; undertimeMinutes: number; hoursWorked: string }, pagination?: { totalPages: number; total: number } };
         return {
@@ -204,131 +200,6 @@ export const useAdminDTR = () => {
     setStorePage(Math.min(storePagination.page + 1, serverPagination?.totalPages || 1));
   }, [storePagination.page, serverPagination?.totalPages, setStorePage]);
 
-  const fetchAllDTRData = async (): Promise<DTRRecord[]> => {
-    let appliedStartDate = storeFilters.startDate;
-    let appliedEndDate = storeFilters.endDate;
-
-    if (!appliedStartDate || !appliedEndDate) {
-      const now = new Date();
-      const year = now.getFullYear();
-      const month = now.getMonth();
-      const day = now.getDate();
-      
-      if (day <= 15) {
-        appliedStartDate = new Date(year, month, 1).toISOString().split('T')[0];
-        appliedEndDate = new Date(year, month, 15).toISOString().split('T')[0];
-      } else {
-        appliedStartDate = new Date(year, month, 16).toISOString().split('T')[0];
-        appliedEndDate = new Date(year, month + 1, 0).toISOString().split('T')[0];
-      }
-    }
-
-    const response = await attendanceApi.getLogs({
-        page: 1,
-        limit: 100000,
-        department: storeFilters.department,
-        employeeId: storeFilters.employeeId,
-        startDate: appliedStartDate,
-        endDate: appliedEndDate,
-        search: storeSearch
-    });
-    
-    const logs = response.data.data || [];
-    return logs.map((item: DTRApiResponse): DTRRecord => {
-        const timeIn = item.time_in;
-        const timeOut = item.time_out;
-        
-        // Normalize for Safari/cross-browser compatibility
-        const safeTimeIn = timeIn ? timeIn.replace(' ', 'T') : null;
-        const safeTimeOut = timeOut ? timeOut.replace(' ', 'T') : null;
-        
-        let hoursWorked = '0';
-        if (safeTimeIn && safeTimeOut) {
-          const start = new Date(safeTimeIn).getTime();
-          const end = new Date(safeTimeOut).getTime();
-          let duration = (end - start) / (1000 * 60 * 60);
-          
-          // Policy: Deduct 1 hour break for shifts > 5 hours
-          if (duration > 5) duration -= 1;
-          
-          hoursWorked = Math.max(0, duration).toFixed(2);
-        }
-        
-        let formattedDate = item.date;
-        const rawDate = item.date;
-        if (item.date) {
-          const dateObj = new Date(item.date);
-          formattedDate = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-        }
-        
-        return {
-          id: item.id || 0, 
-          employeeId: String(item.employee_id || "N/A"),
-          name: item.employee_name || 'Unknown Employee',
-          department: item.department || 'N/A',
-          date: formattedDate || "N/A",
-          rawDate: rawDate,
-          timeIn: safeTimeIn ? new Date(safeTimeIn).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--',
-          timeOut: safeTimeOut ? new Date(safeTimeOut).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--',
-          hoursWorked: hoursWorked,
-          lateMinutes: item.late_minutes || 0,
-          undertimeMinutes: item.undertime_minutes || 0,
-          status: item.status || 'Absent',
-          duties: item.duties || 'No Schedule',
-          remarks: '-',
-          correctionId: item.correction_id ?? null,
-          correctionStatus: item.correction_status ?? null,
-          correctionReason: item.correction_reason ?? null,
-          correctionTimeIn: item.correction_time_in ?? null,
-          correctionTimeOut: item.correction_time_out ?? null,
-        };
-    });
-  };
-
-  // Export handlers
-  const handleExportCSV = useCallback(async () => {
-    setLoadingType("CSV");
-    setErrorLocal(null);
-    try {
-      const exportData = await fetchAllDTRData();
-      if (exportData.length === 0) {
-        setErrorLocal(MESSAGES.ERROR_NO_DATA);
-        return;
-      }
-      await new Promise(resolve => setTimeout(resolve, DELAYS.EXPORT_DELAY));
-      const filename = `dtr_${today.replace(/\//g, '-')}.csv`;
-      await exportToCSV(exportData, EXPORT_HEADERS, filename);
-      setSuccessMessage(MESSAGES.CSV_EXPORTED);
-    } catch (err) {
-      const error = err as Error;
-      console.error('Export to CSV failed:', error);
-      setErrorLocal(`${MESSAGES.ERROR_EXPORT_CSV}: ${error.message || 'Unknown error.'}`);
-    } finally {
-      setLoadingType("");
-    }
-  }, [storeFilters, storeSearch, today]);
-
-  const handleExportPDF = useCallback(async () => {
-    setLoadingType("PDF");
-    setErrorLocal(null);
-    try {
-      const exportData = await fetchAllDTRData();
-      if (exportData.length === 0) {
-        setErrorLocal(MESSAGES.ERROR_NO_DATA);
-        return;
-      }
-      await new Promise(resolve => setTimeout(resolve, DELAYS.EXPORT_DELAY));
-      await exportToPDF(exportData, EXPORT_HEADERS, today, DELAYS.PDF_PRINT_DELAY);
-      setSuccessMessage(MESSAGES.PDF_EXPORTED);
-    } catch (err) {
-      const error = err as Error;
-      console.error('Export to PDF failed:', error);
-      setErrorLocal(`${MESSAGES.ERROR_EXPORT_PDF}: ${error.message || 'Unknown error.'}`);
-    } finally {
-      setLoadingType("");
-    }
-  }, [storeFilters, storeSearch, today]);
-
   const getStatusBadge = useCallback((status: string) => {
     return getStatusBadgeUtil(status, STATUS_STYLES);
   }, []);
@@ -391,8 +262,6 @@ export const useAdminDTR = () => {
     handleRefresh,
     handlePrevPage,
     handleNextPage,
-    handleExportCSV,
-    handleExportPDF,
     getStatusBadge,
     handleEdit,
     handleSaveEdit

@@ -36,15 +36,15 @@ export interface Form9Header {
 }
 
 export interface PSIPOPPosition {
-  item_number: string;
-  position_title: string;
-  salary_grade: number;
-  step_increment: number;
-  monthly_salary?: number | string;
+  itemNumber: string;
+  positionTitle: string;
+  salaryGrade: number | string;
+  stepIncrement: number | string;
+  monthlySalary?: number | string;
   department: string;
-  is_vacant: boolean;
-  incumbent_name?: string;
-  employee_id?: string;
+  isVacant: boolean | number;
+  incumbentName?: string;
+  employeeId?: string;
 }
 
 // ============================================
@@ -415,17 +415,17 @@ export const exportPSIPOPToExcel = async (positions: PSIPOPPosition[], departmen
   // Data rows
   positions.forEach(pos => {
     const data = [
-      pos.item_number || '',
-      pos.position_title || '',
-      pos.salary_grade || '',
-      pos.step_increment || 1,
-      typeof pos.monthly_salary === 'number' 
-        ? pos.monthly_salary.toLocaleString('en-PH', { style: 'currency', currency: 'PHP' })
-        : pos.monthly_salary || '',
+      pos.itemNumber || '',
+      pos.positionTitle || '',
+      pos.salaryGrade || '',
+      pos.stepIncrement || 1,
+      typeof pos.monthlySalary === 'number' 
+        ? pos.monthlySalary.toLocaleString('en-PH', { style: 'currency', currency: 'PHP' })
+        : pos.monthlySalary || '',
       pos.department || '',
-      pos.is_vacant ? 'VACANT' : 'Filled',
-      pos.incumbent_name || (pos.is_vacant ? '-' : 'Unknown'),
-      pos.employee_id || '-'
+      pos.isVacant ? 'VACANT' : 'Filled',
+      pos.incumbentName || (pos.isVacant ? '-' : 'Unknown'),
+      pos.employeeId || '-'
     ];
 
     data.forEach((val, colIdx) => {
@@ -436,7 +436,7 @@ export const exportPSIPOPToExcel = async (positions: PSIPOPPosition[], departmen
       cell.alignment = { vertical: 'middle' };
       
       // Highlight vacant rows
-      if (pos.is_vacant) {
+      if (pos.isVacant) {
         cell.fill = {
           type: 'pattern',
           pattern: 'solid',
@@ -672,15 +672,15 @@ export const exportPSIPOPToPDF = (positions: PSIPOPPosition[], department: strin
   const tableHeaders = [['Item No.', 'Position Title', 'SG', 'Step', 'Monthly Salary', 'Department', 'Status', 'Incumbent', 'Employee ID']];
   
   const tableData = positions.map(pos => [
-    pos.item_number || '',
-    pos.position_title || '',
-    pos.salary_grade?.toString() || '',
-    pos.step_increment?.toString() || '1',
-    typeof pos.monthly_salary === 'number' ? pos.monthly_salary.toLocaleString('en-PH', { style: 'currency', currency: 'PHP' }) : pos.monthly_salary || '',
+    pos.itemNumber || '',
+    pos.positionTitle || '',
+    pos.salaryGrade?.toString() || '',
+    pos.stepIncrement?.toString() || '1',
+    typeof pos.monthlySalary === 'number' ? pos.monthlySalary.toLocaleString('en-PH', { style: 'currency', currency: 'PHP' }) : pos.monthlySalary || '',
     pos.department || '',
-    pos.is_vacant ? 'VACANT' : 'Filled',
-    pos.incumbent_name || (pos.is_vacant ? '-' : 'Unknown'),
-    pos.employee_id || '-'
+    pos.isVacant ? 'VACANT' : 'Filled',
+    pos.incumbentName || (pos.isVacant ? '-' : 'Unknown'),
+    pos.employeeId || '-'
   ]);
 
   autoTable(doc, {

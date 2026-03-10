@@ -39,7 +39,7 @@ const LiveSupportChat: React.FC = () => {
     const fetchMessages = async (id: number) => {
         try {
             setMessagesLoading(true);
-            const response = await chatApi.getMessages(id, true, 'Admin');
+            const response = await chatApi.getMessages(id, true, 'Administrator');
             if (response.data.success) {
                 setMessages(response.data.messages);
             }
@@ -80,9 +80,9 @@ const LiveSupportChat: React.FC = () => {
         try {
             setSending(true);
             const response = await chatApi.sendMessage({
-                conversation_id: selectedConversation.id,
+                conversationId: selectedConversation.id,
                 message: newMessage.trim(),
-                sender_type: 'Admin'
+                senderType: 'Administrator'
             });
 
             if (response.data.success) {
@@ -118,8 +118,8 @@ const LiveSupportChat: React.FC = () => {
     };
 
     const filteredConversations = conversations.filter(conv => 
-        (conv.applicant_name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-        (conv.applicant_email?.toLowerCase() || '').includes(searchTerm.toLowerCase())
+        (conv.applicantName?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+        (conv.applicantEmail?.toLowerCase() || '').includes(searchTerm.toLowerCase())
     );
 
     return (
@@ -160,17 +160,17 @@ const LiveSupportChat: React.FC = () => {
                                 className={`w-full p-4 flex items-start gap-3 border-b border-gray-50 hover:bg-blue-50/30 transition-colors text-left ${selectedConversation?.id === conv.id ? 'bg-blue-50 border-l-4 border-l-blue-600' : ''}`}
                             >
                                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center text-blue-700 font-bold shrink-0">
-                                    {conv.applicant_name ? conv.applicant_name[0] : '?'}
+                                    {conv.applicantName ? conv.applicantName[0] : '?'}
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <div className="flex justify-between items-center mb-0.5">
-                                        <h4 className="font-bold text-gray-900 truncate text-sm">{conv.applicant_name || 'Anonymous'}</h4>
-                                        <span className="text-[10px] text-gray-400 shrink-0">{new Date(conv.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                        <h4 className="font-bold text-gray-900 truncate text-sm">{conv.applicantName || 'Anonymous'}</h4>
+                                        <span className="text-[10px] text-gray-400 shrink-0">{new Date(conv.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                     </div>
-                                    <p className="text-xs text-gray-500 truncate">{conv.last_message || 'No messages yet'}</p>
-                                    {conv.unread_count && conv.unread_count > 0 ? (
+                                    <p className="text-xs text-gray-500 truncate">{conv.lastMessage || 'No messages yet'}</p>
+                                    {conv.unreadCount && conv.unreadCount > 0 ? (
                                         <span className="inline-block mt-1 px-1.5 py-0.5 bg-blue-600 text-white text-[10px] font-bold rounded-full">
-                                            {conv.unread_count} new
+                                            {conv.unreadCount} new
                                         </span>
                                     ) : null}
                                 </div>
@@ -191,11 +191,11 @@ const LiveSupportChat: React.FC = () => {
                                     <ChevronLeft size={20} />
                                 </button>
                                 <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-xs">
-                                    {selectedConversation.applicant_name ? selectedConversation.applicant_name[0] : '?'}
+                                    {selectedConversation.applicantName ? selectedConversation.applicantName[0] : '?'}
                                 </div>
                                 <div>
-                                    <h4 className="font-bold text-gray-900 leading-tight">{selectedConversation.applicant_name || 'Anonymous'}</h4>
-                                    <p className="text-[10px] text-gray-500">{selectedConversation.applicant_email}</p>
+                                    <h4 className="font-bold text-gray-900 leading-tight">{selectedConversation.applicantName || 'Anonymous'}</h4>
+                                    <p className="text-[10px] text-gray-500">{selectedConversation.applicantEmail}</p>
                                 </div>
                             </div>
                             <button
@@ -215,7 +215,7 @@ const LiveSupportChat: React.FC = () => {
                                 </div>
                             ) : (
                                 messages.map((msg, idx) => {
-                                    const isMe = msg.sender_type === 'Admin';
+                                    const isMe = msg.senderType === 'Administrator';
                                     return (
                                         <div key={msg.id || idx} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
                                             <div className={`max-w-[80%] rounded-2xl px-4 py-2 text-sm shadow-sm ${
@@ -224,7 +224,7 @@ const LiveSupportChat: React.FC = () => {
                                                 <p>{msg.message}</p>
                                                 <div className={`text-[10px] mt-1 flex items-center gap-1 ${isMe ? 'text-blue-100 justify-end' : 'text-gray-400'}`}>
                                                     <Clock size={10} />
-                                                    {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                    {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                                 </div>
                                             </div>
                                         </div>

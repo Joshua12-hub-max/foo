@@ -36,7 +36,7 @@ interface AdminPerformanceHookReturn {
   paginationData: PaginationData;
   uniqueDepartments: string[];
   uniqueEmployees: string[];
-  stats: any;
+  stats: Record<string, number>;
   setError: React.Dispatch<React.SetStateAction<string | null>>;
   setSuccessMessage: React.Dispatch<React.SetStateAction<string | null>>;
   handleFilterChange: (field: string, value: string) => void;
@@ -46,6 +46,7 @@ interface AdminPerformanceHookReturn {
   handleRefresh: () => Promise<void>;
   handlePrevPage: () => void;
   handleNextPage: () => void;
+  handlePageChange: (page: number) => void;
   getStatusBadge: (status: string) => React.ReactNode;
 }
 
@@ -64,7 +65,7 @@ export const useAdminPerformance = (): AdminPerformanceHookReturn => {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [performanceData, setPerformanceData] = useState<PerformanceTableItem[]>([]);
-  const [stats, setStats] = useState<any>({});
+  const [stats, setStats] = useState<Record<string, number>>({});
 
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -98,7 +99,7 @@ export const useAdminPerformance = (): AdminPerformanceHookReturn => {
           const empList = payload.employees || (res.data as Record<string, unknown>)?.employees || [];
           const mappedData = mapPerformanceData(empList as Parameters<typeof mapPerformanceData>[0]);
           setPerformanceData(mappedData);
-          setStats(payload.stats || (res.data as Record<string, unknown>)?.stats || {});
+          setStats((payload.stats as Record<string, number>) || (res.data as Record<string, any>)?.stats || {} as Record<string, number>);
       } else {
           setError(res.message || payload.message || MESSAGES.ERROR_LOAD);
       }
@@ -220,6 +221,7 @@ export const useAdminPerformance = (): AdminPerformanceHookReturn => {
     handleRefresh,
     handlePrevPage,
     handleNextPage,
+    handlePageChange: setCurrentPage,
 
     getStatusBadge
   };

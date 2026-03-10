@@ -56,7 +56,7 @@ export const StepIncrementDashboard: React.FC = () => {
     // Get current tranche info
     const currentTranche = useMemo(() => {
         if (!tranchesData) return null;
-        return tranchesData.find((t: Tranche) => t.tranche_number === selectedTrancheNum) || activeTranche || null;
+        return tranchesData.find((t: Tranche) => t.trancheNumber === selectedTrancheNum) || activeTranche || null;
     }, [tranchesData, selectedTrancheNum, activeTranche]);
 
     // --- ALLOWANCE LOGIC DECOUPLED (Managed in Compensation Module) ---
@@ -64,7 +64,7 @@ export const StepIncrementDashboard: React.FC = () => {
     // Auto-select active tranche
     useEffect(() => {
         if (activeTranche) {
-            setSelectedTrancheNum(activeTranche.tranche_number);
+            setSelectedTrancheNum(activeTranche.trancheNumber);
         }
     }, [activeTranche]);
 
@@ -108,15 +108,15 @@ export const StepIncrementDashboard: React.FC = () => {
         if (!selectedEmployee) return;
         try {
             const request = await createIncrement.mutateAsync({
-                employee_id: selectedEmployee.employee_id,
-                position_id: selectedEmployee.position_id,
-                current_step: selectedEmployee.current_step,
-                eligible_date: selectedEmployee.eligible_date,
+                employeeId: selectedEmployee.employeeId,
+                positionId: selectedEmployee.positionId,
+                currentStep: selectedEmployee.currentStep,
+                eligibleDate: selectedEmployee.eligibleDate,
                 status: 'Pending',
                 remarks: 'Automated Batch Approval'
             });
             await processIncrement.mutateAsync({
-                increment_id: request.id,
+                incrementId: request.id,
                 status: 'Approved',
                 remarks: 'System verified: 3 years continuous satisfactory service'
             });
@@ -169,7 +169,7 @@ export const StepIncrementDashboard: React.FC = () => {
                         >
                             <div className="text-left">
                                 <div className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
-                                    {currentTranche?.circular_number || 'SSL Circular'}
+                                    {currentTranche?.circularNumber || 'SSL Circular'}
                                 </div>
                                 <div className="text-sm font-bold">
                                     {currentTranche?.name || 'Select Tranche'}
@@ -187,18 +187,18 @@ export const StepIncrementDashboard: React.FC = () => {
                                         <button
                                             key={tranche.id}
                                             onClick={() => {
-                                                setSelectedTrancheNum(tranche.tranche_number);
+                                                setSelectedTrancheNum(tranche.trancheNumber);
                                                 setShowTrancheDropdown(false);
                                             }}
                                             className={`w-full p-3 text-left hover:bg-gray-50 transition-colors flex justify-between items-center border-b border-gray-100 last:border-0 ${
-                                                selectedTrancheNum === tranche.tranche_number ? 'bg-indigo-50/50' : ''
+                                                selectedTrancheNum === tranche.trancheNumber ? 'bg-indigo-50/50' : ''
                                             }`}
                                         >
                                             <div>
                                                 <div className="text-sm font-semibold text-gray-900">{tranche.name}</div>
-                                                <div className="text-[10px] text-gray-500">{tranche.circular_number}</div>
+                                                <div className="text-[10px] text-gray-500">{tranche.circularNumber}</div>
                                             </div>
-                                            {selectedTrancheNum === tranche.tranche_number && (
+                                            {selectedTrancheNum === tranche.trancheNumber && (
                                                 <div className="w-2 h-2 rounded-full bg-indigo-600"></div>
                                             )}
                                         </button>
@@ -283,15 +283,15 @@ export const StepIncrementDashboard: React.FC = () => {
                                 </thead>
                                 <tbody className="divide-y divide-gray-100 text-sm">
                                     {eligibleEmployees.length > 0 ? eligibleEmployees.map((emp) => (
-                                        <tr key={emp.employee_id} className="hover:bg-gray-50 transition-colors">
+                                        <tr key={emp.employeeId} className="hover:bg-gray-50 transition-colors">
                                             <td className="px-5 py-4">
-                                                <div className="font-bold text-gray-900">{emp.employee_name}</div>
+                                                <div className="font-bold text-gray-900">{emp.employeeName}</div>
                                                 <div className="text-[10px] text-gray-400 font-mono">{emp.employee_employee_id}</div>
                                             </td>
-                                            <td className="px-5 py-4 text-gray-700">{emp.position_title}</td>
+                                            <td className="px-5 py-4 text-gray-700">{emp.positionTitle}</td>
                                             <td className="px-5 py-4 text-center">
                                                 <div className="flex items-center justify-center gap-2">
-                                                    <span className="text-gray-500">Step {emp.current_step}</span>
+                                                    <span className="text-gray-500">Step {emp.currentStep}</span>
                                                     <ArrowRight size={10} className="text-gray-300" />
                                                     <span className="text-emerald-600 font-black">Step {emp.next_step}</span>
                                                 </div>
@@ -369,7 +369,7 @@ export const StepIncrementDashboard: React.FC = () => {
                                 Salary Schedule Matrix (Steps 1-8)
                             </h3>
                             <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                                {currentTranche?.name || ''} - {currentTranche?.circular_number || ''}
+                                {currentTranche?.name || ''} - {currentTranche?.circularNumber || ''}
                             </span>
                         </div>
 
@@ -459,7 +459,7 @@ export const StepIncrementDashboard: React.FC = () => {
                 }}
                 onConfirm={confirmApprove}
                 title="Approve Step Increment"
-                message={selectedEmployee ? `Approve step increment for ${selectedEmployee.employee_name}? They will move from Step ${selectedEmployee.current_step} to Step ${selectedEmployee.next_step}.` : ''}
+                message={selectedEmployee ? `Approve step increment for ${selectedEmployee.employeeName}? They will move from Step ${selectedEmployee.currentStep} to Step ${selectedEmployee.next_step}.` : ''}
                 confirmText="Confirm"
                 cancelText="Cancel"
             />

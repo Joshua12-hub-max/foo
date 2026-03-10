@@ -31,18 +31,17 @@ import {
   getTotalLWOPForRetirement,
 } from '../controllers/leaveController.js';
 import { verifyToken, verifyAdmin, restrictSuspended } from '../middleware/authMiddleware.js';
-import { uploadLeave } from '../middleware/uploadMiddleware.js';
 
-const router: Router = Router();
+const router = Router();
 
 // ============================================================================
 // Employee Routes (require token)
 // ============================================================================
 
 // Leave Applications
-router.post('/apply', verifyToken, restrictSuspended, uploadLeave.single('attachment'), applyLeave);
+router.post('/apply', verifyToken, restrictSuspended, applyLeave);
 router.get('/my-applications', verifyToken, getMyLeaves);
-router.put('/:id/finalize', verifyToken, restrictSuspended, uploadLeave.single('finalForm'), finalizeLeave);
+router.put('/:id/finalize', verifyToken, restrictSuspended, finalizeLeave);
 
 // Credits
 router.get('/my-credits', verifyToken, getMyCredits);
@@ -56,7 +55,7 @@ router.get('/my-ledger', verifyToken, getMyLedger);
 
 // Leave Applications - Admin
 router.get('/applications/all', verifyAdmin, getAllLeaves);
-router.put('/:id/process', verifyAdmin, uploadLeave.single('adminForm'), processLeave);
+router.put('/:id/process', verifyAdmin, processLeave);
 router.put('/:id/approve', verifyAdmin, approveLeave);
 router.put('/:id/reject', verifyAdmin, rejectLeave);
 

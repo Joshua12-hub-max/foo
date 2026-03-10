@@ -35,17 +35,17 @@ const EditCriteriaModal: React.FC<EditCriteriaModalProps> = ({ isOpen, onClose, 
       reset({
         section: (initialData.section as 'Performance' | 'Competency') || 'Performance',
         category: (initialData.category as 'Strategic Priorities' | 'Core Functions' | 'Support Functions' | 'General') || 'Strategic Priorities',
-        title: initialData.title || initialData.criteria_title || '',
-        description: initialData.description || initialData.criteria_description || '',
+        title: initialData.title || initialData.criteriaTitle || '',
+        description: initialData.description || initialData.criteriaDescription || '',
         weight: Number(initialData.weight) || 0,
-        maxScore: Number(initialData.maxScore || initialData.max_score) || 5,
+        maxScore: Number(initialData.maxScore) || 5,
         // Rating Matrix
-        ratingDefinition5: initialData.ratingDefinition5 || initialData.rating_definition_5 || '',
-        ratingDefinition4: initialData.ratingDefinition4 || initialData.rating_definition_4 || '',
-        ratingDefinition3: initialData.ratingDefinition3 || initialData.rating_definition_3 || '',
-        ratingDefinition2: initialData.ratingDefinition2 || initialData.rating_definition_2 || '',
-        ratingDefinition1: initialData.ratingDefinition1 || initialData.rating_definition_1 || '',
-        evidenceRequirements: initialData.evidenceRequirements || initialData.evidence_requirements || '',
+        ratingDefinition5: initialData.ratingDefinition5 || '',
+        ratingDefinition4: initialData.ratingDefinition4 || '',
+        ratingDefinition3: initialData.ratingDefinition3 || '',
+        ratingDefinition2: initialData.ratingDefinition2 || '',
+        ratingDefinition1: initialData.ratingDefinition1 || '',
+        evidenceRequirements: initialData.evidenceRequirements || '',
       });
     } else {
       reset({

@@ -1,44 +1,30 @@
 import { eq } from 'drizzle-orm';
 import { recruitmentEmailTemplates } from '../db/schema.js';
 import type { MySql2Database } from 'drizzle-orm/mysql2';
-import nodemailer from 'nodemailer';
+import { sendEmail } from './emailUtils.js';
 
 /**
- * Send an email notification
+ * Send an email notification using the secure shared transporter
  */
-export const sendEmailNotification = async (to: string, subject: string, html: string, attachments: object[] = []): Promise<void> => {
-  console.log(`Attempting to send email to: ${to}`);
-  console.log(`Subject: ${subject}`);
-  // console.log(`Using EMAIL_USER: ${process.env.EMAIL_USER}`); // security risk to log
+export const sendEmailNotification = async (to: string, subject: string, html: string, attachments: unknown[] = []): Promise<void> => {
   try { 
-    const transporter = nodemailer.createTransport({ 
-      service: 'gmail', 
-      auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS } 
-    }); 
-    const result = await transporter.sendMail({ 
-      from: process.env.EMAIL_USER || '"HR Recruitment" <no-reply@company.com>', 
-      to, 
-      subject, 
-      html, 
-      attachments 
-    }); 
-    console.log(`Email sent successfully to ${to}: ${subject}`);
-    console.log(`Message ID: ${result.messageId}`);
-  } catch (error) { 
-    console.error('Failed to send email:', error); 
+    await sendEmail(to, subject, html, attachments);
+  } catch (error: unknown) { 
+    console.error(`[NOTIFY ERROR] Failed to send email to ${to}:`, error.message); 
   }
 };
+
 
 /**
  * Email template row from database (matching Drizzle schema)
  */
 interface EmailTemplate {
   id: number;
-  stage_name: string;
-  subject_template: string;
-  body_template: string;
-  available_variables?: string | null;
-  updated_at: string | null;
+  stageName: string;
+  subjectTemplate: string;
+  bodyTemplate: string;
+  availableVariables?: string | null;
+  updatedAt: string | null;
 }
 
 /**
@@ -52,14 +38,14 @@ type TemplateVariables = Record<string, string | undefined>;
  * @param stageName - Name of the recruitment stage
  * @returns Template object or null if not found
  */
-export const getTemplateForStage = async (
-  db: MySql2Database<any>,
+export const getTemplateForStage = async <TSchema extends Record<string, unknown>>(
+  db: MySql2Database<TSchema>,
   stageName: string
 ): Promise<EmailTemplate | null> => {
   try {
     const templates = await db.select()
       .from(recruitmentEmailTemplates)
-      .where(eq(recruitmentEmailTemplates.stage_name, stageName));
+      .where(eq(recruitmentEmailTemplates.stageName, stageName));
     
     if (templates.length > 0) {
       return templates[0];

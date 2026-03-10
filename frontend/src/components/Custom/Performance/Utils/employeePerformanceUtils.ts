@@ -17,35 +17,34 @@ export interface EmployeePerformanceData {
 
 export interface PerformanceApiResponse {
   id: number | string;
-  review_period_start?: string;
-  review_period_end?: string;
-  cycle_title?: string;
-  reviewer_first_name?: string;
-  reviewer_last_name?: string;
-  computed_score?: string | number;
-  updated_at?: string;
-  created_at?: string;
+  reviewPeriodStart?: string;
+  reviewPeriodEnd?: string;
+  cycleTitle?: string;
+  reviewerFirstName?: string;
+  reviewerLastName?: string;
+  totalScore?: string | number;
+  updatedAt?: string;
+  createdAt?: string;
   status?: string;
-  self_rating_status?: string;
-  [key: string]: unknown;
+  selfRatingStatus?: string;
 }
 
 export const mapEmployeePerformanceData = (apiData: PerformanceApiResponse[]): EmployeePerformanceData[] => {
   return apiData.map(item => ({
     id: item.id,
-    reviewPeriod: item.review_period_start && item.review_period_end 
-      ? `${new Date(item.review_period_start).toLocaleDateString()} - ${new Date(item.review_period_end).toLocaleDateString()}`
+    reviewPeriod: item.reviewPeriodStart && item.reviewPeriodEnd 
+      ? `${new Date(item.reviewPeriodStart).toLocaleDateString()} - ${new Date(item.reviewPeriodEnd).toLocaleDateString()}`
       : 'N/A',
-    cycleTitle: item.cycle_title || 'Regular Review',
-    reviewer: item.reviewer_first_name 
-      ? `${item.reviewer_first_name} ${item.reviewer_last_name}`.trim() 
+    cycleTitle: item.cycleTitle || 'Regular Review',
+    reviewer: item.reviewerFirstName 
+      ? `${item.reviewerFirstName} ${item.reviewerLastName || ''}`.trim() 
       : 'Not Assigned',
-    score: item.computed_score !== null && item.computed_score !== undefined ? parseFloat(String(item.computed_score)).toFixed(2) : 'N/A',
-    lastUpdate: item.updated_at 
-      ? new Date(item.updated_at).toLocaleDateString() 
-      : item.created_at ? new Date(item.created_at).toLocaleDateString() : 'N/A',
+    score: item.totalScore !== null && item.totalScore !== undefined ? parseFloat(String(item.totalScore)).toFixed(2) : 'N/A',
+    lastUpdate: item.updatedAt 
+      ? new Date(item.updatedAt).toLocaleDateString() 
+      : item.createdAt ? new Date(item.createdAt).toLocaleDateString() : 'N/A',
     status: item.status || 'Draft',
-    selfRatingStatus: item.self_rating_status || 'pending'
+    selfRatingStatus: item.selfRatingStatus || 'pending'
   }));
 };
 
@@ -143,10 +142,10 @@ export const generatePDFContent = (data: EmployeePerformanceData[], headers: str
  * Export data to Excel (matching departmentReportsExport.js format)
  */
 // Native CSV export to remove dependency on ExcelJS
-export const exportToCSV = async (data: Record<string, unknown>[], headers: string[], filename: string) => {
+export const exportToCSV = async (data: EmployeePerformanceData[], headers: string[], filename: string) => {
   try {
     const csvHeaders = ['Status', 'Review Period', 'Cycle Title', 'Reviewer', 'Score', 'Last Update'];
-    const keys = ['status', 'reviewPeriod', 'cycleTitle', 'reviewer', 'score', 'lastUpdate'];
+    const keys: (keyof EmployeePerformanceData)[] = ['status', 'reviewPeriod', 'cycleTitle', 'reviewer', 'score', 'lastUpdate'];
 
     const csvRows = [csvHeaders.join(',')];
 

@@ -18,20 +18,21 @@ import { QualificationService } from '../services/qualificationService.js';
  */
 export const getQualificationStandards = async (req: Request, res: Response): Promise<void> => {
   try {
-    const position_title = (req.query.positionTitle || req.query.position_title) as string;
-    const salary_grade = (req.query.salaryGrade || req.query.salary_grade) as string;
-    const is_active = (req.query.isActive || req.query.is_active) as string;
+    const positionTitle = (req.query.positionTitle || req.query.position_title) as string;
+    const salaryGrade = (req.query.salaryGrade || req.query.salary_grade) as string;
+    const isActive = (req.query.isActive || req.query.is_active) as string;
 
     const conditions = [];
-    if (position_title) {
-      conditions.push(like(qualificationStandards.positionTitle, `%${position_title}%`));
+    if (positionTitle) {
+      conditions.push(like(qualificationStandards.positionTitle, `%${positionTitle}%`));
     }
-    if (salary_grade) {
-      conditions.push(eq(qualificationStandards.salaryGrade, parseInt(salary_grade)));
+    if (salaryGrade) {
+      conditions.push(eq(qualificationStandards.salaryGrade, parseInt(salaryGrade)));
     }
-    if (is_active !== undefined) {
-      conditions.push(eq(qualificationStandards.isActive, is_active === 'true' || is_active === '1' ? true : false));
+    if (isActive !== undefined) {
+      conditions.push(eq(qualificationStandards.isActive, isActive === 'true' || isActive === '1' ? true : false));
     }
+
 
     const standards = await db.select()
       .from(qualificationStandards)
@@ -42,8 +43,8 @@ export const getQualificationStandards = async (req: Request, res: Response): Pr
       success: true,
       standards
     });
-  } catch (error) {
-    console.error('Get QS Error:', error);
+  } catch (_error) {
+
     res.status(500).json({
       success: false,
       message: 'Failed to fetch qualification standards'
@@ -77,8 +78,8 @@ export const getQualificationStandardById = async (req: Request, res: Response):
       success: true,
       standard
     });
-  } catch (error) {
-    console.error('Get QS by ID Error:', error);
+  } catch (_error) {
+
     res.status(500).json({
       success: false,
       message: 'Failed to fetch qualification standard'
@@ -111,7 +112,6 @@ export const createQualificationStandard = async (req: Request, res: Response): 
       id: result.insertId
     });
   } catch (error) {
-    console.error('Create QS Error:', error);
 
     if (error instanceof ZodError) {
       res.status(400).json({
@@ -187,7 +187,6 @@ export const updateQualificationStandard = async (req: Request, res: Response): 
       message: 'Qualification standard updated successfully'
     });
   } catch (error) {
-    console.error('Update QS Error:', error);
 
     if (error instanceof ZodError) {
       res.status(400).json({
@@ -242,8 +241,8 @@ export const deleteQualificationStandard = async (req: Request, res: Response): 
       success: true,
       message: 'Qualification standard deleted successfully'
     });
-  } catch (error) {
-    console.error('Delete QS Error:', error);
+  } catch (_error) {
+
     res.status(500).json({
       success: false,
       message: 'Failed to delete qualification standard'
@@ -264,31 +263,30 @@ export const validateEmployeeQualifications = async (req: Request, res: Response
       success: true,
       qualified: result.qualified,
       score: result.score,
-      missing_requirements: result.missingRequirements,
+      missingRequirements: result.missingRequirements,
       employee: {
         id: result.employeeDetails.id,
         name: result.employeeDetails.name,
-        employee_id: result.employeeDetails.employee_id,
-
+        employeeId: result.employeeDetails.employeeId,
         education: result.employeeDetails.education,
-        experience_years: result.employeeDetails.experienceYears,
+        experienceYears: result.employeeDetails.experienceYears,
         eligibility: result.employeeDetails.eligibility
       },
       position: {
         id: result.positionDetails.id,
         title: result.positionDetails.title,
-        salary_grade: result.positionDetails.salaryGrade
+        salaryGrade: result.positionDetails.salaryGrade
       },
       requirements: {
         education: result.requirements.education,
-        experience_years: result.requirements.experienceYears,
-        training_hours: result.requirements.trainingHours,
+        experienceYears: result.requirements.experienceYears,
+        trainingHours: result.requirements.trainingHours,
         eligibility: result.requirements.eligibility
       }
     });
 
+
   } catch (error) {
-    console.error('Validate QS Error:', error);
 
     if (error instanceof ZodError) {
       res.status(400).json({
@@ -310,3 +308,4 @@ export const validateEmployeeQualifications = async (req: Request, res: Response
     });
   }
 };
+

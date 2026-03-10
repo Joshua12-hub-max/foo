@@ -1,4 +1,7 @@
 import axios, { InternalAxiosRequestConfig, AxiosError, AxiosResponse } from 'axios';
+import { toCamelCase, toSnakeCase } from '@/utils/caseUtils';
+
+type JsonValue = string | number | boolean | null | undefined | { [key: string]: JsonValue } | JsonValue[];
 
 const api = axios.create({
     baseURL: `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`,
@@ -8,14 +11,17 @@ const api = axios.create({
 // Request Interceptor - Set Content-Type dynamically
 api.interceptors.request.use(
     (config: InternalAxiosRequestConfig) => {
-        // If data is FormData, let axios set the Content-Type automatically (multipart/form-data)
-        // Otherwise, set it to application/json
+        // Transform body to snake_case for backend
         if (config.data && !(config.data instanceof FormData)) {
-            if (!config.headers) {
-               // config.headers = new AxiosHeaders(); // If using newer axios, but simple assignment usually works if headers is initialized
-            }
+            config.data = toSnakeCase(config.data as JsonValue);
             config.headers['Content-Type'] = 'application/json';
         }
+        
+        // Transform query parameters to snake_case
+        if (config.params) {
+            config.params = toSnakeCase(config.params as JsonValue);
+        }
+        
         return config;
     },
     (error: AxiosError) => {
@@ -25,7 +31,13 @@ api.interceptors.request.use(
 
 // Response Interceptors
 api.interceptors.response.use(
-    (response: AxiosResponse) => response,
+    (response: AxiosResponse) => {
+        // Transform response data to camelCase for frontend
+        if (response.data && typeof response.data === 'object' && !(response.data instanceof Blob)) {
+            response.data = toCamelCase(response.data as JsonValue);
+        }
+        return response;
+    },
     (error: AxiosError<{ message?: string }>) => {
         const status = error.response?.status;
         const message = error.response?.data?.message || error.message;
@@ -36,16 +48,8 @@ api.interceptors.response.use(
             if (!isAuthCheck) {
                 console.warn("[Auth] Session expired or not authenticated:", message);
             }
-            localStorage.removeItem("user");
-            
-            // List of public paths where we shouldn't redirect to login on 401
-            const publicPaths = ['/login', '/register', '/forgot-password', '/reset-password'];
-            const isPublicPath = publicPaths.some(path => window.location.pathname.startsWith(path));
-
-            // Redirect to login page ONLY if we are not already on a public page
-            if (!isPublicPath) {
-                window.location.href = "/login";
-            }
+            // Just clear storage, don't force a page reload
+            localStorage.removeItem('isLoggedIn');
         } else if (status === 403) {
             console.warn("[Auth] Access forbidden:", message);
         } else if (status && status >= 500) {

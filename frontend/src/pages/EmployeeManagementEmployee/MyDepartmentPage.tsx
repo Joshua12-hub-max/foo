@@ -12,19 +12,19 @@ interface DepartmentData {
   id: number;
   name: string;
   description?: string;
-  head_of_department?: string;
+  headOfDepartment?: string;
 }
 
 interface EmployeeRecord {
   id: number;
-  first_name?: string;
-  last_name?: string;
+  firstName?: string;
+  lastName?: string;
   email?: string;
-  employee_id?: string;
-  job_title?: string;
-  employment_status?: string;
-  date_hired?: string;
-  avatar_url?: string;
+  employeeId?: string;
+  jobTitle?: string;
+  employmentStatus?: string;
+  dateHired?: string;
+  avatarUrl?: string;
 }
 
 const MyDepartmentPage: React.FC<MyDepartmentPageProps> = ({ hideHeader = false }) => {
@@ -64,7 +64,7 @@ const MyDepartmentPage: React.FC<MyDepartmentPageProps> = ({ hideHeader = false 
           <div className="flex items-center gap-6">
             <div className="text-right">
               <p className="text-xs text-gray-500 font-medium">Department Head</p>
-              <p className="text-sm font-semibold text-gray-800">{departmentData?.head_of_department || 'Not assigned'}</p>
+              <p className="text-sm font-semibold text-gray-800">{departmentData?.headOfDepartment || 'Not assigned'}</p>
             </div>
             <div className="h-8 w-px bg-gray-200"></div>
             <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-lg border border-gray-200">
@@ -95,21 +95,21 @@ const MyDepartmentPage: React.FC<MyDepartmentPageProps> = ({ hideHeader = false 
               {/* Employee Avatar & Name */}
               <div className="flex items-center gap-4 lg:w-64 lg:border-r lg:border-gray-100 lg:pr-6">
                 <div className="w-16 h-16 rounded-xl bg-gray-100 flex items-center justify-center text-gray-600 font-bold text-xl uppercase border border-gray-200 overflow-hidden flex-shrink-0">
-                  {myRecord.avatar_url ? (
-                    <img src={myRecord.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+                  {myRecord.avatarUrl ? (
+                    <img src={myRecord.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
                   ) : (
-                    `${myRecord.first_name?.[0] || 'U'}${myRecord.last_name?.[0] || ''}`
+                    `${myRecord.firstName?.[0] || 'U'}${myRecord.lastName?.[0] || ''}`
                   )}
                 </div>
                 <div>
-                  <p className="font-bold text-gray-800">{myRecord.first_name} {myRecord.last_name}</p>
-                  <p className="text-sm text-gray-500">{myRecord.job_title || 'Employee'}</p>
+                  <p className="font-bold text-gray-800">{myRecord.firstName} {myRecord.lastName}</p>
+                  <p className="text-sm text-gray-500">{myRecord.jobTitle || 'Employee'}</p>
                   <span className={`inline-block mt-1 px-2 py-0.5 text-xs font-semibold rounded ${
-                    myRecord.employment_status === 'Active' || !myRecord.employment_status
+                    myRecord.employmentStatus === 'Active' || !myRecord.employmentStatus
                       ? 'bg-green-100 text-green-700'
                       : 'bg-gray-100 text-gray-600'
                   }`}>
-                    {myRecord.employment_status || 'Active'}
+                    {myRecord.employmentStatus || 'Active'}
                   </span>
                 </div>
               </div>
@@ -121,7 +121,7 @@ const MyDepartmentPage: React.FC<MyDepartmentPageProps> = ({ hideHeader = false 
                     <Hash size={12} />
                     <span className="text-xs font-medium uppercase">Employee ID</span>
                   </div>
-                  <p className="text-sm font-semibold text-gray-800">{myRecord.employee_id || '---'}</p>
+                  <p className="text-sm font-semibold text-gray-800">{myRecord.employeeId || '---'}</p>
                 </div>
                 
                 <div>
@@ -146,8 +146,8 @@ const MyDepartmentPage: React.FC<MyDepartmentPageProps> = ({ hideHeader = false 
                     <span className="text-xs font-medium uppercase">Date Hired</span>
                   </div>
                   <p className="text-sm font-semibold text-gray-800">
-                    {myRecord.date_hired 
-                      ? new Date(myRecord.date_hired).toLocaleDateString('en-US', { 
+                    {myRecord.dateHired 
+                      ? new Date(myRecord.dateHired).toLocaleDateString('en-US', { 
                           year: 'numeric', 
                           month: 'short', 
                           day: 'numeric' 

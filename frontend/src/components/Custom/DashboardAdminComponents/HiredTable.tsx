@@ -6,8 +6,8 @@ interface HiredApplicant {
   name: string;
   department?: string;
   position?: string;
-  job_title?: string;
-  date_hired?: string;
+  jobTitle?: string;
+  dateHired?: string;
   dateHired?: string;
   [key: string]: unknown;
 }
@@ -107,8 +107,8 @@ export default function HiredTable({ onClose, employees = [] }: HiredTableProps)
                   <td className="px-4 py-3 text-gray-600 font-medium">{employee.id}</td>
                   <td className="px-4 py-3 text-gray-800 font-medium">{employee.name}</td>
                   <td className="px-4 py-3 text-gray-600">{employee.department || '-'}</td>
-                  <td className="px-4 py-3 text-gray-600">{employee.position || employee.job_title || '-'}</td>
-                  <td className="px-4 py-3 text-gray-600 text-sm">{formatDate(employee.date_hired || employee.dateHired)}</td>
+                  <td className="px-4 py-3 text-gray-600">{employee.position || employee.jobTitle || '-'}</td>
+                  <td className="px-4 py-3 text-gray-600 text-sm">{formatDate(employee.dateHired || employee.dateHired)}</td>
                 </tr>
               ))
             ) : (

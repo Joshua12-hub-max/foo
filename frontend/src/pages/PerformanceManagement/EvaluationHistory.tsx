@@ -288,7 +288,7 @@ const EvaluationHistory = () => {
                                 review.employee_first_name || review.employee_first
                             )}
                           </p>
-                          <p className="text-[10px] text-gray-500 font-mono">{formatDate(review.created_at)}</p>
+                          <p className="text-[10px] text-gray-500 font-mono">{formatDate(review.createdAt)}</p>
                         </div>
                       </div>
                     </td>

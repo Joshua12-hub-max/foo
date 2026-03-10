@@ -4,8 +4,8 @@ import { z } from 'zod';
 export const DepartmentModalSchema = z.object({
   name: z.string().min(1, 'Department name is required'),
   description: z.string(),
-  head_of_department: z.string(),
-  parent_department_id: z.string(),
+  headOfDepartment: z.string(),
+  parentDepartmentId: z.string(),
   location: z.string(),
   budget: z.number().nonnegative(),
 });

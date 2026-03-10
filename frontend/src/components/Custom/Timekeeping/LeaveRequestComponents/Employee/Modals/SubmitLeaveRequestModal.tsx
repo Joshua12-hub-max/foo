@@ -7,7 +7,6 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import ModalHeader from '@/components/Custom/Timekeeping/LeaveRequestComponents/Employee/Modals/components/ModalHeader';
 import FormInput from '@/components/Custom/Timekeeping/LeaveRequestComponents/Employee/Modals/components/FormInput';
 import DateInput from '@/components/Custom/Timekeeping/LeaveRequestComponents/Employee/Modals/components/DateInput';
-import FileUpload from '@/components/Custom/Timekeeping/LeaveRequestComponents/Employee/Modals/components/FileUpload';
 import { AlertTriangle, CheckCircle, Info, XCircle } from 'lucide-react';
 import { useLeavePolicy } from '@/hooks/useLeavePolicy';
 import Combobox from '@/components/Custom/Combobox';
@@ -51,7 +50,6 @@ export const SubmitLeaveRequestModal: React.FC<SubmitLeaveRequestModalProps> = (
       startDate: '',
       endDate: '',
       description: '',
-      attachment: null
     }
   });
 
@@ -98,12 +96,12 @@ export const SubmitLeaveRequestModal: React.FC<SubmitLeaveRequestModalProps> = (
     const getBalance = (type: string | null) => {
       if (!type) return 0;
       // Exact match
-      let credit = credits.find(c => c.credit_type === type);
+      let credit = credits.find(c => c.creditType === type);
       // Partial match fallback
       if (!credit) {
         credit = credits.find(c => 
-          c?.credit_type?.toLowerCase()?.includes(type.toLowerCase().replace(' leave', '')) ||
-          type.toLowerCase().includes(c?.credit_type?.toLowerCase() || '')
+          c?.creditType?.toLowerCase()?.includes(type.toLowerCase().replace(' leave', '')) ||
+          type.toLowerCase().includes(c?.creditType?.toLowerCase() || '')
         );
       }
       return credit ? parseFloat(String(credit.balance)) : 0;
@@ -155,21 +153,15 @@ export const SubmitLeaveRequestModal: React.FC<SubmitLeaveRequestModalProps> = (
           throw new Error(`Insufficient leave credits. You have ${availableCredit || 0} days but need ${duration} days.`);
       }
 
-      const formData = new FormData();
-      const userRecord = user as unknown as Record<string, unknown>;
-      formData.append('employeeId', String(userRecord?.employee_id || userRecord?.employeeId || userRecord?.id || ''));
-      formData.append('leaveType', data.leaveType);
-      formData.append('startDate', data.startDate);
-      formData.append('endDate', data.endDate);
-      formData.append('reason', data.description || '');
-      formData.append('withPay', String(data.isPaid));
-      formData.append('duration', String(duration)); // Send duration for backend to deduct
+      const payload = {
+        leaveType: data.leaveType,
+        startDate: data.startDate,
+        endDate: data.endDate,
+        reason: data.description || '',
+        isWithPay: data.isPaid,
+      };
 
-      if (data.attachment) {
-        formData.append('attachment', data.attachment);
-      }
-
-      await leaveApi.applyLeave(formData);
+      await leaveApi.applyLeave(payload);
     },
     onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ['employee-leaves'] });
@@ -380,45 +372,6 @@ export const SubmitLeaveRequestModal: React.FC<SubmitLeaveRequestModalProps> = (
                 {watchAllFields.description?.length || 0} characters
               </p>
             </FormInput>
-
-            {/* File Upload */}
-            <Controller
-              name="attachment"
-              control={control}
-              render={({ field: { onChange, value } }) => (
-                <div className="space-y-1">
-                  <div className="flex justify-between items-center">
-                    <label className="text-sm font-medium text-gray-700">Supporting Document</label>
-                    <span className={`text-xs ${
-                      (() => {
-                        if (!policy || !leaveType) return false;
-                        if (leaveType === 'Sick Leave' && duration >= 5) return true;
-                        const key = leaveType.charAt(0).toLowerCase() + leaveType.slice(1).replace(/\s/g, '');
-                        return !!policy.requiredAttachments[key];
-                      })()
-                        ? 'text-red-500 font-medium' 
-                        : 'text-gray-400'
-                    }`}>
-                      {(() => {
-                        if (!policy || !leaveType) return 'Optional';
-                        if (leaveType === 'Sick Leave') {
-                          return duration >= 5 ? 'Required (Medical Certificate)' : 'Optional (Required if ≥ 5 days)';
-                        }
-                        const key = leaveType.charAt(0).toLowerCase() + leaveType.slice(1).replace(/\s/g, '');
-                        const req = policy.requiredAttachments[key];
-                        return req ? `Required (${req.required})` : 'Optional';
-                      })()}
-                    </span>
-                  </div>
-                  <FileUpload
-                    file={value}
-                    onFileChange={(file: File) => onChange(file)}
-                    onRemove={() => onChange(null)}
-                    error={errors.attachment?.message as string}
-                  />
-                </div>
-              )}
-            />
           </form>
         </div>
 

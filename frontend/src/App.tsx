@@ -12,7 +12,7 @@ const ResetPassword = lazy(() => import("./Authentication/ResetPassword"));
 const TestBio = lazy(() => import("./pages/TestBio"));
 
 // Static imports for core shell and priority pages to improve LCP
-import AdminDashboard from "./pages/DashboardAdmin/AdminDashboard";
+const AdminDashboard = lazy(() => import("./pages/DashboardAdmin/AdminDashboard"));
 import LeaveRequestHR from "./pages/TimekeepingAdmin/adminLeaverequest";
 
 // Lazy load other dashboards 
@@ -112,7 +112,7 @@ const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
     if (userRole === "employee") {
       return <Navigate to="/employee-dashboard" replace />;
     }
-    if (userRole === "human resource" || userRole === "admin") {
+    if (userRole === "human resource" || userRole === "administrator") {
       // Don't auto-redirect them if they are actively trying to access the employee dashboard
       if (!window.location.pathname.startsWith('/employee-dashboard')) {
         return <Navigate to="/admin-dashboard" replace />;
@@ -137,7 +137,7 @@ const PublicRoute = ({ children }: PublicRouteProps) => {
   if (user) {
     const userRole = user?.role?.toLowerCase() || '';
     if (userRole === "employee") return <Navigate to="/employee-dashboard" replace />;
-    if (userRole === "admin" || userRole === "human resource") return <Navigate to="/admin-dashboard" replace />;
+    if (userRole === "administrator" || userRole === "human resource") return <Navigate to="/admin-dashboard" replace />;
   }
   
   return children;
@@ -158,6 +158,25 @@ const queryClient = new QueryClient({
   },
 });
 
+/** SetupRoute — specifically for the initialization portal */
+const SetupRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user, loading } = useAuth();
+
+  if (loading) return <PageLoader />;
+
+  if (user) {
+    const role = user.role?.toLowerCase();
+    // Block regular employees and department heads from setup
+    if (role === "employee" || role === "department head") {
+      return <Navigate to="/employee-dashboard" replace />;
+    }
+    // Human Resource and Administrator are allowed to proceed to the portal
+    // if it's still available (internal logic in SetupPortal handle this)
+  }
+
+  return children;
+};
+
 export default function App() {
   const checkAuth = useAuthStore((state) => state.checkAuth);
   const loading = useAuthStore((state) => state.isLoading);
@@ -171,23 +190,19 @@ export default function App() {
   }
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <DndProvider backend={HTML5Backend}>
-        <ToastContainer />
-        <Toaster position="top-right" reverseOrder={false} />
-        <Router>
-          <Routes>
-          {/* Default redirect */}
-          <Route 
-            path="/" 
-            element={
-              <PublicRoute>
-                <Suspense fallback={<PageLoader />}>
-                  <Login />
-                </Suspense>
-              </PublicRoute>
-            } 
-          />
+    <Router>
+      <Routes>
+      {/* Default redirect */}
+      <Route 
+        path="/" 
+        element={
+          <PublicRoute>
+            <Suspense fallback={<PageLoader />}>
+              <Login />
+            </Suspense>
+          </PublicRoute>
+        } 
+      />
 
        
 
@@ -237,11 +252,11 @@ export default function App() {
         <Route
           path="/setup-portal"
           element={
-            <PublicRoute>
+            <SetupRoute>
               <Suspense fallback={<PageLoader />}>
                 <SetupPortal />
               </Suspense>
-            </PublicRoute>
+            </SetupRoute>
           }
         />
         <Route
@@ -289,9 +304,11 @@ export default function App() {
         <Route
           path="/admin-dashboard"
           element={
-              <ProtectedRoute allowedRoles={["admin", "Human Resource"]}>
+              <ProtectedRoute allowedRoles={["administrator", "human resource"]}>
                 <ErrorBoundary>
-                  <AdminDashboard />
+                  <Suspense fallback={<PageLoader />}>
+                    <AdminDashboard />
+                  </Suspense>
                 </ErrorBoundary>
               </ProtectedRoute>
           }
@@ -517,7 +534,7 @@ export default function App() {
         <Route
           path="/employee-dashboard"
           element={
-            <ProtectedRoute allowedRoles={["employee", "admin", "Human Resource"]}>
+            <ProtectedRoute allowedRoles={["employee", "administrator", "human resource"]}>
               <Suspense fallback={<PageLoader />}>
                 <EmployeeDashboard />
               </Suspense>
@@ -621,8 +638,5 @@ export default function App() {
       </Routes>
 
         </Router>
-        <ReactQueryDevtools initialIsOpen={false} />
-      </DndProvider>
-    </QueryClientProvider>
   );
 }

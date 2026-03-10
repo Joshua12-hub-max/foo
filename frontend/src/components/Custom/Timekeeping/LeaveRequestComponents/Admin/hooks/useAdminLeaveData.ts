@@ -33,30 +33,30 @@ export const useAdminLeaveData = (initialFilters?: Record<string, string>) => {
       
       const leaves = (res.data?.applications || []).map((l: LeaveApplication) => {
         // Build employee name with fallbacks
-        const firstName = l.first_name || '';
-        const lastName = l.last_name || '';
+        const firstName = l.firstName || '';
+        const lastName = l.lastName || '';
         const fullName = formatFullName(lastName, firstName).trim();
-        const displayName = fullName || l.employee_id || 'Unknown Employee';
+        const displayName = fullName || l.employeeId || 'Unknown Employee';
 
         return {
           id: l.id,
-          employee_id: l.employee_id || 'N/A',
+          employeeId: l.employeeId || 'N/A',
           name: displayName,
           department: l.department || 'N/A',
-          leaveType: l.leave_type || 'N/A',
-          fromDate: l.start_date,
-          toDate: l.end_date,
+          leaveType: l.leaveType || 'N/A',
+          fromDate: l.startDate,
+          toDate: l.endDate,
           reason: l.reason || '',
           status: l.status || 'Pending',
-          with_pay: l.is_with_pay ?? true,
-          attachment_path: l.attachment_path,
-          final_attachment_path: l.final_attachment_path,
-          first_name: firstName,
-          last_name: lastName,
-          leave_type: l.leave_type,
-          start_date: l.start_date, // Ensuring date properties exist as expected by UI
-          end_date: l.end_date,
-          current_balance: undefined // Handle missing field if needed or use other from L
+          withPay: l.isWithPay ?? true,
+          attachmentPath: l.attachmentPath,
+          finalAttachmentPath: l.finalAttachmentPath,
+          firstName: firstName,
+          lastName: lastName,
+          leaveType: l.leaveType,
+          startDate: l.startDate, // Ensuring date properties exist as expected by UI
+          endDate: l.endDate,
+          currentBalance: undefined // Handle missing field if needed or use other from L
         };
       });
 

@@ -1,12 +1,13 @@
 import { Request, Response } from 'express';
 import { db } from '../db/index.js';
 import { employeeMemos, authentication, memoSequences, plantillaPositions, departments } from '../db/schema.js';
-import { eq, and, sql, desc, or, like } from 'drizzle-orm';
+import { eq, and, sql, desc, or, like, count } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/mysql-core';
 import { createNotification } from './notificationController.js';
 import type { AuthenticatedRequest, MemoType, MemoStatus, MemoPriority, EmploymentStatus } from '../types/index.js';
 import { formatFullName } from '../utils/nameUtils.js';
 
+/* eslint-disable @typescript-eslint/naming-convention */
 const MEMO_TYPE_TO_STATUS: Record<MemoType, EmploymentStatus | undefined> = {
   'Termination Notice': 'Terminated',
   'Suspension Notice': 'Suspended',
@@ -14,6 +15,7 @@ const MEMO_TYPE_TO_STATUS: Record<MemoType, EmploymentStatus | undefined> = {
   'Written Warning': 'Written Warning',
   'Show Cause': 'Show Cause'
 };
+/* eslint-enable @typescript-eslint/naming-convention */
 
 const generateMemoNumber = async (): Promise<string> => {
   const year = new Date().getFullYear();
@@ -78,8 +80,9 @@ const notifyEmployeeOfMemo = async (employeeId: number, authorId: number, memoTy
         referenceId: memoId 
       });
     }
-  } catch (error) { 
-    console.error('Notification error:', error); 
+  } catch (_error) { 
+      /* empty */
+
   }
 };
 
@@ -105,15 +108,16 @@ const notifyAuthorOfAcknowledgment = async (employeeId: number, authorId: number
         referenceId: memoId 
       });
     }
-  } catch (error) { 
-    console.error('Notification error:', error); 
+  } catch (_error) { 
+      /* empty */
+
   }
 };
 
 export const getAllMemos = async (req: Request, res: Response): Promise<void> => {
   try {
-    const memo_type = (req.query.memoType || req.query.memo_type) as string;
-    const employee_id = (req.query.employeeId || req.query.employee_id) as string;
+    const memoTypeInput = (req.query.memoType || req.query.memo_type) as string;
+    const employeeIdInput = (req.query.employeeId || req.query.employee_id) as string;
     const { status, search, page = '1', limit = '20' } = req.query;
     const offset = (Number(page) - 1) * Number(limit);
     
@@ -123,9 +127,9 @@ export const getAllMemos = async (req: Request, res: Response): Promise<void> =>
     const department = alias(departments, 'department');
 
     const conditions = [];
-    if (memo_type && memo_type !== 'all') conditions.push(eq(employeeMemos.memoType, memo_type as MemoType));
+    if (memoTypeInput && memoTypeInput !== 'all') conditions.push(eq(employeeMemos.memoType, memoTypeInput as MemoType));
     if (status && status !== 'all') conditions.push(eq(employeeMemos.status, status as MemoStatus));
-    if (employee_id && employee_id !== 'all') conditions.push(eq(employeeMemos.employeeId, Number(employee_id)));
+    if (employeeIdInput && employeeIdInput !== 'all') conditions.push(eq(employeeMemos.employeeId, Number(employeeIdInput)));
     if (search) {
       const searchStr = `%${search}%`;
       conditions.push(or(
@@ -139,7 +143,7 @@ export const getAllMemos = async (req: Request, res: Response): Promise<void> =>
     const where = conditions.length > 0 ? and(...conditions) : undefined;
 
     // Count
-    const [countResult] = await db.select({ total: sql<number>`count(*)` })
+    const [countResult] = await db.select({ total: count() })
       .from(employeeMemos)
       .innerJoin(employee, eq(employeeMemos.employeeId, employee.id))
       .innerJoin(author, eq(employeeMemos.authorId, author.id))
@@ -164,16 +168,16 @@ export const getAllMemos = async (req: Request, res: Response): Promise<void> =>
       acknowledgedAt: employeeMemos.acknowledgedAt,
       createdAt: employeeMemos.createdAt,
       updatedAt: employeeMemos.updatedAt,
-      first_name: employee.firstName,
-      last_name: employee.lastName,
-      middle_name: employee.middleName,
+      firstName: employee.firstName,
+      lastName: employee.lastName,
+      middleName: employee.middleName,
       suffix: employee.suffix,
       employeeNumber: employee.employeeId,
       department: sql<string>`COALESCE(${department.name}, 'N/A')`,
-      author_first: author.firstName,
-      author_last: author.lastName,
-      author_middle: author.middleName,
-      author_suffix: author.suffix
+      authorFirstName: author.firstName,
+      authorLastName: author.lastName,
+      authorMiddleName: author.middleName,
+      authorSuffix: author.suffix
     })
     .from(employeeMemos)
     .leftJoin(employee, eq(employeeMemos.employeeId, employee.id))
@@ -186,22 +190,23 @@ export const getAllMemos = async (req: Request, res: Response): Promise<void> =>
 
     const formattedMemos = memos.map(m => ({
         ...m,
-        employeeName: formatFullName(m.last_name, m.first_name, m.middle_name, m.suffix),
-        authorName: formatFullName(m.author_last, m.author_first, m.author_middle, m.author_suffix)
+        employeeName: formatFullName(m.lastName, m.firstName, m.middleName, m.suffix),
+        authorName: formatFullName(m.authorLastName, m.authorFirstName, m.authorMiddleName, m.authorSuffix)
     }));
 
     res.json({ success: true, memos: formattedMemos, pagination: { total, page: Number(page), limit: Number(limit), totalPages } });
-  } catch (error) { 
-    console.error('Error fetching memos:', error); 
+  } catch (_error) { 
+
     res.status(500).json({ success: false, message: 'Failed to fetch memos' }); 
   }
 };
+
 
 export const getMyMemos = async (req: Request, res: Response): Promise<void> => {
   try {
     const authReq = req as AuthenticatedRequest; 
     // The database column `employeeMemos.employeeId` actually stores the surrogate integer `id` of the `authentication` row, NOT the string 'EMP-XX'
-    const employee_id = authReq.user.id;
+    const reqEmployeeId = authReq.user.id;
     const author = alias(authentication, 'author');
 
     const memos = await db.select({
@@ -218,26 +223,26 @@ export const getMyMemos = async (req: Request, res: Response): Promise<void> => 
       acknowledgmentRequired: employeeMemos.acknowledgmentRequired,
       acknowledgedAt: employeeMemos.acknowledgedAt,
       createdAt: employeeMemos.createdAt,
-      author_first: author.firstName,
-      author_last: author.lastName,
-      author_middle: author.middleName,
-      author_suffix: author.suffix
+      authorFirstName: author.firstName,
+      authorLastName: author.lastName,
+      authorMiddleName: author.middleName,
+      authorSuffix: author.suffix
     })
     .from(employeeMemos)
     .innerJoin(author, eq(employeeMemos.authorId, author.id))
     .where(and(
-      eq(employeeMemos.employeeId, employee_id),
+      eq(employeeMemos.employeeId, reqEmployeeId),
       or(eq(employeeMemos.status, 'Sent'), eq(employeeMemos.status, 'Acknowledged'))
     ))
     .orderBy(desc(employeeMemos.createdAt));
 
     const formattedMemos = memos.map(m => ({
         ...m,
-        authorName: formatFullName(m.author_last, m.author_first, m.author_middle, m.author_suffix)
+        authorName: formatFullName(m.authorLastName, m.authorFirstName, m.authorMiddleName, m.authorSuffix)
     }));
 
     res.json({ success: true, memos: formattedMemos });
-  } catch (error) { 
+  } catch (_error) { 
     res.status(500).json({ success: false, message: 'Failed to fetch memos' }); 
   }
 };
@@ -263,17 +268,17 @@ export const getMemoById = async (req: Request, res: Response): Promise<void> =>
       acknowledgmentRequired: employeeMemos.acknowledgmentRequired,
       acknowledgedAt: employeeMemos.acknowledgedAt,
       createdAt: employeeMemos.createdAt,
-      first_name: employee.firstName,
-      last_name: employee.lastName,
-      middle_name: employee.middleName,
+      firstName: employee.firstName,
+      lastName: employee.lastName,
+      middleName: employee.middleName,
       suffix: employee.suffix,
       employeeNumber: employee.employeeId,
       employeeEmail: employee.email,
       department: department.name,
-      author_first: author.firstName,
-      author_last: author.lastName,
-      author_middle: author.middleName,
-      author_suffix: author.suffix
+      authorFirstName: author.firstName,
+      authorLastName: author.lastName,
+      authorMiddleName: author.middleName,
+      authorSuffix: author.suffix
     })
     .from(employeeMemos)
     .innerJoin(employee, eq(employeeMemos.employeeId, employee.id))
@@ -289,12 +294,13 @@ export const getMemoById = async (req: Request, res: Response): Promise<void> =>
     const m = result[0];
     const formattedMemo = {
         ...m,
-        employeeName: formatFullName(m.last_name, m.first_name, m.middle_name, m.suffix),
-        authorName: formatFullName(m.author_last, m.author_first, m.author_middle, m.author_suffix)
+        employeeName: formatFullName(m.lastName, m.firstName, m.middleName, m.suffix),
+        authorName: formatFullName(m.authorLastName, m.authorFirstName, m.authorMiddleName, m.authorSuffix)
     };
 
+
     res.json({ success: true, memo: formattedMemo });
-  } catch (error) { 
+  } catch (_error) { 
     res.status(500).json({ success: false, message: 'Failed to fetch memo' }); 
   }
 };
@@ -302,40 +308,41 @@ export const getMemoById = async (req: Request, res: Response): Promise<void> =>
 export const createMemo = async (req: Request, res: Response): Promise<void> => {
   try {
     const authReq = req as AuthenticatedRequest;
-    const { employee_id, memo_type, subject, content, priority = 'Normal', effective_date, acknowledgment_required = false, status = 'Draft' } = req.body;
-    const author_id = authReq.user.id; 
-    const memo_number = await generateMemoNumber();
+    const { employeeId, memoType, subject, content, priority = 'Normal', effectiveDate, acknowledgmentRequired = false, status = 'Draft' } = req.body as { employeeId: number; memoType: string; subject: string; content: string; priority?: string; effectiveDate?: string; acknowledgmentRequired?: boolean; status?: string };
+    const authorId = authReq.user.id; 
+    const memoNumber = await generateMemoNumber();
 
     const [result] = await db.insert(employeeMemos).values({
-      memoNumber: memo_number,
-      employeeId: employee_id,
-      authorId: author_id,
-      memoType: memo_type,
+      memoNumber: memoNumber,
+      employeeId: employeeId,
+      authorId: authorId,
+      memoType: memoType,
       subject,
       content,
       priority: priority as MemoPriority,
-      effectiveDate: effective_date || null,
-      acknowledgmentRequired: acknowledgment_required ? true : false,
+      effectiveDate: effectiveDate || null,
+      acknowledgmentRequired: acknowledgmentRequired ? true : false,
       status: status as MemoStatus
     });
 
     if (status === 'Sent') { 
-      const newStatus = getStatusFromMemoType(memo_type as MemoType); 
-      if (newStatus) await updateEmployeeStatus(employee_id, newStatus); 
-      await notifyEmployeeOfMemo(employee_id, author_id, memo_type, subject, result.insertId); 
+      const newStatus = getStatusFromMemoType(memoType as MemoType); 
+      if (newStatus) await updateEmployeeStatus(employeeId, newStatus); 
+      await notifyEmployeeOfMemo(employeeId, authorId, memoType, subject, result.insertId); 
     }
     
-    res.status(201).json({ success: true, message: 'Memo created successfully', memo: { id: result.insertId, memo_number } });
-  } catch (error) { 
-    console.error('Error creating memo:', error); 
+    res.status(201).json({ success: true, message: 'Memo created successfully', memo: { id: result.insertId, memoNumber } });
+  } catch (_error) { 
+
     res.status(500).json({ success: false, message: 'Failed to create memo' }); 
   }
 };
 
+
 export const updateMemo = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const { employee_id, memo_type, subject, content, priority, effective_date, acknowledgment_required, status } = req.body;
+    const { employeeId, memoType, subject, content, priority, effectiveDate, acknowledgmentRequired, status } = req.body as { employeeId?: number; memoType?: string; subject?: string; content?: string; priority?: string; effectiveDate?: string; acknowledgmentRequired?: boolean; status?: string };
 
     // Use a simpler approach than COALESCE logic if possible, or explicit check
     // We can conditionally build the update object
@@ -349,13 +356,13 @@ export const updateMemo = async (req: Request, res: Response): Promise<void> => 
     }
 
     const updates: Partial<typeof employeeMemos.$inferInsert> = {};
-    if (employee_id) updates.employeeId = employee_id;
-    if (memo_type) updates.memoType = memo_type as MemoType;
+    if (employeeId) updates.employeeId = employeeId;
+    if (memoType) updates.memoType = memoType as MemoType;
     if (subject) updates.subject = subject;
     if (content) updates.content = content;
     if (priority) updates.priority = priority as MemoPriority;
-    if (effective_date !== undefined) updates.effectiveDate = effective_date;
-    if (acknowledgment_required !== undefined) updates.acknowledgmentRequired = acknowledgment_required ? true : false;
+    if (effectiveDate !== undefined) updates.effectiveDate = effectiveDate;
+    if (acknowledgmentRequired !== undefined) updates.acknowledgmentRequired = acknowledgmentRequired ? true : false;
     if (status) updates.status = status as MemoStatus;
 
     await db.update(employeeMemos)
@@ -363,9 +370,9 @@ export const updateMemo = async (req: Request, res: Response): Promise<void> => 
       .where(eq(employeeMemos.id, Number(id)));
 
     if (status === 'Sent' && currentMemo.status !== 'Sent') {
-      const targetType = memo_type || currentMemo.memoType;
+      const targetType = memoType || currentMemo.memoType;
       const targetSubject = subject || currentMemo.subject;
-      const targetEmpId = employee_id || currentMemo.employeeId;
+      const targetEmpId = employeeId || currentMemo.employeeId;
       const targetAuthorId = currentMemo.authorId;
 
       const newStatus = getStatusFromMemoType(targetType);
@@ -374,17 +381,18 @@ export const updateMemo = async (req: Request, res: Response): Promise<void> => 
     }
 
     res.json({ success: true, message: 'Memo updated successfully' });
-  } catch (error) { 
+  } catch (_error) { 
     res.status(500).json({ success: false, message: 'Failed to update memo' }); 
   }
 };
+
 
 export const deleteMemo = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     await db.delete(employeeMemos).where(eq(employeeMemos.id, Number(id)));
     res.json({ success: true, message: 'Memo deleted successfully' });
-  } catch (error) { 
+  } catch (_error) { 
     res.status(500).json({ success: false, message: 'Failed to delete memo' }); 
   }
 };
@@ -393,12 +401,12 @@ export const acknowledgeMemo = async (req: Request, res: Response): Promise<void
   try {
     const { id } = req.params; 
     const authReq = req as AuthenticatedRequest; 
-    const employee_id = authReq.user.id;
+    const employeeId = authReq.user.id;
 
     const memo = await db.query.employeeMemos.findFirst({
       where: and(
         eq(employeeMemos.id, Number(id)),
-        eq(employeeMemos.employeeId, employee_id)
+        eq(employeeMemos.employeeId, employeeId)
       )
     });
 
@@ -418,10 +426,13 @@ export const acknowledgeMemo = async (req: Request, res: Response): Promise<void
       })
       .where(eq(employeeMemos.id, Number(id)));
 
-    await notifyAuthorOfAcknowledgment(employee_id, memo.authorId, memo.memoType, memo.subject, Number(id));
+    await notifyAuthorOfAcknowledgment(employeeId, memo.authorId, memo.memoType, memo.subject, Number(id));
     
     res.json({ success: true, message: 'Memo acknowledged successfully' });
-  } catch (error) { 
+  } catch (_error) { 
     res.status(500).json({ success: false, message: 'Failed to acknowledge memo' }); 
   }
 };
+
+
+

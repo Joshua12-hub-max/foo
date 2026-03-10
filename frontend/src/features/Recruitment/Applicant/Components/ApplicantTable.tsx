@@ -56,7 +56,7 @@ const ApplicantTable: React.FC<ApplicantTableProps> = ({
   };
 
   const hasScheduledInterview = (app: Applicant): boolean => {
-    return !!(app.interview_link && (app.stage === 'Initial Interview' || app.stage === 'Final Interview'));
+    return !!(app.interviewLink && (app.stage === 'Initial Interview' || app.stage === 'Final Interview'));
   };
 
   if (loading) return <TableSkeleton rows={10} cols={5} />;
@@ -83,7 +83,7 @@ const ApplicantTable: React.FC<ApplicantTableProps> = ({
                   <div className="flex items-center gap-3">
                     <div className="bg-gray-100 p-2 rounded-full text-gray-500 cursor-pointer hover:bg-green-50 hover:text-green-600 transition-colors" onClick={() => onViewDetails(app)}><User size={18} /></div>
                     <div className="cursor-pointer group" onClick={() => onViewDetails(app)}>
-                      <div className="font-medium text-gray-900 group-hover:text-green-700 transition-colors">{app.first_name} {app.last_name}</div>
+                      <div className="font-medium text-gray-900 group-hover:text-green-700 transition-colors">{app.firstName} {app.lastName}</div>
                       <div className="text-sm text-gray-500 group-hover:text-green-600/70 transition-colors">{app.email}</div>
                       <div className="mt-1">{getSourceBadge(app.source)}</div>
                     </div>
@@ -91,20 +91,20 @@ const ApplicantTable: React.FC<ApplicantTableProps> = ({
                 </td>
                 <td className="px-6 py-4">
                   <div className="text-sm font-medium text-gray-900">
-                    {app.job_id === null ? (
+                    {app.jobId === null || app.jobId === undefined ? (
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
                             General Application
                         </span>
                     ) : (
-                        app.job_title
+                        app.jobTitle
                     )}
                   </div>
-                  <div className="text-xs text-gray-500">{formatDate(app.created_at)}</div>
+                  <div className="text-xs text-gray-500">{formatDate(app.createdAt)}</div>
                 </td>
                 <td className="px-6 py-4">
-                  {app.interviewer_name ? (
+                  {app.interviewerName ? (
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-indigo-50 text-indigo-700 text-xs font-medium border border-indigo-100">
-                      <User size={12} /> {app.interviewer_name}
+                      <User size={12} /> {app.interviewerName}
                     </span>
                   ) : (
                     <span className="text-xs text-gray-400 italic">Unassigned</span>
@@ -113,9 +113,9 @@ const ApplicantTable: React.FC<ApplicantTableProps> = ({
                 <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
                          {/* Resume Link */}
-                         {app.resume_path ? (
+                         {app.resumePath ? (
                             <a 
-                                href={`http://localhost:5000/uploads/resumes/${app.resume_path}`} 
+                                href={`http://localhost:5000/uploads/resumes/${app.resumePath}`} 
                                 target="_blank" rel="noopener noreferrer"
                                 className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg"
                                 title="View Resume"
@@ -129,9 +129,9 @@ const ApplicantTable: React.FC<ApplicantTableProps> = ({
                          )}
 
                          {/* Eligibility Link */}
-                         {app.eligibility_path ? (
+                         {app.eligibilityPath ? (
                             <a 
-                                href={`http://localhost:5000/uploads/resumes/${app.eligibility_path}`} 
+                                href={`http://localhost:5000/uploads/resumes/${app.eligibilityPath}`} 
                                 target="_blank" rel="noopener noreferrer"
                                 className="p-1.5 text-amber-600 hover:bg-amber-50 rounded-lg"
                                 title="View Eligibility Certificate"
@@ -162,7 +162,7 @@ const ApplicantTable: React.FC<ApplicantTableProps> = ({
                 <td className="px-6 py-4 text-center">
                     <div className="flex justify-center gap-2">
                          {/* Assign Interviewer Button */}
-                        {!app.interviewer_name && (
+                        {!app.interviewerName && (
                             <button 
                                 onClick={() => onAssign(app)}
                                 className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg tooltip"
@@ -173,7 +173,7 @@ const ApplicantTable: React.FC<ApplicantTableProps> = ({
                         )}
 
                          {/* Schedule Interview Button */}
-                         {app.interviewer_name && !['Hired', 'Rejected'].includes(app.stage) && (
+                         {app.interviewerName && !['Hired', 'Rejected'].includes(app.stage) && (
                             <button 
                                 onClick={() => onSchedule(app)}
                                 className="p-1.5 text-purple-600 hover:bg-purple-50 rounded-lg"

@@ -3,7 +3,7 @@ import { ArrowLeft, Users, Search, UserPlus, UserPlus2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useUIStore } from '@/stores';
 import { useDepartmentDetails, DepartmentEmployeeTable, RemoveEmployeeModal, AddEmployeeToDepartment } from '@features/EmployeeManagement/Admin/Departments';
-import { Employee as GlobalEmployee } from '@/types';
+import { Employee as GlobalEmployee, Department } from '@/types';
 import Pagination from '@/components/CustomUI/Pagination';
 import RegistrationTypeModal from '@/components/Custom/EmployeeManagement/Admin/Modals/RegistrationTypeModal';
 
@@ -11,21 +11,7 @@ interface OutletContext {
   sidebarOpen?: boolean;
 }
 
-interface Department {
-  id: number;
-  name: string;
-  description?: string;
-  headOfDepartment?: string;
-}
-
-interface Employee {
-  id: number;
-  first_name?: string;
-  last_name?: string;
-  email?: string;
-  job_title?: string | null;
-  position_title?: string | null;
-}
+/* Redundant local interfaces removed */
 
 const DepartmentDetail: React.FC = () => {
   const navigate = useNavigate();
@@ -61,11 +47,11 @@ const DepartmentDetail: React.FC = () => {
 
   const handleSelectRegistrationType = (isOld: boolean, duties: string) => {
     setIsRegModalOpen(false);
-    const params = new URLSearchParams({
-      duties,
-      type: isOld ? 'old' : 'hired',
-      dept: department?.name || ''
-    });
+    const params = new URLSearchParams();
+    params.set('duties', duties);
+    params.set('type', isOld ? 'old' : 'hired');
+    params.set('dept', department?.name || '');
+    
     navigate(`/admin-dashboard/register?${params.toString()}`);
   };
 

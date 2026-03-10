@@ -13,11 +13,11 @@ const DragOverlayCard: React.FC<DragOverlayCardProps> = memo(({ applicant }) => 
         <User size={14} className="text-blue-600" />
       </div>
       <h4 className="font-semibold text-gray-900 truncate">
-        {applicant.first_name} {applicant.last_name}
+        {applicant.firstName} {applicant.lastName}
       </h4>
     </div>
     <div className="mt-2 text-xs text-gray-500">
-      {applicant.job_title || 'General Application'}
+      {applicant.jobTitle || 'General Application'}
     </div>
   </div>
 ));

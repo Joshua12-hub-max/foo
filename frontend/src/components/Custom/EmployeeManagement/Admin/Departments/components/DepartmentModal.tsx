@@ -33,8 +33,8 @@ const DepartmentModal: React.FC<DepartmentModalProps> = ({ isOpen, onClose, onSu
     defaultValues: {
       name: '',
       description: '',
-      head_of_department: '',
-      parent_department_id: '',
+      headOfDepartment: '',
+      parentDepartmentId: '',
       location: '',
       budget: 0,
     },
@@ -45,8 +45,8 @@ const DepartmentModal: React.FC<DepartmentModalProps> = ({ isOpen, onClose, onSu
       reset({
         name: initialData.name || '',
         description: initialData.description || '',
-        head_of_department: initialData.head_of_department || '',
-        parent_department_id: initialData.parent_department_id || '',
+        headOfDepartment: initialData.headOfDepartment || '',
+        parentDepartmentId: initialData.parentDepartmentId || '',
         location: initialData.location || '',
         budget: Number(initialData.budget) || 0,
       });
@@ -54,8 +54,8 @@ const DepartmentModal: React.FC<DepartmentModalProps> = ({ isOpen, onClose, onSu
       reset({
         name: '',
         description: '',
-        head_of_department: '',
-        parent_department_id: '',
+        headOfDepartment: '',
+        parentDepartmentId: '',
         location: '',
         budget: 0,
       });
@@ -110,7 +110,7 @@ const DepartmentModal: React.FC<DepartmentModalProps> = ({ isOpen, onClose, onSu
                   <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                   <input
                     type="text"
-                    {...register('head_of_department')}
+                    {...register('headOfDepartment')}
                     className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
                     placeholder="e.g. John Doe"
                   />
@@ -123,7 +123,7 @@ const DepartmentModal: React.FC<DepartmentModalProps> = ({ isOpen, onClose, onSu
                 <div className="relative">
                   <FolderTree className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                   <select
-                    {...register('parent_department_id')}
+                    {...register('parentDepartmentId')}
                     className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none bg-white appearance-none"
                   >
                     <option value="">None (Top Level)</option>

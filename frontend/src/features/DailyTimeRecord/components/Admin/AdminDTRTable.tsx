@@ -145,18 +145,7 @@ export const AdminDTRTable: React.FC<AdminDTRTableProps> = ({
                     </td>
                   </tr>
                 ))}
-                {/* Summary Row */}
-                {totals && (
-                  <tr className="bg-gray-100 font-bold border-t-2 border-gray-300">
-                    <td colSpan={7} className="px-6 py-4 text-right text-gray-700 uppercase tracking-wider">
-                      Totals for filtered results:
-                    </td>
-                    <td className="px-6 py-4 text-center text-red-700">{totals.lateMinutes}m</td>
-                    <td className="px-6 py-4 text-center text-orange-700">{totals.undertimeMinutes}m</td>
-                    <td className="px-6 py-4 text-center text-gray-900">{totals.hoursWorked}h</td>
-                    <td className="bg-gray-100"></td>
-                  </tr>
-                )}
+                {/* Summary Row removed as per request */}
               </>
             ) : (
               <tr>

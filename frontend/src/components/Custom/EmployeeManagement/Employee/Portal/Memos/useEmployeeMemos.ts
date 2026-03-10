@@ -10,15 +10,15 @@ import { fetchMyMemos, acknowledgeMemo } from "@api";
 
 export interface Memo {
   id: number;
-  memo_number: string;
-  memo_type: string;
+  memoNumber: string;
+  memoType: string;
   subject: string;
   content: string;
   priority: string;
   status: string;
-  created_at: string;
-  acknowledged_at?: string;
-  acknowledgment_required?: boolean;
+  createdAt: string;
+  acknowledgedAt?: string;
+  acknowledgmentRequired?: boolean;
 }
 
 export interface UseEmployeeMemosReturn {
@@ -81,7 +81,7 @@ export const useEmployeeMemos = (): UseEmployeeMemosReturn => {
 
   // Handle acknowledgment - memoized
   const handleAcknowledge = useCallback(async () => {
-    if (!selectedMemo || selectedMemo.acknowledged_at) return;
+    if (!selectedMemo || selectedMemo.acknowledgedAt) return;
 
     try {
       setAcknowledging(true);

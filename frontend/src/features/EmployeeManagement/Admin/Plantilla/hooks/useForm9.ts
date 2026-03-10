@@ -9,10 +9,10 @@ import toast from 'react-hot-toast';
 interface Form9ApiResponse {
   success: boolean;
   data: Array<{
-    item_number: string;
-    position_title: string;
-    salary_grade: number;
-    monthly_salary: string;
+    itemNumber: string;
+    positionTitle: string;
+    salaryGrade: number;
+    monthlySalary: string;
     education: string | null;
     training: number | null;
     experience: number | null;
@@ -40,7 +40,7 @@ export const useForm9 = () => {
     queryKey: ['form9-vacant-positions'],
     queryFn: async () => {
       try {
-        const response = await plantillaApi.getPositions({ is_vacant: true });
+        const response = await plantillaApi.getPositions({ isVacant: true });
         return response.data?.positions || [];
       } catch (error) {
         console.error('Failed to fetch vacant positions:', error);
@@ -71,11 +71,11 @@ export const useForm9 = () => {
   const transformPositionsToForm9 = useCallback((positions: Position[]): Form9VacantPosition[] => {
     return positions.map((pos, index) => ({
       no: index + 1,
-      positionTitle: pos.position_title || '',
-      plantillaItemNo: pos.item_number || '',
-      salaryGrade: pos.salary_grade?.toString() || '',
-      monthlySalary: pos.monthly_salary
-        ? parseFloat(pos.monthly_salary.toString()).toLocaleString('en-PH', { minimumFractionDigits: 2 })
+      positionTitle: pos.positionTitle || '',
+      plantillaItemNo: pos.itemNumber || '',
+      salaryGrade: pos.salaryGrade?.toString() || '',
+      monthlySalary: pos.monthlySalary
+        ? parseFloat(pos.monthlySalary.toString()).toLocaleString('en-PH', { minimumFractionDigits: 2 })
         : '',
       education: '',
       training: 'None required',
@@ -96,7 +96,7 @@ export const useForm9 = () => {
         const reportData = form9DataQuery.data.data;
         const mergedPositions = transformedPositions.map(pos => {
           const matchingReport = reportData.find(
-            r => r.item_number === pos.plantillaItemNo
+            r => r.itemNumber === pos.plantillaItemNo
           );
           if (matchingReport) {
             return {

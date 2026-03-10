@@ -36,43 +36,43 @@ export interface PaginationResult {
 
 export interface AdminDTRApiResponse {
   id?: string | number;
-  record_id?: string | number;
-  employee_id?: string | number;
-  employee_name?: string;
-  first_name?: string;
-  last_name?: string;
+  recordId?: string | number;
+  employeeId?: string | number;
+  employeeName?: string;
+  firstName?: string;
+  lastName?: string;
   department?: string;
   date?: string;
-  time_in?: string | null;
-  time_out?: string | null;
-  hours_worked?: string | number;
+  timeIn?: string | null;
+  timeOut?: string | null;
+  hoursWorked?: string | number;
   status?: string;
   remarks?: string;
-  created_at?: string | null;
+  createdAt?: string | null;
 }
 
 export interface DTRRecordUpdate {
   status: string;
-  late_minutes: number;
-  undertime_minutes: number;
-  time_in?: string | null;
-  time_out?: string | null;
+  lateMinutes: number;
+  undertimeMinutes: number;
+  timeIn?: string | null;
+  timeOut?: string | null;
 }
 
 export const mapDTRData = (apiData: AdminDTRApiResponse[]): DTRRecord[] => {
   return apiData.map(item => ({
-    id: item.id ?? item.record_id ?? '',
-    employeeId: item.employee_id ?? '',
-    name: item.employee_name || `${item.first_name ?? ''} ${item.last_name ?? ''}`.trim() || 'N/A',
+    id: item.id ?? item.recordId ?? '',
+    employeeId: item.employeeId ?? '',
+    name: item.employeeName || `${item.firstName ?? ''} ${item.lastName ?? ''}`.trim() || 'N/A',
     department: item.department || 'N/A',
     date: item.date ?? '',
     rawDate: item.date ?? '',
-    timeIn: item.time_in || 'N/A',
-    timeOut: item.time_out || 'N/A',
-    hoursWorked: item.hours_worked ?? '0',
+    timeIn: item.timeIn || 'N/A',
+    timeOut: item.timeOut || 'N/A',
+    hoursWorked: item.hoursWorked ?? '0',
     status: item.status || 'Unknown',
     remarks: item.remarks || '-',
-    createdAt: item.created_at ?? undefined
+    createdAt: item.createdAt ?? undefined
   }));
 };
 

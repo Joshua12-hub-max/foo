@@ -6,24 +6,23 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-// @ts-ignore
-import { fetchDepartmentById, fetchDepartmentEmployees, removeEmployeeFromDepartment } from '@api/departmentApi';
+import { departmentApi } from '@/api/departmentApi';
 
 export interface Department {
   id: number;
   name: string;
   description?: string | null;
   headOfDepartment?: string;
-  employee_count?: number;
+  employeeCount?: number;
 }
 
 export interface Employee {
   id: number;
-  first_name?: string;
-  last_name?: string;
+  firstName?: string;
+  lastName?: string;
   email?: string;
-  job_title?: string | null;
-  position_title?: string | null;
+  jobTitle?: string | null;
+  positionTitle?: string | null;
 }
 
 export interface UseDepartmentDetailReturn {
@@ -68,13 +67,12 @@ export const useDepartmentDetail = (): UseDepartmentDetailReturn => {
       setLoading(true);
       if (!id) return;
       
-      const [deptData, empData] = await Promise.all([
-        fetchDepartmentById(id),
-        fetchDepartmentEmployees(id)
-      ]);
+      const deptData = await departmentApi.getDepartmentById(id);
       
-      if (deptData.success && deptData.department) setDepartment(deptData.department);
-      if (empData.success) setEmployees(empData.employees || []);
+      if (deptData.success && deptData.department) {
+        setDepartment(deptData.department as unknown as Department);
+        setEmployees((deptData.employees as unknown as Employee[]) || []);
+      }
     } catch (err) {
       // Silently handle
     } finally {
@@ -104,7 +102,7 @@ export const useDepartmentDetail = (): UseDepartmentDetailReturn => {
     try {
       setIsProcessing(true);
       if (!id) return;
-      const result = await removeEmployeeFromDepartment(id, employeeId);
+      const result = await departmentApi.removeEmployeeFromDepartment(id, employeeId);
       if (result.success) {
         await loadData();
       }
@@ -144,11 +142,11 @@ export const useDepartmentDetail = (): UseDepartmentDetailReturn => {
   // Filtered employees - memoized with useMemo
   const filteredEmployees = useMemo(() => {
     return employees.filter(emp => 
-      emp.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      emp.last_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      emp.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      emp.lastName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       emp.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (emp.job_title && emp.job_title.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (emp.position_title && emp.position_title.toLowerCase().includes(searchTerm.toLowerCase()))
+      (emp.jobTitle && emp.jobTitle.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (emp.positionTitle && emp.positionTitle.toLowerCase().includes(searchTerm.toLowerCase()))
     );
   }, [employees, searchTerm]);
 

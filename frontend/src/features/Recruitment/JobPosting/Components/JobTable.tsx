@@ -68,18 +68,18 @@ const JobTable: React.FC<JobTableProps> = ({
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap font-medium">{job.title}</td>
                 <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">{job.department}</td>
-                <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">{job.employment_type || 'Full-time'}</td>
+                <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">{job.employmentType || 'Full-time'}</td>
                 <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">
-                    {job.application_email ? (
-                    <a href={`mailto:${job.application_email}`} onClick={e => e.stopPropagation()} className="text-blue-600 hover:underline">{job.application_email}</a>
+                    {job.applicationEmail ? (
+                    <a href={`mailto:${job.applicationEmail}`} onClick={e => e.stopPropagation()} className="text-blue-600 hover:underline">{job.applicationEmail}</a>
                     ) : (
                     <span className="text-gray-400">-</span>
                     )}
                 </td>
                 <td className="px-6 py-4 text-sm whitespace-nowrap">
-                    {job.posted_at ? (
+                    {job.postedAt ? (
                     <div className="flex flex-col gap-0.5">
-                        <span className="text-green-600 font-medium">{formatDate(job.posted_at)}</span>
+                        <span className="text-green-600 font-medium">{formatDate(job.postedAt)}</span>
                     </div>
                     ) : (
                     <span className="text-gray-400 italic">Not posted</span>

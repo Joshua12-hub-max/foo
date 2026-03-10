@@ -1,7 +1,7 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "88367601-bf5a-45e2-a7f5-60a5902d778e",
+  "id": "2993f104-55b3-48a1-8edf-b78844e0b581",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "budget_allocation": {
@@ -581,11 +581,11 @@
         },
         "is_vacant": {
           "name": "is_vacant",
-          "type": "tinyint",
+          "type": "boolean",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false,
-          "default": 1
+          "default": true
         },
         "created_at": {
           "name": "created_at",
@@ -677,11 +677,11 @@
         },
         "is_coterminous": {
           "name": "is_coterminous",
-          "type": "tinyint",
+          "type": "boolean",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false,
-          "default": 0
+          "default": false
         },
         "status": {
           "name": "status",
@@ -966,11 +966,11 @@
         },
         "is_active": {
           "name": "is_active",
-          "type": "tinyint",
+          "type": "boolean",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false,
-          "default": 1
+          "default": true
         },
         "created_at": {
           "name": "created_at",
@@ -1048,6 +1048,13 @@
           "type": "varchar(100)",
           "primaryKey": false,
           "notNull": true,
+          "autoincrement": false
+        },
+        "middle_name": {
+          "name": "middle_name",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false,
           "autoincrement": false
         },
         "suffix": {
@@ -1259,6 +1266,13 @@
           "notNull": false,
           "autoincrement": false
         },
+        "height_m": {
+          "name": "height_m",
+          "type": "decimal(4,2)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "weight_kg": {
           "name": "weight_kg",
           "type": "decimal(5,2)",
@@ -1308,9 +1322,23 @@
           "notNull": false,
           "autoincrement": false
         },
+        "philsys_id": {
+          "name": "philsys_id",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "philhealth_number": {
           "name": "philhealth_number",
           "type": "varchar(20)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "philhealth_no": {
+          "name": "philhealth_no",
+          "type": "varchar(50)",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
@@ -1322,6 +1350,13 @@
           "notNull": false,
           "autoincrement": false
         },
+        "pagibig_id_no": {
+          "name": "pagibig_id_no",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "tin_number": {
           "name": "tin_number",
           "type": "varchar(20)",
@@ -1329,9 +1364,30 @@
           "notNull": false,
           "autoincrement": false
         },
+        "tin_no": {
+          "name": "tin_no",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "gsis_number": {
           "name": "gsis_number",
           "type": "varchar(20)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "gsis_id_no": {
+          "name": "gsis_id_no",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "agency_employee_no": {
+          "name": "agency_employee_no",
+          "type": "varchar(50)",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
@@ -1400,13 +1456,6 @@
           "notNull": false,
           "autoincrement": false
         },
-        "supervisor": {
-          "name": "supervisor",
-          "type": "varchar(100)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
         "refresh_token": {
           "name": "refresh_token",
           "type": "text",
@@ -1471,6 +1520,27 @@
           "notNull": false,
           "autoincrement": false
         },
+        "school_name": {
+          "name": "school_name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "course": {
+          "name": "course",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "year_graduated": {
+          "name": "year_graduated",
+          "type": "varchar(10)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "years_of_experience": {
           "name": "years_of_experience",
           "type": "varchar(50)",
@@ -1502,55 +1572,6 @@
         "date_of_birth": {
           "name": "date_of_birth",
           "type": "date",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "height_m": {
-          "name": "height_m",
-          "type": "decimal(4,2)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "gsis_id_no": {
-          "name": "gsis_id_no",
-          "type": "varchar(50)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "pagibig_id_no": {
-          "name": "pagibig_id_no",
-          "type": "varchar(50)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "philhealth_no": {
-          "name": "philhealth_no",
-          "type": "varchar(50)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "philsys_id": {
-          "name": "philsys_id",
-          "type": "varchar(50)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "tin_no": {
-          "name": "tin_no",
-          "type": "varchar(50)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "agency_employee_no": {
-          "name": "agency_employee_no",
-          "type": "varchar(50)",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
@@ -1604,13 +1625,6 @@
           "notNull": false,
           "autoincrement": false
         },
-        "middle_name": {
-          "name": "middle_name",
-          "type": "varchar(100)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
         "facebook_url": {
           "name": "facebook_url",
           "type": "varchar(255)",
@@ -1627,6 +1641,49 @@
         },
         "twitter_handle": {
           "name": "twitter_handle",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "religion": {
+          "name": "religion",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "citizenship": {
+          "name": "citizenship",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "'Filipino'"
+        },
+        "citizenship_type": {
+          "name": "citizenship_type",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "sss_no": {
+          "name": "sss_no",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "sss_number": {
+          "name": "sss_number",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "barangay": {
+          "name": "barangay",
           "type": "varchar(100)",
           "primaryKey": false,
           "notNull": false,
@@ -1740,12 +1797,6 @@
           "columns": [
             "google_id"
           ]
-        },
-        "rfid_card_uid": {
-          "name": "rfid_card_uid",
-          "columns": [
-            "rfid_card_uid"
-          ]
         }
       },
       "checkConstraint": {}
@@ -1767,8 +1818,8 @@
           "notNull": true,
           "autoincrement": false
         },
-        "refresh_token": {
-          "name": "refresh_token",
+        "refreshToken": {
+          "name": "refreshToken",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
@@ -1895,8 +1946,8 @@
           "notNull": false,
           "autoincrement": false
         },
-        "refresh_token": {
-          "name": "refresh_token",
+        "refreshToken": {
+          "name": "refreshToken",
           "type": "text",
           "primaryKey": false,
           "notNull": false,
@@ -2782,11 +2833,11 @@
         },
         "is_with_pay": {
           "name": "is_with_pay",
-          "type": "tinyint",
+          "type": "boolean",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
-          "default": 1
+          "default": true
         },
         "actual_payment_status": {
           "name": "actual_payment_status",
@@ -3426,11 +3477,11 @@
         },
         "with_pay": {
           "name": "with_pay",
-          "type": "tinyint",
+          "type": "boolean",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false,
-          "default": 0
+          "default": false
         }
       },
       "indexes": {},
@@ -3630,7 +3681,7 @@
         },
         "sender_type": {
           "name": "sender_type",
-          "type": "enum('Applicant','Admin')",
+          "type": "enum('Applicant','Administrator')",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
@@ -3651,11 +3702,11 @@
         },
         "is_read": {
           "name": "is_read",
-          "type": "tinyint",
+          "type": "boolean",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false,
-          "default": 0
+          "default": false
         },
         "created_at": {
           "name": "created_at",
@@ -4151,6 +4202,27 @@
           "notNull": false,
           "autoincrement": false
         },
+        "school_name": {
+          "name": "school_name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "course": {
+          "name": "course",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "year_graduated": {
+          "name": "year_graduated",
+          "type": "varchar(10)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "experience": {
           "name": "experience",
           "type": "text",
@@ -4174,11 +4246,11 @@
         },
         "is_meycauayan_resident": {
           "name": "is_meycauayan_resident",
-          "type": "tinyint",
+          "type": "boolean",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false,
-          "default": 0
+          "default": false
         }
       },
       "indexes": {
@@ -4420,27 +4492,27 @@
         },
         "require_civil_service": {
           "name": "require_civil_service",
-          "type": "tinyint",
+          "type": "boolean",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false,
-          "default": 0
+          "default": false
         },
         "require_government_ids": {
           "name": "require_government_ids",
-          "type": "tinyint",
+          "type": "boolean",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false,
-          "default": 0
+          "default": false
         },
         "require_education_experience": {
           "name": "require_education_experience",
-          "type": "tinyint",
+          "type": "boolean",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false,
-          "default": 0
+          "default": false
         }
       },
       "indexes": {},
@@ -4755,11 +4827,11 @@
         },
         "is_active": {
           "name": "is_active",
-          "type": "tinyint",
+          "type": "boolean",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false,
-          "default": 1
+          "default": true
         }
       },
       "indexes": {},
@@ -4954,8 +5026,8 @@
           "notNull": true,
           "autoincrement": false
         },
-        "supervisor_id": {
-          "name": "supervisor_id",
+        "reviewer_id": {
+          "name": "reviewer_id",
           "type": "int",
           "primaryKey": false,
           "notNull": true,
@@ -5021,10 +5093,10 @@
           ],
           "isUnique": false
         },
-        "supervisor_id": {
-          "name": "supervisor_id",
+        "reviewer_id": {
+          "name": "reviewer_id",
           "columns": [
-            "supervisor_id"
+            "reviewer_id"
           ],
           "isUnique": false
         }
@@ -5043,12 +5115,12 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "performance_improvement_plans_supervisor_id_authentication_id_fk": {
-          "name": "performance_improvement_plans_supervisor_id_authentication_id_fk",
+        "performance_improvement_plans_reviewer_id_authentication_id_fk": {
+          "name": "performance_improvement_plans_reviewer_id_authentication_id_fk",
           "tableFrom": "performance_improvement_plans",
           "tableTo": "authentication",
           "columnsFrom": [
-            "supervisor_id"
+            "reviewer_id"
           ],
           "columnsTo": [
             "id"
@@ -5139,11 +5211,11 @@
         },
         "is_active": {
           "name": "is_active",
-          "type": "tinyint",
+          "type": "boolean",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false,
-          "default": 1
+          "default": true
         },
         "updated_at": {
           "name": "updated_at",
@@ -5424,8 +5496,8 @@
           "notNull": false,
           "autoincrement": false
         },
-        "supervisor_rating_score": {
-          "name": "supervisor_rating_score",
+        "reviewer_rating_score": {
+          "name": "reviewer_rating_score",
           "type": "decimal(3,2)",
           "primaryKey": false,
           "notNull": false,
@@ -5453,8 +5525,8 @@
           "notNull": false,
           "autoincrement": false
         },
-        "supervisor_remarks": {
-          "name": "supervisor_remarks",
+        "reviewer_remarks": {
+          "name": "reviewer_remarks",
           "type": "text",
           "primaryKey": false,
           "notNull": false,
@@ -5497,11 +5569,11 @@
         },
         "disagreed": {
           "name": "disagreed",
-          "type": "tinyint",
+          "type": "boolean",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false,
-          "default": 0
+          "default": false
         },
         "rating_period": {
           "name": "rating_period",
@@ -5537,11 +5609,11 @@
         },
         "is_self_assessment": {
           "name": "is_self_assessment",
-          "type": "tinyint",
+          "type": "boolean",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false,
-          "default": 0
+          "default": false
         },
         "cycle_id": {
           "name": "cycle_id",
@@ -5600,19 +5672,6 @@
             "id"
           ],
           "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "performance_reviews_review_cycle_id_performance_review_cycles_id_fk": {
-          "name": "performance_reviews_review_cycle_id_performance_review_cycles_id_fk",
-          "tableFrom": "performance_reviews",
-          "tableTo": "performance_review_cycles",
-          "columnsFrom": [
-            "review_cycle_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
           "onUpdate": "no action"
         }
       },
@@ -5948,11 +6007,11 @@
         },
         "is_current": {
           "name": "is_current",
-          "type": "tinyint",
+          "type": "boolean",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false,
-          "default": 0
+          "default": false
         },
         "description": {
           "name": "description",
@@ -6081,11 +6140,11 @@
         },
         "is_primary": {
           "name": "is_primary",
-          "type": "tinyint",
+          "type": "boolean",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false,
-          "default": 0
+          "default": false
         },
         "created_at": {
           "name": "created_at",
@@ -6178,11 +6237,11 @@
         },
         "is_current": {
           "name": "is_current",
-          "type": "tinyint",
+          "type": "boolean",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false,
-          "default": 0
+          "default": false
         },
         "description": {
           "name": "description",
@@ -6313,11 +6372,11 @@
         },
         "acknowledgment_required": {
           "name": "acknowledgment_required",
-          "type": "tinyint",
+          "type": "boolean",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false,
-          "default": 0
+          "default": false
         },
         "acknowledged_at": {
           "name": "acknowledged_at",
@@ -6469,11 +6528,11 @@
         },
         "is_private": {
           "name": "is_private",
-          "type": "tinyint",
+          "type": "boolean",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false,
-          "default": 1
+          "default": true
         },
         "created_at": {
           "name": "created_at",
@@ -7420,11 +7479,11 @@
         },
         "is_government": {
           "name": "is_government",
-          "type": "tinyint",
+          "type": "boolean",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false,
-          "default": 0
+          "default": false
         },
         "created_at": {
           "name": "created_at",
@@ -7524,11 +7583,11 @@
         },
         "is_with_pay": {
           "name": "is_with_pay",
-          "type": "tinyint",
+          "type": "boolean",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false,
-          "default": 1
+          "default": true
         },
         "remarks": {
           "name": "remarks",
@@ -7742,11 +7801,11 @@
         },
         "is_active": {
           "name": "is_active",
-          "type": "tinyint",
+          "type": "boolean",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false,
-          "default": 0
+          "default": false
         },
         "created_at": {
           "name": "created_at",

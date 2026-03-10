@@ -5,9 +5,9 @@ import api from '@api/axios';
 
 interface Employee {
   id: number;
-  first_name: string;
-  last_name: string;
-  contract_end_date: string;
+  firstName: string;
+  lastName: string;
+  contractEndDate: string;
   department: string;
 }
 
@@ -26,8 +26,8 @@ const ExpiringContractsWidget: React.FC = () => {
             const allEmployees: Employee[] = response.data.employees;
             const now = new Date();
             const expiring = allEmployees.filter(emp => {
-                if (!emp.contract_end_date) return false;
-                const endDate = parseISO(emp.contract_end_date);
+                if (!emp.contractEndDate) return false;
+                const endDate = parseISO(emp.contractEndDate);
                 const daysLeft = differenceInDays(endDate, now);
                 return daysLeft >= 0 && daysLeft <= 30;
             });
@@ -57,12 +57,12 @@ const ExpiringContractsWidget: React.FC = () => {
         {employees.map(emp => (
           <div key={emp.id} className="p-3 hover:bg-orange-50/50 rounded-lg transition-colors flex justify-between items-center group">
              <div>
-                <p className="font-medium text-gray-900">{emp.first_name} {emp.last_name}</p>
+                <p className="font-medium text-gray-900">{emp.firstName} {emp.lastName}</p>
                 <p className="text-xs text-gray-500">{emp.department}</p>
              </div>
              <div className="text-right">
                 <span className="text-xs font-bold text-orange-600 bg-orange-100 px-2 py-1 rounded-full">
-                    {differenceInDays(parseISO(emp.contract_end_date), new Date())} days left
+                    {differenceInDays(parseISO(emp.contractEndDate), new Date())} days left
                 </span>
              </div>
           </div>

@@ -5,6 +5,11 @@ import AuthLayout from "@components/Custom/Auth/AuthLayout";
 import OTPInput from "./OTPInput";
 import { verifyRegistrationOTP, resendVerification } from "@/Service/Auth";
 import axios from "axios";
+import { useAuth } from "@/hooks/useAuth";
+
+interface LocationState {
+  email?: string;
+}
 
 export default function VerifyAccount() {
   const location = useLocation();
@@ -15,13 +20,15 @@ export default function VerifyAccount() {
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
   const [resendTimer, setResendTimer] = useState(0);
+  const [verifiedData, setVerifiedData] = useState<{ email: string; employeeId: string; fullName: string } | null>(null);
 
   useEffect(() => {
     // Get email from navigation state or URL param
-    const stateEmail = location.state?.email;
+    const state = location.state as LocationState;
+    const stateEmail = state?.email;
     const searchParams = new URLSearchParams(location.search);
     const urlEmail = searchParams.get('email');
-    
+
     if (stateEmail) setEmail(stateEmail);
     else if (urlEmail) setEmail(urlEmail!);
     else {
@@ -52,11 +59,16 @@ export default function VerifyAccount() {
     setSuccess("");
 
     try {
-        await verifyRegistrationOTP({ email, otp });
-        setSuccess("Account verified successfully! Redirecting to login...");
-        setTimeout(() => {
-            navigate("/login", { replace: true });
-        }, 2000);
+        const response = await verifyRegistrationOTP({ email, otp });
+        const user = response.data;
+        
+        setSuccess("Account verified successfully!");
+        setVerifiedData({
+            email: email,
+            employeeId: user?.employeeId || "Pending",
+            fullName: `${user?.firstName || ''} ${user?.lastName || ''}`.trim()
+        });
+
     } catch (err: unknown) {
         console.error("Verification error:", err);
         const msg = axios.isAxiosError(err) ? err.response?.data?.message : undefined;
@@ -78,6 +90,51 @@ export default function VerifyAccount() {
           setError("Failed to resend code. Please try again.");
       }
   };
+
+  if (verifiedData) {
+    return (
+      <AuthLayout title="Registration Complete">
+        <div className="space-y-8 text-center animate-in zoom-in duration-300">
+          <div className="mx-auto w-20 h-20 bg-green-100 rounded-full flex items-center justify-center">
+            <ShieldCheck className="h-10 w-10 text-green-600" />
+          </div>
+          
+          <div className="space-y-2">
+            <h3 className="text-xl font-black text-gray-900">You're all set!</h3>
+            <p className="text-sm text-gray-500 font-medium">Your account has been successfully verified and activated.</p>
+          </div>
+
+          <div className="bg-gray-50 rounded-2xl p-6 border border-gray-100 space-y-4 text-left">
+            <div className="flex justify-between items-center border-b border-gray-200 pb-3">
+              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Employee ID</span>
+              <span className="text-sm font-bold text-gray-900 font-mono tracking-tighter">{verifiedData.employeeId}</span>
+            </div>
+            <div className="flex justify-between items-center border-b border-gray-200 pb-3">
+              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Full Name</span>
+              <span className="text-sm font-bold text-gray-900">{verifiedData.fullName}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Login Email</span>
+              <span className="text-sm font-bold text-gray-900">{verifiedData.email}</span>
+            </div>
+          </div>
+
+          <div className="space-y-4 pt-4">
+            <button
+              onClick={() => navigate("/login")}
+              className="w-full bg-slate-900 text-white py-4 rounded-xl font-black text-sm tracking-tight hover:bg-slate-800 transition shadow-lg shadow-slate-200 flex justify-center items-center gap-3 active:scale-95"
+            >
+              Go to Login
+              <ArrowRight size={18} />
+            </button>
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+              Admin will grant access to your portal soon
+            </p>
+          </div>
+        </div>
+      </AuthLayout>
+    );
+  }
 
   return (
     <AuthLayout title="Verify Your Account">

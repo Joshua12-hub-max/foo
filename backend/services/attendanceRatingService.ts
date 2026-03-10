@@ -58,7 +58,7 @@ export const calculateAttendanceScore = async (
   let hasMajor = false;
   let hasModerate = false;
   let hasMinor = false;
-  let memoCount = 0;
+  let _memoCount = 0;
 
   memos.forEach(memo => {
       if (memo.severity === 'major') hasMajor = true;

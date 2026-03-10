@@ -13,8 +13,8 @@ export default function EventListCard({ events, isLoading }: EventListCardProps)
   
   // Get upcoming events (sorted by date)
   const upcomingEvents = [...events]
-    .filter(e => new Date(e.start_date || e.date) >= new Date(new Date().setHours(0, 0, 0, 0)))
-    .sort((a, b) => new Date(a.start_date || a.date).getTime() - new Date(b.start_date || b.date).getTime())
+    .filter(e => new Date(e.startDate || e.date) >= new Date(new Date().setHours(0, 0, 0, 0)))
+    .sort((a, b) => new Date(a.startDate || a.date).getTime() - new Date(b.startDate || b.date).getTime())
     .slice(0, 3);
 
   return (
@@ -46,7 +46,7 @@ export default function EventListCard({ events, isLoading }: EventListCardProps)
                 {event.title}
               </p>
               <p className="text-[10px] text-gray-500">
-                {new Date(event.start_date || event.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                {new Date(event.startDate || event.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
               </p>
             </div>
           ))}

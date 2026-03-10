@@ -145,11 +145,11 @@ const ComplianceReportsDashboard: React.FC<ReportsDashboardProps> = memo(({ depa
                                     contactInfo: "123-4567"
                                },
                                positions: form9.data.data.map((p: Form9Row) => ({
-                                   no: Number(p.item_number),
-                                   positionTitle: p.position_title,
-                                   plantillaItemNo: p.item_number,
-                                   salaryGrade: String(p.salary_grade),
-                                   monthlySalary: String(p.monthly_salary),
+                                   no: Number(p.itemNumber),
+                                   positionTitle: p.positionTitle,
+                                   plantillaItemNo: p.itemNumber,
+                                   salaryGrade: String(p.salaryGrade),
+                                   monthlySalary: String(p.monthlySalary),
                                    education: p.education,
                                    training: String(p.training),
                                    experience: String(p.experience),
@@ -168,14 +168,14 @@ const ComplianceReportsDashboard: React.FC<ReportsDashboardProps> = memo(({ depa
                                  ...p,
                                  incumbent_name: p.incumbent_name ?? undefined,
                                  id: Math.random(),
-                                 department_id: 0,
+                                 departmentId: 0,
                                  education: '',
                                  training: '', 
                                  experience: '',
                                  eligibility: '',
                                  competency: '',
                                  incumbent_id: undefined,
-                                 created_at: '',
+                                 createdAt: '',
                                  updated_at: ''
                              }));
                             await generatePSIPOPExcel(positions, commonConfig);
@@ -212,11 +212,11 @@ const ComplianceReportsDashboard: React.FC<ReportsDashboardProps> = memo(({ depa
                                     contactInfo: "123-4567"
                                },
                                positions: form9.data.data.map((p: Form9Row) => ({
-                                   no: Number(p.item_number),
-                                   positionTitle: p.position_title,
-                                   plantillaItemNo: p.item_number,
-                                   salaryGrade: String(p.salary_grade),
-                                   monthlySalary: String(p.monthly_salary),
+                                   no: Number(p.itemNumber),
+                                   positionTitle: p.positionTitle,
+                                   plantillaItemNo: p.itemNumber,
+                                   salaryGrade: String(p.salaryGrade),
+                                   monthlySalary: String(p.monthlySalary),
                                    education: p.education,
                                    training: String(p.training),
                                    experience: String(p.experience),
@@ -234,14 +234,14 @@ const ComplianceReportsDashboard: React.FC<ReportsDashboardProps> = memo(({ depa
                                  ...p,
                                  incumbent_name: p.incumbent_name ?? undefined,
                                  id: Math.random(),
-                                 department_id: 0,
+                                 departmentId: 0,
                                  education: '',
                                  training: '', 
                                  experience: '',
                                  eligibility: '',
                                  competency: '',
                                  incumbent_id: undefined,
-                                 created_at: '',
+                                 createdAt: '',
                                  updated_at: ''
                              }));
                             generatePSIPOPPDF(positions, commonConfig);
@@ -279,10 +279,10 @@ const ComplianceReportsDashboard: React.FC<ReportsDashboardProps> = memo(({ depa
                     loading={loadingForm9}
                     headers={['Item No.', 'Position', 'SG', 'Salary', 'Education', 'Training', 'Experience', 'Eligibility']}
                     data={form9?.data.data.map(row => [
-                        row.item_number, 
-                        row.position_title, 
-                        row.salary_grade, 
-                        formatPHP(row.monthly_salary),
+                        row.itemNumber, 
+                        row.positionTitle, 
+                        row.salaryGrade, 
+                        formatPHP(row.monthlySalary),
                         row.education,
                         row.training === 0 ? 'None' : `${row.training} hrs`,
                         row.experience === 0 ? 'None' : `${row.experience} yrs`,
@@ -296,13 +296,13 @@ const ComplianceReportsDashboard: React.FC<ReportsDashboardProps> = memo(({ depa
                     loading={loadingPsipop}
                     headers={['Item No.', 'Position', 'SG', 'Salary', 'Department', 'Incumbent', 'Status']}
                     data={psipop?.data.data.map(row => [
-                        row.item_number, 
-                        row.position_title, 
-                        row.salary_grade, 
-                        formatPHP(row.monthly_salary),
+                        row.itemNumber, 
+                        row.positionTitle, 
+                        row.salaryGrade, 
+                        formatPHP(row.monthlySalary),
                         row.department,
                         row.incumbent_name || 'VACANT',
-                        row.is_vacant ? 'Vacant' : 'Filled'
+                        row.isVacant ? 'Vacant' : 'Filled'
                     ]) || []}
                 />
             )}

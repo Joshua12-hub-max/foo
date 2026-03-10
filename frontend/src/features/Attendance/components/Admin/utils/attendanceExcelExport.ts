@@ -11,8 +11,10 @@ interface ExportOptions {
  * Format date string for display
  */
 const formatDate = (dateStr: string): string => {
+  if (!dateStr || dateStr === '-') return '-';
   try {
     const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return dateStr;
     return date.toLocaleDateString('en-PH', { 
       year: 'numeric', 
       month: 'short', 
@@ -29,12 +31,10 @@ const formatDate = (dateStr: string): string => {
 const formatTime = (timeStr: string): string => {
   if (!timeStr || timeStr === '-' || timeStr === '' || timeStr === 'null') return '-';
   try {
-    // Backend returns Manila datetime strings like "2026-02-13 07:50:00"
     const date = new Date(timeStr);
     if (!isNaN(date.getTime())) {
       return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
     }
-    // Fallback: parse bare HH:MM or HH:MM:SS
     const parts = timeStr.split(':');
     if (parts.length >= 2) {
       const hours = parseInt(parts[0], 10);
@@ -54,8 +54,8 @@ const formatTime = (timeStr: string): string => {
  */
 const getEmployeeName = (record: AttendanceRecord): string => {
   if (record.name) return record.name;
-  if ('employee_name' in record && typeof record.employee_name === 'string') return record.employee_name;
-  return `Employee #${record.employeeId || record.id}`;
+  if (record.employeeName) return record.employeeName;
+  return `Employee #${record.employeeId}`;
 };
 
 /**

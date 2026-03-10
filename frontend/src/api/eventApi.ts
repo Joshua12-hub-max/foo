@@ -3,35 +3,15 @@ import { AxiosResponse } from 'axios';
 
 export const eventApi = {
     getEvents: async (): Promise<AxiosResponse> => {
-        try {
-            const response = await api.get('/event/all');
-            return response;
-        } catch (error) {
-            throw error;
-        }
+        return await api.get('/event/all');
     },
     createEvent: async (data: Record<string, unknown>): Promise<AxiosResponse> => {
-        try {
-            const response = await api.post('/event/create', data);
-            return response;
-        } catch (error) {
-            throw error;
-        }
+        return await api.post('/event/create', data);
     },
     updateEvent: async (id: string | number, data: Record<string, unknown>): Promise<AxiosResponse> => {
-        try {
-            const response = await api.put(`/event/${id}`, data);
-            return response;
-        } catch (error) {
-            throw error;
-        }
+        return await api.put(`/event/${id}`, data);
     },
     deleteEvent: async (id: string | number): Promise<AxiosResponse> => {
-        try {
-            const response = await api.delete(`/event/${id}`);
-            return response;
-        } catch (error) {
-            throw error;
-        }
+        return await api.delete(`/event/${id}`);
     }
 };

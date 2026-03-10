@@ -2,7 +2,7 @@ import { mysqlTable, varchar, int, date, timestamp, decimal, mysqlEnum, boolean,
 import { departments } from './hr.js';
 
 export const qualificationStandards = mysqlTable("qualification_standards", {
-	id: int().autoincrement().notNull(),
+	id: int("id").autoincrement().notNull(),
 	positionTitle: varchar("position_title", { length: 255 }).notNull(),
 	salaryGrade: int("salary_grade").notNull(),
 	educationRequirement: text("education_requirement").notNull(),
@@ -22,12 +22,12 @@ export const qualificationStandards = mysqlTable("qualification_standards", {
 ]);
 
 export const plantillaPositions = mysqlTable("plantilla_positions", {
-	id: int().autoincrement().notNull(),
+	id: int("id").autoincrement().notNull(),
 	itemNumber: varchar("item_number", { length: 50 }).notNull(),
 	positionTitle: varchar("position_title", { length: 100 }).notNull(),
 	salaryGrade: int("salary_grade").notNull(),
 	stepIncrement: int("step_increment").default(1),
-	department: varchar({ length: 100 }),
+	department: varchar("department", { length: 100 }),
 	departmentId: int("department_id").references(() => departments.id, { onDelete: "set null" } ),
 	isVacant: boolean("is_vacant").default(true),
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
@@ -43,7 +43,7 @@ export const plantillaPositions = mysqlTable("plantilla_positions", {
 	qualificationStandardsId: int("qualification_standards_id"),
 	budgetSource: varchar("budget_source", { length: 100 }).default('Regular'),
 	isCoterminous: boolean("is_coterminous").default(false),
-	status: mysqlEnum(['Active','Abolished','Frozen']).default('Active'),
+	status: mysqlEnum("status", ['Active','Abolished','Frozen']).default('Active'),
 	areaCode: varchar("area_code", { length: 50 }),
 	areaType: mysqlEnum("area_type", ['R','P','D','M','F','B']),
 	areaLevel: mysqlEnum("area_level", ['K','T','S','A']),
@@ -60,9 +60,9 @@ export const plantillaPositions = mysqlTable("plantilla_positions", {
 ]);
 
 export const plantillaAuditLog = mysqlTable("plantilla_audit_log", {
-	id: int().autoincrement().notNull(),
+	id: int("id").autoincrement().notNull(),
 	positionId: int("position_id").notNull(),
-	action: varchar({ length: 50 }).notNull(),
+	action: varchar("action", { length: 50 }).notNull(),
 	actorId: int("actor_id").notNull(),
 	oldValues: json("old_values"),
 	newValues: json("new_values"),
@@ -76,14 +76,14 @@ export const plantillaAuditLog = mysqlTable("plantilla_audit_log", {
 ]);
 
 export const plantillaPositionHistory = mysqlTable("plantilla_position_history", {
-	id: int().autoincrement().notNull(),
+	id: int("id").autoincrement().notNull(),
 	positionId: int("position_id").notNull(),
 	employeeId: int("employee_id").notNull(),
 	employeeName: varchar("employee_name", { length: 255 }),
 	positionTitle: varchar("position_title", { length: 100 }),
 	startDate: date("start_date", { mode: 'string' }).notNull(),
 	endDate: date("end_date", { mode: 'string' }),
-	reason: varchar({ length: 100 }),
+	reason: varchar("reason", { length: 100 }),
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
 },
 (table) => [
@@ -93,15 +93,15 @@ export const plantillaPositionHistory = mysqlTable("plantilla_position_history",
 ]);
 
 export const positionPublications = mysqlTable("position_publications", {
-	id: int().autoincrement().notNull(),
+	id: int("id").autoincrement().notNull(),
 	positionId: int("position_id").notNull(),
 	publicationDate: date("publication_date", { mode: 'string' }).notNull(),
 	closingDate: date("closing_date", { mode: 'string' }).notNull(),
 	publicationMedium: varchar("publication_medium", { length: 255 }).default('CSC Bulletin, LGU Website'),
 	form9Path: varchar("form_9_path", { length: 500 }),
-	status: mysqlEnum(['Draft','Published','Closed','Filled']).default('Draft'),
+	status: mysqlEnum("status", ['Draft','Published','Closed','Filled']).default('Draft'),
 	applicantsCount: int("applicants_count").default(0),
-	notes: text(),
+	notes: text("notes"),
 	createdBy: int("created_by"),
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
 	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow(),

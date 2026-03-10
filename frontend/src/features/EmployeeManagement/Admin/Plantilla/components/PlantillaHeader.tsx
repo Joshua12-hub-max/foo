@@ -81,7 +81,7 @@ const PlantillaHeader: React.FC<PlantillaHeaderProps> = ({
                     { label: 'Total Positions', value: summary.total, color: 'text-slate-900', bg: 'bg-slate-50' },
                     { label: 'Filled Positions', value: summary.filled, color: 'text-emerald-600', bg: 'bg-emerald-50' },
                     { label: 'Vacant Positions', value: summary.vacant, color: 'text-amber-600', bg: 'bg-amber-50' },
-                    { label: 'Vacancy Rate', value: `${summary.vacancy_rate}%`, color: 'text-blue-600', bg: 'bg-blue-50' },
+                    { label: 'Vacancy Rate', value: `${summary.vacancyRate}%`, color: 'text-blue-600', bg: 'bg-blue-50' },
                 ].map((stat, i) => (
                     <div key={i} className={`${stat.bg} p-4 rounded-xl border border-white/50 shadow-sm transition-transform hover:scale-[1.02]`}>
                         <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{stat.label}</div>

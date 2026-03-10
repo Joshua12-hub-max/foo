@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-// @ts-ignore
-import { fetchDepartments, addDepartment, updateDepartment, deleteDepartment } from '@api/departmentApi';
+import { departmentApi } from '@/api/departmentApi';
 
 import { DepartmentSchema } from '@/schemas/department';
 
@@ -55,9 +54,9 @@ export const useDepartmentManagement = (): UseDepartmentManagementReturn => {
     try {
       setLoading(true);
       setError(null);
-      const data = await fetchDepartments();
+      const data = await departmentApi.fetchDepartments();
       if (data.success) {
-        setDepartments(data.departments || []);
+        setDepartments((data.departments as unknown as Department[]) || []);
       } else {
         setError('Failed to fetch departments');
       }
@@ -105,7 +104,7 @@ export const useDepartmentManagement = (): UseDepartmentManagementReturn => {
     
     try {
       setIsDeleting(true);
-      await deleteDepartment(departmentToDelete.id);
+      await departmentApi.deleteDepartment(departmentToDelete.id);
       setDepartments(prev => prev.filter(d => d.id !== departmentToDelete.id));
       setDeleteModalOpen(false);
       setDepartmentToDelete(null);
@@ -120,12 +119,12 @@ export const useDepartmentManagement = (): UseDepartmentManagementReturn => {
   const handleModalSubmit = useCallback(async (data: DepartmentSchema): Promise<{ success: boolean; error?: string }> => {
     try {
       if (editingDepartment) {
-        const response = await updateDepartment(editingDepartment.id, data);
+        const response = await departmentApi.updateDepartment(editingDepartment.id, data);
         if (response.success) {
           loadDepartments();
         }
       } else {
-        const response = await addDepartment(data);
+        const response = await departmentApi.addDepartment(data);
         if (response.success) {
           loadDepartments();
         }
@@ -147,13 +146,13 @@ export const useDepartmentManagement = (): UseDepartmentManagementReturn => {
   const filteredDepartments = useMemo(() => {
     return departments.filter(dept => 
       dept.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (dept.head_of_department && dept.head_of_department.toLowerCase().includes(searchTerm.toLowerCase()))
+      (dept.headOfDepartment && dept.headOfDepartment.toLowerCase().includes(searchTerm.toLowerCase()))
     );
   }, [departments, searchTerm]);
 
   const stats = useMemo((): DepartmentStats => {
     const total = departments.length;
-    const totalEmp = departments.reduce((acc, curr) => acc + (curr.employee_count || 0), 0);
+    const totalEmp = departments.reduce((acc, curr) => acc + (curr.employeeCount || 0), 0);
     const avg = total > 0 ? Math.round(totalEmp / total) : 0;
     return { total, totalEmployees: totalEmp, averageEmployees: avg };
   }, [departments]);

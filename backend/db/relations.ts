@@ -1,5 +1,13 @@
-import { relations } from "drizzle-orm/relations";
-import { departments, authentication, plantillaPositions, chatConversations, chatMessages, employeeCustomFields, employeeDocuments, employeeEducation, employeeEmergencyContacts, employeeEmploymentHistory, employeeMemos, employeeNotes, employeeSkills, googleCalendarTokens, nepotismRelationships, pdsEducation, pdsEligibility, pdsFamily, pdsLearningDevelopment, pdsOtherInfo, pdsReferences, pdsVoluntaryWork, pdsWorkExperience, performanceReviews, performanceAuditLog, performanceGoals, performanceReviewCycles, performanceImprovementPlans, performanceCriteria, performanceReviewItems, qualificationStandards, positionPublications, recruitmentApplicants, recruitmentJobs, socialConnections, stepIncrementTracker, events, syncedEvents, schedules, bioEnrolledUsers, bioAttendanceLogs } from "./schema.js";
+import { relations } from "drizzle-orm";
+import { authentication, googleCalendarTokens, socialConnections } from "./tables/auth.js";
+import { departments, nepotismRelationships } from "./tables/hr.js";
+import { plantillaPositions, qualificationStandards, positionPublications } from "./tables/plantilla.js";
+import { chatConversations, chatMessages, recruitmentApplicants, recruitmentJobs } from "./tables/recruitment.js";
+import { pdsEducation, pdsEligibility, pdsFamily, pdsLearningDevelopment, pdsOtherInfo, pdsReferences, pdsVoluntaryWork, pdsWorkExperience, employeeCustomFields, employeeDocuments, employeeEducation, employeeEmergencyContacts, employeeEmploymentHistory, employeeMemos, employeeNotes, employeeSkills } from "./tables/pds.js";
+import { performanceReviews, performanceAuditLog, performanceGoals, performanceReviewCycles, performanceImprovementPlans, performanceCriteria, performanceReviewItems } from "./tables/performance.js";
+import { stepIncrementTracker } from "./tables/payroll.js";
+import { events, syncedEvents } from "./tables/common.js";
+import { schedules, bioEnrolledUsers, bioAttendanceLogs } from "./tables/attendance.js";
 
 export const authenticationRelations = relations(authentication, ({one, many}) => ({
 	department: one(departments, {
@@ -20,36 +28,36 @@ export const authenticationRelations = relations(authentication, ({one, many}) =
 		relationName: "authentication_managerId_authentication_id"
 	}),
 	employeeCustomFields: many(employeeCustomFields),
-	employeeDocuments_employeeId: many(employeeDocuments, {
+	employeeDocumentsEmployeeId: many(employeeDocuments, {
 		relationName: "employeeDocuments_employeeId_authentication_id"
 	}),
-	employeeDocuments_uploadedBy: many(employeeDocuments, {
+	employeeDocumentsUploadedBy: many(employeeDocuments, {
 		relationName: "employeeDocuments_uploadedBy_authentication_id"
 	}),
 	employeeEducations: many(employeeEducation),
 	employeeEmergencyContacts: many(employeeEmergencyContacts),
 	employeeEmploymentHistories: many(employeeEmploymentHistory),
-	employeeMemos_employeeId: many(employeeMemos, {
+	employeeMemosEmployeeId: many(employeeMemos, {
 		relationName: "employeeMemos_employeeId_authentication_id"
 	}),
-	employeeMemos_authorId: many(employeeMemos, {
+	employeeMemosAuthorId: many(employeeMemos, {
 		relationName: "employeeMemos_authorId_authentication_id"
 	}),
-	employeeNotes_employeeId: many(employeeNotes, {
+	employeeNotesEmployeeId: many(employeeNotes, {
 		relationName: "employeeNotes_employeeId_authentication_id"
 	}),
-	employeeNotes_authorId: many(employeeNotes, {
+	employeeNotesAuthorId: many(employeeNotes, {
 		relationName: "employeeNotes_authorId_authentication_id"
 	}),
 	employeeSkills: many(employeeSkills),
 	googleCalendarTokens: many(googleCalendarTokens),
-	nepotismRelationships_employeeId1: many(nepotismRelationships, {
+	nepotismRelationshipsEmployeeId1: many(nepotismRelationships, {
 		relationName: "nepotismRelationships_employeeId1_authentication_id"
 	}),
-	nepotismRelationships_employeeId2: many(nepotismRelationships, {
+	nepotismRelationshipsEmployeeId2: many(nepotismRelationships, {
 		relationName: "nepotismRelationships_employeeId2_authentication_id"
 	}),
-	nepotismRelationships_verifiedBy: many(nepotismRelationships, {
+	nepotismRelationshipsVerifiedBy: many(nepotismRelationships, {
 		relationName: "nepotismRelationships_verifiedBy_authentication_id"
 	}),
 	pdsEducations: many(pdsEducation),
@@ -62,17 +70,17 @@ export const authenticationRelations = relations(authentication, ({one, many}) =
 	pdsWorkExperiences: many(pdsWorkExperience),
 	performanceAuditLogs: many(performanceAuditLog),
 	performanceGoals: many(performanceGoals),
-	performanceImprovementPlans_employeeId: many(performanceImprovementPlans, {
+	performanceImprovementPlansEmployeeId: many(performanceImprovementPlans, {
 		relationName: "performanceImprovementPlans_employeeId_authentication_id"
 	}),
-	performanceImprovementPlans_supervisorId: many(performanceImprovementPlans, {
-		relationName: "performanceImprovementPlans_supervisorId_authentication_id"
+	performanceImprovementPlansReviewerId: many(performanceImprovementPlans, {
+		relationName: "performanceImprovementPlans_reviewerId_authentication_id"
 	}),
 	performanceReviewCycles: many(performanceReviewCycles),
-	performanceReviews_employeeId: many(performanceReviews, {
+	performanceReviewsEmployeeId: many(performanceReviews, {
 		relationName: "performanceReviews_employeeId_authentication_id"
 	}),
-	performanceReviews_reviewerId: many(performanceReviews, {
+	performanceReviewsReviewerId: many(performanceReviews, {
 		relationName: "performanceReviews_reviewerId_authentication_id"
 	}),
 	plantillaPositions: many(plantillaPositions, {
@@ -81,10 +89,10 @@ export const authenticationRelations = relations(authentication, ({one, many}) =
 	positionPublications: many(positionPublications),
 	recruitmentApplicants: many(recruitmentApplicants),
 	socialConnections: many(socialConnections),
-	stepIncrementTrackers_employeeId: many(stepIncrementTracker, {
+	stepIncrementTrackersEmployeeId: many(stepIncrementTracker, {
 		relationName: "stepIncrementTracker_employeeId_authentication_id"
 	}),
-	stepIncrementTrackers_processedBy: many(stepIncrementTracker, {
+	stepIncrementTrackersProcessedBy: many(stepIncrementTracker, {
 		relationName: "stepIncrementTracker_processedBy_authentication_id"
 	}),
 	schedules: many(schedules),
@@ -141,12 +149,12 @@ export const employeeCustomFieldsRelations = relations(employeeCustomFields, ({o
 }));
 
 export const employeeDocumentsRelations = relations(employeeDocuments, ({one}) => ({
-	authentication_employeeId: one(authentication, {
+	authenticationEmployeeId: one(authentication, {
 		fields: [employeeDocuments.employeeId],
 		references: [authentication.id],
 		relationName: "employeeDocuments_employeeId_authentication_id"
 	}),
-	authentication_uploadedBy: one(authentication, {
+	authenticationUploadedBy: one(authentication, {
 		fields: [employeeDocuments.uploadedBy],
 		references: [authentication.id],
 		relationName: "employeeDocuments_uploadedBy_authentication_id"
@@ -175,12 +183,12 @@ export const employeeEmploymentHistoryRelations = relations(employeeEmploymentHi
 }));
 
 export const employeeMemosRelations = relations(employeeMemos, ({one}) => ({
-	authentication_employeeId: one(authentication, {
+	authenticationEmployeeId: one(authentication, {
 		fields: [employeeMemos.employeeId],
 		references: [authentication.id],
 		relationName: "employeeMemos_employeeId_authentication_id"
 	}),
-	authentication_authorId: one(authentication, {
+	authenticationAuthorId: one(authentication, {
 		fields: [employeeMemos.authorId],
 		references: [authentication.id],
 		relationName: "employeeMemos_authorId_authentication_id"
@@ -188,12 +196,12 @@ export const employeeMemosRelations = relations(employeeMemos, ({one}) => ({
 }));
 
 export const employeeNotesRelations = relations(employeeNotes, ({one}) => ({
-	authentication_employeeId: one(authentication, {
+	authenticationEmployeeId: one(authentication, {
 		fields: [employeeNotes.employeeId],
 		references: [authentication.id],
 		relationName: "employeeNotes_employeeId_authentication_id"
 	}),
-	authentication_authorId: one(authentication, {
+	authenticationAuthorId: one(authentication, {
 		fields: [employeeNotes.authorId],
 		references: [authentication.id],
 		relationName: "employeeNotes_authorId_authentication_id"
@@ -215,17 +223,17 @@ export const googleCalendarTokensRelations = relations(googleCalendarTokens, ({o
 }));
 
 export const nepotismRelationshipsRelations = relations(nepotismRelationships, ({one}) => ({
-	authentication_employeeId1: one(authentication, {
+	authenticationEmployeeId1: one(authentication, {
 		fields: [nepotismRelationships.employeeId1],
 		references: [authentication.id],
 		relationName: "nepotismRelationships_employeeId1_authentication_id"
 	}),
-	authentication_employeeId2: one(authentication, {
+	authenticationEmployeeId2: one(authentication, {
 		fields: [nepotismRelationships.employeeId2],
 		references: [authentication.id],
 		relationName: "nepotismRelationships_employeeId2_authentication_id"
 	}),
-	authentication_verifiedBy: one(authentication, {
+	authenticationVerifiedBy: one(authentication, {
 		fields: [nepotismRelationships.verifiedBy],
 		references: [authentication.id],
 		relationName: "nepotismRelationships_verifiedBy_authentication_id"
@@ -306,12 +314,12 @@ export const performanceReviewsRelations = relations(performanceReviews, ({one, 
 		fields: [performanceReviews.reviewCycleId],
 		references: [performanceReviewCycles.id]
 	}),
-	authentication_employeeId: one(authentication, {
+	authenticationEmployeeId: one(authentication, {
 		fields: [performanceReviews.employeeId],
 		references: [authentication.id],
 		relationName: "performanceReviews_employeeId_authentication_id"
 	}),
-	authentication_reviewerId: one(authentication, {
+	authenticationReviewerId: one(authentication, {
 		fields: [performanceReviews.reviewerId],
 		references: [authentication.id],
 		relationName: "performanceReviews_reviewerId_authentication_id"
@@ -339,15 +347,15 @@ export const performanceReviewCyclesRelations = relations(performanceReviewCycle
 }));
 
 export const performanceImprovementPlansRelations = relations(performanceImprovementPlans, ({one}) => ({
-	authentication_employeeId: one(authentication, {
+	authenticationEmployeeId: one(authentication, {
 		fields: [performanceImprovementPlans.employeeId],
 		references: [authentication.id],
 		relationName: "performanceImprovementPlans_employeeId_authentication_id"
 	}),
-	authentication_supervisorId: one(authentication, {
-		fields: [performanceImprovementPlans.supervisorId],
+	authenticationReviewerId: one(authentication, {
+		fields: [performanceImprovementPlans.reviewerId],
 		references: [authentication.id],
-		relationName: "performanceImprovementPlans_supervisorId_authentication_id"
+		relationName: "performanceImprovementPlans_reviewerId_authentication_id"
 	}),
 }));
 
@@ -379,11 +387,11 @@ export const positionPublicationsRelations = relations(positionPublications, ({o
 
 export const recruitmentApplicantsRelations = relations(recruitmentApplicants, ({one}) => ({
 	authentication: one(authentication, {
-		fields: [recruitmentApplicants.interviewer_id],
+		fields: [recruitmentApplicants.interviewerId],
 		references: [authentication.id]
 	}),
 	recruitmentJob: one(recruitmentJobs, {
-		fields: [recruitmentApplicants.job_id],
+		fields: [recruitmentApplicants.jobId],
 		references: [recruitmentJobs.id]
 	}),
 }));
@@ -400,12 +408,12 @@ export const socialConnectionsRelations = relations(socialConnections, ({one}) =
 }));
 
 export const stepIncrementTrackerRelations = relations(stepIncrementTracker, ({one}) => ({
-	authentication_employeeId: one(authentication, {
+	authenticationEmployeeId: one(authentication, {
 		fields: [stepIncrementTracker.employeeId],
 		references: [authentication.id],
 		relationName: "stepIncrementTracker_employeeId_authentication_id"
 	}),
-	authentication_processedBy: one(authentication, {
+	authenticationProcessedBy: one(authentication, {
 		fields: [stepIncrementTracker.processedBy],
 		references: [authentication.id],
 		relationName: "stepIncrementTracker_processedBy_authentication_id"

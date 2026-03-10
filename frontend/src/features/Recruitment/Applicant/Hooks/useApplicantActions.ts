@@ -31,9 +31,9 @@ const useApplicantActions = (
       const dateTime = `${scheduleData.date}T${scheduleData.time}`;
       await recruitmentApi.updateStage(applicantId, {
         stage: 'Initial Interview',
-        interview_date: dateTime,
-        interview_link: scheduleData.link,
-        interview_platform: scheduleData.platform,
+        interviewDate: dateTime,
+        interviewLink: scheduleData.link,
+        interviewPlatform: scheduleData.platform,
         notes: scheduleData.notes
       });
       showNotification('Interview scheduled & email sent!', 'success');

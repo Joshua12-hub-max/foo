@@ -53,16 +53,16 @@ export const useEmployeeDTR = () => {
         // Map data
         return data.map((item: DTRApiResponse): EmployeeDTRRecord => {
             let hoursWorked = '0';
-            if (item.time_in && item.time_out) {
-              const start = new Date(String(item.time_in)).getTime();
-              const end = new Date(String(item.time_out)).getTime();
+            if (item.timeIn && item.timeOut) {
+              const start = new Date(String(item.timeIn)).getTime();
+              const end = new Date(String(item.timeOut)).getTime();
               hoursWorked = ((end - start) / (1000 * 60 * 60)).toFixed(2);
             }
             return {
-              id: item.id ?? item.record_id ?? '',
+              id: item.id ?? item.recordId ?? '',
               date: String(item.date ?? ''),
-              timeIn: item.time_in ? new Date(String(item.time_in)).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--',
-              timeOut: item.time_out ? new Date(String(item.time_out)).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--',
+              timeIn: item.timeIn ? new Date(String(item.timeIn)).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--',
+              timeOut: item.timeOut ? new Date(String(item.timeOut)).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--',
               hoursWorked: hoursWorked,
               status: item.status ? String(item.status) : 'Absent',
               remarks: item.remarks ? String(item.remarks) : '-'

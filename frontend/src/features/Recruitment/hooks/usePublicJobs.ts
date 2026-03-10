@@ -50,12 +50,12 @@ export const useJobApplication = (onSuccess?: () => void, onError?: (error: Erro
     return useMutation({
         mutationFn: async ({ id, data }: { id: string; data: JobApplicationSchema }) => {
             const formData = new FormData();
-            formData.append('job_id', id);
+            formData.append('jobId', id);
 
             // Fields that are frontend-only and should NOT be sent to the backend
-            const skipFields = new Set(['photo_preview', 'job_id']);
+            const skipFields = new Set(['photoPreview', 'jobId']);
             // File fields need special handling
-            const fileFields = new Set(['resume', 'photo', 'eligibility_cert']);
+            const fileFields = new Set(['resume', 'photo', 'eligibilityCert']);
             
             Object.keys(data).forEach(key => {
                 if (skipFields.has(key)) return;

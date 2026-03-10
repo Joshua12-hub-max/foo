@@ -3,11 +3,11 @@ export interface CalendarEvent {
   title: string;
   description: string | null;
   date: string;
-  start_date: string;
-  end_date: string;
+  startDate: string;
+  endDate: string;
   time: string | number | null;
-  recurring_pattern: 'none' | 'daily' | 'weekly' | 'monthly' | null;
-  recurring_end_date?: string | null;
+  recurringPattern: 'none' | 'daily' | 'weekly' | 'monthly' | null;
+  recurringEndDate?: string | null;
   department: string | null;
   color?: string;
   isHoliday?: boolean;
@@ -19,34 +19,34 @@ export interface Announcement {
   title: string;
   content: string;
   priority: 'normal' | 'high' | 'urgent';
-  start_date: string;
-  end_date: string;
-  start_time: string;
-  end_time: string;
-  created_at: string;
-  updated_at?: string;
+  startDate: string;
+  endDate: string;
+  startTime: string;
+  endTime: string;
+  createdAt: string;
+  updatedAt?: string;
 }
 
 export type EventFormData = {
   title: string;
   date: string;
-  start_date: string;
-  end_date: string;
+  startDate: string;
+  endDate: string;
   time?: string | null;
   description?: string | null;
   department?: string | null;
-  recurring_pattern?: 'none' | 'daily' | 'weekly' | 'monthly' | null;
-  recurring_end_date?: string | null;
+  recurringPattern?: 'none' | 'daily' | 'weekly' | 'monthly' | null;
+  recurringEndDate?: string | null;
 };
 
 export type AnnouncementFormData = {
   title: string;
   content: string;
   priority: 'normal' | 'high' | 'urgent';
-  start_date?: string | null;
-  end_date?: string | null;
-  start_time?: string | null;
-  end_time?: string | null;
+  startDate?: string | null;
+  endDate?: string | null;
+  startTime?: string | null;
+  endTime?: string | null;
 };
 
 export type CalendarItemType = 'event' | 'announcement' | 'holiday' | 'schedule';
@@ -69,13 +69,9 @@ export interface ScheduleEntry {
   id: number | string;
   duties?: string;
   scheduleName?: string;
-  start_date?: string;
   startDate?: string;
-  end_date?: string;
   endDate?: string;
-  start_time?: string;
   startTime?: string;
-  end_time?: string;
   endTime?: string;
   days?: string;
 }
@@ -96,9 +92,7 @@ export interface CalendarDisplayItem {
   isSchedule?: boolean;
   startDate?: string;
   endDate?: string;
-  start_date?: string;
-  end_date?: string;
-  created_at?: string;
+  createdAt?: string;
   originalSchedule?: ScheduleEntry;
   name?: string;
   color?: string;

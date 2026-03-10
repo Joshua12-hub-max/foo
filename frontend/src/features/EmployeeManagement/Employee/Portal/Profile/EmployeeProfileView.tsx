@@ -1,428 +1,592 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { 
-  User, Mail, Phone, MapPin, Briefcase, Hash, CreditCard, 
-  Calendar, Flag, AlertCircle, Shield, CheckCircle,
-  GraduationCap, Award, Heart, Ruler, Scale, Building, UserCheck, Clock, ToggleLeft, ToggleRight, Loader2,
-  Facebook, Linkedin, Twitter
+  Building, 
+  MapPin, 
+  Mail, 
+  Phone, 
+  Hash, 
+  Ruler, 
+  Scale, 
+  Flag, 
+  Briefcase, 
+  GraduationCap, 
+  Calendar as LucideCalendar, 
+  Clock, 
+  Heart, 
+  Linkedin, 
+  Facebook, 
+  Twitter, 
+  Link as LinkIcon, 
+  ScanLine,
+  UserCheck,
+  CreditCard
 } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
 
 interface Education {
   type?: string;
   institution: string;
   degree?: string;
-  field_of_study?: string;
-  start_date?: string;
-  end_date?: string;
+  fieldOfStudy?: string;
+  startDate?: string;
+  endDate?: string;
 }
 
 interface Skill {
-  skill_name: string;
-  proficiency_level?: string;
+  skillName: string;
+  proficiencyLevel?: string;
 }
 
 interface EmergencyContact {
   name: string;
   relationship: string;
-  phone_number: string;
+  phoneNumber: string;
   address?: string;
+}
+
+interface FamilyMember {
+  id: number;
+  relationType: string;
+  firstName: string;
+  lastName: string;
+  middleName?: string;
+  occupation?: string;
+  employer?: string;
+  businessAddress?: string;
+  telephoneNo?: string;
+  dateOfBirth?: string;
 }
 
 interface Profile {
   id: number;
-  first_name?: string;
-  last_name?: string;
+  firstName?: string;
+  lastName?: string;
+  middleName?: string;
+  suffix?: string;
   email?: string;
-  avatar_url?: string;
+  avatarUrl?: string;
   avatar?: string;
-  position_title?: string;
-  job_title?: string;
+  positionTitle?: string;
   jobTitle?: string;
-  employee_id?: string;
   employeeId?: string;
   department?: string;
-  employment_status?: string;
   employmentStatus?: string;
-  birth_date?: string;
+  birthDate?: string;
   gender?: string;
-  civil_status?: string;
+  civilStatus?: string;
   nationality?: string;
-  blood_type?: string;
-  height_m?: number;
-  weight_kg?: number;
-  place_of_birth?: string;
+  bloodType?: string;
+  heightM?: number;
+  weightKg?: number;
+  placeOfBirth?: string;
   citizenship?: string;
-  citizenship_type?: string;
-  dual_citizenship_country?: string;
-  residential_address?: string;
-  residential_zip_code?: string;
-  permanent_address?: string;
-  permanent_zip_code?: string;
+  citizenshipType?: string;
+  dualCitizenshipCountry?: string;
+  residentialAddress?: string;
+  residentialZipCode?: string;
+  permanentAddress?: string;
+  permanentZipCode?: string;
   address?: string;
-  telephone_no?: string;
-  mobile_no?: string;
-  item_number?: string;
+  telephoneNo?: string;
+  mobileNo?: string;
   itemNumber?: string;
-  salary_grade?: string;
   salaryGrade?: string;
-  step_increment?: string | number;
   stepIncrement?: string | number;
-  appointment_type?: string;
+  appointmentType?: string;
   station?: string;
-  office_address?: string;
-  date_hired?: string;
+  officeAddress?: string;
   dateHired?: string;
-  first_day_of_service?: string;
-  supervisor?: string;
+  firstDayOfService?: string;
   role?: string;
-  gsis_number?: string;
-  philhealth_number?: string;
-  pagibig_number?: string;
-  tin_number?: string;
-  agency_employee_no?: string;
-  phone_number?: string;
-  emergency_contact?: string;
-  emergency_contact_number?: string;
+  gsisNumber?: string;
+  philhealthNumber?: string;
+  pagibigNumber?: string;
+  tinNumber?: string;
+  umidId?: string;
+  philsysId?: string;
+  agencyEmployeeNo?: string;
+  phoneNumber?: string;
+  emergencyContact?: string;
+  emergencyContactNumber?: string;
+  resHouseBlockLot?: string;
+  resStreet?: string;
+  resSubdivision?: string;
+  resBarangay?: string;
+  resCity?: string;
+  resProvince?: string;
+  permHouseBlockLot?: string;
+  permStreet?: string;
+  permSubdivision?: string;
+  permBarangay?: string;
+  permCity?: string;
+  permProvince?: string;
+  rightThumbmarkUrl?: string;
+  ctcNo?: string;
+  ctcIssuedAt?: string;
+  ctcIssuedDate?: string;
   education?: Education[];
   skills?: Skill[];
   emergencyContacts?: EmergencyContact[];
   // Plantilla-required eligibility fields
-  eligibility_type?: string;
-  eligibility_number?: string;
-  eligibility_date?: string;
-  highest_education?: string;
-  years_of_experience?: number;
+  eligibilityType?: string;
+  eligibilityNumber?: string;
+  eligibilityDate?: string;
+  educationalBackground?: string;
+  yearsOfExperience?: number;
   // Social Media
-  facebook_url?: string;
-  linkedin_url?: string;
-  twitter_handle?: string;
+  facebookUrl?: string;
+  linkedinUrl?: string;
+  twitterHandle?: string;
   duties?: string;
-}
-
-interface DataFieldProps {
-  label: string;
-  value?: string | number | null;
-  icon?: LucideIcon;
-  fullWidth?: boolean;
-  highlight?: boolean;
-}
-
-interface SectionProps {
-  title: string;
-  children: React.ReactNode;
-  icon: LucideIcon;
-  columns?: string;
+  barangay?: string;
+  religion?: string;
+  voluntaryWork?: any[];
+  learningDevelopment?: any[];
+  experience?: string | null;
+  familyBackground?: FamilyMember[];
+  schoolName?: string;
+  course?: string;
+  umidNumber?: string;
+  yearGraduated?: string;
+  coreCompetencies?: string;
+  otherInfo?: any[];
+  references?: any[];
 }
 
 interface EmployeeProfileViewProps {
-  profile?: Profile;
-  loading: boolean;
-  error?: string | null;
-  onRefresh: () => void;
-  isAdmin?: boolean;
-  onStatusChange?: (id: number, status: string) => Promise<void>;
+  profile: Profile;
 }
 
-// Reusable Dense Field Component
-const DataField: React.FC<DataFieldProps> = ({ label, value, icon: Icon, fullWidth = false, highlight = false }) => (
-  <div className={`flex flex-col border border-gray-200 rounded-md p-2 bg-white ${fullWidth ? 'col-span-full' : ''} ${highlight ? 'border-gray-300 bg-gray-50' : ''}`}>
-    <div className="flex items-center gap-1.5 mb-1">
-      {Icon && <Icon size={12} className="text-gray-400" />}
-      <span className="text-[10px] font-semibold text-gray-500 tracking-wide text-nowrap">{label}</span>
-    </div>
-    <span className={`text-sm font-bold truncate ${highlight ? 'text-gray-900' : 'text-gray-700'}`}>
-      {value || <span className="text-gray-300 font-normal italic">N/A</span>}
-    </span>
-  </div>
-);
-
-// Section Container
-const Section: React.FC<SectionProps> = ({ title, children, icon: Icon, columns = "grid-cols-2 md:grid-cols-4 lg:grid-cols-6" }) => (
-  <div className="mb-6">
-    <div className="flex items-center gap-2 mb-3 px-1">
-      <div className="p-1 bg-gray-100 rounded text-gray-800">
-        <Icon size={14} />
-      </div>
-      <h3 className="text-xs font-bold text-gray-800 tracking-tight">{title}</h3>
-      <div className="h-px bg-gray-200 flex-grow ml-2"></div>
-    </div>
-    <div className={`grid ${columns} gap-2`}>
-      {children}
-    </div>
-  </div>
-);
-
-const MasterProfileView: React.FC<EmployeeProfileViewProps> = ({ profile, loading, error, onRefresh, isAdmin = false, onStatusChange }) => {
-  const [statusLoading, setStatusLoading] = useState(false);
-
-  if (loading) return (
-    <div className="p-8 text-center bg-gray-50 rounded-lg border border-gray-200 animate-pulse">
-      <div className="h-16 w-16 bg-gray-200 rounded-full mx-auto mb-4"></div>
-      <div className="h-4 w-48 bg-gray-200 rounded mx-auto"></div>
-    </div>
-  );
-
-  if (error || !profile) return (
-    <div className="p-4 bg-red-50 text-red-700 border border-red-200 rounded-lg flex items-center gap-2">
-      <AlertCircle size={18} />
-      <span className="text-sm font-bold">Failed to load profile data.</span>
-      <button onClick={onRefresh} className="ml-auto text-xs underline">Retry</button>
-    </div>
-  );
-
-  // Helper to format dates
-  const formatDate = (dateStr: string | undefined | null): string | null => {
-    if (!dateStr) return null;
+const EmployeeProfileView: React.FC<EmployeeProfileViewProps> = ({ profile }) => {
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return '-';
     try {
-      return new Date(dateStr).toLocaleDateString('en-US', { 
-        year: 'numeric', 
-        month: 'short', 
-        day: 'numeric' 
-      });
-    } catch {
-      return dateStr;
+      return new Date(dateString).toLocaleDateString();
+    } catch (e) {
+      return dateString;
     }
   };
 
+  const calculateAge = (birthDate?: string) => {
+    if (!birthDate) return '-';
+    try {
+      const today = new Date();
+      const birth = new Date(birthDate);
+      let age = today.getFullYear() - birth.getFullYear();
+      const m = today.getMonth() - birth.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+        age--;
+      }
+      return age.toString();
+    } catch (e) {
+      return '-';
+    }
+  };
+
+  const Section: React.FC<{ title: string; children: React.ReactNode; icon?: any; columns?: string }> = ({ title, children, icon: Icon, columns = "grid-cols-1 md:grid-cols-2 lg:grid-cols-3" }) => (
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-6">
+      <div className="bg-gray-50/50 px-6 py-4 border-b border-gray-100 flex items-center gap-3">
+        {Icon && <div className="p-2 bg-white rounded-lg shadow-sm border border-gray-100 text-blue-600"><Icon size={18} /></div>}
+        <h3 className="font-bold text-gray-800 tracking-tight">{title}</h3>
+      </div>
+      <div className={`p-6 grid ${columns} gap-6`}>
+        {children}
+      </div>
+    </div>
+  );
+
+  const DataField: React.FC<{ label: string; value: any; icon?: any; highlight?: boolean }> = ({ label, value, icon: Icon, highlight }) => (
+    <div className="space-y-1.5 group">
+      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block pl-1">{label}</span>
+      <div className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl border transition-all duration-200 ${highlight ? 'bg-blue-50/50 border-blue-100' : 'bg-gray-50/20 border-gray-100 group-hover:border-gray-200 group-hover:bg-gray-50/40'}`}>
+        {Icon && <Icon size={14} className={highlight ? 'text-blue-500' : 'text-gray-400 group-hover:text-blue-400'} />}
+        <span className={`text-sm tracking-tight ${highlight ? 'font-bold text-blue-700' : 'font-semibold text-gray-700'} break-all`}>
+          {value || '-'}
+        </span>
+      </div>
+    </div>
+  );
+
+  const TextAreaField: React.FC<{ label: string; value: any; icon?: any; fullWidth?: boolean }> = ({ label, value, icon: Icon, fullWidth }) => (
+    <div className={`space-y-1.5 ${fullWidth ? 'col-span-full' : ''}`}>
+      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block pl-1">{label}</span>
+      <div className="flex gap-2.5 p-3 rounded-xl border bg-gray-50/20 border-gray-100 min-h-[60px]">
+        {Icon && <Icon size={14} className="text-gray-400 mt-1 shrink-0" />}
+        <span className="text-sm tracking-tight font-semibold text-gray-700 whitespace-pre-wrap leading-relaxed">
+          {value || '-'}
+        </span>
+      </div>
+    </div>
+  );
+
   // Check if employee has a negative status that can be reverted
-  const currentStatus = profile.employment_status || profile.employmentStatus || 'Active';
+  const currentStatus = profile.employmentStatus || 'Active';
   const isNegativeStatus = ['Terminated', 'Suspended', 'Show Cause', 'Verbal Warning', 'Written Warning'].includes(currentStatus);
   const isActive = currentStatus === 'Active';
 
-  // Handle status toggle
-  const handleStatusToggle = async () => {
-    if (!onStatusChange || statusLoading) return;
-    setStatusLoading(true);
-    try {
-      const newStatus = isActive ? currentStatus : 'Active';
-      await onStatusChange(profile.id, newStatus);
-    } finally {
-      setStatusLoading(false);
-    }
-  };
-
   return (
-    <div className="w-full bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden mb-12">
-      
-      {/* 1. COMPACT HEADER */}
-      <div className="bg-gradient-to-r from-gray-900 to-gray-800 p-6 text-white relative">
-        <div className="flex flex-col md:flex-row items-center gap-6">
-          <div className="relative group">
+    <div className="max-w-5xl mx-auto p-4 md:p-8">
+      {/* PROFILE HEADER */}
+      <div className="relative mb-8 rounded-3xl overflow-hidden shadow-2xl bg-gradient-to-br from-[#1a2b3c] to-[#0d151e] border border-white/10 min-h-[140px] md:min-h-[160px]">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.05),transparent)] pointer-events-none"></div>
+        <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(#ffffff 1px, transparent 1px)', backgroundSize: '24px 24px' }}></div>
+        
+        <div className="relative z-10 p-6 md:p-8 flex flex-col md:flex-row items-center gap-6">
+          <div className="relative">
             <div className="w-20 h-20 rounded-lg bg-gray-700 border-2 border-white/20 shadow-lg overflow-hidden flex items-center justify-center">
-              {profile.avatar_url || profile.avatar ? (
-                <img src={profile.avatar_url || profile.avatar} alt="Avatar" className="w-full h-full object-cover" />
+              {profile.avatarUrl || profile.avatar ? (
+                <img src={profile.avatarUrl || profile.avatar} alt="Avatar" className="w-full h-full object-cover" />
               ) : (
-                <span className="text-2xl font-black text-gray-500">{profile.first_name?.[0]}{profile.last_name?.[0]}</span>
+                <span className="text-2xl font-black text-gray-500">{profile.firstName?.[0]}{profile.lastName?.[0]}</span>
               )}
             </div>
-            <div className={`absolute -bottom-2 -right-2 text-white text-[10px] font-bold px-2 py-0.5 rounded border border-gray-800 ${
-              isNegativeStatus ? 'bg-red-600' : 'bg-green-600'
-            }`}>
-              {currentStatus}
-            </div>
+            <div className={`absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-4 border-gray-900 shadow-md ${isActive ? 'bg-emerald-500' : 'bg-red-500'}`}></div>
           </div>
           
-          <div className="flex-1 text-center md:text-left">
-            <h1 className="text-2xl font-bold tracking-tight mb-1">{profile.first_name} {profile.last_name}</h1>
-            <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-gray-300 text-xs font-medium">
+          <div className="text-center md:text-left flex-1 space-y-2">
+            <h1 className="text-2xl font-bold tracking-tight mb-1 flex items-center justify-center md:justify-start">
+              <span className="text-white">{profile.firstName} {profile.lastName}</span>
+              {calculateAge(profile.birthDate) !== '-' && Number(calculateAge(profile.birthDate)) >= 60 && (
+                <span className="ml-3 text-[10px] bg-amber-500 text-white px-2 py-0.5 rounded-full uppercase tracking-tighter align-middle font-black shadow-sm border border-amber-400/50 shrink-0">
+                  Senior Citizen
+                </span>
+              )}
+            </h1>
+            <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 md:gap-4 text-gray-300 text-xs font-medium">
               <span className="flex items-center gap-1.5 bg-white/10 px-2 py-1 rounded">
-                <Briefcase size={12} /> {profile.position_title || profile.job_title || profile.jobTitle || 'No Title'}
+                <Briefcase size={12} /> {profile.positionTitle || profile.jobTitle || 'No Title'}
               </span>
               <span className="flex items-center gap-1.5 bg-white/10 px-2 py-1 rounded">
-                <Hash size={12} /> {profile.employee_id || profile.employeeId}
+                <Hash size={12} /> {profile.employeeId}
               </span>
               <span className="flex items-center gap-1.5 bg-white/10 px-2 py-1 rounded">
                 <Mail size={12} /> {profile.email}
               </span>
-              <span className="flex items-center gap-1.5 bg-blue-500/20 text-blue-200 px-2 py-1 rounded border border-blue-500/30">
-                <Clock size={12} /> Duties: {profile.duties || 'No Schedule'}
-              </span>
             </div>
           </div>
 
-          <div className="hidden md:flex flex-col items-end gap-3">
-            <div className="text-right">
-              <p className="text-[10px] text-gray-400 font-medium mb-1">Department</p>
-              <p className="text-lg font-bold text-white">{profile.department}</p>
+          <div className="flex gap-2">
+            <div className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg border ${isActive ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>
+              {currentStatus}
             </div>
-            
-            {/* Admin Status Toggle */}
-            {isAdmin && isNegativeStatus && (
-              <button
-                onClick={handleStatusToggle}
-                disabled={statusLoading}
-                className="flex items-center gap-2 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg transition-all border border-white/20"
-                title="Click to reactivate employee"
-              >
-                {statusLoading ? (
-                  <Loader2 size={16} className="animate-spin" />
-                ) : (
-                  <ToggleLeft size={16} className="text-red-400" />
-                )}
-                <span className="text-xs font-semibold">Reactivate</span>
-              </button>
-            )}
-            {isAdmin && isActive && (
-              <div className="flex items-center gap-2 bg-green-500/20 px-3 py-1.5 rounded-lg border border-green-500/30">
-                <ToggleRight size={16} className="text-green-400" />
-                <span className="text-xs font-semibold text-green-300">Active</span>
-              </div>
-            )}
           </div>
         </div>
       </div>
 
-      {/* 2. DENSE DATA GRID */}
-      <div className="p-6">
+      <div className="grid grid-cols-1 gap-6">
         
-        {/* PERSONAL INFORMATION (PDS Part I) */}
-        <Section title="Personal Information (PDS Part I)" icon={User}>
-          <DataField label="First Name" value={profile.first_name} />
-          <DataField label="Last Name" value={profile.last_name} />
-          <DataField label="Birth Date" value={formatDate(profile.birth_date)} icon={Calendar} />
-          <DataField label="Place of Birth" value={profile.place_of_birth} />
+        {/* PERSONAL INFORMATION */}
+        <Section title="Personal Information">
+          <DataField label="Last Name" value={profile.lastName} />
+          <DataField label="First Name" value={profile.firstName} />
+          <DataField label="Middle Name" value={profile.middleName} />
+          <DataField label="Suffix" value={profile.suffix} />
+          <DataField label="Birth Date" value={formatDate(profile.birthDate)} icon={LucideCalendar} />
+          <DataField label="Place of Birth" value={profile.placeOfBirth} />
           <DataField label="Gender" value={profile.gender} />
-          <DataField label="Civil Status" value={profile.civil_status} />
+          <DataField label="Civil Status" value={profile.civilStatus} />
           <DataField label="Nationality" value={profile.nationality} icon={Flag} />
-          
-          <DataField label="Blood Type" value={profile.blood_type} />
-          <DataField label="Height (m)" value={profile.height_m} icon={Ruler} />
-          <DataField label="Weight (kg)" value={profile.weight_kg} icon={Scale} />
-          
-          <DataField label="Residential Address" value={
-            [profile.residential_address, profile.residential_zip_code].filter(Boolean).join(', ')
-          } fullWidth icon={MapPin} />
-          
-          <DataField label="Permanent Address" value={
-            [profile.permanent_address, profile.permanent_zip_code].filter(Boolean).join(', ')
-          } fullWidth icon={MapPin} />
-
-          <DataField label="Telephone No." value={profile.telephone_no} icon={Phone} />
-          <DataField label="Mobile No." value={profile.mobile_no || profile.phone_number} icon={Phone} />
+          <DataField label="Religion" value={profile.religion} />
+          <DataField label="Citizenship" value={profile.citizenship} />
+          {profile.citizenship === 'Dual Citizenship' && (
+            <DataField label="Citizenship Type" value={profile.citizenshipType} />
+          )}
+          <DataField label="Blood Type" value={profile.bloodType} />
+          <DataField label="Height (m)" value={profile.heightM} icon={Ruler} />
+          <DataField label="Weight (kg)" value={profile.weightKg} icon={Scale} />
+          <DataField label="Age" value={calculateAge(profile.birthDate)} icon={UserCheck} highlight={calculateAge(profile.birthDate) !== '-' && Number(calculateAge(profile.birthDate)) >= 60} />
         </Section>
 
-        {/* EMPLOYMENT RECORD */}
-        <Section title="Employment Record" icon={Briefcase}>
-          <DataField label="Employee ID" value={profile.employee_id || profile.employeeId} icon={Hash} highlight />
-          <DataField label="Position Title" value={profile.position_title || profile.job_title} highlight />
-          <DataField label="Item Number" value={profile.item_number || profile.itemNumber} icon={Hash} />
-          <DataField label="Department" value={profile.department} icon={Building} />
-          <DataField label="Salary Grade" value={profile.salary_grade || profile.salaryGrade} icon={CreditCard} />
-          <DataField label="Step Increment" value={profile.step_increment || profile.stepIncrement} icon={Hash} />
-          <DataField label="Appointment Type" value={profile.appointment_type} />
-          <DataField label="Employment Status" value={profile.employment_status || profile.employmentStatus} />
-          <DataField label="Station" value={profile.station} icon={Building} />
-          <DataField label="Office Address" value={profile.office_address} icon={MapPin} />
-          <DataField label="Date Hired" value={formatDate(profile.date_hired || profile.dateHired)} icon={Calendar} />
-          <DataField label="First Day of Service" value={formatDate(profile.first_day_of_service)} icon={Clock} />
-          <DataField label="Supervisor" value={profile.supervisor} icon={UserCheck} />
-          <DataField label="Current Duties" value={profile.duties} icon={Clock} highlight />
-          <DataField label="System Role" value={profile.role} icon={Shield} />
-        </Section>
+        {/* CONTACT & ADDRESS */}
+        <Section title="Contact & Address" columns="grid-cols-1 md:grid-cols-2">
+          <TextAreaField 
+            label="Residential Address" 
+            value={profile.resHouseBlockLot || profile.resStreet || profile.resSubdivision || profile.resBarangay || profile.resCity || profile.resProvince ? 
+              `${profile.resHouseBlockLot || ''} ${profile.resStreet || ''} ${profile.resSubdivision || ''} ${profile.resBarangay || ''} ${profile.resCity || ''} ${profile.resProvince || ''}`.trim().replace(/\s+/g, ' ') : 
+              (profile.residentialAddress || profile.address)} 
+            icon={MapPin} 
+            fullWidth 
+          />
+          <DataField label="Res. House/Block/Lot" value={profile.resHouseBlockLot} />
+          <DataField label="Res. Street" value={profile.resStreet} />
+          <DataField label="Res. Subdivision" value={profile.resSubdivision} />
+          <DataField label="Res. Barangay" value={profile.resBarangay || profile.barangay} />
+          <DataField label="Res. City/Municipality" value={profile.resCity} />
+          <DataField label="Res. Province" value={profile.resProvince} />
+          <DataField label="Residential ZIP" value={profile.residentialZipCode} />
+          <div className="hidden md:block"></div>
 
-        {/* GOVERNMENT IDS */}
-        <Section title="Government Identification" icon={Shield}>
-          <DataField label="GSIS No." value={profile.gsis_number} />
-          <DataField label="PhilHealth No." value={profile.philhealth_number} />
-          <DataField label="Pag-IBIG No." value={profile.pagibig_number} />
-          <DataField label="TIN" value={profile.tin_number} />
-        </Section>
+          <TextAreaField 
+            label="Permanent Address" 
+            value={profile.permHouseBlockLot || profile.permStreet || profile.permSubdivision || profile.permBarangay || profile.permCity || profile.permProvince ? 
+              `${profile.permHouseBlockLot || ''} ${profile.permStreet || ''} ${profile.permSubdivision || ''} ${profile.permBarangay || ''} ${profile.permCity || ''} ${profile.permProvince || ''}`.trim().replace(/\s+/g, ' ') : 
+              profile.permanentAddress} 
+            icon={MapPin} 
+            fullWidth 
+          />
+          <DataField label="Perm. House/Block/Lot" value={profile.permHouseBlockLot} />
+          <DataField label="Perm. Street" value={profile.permStreet} />
+          <DataField label="Perm. Subdivision" value={profile.permSubdivision} />
+          <DataField label="Perm. Barangay" value={profile.permBarangay} />
+          <DataField label="Perm. City/Municipality" value={profile.permCity} />
+          <DataField label="Perm. Province" value={profile.permProvince} />
+          <DataField label="Permanent ZIP" value={profile.permanentZipCode} />
+          <div className="hidden md:block"></div>
 
-        {/* ELIGIBILITY & QUALIFICATIONS (Plantilla Required) */}
-        <Section title="Eligibility & Qualifications" icon={Award}>
-          <DataField label="Eligibility Type" value={profile.eligibility_type} />
-          <DataField label="Eligibility No." value={profile.eligibility_number} icon={Hash} />
-          <DataField label="Eligibility Date" value={formatDate(profile.eligibility_date)} icon={Calendar} />
-          <DataField label="Highest Education" value={profile.highest_education} icon={GraduationCap} />
-          <DataField label="Years of Experience" value={profile.years_of_experience} />
-        </Section>
-
-         {/* EDUCATION */}
-         {profile.education && profile.education.length > 0 && (
-          <Section title="Educational Background" icon={GraduationCap} columns="grid-cols-1">
-             <div className="border border-gray-200 rounded-md overflow-hidden">
-                <table className="w-full text-xs text-left">
-                   <thead className="bg-gray-50 text-gray-600 font-semibold border-b border-gray-200">
-                      <tr>
-                        <th className="px-4 py-2">Level</th>
-                        <th className="px-4 py-2">School / Institution</th>
-                        <th className="px-4 py-2">Degree / Course</th>
-                        <th className="px-4 py-2">Year</th>
-                      </tr>
-                   </thead>
-                   <tbody className="divide-y divide-gray-100">
-                      {profile.education.map((edu, idx) => (
-                        <tr key={idx} className="hover:bg-gray-50">
-                          <td className="px-4 py-2 font-bold text-gray-700">{edu.type || 'N/A'}</td>
-                          <td className="px-4 py-2 text-gray-800">{edu.institution}</td>
-                          <td className="px-4 py-2 text-gray-900 font-medium">{edu.degree || edu.field_of_study || '-'}</td>
-                          <td className="px-4 py-2 text-gray-500">{edu.start_date ? new Date(edu.start_date).getFullYear() : 'N/A'} - {edu.end_date ? new Date(edu.end_date).getFullYear() : 'Present'}</td>
-                        </tr>
-                      ))}
-                   </tbody>
-                </table>
-             </div>
-          </Section>
-         )}
-
-         {/* SKILLS */}
-         {profile.skills && profile.skills.length > 0 && (
-          <Section title="Skills & Competencies" icon={Award} columns="grid-cols-2 md:grid-cols-4">
-             {profile.skills.map((skill, idx) => (
-                <div key={idx} className="flex items-center justify-between border border-gray-200 rounded p-2 bg-gray-50">
-                   <span className="text-xs font-bold text-gray-700">{skill.skill_name}</span>
-                   <span className="text-[10px] font-medium text-gray-500">{skill.proficiency_level || 'N/A'}</span>
-                </div>
-             ))}
-          </Section>
-         )}
-
-         {/* CONTACT & EMERGENCY */}
-        <Section title="Contact & Emergency" icon={Phone}>
-          <DataField label="Mobile Number" value={profile.phone_number} icon={Phone} />
+          <DataField label="Mobile Number" value={profile.mobileNo || profile.phoneNumber} icon={Phone} />
           <DataField label="Official Email" value={profile.email} icon={Mail} />
           
-          {/* Display primary emergency contact if available in array, else fallback to legacy fields */}
-          {profile.emergencyContacts && profile.emergencyContacts.length > 0 ? (
-             <>
-               <DataField label="Emergency Contact" value={profile.emergencyContacts[0].name} icon={Heart} />
-               <DataField label="Relationship" value={profile.emergencyContacts[0].relationship} />
-               <DataField label="Emerg. Number" value={profile.emergencyContacts[0].phone_number} icon={Phone} />
-               {profile.emergencyContacts[0].address && (
-                 <DataField label="Emerg. Address" value={profile.emergencyContacts[0].address} icon={MapPin} />
-               )}
-             </>
-          ) : (
-             <>
-               <DataField label="Emergency Contact" value={profile.emergency_contact} icon={Heart} />
-               <DataField label="Emerg. Number" value={profile.emergency_contact_number} icon={Phone} />
-             </>
-          )}
+          <DataField label="Emergency Contact Person" value={profile.emergencyContact} icon={Heart} />
+          <DataField label="Emergency Phone" value={profile.emergencyContactNumber} icon={Phone} />
         </Section>
 
-        {/* SOCIAL MEDIA */}
-        <Section title="Social Media" icon={User} columns="grid-cols-1 md:grid-cols-3">
-          <DataField label="Facebook" value={profile.facebook_url} icon={Facebook} />
-          <DataField label="LinkedIn" value={profile.linkedin_url} icon={Linkedin} />
-          <DataField label="Twitter/X" value={profile.twitter_handle ? `@${profile.twitter_handle}` : undefined} icon={Twitter} />
+        {/* GOVERNMENT IDENTIFICATION */}
+        <Section title="Government Identification">
+          <DataField label="GSIS ID No." value={profile.gsisNumber} />
+          <DataField label="PAG-IBIG No." value={profile.pagibigNumber} />
+          <DataField label="PhilHealth No." value={profile.philhealthNumber} />
+          <DataField label="UMID Number" value={profile.umidNumber} />
+          <DataField label="PHILSYS ID" value={profile.philsysId} />
+          <DataField label="TIN No." value={profile.tinNumber} />
+          <DataField label="Agency Employee No." value={profile.agencyEmployeeNo} />
         </Section>
 
-      </div>
+        {/* BIOMETRIC & COMPLIANCE */}
+        <Section title="Biometric & Compliance" columns="grid-cols-1 md:grid-cols-2">
+           <div className="p-4 border border-gray-100 rounded-xl bg-gray-50/30 flex flex-col items-center">
+             <h5 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Right Thumbmark</h5>
+             {profile.rightThumbmarkUrl ? (
+               <img src={profile.rightThumbmarkUrl} alt="Right Thumbmark" className="h-24 w-auto grayscale contrast-125 mix-blend-multiply" />
+             ) : (
+               <div className="h-24 w-20 border-2 border-dashed border-gray-200 rounded-lg flex items-center justify-center text-gray-300">
+                 <ScanLine size={32} />
+               </div>
+             )}
+           </div>
+           <div className="space-y-4">
+             <DataField label="CTC / Cedula No." value={profile.ctcNo} />
+             <DataField label="CTC Issued At" value={profile.ctcIssuedAt} />
+             <DataField label="CTC Issued Date" value={formatDate(profile.ctcIssuedDate)} icon={LucideCalendar} />
+           </div>
+        </Section>
 
-      {/* FOOTER */}
-      <div className="bg-gray-50 px-6 py-3 border-t border-gray-200 flex justify-between items-center">
-        <p className="text-[10px] text-gray-400 font-medium">
-          System Generated Record • NEBR HRIS
-        </p>
-        <div className="flex gap-2">
-            <span className="flex items-center gap-1.5 text-xs font-bold text-gray-700 bg-gray-100 px-3 py-1 rounded-full border border-gray-200">
-            <CheckCircle size={12} /> Verified Record
-            </span>
-        </div>
+        <Section title="Social Media Connections" icon={LinkIcon} columns="grid-cols-1 md:grid-cols-3">
+          <DataField label="Facebook Profile" value={profile.facebookUrl} icon={Facebook} />
+          <DataField label="LinkedIn Profile" value={profile.linkedinUrl} icon={Linkedin} />
+          <DataField label="Twitter / X" value={profile.twitterHandle} icon={Twitter} />
+        </Section>
+
+        {/* EDUCATIONAL BACKGROUND */}
+        <Section title="Educational Background" columns="grid-cols-1 md:grid-cols-2">
+          <DataField label="Educational Background" value={profile.educationalBackground} icon={GraduationCap} />
+          <DataField label="School / University" value={profile.schoolName || profile.educationalBackground} />
+          <DataField label="Course / Degree" value={profile.course} />
+          <DataField label="Year Graduated" value={profile.yearGraduated} />
+          <DataField label="Years of Experience" value={profile.yearsOfExperience} />
+          <TextAreaField label="Core Competencies" value={profile.coreCompetencies} />
+          <TextAreaField label="Work Experience Log" value={profile.experience} fullWidth />
+          
+          <div className="col-span-full mt-4">
+             <h5 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3 ml-1">Academic History</h5>
+             <div className="border border-gray-100 rounded-xl overflow-hidden bg-white">
+               <table className="w-full text-xs text-left">
+                  <thead className="bg-gray-50 text-gray-600 font-semibold border-b border-gray-100">
+                    <tr>
+                      <th className="px-4 py-2">Level/Type</th>
+                      <th className="px-4 py-2">Institution</th>
+                      <th className="px-4 py-2 text-right">Period</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {profile.education?.length ? (
+                      profile.education.map((edu, idx) => (
+                        <tr key={idx} className="hover:bg-gray-50/50">
+                          <td className="px-4 py-3 font-semibold text-blue-600">{edu.type || 'N/A'}</td>
+                          <td className="px-4 py-3">
+                             <div className="font-bold text-gray-800">{edu.institution}</div>
+                             <div className="text-[10px] text-gray-500">{edu.degree} {edu.fieldOfStudy ? `• ${edu.fieldOfStudy}` : ''}</div>
+                          </td>
+                          <td className="px-4 py-3 text-right text-gray-500">{edu.startDate && edu.endDate ? `${edu.startDate} - ${edu.endDate}` : 'N/A'}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr><td colSpan={3} className="px-4 py-6 text-center text-gray-400 italic">No education records found</td></tr>
+                    )}
+                  </tbody>
+               </table>
+             </div>
+          </div>
+        </Section>
+
+        {/* ELIGIBILITY / CIVIL SERVICE */}
+        <Section title="Eligibility / Civil Service" columns="grid-cols-1 md:grid-cols-3">
+          <DataField label="Eligibility Type" value={profile.eligibilityType} />
+          <DataField label="License/ID Number" value={profile.eligibilityNumber} icon={Hash} />
+          <DataField label="Date of Validity/Exam" value={formatDate(profile.eligibilityDate)} icon={LucideCalendar} />
+        </Section>
+
+        {/* FAMILY BACKGROUND */}
+        <Section title="Family Background" columns="grid-cols-1">
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {['Spouse', 'Father', 'Mother'].map((relation: string) => {
+                const member = profile.familyBackground?.find((m: FamilyMember) => m.relationType === relation);
+                return (
+                  <div key={relation} className="p-4 border border-gray-100 rounded-xl bg-gray-50/30">
+                    <h5 className="text-[10px] font-bold text-green-600 uppercase tracking-widest mb-3">{relation}'s Information</h5>
+                    <div className="space-y-3">
+                      <DataField label="Full Name" value={member ? `${member.firstName || ''} ${member.lastName || ''}`.trim() : '-'} />
+                      <DataField label="Occupation" value={member?.occupation} />
+                      <DataField label="Employer" value={member?.employer} />
+                      {relation === 'Spouse' && (
+                        <>
+                          <DataField label="Business Address" value={member?.businessAddress} />
+                          <DataField label="Telephone No." value={member?.telephoneNo} />
+                        </>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="mt-4">
+               <h5 className="text-[10px] font-bold text-green-600 uppercase tracking-widest mb-3 ml-1">Children</h5>
+               <div className="border border-gray-100 rounded-xl overflow-hidden bg-white">
+                 <table className="w-full text-xs text-left">
+                    <thead className="bg-gray-50 text-gray-600 font-semibold border-b border-gray-100">
+                      <tr>
+                        <th className="px-4 py-2">Full Name</th>
+                        <th className="px-4 py-2 text-right">Date of Birth</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {profile.familyBackground?.filter((m: FamilyMember) => m.relationType === 'Child').length ? (
+                        profile.familyBackground.filter((m: FamilyMember) => m.relationType === 'Child').map((child: FamilyMember, idx: number) => (
+                          <tr key={idx}>
+                            <td className="px-4 py-2 font-medium">{child.firstName} {child.lastName}</td>
+                            <td className="px-4 py-2 text-right text-gray-500">{formatDate(child.dateOfBirth)}</td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr><td colSpan={2} className="px-4 py-3 text-center text-gray-400 italic">No children records found</td></tr>
+                      )}
+                    </tbody>
+                 </table>
+               </div>
+            </div>
+          </div>
+        </Section>
+
+        {/* VOLUNTARY WORK */}
+        <Section title="Voluntary Work" icon={Briefcase}>
+          <div className="space-y-4">
+             {profile.voluntaryWork?.length ? (
+               profile.voluntaryWork.map((vw: any) => (
+                 <div key={vw.id} className="p-4 border border-gray-100 rounded-xl bg-gray-50/20">
+                    <div className="flex justify-between items-start mb-2">
+                       <h5 className="text-xs font-bold text-gray-800">{vw.organizationName}</h5>
+                       <span className="text-[10px] text-gray-500">{vw.dateFrom} - {vw.dateTo || 'Present'}</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 text-xs">
+                       <DataField label="Position" value={vw.position} />
+                       <DataField label="Address" value={vw.address} />
+                    </div>
+                 </div>
+               ))
+             ) : (
+               <p className="text-xs text-center text-gray-400 italic py-4">No voluntary work records found</p>
+             )}
+          </div>
+        </Section>
+
+        {/* TRAINING / LEARNING & DEVELOPMENT */}
+        <Section title="Learning & Development (Training)" icon={Briefcase}>
+          <div className="space-y-4">
+             {profile.learningDevelopment?.length ? (
+               profile.learningDevelopment.map((ld: any) => (
+                 <div key={ld.id} className="p-4 border border-gray-100 rounded-xl bg-gray-50/20">
+                    <div className="flex justify-between items-start mb-2">
+                       <h5 className="text-xs font-bold text-gray-800">{ld.title}</h5>
+                       <span className="text-[10px] text-gray-500">{ld.dateFrom} - {ld.dateTo || 'Present'}</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 text-xs">
+                       <DataField label="Type" value={ld.typeOfLd} />
+                       <DataField label="Conducted by" value={ld.conductedBy} />
+                    </div>
+                 </div>
+               ))
+             ) : (
+               <p className="text-xs text-center text-gray-400 italic py-4">No training records found</p>
+             )}
+          </div>
+        </Section>
+
+        {/* OTHER INFORMATION */}
+        <Section title="Other Information (PDS)" columns="grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+          <div className="col-span-full mb-4">
+             <h5 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3">Skills, Recognitions, Memberships</h5>
+             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {['Skill', 'Recognition', 'Membership'].map(type => (
+                  <div key={type} className="p-4 border border-gray-100 rounded-xl bg-gray-50/30">
+                    <h6 className="text-[10px] font-bold text-blue-600 uppercase mb-2">{type}s</h6>
+                    <div className="space-y-2">
+                       {profile.otherInfo?.filter((oi: any) => oi.type === type).map((oi: any, i: number) => (
+                         <div key={i} className="text-xs font-semibold text-gray-700 bg-white p-2 rounded border border-gray-200">{oi.description}</div>
+                       )) || <p className="text-[10px] italic text-gray-400">None listed</p>}
+                    </div>
+                  </div>
+                ))}
+             </div>
+          </div>
+        </Section>
+
+        {/* REFERENCES */}
+        <Section title="References" columns="grid-cols-1">
+           <div className="border border-gray-100 rounded-xl overflow-hidden bg-white">
+             <table className="w-full text-xs text-left">
+                <thead className="bg-gray-50 text-gray-600 font-semibold border-b border-gray-100">
+                  <tr>
+                    <th className="px-4 py-2">Name</th>
+                    <th className="px-4 py-2">Address</th>
+                    <th className="px-4 py-2 text-right">Telephone</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {profile.references?.length ? (
+                    profile.references.map((ref: any, idx: number) => (
+                      <tr key={idx}>
+                        <td className="px-4 py-2 font-bold text-gray-800">{ref.name}</td>
+                        <td className="px-4 py-2 text-gray-600">{ref.address}</td>
+                        <td className="px-4 py-2 text-right text-gray-500">{ref.telNo}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr><td colSpan={3} className="px-4 py-6 text-center text-gray-400 italic">No reference records found</td></tr>
+                  )}
+                </tbody>
+             </table>
+           </div>
+        </Section>
+
+        {/* EMPLOYMENT DETAILS (INTERNAL) */}
+        <Section title="HR Internal Details">
+          <DataField label="Department" value={profile.department} icon={Building} highlight />
+          <DataField label="Position Title" value={profile.positionTitle || profile.jobTitle} highlight />
+          <DataField label="Item Number" value={profile.itemNumber} icon={Hash} />
+          <DataField label="Salary Grade" value={profile.salaryGrade} icon={CreditCard} />
+          <DataField label="Step Increment" value={profile.stepIncrement} icon={Hash} />
+          <DataField label="Appointment Type" value={profile.appointmentType} />
+          <DataField label="Employment Status" value={currentStatus} highlight />
+          <DataField label="Station" value={profile.station} icon={Building} />
+          <TextAreaField label="Office Address" value={profile.officeAddress} icon={MapPin} fullWidth />
+          <DataField label="Date Hired" value={formatDate(profile.dateHired)} icon={LucideCalendar} />
+          <DataField label="First Day of Service" value={formatDate(profile.firstDayOfService)} icon={Clock} />
+        </Section>
+
       </div>
 
     </div>
   );
 };
 
-export default MasterProfileView;
+export default EmployeeProfileView;

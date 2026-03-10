@@ -80,10 +80,10 @@ const EmployeePresentTable: React.FC<EmployeePresentTableProps> = ({ onClose }) 
                 <tr key={record.id} className="hover:bg-gray-50 transition-colors">
                   <td className="py-3 px-4 text-sm text-gray-700 font-medium">{record.date}</td>
                   <td className="py-3 px-4 text-sm text-green-600 font-semibold">
-                    {record.time_in ? new Date(record.time_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
+                    {record.timeIn ? new Date(record.timeIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
                   </td>
                   <td className="py-3 px-4 text-sm text-blue-600 font-semibold">
-                    {record.time_out ? new Date(record.time_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
+                    {record.timeOut ? new Date(record.timeOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
                   </td>
                 </tr>
               ))}

@@ -14,8 +14,7 @@ export const useAdminDTRCorrections = () => {
         try {
             const response = await dtrApi.getCorrectionRequests(filterStatus);
             if (response.data.success) {
-                // @ts-ignore
-                setRequests(response.data.data);
+                setRequests(response.data.data as DTRCorrectionRequest[]);
             }
         } catch (err) {
             console.error('Failed to fetch correction requests:', err);
@@ -38,16 +37,18 @@ export const useAdminDTRCorrections = () => {
                 return { success: true, message: response.data.message };
             }
             return { success: false, message: 'Operation failed' };
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Failed to update status:', err);
+            const error = err as { response?: { data?: { message?: string } } };
             return { 
                 success: false, 
-                message: err.response?.data?.message || 'Failed to update status' 
+                message: error.response?.data?.message || 'Failed to update status' 
             };
         } finally {
             setIsLoading(false);
         }
     };
+
 
     return {
         requests,

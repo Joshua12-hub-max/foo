@@ -100,16 +100,16 @@ export interface StepIncrement {
 }
 
 export interface EligibleEmployee {
-  employee_id: number;
-  employee_name: string;
-  employee_employee_id: string;
-  position_id: number;
-  position_title: string;
-  salary_grade: number;
-  current_step: number;
-  next_step: number;
-  years_in_position: number;
-  eligible_date: string;
+  employeeId: number;
+  employeeName: string;
+  employeeEmployeeId: string;
+  positionId: number;
+  positionTitle: string;
+  salaryGrade: number;
+  currentStep: number;
+  nextStep: number;
+  yearsInPosition: number;
+  eligibleDate: string;
 }
 
 export interface BudgetAllocation {
@@ -142,46 +142,46 @@ export interface DepartmentBudget {
 }
 
 export interface Form9Row {
-  item_number: string;
-  position_title: string;
-  salary_grade: number;
-  monthly_salary: number;
+  itemNumber: string;
+  positionTitle: string;
+  salaryGrade: number;
+  monthlySalary: number;
   education: string;
   training: number;
   experience: number;
   eligibility: string;
   competency: string;
   assignment: string;
-  place_of_assignment?: string;
+  placeOfAssignment?: string;
 }
 
 
 export interface PSIPOPRow {
-  item_number: string;
-  position_title: string;
-  salary_grade: number;
-  step_increment: number;
-  monthly_salary: number;
+  itemNumber: string;
+  positionTitle: string;
+  salaryGrade: number;
+  stepIncrement: number;
+  monthlySalary: number;
   department: string;
-  is_vacant: boolean;
-  incumbent_name: string | null;
-  employee_id: string | null;
-  position_status: string;
+  isVacant: boolean;
+  incumbentName: string | null;
+  employeeId: string | null;
+  positionStatus: string;
 }
 
 export interface Form33Data {
-  item_number: string;
-  position_title: string;
-  salary_grade: number;
-  monthly_salary: number;
+  itemNumber: string;
+  positionTitle: string;
+  salaryGrade: number;
+  monthlySalary: number;
   department: string;
-  first_name: string;
-  last_name: string;
-  middle_name: string | null;
-  employee_id: string;
-  date_of_signing: string;
+  firstName: string;
+  lastName: string;
+  middleName: string | null;
+  employeeId: string;
+  dateOfSigning: string;
   status: string;
-  nature_of_appointment: string;
+  natureOfAppointment: string;
 }
 
 // ==================== QUALIFICATION STANDARDS API ====================
@@ -239,7 +239,7 @@ export const qualificationStandardsApi = {
 // ==================== NEPOTISM API ====================
 
 export const nepotismApi = {
-  getRelationships: async (params?: { employee_id?: number; degree?: number }): Promise<AxiosResponse<{ success: boolean; relationships: NepotismRelationship[] }>> => {
+  getRelationships: async (params?: { employeeId?: number; degree?: number }): Promise<AxiosResponse<{ success: boolean; relationships: NepotismRelationship[] }>> => {
     try {
       return await api.get('/nepotism/relationships', { params });
     } catch (error) {
@@ -247,18 +247,18 @@ export const nepotismApi = {
     }
   },
 
-  getEmployeeRelationships: async (employee_id: number): Promise<AxiosResponse<{ success: boolean; relationships: NepotismRelationship[] }>> => {
+  getEmployeeRelationships: async (employeeId: number): Promise<AxiosResponse<{ success: boolean; relationships: NepotismRelationship[] }>> => {
     try {
-      return await api.get(`/nepotism/relationships/${employee_id}`);
+      return await api.get(`/nepotism/relationships/${employeeId}`);
     } catch (error) {
       throw error;
     }
   },
 
   createRelationship: async (data: {
-    employee_id_1: number;
-    employee_id_2: number;
-    relationship_type: string;
+    employeeId1: number;
+    employeeId2: number;
+    relationshipType: string;
     degree: number;
     notes?: string;
   }): Promise<AxiosResponse> => {
@@ -278,9 +278,9 @@ export const nepotismApi = {
   },
 
   checkNepotism: async (data: {
-    employee_id: number;
-    position_id: number;
-    appointing_authority_id?: number;
+    employeeId: number;
+    positionId: number;
+    appointingAuthorityId?: number;
   }): Promise<AxiosResponse<NepotismCheckResult>> => {
     try {
       return await api.post('/nepotism/check', data);
@@ -293,7 +293,7 @@ export const nepotismApi = {
 // ==================== STEP INCREMENT API ====================
 
 export const stepIncrementApi = {
-  getAll: async (params?: { status?: string; employee_id?: number }): Promise<AxiosResponse<{ success: boolean; increments: StepIncrement[] }>> => {
+  getAll: async (params?: { status?: string; employeeId?: number }): Promise<AxiosResponse<{ success: boolean; increments: StepIncrement[] }>> => {
     try {
       return await api.get('/step-increment', { params });
     } catch (error) {
@@ -301,7 +301,7 @@ export const stepIncrementApi = {
     }
   },
 
-  getEligible: async (): Promise<AxiosResponse<{ success: boolean; eligible_employees: EligibleEmployee[]; count: number }>> => {
+  getEligible: async (): Promise<AxiosResponse<{ success: boolean; eligibleEmployees: EligibleEmployee[]; count: number }>> => {
     try {
       return await api.get('/step-increment/eligible');
     } catch (error) {
@@ -310,10 +310,10 @@ export const stepIncrementApi = {
   },
 
   create: async (data: {
-    employee_id: number;
-    position_id: number;
-    current_step: number;
-    eligible_date: string;
+    employeeId: number;
+    positionId: number;
+    currentStep: number;
+    eligibleDate: string;
     status?: string;
     remarks?: string;
   }): Promise<AxiosResponse> => {
@@ -325,7 +325,7 @@ export const stepIncrementApi = {
   },
 
   process: async (data: {
-    increment_id: number;
+    incrementId: number;
     status: 'Approved' | 'Denied';
     remarks?: string;
   }): Promise<AxiosResponse> => {

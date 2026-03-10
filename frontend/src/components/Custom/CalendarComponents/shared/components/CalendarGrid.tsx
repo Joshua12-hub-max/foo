@@ -14,19 +14,19 @@ export interface GridItem {
   isAnnouncement?: boolean;
   isSchedule?: boolean;
   date?: string;
-  start_date?: string;
-  end_date?: string;
+  startDate?: string;
+  endDate?: string;
   time?: string | number | null;
   notes?: string;
   description?: string | null;
   color?: string;
   month?: number;
   day?: number;
-  created_at?: string;
-  start_time?: string;
+  createdAt?: string;
+  startTime?: string;
   content?: string;
   endTime?: string;
-  recurring_pattern?: string | null;
+  recurringPattern?: string | null;
   department?: string | null;
 }
 

@@ -1,26 +1,26 @@
 import { useState, useCallback } from 'react';
-import { Job, JobFormData } from '@/types';
+import { Job, JobFormData, EmploymentType } from '@/types';
 
 const INITIAL_FORM_DATA: JobFormData = {
   title: '',
   department: '',
   location: 'Main Office',
-  employment_type: 'Full-time',
-  salary_range: '',
-  application_email: '',
-  job_description: '',
+  employmentType: 'Full-time' as EmploymentType,
+  salaryRange: '',
+  applicationEmail: '',
+  jobDescription: '',
   requirements: '',
   status: 'Open',
-  office_name: '',
-  submission_address: '',
+  officeName: '',
+  submissionAddress: '',
   education: '',
   experience: '',
   training: '',
   eligibility: '',
-  other_qualifications: '',
-  require_civil_service: false,
-  require_government_ids: false,
-  require_education_experience: false
+  otherQualifications: '',
+  requireCivilService: false,
+  requireGovernmentIds: false,
+  requireEducationExperience: false
 };
 
 const useJobForm = () => {
@@ -44,22 +44,22 @@ const useJobForm = () => {
       title: job.title,
       department: job.department,
       location: job.location,
-      employment_type: job.employment_type,
-      salary_range: job.salary_range || '',
-      application_email: job.application_email || '',
-      job_description: job.job_description,
+      employmentType: job.employmentType,
+      salaryRange: job.salaryRange || '',
+      applicationEmail: job.applicationEmail || '',
+      jobDescription: job.jobDescription,
       requirements: job.requirements,
       status: job.status,
-      office_name: job.office_name || '',
-      submission_address: job.submission_address || '',
+      officeName: job.officeName || '',
+      submissionAddress: job.submissionAddress || '',
       education: job.education || '',
       experience: job.experience || '',
       training: job.training || '',
       eligibility: job.eligibility || '',
-      other_qualifications: job.other_qualifications || '',
-      require_civil_service: job.require_civil_service || false,
-      require_government_ids: job.require_government_ids || false,
-      require_education_experience: job.require_education_experience || false
+      otherQualifications: job.otherQualifications || '',
+      requireCivilService: job.requireCivilService || false,
+      requireGovernmentIds: job.requireGovernmentIds || false,
+      requireEducationExperience: job.requireEducationExperience || false
     });
     setIsFormOpen(true);
   }, []);

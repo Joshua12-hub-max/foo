@@ -11,21 +11,21 @@ interface NotificationStyle {
 // Get icon and color based on notification type
 const getNotificationStyle = (type: string): NotificationStyle => {
   const styles: Record<string, NotificationStyle> = {
-    leave_request: { icon: Calendar, color: 'text-amber-600', bg: 'bg-amber-50' },
-    leave_approval: { icon: Check, color: 'text-green-600', bg: 'bg-green-50' },
-    leave_rejection: { icon: X, color: 'text-red-600', bg: 'bg-red-50' },
-    leave_process: { icon: FileText, color: 'text-blue-600', bg: 'bg-blue-50' },
-    leave_finalize: { icon: Check, color: 'text-green-600', bg: 'bg-green-50' },
-    dtr_correction: { icon: Clock, color: 'text-purple-600', bg: 'bg-purple-50' },
-    dtr_approval: { icon: Check, color: 'text-green-600', bg: 'bg-green-50' },
-    dtr_rejection: { icon: X, color: 'text-red-600', bg: 'bg-red-50' },
-    undertime_request: { icon: Clock, color: 'text-orange-600', bg: 'bg-orange-50' },
-    undertime_approval: { icon: Check, color: 'text-green-600', bg: 'bg-green-50' },
-    undertime_rejection: { icon: X, color: 'text-red-600', bg: 'bg-red-50' },
-    schedule_assigned: { icon: Calendar, color: 'text-blue-600', bg: 'bg-blue-50' },
+    leaveRequest: { icon: Calendar, color: 'text-amber-600', bg: 'bg-amber-50' },
+    leaveApproval: { icon: Check, color: 'text-green-600', bg: 'bg-green-50' },
+    leaveRejection: { icon: X, color: 'text-red-600', bg: 'bg-red-50' },
+    leaveProcess: { icon: FileText, color: 'text-blue-600', bg: 'bg-blue-50' },
+    leaveFinalize: { icon: Check, color: 'text-green-600', bg: 'bg-green-50' },
+    dtrCorrection: { icon: Clock, color: 'text-purple-600', bg: 'bg-purple-50' },
+    dtrApproval: { icon: Check, color: 'text-green-600', bg: 'bg-green-50' },
+    dtrRejection: { icon: X, color: 'text-red-600', bg: 'bg-red-50' },
+    undertimeRequest: { icon: Clock, color: 'text-orange-600', bg: 'bg-orange-50' },
+    undertimeApproval: { icon: Check, color: 'text-green-600', bg: 'bg-green-50' },
+    undertimeRejection: { icon: X, color: 'text-red-600', bg: 'bg-red-50' },
+    scheduleAssigned: { icon: Calendar, color: 'text-blue-600', bg: 'bg-blue-50' },
     // Memo notifications
-    memo_received: { icon: FileText, color: 'text-red-600', bg: 'bg-red-50' },
-    memo_acknowledged: { icon: Check, color: 'text-green-600', bg: 'bg-green-50' },
+    memoReceived: { icon: FileText, color: 'text-red-600', bg: 'bg-red-50' },
+    memoAcknowledged: { icon: Check, color: 'text-green-600', bg: 'bg-green-50' },
   };
   return styles[type] || { icon: Bell, color: 'text-gray-600', bg: 'bg-gray-50' };
 };
@@ -62,6 +62,12 @@ interface NotificationItem {
   referenceId?: number;
 }
 
+interface NotificationResponse {
+  success: boolean;
+  notifications: NotificationItem[];
+  unreadCount: number;
+}
+
 export default function NotificationMenu() {
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
@@ -76,9 +82,9 @@ export default function NotificationMenu() {
     setError(null);
     try {
       const response = await notificationApi.getNotifications({ limit: 20, offset: 0 });
-      const data = response.data || response;
+      const data = response.data as NotificationResponse;
       setNotifications(Array.isArray(data.notifications) ? data.notifications : []);
-      setUnreadCount(typeof data.unread_count === 'number' ? data.unread_count : 0);
+      setUnreadCount(typeof data.unreadCount === 'number' ? data.unreadCount : 0);
     } catch (err) {
       console.error('Notification fetch error:', err);
       setError('Unable to load notifications');
@@ -93,8 +99,8 @@ export default function NotificationMenu() {
   const fetchUnreadCount = useCallback(async () => {
     try {
       const response = await notificationApi.getUnreadCount();
-      const data = response.data || response;
-      setUnreadCount(typeof data.unread_count === 'number' ? data.unread_count : 0);
+      const data = response.data as { success: boolean; unreadCount: number };
+      setUnreadCount(typeof data.unreadCount === 'number' ? data.unreadCount : 0);
     } catch (err) {
       console.error('Unread count fetch error:', err);
     }
@@ -116,16 +122,13 @@ export default function NotificationMenu() {
   // Delete notification
   const handleDelete = useCallback(async (id: string | number) => {
     try {
-      const notification = notifications.find(n => n.notificationId === id);
       await notificationApi.deleteNotification(id);
       setNotifications(prev => prev.filter(n => n.notificationId !== id));
-      if (notification?.status === 'unread') {
-        setUnreadCount(prev => Math.max(0, prev - 1));
-      }
+      setUnreadCount(prev => Math.max(0, prev - 1));
     } catch (err) {
       console.error('Delete notification error:', err);
     }
-  }, [notifications]);
+  }, []);
 
   // Mark all as read
   const handleMarkAllAsRead = useCallback(async () => {

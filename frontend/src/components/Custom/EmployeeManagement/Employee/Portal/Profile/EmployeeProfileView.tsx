@@ -11,81 +11,82 @@ interface Education {
   type?: string;
   institution: string;
   degree?: string;
-  field_of_study?: string;
-  start_date?: string;
-  end_date?: string;
+  fieldOfStudy?: string;
+  startDate?: string;
+  endDate?: string;
 }
 
 interface Skill {
-  skill_name: string;
-  proficiency_level?: string;
+  skillName: string;
+  proficiencyLevel?: string;
 }
 
 interface EmergencyContact {
   name: string;
   relationship: string;
-  phone_number: string;
+  phoneNumber: string;
   address?: string;
+}
+
+interface CustomField {
+  label: string;
+  value: string;
+  icon?: LucideIcon;
+  section: string;
 }
 
 interface Profile {
   id: number;
-  first_name?: string;
-  last_name?: string;
+  firstName?: string;
+  lastName?: string;
   email?: string;
-  avatar_url?: string;
+  avatarUrl?: string;
   avatar?: string;
-  position_title?: string;
-  job_title?: string;
+  positionTitle?: string;
   jobTitle?: string;
-  employee_id?: string;
   employeeId?: string;
   department?: string;
-  employment_status?: string;
   employmentStatus?: string;
-  birth_date?: string;
+  birthDate?: string;
   gender?: string;
-  civil_status?: string;
+  civilStatus?: string;
   nationality?: string;
-  blood_type?: string;
-  height_cm?: string;
-  weight_kg?: string;
-  permanent_address?: string;
+  bloodType?: string;
+  heightCm?: string;
+  weightKg?: string;
+  permanentAddress?: string;
   address?: string;
-  item_number?: string;
   itemNumber?: string;
-  salary_grade?: string;
   salaryGrade?: string;
-  step_increment?: string | number;
   stepIncrement?: string | number;
-  appointment_type?: string;
+  appointmentType?: string;
   station?: string;
-  office_address?: string;
-  date_hired?: string;
+  officeAddress?: string;
   dateHired?: string;
-  first_day_of_service?: string;
-  supervisor?: string;
+  firstDayOfService?: string;
   role?: string;
-  gsis_number?: string;
-  philhealth_number?: string;
-  pagibig_number?: string;
-  tin_number?: string;
-  phone_number?: string;
-  emergency_contact?: string;
-  emergency_contact_number?: string;
+  gsisNumber?: string;
+  philhealthNumber?: string;
+  pagibigNumber?: string;
+  tinNumber?: string;
+  phoneNumber?: string;
+  emergencyContact?: string;
+  emergencyContactNumber?: string;
   education?: Education[];
   skills?: Skill[];
   emergencyContacts?: EmergencyContact[];
   // Plantilla-required eligibility fields
-  eligibility_type?: string;
-  eligibility_number?: string;
-  eligibility_date?: string;
-  highest_education?: string;
-  years_of_experience?: number;
+  eligibilityType?: string;
+  eligibilityNumber?: string;
+  eligibilityDate?: string;
+  educationalBackground?: string;
+  yearsOfExperience?: number;
   // Social Media
-  facebook_url?: string;
-  linkedin_url?: string;
-  twitter_handle?: string;
+  facebookUrl?: string;
+  linkedinUrl?: string;
+  twitterHandle?: string;
+  customFields?: CustomField[];
+  agencyEmployeeNo?: string;
 }
 
 interface DataFieldProps {
@@ -174,7 +175,7 @@ const MasterProfileView: React.FC<EmployeeProfileViewProps> = ({ profile, loadin
   };
 
   // Check if employee has a negative status that can be reverted
-  const currentStatus = profile.employment_status || profile.employmentStatus || 'Active';
+  const currentStatus = profile.employmentStatus || 'Active';
   const isNegativeStatus = ['Terminated', 'Suspended', 'Show Cause', 'Verbal Warning', 'Written Warning'].includes(currentStatus);
   const isActive = currentStatus === 'Active';
 
@@ -190,6 +191,14 @@ const MasterProfileView: React.FC<EmployeeProfileViewProps> = ({ profile, loadin
     }
   };
 
+  const renderCustomFields = (sectionName: string) => {
+    if (!profile.customFields || profile.customFields.length === 0) return null;
+    const fieldsInSection = profile.customFields.filter(field => field.section === sectionName);
+    return fieldsInSection.map((field, index) => (
+      <DataField key={index} label={field.label} value={field.value} icon={field.icon} />
+    ));
+  };
+
   return (
     <div className="w-full bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden mb-12">
       
@@ -198,10 +207,10 @@ const MasterProfileView: React.FC<EmployeeProfileViewProps> = ({ profile, loadin
         <div className="flex flex-col md:flex-row items-center gap-6">
           <div className="relative group">
             <div className="w-20 h-20 rounded-lg bg-gray-700 border-2 border-white/20 shadow-lg overflow-hidden flex items-center justify-center">
-              {profile.avatar_url || profile.avatar ? (
-                <img src={profile.avatar_url || profile.avatar} alt="Avatar" className="w-full h-full object-cover" />
+              {profile.avatarUrl || profile.avatar ? (
+                <img src={profile.avatarUrl || profile.avatar} alt="Avatar" className="w-full h-full object-cover" />
               ) : (
-                <span className="text-2xl font-black text-gray-500">{profile.first_name?.[0]}{profile.last_name?.[0]}</span>
+                <span className="text-2xl font-black text-gray-500">{profile.firstName?.[0]}{profile.lastName?.[0]}</span>
               )}
             </div>
             <div className={`absolute -bottom-2 -right-2 text-white text-[10px] font-bold px-2 py-0.5 rounded border border-gray-800 ${
@@ -212,13 +221,13 @@ const MasterProfileView: React.FC<EmployeeProfileViewProps> = ({ profile, loadin
           </div>
           
           <div className="flex-1 text-center md:text-left">
-            <h1 className="text-2xl font-bold tracking-tight mb-1">{profile.first_name} {profile.last_name}</h1>
+            <h1 className="text-2xl font-bold tracking-tight mb-1">{profile.firstName} {profile.lastName}</h1>
             <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-gray-300 text-xs font-medium">
               <span className="flex items-center gap-1.5 bg-white/10 px-2 py-1 rounded">
-                <Briefcase size={12} /> {profile.position_title || profile.job_title || profile.jobTitle || 'No Title'}
+                <Briefcase size={12} /> {profile.positionTitle || profile.jobTitle || 'No Title'}
               </span>
               <span className="flex items-center gap-1.5 bg-white/10 px-2 py-1 rounded">
-                <Hash size={12} /> {profile.employee_id || profile.employeeId}
+                <Hash size={12} /> {profile.employeeId}
               </span>
               <span className="flex items-center gap-1.5 bg-white/10 px-2 py-1 rounded">
                 <Mail size={12} /> {profile.email}
@@ -263,51 +272,51 @@ const MasterProfileView: React.FC<EmployeeProfileViewProps> = ({ profile, loadin
         
         {/* PERSONAL INFORMATION */}
         <Section title="Personal Information" icon={User}>
-          <DataField label="First Name" value={profile.first_name} />
-          <DataField label="Last Name" value={profile.last_name} />
-          <DataField label="Birth Date" value={formatDate(profile.birth_date)} icon={Calendar} />
+          <DataField label="First Name" value={profile.firstName} />
+          <DataField label="Last Name" value={profile.lastName} />
+          <DataField label="Birth Date" value={formatDate(profile.birthDate)} icon={Calendar} />
           <DataField label="Gender" value={profile.gender} />
-          <DataField label="Civil Status" value={profile.civil_status} />
+          <DataField label="Civil Status" value={profile.civilStatus} />
           <DataField label="Nationality" value={profile.nationality} icon={Flag} />
-          <DataField label="Blood Type" value={profile.blood_type} />
-          <DataField label="Height (cm)" value={profile.height_cm} icon={Ruler} />
-          <DataField label="Weight (kg)" value={profile.weight_kg} icon={Scale} />
-          <DataField label="Address" value={profile.permanent_address || profile.address} fullWidth icon={MapPin} />
+          <DataField label="Blood Type" value={profile.bloodType} />
+          <DataField label="Height (cm)" value={profile.heightCm} icon={Ruler} />
+          <DataField label="Weight (kg)" value={profile.weightKg} icon={Scale} />
+          <DataField label="Address" value={profile.permanentAddress || profile.address} fullWidth icon={MapPin} />
         </Section>
 
         {/* EMPLOYMENT RECORD */}
         <Section title="Employment Record" icon={Briefcase}>
-          <DataField label="Employee ID" value={profile.employee_id || profile.employeeId} icon={Hash} highlight />
-          <DataField label="Position Title" value={profile.position_title || profile.job_title} highlight />
-          <DataField label="Item Number" value={profile.item_number || profile.itemNumber} icon={Hash} />
+          <DataField label="Employee ID" value={profile.employeeId} icon={Hash} highlight />
+          <DataField label="Position Title" value={profile.positionTitle || profile.jobTitle} highlight />
+          <DataField label="Item Number" value={profile.itemNumber} icon={Hash} />
           <DataField label="Department" value={profile.department} icon={Building} />
-          <DataField label="Salary Grade" value={profile.salary_grade || profile.salaryGrade} icon={CreditCard} />
-          <DataField label="Step Increment" value={profile.step_increment || profile.stepIncrement} icon={Hash} />
-          <DataField label="Appointment Type" value={profile.appointment_type} />
-          <DataField label="Employment Status" value={profile.employment_status || profile.employmentStatus} />
+          <DataField label="Salary Grade" value={profile.salaryGrade} icon={CreditCard} />
+          <DataField label="Step Increment" value={profile.stepIncrement} icon={Hash} />
+          <DataField label="Appointment Type" value={profile.appointmentType} />
+          <DataField label="Employment Status" value={profile.employmentStatus} />
           <DataField label="Station" value={profile.station} icon={Building} />
-          <DataField label="Office Address" value={profile.office_address} icon={MapPin} />
-          <DataField label="Date Hired" value={formatDate(profile.date_hired || profile.dateHired)} icon={Calendar} />
-          <DataField label="First Day of Service" value={formatDate(profile.first_day_of_service)} icon={Clock} />
-          <DataField label="Supervisor" value={profile.supervisor} icon={UserCheck} />
+          <DataField label="Office Address" value={profile.officeAddress} icon={MapPin} fullWidth />
+          <DataField label="Date Hired" value={formatDate(profile.dateHired)} icon={Calendar} />
+          <DataField label="First Day of Service" value={formatDate(profile.firstDayOfService)} icon={Clock} />
           <DataField label="System Role" value={profile.role} icon={Shield} />
+          {renderCustomFields("Employment Record")}
         </Section>
 
         {/* GOVERNMENT IDS */}
         <Section title="Government Identification" icon={Shield}>
-          <DataField label="GSIS No." value={profile.gsis_number} />
-          <DataField label="PhilHealth No." value={profile.philhealth_number} />
-          <DataField label="Pag-IBIG No." value={profile.pagibig_number} />
-          <DataField label="TIN" value={profile.tin_number} />
+          <DataField label="GSIS No." value={profile.gsisNumber} />
+          <DataField label="PhilHealth No." value={profile.philhealthNumber} />
+          <DataField label="Pag-IBIG No." value={profile.pagibigNumber} />
+          <DataField label="TIN" value={profile.tinNumber} />
         </Section>
 
         {/* ELIGIBILITY & QUALIFICATIONS (Plantilla Required) */}
         <Section title="Eligibility & Qualifications" icon={Award}>
-          <DataField label="Eligibility Type" value={profile.eligibility_type} />
-          <DataField label="Eligibility No." value={profile.eligibility_number} icon={Hash} />
-          <DataField label="Eligibility Date" value={formatDate(profile.eligibility_date)} icon={Calendar} />
-          <DataField label="Highest Education" value={profile.highest_education} icon={GraduationCap} />
-          <DataField label="Years of Experience" value={profile.years_of_experience} />
+          <DataField label="Eligibility Type" value={profile.eligibilityType} />
+          <DataField label="Eligibility No." value={profile.eligibilityNumber} icon={Hash} />
+          <DataField label="Eligibility Date" value={formatDate(profile.eligibilityDate)} icon={Calendar} />
+          <DataField label="Educational Background" value={profile.educationalBackground} icon={GraduationCap} />
+          <DataField label="Years of Experience" value={profile.yearsOfExperience} />
         </Section>
 
          {/* EDUCATION */}
@@ -328,8 +337,8 @@ const MasterProfileView: React.FC<EmployeeProfileViewProps> = ({ profile, loadin
                         <tr key={idx} className="hover:bg-gray-50">
                           <td className="px-4 py-2 font-bold text-gray-700">{edu.type || 'N/A'}</td>
                           <td className="px-4 py-2 text-gray-800">{edu.institution}</td>
-                          <td className="px-4 py-2 text-gray-900 font-medium">{edu.degree || edu.field_of_study || '-'}</td>
-                          <td className="px-4 py-2 text-gray-500">{edu.start_date ? new Date(edu.start_date).getFullYear() : 'N/A'} - {edu.end_date ? new Date(edu.end_date).getFullYear() : 'Present'}</td>
+                          <td className="px-4 py-2 text-gray-900 font-medium">{edu.degree || edu.fieldOfStudy || '-'}</td>
+                          <td className="px-4 py-2 text-gray-500">{edu.startDate ? new Date(edu.startDate).getFullYear() : 'N/A'} - {edu.endDate ? new Date(edu.endDate).getFullYear() : 'Present'}</td>
                         </tr>
                       ))}
                    </tbody>
@@ -343,8 +352,8 @@ const MasterProfileView: React.FC<EmployeeProfileViewProps> = ({ profile, loadin
           <Section title="Skills & Competencies" icon={Award} columns="grid-cols-2 md:grid-cols-4">
              {profile.skills.map((skill, idx) => (
                 <div key={idx} className="flex items-center justify-between border border-gray-200 rounded p-2 bg-gray-50">
-                   <span className="text-xs font-bold text-gray-700">{skill.skill_name}</span>
-                   <span className="text-[10px] font-medium text-gray-500">{skill.proficiency_level || 'N/A'}</span>
+                   <span className="text-xs font-bold text-gray-700">{skill.skillName}</span>
+                   <span className="text-[10px] font-medium text-gray-500">{skill.proficiencyLevel || 'N/A'}</span>
                 </div>
              ))}
           </Section>
@@ -352,7 +361,7 @@ const MasterProfileView: React.FC<EmployeeProfileViewProps> = ({ profile, loadin
 
          {/* CONTACT & EMERGENCY */}
         <Section title="Contact & Emergency" icon={Phone}>
-          <DataField label="Mobile Number" value={profile.phone_number} icon={Phone} />
+          <DataField label="Mobile Number" value={profile.phoneNumber} icon={Phone} />
           <DataField label="Official Email" value={profile.email} icon={Mail} />
           
           {/* Display primary emergency contact if available in array, else fallback to legacy fields */}
@@ -360,24 +369,24 @@ const MasterProfileView: React.FC<EmployeeProfileViewProps> = ({ profile, loadin
              <>
                <DataField label="Emergency Contact" value={profile.emergencyContacts[0].name} icon={Heart} />
                <DataField label="Relationship" value={profile.emergencyContacts[0].relationship} />
-               <DataField label="Emerg. Number" value={profile.emergencyContacts[0].phone_number} icon={Phone} />
+               <DataField label="Emerg. Number" value={profile.emergencyContacts[0].phoneNumber} icon={Phone} />
                {profile.emergencyContacts[0].address && (
                  <DataField label="Emerg. Address" value={profile.emergencyContacts[0].address} icon={MapPin} />
                )}
              </>
           ) : (
              <>
-               <DataField label="Emergency Contact" value={profile.emergency_contact} icon={Heart} />
-               <DataField label="Emerg. Number" value={profile.emergency_contact_number} icon={Phone} />
+               <DataField label="Emergency Contact" value={profile.emergencyContact} icon={Heart} />
+               <DataField label="Emerg. Number" value={profile.emergencyContactNumber} icon={Phone} />
              </>
           )}
         </Section>
 
         {/* SOCIAL MEDIA */}
         <Section title="Social Media" icon={User} columns="grid-cols-1 md:grid-cols-3">
-          <DataField label="Facebook" value={profile.facebook_url} icon={Facebook} />
-          <DataField label="LinkedIn" value={profile.linkedin_url} icon={Linkedin} />
-          <DataField label="Twitter/X" value={profile.twitter_handle ? `@${profile.twitter_handle}` : undefined} icon={Twitter} />
+          <DataField label="Facebook" value={profile.facebookUrl} icon={Facebook} />
+          <DataField label="LinkedIn" value={profile.linkedinUrl} icon={Linkedin} />
+          <DataField label="Twitter/X" value={profile.twitterHandle ? `@${profile.twitterHandle}` : undefined} icon={Twitter} />
         </Section>
 
       </div>

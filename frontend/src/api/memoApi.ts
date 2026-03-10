@@ -21,72 +21,44 @@ export interface Memo {
 
 // Fetch all memos with filters
 export const fetchMemos = async (params: Record<string, unknown> = {}): Promise<ApiResponse<{ memos: Memo[] }>> => {
-  try {
     const response = await axios.get('/memos', { params });
     return response.data;
-  } catch (error) {
-    throw error;
-  }
 };
 
 // Fetch my memos (for employees)
 export const fetchMyMemos = async (): Promise<ApiResponse<{ memos: Memo[] }>> => {
-  try {
     const response = await axios.get('/memos/my');
     return response.data;
-  } catch (error) {
-    throw error;
-  }
 };
 
 // Fetch single memo
 export const fetchMemoById = async (id: string | number): Promise<ApiResponse<{ memo: Memo }>> => {
-  try {
     const response = await axios.get(`/memos/${id}`);
     return response.data;
-  } catch (error) {
-    throw error;
-  }
 };
 
 // Create memo
-export const createMemo = async (data: Record<string, any>): Promise<ApiResponse<{ success: boolean; id: number }>> => {
-  try {
+export const createMemo = async (data: Record<string, unknown>): Promise<ApiResponse<{ success: boolean; id: number }>> => {
     const response = await axios.post('/memos', data);
     return response.data;
-  } catch (error) {
-    throw error;
-  }
 };
 
 // Update memo
-export const updateMemo = async (id: string | number, data: Record<string, any>): Promise<ApiResponse<{ success: boolean }>> => {
-  try {
+export const updateMemo = async (id: string | number, data: Record<string, unknown>): Promise<ApiResponse<{ success: boolean }>> => {
     const response = await axios.put(`/memos/${id}`, data);
     return response.data;
-  } catch (error) {
-    throw error;
-  }
 };
 
 // Delete memo
 export const deleteMemo = async (id: string | number): Promise<ApiResponse<{ success: boolean }>> => {
-  try {
     const response = await axios.delete(`/memos/${id}`);
     return response.data;
-  } catch (error) {
-    throw error;
-  }
 };
 
 // Acknowledge memo
 export const acknowledgeMemo = async (id: string | number): Promise<ApiResponse<{ success: boolean }>> => {
-  try {
     const response = await axios.post(`/memos/${id}/acknowledge`);
     return response.data;
-  } catch (error) {
-    throw error;
-  }
 };
 
 // Constants

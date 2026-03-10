@@ -1,7 +1,5 @@
-import React, { useState } from 'react';
-import { Search, Eye } from 'lucide-react';
+import React from 'react';
 import { LEAVE_TABLE_HEADERS, STATUS_STYLES } from '@/components/Custom/Timekeeping/LeaveRequestComponents/Employee/constants/leaveConstants';
-import LeaveDetailsModal from '@/components/Custom/Timekeeping/LeaveRequestComponents/Employee/Modals/LeaveDetailsModal';
 import { EmployeeLeaveRequest, EmployeeLeaveFilters } from '@/components/Custom/Timekeeping/LeaveRequestComponents/Employee/types';
 
 interface TableProps {
@@ -12,14 +10,6 @@ interface TableProps {
 }
 
 export const Table: React.FC<TableProps> = ({ data, searchQuery, filters }) => {
-  const [selectedLeave, setSelectedLeave] = useState<EmployeeLeaveRequest | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-
-  const handleViewDetails = (leave: EmployeeLeaveRequest) => {
-    setSelectedLeave(leave);
-    setIsModalOpen(true);
-  };
-  
   const getStatusBadge = (status: string) => {
     return STATUS_STYLES[status] || 'bg-gray-100 text-gray-800';
   };
@@ -53,7 +43,7 @@ export const Table: React.FC<TableProps> = ({ data, searchQuery, filters }) => {
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-800">{item.department}</td>
                   <td className="px-6 py-4 text-sm text-gray-800">{item.id}</td>
-                  <td className="px-6 py-4 text-sm text-gray-800">{item.employee_id}</td>
+                  <td className="px-6 py-4 text-sm text-gray-800">{item.employeeId}</td>
                   <td className="px-6 py-4 text-sm text-gray-800">{item.leaveType}</td>
                   <td className="px-6 py-4 text-sm text-gray-800">
                     {new Date(item.fromDate).toLocaleDateString()}
@@ -62,15 +52,7 @@ export const Table: React.FC<TableProps> = ({ data, searchQuery, filters }) => {
                     {new Date(item.toDate).toLocaleDateString()}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-800">
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => handleViewDetails(item)}
-                        className="bg-blue-100 hover:bg-blue-200 text-blue-700 p-1.5 rounded-md transition-colors"
-                        title="View Details"
-                      >
-                        <Eye size={16} />
-                      </button>
-                    </div>
+                    {/* Actions removed */}
                   </td>
                 </tr>
               ))
@@ -91,12 +73,6 @@ export const Table: React.FC<TableProps> = ({ data, searchQuery, filters }) => {
           </tbody>
         </table>
       </div>
-
-      <LeaveDetailsModal 
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        leaveRequest={selectedLeave}
-      />
     </div>
   );
 };

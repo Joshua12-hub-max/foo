@@ -2,10 +2,10 @@ import { mysqlTable, varchar, int, date, timestamp, text, mysqlEnum, datetime, p
 import { sql } from 'drizzle-orm';
 
 export const announcements = mysqlTable("announcements", {
-	id: int().autoincrement().notNull(),
-	title: varchar({ length: 255 }).notNull(),
-	content: text().notNull(),
-	priority: mysqlEnum(['normal','high','urgent']).default('normal'),
+	id: int("id").autoincrement().notNull(),
+	title: varchar("title", { length: 255 }).notNull(),
+	content: text("content").notNull(),
+	priority: mysqlEnum("priority", ['normal','high','urgent']).default('normal'),
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
 	startDate: date("start_date", { mode: 'string' }),
 	endDate: date("end_date", { mode: 'string' }),
@@ -17,28 +17,28 @@ export const announcements = mysqlTable("announcements", {
 ]);
 
 export const events = mysqlTable("events", {
-	id: int().autoincrement().notNull(),
-	title: varchar({ length: 255 }).notNull(),
-	date: date({ mode: 'string' }).notNull(),
+	id: int("id").autoincrement().notNull(),
+	title: varchar("title", { length: 255 }).notNull(),
+	date: date("date", { mode: 'string' }).notNull(),
 	startDate: date("start_date", { mode: 'string' }),
 	endDate: date("end_date", { mode: 'string' }),
-	department: varchar({ length: 100 }),
-	time: int().default(9),
+	department: varchar("department", { length: 100 }),
+	time: int("time").default(9),
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
 	recurringPattern: varchar("recurring_pattern", { length: 50 }).default('none'),
 	recurringEndDate: date("recurring_end_date", { mode: 'string' }),
-	description: text(),
+	description: text("description"),
 },
 (table) => [
 	primaryKey({ columns: [table.id], name: "events_id"}),
 ]);
 
 export const holidays = mysqlTable("holidays", {
-	id: int().autoincrement().notNull(),
-	name: varchar({ length: 100 }).notNull(),
-	date: date({ mode: 'string' }).notNull(),
-	type: mysqlEnum(['Regular','Special Non-Working','Special Working']).notNull(),
-	year: int().notNull(),
+	id: int("id").autoincrement().notNull(),
+	name: varchar("name", { length: 100 }).notNull(),
+	date: date("date", { mode: 'string' }).notNull(),
+	type: mysqlEnum("type", ['Regular','Special Non-Working','Special Working']).notNull(),
+	year: int("year").notNull(),
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
 },
 (table) => [
@@ -47,8 +47,8 @@ export const holidays = mysqlTable("holidays", {
 ]);
 
 export const memoSequences = mysqlTable("memo_sequences", {
-	id: int().autoincrement().notNull(),
-	year: int().notNull(),
+	id: int("id").autoincrement().notNull(),
+	year: int("year").notNull(),
 	lastNumber: int("last_number").default(0).notNull(),
 },
 (table) => [
@@ -60,11 +60,11 @@ export const notifications = mysqlTable("notifications", {
 	notificationId: int("notification_id").autoincrement().notNull(),
 	recipientId: varchar("recipient_id", { length: 50 }).notNull(),
 	senderId: varchar("sender_id", { length: 50 }),
-	title: varchar({ length: 255 }),
-	message: text(),
-	type: varchar({ length: 50 }),
+	title: varchar("title", { length: 255 }),
+	message: text("message"),
+	type: varchar("type", { length: 50 }),
 	referenceId: int("reference_id"),
-	status: mysqlEnum(['read','unread']).default('unread'),
+	status: mysqlEnum("status", ['read','unread']).default('unread'),
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
 },
 (table) => [
@@ -72,7 +72,7 @@ export const notifications = mysqlTable("notifications", {
 ]);
 
 export const syncedEvents = mysqlTable("synced_events", {
-	id: int().autoincrement().notNull(),
+	id: int("id").autoincrement().notNull(),
 	localEventId: int("local_event_id").notNull().references(() => events.id, { onDelete: "cascade" } ),
 	googleEventId: varchar("google_event_id", { length: 255 }).notNull(),
 	lastSynced: datetime("last_synced", { mode: 'string'}).default(sql`(CURRENT_TIMESTAMP)`),
@@ -85,7 +85,7 @@ export const syncedEvents = mysqlTable("synced_events", {
 export const systemSettings = mysqlTable("system_settings", {
 	settingKey: varchar("setting_key", { length: 255 }).notNull(),
 	settingValue: text("setting_value"),
-	description: varchar({ length: 255 }),
+	description: varchar("description", { length: 255 }),
 	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow(),
 },
 (table) => [
@@ -93,14 +93,14 @@ export const systemSettings = mysqlTable("system_settings", {
 ]);
 
 export const employeeDirectory = mysqlView("employee_directory", {
-	id: int().default(0).notNull(),
+	id: int("id").default(0).notNull(),
 	employeeId: varchar("employee_id", { length: 50 }).notNull(),
 	rfidCardUid: varchar("rfid_card_uid", { length: 50 }),
 	firstName: varchar("first_name", { length: 100 }).notNull(),
 	lastName: varchar("last_name", { length: 100 }).notNull(),
 	fullName: varchar("full_name", { length: 201 }),
-	email: varchar({ length: 255 }).notNull(),
-	role: varchar({ length: 50 }).notNull(),
+	email: varchar("email", { length: 255 }).notNull(),
+	role: varchar("role", { length: 50 }).notNull(),
 	jobTitle: varchar("job_title", { length: 100 }),
 	employmentStatus: mysqlEnum("employment_status", ['Active','Probationary','Terminated','Resigned','On Leave','Suspended','Verbal Warning','Written Warning','Show Cause']).default('Active'),
 	avatarUrl: varchar("avatar_url", { length: 500 }),
@@ -113,8 +113,8 @@ export const employeeDirectory = mysqlView("employee_directory", {
 
 
 export const addressRefBarangays = mysqlTable("address_ref_barangays", {
-	id: int().autoincrement().notNull(),
-	name: varchar({ length: 100 }).notNull(),
+	id: int("id").autoincrement().notNull(),
+	name: varchar("name", { length: 100 }).notNull(),
 	zipCode: varchar("zip_code", { length: 10 }).notNull(),
 },
 (table) => [

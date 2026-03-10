@@ -53,7 +53,7 @@ export default function Sidebar({ sidebarOpen, navItems, handleLogout, onSection
             <img src="/Logo.Municipal of Meycuayan.png" alt="Meycauayan Logo" className={`transition-all duration-300 ${sidebarOpen ? 'w-20 h-20' : 'w-12 h-12'} rounded-full flex-shrink-0 shadow-lg ring-2 ring-slate-800`}/>
              {sidebarOpen && (<div className="mt-4 text-center transition-all duration-300">
                 <h1 className="text-base font-bold leading-tight tracking-wide text-white">
-                  {userRole?.toLowerCase() === 'human resource' ? 'Human Resource Portal' : 'Administrator Portal'}
+                  {userRole === 'Human Resource' ? 'Human Resource Portal' : 'Administrator Portal'}
                 </h1>
                 <p className="text-[10px] font-medium text-gray-400 leading-tight mt-1 uppercase tracking-wider">City Human Resources Management Office</p>
               </div>

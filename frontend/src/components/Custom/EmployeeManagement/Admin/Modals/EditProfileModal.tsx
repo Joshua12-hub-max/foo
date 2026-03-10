@@ -8,10 +8,10 @@ import { updateMyProfile } from '@api/employeeApi';
 
 // Local schema for this modal
 const EditProfileFormSchema = z.object({
-  first_name: z.string().min(1, 'First name is required'),
-  last_name: z.string().min(1, 'Last name is required'),
+  firstName: z.string().min(1, 'First name is required'),
+  lastName: z.string().min(1, 'Last name is required'),
   email: z.string().email('Invalid email format'),
-  phone_number: z.string(),
+  phoneNumber: z.string(),
   address: z.string(),
 });
 
@@ -49,27 +49,27 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
   } = useForm<EditProfileFormInput>({
     resolver: zodResolver(EditProfileFormSchema),
     defaultValues: {
-      first_name: '',
-      last_name: '',
+      firstName: '',
+      lastName: '',
       email: '',
-      phone_number: '',
+      phoneNumber: '',
       address: '',
     },
   });
 
-  const firstName = watch('first_name');
-  const lastName = watch('last_name');
+  const firstName = watch('firstName');
+  const lastName = watch('lastName');
 
   useEffect(() => {
     if (profile && isOpen) {
       reset({
-        first_name: profile.first_name || '',
-        last_name: profile.last_name || '',
+        firstName: profile.firstName || '',
+        lastName: profile.lastName || '',
         email: profile.email || '',
-        phone_number: profile.phone_number || '',
+        phoneNumber: profile.phoneNumber || '',
         address: profile.address || '',
       });
-      setAvatarPreview(profile.avatar_url || null);
+      setAvatarPreview(profile.avatarUrl || null);
     }
   }, [profile, isOpen, reset]);
 
@@ -87,8 +87,8 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
 
     try {
       const formData = new FormData();
-      formData.append('first_name', data.first_name);
-      formData.append('last_name', data.last_name);
+      formData.append('firstName', data.firstName);
+      formData.append('lastName', data.lastName);
       formData.append('email', data.email);
       if (avatarFile) {
         formData.append('avatar', avatarFile);
@@ -158,10 +158,10 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
               </label>
               <input
                 type="text"
-                {...register('first_name')}
+                {...register('firstName')}
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-300 text-sm"
               />
-              {errors.first_name && <p className="text-red-500 text-xs mt-1">{errors.first_name.message}</p>}
+              {errors.firstName && <p className="text-red-500 text-xs mt-1">{errors.firstName.message}</p>}
             </div>
             <div>
               <label className="text-sm text-gray-600 mb-1 block flex items-center gap-1">
@@ -169,10 +169,10 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
               </label>
               <input
                 type="text"
-                {...register('last_name')}
+                {...register('lastName')}
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-300 text-sm"
               />
-              {errors.last_name && <p className="text-red-500 text-xs mt-1">{errors.last_name.message}</p>}
+              {errors.lastName && <p className="text-red-500 text-xs mt-1">{errors.lastName.message}</p>}
             </div>
           </div>
 

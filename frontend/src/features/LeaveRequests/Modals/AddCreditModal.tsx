@@ -6,9 +6,9 @@ import { addCreditSchema, AddCreditInput } from '@/schemas/creditsSchema';
 import Combobox from '@/components/Custom/Combobox';
 
 interface EmployeeOption {
-  employee_id: string;
-  first_name?: string;
-  last_name?: string;
+  employeeId: string;
+  firstName?: string;
+  lastName?: string;
 }
 
 interface AddCreditModalProps {
@@ -80,17 +80,17 @@ const AddCreditModal = ({ isOpen, onClose, onSubmit, employees, isLoadingEmploye
             ) : (
               <Combobox
                 options={employees.map(emp => ({ 
-                  value: emp.employee_id, 
-                  label: `${emp.first_name} ${emp.last_name} (${emp.employee_id})` 
+                  value: emp.employeeId, 
+                  label: `${emp.firstName} ${emp.lastName} (${emp.employeeId})` 
                 }))}
-                value={watch('employee_id') || ''}
-                onChange={(val) => setValue('employee_id', val, { shouldValidate: true })}
+                value={watch('employeeId') || ''}
+                onChange={(val) => setValue('employeeId', val, { shouldValidate: true })}
                 placeholder="Search and select employee..."
-                error={!!errors.employee_id}
+                error={!!errors.employeeId}
               />
             )}
-            {errors.employee_id && (
-              <p className="mt-1 text-xs text-red-500 font-medium">{errors.employee_id.message}</p>
+            {errors.employeeId && (
+              <p className="mt-1 text-xs text-red-500 font-medium">{errors.employeeId.message}</p>
             )}
           </div>
 

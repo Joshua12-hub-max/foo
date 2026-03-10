@@ -12,19 +12,19 @@ const LeaveDetailsModal: React.FC<LeaveDetailsModalProps> = ({ isOpen, onClose, 
   if (!isOpen || !leaveRequest) return null;
 
   const handleDownloadAttachment = () => {
-    if (!leaveRequest.attachment_path) return;
+    if (!leaveRequest.attachmentPath) return;
     
     const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
     const BASE_URL = API_URL.replace('/api', '');
-    const attachmentUrl = `${BASE_URL}/uploads/${leaveRequest.attachment_path}`;
+    const attachmentUrl = `${BASE_URL}/uploads/${leaveRequest.attachmentPath}`;
     
     window.open(attachmentUrl, '_blank');
   };
 
   // Extract just the filename from the path
   const getFileName = () => {
-    if (!leaveRequest.attachment_path) return 'No document attached';
-    const fileName = leaveRequest.attachment_path.split('/').pop() || '';
+    if (!leaveRequest.attachmentPath) return 'No document attached';
+    const fileName = leaveRequest.attachmentPath.split('/').pop() || '';
     return fileName.length > 30 ? fileName.substring(0, 30) + '...' : fileName;
   };
 
@@ -59,15 +59,15 @@ const LeaveDetailsModal: React.FC<LeaveDetailsModalProps> = ({ isOpen, onClose, 
                   <FileText size={20} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate" title={leaveRequest.attachment_path?.split('/').pop()}>
+                  <p className="text-sm font-medium text-gray-900 truncate" title={leaveRequest.attachmentPath?.split('/').pop()}>
                     {getFileName()}
                   </p>
                   <p className="text-xs text-red-500 font-medium">
-                    {leaveRequest.attachment_path ? 'PDF' : 'No file'}
+                    {leaveRequest.attachmentPath ? 'PDF' : 'No file'}
                   </p>
                 </div>
               </div>
-              {leaveRequest.attachment_path && (
+              {leaveRequest.attachmentPath && (
                 <button
                   onClick={handleDownloadAttachment}
                   className="w-full mt-4 px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 hover:text-gray-900 transition-colors flex items-center justify-center gap-2 shadow-sm"

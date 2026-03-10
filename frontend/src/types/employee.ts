@@ -2,94 +2,117 @@ import { UserRole, EmploymentStatus, Gender, CivilStatus, AppointmentType } from
 
 export interface Employee {
   id: number;
-  first_name: string;
-  last_name: string;
-  middle_name: string | null;
+  firstName: string;
+  lastName: string;
+  middleName: string | null;
   email: string;
   role: UserRole;
   department?: string | null;
-  department_id?: number | null;
-  employee_id: string;
-  job_title?: string | null;
-  position_title?: string | null;
-  employment_status: EmploymentStatus | null;
-  employment_type: string | null;
-  date_hired: string | null;
-  contract_end_date: string | null;
-  regularization_date: string | null;
-  is_regular: number;
-  birth_date: string | null;
+  departmentId?: number | null;
+  employeeId: string;
+  jobTitle?: string | null;
+  positionTitle?: string | null;
+  employmentStatus: EmploymentStatus | null;
+  employmentType: string | null;
+  dateHired: string | null;
+  contractEndDate: string | null;
+  regularizationDate: string | null;
+  isRegular: boolean;
+  birthDate: string | null;
   gender: Gender | null;
-  civil_status: CivilStatus | null;
+  civilStatus: CivilStatus | null;
   nationality: string | null;
-  phone_number: string | null;
+  phoneNumber: string | null;
   address: string | null;
-  permanent_address: string | null;
-  avatar_url?: string | null;
-  umid_id: string | null;
-  philsys_id: string | null;
-  philhealth_number: string | null;
-  pagibig_number: string | null;
-  tin_number: string | null;
-  gsis_number: string | null;
-  educational_background: string | null;
-  salary_grade: string | null;
-  step_increment: number;
-  appointment_type: AppointmentType | null;
+  permanentAddress: string | null;
+  barangay: string | null;
+  religion: string | null;
+  citizenship: string | null;
+  citizenshipType: string | null;
+  avatarUrl?: string | null;
+  umidNumber: string | null;
+  philsysId: string | null;
+  philhealthNumber: string | null;
+  pagibigNumber: string | null;
+  tinNumber: string | null;
+  gsisNumber: string | null;
+  educationalBackground: string | null;
+  schoolName: string | null;
+  course: string | null;
+  yearGraduated: string | null;
+  coreCompetencies: string | null;
+  salaryGrade: string | null;
+  stepIncrement: number;
+  appointmentType: AppointmentType | null;
   station: string | null;
-  item_number: string | null;
-  position_id: number | null;
+  itemNumber: string | null;
+  positionId: number | null;
   duties: string;
+  experience: string | null;
 
   // PDS / Extended Fields
-  height_m: string | null;
-  weight_kg: string | null;
-  blood_type: string | null;
-  place_of_birth: string | null;
-  residential_address: string | null;
-  residential_zip_code: string | null;
-  permanent_zip_code: string | null;
-  telephone_no: string | null;
-  mobile_no: string | null;
-  agency_employee_no: string | null;
-  emergency_contact: string | null;
-  emergency_contact_number: string | null;
+  heightM: string | null;
+  weightKg: string | null;
+  bloodType: string | null;
+  placeOfBirth: string | null;
+  residentialAddress: string | null;
+  residentialZipCode: string | null;
+  permanentZipCode: string | null;
+  telephoneNo: string | null;
+  mobileNo: string | null;
+  agencyEmployeeNo: string | null;
+  emergencyContact: string | null;
+  emergencyContactNumber: string | null;
+  resHouseBlockLot: string | null;
+  resStreet: string | null;
+  resSubdivision: string | null;
+  resBarangay: string | null;
+  resCity: string | null;
+  resProvince: string | null;
+  permHouseBlockLot: string | null;
+  permStreet: string | null;
+  permSubdivision: string | null;
+  permBarangay: string | null;
+  permCity: string | null;
+  permProvince: string | null;
+  rightThumbmarkUrl: string | null;
+  ctcNo: string | null;
+  ctcIssuedAt: string | null;
+  ctcIssuedDate: string | null;
   
-  facebook_url: string | null;
-  linkedin_url: string | null;
-  twitter_handle: string | null;
+  facebookUrl: string | null;
+  linkedinUrl: string | null;
+  twitterHandle: string | null;
   
   // Eligibility
-  eligibility_type: string | null;
-  eligibility_number: string | null;
-  eligibility_date: string | null;
-  highest_education: string | null;
-  years_of_experience: number;
+  eligibilityType: string | null;
+  eligibilityNumber: string | null;
+  eligibilityDate: string | null;
+  yearsOfExperience: number;
 
   // Additional Employment Fields
-  office_address: string | null;
-  first_day_of_service: string | null;
-  supervisor: string | null;
-  original_appointment_date: string | null;
-  last_promotion_date: string | null;
+  officeAddress: string | null;
+  firstDayOfService: string | null;
+  originalAppointmentDate: string | null;
+  lastPromotionDate: string | null;
 }
 
 export interface Skill {
   id: number;
-  skill_name: string;
+  skillName: string;
   category: string;
-  proficiency_level: string;
-  years_experience: number | null;
+  proficiencyLevel: string;
+  yearsExperience: number | null;
 }
 
 export interface Education {
   id: number;
   institution: string;
   degree: string | null;
-  field_of_study: string | null;
-  start_date: string | null;
-  end_date: string | null;
-  is_current: number;
+  fieldOfStudy: string | null;
+  startDate: string | null;
+  endDate: string | null;
+  isCurrent: number;
   type?: string | null;
 }
 
@@ -97,23 +120,88 @@ export interface EmergencyContact {
   id: number;
   name: string;
   relationship: string;
-  phone_number: string;
+  phoneNumber: string;
   email: string | null;
   address: string | null;
-  is_primary: number;
+  isPrimary: number;
+}
+
+export interface VoluntaryWork {
+  id: number;
+  organizationName: string;
+  address?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  hoursNumber?: number;
+  position?: string;
+}
+
+export interface LearningDevelopment {
+  id: number;
+  title: string;
+  dateFrom?: string;
+  dateTo?: string;
+  hoursNumber?: number;
+  typeOfLd?: string;
+  conductedBy?: string;
+}
+
+export interface WorkplaceExperience {
+  id: number;
+  dateFrom: string;
+  dateTo?: string;
+  positionTitle: string;
+  companyName: string;
+  monthlySalary?: string;
+  salaryGrade?: string;
+  appointmentStatus?: string;
+  isGovernment?: boolean;
 }
 
 export interface CustomField {
   id: number;
   section: string;
-  field_name: string;
-  field_value: string | null;
+  fieldName: string;
+  fieldValue: string | null;
+}
+
+export interface FamilyMember {
+  id: number;
+  relationType: 'Spouse' | 'Father' | 'Mother' | 'Child' | string;
+  lastName: string | null;
+  firstName: string | null;
+  middleName: string | null;
+  nameExtension: string | null;
+  occupation: string | null;
+  employer: string | null;
+  businessAddress: string | null;
+  telephoneNo: string | null;
+  dateOfBirth: string | null;
+}
+
+export interface PdsOtherInfo {
+  id: number;
+  type: 'Skill' | 'Recognition' | 'Membership' | string;
+  description: string;
+}
+
+export interface PdsReference {
+  id: number;
+  name: string;
+  address: string | null;
+  telNo: string | null;
 }
 
 
 export interface EmployeeDetailed extends Employee {
   skills: Skill[];
   education: Education[];
-  emergency_contacts: EmergencyContact[];
-  custom_fields: CustomField[];
+  emergencyContacts: EmergencyContact[];
+  customFields: CustomField[];
+  familyBackground: FamilyMember[];
+  voluntaryWork: VoluntaryWork[];
+  learningDevelopment: LearningDevelopment[];
+  workExperience: WorkplaceExperience[];
+  otherInfo: PdsOtherInfo[];
+  references: PdsReference[];
 }

@@ -12,8 +12,7 @@ import {
   ROLE_OPTIONS,
   APPOINTMENT_TYPE_OPTIONS,
   GENDER_OPTIONS,
-  CIVIL_STATUS_OPTIONS,
-  SALARY_GRADE_OPTIONS
+  CIVIL_STATUS_OPTIONS
 } from '../constants/employeeConstants';
 
 interface Department {
@@ -50,28 +49,35 @@ const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
   const { register, handleSubmit, formState: { errors }, setValue, reset, watch } = useForm<CreateEmployeeInput>({
     resolver: zodResolver(CreateEmployeeSchema),
     defaultValues: {
-      first_name: '',
-      last_name: '',
+      firstName: '',
+      lastName: '',
       email: '',
       department: '',
-      role: 'employee',
-      step_increment: 1,
+      role: 'Employee',
+      stepIncrement: 1,
       nationality: 'Filipino',
-      department_id: null,
-      position_id: null
+      employmentStatus: 'Active',
+      employmentType: 'Probationary',
+      isRegular: false,
+      departmentId: null,
+      positionId: null
     }
   });
 
   const addEmployeeMutation = useMutation({
     mutationFn: async (data: CreateEmployeeInput) => {
-        await employeeApi.addEmployee(data);
+        return await employeeApi.addEmployee(data);
     },
-    onSuccess: () => {
-        showToast('Employee added successfully', 'success');
-        queryClient.invalidateQueries({ queryKey: ['employees'] });
-        reset();
-        onClose();
-        if (onSuccess) onSuccess();
+    onSuccess: (res) => {
+        if (res.success) {
+            showToast('Employee added successfully', 'success');
+            queryClient.invalidateQueries({ queryKey: ['employees'] });
+            reset();
+            onClose();
+            if (onSuccess) onSuccess();
+        } else {
+            showToast(res.message || 'Failed to add employee', 'error');
+        }
     },
     onError: (error: unknown) => {
         const err = error as ApiError;
@@ -89,7 +95,7 @@ const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
 
   const loadVacantPositions = async () => {
     try {
-      const res = await plantillaApi.getPositions({ is_vacant: true });
+      const res = await plantillaApi.getPositions({ isVacant: true });
       if (res.data.success) {
         setVacantPositions(res.data.positions);
       }
@@ -101,25 +107,25 @@ const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
 
   const handlePlantillaChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const itemNo = e.target.value;
-    setValue('item_number', itemNo);
+    setValue('itemNumber', itemNo);
     
     if (itemNo) {
-      const position = vacantPositions.find(p => p.item_number === itemNo);
+      const position = vacantPositions.find(p => p.itemNumber === itemNo);
       if (position) {
-        setValue('position_title', position.position_title || '');
-        setValue('position_id', position.id);
-        const sg = parserSalaryGrade(position.salary_grade);
-        if (sg !== undefined) setValue('salary_grade', sg);
-        setValue('step_increment', position.step_increment || 1);
+        setValue('positionTitle', position.positionTitle || '');
+        setValue('positionId', position.id);
+        const sg = parserSalaryGrade(position.salaryGrade);
+        if (sg !== undefined) setValue('salaryGrade', sg);
+        setValue('stepIncrement', position.stepIncrement || 1);
         if (position.department) {
              setValue('department', position.department);
              // Try to find dept id
              const dept = departments.find(d => d.name === position.department);
-             if (dept) setValue('department_id', dept.id);
+             if (dept) setValue('departmentId', dept.id);
         }
       }
     } else {
-        setValue('position_id', null);
+        setValue('positionId', null);
     }
   };
 
@@ -179,72 +185,55 @@ const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
                     <User size={14} className="text-gray-400" /> First Name *
                   </label>
                   <input 
-                    {...register('first_name')}
-                    className={`w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm ${errors.first_name ? 'border-red-500' : ''}`}
+                    {...register('firstName')}
+                    className={`w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm ${errors.firstName ? 'border-red-500' : ''}`}
                     placeholder="e.g. Juan"
                   />
-                  {errors.first_name && <p className="text-red-500 text-xs mt-1">{errors.first_name.message}</p>}
+                  {errors.firstName && <p className="text-red-500 text-xs mt-1">{errors.firstName.message}</p>}
                 </div>
                 <div>
                   <label className="text-sm text-gray-600 mb-1 block flex items-center gap-1">
                     <User size={14} className="text-gray-400" /> Last Name *
                   </label>
                   <input 
-                    {...register('last_name')}
-                    className={`w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm ${errors.last_name ? 'border-red-500' : ''}`}
+                    {...register('lastName')}
+                    className={`w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm ${errors.lastName ? 'border-red-500' : ''}`}
                     placeholder="e.g. Dela Cruz"
                   />
-                   {errors.last_name && <p className="text-red-500 text-xs mt-1">{errors.last_name.message}</p>}
+                   {errors.lastName && <p className="text-red-500 text-xs mt-1">{errors.lastName.message}</p>}
                 </div>
               </div>
-              
+
               <div>
                 <label className="text-sm text-gray-600 mb-1 block flex items-center gap-1">
                   <Mail size={14} className="text-gray-400" /> Email Address *
                 </label>
                 <input 
-                  type="email" 
+                  type="email"
                   {...register('email')}
                   className={`w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm ${errors.email ? 'border-red-500' : ''}`}
-                  placeholder="e.g. juan@agency.gov.ph"
+                  placeholder="juan@example.com"
                 />
-                 {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>}
+                {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>}
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm text-gray-600 mb-1 block flex items-center gap-1">
-                    <Building size={14} className="text-gray-400" /> Department *
-                  </label>
-                  <select 
-                     {...register('department')}
-                     onChange={(e) => {
-                         const val = e.target.value;
-                         setValue('department', val);
-                         const dept = departments.find(d => d.name === val);
-                         if (dept) setValue('department_id', dept.id);
-                     }}
-                    className={`w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm ${errors.department ? 'border-red-500' : ''}`}
-                  >
-                    <option value="">Select...</option>
-                    {departments.map(d => (<option key={d.id} value={d.name}>{d.name}</option>))}
-                  </select>
-                   {errors.department && <p className="text-red-500 text-xs mt-1">{errors.department.message}</p>}
-                </div>
-                <div>
-                  <label className="text-sm text-gray-600 mb-1 block flex items-center gap-1">
-                    <Shield size={14} className="text-gray-400" /> System Role *
-                  </label>
-                  <select 
-                     {...register('role')}
-                    className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm" 
-                  >
-                    {ROLE_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>{option.label}</option>
-                    ))}
-                  </select>
-                   {errors.role && <p className="text-red-500 text-xs mt-1">{errors.role.message}</p>}
-                </div>
+              <div>
+                <label className="text-sm text-gray-600 mb-1 block flex items-center gap-1">
+                  <Shield size={14} className="text-gray-400" /> System Role *
+                </label>
+                <select 
+                  {...register('role')}
+                  className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm appearance-none"
+                >
+                  {ROLE_OPTIONS.map(role => (
+                    <option key={role.value} value={role.value}>{role.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="bg-blue-50 p-3 rounded-lg border border-blue-100">
+                <p className="text-[10px] text-blue-600 font-bold uppercase tracking-wider mb-1">Security Note</p>
+                <p className="text-xs text-blue-800">A default password will be generated. The employee must change it upon first login.</p>
               </div>
             </>
           )}
@@ -258,21 +247,21 @@ const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
                     <Calendar size={14} className="text-gray-400" /> Birth Date
                   </label>
                   <input 
-                    type="date" 
-                    {...register('birth_date')}
-                    className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm" 
+                    type="date"
+                    {...register('birthDate')}
+                    className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm"
                   />
                 </div>
                 <div>
-                  <label className="text-sm text-gray-600 mb-1 block">Gender</label>
+                  <label className="text-sm text-gray-600 mb-1 block flex items-center gap-1">
+                    <User size={14} className="text-gray-400" /> Sex
+                  </label>
                   <select 
                     {...register('gender')}
-                    className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm" 
+                    className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm"
                   >
-                    <option value="">Select...</option>
-                    {GENDER_OPTIONS.map((option: { value: string; label: string }) => (
-                      <option key={option.value} value={option.value}>{option.label}</option>
-                    ))}
+                    <option value="">Select</option>
+                    {GENDER_OPTIONS.map(g => <option key={g.value} value={g.value}>{g.label}</option>)}
                   </select>
                 </div>
               </div>
@@ -281,238 +270,211 @@ const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
                 <div>
                   <label className="text-sm text-gray-600 mb-1 block">Civil Status</label>
                   <select 
-                    {...register('civil_status')}
-                    className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm" 
+                    {...register('civilStatus')}
+                    className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm"
                   >
-                    <option value="">Select...</option>
-                    {CIVIL_STATUS_OPTIONS.map((option: { value: string; label: string }) => (
-                      <option key={option.value} value={option.value}>{option.label}</option>
-                    ))}
+                    <option value="">Select</option>
+                    {CIVIL_STATUS_OPTIONS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="text-sm text-gray-600 mb-1 block">Nationality</label>
                   <input 
-                    type="text" 
                     {...register('nationality')}
-                    placeholder="Filipino"
-                    className="w-full px-3 py-2 xmlns:bg-[#F8F9FA] border border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm" 
+                    className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm"
                   />
                 </div>
               </div>
 
               <div>
                 <label className="text-sm text-gray-600 mb-1 block flex items-center gap-1">
-                  <Phone size={14} className="text-gray-400" /> Phone Number
+                  <Phone size={14} className="text-gray-400" /> Mobile Number
                 </label>
                 <input 
-                  type="tel" 
-                  {...register('phone_number')}
-                  className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm" 
-                  placeholder="e.g. 09171234567"
+                  {...register('phoneNumber')}
+                  className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm"
+                  placeholder="09xx-xxx-xxxx"
                 />
               </div>
 
               <div>
                 <label className="text-sm text-gray-600 mb-1 block flex items-center gap-1">
-                  <MapPin size={14} className="text-gray-400" /> Present Address
+                  <MapPin size={14} className="text-gray-400" /> Current Address
                 </label>
                 <textarea 
                   {...register('address')}
-                  className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm resize-none" 
                   rows={2}
-                  placeholder="House/Unit No., Street, Barangay, City/Municipality"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm text-gray-600 mb-1 block">Emergency Contact Person</label>
-                  <input 
-                    {...register('emergency_contact')}
-                    className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm" 
-                    placeholder="Full Name"
-                  />
-                </div>
-                <div>
-                  <label className="text-sm text-gray-600 mb-1 block">Emergency Phone</label>
-                  <input 
-                    {...register('emergency_contact_number')}
-                    className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm" 
-                    placeholder="09XXXXXXXXX"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="text-sm text-gray-600 mb-1 block">Educational Background</label>
-                <textarea 
-                  {...register('educational_background')}
-                  className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm resize-none" 
-                  rows={2}
-                  placeholder="Degree, School, Year Graduated"
+                  className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm resize-none"
                 />
               </div>
             </>
           )}
 
-          {/* Government IDs Tab */}
+          {/* Gov't IDs Tab */}
           {activeTab === 'government' && (
             <>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm text-gray-600 mb-1 block flex items-center gap-1">
-                    <CreditCard size={14} className="text-gray-400" /> GSIS Number
+                    <CreditCard size={14} className="text-gray-400" /> PhilHealth No.
                   </label>
                   <input 
-                    type="text" 
-                    {...register('gsis_number')}
-                    className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm" 
-                    placeholder="GSIS ID"
+                    {...register('philhealthNumber')}
+                    className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm"
                   />
                 </div>
                 <div>
-                  <label className="text-sm text-gray-600 mb-1 block">PhilHealth Number</label>
+                  <label className="text-sm text-gray-600 mb-1 block flex items-center gap-1">
+                    <CreditCard size={14} className="text-gray-400" /> Pag-IBIG No.
+                  </label>
                   <input 
-                    type="text" 
-                    {...register('philhealth_number')}
-                    className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm" 
-                    placeholder="XX-XXXXXXXXX-X"
+                    {...register('pagibigNumber')}
+                    className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm"
                   />
                 </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm text-gray-600 mb-1 block">Pag-IBIG Number</label>
-                  <input 
-                    type="text" 
-                    {...register('pagibig_number')}
-                    className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm" 
-                    placeholder="XXXX-XXXX-XXXX"
-                  />
-                </div>
-                <div>
-                  <label className="text-sm text-gray-600 mb-1 block">TIN</label>
-                  <input 
-                    type="text" 
-                    {...register('tin_number')}
-                    className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm" 
-                    placeholder="XXX-XXX-XXX-XXX"
-                  />
-                </div>
-              </div>
-            </>
-          )}
-
-          {/* Employment Details Tab */}
-          {activeTab === 'employment' && (
-            <>
-              {/* Plantilla Selection */}
-              <div className="bg-gray-50 p-3 rounded-lg border border-gray-200 mb-4">
-                <label className="text-sm font-semibold text-gray-800 mb-1 block flex items-center gap-1">
-                  <FileText size={14} className="text-gray-500" /> Select Plantilla Item (Optional)
-                </label>
-                <select 
-                  className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-gray-400 text-sm" 
-                   {...register('item_number')}
-                   onChange={handlePlantillaChange}
-                >
-                  <option value="">Select available position...</option>
-                  {vacantPositions.map(pos => (
-                    <option key={pos.id} value={pos.item_number}>
-                      {pos.item_number} - {pos.position_title} (SG-{pos.salary_grade})
-                    </option>
-                  ))}
-                </select>
-                <p className="text-xs text-gray-500 mt-1">
-                  Selecting a position will auto-fill Title, Salary Grade, and Department.
-                </p>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm text-gray-600 mb-1 block flex items-center gap-1">
-                    <Briefcase size={14} className="text-gray-400" /> Position Title
+                    <CreditCard size={14} className="text-gray-400" /> TIN No.
                   </label>
                   <input 
-                    type="text" 
-                    {...register('position_title')}
-                    className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm" 
-                    placeholder="e.g. Administrative Officer III"
+                    {...register('tinNumber')}
+                    className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm"
                   />
                 </div>
                 <div>
+                  <label className="text-sm text-gray-600 mb-1 block flex items-center gap-1">
+                    <CreditCard size={14} className="text-gray-400" /> GSIS BP No.
+                  </label>
+                  <input 
+                    {...register('gsisNumber')}
+                    className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm"
+                  />
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Employment Tab */}
+          {activeTab === 'employment' && (
+            <>
+              <div className="bg-amber-50 p-3 rounded-lg border border-amber-100 mb-4">
+                <p className="text-[10px] text-amber-600 font-bold uppercase tracking-wider mb-1 flex items-center gap-1">
+                  <Briefcase size={12} /> Plantilla Linkage
+                </p>
+                <select 
+                  onChange={handlePlantillaChange}
+                  value={watch('itemNumber') || ''}
+                  className="w-full px-3 py-2 bg-white border border-amber-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/20 shadow-sm"
+                >
+                  <option value="">Select Vacant Plantilla Item (Optional)</option>
+                  {vacantPositions.map(pos => (
+                    <option key={pos.id} value={pos.itemNumber}>
+                      {pos.itemNumber} - {pos.positionTitle} (SG {pos.salaryGrade})
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[9px] text-amber-700 mt-2 italic">Linking to Plantilla automatically fills position, SG, and department details.</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm text-gray-600 mb-1 block flex items-center gap-1">
+                    <Building size={14} className="text-gray-400" /> Department *
+                  </label>
+                  <select 
+                    {...register('department')}
+                    className={`w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm ${errors.department ? 'border-red-500' : ''}`}
+                  >
+                    <option value="">Select</option>
+                    {departments.map(dept => (
+                      <option key={dept.id} value={dept.name}>{dept.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-sm text-gray-600 mb-1 block flex items-center gap-1">
+                    <Briefcase size={14} className="text-gray-400" /> Position Title
+                  </label>
+                  <input 
+                    {...register('positionTitle')}
+                    className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
                   <label className="text-sm text-gray-600 mb-1 block">Appointment Type</label>
                   <select 
-                     {...register('appointment_type')}
-                    className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm" 
+                    {...register('appointmentType')}
+                    className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm"
                   >
-                    <option value="">Select...</option>
-                    {APPOINTMENT_TYPE_OPTIONS.map((option: { value: string; label: string }) => (
-                      <option key={option.value} value={option.value}>{option.label}</option>
-                    ))}
+                    <option value="">Select</option>
+                    {APPOINTMENT_TYPE_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-sm text-gray-600 mb-1 block">Employment Type</label>
+                  <select 
+                    {...register('employmentType')}
+                    className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm"
+                  >
+                    <option value="Probationary">Probationary</option>
+                    <option value="Regular">Regular</option>
+                    <option value="Job Order">Job Order</option>
+                    <option value="Contractual">Contractual</option>
                   </select>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm text-gray-600 mb-1 block">Salary Grade</label>
-                  <select 
-                     {...register('salary_grade')}
-                    className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm" 
-                  >
-                    <option value="">Select...</option>
-                    {SALARY_GRADE_OPTIONS.map((option: { value: string; label: string }) => (
-                      <option key={option.value} value={Number(option.value)}>{option.label}</option>
-                    ))}
-                  </select>
+                  <label className="text-sm text-gray-600 mb-1 block flex items-center gap-1">
+                    <Calendar size={14} className="text-gray-400" /> Date Hired
+                  </label>
+                  <input 
+                    type="date"
+                    {...register('dateHired')}
+                    className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm"
+                  />
                 </div>
                 <div>
-                  <label className="text-sm text-gray-600 mb-1 block">Step Increment</label>
-                  <select 
-                     {...register('step_increment')}
-                    className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm" 
-                  >
-                    {[1, 2, 3, 4, 5, 6, 7, 8].map(step => (
-                      <option key={step} value={step}>Step {step}</option>
-                    ))}
-                  </select>
+                  <label className="text-sm text-gray-600 mb-1 block flex items-center gap-1">
+                    <FileText size={14} className="text-gray-400" /> Employee ID
+                  </label>
+                  <input 
+                    {...register('employeeId')}
+                    className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm"
+                    placeholder="Leave blank for auto"
+                  />
                 </div>
-              </div>
-
-              <div>
-                <label className="text-sm text-gray-600 mb-1 block">Station/Assignment</label>
-                <input 
-                  type="text" 
-                  {...register('station')}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm" 
-                  placeholder="e.g. Main Office - Manila"
-                />
               </div>
             </>
           )}
 
-          {/* Footer Buttons */}
-          <div className="flex gap-3 px-6 py-4 bg-gray-50 border-t border-gray-100">
-            <button 
-              type="button" 
-              onClick={onClose} 
-              className="flex-1 px-4 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 hover:text-gray-900 transition-all shadow-sm"
-            >
-              Cancel
-            </button>
-            <button 
-              type="submit" 
-              disabled={addEmployeeMutation.isPending} 
-              className="flex-1 px-4 py-2 text-sm font-bold text-white bg-gray-900 rounded-lg shadow-md hover:bg-gray-800 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-            >
-              {addEmployeeMutation.isPending && <Loader className="animate-spin" size={16} />}
-              {addEmployeeMutation.isPending ? 'Saving...' : 'Save Employee'}
-            </button>
-          </div>
         </form>
+
+        <div className="p-6 bg-gray-50 border-t border-gray-100 flex gap-3">
+          <button 
+            type="button"
+            onClick={onClose}
+            className="flex-1 px-4 py-2 border-2 border-gray-200 rounded-lg text-sm font-bold text-gray-600 hover:bg-gray-100 transition-all"
+          >
+            Cancel
+          </button>
+          <button 
+            type="button"
+            onClick={handleSubmit(handleFormSubmit)}
+            disabled={addEmployeeMutation.isPending}
+            className="flex-1 px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-bold hover:bg-gray-800 transition-all shadow-md flex items-center justify-center gap-2 disabled:opacity-50"
+          >
+            {addEmployeeMutation.isPending && <Loader className="animate-spin" size={16} />}
+            Onboard Member
+          </button>
+        </div>
       </div>
     </div>
   );

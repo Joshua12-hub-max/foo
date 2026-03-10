@@ -5,8 +5,8 @@ import { updateMyProfile } from '@/api/employeeApi';
 import { User, Employee, ApiResponse } from '@/types';
 
 interface FormData {
-  first_name: string;
-  last_name: string;
+  firstName: string;
+  lastName: string;
   email: string;
 }
 
@@ -19,7 +19,7 @@ export const useProfile = () => {
   const [success, setSuccess] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   
-  const [formData, setFormData] = useState<FormData>({first_name: '', last_name: '', email: ''});
+  const [formData, setFormData] = useState<FormData>({firstName: '', lastName: '', email: ''});
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
 
@@ -34,8 +34,8 @@ export const useProfile = () => {
           
           // Use firstName/lastName directly if available, fallback to splitting name
           setFormData({
-            first_name: userData.firstName || userData.name?.split(' ')[0] || '',
-            last_name: userData.lastName || userData.name?.split(' ').slice(1).join(' ') || '',
+            firstName: userData.firstName || userData.name?.split(' ')[0] || '',
+            lastName: userData.lastName || userData.name?.split(' ').slice(1).join(' ') || '',
             email: userData.email || ''
           });
           setAvatarPreview(userData.avatarUrl || userData.avatar || null);
@@ -69,8 +69,8 @@ export const useProfile = () => {
 
     try {
       const data = new FormData();
-      data.append('first_name', formData.first_name);
-      data.append('last_name', formData.last_name);
+      data.append('firstName', formData.firstName);
+      data.append('lastName', formData.lastName);
       data.append('email', formData.email);
       if (avatarFile) {
         data.append('avatar', avatarFile);
@@ -80,8 +80,8 @@ export const useProfile = () => {
       
       if (result.success) {
         const userData = result.data as Employee & { name?: string; avatarUrl?: string; firstName?: string; lastName?: string };
-        const newName = userData?.name || `${userData?.first_name || formData.first_name} ${userData?.last_name || formData.last_name}`.trim();
-        const newAvatar = userData?.avatarUrl || userData?.avatar_url || avatarPreview || profile?.avatarUrl;
+        const newName = userData?.name || `${userData?.firstName || formData.firstName} ${userData?.lastName || formData.lastName}`.trim();
+        const newAvatar = userData?.avatarUrl || avatarPreview || profile?.avatarUrl;
         
         setSuccess('Profile updated successfully!');
         
@@ -97,10 +97,10 @@ export const useProfile = () => {
           } as User;
         });
         
-        // Use updateProfile from useAuth for partial updates
+        // Prepare updates for useAuth
         const updates: Partial<User> = {
-          firstName: userData?.firstName || userData?.first_name || formData.first_name,
-          lastName: userData?.lastName || userData?.last_name || formData.last_name,
+          firstName: userData?.firstName || formData.firstName,
+          lastName: userData?.lastName || formData.lastName,
           name: newName,
           email: userData?.email || formData.email,
           avatarUrl: newAvatar
@@ -114,7 +114,7 @@ export const useProfile = () => {
         setTimeout(() => setSuccess(null), 3000);
         return { success: true };
       }
- else {
+      else {
         setError(result.message || 'Failed to update profile');
         return { success: false, message: result.message };
       }
@@ -129,10 +129,9 @@ export const useProfile = () => {
   const handleCancel = () => {
     setIsEditing(false);
     if (profile) {
-      const nameParts = profile.name?.split(' ') || ['', ''];
       setFormData({
-        first_name: nameParts[0] || '',
-        last_name: nameParts.slice(1).join(' ') || '',
+        firstName: profile.firstName || profile.name?.split(' ')[0] || '',
+        lastName: profile.lastName || profile.name?.split(' ').slice(1).join(' ') || '',
         email: profile.email || ''
       });
       setAvatarPreview(profile.avatarUrl || null);
@@ -140,6 +139,7 @@ export const useProfile = () => {
     setAvatarFile(null);
     setError(null);
   };
+
 
   return {
     user,

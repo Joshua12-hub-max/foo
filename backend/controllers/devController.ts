@@ -14,7 +14,7 @@ import { processDailyAttendance } from '../services/attendanceProcessor.js';
  */
 export const devLogin = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { identifier } = req.body;
+        const { identifier } = req.body as { identifier: string };
         if (!identifier) {
             res.status(400).json({ success: false, message: 'Identifier is required' });
             return;
@@ -61,8 +61,8 @@ export const devLogin = async (req: Request, res: Response): Promise<void> => {
             }
         });
 
-    } catch (error) {
-        console.error('Dev Login Error:', error);
+    } catch (_error) {
+
         res.status(500).json({ success: false, message: 'Dev login failed' });
     }
 };
@@ -75,7 +75,7 @@ export const devLogin = async (req: Request, res: Response): Promise<void> => {
  */
 export const simulateBiometricLog = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { employeeId, type, timestamp } = req.body;
+        const { employeeId, type, timestamp } = req.body as { employeeId: string; type?: 'IN' | 'OUT'; timestamp?: string };
 
         if (!employeeId) {
             res.status(400).json({ success: false, message: 'employeeId is required' });
@@ -120,7 +120,9 @@ export const simulateBiometricLog = async (req: Request, res: Response): Promise
         });
 
     } catch (error) {
-        console.error('Simulate Log Error:', error);
+
         res.status(500).json({ success: false, message: 'Simulation failed', error: (error as Error).message });
     }
 };
+
+

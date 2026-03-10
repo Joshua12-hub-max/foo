@@ -72,8 +72,8 @@ export const generatePSIPOPPDF = (positions: Position[], config: PSIPOPConfig = 
     ];
 
     const tableBody: RowInput[] = positions.map(pos => {
-        const annualSalary = pos.monthly_salary ? (Number(pos.monthly_salary) * 12) : 0;
-        const actualSalary = pos.is_vacant ? 0 : annualSalary;
+        const annualSalary = pos.monthlySalary ? (Number(pos.monthlySalary) * 12) : 0;
+        const actualSalary = pos.isVacant ? 0 : annualSalary;
         
         let lastName = '', firstName = '', middleName = '';
         if (pos.incumbent_name) {
@@ -89,22 +89,22 @@ export const generatePSIPOPPDF = (positions: Position[], config: PSIPOPConfig = 
         const formatDate = (d?: string) => d ? new Date(d).toLocaleDateString() : '';
 
         return [
-            pos.item_number || '',
-            pos.position_title || '',
-            String(pos.salary_grade || ''),
+            pos.itemNumber || '',
+            pos.positionTitle || '',
+            String(pos.salaryGrade || ''),
             annualSalary > 0 ? annualSalary.toLocaleString('en-PH', { minimumFractionDigits: 2 }) : '-',
             actualSalary > 0 ? actualSalary.toLocaleString('en-PH', { minimumFractionDigits: 2 }) : '-',
-            String(pos.step_increment || ''),
+            String(pos.stepIncrement || ''),
             pos.area_code || '',
             pos.area_type || '',
             pos.area_level || '',
             lastName,
             firstName,
             middleName,
-            formatDate(pos.birth_date),
+            formatDate(pos.birthDate),
             formatDate(pos.original_appointment_date),
             formatDate(pos.last_promotion_date),
-            pos.is_vacant ? 'Vacant' : (pos.status || 'Filled').substring(0, 1)
+            pos.isVacant ? 'Vacant' : (pos.status || 'Filled').substring(0, 1)
         ];
     });
 

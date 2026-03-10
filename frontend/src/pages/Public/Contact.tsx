@@ -12,8 +12,8 @@ const Contact = () => {
   const openChat = useChatStore((state) => state.openChat);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<InquirySubmission>({
-    first_name: '',
-    last_name: '',
+    firstName: '',
+    lastName: '',
     email: '',
     message: ''
   });
@@ -27,7 +27,7 @@ const Contact = () => {
       const res = await inquiryApi.submit(formData);
       if (res.data.success) {
         toast.success(res.data.message || 'Inquiry sent successfully!');
-        setFormData({ first_name: '', last_name: '', email: '', message: '' });
+        setFormData({ firstName: '', lastName: '', email: '', message: '' });
       }
     } catch (error) {
       console.error(error);
@@ -105,7 +105,7 @@ const Contact = () => {
                         icon: <Phone className="text-green-500" size={20} />,
                         label: "Call Us",
                         value: "(044) 123-4567",
-                        desc: "Direct HR office line."
+                        desc: "Direct Human Resource office line."
                     },
                     {
                         icon: <MapPin className="text-green-500" size={20} />,
@@ -172,8 +172,8 @@ const Contact = () => {
                                 <input 
                                     required
                                     type="text" 
-                                    name="first_name"
-                                    value={formData.first_name}
+                                    name="firstName"
+                                    value={formData.firstName}
                                     onChange={handleInputChange}
                                     className="w-full pl-11 pr-4 py-3 bg-[#131314] border border-[#444746] rounded-xl text-sm font-bold text-white outline-none focus:border-green-500 transition-all placeholder:text-slate-700"
                                     placeholder="John"
@@ -187,8 +187,8 @@ const Contact = () => {
                                 <input 
                                     required
                                     type="text" 
-                                    name="last_name"
-                                    value={formData.last_name}
+                                    name="lastName"
+                                    value={formData.lastName}
                                     onChange={handleInputChange}
                                     className="w-full pl-11 pr-4 py-3 bg-[#131314] border border-[#444746] rounded-xl text-sm font-bold text-white outline-none focus:border-green-500 transition-all placeholder:text-slate-700"
                                     placeholder="Doe"

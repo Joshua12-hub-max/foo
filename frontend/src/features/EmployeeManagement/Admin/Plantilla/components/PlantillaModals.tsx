@@ -5,16 +5,16 @@ import { Position } from '@/api/plantillaApi';
 
 interface Employee {
   id: number;
-  first_name: string;
-  last_name: string;
-  employee_id: string;
+  firstName: string;
+  lastName: string;
+  employeeId: string;
 }
 
 interface HistoryRecord {
   id: number;
-  employee_name: string;
-  start_date: string;
-  end_date?: string;
+  employeeName: string;
+  startDate: string;
+  endDate?: string;
   reason?: string;
 }
 
@@ -55,7 +55,7 @@ export const AssignModal: React.FC<AssignModalProps> = memo(({
             </div>
             <div>
               <p className="text-sm text-gray-600 mb-4">
-                Assign an employee to: <strong>{position?.position_title}</strong>
+                Assign an employee to: <strong>{position?.positionTitle}</strong>
               </p>
               <div className="mb-4">
                 <label className="block text-xs font-semibold text-gray-700 mb-1">Select Employee</label>
@@ -67,7 +67,7 @@ export const AssignModal: React.FC<AssignModalProps> = memo(({
                   <option value="">-- Select Employee --</option>
                   {availableEmployees.map(emp => (
                     <option key={emp.id} value={emp.id}>
-                      {emp.first_name} {emp.last_name} ({emp.employee_id})
+                      {emp.firstName} {emp.lastName} ({emp.employeeId})
                     </option>
                   ))}
                 </select>
@@ -129,8 +129,8 @@ export const VacateModal: React.FC<VacateModalProps> = memo(({
             </div>
             <div>
               <p className="text-sm text-gray-600 mb-4">
-                Vacating: <strong>{position?.position_title}</strong><br/>
-                Current Incumbent: <strong>{position?.incumbent_name}</strong>
+                Vacating: <strong>{position?.positionTitle}</strong><br/>
+                Current Incumbent: <strong>{position?.incumbentName}</strong>
               </p>
               <div className="mb-4">
                 <label className="block text-xs font-semibold text-gray-700 mb-1">Reason (Optional)</label>
@@ -192,10 +192,10 @@ export const HistoryModal: React.FC<HistoryModalProps> = memo(({ isOpen, onClose
             <div className="max-h-96 overflow-y-auto text-gray-800">
               <div className="flex justify-between items-start mb-4">
                 <div>
-                  <p className="text-sm text-gray-600 font-bold uppercase tracking-wider">{position?.item_number}</p>
-                  <p className="text-sm font-black text-gray-900 leading-tight">{position?.position_title}</p>
+                  <p className="text-sm text-gray-600 font-bold uppercase tracking-wider">{position?.itemNumber}</p>
+                  <p className="text-sm font-black text-gray-900 leading-tight">{position?.positionTitle}</p>
                 </div>
-                {position && !position.is_vacant && onPreviewForm33 && (
+                {position && !position.isVacant && onPreviewForm33 && (
                     <button 
                         onClick={() => position && onPreviewForm33(position.id)}
                         className="bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-lg text-[10px] font-black hover:bg-indigo-100 transition-colors flex items-center gap-1.5 shadow-sm border border-indigo-100"
@@ -209,9 +209,9 @@ export const HistoryModal: React.FC<HistoryModalProps> = memo(({ isOpen, onClose
                 <div className="space-y-3">
                   {history.map((h) => (
                     <div key={h.id} className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                      <p className="font-medium text-gray-800">{h.employee_name}</p>
+                      <p className="font-medium text-gray-800">{h.employeeName}</p>
                       <p className="text-sm text-gray-600">
-                        {formatDate(h.start_date)} - {h.end_date ? formatDate(h.end_date) : 'Present'}
+                        {formatDate(h.startDate)} - {h.endDate ? formatDate(h.endDate) : 'Present'}
                       </p>
                       {h.reason && <p className="text-xs text-gray-500 mt-1">Reason: {h.reason}</p>}
                     </div>

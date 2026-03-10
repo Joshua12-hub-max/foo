@@ -145,7 +145,7 @@ const DepartmentList = forwardRef<DepartmentListRef, DepartmentListProps>(({ hid
         initialData={editingDepartment ? { 
             name: editingDepartment.name,
             description: editingDepartment.description || '', 
-            head_of_department: editingDepartment.head_of_department || '' 
+            headOfDepartment: editingDepartment.headOfDepartment || '' 
         } : undefined}
       />
 

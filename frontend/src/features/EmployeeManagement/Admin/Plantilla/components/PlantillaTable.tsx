@@ -53,33 +53,33 @@ const PlantillaTable: React.FC<PlantillaTableProps> = ({
                       if (!pos) return null;
                       return (
                     <tr key={pos.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-4 py-3 text-sm font-medium">{pos.item_number}</td>
-                        <td className="px-4 py-3 text-sm">{pos.position_title}</td>
-                        <td className="px-4 py-3 text-sm">{pos.salary_grade}-{pos.step_increment}</td>
-                        <td className="px-4 py-3 text-sm">{pos.department_name || pos.department || '-'}</td>
+                        <td className="px-4 py-3 text-sm font-medium">{pos.itemNumber}</td>
+                        <td className="px-4 py-3 text-sm">{pos.positionTitle}</td>
+                        <td className="px-4 py-3 text-sm">{pos.salaryGrade}-{pos.stepIncrement}</td>
+                        <td className="px-4 py-3 text-sm">{pos.departmentName || pos.department || '-'}</td>
                         <td className="px-4 py-3 text-sm">
                             <div className="flex flex-col">
-                                <span className="font-medium text-gray-700">{pos.area_code || '-'}</span>
-                                {(pos.area_type || pos.area_level) && (
+                                <span className="font-medium text-gray-700">{pos.areaCode || '-'}</span>
+                                {(pos.areaType || pos.areaLevel) && (
                                     <span className="text-[10px] text-gray-400 font-mono">
-                                        {pos.area_type || '?'}/{pos.area_level || '?'}
+                                        {pos.areaType || '?'}/{pos.areaLevel || '?'}
                                     </span>
                                 )}
                             </div>
                         </td>
                         <td className="px-4 py-3 text-sm">
-                        {pos.incumbent_name || <span className="text-gray-400 italic">Vacant</span>}
+                        {pos.incumbentName || <span className="text-gray-400 italic">Vacant</span>}
                         </td>
                         <td className="px-4 py-3 text-sm">
                         <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                            pos.is_vacant ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'
+                            pos.isVacant ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'
                         }`}>
-                            {pos.is_vacant ? 'Vacant' : 'Filled'}
+                            {pos.isVacant ? 'Vacant' : 'Filled'}
                         </span>
                         </td>
                         <td className="px-4 py-3">
                         <div className="flex justify-center gap-1">
-                            {pos.is_vacant ? (
+                            {pos.isVacant ? (
                             <button 
                                 onClick={() => onAssign(pos)}
                                 className="text-gray-600 hover:text-gray-800 p-1.5 rounded hover:bg-gray-100 transition"

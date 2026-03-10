@@ -148,13 +148,13 @@ export const useDepartmentManagement = (): UseDepartmentManagementReturn => {
   const filteredDepartments = useMemo(() => {
     return departments.filter(dept => 
       dept.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (dept.head_of_department && dept.head_of_department.toLowerCase().includes(searchTerm.toLowerCase()))
+      (dept.headOfDepartment && dept.headOfDepartment.toLowerCase().includes(searchTerm.toLowerCase()))
     );
   }, [departments, searchTerm]);
 
   const stats = useMemo((): DepartmentStats => {
     const total = departments.length;
-    const totalEmp = departments.reduce((acc, curr) => acc + (curr.employee_count || 0), 0);
+    const totalEmp = departments.reduce((acc, curr) => acc + (curr.employeeCount || 0), 0);
     const avg = total > 0 ? Math.round(totalEmp / total) : 0;
     return { total, totalEmployees: totalEmp, averageEmployees: avg };
   }, [departments]);

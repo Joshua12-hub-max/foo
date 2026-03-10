@@ -1,7 +1,7 @@
 import axios from './axios';
-
 import { Department } from '../types/org';
 import { Employee } from '../types';
+import { isApiError } from '../utils';
 
 interface DepartmentResponse {
   success: boolean;
@@ -44,7 +44,10 @@ export const addDepartment = async (formData: Record<string, unknown>): Promise<
     const response = await axios.post('/departments', formData);
     return response.data;
   } catch (error: unknown) {
-    const message = (error as { response?: { data?: { message?: string } } }).response?.data?.message || 'Failed to add department';
+    let message = 'Failed to add department';
+    if (isApiError(error)) {
+        message = error.response?.data?.message || error.message || message;
+    }
     return { success: false, message };
   }
 };
@@ -54,7 +57,10 @@ export const updateDepartment = async (id: string | number, formData: Record<str
     const response = await axios.put(`/departments/${id}`, formData);
     return response.data;
   } catch (error: unknown) {
-    const message = (error as { response?: { data?: { message?: string } } }).response?.data?.message || 'Failed to update department';
+    let message = 'Failed to update department';
+    if (isApiError(error)) {
+        message = error.response?.data?.message || error.message || message;
+    }
     return { success: false, message };
   }
 };
@@ -64,7 +70,10 @@ export const deleteDepartment = async (id: string | number): Promise<DepartmentR
     const response = await axios.delete(`/departments/${id}`);
     return response.data;
   } catch (error: unknown) {
-    const message = (error as { response?: { data?: { message?: string } } }).response?.data?.message || 'Failed to delete department';
+    let message = 'Failed to delete department';
+    if (isApiError(error)) {
+        message = error.response?.data?.message || error.message || message;
+    }
     return { success: false, message };
   }
 };
@@ -88,8 +97,11 @@ export const assignEmployeeToDepartment = async (departmentId: string | number, 
     const response = await axios.post(`/departments/${departmentId}/assign-employee`, { employeeId });
     return response.data;
   } catch (error: unknown) {
-    const msg = (error as { response?: { data?: { message?: string } } }).response?.data?.message;
-    return { success: false, message: msg || 'Failed to assign employee' };
+    let message = 'Failed to assign employee';
+    if (isApiError(error)) {
+        message = error.response?.data?.message || error.message || message;
+    }
+    return { success: false, message };
   }
 };
 
@@ -99,8 +111,11 @@ export const removeEmployeeFromDepartment = async (departmentId: string | number
     const response = await axios.delete(`/departments/${departmentId}/employees/${employeeId}`);
     return response.data;
   } catch (error: unknown) {
-    const msg = (error as { response?: { data?: { message?: string } } }).response?.data?.message;
-    return { success: false, message: msg || 'Failed to remove employee' };
+    let message = 'Failed to remove employee';
+    if (isApiError(error)) {
+        message = error.response?.data?.message || error.message || message;
+    }
+    return { success: false, message };
   }
 };
 
@@ -112,3 +127,25 @@ export const fetchPublicDepartments = async (): Promise<DepartmentResponse> => {
         return { success: false, departments: [], message: 'Failed to fetch departments' };
     }
 };
+
+export const departmentApi = {
+    fetchDepartments,
+    fetchDepartmentById,
+    fetchDepartmentEmployees,
+    addDepartment,
+    updateDepartment,
+    deleteDepartment,
+    fetchAvailableEmployees,
+    assignEmployeeToDepartment,
+    removeEmployeeFromDepartment,
+    fetchPublicDepartments,
+    
+    // Aligned Aliases
+    getDepartments: fetchDepartments,
+    getDepartmentById: fetchDepartmentById,
+    getDepartmentEmployees: fetchDepartmentEmployees,
+    getAvailableEmployees: fetchAvailableEmployees,
+    getPublicDepartments: fetchPublicDepartments
+};
+
+export default departmentApi;

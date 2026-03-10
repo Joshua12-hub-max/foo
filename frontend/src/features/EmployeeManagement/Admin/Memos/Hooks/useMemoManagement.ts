@@ -107,12 +107,12 @@ export const useMemoManagement = (): UseMemoManagementReturn => {
         fetchMemos({ ...currentFilters, page: currentPage, limit: LIMIT }),
         fetchEmployees()
       ]);
-      const employeesResult = employeesRes as { employees?: Array<{ id: number; firstName?: string; first_name?: string; lastName?: string; last_name?: string }> };
+      const employeesResult = employeesRes as { employees?: Array<{ id: number; firstName?: string; firstName?: string; lastName?: string; lastName?: string }> };
       const rawEmployees = employeesResult.employees || (Array.isArray(employeesRes) ? employeesRes : []);
       const mappedEmployees: Employee[] = rawEmployees.map((emp) => ({
         id: emp.id,
-        firstName: emp.firstName || emp.first_name || '',
-        lastName: emp.lastName || emp.last_name || ''
+        firstName: emp.firstName || emp.firstName || '',
+        lastName: emp.lastName || emp.lastName || ''
       }));
       setEmployees(mappedEmployees);
 
@@ -165,13 +165,13 @@ export const useMemoManagement = (): UseMemoManagementReturn => {
   const openEditForm = useCallback((memo: Memo) => {
     setSelectedMemo(memo);
     setFormData({
-      employee_id: String(memo.employeeId),
-      memo_type: memo.memoType,
+      employeeId: String(memo.employeeId),
+      memoType: memo.memoType,
       subject: memo.subject,
       content: memo.content ?? '',
       priority: memo.priority,
-      effective_date: memo.effectiveDate ? memo.effectiveDate.split('T')[0] : '',
-      acknowledgment_required: memo.acknowledgmentRequired ?? false,
+      effectiveDate: memo.effectiveDate ? memo.effectiveDate.split('T')[0] : '',
+      acknowledgmentRequired: memo.acknowledgmentRequired ?? false,
       status: memo.status
     });
     setIsFormOpen(true);
@@ -218,8 +218,8 @@ export const useMemoManagement = (): UseMemoManagementReturn => {
     try {
       setSaving(true);
       const payload: Record<string, string | boolean | number> = { ...formData };
-      // Ensure employee_id is a number for the API
-      if (payload.employee_id) payload.employee_id = Number(payload.employee_id);
+      // Ensure employeeId is a number for the API
+      if (payload.employeeId) payload.employeeId = Number(payload.employeeId);
 
       if (selectedMemo) {
         await updateMemo(selectedMemo.id, payload);

@@ -7,21 +7,21 @@ export interface Department {
   id: number;
   name: string;
   description?: string;
-  head_of_department?: string;
+  headOfDepartment?: string;
 }
 
 export interface Colleague {
   id: number;
-  first_name?: string;
-  last_name?: string;
+  firstName?: string;
+  lastName?: string;
   email?: string;
-  job_title?: string;
-  position_title?: string;
+  jobTitle?: string;
+  positionTitle?: string;
   avatar?: string;
-  avatar_url?: string; // Added for compatibility
-  employment_status?: string; // Added for compatibility
-  employee_id?: string | number; // Added for compatibility
-  date_hired?: string; // Added for compatibility
+  avatarUrl?: string; // Added for compatibility
+  employmentStatus?: string; // Added for compatibility
+  employeeId?: string | number; // Added for compatibility
+  dateHired?: string; // Added for compatibility
 }
 
 export interface UseEmployeeDepartmentReturn {

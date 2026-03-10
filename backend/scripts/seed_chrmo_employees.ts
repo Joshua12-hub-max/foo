@@ -8,25 +8,24 @@ const CHRMO_DEPARTMENT = 'City Human Resource Management Office';
 
 const employees = [
   // Department Head
-  { name: 'Judith S. Guevarra', role: 'hr', title: 'Department Head', isHead: true },
-  
-  // Admin
-  { name: 'Ron Micheal Nito', role: 'admin', title: 'Administrative Assistant I (Computer Operator I)' },
+  { name: 'Judith S. Guevarra', role: 'Human Resource', title: 'Department Head', isHead: true },
+  { name: 'Ron Micheal Nito', role: 'Administrator', title: 'Administrative Assistant I (Computer Operator I)' },
+
 
   // Staff (Employees)
-  { name: 'Loida Init', role: 'employee', title: 'Senior Administrative Assistant II (Computer Operator IV)' },
-  { name: 'Carmina Lim', role: 'employee', title: 'Senior Administrative Assistant I (Data Entry Machine Operator I)' },
-  { name: 'Cristina Peña', role: 'employee', title: 'Administrative Officer IV (Human Resource Management Officer II)' },
-  { name: 'Gemma Carpon', role: 'employee', title: 'Administrative Assistant II (Human Resource Management Assistant)' },
-  { name: 'Jay Ar Rodriguez', role: 'employee', title: 'Administrative Aide IV (Human Resource Management Aide)' },
-  { name: 'Jeffrey Ganacias', role: 'employee', title: 'Administrative Officer V (Human Resource Management Officer III)' },
-  { name: 'Federic Montes', role: 'employee', title: 'Administrative Assistant II (Human Resource Management Assistant)' },
-  { name: 'Tricia May De Guzman', role: 'employee', title: 'Administrative Aide IV (Driver II)' },
-  { name: 'Hannah Lyn A. Abacan', role: 'employee', title: 'Job Order' },
-  { name: 'Jeamy Shane D. Nebrida', role: 'employee', title: 'Job Order' },
-  { name: 'Ron O. Cruz', role: 'employee', title: 'Job Order' },
-  { name: 'Vohn Ferdinand R. Baldogo', role: 'employee', title: 'Job Order' },
-  { name: 'Pinky A. Pajarillo', role: 'employee', title: 'Job Order' }
+  { name: 'Loida Init', role: 'Employee', title: 'Senior Administrative Assistant II (Computer Operator IV)' },
+  { name: 'Carmina Lim', role: 'Employee', title: 'Senior Administrative Assistant I (Data Entry Machine Operator I)' },
+  { name: 'Cristina Peña', role: 'Employee', title: 'Administrative Officer IV (Human Resource Management Officer II)' },
+  { name: 'Gemma Carpon', role: 'Employee', title: 'Administrative Assistant II (Human Resource Management Assistant)' },
+  { name: 'Jay Ar Rodriguez', role: 'Employee', title: 'Administrative Aide IV (Human Resource Management Aide)' },
+  { name: 'Jeffrey Ganacias', role: 'Employee', title: 'Administrative Officer V (Human Resource Management Officer III)' },
+  { name: 'Federic Montes', role: 'Employee', title: 'Administrative Assistant II (Human Resource Management Assistant)' },
+  { name: 'Tricia May De Guzman', role: 'Employee', title: 'Administrative Aide IV (Driver II)' },
+  { name: 'Hannah Lyn A. Abacan', role: 'Employee', title: 'Job Order' },
+  { name: 'Jeamy Shane D. Nebrida', role: 'Employee', title: 'Job Order' },
+  { name: 'Ron O. Cruz', role: 'Employee', title: 'Job Order' },
+  { name: 'Vohn Ferdinand R. Baldogo', role: 'Employee', title: 'Job Order' },
+  { name: 'Pinky A. Pajarillo', role: 'Employee', title: 'Job Order' }
 ];
 
 function parseName(fullName: string) {
@@ -125,7 +124,7 @@ async function seedCHRMO() {
             firstName,
             lastName,
             email,
-            role: emp.role as 'admin' | 'hr' | 'employee',
+            role: emp.role as 'Administrator' | 'Human Resource' | 'Employee',
             department: CHRMO_DEPARTMENT,
             departmentId: deptId,
             employeeId,
@@ -141,7 +140,7 @@ async function seedCHRMO() {
         // so they can login if biometric check is active
         const bioId = 9000 + i; // Fake bio ID range
          try {
-             const [_enrollment] = await db.insert(bioEnrolledUsers).values({
+             const [__enrollment] = await db.insert(bioEnrolledUsers).values({
                  employeeId: bioId,
                  fullName: `${firstName} ${lastName}`,
                  department: CHRMO_DEPARTMENT,

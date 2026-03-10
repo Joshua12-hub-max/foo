@@ -38,27 +38,27 @@ const AddSkillModal: React.FC<AddSkillModalProps> = ({
     resolver: zodResolver(AddSkillSchema),
     defaultValues: {
       category: 'Technical',
-      proficiency_level: 'Intermediate'
+      proficiencyLevel: 'Intermediate'
     }
   });
 
   React.useEffect(() => {
     if (isOpen && initialData) {
-       setValue('skill_name', initialData.skill_name);
+       setValue('skillName', initialData.skillName);
        setValue('category', initialData.category || 'Technical');
-       setValue('proficiency_level', (initialData.proficiency_level as AddSkillInput['proficiency_level']) || 'Intermediate'); 
-       setValue('years_experience', initialData.years_experience || undefined);
+       setValue('proficiencyLevel', (initialData.proficiencyLevel as AddSkillInput['proficiencyLevel']) || 'Intermediate'); 
+       setValue('yearsExperience', initialData.yearsExperience || undefined);
     } else if (isOpen && !initialData) {
-       reset({ category: 'Technical', proficiency_level: 'Intermediate' });
+       reset({ category: 'Technical', proficiencyLevel: 'Intermediate' });
     }
   }, [isOpen, initialData, setValue, reset]);
 
   const mutation = useMutation({
     mutationFn: async (data: AddSkillInput) => {
       const cleanData: SkillData = {
-        skill_name: data.skill_name,
+        skillName: data.skillName,
         category: data.category || 'Technical',
-        proficiency_level: data.proficiency_level,
+        proficiencyLevel: data.proficiencyLevel,
       };
 
       if (isEditMode && initialData?.id) {
@@ -101,18 +101,18 @@ const AddSkillModal: React.FC<AddSkillModalProps> = ({
           <div>
             <label className="text-xs font-semibold text-gray-700 mb-1 block">Skill Name <span className="text-red-400">*</span></label>
             <input 
-              {...register('skill_name')}
-              className={`w-full px-3 py-2 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 ${errors.skill_name ? 'border-red-500' : ''}`}
+              {...register('skillName')}
+              className={`w-full px-3 py-2 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 ${errors.skillName ? 'border-red-500' : ''}`}
               placeholder="e.g. React, Project Management"
               autoFocus
             />
-            {errors.skill_name && <p className="text-[10px] text-red-500 mt-1">{errors.skill_name.message}</p>}
+            {errors.skillName && <p className="text-[10px] text-red-500 mt-1">{errors.skillName.message}</p>}
           </div>
 
           <div>
             <label className="text-xs font-semibold text-gray-700 mb-1 block">Proficiency Level</label>
             <select 
-              {...register('proficiency_level')}
+              {...register('proficiencyLevel')}
               className="w-full px-3 py-2 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900"
             >
               {SKILL_PROFICIENCY_OPTIONS.map(opt => (
@@ -126,7 +126,7 @@ const AddSkillModal: React.FC<AddSkillModalProps> = ({
             <input 
               type="number"
               step="0.1"
-              {...register('years_experience')}
+              {...register('yearsExperience')}
               className="w-full px-3 py-2 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900"
               placeholder="e.g. 2.5"
             />

@@ -9,16 +9,16 @@ import { useToastStore } from '@/stores';
 
 interface Employee {
   id: number;
-  first_name: string;
-  last_name: string;
-  employee_id: string;
+  firstName: string;
+  lastName: string;
+  employeeId: string;
 }
 
 interface HistoryRecord {
   id: number;
-  employee_name: string;
-  start_date: string;
-  end_date?: string;
+  employeeName: string;
+  startDate: string;
+  endDate?: string;
   reason?: string;
 }
 
@@ -39,8 +39,8 @@ export const AssignModal: React.FC<AssignModalProps> = memo(({ isOpen, onClose, 
         mutationFn: async () => {
              if (currentPosition && selectedEmployee) {
                  await assignEmployee(currentPosition.id, { 
-                    employee_id: parseInt(selectedEmployee),
-                    start_date: new Date().toISOString().split('T')[0] // Default to today
+                    employeeId: parseInt(selectedEmployee),
+                    startDate: new Date().toISOString().split('T')[0] // Default to today
                  });
              }
         },
@@ -75,7 +75,7 @@ export const AssignModal: React.FC<AssignModalProps> = memo(({ isOpen, onClose, 
             </div>
             <div>
               <p className="text-sm text-gray-600 mb-4">
-                Assign an employee to: <strong>{currentPosition?.position_title}</strong>
+                Assign an employee to: <strong>{currentPosition?.positionTitle}</strong>
               </p>
               <div className="mb-4">
                 <label className="block text-xs font-semibold text-gray-700 mb-1">Select Employee</label>
@@ -87,7 +87,7 @@ export const AssignModal: React.FC<AssignModalProps> = memo(({ isOpen, onClose, 
                   <option value="">-- Select Employee --</option>
                   {availableEmployees.map(emp => (
                     <option key={emp.id} value={emp.id}>
-                      {emp.first_name} {emp.last_name} ({emp.employee_id})
+                      {emp.firstName} {emp.lastName} ({emp.employeeId})
                     </option>
                   ))}
                 </select>
@@ -164,7 +164,7 @@ export const VacateModal: React.FC<VacateModalProps> = memo(({ isOpen, onClose, 
             </div>
             <div>
               <p className="text-sm text-gray-600 mb-4">
-                Vacating: <strong>{currentPosition?.position_title}</strong><br/>
+                Vacating: <strong>{currentPosition?.positionTitle}</strong><br/>
                 Current Incumbent: <strong>{currentPosition?.incumbent_name}</strong>
               </p>
               <div className="mb-4">
@@ -227,15 +227,15 @@ export const HistoryModal: React.FC<HistoryModalProps> = memo(({ isOpen, onClose
             </div>
             <div className="max-h-96 overflow-y-auto text-gray-800">
               <p className="text-sm text-gray-600 mb-4">
-                <strong>{currentPosition?.position_title}</strong> ({currentPosition?.item_number})
+                <strong>{currentPosition?.positionTitle}</strong> ({currentPosition?.itemNumber})
               </p>
               {positionHistory.length > 0 ? (
                 <div className="space-y-3">
                   {positionHistory.map((h) => (
                     <div key={h.id} className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                      <p className="font-medium text-gray-800">{h.employee_name}</p>
+                      <p className="font-medium text-gray-800">{h.employeeName}</p>
                       <p className="text-sm text-gray-600">
-                        {formatDate(h.start_date)} - {h.end_date ? formatDate(h.end_date) : 'Present'}
+                        {formatDate(h.startDate)} - {h.endDate ? formatDate(h.endDate) : 'Present'}
                       </p>
                       {h.reason && <p className="text-xs text-gray-500 mt-1">Reason: {h.reason}</p>}
                     </div>

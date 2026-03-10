@@ -10,20 +10,49 @@ export interface User {
   email: string;
   firstName: string;
   lastName: string;
+  middleName?: string | null;
+  suffix?: string | null;
   name: string;
   role: UserRole;
   department?: string | null;
+  departmentId?: number | null;
   employeeId: string;
-  employee_id?: string; // For compatibility
   avatarUrl?: string | null;
-  avatar_url?: string | null; // For compatibility
   jobTitle?: string | null;
   employmentStatus?: EmploymentStatus | null;
-  employment_status?: EmploymentStatus | null; // For compatibility
   twoFactorEnabled: boolean;
+  dutyType: 'Standard' | 'Irregular';
+  appointmentType?: 'Permanent' | 'Contractual' | 'Casual' | 'Job Order' | 'Coterminous' | 'Temporary' | 'Contract of Service' | 'JO' | 'COS' | null;
+  profileStatus?: 'Initial' | 'Complete';
+  
+  // Personal & Contact
+  birthDate?: string | null;
+  gender?: "Male" | "Female" | null;
+  civilStatus?: "Single" | "Married" | "Widowed" | "Separated" | "Annulled" | null;
+  nationality?: string | null;
+  bloodType?: string | null;
+  heightM?: string | number | null;
+  weightKg?: string | number | null;
+  mobileNo?: string | null;
+  telephoneNo?: string | null;
+  address?: string | null;
+  residentialAddress?: string | null;
+  permanentAddress?: string | null;
+  
+  // Identifications
+  gsisNumber?: string | null;
+  pagibigNumber?: string | null;
+  philhealthNumber?: string | null;
+  umidNumber?: string | null;
+  philsysId?: string | null;
+  tinNumber?: string | null;
+  
+  // Emergency & Education
+  emergencyContact?: string | null;
+  emergencyContactNumber?: string | null;
+  educationalBackground?: string | null;
+  isVerified: boolean;
   duties: string;
-  status?: string;
-  completion_status?: string;
 }
 
 export interface ApiResponse<T = unknown> {
@@ -70,10 +99,9 @@ export interface AttendanceHeader {
 // Biometrics Log (Merged DTR & Raw)
 export interface BiometricsLog {
   id: string | number;
-  employee_id: string | number;
-  employeeId?: string; // Standardized ID
+  employeeId: string | number;
   // Raw fields
-  scan_time?: string;
+  scanTime?: string;
   type?: 'IN' | 'OUT';
   source: string;
   // DTR fields
@@ -81,13 +109,13 @@ export interface BiometricsLog {
   timeIn?: string;
   timeOut?: string;
   // Common
-  first_name?: string;
-  last_name?: string;
+  firstName?: string;
+  lastName?: string;
   name?: string;
   department?: string;
   duties?: string;
   status?: string;
-  scan_date?: Date; // Frontend helper for sorting/filtering
+  scanDate?: Date; // Frontend helper for sorting/filtering
 }
 
 export interface MonitorLogData {
@@ -108,9 +136,8 @@ export interface MonitorLogData {
 // Attendance Record (General)
 export interface AttendanceRecord {
   id: string | number;
-  employee_id?: string | number;
-  employeeId?: string; // Standardized ID
-  employee_name?: string;
+  employeeId: string | number;
+  employeeName?: string;
   name?: string; 
   date: string;
   timeIn?: string;
@@ -136,8 +163,8 @@ export interface NewEvent {
 // Leave Credit
 export interface LeaveCredit {
   id: number;
-  employee_id: number;
-  leave_type: string;
+  employeeId: number;
+  leaveType: string;
   balance: string;
   used?: string;
   total?: string;
@@ -154,57 +181,59 @@ export interface Job {
   title: string;
   department: string;
   location: string;
-  employment_type: EmploymentType;
+  employmentType: EmploymentType;
+  dutyType: 'Standard' | 'Irregular';
   status: JobStatus; 
-  job_description: string;
+  jobDescription: string;
   requirements: string | null;
-  salary_range?: string | null;
-  office_name?: string | null;
-  submission_address?: string | null;
+  salaryRange?: string | null;
+  officeName?: string | null;
+  submissionAddress?: string | null;
   education?: string | null;
   experience?: string | null;
   training?: string | null;
   eligibility?: string | null;
-  other_qualifications?: string | null;
-  application_email: string;
-  created_at?: string;
-  posted_at?: string;
-  attachment_path?: string | null;
-  require_civil_service: boolean;
-  require_government_ids: boolean;
-  require_education_experience: boolean;
+  otherQualifications?: string | null;
+  applicationEmail: string;
+  createdAt?: string;
+  postedAt?: string;
+  attachmentPath?: string | null;
+  requireCivilService: boolean;
+  requireGovernmentIds: boolean;
+  requireEducationExperience: boolean;
 }
 
 export interface JobFormData {
   title: string;
   department: string;
   location: string;
-  employment_type: EmploymentType;
+  employmentType: EmploymentType;
+  dutyType: 'Standard' | 'Irregular';
   status: JobStatus;
-  job_description: string;
+  jobDescription: string;
   requirements?: string | null;
-  salary_range?: string | null;
-  office_name?: string | null;
-  submission_address?: string | null;
+  salaryRange?: string | null;
+  officeName?: string | null;
+  submissionAddress?: string | null;
   education?: string | null;
   experience?: string | null;
   training?: string | null;
   eligibility?: string | null;
-  other_qualifications?: string | null;
-  application_email: string;
-  attachment_path?: string | File | null;
-  require_civil_service?: boolean;
-  require_government_ids?: boolean;
-  require_education_experience?: boolean;
+  otherQualifications?: string | null;
+  applicationEmail: string;
+  attachmentPath?: string | File | null;
+  requireCivilService?: boolean;
+  requireGovernmentIds?: boolean;
+  requireEducationExperience?: boolean;
 }
 
 export interface JobApplication {
   id: number;
-  job_id: number;
-  first_name: string;
-  last_name: string;
+  jobId: number;
+  firstName: string;
+  lastName: string;
   email: string;
-  phone_number: string;
+  phoneNumber: string;
   address: string;
   education: string;
   experience: string;
@@ -212,10 +241,10 @@ export interface JobApplication {
   resume: string;
 }
 export interface JobApplicationForm {
-  first_name: string;
-  last_name: string;
+  firstName: string;
+  lastName: string;
   email: string;
-  phone_number: string;
+  phoneNumber: string;
   address: string;
   education: string;
   experience: string;
@@ -235,18 +264,18 @@ export interface ApiError {
 }
 
 export interface SkillData {
-  skill_name: string;
-  proficiency_level?: string | null;
+  skillName: string;
+  proficiencyLevel?: string | null;
   category?: string | null;
-  years_experience?: number | null;
+  yearsExperience?: number | null;
 }
 
 export interface EducationData {
   institution: string;
   degree?: string | null;
-  field_of_study?: string | null;
-  start_date?: string | null;
-  end_date?: string | null;
+  fieldOfStudy?: string | null;
+  startDate?: string | null;
+  endDate?: string | null;
   type?: string | null;
   description?: string | null;
 }
@@ -254,23 +283,23 @@ export interface EducationData {
 export interface ContactData {
   name: string;
   relationship: string;
-  phone_number: string;
+  phoneNumber: string;
   address?: string | null;
   email?: string | null;
-  is_primary?: number | boolean | null;
+  isPrimary?: number | boolean | null;
 }
 
 export interface CustomFieldData {
   section: string;
-  field_name: string;
-  field_value?: string | null;
+  fieldName: string;
+  fieldValue?: string | null;
 }
 
 export const INITIAL_APPLICATION_STATE: JobApplicationForm = {
-  first_name: '',
-  last_name: '',
+  firstName: '',
+  lastName: '',
   email: '',
-  phone_number: '',
+  phoneNumber: '',
   address: '',
   education: '',
   experience: '',

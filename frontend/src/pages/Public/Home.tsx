@@ -160,7 +160,7 @@ const Home = () => {
                     },
                     { 
                         title: "Online Submission", 
-                        desc: "Submit your application directly to the HR office instantly and skip the paperwork.",
+                        desc: "Submit your application directly to the Human Resource office instantly and skip the paperwork.",
                         image: submissionImg
                     }
                 ].map((feature, i) => (
@@ -197,7 +197,7 @@ const Home = () => {
                     },
                     { 
                         title: "Online Submission", 
-                        desc: "Submit your application directly to the HR office instantly and skip the paperwork.",
+                        desc: "Submit your application directly to the Human Resource office instantly and skip the paperwork.",
                         image: submissionImg
                     }
                 ].map((feature, i) => (

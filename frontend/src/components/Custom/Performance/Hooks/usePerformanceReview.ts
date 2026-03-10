@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { 
   fetchReviewById, updateReview, createReview, fetchReviewCycles, fetchCriteria, 
-  submitSupervisorRating, submitSelfRating, acknowledgeReview, 
+  submitReviewerRating, submitSelfRating, acknowledgeReview, 
   updateItem as updateItemApi, deleteItem as deleteItemApi,
   addItem as addItemApi
 } from '@/api/performanceApi';
@@ -20,20 +20,20 @@ import {
   QETField} from '@/types/performance';
 import { Employee } from '@/types';
 
-// Assessment interface is now imported from @/types/performance
+type JsonValue = string | number | boolean | null | undefined | { [key: string]: JsonValue } | JsonValue[];
 
 const DEFAULT_QUALITATIVE_CONFIG: Assessment[] = [
   { id: 'strengths', label: 'Strengths', placeholder: "List the employee's competencies and behavioral assets...", badge: 'Strengths', badgeColor: 'bg-green-50 text-green-700 border-green-100', iconName: 'Zap' },
   { id: 'improvements', label: 'Areas for Improvement', placeholder: "List the competencies and behavioral gaps...", badge: 'Improvements', badgeColor: 'bg-orange-50 text-orange-700 border-orange-100', iconName: 'Target' },
   { id: 'training', label: 'Training Recommendations', placeholder: "Recommended training and development interventions...", badge: 'Training', badgeColor: 'bg-indigo-50 text-indigo-700 border-indigo-100', iconName: 'BookOpen' },
-  { id: 'action_plan', label: 'Action Plan', placeholder: "Detailed action plan and timelines...", badge: 'Action', badgeColor: 'bg-teal-50 text-teal-700 border-teal-100', iconName: 'ClipboardList' },
+  { id: 'actionPlan', label: 'Action Plan', placeholder: "Detailed action plan and timelines...", badge: 'Action', badgeColor: 'bg-teal-50 text-teal-700 border-teal-100', iconName: 'ClipboardList' },
   { id: 'comments', label: 'Additional Comments', placeholder: "Any other remarks...", badge: 'Feedback', badgeColor: 'bg-gray-50 text-gray-700 border-gray-100', iconName: 'MessageSquare' }
 ];
 
 interface FormDataState extends Omit<Partial<InternalReview>, 'items'> {
   items: Partial<ReviewItem>[];
-  additional_comments?: string;
-  employee_metrics?: {
+  additionalComments?: string;
+  employeeMetrics?: {
     attendance: {
       totalLateMinutes: number;
       totalUndertimeMinutes: number;
@@ -50,7 +50,7 @@ interface FormDataState extends Omit<Partial<InternalReview>, 'items'> {
       policyTitle: string;
     }>;
   };
-  employee_info?: {
+  employeeInfo?: {
     dutyType: string;
     dailyTargetHours: number;
     salaryBasis: string;
@@ -100,32 +100,20 @@ export const usePerformanceReview = () => {
           if (!isMounted) return;
           
           if (reviewData.success) {
-            const rawReview = reviewData.review;
-            // Normalize potential camelCase keys from backend to snake_case expected by frontend
-            const review = {
-                ...rawReview,
-                employee_id: rawReview.employee_id,
-                reviewer_id: rawReview.reviewer_id,
-                review_cycle_id: rawReview.review_cycle_id,
-                items: (rawReview.items || []).map((i: ReviewItem) => ({
-                    ...i,
-                    criteria_id: i.criteria_id,
-                    max_score: i.max_score,
-                }))
-            };
+            const review = reviewData.review as InternalReview;
             
-            // Parse overall_feedback
-            let parsedFeedback: Record<string, unknown> = {};
+            // Parse overallFeedback
+            let parsedFeedback: Record<string, JsonValue> = {};
             try {
-              parsedFeedback = JSON.parse(review.overall_feedback || '{}');
+              parsedFeedback = JSON.parse(review.overallFeedback || '{}');
             } catch (e) {
-              parsedFeedback = { additional_comments: review.overall_feedback };
+              parsedFeedback = { additionalComments: review.overallFeedback };
             }
 
             // Load Assessments
             let loadedAssessments: Assessment[] = [];
             if (parsedFeedback.assessments && Array.isArray(parsedFeedback.assessments)) {
-               loadedAssessments = parsedFeedback.assessments;
+               loadedAssessments = parsedFeedback.assessments as unknown as Assessment[];
             } else {
                loadedAssessments = DEFAULT_QUALITATIVE_CONFIG.map(conf => ({
                    id: conf.id,
@@ -144,21 +132,21 @@ export const usePerformanceReview = () => {
             let items: Partial<ReviewItem>[] = review.items || [];
             if (review.status === 'Draft' && criteriaData.success) {
                  const criteria = criteriaData.criteria || [];
-                 const existingCriteriaIds = new Set(items.map(i => i.criteria_id).filter(id => id));
+                 const existingCriteriaIds = new Set(items.map(i => i.criteriaId).filter(id => id));
                  const missingCriteria = criteria.filter((c: PerformanceCriteria) => !existingCriteriaIds.has(c.id));
                  if (missingCriteria.length > 0) {
                      const newItems = missingCriteria.map((c: PerformanceCriteria, index: number) => ({
                          id: Date.now() + index + Math.floor(Math.random() * 1000), 
-                         criteria_id: c.id,
+                         criteriaId: c.id,
                          score: 0,
                          comment: '',
-                         self_score: 0,
-                         actual_accomplishments: '',
-                         criteria_title: c.title,
-                         criteria_description: c.description,
+                         selfScore: 0,
+                         actualAccomplishments: '',
+                         criteriaTitle: c.title,
+                         criteriaDescription: c.description,
                          category: c.category,
                          weight: c.weight,
-                         max_score: c.maxScore
+                         maxScore: c.maxScore
                      }));
                      items = [...items, ...newItems];
                  }
@@ -167,18 +155,18 @@ export const usePerformanceReview = () => {
             setFormData({
               ...review,
               items: items,
-              additional_comments: (parsedFeedback.additional_comments as string) || ''
+              additionalComments: (parsedFeedback.additionalComments as string) || ''
             });
 
             // Fetch Metrics for existing review
             try {
-              if (review.employee_id) {
-                  const metricRes = await complianceApi.getEmployeeMetrics(review.employee_id.toString());
+              if (review.employeeId) {
+                  const metricRes = await complianceApi.getEmployeeMetrics(review.employeeId.toString());
                   if (metricRes.data.success) {
                     setFormData(prev => ({
                         ...prev,
-                        employee_metrics: metricRes.data.metrics,
-                        employee_info: metricRes.data.employee
+                        employeeMetrics: metricRes.data.metrics,
+                        employeeInfo: metricRes.data.employee
                     }));
                   }
               }
@@ -191,18 +179,18 @@ export const usePerformanceReview = () => {
           if (criteriaData.success && isMounted) {
             setFormData(prev => ({
               ...prev,
-              reviewer_id: user?.id,
+              reviewerId: user?.id,
               items: (criteriaData.criteria || []).map((c: PerformanceCriteria) => ({
-                criteria_id: c.id,
+                criteriaId: c.id,
                 score: 0,
                 comment: '',
-                self_score: 0,
-                actual_accomplishments: '',
-                criteria_title: c.title,
-                criteria_description: c.description,
+                selfScore: 0,
+                actualAccomplishments: '',
+                criteriaTitle: c.title,
+                criteriaDescription: c.description,
                 category: c.category,
                 weight: c.weight,
-                max_score: c.maxScore
+                maxScore: c.maxScore
               }))
             }));
           }
@@ -219,7 +207,7 @@ export const usePerformanceReview = () => {
           
           const params = new URLSearchParams(window.location.search);
           const empId = params.get('employeeId');
-          if (empId && isMounted) setFormData(prev => ({ ...prev, employee_id: Number(empId) }));
+          if (empId && isMounted) setFormData(prev => ({ ...prev, employeeId: Number(empId) }));
         }
       } catch (err) {
         if (isMounted) {
@@ -237,16 +225,16 @@ export const usePerformanceReview = () => {
 
   // Fetch Metrics when employee changes
   useEffect(() => {
-    if (!formData.employee_id || !isNew) return;
+    if (!formData.employeeId || !isNew) return;
     
     const fetchMetrics = async () => {
         try {
-            const res = await complianceApi.getEmployeeMetrics((formData.employee_id as number).toString());
+            const res = await complianceApi.getEmployeeMetrics((formData.employeeId as number).toString());
             if (res.data.success) {
                 setFormData(prev => ({
                     ...prev,
-                    employee_metrics: res.data.metrics,
-                    employee_info: res.data.employee
+                    employeeMetrics: res.data.metrics,
+                    employeeInfo: res.data.employee
                 }));
             }
         } catch (error) {
@@ -255,15 +243,15 @@ export const usePerformanceReview = () => {
     };
     
     fetchMetrics();
-  }, [formData.employee_id, isNew]);
+  }, [formData.employeeId, isNew]);
 
-  const selectedEmployee = useMemo(() => employees.find(e => e.id == formData.employee_id), [employees, formData.employee_id]);
-  const selectedCycle = useMemo(() => cycles.find(c => c.id == formData.review_cycle_id), [cycles, formData.review_cycle_id]);
+  const selectedEmployee = useMemo(() => employees.find(e => e.id == formData.employeeId), [employees, formData.employeeId]);
+  const selectedCycle = useMemo(() => cycles.find(c => c.id == formData.reviewCycleId), [cycles, formData.reviewCycleId]);
   
   const permissions = useMemo(() => {
     const role = user?.role?.toLowerCase() || '';
-    const isReviewer = ['admin', 'Human Resource', 'supervisor'].includes(role);
-    const isEmployee = role === 'employee';
+    const isReviewer = ['Administrator', 'Human Resource'].includes(role);
+    const isEmployee = role === 'Employee';
     return {
       role,
       isReviewer,
@@ -290,7 +278,7 @@ export const usePerformanceReview = () => {
   const handleScoreChange = useCallback((criteriaId: string | number, value: string | number) => {
     setFormData(prev => ({
       ...prev,
-      items: prev.items.map(item => item.criteria_id === criteriaId ? { ...item, score: Number(value) } : item)
+      items: prev.items.map(item => item.criteriaId === criteriaId ? { ...item, score: Number(value) } : item)
     }));
   }, []);
 
@@ -298,42 +286,43 @@ export const usePerformanceReview = () => {
     setFormData(prev => ({
       ...prev,
       items: prev.items.map(item => {
-        if (item.criteria_id !== criteriaId) return item;
+        if (item.criteriaId !== criteriaId) return item;
         const updates = { [type]: parseFloat(value.toString()) || 0 };
         const newItem = { ...item, ...updates };
-        const q = Number(newItem.q_score) || 0;
-        const e = Number(newItem.e_score) || 0;
-        const t = Number(newItem.t_score) || 0;
+        const q = Number(newItem.qScore) || 0;
+        const e = Number(newItem.eScore) || 0;
+        const t = Number(newItem.tScore) || 0;
         return { ...newItem, score: parseFloat(((q + e + t) / 3).toFixed(2)) };
       })
     }));
   }, []);
 
+
   const handleCommentChange = useCallback((criteriaId: string | number, value: string) => {
     setFormData(prev => ({
       ...prev,
-      items: prev.items.map(item => item.criteria_id === criteriaId ? { ...item, comment: value } : item)
+      items: prev.items.map(item => item.criteriaId === criteriaId ? { ...item, comment: value } : item)
     }));
   }, []);
 
   const handleSelfScoreChange = useCallback((criteriaId: string | number, value: string | number) => {
     setFormData(prev => ({
       ...prev,
-      items: prev.items.map(item => item.criteria_id === criteriaId ? { ...item, self_score: Number(value) } : item)
+      items: prev.items.map(item => item.criteriaId === criteriaId ? { ...item, selfScore: Number(value) } : item)
     }));
   }, []);
 
   const handleAccomplishmentChange = useCallback((criteriaId: string | number, value: string) => {
     setFormData(prev => ({
       ...prev,
-      items: prev.items.map(item => item.criteria_id === criteriaId ? { ...item, actual_accomplishments: value } : item)
+      items: prev.items.map(item => item.criteriaId === criteriaId ? { ...item, actualAccomplishments: value } : item)
     }));
   }, []);
 
-  const handleEvidenceChange = useCallback((criteriaId: string | number, field: 'evidence_file_path' | 'evidence_description', value: string) => {
+  const handleEvidenceChange = useCallback((criteriaId: string | number, field: 'evidenceFilePath' | 'evidenceDescription', value: string) => {
     setFormData(prev => ({
       ...prev,
-      items: prev.items.map(item => item.criteria_id === criteriaId ? { ...item, [field]: value } : item)
+      items: prev.items.map(item => item.criteriaId === criteriaId ? { ...item, [field]: value } : item)
     }));
   }, []);
 
@@ -350,7 +339,7 @@ export const usePerformanceReview = () => {
         ...prev,
         items: prev.items.map(i => {
           if (i.id && updatedItem.id && i.id == updatedItem.id) return { ...i, ...updatedItem };
-          if (i.criteria_id && updatedItem.criteria_id && i.criteria_id == updatedItem.criteria_id) return { ...i, ...updatedItem };
+          if (i.criteriaId && updatedItem.criteriaId && i.criteriaId == updatedItem.criteriaId) return { ...i, ...updatedItem };
           return i;
         })
       }));
@@ -362,7 +351,7 @@ export const usePerformanceReview = () => {
   }, [showNotification]);
 
   const onDeleteItem = useCallback(async (itemId: string | number) => {
-    const itemToDelete = formData.items.find(i => (i.id == itemId) || (i.criteria_id == itemId));
+    const itemToDelete = formData.items.find(i => (i.id == itemId) || (i.criteriaId == itemId));
     if (!itemToDelete) return;
 
     const isRealDbId = (id: unknown) => typeof id === 'number' && (id as number) < 10000000000;
@@ -376,7 +365,7 @@ export const usePerformanceReview = () => {
         ...prev,
         items: prev.items.filter(i => {
           if (itemToDelete.id && i.id == itemToDelete.id) return false;
-          if (itemToDelete.criteria_id && i.criteria_id == itemToDelete.criteria_id) return false;
+          if (itemToDelete.criteriaId && i.criteriaId == itemToDelete.criteriaId) return false;
           return true;
         })
       }));
@@ -391,24 +380,24 @@ export const usePerformanceReview = () => {
     if (currentReviewId && currentReviewId !== 'new') return currentReviewId;
     if (creationInProgress.current) return null; 
     
-    if (!formData.employee_id) {
+    if (!formData.employeeId) {
       showNotification("Please select an employee before making changes.", "error");
       return null;
     }
     
     try {
       creationInProgress.current = true;
-      const overall_feedback = JSON.stringify({
-        additional_comments: formData.additional_comments || '',
+      const overallFeedback = JSON.stringify({
+        additionalComments: formData.additionalComments || '',
         assessments: qualitativeAssessments
       });
       
       const payload: Partial<InternalReview> = {
-        employee_id: Number(formData.employee_id),
-        reviewer_id: Number(user?.id || formData.reviewer_id),
-        review_cycle_id: Number(formData.review_cycle_id),
-        overall_feedback,
-        total_score: "0",
+        employeeId: Number(formData.employeeId),
+        reviewerId: Number(user?.id || formData.reviewerId),
+        reviewCycleId: Number(formData.reviewCycleId),
+        overallFeedback,
+        totalScore: "0",
       };
       
       const res = await createReview(payload);
@@ -436,12 +425,12 @@ export const usePerformanceReview = () => {
       if (!reviewId) return;
 
       const payload: Partial<ReviewItem> = {
-        review_id: Number(reviewId),
-        criteria_id: newItemData.criteria_id || null,
-        criteria_title: newItemData.criteria_title,
-        criteria_description: newItemData.criteria_description,
+        reviewId: Number(reviewId),
+        criteriaId: newItemData.criteriaId || null,
+        criteriaTitle: newItemData.criteriaTitle,
+        criteriaDescription: newItemData.criteriaDescription,
         weight: Number(newItemData.weight) || 1,
-        max_score: Number(newItemData.max_score) || 5,
+        maxScore: Number(newItemData.maxScore) || 5,
         category: newItemData.category || 'General'
       };
 
@@ -449,7 +438,7 @@ export const usePerformanceReview = () => {
       if (res.success && res.data.itemId) {
         setFormData(prev => ({
           ...prev,
-          items: [...prev.items, { ...newItemData, id: res.data.itemId, score: 0, self_score: 0 }]
+          items: [...prev.items, { ...newItemData, id: res.data.itemId, score: 0, selfScore: 0 }]
         }));
         showNotification("Criteria added successfully.", "success");
       }
@@ -462,17 +451,17 @@ export const usePerformanceReview = () => {
   const saveAssessmentsToBackend = useCallback(async (updatedAssessments: Assessment[], reviewId: string | number) => {
     if (!reviewId) return;
     try {
-      const overall_feedback = JSON.stringify({
-        additional_comments: formData.additional_comments || '',
+      const overallFeedback = JSON.stringify({
+        additionalComments: formData.additionalComments || '',
         assessments: updatedAssessments
       });
       await updateReview(reviewId, {
-        overall_feedback
+        overallFeedback
       });
     } catch (e) {
       console.error("QA Save failed", e);
     }
-  }, [formData.additional_comments]);
+  }, [formData.additionalComments, qualitativeAssessments]);
 
   const handleAddAssessment = useCallback(async (newAssessment: Partial<Assessment>) => {
     const newItem: Assessment = {
@@ -511,7 +500,7 @@ export const usePerformanceReview = () => {
   }, []);
 
   const handleSave = async (action: string = 'save') => {
-    if (!formData.employee_id) {
+    if (!formData.employeeId) {
         showNotification("Please select an employee.", "error");
         return;
     }
@@ -524,8 +513,8 @@ export const usePerformanceReview = () => {
             return;
         }
 
-        const overall_feedback = JSON.stringify({
-            additional_comments: formData.additional_comments,
+        const overallFeedback = JSON.stringify({
+            additionalComments: formData.additionalComments,
             assessments: qualitativeAssessments
         });
 
@@ -535,12 +524,12 @@ export const usePerformanceReview = () => {
             return {
                 ...item,
                 id: isTempId ? undefined : item.id,
-            };
+            } as ReviewItem;
         });
 
         if (permissions.isEmployee) {
             if (action === 'submit') {
-                const res = await submitSelfRating(reviewId, { items: itemsPayload, employee_remarks: formData.additional_comments });
+                const res = await submitSelfRating(reviewId, { items: itemsPayload, employeeRemarks: formData.additionalComments });
                 if (res.success) {
                     showNotification("Self-rating submitted successfully.", "success");
                     navigate('/employee-dashboard/performance');
@@ -556,7 +545,7 @@ export const usePerformanceReview = () => {
                     showNotification(res.message || "Failed to acknowledge.", "error");
                 }
             } else {
-                const res = await submitSelfRating(reviewId, { items: itemsPayload, employee_remarks: formData.additional_comments, isDraft: true });
+                const res = await submitSelfRating(reviewId, { items: itemsPayload, employeeRemarks: formData.additionalComments, isDraft: true });
                 if (res.success) {
                     showNotification("Draft saved.", "success");
                 } else {
@@ -567,19 +556,19 @@ export const usePerformanceReview = () => {
         }
 
         if (action === 'submit') {
-            const res = await submitSupervisorRating(reviewId, { items: itemsPayload, supervisor_remarks: formData.additional_comments, overall_feedback });
+            const res = await submitReviewerRating(reviewId, { items: itemsPayload, reviewerRemarks: formData.additionalComments, overallFeedback });
             if (res.success) {
                 showNotification("Performance review submitted successfully.", "success");
                 navigate('/admin-dashboard/performance-reviews');
             } else {
-                showNotification(res.message || "Failed to submit supervisor rating.", "error");
+                showNotification(res.message || "Failed to submit reviewer rating.", "error");
             }
             return;
         }
 
         const res = await updateReview(reviewId, {
-            overall_feedback,
-            additional_comments: formData.additional_comments
+            overallFeedback,
+            reviewerRemarks: formData.additionalComments
         });
         
         if (res.success) {

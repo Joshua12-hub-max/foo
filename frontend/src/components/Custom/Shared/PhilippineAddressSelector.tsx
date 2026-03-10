@@ -36,6 +36,14 @@ export const PhilippineAddressSelector = <T extends FieldValues>({
 
   const zipField = (prefix === 'res' ? 'residentialZipCode' : 'permanentZipCode') as Path<T>;
 
+  // Ensure fields are registered for watch to trigger re-renders
+  useEffect(() => {
+      register(`${prefix}Region` as Path<T>);
+      register(`${prefix}Province` as Path<T>);
+      register(`${prefix}City` as Path<T>);
+      register(`${prefix}Brgy` as Path<T>);
+  }, [register, prefix]);
+
   // 1. Load Regions initially
   useEffect(() => {
     if (isMeycauayanOnly) {
@@ -52,7 +60,7 @@ export const PhilippineAddressSelector = <T extends FieldValues>({
       const munCode = meycauayan?.mun_code || '031412';
       setValue(`${prefix}City` as Path<T>, munCode as PathValue<T, Path<T>>, { shouldValidate: true });
 
-      // Auto-set zip for Meycauayan using direct mun_code lookup
+      // Auto-set zip for Meycauayan using direct munCode lookup
       const zip = getZipByMunCode(munCode);
       if (zip) {
         setValue(zipField, zip as PathValue<T, Path<T>>, { shouldValidate: true });
@@ -96,7 +104,7 @@ export const PhilippineAddressSelector = <T extends FieldValues>({
         setBarangays(ph.barangays.filter((b: Barangay) => b.mun_code === watchCity) || []);
       }
 
-      // Direct mun_code → zip code lookup (100% coverage, no string matching)
+      // Direct munCode → zip code lookup (100% coverage, no string matching)
       const zip = getZipByMunCode(String(watchCity));
       if (zip) {
         setValue(zipField, zip as PathValue<T, Path<T>>, { shouldValidate: true });
@@ -172,14 +180,34 @@ export const PhilippineAddressSelector = <T extends FieldValues>({
         </div>
       </div>
 
+      {/* Atomic Address Details: House/Block/Lot and Subdivision */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="space-y-1">
+          <label className="text-xs font-semibold text-gray-600 ml-1">House/Block/Lot No.</label>
+          <input 
+             {...register(`${prefix}HouseBlockLot` as Path<T>)} 
+             className={`${inputClass} !pl-3`} 
+             placeholder="e.g. Lot 1 Block 2" 
+          />
+        </div>
+        <div className="space-y-1">
+          <label className="text-xs font-semibold text-gray-600 ml-1">Subdivision/Village</label>
+          <input 
+             {...register(`${prefix}Subdivision` as Path<T>)} 
+             className={`${inputClass} !pl-3`} 
+             placeholder="e.g. Green Village" 
+          />
+        </div>
+      </div>
+
       {/* Street / Exact Address Box & Zip */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div className="space-y-1">
-          <label className="text-xs font-semibold text-gray-600 ml-1">Street / house number</label>
+          <label className="text-xs font-semibold text-gray-600 ml-1">Street</label>
           <input 
              {...register(`${prefix}Street` as Path<T>)} 
              className={`${inputClass} !pl-3`} 
-             placeholder="House number, street name, phase, subdivision..." 
+             placeholder="e.g. Rizal Street" 
           />
         </div>
         <div className="space-y-1">

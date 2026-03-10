@@ -107,9 +107,9 @@ const LiveChatWidget = () => {
 
         try {
             await chatApi.sendMessage({
-                conversation_id: conversation.id,
+                conversationId: conversation.id,
                 message: originalMsg,
-                sender_type: 'Applicant'
+                senderType: 'Applicant'
             });
             // Immediately fetch to show user msg
             const res = await chatApi.getMessages(conversation.id);
@@ -204,7 +204,7 @@ const LiveChatWidget = () => {
                                             </div>
                                         )}
                                         {messages.map((msg) => {
-                                            const isApplicant = msg.sender_type === 'Applicant';
+                                            const isApplicant = msg.senderType === 'Applicant';
                                             return (
                                                 <div key={msg.id} className={`flex ${isApplicant ? 'justify-end' : 'justify-start'}`}>
                                                     <div className={`max-w-[85%] p-3.5 px-4 rounded-2xl flex flex-col ${
@@ -214,7 +214,7 @@ const LiveChatWidget = () => {
                                                     }`}>
                                                         <p className="text-[13px] font-medium leading-relaxed">{msg.message}</p>
                                                         <span className="text-[8px] mt-1.5 opacity-40 font-bold tracking-tight text-right">
-                                                            {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                            {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                                         </span>
                                                     </div>
                                                 </div>

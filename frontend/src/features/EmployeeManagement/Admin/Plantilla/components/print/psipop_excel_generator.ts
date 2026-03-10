@@ -109,9 +109,9 @@ export const generatePSIPOPExcel = async (positions: Position[], config: PSIPOPC
       { key: 'code', width: 6 },           // G - Area Code
       { key: 'type', width: 5 },           // H - Area Type
       { key: 'level', width: 5 },          // I - Area Level
-      { key: 'last_name', width: 18 },     // J - Last Name
-      { key: 'first_name', width: 16 },    // K - First Name
-      { key: 'middle_name', width: 16 },   // L - Middle Name
+      { key: 'lastName', width: 18 },     // J - Last Name
+      { key: 'firstName', width: 16 },    // K - First Name
+      { key: 'middleName', width: 16 },   // L - Middle Name
       { key: 'dob', width: 12 },           // M - Date of Birth
       { key: 'orig_appt', width: 12 },     // N - Original Appointment
       { key: 'last_promo', width: 12 },    // O - Last Promotion
@@ -241,15 +241,15 @@ export const generatePSIPOPExcel = async (positions: Position[], config: PSIPOPC
     let currentRow = 9;
 
     positions.forEach(pos => {
-      const annualSalary = pos.monthly_salary
-        ? Number(pos.monthly_salary) * 12
+      const annualSalary = pos.monthlySalary
+        ? Number(pos.monthlySalary) * 12
         : 0;
-      const actualSalary = pos.is_vacant ? null : annualSalary;
+      const actualSalary = pos.isVacant ? null : annualSalary;
       const { lastName, firstName, middleName } = parseIncumbentName(pos.incumbent_name);
 
       // Status abbreviation
       let statusCode = '';
-      if (pos.is_vacant) {
+      if (pos.isVacant) {
         statusCode = 'V';
       } else if (pos.status) {
         statusCode = pos.status === 'Active' ? 'P' : pos.status.substring(0, 2).toUpperCase();
@@ -258,19 +258,19 @@ export const generatePSIPOPExcel = async (positions: Position[], config: PSIPOPC
       }
 
       const rowData = [
-        pos.item_number || '',
-        pos.position_title || '',
-        pos.salary_grade?.toString() || '',
+        pos.itemNumber || '',
+        pos.positionTitle || '',
+        pos.salaryGrade?.toString() || '',
         annualSalary,
         actualSalary,
-        pos.step_increment?.toString() || '1',
+        pos.stepIncrement?.toString() || '1',
         pos.area_code || '',
         pos.area_type || '',
         pos.area_level || '',
         lastName,
         firstName,
         middleName,
-        formatDate(pos.birth_date),
+        formatDate(pos.birthDate),
         formatDate(pos.original_appointment_date),
         formatDate(pos.last_promotion_date),
         statusCode
@@ -304,7 +304,7 @@ export const generatePSIPOPExcel = async (positions: Position[], config: PSIPOPC
         }
 
         // Highlight vacant positions
-        if (pos.is_vacant) {
+        if (pos.isVacant) {
           cell.fill = vacantFill;
         }
       });

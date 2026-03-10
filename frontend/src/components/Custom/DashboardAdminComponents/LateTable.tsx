@@ -8,7 +8,7 @@ interface Employee {
   status?: string;
   timeIn?: string;
   lateBy?: string;
-  late_duration?: string;
+  lateDuration?: string;
 }
 
 interface LateTableProps {
@@ -100,7 +100,7 @@ export default function LateTable({ onClose, employees = [] }: LateTableProps) {
                   <td className="px-4 py-3 text-gray-800 font-medium">{employee.name}</td>
                   <td className="px-4 py-3 text-gray-600">{employee.department}</td>
                   <td className="px-4 py-3 text-gray-600">{employee.timeIn}</td>
-                  <td className="px-4 py-3 text-amber-600 font-medium">{employee.lateBy || employee.late_duration || '-'}</td>
+                  <td className="px-4 py-3 text-amber-600 font-medium">{employee.lateBy || employee.lateDuration || '-'}</td>
                 </tr>
               ))
             ) : (

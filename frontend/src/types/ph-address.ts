@@ -26,10 +26,10 @@ export interface PhilAddressLibrary {
   provinces: Province[];
   city_mun: CityMunicipality[];
   barangays: Barangay[];
-  getProvincesByRegion: (region_code: string) => Province[];
-  getCityMunByProvince: (province_code: string) => CityMunicipality[];
-  getBarangayByMun: (mun_code: string) => Barangay[];
-  sort: (arr: any[], sort?: 'A' | 'Z') => any[]; // sort is generic but we'll try to be specific where used
+  getProvincesByRegion: (regionCode: string) => Province[];
+  getCityMunByProvince: (provinceCode: string) => CityMunicipality[];
+  getBarangayByMun: (munCode: string) => Barangay[];
+  sort: (arr: Record<string, unknown>[], sort?: 'A' | 'Z') => Record<string, unknown>[];
 }
 
 export interface ZipcodesLibrary {

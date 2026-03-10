@@ -1,0 +1,24 @@
+[
+  {
+    "id": 1,
+    "title": "Software Developer ",
+    "department": "Office of the City Human Resource Management Officer",
+    "jobDescription": "This Job Vacancy is for Standard",
+    "requirements": "Resume\n2 x 2 ID",
+    "location": "Main Office",
+    "employmentType": "Full-time",
+    "dutyType": "Standard",
+    "status": "Open",
+    "applicationEmail": "primeagen5@gmail.com",
+    "postedBy": 1,
+    "postedAt": "2026-03-10 10:01:49",
+    "fbPostId": null,
+    "linkedinPostId": null,
+    "createdAt": "2026-03-10 10:01:49",
+    "updatedAt": "2026-03-10 10:01:49",
+    "attachmentPath": null,
+    "requireCivilService": true,
+    "requireGovernmentIds": true,
+    "requireEducationExperience": true
+  }
+]

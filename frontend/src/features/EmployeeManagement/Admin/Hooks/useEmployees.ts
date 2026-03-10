@@ -1,11 +1,10 @@
 import { useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-// @ts-ignore
-import { fetchEmployees, addEmployee, deleteEmployee } from '@api/employeeApi';
-// @ts-ignore
-import { fetchDepartments } from '@api/departmentApi';
+import { employeeApi } from '@/api/employeeApi';
+import { departmentApi } from '@/api/departmentApi';
 
 import { Employee } from '@/types';
+import { UpdateEmployeeInput } from '@/schemas/employeeSchema';
 
 export interface Department {
   id: number;
@@ -17,8 +16,8 @@ export interface UseEmployeesReturn {
   departments: Department[];
   loading: boolean;
   isProcessing: boolean;
-  loadEmployees: () => Promise<void>;
-  handleAddEmployee: (formData: Partial<Employee>) => Promise<boolean>;
+  loadEmployees: (deptParams?: { department?: string, departmentId?: number }) => Promise<void>;
+  handleAddEmployee: (formData: UpdateEmployeeInput) => Promise<boolean>;
   handleDeleteEmployee: (id: number) => Promise<boolean>;
 }
 
@@ -38,75 +37,75 @@ export const useEmployees = (
   const { data: employees = [], isLoading: loadingEmployees, refetch: refetchEmployees } = useQuery({
     queryKey: ['employees'],
     queryFn: async () => {
-      const data = await fetchEmployees();
+      const data = await employeeApi.fetchEmployees();
       if (data.success) {
         return data.employees || [];
       }
       throw new Error(data.message || 'Failed to fetch employees');
     },
-    // Keep data fresh but allow background updates
     staleTime: 1000 * 60 * 5 // 5 minutes
   });
 
   // Fetch Departments
   const { data: departments = [] } = useQuery({
-    queryKey: ['departments'],
+    queryKey: ['departments-public'],
     queryFn: async () => {
-      const data = await fetchDepartments();
+      const data = await departmentApi.fetchPublicDepartments();
       if (data.success) {
-        return data.departments || [];
+        return (data.departments as Department[]) || [];
       }
       return [];
     },
-    staleTime: 1000 * 60 * 60 // 1 hour (departments change rarely)
+    staleTime: 1000 * 60 * 30 // 30 minutes
   });
 
-  // Add Employee Mutation
+  // Mutations
   const addMutation = useMutation({
-    mutationFn: addEmployee,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['employees'] });
-      onSuccess?.('Employee added successfully');
+    mutationFn: (formData: UpdateEmployeeInput) => employeeApi.addEmployee(formData),
+    onSuccess: (data) => {
+      if (data.success) {
+        queryClient.invalidateQueries({ queryKey: ['employees'] });
+        onSuccess?.(data.message || 'Employee added successfully');
+      } else {
+        onError?.(data.message || 'Failed to add employee');
+      }
     },
-    onError: (error: Error) => {
-      onError?.(error.message || 'Failed to add employee');
+    onError: (error: any) => {
+        onError?.(error.message || 'An unexpected error occurred');
     }
   });
 
-  // Delete Employee Mutation
   const deleteMutation = useMutation({
-    mutationFn: deleteEmployee,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['employees'] });
-      onSuccess?.('Employee deleted successfully');
+    mutationFn: (id: number) => employeeApi.deleteEmployee(id),
+    onSuccess: (data) => {
+      if (data.success) {
+        queryClient.invalidateQueries({ queryKey: ['employees'] });
+        onSuccess?.(data.message || 'Employee deleted successfully');
+      } else {
+        onError?.(data.message || 'Failed to delete employee');
+      }
     },
-    onError: (error: Error) => {
-      onError?.(error.message || 'Failed to delete employee');
+    onError: (error: any) => {
+        onError?.(error.message || 'An unexpected error occurred');
     }
   });
 
-  // Compatibility wrappers
-  const handleAddEmployee = useCallback(async (formData: Partial<Employee>): Promise<boolean> => {
-    try {
-      const res = await addMutation.mutateAsync(formData as unknown as Parameters<typeof addEmployee>[0]);
-      return res.success;
-    } catch (error) {
-      return false;
-    }
-  }, [addMutation]);
-
-  const handleDeleteEmployee = useCallback(async (id: number): Promise<boolean> => {
-    try {
-      const res = await deleteMutation.mutateAsync(id);
-      return res.success;
-    } catch (error) {
-      return false;
-    }
-  }, [deleteMutation]);
-
-  const loadEmployees = useCallback(async () => {
+  const loadEmployees = useCallback(async (deptParams?: { department?: string, departmentId?: number }) => {
+    // Note: In TanStack Query, we'd usually add params to queryKey.
+    // However, if the legacy code expects a manual trigger, we can use refetch.
+    // For now we'll just refetch to stay consistent with existing patterns
     await refetchEmployees();
   }, [refetchEmployees]);
+
+  const handleAddEmployee = async (formData: UpdateEmployeeInput): Promise<boolean> => {
+    const result = await addMutation.mutateAsync(formData);
+    return !!result.success;
+  };
+
+  const handleDeleteEmployee = async (id: number): Promise<boolean> => {
+    const result = await deleteMutation.mutateAsync(id);
+    return !!result.success;
+  };
 
   return {
     employees,

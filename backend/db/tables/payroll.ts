@@ -2,11 +2,11 @@ import { mysqlTable, varchar, int, date, timestamp, decimal, text, mysqlEnum, bo
 import { authentication } from './auth.js';
 
 export const salarySchedule = mysqlTable("salary_schedule", {
-	id: int().autoincrement().notNull(),
+	id: int("id").autoincrement().notNull(),
 	salaryGrade: int("salary_grade").notNull(),
-	step: int().notNull(),
+	step: int("step").notNull(),
 	monthlySalary: decimal("monthly_salary", { precision: 12, scale: 2 }).notNull(),
-	tranche: int().default(2).notNull(),
+	tranche: int("tranche").default(2).notNull(),
 },
 (table) => [
 	index("idx_grade").on(table.salaryGrade),
@@ -16,9 +16,9 @@ export const salarySchedule = mysqlTable("salary_schedule", {
 ]);
 
 export const salaryTranches = mysqlTable("salary_tranches", {
-	id: int().autoincrement().notNull(),
+	id: int("id").autoincrement().notNull(),
 	trancheNumber: int("tranche_number").notNull(),
-	name: varchar({ length: 100 }).notNull(),
+	name: varchar("name", { length: 100 }).notNull(),
 	circularNumber: varchar("circular_number", { length: 100 }),
 	effectiveDate: date("effective_date", { mode: 'string' }),
 	dateIssued: date("date_issued", { mode: 'string' }),
@@ -33,16 +33,16 @@ export const salaryTranches = mysqlTable("salary_tranches", {
 ]);
 
 export const stepIncrementTracker = mysqlTable("step_increment_tracker", {
-	id: int().autoincrement().notNull(),
+	id: int("id").autoincrement().notNull(),
 	employeeId: int("employee_id").notNull().references(() => authentication.id, { onDelete: "cascade" } ),
 	positionId: int("position_id").notNull(),
 	currentStep: int("current_step").notNull(),
 	previousStep: int("previous_step"),
 	eligibleDate: date("eligible_date", { mode: 'string' }).notNull(),
-	status: mysqlEnum(['Pending','Approved','Denied','Processed']).default('Pending'),
+	status: mysqlEnum("status", ['Pending','Approved','Denied','Processed']).default('Pending'),
 	processedAt: timestamp("processed_at", { mode: 'string' }),
 	processedBy: int("processed_by").references(() => authentication.id, { onDelete: "set null" } ),
-	remarks: text(),
+	remarks: text("remarks"),
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
 	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow(),
 },

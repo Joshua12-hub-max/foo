@@ -189,10 +189,10 @@ async function seedActivity() {
               description: c.description,
               category: c.category,
               weight: String(c.weight),
-              criteriaType: c.type as any,
+              criteriaType: c.type as unknown,
               isActive: true,
               maxScore: 5
-          } as any);
+          } as unknown);
       }
   }
 
@@ -299,7 +299,7 @@ async function seedActivity() {
           .set({
               totalScore: finalScore,
               finalRatingScore: finalScore,
-              supervisorRatingScore: finalScore,
+              reviewerRatingScore: finalScore,
               status: 'Finalized',
               updatedAt: formatDateTime(new Date())
           })

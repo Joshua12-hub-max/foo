@@ -15,7 +15,7 @@ interface EmployeeDateRow extends RowDataPacket {
 }
 
 const checkEmploymentStatus = async () => {
-  console.log('Running daily employment status check...');
+  console.warn('Running daily employment status check...');
   
   try {
     // 1. Check for Regularization (Probationary employees nearing 6 months)
@@ -29,7 +29,7 @@ const checkEmploymentStatus = async () => {
     );
 
     if (probationary.length > 0) {
-      console.log(`Found ${probationary.length} employees due for regularization.`);
+      console.warn(`Found ${probationary.length} employees due for regularization.`);
       // TODO: Send notification Logic
       // await sendEmailNotification(...)
     }
@@ -44,7 +44,7 @@ const checkEmploymentStatus = async () => {
     );
 
     if (expiring.length > 0) {
-      console.log(`Found ${expiring.length} contracts expiring soon.`);
+      console.warn(`Found ${expiring.length} contracts expiring soon.`);
       // TODO: Send notification Logic
     }
 
@@ -60,5 +60,5 @@ export const initCronJobs = () => {
     checkEmploymentStatus();
   });
   
-  console.log('Employment Check Cron Job initialized (Daily at 8:00 AM)');
+  console.warn('Employment Check Cron Job initialized (Daily at 8:00 AM)');
 };

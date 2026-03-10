@@ -1,7 +1,6 @@
 import { z } from 'zod';
 import { 
-  VL_ADVANCE_FILING_DAYS,
-  SL_MEDICAL_CERT_THRESHOLD 
+  VL_ADVANCE_FILING_DAYS
 } from '../types/leave.types.js';
 
 // ============================================================================
@@ -232,11 +231,4 @@ export const validateVLAdvanceFiling = (startDate: string): boolean => {
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   
   return diffDays >= VL_ADVANCE_FILING_DAYS;
-};
-
-/**
- * Check if SL requires medical certificate (5 days or more)
- */
-export const requiresMedicalCertificate = (workingDays: number): boolean => {
-  return workingDays >= SL_MEDICAL_CERT_THRESHOLD;
 };

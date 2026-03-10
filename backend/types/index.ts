@@ -73,61 +73,61 @@ export interface PaginatedResponse<T> extends ApiResponse<T[]> {
  */
 export interface BaseRow extends RowDataPacket {
   id: number;
-  created_at?: Date;
-  updated_at?: Date;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 /**
  * User/Authentication table row
  */
 export interface UserRow extends BaseRow {
-  employee_id: string;
+  employeeId: string;
   email: string;
-  password_hash: string;
-  first_name: string;
-  last_name: string;
+  passwordHash: string;
+  firstName: string;
+  lastName: string;
   role: UserRole;
   department: string;
-  job_title?: string;
-  position_title?: string;
-  item_number?: string;
-  salary_grade?: number;
-  step_increment?: number;
-  date_hired?: Date;
-  employment_status?: EmploymentStatus;
-  avatar_url?: string;
-  phone_number?: string;
-  birth_date?: Date;
+  jobTitle?: string;
+  positionTitle?: string;
+  itemNumber?: string;
+  salaryGrade?: number;
+  stepIncrement?: number;
+  dateHired?: Date;
+  employmentStatus?: EmploymentStatus;
+  avatarUrl?: string;
+  phoneNumber?: string;
+  birthDate?: Date;
   gender?: string;
-  civil_status?: string;
+  civilStatus?: string;
   nationality?: string;
-  blood_type?: string;
-  permanent_address?: string;
-  emergency_contact?: string;
-  emergency_contact_number?: string;
-  umid_id?: string;
-  philsys_id?: string;
-  educational_background?: string;
-  gsis_number?: string;
-  philhealth_number?: string;
-  pagibig_number?: string;
-  tin_number?: string;
-  manager_id?: number;
-  google_id?: string;
-  is_verified: boolean;
-  verification_token?: string;
-  reset_password_token?: string;
-  reset_password_expires?: Date;
-  two_factor_enabled: boolean;
-  two_factor_otp?: string;
-  two_factor_otp_expires?: Date;
+  bloodType?: string;
+  permanentAddress?: string;
+  emergencyContact?: string;
+  emergencyContactNumber?: string;
+  umidId?: string;
+  philsysId?: string;
+  educationalBackground?: string;
+  gsisNumber?: string;
+  philhealthNumber?: string;
+  pagibigNumber?: string;
+  tinNumber?: string;
+  managerId?: number;
+  googleId?: string;
+  isVerified: boolean;
+  verificationToken?: string;
+  resetPasswordToken?: string;
+  resetPasswordExpires?: Date;
+  twoFactorEnabled: boolean;
+  twoFactorOtp?: string;
+  twoFactorOtpExpires?: Date;
 }
 
 // ============================================================================
 // Enums and Constants
 // ============================================================================
 
-export type UserRole = 'Admin' | 'Human Resource' | 'Employee';
+export type UserRole = 'Administrator' | 'Human Resource' | 'Employee';
 
 export type EmploymentStatus = 
   | 'Active'
@@ -276,7 +276,8 @@ export type SelfRatingStatus =
 
 export type EvaluationMode = 
   | 'CSC'
-  | 'IPCR';
+  | 'IPCR'
+  | 'Senior';
 
 // ============================================================================
 // Request Body Types
@@ -306,25 +307,25 @@ export interface PasswordResetRequest {
 }
 
 export interface LeaveApplicationRequest {
-  leave_type: LeaveType;
-  start_date: string;
-  end_date: string;
+  leaveType: LeaveType;
+  startDate: string;
+  endDate: string;
   reason: string;
-  supporting_document?: string;
+  supportingDocument?: string;
 }
 
 export interface DTRCorrectionRequest {
   date: string;
-  original_time_in?: string;
-  original_time_out?: string;
-  corrected_time_in?: string;
-  corrected_time_out?: string;
+  originalTimeIn?: string;
+  originalTimeOut?: string;
+  correctedTimeIn?: string;
+  correctedTimeOut?: string;
   reason: string;
 }
 
 export interface UndertimeRequest {
   date: string;
-  time_out: string;
+  timeOut: string;
   reason: string;
 }
 
@@ -418,3 +419,11 @@ export type PerformanceCriteriaType =
   | 'support_function'
   | 'core_competency'
   | 'organizational_competency';
+
+export interface MySQLError extends Error {
+  code?: string;
+  errno?: number;
+  sqlState?: string;
+  sqlMessage?: string;
+  sql?: string;
+}

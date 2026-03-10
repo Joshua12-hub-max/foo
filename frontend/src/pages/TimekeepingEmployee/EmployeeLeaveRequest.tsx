@@ -14,14 +14,12 @@ import ErrorAlert from '@/features/LeaveRequests/components/Employee/ErrorAlert'
 import SuccessAlert from '@/features/LeaveRequests/components/Employee/SuccessAlert';
 import Filters from '@/features/LeaveRequests/components/Employee/Filters';
 import SearchBar from '@/features/LeaveRequests/components/Employee/SearchBar';
-import ExportOptions from '@/features/LeaveRequests/components/Employee/ExportOptions';
 import Table from '@/features/LeaveRequests/components/Employee/Table';
 import Pagination from '@/components/CustomUI/Pagination';
 
 // Hooks
 import { useLeaveData } from '@/features/LeaveRequests/hooks/Employee/useLeaveData';
 import { useFilters } from '@/features/LeaveRequests/hooks/Employee/useFilters';
-import { useExport } from '@/features/LeaveRequests/hooks/Employee/useExport';
 import { EmployeeLeaveRequest } from "@/features/LeaveRequests/types";
 import { LeaveStatus } from "@/components/Custom/Timekeeping/LeaveRequestComponents/Employee/constants/leaveConstants";
 import type { LeaveBalance, ApplicationStatus, LeaveType } from '@/types/leave.types';
@@ -69,7 +67,6 @@ const LeaveRequest = () => {
     handleClear 
   } = useFilters(leaves); // Passing leaves helps useFilters know data structure, though we don't use its filteredData return anymore for rendering
   
-  const { isExporting, exportError, handleExportCSV, handleExportPDF } = useExport();
 
   // Sync Search with Server
   useEffect(() => {
@@ -87,14 +84,14 @@ const LeaveRequest = () => {
 
   // Auto-dismiss messages
   useEffect(() => {
-    const error = errorMessage || dataError || exportError;
+    const error = errorMessage || dataError;
     if (error) {
       const timer = setTimeout(() => {
         setErrorMessage(null);
       }, 5000);
       return () => clearTimeout(timer);
     }
-  }, [errorMessage, dataError, exportError]);
+  }, [errorMessage, dataError]);
 
   useEffect(() => {
     if (successMessage) {
@@ -121,14 +118,14 @@ const LeaveRequest = () => {
   };
 
   // Combined error message
-  const currentError = errorMessage || dataError || exportError;
+  const currentError = errorMessage || dataError;
 
   return (
     <div className={`min-h-screen flex flex-col bg-gradient-to-br from-neutral-100 to-stone-50 rounded-xl shadow-xl p-7 w-full overflow-hidden text-gray-800 transition-all duration-300 ${!sidebarOpen ? 'max-w-[1600px] xl:max-w-[88vw]' : 'max-w-[1400px] xl:max-w-[77vw]'}`}>
       {/* Header */}
       <Header 
         onRefresh={refetch}
-        isLoading={isLoading || isExporting}
+        isLoading={isLoading}
       />
 
       <hr className="mb-6 h-px bg-gray-200 border-0" />
@@ -150,7 +147,7 @@ const LeaveRequest = () => {
         onApplyFilters={handleApplyFilters}
         onClear={handleClear}
         onNewRequest={() => setIsSubmitModalOpen(true)}
-        isLoading={isLoading || isExporting}
+        isLoading={isLoading}
         hasCredits={credits.length > 0 && credits.some((c) => c.balance > 0)}
       />
 
@@ -161,7 +158,7 @@ const LeaveRequest = () => {
            <SearchBar 
               searchQuery={searchQuery}
               onChange={handleSearchChange}
-              isLoading={isLoading || isExporting}
+              isLoading={isLoading}
               resultCount={pagination.totalItems}
            />
         </div>
@@ -175,7 +172,7 @@ const LeaveRequest = () => {
                   key={idx} 
                   className="bg-white px-3 py-2 rounded-lg border border-gray-300 shadow-sm flex items-center gap-2"
                 >
-                  <span className="text-xs font-medium text-gray-500">{credit.credit_type}:</span>
+                  <span className="text-xs font-medium text-gray-500">{credit.creditType}:</span>
                   <span className={`text-sm font-bold ${Number(credit.balance || 0) > 0 ? 'text-gray-800' : 'text-gray-400'}`}>
                     {Number(credit.balance || 0).toFixed(1)}
                   </span>
@@ -196,14 +193,6 @@ const LeaveRequest = () => {
             </button>
         </div>
       </div>
-
-      {/* Export Options */}
-      <ExportOptions 
-        onExportCSV={() => handleExportCSV(leaves)}
-        onExportPDF={() => handleExportPDF(leaves)}
-        isLoading={isLoading || isExporting}
-        hasData={leaves.length > 0}
-      />
 
       {/* Table */}
       {isLoading && leaves.length === 0 ? (

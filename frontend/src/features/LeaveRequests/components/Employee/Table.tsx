@@ -1,7 +1,6 @@
-import React, { useState } from 'react';
-import { Search, Eye, FileCheck } from 'lucide-react';
+import React from 'react';
+import { FileCheck } from 'lucide-react';
 import { LEAVE_TABLE_HEADERS, STATUS_STYLES } from './constants/leaveConstants';
-import LeaveDetailsModal from '@/features/LeaveRequests/Modals/LeaveDetailsModal';
 import { EmployeeLeaveRequest, EmployeeLeaveFilters } from '../../types';
 
 interface TableProps {
@@ -12,14 +11,6 @@ interface TableProps {
 }
 
 export const Table: React.FC<TableProps> = ({ data, searchQuery, filters, onFinalize }) => {
-  const [selectedLeave, setSelectedLeave] = useState<EmployeeLeaveRequest | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-
-  const handleViewDetails = (leave: EmployeeLeaveRequest) => {
-    setSelectedLeave(leave);
-    setIsModalOpen(true);
-  };
-  
   const getStatusBadge = (status: string) => {
     return STATUS_STYLES[status] || 'bg-gray-100 text-gray-800';
   };
@@ -53,40 +44,32 @@ export const Table: React.FC<TableProps> = ({ data, searchQuery, filters, onFina
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">{item.department}</td>
                   <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">{item.id}</td>
-                  <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">{item.employee_id}</td>
+                  <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">{item.employeeId}</td>
                   <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">{item.leaveType}</td>
                   <td className="px-6 py-4">
                     <span
                       className={`px-2.5 py-1 text-xs font-semibold rounded-full whitespace-nowrap ${
-                        item.with_pay 
+                        item.isWithPay 
                           ? 'bg-green-100 text-green-700 border border-green-200' 
                           : 'bg-gray-100 text-gray-600 border border-gray-200'
                       }`}
                     >
-                      {item.with_pay ? 'With Pay' : 'Without Pay'}
+                      {item.isWithPay ? 'With Pay' : 'Without Pay'}
                     </span>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">
-                    {new Date(item.fromDate).toLocaleDateString()}
+                    {new Date(item.startDate).toLocaleDateString()}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">
-                    {new Date(item.toDate).toLocaleDateString()}
+                    {new Date(item.endDate).toLocaleDateString()}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-800">
                     <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => handleViewDetails(item)}
-                        className="bg-blue-100 hover:bg-blue-200 text-blue-700 p-1.5 rounded-md transition-colors"
-                        title="View Details"
-                      >
-                        <Eye size={16} />
-                      </button>
-                      
                       {item.status === 'Approved' && onFinalize && (
                         <button
                           onClick={() => onFinalize(item)}
                           className="bg-green-100 hover:bg-green-200 text-green-700 p-1.5 rounded-md transition-colors"
-                          title="Finalize (Upload Signed Form)"
+                          title="Finalize Leave Request"
                         >
                           <FileCheck size={16} />
                         </button>
@@ -112,12 +95,6 @@ export const Table: React.FC<TableProps> = ({ data, searchQuery, filters, onFina
           </tbody>
         </table>
       </div>
-
-      <LeaveDetailsModal 
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        leaveRequest={selectedLeave}
-      />
     </div>
   );
 };

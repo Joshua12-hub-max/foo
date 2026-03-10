@@ -4,7 +4,8 @@ import { Calendar, Bell, LayoutDashboard, BarChart3, LucideIcon } from 'lucide-r
 import EventsAndHolidays from './EventsAndHolidays';
 import AnnouncementSection from './AnnouncementSection';
 import { PerformancePieChart } from '../../CustomUI';
-import { fetchReviews } from '../../../api/performanceApi';
+import { fetchReviews, InternalReviewListResponse } from '../../../api/performanceApi';
+import { InternalReview } from '../../../types/performance';
 import { useAuth } from '../../../hooks/useAuth';
 
 interface Tab {
@@ -63,7 +64,7 @@ export default function EmployeeCombinedSection() {
   const { user } = useAuth();
   
   // Performance evaluation state - real data from API
-  const [performanceData, setPerformanceData] = useState<any[] | null>(null);
+  const [performanceData, setPerformanceData] = useState<InternalReview[] | null>(null);
   const [performanceLoading, setPerformanceLoading] = useState(true);
 
   // Fetch employee's own performance reviews
@@ -73,7 +74,7 @@ export default function EmployeeCombinedSection() {
       
       try {
         setPerformanceLoading(true);
-        const response: any = await fetchReviews({ employee_id: user.id });
+        const response: InternalReviewListResponse = await fetchReviews({ employeeId: String(user.id) });
         
         if (response.success && response.reviews) {
             setPerformanceData(response.reviews);
@@ -102,10 +103,10 @@ export default function EmployeeCombinedSection() {
         totalRating: performanceData.length // Adding missing field
       };
 
-      performanceData.forEach(review => {
+      (performanceData as InternalReview[]).forEach((review: InternalReview) => {
         // Prioritize total_score, then fallbacks
-        const score = review.total_score !== undefined ? review.total_score : 
-                      (review.supervisor_rating_score !== undefined ? review.supervisor_rating_score : review.self_rating_score);
+        const score = review.totalScore !== undefined ? review.totalScore : 
+                      (review.reviewerRatingScore !== undefined ? review.reviewerRatingScore : review.selfRatingScore);
         
         if (score !== null && score !== undefined) {
              const numericScore = Number(score);

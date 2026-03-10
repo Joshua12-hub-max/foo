@@ -77,14 +77,14 @@ const ApplicantDetailModal: React.FC<ApplicantDetailModalProps> = ({ isOpen, onC
                 </div>
                 <div>
                   <h2 className="text-2xl font-black text-gray-900 tracking-tight leading-none mb-1">
-                    {applicant.first_name} {applicant.last_name}
+                    {applicant.firstName} {applicant.lastName}
                   </h2>
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-bold text-green-600 bg-green-50 px-3 py-1 rounded-full border border-green-100">
-                      {applicant.job_title}
+                      {applicant.jobTitle}
                     </span>
                     <span className="text-xs font-semibold text-gray-400 flex items-center gap-1">
-                       <Calendar size={12} /> Applied on {new Date(applicant.created_at).toLocaleDateString()}
+                       <Calendar size={12} /> Applied on {new Date(applicant.createdAt).toLocaleDateString()}
                     </span>
                   </div>
                 </div>
@@ -126,7 +126,7 @@ const ApplicantDetailModal: React.FC<ApplicantDetailModalProps> = ({ isOpen, onC
                   </div>
                   <div>
                     <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Mobile Number</p>
-                    <p className="text-sm font-bold text-gray-700">{applicant.phone_number}</p>
+                    <p className="text-sm font-bold text-gray-700">{applicant.phoneNumber}</p>
                   </div>
                 </div>
                 <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4 group hover:border-purple-200 transition-colors">
@@ -144,20 +144,20 @@ const ApplicantDetailModal: React.FC<ApplicantDetailModalProps> = ({ isOpen, onC
               <DetailSection title="Personal Details" icon={User}>
                 <div className="md:col-span-2 lg:col-span-3 flex flex-col md:flex-row gap-8 items-start mb-2">
                     <div className="flex-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full">
-                        <DataField label="Last Name" value={applicant.last_name} />
-                        <DataField label="First Name" value={applicant.first_name} />
-                        <DataField label="Middle Name" value={applicant.middle_name} />
+                        <DataField label="Last Name" value={applicant.lastName} />
+                        <DataField label="First Name" value={applicant.firstName} />
+                        <DataField label="Middle Name" value={applicant.middleName} />
                         <DataField label="Suffix" value={applicant.suffix} />
-                        <DataField label="Birth Date" value={applicant.birth_date ? new Date(applicant.birth_date).toLocaleDateString() : null} icon={Calendar} />
-                        <DataField label="Place of Birth" value={applicant.birth_place} icon={MapPin} />
+                        <DataField label="Birth Date" value={applicant.birthDate ? new Date(applicant.birthDate).toLocaleDateString() : null} icon={Calendar} />
+                        <DataField label="Place of Birth" value={applicant.birthPlace} icon={MapPin} />
                     </div>
                     
                     {/* 2x2 Photo Display */}
                     <div className="shrink-0 flex flex-col items-center">
                         <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 block ml-0.5 self-start">Applicant Photo</label>
                         <div className="w-[140px] h-[140px] bg-white rounded-2xl border-2 border-gray-100 shadow-sm overflow-hidden flex items-center justify-center group hover:border-green-500 transition-colors duration-300">
-                            {applicant.photo_path ? (
-                                <img src={`http://localhost:5000/uploads/resumes/${applicant.photo_path}`} alt="Applicant" className="w-full h-full object-cover" />
+                            {applicant.photoPath ? (
+                                <img src={`http://localhost:5000/uploads/resumes/${applicant.photoPath}`} alt="Applicant" className="w-full h-full object-cover" />
                             ) : (
                                 <User size={48} className="text-gray-200" />
                             )}
@@ -167,10 +167,10 @@ const ApplicantDetailModal: React.FC<ApplicantDetailModalProps> = ({ isOpen, onC
 
                 <div className="md:col-span-2 lg:col-span-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 border-t border-gray-50 pt-6 mt-2">
                     <DataField label="Gender" value={applicant.sex} />
-                    <DataField label="Civil Status" value={applicant.civil_status} />
+                    <DataField label="Civil Status" value={applicant.civilStatus} />
                     <DataField label="Height (m)" value={applicant.height} icon={Ruler} />
                     <DataField label="Weight (kg)" value={applicant.weight} icon={Weight} />
-                    <DataField label="Blood Type" value={applicant.blood_type} icon={Droplet} />
+                    <DataField label="Blood Type" value={applicant.bloodType} icon={Droplet} />
                 </div>
               </DetailSection>
 
@@ -179,26 +179,26 @@ const ApplicantDetailModal: React.FC<ApplicantDetailModalProps> = ({ isOpen, onC
                 <div className="md:col-span-2 lg:col-span-3 mb-2">
                     <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-0.5">Meycauayan Resident?</label>
                     <div className="mt-1 flex gap-4">
-                        <span className={`px-4 py-1.5 rounded-xl text-xs font-bold border ${applicant.is_meycauayan_resident ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-50 text-gray-400 border-gray-200'}`}>
-                            {applicant.is_meycauayan_resident ? 'Yes, Resident' : 'No, Non-Resident'}
+                        <span className={`px-4 py-1.5 rounded-xl text-xs font-bold border ${applicant.isMeycauayanResident ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-50 text-gray-400 border-gray-200'}`}>
+                            {applicant.isMeycauayanResident ? 'Yes, Resident' : 'No, Non-Resident'}
                         </span>
                     </div>
                 </div>
                 <DataField label="Residential Address" value={applicant.address} fullWidth icon={MapPin} />
-                <DataField label="Residential Zip Code" value={applicant.zip_code} icon={Hash} />
+                <DataField label="Residential Zip Code" value={applicant.zipCode} icon={Hash} />
                 <div className="md:col-span-2 lg:col-span-3 border-t border-gray-50 pt-4 mt-2"></div>
-                <DataField label="Permanent Address" value={applicant.permanent_address} fullWidth icon={MapPin} />
-                <DataField label="Permanent Zip Code" value={applicant.permanent_zip_code} icon={Hash} />
+                <DataField label="Permanent Address" value={applicant.permanentAddress} fullWidth icon={MapPin} />
+                <DataField label="Permanent Zip Code" value={applicant.permanentZipCode} icon={Hash} />
               </DetailSection>
 
               {/* 3. Government Records */}
               <DetailSection title="Government Records" icon={Fingerprint}>
-                <DataField label="GSIS Number" value={applicant.gsis_no} />
-                <DataField label="Pag-IBIG Number" value={applicant.pagibig_no} />
-                <DataField label="PhilHealth Number" value={applicant.philhealth_no} />
-                <DataField label="UMID Number" value={applicant.umid_no} />
-                <DataField label="PhilSys ID" value={applicant.philsys_id} />
-                <DataField label="TIN Number" value={applicant.tin_no} />
+                <DataField label="GSIS Number" value={applicant.gsisNumber} />
+                <DataField label="Pag-IBIG Number" value={applicant.pagibigNumber} />
+                <DataField label="PhilHealth Number" value={applicant.philhealthNumber} />
+                <DataField label="UMID Number" value={applicant.umidNumber} />
+                <DataField label="PhilSys ID" value={applicant.philsysId} />
+                <DataField label="TIN Number" value={applicant.tinNumber} />
               </DetailSection>
 
               {/* 4. Professional Qualifications */}
@@ -207,29 +207,29 @@ const ApplicantDetailModal: React.FC<ApplicantDetailModalProps> = ({ isOpen, onC
                   <h4 className="text-[10px] font-black text-green-600 uppercase tracking-[0.2em] mb-4 ml-0.5">Eligibility & Certifications</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     <DataField label="Eligibility Name / Title" value={applicant.eligibility} icon={Award} />
-                    <DataField label="Eligibility Category" value={applicant.eligibility_type?.replace(/_/g, ' ').toUpperCase()} />
-                    <DataField label="Rating (If Applicable)" value={applicant.eligibility_rating} />
-                    <DataField label="Date of Release / Validity" value={applicant.eligibility_date ? new Date(applicant.eligibility_date).toLocaleDateString() : null} icon={Calendar} />
-                    <DataField label="Place of Examination / Issue" value={applicant.eligibility_place} icon={MapPin} />
-                    <DataField label="License / ID Number" value={applicant.license_no} icon={Hash} />
+                    <DataField label="Eligibility Category" value={applicant.eligibilityType?.replace(/_/g, ' ').toUpperCase()} />
+                    <DataField label="Rating (If Applicable)" value={applicant.eligibilityRating} />
+                    <DataField label="Date of Release / Validity" value={applicant.eligibilityDate ? new Date(applicant.eligibilityDate).toLocaleDateString() : null} icon={Calendar} />
+                    <DataField label="Place of Examination / Issue" value={applicant.eligibilityPlace} icon={MapPin} />
+                    <DataField label="License / ID Number" value={applicant.licenseNo} icon={Hash} />
                   </div>
                 </div>
                 
                 <div className="md:col-span-2 lg:col-span-3 border-t border-gray-50 pt-4 mt-2"></div>
                 
-                <DataField label="Education History" value={applicant.education} fullWidth icon={GraduationCap} />
+                <DataField label="Education History" value={applicant.educationalBackground} fullWidth icon={GraduationCap} />
                 <DataField label="Work Experience Log" value={applicant.experience} fullWidth icon={Briefcase} />
                 <DataField label="Core Competencies" value={applicant.skills} fullWidth icon={Brain} />
-                <DataField label="Total Exp. (Years)" value={applicant.total_experience_years?.toString()} />
+                <DataField label="Total Exp. (Years)" value={applicant.totalExperienceYears?.toString()} />
               </DetailSection>
 
               {/* Interview Record */}
-              {(applicant.interview_date || applicant.interview_notes) && (
+              {(applicant.interviewDate || applicant.interviewNotes) && (
                 <DetailSection title="Interview Record" icon={FileText}>
-                  <DataField label="Interview Date" value={applicant.interview_date ? new Date(applicant.interview_date).toLocaleString() : null} icon={Calendar} />
-                  <DataField label="Interview Platform" value={applicant.interview_platform} icon={Globe} />
-                  <DataField label="Meeting Link" value={applicant.interview_link} fullWidth icon={Globe} />
-                  <DataField label="Interview Notes" value={applicant.interview_notes} fullWidth icon={FileText} />
+                  <DataField label="Interview Date" value={applicant.interviewDate ? new Date(applicant.interviewDate).toLocaleString() : null} icon={Calendar} />
+                  <DataField label="Interview Platform" value={applicant.interviewPlatform} icon={Globe} />
+                  <DataField label="Meeting Link" value={applicant.interviewLink} fullWidth icon={Globe} />
+                  <DataField label="Interview Notes" value={applicant.interviewNotes} fullWidth icon={FileText} />
                 </DetailSection>
               )}
 
@@ -238,9 +238,9 @@ const ApplicantDetailModal: React.FC<ApplicantDetailModalProps> = ({ isOpen, onC
             {/* Footer */}
             <div className="bg-white px-8 py-5 border-t border-gray-100 flex items-center justify-between sticky bottom-0 z-20">
               <div className="flex gap-2">
-                 {applicant.resume_path && (
+                 {applicant.resumePath && (
                    <a 
-                      href={`http://localhost:5000/uploads/resumes/${applicant.resume_path}`}
+                      href={`http://localhost:5000/uploads/resumes/${applicant.resumePath}`}
                       target="_blank" 
                       rel="noopener noreferrer"
                       className="flex items-center gap-2 px-6 py-2.5 rounded-2xl bg-gray-50 text-gray-600 text-sm font-bold hover:bg-gray-100 transition-all border border-gray-100 active:scale-95"
@@ -248,9 +248,9 @@ const ApplicantDetailModal: React.FC<ApplicantDetailModalProps> = ({ isOpen, onC
                       <FileText size={18} /> View CV/Resume
                    </a>
                  )}
-                 {applicant.eligibility_path && (
+                 {applicant.eligibilityPath && (
                    <a 
-                      href={`http://localhost:5000/uploads/resumes/${applicant.eligibility_path}`}
+                      href={`http://localhost:5000/uploads/resumes/${applicant.eligibilityPath}`}
                       target="_blank" 
                       rel="noopener noreferrer"
                       className="flex items-center gap-2 px-6 py-2.5 rounded-2xl bg-amber-50 text-amber-700 text-sm font-bold hover:bg-amber-100 transition-all border border-amber-100 active:scale-95"

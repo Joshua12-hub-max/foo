@@ -2,7 +2,8 @@
 import { 
   AlertCircle, Loader2,
   Pencil, X, Check, Plus, Trash2,
-  ToggleLeft, ToggleRight, Briefcase, Hash, Mail, Clock
+  ToggleLeft, ToggleRight, Briefcase, Hash, Mail, Clock,
+  Calendar as LucideCalendar, Phone, Heart, Building, Link as LinkIcon, ScanLine
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { employeeApi } from '@/api/employeeApi';
@@ -12,7 +13,17 @@ import AddSkillModal from './Modals/AddSkillModal';
 import AddEducationModal from './Modals/AddEducationModal';
 import AddContactModal from './Modals/AddContactModal';
 import AddCustomFieldModal from './Modals/AddCustomFieldModal';
+import AddFamilyModal from './Modals/AddFamilyModal';
+import AddExperienceModal from './Modals/AddExperienceModal';
+import AddVoluntaryWorkModal from './Modals/AddVoluntaryWorkModal';
+import AddTrainingModal from './Modals/AddTrainingModal';
+import AddOtherInfoModal from './Modals/AddOtherInfoModal';
+import AddReferenceModal from './Modals/AddReferenceModal';
 import { formatEmployeeId } from '@/utils/formatters';
+import { 
+  FamilyMember, WorkplaceExperience, VoluntaryWork, 
+  LearningDevelopment, PdsOtherInfo, PdsReference 
+} from '@/types';
 
 // Type alias for Profile to match EmployeeDetailed but with optional legacy fields if needed
 type Profile = EmployeeDetailed & {
@@ -27,6 +38,7 @@ type Profile = EmployeeDetailed & {
   emergencyContacts?: EmergencyContact[];
   customFields?: CustomField[];
   suffix?: string | null;
+  experience?: string | null;
 };
 
 interface EditableDataFieldProps {
@@ -61,7 +73,7 @@ interface EmployeeProfileViewProps {
   onStatusChange?: (id: number, status: string) => Promise<void>;
 }
 
-// Clean Editable Field Component - Matches original design but flexible height & width
+// Clean Editable Field Component - Matches Register.tsx styling but with inline editing
 const EditableDataField: React.FC<EditableDataFieldProps> = ({ 
   label, 
   value, 
@@ -78,34 +90,31 @@ const EditableDataField: React.FC<EditableDataFieldProps> = ({
   onSave
 }) => {
   const [isEditing, setIsEditing] = useState(false);
-  const [editValue, setEditValue] = useState(String(value || ''));
+  const [editValue, setEditValue] = useState(String(value ?? ''));
   const [saving, setSaving] = useState(false);
 
-  // Dynamic width calculation based on content length
-  const getColSpanClass = (val: string | number | null | undefined) => {
-    if (fullWidth) return 'col-span-full';
-    const len = String(val || '').length;
-    if (len > 50) return 'col-span-1 md:col-span-3 lg:col-span-4'; // Long text spans more
-    if (len > 25) return 'col-span-1 md:col-span-2'; // Medium text spans 2
-    return ''; // Default (col-span-1)
-  };
-
-  const colSpanClass = getColSpanClass(isEditing ? editValue : (formattedValue || value));
-
   const handleEdit = () => {
-    setEditValue(String(value || ''));
+    setEditValue(String(value ?? ''));
     setIsEditing(true);
   };
 
   const handleCancel = () => {
-    setEditValue(String(value || ''));
+    setEditValue(String(value ?? ''));
     setIsEditing(false);
   };
 
   const handleSave = async () => {
+    if (saving) return;
+
+    // Prevent redundant saves if value hasn't changed
+    const finalValue = inputType === 'number' ? Number(editValue) : editValue;
+    if (String(finalValue) === String(value ?? '')) {
+      setIsEditing(false);
+      return;
+    }
+
     setSaving(true);
     try {
-      const finalValue = inputType === 'number' ? Number(editValue) : editValue;
       await onSave(fieldName, finalValue);
       setIsEditing(false);
     } catch (error) {
@@ -116,7 +125,6 @@ const EditableDataField: React.FC<EditableDataFieldProps> = ({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    // For textarea, require Ctrl+Enter to save to allow newlines
     if (inputType === 'textarea') {
       if (e.key === 'Enter' && e.ctrlKey) handleSave();
       else if (e.key === 'Escape') handleCancel();
@@ -126,90 +134,70 @@ const EditableDataField: React.FC<EditableDataFieldProps> = ({
     }
   };
 
+  const inputStyle = "w-full px-3 py-1.5 text-sm border-[1.5px] rounded-[8px] bg-white border-green-200 focus:outline-none focus:ring-2 focus:ring-green-100 focus:border-green-500 transition-all";
+
   return (
-    <div className={`flex flex-col rounded-lg p-3 bg-white group hover:bg-gray-50 transition-all h-full ${colSpanClass} ${highlight ? 'bg-gray-50 border border-gray-200' : 'border border-transparent hover:border-gray-200'} relative`}>
-
-      {/* Label */}
-      <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1">{label}</span>
-
-      {/* Value or Edit Mode */}
-      {isEditing ? (
-        <div className="flex items-start gap-1 w-full">
-          {inputType === 'select' && options.length > 0 ? (
-            <select
-              value={editValue}
-              onChange={(e) => setEditValue(e.target.value)}
-              onKeyDown={handleKeyDown}
-              onBlur={handleSave}
-              className="flex-1 text-sm font-medium text-gray-800 border border-gray-300 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-gray-200 bg-white w-full"
-              autoFocus
-            >
-              <option value="">Select...</option>
-              {options.map(opt => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
-          ) : inputType === 'textarea' ? (
-            <textarea
-              value={editValue}
-              onChange={(e) => setEditValue(e.target.value)}
-              onKeyDown={handleKeyDown}
-              onBlur={handleSave}
-              className="flex-1 text-sm font-medium text-gray-800 border border-gray-300 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-gray-200 min-w-0 resize-y min-h-[60px]"
-              autoFocus
-            />
-          ) : (
-            <input
-              type={inputType}
-              value={editValue}
-              onChange={(e) => setEditValue(e.target.value)}
-              onKeyDown={handleKeyDown}
-              onBlur={handleSave}
-              className="flex-1 text-sm font-medium text-gray-800 border border-gray-300 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-gray-200 min-w-0"
-              autoFocus
-              step={step}
-              placeholder={placeholder}
-            />
-          )}
-          <div className="flex flex-col gap-0.5 shrink-0">
-             <button
-               onMouseDown={(e) => e.preventDefault()}
-               onClick={handleSave}
-               disabled={saving}
-               className="p-1 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-md transition-colors disabled:opacity-50"
-             >
-               {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
-             </button>
-             <button
-               onMouseDown={(e) => e.preventDefault()}
-               onClick={handleCancel}
-               className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
-             >
-               <X size={14} />
-             </button>
+    <div className={`space-y-1 ${fullWidth ? 'col-span-full' : ''}`}>
+      <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1">{label}</label>
+      
+      <div className={`relative min-h-[38px] group rounded-[10px] border-[1.5px] transition-all ${
+        isEditing ? 'border-green-500 ring-2 ring-green-50' : 'border-gray-200 bg-gray-50/50 hover:border-gray-300 hover:bg-white'
+      } ${highlight ? 'bg-green-50/30' : ''}`}>
+        
+        {isEditing ? (
+          <div className="flex items-center gap-2 p-1.5 w-full">
+            {inputType === 'select' ? (
+              <select
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                className={inputStyle}
+                autoFocus
+              >
+                <option value="">Select...</option>
+                {options.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+              </select>
+            ) : inputType === 'textarea' ? (
+              <textarea
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                onKeyDown={handleKeyDown}
+                className={`${inputStyle} min-h-[80px]`}
+                autoFocus
+              />
+            ) : (
+              <input
+                type={inputType}
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                onKeyDown={handleKeyDown}
+                className={inputStyle}
+                autoFocus
+                step={step}
+                placeholder={placeholder}
+              />
+            )}
+            <div className="flex flex-col gap-1 pr-1">
+              {saving ? <Loader2 size={14} className="animate-spin text-green-600" /> : (
+                <button onClick={handleSave} className="p-1 text-green-600 hover:bg-green-50 rounded"><Check size={14} /></button>
+              )}
+              <button onClick={handleCancel} className="p-1 text-red-400 hover:bg-red-50 rounded"><X size={14} /></button>
+            </div>
           </div>
-        </div>
-      ) : (
-        <div className="group/value relative h-full">
-            <span className={`text-sm font-semibold break-words whitespace-pre-wrap ${highlight ? 'text-gray-900' : 'text-gray-700'} block min-h-[20px]`}>
-            {formattedValue || value || <span className="text-gray-300 font-normal">-</span>}
+        ) : (
+          <div 
+            className="flex items-center px-3 py-2 cursor-text h-full w-full"
+            onClick={editable ? handleEdit : undefined}
+          >
+            {Icon && <Icon size={14} className="text-gray-400 mr-2 shrink-0" />}
+            <span className={`text-sm font-semibold truncate flex-1 ${highlight ? 'text-green-900' : 'text-gray-700'}`}>
+              {formattedValue || value || <span className="text-gray-300 font-normal italic">N/A</span>}
             </span>
             {editable && (
-            <div 
-                className="absolute inset-0 cursor-text" 
-                onClick={handleEdit}
-            />
+              <Pencil size={11} className="text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity ml-2" />
             )}
-             {editable && (
-             <button
-                onClick={handleEdit}
-                className="absolute right-0 top-0 opacity-0 group-hover:opacity-100 p-0.5 text-gray-300 hover:text-gray-500 transition-all"
-             >
-                <Pencil size={11} />
-             </button>
-             )}
-        </div>
-      )}
+          </div>
+        )}
+      </div>
     </div>
   );
 };
@@ -236,6 +224,14 @@ const CustomEditableDataField: React.FC<CustomEditableDataFieldProps> = ({
   const colSpanClass = getColSpanClass(isEditing ? editValue : value);
 
   const handleSaveValue = async () => {
+    if (saving) return;
+    
+    // Prevent redundant saves if value hasn't changed
+    if (editValue === String(value ?? '')) {
+      setIsEditing(false);
+      return;
+    }
+
     setSaving(true);
     try {
       await onSave(fieldName, editValue);
@@ -267,7 +263,6 @@ const CustomEditableDataField: React.FC<CustomEditableDataFieldProps> = ({
             <textarea
               value={editValue}
               onChange={(e) => setEditValue(e.target.value)}
-              onBlur={handleSaveValue}
               className="flex-1 text-sm font-medium text-gray-800 border border-gray-300 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-gray-200 min-w-0 resize-y min-h-[60px]"
               autoFocus
             />
@@ -323,14 +318,13 @@ const DataField: React.FC<{label: string; value?: string | number | null; icon?:
   );
 };
 
-// Section Container â€” Clean, minimal heading
-const Section: React.FC<SectionProps> = ({ title, children, columns = "grid-cols-2 md:grid-cols-4 lg:grid-cols-6" }) => (
-  <div className="mb-8">
-    <div className="flex items-center gap-3 mb-4">
-      <h3 className="text-xs font-black text-gray-800 uppercase tracking-widest">{title}</h3>
-      <div className="h-px bg-gray-200 flex-grow"></div>
-    </div>
-    <div className={`grid ${columns} gap-1`}>
+// Section Container matching Register.tsx card styling
+const Section: React.FC<SectionProps> = ({ title, children, columns = "grid-cols-1 md:grid-cols-2 lg:grid-cols-4" }) => (
+  <div className="bg-white p-5 rounded-[15px] border border-gray-100 shadow-sm space-y-4 mb-6 relative overflow-hidden">
+    <h4 className="text-sm font-bold text-gray-800 tracking-wide uppercase border-b border-gray-100 pb-2 mb-3 flex items-center gap-2">
+      {title}
+    </h4>
+    <div className={`grid ${columns} gap-4`}>
       {children}
     </div>
   </div>
@@ -362,6 +356,25 @@ const EditableProfileView: React.FC<EmployeeProfileViewProps> = ({ profile, load
   const [editingSkill, setEditingSkill] = useState<Skill | null>(null);
   const [editingEducation, setEditingEducation] = useState<Education | null>(null);
   const [editingContact, setEditingContact] = useState<EmergencyContact | null>(null);
+  
+  const [showAddFamily, setShowAddFamily] = useState(false);
+  const [editingFamily, setEditingFamily] = useState<FamilyMember | null>(null);
+  
+  const [showAddExperience, setShowAddExperience] = useState(false);
+  const [editingExperience, setEditingExperience] = useState<WorkplaceExperience | null>(null);
+  
+  const [showAddVoluntary, setShowAddVoluntary] = useState(false);
+  const [editingVoluntary, setEditingVoluntary] = useState<VoluntaryWork | null>(null);
+  
+  const [showAddTraining, setShowAddTraining] = useState(false);
+  const [editingTraining, setEditingTraining] = useState<LearningDevelopment | null>(null);
+  
+  const [showAddOtherInfo, setShowAddOtherInfo] = useState(false);
+  const [editingOtherInfo, setEditingOtherInfo] = useState<PdsOtherInfo | null>(null);
+  
+  const [showAddReference, setShowAddReference] = useState(false);
+  const [editingReference, setEditingReference] = useState<PdsReference | null>(null);
+
   const [customFieldModal, setCustomFieldModal] = useState<{isOpen: boolean, section: string}>({isOpen: false, section: ''});
   const showToast = useToastStore((state) => state.showToast);
 
@@ -396,7 +409,7 @@ const EditableProfileView: React.FC<EmployeeProfileViewProps> = ({ profile, load
   const handleCustomFieldSave = async (fieldId: number, value: string | number) => {
       if (!profile?.id) return;
       try {
-          await employeeApi.updateEmployeeCustomField(profile.id, fieldId, { field_value: String(value) });
+          await employeeApi.updateEmployeeCustomField(profile.id, fieldId, { fieldValue: String(value) });
           showToast('Updated successfully', 'success');
           onRefresh();
       } catch (error: unknown) {
@@ -459,6 +472,21 @@ const EditableProfileView: React.FC<EmployeeProfileViewProps> = ({ profile, load
     }
   };
 
+  const handleDeletePdsItem = async (section: string, itemId: number, items: any[]) => {
+    if (!profile?.id) return;
+    if (!window.confirm(`Are you sure you want to delete this ${section.replace('_', ' ')} record?`)) return;
+    
+    try {
+      const remainingItems = items.filter(item => item.id !== itemId);
+      await employeeApi.updatePdsSection(profile.id, section, remainingItems);
+      showToast('Deleted successfully', 'success');
+      onRefresh();
+    } catch (error: unknown) {
+      const err = error as ApiError;
+      showToast(err.response?.data?.message || err.message || 'Failed to delete', 'error');
+    }
+  };
+
 
 
   const openCustomFieldModal = (section: string) => {
@@ -469,8 +497,8 @@ const EditableProfileView: React.FC<EmployeeProfileViewProps> = ({ profile, load
     return profile?.customFields?.filter(f => f.section === sectionName).map(field => (
        <CustomEditableDataField 
           key={field.id}
-          label={field.field_name}
-          value={field.field_value}
+          label={field.fieldName}
+          value={field.fieldValue}
           fieldName={String(field.id)}
           onSave={(id, val) => handleCustomFieldSave(Number(id), val)}
           onDelete={() => handleCustomFieldDelete(field.id)}
@@ -487,7 +515,7 @@ const EditableProfileView: React.FC<EmployeeProfileViewProps> = ({ profile, load
   );
 
   if (error || !profile) return (
-    <div className="p-4 bg-red-50 text-red-700 border border-red-200 rounded-lg flex items-center gap-2">
+  <div className="p-4 bg-red-50 text-red-700 border border-red-200 rounded-lg flex items-center gap-2">
       <AlertCircle size={18} />
       <span className="text-sm font-bold">Failed to load profile data.</span>
       <button onClick={onRefresh} className="ml-auto text-xs underline">Retry</button>
@@ -500,6 +528,24 @@ const EditableProfileView: React.FC<EmployeeProfileViewProps> = ({ profile, load
       return new Date(dateStr).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
     } catch {
       return dateStr;
+    }
+  };
+
+  // Helper to calculate age
+  const calculateAge = (birthDate: string | undefined | null): number | null => {
+    if (!birthDate) return null;
+    try {
+      const birth = new Date(birthDate);
+      const today = new Date();
+      if (isNaN(birth.getTime())) return null;
+      let age = today.getFullYear() - birth.getFullYear();
+      const m = today.getMonth() - birth.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+        age--;
+      }
+      return age;
+    } catch {
+      return null;
     }
   };
 
@@ -522,7 +568,7 @@ const EditableProfileView: React.FC<EmployeeProfileViewProps> = ({ profile, load
     }
   };
 
-  const currentStatus = profile.employment_status || profile.employmentStatus || 'Active';
+  const currentStatus = profile.employmentStatus || 'Active';
   const isNegativeStatus = ['Terminated', 'Suspended', 'Show Cause', 'Verbal Warning', 'Written Warning'].includes(currentStatus);
   const isActive = currentStatus === 'Active';
 
@@ -557,10 +603,10 @@ const EditableProfileView: React.FC<EmployeeProfileViewProps> = ({ profile, load
         <div className="flex flex-col md:flex-row items-center gap-6">
           <div className="relative">
             <div className="w-20 h-20 rounded-lg bg-gray-700 border-2 border-white/20 shadow-lg overflow-hidden flex items-center justify-center">
-              {profile.avatar_url ? (
-                <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+              {profile.avatarUrl ? (
+                <img src={profile.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
               ) : (
-                <span className="text-2xl font-black text-gray-500">{profile.first_name?.[0]}{profile.last_name?.[0]}</span>
+                <span className="text-2xl font-black text-gray-500">{profile.firstName?.[0]}{profile.lastName?.[0]}</span>
               )}
             </div>
             <div className={`absolute -bottom-2 -right-2 text-white text-[10px] font-bold px-2 py-0.5 rounded border border-gray-800 ${isNegativeStatus ? 'bg-red-600' : 'bg-green-600'}`}>
@@ -570,17 +616,22 @@ const EditableProfileView: React.FC<EmployeeProfileViewProps> = ({ profile, load
           
           <div className="flex-1 text-center md:text-left">
             <h1 className="text-2xl font-bold tracking-tight mb-1">
-              {profile.last_name ? profile.last_name + ', ' : ''}
-              {profile.first_name} 
-              {profile.middle_name ? ' ' + profile.middle_name : ''}
+              {profile.lastName ? profile.lastName + ', ' : ''}
+              {profile.firstName} 
+              {profile.middleName ? ' ' + profile.middleName : ''}
               {profile.suffix ? ' ' + profile.suffix : ''}
+              {calculateAge(profile.birthDate)! >= 60 && (
+                <span className="ml-3 text-[10px] bg-amber-500 text-white px-2 py-0.5 rounded-full uppercase tracking-tighter align-middle font-black shadow-sm border border-amber-400/50">
+                  Senior Citizen
+                </span>
+              )}
             </h1>
             <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-gray-300 text-xs font-medium">
               <span className="flex items-center gap-1.5 bg-white/10 px-2 py-1 rounded">
-                <Briefcase size={12} /> {profile.position_title || profile.job_title || profile.jobTitle || 'No Title'}
+                <Briefcase size={12} /> {profile.positionTitle || profile.jobTitle || 'No Title'}
               </span>
               <span className="flex items-center gap-1.5 bg-white/10 px-2 py-1 rounded">
-                <Hash size={12} /> {formatEmployeeId(profile.employee_id || profile.employeeId)}
+                <Hash size={12} /> {formatEmployeeId(profile.employeeId)}
               </span>
               <span className="flex items-center gap-1.5 bg-white/10 px-2 py-1 rounded">
                 <Mail size={12} /> {profile.email}
@@ -615,261 +666,405 @@ const EditableProfileView: React.FC<EmployeeProfileViewProps> = ({ profile, load
         </div>
       </div>
 
-      {/* DATA GRID - Same layout, but with editable fields */}
-      <div className="p-6">
+      {/* DATA GRID - REORGANIZED SECTIONS */}
+      <div className="p-6 max-h-[75vh] overflow-y-auto custom-scrollbar">
         
         {/* PERSONAL INFORMATION */}
         <Section title="Personal Information">
-          <EditableDataField label="Last Name" value={profile.last_name} fieldName="last_name" onSave={handleFieldSave} />
-          <EditableDataField label="First Name" value={profile.first_name} fieldName="first_name" onSave={handleFieldSave} />
-          <EditableDataField label="Middle Name" value={profile.middle_name} fieldName="middle_name" onSave={handleFieldSave} />
+          <EditableDataField label="Last Name" value={profile.lastName} fieldName="lastName" onSave={handleFieldSave} />
+          <EditableDataField label="First Name" value={profile.firstName} fieldName="firstName" onSave={handleFieldSave} />
+          <EditableDataField label="Middle Name" value={profile.middleName} fieldName="middleName" onSave={handleFieldSave} />
           <EditableDataField label="Suffix" value={profile.suffix} fieldName="suffix" onSave={handleFieldSave} />
           <EditableDataField 
             label="Birth Date" 
-            value={formatDateForInput(profile.birth_date)} 
-            fieldName="birth_date" 
-            
+            value={formatDateForInput(profile.birthDate)} 
+            fieldName="birthDate" 
+            icon={LucideCalendar}
             inputType="date" 
             onSave={handleFieldSave} 
           />
-          <EditableDataField label="Place of Birth" value={profile.place_of_birth} fieldName="place_of_birth" onSave={handleFieldSave} />
+          <EditableDataField label="Place of Birth" value={profile.placeOfBirth} fieldName="placeOfBirth" onSave={handleFieldSave} />
           <EditableDataField label="Gender" value={profile.gender} fieldName="gender" inputType="select" options={genderOptions} onSave={handleFieldSave} />
-          <EditableDataField label="Civil Status" value={profile.civil_status} fieldName="civil_status" inputType="select" options={civilStatusOptions} onSave={handleFieldSave} />
+          <EditableDataField label="Civil Status" value={profile.civilStatus} fieldName="civilStatus" inputType="select" options={civilStatusOptions} onSave={handleFieldSave} />
           <EditableDataField label="Nationality" value={profile.nationality} fieldName="nationality" onSave={handleFieldSave} />
-          <EditableDataField label="Blood Type" value={profile.blood_type} fieldName="blood_type" inputType="select" options={bloodTypeOptions} onSave={handleFieldSave} />
-          <EditableDataField label="Height (m)" value={profile.height_m} fieldName="height_m" inputType="number" step="0.01" placeholder="e.g. 1.70" onSave={handleFieldSave} />
-          <EditableDataField label="Weight (kg)" value={profile.weight_kg} fieldName="weight_kg" inputType="number" step="0.01" placeholder="e.g. 65.5" onSave={handleFieldSave} />
-          
-          <EditableDataField label="Residential Address" value={profile.residential_address} fieldName="residential_address" fullWidth inputType="textarea" onSave={handleFieldSave} />
-          <EditableDataField label="Residential ZIP" value={profile.residential_zip_code} fieldName="residential_zip_code" onSave={handleFieldSave} />
-          
-          <EditableDataField label="Permanent Address" value={profile.permanent_address} fieldName="permanent_address" fullWidth inputType="textarea" onSave={handleFieldSave} />
-          <EditableDataField label="Permanent ZIP" value={profile.permanent_zip_code} fieldName="permanent_zip_code" onSave={handleFieldSave} />
-          
-          {renderCustomFields("Personal Information")}
-          <AddCard label="Add Card" onClick={() => openCustomFieldModal("Personal Information")} />
+          <EditableDataField label="Religion" value={profile.religion} fieldName="religion" onSave={handleFieldSave} />
+          <EditableDataField label="Citizenship" value={profile.citizenship} fieldName="citizenship" inputType="select" options={[
+            {value:'Filipino', label:'Filipino'}, {value:'Dual Citizenship', label:'Dual Citizenship'}
+          ]} onSave={handleFieldSave} />
+          {profile.citizenship === 'Dual Citizenship' && (
+            <EditableDataField label="Citizenship Type" value={profile.citizenshipType} fieldName="citizenshipType" inputType="select" options={[
+              {value:'By Birth', label:'By Birth'}, {value:'By Naturalization', label:'By Naturalization'}
+            ]} onSave={handleFieldSave} />
+          )}
+          <EditableDataField label="Blood Type" value={profile.bloodType} fieldName="bloodType" inputType="select" options={bloodTypeOptions} onSave={handleFieldSave} />
+          <EditableDataField label="Height (m)" value={profile.heightM} fieldName="heightM" inputType="number" step="0.01" placeholder="e.g. 1.70" onSave={handleFieldSave} />
+          <EditableDataField label="Weight (kg)" value={profile.weightKg} fieldName="weightKg" inputType="number" step="0.01" placeholder="e.g. 65.5" onSave={handleFieldSave} />
+          <DataField label="Age" value={calculateAge(profile.birthDate)} highlight={Number(calculateAge(profile.birthDate)) >= 60} />
         </Section>
 
-        {/* EMPLOYMENT RECORD */}
-        <Section title="Employment Record">
-          <DataField label="Employee ID" value={formatEmployeeId(profile.employee_id || profile.employeeId)} highlight />
-          <EditableDataField label="Position Title" value={profile.position_title || profile.job_title} fieldName="position_title" highlight onSave={handleFieldSave} />
-          <EditableDataField label="Item Number" value={profile.item_number} fieldName="item_number" onSave={handleFieldSave} />
-          <EditableDataField label="Agency Employee No." value={profile.agency_employee_no} fieldName="agency_employee_no" onSave={handleFieldSave} />
-          <DataField label="Department" value={profile.department} />
-          <EditableDataField label="Salary Grade" value={profile.salary_grade || profile.salaryGrade} fieldName="salary_grade" inputType="number" onSave={handleFieldSave} />
-          <EditableDataField label="Step Increment" value={profile.step_increment || profile.stepIncrement} fieldName="step_increment" inputType="number" onSave={handleFieldSave} />
-          <EditableDataField label="Appointment Type" value={profile.appointment_type} fieldName="appointment_type" inputType="select" options={[
+        {/* CONTACT & ADDRESS */}
+        <Section title="Contact & Address" columns="grid-cols-1 md:grid-cols-2">
+          <EditableDataField label="Residential Address" value={profile.residentialAddress || profile.address} fieldName="residentialAddress" fullWidth inputType="textarea" onSave={handleFieldSave} />
+          <EditableDataField label="Res. House/Block/Lot" value={profile.resHouseBlockLot} fieldName="resHouseBlockLot" onSave={handleFieldSave} />
+          <EditableDataField label="Res. Street" value={profile.resStreet} fieldName="resStreet" onSave={handleFieldSave} />
+          <EditableDataField label="Res. Subdivision" value={profile.resSubdivision} fieldName="resSubdivision" onSave={handleFieldSave} />
+          <EditableDataField label="Res. Barangay" value={profile.resBarangay || profile.barangay} fieldName="resBarangay" onSave={handleFieldSave} />
+          <EditableDataField label="Res. City/Municipality" value={profile.resCity} fieldName="resCity" onSave={handleFieldSave} />
+          <EditableDataField label="Res. Province" value={profile.resProvince} fieldName="resProvince" onSave={handleFieldSave} />
+          <EditableDataField label="Residential ZIP" value={profile.residentialZipCode} fieldName="residentialZipCode" onSave={handleFieldSave} />
+          <EditableDataField label="Telephone Number" value={profile.telephoneNo} fieldName="telephoneNo" icon={Phone} onSave={handleFieldSave} />
+
+          <EditableDataField label="Permanent Address" value={profile.permanentAddress} fieldName="permanentAddress" fullWidth inputType="textarea" onSave={handleFieldSave} />
+          <EditableDataField label="Perm. House/Block/Lot" value={profile.permHouseBlockLot} fieldName="permHouseBlockLot" onSave={handleFieldSave} />
+          <EditableDataField label="Perm. Street" value={profile.permStreet} fieldName="permStreet" onSave={handleFieldSave} />
+          <EditableDataField label="Perm. Subdivision" value={profile.permSubdivision} fieldName="permSubdivision" onSave={handleFieldSave} />
+          <EditableDataField label="Perm. Barangay" value={profile.permBarangay} fieldName="permBarangay" onSave={handleFieldSave} />
+          <EditableDataField label="Perm. City/Municipality" value={profile.permCity} fieldName="permCity" onSave={handleFieldSave} />
+          <EditableDataField label="Perm. Province" value={profile.permProvince} fieldName="permProvince" onSave={handleFieldSave} />
+          <EditableDataField label="Permanent ZIP" value={profile.permanentZipCode} fieldName="permanentZipCode" onSave={handleFieldSave} />
+          <div className="hidden md:block"></div>
+
+          <EditableDataField label="Mobile Number" value={profile.mobileNo || profile.phoneNumber || profile.mobileNo} fieldName="mobileNo" icon={Phone} onSave={handleFieldSave} />
+          <EditableDataField label="Official Email" value={profile.email} fieldName="email" icon={Mail} inputType="email" onSave={handleFieldSave} />
+          
+          <EditableDataField label="Emergency Contact Person" value={profile.emergencyContact} fieldName="emergencyContact" icon={Heart} onSave={handleFieldSave} />
+          <EditableDataField label="Emergency Phone" value={profile.emergencyContactNumber} fieldName="emergencyContactNumber" icon={Phone} onSave={handleFieldSave} />
+        </Section>
+        <Section title="Government Identification">
+          <EditableDataField label="GSIS ID No." value={profile.gsisNumber} fieldName="gsisNumber" onSave={handleFieldSave} />
+          <EditableDataField label="PAG-IBIG No." value={profile.pagibigNumber} fieldName="pagibigNumber" onSave={handleFieldSave} />
+          <EditableDataField label="PhilHealth No." value={profile.philhealthNumber} fieldName="philhealthNumber" onSave={handleFieldSave} />
+          <EditableDataField label="UMID Number" value={profile.umidNumber} fieldName="umidNumber" onSave={handleFieldSave} />
+          <EditableDataField label="PHILSYS ID" value={profile.philsysId} fieldName="philsysId" onSave={handleFieldSave} />
+          <EditableDataField label="TIN No." value={profile.tinNumber} fieldName="tinNumber" onSave={handleFieldSave} />
+          <EditableDataField label="Agency Employee No." value={profile.agencyEmployeeNo} fieldName="agencyEmployeeNo" onSave={handleFieldSave} />
+        </Section>
+
+        {/* BIOMETRIC & COMPLIANCE */}
+        <Section title="Biometric & Compliance" columns="grid-cols-1 md:grid-cols-2">
+           <div className="p-4 border border-gray-100 rounded-xl bg-gray-50/30 flex flex-col items-center">
+             <h5 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Right Thumbmark URL</h5>
+             <EditableDataField 
+                label="Thumbmark URL" 
+                value={profile.rightThumbmarkUrl} 
+                fieldName="rightThumbmarkUrl" 
+                onSave={handleFieldSave} 
+             />
+             {profile.rightThumbmarkUrl && (
+               <img src={profile.rightThumbmarkUrl} alt="Right Thumbmark" className="h-24 w-auto mt-4 grayscale contrast-125 mix-blend-multiply" />
+             )}
+           </div>
+           <div className="space-y-4">
+             <EditableDataField label="CTC / Cedula No." value={profile.ctcNo} fieldName="ctcNo" onSave={handleFieldSave} />
+             <EditableDataField label="CTC Issued At" value={profile.ctcIssuedAt} fieldName="ctcIssuedAt" onSave={handleFieldSave} />
+             <EditableDataField 
+                label="CTC Issued Date" 
+                value={formatDateForInput(profile.ctcIssuedDate)} 
+                fieldName="ctcIssuedDate" 
+                icon={LucideCalendar} 
+                inputType="date" 
+                onSave={handleFieldSave} 
+             />
+           </div>
+        </Section>
+
+        {/* SOCIAL MEDIA CONNECTIONS */}
+        <Section title="Social Media Connections" icon={LinkIcon} columns="grid-cols-1 md:grid-cols-3">
+          <EditableDataField label="Facebook Profile" value={profile.facebookUrl} fieldName="facebookUrl" icon={LinkIcon} onSave={handleFieldSave} />
+          <EditableDataField label="LinkedIn Profile" value={profile.linkedinUrl} fieldName="linkedinUrl" icon={LinkIcon} onSave={handleFieldSave} />
+          <EditableDataField label="Twitter / X" value={profile.twitterHandle} fieldName="twitterHandle" icon={LinkIcon} onSave={handleFieldSave} />
+        </Section>
+
+        {/* EDUCATIONAL BACKGROUND */}
+        <Section title="Educational Background" columns="grid-cols-1 md:grid-cols-2">
+          <EditableDataField label="Educational Background" value={profile.educationalBackground} fieldName="educationalBackground" onSave={handleFieldSave} />
+          <EditableDataField label="School / University" value={profile.schoolName || profile.educationalBackground} fieldName="schoolName" onSave={handleFieldSave} />
+          <EditableDataField label="Course / Degree" value={profile.course} fieldName="course" onSave={handleFieldSave} />
+          <EditableDataField label="Year Graduated" value={profile.yearGraduated} fieldName="yearGraduated" onSave={handleFieldSave} />
+          <EditableDataField label="Years of Experience" value={profile.yearsOfExperience} fieldName="yearsOfExperience" inputType="number" onSave={handleFieldSave} />
+          <EditableDataField label="Core Competencies" value={profile.coreCompetencies} fieldName="coreCompetencies" inputType="textarea" placeholder="List key skills..." onSave={handleFieldSave} />
+          <EditableDataField label="Work Experience Log" value={profile.experience} fieldName="experience" fullWidth inputType="textarea" onSave={handleFieldSave} />
+          
+          <div className="col-span-full mt-4">
+            <h5 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 ml-1">Structured Educational History</h5>
+            {profile.education && profile.education.length > 0 && (
+              <div className="border border-gray-100 rounded-xl overflow-hidden bg-white mb-2">
+                <table className="w-full text-xs text-left">
+                  <thead className="bg-gray-50 text-gray-600 font-semibold border-b border-gray-100">
+                    <tr>
+                      <th className="px-4 py-2">Level</th>
+                      <th className="px-4 py-2">Institution</th>
+                      <th className="px-4 py-2 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {profile.education.map((edu, idx) => (
+                      <tr key={idx} className="hover:bg-gray-50/50">
+                        <td className="px-4 py-2 font-bold text-gray-700">{edu.type || 'N/A'}</td>
+                        <td className="px-4 py-2 text-gray-600 truncate max-w-[200px]">{edu.institution}</td>
+                        <td className="px-4 py-2 text-right">
+                          <button onClick={() => { setEditingEducation(edu); setShowAddEducation(true); }} className="p-1 text-gray-400 hover:text-blue-600"><Pencil size={14} /></button>
+                          <button onClick={() => handleDeleteEducation(edu.id)} className="p-1 text-gray-400 hover:text-red-600 ml-1"><Trash2 size={14} /></button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            <AddCard label="Add Education Entry" onClick={() => setShowAddEducation(true)} />
+          </div>
+        </Section>
+
+        {/* ELIGIBILITY / CIVIL SERVICE */}
+        <Section title="Eligibility / Civil Service" columns="grid-cols-1 md:grid-cols-3">
+          <EditableDataField label="Eligibility Type" value={profile.eligibilityType} fieldName="eligibilityType" onSave={handleFieldSave} />
+          <EditableDataField label="License/ID Number" value={profile.eligibilityNumber} fieldName="eligibilityNumber" onSave={handleFieldSave} />
+          <EditableDataField label="Date of Validity/Exam" value={formatDateForInput(profile.eligibilityDate)} fieldName="eligibilityDate" inputType="date" onSave={handleFieldSave} />
+        </Section>
+
+        {/* FAMILY BACKGROUND */}
+        <Section title="Family Background" columns="grid-cols-1">
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {['Spouse', 'Father', 'Mother'].map((relation: string) => {
+                const member = profile.familyBackground?.find((m: any) => m.relationType === relation);
+                return (
+                  <div key={relation} className="p-4 border border-gray-100 rounded-xl bg-gray-50/30 group relative">
+                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                      {member ? (
+                        <>
+                          <button onClick={() => { setEditingFamily(member); setShowAddFamily(true); }} className="p-1 text-gray-400 hover:text-blue-600 bg-white rounded shadow-sm border border-gray-100"><Pencil size={12} /></button>
+                          <button onClick={() => handleDeletePdsItem('family', member.id, profile.familyBackground || [])} className="p-1 text-gray-400 hover:text-red-600 bg-white rounded shadow-sm border border-gray-100"><Trash2 size={12} /></button>
+                        </>
+                      ) : (
+                        <button onClick={() => { setEditingFamily({ relationType: relation } as any); setShowAddFamily(true); }} className="p-1 text-gray-400 hover:text-green-600 bg-white rounded shadow-sm border border-gray-100"><Plus size={12} /></button>
+                      )}
+                    </div>
+                    <h5 className="text-[10px] font-bold text-green-600 uppercase tracking-widest mb-3">{relation}'s Information</h5>
+                    <div className="space-y-3">
+                      <DataField label="Full Name" value={member ? `${member.firstName || ''} ${member.lastName || ''}`.trim() : '-'} />
+                      <DataField label="Occupation" value={member?.occupation} />
+                      <DataField label="Employer" value={member?.employer} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="mt-4">
+               <div className="flex justify-between items-center mb-3 ml-1">
+                 <h5 className="text-[10px] font-bold text-green-600 uppercase tracking-widest">Children</h5>
+                 <button onClick={() => { setEditingFamily(null); setShowAddFamily(true); }} className="text-[10px] font-bold text-blue-600 hover:text-blue-700 uppercase tracking-widest flex items-center gap-1">
+                   <Plus size={12} /> Add Child
+                 </button>
+               </div>
+               <div className="border border-gray-100 rounded-xl overflow-hidden bg-white">
+                 <table className="w-full text-xs text-left">
+                    <thead className="bg-gray-50 text-gray-600 font-semibold border-b border-gray-100">
+                      <tr>
+                        <th className="px-4 py-2">Full Name</th>
+                        <th className="px-4 py-2">Date of Birth</th>
+                        <th className="px-4 py-2 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {profile.familyBackground?.filter(m => m.relationType === 'Child').length ? (
+                        profile.familyBackground.filter(m => m.relationType === 'Child').map((child, idx) => (
+                          <tr key={idx} className="hover:bg-gray-50/50">
+                            <td className="px-4 py-2 font-medium">{child.firstName} {child.lastName}</td>
+                            <td className="px-4 py-2 text-gray-500">{formatDate(child.dateOfBirth)}</td>
+                            <td className="px-4 py-2 text-right">
+                              <button onClick={() => { setEditingFamily(child); setShowAddFamily(true); }} className="p-1 text-gray-400 hover:text-blue-600"><Pencil size={14} /></button>
+                              <button onClick={() => handleDeletePdsItem('family', child.id, profile.familyBackground || [])} className="p-1 text-gray-400 hover:text-red-600 ml-1"><Trash2 size={14} /></button>
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr><td colSpan={3} className="px-4 py-3 text-center text-gray-400 italic">No children records found</td></tr>
+                      )}
+                    </tbody>
+                 </table>
+               </div>
+            </div>
+          </div>
+        </Section>
+
+        {/* WORK HISTORY (Structured) */}
+        <Section title="Work Experience (PDS Detailed)" icon={Briefcase}>
+          <div className="space-y-4">
+             {profile.workExperience?.length ? (
+               profile.workExperience.map((work: any) => (
+                 <div key={work.id} className="p-4 border border-gray-100 rounded-xl bg-gray-50/20 group relative">
+                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                      <button onClick={() => { setEditingExperience(work); setShowAddExperience(true); }} className="p-1 text-gray-400 hover:text-blue-600 bg-white rounded shadow-sm border border-gray-100"><Pencil size={12} /></button>
+                      <button onClick={() => handleDeletePdsItem('work_experience', work.id, profile.workExperience || [])} className="p-1 text-gray-400 hover:text-red-600 bg-white rounded shadow-sm border border-gray-100"><Trash2 size={12} /></button>
+                    </div>
+                    <div className="flex justify-between items-start mb-2 pr-12">
+                       <h5 className="text-xs font-bold text-gray-800">{work.companyName}</h5>
+                       <span className="text-[10px] text-gray-500">{work.dateFrom} - {work.dateTo || 'Present'}</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 text-xs">
+                       <DataField label="Position" value={work.positionTitle} />
+                       <DataField label="Salary/Grade" value={work.salaryGrade || work.monthlySalary} />
+                    </div>
+                 </div>
+               ))
+             ) : (
+               <p className="text-xs text-center text-gray-400 italic py-4">No detailed work history found</p>
+             )}
+             <AddCard label="Add Work Experience" onClick={() => setShowAddExperience(true)} />
+          </div>
+        </Section>
+
+        {/* VOLUNTARY WORK */}
+        <Section title="Voluntary Work" icon={Briefcase}>
+          <div className="space-y-4">
+             {profile.voluntaryWork?.length ? (
+               profile.voluntaryWork.map((vw: any) => (
+                 <div key={vw.id} className="p-4 border border-gray-100 rounded-xl bg-gray-50/20 group relative">
+                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                      <button onClick={() => { setEditingVoluntary(vw); setShowAddVoluntary(true); }} className="p-1 text-gray-400 hover:text-blue-600 bg-white rounded shadow-sm border border-gray-100"><Pencil size={12} /></button>
+                      <button onClick={() => handleDeletePdsItem('voluntary_work', vw.id, profile.voluntaryWork || [])} className="p-1 text-gray-400 hover:text-red-600 bg-white rounded shadow-sm border border-gray-100"><Trash2 size={12} /></button>
+                    </div>
+                    <div className="flex justify-between items-start mb-2 pr-12">
+                       <h5 className="text-xs font-bold text-gray-800">{vw.organizationName}</h5>
+                       <span className="text-[10px] text-gray-500">{vw.dateFrom} - {vw.dateTo || 'Present'}</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 text-xs">
+                       <DataField label="Position" value={vw.position} />
+                       <DataField label="Address" value={vw.address} />
+                    </div>
+                 </div>
+               ))
+             ) : (
+               <p className="text-xs text-center text-gray-400 italic py-4">No voluntary work found</p>
+             )}
+             <AddCard label="Add Voluntary Work" onClick={() => setShowAddVoluntary(true)} />
+          </div>
+        </Section>
+
+        {/* TRAINING / LEARNING & DEVELOPMENT */}
+        <Section title="Learning & Development (Training)" icon={Briefcase}>
+          <div className="space-y-4">
+             {profile.learningDevelopment?.length ? (
+               profile.learningDevelopment.map((ld: any) => (
+                 <div key={ld.id} className="p-4 border border-gray-100 rounded-xl bg-gray-50/20 group relative">
+                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                      <button onClick={() => { setEditingTraining(ld); setShowAddTraining(true); }} className="p-1 text-gray-400 hover:text-blue-600 bg-white rounded shadow-sm border border-gray-100"><Pencil size={12} /></button>
+                      <button onClick={() => handleDeletePdsItem('learning_development', ld.id, profile.learningDevelopment || [])} className="p-1 text-gray-400 hover:text-red-600 bg-white rounded shadow-sm border border-gray-100"><Trash2 size={12} /></button>
+                    </div>
+                    <div className="flex justify-between items-start mb-2 pr-12">
+                       <h5 className="text-xs font-bold text-gray-800">{ld.title}</h5>
+                       <span className="text-[10px] text-gray-500">{ld.dateFrom} - {ld.dateTo || 'Present'}</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 text-xs">
+                       <DataField label="Type" value={ld.typeOfLd} />
+                       <DataField label="Conducted by" value={ld.conductedBy} />
+                    </div>
+                 </div>
+               ))
+             ) : (
+               <p className="text-xs text-center text-gray-400 italic py-4">No training records found</p>
+             )}
+             <AddCard label="Add Training Record" onClick={() => setShowAddTraining(true)} />
+          </div>
+        </Section>
+
+        {/* OTHER INFORMATION */}
+        <Section title="Other Information (PDS)" columns="grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+          <div className="col-span-full mb-4">
+             <div className="flex justify-between items-center mb-3 ml-1">
+               <h5 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Skills, Recognitions, Memberships</h5>
+               <button onClick={() => { setEditingOtherInfo(null); setShowAddOtherInfo(true); }} className="text-[10px] font-bold text-blue-600 hover:text-blue-700 uppercase tracking-widest flex items-center gap-1">
+                 <Plus size={12} /> Add Info
+               </button>
+             </div>
+             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {['Skill', 'Recognition', 'Membership'].map(type => (
+                  <div key={type} className="p-4 border border-gray-100 rounded-xl bg-gray-50/30">
+                    <h6 className="text-[10px] font-bold text-blue-600 uppercase mb-2">{type}s</h6>
+                    <div className="space-y-2">
+                       {profile.otherInfo?.filter(oi => oi.type === type).map((oi, i) => (
+                         <div key={i} className="text-xs font-semibold text-gray-700 bg-white p-2 rounded border border-gray-200 flex justify-between items-center group">
+                            <span>{oi.description}</span>
+                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button onClick={() => { setEditingOtherInfo(oi); setShowAddOtherInfo(true); }} className="p-0.5 text-gray-400 hover:text-blue-600"><Pencil size={10} /></button>
+                              <button onClick={() => handleDeletePdsItem('other_info', oi.id, profile.otherInfo || [])} className="p-0.5 text-gray-400 hover:text-red-600"><Trash2 size={10} /></button>
+                            </div>
+                         </div>
+                       )) || <p className="text-[10px] italic text-gray-400">None listed</p>}
+                       {(!profile.otherInfo?.filter(oi => oi.type === type).length) && <p className="text-[10px] italic text-gray-400">None listed</p>}
+                    </div>
+                  </div>
+                ))}
+             </div>
+          </div>
+        </Section>
+
+        {/* REFERENCES */}
+        <Section title="References" columns="grid-cols-1">
+           <div className="border border-gray-100 rounded-xl overflow-hidden bg-white mb-2">
+             <table className="w-full text-xs text-left">
+                <thead className="bg-gray-50 text-gray-600 font-semibold border-b border-gray-100">
+                  <tr>
+                    <th className="px-4 py-2">Name</th>
+                    <th className="px-4 py-2">Address</th>
+                    <th className="px-4 py-2">Telephone</th>
+                    <th className="px-4 py-2 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {profile.references?.length ? (
+                    profile.references.map((ref, idx) => (
+                      <tr key={idx} className="hover:bg-gray-50/50">
+                        <td className="px-4 py-2 font-bold text-gray-800">{ref.name}</td>
+                        <td className="px-4 py-2 text-gray-600">{ref.address}</td>
+                        <td className="px-4 py-2 text-gray-500">{ref.telNo}</td>
+                        <td className="px-4 py-2 text-right">
+                          <button onClick={() => { setEditingReference(ref); setShowAddReference(true); }} className="p-1 text-gray-400 hover:text-blue-600"><Pencil size={14} /></button>
+                          <button onClick={() => handleDeletePdsItem('references', ref.id, profile.references || [])} className="p-1 text-gray-400 hover:text-red-600 ml-1"><Trash2 size={14} /></button>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr><td colSpan={4} className="px-4 py-3 text-center text-gray-400 italic">No references found</td></tr>
+                  )}
+                </tbody>
+             </table>
+           </div>
+           <AddCard label="Add Reference" onClick={() => setShowAddReference(true)} />
+        </Section>
+
+        {/* EMPLOYMENT DETAILS (INTERNAL) */}
+        <Section title="HR Internal Details">
+          <DataField label="Department" value={profile.department} highlight />
+          <EditableDataField label="Position Title" value={profile.positionTitle || profile.jobTitle} fieldName="positionTitle" highlight onSave={handleFieldSave} />
+          <EditableDataField label="Item Number" value={profile.itemNumber} fieldName="itemNumber" onSave={handleFieldSave} />
+          <EditableDataField label="Salary Grade" value={profile.salaryGrade} fieldName="salaryGrade" inputType="number" onSave={handleFieldSave} />
+          <EditableDataField label="Step Increment" value={profile.stepIncrement} fieldName="stepIncrement" inputType="number" onSave={handleFieldSave} />
+          <EditableDataField label="Appointment Type" value={profile.appointmentType} fieldName="appointmentType" inputType="select" options={[
             {value:'Permanent',label:'Permanent'},{value:'Contractual',label:'Contractual'},{value:'Casual',label:'Casual'},
             {value:'Job Order',label:'Job Order'},{value:'Coterminous',label:'Coterminous'},{value:'Temporary',label:'Temporary'}
           ]} onSave={handleFieldSave} />
-          <EditableDataField label="Employment Status" value={profile.employment_status || profile.employmentStatus} fieldName="employment_status" inputType="select" options={[
+          <EditableDataField label="Employment Status" value={currentStatus} fieldName="employmentStatus" inputType="select" options={[
             {value:'Active',label:'Active'},{value:'Probationary',label:'Probationary'},{value:'Terminated',label:'Terminated'},
             {value:'Resigned',label:'Resigned'},{value:'On Leave',label:'On Leave'},{value:'Suspended',label:'Suspended'},
-            {value:'Verbal Warning',label:'Verbal Warning'},{value:'Written Warning',label:'Written Warning'},{value:'Show Cause',label:'Show Cause'}
           ]} onSave={handleFieldSave} />
           <EditableDataField label="Station" value={profile.station} fieldName="station" onSave={handleFieldSave} />
-          <EditableDataField label="Office Address" value={profile.office_address} fieldName="office_address" fullWidth inputType="textarea" onSave={handleFieldSave} />
-          <EditableDataField 
-            label="Date Hired" 
-            value={formatDateForInput(profile.date_hired)}
-            formattedValue={formatDate(profile.date_hired || profile.dateHired)}
-            fieldName="date_hired" 
-            
-            inputType="date" 
-            onSave={handleFieldSave} 
-          />
-          <EditableDataField 
-            label="Orig. Appointment" 
-            value={formatDateForInput(profile.original_appointment_date)} 
-            formattedValue={formatDate(profile.original_appointment_date)}
-            fieldName="original_appointment_date" 
-            
-            inputType="date" 
-            onSave={handleFieldSave} 
-          />
-          <EditableDataField 
-            label="Last Promotion" 
-            value={formatDateForInput(profile.last_promotion_date)}
-            formattedValue={formatDate(profile.last_promotion_date)} 
-            fieldName="last_promotion_date" 
-            
-            inputType="date" 
-            onSave={handleFieldSave} 
-          />
-          <DataField 
-            label="Next Step Increment" 
-            value={`${formatDate(nextStepData?.nextStepDate)}${nextStepData?.totalLwopDays ? ` (Delayed by ${nextStepData.totalLwopDays} LWOP days)` : ''}`} 
-            
-            highlight 
-          />
-          <DataField label="First Day of Service" value={formatDate(profile.first_day_of_service)} />
-          <DataField label="Supervisor" value={profile.supervisor} />
-          <EditableDataField label="Current Duties" value={profile.duties} fieldName="duties" highlight onSave={handleFieldSave} />
-          <DataField label="System Role" value={profile.role} />
-          {renderCustomFields("Employment Record")}
-          <AddCard label="Add Card" onClick={() => openCustomFieldModal("Employment Record")} />
+          <EditableDataField label="Office Address" value={profile.officeAddress} fieldName="officeAddress" fullWidth inputType="textarea" onSave={handleFieldSave} />
+          <EditableDataField label="Date Hired" value={formatDateForInput(profile.dateHired)} formattedValue={formatDate(profile.dateHired)} fieldName="dateHired" inputType="date" onSave={handleFieldSave} />
+          <DataField label="First Day of Service" value={formatDate(profile.firstDayOfService)} />
+          <DataField label="Next Step Increment" value={formatDate(nextStepData?.nextStepDate)} highlight />
+          <DataField label="LWOP Days (Accumulated)" value={nextStepData?.totalLwopDays || 0} />
         </Section>
 
-        {/* GOVERNMENT IDS */}
-        <Section title="Government Identification">
-          <EditableDataField label="UMID ID" value={profile.umid_id} fieldName="umid_id" onSave={handleFieldSave} />
-          <EditableDataField label="PHILSYS ID" value={profile.philsys_id} fieldName="philsys_id" onSave={handleFieldSave} />
-          <EditableDataField label="GSIS No." value={profile.gsis_number} fieldName="gsis_number" onSave={handleFieldSave} />
-          <EditableDataField label="PhilHealth No." value={profile.philhealth_number} fieldName="philhealth_number" onSave={handleFieldSave} />
-          <EditableDataField label="Pag-IBIG No." value={profile.pagibig_number} fieldName="pagibig_number" onSave={handleFieldSave} />
-          <EditableDataField label="TIN" value={profile.tin_number} fieldName="tin_number" onSave={handleFieldSave} />
-          {renderCustomFields("Government Identification")}
-          <AddCard label="Add Card" onClick={() => openCustomFieldModal("Government Identification")} />
+        {/* CUSTOM FIELDS */}
+        <Section title="Additional Information" columns="grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
+           {renderCustomFields('General')}
+           <AddCard label="Add Field" onClick={() => openCustomFieldModal('General')} />
         </Section>
-
-        {/* ELIGIBILITY & QUALIFICATIONS */}
-        <Section title="Eligibility & Qualifications">
-          <EditableDataField label="Eligibility Type" value={profile.eligibility_type} fieldName="eligibility_type" onSave={handleFieldSave} />
-          <EditableDataField label="Eligibility No." value={profile.eligibility_number} fieldName="eligibility_number" onSave={handleFieldSave} />
-          <EditableDataField label="Eligibility Date" value={formatDateForInput(profile.eligibility_date)} fieldName="eligibility_date" inputType="date" onSave={handleFieldSave} />
-          <EditableDataField label="Highest Education" value={profile.highest_education} fieldName="highest_education" onSave={handleFieldSave} />
-          <EditableDataField label="Educational Background" value={profile.educational_background} fieldName="educational_background" onSave={handleFieldSave} />
-          <EditableDataField label="Years of Experience" value={profile.years_of_experience} fieldName="years_of_experience" inputType="number" onSave={handleFieldSave} />
-          {renderCustomFields("Eligibility & Qualifications")}
-          <AddCard label="Add Card" onClick={() => openCustomFieldModal("Eligibility & Qualifications")} />
-        </Section>
-
-        {/* EDUCATION */}
-        <Section title="Educational Background" columns="grid-cols-1">
-          {profile.education && profile.education.length > 0 && (
-            <div className="border border-gray-200 rounded-md overflow-hidden">
-              <table className="w-full text-xs text-left">
-                <thead className="bg-gray-50 text-gray-600 font-semibold border-b border-gray-200">
-                  <tr>
-                    <th className="px-4 py-2">Level</th>
-                    <th className="px-4 py-2">School / Institution</th>
-                    <th className="px-4 py-2">Degree / Course</th>
-                    <th className="px-4 py-2">Year</th>
-                    <th className="px-4 py-2 w-20">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {profile.education.map((edu, idx) => (
-                    <tr key={idx} className="hover:bg-gray-50">
-                      <td className="px-4 py-2 font-bold text-gray-700">{edu.type || 'N/A'}</td>
-                      <td className="px-4 py-2 text-gray-800">{edu.institution}</td>
-                      <td className="px-4 py-2 text-gray-900 font-medium">{edu.degree || edu.field_of_study || '-'}</td>
-                      <td className="px-4 py-2 text-gray-500">{edu.start_date ? new Date(edu.start_date).getFullYear() : 'N/A'} - {edu.end_date ? new Date(edu.end_date).getFullYear() : 'Present'}</td>
-                      <td className="px-4 py-2 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                           <button 
-                             onClick={() => { setEditingEducation(edu); setShowAddEducation(true); }}
-                             className="p-1 text-gray-400 hover:text-blue-600 transition-colors"
-                             title="Edit"
-                           >
-                             <Pencil size={14} />
-                           </button>
-                           <button 
-                             onClick={() => handleDeleteEducation(edu.id)}
-                             className="p-1 text-gray-400 hover:text-red-600 transition-colors"
-                             title="Delete"
-                           >
-                             <Trash2 size={14} />
-                           </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-          <AddCard label="Add Education" onClick={() => setShowAddEducation(true)} />
-        </Section>
-
-        {/* SKILLS */}
-        <Section title="Skills & Competencies" columns="grid-cols-2 md:grid-cols-4">
-          {profile.skills && profile.skills.map((skill, idx) => (
-            <div key={idx} className="flex items-center justify-between border border-gray-200 rounded p-2 bg-gray-50 group">
-              <span className="text-xs font-bold text-gray-700">{skill.skill_name}</span>
-              <span className="text-[10px] font-medium text-gray-500">{skill.proficiency_level || 'N/A'}</span>
-              <div className="ml-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                 <button 
-                   onClick={() => { setEditingSkill(skill); setShowAddSkill(true); }}
-                   className="p-1 text-gray-400 hover:text-blue-600"
-                 >
-                   <Pencil size={12} />
-                 </button>
-                 <button 
-                   onClick={() => handleDeleteSkill(skill.id)}
-                   className="p-1 text-gray-400 hover:text-red-600"
-                 >
-                   <Trash2 size={12} />
-                 </button>
-              </div>
-            </div>
-          ))}
-          <AddCard label="Add Skill" onClick={() => setShowAddSkill(true)} />
-        </Section>
-
-        {/* CONTACT & EMERGENCY */}
-        <Section title="Contact & Emergency">
-          <EditableDataField label="Mobile Number" value={profile.phone_number || profile.mobile_no} fieldName="phone_number" inputType="tel" onSave={handleFieldSave} />
-          <EditableDataField label="Telephone No." value={profile.telephone_no} fieldName="telephone_no" inputType="tel" onSave={handleFieldSave} />
-          <EditableDataField label="Official Email" value={profile.email} fieldName="email" inputType="email" onSave={handleFieldSave} />
-          <EditableDataField label="Emergency Contact Person" value={profile.emergency_contact} fieldName="emergency_contact" onSave={handleFieldSave} />
-          <EditableDataField label="Emergency Phone" value={profile.emergency_contact_number} fieldName="emergency_contact_number" inputType="tel" onSave={handleFieldSave} />
-        </Section>
-
-        <Section title="Emergency Contacts" columns="grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-           {profile.emergencyContacts && profile.emergencyContacts.map((contact, idx) => (
-             <div key={idx} className="flex flex-col border border-gray-200 rounded-md p-3 bg-white relative group">
-                <div className="flex items-center justify-between mb-2">
-                   <h4 className="text-sm font-bold text-gray-800">{contact.name}</h4>
-                   {idx === 0 && <span className="text-[10px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">Primary</span>}
-                </div>
-                <div className="flex flex-col gap-1 text-xs text-gray-600">
-                   <span>{contact.relationship}</span>
-                   <span className="font-medium">{contact.phone_number}</span>
-                   {contact.address && <span className="text-gray-400">{contact.address}</span>}
-                </div>
-                <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-white/80 p-0.5 rounded shadow-sm">
-                   <button 
-                     onClick={() => { setEditingContact(contact); setShowAddContact(true); }}
-                     className="p-1 text-gray-400 hover:text-blue-600"
-                     title="Edit"
-                   >
-                     <Pencil size={12} />
-                   </button>
-                   <button 
-                     onClick={() => handleDeleteContact(contact.id)}
-                     className="p-1 text-gray-400 hover:text-red-600"
-                     title="Delete"
-                   >
-                     <Trash2 size={12} />
-                   </button>
-                </div>
-             </div>
-           ))}
-           {/* Fallback for legacy single fields if array is empty but fields exist */}
-           {(!profile.emergencyContacts || profile.emergencyContacts.length === 0) && (profile.emergency_contact || profile.emergency_contact_number) && (
-              <div className="flex flex-col border border-gray-200 rounded-md p-3 bg-white relative opacity-75">
-                <div className="flex items-center justify-between mb-2">
-                   <h4 className="text-sm font-bold text-gray-800">{profile.emergency_contact}</h4>
-                   <span className="text-[10px] italic text-gray-400">Legacy</span>
-                </div>
-                <div className="flex flex-col gap-1 text-xs text-gray-600">
-                   <span className="text-xs text-gray-600 font-medium">{profile.emergency_contact_number}</span>
-                </div>
-             </div>
-           )}
-           <AddCard label="Add Contact" onClick={() => setShowAddContact(true)} />
-        </Section>
-
-        {/* SOCIAL MEDIA */}
-        <Section title="Social Media" columns="grid-cols-1 md:grid-cols-3">
-          <EditableDataField label="Facebook" value={profile.facebook_url} fieldName="facebook_url" inputType="url" onSave={handleFieldSave} />
-          <EditableDataField label="LinkedIn" value={profile.linkedin_url} fieldName="linkedin_url" inputType="url" onSave={handleFieldSave} />
-          <EditableDataField label="Twitter/X" value={profile.twitter_handle} fieldName="twitter_handle" onSave={handleFieldSave} />
-        </Section>
-
-      </div>
+      </div> {/* DATA GRID - REORGANIZED SECTIONS END */}
 
       <div className="bg-gray-50 px-6 py-3 border-t border-gray-200 flex justify-between items-center">
         <p className="text-[10px] text-gray-400 font-medium">System Generated Record â€¢ NEBR HRIS</p>
@@ -908,6 +1103,54 @@ const EditableProfileView: React.FC<EmployeeProfileViewProps> = ({ profile, load
             onClose={() => setCustomFieldModal({ ...customFieldModal, isOpen: false })}
             employeeId={profile.id}
             section={customFieldModal.section}
+            onSuccess={onRefresh}
+          />
+          <AddFamilyModal
+            isOpen={showAddFamily}
+            onClose={() => { setShowAddFamily(false); setEditingFamily(null); }}
+            employeeId={profile.id}
+            initialData={editingFamily}
+            existingItems={profile.familyBackground || []}
+            onSuccess={onRefresh}
+          />
+          <AddExperienceModal
+            isOpen={showAddExperience}
+            onClose={() => { setShowAddExperience(false); setEditingExperience(null); }}
+            employeeId={profile.id}
+            initialData={editingExperience}
+            existingItems={profile.workExperience || []}
+            onSuccess={onRefresh}
+          />
+          <AddVoluntaryWorkModal
+            isOpen={showAddVoluntary}
+            onClose={() => { setShowAddVoluntary(false); setEditingVoluntary(null); }}
+            employeeId={profile.id}
+            initialData={editingVoluntary}
+            existingItems={profile.voluntaryWork || []}
+            onSuccess={onRefresh}
+          />
+          <AddTrainingModal
+            isOpen={showAddTraining}
+            onClose={() => { setShowAddTraining(false); setEditingTraining(null); }}
+            employeeId={profile.id}
+            initialData={editingTraining}
+            existingItems={profile.learningDevelopment || []}
+            onSuccess={onRefresh}
+          />
+          <AddOtherInfoModal
+            isOpen={showAddOtherInfo}
+            onClose={() => { setShowAddOtherInfo(false); setEditingOtherInfo(null); }}
+            employeeId={profile.id}
+            initialData={editingOtherInfo}
+            existingItems={profile.otherInfo || []}
+            onSuccess={onRefresh}
+          />
+          <AddReferenceModal
+            isOpen={showAddReference}
+            onClose={() => { setShowAddReference(false); setEditingReference(null); }}
+            employeeId={profile.id}
+            initialData={editingReference}
+            existingItems={profile.references || []}
             onSuccess={onRefresh}
           />
         </>

@@ -42,31 +42,32 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
       title: '',
       department: '',
       location: '',
+      employmentType: 'Full-time',
+      dutyType: 'Standard',
       status: 'Open',
-      application_email: '',
-      job_description: '',
+      applicationEmail: '',
+      jobDescription: '',
       requirements: '',
-      require_civil_service: false,
-      require_government_ids: false,
-      require_education_experience: false,
+      requireCivilService: false,
+      requireGovernmentIds: false,
+      requireEducationExperience: false,
     }
-  });
-
+    });
   const [departments, setDepartments] = useState<Department[]>([]);
   const [isDeptOpen, setIsDeptOpen] = useState(false);
   const [deptSearch, setDeptSearch] = useState('');
   
   // Watch fields
   const currentDept = watch('department');
-  const currentEmploymentType = watch('employment_type');
+  const currentEmploymentType = watch('employmentType');
   const isPermanent = currentEmploymentType === 'Permanent';
 
   // Auto-lock toggles if Permanent is selected
   useEffect(() => {
     if (isPermanent) {
-      setValue('require_civil_service', true, { shouldValidate: true });
-      setValue('require_government_ids', true, { shouldValidate: true });
-      setValue('require_education_experience', true, { shouldValidate: true });
+      setValue('requireCivilService', true, { shouldValidate: true });
+      setValue('requireGovernmentIds', true, { shouldValidate: true });
+      setValue('requireEducationExperience', true, { shouldValidate: true });
     }
   }, [isPermanent, setValue]);
 
@@ -100,30 +101,32 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
           title: initialData.title || '',
           department: initialData.department || '',
           location: initialData.location || '',
-          employment_type: initialData.employment_type || 'Full-time',
+          employmentType: initialData.employmentType || 'Full-time',
+          dutyType: initialData.dutyType || 'Standard',
           status: initialData.status || 'Open',
-          application_email: initialData.application_email || '',
-          job_description: initialData.job_description || '',
+          applicationEmail: initialData.applicationEmail || '',
+          jobDescription: initialData.jobDescription || '',
           requirements: initialData.requirements || '',
-          attachment_path: initialData.attachment_path || null,
-          require_civil_service: initialData.require_civil_service || false,
-          require_government_ids: initialData.require_government_ids || false,
-          require_education_experience: initialData.require_education_experience || false,
+          attachmentPath: initialData.attachmentPath || null,
+          requireCivilService: initialData.requireCivilService || false,
+          requireGovernmentIds: initialData.requireGovernmentIds || false,
+          requireEducationExperience: initialData.requireEducationExperience || false,
         });
       } else {
         reset({
           title: '',
           department: '',
           location: '',
-          employment_type: 'Full-time',
+          employmentType: 'Full-time',
+          dutyType: 'Standard',
           status: 'Open',
-          application_email: '',
-          job_description: '',
+          applicationEmail: '',
+          jobDescription: '',
           requirements: '',
-          attachment_path: null,
-          require_civil_service: false,
-          require_government_ids: false,
-          require_education_experience: false,
+          attachmentPath: null,
+          requireCivilService: false,
+          requireGovernmentIds: false,
+          requireEducationExperience: false,
         });
       }
       setSelectedFile(null);
@@ -136,9 +139,9 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
       
       // Explicitly append known fields from schema
       const fields: (keyof JobSchema)[] = [
-        'title', 'department', 'location', 'employment_type', 
-        'status', 'application_email', 'job_description', 'requirements',
-        'require_civil_service', 'require_government_ids', 'require_education_experience'
+        'title', 'department', 'location', 'employmentType', 'dutyType',
+        'status', 'applicationEmail', 'jobDescription', 'requirements',
+        'requireCivilService', 'requireGovernmentIds', 'requireEducationExperience'
       ];
 
       fields.forEach(field => {
@@ -206,11 +209,11 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
                   </button>
                 )}
               </div>
-              {initialData?.attachment_path && !selectedFile && (
+                {initialData?.attachmentPath && !selectedFile && (
                   <p className="text-xs text-green-600 mt-1 ml-1 flex items-center gap-1">
                       Existing file attached (Upload new to replace)
                   </p>
-              )}
+                )}
             </div>
 
             {/* Department (Moved Up) */}
@@ -223,7 +226,7 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
                     placeholder="Search or Select Department..."
                     className={`w-full border ${errors.department ? 'border-red-500 ring-2 ring-red-200' : 'border-gray-200'} rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-400 focus:outline-none transition-all bg-gray-50`}
                     {...register('department', {
-                        onChange: (e) => {
+                        onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
                             setDeptSearch(e.target.value);
                             setIsDeptOpen(true);
                         }
@@ -300,19 +303,33 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
               </div>
             </div>
 
-            {/* Employment Type & Status */}
+            {/* Duty Type, Employment Type & Status */}
+            <div className="grid grid-cols-1 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Duty Type</label>
+                <select 
+                  className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-400 focus:outline-none transition-all bg-gray-50 cursor-pointer"
+                  {...register('dutyType')}
+                >
+                  <option value="Standard">Standard</option>
+                  <option value="Irregular">Irregular</option>
+                </select>
+                {errors.dutyType && <p className="text-red-500 text-xs mt-1 ml-1">{errors.dutyType.message}</p>}
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Employment Type</label>
                 <select 
                   className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-400 focus:outline-none transition-all bg-gray-50 cursor-pointer"
-                  {...register('employment_type')}
+                  {...register('employmentType')}
                 >
                   {EMPLOYMENT_TYPES.map(type => (
                     <option key={type} value={type}>{type}</option>
                   ))}
                 </select>
-                 {errors.employment_type && <p className="text-red-500 text-xs mt-1 ml-1">{errors.employment_type.message}</p>}
+                 {errors.employmentType && <p className="text-red-500 text-xs mt-1 ml-1">{errors.employmentType.message}</p>}
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Status</label>
@@ -345,7 +362,7 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
                     <input
                       type="checkbox"
                       className={`h-4 w-4 rounded border-gray-300 ${isPermanent ? 'text-gray-500 cursor-not-allowed' : 'text-blue-600 cursor-pointer'} focus:ring-blue-600`}
-                      {...register('require_education_experience')}
+                      {...register('requireEducationExperience')}
                       disabled={isPermanent}
                     />
                   </div>
@@ -360,7 +377,7 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
                     <input
                       type="checkbox"
                       className={`h-4 w-4 rounded border-gray-300 ${isPermanent ? 'text-gray-500 cursor-not-allowed' : 'text-blue-600 cursor-pointer'} focus:ring-blue-600`}
-                      {...register('require_government_ids')}
+                      {...register('requireGovernmentIds')}
                       disabled={isPermanent}
                     />
                   </div>
@@ -375,7 +392,7 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
                     <input
                       type="checkbox"
                       className={`h-4 w-4 rounded border-gray-300 ${isPermanent ? 'text-gray-500 cursor-not-allowed' : 'text-blue-600 cursor-pointer'} focus:ring-blue-600`}
-                      {...register('require_civil_service')}
+                      {...register('requireCivilService')}
                       disabled={isPermanent}
                     />
                   </div>
@@ -393,10 +410,10 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
               <input 
                 type="email" 
                 placeholder="e.g. hr@company.com"
-                className={`w-full border ${errors.application_email ? 'border-red-500 ring-2 ring-red-200' : 'border-gray-200'} rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-400 focus:outline-none transition-all bg-gray-50`}
-                {...register('application_email')}
+                className={`w-full border ${errors.applicationEmail ? 'border-red-500 ring-2 ring-red-200' : 'border-gray-200'} rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-400 focus:outline-none transition-all bg-gray-50`}
+                {...register('applicationEmail')}
               />
-              {errors.application_email && <p className="text-red-500 text-xs mt-1 ml-1">{errors.application_email.message}</p>}
+              {errors.applicationEmail && <p className="text-red-500 text-xs mt-1 ml-1">{errors.applicationEmail.message}</p>}
             </div>
 
             {/* Job Description */}
@@ -405,10 +422,10 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
               <textarea 
                 rows={4}
                 placeholder="Describe the role and responsibilities..."
-                className={`w-full border ${errors.job_description ? 'border-red-500 ring-2 ring-red-200' : 'border-gray-200'} rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-400 focus:outline-none transition-all resize-none bg-gray-50`}
-                {...register('job_description')}
+                className={`w-full border ${errors.jobDescription ? 'border-red-500 ring-2 ring-red-200' : 'border-gray-200'} rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-400 focus:outline-none transition-all resize-none bg-gray-50`}
+                {...register('jobDescription')}
               />
-              {errors.job_description && <p className="text-red-500 text-xs mt-1 ml-1">{errors.job_description.message}</p>}
+              {errors.jobDescription && <p className="text-red-500 text-xs mt-1 ml-1">{errors.jobDescription.message}</p>}
             </div>
 
             {/* Requirements */}

@@ -14,7 +14,7 @@ async function alignFull() {
     try {
       await conn.query(sql);
       console.log(`${label}`);
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (
         err.code === 'ER_DUP_FIELDNAME' ||
         err.code === 'ER_TABLE_EXISTS_ERROR' ||
@@ -88,7 +88,7 @@ async function alignFull() {
   // Drizzle push was trying to drop them, causing the data-loss warning.
 
   const legacyAuthCols = [
-    'sss_number', 'sss_no', 'citizenship', 'citizenship_type', 
+    'sss_number', 'sss_no',
     'dual_citizenship_country', 'two_factor_secret'
   ];
   for (const col of legacyAuthCols) {

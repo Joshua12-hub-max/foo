@@ -54,7 +54,7 @@ const RegistrationTypeModal: React.FC<RegistrationTypeModalProps> = ({ isOpen, o
 
             {/* Newly Hired - Irregular */}
             <button 
-              onClick={() => onSelectType(false, 'Irregular Duties')}
+              onClick={() => onSelectType(false, 'Irregular')}
               className="group relative bg-white border border-gray-200 hover:border-gray-900 hover:shadow-md p-6 rounded-xl text-left transition-all duration-300 active:scale-[0.98]"
             >
               <div className="mb-3">
@@ -86,7 +86,7 @@ const RegistrationTypeModal: React.FC<RegistrationTypeModalProps> = ({ isOpen, o
 
              {/* Old Employee - Irregular */}
              <button 
-              onClick={() => onSelectType(true, 'Irregular Duties')}
+              onClick={() => onSelectType(true, 'Irregular')}
               className="group relative bg-white border border-gray-200 hover:border-gray-900 hover:shadow-md p-6 rounded-xl text-left transition-all duration-300 active:scale-[0.98]"
             >
               <div className="mb-3">

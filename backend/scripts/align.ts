@@ -15,11 +15,11 @@ async function alignDatabase() {
     console.log('Dropped legacy tables.');
 
     // Drop legacy columns that trigger the "column renamed?" prompt
-    const colsToDrop = ['sss_number', 'sss_no', 'citizenship', 'citizenship_type', 'dual_citizenship_country'];
+    const colsToDrop = ['sss_number', 'sss_no', 'dual_citizenship_country'];
     for (const col of colsToDrop) {
       try {
         await connection.query(`ALTER TABLE \`authentication\` DROP COLUMN \`${col}\`;`);
-      } catch (err: any) {
+      } catch (err: unknown) {
         if (err.code !== 'ER_CANT_DROP_FIELD_OR_KEY') {
           console.log(`Could not drop ${col}`, err.message);
         }
@@ -31,14 +31,14 @@ async function alignDatabase() {
     try {
         await connection.query('ALTER TABLE `authentication` MODIFY COLUMN `years_of_experience` VARCHAR(50);');
         console.log('Updated years_of_experience type.');
-    } catch(err: any) {
+    } catch(err: unknown) {
         console.log('Could not update years_of_experience', err.message);
     }
 
     try {
       await connection.query('ALTER TABLE `authentication` ADD COLUMN `experience` text;');
       await connection.query('ALTER TABLE `authentication` ADD COLUMN `skills` text;');
-    } catch(err: any) {
+    } catch(err: unknown) {
       console.log('Could not add experience/skills', err.message);
     }
     

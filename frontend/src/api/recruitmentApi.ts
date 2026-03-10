@@ -5,20 +5,20 @@ import type { Applicant, Interviewer, ApplicantStage } from '@/types/recruitment
 
 export interface SecurityLog {
     id: number;
-    job_id: number | null;
-    first_name: string;
-    last_name: string;
+    jobId: number | null;
+    firstName: string;
+    lastName: string;
     email: string;
-    violation_type: string;
+    violationType: string;
     details: string | null;
-    ip_address: string | null;
-    created_at: string | null;
-    job_title: string | null;
+    ipAddress: string | null;
+    createdAt: string | null;
+    jobTitle: string | null;
 }
 
 export const recruitmentApi = {
     // Jobs
-    getJobs: async (params: Record<string, string | number | boolean | undefined> & { page?: number; search?: string; status?: string; public_view?: boolean }): Promise<AxiosResponse<{ success: boolean; jobs: Job[]; total?: number; message?: string }>> =>
+    getJobs: async (params: Record<string, string | number | boolean | undefined> & { page?: number; search?: string; status?: string; publicView?: boolean }): Promise<AxiosResponse<{ success: boolean; jobs: Job[]; total?: number; message?: string }>> =>
         api.get('/recruitment/jobs', { params }),
 
     getJob: async (id: string | number): Promise<AxiosResponse<{ success: boolean; job: Job }>> =>
@@ -37,10 +37,10 @@ export const recruitmentApi = {
         api.put(`/recruitment/jobs/${id}/posted`, { platform }),
 
     // Applicants
-    getApplicants: async (params?: { job_id?: number | string; stage?: string; source?: string }): Promise<AxiosResponse<{ applicants: Applicant[] }>> =>
+    getApplicants: async (params?: { jobId?: number | string; stage?: string; source?: string }): Promise<AxiosResponse<{ applicants: Applicant[] }>> =>
         api.get('/recruitment/applicants', { params }),
 
-    getHiredApplicantsByDuty: async (duty: 'Standard' | 'Irregular Duties'): Promise<AxiosResponse<{ applicants: Applicant[] }>> =>
+    getHiredApplicantsByDuty: async <T = Applicant>(duty: 'Standard' | 'Irregular'): Promise<AxiosResponse<{ applicants: T[] }>> =>
         api.get('/recruitment/hired-by-duty', { params: { duty } }),
 
     applyJob: async (formData: FormData): Promise<AxiosResponse> =>
@@ -65,9 +65,9 @@ export const recruitmentApi = {
 
     updateStage: async (applicantId: string | number, data: { 
         stage: ApplicantStage;
-        interview_date?: string;
-        interview_link?: string;
-        interview_platform?: string;
+        interviewDate?: string;
+        interviewLink?: string;
+        interviewPlatform?: string;
         notes?: string;
     }): Promise<AxiosResponse> =>
         api.put(`/recruitment/applicants/${applicantId}/stage`, data),

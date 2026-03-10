@@ -36,13 +36,13 @@ const EditEventModal = ({ show, event, onClose, onUpdate, hours = [], department
     defaultValues: {
         title: '',
         date: '',
-        start_date: '',
-        end_date: '',
+        startDate: '',
+        endDate: '',
         time: '',
         description: '',
         department: '',
-        recurring_pattern: 'none',
-        recurring_end_date: ''
+        recurringPattern: 'none',
+        recurringEndDate: ''
     }
   });
 
@@ -54,14 +54,14 @@ const EditEventModal = ({ show, event, onClose, onUpdate, hours = [], department
     if (event) {
       reset({ 
         title: event.title || '', 
-        date: event.start_date || event.date || '',
-        start_date: event.start_date || event.date || '', 
-        end_date: event.end_date || event.start_date || event.date || '', 
+        date: event.startDate || event.date || '',
+        startDate: event.startDate || event.date || '', 
+        endDate: event.endDate || event.startDate || event.date || '', 
         time: formatHour12(convertTo24Hour(event.time ?? undefined)), 
         description: event.description || '', 
         department: event.department || '', 
-        recurring_pattern: event.recurring_pattern || 'none', 
-        recurring_end_date: event.recurring_end_date || '' 
+        recurringPattern: event.recurringPattern || 'none', 
+        recurringEndDate: event.recurringEndDate || '' 
       });
     }
   }, [event, reset]);
@@ -80,14 +80,14 @@ const EditEventModal = ({ show, event, onClose, onUpdate, hours = [], department
   const onSubmit = (data: EventFormData) => {
     onUpdate({ 
       title: data.title, 
-      start_date: data.start_date, 
-      end_date: data.end_date, 
-      date: data.start_date, 
+      startDate: data.startDate, 
+      endDate: data.endDate, 
+      date: data.startDate, 
       time: data.time ? (convertTo24Hour(data.time) as unknown as string) : null, 
       description: data.description, 
       department: data.department || null, 
-      recurring_pattern: data.recurring_pattern, 
-      recurring_end_date: data.recurring_end_date 
+      recurringPattern: data.recurringPattern, 
+      recurringEndDate: data.recurringEndDate 
     });
   };
 
@@ -128,7 +128,7 @@ const EditEventModal = ({ show, event, onClose, onUpdate, hours = [], department
                 </label>
                 <input
                   type="date"
-                  {...register('start_date')}
+                  {...register('startDate')}
                   className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100 transition-all text-sm"
                   required
                 />
@@ -140,8 +140,8 @@ const EditEventModal = ({ show, event, onClose, onUpdate, hours = [], department
                 </label>
                 <input
                   type="date"
-                  {...register('end_date')}
-                  min={watch('start_date')}
+                  {...register('endDate')}
+                  min={watch('startDate')}
                   className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100 transition-all text-sm"
                 />
               </div>

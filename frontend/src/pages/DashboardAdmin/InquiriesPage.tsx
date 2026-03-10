@@ -48,7 +48,7 @@ const InquiriesPage = () => {
   });
 
   const filteredInquiries = inquiries.filter(inq => 
-    `${inq.first_name} ${inq.last_name}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    `${inq.firstName} ${inq.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
     inq.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
     inq.message.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -131,11 +131,11 @@ const InquiriesPage = () => {
                           {inquiry.status}
                         </span>
                         <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1">
-                          <Clock size={10} /> {new Date(inquiry.created_at).toLocaleDateString()}
+                          <Clock size={10} /> {new Date(inquiry.createdAt).toLocaleDateString()}
                         </span>
                       </div>
                       <div>
-                        <h4 className="font-black text-slate-900 text-sm">{inquiry.first_name} {inquiry.last_name}</h4>
+                        <h4 className="font-black text-slate-900 text-sm">{inquiry.firstName} {inquiry.lastName}</h4>
                         <p className="text-[11px] font-bold text-slate-400 lowercase">{inquiry.email}</p>
                       </div>
                       <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
@@ -156,11 +156,11 @@ const InquiriesPage = () => {
               <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                 <div className="flex items-center gap-4">
                   <div className="w-14 h-14 bg-slate-900 rounded-2xl flex items-center justify-center text-white text-xl font-black">
-                    {selectedInquiry.first_name[0]}{selectedInquiry.last_name[0]}
+                    {selectedInquiry.firstName[0]}{selectedInquiry.lastName[0]}
                   </div>
                   <div>
                     <h2 className="text-xl font-black text-slate-900 leading-tight">
-                      {selectedInquiry.first_name} {selectedInquiry.last_name}
+                      {selectedInquiry.firstName} {selectedInquiry.lastName}
                     </h2>
                     <p className="text-sm text-indigo-600 font-bold">{selectedInquiry.email}</p>
                   </div>
@@ -201,7 +201,7 @@ const InquiriesPage = () => {
                     <div className="bg-white border border-slate-100 rounded-2xl p-4 space-y-3 shadow-sm">
                       <div className="flex justify-between items-center text-xs">
                         <span className="text-slate-400 font-bold">Received At:</span>
-                        <span className="text-slate-900 font-black">{new Date(selectedInquiry.created_at).toLocaleString()}</span>
+                        <span className="text-slate-900 font-black">{new Date(selectedInquiry.createdAt).toLocaleString()}</span>
                       </div>
                       <div className="flex justify-between items-center text-xs">
                         <span className="text-slate-400 font-bold">Ref ID:</span>

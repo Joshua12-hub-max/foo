@@ -4,7 +4,7 @@ import { MEMO_TYPES, MEMO_PRIORITIES, MEMO_STATUSES } from '../Constants/memoCon
 
 interface Filters {
   search: string;
-  memo_type: string;
+  memoType: string;
   status: string;
 }
 
@@ -41,8 +41,8 @@ const MemoFilters: React.FC<MemoFiltersProps> = memo(({ filters, onFilterChange,
         {/* Type Filter */}
         <div className="md:col-span-1">
           <select
-            value={filters.memo_type}
-            onChange={(e) => onFilterChange('memo_type', e.target.value)}
+            value={filters.memoType}
+            onChange={(e) => onFilterChange('memoType', e.target.value)}
             className="w-full bg-white border border-gray-200 rounded-lg shadow-sm px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200 focus:border-gray-200 hover:border-gray-200 transition-all appearance-none cursor-pointer"
             aria-label="Filter by type"
           >

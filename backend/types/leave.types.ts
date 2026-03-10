@@ -104,69 +104,65 @@ export type MonetizationPurpose = typeof MONETIZATION_PURPOSE[number];
 
 export interface LeaveBalanceRow extends RowDataPacket {
   id: number;
-  employee_id: string;
-  credit_type: CreditType;
+  employeeId: string;
+  creditType: CreditType;
   balance: number;
   year: number;
-  updated_at: Date;
+  updatedAt: Date;
 }
 
 export interface LeaveLedgerRow extends RowDataPacket {
   id: number;
-  employee_id: string;
-  credit_type: CreditType;
-  transaction_type: TransactionType;
+  employeeId: string;
+  creditType: CreditType;
+  transactionType: TransactionType;
   amount: number;
-  balance_after: number;
-  reference_id: number | null;
-  reference_type: ReferenceType | null;
+  balanceAfter: number;
+  referenceId: number | null;
+  referenceType: ReferenceType | null;
   remarks: string | null;
-  created_by: string | null;
-  created_at: Date;
+  createdBy: string | null;
+  createdAt: Date;
 }
 
 export interface LeaveApplicationRow extends RowDataPacket {
   id: number;
-  employee_id: string;
-  leave_type: LeaveType;
-  start_date: string;
-  end_date: string;
-  working_days: number;
-  is_with_pay: boolean;
-  actual_payment_status: PaymentStatus;
-  days_with_pay: number;
-  days_without_pay: number;
-  cross_charged_from: string | null;
+  employeeId: string;
+  leaveType: LeaveType;
+  startDate: string;
+  endDate: string;
+  workingDays: number;
+  isWithPay: boolean;
+  actualPaymentStatus: PaymentStatus;
+  daysWithPay: number;
+  daysWithoutPay: number;
+  crossChargedFrom: string | null;
   reason: string;
-  medical_certificate_path: string | null;
   status: ApplicationStatus;
-  attachment_path: string | null;
-  admin_form_path: string | null;
-  final_attachment_path: string | null;
-  rejection_reason: string | null;
-  approved_by: string | null;
-  approved_at: Date | null;
-  created_at: Date;
-  updated_at: Date;
+  rejectionReason: string | null;
+  approvedBy: string | null;
+  approvedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
   // Joined fields
-  first_name?: string;
-  last_name?: string;
+  firstName?: string;
+  lastName?: string;
   department?: string;
 }
 
 export interface LeaveMonetizationRow extends RowDataPacket {
   id: number;
-  employee_id: string;
-  credit_type: 'Vacation Leave' | 'Sick Leave';
-  requested_days: number;
-  daily_rate: number;
-  total_amount: number;
+  employeeId: string;
+  creditType: 'Vacation Leave' | 'Sick Leave';
+  requestedDays: number;
+  dailyRate: number;
+  totalAmount: number;
   purpose: MonetizationPurpose;
   status: 'Pending' | 'Approved' | 'Rejected';
-  approved_by: string | null;
+  approvedBy: string | null;
   remarks: string | null;
-  created_at: Date;
-  updated_at: Date;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface HolidayRow extends RowDataPacket {
@@ -175,16 +171,16 @@ export interface HolidayRow extends RowDataPacket {
   date: string;
   type: HolidayType;
   year: number;
-  created_at: Date;
+  createdAt: Date;
 }
 
 export interface LWOPSummaryRow extends RowDataPacket {
   id: number;
-  employee_id: string;
+  employeeId: string;
   year: number;
-  total_lwop_days: number;
-  cumulative_lwop_days: number;
-  updated_at: Date;
+  totalLwopDays: number;
+  cumulativeLwopDays: number;
+  updatedAt: Date;
 }
 
 // ============================================================================
@@ -215,9 +211,6 @@ export interface LeaveApplicationResponse {
   crossChargedFrom: string | null;
   reason: string;
   status: ApplicationStatus;
-  attachmentPath: string | null;
-  adminFormPath: string | null;
-  finalAttachmentPath: string | null;
   rejectionReason: string | null;
   approvedBy: string | null;
   approvedAt: string | null;
@@ -340,12 +333,7 @@ export const LEAVE_TO_CREDIT_MAP: Partial<Record<LeaveType, CreditType | null>> 
 /**
  * VL must be filed at least 5 days in advance (in working days/calendar days)
  */
-export const VL_ADVANCE_FILING_DAYS = 5;
-
-/**
- * SL >= 5 days requires Medical Certificate (Screenshot says "5 days or more")
- */
-export const SL_MEDICAL_CERT_THRESHOLD = 5;
+export const VL_ADVANCE_FILING_DAYS = 0;
 
 /**
  * Paternity Leave: 7 days per year (RA 8187)

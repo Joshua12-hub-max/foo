@@ -4,6 +4,7 @@ import { verifyAdmin } from '../middleware/authMiddleware.js';
 import { uploadResume, uploadGeneral } from '../middleware/uploadMiddleware.js';
 import * as recruitmentController from '../controllers/recruitmentController.js';
 import { manualCheckEmails } from '../services/emailReceiverService.js';
+import { namingMiddleware } from '../middleware/namingMiddleware.js';
 import multer from 'multer';
 
 const router: Router = Router();
@@ -11,7 +12,7 @@ const router: Router = Router();
 // Anti-Spam: Rate Limit for public applications
 const applyRateLimit = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
-  max: 100, // Increased for development/testing
+  max: 5, // 5 applications per hour per IP (Spam prevention)
   message: { success: false, message: 'Too many applications from this IP. Please try again after an hour.' },
   standardHeaders: true,
   legacyHeaders: false,
@@ -37,7 +38,7 @@ router.post('/apply',
   applyRateLimit,
   uploadResume.fields([
     { name: 'resume', maxCount: 1 },
-    { name: 'eligibility_cert', maxCount: 1 },
+    { name: 'eligibilityCert', maxCount: 1 },
     { name: 'photo', maxCount: 1 }
   ]),
   handleMulterError,
@@ -45,8 +46,8 @@ router.post('/apply',
 );
 
 // Admin Routes
-router.post('/jobs', verifyAdmin, uploadGeneral.single('file'), handleMulterError, recruitmentController.createJob as RequestHandler);
-router.put('/jobs/:id', verifyAdmin, uploadGeneral.single('file'), handleMulterError, recruitmentController.updateJob as RequestHandler);
+router.post('/jobs', verifyAdmin, uploadGeneral.single('file'), handleMulterError, namingMiddleware, recruitmentController.createJob as RequestHandler);
+router.put('/jobs/:id', verifyAdmin, uploadGeneral.single('file'), handleMulterError, namingMiddleware, recruitmentController.updateJob as RequestHandler);
 router.delete('/jobs/:id', verifyAdmin, recruitmentController.deleteJob as RequestHandler);
 router.get('/applicants', verifyAdmin, recruitmentController.getApplicants as RequestHandler);
 router.get('/hired-by-duty', verifyAdmin, recruitmentController.getHiredByDuty as RequestHandler);

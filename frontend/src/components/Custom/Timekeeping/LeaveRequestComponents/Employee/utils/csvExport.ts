@@ -15,7 +15,7 @@ export const exportToCSV = async (data: Record<string, unknown>[], filename = 'l
   try {
     // Native CSV Export
     const headers = ['Employee ID', 'Employee Name', 'Leave Type', 'Start Date', 'End Date', 'Reason', 'Status'];
-    const keys = ['employee_id', 'name', 'leaveType', 'fromDate', 'toDate', 'reason', 'status'];
+    const keys = ['employeeId', 'name', 'leaveType', 'fromDate', 'toDate', 'reason', 'status'];
     
     const csvRows = [headers.join(',')];
 
@@ -51,7 +51,7 @@ export const exportToCSV = async (data: Record<string, unknown>[], filename = 'l
  */
 export const formatLeaveRequestsForCSV = (leaveRequests: EmployeeLeaveRequest[]) => {
   return leaveRequests.map(request => ({
-    employee_id: request.employee_id || '',
+    employeeId: request.employeeId || '',
     name: request.name || '',
     leaveType: request.leaveType || '',
     fromDate: request.fromDate || '',

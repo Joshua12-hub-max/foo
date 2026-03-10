@@ -4,8 +4,9 @@ import { useQuery } from "@tanstack/react-query";
 
 // Standardizing Aliased Imports
 import { useAuth } from "@hooks/useAuth";
-import { attendanceApi } from "@api/attendanceApi";
+import { attendanceApi, DashboardStatsResponse, EmployeeStats } from "@api/attendanceApi";
 import { useUIStore } from "@/stores/uiStore";
+import { User, Employee } from "@/types";
 
 // Dashboard Components
 import Sidebar from "@components/Custom/DashboardAdminComponents/Sidebar";
@@ -31,33 +32,10 @@ import {
 
 // --- Interfaces ---
 
-export interface User {
-  id: number;
-  email: string;
-  first_name?: string;
-  last_name?: string;
-  name?: string;
-  role?: string;
-  department_id?: number;
-  department_name?: string;
-  avatar?: string;
-}
-
+// StatCardData interface
 export interface StatCardData {
   title: string;
   data: number;
-}
-
-export interface Employee {
-  id: number;
-  first_name?: string;
-  last_name?: string;
-  name: string; // Added to match child component requirements
-  email?: string;
-  department_name?: string;
-  department?: string; // Added for compatibility
-  status?: string;
-  [key: string]: string | number | boolean | null | undefined; // Allow for other fields like timeIn, lateBy, etc.
 }
 
 export interface EmployeeLists {
@@ -166,34 +144,38 @@ export default function HDashboard(): React.ReactElement {
 
   const { data: dashboardData, isLoading: loading } = useQuery({
     queryKey: ['adminDashboardStats'],
-    queryFn: async () => {
+    queryFn: async (): Promise<DashboardStatsResponse['data'] | undefined> => {
       const response = await attendanceApi.getDashboardStats();
       return response.data?.data;
     }
   });
 
-  const stats = useMemo(() => ({
-    present: dashboardData?.counts?.present || 0,
-    absent: dashboardData?.counts?.absent || 0,
-    late: dashboardData?.counts?.late || 0,
-    leave: dashboardData?.counts?.onLeave || 0,
-    hired: dashboardData?.counts?.hired || 0
-  }), [dashboardData]);
+  const stats = useMemo(() => {
+    const counts = dashboardData?.counts;
+    return {
+      present: counts?.present || 0,
+      absent: counts?.absent || 0,
+      late: counts?.late || 0,
+      leave: counts?.onLeave || 0,
+      hired: counts?.hired || 0
+    };
+  }, [dashboardData]);
 
   const employeeLists = useMemo(() => {
-    const processList = (list: Record<string, string | number | null | undefined>[]): Employee[] => (list || []).map(emp => ({
+    const processList = (list?: EmployeeStats[]): Employee[] => (list || []).map(emp => ({
       ...emp,
       id: Number(emp.id) || 0,
-      name: String(emp.name || `${emp.first_name || ''} ${emp.last_name || ''}`.trim()),
-      department: String(emp.department || emp.department_name || ''),
-    }));
+      name: String(emp.name || `${emp.firstName || ''} ${emp.lastName || ''}`.trim()),
+      department: String(emp.department || emp.departmentName || ''),
+    } as Employee));
 
+    const lists = dashboardData?.lists;
     return {
-      present: processList(dashboardData?.lists?.present),
-      absent: processList(dashboardData?.lists?.absent),
-      late: processList(dashboardData?.lists?.late),
-      onLeave: processList(dashboardData?.lists?.onLeave),
-      hired: processList(dashboardData?.lists?.hired)
+      present: processList(lists?.present),
+      absent: processList(lists?.absent),
+      late: processList(lists?.late),
+      onLeave: processList(lists?.onLeave),
+      hired: processList(lists?.hired)
     };
   }, [dashboardData]);
 

@@ -5,19 +5,19 @@ import { formatDate, getStatusBadge, getPriorityBadge } from '../Shared/memoUtil
 
 interface Memo {
   id: number;
-  memo_number: string;
-  memo_type: string;
-  employee_name: string;
+  memoNumber: string;
+  memoType: string;
+  employeeName: string;
   subject: string;
   priority: string;
   status: string;
-  created_at: string;
-  employee_id: string | number;
+  createdAt: string;
+  employeeId: string | number;
   content?: string;
-  effective_date?: string;
-  acknowledgment_required?: boolean;
-  acknowledged_at?: string;
-  author_name?: string;
+  effectiveDate?: string;
+  acknowledgmentRequired?: boolean;
+  acknowledgedAt?: string;
+  authorName?: string;
 }
 
 interface MemoRowProps {
@@ -40,16 +40,16 @@ const MemoRow: React.FC<MemoRowProps> = memo(({ memo, onView, onEdit, onDelete }
           {memo.status}
         </span>
       </td>
-      <td className="px-6 py-4 text-sm text-gray-800 font-medium">{memo.memo_number}</td>
-      <td className="px-6 py-4 text-sm text-gray-600">{memo.memo_type}</td>
-      <td className="px-6 py-4 text-sm text-gray-800">{memo.employee_name}</td>
+      <td className="px-6 py-4 text-sm text-gray-800 font-medium">{memo.memoNumber}</td>
+      <td className="px-6 py-4 text-sm text-gray-600">{memo.memoType}</td>
+      <td className="px-6 py-4 text-sm text-gray-800">{memo.employeeName}</td>
       <td className="px-6 py-4 text-sm text-gray-700 max-w-xs truncate">{memo.subject}</td>
       <td className="px-6 py-4">
         <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getPriorityBadge(memo.priority)}`}>
           {memo.priority}
         </span>
       </td>
-      <td className="px-6 py-4 text-sm text-gray-500">{formatDate(memo.created_at)}</td>
+      <td className="px-6 py-4 text-sm text-gray-500">{formatDate(memo.createdAt)}</td>
       <td className="px-6 py-4">
         <div className="flex items-center justify-center gap-2">
           <button

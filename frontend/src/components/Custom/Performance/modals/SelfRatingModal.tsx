@@ -4,20 +4,13 @@ import { X } from 'lucide-react';
 import RatingLegend from '../RatingLegend';
 import { CSC_RATING_SCALE } from '../constants/performanceConstants';
 
-interface SelfRatingItem {
-  id?: string | number;
-  criteria_title: string;
-  criteria_description?: string;
-  self_score?: number | string;
-  actual_accomplishments?: string;
-  [key: string]: any;
-}
+import { PerformanceItem, PerformanceReview } from '../types';
 
 interface SelfRatingModalProps {
   isOpen: boolean;
   onClose: () => void;
-  selectedReview: any; // Using any as the structure is complex and validated elsewhere
-  selfRatingItems: SelfRatingItem[];
+  selectedReview: PerformanceReview;
+  selfRatingItems: PerformanceItem[];
   selfRemarks: string;
   saving: boolean;
   onUpdateScore: (index: number, value: string) => void;
@@ -76,15 +69,15 @@ const SelfRatingModal: React.FC<SelfRatingModalProps> = ({
                 <div key={item.id || idx} className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all">
                   <div className="flex flex-col md:flex-row md:items-start gap-4 mb-4">
                     <div className="flex-1">
-                      <p className="font-bold text-gray-900 text-lg mb-1">{item.criteria_title}</p>
-                      <p className="text-sm text-gray-500 leading-relaxed">{item.criteria_description}</p>
+                      <p className="font-bold text-gray-900 text-lg mb-1">{item.criteriaTitle}</p>
+                      <p className="text-sm text-gray-500 leading-relaxed">{item.criteriaDescription}</p>
                     </div>
                     <div className="min-w-[200px]">
                       <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5 ml-1">
                         Your Rating
                       </label>
                       <select
-                        value={item.self_score || 0}
+                        value={item.selfScore || 0}
                         onChange={(e) => onUpdateScore(idx, e.target.value)}
                         className="w-full px-4 py-2.5 border border-gray-200 rounded-lg font-semibold text-gray-900 bg-gray-50 focus:ring-4 focus:ring-gray-100 focus:border-gray-300 outline-none transition-all cursor-pointer hover:bg-gray-100"
                       >
@@ -102,7 +95,7 @@ const SelfRatingModal: React.FC<SelfRatingModalProps> = ({
                       Actual Accomplishments
                     </label>
                     <textarea
-                      value={item.actual_accomplishments || ''}
+                      value={item.actualAccomplishments || ''}
                       onChange={(e) => onUpdateAccomplishments(idx, e.target.value)}
                       placeholder="Describe your specific accomplishments and evidence for this rating..."
                       className="w-full p-4 text-sm border border-gray-200 rounded-xl resize-none h-24 focus:ring-4 focus:ring-gray-100 focus:border-gray-300 outline-none transition-all placeholder:text-gray-400"

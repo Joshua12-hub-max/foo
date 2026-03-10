@@ -1,9 +1,9 @@
 import React from 'react';
 
 interface EvaluationStats {
-  average_score?: number | string;
-  total_reviews?: number;
-  pending_actions?: number;
+  averageScore?: number | string;
+  totalReviews?: number;
+  pendingActions?: number;
 }
 
 interface EmployeeEvaluationSummaryProps {
@@ -21,20 +21,20 @@ const EmployeeEvaluationSummary: React.FC<EmployeeEvaluationSummaryProps> = ({ s
     return { label: 'Poor', color: 'text-red-600' };
   };
 
-  const rating = getAdjectivalRating(stats.average_score);
+  const rating = getAdjectivalRating(stats.averageScore);
 
   const cards = [
     {
       title: 'Total Reviews',
-      value: stats.total_reviews || 0,
+      value: stats.totalReviews || 0,
       color: 'text-blue-600',
       bgColor: 'bg-blue-50',
       borderColor: 'border-blue-100'
     },
     {
       title: 'Average Score',
-      value: stats.average_score ? parseFloat(stats.average_score.toString()).toFixed(2) : '—',
-      suffix: stats.average_score ? ' / 5.0' : '',
+      value: stats.averageScore ? parseFloat(stats.averageScore.toString()).toFixed(2) : '—',
+      suffix: stats.averageScore ? ' / 5.0' : '',
       color: 'text-yellow-600',
       bgColor: 'bg-yellow-50',
       borderColor: 'border-yellow-100'
@@ -49,12 +49,13 @@ const EmployeeEvaluationSummary: React.FC<EmployeeEvaluationSummaryProps> = ({ s
     },
     {
       title: 'Pending Actions',
-      value: stats.pending_actions || 0,
-      color: (stats.pending_actions || 0) > 0 ? 'text-orange-600' : 'text-green-600',
-      bgColor: (stats.pending_actions || 0) > 0 ? 'bg-orange-50' : 'bg-green-50',
-      borderColor: (stats.pending_actions || 0) > 0 ? 'border-orange-100' : 'border-green-100'
+      value: stats.pendingActions || 0,
+      color: (stats.pendingActions || 0) > 0 ? 'text-orange-600' : 'text-green-600',
+      bgColor: (stats.pendingActions || 0) > 0 ? 'bg-orange-50' : 'bg-green-50',
+      borderColor: (stats.pendingActions || 0) > 0 ? 'border-orange-100' : 'border-green-100'
     }
   ];
+
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">

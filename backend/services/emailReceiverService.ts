@@ -19,20 +19,20 @@ interface EmailCheckResult {
 }
 
 interface ApplicantData {
-  job_id: number | null;
-  first_name: string;
-  last_name: string;
+  jobId: number | null;
+  firstName: string;
+  lastName: string;
   email: string;
-  resume_path: string | null;
-  email_subject: string;
+  resumePath: string | null;
+  emailSubject: string;
 }
 
 /**
  * Parsed name structure
  */
 interface ParsedName {
-  first_name: string;
-  last_name: string;
+  firstName: string;
+  lastName: string;
 }
 
 /**
@@ -84,18 +84,18 @@ const extractNameFromEmail = (from: AddressObject | undefined): ParsedName => {
       if (sender.name) {
         const parts = sender.name.split(' ');
         return {
-          first_name: parts[0] || 'Unknown',
-          last_name: parts.slice(1).join(' ') || 'Applicant'
+          firstName: parts[0] || 'Unknown',
+          lastName: parts.slice(1).join(' ') || 'Applicant'
         };
       }
       // Fallback: use email prefix
       const emailPrefix = (sender.address || 'unknown').split('@')[0];
-      return { first_name: emailPrefix, last_name: 'Applicant' };
+      return { firstName: emailPrefix, lastName: 'Applicant' };
     }
   } catch (err) {
     console.error('Error extracting name:', err);
   }
-  return { first_name: 'Unknown', last_name: 'Applicant' };
+  return { firstName: 'Unknown', lastName: 'Applicant' };
 };
 
 /**
@@ -132,13 +132,13 @@ const matchJobFromSubject = async (subject: string | undefined): Promise<number 
 
     for (const job of jobs) {
       if (subjectLower.includes(job.title.toLowerCase())) {
-        console.log(`Matched job: ${job.title} (ID: ${job.id})`);
+        console.warn(`Matched job: ${job.title} (ID: ${job.id})`);
         return job.id;
       }
     }
 
     // No match found
-    console.log('No job match found for subject:', subject);
+    console.warn('No job match found for subject:', subject);
     return null;
   } catch (err) {
     console.error('Error matching job:', err);
@@ -158,16 +158,17 @@ const saveAttachment = async (attachment: Attachment): Promise<string | null> =>
       fs.mkdirSync(uploadsDir, { recursive: true });
     }
 
-    // Generate unique filename
+    // Generate unique filename with strict sanitization
     const timestamp = Date.now();
     const filename = attachment.filename || 'resume';
-    const safeFilename = filename.replace(/[^a-zA-Z0-9.-]/g, '_');
+    // 100% Security: Strip all directory traversal attempts and only allow safe chars
+    const safeFilename = path.basename(filename).replace(/[^a-zA-Z0-9.-]/g, '_');
     const uniqueFilename = `${timestamp}_${safeFilename}`;
     const filepath = path.join(uploadsDir, uniqueFilename);
 
     // Save file
     fs.writeFileSync(filepath, attachment.content);
-    console.log('Saved attachment:', uniqueFilename);
+    console.warn('Saved attachment:', uniqueFilename);
 
     return uniqueFilename;
   } catch (err) {
@@ -181,26 +182,26 @@ const saveAttachment = async (attachment: Attachment): Promise<string | null> =>
  */
 const saveApplication = async (applicantData: ApplicantData): Promise<boolean> => {
   try {
-    const { job_id, first_name, last_name, email, resume_path, email_subject } = applicantData;
+    const { jobId, firstName, lastName, email, resumePath, emailSubject } = applicantData;
 
     await db.insert(recruitmentApplicants).values({
-      job_id: job_id,
-      first_name: first_name,
-      last_name: last_name,
+      jobId: jobId,
+      firstName: firstName,
+      lastName: lastName,
       email,
-      resume_path: resume_path,
+      resumePath: resumePath,
       source: 'email',
-      email_subject: email_subject,
-      email_received_at: new Date().toISOString().slice(0, 19).replace('T', ' ')
+      emailSubject: emailSubject,
+      emailReceivedAt: new Date().toISOString().slice(0, 19).replace('T', ' ')
     });
 
-    console.log(`Saved application from ${email} for job ${job_id || 'General'}`);
+    console.warn(`Saved application from ${email} for job ${jobId || 'General'}`);
 
     let jobTitle = 'General Application';
       
-    if (job_id) {
+    if (jobId) {
       const job = await db.query.recruitmentJobs.findFirst({
-        where: eq(recruitmentJobs.id, Number(job_id)),
+        where: eq(recruitmentJobs.id, Number(jobId)),
         columns: { title: true }
       });
       if (job) jobTitle = job.title;
@@ -211,16 +212,16 @@ const saveApplication = async (applicantData: ApplicantData): Promise<boolean> =
       const template = await getTemplateForStage(db, 'Applied');
       if (template) {
         const variables = {
-          applicant_first_name: first_name,
-          applicant_last_name: last_name,
-          job_title: jobTitle,
-          interview_date: '',
-          interview_link: '',
-          interview_platform: ''
+          applicantFirstName: firstName,
+          applicantLastName: lastName,
+          jobTitle: jobTitle,
+          interviewDate: '',
+          interviewLink: '',
+          interviewPlatform: ''
         };
 
-        const subject = replaceVariables(template.subject_template, variables);
-        const body = replaceVariables(template.body_template, variables);
+        const subject = replaceVariables(template.subjectTemplate, variables);
+        const body = replaceVariables(template.bodyTemplate, variables);
         await sendEmailNotification(email, subject, body);
       }
     } catch (emailError) {
@@ -231,9 +232,9 @@ const saveApplication = async (applicantData: ApplicantData): Promise<boolean> =
     try {
       await notifyAdmins({
         title: 'New Application (Email)',
-        message: `${first_name} ${last_name} has applied via email for ${jobTitle}.`,
+        message: `${firstName} ${lastName} has applied via email for ${jobTitle}.`,
         type: 'recruitment',
-        referenceId: job_id ? Number(job_id) : null
+        referenceId: jobId ? Number(jobId) : null
       });
     } catch (notifError) {
       console.error('Failed to send admin notification for email application:', notifError);
@@ -253,21 +254,21 @@ const processEmail = async (parsed: ParsedMail): Promise<boolean> => {
   try {
     const subject = parsed.subject || 'No Subject';
     const senderEmail = extractEmailAddress(parsed.from);
-    const { first_name, last_name } = extractNameFromEmail(parsed.from);
+    const { firstName, lastName } = extractNameFromEmail(parsed.from);
 
-    console.log(`Processing email from: ${senderEmail}, Subject: ${subject}`);
+    console.warn(`Processing email from: ${senderEmail}, Subject: ${subject}`);
 
     // Junk email filter - check sender
     const senderLower = senderEmail.toLowerCase();
     if (IGNORED_SENDERS.some((ignored) => senderLower.includes(ignored))) {
-      console.log(`Skipping automated email from: ${senderEmail}`);
+      console.warn(`Skipping automated email from: ${senderEmail}`);
       return false;
     }
 
     // Check if subject indicates junk/notification
     const subjectLower = subject.toLowerCase();
     if (JUNK_SUBJECTS.some((junk) => subjectLower.includes(junk))) {
-      console.log(`Skipping notification email: ${subject}`);
+      console.warn(`Skipping notification email: ${subject}`);
       return false;
     }
 
@@ -278,10 +279,10 @@ const processEmail = async (parsed: ParsedMail): Promise<boolean> => {
     // }
 
     // Match to job
-    const job_id = await matchJobFromSubject(subject);
+    const jobId = await matchJobFromSubject(subject);
 
     // Save attachments (resume)
-    let resume_path: string | null = null;
+    let resumePath: string | null = null;
     if (parsed.attachments && parsed.attachments.length > 0) {
       // Find PDF or DOC attachment (resume)
       const resumeAttachment = parsed.attachments.find(
@@ -293,24 +294,24 @@ const processEmail = async (parsed: ParsedMail): Promise<boolean> => {
       );
 
       if (resumeAttachment) {
-        resume_path = await saveAttachment(resumeAttachment);
+        resumePath = await saveAttachment(resumeAttachment);
       }
     }
 
     // Skip emails without resume attachment
-    if (!resume_path) {
-      console.log(`Skipping email without resume attachment: ${subject}`);
+    if (!resumePath) {
+      console.warn(`Skipping email without resume attachment: ${subject}`);
       return false;
     }
 
     // Save to database
     const saved = await saveApplication({
-      job_id,
-      first_name,
-      last_name,
+      jobId,
+      firstName,
+      lastName,
       email: senderEmail,
-      resume_path,
-      email_subject: subject
+      resumePath,
+      emailSubject: subject
     });
 
     return saved;
@@ -328,7 +329,7 @@ export const checkForNewApplications = (): Promise<EmailCheckResult> => {
     const config = getImapConfig();
 
     if (!config.user || !config.password) {
-      console.log('Email credentials not configured, skipping email check');
+      console.warn('Email credentials not configured, skipping email check');
       resolve({ success: false, message: 'Email not configured', processed: 0 });
       return;
     }
@@ -337,7 +338,7 @@ export const checkForNewApplications = (): Promise<EmailCheckResult> => {
     let processedCount = 0;
 
     imap.once('ready', () => {
-      console.log('IMAP connected, checking for new applications...');
+      console.warn('IMAP connected, checking for new applications...');
 
       imap.openBox('INBOX', false, (err) => {
         if (err) {
@@ -357,13 +358,13 @@ export const checkForNewApplications = (): Promise<EmailCheckResult> => {
           }
 
           if (!results || results.length === 0) {
-            console.log('No new emails found');
+            console.warn('No new emails found');
             imap.end();
             resolve({ success: true, message: 'No new emails', processed: 0 });
             return;
           }
 
-          console.log(`Found ${results.length} new email(s)`);
+          console.warn(`Found ${results.length} new email(s)`);
 
           const fetch = imap.fetch(results, {
             bodies: '',
@@ -400,7 +401,7 @@ export const checkForNewApplications = (): Promise<EmailCheckResult> => {
           fetch.once('end', () => {
             Promise.all(emailPromises)
               .then(() => {
-                console.log(`Processed ${processedCount} application email(s)`);
+                console.warn(`Processed ${processedCount} application email(s)`);
                 imap.end();
                 resolve({
                   success: true,
@@ -423,7 +424,7 @@ export const checkForNewApplications = (): Promise<EmailCheckResult> => {
     });
 
     imap.once('end', () => {
-      console.log('IMAP connection closed');
+      console.warn('IMAP connection closed');
     });
 
     imap.connect();

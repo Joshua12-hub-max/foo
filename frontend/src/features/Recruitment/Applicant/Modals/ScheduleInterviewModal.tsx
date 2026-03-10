@@ -38,6 +38,7 @@ const ScheduleInterviewModal: React.FC<ScheduleInterviewModalProps> = ({
     handleSubmit,
     watch,
     setValue,
+    reset,
     formState: { errors, isSubmitting }
   } = useForm<ScheduleInterviewFormData>({
     resolver: zodResolver(scheduleInterviewSchema),
@@ -49,6 +50,18 @@ const ScheduleInterviewModal: React.FC<ScheduleInterviewModalProps> = ({
       notes: initialData?.notes || ''
     }
   });
+
+  useEffect(() => {
+    if (isOpen) {
+      reset({
+        date: initialData?.date || selectedApplicant?.interviewDate?.split('T')[0] || '',
+        time: initialData?.time || (selectedApplicant?.interviewDate ? new Date(selectedApplicant.interviewDate).toTimeString().substring(0, 5) : ''),
+        platform: initialData?.platform || selectedApplicant?.interviewPlatform || 'Jitsi Meet',
+        link: initialData?.link || selectedApplicant?.interviewLink || '',
+        notes: initialData?.notes || selectedApplicant?.interviewNotes || ''
+      });
+    }
+  }, [isOpen, selectedApplicant, initialData, reset]);
 
   const platform = watch('platform');
   const date = watch('date');
@@ -142,7 +155,7 @@ const ScheduleInterviewModal: React.FC<ScheduleInterviewModalProps> = ({
         topic: 'Interview',
         startTime: `${date}T${time}:00`,
         duration: 60,
-        applicantName: `${selectedApplicant.first_name} ${selectedApplicant.last_name}`,
+        applicantName: `${selectedApplicant.firstName} ${selectedApplicant.lastName}`,
       });
       return response.data;
     },
@@ -190,7 +203,7 @@ const ScheduleInterviewModal: React.FC<ScheduleInterviewModalProps> = ({
     
     // Small delay to show loading state
     setTimeout(() => {
-      const link = generateJitsiLink(`${selectedApplicant.first_name}-${selectedApplicant.last_name}`);
+      const link = generateJitsiLink(`${selectedApplicant.firstName}-${selectedApplicant.lastName}`);
       setValue('link', link, { shouldValidate: true });
       setIsGeneratingJitsi(false);
     }, 300);
@@ -237,7 +250,7 @@ const ScheduleInterviewModal: React.FC<ScheduleInterviewModalProps> = ({
           <div className="p-6 overflow-y-auto">
             <p className="text-sm text-gray-500 mb-6 bg-blue-50 text-blue-700 px-4 py-3 rounded-lg border border-blue-100 flex items-center gap-2">
               <Mail size={16} />
-              <span>This will send an invitation email to <strong>{selectedApplicant?.first_name}</strong>.</span>
+              <span>This will send an invitation email to <strong>{selectedApplicant?.firstName}</strong>.</span>
             </p>
             
             <div className="space-y-5">

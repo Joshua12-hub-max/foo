@@ -6,47 +6,41 @@
 // Re-export all types from central location
 export * from '@/types/leave.types';
 
-// Legacy type aliases for backward compatibility
 export interface LeaveCredit {
   id: number;
-  employee_id: string;
-  first_name: string;
-  last_name: string;
+  employeeId: string;
+  firstName: string;
+  lastName: string;
   department: string;
-  credit_type: string;
+  creditType: string;
   balance: number;
-  days_used_with_pay: number;
-  days_used_without_pay: number;
-  // New CSC fields
+  daysUsedWithPay: number;
+  daysUsedWithoutPay: number;
   year?: number;
-  updated_at?: string;
+  updatedAt?: string;
 }
 
 export interface AdminLeaveRequest {
   id: string | number;
-  employee_id: string;
-  name: string;
+  employeeId: string;
+  firstName: string;
+  lastName: string;
   department: string;
   leaveType: string;
-  fromDate: string;
-  toDate: string;
+  startDate: string;
+  endDate: string;
   reason: string;
   status: string;
-  with_pay: boolean;
-  attachment_path?: string;
-  final_attachment_path?: string;
-  first_name: string;
-  last_name: string;
-  leave_type: string;
-  start_date: string;
-  end_date: string;
-  current_balance?: number;
-  // New CSC fields
-  working_days?: number;
-  actual_payment_status?: string;
-  days_with_pay?: number;
-  days_without_pay?: number;
-  cross_charged_from?: string | null;
+  isWithPay: boolean;
+  attachmentPath?: string | null;
+  adminFormPath?: string | null;
+  finalAttachmentPath?: string | null;
+  currentBalance?: number;
+  workingDays?: number;
+  actualPaymentStatus?: string;
+  daysWithPay?: number;
+  daysWithoutPay?: number;
+  crossChargedFrom?: string | null;
 }
 
 export interface LeaveFilters {
@@ -58,28 +52,23 @@ export interface LeaveFilters {
 
 export interface EmployeeLeaveRequest {
   id: number;
-  employee_id: string;
+  employeeId: string;
+  firstName: string;
+  lastName: string;
+  department: string;
   leaveType: string;
-  fromDate: string;
-  toDate: string;
+  startDate: string;
+  endDate: string;
   reason: string;
   status: string;
-  with_pay: boolean | number;
-  attachment_path: string | null;
-  department: string;
-  name: string;
-  first_name?: string;
-  last_name?: string;
-  start_date?: string;
-  end_date?: string;
-  leave_type?: string;
-  // New CSC fields
-  working_days?: number;
-  actual_payment_status?: string;
-  days_with_pay?: number;
-  days_without_pay?: number;
-  admin_form_path?: string | null;
-  final_attachment_path?: string | null;
+  isWithPay: boolean | number;
+  attachmentPath: string | null;
+  adminFormPath?: string | null;
+  finalAttachmentPath?: string | null;
+  workingDays?: number;
+  actualPaymentStatus?: string;
+  daysWithPay?: number;
+  daysWithoutPay?: number;
 }
 
 export interface EmployeeLeaveFilters {

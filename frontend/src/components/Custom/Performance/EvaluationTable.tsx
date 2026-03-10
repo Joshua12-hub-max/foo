@@ -39,8 +39,8 @@ const EvaluationTable: React.FC<EvaluationTableProps> = ({ employees, loading })
      if (!employee.status || employee.status === 'Not Started') {
         navigate(`/admin-dashboard/performance/reviews/new?employeeId=${employee.id}`);
      } else {
-        if (employee.review_id) {
-            navigate(`/admin-dashboard/performance/reviews/${employee.review_id}`);
+        if (employee.reviewId) {
+            navigate(`/admin-dashboard/performance/reviews/${employee.reviewId}`);
         } else {
             navigate(`/admin-dashboard/performance/reviews/new?employeeId=${employee.id}`);
         }
@@ -88,17 +88,17 @@ const EvaluationTable: React.FC<EvaluationTableProps> = ({ employees, loading })
               <tr key={employee.id} className="hover:bg-[#F8F9FA] hover:shadow-xl transition-colors group">
                 <td className="px-6 py-4">
                    <div className="flex items-center gap-3">
-                      {employee.avatar_url ? (
-                          <img src={employee.avatar_url} alt="" className="w-10 h-10 rounded-full object-cover border border-gray-200" />
+                      {employee.avatarUrl ? (
+                          <img src={employee.avatarUrl} alt="" className="w-10 h-10 rounded-full object-cover border border-gray-200" />
                       ) : (
                           <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-700 font-bold border border-gray-300">
-                              {employee.first_name?.[0]}{employee.last_name?.[0]}
+                              {employee.firstName?.[0]}{employee.lastName?.[0]}
                           </div>
                       )}
                       <div>
                           <div className="font-bold text-gray-800 text-sm">{employee.name}</div>
-                          <div className="text-xs text-gray-500">{employee.job_title}</div>
-                          <div className="text-[10px] text-gray-400 font-mono">{employee.employee_id}</div>
+                          <div className="text-xs text-gray-500">{employee.jobTitle}</div>
+                          <div className="text-[10px] text-gray-400 font-mono">{employee.employeeId}</div>
                       </div>
                    </div>
                 </td>
@@ -113,7 +113,7 @@ const EvaluationTable: React.FC<EvaluationTableProps> = ({ employees, loading })
                    )}
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-500">
-                   {employee.last_evaluation_date ? new Date(employee.last_evaluation_date).toLocaleDateString() : 'Never'}
+                   {employee.lastEvaluationDate ? new Date(employee.lastEvaluationDate).toLocaleDateString() : 'Never'}
                 </td>
                 <td className="px-6 py-4">
                   <span className={`px-3 py-1 rounded-full text-xs font-medium border ${statusConfig.color}`}>

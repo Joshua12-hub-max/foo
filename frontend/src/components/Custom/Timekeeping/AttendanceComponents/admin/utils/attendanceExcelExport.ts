@@ -49,10 +49,10 @@ const formatTime = (timeStr: string): string => {
  */
 const getEmployeeName = (record: AttendanceRecord): string => {
   if (record.name) return record.name;
-  if (record.first_name || record.last_name) {
-    return `${record.first_name || ''} ${record.last_name || ''}`.trim();
+  if (record.firstName || record.lastName) {
+    return `${record.firstName || ''} ${record.lastName || ''}`.trim();
   }
-  return `Employee #${record.employee_id}`;
+  return `Employee #${record.employeeId}`;
 };
 
 /**
@@ -198,8 +198,8 @@ export const exportAttendanceToExcel = async (
     const sortedData = [...data];
     if (groupByDepartment) {
       sortedData.sort((a, b) => {
-        const deptA = a.department_name || a.department || '';
-        const deptB = b.department_name || b.department || '';
+        const deptA = a.departmentName || a.department || '';
+        const deptB = b.departmentName || b.department || '';
         return deptA.localeCompare(deptB);
       });
     }
@@ -212,7 +212,7 @@ export const exportAttendanceToExcel = async (
     limitedData.forEach((record, index) => {
       // Add department separator if grouping
       if (groupByDepartment) {
-        const dept = record.department_name || record.department || 'Unassigned';
+        const dept = record.departmentName || record.department || 'Unassigned';
         if (dept !== currentDepartment) {
           currentDepartment = dept;
           const deptRow = worksheet.addRow([`Department: ${dept}`]);
@@ -230,8 +230,8 @@ export const exportAttendanceToExcel = async (
       const row = worksheet.addRow([
         getEmployeeName(record),
         formatDate(record.date),
-        formatTime(record.time_in),
-        formatTime(record.time_out),
+        formatTime(record.timeIn),
+        formatTime(record.timeOut),
         formatMinutes(record.late),
         formatMinutes(record.undertime),
         record.status || '-'
@@ -306,8 +306,8 @@ export const exportAttendanceToCSV = (
       ...data.map(record => [
         `"${getEmployeeName(record)}"`,
         `"${formatDate(record.date)}"`,
-        `"${formatTime(record.time_in)}"`,
-        `"${formatTime(record.time_out)}"`,
+        `"${formatTime(record.timeIn)}"`,
+        `"${formatTime(record.timeOut)}"`,
         `"${formatMinutes(record.late)}"`,
         `"${formatMinutes(record.undertime)}"`,
         `"${record.status || '-'}"`

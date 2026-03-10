@@ -5,20 +5,20 @@ export type ApplicantStage = 'Applied' | 'Screening' | 'Initial Interview' | 'Fi
 
 export interface KanbanApplicant {
   id: number;
-  first_name: string;
-  last_name: string;
+  firstName: string;
+  lastName: string;
   email: string;
-  phone_number?: string;
+  phoneNumber?: string;
   stage: string;
   status?: string;
-  job_title?: string;
-  job_requirements?: string;
-  job_department?: string;
+  jobTitle?: string;
+  jobRequirements?: string;
+  jobDepartment?: string;
   source?: string;
-  created_at?: string;
-  interviewer_name?: string;
-  interview_date?: string;
-  resume_path?: string;
+  createdAt?: string;
+  interviewerName?: string;
+  interviewDate?: string;
+  resumePath?: string;
 }
 
 const useKanbanData = (showNotification: (message: string, type: 'success' | 'error') => void) => {

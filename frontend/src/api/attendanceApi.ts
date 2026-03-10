@@ -3,7 +3,7 @@ import { AxiosResponse } from 'axios';
 import { AttendanceQueryValues } from '../schemas/attendanceSchema';
 
 import { DTRApiResponse, AttendanceLogApiResponse } from '../types/attendance';
-import { MonitorLogData } from '../types';
+import { MonitorLogData, ApiResponse } from '../types';
 
 interface AttendanceLogResponse {
     success: boolean;
@@ -34,6 +34,36 @@ export interface AttendanceActionResponse {
         timeIn: string | null;
         timeOut: string | null;
         status?: string;
+    };
+}
+
+export interface EmployeeStats {
+    id: number;
+    employeeId: string;
+    firstName: string;
+    lastName: string;
+    department: string;
+    departmentName?: string;
+    name?: string; // Derived field
+}
+
+export interface DashboardStatsResponse {
+    success: boolean;
+    data: {
+        counts: {
+            present: number;
+            absent: number;
+            late: number;
+            onLeave: number;
+            hired: number;
+        };
+        lists: {
+            present: EmployeeStats[];
+            absent: EmployeeStats[];
+            late: EmployeeStats[];
+            onLeave: EmployeeStats[];
+            hired: EmployeeStats[];
+        };
     };
 }
 
@@ -70,7 +100,7 @@ export const attendanceApi = {
     getTodayStatus: async (employeeId?: string): Promise<AxiosResponse<AttendanceActionResponse>> => {
         return await api.get('/attendance/today-status', { params: { employeeId } });
     },
-    getDashboardStats: async (): Promise<AxiosResponse> => {
-        return await api.get('/attendance/dashboard-stats');
+    getDashboardStats: async (): Promise<AxiosResponse<DashboardStatsResponse>> => {
+        return await api.get<DashboardStatsResponse>('/attendance/dashboard-stats');
     }
 };

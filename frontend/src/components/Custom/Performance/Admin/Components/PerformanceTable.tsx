@@ -82,7 +82,7 @@ export const PerformanceTable: React.FC<PerformanceTableProps> = ({
                       {item.status}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-xs font-bold text-gray-900">{item.employee_id || item.id}</td>
+                  <td className="px-6 py-4 text-xs font-bold text-gray-900">{item.employeeId || item.id}</td>
                   <td className="px-6 py-4">
                       <div className="text-sm font-bold text-gray-900">{item.name}</div>
                   </td>

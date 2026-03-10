@@ -3,15 +3,15 @@ import axios from '@/api/axios';
 
 export interface Profile {
   id?: number;
-  first_name?: string;
-  last_name?: string;
+  firstName?: string;
+  lastName?: string;
   email?: string;
-  phone_number?: string;
+  phoneNumber?: string;
   address?: string;
   avatar?: string;
   department?: string;
-  job_title?: string;
-  position_title?: string;
+  jobTitle?: string;
+  positionTitle?: string;
   skills?: unknown[];
   education?: unknown[];
   [key: string]: unknown;

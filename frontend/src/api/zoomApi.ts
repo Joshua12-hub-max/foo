@@ -41,35 +41,23 @@ export const zoomApi = {
    * Check if Zoom is configured on the backend
    */
   getStatus: async (): Promise<AxiosResponse<ZoomStatusResponse>> => {
-    try {
-      return await api.get<ZoomStatusResponse>('/zoom/status');
-    } catch (error) {
-      throw error;
-    }
+    return await api.get<ZoomStatusResponse>('/zoom/status');
   },
 
   /**
    * Create a new Zoom meeting
    */
   createMeeting: async (data: CreateMeetingRequest): Promise<AxiosResponse<ZoomMeetingResponse>> => {
-    try {
-      return await api.post<ZoomMeetingResponse>('/zoom/meeting', data);
-    } catch (error) {
-      throw error;
-    }
+    return await api.post<ZoomMeetingResponse>('/zoom/meeting', data);
   },
 
   /**
    * Get Zoom Web SDK signature for embedding meetings
    */
   getSignature: async (meetingNumber: string, role: number): Promise<AxiosResponse<ZoomSignatureResponse>> => {
-    try {
-      return await api.post<ZoomSignatureResponse>('/zoom/signature', {
-        meetingNumber,
-        role, // 0 = participant, 1 = host
-      });
-    } catch (error) {
-      throw error;
-    }
+    return await api.post<ZoomSignatureResponse>('/zoom/signature', {
+      meetingNumber,
+      role, // 0 = participant, 1 = host
+    });
   },
 };

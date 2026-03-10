@@ -37,7 +37,7 @@ const AssignInterviewerModal: React.FC<AssignInterviewerModalProps> = ({
         
         <div className="p-6">
           <p className="text-sm text-gray-500 mb-5 leading-relaxed">
-            Authorize an employee to interview <strong className="text-gray-900">{selectedApplicant?.first_name} {selectedApplicant?.last_name}</strong>.
+            Authorize an employee to interview <strong className="text-gray-900">{selectedApplicant?.firstName} {selectedApplicant?.lastName}</strong>.
           </p>
           
           <div className="mb-6">
@@ -49,7 +49,7 @@ const AssignInterviewerModal: React.FC<AssignInterviewerModalProps> = ({
               >
                   <option value="">-- Select Employee --</option>
                   {interviewers.map(int => (
-                      <option key={int.id} value={String(int.id)}>{int.first_name} {int.last_name} ({int.job_title})</option>
+                      <option key={int.id} value={String(int.id)}>{int.firstName} {int.lastName} ({int.jobTitle})</option>
                   ))}
               </select>
           </div>

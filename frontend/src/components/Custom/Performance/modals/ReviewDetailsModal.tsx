@@ -3,39 +3,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, CheckCircle, AlertCircle, Clock, ThumbsDown, AlertTriangle, TrendingDown, Info } from 'lucide-react';
 import { getAdjectivalRating, getScoreColor } from '../constants/performanceConstants';
 
-interface ReviewItem {
-  criteria_title: string;
-  criteria_description?: string;
-  self_score?: number | string;
-  score: number | string;
-  [key: string]: unknown;
-}
-
-interface ReviewType {
-  self_rating_score?: number | string;
-  total_score?: number | string;
-  disagreed?: boolean;
-  disagree_remarks?: string;
-  items?: ReviewItem[];
-  strengths?: string;
-  improvements?: string;
-  goals?: string;
-  status?: string;
-  attendance_details?: {
-    totalLates: number;
-    totalUndertime: number;
-    totalAbsences: number;
-    totalLateMinutes: number;
-    ratingDescription: string;
-  } | null;
-  violation_count?: number;
-  [key: string]: unknown;
-}
+import { PerformanceItem, PerformanceReview } from '../types';
 
 interface ReviewDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  selectedReview: ReviewType | null;
+  selectedReview: PerformanceReview | null;
   onAcknowledge: () => void;
   onOpenDisagree: () => void;
 }
@@ -49,11 +22,11 @@ const ReviewDetailsModal: React.FC<ReviewDetailsModalProps> = ({
 }) => {
   if (!isOpen || !selectedReview) return null;
 
-  const selfRatingInfo = selectedReview.self_rating_score 
-    ? getAdjectivalRating(selectedReview.self_rating_score) 
+  const selfRatingInfo = selectedReview.selfRatingScore 
+    ? getAdjectivalRating(selectedReview.selfRatingScore) 
     : null;
-  const supervisorRatingInfo = selectedReview.total_score 
-    ? getAdjectivalRating(selectedReview.total_score) 
+  const reviewerRatingInfo = selectedReview.totalScore 
+    ? getAdjectivalRating(selectedReview.totalScore) 
     : null;
 
   return (
@@ -80,72 +53,74 @@ const ReviewDetailsModal: React.FC<ReviewDetailsModalProps> = ({
           <div className="p-6 space-y-6 overflow-y-auto flex-1 bg-white">
             {/* Score Comparison */}
             <div className="grid grid-cols-2 gap-4">
-              {selectedReview.self_rating_score && (
+              {selectedReview.selfRatingScore && (
                 <div className="bg-gray-50 p-5 rounded-xl border border-gray-100 text-center">
                   <p className="text-xs font-bold text-gray-500 uppercase mb-2 tracking-wider">Your Self-Rating</p>
-                  <p className="text-4xl font-extrabold text-gray-900 mb-1">{selectedReview.self_rating_score}</p>
+                  <p className="text-4xl font-extrabold text-gray-900 mb-1">{selectedReview.selfRatingScore}</p>
                   <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${selfRatingInfo?.color ? selfRatingInfo.color.replace('text-', 'bg-').replace('600', '100').replace('700', '100') + ' ' + selfRatingInfo.color : 'bg-gray-100 text-gray-800'}`}>
                     {selfRatingInfo?.rating}
                   </span>
                 </div>
               )}
               <div className="bg-gray-50 p-5 rounded-xl border border-gray-100 text-center">
-                <p className="text-xs font-bold text-gray-500 uppercase mb-2 tracking-wider">Supervisor Rating</p>
-                <p className="text-4xl font-extrabold text-gray-900 mb-1">{selectedReview.total_score ? `${((parseFloat(String(selectedReview.total_score)) / 5) * 100).toFixed(0)}%` : '-'}</p>
-                {selectedReview.total_score && (
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${supervisorRatingInfo?.color ? supervisorRatingInfo.color.replace('text-', 'bg-').replace('600', '100').replace('700', '100') + ' ' + supervisorRatingInfo.color : 'bg-gray-100 text-gray-800'}`}>
-                    {supervisorRatingInfo?.rating}
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* Disagreement Warning */}
-            {selectedReview.disagreed && (
-              <div className="bg-orange-50 border border-orange-100 p-4 rounded-xl flex items-start gap-3">
-                <AlertTriangle className="text-orange-500 flex-shrink-0 mt-0.5" size={20} />
-                <div>
-                  <p className="font-bold text-orange-800 text-sm">You have disagreed with this rating</p>
-                  <p className="text-sm text-orange-700 mt-1">{selectedReview.disagree_remarks}</p>
+                  <p className="text-xs font-bold text-gray-500 uppercase mb-2 tracking-wider">Reviewer Rating</p>
+                  <p className="text-4xl font-extrabold text-gray-900 mb-1">{selectedReview.totalScore ? `${((parseFloat(String(selectedReview.totalScore)) / 5) * 100).toFixed(0)}%` : '-'}</p>
+                  {selectedReview.totalScore && (
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${reviewerRatingInfo?.color ? reviewerRatingInfo.color.replace('text-', 'bg-').replace('600', '100').replace('700', '100') + ' ' + reviewerRatingInfo.color : 'bg-gray-100 text-gray-800'}`}>
+                      {reviewerRatingInfo?.rating}
+                    </span>
+                  )}
                 </div>
               </div>
-            )}
+
+              {/* Disagreement Warning */}
+              {selectedReview.disagreed && (
+                <div className="bg-orange-50 border border-orange-100 p-4 rounded-xl flex items-start gap-3">
+                  <AlertTriangle className="text-orange-500 flex-shrink-0 mt-0.5" size={20} />
+                  <div>
+                    <p className="font-bold text-orange-800 text-sm">You have disagreed with this rating</p>
+                    <p className="text-sm text-orange-700 mt-1">{selectedReview.disagreeRemarks}</p>
+                  </div>
+                </div>
+              )}
 
             {/* Metrics Breakdown (Automated) */}
-            <div className="bg-gray-50 border border-gray-100 rounded-xl p-4 overflow-hidden">
-                <div className="flex items-center gap-2 mb-3">
-                    <Clock size={16} className="text-gray-400" />
-                    <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Automated Attendance Summary</h4>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-y-4 gap-x-2">
-                    <div className="flex flex-col">
-                        <span className="text-[10px] text-gray-400 font-bold uppercase">Tardiness</span>
-                        <span className="text-sm font-bold text-gray-800">
-                             {selectedReview.attendance_details?.totalLates || 0}x 
-                             <span className="text-gray-500 font-normal ml-1">({selectedReview.attendance_details?.totalLateMinutes || 0}m)</span>
-                        </span>
-                    </div>
-                    <div className="flex flex-col border-l border-gray-200 pl-3">
-                        <span className="text-[10px] text-gray-400 font-bold uppercase">Absences</span>
-                        <span className="text-sm font-bold text-gray-800">
-                            {selectedReview.attendance_details?.totalAbsences || 0} Unexplained
-                        </span>
-                    </div>
-                    <div className="flex flex-col">
-                        <span className="text-[10px] text-gray-400 font-bold uppercase">Rate</span>
-                        <span className="text-sm font-bold text-gray-800">
-                            {selectedReview.attendance_details?.ratingDescription || 'N/A'}
-                        </span>
-                    </div>
-                    <div className="flex flex-col border-l border-gray-200 pl-3">
-                        <span className="text-[10px] text-red-400 font-bold uppercase">Violations</span>
-                        <span className={`text-sm font-bold ${selectedReview.violation_count ? 'text-red-600' : 'text-green-600'}`}>
-                            {selectedReview.violation_count || 0} Active
-                        </span>
-                    </div>
-                </div>
-            </div>
+            {selectedReview.attendanceDetails && (
+              <div className="bg-gray-50 border border-gray-100 rounded-xl p-4 overflow-hidden">
+                  <div className="flex items-center gap-2 mb-3">
+                      <Clock size={16} className="text-gray-400" />
+                      <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Automated Attendance Summary</h4>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-y-4 gap-x-2">
+                      <div className="flex flex-col">
+                          <span className="text-[10px] text-gray-400 font-bold uppercase">Tardiness</span>
+                          <span className="text-sm font-bold text-gray-800">
+                               {selectedReview.attendanceDetails.totalLates || 0}x 
+                               <span className="text-gray-500 font-normal ml-1">({selectedReview.attendanceDetails.totalLateMinutes || 0}m)</span>
+                          </span>
+                      </div>
+                      <div className="flex flex-col border-l border-gray-200 pl-3">
+                          <span className="text-[10px] text-gray-400 font-bold uppercase">Absences</span>
+                          <span className="text-sm font-bold text-gray-800">
+                              {selectedReview.attendanceDetails.totalAbsences || 0} Unexplained
+                          </span>
+                      </div>
+                      <div className="flex flex-col">
+                          <span className="text-[10px] text-gray-400 font-bold uppercase">Rate</span>
+                          <span className="text-sm font-bold text-gray-800">
+                              {selectedReview.attendanceDetails.ratingDescription || 'N/A'}
+                          </span>
+                      </div>
+                      <div className="flex flex-col border-l border-gray-200 pl-3">
+                          <span className="text-[10px] text-red-400 font-bold uppercase">Violations</span>
+                          <span className={`text-sm font-bold ${selectedReview.violationCount ? 'text-red-600' : 'text-green-600'}`}>
+                              {selectedReview.violationCount || 0} Active
+                          </span>
+                      </div>
+                  </div>
+              </div>
+            )}
 
             {/* Criteria Ratings */}
             <div>
@@ -153,25 +128,25 @@ const ReviewDetailsModal: React.FC<ReviewDetailsModalProps> = ({
                 Criteria Ratings
               </h3>
               <div className="space-y-3">
-                {selectedReview.items && selectedReview.items.map((item: ReviewItem, idx: number) => (
+                {selectedReview.items && selectedReview.items.map((item: PerformanceItem, idx: number) => (
                   <div key={idx} className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
                     <div className="flex justify-between items-start gap-4">
                       <div className="flex-1">
-                        <p className="font-semibold text-gray-900 text-sm mb-1">{item.criteria_title}</p>
-                        <p className="text-xs text-gray-500 leading-relaxed">{item.criteria_description}</p>
+                        <p className="font-semibold text-gray-900 text-sm mb-1">{item.criteriaTitle}</p>
+                        <p className="text-xs text-gray-500 leading-relaxed">{item.criteriaDescription}</p>
                       </div>
                       <div className="flex gap-2 shrink-0">
-                        {item.self_score && (
+                        {item.selfScore && (
                           <div 
                             className="w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm border bg-gray-50 text-gray-400 border-gray-200" 
                             title="Your Self-Rating"
                           >
-                            {item.self_score}
+                            {item.selfScore}
                           </div>
                         )}
                         <div 
                           className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm shadow-sm border ${getScoreColor(item.score)}`} 
-                          title="Supervisor Rating"
+                          title="Reviewer Rating"
                         >
                           {item.score}
                         </div>
@@ -185,7 +160,7 @@ const ReviewDetailsModal: React.FC<ReviewDetailsModalProps> = ({
             {/* Qualitative Feedback */}
             <div className="space-y-4 pt-2">
               <h3 className="font-bold text-gray-900 mb-4 border-b border-gray-100 pb-2 text-sm uppercase tracking-wide">
-                Supervisor Feedback
+                Reviewer Feedback
               </h3>
               
               <div className="grid gap-4">

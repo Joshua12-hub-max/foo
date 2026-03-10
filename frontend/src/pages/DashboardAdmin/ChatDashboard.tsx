@@ -31,7 +31,7 @@ const ChatDashboard = () => {
         let interval: NodeJS.Timeout;
         if (selectedId) {
             const fetchMsgs = async () => {
-                const res = await chatApi.getMessages(selectedId, true, 'Admin');
+                const res = await chatApi.getMessages(selectedId, true, 'Administrator');
                 if (res.data.success) {
                     setMessages(res.data.messages);
                 }
@@ -59,9 +59,9 @@ const ChatDashboard = () => {
 
         try {
             await chatApi.sendMessage({
-                conversation_id: selectedId,
+                conversationId: selectedId,
                 message: msgText,
-                sender_type: 'Admin'
+                senderType: 'Administrator'
             });
             const res = await chatApi.getMessages(selectedId);
             setMessages(res.data.messages);
@@ -189,18 +189,18 @@ const ChatDashboard = () => {
                             {messages.map((msg) => (
                                 <div
                                     key={msg.id}
-                                    className={`flex ${msg.sender_type === 'Admin' ? 'justify-end' : 'justify-start'}`}
+                                    className={`flex ${msg.senderType === 'Administrator' ? 'justify-end' : 'justify-start'}`}
                                 >
-                                    <div className={`max-w-[70%] group flex flex-col ${msg.sender_type === 'Admin' ? 'items-end' : 'items-start'}`}>
+                                    <div className={`max-w-[70%] group flex flex-col ${msg.senderType === 'Administrator' ? 'items-end' : 'items-start'}`}>
                                         <div className={`p-4 rounded-3xl shadow-sm border ${
-                                            msg.sender_type === 'Admin'
+                                            msg.senderType === 'Administrator'
                                             ? 'bg-slate-900 border-slate-900 text-white rounded-br-none'
                                             : 'bg-white border-white text-slate-700 rounded-bl-none'
                                         }`}>
                                             <p className="text-sm font-medium leading-relaxed">{msg.message}</p>
                                         </div>
                                         <span className="text-[9px] font-black text-slate-400 uppercase mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            {new Date(msg.created_at).toLocaleString()}
+                                            {new Date(msg.createdAt).toLocaleString()}
                                         </span>
                                     </div>
                                 </div>

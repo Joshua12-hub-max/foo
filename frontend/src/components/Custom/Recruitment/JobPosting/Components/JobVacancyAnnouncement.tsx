@@ -17,8 +17,8 @@ const JobVacancyAnnouncement: React.FC<JobVacancyAnnouncementProps> = ({ job, on
   });
 
   // Helper to check employment status
-  const isJobOrder = job.employment_type?.toLowerCase().includes('job order');
-  const isContract = job.employment_type?.toLowerCase().includes('contract') || job.employment_type?.toLowerCase().includes('service');
+  const isJobOrder = job.employmentType?.toLowerCase().includes('job order');
+  const isContract = job.employmentType?.toLowerCase().includes('contract') || job.employmentType?.toLowerCase().includes('service');
 
   return (
     <div className="flex flex-col h-full bg-gray-100 overflow-hidden">
@@ -91,11 +91,11 @@ const JobVacancyAnnouncement: React.FC<JobVacancyAnnouncementProps> = ({ job, on
               </tr>
               <tr>
                 <td className="border border-black p-2 font-bold bg-gray-100">OFFICE</td>
-                <td className="border border-black p-2 uppercase" colSpan={3}>{job.office_name || job.department}</td>
+                <td className="border border-black p-2 uppercase" colSpan={3}>{job.officeName || job.department}</td>
               </tr>
               <tr>
                 <td className="border border-black p-2 font-bold bg-gray-100">SALARY</td>
-                <td className="border border-black p-2 uppercase" colSpan={3}>{job.salary_range}</td>
+                <td className="border border-black p-2 uppercase" colSpan={3}>{job.salaryRange}</td>
               </tr>
               <tr>
                 <td className="border border-black p-2 font-bold bg-gray-100">EMPLOYMENT STATUS</td>
@@ -149,7 +149,7 @@ const JobVacancyAnnouncement: React.FC<JobVacancyAnnouncementProps> = ({ job, on
               </tr>
                 <tr>
                 <td className="border border-black p-2 font-bold bg-gray-100">OTHERS</td>
-                <td className="border border-black p-2 uppercase">{job.other_qualifications || 'N/A'}</td>
+                <td className="border border-black p-2 uppercase">{job.otherQualifications || 'N/A'}</td>
               </tr>
             </tbody>
           </table>
@@ -158,7 +158,7 @@ const JobVacancyAnnouncement: React.FC<JobVacancyAnnouncementProps> = ({ job, on
            <div className="border border-black mb-6">
                <div className="border-b border-black p-2 font-bold text-sm text-center bg-gray-100 uppercase">JOB DESCRIPTION</div>
                <div className="p-4 text-sm whitespace-pre-wrap min-h-[150px] text-justify leading-relaxed">
-                   {job.job_description}
+                   {job.jobDescription}
                </div>
            </div>
 
@@ -187,7 +187,7 @@ const JobVacancyAnnouncement: React.FC<JobVacancyAnnouncementProps> = ({ job, on
                   <p>Saluysoy, City of Meycauayan, Bulacan</p>
               </div>
 
-              <p>or email at <span className="text-blue-800 underline font-bold">{job.application_email}</span> with the subject line : [POSITION APPLIED - APPLICANT'S NAME]</p>
+              <p>or email at <span className="text-blue-800 underline font-bold">{job.applicationEmail}</span> with the subject line : [POSITION APPLIED - APPLICANT'S NAME]</p>
               
               <p className="font-bold uppercase">APPLICATIONS WITH INCOMPLETE DOCUMENTS SHALL NOT BE ENTERTAINED.</p>
 

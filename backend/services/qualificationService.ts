@@ -10,7 +10,7 @@ export interface ValidationResult {
   employeeDetails: {
     id: number;
     name: string;
-    employee_id: string;
+    employeeId: string;
     education: string | null;
     experienceYears: number;
     eligibility: string | null;
@@ -38,7 +38,7 @@ export class QualificationService {
         id: authentication.id,
         firstName: authentication.firstName,
         lastName: authentication.lastName,
-        employee_id: authentication.employeeId,
+        employeeId: authentication.employeeId,
         eligibilityType: authentication.eligibilityType,
         highestEducation: authentication.highestEducation,
         yearsOfExperience: authentication.yearsOfExperience
@@ -74,7 +74,7 @@ export class QualificationService {
             employeeDetails: {
                 id: employee.id,
                 name: `${employee.firstName} ${employee.lastName}`,
-                employee_id: employee.employee_id,
+                employeeId: employee.employeeId,
                 education: employee.highestEducation,
                 experienceYears: Number(employee.yearsOfExperience) || 0,
                 eligibility: employee.eligibilityType
@@ -164,7 +164,7 @@ export class QualificationService {
         employeeDetails: {
             id: employee.id,
             name: `${employee.firstName} ${employee.lastName}`,
-            employee_id: employee.employee_id,
+            employeeId: employee.employeeId,
             education: employee.highestEducation,
             experienceYears: empExp,
             eligibility: employee.eligibilityType

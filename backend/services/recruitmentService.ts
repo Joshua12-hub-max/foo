@@ -4,15 +4,15 @@ import { eq, or, and, sql, desc, SQL } from 'drizzle-orm';
 import { getTemplateForStage, replaceVariables, sendEmailNotification } from '../utils/emailHelpers.js';
 
 interface CheckDuplicateParams {
-    first_name: string;
-    last_name: string;
-    middle_name?: string | null;
+    firstName: string;
+    lastName: string;
+    middleName?: string | null;
     suffix?: string | null;
     email: string;
-    birth_date: string;
-    tin_no?: string | null;
-    gsis_no?: string | null;
-    philsys_id?: string | null;
+    birthDate: string;
+    tinNumber?: string | null;
+    gsisNumber?: string | null;
+    philsysId?: string | null;
 }
 
 export const checkDuplicateApplication = async (params: CheckDuplicateParams) => {
@@ -20,63 +20,63 @@ export const checkDuplicateApplication = async (params: CheckDuplicateParams) =>
         eq(recruitmentApplicants.email, params.email)
     ];
 
-    if (params.first_name && params.last_name && params.birth_date) {
+    if (params.firstName && params.lastName && params.birthDate) {
         const nameDateCondition = and(
-            eq(recruitmentApplicants.first_name, params.first_name),
-            eq(recruitmentApplicants.last_name, params.last_name),
-            eq(recruitmentApplicants.birth_date, params.birth_date)
+            eq(recruitmentApplicants.firstName, params.firstName),
+            eq(recruitmentApplicants.lastName, params.lastName),
+            eq(recruitmentApplicants.birthDate, params.birthDate)
         );
         if (nameDateCondition) {
             conditions.push(nameDateCondition);
         }
     }
 
-    if (params.tin_no) conditions.push(eq(recruitmentApplicants.tin_no, params.tin_no));
-    if (params.gsis_no) conditions.push(eq(recruitmentApplicants.gsis_no, params.gsis_no));
-    if (params.philsys_id) conditions.push(eq(recruitmentApplicants.philsys_id, params.philsys_id));
+    if (params.tinNumber) conditions.push(eq(recruitmentApplicants.tinNumber, params.tinNumber));
+    if (params.gsisNumber) conditions.push(eq(recruitmentApplicants.gsisNumber, params.gsisNumber));
+    if (params.philsysId) conditions.push(eq(recruitmentApplicants.philsysId, params.philsysId));
 
     // Get the most recent application matching any of these criteria within 3 months
     const existingApplication = await db.query.recruitmentApplicants.findFirst({
         where: and(
             or(...conditions),
-            sql`${recruitmentApplicants.created_at} > NOW() - INTERVAL 3 MONTH`
+            sql`${recruitmentApplicants.createdAt} > NOW() - INTERVAL 3 MONTH`
         ),
-        orderBy: [desc(recruitmentApplicants.created_at)]
+        orderBy: [desc(recruitmentApplicants.createdAt)]
     });
 
     return existingApplication;
 };
 
 interface NoticeParams {
-    job_id: number;
-    first_name: string;
-    last_name: string;
+    jobId: number;
+    firstName: string;
+    lastName: string;
     email: string;
 }
 
 export const sendApplicationNotifications = async (params: NoticeParams) => {
     try {
         const job = await db.query.recruitmentJobs.findFirst({
-            where: eq(recruitmentJobs.id, params.job_id)
+            where: eq(recruitmentJobs.id, params.jobId)
         });
 
         const template = await getTemplateForStage(db, 'Applied');
         
         if (template && job) {
             const variables = {
-                applicant_first_name: params.first_name,
-                applicant_last_name: params.last_name,
-                job_title: job.title
+                applicantFirstName: params.firstName,
+                applicantLastName: params.lastName,
+                jobTitle: job.title
             };
 
-            const subject = replaceVariables(template.subject_template, variables);
-            const body = replaceVariables(template.body_template, variables);
+            const subject = replaceVariables(template.subjectTemplate, variables);
+            const body = replaceVariables(template.bodyTemplate, variables);
 
             await sendEmailNotification(params.email, subject, body);
         } else {
             // Fallback generic email
             const subject = `Application Received: ${job?.title || 'General Application'}`;
-            const body = `Dear ${params.first_name},<br><br>Thank you for applying for the position of ${job?.title || 'General Application'} at the Local Government of Meycauayan. We have received your application and will review it shortly.<br><br>Best regards,<br>Recruitment Team`;
+            const body = `Dear ${params.firstName},<br><br>Thank you for applying for the position of ${job?.title || 'General Application'} at the Local Government of Meycauayan. We have received your application and will review it shortly.<br><br>Best regards,<br>Recruitment Team`;
             await sendEmailNotification(params.email, subject, body);
         }
     } catch (error) {

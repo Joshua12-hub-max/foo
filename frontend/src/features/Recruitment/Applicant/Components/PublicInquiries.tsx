@@ -71,7 +71,7 @@ const PublicInquiries: React.FC = () => {
 
     const filteredInquiries = inquiries.filter(inq => {
         const matchesSearch = 
-            `${inq.first_name} ${inq.last_name}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            `${inq.firstName} ${inq.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
             inq.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
             inq.message.toLowerCase().includes(searchTerm.toLowerCase());
         
@@ -124,10 +124,10 @@ const PublicInquiries: React.FC = () => {
                             <div className="flex justify-between items-start mb-4">
                                 <div className="flex items-center gap-3">
                                     <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">
-                                        {inq.first_name[0]}{inq.last_name[0]}
+                                        {inq.firstName[0]}{inq.lastName[0]}
                                     </div>
                                     <div>
-                                        <h3 className="font-bold text-gray-900">{inq.first_name} {inq.last_name}</h3>
+                                        <h3 className="font-bold text-gray-900">{inq.firstName} {inq.lastName}</h3>
                                         <p className="text-sm text-gray-500">{inq.email}</p>
                                     </div>
                                 </div>
@@ -155,7 +155,7 @@ const PublicInquiries: React.FC = () => {
                             <div className="flex items-center justify-between text-xs text-gray-400">
                                 <div className="flex items-center gap-1">
                                     <Clock size={14} />
-                                    {new Date(inq.created_at).toLocaleString()}
+                                    {new Date(inq.createdAt).toLocaleString()}
                                 </div>
                                 <div className="flex gap-2">
                                     {inq.status === 'Pending' && (

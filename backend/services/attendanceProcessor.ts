@@ -15,6 +15,10 @@ const parseTimeString = (timeStr: string): [number, number, number] => {
   return [parts[0] || 0, parts[1] || 0, parts[2] || 0];
 };
 
+interface TardinessPolicy {
+  gracePeriod?: string | number;
+}
+
 /**
  * Core logic to process attendance logs into a Daily Time Record.
  * Calculates Late, Undertime, and updates the status.
@@ -117,7 +121,7 @@ export const processDailyAttendance = async (
       const policyRow = policyRows[0];
       
       if (policyRow?.content) {
-        const content = typeof policyRow.content === 'string' ? JSON.parse(policyRow.content) : policyRow.content;
+        const content = (typeof policyRow.content === 'string' ? JSON.parse(policyRow.content) : policyRow.content) as TardinessPolicy;
         gracePeriod = Number(content.gracePeriod) || 0;
       }
     } catch (e) {
@@ -126,6 +130,7 @@ export const processDailyAttendance = async (
     
     let totalLateMinutes = 0;
     let totalUndertimeMinutes = 0;
+    let totalOvertimeMinutes = 0;
     let timeIn: Date | null = null;
     let timeOut: Date | null = null;
 
@@ -175,6 +180,8 @@ export const processDailyAttendance = async (
 
           if (lastOut < blockEnd) {
             totalUndertimeMinutes += Math.floor((blockEnd.getTime() - lastOut.getTime()) / 60000);
+          } else if (lastOut > blockEnd) {
+            totalOvertimeMinutes += Math.floor((lastOut.getTime() - blockEnd.getTime()) / 60000);
           }
         }
       }
@@ -196,6 +203,8 @@ export const processDailyAttendance = async (
 
         if (netRenderedMinutes < dailyTargetMinutes) {
           totalUndertimeMinutes = dailyTargetMinutes - netRenderedMinutes;
+        } else if (netRenderedMinutes > dailyTargetMinutes) {
+          totalOvertimeMinutes = netRenderedMinutes - dailyTargetMinutes;
         }
         // Late is NOT applicable in target-hours mode (no fixed start time)
       }
@@ -233,26 +242,31 @@ export const processDailyAttendance = async (
       }
     }
 
-    // 4. Upsert into daily_time_records
-    await db.insert(dailyTimeRecords).values({
-      employeeId,
-      date: dateStr,
-      timeIn: timeIn ? formatToManilaDateTime(timeIn) : null,
-      timeOut: timeOut ? formatToManilaDateTime(timeOut) : null,
-      lateMinutes: totalLateMinutes,
-      undertimeMinutes: totalUndertimeMinutes,
-      status,
-      updatedAt: sql`CURRENT_TIMESTAMP`
-    }).onDuplicateKeyUpdate({
-      set: {
+    // 4. Upsert into daily_time_records ONLY if there are logs or the employee is on leave
+    // If they simply never clocked in (Absent), we do not create a DTR row, keeping the table clean as requested.
+    if (logs.length > 0 || isOnLeave) {
+      await db.insert(dailyTimeRecords).values({
+        employeeId,
+        date: dateStr,
         timeIn: timeIn ? formatToManilaDateTime(timeIn) : null,
         timeOut: timeOut ? formatToManilaDateTime(timeOut) : null,
         lateMinutes: totalLateMinutes,
-        undertimeMinutes: totalUndertimeMinutes,
-        status,
-        updatedAt: sql`CURRENT_TIMESTAMP`
-      }
-    });
+      undertimeMinutes: totalUndertimeMinutes,
+      overtimeMinutes: totalOvertimeMinutes,
+      status,
+      updatedAt: sql`CURRENT_TIMESTAMP`
+      }).onDuplicateKeyUpdate({
+        set: {
+          timeIn: timeIn ? formatToManilaDateTime(timeIn) : null,
+          timeOut: timeOut ? formatToManilaDateTime(timeOut) : null,
+          lateMinutes: totalLateMinutes,
+          undertimeMinutes: totalUndertimeMinutes,
+          overtimeMinutes: totalOvertimeMinutes,
+          status,
+          updatedAt: sql`CURRENT_TIMESTAMP`
+        }
+      });
+    }
 
     // 5. AUTO-UPDATE SUMMARY & CHECK VIOLATIONS
     // This makes the system "Real-Time"

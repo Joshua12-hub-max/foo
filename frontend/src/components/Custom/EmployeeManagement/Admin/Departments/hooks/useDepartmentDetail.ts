@@ -13,19 +13,19 @@ export interface Department {
   id: number;
   name: string;
   description?: string | null;
-  head_of_department?: string | null;
-  employee_count?: number | null;
+  headOfDepartment?: string | null;
+  employeeCount?: number | null;
 }
 
 export interface Employee {
   id: number;
-  first_name?: string;
-  last_name?: string;
-  job_title?: string | null;
-  position_title?: string | null;
+  firstName?: string;
+  lastName?: string;
+  jobTitle?: string | null;
+  positionTitle?: string | null;
   department?: string | null;
   email?: string;
-  avatar_url?: string | null;
+  avatarUrl?: string | null;
 }
 
 export interface UseDepartmentDetailReturn {
@@ -145,11 +145,11 @@ export const useDepartmentDetail = (): UseDepartmentDetailReturn => {
   // Filtered employees - memoized with useMemo
   const filteredEmployees = useMemo(() => {
     return employees.filter(emp => 
-      emp.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      emp.last_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      emp.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      emp.lastName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       emp.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (emp.job_title && emp.job_title.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (emp.position_title && emp.position_title.toLowerCase().includes(searchTerm.toLowerCase()))
+      (emp.jobTitle && emp.jobTitle.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (emp.positionTitle && emp.positionTitle.toLowerCase().includes(searchTerm.toLowerCase()))
     );
   }, [employees, searchTerm]);
 

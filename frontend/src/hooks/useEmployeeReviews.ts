@@ -89,17 +89,17 @@ const useEmployeeReviews = ({ showNotification }: UseEmployeeReviewsOptions = {}
         // Parse JSON feedback
         let parsedFeedback: Record<string, unknown> = {};
         try {
-          parsedFeedback = JSON.parse(review.overall_feedback || '{}');
+          parsedFeedback = JSON.parse(review.overallFeedback || '{}');
           if (typeof parsedFeedback !== 'object' || parsedFeedback === null) {
-            parsedFeedback = { additional_comments: review.overall_feedback };
+            parsedFeedback = { additionalComments: review.overallFeedback };
           }
         } catch (e) {
-          parsedFeedback = { additional_comments: review.overall_feedback };
+          parsedFeedback = { additionalComments: review.overallFeedback };
         }
 
         setSelectedReview({
           ...review,
-          additional_comments: (parsedFeedback.additional_comments as string) || (review.additional_comments as string)
+          additionalComments: (parsedFeedback.additionalComments as string) || (review.additionalComments as string)
         });
         setIsDetailOpen(true);
       }
@@ -117,8 +117,8 @@ const useEmployeeReviews = ({ showNotification }: UseEmployeeReviewsOptions = {}
         setSelectedReview(response.review);
         setSelfRatingItems(response.review.items?.map((item: ReviewItem) => ({
           ...item,
-          self_score: item.self_score || 0,
-          actual_accomplishments: item.actual_accomplishments || ''
+          selfScore: item.selfScore || 0,
+          actualAccomplishments: item.actualAccomplishments || ''
         })) || []);
         setIsSelfRatingOpen(true);
       }
@@ -132,7 +132,7 @@ const useEmployeeReviews = ({ showNotification }: UseEmployeeReviewsOptions = {}
   const handleSubmitSelfRating = useCallback(async () => {
     if (!selectedReview) return;
     
-    const incomplete = selfRatingItems.filter(item => !item.self_score || item.self_score === 0);
+    const incomplete = selfRatingItems.filter(item => !item.selfScore || item.selfScore === 0);
     if (incomplete.length > 0) {
       notify("Please provide a self-rating for all criteria.", "error");
       return;
@@ -144,23 +144,24 @@ const useEmployeeReviews = ({ showNotification }: UseEmployeeReviewsOptions = {}
       setSaving(true);
       const response = await submitSelfRating(selectedReview.id, {
         items: selfRatingItems.map(item => ({
-          criteria_id: item.criteria_id,
-          self_score: item.self_score,
-          actual_accomplishments: item.actual_accomplishments
+          criteriaId: item.criteriaId,
+          selfScore: item.selfScore,
+          actualAccomplishments: item.actualAccomplishments
         })),
-        employee_remarks: selfRemarks
+        employeeRemarks: selfRemarks
       });
 
       if (response.success) {
-        const ratingResponse = response as { success: boolean; self_rating_score?: number };
-        notify(`Self-rating submitted successfully! Your average score: ${ratingResponse.self_rating_score}`, "success");
+        const ratingResponse = response.data as { selfRatingScore?: number };
+        notify(`Self-rating submitted successfully! Your average score: ${ratingResponse.selfRatingScore}`, "success");
         setIsSelfRatingOpen(false);
         setSelfRemarks('');
         loadReviews();
       }
     } catch (err: unknown) {
       console.error(err);
-      const message = (err as { response?: { data?: { message?: string } } }).response?.data?.message || "Failed to submit self-rating.";
+      const apiErr = err as { response?: { data?: { message?: string } } };
+      const message = apiErr.response?.data?.message || "Failed to submit self-rating.";
       notify(message, "error");
     } finally {
       setSaving(false);
@@ -170,7 +171,7 @@ const useEmployeeReviews = ({ showNotification }: UseEmployeeReviewsOptions = {}
   // Acknowledge review
   const handleAcknowledge = useCallback(async () => {
     if (!selectedReview) return;
-    if (window.confirm("Are you sure you want to acknowledge this review? This confirms you have discussed it with your supervisor.")) {
+    if (window.confirm("Are you sure you want to acknowledge this review? This confirms you have discussed it with your reviewer.")) {
       try {
         await acknowledgeReview(selectedReview.id);
         notify("Review acknowledged successfully.", "success");
@@ -208,7 +209,7 @@ const useEmployeeReviews = ({ showNotification }: UseEmployeeReviewsOptions = {}
   const updateSelfRatingScore = useCallback((index: number, score: string | number) => {
     setSelfRatingItems(prev => {
       const newItems = [...prev];
-      newItems[index].self_score = parseInt(score as string);
+      newItems[index].selfScore = parseInt(score as string);
       return newItems;
     });
   }, []);
@@ -217,7 +218,7 @@ const useEmployeeReviews = ({ showNotification }: UseEmployeeReviewsOptions = {}
   const updateSelfRatingAccomplishments = useCallback((index: number, value: string) => {
     setSelfRatingItems(prev => {
       const newItems = [...prev];
-      newItems[index].actual_accomplishments = value;
+      newItems[index].actualAccomplishments = value;
       return newItems;
     });
   }, []);

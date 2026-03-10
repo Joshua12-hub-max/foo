@@ -31,7 +31,7 @@ router.post('/reviews/:id/disagree', verifyToken, performanceController.disagree
 
 // CSC-Compliant Routes
 router.post('/reviews/:id/self-rating', verifyToken, performanceController.submitSelfRating);
-router.post('/reviews/:id/supervisor-rating', verifyToken, performanceController.submitSupervisorRating);
+router.post('/reviews/:id/reviewer-rating', verifyToken, performanceController.submitReviewerRating);
 router.post('/reviews/:id/approve', verifyToken, performanceController.approveReview);
 router.post('/reviews/:id/finalize', verifyToken, performanceController.finalizeReview);
 

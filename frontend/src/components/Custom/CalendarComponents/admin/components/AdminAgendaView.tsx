@@ -153,9 +153,9 @@ const AdminAgendaView = ({ events = [], announcements = [], onAddEvent, onEditEv
                       <td className="px-6 py-4 text-sm text-gray-600 max-w-xs truncate" title={item.content}>
                         {item.content}
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">{formatDate(item.start_date)}</td>
-                      <td className="px-6 py-4 text-sm text-gray-600">{formatDate(item.end_date)}</td>
-                      <td className="px-6 py-4 text-sm text-gray-600">{formatDate(item.created_at)}</td>
+                      <td className="px-6 py-4 text-sm text-gray-600">{formatDate(item.startDate)}</td>
+                      <td className="px-6 py-4 text-sm text-gray-600">{formatDate(item.endDate)}</td>
+                      <td className="px-6 py-4 text-sm text-gray-600">{formatDate(item.createdAt)}</td>
                       <td className="px-6 py-4">
                         <div className="flex gap-2">
                           <button
@@ -210,12 +210,12 @@ const AdminAgendaView = ({ events = [], announcements = [], onAddEvent, onEditEv
                       <td className="px-6 py-4 text-sm text-gray-600">{formatTime(item.time)}</td>
                       <td className="px-6 py-4">
                         <span className={`px-2 py-1 text-xs rounded-full ${
-                          item.recurring_pattern && item.recurring_pattern !== 'none'
+                          item.recurringPattern && item.recurringPattern !== 'none'
                             ? 'bg-purple-100 text-purple-700'
                             : 'bg-gray-100 text-gray-600'
                         }`}>
-                          {item.recurring_pattern && item.recurring_pattern !== 'none' 
-                            ? item.recurring_pattern 
+                          {item.recurringPattern && item.recurringPattern !== 'none' 
+                            ? item.recurringPattern 
                             : 'None'}
                         </span>
                       </td>

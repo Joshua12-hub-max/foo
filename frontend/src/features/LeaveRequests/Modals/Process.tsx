@@ -12,18 +12,16 @@ interface ProcessModalProps {
 }
 
 const AdminLeaveRequestProcess: React.FC<ProcessModalProps> = ({ isOpen, request, onConfirm, onCancel }) => {
-  const [adminForm, setAdminForm] = useState<File | null>(null);
   const [error, setError] = useState("");
   const queryClient = useQueryClient();
 
   const processMutation = useMutation({
-    mutationFn: async (formData: FormData) => {
+    mutationFn: async () => {
       if (!request) return;
-      await leaveApi.processLeave(Number(request.id), formData);
+      await leaveApi.processLeave(Number(request.id));
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-leaves'] });
-      setAdminForm(null);
       setError("");
       onConfirm();
     },
@@ -33,23 +31,9 @@ const AdminLeaveRequestProcess: React.FC<ProcessModalProps> = ({ isOpen, request
     }
   });
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) setAdminForm(file);
-  };
-
   const handleProcess = () => {
     if (!request) return;
-    if (!adminForm) {
-      setError("Please upload the processed leave form.");
-      return;
-    }
-    
-    // Creating formData for mutation
-    const formData = new FormData();
-    formData.append('adminForm', adminForm);
-    
-    processMutation.mutate(formData);
+    processMutation.mutate();
   };
 
   if (!isOpen || !request) return null;
@@ -64,7 +48,7 @@ const AdminLeaveRequestProcess: React.FC<ProcessModalProps> = ({ isOpen, request
         <div className="flex items-center justify-between px-6 py-4 shrink-0 border-b border-gray-100">
             <div className="flex items-center gap-2">
               <div className="bg-indigo-50 p-2 rounded-lg">
-                <Upload className="w-5 h-5 text-indigo-600" />
+                <CheckCircle className="w-5 h-5 text-indigo-600" />
               </div>
               <h2 className="text-xl font-bold text-gray-900">Process Request</h2>
             </div>
@@ -84,41 +68,19 @@ const AdminLeaveRequestProcess: React.FC<ProcessModalProps> = ({ isOpen, request
             <div className="bg-gray-50 p-4 rounded-xl text-sm space-y-3 border border-gray-100">
                 <div className="flex justify-between border-b border-gray-200/50 pb-2">
                   <span className="text-gray-500 font-medium">Employee:</span>
-                  <span className="text-gray-900 font-semibold">{request?.first_name} {request?.last_name}</span>
+                  <span className="text-gray-900 font-semibold">{request?.firstName} {request?.lastName}</span>
                 </div>
                 <div className="flex justify-between border-b border-gray-200/50 pb-2">
                   <span className="text-gray-500 font-medium">Type:</span>
-                  <span className="text-gray-900 font-semibold">{request?.leave_type} ({request?.with_pay ? 'With Pay' : 'Without Pay'})</span>
+                  <span className="text-gray-900 font-semibold">{request?.leaveType} ({request?.isWithPay ? 'With Pay' : 'Without Pay'})</span>
                 </div>
                 <div className="flex justify-between border-b border-gray-200/50 pb-2">
                   <span className="text-gray-500 font-medium">Dates:</span>
-                  <span className="text-gray-900 font-semibold">{request?.start_date} to {request?.end_date}</span>
+                  <span className="text-gray-900 font-semibold">{request?.fromDate} to {request?.toDate}</span>
                 </div>
                 <div className="flex flex-col gap-1">
                   <span className="text-gray-500 font-medium">Reason:</span>
                   <span className="text-gray-900 font-medium bg-white/50 p-2 rounded-lg border border-gray-100">{request?.reason}</span>
-                </div>
-                {request?.attachment_path && (
-                     <div className="mt-2 pt-2 border-t border-gray-100">
-                        <a href={`${import.meta.env.VITE_API_URL.replace('/api', '')}/uploads/${request.attachment_path}`} target="_blank" rel="noreferrer" className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 transition-colors text-xs font-medium border border-indigo-100">
-                            <Download className="w-4 h-4" /> View Employee Attachment
-                        </a>
-                     </div>
-                )}
-            </div>
-
-            {/* Upload Admin Form */}
-            <div className="border-t border-gray-100 pt-4">
-                <label className="block text-sm font-semibold text-gray-900 mb-2">
-                    Upload Processed Form <span className="text-red-500">*</span>
-                </label>
-                <div className={`border-2 border-dashed rounded-xl p-6 text-center transition-all ${adminForm ? 'border-indigo-500 bg-indigo-50/30' : 'border-gray-200 hover:border-indigo-400 hover:bg-gray-50/50'}`}>
-                    <input type="file" onChange={handleFileChange} className="hidden" id="adminFormUpload" accept=".pdf,.xlsx,.docx" />
-                    <label htmlFor="adminFormUpload" className="cursor-pointer flex flex-col items-center gap-2">
-                        <Upload className={`w-8 h-8 ${adminForm ? 'text-indigo-600' : 'text-gray-400'}`} />
-                        <span className={`text-sm font-medium ${adminForm ? 'text-indigo-900' : 'text-gray-500'}`}>{adminForm ? adminForm.name : "Click to upload signed form"}</span>
-                        <span className="text-[10px] text-gray-400">PDF, XLSX, or DOCX (Max 10MB)</span>
-                    </label>
                 </div>
             </div>
 
@@ -128,7 +90,7 @@ const AdminLeaveRequestProcess: React.FC<ProcessModalProps> = ({ isOpen, request
                     {processMutation.isPending ? 'Processing...' : (
                       <>
                         <CheckCircle className="w-4 h-4" />
-                        Complete Process
+                        Confirm Processing
                       </>
                     )}
                 </button>

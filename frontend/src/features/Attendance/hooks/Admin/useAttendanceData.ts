@@ -23,21 +23,12 @@ export const useAttendanceData = (isAdmin = false) => {
                 ? resData.data 
                 : [];
 
-            // Transform snake_case API fields → camelCase for AttendanceTable
-            return items.map((item: any) => ({
-              id: item.id,
-              employeeId: item.employee_id || item.employeeId,
-              employee_name: item.employee_name || item.name || 'Unknown',
-              department: item.department || 'N/A',
-              date: item.date,
-              timeIn: item.time_in || item.timeIn || null,
-              timeOut: item.time_out || item.timeOut || null,
-              lateMinutes: Number(item.late_minutes ?? item.lateMinutes ?? 0),
-              undertimeMinutes: Number(item.undertime_minutes ?? item.undertimeMinutes ?? 0),
-              overtimeMinutes: Number(item.overtime_minutes ?? item.overtimeMinutes ?? 0),
+            // Rely on axios interceptor for camelCase conversion
+            return items.map((item: AttendanceRecord) => ({
+              ...item,
               status: item.status || 'Absent',
               duties: item.duties || 'No Schedule',
-            })) as AttendanceRecord[];
+            }));
         }
         return [] as AttendanceRecord[];
       } catch (err) {

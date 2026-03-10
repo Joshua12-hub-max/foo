@@ -16,7 +16,7 @@ import { eq } from 'drizzle-orm';
 // Logic: Base salary + (Grade * Increment) + (Step * Increment)
 function generateSalarySchedule(tranche: number) {
     const schedule = [];
-    let base = 13000; // SG 1 Step 1
+    const base = 13000; // SG 1 Step 1
     
     for (let grade = 1; grade <= 33; grade++) {
         const gradeBase = base * Math.pow(1.10, grade - 1); // 10% increase per grade

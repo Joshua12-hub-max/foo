@@ -63,11 +63,30 @@ const LoadingOverlay = memo(() => (
 
 LoadingOverlay.displayName = 'LoadingOverlay';
 
+interface Announcement {
+  id: number | string;
+  title: string;
+  content: string;
+  priority: 'high' | 'medium' | 'low';
+  date: string;
+  startDate?: string;
+  createdAt?: string;
+}
+
+interface Event {
+  id: number | string;
+  title: string;
+  date: string;
+  type: string;
+  startDate?: string;
+  description?: string | null;
+}
+
 export default function CombinedSection() {
   const [activeTab, setActiveTab] = useState('charts');
   const [isLoading, setIsLoading] = useState(false);
-  const [announcements, setAnnouncements] = useState<Array<{ id: number | string; title: string; content: string; priority: 'high' | 'medium' | 'low'; date: string; start_date?: string; created_at?: string }>>([]);
-  const [events, setEvents] = useState<Array<{ id: number | string; title: string; date: string; type: string; start_date?: string; description?: string | null }>>([]);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [events, setEvents] = useState<Event[]>([]);
   const [upcomingHolidays, setUpcomingHolidays] = useState<Array<{ id: string; title: string; date: string; type: string; isHoliday: boolean }>>([]);
   
   // Performance evaluation state - real data from API
@@ -75,21 +94,33 @@ export default function CombinedSection() {
   const [performanceLoading, setPerformanceLoading] = useState(true);
 
   useEffect(() => {
+    const parseSafeDate = (d?: string | null) => {
+      if (!d) return new Date(0);
+      const date = new Date(d);
+      return isNaN(date.getTime()) ? new Date(0) : date;
+    };
+
     const fetchData = async () => {
       try {
         // Fetch Announcements
         const annResponse = await announcementApi.getAnnouncements();
-        if (annResponse.data && annResponse.data.announcements) {
-            const formattedAnnouncements = annResponse.data.announcements.map((a: { id: number; title: string; content: string; priority: 'high' | 'medium' | 'low'; start_date?: string; created_at?: string }) => ({
-                ...a,
-                date: a.start_date || a.created_at ? new Date(a.start_date || a.created_at || '').toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
-            }));
+        if (annResponse.data && annResponse.data.success) {
+            const rawAnnouncements = annResponse.data.announcements as Announcement[];
+            const formattedAnnouncements = rawAnnouncements.map((a) => {
+                const baseDate = a.startDate || a.createdAt;
+                const d = baseDate ? new Date(baseDate) : new Date();
+                const validDate = isNaN(d.getTime()) ? new Date() : d;
+                return {
+                  ...a,
+                  date: validDate.toISOString().split('T')[0]
+                };
+            });
             setAnnouncements(formattedAnnouncements);
         }
 
         // Fetch Events (API events only, not holidays)
         const eventResponse = await eventApi.getEvents();
-        const apiEvents = (eventResponse.data && eventResponse.data.events) ? eventResponse.data.events : [];
+        const apiEvents = (eventResponse.data && eventResponse.data.success) ? (eventResponse.data.events as Event[]) : [];
         
         // Get current year holidays separately
         const currentYear = new Date().getFullYear();
@@ -107,8 +138,11 @@ export default function CombinedSection() {
         
         // Filter and set events (only API events)
         const upcomingApiEvents = apiEvents
-          .filter((e: { date?: string; start_date?: string }) => new Date(e.date || e.start_date || '') >= today)
-          .sort((a: { date?: string; start_date?: string }, b: { date?: string; start_date?: string }) => new Date(a.date || a.start_date || '').getTime() - new Date(b.date || b.start_date || '').getTime());
+          .filter((e) => {
+             const d = parseSafeDate(e.date || e.startDate);
+             return d >= today;
+          })
+          .sort((a, b) => parseSafeDate(a.date || a.startDate).getTime() - parseSafeDate(b.date || b.startDate).getTime());
         setEvents(upcomingApiEvents.slice(0, 10));
 
         // Filter and set holidays

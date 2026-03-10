@@ -3,23 +3,23 @@ import { AxiosResponse } from 'axios';
 
 export interface ChatMessage {
   id: number;
-  conversation_id: number;
-  sender_type: 'Applicant' | 'Admin';
-  sender_id?: number | null;
+  conversationId: number;
+  senderType: 'Applicant' | 'Administrator';
+  senderId?: number | null;
   message: string;
-  is_read: boolean;
-  created_at: string;
+  isRead: boolean;
+  createdAt: string;
 }
 
 export interface ChatConversation {
   id: number;
-  applicant_name: string;
-  applicant_email: string;
+  applicantName: string;
+  applicantEmail: string;
   status: 'Active' | 'Closed' | 'Archived';
-  unread_count?: number;
-  last_message?: string;
-  created_at: string;
-  updated_at: string;
+  unreadCount?: number;
+  lastMessage?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export const chatApi = {
@@ -33,16 +33,16 @@ export const chatApi = {
   /**
    * Public/Admin: Send a message
    */
-  sendMessage: async (data: { conversation_id: number; message: string; sender_type: 'Applicant' | 'Admin' }): Promise<AxiosResponse<{ success: boolean; message_id: number }>> => {
+  sendMessage: async (data: { conversationId: number; message: string; senderType: 'Applicant' | 'Administrator' }): Promise<AxiosResponse<{ success: boolean; messageId: number }>> => {
     return await api.post('/chat/message', data);
   },
 
   /**
    * Public/Admin: Get messages for a conversation
    */
-  getMessages: async (conversationId: number, markRead = false, readerRole?: 'Applicant' | 'Admin'): Promise<AxiosResponse<{ success: boolean; messages: ChatMessage[] }>> => {
+  getMessages: async (conversationId: number, markRead = false, readerRole?: 'Applicant' | 'Administrator'): Promise<AxiosResponse<{ success: boolean; messages: ChatMessage[] }>> => {
     return await api.get(`/chat/messages/${conversationId}`, { 
-      params: { mark_read: markRead, reader: readerRole } 
+      params: { markRead, reader: readerRole } 
     });
   },
 

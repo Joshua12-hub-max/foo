@@ -3,17 +3,17 @@ import { attendanceApi } from '@/api/attendanceApi';
 
 export interface AttendanceRecord {
   id: string | number;
-  employee_id: string | number;
+  employeeId: string | number;
   name?: string;
-  first_name?: string;
-  last_name?: string;
+  firstName?: string;
+  lastName?: string;
   date: string;
-  time_in: string;
-  time_out: string;
+  timeIn: string;
+  timeOut: string;
   late: string | number;
   undertime: string | number;
   department?: string;
-  department_name?: string;
+  departmentName?: string;
   status: string;
 }
 
@@ -59,27 +59,27 @@ export const useAttendanceData = (isAdmin: boolean = false) => {
         // Fallback to empty object if item isn't an object
         const item = isRecord(rawItem) ? rawItem : {};
 
-        const firstName = getStringOrUndefined(item.first_name);
-        const lastName = getStringOrUndefined(item.last_name);
+        const firstName = getStringOrUndefined(item.firstName);
+        const lastName = getStringOrUndefined(item.lastName);
         const providedName = getStringOrUndefined(item.name);
         
         const computedName = `${firstName || ''} ${lastName || ''}`.trim();
         const finalName = providedName || (computedName.length > 0 ? computedName : undefined);
 
-        const late = getStringOrNumber(item.late_minutes, 0) || getStringOrNumber(item.late, 0) || 0;
-        const undertime = getStringOrNumber(item.undertime_minutes, 0) || getStringOrNumber(item.undertime, 0) || 0;
+        const late = getStringOrNumber(item.lateMinutes, 0) || getStringOrNumber(item.late, 0) || 0;
+        const undertime = getStringOrNumber(item.undertimeMinutes, 0) || getStringOrNumber(item.undertime, 0) || 0;
         
         const status = getString(item.status, 'Present');
 
         return {
           id: getStringOrNumber(item.id, ''),
-          employee_id: getStringOrNumber(item.employee_id, ''),
+          employeeId: getStringOrNumber(item.employeeId, ''),
           name: finalName,
-          first_name: firstName,
-          last_name: lastName,
+          firstName: firstName,
+          lastName: lastName,
           date: getString(item.date),
-          time_in: getString(item.time_in),
-          time_out: getString(item.time_out),
+          timeIn: getString(item.timeIn),
+          timeOut: getString(item.timeOut),
           late,
           undertime,
           status: status.trim() === '' ? 'Present' : status

@@ -57,10 +57,19 @@ export const useAuthStore = create<AuthStore>()(
         },
 
         logout: () => {
-             // Just clear state. API call is handled by mutation.
-             // We can keep localStorage cleanup here as fail-safe
-             localStorage.removeItem('isLoggedIn');
+             // 1. Wipe local browser storage
+             localStorage.clear();
+             sessionStorage.clear();
+             
+             // 2. Clear state
              set({ ...initialState, isLoading: false }); 
+        },
+
+        // Action to completely wipe all persistence for security
+        nukeAllStores: () => {
+             localStorage.clear();
+             sessionStorage.clear();
+             set({ ...initialState, isLoading: false });
         },
 
         checkAuth: async () => {
@@ -73,7 +82,9 @@ export const useAuthStore = create<AuthStore>()(
 
              try {
                  const user = await getCurrentUser();
-                 get().setUser(user);
+                 // Ensure we extract the user if it's wrapped (defensive)
+                 const actualUser = user?.user || user;
+                 get().setUser(actualUser);
              } catch (error: unknown) {
                  console.error("Failed to fetch user:", error);
                  // If 401, clear user

@@ -30,7 +30,7 @@ const AddContactModal: React.FC<AddContactModalProps> = ({
   const { register, handleSubmit, formState: { errors }, reset, setValue } = useForm<AddContactInput>({
     resolver: zodResolver(AddContactSchema),
     defaultValues: {
-      is_primary: false
+      isPrimary: false
     }
   });
 
@@ -38,12 +38,12 @@ const AddContactModal: React.FC<AddContactModalProps> = ({
     if (isOpen && initialData) {
        setValue('name', initialData.name);
        setValue('relationship', initialData.relationship);
-       setValue('phone_number', initialData.phone_number);
+       setValue('phoneNumber', initialData.phoneNumber);
        setValue('email', initialData.email || '');
        setValue('address', initialData.address || '');
-       setValue('is_primary', !!initialData.is_primary);
+       setValue('isPrimary', !!initialData.isPrimary);
     } else if (isOpen && !initialData) {
-       reset({ is_primary: false });
+       reset({ isPrimary: false });
     }
   }, [isOpen, initialData, setValue, reset]);
 
@@ -53,10 +53,10 @@ const AddContactModal: React.FC<AddContactModalProps> = ({
       const cleanData: ContactData = {
         name: data.name,
         relationship: data.relationship,
-        phone_number: data.phone_number,
+        phoneNumber: data.phoneNumber,
         email: data.email || null,
         address: data.address || null,
-        is_primary: !!data.is_primary
+        isPrimary: !!data.isPrimary
       };
 
       if (isEditMode && initialData?.id) {
@@ -121,11 +121,11 @@ const AddContactModal: React.FC<AddContactModalProps> = ({
             <label className="text-xs font-semibold text-gray-700 mb-1 block">Phone Number <span className="text-red-400">*</span></label>
             <input 
               type="tel"
-              {...register('phone_number')}
-              className={`w-full px-3 py-2 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 ${errors.phone_number ? 'border-red-500' : ''}`}
+              {...register('phoneNumber')}
+              className={`w-full px-3 py-2 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 ${errors.phoneNumber ? 'border-red-500' : ''}`}
               placeholder="e.g. 09171234567"
             />
-             {errors.phone_number && <p className="text-[10px] text-red-500 mt-1">{errors.phone_number.message}</p>}
+             {errors.phoneNumber && <p className="text-[10px] text-red-500 mt-1">{errors.phoneNumber.message}</p>}
           </div>
 
           <div>
@@ -139,8 +139,8 @@ const AddContactModal: React.FC<AddContactModalProps> = ({
           </div>
           
            <div className="flex items-center gap-2">
-             <input type="checkbox" id="is_primary" {...register('is_primary')} className="rounded border-gray-300" />
-             <label htmlFor="is_primary" className="text-sm text-gray-700">Set as Primary Contact</label>
+             <input type="checkbox" id="isPrimary" {...register('isPrimary')} className="rounded border-gray-300" />
+             <label htmlFor="isPrimary" className="text-sm text-gray-700">Set as Primary Contact</label>
           </div>
 
           <div className="pt-4 flex gap-3">

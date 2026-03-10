@@ -11,16 +11,16 @@ interface NotificationStyle {
 // Get icon and color based on notification type
 const getNotificationStyle = (type: string): NotificationStyle => {
   const styles: Record<string, NotificationStyle> = {
-    leave_approved: { icon: Check, color: 'text-green-600', bg: 'bg-green-50' },
-    leave_rejected: { icon: X, color: 'text-red-600', bg: 'bg-red-50' },
-    leave_processed: { icon: FileText, color: 'text-blue-600', bg: 'bg-blue-50' },
-    dtr_correction_approved: { icon: Check, color: 'text-green-600', bg: 'bg-green-50' },
-    dtr_correction_rejected: { icon: X, color: 'text-red-600', bg: 'bg-red-50' },
-    admin_dtr_correction: { icon: Clock, color: 'text-purple-600', bg: 'bg-purple-50' },
-    undertime_approved: { icon: Check, color: 'text-green-600', bg: 'bg-green-50' },
-    undertime_rejected: { icon: X, color: 'text-red-600', bg: 'bg-red-50' },
-    schedule_assigned: { icon: Calendar, color: 'text-blue-600', bg: 'bg-blue-50' },
-    event_created: { icon: Calendar, color: 'text-purple-600', bg: 'bg-purple-50' },
+    leaveApproved: { icon: Check, color: 'text-green-600', bg: 'bg-green-50' },
+    leaveRejected: { icon: X, color: 'text-red-600', bg: 'bg-red-50' },
+    leaveProcessed: { icon: FileText, color: 'text-blue-600', bg: 'bg-blue-50' },
+    dtrCorrectionApproved: { icon: Check, color: 'text-green-600', bg: 'bg-green-50' },
+    dtrCorrectionRejected: { icon: X, color: 'text-red-600', bg: 'bg-red-50' },
+    adminDtrCorrection: { icon: Clock, color: 'text-purple-600', bg: 'bg-purple-50' },
+    undertimeApproved: { icon: Check, color: 'text-green-600', bg: 'bg-green-50' },
+    undertimeRejected: { icon: X, color: 'text-red-600', bg: 'bg-red-50' },
+    scheduleAssigned: { icon: Calendar, color: 'text-blue-600', bg: 'bg-blue-50' },
+    eventCreated: { icon: Calendar, color: 'text-purple-600', bg: 'bg-purple-50' },
     announcement: { icon: Bell, color: 'text-amber-600', bg: 'bg-amber-50' },
   };
   return styles[type] || { icon: Bell, color: 'text-gray-600', bg: 'bg-gray-50' };
@@ -48,13 +48,19 @@ const formatTimeAgo = (dateString?: string) => {
 };
 
 interface NotificationItem {
-  notification_id: string | number;
+  notificationId: string | number;
   type: string;
   title: string;
   message: string;
   status: 'read' | 'unread';
-  created_at: string;
-  sender_name?: string;
+  createdAt: string;
+  senderName?: string;
+}
+
+interface NotificationResponse {
+  success: boolean;
+  notifications: NotificationItem[];
+  unreadCount: number;
 }
 
 export default function EmployeeNotificationMenu() {
@@ -71,9 +77,9 @@ export default function EmployeeNotificationMenu() {
     setError(null);
     try {
       const response = await notificationApi.getNotifications({ limit: 20, offset: 0 });
-      const data = response.data || response;
+      const data = response.data as NotificationResponse;
       setNotifications(Array.isArray(data.notifications) ? data.notifications : []);
-      setUnreadCount(typeof data.unread_count === 'number' ? data.unread_count : 0);
+      setUnreadCount(typeof data.unreadCount === 'number' ? data.unreadCount : 0);
     } catch (err) {
       console.error('Notification fetch error:', err);
       setError('Unable to load notifications');
@@ -88,8 +94,8 @@ export default function EmployeeNotificationMenu() {
   const fetchUnreadCount = useCallback(async () => {
     try {
       const response = await notificationApi.getUnreadCount();
-      const data = response.data || response;
-      setUnreadCount(typeof data.unread_count === 'number' ? data.unread_count : 0);
+      const data = response.data as { success: boolean; unreadCount: number };
+      setUnreadCount(typeof data.unreadCount === 'number' ? data.unreadCount : 0);
     } catch (err) {
       console.error('Unread count fetch error:', err);
     }
@@ -100,7 +106,7 @@ export default function EmployeeNotificationMenu() {
     try {
       await notificationApi.markAsRead(id);
       setNotifications(prev => prev.map(n => 
-        n.notification_id === id ? { ...n, status: 'read' } : n
+        n.notificationId === id ? { ...n, status: 'read' } : n
       ));
       setUnreadCount(prev => Math.max(0, prev - 1));
     } catch (err) {
@@ -111,9 +117,9 @@ export default function EmployeeNotificationMenu() {
   // Delete notification
   const handleDelete = useCallback(async (id: string | number) => {
     try {
-      const notification = notifications.find(n => n.notification_id === id);
+      const notification = notifications.find(n => n.notificationId === id);
       await notificationApi.deleteNotification(id);
-      setNotifications(prev => prev.filter(n => n.notification_id !== id));
+      setNotifications(prev => prev.filter(n => n.notificationId !== id));
       if (notification?.status === 'unread') {
         setUnreadCount(prev => Math.max(0, prev - 1));
       }
@@ -126,13 +132,14 @@ export default function EmployeeNotificationMenu() {
   const handleMarkAllAsRead = useCallback(async () => {
     try {
       const unreadNotifications = notifications.filter(n => n.status === 'unread');
-      await Promise.all(unreadNotifications.map(n => notificationApi.markAsRead(n.notification_id)));
+      await Promise.all(unreadNotifications.map(n => notificationApi.markAsRead(n.notificationId)));
       setNotifications(prev => prev.map(n => ({ ...n, status: 'read' })));
       setUnreadCount(0);
     } catch (err) {
       console.error('Mark all as read error:', err);
     }
   }, [notifications]);
+
 
   // Initial fetch and polling
   useEffect(() => {
@@ -239,8 +246,8 @@ export default function EmployeeNotificationMenu() {
 
                   return (
                     <div
-                      key={notification.notification_id}
-                      onClick={() => isUnread && handleMarkAsRead(notification.notification_id)}
+                      key={notification.notificationId}
+                      onClick={() => isUnread && handleMarkAsRead(notification.notificationId)}
                       className={`group flex items-start gap-3 p-3 hover:bg-gray-50 cursor-pointer transition-colors ${
                         isUnread ? 'bg-blue-50/30' : ''
                       }`}
@@ -254,7 +261,7 @@ export default function EmployeeNotificationMenu() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <p className={`text-sm truncate ${isUnread ? 'font-semibold text-gray-900' : 'font-medium text-gray-700'}`}>
-                            {notification.sender_name?.trim() || notification.title || 'Notification'}
+                            {notification.senderName?.trim() || notification.title || 'Notification'}
                           </p>
                           {isUnread && (
                             <span className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" />
@@ -270,7 +277,7 @@ export default function EmployeeNotificationMenu() {
                             <span className="px-1.5 py-0.5 text-[10px] font-medium bg-red-100 text-red-700 rounded">Rejected</span>
                           )}
                         </div>
-                        {notification.sender_name?.trim() && (
+                        {notification.senderName?.trim() && (
                           <p className="text-xs text-gray-600 truncate mt-0.5">
                             {notification.title}
                           </p>
@@ -279,7 +286,7 @@ export default function EmployeeNotificationMenu() {
                           {notification.message || 'No details'}
                         </p>
                         <p className="text-[10px] text-gray-400 mt-1">
-                          {formatTimeAgo(notification.created_at)}
+                          {formatTimeAgo(notification.createdAt)}
                         </p>
                       </div>
 
@@ -287,7 +294,7 @@ export default function EmployeeNotificationMenu() {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleDelete(notification.notification_id);
+                          handleDelete(notification.notificationId);
                         }}
                         className="opacity-0 group-hover:opacity-100 p-1 hover:bg-gray-200 rounded transition-all"
                         title="Delete"

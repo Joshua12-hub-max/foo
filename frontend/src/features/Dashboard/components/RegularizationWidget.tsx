@@ -5,9 +5,9 @@ import api from '@api/axios';
 
 interface Employee {
   id: number;
-  first_name: string;
-  last_name: string;
-  regularization_date: string;
+  firstName: string;
+  lastName: string;
+  regularizationDate: string;
   department: string;
 }
 
@@ -23,8 +23,8 @@ const RegularizationWidget: React.FC = () => {
             const allEmployees: Employee[] = response.data.employees;
             const now = new Date();
             const due = allEmployees.filter(emp => {
-                if (!emp.regularization_date) return false;
-                const regDate = parseISO(emp.regularization_date);
+                if (!emp.regularizationDate) return false;
+                const regDate = parseISO(emp.regularizationDate);
                 const daysLeft = differenceInDays(regDate, now);
                 return daysLeft <= 30 && daysLeft >= -30; // Upcoming in 30 days or overdue by 30 days
             });
@@ -54,13 +54,13 @@ const RegularizationWidget: React.FC = () => {
         {employees.map(emp => (
           <div key={emp.id} className="p-3 hover:bg-blue-50/50 rounded-lg transition-colors flex justify-between items-center group">
              <div>
-                <p className="font-medium text-gray-900">{emp.first_name} {emp.last_name}</p>
+                <p className="font-medium text-gray-900">{emp.firstName} {emp.lastName}</p>
                 <p className="text-xs text-gray-500">{emp.department}</p>
              </div>
              <div className="text-right">
                 <p className="text-xs text-gray-500 flex items-center gap-1 justify-end">
                     <Calendar size={12} />
-                    {format(parseISO(emp.regularization_date), 'MMM d, yyyy')}
+                    {format(parseISO(emp.regularizationDate), 'MMM d, yyyy')}
                 </p>
              </div>
           </div>

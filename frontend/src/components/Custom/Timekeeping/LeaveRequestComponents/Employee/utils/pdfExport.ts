@@ -111,7 +111,7 @@ export const exportToPDF = (data: Record<string, unknown>[], title = 'Leave Requ
  */
 export const formatLeaveRequestsForPDF = (leaveRequests: EmployeeLeaveRequest[]) => {
   return leaveRequests.map(request => ({
-    'Employee ID': request.employee_id || '',
+    'Employee ID': request.employeeId || '',
     'Employee Name': request.name || '',
     'Leave Type': request.leaveType || '',
     'Start Date': request.fromDate || '',

@@ -7,7 +7,7 @@ import { useEffect } from 'react';
 interface CreateAnnouncementModalProps {
   show: boolean;
   onClose: () => void;
-  onCreate: (announcement: any) => void;
+  onCreate: (announcement: AnnouncementSchema) => void;
   hours?: string[];
 }
 
@@ -17,16 +17,16 @@ export default function CreateAnnouncementModal({ show, onClose, onCreate, hours
         handleSubmit,
         reset,
         formState: { errors, isSubmitting }
-    } = useForm({
+    } = useForm<AnnouncementSchema>({
         resolver: zodResolver(announcementSchema),
         defaultValues: {
             title: '',
             content: '',
             priority: 'normal',
-            start_date: '',
-            end_date: '',
-            start_time: '9:00 AM', // Default
-            end_time: '5:00 PM'   // Default
+            startDate: '',
+            endDate: '',
+            startTime: '9:00 AM', // Default
+            endTime: '5:00 PM'   // Default
         }
     });
 
@@ -36,10 +36,10 @@ export default function CreateAnnouncementModal({ show, onClose, onCreate, hours
             title: '',
             content: '',
             priority: 'normal',
-            start_date: '',
-            end_date: '',
-            start_time: '9:00 AM',
-            end_time: '5:00 PM'
+            startDate: '',
+            endDate: '',
+            startTime: '9:00 AM',
+            endTime: '5:00 PM'
         });
     }
   }, [show, reset]);
@@ -83,11 +83,11 @@ export default function CreateAnnouncementModal({ show, onClose, onCreate, hours
                 <div className="grid grid-cols-2 gap-4">
                 <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-1">Start Date</label>
-                    <input type="date" {...register('start_date')} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100 transition-all text-sm" />
+                    <input type="date" {...register('startDate')} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100 transition-all text-sm" />
                 </div>
                 <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-1">End Date</label>
-                    <input type="date" {...register('end_date')} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100 transition-all text-sm" />
+                    <input type="date" {...register('endDate')} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100 transition-all text-sm" />
                 </div>
                 </div>
 
@@ -97,7 +97,7 @@ export default function CreateAnnouncementModal({ show, onClose, onCreate, hours
                     <label className="block text-sm font-semibold text-gray-700 mb-1 flex items-center gap-1">
                         <Clock className="w-3 h-3" /> Start Time
                     </label>
-                    <select {...register('start_time')} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100 transition-all text-sm bg-white">
+                    <select {...register('startTime')} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100 transition-all text-sm bg-white">
                         {hours.map((hour) => <option key={hour} value={hour}>{hour}</option>)}
                     </select>
                 </div>
@@ -105,7 +105,7 @@ export default function CreateAnnouncementModal({ show, onClose, onCreate, hours
                     <label className="block text-sm font-semibold text-gray-700 mb-1 flex items-center gap-1">
                         <Clock className="w-3 h-3" /> End Time
                     </label>
-                    <select {...register('end_time')} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100 transition-all text-sm bg-white">
+                    <select {...register('endTime')} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100 transition-all text-sm bg-white">
                         {hours.map((hour) => <option key={hour} value={hour}>{hour}</option>)}
                     </select>
                 </div>

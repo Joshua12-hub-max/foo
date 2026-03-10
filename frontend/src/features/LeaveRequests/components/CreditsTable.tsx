@@ -4,11 +4,11 @@ import Pagination from '@/components/CustomUI/Pagination';
 
 interface LeaveCredit {
   id: number;
-  employee_id: string;
-  first_name: string;
-  last_name: string;
+  employeeId: string;
+  firstName: string;
+  lastName: string;
   department: string;
-  credit_type: string;
+  creditType: string;
   balance: number;
 }
 
@@ -102,22 +102,22 @@ const CreditsTable = ({
                 <td className="px-6 py-4">
                   <div>
                     <div className="font-semibold text-gray-900">
-                      {(credit.first_name || credit.last_name) 
-                        ? `${credit.first_name || ''} ${credit.last_name || ''}`.trim()
-                        : credit.employee_id || 'Unknown Employee'
+                      {(credit.firstName || credit.lastName) 
+                        ? `${credit.firstName || ''} ${credit.lastName || ''}`.trim()
+                        : credit.employeeId || 'Unknown Employee'
                       }
                     </div>
-                    <div className="text-xs text-gray-500">{credit.employee_id || 'N/A'}</div>
+                    <div className="text-xs text-gray-500">{credit.employeeId || 'N/A'}</div>
                   </div>
                 </td>
                 <td className="px-6 py-4 text-gray-600">{credit.department || '-'}</td>
                 <td className="px-6 py-4">
                   <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium ${
-                    credit.credit_type === 'Vacation Leave' ? 'bg-blue-50 text-blue-700 border border-blue-100' :
-                    credit.credit_type === 'Sick Leave' ? 'bg-amber-50 text-amber-700 border border-amber-100' :
+                    credit.creditType === 'Vacation Leave' ? 'bg-blue-50 text-blue-700 border border-blue-100' :
+                    credit.creditType === 'Sick Leave' ? 'bg-amber-50 text-amber-700 border border-amber-100' :
                     'bg-gray-50 text-gray-700 border border-gray-100'
                   }`}>
-                    {credit.credit_type}
+                    {credit.creditType}
                   </span>
                 </td>
                 <td className="px-6 py-4">

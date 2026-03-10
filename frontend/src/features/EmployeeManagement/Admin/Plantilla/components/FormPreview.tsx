@@ -85,11 +85,11 @@ const CSForm33 = ({ data }: { data: Form33Data }) => (
         </h1>
 
         <div className="mb-8">
-            <p className="mb-4">Mr./Ms. <strong>{data.first_name} {data.middle_name ? `${data.middle_name[0]}.` : ''} {data.last_name}</strong></p>
+            <p className="mb-4">Mr./Ms. <strong>{data.firstName} {data.middleName ? `${data.middleName[0]}.` : ''} {data.lastName}</strong></p>
             <p className="leading-relaxed">
-                You are hereby appointed as <strong>{data.position_title}</strong> (SG {data.salary_grade}) 
+                You are hereby appointed as <strong>{data.positionTitle}</strong> (SG {data.salaryGrade}) 
                 under <strong>{data.status}</strong> status at the <strong>{data.department}</strong> 
-                with a monthly compensation of <strong>{new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(data.monthly_salary)}</strong>.
+                with a monthly compensation of <strong>{new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(data.monthlySalary)}</strong>.
             </p>
         </div>
 
@@ -99,7 +99,7 @@ const CSForm33 = ({ data }: { data: Form33Data }) => (
                 <div className="space-y-4">
                     <div>
                         <div className="text-[10px] uppercase font-black text-gray-500">Item Number</div>
-                        <div className="text-[13px] font-bold">{data.item_number}</div>
+                        <div className="text-[13px] font-bold">{data.itemNumber}</div>
                     </div>
                     <div>
                         <div className="text-[10px] uppercase font-black text-gray-500">Nature of Appointment</div>

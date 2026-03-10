@@ -7,7 +7,7 @@ export const LoginSchema = z.object({
 });
 
 export const RegisterSchema = z.object({
-  employee_id: z.string().optional(),
+  employeeId: z.string().optional(),
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
   middleName: z.string().optional(),
@@ -21,11 +21,13 @@ export const RegisterSchema = z.object({
   email: z.string().email("Invalid email format"),
   password: z.string()
     .min(8, "Password must be at least 8 characters")
-    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, "Password must contain at least one uppercase letter, one lowercase letter, and one number"),
-  role: z.enum(["admin", "Human Resource", "employee"]).optional(),
+    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, "Password must contain at least one uppercase letter, one lowercase letter, and one number")
+    .optional().or(z.literal("")),
+  role: z.enum(["Administrator", "Human Resource", "Employee"]).optional(),
   department: z.string().optional(),
   position: z.string().optional(),
-  duties: z.enum(["Standard", "Irregular Duties"]).optional(),
+  dutyType: z.enum(["Standard", "Irregular"]),
+  appointmentType: z.enum(['Permanent', 'Contractual', 'Casual', 'Job Order', 'Coterminous', 'Temporary', 'Contract of Service', 'JO', 'COS', '']).optional(),
   avatar: z.instanceof(File).optional(),
 
   // Personal Info
@@ -42,6 +44,9 @@ export const RegisterSchema = z.object({
   resRegion: z.string().optional(),
   resProvince: z.string().optional(),
   resCity: z.string().optional(),
+  resArea: z.string().optional(),
+  resHouseBlockLot: z.string().optional(),
+  resSubdivision: z.string().optional(),
   resBrgy: z.string().optional(),
   resStreet: z.string().optional(),
   permRegion: z.string().optional(),
@@ -49,6 +54,8 @@ export const RegisterSchema = z.object({
   permCity: z.string().optional(),
   permBrgy: z.string().optional(),
   permStreet: z.string().optional(),
+  permHouseBlockLot: z.string().optional(),
+  permSubdivision: z.string().optional(),
   
   residentialAddress: z.string().optional(),
   residentialZipCode: z.string().optional(),
@@ -60,12 +67,12 @@ export const RegisterSchema = z.object({
   emergencyContactNumber: z.string().optional(),
 
   // Government Identification
-  gsisIdNo: z.string().optional(),
-  pagibigIdNo: z.string().optional(),
-  philhealthNo: z.string().optional(),
-  umidId: z.string().optional(),
+  gsisNumber: z.string().optional(),
+  pagibigNumber: z.string().optional(),
+  philhealthNumber: z.string().optional(),
+  umidNumber: z.string().optional(),
   philsysId: z.string().optional(),
-  tinNo: z.string().optional(),
+  tinNumber: z.string().optional(),
   agencyEmployeeNo: z.string().optional(),
 
   // Educational Background
@@ -73,7 +80,6 @@ export const RegisterSchema = z.object({
   schoolName: z.string().optional(),
   course: z.string().optional(),
   yearGraduated: z.string().optional(),
-  highestEducation: z.string().optional(),
   yearsOfExperience: z.string().optional(),
   experience: z.string().optional(),
   skills: z.string().optional(),

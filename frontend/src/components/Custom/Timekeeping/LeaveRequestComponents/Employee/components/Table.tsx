@@ -53,7 +53,7 @@ export const Table: React.FC<TableProps> = ({ data, searchQuery, filters }) => {
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-800">{item.department}</td>
                   <td className="px-6 py-4 text-sm text-gray-800">{item.id}</td>
-                  <td className="px-6 py-4 text-sm text-gray-800">{item.employee_id}</td>
+                  <td className="px-6 py-4 text-sm text-gray-800">{item.employeeId}</td>
                   <td className="px-6 py-4 text-sm text-gray-800">{item.leaveType}</td>
                   <td className="px-6 py-4 text-sm text-gray-800">
                     {new Date(item.fromDate).toLocaleDateString()}

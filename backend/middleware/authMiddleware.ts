@@ -183,7 +183,7 @@ export const verifyAdmin: MiddlewareFunction = (
           return;
         }
         
-        const adminRoles: UserRole[] = ['Admin', 'Human Resource'];
+        const adminRoles: UserRole[] = ['Administrator', 'Human Resource'];
         
         if (adminRoles.includes(userRole)) {
           next();
@@ -230,7 +230,7 @@ export const verifyOwnerOrAdmin: MiddlewareFunction = (
         }
 
         const userRole = user.role;
-        const isAdmin = ['Admin', 'Human Resource'].includes(userRole || '');
+        const isAdmin = ['Administrator', 'Human Resource'].includes(userRole || '');
         
         const targetIdString = req.params.id as string;
         const targetId = parseInt(targetIdString);
@@ -381,10 +381,10 @@ export const restrictSuspended = async (
     const userId = authReq.user.id;
 
     // Check status from DB for real-time enforcement
-    const [users] = await db.query<UserRow[]>('SELECT employment_status FROM authentication WHERE id = ?', [userId]);
+    const [users] = await db.query<UserRow[]>('SELECT employment_status as employmentStatus FROM authentication WHERE id = ?', [userId]);
 
     if (users.length > 0) {
-      const status = users[0].employment_status;
+      const status = users[0].employmentStatus;
       if (status === 'Suspended') {
          res.status(403).json({
           message: 'Action Restricted: Your account is currently under SUSPENSION. You cannot perform this action.',

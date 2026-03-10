@@ -46,12 +46,12 @@ const PerformanceReviews = () => {
 
   const filteredReviews = reviews.filter((review) => {
     const matchesSearch = 
-      (review.employee_first_name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (review.employee_last_name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (review.reviewer_first_name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (review.reviewer_last_name || "").toLowerCase().includes(searchTerm.toLowerCase());
+      (review.employeeFirstName || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (review.employeeLastName || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (review.reviewerFirstName || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (review.reviewerLastName || "").toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesCycle = filterCycle === 'All' || review.review_cycle_id === parseInt(filterCycle);
+    const matchesCycle = filterCycle === 'All' || review.reviewCycleId === parseInt(filterCycle);
     const matchesStatus = filterStatus === 'All' || review.status === filterStatus;
 
     return matchesSearch && matchesCycle && matchesStatus;
@@ -136,20 +136,20 @@ const PerformanceReviews = () => {
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-bold text-xs">
-                        {(review.employee_first_name || "?")[0]}{(review.employee_last_name || "?")[0]}
+                        {(review.employeeFirstName || "?")[0]}{(review.employeeLastName || "?")[0]}
                       </div>
                       <div>
-                        <p className="font-medium text-gray-800">{review.employee_first_name} {review.employee_last_name}</p>
-                        <p className="text-xs text-gray-500">{review.employee_job_title || 'Employee'}</p>
+                        <p className="font-medium text-gray-800">{review.employeeFirstName} {review.employeeLastName}</p>
+                        <p className="text-xs text-gray-500">{review.employeeJobTitle || 'Employee'}</p>
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{review.review_cycle_id}</td>
+                  <td className="px-6 py-4 text-sm text-gray-600">{review.reviewCycleId}</td>
                   <td className="px-6 py-4 text-sm text-gray-600">
-                    {review.reviewer_first_name} {review.reviewer_last_name}
+                    {review.reviewerFirstName} {review.reviewerLastName}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="font-bold text-gray-800">{review.total_score != null && review.total_score !== '' ? `${((parseFloat(review.total_score) / 5) * 100).toFixed(0)}%` : '-'}</span>
+                    <span className="font-bold text-gray-800">{review.totalScore != null && review.totalScore !== '' ? `${((parseFloat(review.totalScore) / 5) * 100).toFixed(0)}%` : '-'}</span>
                   </td>
                   <td className="px-6 py-4">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(review.status)}`}>

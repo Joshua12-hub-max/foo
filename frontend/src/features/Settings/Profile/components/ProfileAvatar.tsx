@@ -11,8 +11,8 @@ interface Profile {
 }
 
 interface FormData {
-  first_name: string;
-  last_name: string;
+  firstName: string;
+  lastName: string;
   email: string;
 }
 
@@ -34,7 +34,7 @@ const ProfileAvatar: React.FC<ProfileAvatarProps> = ({ profile, formData, isEdit
               <img src={avatarPreview} alt="Avatar" className="w-full h-full object-cover" />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-gray-500 text-xl font-bold">
-                {formData.first_name?.[0]?.toUpperCase()}{formData.last_name?.[0]?.toUpperCase()}
+                {formData.firstName?.[0]?.toUpperCase()}{formData.lastName?.[0]?.toUpperCase()}
               </div>
             )}
           </div>
@@ -50,7 +50,8 @@ const ProfileAvatar: React.FC<ProfileAvatarProps> = ({ profile, formData, isEdit
           <h2 className="text-lg font-bold text-gray-900">{profile?.name || 'User'}</h2>
           <div className="flex items-center gap-2 mt-1.5 flex-wrap">
             <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold ${
-              profile?.role === 'admin' || profile?.role === 'Human Resource' 
+              profile?.role === 'Administrator' || profile?.role === 'Human Resource'
+ 
                 ? 'bg-purple-100 text-purple-700' 
                 : 'bg-gray-200 text-gray-700'
             }`}>

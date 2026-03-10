@@ -1,16 +1,15 @@
 import api from './axios';
 import type { AxiosResponse } from 'axios';
 import type {
-  LeaveApplication,
   LeaveApplicationsResponse,
   LeaveCreditsResponse,
   LedgerResponse,
   HolidaysResponse,
   ApplyLeaveResponse,
+  ApplyLeavePayload,
   LeaveListParams,
   CreditListParams,
   LedgerParams,
-  ApplyLeavePayload,
   RejectLeavePayload,
   CreditUpdatePayload,
   AccrueCreditsPayload,
@@ -26,85 +25,50 @@ export const leaveApi = {
   /**
    * Apply for leave (employee)
    */
-  applyLeave: async (data: FormData): Promise<AxiosResponse<ApplyLeaveResponse>> => {
-    try {
-      const response = await api.post<ApplyLeaveResponse>('/leave/apply', data);
-      return response;
-    } catch (error) {
-      throw error;
-    }
+  applyLeave: async (data: ApplyLeavePayload): Promise<AxiosResponse<ApplyLeaveResponse>> => {
+    return await api.post<ApplyLeaveResponse>('/leave/apply', data);
   },
 
   /**
    * Get employee's own leave applications
    */
   getMyApplications: async (params?: LeaveListParams): Promise<AxiosResponse<LeaveApplicationsResponse>> => {
-    try {
-      const response = await api.get<LeaveApplicationsResponse>('/leave/my-applications', { params });
-      return response;
-    } catch (error) {
-      throw error;
-    }
+    return await api.get<LeaveApplicationsResponse>('/leave/my-applications', { params });
   },
 
   /**
    * Get all leave applications (admin)
    */
   getAllApplications: async (params?: LeaveListParams): Promise<AxiosResponse<LeaveApplicationsResponse>> => {
-    try {
-      const response = await api.get<LeaveApplicationsResponse>('/leave/applications/all', { params });
-      return response;
-    } catch (error) {
-      throw error;
-    }
+    return await api.get<LeaveApplicationsResponse>('/leave/applications/all', { params });
   },
 
   /**
-   * Process leave - admin uploads form
+   * Process leave - admin marks as processing
    */
-  processLeave: async (id: number, formData: FormData): Promise<AxiosResponse<{ message: string }>> => {
-    try {
-      const response = await api.put<{ message: string }>(`/leave/${id}/process`, formData);
-      return response;
-    } catch (error) {
-      throw error;
-    }
+  processLeave: async (id: number): Promise<AxiosResponse<{ message: string }>> => {
+    return await api.put<{ message: string }>(`/leave/${id}/process`);
   },
 
   /**
-   * Finalize leave - employee uploads signed form
+   * Finalize leave - employee marks as finalized
    */
-  finalizeLeave: async (id: number, formData: FormData): Promise<AxiosResponse<{ message: string }>> => {
-    try {
-      const response = await api.put<{ message: string }>(`/leave/${id}/finalize`, formData);
-      return response;
-    } catch (error) {
-      throw error;
-    }
+  finalizeLeave: async (id: number): Promise<AxiosResponse<{ message: string }>> => {
+    return await api.put<{ message: string }>(`/leave/${id}/finalize`);
   },
 
   /**
    * Approve leave application (admin)
    */
   approveLeave: async (id: number): Promise<AxiosResponse<{ message: string }>> => {
-    try {
-      const response = await api.put<{ message: string }>(`/leave/${id}/approve`);
-      return response;
-    } catch (error) {
-      throw error;
-    }
+    return await api.put<{ message: string }>(`/leave/${id}/approve`);
   },
 
   /**
    * Reject leave application (admin)
    */
   rejectLeave: async (id: number, data: RejectLeavePayload): Promise<AxiosResponse<{ message: string }>> => {
-    try {
-      const response = await api.put<{ message: string }>(`/leave/${id}/reject`, data);
-      return response;
-    } catch (error) {
-      throw error;
-    }
+    return await api.put<{ message: string }>(`/leave/${id}/reject`, data);
   },
 
   // ============================================================================
@@ -115,81 +79,51 @@ export const leaveApi = {
    * Get employee's own credits
    */
   getMyCredits: async (year?: number): Promise<AxiosResponse<LeaveCreditsResponse>> => {
-    try {
-      const response = await api.get<LeaveCreditsResponse>('/leave/my-credits', {
-        params: year ? { year } : undefined,
-      });
-      return response;
-    } catch (error) {
-      throw error;
-    }
+    return await api.get<LeaveCreditsResponse>('/leave/my-credits', {
+      params: year ? { year } : undefined,
+    });
   },
 
   /**
    * Get specific employee's credits (admin)
    */
   getEmployeeCredits: async (employeeId: string, year?: number): Promise<AxiosResponse<LeaveCreditsResponse>> => {
-    try {
-      const response = await api.get<LeaveCreditsResponse>(`/leave/credits/${employeeId}`, {
-        params: year ? { year } : undefined,
-      });
-      return response;
-    } catch (error) {
-      throw error;
-    }
+    return await api.get<LeaveCreditsResponse>(`/leave/credits/${employeeId}`, {
+      params: year ? { year } : undefined,
+    });
   },
 
   /**
    * Get all employee credits (admin)
    */
   getAllCredits: async (params?: CreditListParams): Promise<AxiosResponse<LeaveCreditsResponse>> => {
-    try {
-      const response = await api.get<LeaveCreditsResponse>('/leave/credits/all', { params });
-      return response;
-    } catch (error) {
-      throw error;
-    }
+    return await api.get<LeaveCreditsResponse>('/leave/credits/all', { params });
   },
 
   /**
    * Update employee credit (admin)
    */
   updateCredit: async (employeeId: string, data: CreditUpdatePayload): Promise<AxiosResponse<{ message: string; previousBalance: number; newBalance: number }>> => {
-    try {
-      const response = await api.put<{ message: string; previousBalance: number; newBalance: number }>(
-        `/leave/credits/${employeeId}`,
-        data
-      );
-      return response;
-    } catch (error) {
-      throw error;
-    }
+    return await api.put<{ message: string; previousBalance: number; newBalance: number }>(
+      `/leave/credits/${employeeId}`,
+      data
+    );
   },
 
   /**
    * Delete employee credit (admin)
    */
   deleteCredit: async (employeeId: string, creditType: string, year?: number): Promise<AxiosResponse<{ message: string }>> => {
-    try {
-      const response = await api.delete<{ message: string }>(`/leave/credits/${employeeId}`, {
-        params: { creditType, year },
-      });
-      return response;
-    } catch (error) {
-      throw error;
-    }
+    return await api.delete<{ message: string }>(`/leave/credits/${employeeId}`, {
+      params: { creditType, year },
+    });
   },
 
   /**
    * Accrue monthly credits (admin)
    */
   accrueMonthlyCredits: async (data: AccrueCreditsPayload): Promise<AxiosResponse<{ message: string; month: number; year: number; vlAccrued: number; slAccrued: number }>> => {
-    try {
-      const response = await api.post('/leave/accrue-monthly', data);
-      return response;
-    } catch (error) {
-      throw error;
-    }
+    return await api.post('/leave/accrue-monthly', data);
   },
 
   // ============================================================================
@@ -200,24 +134,14 @@ export const leaveApi = {
    * Get employee's own ledger
    */
   getMyLedger: async (params?: LedgerParams): Promise<AxiosResponse<LedgerResponse>> => {
-    try {
-      const response = await api.get<LedgerResponse>('/leave/my-ledger', { params });
-      return response;
-    } catch (error) {
-      throw error;
-    }
+    return await api.get<LedgerResponse>('/leave/my-ledger', { params });
   },
 
   /**
    * Get specific employee's ledger (admin)
    */
   getEmployeeLedger: async (employeeId: string, params?: LedgerParams): Promise<AxiosResponse<LedgerResponse>> => {
-    try {
-      const response = await api.get<LedgerResponse>(`/leave/ledger/${employeeId}`, { params });
-      return response;
-    } catch (error) {
-      throw error;
-    }
+    return await api.get<LedgerResponse>(`/leave/ledger/${employeeId}`, { params });
   },
 
   // ============================================================================
@@ -228,38 +152,23 @@ export const leaveApi = {
    * Get holidays for a year
    */
   getHolidays: async (year?: number): Promise<AxiosResponse<HolidaysResponse>> => {
-    try {
-      const response = await api.get<HolidaysResponse>('/leave/holidays', {
-        params: year ? { year } : undefined,
-      });
-      return response;
-    } catch (error) {
-      throw error;
-    }
+    return await api.get<HolidaysResponse>('/leave/holidays', {
+      params: year ? { year } : undefined,
+    });
   },
 
   /**
    * Add a holiday (admin)
    */
   addHoliday: async (data: AddHolidayPayload): Promise<AxiosResponse<{ message: string }>> => {
-    try {
-      const response = await api.post<{ message: string }>('/leave/holidays', data);
-      return response;
-    } catch (error) {
-      throw error;
-    }
+    return await api.post<{ message: string }>('/leave/holidays', data);
   },
 
   /**
    * Delete a holiday (admin)
    */
   deleteHoliday: async (id: number): Promise<AxiosResponse<{ message: string }>> => {
-    try {
-      const response = await api.delete<{ message: string }>(`/leave/holidays/${id}`);
-      return response;
-    } catch (error) {
-      throw error;
-    }
+    return await api.delete<{ message: string }>(`/leave/holidays/${id}`);
   },
 
   // ============================================================================
@@ -270,12 +179,7 @@ export const leaveApi = {
    * Get LWOP summary for employee (admin)
    */
   getLWOPSummary: async (employeeId: string): Promise<AxiosResponse<{ summary: LWOPSummary[] }>> => {
-    try {
-      const response = await api.get<{ summary: LWOPSummary[] }>(`/leave/lwop-summary/${employeeId}`);
-      return response;
-    } catch (error) {
-      throw error;
-    }
+    return await api.get<{ summary: LWOPSummary[] }>(`/leave/lwop-summary/${employeeId}`);
   },
 
   // ============================================================================
@@ -288,27 +192,22 @@ export const leaveApi = {
   getServiceRecord: async (employeeId: string): Promise<AxiosResponse<{
     records: Array<{
       id: number;
-      employee_id: string;
-      event_type: string;
-      event_date: string;
-      end_date: string | null;
-      leave_type: string | null;
-      days_count: number;
-      is_with_pay: boolean;
+      employeeId: string;
+      eventType: string;
+      eventDate: string;
+      endDate: string | null;
+      leaveType: string | null;
+      daysCount: number;
+      isWithPay: boolean;
       remarks: string;
-      reference_id: number | null;
-      reference_type: string | null;
-      processed_by: string;
-      created_at: string;
+      referenceId: number | null;
+      referenceType: string | null;
+      processedBy: string;
+      createdAt: string;
     }>;
     totalLWOPDays: number;
   }>> => {
-    try {
-      const response = await api.get(`/leave/service-record/${employeeId}`);
-      return response;
-    } catch (error) {
-      throw error;
-    }
+    return await api.get(`/leave/service-record/${employeeId}`);
   },
 
   /**
@@ -323,12 +222,7 @@ export const leaveApi = {
       message: string;
     };
   }>> => {
-    try {
-      const response = await api.get(`/leave/service-record/${employeeId}/lwop-total`);
-      return response;
-    } catch (error) {
-      throw error;
-    }
+    return await api.get(`/leave/service-record/${employeeId}/lwop-total`);
   },
 
   /**
@@ -350,12 +244,7 @@ export const leaveApi = {
     }>;
     processedBy: string;
   }>> => {
-    try {
-      const response = await api.post('/leave/process-tardiness', data);
-      return response;
-    } catch (error) {
-      throw error;
-    }
+    return await api.post('/leave/process-tardiness', data);
   },
 
   // ============================================================================
@@ -364,47 +253,27 @@ export const leaveApi = {
 
   /** @deprecated Use getMyApplications instead */
   getMyLeaves: async (params?: LeaveListParams): Promise<AxiosResponse<LeaveApplicationsResponse>> => {
-    try {
-      const response = await api.get<LeaveApplicationsResponse>('/leave/my-leaves', { params });
-      return response;
-    } catch (error) {
-      throw error;
-    }
+    return await api.get<LeaveApplicationsResponse>('/leave/my-leaves', { params });
   },
 
   /** @deprecated Use getAllApplications instead */
   getAllLeaves: async (params?: LeaveListParams): Promise<AxiosResponse<LeaveApplicationsResponse>> => {
-    try {
-      const response = await api.get<LeaveApplicationsResponse>('/leave/all', { params });
-      return response;
-    } catch (error) {
-      throw error;
-    }
+    return await api.get<LeaveApplicationsResponse>('/leave/all', { params });
   },
 
   /** @deprecated Use updateCredit instead */
   updateEmployeeCredit: async (employeeId: string, data: CreditUpdatePayload): Promise<AxiosResponse<{ message: string; previousBalance: number; newBalance: number }>> => {
-    try {
-      const response = await api.put<{ message: string; previousBalance: number; newBalance: number }>(
-        `/leave/credits/${employeeId}`,
-        data
-      );
-      return response;
-    } catch (error) {
-      throw error;
-    }
+    return await api.put<{ message: string; previousBalance: number; newBalance: number }>(
+      `/leave/credits/${employeeId}`,
+      data
+    );
   },
 
   /** @deprecated Use deleteCredit instead */
   deleteEmployeeCredit: async (employeeId: string, creditType: string, year?: number): Promise<AxiosResponse<{ message: string }>> => {
-    try {
-      const response = await api.delete<{ message: string }>(`/leave/credits/${employeeId}`, {
-        params: { creditType, year },
-      });
-      return response;
-    } catch (error) {
-      throw error;
-    }
+    return await api.delete<{ message: string }>(`/leave/credits/${employeeId}`, {
+      params: { creditType, year },
+    });
   },
 };
 

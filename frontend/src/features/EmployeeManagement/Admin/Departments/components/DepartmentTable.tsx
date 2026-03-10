@@ -1,15 +1,19 @@
-import React, { memo, useState, useCallback, useEffect } from 'react';
+import React, { memo, useState, useCallback } from 'react';
 import { SquarePen, Trash2, ChevronDown, ChevronRight, Users, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-// @ts-ignore
-import { DEPARTMENT_TABLE_HEADERS } from '@/components/Custom/EmployeeManagement/Admin/Departments/constants/departmentConstants';
-// @ts-ignore
-import { DepartmentEmployeeTable } from '@features/EmployeeManagement/Admin/Departments';
-// @ts-ignore
-import { fetchDepartmentEmployees } from '@api/departmentApi';
+import { departmentApi } from '@/api/departmentApi';
+import DepartmentEmployeeTable from './DepartmentEmployeeTable';
 
 import { Department } from '@/types/org';
 import { Employee } from '@/types';
+
+const DEPARTMENT_TABLE_HEADERS = [
+  { key: 'id', label: 'ID', align: 'left' },
+  { key: 'name', label: 'Department Name', align: 'left' },
+  { key: 'headOfDepartment', label: 'Head of Dept', align: 'left' },
+  { key: 'employeeCount', label: 'Workforce', align: 'left' },
+  { key: 'actions', label: 'Actions', align: 'right' }
+];
 
 interface DepartmentTableProps {
   departments: Department[];
@@ -33,9 +37,9 @@ const DepartmentTable: React.FC<DepartmentTableProps> = memo(({ departments, loa
     if (isExpanding && !departmentEmployees[deptId]) {
       try {
         setLoadingEmployees(prev => ({ ...prev, [deptId]: true }));
-        const response = await fetchDepartmentEmployees(deptId);
+        const response = await departmentApi.getDepartmentById(String(deptId));
         if (response.success) {
-          setDepartmentEmployees(prev => ({ ...prev, [deptId]: response.employees || [] }));
+          setDepartmentEmployees(prev => ({ ...prev, [deptId]: (response.employees as unknown as Employee[]) || [] }));
         }
       } catch (error) {
         console.error(`Failed to fetch employees for department ${deptId}:`, error);
@@ -104,15 +108,15 @@ const DepartmentTable: React.FC<DepartmentTableProps> = memo(({ departments, loa
                                 <div className="text-sm font-medium text-gray-800">{dept.name}</div>
                             </td>
                             <td className="px-6 py-4 text-sm text-gray-700 font-medium">
-                                {dept.head_of_department || <span className="text-gray-400 italic">Not Assigned</span>}
+                                {dept.headOfDepartment || <span className="text-gray-400 italic">Not Assigned</span>}
                             </td>
                             <td className="px-6 py-4">
                                 <div className="flex items-center gap-2">
                                     <div className="h-2 w-16 bg-gray-100 rounded-full overflow-hidden">
-                                        <div className="h-full bg-gray-800" style={{ width: `${Math.min((dept.employee_count || 0) * 5, 100)}%` }}></div>
+                                        <div className="h-full bg-gray-800" style={{ width: `${Math.min((dept.employeeCount || 0) * 5, 100)}%` }}></div>
                                     </div>
                                     <span className="text-xs font-medium text-gray-600">
-                                        {dept.employee_count || 0} Members
+                                        {dept.employeeCount || 0} Members
                                     </span>
                                 </div>
                             </td>

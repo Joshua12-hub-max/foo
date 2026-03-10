@@ -28,7 +28,7 @@ const EmployeeCard: React.FC<EmployeeCardProps> = ({
     onDelete(employee);
   };
 
-  const isTerminated = employee.employment_status === 'Terminated';
+  const isTerminated = employee.employmentStatus === 'Terminated';
 
   return (
     <div 
@@ -57,21 +57,21 @@ const EmployeeCard: React.FC<EmployeeCardProps> = ({
         <div className="flex flex-col items-center text-center">
             {/* Avatar */}
             <div className="w-16 h-16 rounded-full bg-gray-100 mb-4 overflow-hidden border-2 border-white shadow-sm ring-1 ring-gray-100 relative">
-            {employee.avatar_url ? (
-                <img src={employee.avatar_url} alt={employee.first_name} className="w-full h-full object-cover" />
+            {employee.avatarUrl ? (
+                <img src={employee.avatarUrl} alt={employee.firstName} className="w-full h-full object-cover" />
             ) : (
                 <div className="w-full h-full flex items-center justify-center text-gray-600 text-lg font-black uppercase">
-                {(employee.first_name?.[0] || '')}{(employee.last_name?.[0] || '')}
+                {(employee.firstName?.[0] || '')}{(employee.lastName?.[0] || '')}
                 </div>
             )}
             </div>
 
             {/* Name & Title */}
             <h3 className={`font-bold text-gray-800 group-hover:text-gray-600 transition-colors text-sm ${isTerminated ? 'line-through decoration-red-400' : ''}`}>
-                {employee.first_name} {employee.last_name}
+                {employee.firstName} {employee.lastName}
             </h3>
             <p className="text-[11px] font-semibold text-gray-500 mt-0.5">
-                {employee.job_title || 'Member'}
+                {employee.jobTitle || 'Member'}
             </p>
 
             {/* Info */}
@@ -90,9 +90,9 @@ const EmployeeCard: React.FC<EmployeeCardProps> = ({
 
       {/* Footer ID Chip */}
       <div className="bg-gray-50/50 px-6 py-3 flex justify-between items-center border-t border-gray-100">
-        <span className="text-[10px] font-mono font-medium text-gray-400">ID: {employee.employee_id}</span>
-        <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold shadow-sm ${getStatusBadgeClass(employee.employment_status || '')}`}>
-            {employee.employment_status || 'Active'}
+        <span className="text-[10px] font-mono font-medium text-gray-400">ID: {employee.employeeId}</span>
+        <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold shadow-sm ${getStatusBadgeClass(employee.employmentStatus || '')}`}>
+            {employee.employmentStatus || 'Active'}
         </span>
       </div>
     </div>

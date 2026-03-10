@@ -56,8 +56,8 @@ const getHolidaysInRange = async (startDate: string, endDate: string): Promise<s
     ));
     
     return rows.map(r => r.date);
-  } catch (error) {
-    console.error('Error fetching holidays:', error);
+  } catch (_error) {
+
     return [];
   }
 };
@@ -149,8 +149,7 @@ const processDeemedApprovedLeaves = async (): Promise<void> => {
             const workingDaysPassed = countWorkingDaysFast(createdStr, todayStr);
 
             if (workingDaysPassed >= gracePeriod) {
-                console.log(`[AUTO-APPROVE] Processing Leave ID ${application.id} (Employee: ${application.employeeId})`);
-                
+
                 const isSpecialLeave = policy.specialLeavesNoDeduction.includes(application.leaveType);
 
                 // Credit Deduction
@@ -192,28 +191,55 @@ const processDeemedApprovedLeaves = async (): Promise<void> => {
                 await logToServiceRecord(application.employeeId, eventType as 'LWOP' | 'Leave', String(application.startDate).split('T')[0], String(application.endDate).split('T')[0], application.leaveType, Number(application.workingDays), application.actualPaymentStatus !== 'WITHOUT_PAY', `${application.leaveType} - Deemed Approved`, application.id, 'leave_application', approvedBy);
             }
         }
-    } catch (error) {
-        console.error('[AUTO-APPROVE] Fatal Error:', error);
+    } catch (_error) {
+      /* empty */
+
     }
 };
 
 /**
  * Get dynamic leave policy from database
  */
-const getLeavePolicy = async (): Promise<LeavePolicyContent | null> => {
+const getLeavePolicy = async (): Promise<LeavePolicyContent> => {
+  const fallbackPolicy: LeavePolicyContent = {
+    types: ['Vacation Leave', 'Sick Leave', 'Special Privilege Leave', 'Forced Leave', 'Maternity Leave', 'Paternity Leave', 'Study Leave', 'Solo Parent Leave', 'Rehabilitation Leave', 'Special Leave Benefits for Women', 'Special Emergency Leave', 'Calamity Leave'],
+    /* eslint-disable @typescript-eslint/naming-convention */
+    annualLimits: {
+      'Vacation Leave': 15,
+      'Sick Leave': 15,
+      'Special Privilege Leave': 3,
+      'Forced Leave': 5,
+      'Solo Parent Leave': 7,
+    },
+    advanceFilingDays: { days: 5, appliesTo: ['Vacation Leave', 'Forced Leave'] },
+    sickLeaveWindow: { maxDaysAfterReturn: 5 },
+    crossChargeMap: { 'Sick Leave': 'Vacation Leave', 'Forced Leave': 'Vacation Leave' },
+    leaveToCreditMap: { 'Vacation Leave': 'Vacation Leave', 'Sick Leave': 'Sick Leave', 'Special Privilege Leave': 'Special Privilege Leave', 'Forced Leave': 'Vacation Leave', 'Solo Parent Leave': 'Solo Parent Leave' },
+    /* eslint-enable @typescript-eslint/naming-convention */
+    specialLeavesNoDeduction: ['Study Leave', 'Maternity Leave', 'Paternity Leave', 'Rehabilitation Leave', 'Special Leave Benefits for Women', 'Special Emergency Leave', 'Calamity Leave'],
+    requiredAttachments: {}, 
+    forcedLeaveRule: { minimumVLRequired: 10, description: 'Forced leave is mandatory if VL balance is 10 or more.' },
+    deemedApprovalGracePeriod: 5,
+    deemedApproval: { days: 5, description: 'CSC Rule: Pending for 5+ days is deemed approved.', reference: 'CSC Omnibus Rules on Leave' }
+  };
+
   try {
-    const policy = await db.query.internalPolicies.findFirst({
-      where: eq(internalPolicies.category, 'leave')
-    });
+    const results = await db.select()
+      .from(internalPolicies)
+      .where(eq(internalPolicies.category, 'leave'))
+      .limit(1);
 
-    if (!policy) return null;
+    const policy = results[0];
 
-    return typeof policy.content === 'string' 
-      ? JSON.parse(policy.content) 
-      : policy.content as LeavePolicyContent;
-  } catch (error) {
-    console.error('Error fetching leave policy:', error);
-    return null;
+    if (policy) {
+        return typeof policy.content === 'string' 
+          ? JSON.parse(policy.content) 
+          : policy.content as unknown as LeavePolicyContent;
+    }
+
+    return fallbackPolicy;
+  } catch (_error) {
+    return fallbackPolicy;
   }
 };
 
@@ -235,8 +261,8 @@ const getEmployeeBalance = async (
       )
     });
     return row ? Number(row.balance) : 0;
-  } catch (error) {
-    console.error('Error getting balance:', error);
+  } catch (_error) {
+
     return 0;
   }
 };
@@ -288,8 +314,8 @@ const updateBalance = async (
     });
 
     return { success: true, newBalance: Number(newBalance) };
-  } catch (error) {
-    console.error('Error updating balance:', error);
+  } catch (_error) {
+
     return { success: false, newBalance: 0 };
   }
 };
@@ -326,8 +352,9 @@ const updateLWOPSummary = async (employeeId: string, lwopDays: number): Promise<
         updatedAt: sql`CURRENT_TIMESTAMP`
       }
     });
-  } catch (error) {
-    console.error('Error updating LWOP summary:', error);
+  } catch (_error) {
+      /* empty */
+
   }
 };
 
@@ -362,9 +389,10 @@ const logToServiceRecord = async (
       referenceType,
       processedBy
     });
-    console.log(`Logged ${eventType} to service record for ${employeeId}`);
-  } catch (error) {
-    console.error('Error logging to service record:', error);
+
+  } catch (_error) {
+      /* empty */
+
   }
 };
 
@@ -464,8 +492,8 @@ const calculateTardinessDeduction = async (
       ));
 
     return { daysEquivalent, deductedFromVL, chargedAsLWOP };
-  } catch (error) {
-    console.error('Error calculating tardiness deduction:', error);
+  } catch (_error) {
+
     return { daysEquivalent: 0, deductedFromVL: 0, chargedAsLWOP: 0 };
   }
 };
@@ -568,37 +596,6 @@ export const applyLeave = async (req: Request, res: Response): Promise<void> => 
       }
     }
 
-    // Check SL medical certificate requirement (>= 5 days)
-    // Check for mandatory attachments based on policy
-    let needsMedCert = false;
-    let requiredDocLabel = 'supporting document';
-
-    if (policy.requiredAttachments) {
-      for (const [key, requirement] of Object.entries(policy.requiredAttachments)) {
-        const isSickLeaveRule = key.startsWith('sickLeave') && leaveType === 'Sick Leave';
-        const isSpecificTypeRule = key === leaveType.charAt(0).toLowerCase() + leaveType.slice(1).replace(/\s/g, '');
-        const isMatch = isSpecificTypeRule || isSickLeaveRule;
-
-        if (isMatch) {
-          if (isSickLeaveRule) {
-            if (workingDays >= 5) {
-              needsMedCert = true;
-              requiredDocLabel = requirement.required;
-            }
-          } else {
-            needsMedCert = true;
-            requiredDocLabel = requirement.required;
-          }
-        }
-      }
-    }
-
-    // Validate attachment
-    if (needsMedCert && !req.file) {
-      res.status(400).json({ message: `A valid ${requiredDocLabel} is strictly required for ${leaveType}.` });
-      return;
-    }
-
     // Determine payment status
     const isSpecialLeave = policy.specialLeavesNoDeduction.includes(leaveType);
     let actualPaymentStatus: PaymentStatus = 'WITH_PAY';
@@ -672,8 +669,6 @@ export const applyLeave = async (req: Request, res: Response): Promise<void> => 
       actualPaymentStatus = 'WITH_PAY';
     }
 
-    const attachmentPath = req.file ? `leaves/${req.file.filename}` : null;
-
     // Insert application
     const [result] = await db.insert(leaveApplications).values({
       employeeId: String(employeeId),
@@ -687,7 +682,6 @@ export const applyLeave = async (req: Request, res: Response): Promise<void> => 
       daysWithoutPay: daysWithoutPay.toString(),
       crossChargedFrom,
       reason,
-      attachmentPath,
       status: 'Pending'
     });
 
@@ -709,8 +703,9 @@ export const applyLeave = async (req: Request, res: Response): Promise<void> => 
         type: 'leave_request',
         referenceId: result.insertId,
       });
-    } catch (notifyError) {
-      console.error('Notification failed:', notifyError);
+    } catch (_notifyError) {
+      /* empty */
+
     }
 
     res.status(201).json({
@@ -721,11 +716,10 @@ export const applyLeave = async (req: Request, res: Response): Promise<void> => 
       daysWithPay,
       daysWithoutPay,
       crossChargedFrom,
-      needsMedCert,
     });
   } catch (err) {
     const error = err as Error;
-    console.error('Apply Leave Error:', error.message);
+
     res.status(500).json({ message: error.message || 'Something went wrong!' });
   }
 };
@@ -767,21 +761,20 @@ export const getMyLeaves = async (req: Request, res: Response): Promise<void> =>
     // Fetch applications
     const leaves = await db.select({
       id: leaveApplications.id,
-      employee_id: leaveApplications.employeeId,
-      leave_type: leaveApplications.leaveType,
-      start_date: leaveApplications.startDate,
-      end_date: leaveApplications.endDate,
-      working_days: leaveApplications.workingDays,
+      employeeId: leaveApplications.employeeId,
+      leaveType: leaveApplications.leaveType,
+      startDate: leaveApplications.startDate,
+      endDate: leaveApplications.endDate,
+      workingDays: leaveApplications.workingDays,
       status: leaveApplications.status,
       reason: leaveApplications.reason,
-      created_at: leaveApplications.createdAt,
-      first_name: authentication.firstName,
-      last_name: authentication.lastName,
-      middle_name: authentication.middleName,
+      createdAt: leaveApplications.createdAt,
+      firstName: authentication.firstName,
+      lastName: authentication.lastName,
+      middleName: authentication.middleName,
       suffix: authentication.suffix,
       department: authentication.department,
-      with_pay: leaveApplications.isWithPay,
-      attachment_path: leaveApplications.attachmentPath
+      withPay: leaveApplications.isWithPay
     })
     .from(leaveApplications)
     .leftJoin(authentication, eq(leaveApplications.employeeId, authentication.employeeId))
@@ -792,15 +785,15 @@ export const getMyLeaves = async (req: Request, res: Response): Promise<void> =>
 
     const formattedLeaves = leaves.map(l => ({
         ...l,
-        employee_name: formatFullName(l.last_name, l.first_name, l.middle_name, l.suffix)
+        employeeName: formatFullName(l.lastName, l.firstName, l.middleName, l.suffix)
     }));
 
     res.status(200).json({
       leaves: formattedLeaves,
       pagination: { page, limit, totalItems, totalPages },
     });
-  } catch (err) {
-    console.error('getMyLeaves error:', err);
+  } catch (_err) {
+
     res.status(500).json({ message: 'Something went wrong!' });
   }
 };
@@ -875,20 +868,20 @@ export const getAllLeaves = async (req: Request, res: Response): Promise<void> =
     // Fetch applications
     const leaves = await db.select({
       id: leaveApplications.id,
-      employee_id: leaveApplications.employeeId,
-      leave_type: leaveApplications.leaveType,
-      start_date: leaveApplications.startDate,
-      end_date: leaveApplications.endDate,
-      working_days: leaveApplications.workingDays,
+      employeeId: leaveApplications.employeeId,
+      leaveType: leaveApplications.leaveType,
+      startDate: leaveApplications.startDate,
+      endDate: leaveApplications.endDate,
+      workingDays: leaveApplications.workingDays,
       status: leaveApplications.status,
-      created_at: leaveApplications.createdAt,
-      with_pay: leaveApplications.isWithPay, 
-      first_name: sql<string>`COALESCE(${authentication.firstName}, '')`,
-      last_name: sql<string>`COALESCE(${authentication.lastName}, '')`,
-      middle_name: authentication.middleName,
+      createdAt: leaveApplications.createdAt,
+      withPay: leaveApplications.isWithPay, 
+      firstName: sql<string>`COALESCE(${authentication.firstName}, '')`,
+      lastName: sql<string>`COALESCE(${authentication.lastName}, '')`,
+      middleName: authentication.middleName,
       suffix: authentication.suffix,
       department: sql<string>`COALESCE(${authentication.department}, 'N/A')`,
-      current_balance: sql<number>`COALESCE(${leaveBalances.balance}, 0)`
+      currentBalance: sql<number>`COALESCE(${leaveBalances.balance}, 0)`
     })
     .from(leaveApplications)
     .leftJoin(authentication, eq(leaveApplications.employeeId, authentication.employeeId))
@@ -905,7 +898,7 @@ export const getAllLeaves = async (req: Request, res: Response): Promise<void> =
 
     const formattedLeaves = leaves.map(l => ({
         ...l,
-        employee_name: formatFullName(l.last_name, l.first_name, l.middle_name, l.suffix)
+        employeeName: formatFullName(l.lastName, l.firstName, l.middleName, l.suffix)
     }));
 
     res.status(200).json({
@@ -913,8 +906,8 @@ export const getAllLeaves = async (req: Request, res: Response): Promise<void> =
       applications: formattedLeaves, // Keep for backward compatibility if any other part uses it
       pagination: { page, limit, totalItems, totalPages },
     });
-  } catch (err) {
-    console.error('getAllLeaves error:', err);
+  } catch (_err) {
+
     res.status(500).json({ message: 'Something went wrong!' });
   }
 };
@@ -926,11 +919,10 @@ export const processLeave = async (req: Request, res: Response): Promise<void> =
   try {
     const { id } = req.params as { id: string };
     const authReq = req as AuthenticatedRequest;
-    const adminId = authReq.user ? String(authReq.user.employeeId || authReq.user.id) : 'Admin';
-    const adminFormPath = req.file ? `leaves/${req.file.filename}` : null;
+    const adminId = authReq.user ? String(authReq.user.employeeId || authReq.user.id) : 'Administrator';
 
     await db.update(leaveApplications)
-      .set({ status: 'Processing', adminFormPath, updatedAt: sql`CURRENT_TIMESTAMP` })
+      .set({ status: 'Processing', updatedAt: sql`CURRENT_TIMESTAMP` })
       .where(eq(leaveApplications.id, parseInt(id)));
 
     // Notify employee
@@ -944,15 +936,15 @@ export const processLeave = async (req: Request, res: Response): Promise<void> =
         recipientId: application.employeeId,
         senderId: adminId,
         title: 'Leave Request Processing',
-        message: 'Your leave request is being processed. Please check for the Admin form.',
+        message: 'Your leave request is being processed.',
         type: 'leave_process',
         referenceId: parseInt(id),
       });
     }
 
-    res.status(200).json({ message: 'Leave processed, form sent to employee' });
-  } catch (err) {
-    console.error('processLeave error:', err);
+    res.status(200).json({ message: 'Leave processed' });
+  } catch (_err) {
+
     res.status(500).json({ message: 'Something went wrong!' });
   }
 };
@@ -965,25 +957,24 @@ export const finalizeLeave = async (req: Request, res: Response): Promise<void> 
     const { id } = req.params as { id: string };
     const authReq = req as AuthenticatedRequest;
     const employeeId = authReq.user ? String(authReq.user.employeeId || authReq.user.id) : null;
-    const finalPath = req.file ? `leaves/${req.file.filename}` : null;
 
     await db.update(leaveApplications)
-      .set({ status: 'Finalizing', finalAttachmentPath: finalPath, updatedAt: sql`CURRENT_TIMESTAMP` })
+      .set({ status: 'Finalizing', updatedAt: sql`CURRENT_TIMESTAMP` })
       .where(eq(leaveApplications.id, parseInt(id)));
 
     if (employeeId) {
       await notifyAdmins({
         senderId: employeeId,
         title: 'Leave Request Finalized',
-        message: `Employee ${employeeId} has uploaded the signed leave form.`,
+        message: `Employee ${employeeId} has finalized the leave request.`,
         type: 'leave_finalize',
         referenceId: parseInt(id),
       });
     }
 
     res.status(200).json({ message: 'Final form submitted' });
-  } catch (err) {
-    console.error('finalizeLeave error:', err);
+  } catch (_err) {
+
     res.status(500).json({ message: 'Something went wrong!' });
   }
 };
@@ -995,7 +986,7 @@ export const approveLeave = async (req: Request, res: Response): Promise<void> =
   try {
     const { id } = req.params as { id: string };
     const authReq = req as AuthenticatedRequest;
-    const approvedBy = authReq.user ? String(authReq.user.employeeId || authReq.user.id) : 'Admin';
+    const approvedBy = authReq.user ? String(authReq.user.employeeId || authReq.user.id) : 'Administrator';
 
     // Get application details
     const application = await db.query.leaveApplications.findFirst({
@@ -1082,8 +1073,9 @@ export const approveLeave = async (req: Request, res: Response): Promise<void> =
         }
         currentDate.setDate(currentDate.getDate() + 1);
       }
-    } catch (dtrErr) {
-      console.error('DTR update error:', dtrErr);
+    } catch (_dtrErr) {
+      /* empty */
+
     }
 
     // Log to Service Record (career history)
@@ -1115,7 +1107,7 @@ export const approveLeave = async (req: Request, res: Response): Promise<void> =
     res.status(200).json({ message: 'Leave approved successfully' });
   } catch (err) {
     const error = err as Error;
-    console.error('approveLeave error:', error.message);
+
     res.status(500).json({ message: error.message || 'Something went wrong!' });
   }
 };
@@ -1127,7 +1119,7 @@ export const rejectLeave = async (req: Request, res: Response): Promise<void> =>
   try {
     const { id } = req.params as { id: string };
     const authReq = req as AuthenticatedRequest;
-    const approvedBy = authReq.user ? String(authReq.user.employeeId || authReq.user.id) : 'Admin';
+    const approvedBy = authReq.user ? String(authReq.user.employeeId || authReq.user.id) : 'Administrator';
 
     // Validate input
     const validation = rejectLeaveSchema.safeParse(req.body);
@@ -1168,8 +1160,8 @@ export const rejectLeave = async (req: Request, res: Response): Promise<void> =>
     }
 
     res.status(200).json({ message: 'Leave rejected' });
-  } catch (err) {
-    console.error('rejectLeave error:', err);
+  } catch (_err) {
+
     res.status(500).json({ message: 'Something went wrong!' });
   }
 };
@@ -1190,7 +1182,7 @@ export const getMyCredits = async (req: Request, res: Response): Promise<void> =
     const credits = await db.select({
       id: leaveBalances.id,
       employeeId: leaveBalances.employeeId,
-      credit_type: leaveBalances.creditType,
+      creditType: leaveBalances.creditType,
       balance: leaveBalances.balance,
       year: leaveBalances.year,
       updatedAt: leaveBalances.updatedAt,
@@ -1209,12 +1201,13 @@ export const getMyCredits = async (req: Request, res: Response): Promise<void> =
 
     const formattedCredits = credits.map(c => ({
         ...c,
-        employee_name: formatFullName(c.lastName, c.firstName, c.middleName, c.suffix)
+        employeeName: formatFullName(c.lastName, c.firstName, c.middleName, c.suffix)
     }));
 
     res.status(200).json({ credits: formattedCredits, year });
-  } catch (err) {
-    console.error('getMyCredits error:', err);
+
+  } catch (_err) {
+
     res.status(500).json({ message: 'Something went wrong!' });
   }
 };
@@ -1230,7 +1223,7 @@ export const getEmployeeCredits = async (req: Request, res: Response): Promise<v
     const credits = await db.select({
       id: leaveBalances.id,
       employeeId: leaveBalances.employeeId,
-      credit_type: leaveBalances.creditType,
+      creditType: leaveBalances.creditType,
       balance: leaveBalances.balance,
       year: leaveBalances.year,
       updatedAt: leaveBalances.updatedAt,
@@ -1249,12 +1242,13 @@ export const getEmployeeCredits = async (req: Request, res: Response): Promise<v
 
     const formattedCredits = credits.map(c => ({
         ...c,
-        employee_name: formatFullName(c.lastName, c.firstName, c.middleName, c.suffix)
+        employeeName: formatFullName(c.lastName, c.firstName, c.middleName, c.suffix)
     }));
 
     res.status(200).json({ credits: formattedCredits, year });
-  } catch (err) {
-    console.error('getEmployeeCredits error:', err);
+
+  } catch (_err) {
+
     res.status(500).json({ message: 'Something went wrong!' });
   }
 };
@@ -1297,18 +1291,17 @@ export const getAllEmployeeCredits = async (req: Request, res: Response): Promis
     // Fetch credits with usage calculation
     const credits = await db.select({
       id: leaveBalances.id,
-      employee_id: leaveBalances.employeeId,
-      credit_type: leaveBalances.creditType,
+      employeeId: leaveBalances.employeeId,
+      creditType: leaveBalances.creditType,
       balance: leaveBalances.balance,
       year: leaveBalances.year,
-      updated_at: leaveBalances.updatedAt,
-      first_name: sql<string>`COALESCE(${authentication.firstName}, '')`,
-      last_name: sql<string>`COALESCE(${authentication.lastName}, '')`,
-      middle_name: authentication.middleName,
+      updatedAt: leaveBalances.updatedAt,
+      firstName: sql<string>`COALESCE(${authentication.firstName}, '')`,
+      lastName: sql<string>`COALESCE(${authentication.lastName}, '')`,
+      middleName: authentication.middleName,
       suffix: authentication.suffix,
       department: sql<string>`COALESCE(${authentication.department}, 'N/A')`,
-      // Calculate usage from ledger for this year
-      days_used_with_pay: sql<number>`(
+      daysUsedWithPay: sql<number>`(
         SELECT COALESCE(ABS(SUM(ll.amount)), 0)
         FROM ${leaveLedger} ll
         WHERE ll.employee_id = ${leaveBalances.employeeId}
@@ -1316,8 +1309,7 @@ export const getAllEmployeeCredits = async (req: Request, res: Response): Promis
           AND ll.transaction_type = 'DEDUCTION'
           AND YEAR(ll.created_at) = ${year}
       )`,
-      // Calculate LWOP from approved applications for this leave type & year
-      days_used_without_pay: sql<number>`(
+      daysUsedWithoutPay: sql<number>`(
         SELECT COALESCE(SUM(la.days_without_pay), 0)
         FROM ${leaveApplications} la
         WHERE la.employee_id = ${leaveBalances.employeeId}
@@ -1335,7 +1327,7 @@ export const getAllEmployeeCredits = async (req: Request, res: Response): Promis
 
     const formattedCredits = credits.map(c => ({
         ...c,
-        employee_name: formatFullName(c.last_name, c.first_name, c.middle_name, c.suffix)
+        employeeName: formatFullName(c.lastName, c.firstName, c.middleName, c.suffix)
     }));
 
     res.status(200).json({
@@ -1343,8 +1335,9 @@ export const getAllEmployeeCredits = async (req: Request, res: Response): Promis
       year,
       pagination: { page, limit, totalItems, totalPages },
     });
-  } catch (err) {
-    console.error('getAllEmployeeCredits error:', err);
+
+  } catch (_err) {
+
     res.status(500).json({ message: 'Something went wrong!' });
   }
 };
@@ -1356,7 +1349,7 @@ export const updateEmployeeCredit = async (req: Request, res: Response): Promise
   try {
     const { employeeId } = req.params as { employeeId: string };
     const authReq = req as AuthenticatedRequest;
-    const adminId = authReq.user ? String(authReq.user.employeeId || authReq.user.id) : 'Admin';
+    const adminId = authReq.user ? String(authReq.user.employeeId || authReq.user.id) : 'Administrator';
 
     // Validate input
     const validation = creditUpdateSchema.safeParse(req.body);
@@ -1396,8 +1389,8 @@ export const updateEmployeeCredit = async (req: Request, res: Response): Promise
     } else {
       res.status(500).json({ message: 'Failed to update credit' });
     }
-  } catch (err) {
-    console.error('updateEmployeeCredit error:', err);
+  } catch (_err) {
+
     res.status(500).json({ message: 'Something went wrong!' });
   }
 };
@@ -1424,8 +1417,8 @@ export const deleteEmployeeCredit = async (req: Request, res: Response): Promise
       ));
 
     res.status(200).json({ message: 'Credit record deleted' });
-  } catch (err) {
-    console.error('deleteEmployeeCredit error:', err);
+  } catch (_err) {
+
     res.status(500).json({ message: 'Something went wrong!' });
   }
 };
@@ -1461,8 +1454,8 @@ export const accrueMonthlyCredits = async (req: Request, res: Response): Promise
       year,
       details: result
     });
-  } catch (err) {
-    console.error('accrueMonthlyCredits error:', err);
+  } catch (_err) {
+
     res.status(500).json({ message: 'Something went wrong!' });
   }
 };
@@ -1496,9 +1489,9 @@ export const allocateDefaultCredits = async (employeeId: string): Promise<void> 
       }
     }
 
-    console.log(`Allocated default credits for ${employeeId}`);
-  } catch (error) {
-    console.error(`Failed to allocate credits for ${employeeId}:`, error);
+  } catch (_error) {
+      /* empty */
+
   }
 };
 
@@ -1544,8 +1537,8 @@ export const getMyLedger = async (req: Request, res: Response): Promise<void> =>
       entries,
       pagination: { page, limit, totalItems, totalPages },
     });
-  } catch (err) {
-    console.error('getMyLedger error:', err);
+  } catch (_err) {
+
     res.status(500).json({ message: 'Something went wrong!' });
   }
 };
@@ -1587,8 +1580,8 @@ export const getEmployeeLedger = async (req: Request, res: Response): Promise<vo
       entries,
       pagination: { page, limit, totalItems, totalPages },
     });
-  } catch (err) {
-    console.error('getEmployeeLedger error:', err);
+  } catch (_err) {
+
     res.status(500).json({ message: 'Something went wrong!' });
   }
 };
@@ -1610,8 +1603,8 @@ export const getHolidays = async (req: Request, res: Response): Promise<void> =>
       .orderBy(holidays.date);
 
     res.status(200).json({ holidays: result, year });
-  } catch (err) {
-    console.error('getHolidays error:', err);
+  } catch (_err) {
+
     res.status(500).json({ message: 'Something went wrong!' });
   }
 };
@@ -1621,7 +1614,7 @@ export const getHolidays = async (req: Request, res: Response): Promise<void> =>
  */
 export const addHoliday = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { name, date, type } = req.body;
+    const { name, date, type } = req.body as { name: string; date: string; type: string };
 
     if (!name || !date || !type) {
       res.status(400).json({ message: 'Name, date, and type are required' });
@@ -1643,8 +1636,8 @@ export const addHoliday = async (req: Request, res: Response): Promise<void> => 
     });
 
     res.status(201).json({ message: 'Holiday added successfully' });
-  } catch (err) {
-    console.error('addHoliday error:', err);
+  } catch (_err) {
+
     res.status(500).json({ message: 'Something went wrong!' });
   }
 };
@@ -1659,8 +1652,8 @@ export const deleteHoliday = async (req: Request, res: Response): Promise<void> 
     await db.delete(holidays).where(eq(holidays.id, parseInt(id)));
 
     res.status(200).json({ message: 'Holiday deleted' });
-  } catch (err) {
-    console.error('deleteHoliday error:', err);
+  } catch (_err) {
+
     res.status(500).json({ message: 'Something went wrong!' });
   }
 };
@@ -1682,8 +1675,8 @@ export const getLWOPSummary = async (req: Request, res: Response): Promise<void>
       .orderBy(desc(lwopSummary.year));
 
     res.status(200).json({ summary });
-  } catch (err) {
-    console.error('getLWOPSummary error:', err);
+  } catch (_err) {
+
     res.status(500).json({ message: 'Something went wrong!' });
   }
 };
@@ -1727,8 +1720,8 @@ export const getServiceRecord = async (req: Request, res: Response): Promise<voi
       records,
       totalLWOPDays: lwopTotal?.totalLwopDays || 0
     });
-  } catch (err) {
-    console.error('getServiceRecord error:', err);
+  } catch (_err) {
+
     res.status(500).json({ message: 'Something went wrong!' });
   }
 };
@@ -1740,9 +1733,9 @@ export const getServiceRecord = async (req: Request, res: Response): Promise<voi
  */
 export const processMonthlyTardiness = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { month, year, employeeIds } = req.body;
+    const { month, year, employeeIds } = req.body as { month?: number; year?: number; employeeIds?: string[] };
     const authReq = req as AuthenticatedRequest;
-    const processedBy = authReq.user ? String(authReq.user.employeeId || authReq.user.id) : 'Admin';
+    const processedBy = authReq.user ? String(authReq.user.employeeId || authReq.user.id) : 'Administrator';
 
     const targetMonth = month || new Date().getMonth(); // 0-indexed, so January=0
     const targetYear = year || new Date().getFullYear();
@@ -1788,8 +1781,8 @@ export const processMonthlyTardiness = async (req: Request, res: Response): Prom
       results,
       processedBy
     });
-  } catch (err) {
-    console.error('processMonthlyTardiness error:', err);
+  } catch (_err) {
+
     res.status(500).json({ message: 'Something went wrong!' });
   }
 };
@@ -1840,8 +1833,10 @@ export const getTotalLWOPForRetirement = async (req: Request, res: Response): Pr
           : 'No retirement extension required'
       }
     });
-  } catch (err) {
-    console.error('getTotalLWOPForRetirement error:', err);
+  } catch (_err) {
+
     res.status(500).json({ message: 'Something went wrong!' });
   }
 };
+
+

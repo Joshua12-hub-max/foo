@@ -189,7 +189,7 @@ const InternalPoliciesPage: React.FC<InternalPoliciesPageProps> = ({ hideHeader 
                                             {[
                                                 { title: "Time Tracking", desc: "Digital logging via official biometric machines." },
                                                 { title: "Business Slips", desc: "Use Locator/Pass Slips for all outside movements." },
-                                                { title: "Leave Filing", desc: "Regulars via app; JO/COS notify supervisor." },
+                                                { title: "Leave Filing", desc: "Regulars via app; JO/COS notify department head." },
                                                 { title: "Professionalism", desc: "Report on time; avoid unauthorized departures." }
                                             ].map((item, idx) => (
                                                 <div key={idx} className="p-4 bg-gray-50/50 rounded-xl border border-gray-100 flex flex-col h-full hover:border-gray-200 transition-colors">

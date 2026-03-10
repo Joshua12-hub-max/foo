@@ -14,8 +14,8 @@ export interface Department {
 
 export interface Position {
   id: number;
-  position_title: string;
-  item_number: string;
+  positionTitle: string;
+  itemNumber: string;
   department: string;
 }
 
@@ -134,5 +134,22 @@ export const useHiredApplicantSearch = (firstName: string, lastName: string, ena
     enabled: enabled && firstName.length > 2 && lastName.length > 2,
     staleTime: 1000 * 60 * 5, // 5 minutes
     retry: false
+  });
+};
+export const useEmploymentMetadataQuery = () => {
+  return useQuery({
+    queryKey: ['employmentMetadata'],
+    queryFn: async () => {
+      try {
+        const response = await axios.get('http://localhost:5000/api/common/employment-metadata');
+        return response.data.data as { appointmentTypes: string[], dutyTypes: string[], roles: string[] };
+      } catch (error) {
+        if (error instanceof AxiosError) {
+          throw new Error(error.response?.data?.message || 'Failed to fetch employment metadata');
+        }
+        throw new Error('An unexpected error occurred');
+      }
+    },
+    staleTime: 1000 * 60 * 60, // 1 hour
   });
 };

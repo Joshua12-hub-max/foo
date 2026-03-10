@@ -4,8 +4,8 @@ import { Job } from '@/types';
 
 export const generateJobVacancyWord = async (job: Job) => {
   // Helper for employment status check
-  const isJobOrder = job.employment_type?.toLowerCase().includes('job order');
-  const isContract = job.employment_type?.toLowerCase().includes('contract') || job.employment_type?.toLowerCase().includes('service');
+  const isJobOrder = job.employmentType?.toLowerCase().includes('job order');
+  const isContract = job.employmentType?.toLowerCase().includes('contract') || job.employmentType?.toLowerCase().includes('service');
 
   // Styles for the document
   const tableHeaderStyle = {
@@ -163,7 +163,7 @@ export const generateJobVacancyWord = async (job: Job) => {
                                        border: { bottom: borderStyle }
                                    }),
                                    new Paragraph({
-                                       children: [new TextRun({ text: job.job_description || "", ...tableCellStyle })],
+                                       children: [new TextRun({ text: job.jobDescription || "", ...tableCellStyle })],
                                        spacing: { before: 100, after: 100 }
                                    })
                                ]
@@ -229,7 +229,7 @@ export const generateJobVacancyWord = async (job: Job) => {
                alignment: AlignmentType.CENTER,
                children: [
                    new TextRun({ text: "or email at ", size: 24, font: "Times New Roman" }),
-                   new TextRun({ text: job.application_email, size: 24, bold: true, underline: {}, color: "0000FF", font: "Times New Roman" }),
+                   new TextRun({ text: job.applicationEmail, size: 24, bold: true, underline: {}, color: "0000FF", font: "Times New Roman" }),
                    new TextRun({ text: " with the subject line : [POSITION APPLIED - APPLICANT'S NAME]", size: 24, font: "Times New Roman" })
                ],
                spacing: { after: 200 }

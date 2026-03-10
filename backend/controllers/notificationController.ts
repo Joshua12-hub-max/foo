@@ -28,25 +28,20 @@ export const createNotification = async ({
   type,
   referenceId
 }: CreateNotificationParams): Promise<number> => {
-  try {
-    const [result] = await db.insert(notifications).values({
-      recipientId,
-      senderId: senderId || null,
-      title,
-      message,
-      type,
-      referenceId: referenceId || null,
-      status: 'unread'
-    });
-    return result.insertId;
-  } catch (error) {
-    console.error('Error in createNotification:', error);
-    throw error;
-  }
+  const [result] = await db.insert(notifications).values({
+    recipientId,
+    senderId: senderId || null,
+    title,
+    message,
+    type,
+    referenceId: referenceId || null,
+    status: 'unread'
+  });
+  return result.insertId;
 };
 
 /**
- * Notify all admins/hr/supervisors
+ * Notify all admins/hr
  */
 export const notifyAdmins = async ({
   senderId,
@@ -58,7 +53,7 @@ export const notifyAdmins = async ({
   try {
     const admins = await db.select({ employeeId: authentication.employeeId })
       .from(authentication)
-      .where(inArray(authentication.role, ['Admin', 'Human Resource', 'supervisor']));
+      .where(inArray(authentication.role, ['Administrator', 'Human Resource']));
 
     const notificationPromises = admins.map((admin) =>
       createNotification({
@@ -72,8 +67,9 @@ export const notifyAdmins = async ({
     );
 
     await Promise.all(notificationPromises);
-  } catch (error) {
-    console.error('Error in notifyAdmins:', error);
+  } catch (_error) {
+      /* empty */
+
   }
 };
 
@@ -103,8 +99,9 @@ export const notifyAllUsers = async ({
     );
 
     await Promise.all(notificationPromises);
-  } catch (error) {
-    console.error('Error in notifyAllUsers:', error);
+  } catch (_error) {
+      /* empty */
+
   }
 };
 
@@ -133,16 +130,16 @@ export const getNotifications = async (req: Request, res: Response): Promise<voi
     res.status(200).json({
       success: true,
       notifications: notifs,
-      unread_count: countResult.count
+      unreadCount: countResult.count
     });
-  } catch (error) {
-    console.error('Error fetching notifications:', error);
-    res.status(500).json({ success: false, message: 'Failed to fetch notifications' });
-  }
-};
+    } catch (_error) {
 
-export const getUnreadCount = async (req: Request, res: Response): Promise<void> => {
-  try {
+    res.status(500).json({ success: false, message: 'Failed to fetch notifications' });
+    }
+    };
+
+    export const getUnreadCount = async (req: Request, res: Response): Promise<void> => {
+    try {
     const authReq = req as AuthenticatedRequest;
     const employeeId = authReq.user.employeeId || authReq.user.id;
 
@@ -153,9 +150,10 @@ export const getUnreadCount = async (req: Request, res: Response): Promise<void>
         eq(notifications.status, 'unread')
       ));
 
-    res.status(200).json({ success: true, unread_count: result.count });
-  } catch (error) {
-    console.error('Error fetching unread count:', error);
+    res.status(200).json({ success: true, unreadCount: result.count });
+
+  } catch (_error) {
+
     res.status(500).json({ success: false, message: 'Failed to fetch unread count' });
   }
 };
@@ -167,8 +165,8 @@ export const markAsRead = async (req: Request, res: Response): Promise<void> => 
       .set({ status: 'read' })
       .where(eq(notifications.notificationId, Number(id)));
     res.status(200).json({ message: 'Notification marked as read' });
-  } catch (error) {
-    console.error('Error marking notification as read:', error);
+  } catch (_error) {
+
     res.status(500).json({ message: 'Failed to mark notification as read' });
   }
 };
@@ -178,8 +176,10 @@ export const deleteNotification = async (req: Request, res: Response): Promise<v
     const { id } = req.params;
     await db.delete(notifications).where(eq(notifications.notificationId, Number(id)));
     res.status(200).json({ message: 'Notification deleted' });
-  } catch (error) {
-    console.error('Error deleting notification:', error);
+  } catch (_error) {
+
     res.status(500).json({ message: 'Failed to delete notification' });
   }
 };
+
+

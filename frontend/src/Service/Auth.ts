@@ -27,7 +27,8 @@ export const verifyEnrollment = async (employeeId: string) => {
   return response.data;
 };
 
-export const register = (data: RegisterInput | FormData) => api.post("/auth/register", data);
+export const register = (data: RegisterInput | FormData, mode?: string) => 
+  api.post(`/auth/register${mode ? `?mode=${mode}` : ""}`, data);
 
 export const login = (data: LoginInput) => api.post("/auth/login", data);
 
@@ -56,7 +57,7 @@ export const resetPassword = async (data: ResetPasswordInput) => {
 
 export const getCurrentUser = async () => {
     const response = await api.get("/auth/me");
-    return response.data.data;
+    return response.data.data.user;
 };
 
 export const enableTwoFactor = async () => {
@@ -91,8 +92,8 @@ export const verifyRegistrationOTP = async (data: EmailVerifyInput) => {
     return response.data;
 };
 
-export const setupAdminHR = async (data: any) => {
-    const response = await api.post("/auth/setup-admin-hr", data);
+export const setupPortal = async (data: Record<string, unknown>) => {
+    const response = await api.post("/auth/setup-portal", data);
     return response.data;
 };
 

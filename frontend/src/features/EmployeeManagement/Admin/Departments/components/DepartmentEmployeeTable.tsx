@@ -1,7 +1,6 @@
 import React, { memo, useMemo, useCallback } from 'react';
 import { Users, Phone, SquarePen, Trash2, Calendar } from 'lucide-react';
-// @ts-ignore
-import EmploymentStatusBadge from '@components/Custom/Common/EmploymentStatusBadge';
+import EmploymentStatusBadge from '@/components/Custom/Common/EmploymentStatusBadge';
 
 import { Employee } from '@/types';
 
@@ -27,20 +26,20 @@ const EmployeeRow: React.FC<EmployeeRowProps> = memo(({ employee, onView, onEdit
       <td className="px-6 py-4">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm">
-            {employee.avatar_url ? (
-              <img src={employee.avatar_url} alt="" className="w-full h-full rounded-full object-cover" />
+            {employee.avatarUrl ? (
+              <img src={employee.avatarUrl} alt="" className="w-full h-full rounded-full object-cover" />
             ) : (
-              <span>{employee.first_name?.[0]}{employee.last_name?.[0]}</span>
+              <span>{employee.firstName?.[0]}{employee.lastName?.[0]}</span>
             )}
           </div>
           <div>
-            <p className="font-medium text-gray-800">{employee.first_name} {employee.last_name}</p>
+            <p className="font-medium text-gray-800">{employee.firstName} {employee.lastName}</p>
             <p className="text-xs text-gray-500">{employee.email}</p>
           </div>
         </div>
       </td>
-      <td className="px-6 py-4 text-sm text-gray-600">{employee.employee_id || '—'}</td>
-      <td className="px-6 py-4 text-sm text-gray-800">{employee.position_title || employee.job_title || '—'}</td>
+      <td className="px-6 py-4 text-sm text-gray-600">{employee.employeeId || '—'}</td>
+      <td className="px-6 py-4 text-sm text-gray-800">{employee.positionTitle || employee.jobTitle || '—'}</td>
       <td className="px-6 py-4 text-sm text-gray-500">
         <div className="flex items-center gap-2">
           <Calendar size={14} className="text-gray-400" />
@@ -50,17 +49,17 @@ const EmployeeRow: React.FC<EmployeeRowProps> = memo(({ employee, onView, onEdit
       <td className="px-6 py-4 text-sm text-gray-500">
         <div className="flex items-center gap-2">
           <Phone size={14} />
-          <span>{employee.phone_number || '—'}</span>
+          <span>{employee.phoneNumber || '—'}</span>
         </div>
       </td>
       <td className="px-6 py-4 text-sm text-gray-600">
         <div className="flex items-center gap-2">
           <Calendar size={14} className="text-gray-400" />
-          <span>{formatDate(employee.date_hired)}</span>
+          <span>{formatDate(employee.dateHired)}</span>
         </div>
       </td>
       <td className="px-6 py-4">
-        <EmploymentStatusBadge status={employee.employment_status || 'Active'} />
+        <EmploymentStatusBadge status={employee.employmentStatus || 'Active'} />
       </td>
       <td className="px-6 py-4">
         <div className="flex items-center gap-2">

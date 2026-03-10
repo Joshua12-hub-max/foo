@@ -16,11 +16,11 @@ const router: Router = Router();
 router.get('/my', authenticateToken, getMyMemos);
 
 // Admin routes
-router.get('/', authenticateToken, requireRole(['Admin', 'Human Resource']), getAllMemos);
-router.get('/:id', authenticateToken, requireRole(['Admin', 'Human Resource']), getMemoById);
-router.post('/', authenticateToken, requireRole(['Admin', 'Human Resource']), createMemo);
-router.put('/:id', authenticateToken, requireRole(['Admin', 'Human Resource']), updateMemo);
-router.delete('/:id', authenticateToken, requireRole(['Admin', 'Human Resource']), deleteMemo);
+router.get('/', authenticateToken, requireRole(['Administrator', 'Human Resource']), getAllMemos);
+router.get('/:id', authenticateToken, requireRole(['Administrator', 'Human Resource']), getMemoById);
+router.post('/', authenticateToken, requireRole(['Administrator', 'Human Resource']), createMemo);
+router.put('/:id', authenticateToken, requireRole(['Administrator', 'Human Resource']), updateMemo);
+router.delete('/:id', authenticateToken, requireRole(['Administrator', 'Human Resource']), deleteMemo);
 
 // Employee acknowledgment
 router.post('/:id/acknowledge', authenticateToken, restrictSuspended, acknowledgeMemo);

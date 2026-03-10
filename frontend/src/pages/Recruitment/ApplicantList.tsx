@@ -54,7 +54,7 @@ const ApplicantList = () => {
   };
 
   const onJoinInterview = (applicant: Applicant): void => {
-    if (applicant.interview_link) {
+    if (applicant.interviewLink) {
       setInterviewApplicant(applicant);
       setShowInterview(true);
     } else {
@@ -70,7 +70,7 @@ const ApplicantList = () => {
     setConfirmModal({
       isOpen: true,
       title: 'Reject and Archive Applicant',
-      message: `Are you sure you want to reject and archive ${applicant.first_name} ${applicant.last_name}?`,
+      message: `Are you sure you want to reject and archive ${applicant.firstName} ${applicant.lastName}?`,
       isDestructive: true,
       confirmText: 'Reject',
       onConfirm: () => handleRejectApplicant(Number(applicant.id))
@@ -81,7 +81,7 @@ const ApplicantList = () => {
     setConfirmModal({
       isOpen: true,
       title: 'Restore Applicant',
-      message: `Are you sure you want to restore ${applicant.first_name} ${applicant.last_name} to the active pipeline?`,
+      message: `Are you sure you want to restore ${applicant.firstName} ${applicant.lastName} to the active pipeline?`,
       isDestructive: false,
       confirmText: 'Restore',
       onConfirm: () => handleRestoreApplicant(Number(applicant.id))
@@ -92,7 +92,7 @@ const ApplicantList = () => {
     setConfirmModal({
       isOpen: true,
       title: 'Permanently Delete Applicant',
-      message: `WARNING: Are you sure you want to PERMANENTLY delete ${applicant.first_name} ${applicant.last_name}? This cannot be undone.`,
+      message: `WARNING: Are you sure you want to PERMANENTLY delete ${applicant.firstName} ${applicant.lastName}? This cannot be undone.`,
       isDestructive: true,
       confirmText: 'Delete',
       onConfirm: () => handleDeleteApplicant(Number(applicant.id))
@@ -113,14 +113,14 @@ const ApplicantList = () => {
   if (showInterview && interviewApplicant) {
     return (
       <InterviewPanel
-        roomName={interviewApplicant.interview_link?.split('/').pop() || 'interview'}
+        roomName={interviewApplicant.interviewLink?.split('/').pop() || 'interview'}
         displayName="Interviewer"
         applicantId={interviewApplicant.id}
-        applicantName={`${interviewApplicant.first_name} ${interviewApplicant.last_name}`}
+        applicantName={`${interviewApplicant.firstName} ${interviewApplicant.lastName}`}
         applicantEmail={interviewApplicant.email}
-        jobTitle={interviewApplicant.job_title}
-        interviewLink={interviewApplicant.interview_link}
-        resumePath={interviewApplicant.resume_path}
+        jobTitle={interviewApplicant.jobTitle}
+        interviewLink={interviewApplicant.interviewLink}
+        resumePath={interviewApplicant.resumePath}
         onClose={() => {
           setShowInterview(false);
           setInterviewApplicant(null);
@@ -193,13 +193,19 @@ const ApplicantList = () => {
         setSelectedInterviewer={setSelectedInterviewer}
       />
 
-      <ScheduleInterviewModal 
+      <ScheduleInterviewModal
         isOpen={showScheduleModal}
         onClose={() => setShowScheduleModal(false)}
         onConfirm={onConfirmSchedule}
         selectedApplicant={selectedApplicant}
+        initialData={selectedApplicant ? {
+          platform: selectedApplicant.interviewPlatform || 'Jitsi Meet',
+          link: selectedApplicant.interviewLink || '',
+          date: selectedApplicant.interviewDate ? selectedApplicant.interviewDate.split('T')[0] : '',
+          time: selectedApplicant.interviewDate ? new Date(selectedApplicant.interviewDate).toTimeString().substring(0, 5) : '',
+          notes: selectedApplicant.interviewNotes || ''
+        } : undefined}
       />
-
       <ConfirmDialog
         isOpen={confirmModal.isOpen}
         title={confirmModal.title}

@@ -13,25 +13,25 @@ import { INITIAL_FORM_DATA, INITIAL_FILTERS, MemoFormData, MemoFilters } from '.
 
 export interface Memo {
   id: number;
-  employee_id: string | number;
-  employee_name: string;
-  author_name?: string;
-  memo_number: string;
-  memo_type: string;
+  employeeId: string | number;
+  employeeName: string;
+  authorName?: string;
+  memoNumber: string;
+  memoType: string;
   subject: string;
   content: string;
   priority: string;
   status: string;
-  effective_date?: string;
-  acknowledgment_required: boolean;
-  acknowledged_at?: string;
-  created_at: string;
+  effectiveDate?: string;
+  acknowledgmentRequired: boolean;
+  acknowledgedAt?: string;
+  createdAt: string;
 }
 
 export interface Employee {
   id: number;
-  first_name: string;
-  last_name: string;
+  firstName: string;
+  lastName: string;
 }
 
 export interface EmployeeOption {
@@ -142,13 +142,13 @@ export const useMemoManagement = (): UseMemoManagementReturn => {
   const openEditForm = useCallback((memo: Memo) => {
     setSelectedMemo(memo);
     setFormData({
-      employee_id: String(memo.employee_id),
-      memo_type: memo.memo_type,
+      employeeId: String(memo.employeeId),
+      memoType: memo.memoType,
       subject: memo.subject,
       content: memo.content,
       priority: memo.priority,
-      effective_date: memo.effective_date ? memo.effective_date.split('T')[0] : '',
-      acknowledgment_required: memo.acknowledgment_required,
+      effectiveDate: memo.effectiveDate ? memo.effectiveDate.split('T')[0] : '',
+      acknowledgmentRequired: memo.acknowledgmentRequired,
       status: memo.status
     });
     setIsFormOpen(true);
@@ -195,14 +195,14 @@ export const useMemoManagement = (): UseMemoManagementReturn => {
     try {
       setSaving(true);
       const payload = {
-        memo_type: formData.memo_type,
+        memoType: formData.memoType,
         subject: formData.subject,
         content: formData.content,
         priority: formData.priority,
-        effective_date: formData.effective_date,
-        acknowledgment_required: formData.acknowledgment_required,
+        effectiveDate: formData.effectiveDate,
+        acknowledgmentRequired: formData.acknowledgmentRequired,
         status: formData.status,
-        employee_id: Number(formData.employee_id)
+        employeeId: Number(formData.employeeId)
       };
 
       if (selectedMemo) {
@@ -237,7 +237,7 @@ export const useMemoManagement = (): UseMemoManagementReturn => {
   const employeeOptions = useMemo<EmployeeOption[]>(() => {
     return employees.map(emp => ({
       value: emp.id,
-      label: `${emp.first_name} ${emp.last_name}`
+      label: `${emp.firstName} ${emp.lastName}`
     }));
   }, [employees]);
 

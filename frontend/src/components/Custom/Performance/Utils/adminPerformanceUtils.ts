@@ -3,6 +3,24 @@
  */
 // ExcelJS import removed
 
+export interface ApiEvaluationEmployee {
+  id: string | number;
+  name: string;
+  firstName: string;
+  lastName: string;
+  department: string;
+  jobTitle: string;
+  positionTitle: string;
+  avatarUrl?: string;
+  employeeId: string;
+  reviewId?: string | number;
+  status: string;
+  lastEvaluationDate?: string;
+  duties: string;
+  score: string | number | null;
+  birthDate?: string;
+}
+
 export interface PerformanceTableItem {
   id: string | number;
   reviewId?: string | number;
@@ -12,30 +30,26 @@ export interface PerformanceTableItem {
   jobTitle: string;
   lastEvaluation: string;
   score: string | number;
-  [key: string]: string | number | undefined;
 }
 
 export interface PerformanceFilters {
   department?: string;
   employee?: string;
   status?: string;
-  [key: string]: string | undefined;
 }
 
-export const mapPerformanceData = (apiData: Record<string, unknown>[]): PerformanceTableItem[] => {
+export const mapPerformanceData = (apiData: ApiEvaluationEmployee[]): PerformanceTableItem[] => {
   return apiData.map(item => ({
-    id: (item.employee_id ?? item.id) != null ? String(item.employee_id ?? item.id) : '',
-    name: item.name
-      ? String(item.name)
-      : `${item.first_name ?? ''} ${item.last_name ?? ''}`.trim(),
-    department: String(item.department ?? 'N/A'),
-    jobTitle: String(item.job_title ?? 'N/A'),
-    lastEvaluation: item.last_evaluation_date 
-      ? new Date(String(item.last_evaluation_date)).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) 
+    id: String(item.employeeId || item.id),
+    name: item.name,
+    department: item.department || 'N/A',
+    jobTitle: item.jobTitle || 'N/A',
+    lastEvaluation: item.lastEvaluationDate 
+      ? new Date(item.lastEvaluationDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) 
       : 'Never',
     score: item.score !== null && item.score !== undefined ? parseFloat(String(item.score)).toFixed(2) : 'N/A',
-    status: String(item.status ?? 'Not Started'),
-    reviewId: item.review_id != null ? String(item.review_id) : undefined
+    status: item.status || 'Not Started',
+    reviewId: item.reviewId
   }));
 };
 
@@ -162,7 +176,7 @@ export const generatePDFContent = (data: PerformanceTableItem[], headers: string
 export const exportToCSV = async (data: PerformanceTableItem[], headers: string[], filename: string) => {
   try {
     const csvHeaders = ['Status', 'Employee ID', 'Name', 'Department', 'Job Title', 'Last Evaluation', 'Score'];
-    const keys = ['status', 'id', 'name', 'department', 'jobTitle', 'lastEvaluation', 'score'];
+    const keys: (keyof PerformanceTableItem)[] = ['status', 'id', 'name', 'department', 'jobTitle', 'lastEvaluation', 'score'];
 
     const csvRows = [csvHeaders.join(',')];
 

@@ -66,7 +66,7 @@ async function seedPositions() {
          try {
              await db.insert(plantillaPositions).values(val);
              console.log(`Inserted: ${val.positionTitle}`);
-         } catch (e: any) {
+         } catch (e: unknown) {
              if (e.code === 'ER_DUP_ENTRY') {
                  console.log(`Skipped (Duplicate): ${val.positionTitle}`);
              } else {

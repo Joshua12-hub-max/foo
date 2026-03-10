@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useLayoutEffect } from "react";
+import { useState, useRef, useEffect, useLayoutEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, Check, Search } from "lucide-react";
@@ -16,6 +16,7 @@ interface ComboboxProps {
   className?: string;
   buttonClassName?: string;
   error?: boolean;
+  disabled?: boolean;
 }
 
 export default function Combobox({ 
@@ -25,7 +26,8 @@ export default function Combobox({
   placeholder = "Select option", 
   className = "",
   buttonClassName = "",
-  error = false
+  error = false,
+  disabled = false
 }: ComboboxProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -86,30 +88,37 @@ export default function Combobox({
     };
   }, [isOpen]);
 
-  const filteredOptions = options.filter(option => 
-    option.label.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredOptions = useMemo(() => {
+    return options.filter(option => 
+      String(option.label).toLowerCase().includes(search.toLowerCase())
+    );
+  }, [options, search]);
 
-  const selectedOption = options.find(o => o.value === value);
+  const selectedOption = useMemo(() => {
+    if (value === undefined || value === null || value === "") return null;
+    return options.find(o => String(o.value) === String(value)) || null;
+  }, [options, value]);
 
   return (
     <div className={`relative ${className}`}>
       <button
         ref={buttonRef}
         type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        className={`w-full flex items-center justify-between ${buttonClassName || "pl-10"} pr-3 py-1.5 border rounded-md border-gray-300 bg-white transition-all
+        disabled={disabled}
+        onClick={() => !disabled && setIsOpen(!isOpen)}
+        className={`w-full flex items-center justify-between ${buttonClassName || "pl-10"} pr-3 py-1.5 border rounded-md transition-all
           ${error ? "border-red-500 ring-red-100" : "border-gray-300 focus:ring-gray-100"}
           ${isOpen ? "ring-2 ring-gray-100 border-gray-400" : ""}
+          ${disabled ? "bg-gray-100 cursor-not-allowed opacity-60" : "bg-white"}
           focus:outline-none text-left min-h-[38px] text-sm`}
       >
-        <span className={`block truncate ${!selectedOption?.label ? "text-gray-400" : "text-gray-900"}`}>
+        <span className={`block truncate ${!selectedOption ? "text-gray-400" : "text-gray-900"}`}>
           {selectedOption ? selectedOption.label : placeholder}
         </span>
         <ChevronDown size={16} className={`text-gray-400 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
       </button>
 
-      {isOpen && createPortal(
+      {createPortal(
         <AnimatePresence>
           {isOpen && (
             <motion.div
@@ -123,9 +132,9 @@ export default function Combobox({
                 top: position.top,
                 left: position.left,
                 width: position.width,
-                zIndex: 9999 // Ensure it's on top of everything
+                zIndex: 9999 
               }}
-              className="bg-white border border-gray-200 rounded-md shadow-sm overflow-hidden"
+              className="bg-white border border-gray-200 rounded-md shadow-lg overflow-hidden"
             >
               <div className="p-2 border-b border-gray-100 sticky top-0 bg-white">
                 <div className="relative">
@@ -145,22 +154,25 @@ export default function Combobox({
                 {filteredOptions.length === 0 ? (
                   <li className="px-4 py-3 text-sm text-gray-500 text-center">No results found.</li>
                 ) : (
-                  filteredOptions.map((option) => (
-                    <li
-                      key={option.value}
-                      onClick={() => {
-                        onChange(option.value);
-                        setIsOpen(false);
-                        setSearch("");
-                      }}
-                      className={`px-4 py-2 text-sm cursor-pointer flex items-center justify-between transition-colors
-                        ${option.value === value ? "bg-blue-50 text-blue-700 font-medium" : "text-gray-700 hover:bg-gray-50"}
-                      `}
-                    >
-                      <span>{option.label}</span>
-                      {option.value === value && <Check size={14} className="text-blue-600" />}
-                    </li>
-                  ))
+                  filteredOptions.map((option, idx) => {
+                    const isSelected = String(option.value) === String(value);
+                    return (
+                      <li
+                        key={`${option.value}-${idx}`}
+                        onClick={() => {
+                          onChange(String(option.value));
+                          setIsOpen(false);
+                          setSearch("");
+                        }}
+                        className={`px-4 py-2 text-sm cursor-pointer flex items-center justify-between transition-colors
+                          ${isSelected ? "bg-blue-50 text-blue-700 font-medium" : "text-gray-700 hover:bg-gray-50"}
+                        `}
+                      >
+                        <span>{option.label}</span>
+                        {isSelected && <Check size={14} className="text-blue-600" />}
+                      </li>
+                    );
+                  })
                 )}
               </ul>
             </motion.div>

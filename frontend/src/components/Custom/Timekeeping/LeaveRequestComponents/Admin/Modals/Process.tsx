@@ -70,14 +70,14 @@ const AdminLeaveRequestProcess: React.FC<ProcessModalProps> = ({ isOpen, request
             
             {/* Details */}
             <div className="bg-gray-50 p-4 rounded-lg text-sm space-y-2">
-                <p><strong>Employee:</strong> {request.first_name} {request.last_name}</p>
-                <p><strong>Type:</strong> {request.leave_type} ({request.with_pay ? 'With Pay' : 'Without Pay'})</p>
-                <p><strong>Dates:</strong> {request.start_date} to {request.end_date}</p>
+                <p><strong>Employee:</strong> {request.firstName} {request.lastName}</p>
+                <p><strong>Type:</strong> {request.leaveType} ({request.withPay ? 'With Pay' : 'Without Pay'})</p>
+                <p><strong>Dates:</strong> {request.startDate} to {request.endDate}</p>
                 <p><strong>Reason:</strong> {request.reason}</p>
-                {request.attachment_path && (
+                {request.attachmentPath && (
                      <div className="mt-2">
                         <p className="mb-1 font-semibold">Attachment:</p>
-                        <a href={`${import.meta.env.VITE_API_URL?.replace('/api', '') ?? ''}/uploads/${request.attachment_path}`} target="_blank" rel="noreferrer" className="text-[#274b46] hover:underline flex items-center gap-1">
+                        <a href={`${import.meta.env.VITE_API_URL?.replace('/api', '') ?? ''}/uploads/${request.attachmentPath}`} target="_blank" rel="noreferrer" className="text-[#274b46] hover:underline flex items-center gap-1">
                             <Download className="w-4 h-4" /> Download Employee Attachment
                         </a>
                      </div>

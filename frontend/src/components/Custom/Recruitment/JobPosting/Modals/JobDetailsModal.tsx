@@ -79,15 +79,15 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
               </div>
               <div className="flex items-center gap-2.5 text-gray-700">
                 <Clock size={16} className="text-gray-400" />
-                <span>{selectedJob.employment_type || 'Full-time'}</span>
+                <span>{selectedJob.employmentType || 'Full-time'}</span>
               </div>
               <div className="flex items-center gap-2.5 text-gray-700">
                 <DollarSign size={16} className="text-gray-400" />
-                <span>{selectedJob.salary_range || 'Not specified'}</span>
+                <span>{selectedJob.salaryRange || 'Not specified'}</span>
               </div>
               <div className="flex items-center gap-2.5 text-gray-700">
                 <Calendar size={16} className="text-gray-400" />
-                <span>{formatDate(selectedJob.created_at || selectedJob.posted_at)}</span>
+                <span>{formatDate(selectedJob.createdAt || selectedJob.postedAt)}</span>
               </div>
             </div>
           </div>
@@ -96,7 +96,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
           <div>
             <h4 className="font-bold text-gray-800 mb-2 text-sm uppercase tracking-wide">Job Description</h4>
             <div className="text-sm text-gray-600 whitespace-pre-wrap leading-relaxed bg-gray-50/50 p-4 rounded-lg border border-gray-100">
-                {selectedJob.job_description}
+                {selectedJob.jobDescription}
             </div>
           </div>
 

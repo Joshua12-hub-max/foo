@@ -14,16 +14,16 @@ interface ApiErrorResponse {
 
 export interface Employee {
   id: number;
-  employee_id: string;
-  first_name: string;
-  last_name: string;
+  employeeId: string;
+  firstName: string;
+  lastName: string;
 }
 
 export interface HistoryRecord {
   id: number;
-  employee_name: string;
-  start_date: string;
-  end_date?: string;
+  employeeName: string;
+  startDate: string;
+  endDate?: string;
   reason?: string;
 }
 
@@ -118,7 +118,7 @@ export const usePlantilla = ({ showNotification }: UsePlantillaOptions = {}): Us
         queryKey: ['plantilla', selectedDept],
         queryFn: async () => {
             const response = await plantillaApi.getPositions({ 
-                department_id: selectedDept !== 'All' ? Number(selectedDept) : undefined
+                departmentId: selectedDept !== 'All' ? Number(selectedDept) : undefined
             });
             return response.data.positions;
         },
@@ -169,16 +169,16 @@ export const usePlantilla = ({ showNotification }: UsePlantillaOptions = {}): Us
           // Ensure numbers are actually numbers for the API
           const payload = {
             ...data,
-            salary_grade: Number(data.salary_grade),
-            step_increment: Number(data.step_increment),
-            monthly_salary: data.monthly_salary ? Number(data.monthly_salary) : undefined,
-            department_id: Number(data.department_id),
+            salaryGrade: Number(data.salaryGrade),
+            stepIncrement: Number(data.stepIncrement),
+            monthlySalary: data.monthlySalary ? Number(data.monthlySalary) : undefined,
+            departmentId: Number(data.departmentId),
             // Explicitly map optional fields to avoid undefined if the backend expects null
-            area_code: data.area_code || undefined,
-            area_type: data.area_type || undefined,
-            area_level: data.area_level || undefined,
+            areaCode: data.areaCode || undefined,
+            areaType: data.areaType || undefined,
+            areaLevel: data.areaLevel || undefined,
             status: 'Active' as const,
-            is_vacant: data.is_vacant
+            isVacant: data.isVacant
           };
 
           if (modalMode === 'create') {
@@ -201,8 +201,8 @@ export const usePlantilla = ({ showNotification }: UsePlantillaOptions = {}): Us
         if (!currentPosition || !selectedEmployee) return;
         try {
             await plantillaApi.assignEmployee(currentPosition.id, {
-                employee_id: parseInt(selectedEmployee),
-                start_date: new Date().toISOString().split('T')[0]
+                employeeId: parseInt(selectedEmployee),
+                startDate: new Date().toISOString().split('T')[0]
             });
             setIsAssignModalOpen(false);
             setSelectedEmployee('');
@@ -266,11 +266,11 @@ export const usePlantilla = ({ showNotification }: UsePlantillaOptions = {}): Us
         if (!lowerSearch) return data;
 
         return data.filter((p: Position) => {
-            const posTitle = p.position_title?.toLowerCase() || '';
-            const itemNum = p.item_number?.toLowerCase() || '';
-            const incumbent = p.incumbent_name?.toLowerCase() || '';
+            const posTitle = p.positionTitle?.toLowerCase() || '';
+            const itemNum = p.itemNumber?.toLowerCase() || '';
+            const incumbent = p.incumbentName?.toLowerCase() || '';
             const dept = p.department?.toLowerCase() || '';
-            const deptName = p.department_name?.toLowerCase() || '';
+            const deptName = p.departmentName?.toLowerCase() || '';
 
             return (
                 posTitle.includes(lowerSearch) ||

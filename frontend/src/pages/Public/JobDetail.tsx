@@ -82,89 +82,97 @@ const JobDetail = () => {
     // Fetch Job using custom hook
     const { data: job, isLoading, error } = usePublicJobDetail(id);
     const jobData = job as PublicJob | undefined;
-    const isCSCJob = ['Permanent', 'Temporary', 'Probationary'].includes(jobData?.employment_type || '');
+    const isCSCJob = ['Permanent', 'Temporary', 'Probationary'].includes(jobData?.employmentType || '');
 
-    const isPermanent = jobData?.employment_type === 'Permanent';
-    const requireIds = isPermanent || jobData?.require_government_ids;
-    const requireCsc = isPermanent || jobData?.require_civil_service;
-    const requireEdu = isPermanent || jobData?.require_education_experience;
+    const isPermanent = jobData?.employmentType === 'Permanent';
+    const requireIds = isPermanent || jobData?.requireGovernmentIds;
+    const requireCsc = isPermanent || jobData?.requireCivilService;
+    const requireEdu = isPermanent || jobData?.requireEducationExperience;
 
     // Dynamic Schema based on job requirements
     const dynamicSchema = useMemo(() => {
         return createDynamicJobApplicationSchema(
-            jobData?.employment_type,
+            jobData?.employmentType,
             requireIds,
             requireCsc,
             requireEdu
         );
-    }, [jobData?.employment_type, requireIds, requireCsc, requireEdu]);
+    }, [jobData?.employmentType, requireIds, requireCsc, requireEdu]);
 
     // Form
     const { register, handleSubmit, formState: { errors, isSubmitting }, setValue, watch } = useForm<JobApplicationSchema>({
         resolver: zodResolver(dynamicSchema) as Resolver<JobApplicationSchema>,
         defaultValues: {
-            hp_field: '',
-            website_url: '',
+            hpField: '',
+            websiteUrl: '',
             sex: 'Male',
-            civil_status: 'Single',
-            blood_type: 'none',
-            eligibility_type: 'none',
-            is_meycauayan_resident: false,
-            photo_preview: '',
+            civilStatus: 'Single',
+            bloodType: 'none',
+            eligibilityType: 'none',
+            isMeycauayanResident: false,
+            photoPreview: '',
             resCity: '',
             resBrgy: '',
-            education: '',
+            educationalBackground: '',
+            schoolName: '',
+            yearGraduated: '',
+            course: '',
             experience: '',
             skills: '',
-            first_name: '',
-            last_name: '',
+            firstName: '',
+            lastName: '',
             email: '',
-            phone_number: '',
+            phoneNumber: '',
             address: '',
-            zip_code: '',
-            birth_date: '',
-            birth_place: ''
+            zipCode: '',
+            birthDate: '',
+            birthPlace: ''
         }
     });
 
-    const isMeycauayanResident = watch('is_meycauayan_resident');
-    const photoPreview = watch('photo_preview');
+    const isMeycauayanResident = watch('isMeycauayanResident');
+    const photoPreview = watch('photoPreview');
+
 
     // Watch address selector fields for real-time address building
     const resRegion = watch('resRegion');
     const resProvince = watch('resProvince');
     const resCity = watch('resCity');
     const resBrgy = watch('resBrgy');
+    const resHouse = watch('resHouseBlockLot');
+    const resSubd = watch('resSubdivision');
     const resStreet = watch('resStreet');
     const residentialZip = watch('residentialZipCode');
     const permRegion = watch('permRegion');
     const permProvince = watch('permProvince');
     const permCity = watch('permCity');
     const permBrgy = watch('permBrgy');
+    const permHouse = watch('permHouseBlockLot');
+    const permSubd = watch('permSubdivision');
     const permStreet = watch('permStreet');
     const permanentZip = watch('permanentZipCode');
 
     // Build full address string from selector codes → names (real-time)
-    const buildAddress = (reg: string, prov: string, city: string, brgy: string, street: string): string => {
+    const buildAddress = (reg: string, prov: string, city: string, brgy: string, house: string, subd: string, street: string): string => {
       const rName = (ph.regions as Region[]).find(r => r.reg_code === reg)?.name || '';
       const pName = (ph.provinces as Province[]).find(p => p.prov_code === prov)?.name || '';
       const cName = (ph.city_mun as CityMunicipality[]).find(c => c.mun_code === city)?.name || '';
-      return [street, brgy, cName, pName, rName].filter(Boolean).join(', ');
+      return [house, subd, street, brgy, cName, pName, rName].filter(Boolean).join(', ');
     };
 
     // Real-time residential address → `address` + `zip_code`
     useEffect(() => {
-      const addr = buildAddress(resRegion || '', resProvince || '', resCity || '', resBrgy || '', resStreet || '');
+      const addr = buildAddress(resRegion || '', resProvince || '', resCity || '', resBrgy || '', resHouse || '', resSubd || '', resStreet || '');
       if (addr) setValue('address', addr, { shouldValidate: true });
-      if (residentialZip) setValue('zip_code', residentialZip, { shouldValidate: true });
-    }, [resRegion, resProvince, resCity, resBrgy, resStreet, residentialZip, setValue]);
+      if (residentialZip) setValue('zipCode', residentialZip, { shouldValidate: true });
+    }, [resRegion, resProvince, resCity, resBrgy, resHouse, resSubd, resStreet, residentialZip, setValue]);
 
-    // Real-time permanent address → `permanent_address` + `permanent_zip_code`
+    // Real-time permanent address → `permanentAddress` + `permanent_zip_code`
     useEffect(() => {
-      const addr = buildAddress(permRegion || '', permProvince || '', permCity || '', permBrgy || '', permStreet || '');
-      if (addr) setValue('permanent_address', addr);
-      if (permanentZip) setValue('permanent_zip_code', permanentZip);
-    }, [permRegion, permProvince, permCity, permBrgy, permStreet, permanentZip, setValue]);
+      const addr = buildAddress(permRegion || '', permProvince || '', permCity || '', permBrgy || '', permHouse || '', permSubd || '', permStreet || '');
+      if (addr) setValue('permanentAddress', addr);
+      if (permanentZip) setValue('permanentZipCode', permanentZip);
+    }, [permRegion, permProvince, permCity, permBrgy, permHouse, permSubd, permStreet, permanentZip, setValue]);
 
   // Mutation using custom hook
   const mutation = useJobApplication(
@@ -228,7 +236,7 @@ const JobDetail = () => {
     // Final data alignment for backend schema requirements
     const finalData: JobApplicationSchema = {
         ...data,
-        h_token: `v-${Math.random().toString(36).substring(2, 10)}-${Date.now()}`
+        hToken: `v-${Math.random().toString(36).substring(2, 10)}-${Date.now()}`
     };
 
     mutation.mutate({ id, data: finalData });
@@ -318,10 +326,15 @@ const JobDetail = () => {
                              <span className="tracking-tight">{job.location}</span>
                            </div>
                            <div className="text-slate-400 font-bold text-[11px]">
-                             <span className="tracking-tight">{job.employment_type}</span>
+                             <span className="tracking-tight">{job.employmentType}</span>
                            </div>
+                           {job.dutyType && (
+                             <div className="text-blue-400 font-bold text-[11px]">
+                               <span className="tracking-tight">Duty: {job.dutyType}</span>
+                             </div>
+                           )}
                            <div className="text-slate-400 font-bold text-[11px]">
-                             <span className="tracking-tight">Posted {formatDate(job.created_at || job.posted_at)}</span>
+                             <span className="tracking-tight">Posted {formatDate(job.createdAt || job.postedAt)}</span>
                            </div>
                        </div>
                    </div>
@@ -335,7 +348,7 @@ const JobDetail = () => {
                                 About the job
                            </h3>
                            <div className="text-[15px] text-slate-400 font-semibold leading-relaxed whitespace-pre-wrap max-w-3xl">
-                                {job.job_description}
+                                {job.jobDescription}
                            </div>
                        </section>
 
@@ -394,7 +407,8 @@ const JobDetail = () => {
                             <div className="relative z-10">
                                 <h2 className="text-4xl font-black text-white mb-4 tracking-tight">Application sent</h2>
                                 <p className="text-slate-400 font-bold text-sm leading-relaxed mb-10 max-w-xs mx-auto">
-                                    Your application has been successfully submitted to the HR office for review.
+                                    Your application has been successfully submitted to the Human Resource office for review.
+
                                 </p>
                                 <button 
                                     onClick={() => navigate('/careers')}
@@ -415,8 +429,8 @@ const JobDetail = () => {
                         <form onSubmit={handleSubmit(onSubmit, onFormError)} className="p-6 sm:p-12 space-y-0 relative">
                         {/* Anti-bot fields (hidden) */}
                         <div className="hidden" aria-hidden="true" style={{ display: 'none', opacity: 0, position: 'absolute', left: '-9999px', zIndex: -1 }}>
-                            <input type="text" {...register('hp_field')} tabIndex={-1} autoComplete="off" />
-                            <input type="url" {...register('website_url')} tabIndex={-1} autoComplete="off" />
+                            <input type="text" {...register('hpField')} tabIndex={-1} autoComplete="off" />
+                            <input type="url" {...register('websiteUrl')} tabIndex={-1} autoComplete="off" />
                         </div>
 
                         {/* Form Header */}
@@ -439,17 +453,17 @@ const JobDetail = () => {
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-2">
                                     <div className="space-y-2">
                                         <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Last name <span className="text-red-500">*</span></label>
-                                        <input type="text" {...register('last_name')} className={`w-full px-3 py-2 bg-white border ${errors.last_name ? 'border-red-500' : 'border-gray-300'} rounded-md outline-none font-medium text-sm text-slate-700`} placeholder="Last name" />
-                                        {errors.last_name && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.last_name.message}</p>}
+                                        <input type="text" {...register('lastName')} className={`w-full px-3 py-2 bg-white border ${errors.lastName ? 'border-red-500' : 'border-gray-300'} rounded-md outline-none font-medium text-sm text-slate-700`} placeholder="Last name" />
+                                        {errors.lastName && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.lastName.message}</p>}
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">First name <span className="text-red-500">*</span></label>
-                                        <input type="text" {...register('first_name')} className={`w-full px-3 py-2 bg-white border ${errors.first_name ? 'border-red-500' : 'border-gray-300'} rounded-md outline-none font-medium text-sm text-slate-700`} placeholder="First name" />
-                                        {errors.first_name && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.first_name.message}</p>}
+                                        <input type="text" {...register('firstName')} className={`w-full px-3 py-2 bg-white border ${errors.firstName ? 'border-red-500' : 'border-gray-300'} rounded-md outline-none font-medium text-sm text-slate-700`} placeholder="First name" />
+                                        {errors.firstName && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.firstName.message}</p>}
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Middle name</label>
-                                        <input type="text" {...register('middle_name')} className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md outline-none font-medium text-sm text-slate-700" placeholder="Middle name" />
+                                        <input type="text" {...register('middleName')} className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md outline-none font-medium text-sm text-slate-700" placeholder="Middle name" />
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Suffix</label>
@@ -460,11 +474,11 @@ const JobDetail = () => {
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-y-3 gap-x-6">
                                 <div className="space-y-2">
                                     <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Birth date <span className="text-red-500">*</span></label>
-                                    <input type="date" {...register('birth_date')} className={`w-full px-3 py-2 bg-white border border-gray-300 ${errors.birth_date ? 'border-red-500' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`} />
+                                    <input type="date" {...register('birthDate')} className={`w-full px-3 py-2 bg-white border border-gray-300 ${errors.birthDate ? 'border-red-500' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`} />
                                 </div>
                                 <div className="md:col-span-2 space-y-2">
                                     <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Place of birth <span className="text-red-500">*</span></label>
-                                    <input type="text" {...register('birth_place')} className={`w-full px-3 py-2 bg-white border border-gray-300 ${errors.birth_place ? 'border-red-500' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`} placeholder="City/municipality, province" />
+                                    <input type="text" {...register('birthPlace')} className={`w-full px-3 py-2 bg-white border border-gray-300 ${errors.birthPlace ? 'border-red-500' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`} placeholder="City/municipality, province" />
                                 </div>
                             </div>
 
@@ -478,7 +492,7 @@ const JobDetail = () => {
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Civil status <span className="text-red-500">*</span></label>
-                                    <select {...register('civil_status')} className={`w-full px-3 py-2 bg-white border ${errors.civil_status ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`}>
+                                    <select {...register('civilStatus')} className={`w-full px-3 py-2 bg-white border ${errors.civilStatus ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`}>
                                         <option value="Single">Single</option>
                                         <option value="Married">Married</option>
                                         <option value="Widowed">Widowed</option>
@@ -543,7 +557,7 @@ const JobDetail = () => {
 
                                 <div className="space-y-2">
                                     <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Blood type</label>
-                                    <select {...register('blood_type')} className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md outline-none font-medium text-sm text-slate-700">
+                                    <select {...register('bloodType')} className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md outline-none font-medium text-sm text-slate-700">
                                         <option value="none">Select Type</option>
                                         <option value="A+">A+</option>
                                         <option value="A-">A-</option>
@@ -587,7 +601,7 @@ const JobDetail = () => {
                                         <input 
                                             type="radio" 
                                             checked={isMeycauayanResident === true}
-                                            onChange={() => setValue('is_meycauayan_resident', true)}
+                                            onChange={() => setValue('isMeycauayanResident', true)}
                                             className="w-4 h-4 accent-green-600 cursor-pointer" 
                                         /> 
                                         <span className="group-hover:text-green-600 transition-colors">Yes, I am a resident</span>
@@ -596,7 +610,7 @@ const JobDetail = () => {
                                         <input 
                                             type="radio" 
                                             checked={isMeycauayanResident === false}
-                                            onChange={() => setValue('is_meycauayan_resident', false)}
+                                            onChange={() => setValue('isMeycauayanResident', false)}
                                             className="w-4 h-4 accent-green-600 cursor-pointer" 
                                         /> 
                                         <span className="group-hover:text-green-600 transition-colors">No, I am from elsewhere</span>
@@ -638,7 +652,20 @@ const JobDetail = () => {
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Contact number <span className="text-red-500">*</span></label>
-                                    <input type="text" {...register('phone_number')} className={`w-full px-3 py-2 bg-white border border-gray-300 ${errors.phone_number ? 'border-red-500' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`} placeholder="+63 9XX XXX XXXX" />
+                                    <input type="text" {...register('phoneNumber')} className={`w-full px-3 py-2 bg-white border border-gray-300 ${errors.phoneNumber ? 'border-red-500' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`} placeholder="+63 9XX XXX XXXX" />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 mt-6 border-t border-gray-100">
+                                <div className="space-y-2">
+                                    <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5 uppercase tracking-widest text-green-700">Emergency Contact Person <span className="text-red-500">*</span></label>
+                                    <input type="text" {...register('emergencyContact')} className={`w-full px-3 py-2 bg-white border border-gray-300 ${errors.emergencyContact ? 'border-red-500' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`} placeholder="Full Name" />
+                                    {errors.emergencyContact && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.emergencyContact.message}</p>}
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5 uppercase tracking-widest text-green-700">Emergency Contact No. <span className="text-red-500">*</span></label>
+                                    <input type="text" {...register('emergencyContactNumber')} className={`w-full px-3 py-2 bg-white border border-gray-300 ${errors.emergencyContactNumber ? 'border-red-500' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`} placeholder="+63 9XX XXX XXXX" />
+                                    {errors.emergencyContactNumber && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.emergencyContactNumber.message}</p>}
                                 </div>
                             </div>
                         </FormSection>
@@ -649,35 +676,35 @@ const JobDetail = () => {
                             subtitle="Your identification details" 
                         >
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <div className="space-y-2">
+                                 <div className="space-y-2">
                                     <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">GSIS Number {requireIds && <span className="text-red-500 ml-1">*</span>}</label>
-                                    <input type="text" {...register('gsis_no')} className={`w-full px-3 py-2 bg-white border ${errors.gsis_no ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`} placeholder={requireIds ? "Required" : "Optional"} />
-                                    {errors.gsis_no && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.gsis_no.message}</p>}
+                                    <input type="text" {...register('gsisNumber')} className={`w-full px-3 py-2 bg-white border ${errors.gsisNumber ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`} placeholder={requireIds ? "Required" : "Optional"} />
+                                    {errors.gsisNumber && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.gsisNumber.message}</p>}
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Pag-IBIG Number {requireIds && <span className="text-red-500 ml-1">*</span>}</label>
-                                    <input type="text" {...register('pagibig_no')} className={`w-full px-3 py-2 bg-white border ${errors.pagibig_no ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`} placeholder={requireIds ? "Required" : "Optional"} />
-                                    {errors.pagibig_no && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.pagibig_no.message}</p>}
+                                    <input type="text" {...register('pagibigNumber')} className={`w-full px-3 py-2 bg-white border ${errors.pagibigNumber ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`} placeholder={requireIds ? "Required" : "Optional"} />
+                                    {errors.pagibigNumber && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.pagibigNumber.message}</p>}
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">PhilHealth Number {requireIds && <span className="text-red-500 ml-1">*</span>}</label>
-                                    <input type="text" {...register('philhealth_no')} className={`w-full px-3 py-2 bg-white border ${errors.philhealth_no ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`} placeholder={requireIds ? "Required" : "Optional"} />
-                                    {errors.philhealth_no && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.philhealth_no.message}</p>}
+                                    <input type="text" {...register('philhealthNumber')} className={`w-full px-3 py-2 bg-white border ${errors.philhealthNumber ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`} placeholder={requireIds ? "Required" : "Optional"} />
+                                    {errors.philhealthNumber && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.philhealthNumber.message}</p>}
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">UMID Number {requireIds && <span className="text-red-500 ml-1">*</span>}</label>
-                                    <input type="text" {...register('umid_no')} className={`w-full px-3 py-2 bg-white border ${errors.umid_no ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`} placeholder={requireIds ? "Required" : "Optional"} />
-                                    {errors.umid_no && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.umid_no.message}</p>}
+                                    <input type="text" {...register('umidNumber')} className={`w-full px-3 py-2 bg-white border ${errors.umidNumber ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`} placeholder={requireIds ? "Required" : "Optional"} />
+                                    {errors.umidNumber && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.umidNumber.message}</p>}
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">PhilSys ID (National ID) {requireIds && <span className="text-red-500 ml-1">*</span>}</label>
-                                    <input type="text" {...register('philsys_id')} className={`w-full px-3 py-2 bg-white border ${errors.philsys_id ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`} placeholder={requireIds ? "Required" : "Optional"} />
-                                    {errors.philsys_id && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.philsys_id.message}</p>}
+                                    <input type="text" {...register('philsysId')} className={`w-full px-3 py-2 bg-white border ${errors.philsysId ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`} placeholder={requireIds ? "Required" : "Optional"} />
+                                    {errors.philsysId && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.philsysId.message}</p>}
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">TIN Number {requireIds && <span className="text-red-500 ml-1">*</span>}</label>
-                                    <input type="text" {...register('tin_no')} className={`w-full px-3 py-2 bg-white border ${errors.tin_no ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`} placeholder={requireIds ? "Required" : "Optional"} />
-                                    {errors.tin_no && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.tin_no.message}</p>}
+                                    <input type="text" {...register('tinNumber')} className={`w-full px-3 py-2 bg-white border ${errors.tinNumber ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`} placeholder={requireIds ? "Required" : "Optional"} />
+                                    {errors.tinNumber && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.tinNumber.message}</p>}
                                 </div>
                             </div>
                         </FormSection>
@@ -700,7 +727,7 @@ const JobDetail = () => {
                                         </div>
                                         <div className="space-y-2">
                                             <label className="text-[11px] font-bold text-slate-500 tracking-tight">Eligibility Category {requireCsc && <span className="text-red-500 ml-1">*</span>}</label>
-                                            <select {...register('eligibility_type')} className="w-full px-3 py-2 bg-white border border-gray-300 border-gray-200 rounded-lg focus:border-green-600 outline-none text-sm font-medium text-slate-700 shadow-sm">
+                                            <select {...register('eligibilityType')} className="w-full px-3 py-2 bg-white border border-gray-300 border-gray-200 rounded-lg focus:border-green-600 outline-none text-sm font-medium text-slate-700 shadow-sm">
                                                 <option value="none">Not Applicable / None</option>
                                                 <optgroup label="Government (CSC/RA)">
                                                     <option value="csc_prof">Career Service (Professional)</option>
@@ -718,60 +745,60 @@ const JobDetail = () => {
                                         </div>
                                         <div className="space-y-2">
                                             <label className="text-[11px] font-bold text-slate-500 tracking-tight">Rating (If Applicable)</label>
-                                            <input type="text" {...register('eligibility_rating')} className="w-full px-3 py-2 bg-white border border-gray-300 border-gray-200 rounded-lg focus:border-green-600 outline-none text-sm font-medium text-slate-700 placeholder:text-slate-300 shadow-sm" placeholder="e.g. 85.50%" />
+                                            <input type="text" {...register('eligibilityRating')} className="w-full px-3 py-2 bg-white border border-gray-300 border-gray-200 rounded-lg focus:border-green-600 outline-none text-sm font-medium text-slate-700 placeholder:text-slate-300 shadow-sm" placeholder="e.g. 85.50%" />
                                         </div>
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                         <div className="space-y-2">
                                             <label className="text-[11px] font-bold text-slate-500 tracking-tight">Date of Release / Validity {requireCsc && <span className="text-red-500 ml-1">*</span>}</label>
-                                            <input type="date" {...register('eligibility_date')} className="w-full px-3 py-2 bg-white border border-gray-300 border-gray-200 rounded-lg focus:border-green-600 outline-none text-sm font-medium text-slate-700 shadow-sm" />
+                                            <input type="date" {...register('eligibilityDate')} className="w-full px-3 py-2 bg-white border border-gray-300 border-gray-200 rounded-lg focus:border-green-600 outline-none text-sm font-medium text-slate-700 shadow-sm" />
                                         </div>
                                         <div className="space-y-2">
                                             <label className="text-[11px] font-bold text-slate-500 tracking-tight">Place of Examination / Issue {requireCsc && <span className="text-red-500 ml-1">*</span>}</label>
-                                            <input type="text" {...register('eligibility_place')} className="w-full px-3 py-2 bg-white border border-gray-300 border-gray-200 rounded-lg focus:border-green-600 outline-none text-sm font-medium text-slate-700 placeholder:text-slate-300 shadow-sm" placeholder="City or Region" />
+                                            <input type="text" {...register('eligibilityPlace')} className="w-full px-3 py-2 bg-white border border-gray-300 border-gray-200 rounded-lg focus:border-green-600 outline-none text-sm font-medium text-slate-700 placeholder:text-slate-300 shadow-sm" placeholder="City or Region" />
                                         </div>
                                         <div className="space-y-2">
                                             <label className="text-[11px] font-bold text-slate-500 tracking-tight">License / ID Number {requireCsc && <span className="text-red-500 ml-1">*</span>}</label>
-                                            <input type="text" {...register('license_no')} className="w-full px-3 py-2 bg-white border border-gray-300 border-gray-200 rounded-lg focus:border-green-600 outline-none text-sm font-medium text-slate-700 placeholder:text-slate-300 shadow-sm" placeholder="ID or License Number" />
+                                            <input type="text" {...register('licenseNo')} className="w-full px-3 py-2 bg-white border border-gray-300 border-gray-200 rounded-lg focus:border-green-600 outline-none text-sm font-medium text-slate-700 placeholder:text-slate-300 shadow-sm" placeholder="ID or License Number" />
                                         </div>
                                     </div>
                                 </div>
 
                                 <div className="space-y-4">
                                     <div className="space-y-2">
-                                        <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Highest Level Attained {requireEdu && <span className="text-red-500">*</span>}</label>
+                                        <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Highest Degree/Level Attained {requireEdu && <span className="text-red-500">*</span>}</label>
                                         <select 
-                                            {...register('education')} 
-                                            className={`w-full px-3 py-2 bg-white border border-gray-300 ${errors.education ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`}
+                                            {...register('educationalBackground')} 
+                                            className={`w-full px-3 py-2 bg-white border border-gray-300 ${errors.educationalBackground ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`}
                                         >
                                             <option value="">Select highest education attained</option>
                                             {EDUCATION_LEVELS.map((level) => (
                                                 <option key={level} value={level}>{level}</option>
                                             ))}
                                         </select>
-                                        {errors.education && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.education.message}</p>}
+                                        {errors.educationalBackground && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.educationalBackground.message}</p>}
                                     </div>
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div className="space-y-2">
-                                            <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">School Name {requireEdu && <span className="text-red-500">*</span>}</label>
+                                            <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">School / University Name {requireEdu && <span className="text-red-500">*</span>}</label>
                                             <input 
-                                                {...register('school_name')} 
-                                                className={`w-full px-3 py-2 bg-white border border-gray-300 ${errors.school_name ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`}
+                                                {...register('schoolName')} 
+                                                className={`w-full px-3 py-2 bg-white border border-gray-300 ${errors.schoolName ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`}
                                                 placeholder="e.g. Bulacan State University"
                                             />
                                         </div>
                                         <div className="space-y-2">
                                             <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Year Graduated {requireEdu && <span className="text-red-500">*</span>}</label>
                                             <input 
-                                                {...register('year_graduated')} 
-                                                className={`w-full px-3 py-2 bg-white border border-gray-300 ${errors.year_graduated ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`}
+                                                {...register('yearGraduated')} 
+                                                className={`w-full px-3 py-2 bg-white border border-gray-300 ${errors.yearGraduated ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`}
                                                 placeholder="e.g. 2020"
                                             />
                                         </div>
                                     </div>
 
-                                    {watch('education') && !["Elementary School Graduate", "High School Graduate", "Senior High School Graduate"].includes(watch('education') || "") && (
+                                    {watch('educationalBackground') && !["Elementary School Graduate", "High School Graduate", "Senior High School Graduate"].includes(watch('educationalBackground') || "") && (
                                         <div className="space-y-2">
                                             <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Course / Degree {requireEdu && <span className="text-red-500">*</span>}</label>
                                             <input 
@@ -797,7 +824,7 @@ const JobDetail = () => {
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Total Exp. (Years)</label>
-                                        <input type="number" {...register('total_experience_years')} className="w-full px-3 py-2 bg-white border border-gray-300 border-gray-200 rounded-md outline-none font-medium text-sm text-slate-700" placeholder="Value" />
+                                        <input type="number" {...register('totalExperienceYears')} className="w-full px-3 py-2 bg-white border border-gray-300 border-gray-200 rounded-md outline-none font-medium text-sm text-slate-700" placeholder="Value" />
                                     </div>
                                 </div>
                             </div>
@@ -874,7 +901,7 @@ const JobDetail = () => {
                                         <input type="file" accept=".pdf,.jpg,.jpeg,.png" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" onChange={async (e) => {
                                             const file = e.target.files?.[0];
                                             if (file) {
-                                                setValue('eligibility_cert', file);
+                                                setValue('eligibilityCert', file);
                                             }
                                         }} />
                                         <div className="flex flex-col items-center justify-center gap-3 h-full">
@@ -882,12 +909,12 @@ const JobDetail = () => {
                                                 <ShieldCheck size={18} className="text-slate-400 group-hover:text-white transition-colors" />
                                             </div>
                                             <div>
-                                                <p className="text-slate-900 font-bold text-[11px] truncate max-w-[150px]">{watch('eligibility_cert') ? (watch('eligibility_cert') as File).name : "Select Cert"}</p>
+                                                <p className="text-slate-900 font-bold text-[11px] truncate max-w-[150px]">{watch('eligibilityCert') ? (watch('eligibilityCert') as File).name : "Select Cert"}</p>
                                                 <p className={`text-[9px] font-bold tracking-widest mt-1 uppercase ${requireCsc ? 'text-red-500' : 'text-slate-400'}`}>{requireCsc ? 'Required PDF' : 'Optional'}</p>
                                             </div>
                                         </div>
                                     </div>
-                                    {errors.eligibility_cert && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.eligibility_cert.message as string}</p>}
+                                    {errors.eligibilityCert && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.eligibilityCert.message as string}</p>}
                                 </div>
                             </div>
                         </FormSection>

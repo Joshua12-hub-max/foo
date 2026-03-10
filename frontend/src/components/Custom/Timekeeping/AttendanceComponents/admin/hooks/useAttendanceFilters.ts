@@ -20,8 +20,8 @@ export const useAttendanceFilters = (data: AttendanceRecord[] = []) => {
       const searchLower = searchQuery.toLowerCase().trim();
       
       // Use ONLY properties explicitly defined in AttendanceRecord
-      const employeeName = item.name ?? `${item.first_name ?? ''} ${item.last_name ?? ''}`.trim();
-      const employeeId = String(item.employee_id ?? ''); // Safely cast number|string to string
+      const employeeName = item.name ?? `${item.firstName ?? ''} ${item.lastName ?? ''}`.trim();
+      const employeeId = String(item.employeeId ?? ''); // Safely cast number|string to string
 
       const matchesSearch = 
         searchLower === '' || 

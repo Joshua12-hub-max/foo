@@ -17,88 +17,81 @@ interface Education {
   type?: string;
   institution: string;
   degree?: string;
-  field_of_study?: string;
-  start_date?: string;
-  end_date?: string;
+  fieldOfStudy?: string;
+  startDate?: string;
+  endDate?: string;
 }
 
 interface Skill {
-  skill_name: string;
-  proficiency_level?: string;
+  skillName: string;
+  proficiencyLevel?: string;
 }
 
 interface EmergencyContact {
   name: string;
   relationship: string;
-  phone_number: string;
+  phoneNumber: string;
   address?: string;
 }
 
 interface CustomField {
   id: number;
   section: string;
-  field_name: string;
-  field_value: string;
+  fieldName: string;
+  fieldValue: string;
 }
 
 interface Profile {
   id: number;
-  first_name?: string;
-  last_name?: string;
+  firstName?: string;
+  lastName?: string;
   email?: string;
-  avatar_url?: string;
+  avatarUrl?: string;
   avatar?: string;
-  position_title?: string;
-  job_title?: string;
+  positionTitle?: string;
   jobTitle?: string;
-  employee_id?: string;
   employeeId?: string;
   department?: string;
-  employment_status?: string;
   employmentStatus?: string;
-  birth_date?: string;
+  birthDate?: string;
   gender?: string;
-  civil_status?: string;
+  civilStatus?: string;
   nationality?: string;
-  blood_type?: string;
-  height_cm?: string;
-  weight_kg?: string;
-  permanent_address?: string;
+  bloodType?: string;
+  heightCm?: string;
+  weightKg?: string;
+  permanentAddress?: string;
   address?: string;
-  item_number?: string;
   itemNumber?: string;
-  salary_grade?: string;
   salaryGrade?: string;
-  step_increment?: string | number;
   stepIncrement?: string | number;
-  appointment_type?: string;
+  appointmentType?: string;
   station?: string;
-  office_address?: string;
-  date_hired?: string;
+  officeAddress?: string;
   dateHired?: string;
-  first_day_of_service?: string;
-  supervisor?: string;
+  firstDayOfService?: string;
   role?: string;
-  gsis_number?: string;
-  philhealth_number?: string;
-  pagibig_number?: string;
-  tin_number?: string;
-  phone_number?: string;
-  emergency_contact?: string;
-  emergency_contact_number?: string;
+  gsisNumber?: string;
+  philhealthNumber?: string;
+  pagibigNumber?: string;
+  tinNumber?: string;
+  phoneNumber?: string;
+  emergencyContact?: string;
+  emergencyContactNumber?: string;
   education?: Education[];
   skills?: Skill[];
   emergencyContacts?: EmergencyContact[];
-  eligibility_type?: string;
-  eligibility_number?: string;
-  eligibility_date?: string;
-  highest_education?: string;
-  years_of_experience?: number;
-  facebook_url?: string;
-  linkedin_url?: string;
-
-  twitter_handle?: string;
+  eligibilityType?: string;
+  eligibilityNumber?: string;
+  eligibilityDate?: string;
+  umidNumber?: string;
+  educationalBackground?: string;
+  yearsOfExperience?: number;
+  facebookUrl?: string;
+  linkedinUrl?: string;
+  twitterHandle?: string;
   customFields?: CustomField[];
+  agencyEmployeeNo?: string;
 }
 
 interface EditableDataFieldProps {
@@ -169,9 +162,15 @@ const EditableDataField: React.FC<EditableDataFieldProps> = ({
   };
 
   const handleSave = async () => {
+    // Prevent redundant saves if value hasn't changed
+    const finalValue = inputType === 'number' ? Number(editValue) : editValue;
+    if (String(finalValue) === String(value || '')) {
+      setIsEditing(false);
+      return;
+    }
+
     setSaving(true);
     try {
-      const finalValue = inputType === 'number' ? Number(editValue) : editValue;
       await onSave(fieldName, finalValue);
       setIsEditing(false);
     } catch (error) {
@@ -323,6 +322,12 @@ const CustomEditableDataField: React.FC<CustomEditableDataFieldProps> = ({
   const colSpanClass = getColSpanClass(isEditing ? editValue : value);
 
   const handleSaveValue = async () => {
+    // Prevent redundant saves if value hasn't changed
+    if (editValue === String(value || '')) {
+      setIsEditing(false);
+      return;
+    }
+
     setSaving(true);
     try {
       await onSave(fieldName, editValue);
@@ -478,7 +483,7 @@ const EditableProfileView: React.FC<EmployeeProfileViewProps> = ({ profile, load
   const handleCustomFieldSave = async (fieldId: number, value: string | number) => {
       if (!profile?.id) return;
       try {
-          await employeeApi.updateEmployeeCustomField(profile.id, fieldId, { field_value: String(value) });
+          await employeeApi.updateEmployeeCustomField(profile.id, fieldId, { fieldValue: String(value) });
           showToast('Updated successfully', 'success');
           onRefresh();
       } catch (error: any) {
@@ -508,8 +513,8 @@ const EditableProfileView: React.FC<EmployeeProfileViewProps> = ({ profile, load
     return profile?.customFields?.filter(f => f.section === sectionName).map(field => (
        <CustomEditableDataField 
           key={field.id}
-          label={field.field_name}
-          value={field.field_value}
+          label={field.fieldName}
+          value={field.fieldValue}
           fieldName={String(field.id)}
           onSave={(id, val) => handleCustomFieldSave(Number(id), val)}
           onDelete={() => handleCustomFieldDelete(field.id)}
@@ -542,7 +547,7 @@ const EditableProfileView: React.FC<EmployeeProfileViewProps> = ({ profile, load
     }
   };
 
-  const currentStatus = profile.employment_status || profile.employmentStatus || 'Active';
+  const currentStatus = profile.employmentStatus || 'Active';
   const isNegativeStatus = ['Terminated', 'Suspended', 'Show Cause', 'Verbal Warning', 'Written Warning'].includes(currentStatus);
   const isActive = currentStatus === 'Active';
 
@@ -577,10 +582,10 @@ const EditableProfileView: React.FC<EmployeeProfileViewProps> = ({ profile, load
         <div className="flex flex-col md:flex-row items-center gap-6">
           <div className="relative">
             <div className="w-20 h-20 rounded-lg bg-gray-700 border-2 border-white/20 shadow-lg overflow-hidden flex items-center justify-center">
-              {profile.avatar_url || profile.avatar ? (
-                <img src={profile.avatar_url || profile.avatar} alt="Avatar" className="w-full h-full object-cover" />
+              {profile.avatarUrl || profile.avatar ? (
+                <img src={profile.avatarUrl || profile.avatar} alt="Avatar" className="w-full h-full object-cover" />
               ) : (
-                <span className="text-2xl font-black text-gray-500">{profile.first_name?.[0]}{profile.last_name?.[0]}</span>
+                <span className="text-2xl font-black text-gray-500">{profile.firstName?.[0]}{profile.lastName?.[0]}</span>
               )}
             </div>
             <div className={`absolute -bottom-2 -right-2 text-white text-[10px] font-bold px-2 py-0.5 rounded border border-gray-800 ${isNegativeStatus ? 'bg-red-600' : 'bg-green-600'}`}>
@@ -589,13 +594,13 @@ const EditableProfileView: React.FC<EmployeeProfileViewProps> = ({ profile, load
           </div>
           
           <div className="flex-1 text-center md:text-left">
-            <h1 className="text-2xl font-bold tracking-tight mb-1">{profile.first_name} {profile.last_name}</h1>
+            <h1 className="text-2xl font-bold tracking-tight mb-1">{profile.firstName} {profile.lastName}</h1>
             <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-gray-300 text-xs font-medium">
               <span className="flex items-center gap-1.5 bg-white/10 px-2 py-1 rounded">
-                <Briefcase size={12} /> {profile.position_title || profile.job_title || profile.jobTitle || 'No Title'}
+                <Briefcase size={12} /> {profile.positionTitle || profile.jobTitle || 'No Title'}
               </span>
               <span className="flex items-center gap-1.5 bg-white/10 px-2 py-1 rounded">
-                <Hash size={12} /> {profile.employee_id || profile.employeeId}
+                <Hash size={12} /> {profile.employeeId}
               </span>
               <span className="flex items-center gap-1.5 bg-white/10 px-2 py-1 rounded">
                 <Mail size={12} /> {profile.email}
@@ -632,35 +637,34 @@ const EditableProfileView: React.FC<EmployeeProfileViewProps> = ({ profile, load
         
         {/* PERSONAL INFORMATION */}
         <Section title="Personal Information" icon={User}>
-          <EditableDataField label="First Name" value={profile.first_name} fieldName="first_name" onSave={handleFieldSave} />
-          <EditableDataField label="Last Name" value={profile.last_name} fieldName="last_name" onSave={handleFieldSave} />
-          <EditableDataField label="Birth Date" value={profile.birth_date?.split('T')[0]} fieldName="birth_date" icon={Calendar} inputType="date" onSave={handleFieldSave} />
+          <EditableDataField label="First Name" value={profile.firstName} fieldName="firstName" onSave={handleFieldSave} />
+          <EditableDataField label="Last Name" value={profile.lastName} fieldName="lastName" onSave={handleFieldSave} />
+          <EditableDataField label="Birth Date" value={profile.birthDate?.split('T')[0]} fieldName="birthDate" icon={Calendar} inputType="date" onSave={handleFieldSave} />
           <EditableDataField label="Gender" value={profile.gender} fieldName="gender" inputType="select" options={genderOptions} onSave={handleFieldSave} />
-          <EditableDataField label="Civil Status" value={profile.civil_status} fieldName="civil_status" inputType="select" options={civilStatusOptions} onSave={handleFieldSave} />
+          <EditableDataField label="Civil Status" value={profile.civilStatus} fieldName="civilStatus" inputType="select" options={civilStatusOptions} onSave={handleFieldSave} />
           <EditableDataField label="Nationality" value={profile.nationality} fieldName="nationality" icon={Flag} onSave={handleFieldSave} />
-          <EditableDataField label="Blood Type" value={profile.blood_type} fieldName="blood_type" inputType="select" options={bloodTypeOptions} onSave={handleFieldSave} />
-          <EditableDataField label="Height (cm)" value={profile.height_cm} fieldName="height_cm" icon={Ruler} inputType="number" onSave={handleFieldSave} />
-          <EditableDataField label="Weight (kg)" value={profile.weight_kg} fieldName="weight_kg" icon={Scale} inputType="number" onSave={handleFieldSave} />
-          <EditableDataField label="Address" value={profile.permanent_address || profile.address} fieldName="permanent_address" fullWidth icon={MapPin} inputType="textarea" onSave={handleFieldSave} />
+          <EditableDataField label="Blood Type" value={profile.bloodType} fieldName="bloodType" inputType="select" options={bloodTypeOptions} onSave={handleFieldSave} />
+          <EditableDataField label="Height (cm)" value={profile.heightCm} fieldName="heightCm" icon={Ruler} inputType="number" onSave={handleFieldSave} />
+          <EditableDataField label="Weight (kg)" value={profile.weightKg} fieldName="weightKg" icon={Scale} inputType="number" onSave={handleFieldSave} />
+          <EditableDataField label="Address" value={profile.permanentAddress || profile.address} fieldName="permanentAddress" fullWidth icon={MapPin} inputType="textarea" onSave={handleFieldSave} />
           {renderCustomFields("Personal Information")}
           <AddCard label="Add Card" onClick={() => openCustomFieldModal("Personal Information")} />
         </Section>
 
         {/* EMPLOYMENT RECORD */}
         <Section title="Employment Record" icon={Briefcase}>
-          <DataField label="Employee ID" value={profile.employee_id || profile.employeeId} icon={Hash} highlight />
-          <EditableDataField label="Position Title" value={profile.position_title || profile.job_title} fieldName="position_title" highlight onSave={handleFieldSave} />
-          <EditableDataField label="Item Number" value={profile.item_number || profile.itemNumber} fieldName="item_number" icon={Hash} onSave={handleFieldSave} />
+          <DataField label="Employee ID" value={profile.employeeId} icon={Hash} highlight />
+          <EditableDataField label="Position Title" value={profile.positionTitle || profile.jobTitle} fieldName="positionTitle" highlight onSave={handleFieldSave} />
+          <EditableDataField label="Item Number" value={profile.itemNumber} fieldName="itemNumber" icon={Hash} onSave={handleFieldSave} />
           <DataField label="Department" value={profile.department} icon={Building} />
-          <EditableDataField label="Salary Grade" value={profile.salary_grade || profile.salaryGrade} fieldName="salary_grade" icon={CreditCard} inputType="number" onSave={handleFieldSave} />
-          <EditableDataField label="Step Increment" value={profile.step_increment || profile.stepIncrement} fieldName="step_increment" icon={Hash} inputType="number" onSave={handleFieldSave} />
-          <EditableDataField label="Appointment Type" value={profile.appointment_type} fieldName="appointment_type" onSave={handleFieldSave} />
-          <DataField label="Employment Status" value={profile.employment_status || profile.employmentStatus} />
+          <EditableDataField label="Salary Grade" value={profile.salaryGrade} fieldName="salaryGrade" icon={CreditCard} inputType="number" onSave={handleFieldSave} />
+          <EditableDataField label="Step Increment" value={String(profile.stepIncrement)} fieldName="stepIncrement" icon={Hash} inputType="number" onSave={handleFieldSave} />
+          <EditableDataField label="Appointment Type" value={profile.appointmentType} fieldName="appointmentType" onSave={handleFieldSave} />
+          <DataField label="Employment Status" value={profile.employmentStatus} />
           <EditableDataField label="Station" value={profile.station} fieldName="station" icon={Building} onSave={handleFieldSave} />
-          <EditableDataField label="Office Address" value={profile.office_address} fieldName="office_address" icon={MapPin} inputType="textarea" onSave={handleFieldSave} />
-          <DataField label="Date Hired" value={formatDate(profile.date_hired || profile.dateHired)} icon={Calendar} />
-          <DataField label="First Day of Service" value={formatDate(profile.first_day_of_service)} icon={Clock} />
-          <DataField label="Supervisor" value={profile.supervisor} icon={UserCheck} />
+          <EditableDataField label="Office Address" value={profile.officeAddress} fieldName="officeAddress" icon={MapPin} inputType="textarea" onSave={handleFieldSave} />
+          <DataField label="Date Hired" value={formatDate(profile.dateHired)} icon={Calendar} />
+          <DataField label="First Day of Service" value={formatDate(profile.firstDayOfService)} icon={Clock} />
           <DataField label="System Role" value={profile.role} icon={Shield} />
           {renderCustomFields("Employment Record")}
           <AddCard label="Add Card" onClick={() => openCustomFieldModal("Employment Record")} />
@@ -668,21 +672,21 @@ const EditableProfileView: React.FC<EmployeeProfileViewProps> = ({ profile, load
 
         {/* GOVERNMENT IDS */}
         <Section title="Government Identification" icon={Shield}>
-          <EditableDataField label="GSIS No." value={profile.gsis_number} fieldName="gsis_number" onSave={handleFieldSave} />
-          <EditableDataField label="PhilHealth No." value={profile.philhealth_number} fieldName="philhealth_number" onSave={handleFieldSave} />
-          <EditableDataField label="Pag-IBIG No." value={profile.pagibig_number} fieldName="pagibig_number" onSave={handleFieldSave} />
-          <EditableDataField label="TIN" value={profile.tin_number} fieldName="tin_number" onSave={handleFieldSave} />
+          <EditableDataField label="GSIS No." value={profile.gsisNumber} fieldName="gsisNumber" onSave={handleFieldSave} />
+          <EditableDataField label="PhilHealth No." value={profile.philhealthNumber} fieldName="philhealthNumber" onSave={handleFieldSave} />
+          <EditableDataField label="Pag-IBIG No." value={profile.pagibigNumber} fieldName="pagibigNumber" onSave={handleFieldSave} />
+          <EditableDataField label="TIN" value={profile.tinNumber} fieldName="tinNumber" onSave={handleFieldSave} />
           {renderCustomFields("Government Identification")}
           <AddCard label="Add Card" onClick={() => openCustomFieldModal("Government Identification")} />
         </Section>
 
         {/* ELIGIBILITY & QUALIFICATIONS */}
         <Section title="Eligibility & Qualifications" icon={Award}>
-          <EditableDataField label="Eligibility Type" value={profile.eligibility_type} fieldName="eligibility_type" onSave={handleFieldSave} />
-          <EditableDataField label="Eligibility No." value={profile.eligibility_number} fieldName="eligibility_number" icon={Hash} onSave={handleFieldSave} />
-          <EditableDataField label="Eligibility Date" value={profile.eligibility_date?.split('T')[0]} fieldName="eligibility_date" icon={Calendar} inputType="date" onSave={handleFieldSave} />
-          <EditableDataField label="Highest Education" value={profile.highest_education} fieldName="highest_education" icon={GraduationCap} onSave={handleFieldSave} />
-          <EditableDataField label="Years of Experience" value={profile.years_of_experience} fieldName="years_of_experience" inputType="number" onSave={handleFieldSave} />
+          <EditableDataField label="Eligibility Type" value={profile.eligibilityType} fieldName="eligibilityType" onSave={handleFieldSave} />
+          <EditableDataField label="Eligibility No." value={profile.eligibilityNumber} fieldName="eligibilityNumber" icon={Hash} onSave={handleFieldSave} />
+          <EditableDataField label="Eligibility Date" value={profile.eligibilityDate?.split('T')[0]} fieldName="eligibilityDate" icon={Calendar} inputType="date" onSave={handleFieldSave} />
+          <EditableDataField label="Educational Background" value={profile.educationalBackground} fieldName="educationalBackground" icon={GraduationCap} onSave={handleFieldSave} />
+          <EditableDataField label="Years of Experience" value={profile.yearsOfExperience} fieldName="yearsOfExperience" inputType="number" onSave={handleFieldSave} />
           {renderCustomFields("Eligibility & Qualifications")}
           <AddCard label="Add Card" onClick={() => openCustomFieldModal("Eligibility & Qualifications")} />
         </Section>
@@ -705,8 +709,8 @@ const EditableProfileView: React.FC<EmployeeProfileViewProps> = ({ profile, load
                     <tr key={idx} className="hover:bg-gray-50">
                       <td className="px-4 py-2 font-bold text-gray-700">{edu.type || 'N/A'}</td>
                       <td className="px-4 py-2 text-gray-800">{edu.institution}</td>
-                      <td className="px-4 py-2 text-gray-900 font-medium">{edu.degree || edu.field_of_study || '-'}</td>
-                      <td className="px-4 py-2 text-gray-500">{edu.start_date ? new Date(edu.start_date).getFullYear() : 'N/A'} - {edu.end_date ? new Date(edu.end_date).getFullYear() : 'Present'}</td>
+                      <td className="px-4 py-2 text-gray-900 font-medium">{edu.degree || edu.fieldOfStudy || '-'}</td>
+                      <td className="px-4 py-2 text-gray-500">{edu.startDate ? new Date(edu.startDate).getFullYear() : 'N/A'} - {edu.endDate ? new Date(edu.endDate).getFullYear() : 'Present'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -720,8 +724,8 @@ const EditableProfileView: React.FC<EmployeeProfileViewProps> = ({ profile, load
         <Section title="Skills & Competencies" icon={Award} columns="grid-cols-2 md:grid-cols-4">
           {profile.skills && profile.skills.map((skill, idx) => (
             <div key={idx} className="flex items-center justify-between border border-gray-200 rounded p-2 bg-gray-50">
-              <span className="text-xs font-bold text-gray-700">{skill.skill_name}</span>
-              <span className="text-[10px] font-medium text-gray-500">{skill.proficiency_level || 'N/A'}</span>
+              <span className="text-xs font-bold text-gray-700">{skill.skillName}</span>
+              <span className="text-[10px] font-medium text-gray-500">{skill.proficiencyLevel || 'N/A'}</span>
             </div>
           ))}
           <AddCard label="Add Skill" onClick={() => setShowAddSkill(true)} />
@@ -729,7 +733,7 @@ const EditableProfileView: React.FC<EmployeeProfileViewProps> = ({ profile, load
 
         {/* CONTACT & EMERGENCY */}
         <Section title="Contact & Emergency" icon={Phone}>
-          <EditableDataField label="Mobile Number" value={profile.phone_number} fieldName="phone_number" icon={Phone} inputType="tel" onSave={handleFieldSave} />
+          <EditableDataField label="Mobile Number" value={profile.phoneNumber} fieldName="phoneNumber" icon={Phone} inputType="tel" onSave={handleFieldSave} />
           <EditableDataField label="Official Email" value={profile.email} fieldName="email" icon={Mail} inputType="email" onSave={handleFieldSave} />
         </Section>
 
@@ -742,20 +746,20 @@ const EditableProfileView: React.FC<EmployeeProfileViewProps> = ({ profile, load
                 </div>
                 <div className="flex flex-col gap-1 text-xs text-gray-600">
                    <span className="flex items-center gap-1.5"><User size={12} className="text-gray-400"/> {contact.relationship}</span>
-                   <span className="flex items-center gap-1.5"><Phone size={12} className="text-gray-400"/> {contact.phone_number}</span>
+                   <span className="flex items-center gap-1.5"><Phone size={12} className="text-gray-400"/> {contact.phoneNumber}</span>
                    {contact.address && <span className="flex items-center gap-1.5"><MapPin size={12} className="text-gray-400"/> {contact.address}</span>}
                 </div>
              </div>
            ))}
            {/* Fallback for legacy single fields if array is empty but fields exist */}
-           {(!profile.emergencyContacts || profile.emergencyContacts.length === 0) && (profile.emergency_contact || profile.emergency_contact_number) && (
+           {(!profile.emergencyContacts || profile.emergencyContacts.length === 0) && (profile.emergencyContact || profile.emergencyContactNumber) && (
               <div className="flex flex-col border border-gray-200 rounded-md p-3 bg-white relative opacity-75">
                 <div className="flex items-center justify-between mb-2">
-                   <h4 className="text-sm font-bold text-gray-800">{profile.emergency_contact}</h4>
+                   <h4 className="text-sm font-bold text-gray-800">{profile.emergencyContact}</h4>
                    <span className="text-[10px] italic text-gray-400">Legacy</span>
                 </div>
                 <div className="flex flex-col gap-1 text-xs text-gray-600">
-                   <span className="flex items-center gap-1.5"><Phone size={12} className="text-gray-400"/> {profile.emergency_contact_number}</span>
+                   <span className="flex items-center gap-1.5"><Phone size={12} className="text-gray-400"/> {profile.emergencyContactNumber}</span>
                 </div>
              </div>
            )}
@@ -764,9 +768,9 @@ const EditableProfileView: React.FC<EmployeeProfileViewProps> = ({ profile, load
 
         {/* SOCIAL MEDIA */}
         <Section title="Social Media" icon={User} columns="grid-cols-1 md:grid-cols-3">
-          <EditableDataField label="Facebook" value={profile.facebook_url} fieldName="facebook_url" icon={Facebook} inputType="url" onSave={handleFieldSave} />
-          <EditableDataField label="LinkedIn" value={profile.linkedin_url} fieldName="linkedin_url" icon={Linkedin} inputType="url" onSave={handleFieldSave} />
-          <EditableDataField label="Twitter/X" value={profile.twitter_handle} fieldName="twitter_handle" icon={Twitter} onSave={handleFieldSave} />
+          <EditableDataField label="Facebook" value={profile.facebookUrl} fieldName="facebookUrl" icon={Facebook} inputType="url" onSave={handleFieldSave} />
+          <EditableDataField label="LinkedIn" value={profile.linkedinUrl} fieldName="linkedinUrl" icon={Linkedin} inputType="url" onSave={handleFieldSave} />
+          <EditableDataField label="Twitter/X" value={profile.twitterHandle} fieldName="twitterHandle" icon={Twitter} onSave={handleFieldSave} />
         </Section>
 
       </div>

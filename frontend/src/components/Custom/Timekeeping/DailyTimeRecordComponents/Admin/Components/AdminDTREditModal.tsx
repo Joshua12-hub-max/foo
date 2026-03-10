@@ -67,11 +67,11 @@ export const AdminDTREditModal: React.FC<AdminDTREditModalProps> = ({
       // This avoids timezone issues with reconstructing Date objects on the frontend.
       
       await onSave(record.id, {
-        time_in: data.timeIn || null,
-        time_out: data.timeOut || null,
+        timeIn: data.timeIn || null,
+        timeOut: data.timeOut || null,
         status: data.status,
-        late_minutes: data.late,
-        undertime_minutes: data.undertime
+        lateMinutes: data.late,
+        undertimeMinutes: data.undertime
       });
       onClose();
     } catch (error) {

@@ -1,4 +1,4 @@
-export type UserRole = 'admin' | 'Human Resource' | 'employee';
+export type UserRole = 'Administrator' | 'Human Resource' | 'Employee';
 
 export type EmploymentStatus = 
   | 'Active'

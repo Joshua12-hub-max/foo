@@ -4,7 +4,7 @@ import { STATUS_STYLES } from './constants/attendanceConstants';
 
 interface AttendanceRow {
   employeeId: string;
-  employee_name: string;
+  employeeName: string;
   department?: string;
   date: string;
   timeIn?: string;
@@ -93,7 +93,7 @@ const AttendanceTable: React.FC<AttendanceTableProps> = memo(({ data, headers, i
                 {/* Employee Name - Separate Column */}
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex flex-col">
-                    <span className="text-sm font-medium text-gray-900">{row.employee_name}</span>
+                    <span className="text-sm font-medium text-gray-900">{row.employeeName}</span>
                     <span className="text-xs text-gray-500">{row.department}</span>
                   </div>
                 </td>

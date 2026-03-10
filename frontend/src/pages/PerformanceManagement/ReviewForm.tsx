@@ -105,8 +105,8 @@ const ReviewForm = () => {
           employees={employees}
           cycles={cycles}
           isNew={isNew}
-          onEmployeeChange={(value) => setFormData({...formData, employee_id: Number(value)})}
-          onCycleChange={(value) => setFormData({...formData, review_cycle_id: Number(value)})}
+          onEmployeeChange={(value) => setFormData({...formData, employeeId: Number(value)})}
+          onCycleChange={(value) => setFormData({...formData, reviewCycleId: Number(value)})}
         />
 
         <div className="bg-white rounded-sm shadow-sm border border-gray-200 p-6">
@@ -147,11 +147,11 @@ const ReviewForm = () => {
           />
         </div>
 
-        {formData.employee_metrics && (
+        {formData.employeeMetrics && (
           <div className="mt-8">
             <MetricsSummary 
-              metrics={formData.employee_metrics} 
-              employeeInfo={formData.employee_info}
+              metrics={formData.employeeMetrics} 
+              employeeInfo={formData.employeeInfo}
             />
           </div>
         )}

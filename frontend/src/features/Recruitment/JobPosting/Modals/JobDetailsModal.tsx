@@ -78,15 +78,15 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
               </div>
               <div className="flex items-center gap-2.5 text-gray-700">
                 <Clock size={16} className="text-gray-400" />
-                <span>{selectedJob.employment_type || 'Full-time'}</span>
+                <span>{selectedJob.employmentType || 'Full-time'}</span>
               </div>
               <div className="flex items-center gap-2.5 text-gray-700">
                 <Mail size={16} className="text-gray-400" />
-                <span className="truncate">{selectedJob.application_email || 'Not specified'}</span>
+                <span className="truncate">{selectedJob.applicationEmail || 'Not specified'}</span>
               </div>
               <div className="flex items-center gap-2.5 text-gray-700">
                 <Calendar size={16} className="text-gray-400" />
-                <span>{formatDate(selectedJob.created_at || selectedJob.posted_at)}</span>
+                <span>{formatDate(selectedJob.createdAt || selectedJob.postedAt)}</span>
               </div>
             </div>
           </div>
@@ -95,7 +95,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
           <div>
             <h4 className="font-bold text-gray-800 mb-2 text-sm uppercase tracking-wide">Job Description</h4>
             <div className="text-sm text-gray-600 whitespace-pre-wrap leading-relaxed bg-gray-50/50 p-4 rounded-lg border border-gray-100">
-                {selectedJob.job_description}
+                {selectedJob.jobDescription}
             </div>
           </div>
 
@@ -109,7 +109,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
             </div>
           )}
           
-          {selectedJob.attachment_path && (
+          {selectedJob.attachmentPath && (
             <div>
               <h4 className="font-bold text-gray-800 mb-2 text-sm uppercase tracking-wide">Qualification Document</h4>
               <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 flex items-center justify-between">
@@ -123,7 +123,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                   </div>
                 </div>
                 <a 
-                  href={`http://localhost:5000${selectedJob.attachment_path}`} 
+                  href={`http://localhost:5000${selectedJob.attachmentPath}`} 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="px-3 py-1.5 bg-white text-blue-700 text-xs font-bold border border-blue-200 rounded-md hover:bg-blue-50 transition-colors flex items-center gap-2 shadow-sm"

@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { db } from '../db/index.js';
 import { recruitmentJobs, recruitmentApplicants, authentication, recruitmentSecurityLogs } from '../db/schema.js';
 import { eq, and, sql, desc, or, inArray, isNull, getTableColumns } from 'drizzle-orm';
+/* eslint-disable-next-line @typescript-eslint/naming-convention */
 import PDFDocument from 'pdfkit';
 import path from 'path';
 import fs from 'fs';
@@ -41,39 +42,35 @@ export const getHiredByDuty: AuthenticatedHandler = async (req, res) => {
   try {
     const { duty } = req.query; // 'Standard' | 'Irregular Duties'
 
-    if (!duty || (duty !== 'Standard' && duty !== 'Irregular Duties')) {
-      res.status(400).json({ success: false, message: 'Invalid duty type. Must be Standard or Irregular Duties.' });
+    if (!duty || (duty !== 'Standard' && duty !== 'Irregular')) {
+      res.status(400).json({ success: false, message: 'Invalid duty type. Must be Standard or Irregular.' });
       return;
     }
 
     // Mapping duty categories to the specific db employment_type enums
     const standardTypes = ['Permanent', 'Full-time', 'Temporary', 'Probationary'] as const;
-    const irregularTypes = ['Job Order', 'Contractual', 'Casual', 'Coterminous', 'Part-time'] as const;
-    
-    // We assert targetTypes to any because Drizzle's inArray has strict literal typing 
-    // for this MySQL enum.
-    const targetTypes: any = duty === 'Standard' ? standardTypes : irregularTypes;
+    const irregularTypes = ['Job Order', 'Contractual', 'Casual', 'Coterminous', 'Part-time', 'Contract of Service', 'JO', 'COS'] as const;
 
-    // Fetch hired applicants whose job corresponds to the target employment types,
-    // AND who DO NOT already exist in the authentication table (determined by applicant_id if we added one, 
-    // but typically matched by email since authentication doesn't explicitly store applicantId. 
-    // We will check by email or just fetch and let the frontend link).
-    
-    // For now we'll fetch all Hired applicants for these job types
-    // Let's use the query builder with joins
+    // Explicitly type targetTypes based on recruitmentJobs.employment_type enum
+    const targetTypes = (duty === 'Standard' ? [...standardTypes] : [...irregularTypes]);
+
+    // Fetch hired applicants whose job corresponds to the target employment types OR the duty type category
     const results = await db.select({
       applicant: recruitmentApplicants,
       job: recruitmentJobs
     })
     .from(recruitmentApplicants)
-    .innerJoin(recruitmentJobs, eq(recruitmentApplicants.job_id, recruitmentJobs.id))
+    .innerJoin(recruitmentJobs, eq(recruitmentApplicants.jobId, recruitmentJobs.id))
     .where(
       and(
         eq(recruitmentApplicants.stage, 'Hired'),
-        inArray(recruitmentJobs.employment_type, targetTypes)
+        or(
+          inArray(recruitmentJobs.employmentType, targetTypes as ("Full-time" | "Part-time" | "Contractual" | "Job Order" | "Coterminous" | "Temporary" | "Probationary" | "Casual" | "Permanent" | "Contract of Service" | "JO" | "COS")[]),
+          eq(recruitmentJobs.dutyType, duty as 'Standard' | 'Irregular')
+        )
       )
     )
-    .orderBy(desc(recruitmentApplicants.hired_date));
+    .orderBy(desc(recruitmentApplicants.hiredDate));
 
     // To prevent registering the same applicant twice, we should ideally exclude those whose emails 
     // are already in the authentication table.
@@ -83,15 +80,58 @@ export const getHiredByDuty: AuthenticatedHandler = async (req, res) => {
     const filteredApplicants = results
       .filter(row => !existingEmails.has(row.applicant.email.toLowerCase()))
       .map(row => ({
-        ...row.applicant,
-        job_title: row.job.title,
-        employment_type: row.job.employment_type
+        id: row.applicant.id,
+        firstName: row.applicant.firstName,
+        lastName: row.applicant.lastName,
+        middleName: row.applicant.middleName,
+        suffix: row.applicant.suffix,
+        email: row.applicant.email,
+        phoneNumber: row.applicant.phoneNumber,
+        photoPath: row.applicant.photoPath,
+        birthDate: row.applicant.birthDate,
+        birthPlace: row.applicant.birthPlace,
+        sex: row.applicant.sex,
+        civilStatus: row.applicant.civilStatus,
+        height: row.applicant.height,
+        weight: row.applicant.weight,
+        bloodType: row.applicant.bloodType,
+        gsisNumber: row.applicant.gsisNumber,
+        pagibigNumber: row.applicant.pagibigNumber,
+        philhealthNumber: row.applicant.philhealthNumber,
+        umidNumber: row.applicant.umidNumber,
+        philsysId: row.applicant.philsysId,
+        tinNumber: row.applicant.tinNumber,
+        eligibility: row.applicant.eligibility,
+        eligibilityType: row.applicant.eligibilityType,
+        eligibilityDate: row.applicant.eligibilityDate,
+        eligibilityRating: row.applicant.eligibilityRating,
+        eligibilityPlace: row.applicant.eligibilityPlace,
+        licenseNo: row.applicant.licenseNo,
+        address: row.applicant.address,
+        zipCode: row.applicant.zipCode,
+        permanentAddress: row.applicant.permanentAddress,
+        permanentZipCode: row.applicant.permanentZipCode,
+        isMeycauayanResident: row.applicant.isMeycauayanResident,
+        educationalBackground: row.applicant.educationalBackground,
+        schoolName: row.applicant.schoolName,
+        course: row.applicant.course,
+        yearGraduated: row.applicant.yearGraduated,
+        experience: row.applicant.experience,
+        skills: row.applicant.skills,
+        totalExperienceYears: row.applicant.totalExperienceYears,
+        hiredDate: row.applicant.hiredDate,
+        emergencyContact: row.applicant.emergencyContact,
+        emergencyContactNumber: row.applicant.emergencyContactNumber,
+        jobTitle: row.job.title,
+        employmentType: row.job.employmentType,
+        dutyType: row.job.dutyType
       }));
 
     res.status(200).json({ success: true, applicants: filteredApplicants });
-  } catch (error: any) {
-    console.error('Error fetching hired applicants by duty:', error);
-    res.status(500).json({ success: false, message: 'Failed to fetch hired applicants', error: error.message });
+  } catch (error) {
+
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    res.status(500).json({ success: false, message: 'Failed to fetch hired applicants', error: errorMessage });
   }
 };
 
@@ -108,7 +148,11 @@ export const createJob: AuthenticatedHandler = async (req, res) => {
       return;
     }
 
-    const { title, department, job_description, requirements, location, employment_type, application_email, status, require_civil_service, require_government_ids, require_education_experience } = parseResult.data;
+    const { 
+        title, department, jobDescription, requirements, location, 
+        employmentType, dutyType, applicationEmail, status, 
+        requireCivilService, requireGovernmentIds, requireEducationExperience
+    } = parseResult.data;
 
     const jobStatus = status || 'Open';
     const postedAt = jobStatus === 'Open' ? currentManilaDateTime() : null;
@@ -117,49 +161,51 @@ export const createJob: AuthenticatedHandler = async (req, res) => {
     await db.insert(recruitmentJobs).values({
       title,
       department,
-      job_description: job_description,
+      jobDescription: jobDescription,
       requirements: requirements || null,
       location,
-      employment_type: employment_type,
-      application_email: application_email,
-      status: jobStatus,
-      attachment_path: attachmentPath,
-      require_civil_service: require_civil_service ? true : false,
-      require_government_ids: require_government_ids ? true : false,
-      require_education_experience: require_education_experience ? true : false,
-      posted_by: req.user.id,
-      posted_at: postedAt,
-      created_at: currentManilaDateTime()
+      employmentType: employmentType as "Full-time" | "Part-time" | "Contractual" | "Job Order" | "Coterminous" | "Temporary" | "Probationary" | "Casual" | "Permanent",
+      dutyType: dutyType as "Standard" | "Irregular",
+      applicationEmail: applicationEmail,
+      status: jobStatus as "Open" | "Closed" | "On Hold",
+      attachmentPath: attachmentPath,
+      requireCivilService: requireCivilService,
+      requireGovernmentIds: requireGovernmentIds,
+      requireEducationExperience: requireEducationExperience,
+      postedBy: req.user.id,
+      postedAt: postedAt,
+      createdAt: currentManilaDateTime()
     });
 
     res.status(201).json({ success: true, message: 'Job posted successfully' });
   } catch (error) {
-    console.error(error);
+    console.error('[RecruitmentController] createJob failed:', error);
     res.status(500).json({ success: false, message: 'Failed to create job' });
   }
 };
 
 export const getJobs = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { status, public_view } = req.query;
+    const { status, publicView } = req.query;
 
     const conditions = [];
     if (status && typeof status === 'string') {
       conditions.push(eq(recruitmentJobs.status, status as JobStatus));
     }
-    if (public_view === 'true') {
+    if (publicView === 'true') {
       conditions.push(eq(recruitmentJobs.status, 'Open'));
     }
 
     const jobs = await db.select()
       .from(recruitmentJobs)
       .where(conditions.length > 0 ? and(...conditions) : undefined)
-      .orderBy(desc(recruitmentJobs.created_at));
+      .orderBy(desc(recruitmentJobs.createdAt));
 
     res.json({ success: true, jobs });
   } catch (error) {
+    console.error('[RecruitmentController] getJobs failed:', error);
     const err = error instanceof Error ? error : new Error('Unknown database error');
-    console.error('getJobs error:', err);
+
     res.status(500).json({ success: false, message: 'Failed to fetch jobs', error: err.message });
   }
 };
@@ -176,29 +222,29 @@ export const getJob = async (req: Request, res: Response): Promise<void> => {
       return;
     }
     res.json({ success: true, job });
-  } catch (error) {
+  } catch (_error) {
     res.status(500).json({ success: false, message: 'Failed to fetch job' });
   }
 };
 
 export const applyJob = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { job_id: req_job_id } = req.body;
-    if (!req_job_id) {
-        res.status(400).json({ success: false, message: 'job_id is required' });
+    const { jobId: reqJobId } = req.body as { jobId?: unknown };
+    if (!reqJobId) {
+        res.status(400).json({ success: false, message: 'jobId is required' });
         return;
     }
 
-    const jobConfig = await db.query.recruitmentJobs.findFirst({ where: eq(recruitmentJobs.id, Number(req_job_id)) });
+    const jobConfig = await db.query.recruitmentJobs.findFirst({ where: eq(recruitmentJobs.id, Number(reqJobId)) });
     if (!jobConfig) {
         res.status(404).json({ success: false, message: 'Job not found' });
         return;
     }
 
-    const isPermanent = jobConfig.employment_type === 'Permanent';
-    const requireIds = isPermanent || jobConfig.require_government_ids === true;
-    const requireCsc = isPermanent || jobConfig.require_civil_service === true;
-    const requireEdu = isPermanent || jobConfig.require_education_experience === true;
+    const isPermanent = jobConfig.employmentType === 'Permanent';
+    const requireIds = isPermanent || jobConfig.requireGovernmentIds === true;
+    const requireCsc = isPermanent || jobConfig.requireCivilService === true;
+    const requireEdu = isPermanent || jobConfig.requireEducationExperience === true;
 
     const dynamicSchema = createStrictApplyJobSchema(Boolean(requireIds), Boolean(requireCsc), Boolean(requireEdu));
     const parseResult = dynamicSchema.safeParse(req.body);
@@ -208,19 +254,21 @@ export const applyJob = async (req: Request, res: Response): Promise<void> => {
        return;
     }
 
-    const { 
-      job_id, first_name, last_name, middle_name, suffix, email, phone_number, 
-      address, zip_code, permanent_address, permanent_zip_code, is_meycauayan_resident,
-      birth_date, birth_place, sex, civil_status, height, 
-      weight, blood_type, gsis_no, pagibig_no, philhealth_no, umid_no, philsys_id, tin_no, 
-      eligibility, eligibility_type, eligibility_date, eligibility_rating, eligibility_place, license_no, total_experience_years,
-      education, experience, skills, hp_field, website_url, h_token
+    const {
+      jobId, firstName, lastName, middleName, suffix, email, phoneNumber,
+      address, zipCode, permanentAddress, permanentZipCode, isMeycauayanResident,
+      birthDate, birthPlace, sex, civilStatus, height,
+      weight, bloodType, gsisNumber, pagibigNumber, philhealthNumber, umidNumber, philsysId, tinNumber,
+      eligibility, eligibilityType, eligibilityDate, eligibilityRating, eligibilityPlace, licenseNo, totalExperienceYears,
+      educationalBackground, schoolName, yearGraduated, course, experience, skills, emergencyContact, emergencyContactNumber
     } = parseResult.data;
+
+    const { hpField, websiteUrl, hToken } = req.body as { hpField?: string; websiteUrl?: string; hToken?: string };
 
     // File Integrity Audit
     const files = req.files as { [fieldname: string]: Express.Multer.File[] } | undefined;
     const resume = files?.['resume']?.[0];
-    const eligibilityCert = files?.['eligibility_cert']?.[0];
+    const eligibilityCert = files?.['eligibilityCert']?.[0];
     const photo = files?.['photo']?.[0];
 
     if (resume && !(await verifyFileHeader(resume.path))) {
@@ -237,9 +285,9 @@ export const applyJob = async (req: Request, res: Response): Promise<void> => {
     }
 
     // CSC Compliance Check
-    const isCSCRequired = ['Permanent', 'Temporary', 'Probationary'].includes(jobConfig.employment_type || '');
+    const isCSCRequired = ['Permanent', 'Temporary', 'Probationary'].includes(jobConfig.employmentType || '');
     if (isCSCRequired) {
-        if (!eligibility_type || !eligibility_date) {
+        if (!eligibilityType || !eligibilityDate) {
             res.status(400).json({ success: false, message: 'CSC/Permanent positions require precise Eligibility details (Type and Date).' });
             return;
         }
@@ -250,21 +298,21 @@ export const applyJob = async (req: Request, res: Response): Promise<void> => {
     }
 
     // Spam Guard: Honeypot & Human Token
-    if (hp_field || website_url) {
+    if (hpField || websiteUrl) {
         await logSecurityViolation({
-            job_id: Number(job_id), first_name, last_name, email,
-            violation_type: 'Spam Bot', details: `Honeypot filled (${hp_field ? 'Primary' : 'Secondary'})`,
-            ip_address: req.ip || 'Unknown'
+            jobId: Number(jobId), firstName: firstName, lastName: lastName, email,
+            violationType: 'Spam Bot', details: `Honeypot filled (${hpField ? 'Primary' : 'Secondary'})`,
+            ipAddress: req.ip || 'Unknown'
         });
-        res.status(201).json({ success: true, message: 'Application submitted successfully' }); 
+        res.status(201).json({ success: true, message: 'Application submitted successfully' });
         return;
     }
 
-    if (!h_token || !h_token.startsWith('v-')) {
+    if (!hToken || !hToken.startsWith('v-')) {
         await logSecurityViolation({
-            job_id: Number(job_id), first_name, last_name, email,
-            violation_type: 'Automated Script', details: `Missing/invalid human token '${h_token}'`,
-            ip_address: req.ip || 'Unknown'
+            jobId: Number(jobId), firstName: firstName, lastName: lastName, email,
+            violationType: 'Automated Script', details: `Missing/invalid human token '${hToken}'`,
+            ipAddress: req.ip || 'Unknown'
         });
         res.status(400).json({ success: false, message: 'Security protocol failed. Please use a real browser.' });
         return;
@@ -273,9 +321,9 @@ export const applyJob = async (req: Request, res: Response): Promise<void> => {
     // Email Domain Audit
     if (isDisposableEmail(email)) {
         await logSecurityViolation({
-            job_id: Number(job_id), first_name, last_name, email,
-            violation_type: 'Disposable Email', details: `Blocked temporary mail provider`,
-            ip_address: req.ip || 'Unknown'
+            jobId: Number(jobId), firstName, lastName, email,
+            violationType: 'Disposable Email', details: `Blocked temporary mail provider`,
+            ipAddress: req.ip || 'Unknown'
         });
         res.status(400).json({ success: false, message: 'Disposable email addresses are not allowed.' });
         return;
@@ -283,9 +331,9 @@ export const applyJob = async (req: Request, res: Response): Promise<void> => {
 
     if (!(await verifyEmailDomain(email))) {
         await logSecurityViolation({
-            job_id: Number(job_id), first_name, last_name, email,
-            violation_type: 'Invalid Email Domain', details: `No MX records found`,
-            ip_address: req.ip || 'Unknown'
+            jobId: Number(jobId), firstName, lastName, email,
+            violationType: 'Invalid Email Domain', details: `No MX records found`,
+            ipAddress: req.ip || 'Unknown'
         });
         res.status(400).json({ success: false, message: 'Invalid email domain. Please use a verified provider.' });
         return;
@@ -293,18 +341,18 @@ export const applyJob = async (req: Request, res: Response): Promise<void> => {
 
     // Duplicate & Identity Fraud Check
     const existingApplication = await checkDuplicateApplication({
-        first_name, last_name, middle_name, suffix, email, birth_date, tin_no, gsis_no, philsys_id
+        firstName, lastName, middleName, suffix, email, birthDate, tinNumber, gsisNumber, philsysId
     });
 
     if (existingApplication) {
-        const isIdentityFraud = (existingApplication.tin_no === tin_no && tin_no) && 
-                                (existingApplication.first_name !== first_name || existingApplication.last_name !== last_name);
-        
+        const isIdentityFraud = (existingApplication.tinNumber === tinNumber && tinNumber) &&
+                                (existingApplication.firstName !== firstName || existingApplication.lastName !== lastName);
+
         if (isIdentityFraud) {
             await logSecurityViolation({
-                job_id: Number(job_id), first_name, last_name, email,
-                violation_type: 'Identity Fraud', details: `ID ${tin_no} mismatch with name`,
-                ip_address: req.ip || 'Unknown'
+                jobId: Number(jobId), firstName: firstName, lastName: lastName, email,
+                violationType: 'Identity Fraud', details: `ID ${tinNumber} mismatch with name`,
+                ipAddress: req.ip || 'Unknown'
             });
             res.status(409).json({ success: false, message: 'Identity verification failed. This ID is already registered.' });
             return;
@@ -316,69 +364,76 @@ export const applyJob = async (req: Request, res: Response): Promise<void> => {
 
     // Process Application
     await db.insert(recruitmentApplicants).values({
-        job_id: Number(job_id),
-        first_name: sanitizeInput(first_name),
-        last_name: sanitizeInput(last_name),
-        middle_name: middle_name ? sanitizeInput(middle_name) : null,
+        jobId: Number(jobId),
+        firstName: sanitizeInput(firstName),
+        lastName: sanitizeInput(lastName),
+        middleName: middleName ? sanitizeInput(middleName) : null,
         suffix: suffix ? sanitizeInput(suffix) : null,
         email,
-        phone_number,
+        phoneNumber: phoneNumber,
         address: sanitizeInput(address),
-        zip_code,
-        permanent_address: permanent_address ? sanitizeInput(permanent_address) : null,
-        permanent_zip_code,
-        is_meycauayan_resident: is_meycauayan_resident ? true : false,
-        birth_date,
-        birth_place: sanitizeInput(birth_place),
-        sex,
-        civil_status,
+        zipCode: zipCode,
+        permanentAddress: permanentAddress ? sanitizeInput(permanentAddress) : null,
+        permanentZipCode: permanentZipCode,
+        isMeycauayanResident: isMeycauayanResident ? true : false,
+        birthDate: birthDate,
+        birthPlace: sanitizeInput(birthPlace),
+        sex: sex as "Male" | "Female",
+        civilStatus: civilStatus as "Single" | "Married" | "Widowed" | "Separated" | "Annulled",
         height,
         weight,
-        blood_type,
-        gsis_no,
-        pagibig_no,
-        philhealth_no,
-        umid_no,
-        philsys_id,
-        tin_no,
+        bloodType: bloodType,
+        gsisNumber: gsisNumber,
+        pagibigNumber: pagibigNumber,
+        philhealthNumber: philhealthNumber,
+        umidNumber: umidNumber,
+        philsysId: philsysId,
+        tinNumber: tinNumber,
         eligibility: eligibility ? sanitizeInput(eligibility) : null,
-        eligibility_type,
-        eligibility_date,
-        eligibility_rating,
-        eligibility_place: eligibility_place ? sanitizeInput(eligibility_place) : null,
-        license_no,
-        eligibility_path: eligibilityCert?.filename || null,
-        total_experience_years,
-        education: education ? sanitizeInput(education) : null,
+        eligibilityType: eligibilityType as string,
+        eligibilityDate: eligibilityDate,
+        eligibilityRating: eligibilityRating,
+        eligibilityPlace: eligibilityPlace ? sanitizeInput(eligibilityPlace) : null,
+        licenseNo: licenseNo,
+        eligibilityPath: eligibilityCert?.filename || null,
+        totalExperienceYears: totalExperienceYears,
+        educationalBackground: educationalBackground ? sanitizeInput(educationalBackground) : null,
+        schoolName: schoolName ? sanitizeInput(schoolName) : null,
+        yearGraduated: yearGraduated || null,
+        course: course ? sanitizeInput(course) : null,
         experience: experience ? sanitizeInput(experience) : null,
         skills: skills ? sanitizeInput(skills) : null,
-        resume_path: resume?.filename || null,
-        photo_path: photo?.filename || null,
-        created_at: currentManilaDateTime()
+        emergencyContact: emergencyContact ? sanitizeInput(emergencyContact) : null,
+        emergencyContactNumber: emergencyContactNumber || null,
+        resumePath: resume?.filename || null,
+        photoPath: photo?.filename || null,
+        createdAt: currentManilaDateTime()
     });
 
     // Trigger Notifications
-    await sendApplicationNotifications({ job_id: Number(job_id), first_name, last_name, email });
+    await sendApplicationNotifications({ jobId: Number(jobId), firstName: firstName, lastName: lastName, email });
 
     res.status(201).json({ success: true, message: 'Application submitted successfully' });
   } catch (error) {
-    const err = error instanceof Error ? error : new Error('Unknown error');
-    console.error('Error in applyJob:', err.message);
-    console.error('Full stack:', err.stack);
-    res.status(500).json({ success: false, message: 'Failed to submit application', error: err.message });
+    const _err = error instanceof Error ? error : new Error('Unknown database error');
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to submit application', 
+      error: error instanceof Error ? error.message : 'Internal Server Error' 
+    });
   }
 };
 
 
 export const getApplicants = async (req: Request, res: Response): Promise<void> => {
-  try { 
-    const { job_id, stage, source } = req.query; 
-    
+  try {
+    const { jobId, stage, source } = req.query;
+
     const conditions = [];
-    if (job_id && typeof job_id === 'string' && !isNaN(Number(job_id))) {
-      conditions.push(eq(recruitmentApplicants.job_id, Number(job_id)));
+    if (jobId && typeof jobId === 'string' && !isNaN(Number(jobId))) {
+      conditions.push(eq(recruitmentApplicants.jobId, Number(jobId)));
     }
-    
+
     if (stage && typeof stage === 'string') {
       const stageStr = stage;
       if (stageStr === 'Pending') {
@@ -401,75 +456,78 @@ export const getApplicants = async (req: Request, res: Response): Promise<void> 
 
     const applicants = await db.select({
       id: recruitmentApplicants.id,
-      job_id: recruitmentApplicants.job_id,
-      first_name: recruitmentApplicants.first_name,
-      last_name: recruitmentApplicants.last_name,
-      middle_name: recruitmentApplicants.middle_name,
+      jobId: recruitmentApplicants.jobId,
+      firstName: recruitmentApplicants.firstName,
+      lastName: recruitmentApplicants.lastName,
+      middleName: recruitmentApplicants.middleName,
       suffix: recruitmentApplicants.suffix,
       email: recruitmentApplicants.email,
-      phone_number: recruitmentApplicants.phone_number,
-      resume_path: recruitmentApplicants.resume_path,
-      photo_path: recruitmentApplicants.photo_path,
+      phoneNumber: recruitmentApplicants.phoneNumber,
+      resumePath: recruitmentApplicants.resumePath,
+      photoPath: recruitmentApplicants.photoPath,
       stage: recruitmentApplicants.stage,
       status: recruitmentApplicants.status,
       address: recruitmentApplicants.address,
-      permanent_address: recruitmentApplicants.permanent_address,
-      zip_code: recruitmentApplicants.zip_code,
-      permanent_zip_code: recruitmentApplicants.permanent_zip_code,
-      is_meycauayan_resident: recruitmentApplicants.is_meycauayan_resident,
-      birth_date: recruitmentApplicants.birth_date,
-      birth_place: recruitmentApplicants.birth_place,
+      permanentAddress: recruitmentApplicants.permanentAddress,
+      zipCode: recruitmentApplicants.zipCode,
+      permanentZipCode: recruitmentApplicants.permanentZipCode,
+      isMeycauayanResident: recruitmentApplicants.isMeycauayanResident,
+      birthDate: recruitmentApplicants.birthDate,
+      birthPlace: recruitmentApplicants.birthPlace,
       sex: recruitmentApplicants.sex,
-      civil_status: recruitmentApplicants.civil_status,
+      civilStatus: recruitmentApplicants.civilStatus,
       height: recruitmentApplicants.height,
       weight: recruitmentApplicants.weight,
-      blood_type: recruitmentApplicants.blood_type,
-      gsis_no: recruitmentApplicants.gsis_no,
-      pagibig_no: recruitmentApplicants.pagibig_no,
-      philhealth_no: recruitmentApplicants.philhealth_no,
-      umid_no: recruitmentApplicants.umid_no,
-      philsys_id: recruitmentApplicants.philsys_id,
-      tin_no: recruitmentApplicants.tin_no,
+      bloodType: recruitmentApplicants.bloodType,
+      gsisNumber: recruitmentApplicants.gsisNumber,
+      pagibigNumber: recruitmentApplicants.pagibigNumber,
+      philhealthNumber: recruitmentApplicants.philhealthNumber,
+      umidNumber: recruitmentApplicants.umidNumber,
+      philsysId: recruitmentApplicants.philsysId,
+      tinNumber: recruitmentApplicants.tinNumber,
       eligibility: recruitmentApplicants.eligibility,
-      eligibility_type: recruitmentApplicants.eligibility_type,
-      eligibility_date: recruitmentApplicants.eligibility_date,
-      eligibility_rating: recruitmentApplicants.eligibility_rating,
-      eligibility_place: recruitmentApplicants.eligibility_place,
-      license_no: recruitmentApplicants.license_no,
-      education: recruitmentApplicants.education,
+      eligibilityType: recruitmentApplicants.eligibilityType,
+      eligibilityDate: recruitmentApplicants.eligibilityDate,
+      eligibilityRating: recruitmentApplicants.eligibilityRating,
+      eligibilityPlace: recruitmentApplicants.eligibilityPlace,
+      licenseNo: recruitmentApplicants.licenseNo,
+      educationalBackground: recruitmentApplicants.educationalBackground,
       experience: recruitmentApplicants.experience,
       skills: recruitmentApplicants.skills,
-      interview_date: recruitmentApplicants.interview_date,
-      interview_link: recruitmentApplicants.interview_link,
-      interview_notes: recruitmentApplicants.interview_notes,
+      emergencyContact: recruitmentApplicants.emergencyContact,
+      emergencyContactNumber: recruitmentApplicants.emergencyContactNumber,
+      interviewDate: recruitmentApplicants.interviewDate,
+      interviewLink: recruitmentApplicants.interviewLink,
+      interviewPlatform: recruitmentApplicants.interviewPlatform,
+      interviewNotes: recruitmentApplicants.interviewNotes,
       source: recruitmentApplicants.source,
-      created_at: recruitmentApplicants.created_at,
-      job_title: sql`COALESCE(${recruitmentJobs.title}, 'General Application')`,
-      job_requirements: sql`COALESCE(${recruitmentJobs.requirements}, '')`,
-      job_department: sql`COALESCE(${recruitmentJobs.department}, 'HR')`,
-      job_status: sql`COALESCE(${recruitmentJobs.status}, 'Open')`,
-      interviewer_name: sql`TRIM(CONCAT(${authentication.lastName}, ', ', ${authentication.firstName}, IF(${authentication.middleName} IS NOT NULL && ${authentication.middleName} != '', CONCAT(' ', SUBSTRING(${authentication.middleName}, 1, 1), '.'), ''), IF(${authentication.suffix} IS NOT NULL && ${authentication.suffix} != '', CONCAT(' ', ${authentication.suffix}), '')))`
+      createdAt: recruitmentApplicants.createdAt,
+      jobTitle: sql`COALESCE(${recruitmentJobs.title}, 'General Application')`,
+      jobRequirements: sql`COALESCE(${recruitmentJobs.requirements}, '')`,
+      jobDepartment: sql`COALESCE(${recruitmentJobs.department}, 'HR')`,
+      jobStatus: sql`COALESCE(${recruitmentJobs.status}, 'Open')`,
+      interviewerName: sql`TRIM(CONCAT(${authentication.lastName}, ', ', ${authentication.firstName}, IF(${authentication.middleName} IS NOT NULL && ${authentication.middleName} != '', CONCAT(' ', SUBSTRING(${authentication.middleName}, 1, 1), '.'), ''), IF(${authentication.suffix} IS NOT NULL && ${authentication.suffix} != '', CONCAT(' ', ${authentication.suffix}), '')))`
     })
     .from(recruitmentApplicants)
-    .leftJoin(recruitmentJobs, eq(recruitmentApplicants.job_id, recruitmentJobs.id))
-    .leftJoin(authentication, eq(recruitmentApplicants.interviewer_id, authentication.id))
+    .leftJoin(recruitmentJobs, eq(recruitmentApplicants.jobId, recruitmentJobs.id))
+    .leftJoin(authentication, eq(recruitmentApplicants.interviewerId, authentication.id))
     .where(conditions.length > 0 ? and(...conditions) : undefined)
-    .orderBy(desc(recruitmentApplicants.created_at));
+    .orderBy(desc(recruitmentApplicants.createdAt));
 
-    res.json({ success: true, applicants }); 
-  } catch (error) { 
-    console.error('Error fetching applicants:', error); 
+    res.json({ success: true, applicants });
+  } catch (error) {
+
     const message = error instanceof Error ? error.message : 'Unknown database error';
-    res.status(500).json({ success: false, message: 'Failed to fetch applicants', error: message }); 
+    res.status(500).json({ success: false, message: 'Failed to fetch applicants', error: message });
   }
 };
 
 export const updateApplicantStage = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    
+
     const parseResult = updateApplicantStageSchema.safeParse(req.body);
-    
+
     if (!parseResult.success) {
       res.status(400).json({
         success: false,
@@ -478,10 +536,11 @@ export const updateApplicantStage = async (req: Request, res: Response): Promise
       });
       return;
     }
-    
-    const { stage, interview_date, interview_link, notes, interview_platform } = parseResult.data;
-    
+
+    const { stage, interviewDate, interviewLink, notes, interviewPlatform } = parseResult.data;
+
     // Map stage to status column using a strict map
+    /* eslint-disable @typescript-eslint/naming-convention */
     const statusMap: Record<ApplicantStage, ApplicantStatus> = {
       'Applied': 'Applied',
       'Screening': 'Screening',
@@ -491,18 +550,20 @@ export const updateApplicantStage = async (req: Request, res: Response): Promise
       'Hired': 'Hired',
       'Rejected': 'Rejected'
     };
-    
+    /* eslint-enable @typescript-eslint/naming-convention */
+
     const applicantStatus = statusMap[stage];
 
-    const updateValues: Partial<typeof recruitmentApplicants.$inferInsert> = { 
+    const updateValues: Partial<typeof recruitmentApplicants.$inferInsert> = {
       stage,
       status: applicantStatus
     };
-    if (interview_date) updateValues.interview_date = interview_date;
-    if (interview_link) updateValues.interview_link = interview_link;
-    if (notes) updateValues.interview_notes = notes;
-    if (stage === 'Hired') updateValues.hired_date = currentManilaDateTime();
-    
+    if (interviewDate) updateValues.interviewDate = interviewDate;
+    if (interviewLink !== undefined) updateValues.interviewLink = interviewLink;
+    if (interviewPlatform) updateValues.interviewPlatform = interviewPlatform;
+    if (notes !== undefined) updateValues.interviewNotes = notes;
+    if (stage === 'Hired') updateValues.hiredDate = currentManilaDateTime();
+
     await db.update(recruitmentApplicants)
       .set(updateValues)
       .where(eq(recruitmentApplicants.id, Number(id)));
@@ -515,61 +576,62 @@ export const updateApplicantStage = async (req: Request, res: Response): Promise
     });
     
     if (applicant) {
-      console.log('Applicant found:', { email: applicant.email, first_name: applicant.first_name });
-      
+
       try {
         const template = await getTemplateForStage(db, stage);
         
         if (template) {
           const variables = {
-            applicant_first_name: applicant.first_name,
-            applicant_last_name: applicant.last_name,
-            job_title: applicant.recruitmentJob?.title || 'the position',
-            interview_date: interview_date ? new Date(interview_date).toLocaleString() : 'TBD',
-            interview_link: interview_link || '#',
-            interview_platform: interview_platform || 'Online',
-            interview_notes: notes || ''
+            applicantFirstName: applicant.firstName,
+            applicantLastName: applicant.lastName,
+            jobTitle: applicant.recruitmentJob?.title || 'the position',
+            interviewDate: interviewDate ? new Date(interviewDate).toLocaleString() : 'TBD',
+            interviewLink: interviewLink || '#',
+            interviewPlatform: interviewPlatform || 'Online',
+            interviewNotes: notes || ''
           };
           
-          const subject = replaceVariables(template.subject_template, variables);
-          const body = replaceVariables(template.body_template, variables);
+          const subject = replaceVariables(template.subjectTemplate, variables);
+          const body = replaceVariables(template.bodyTemplate, variables);
           
           const attachments: { filename: string; content: string; contentType: string }[] = [];
           
-          if ((stage === 'Initial Interview' || stage === 'Final Interview') && interview_date) {
+          if ((stage === 'Initial Interview' || stage === 'Final Interview') && interviewDate) {
             try {
-              const dateObj = new Date(interview_date);
+              const dateObj = new Date(interviewDate);
               const event: ics.EventAttributes = {
                 start: [dateObj.getFullYear(), dateObj.getMonth() + 1, dateObj.getDate(), dateObj.getHours(), dateObj.getMinutes()],
                 duration: { minutes: 60 },
-                title: `Interview: ${applicant.recruitmentJob?.title} - ${applicant.first_name}`,
-                description: `Interview for ${applicant.recruitmentJob?.title}. Platform: ${interview_platform}. Link: ${interview_link}`,
-                location: interview_platform ? interview_link : 'Office',
-                url: interview_link,
+                title: `Interview: ${applicant.recruitmentJob?.title} - ${applicant.firstName}`,
+                description: `Interview for ${applicant.recruitmentJob?.title}. Platform: ${interviewPlatform}. Link: ${interviewLink}`,
+                location: interviewPlatform ? interviewLink : 'Office',
+                url: interviewLink,
                 status: 'CONFIRMED',
                 busyStatus: 'BUSY',
                 organizer: { name: 'Recruitment Team', email: process.env.EMAIL_USER || '' },
-                attendees: [{ name: `${applicant.first_name} ${applicant.last_name}`, email: applicant.email, rsvp: true }]
+                attendees: [{ name: `${applicant.firstName} ${applicant.lastName}`, email: applicant.email, rsvp: true }]
               };
               const { error, value } = ics.createEvent(event);
               if (!error && value) {
                 attachments.push({ filename: 'invite.ics', content: value, contentType: 'text/calendar' });
               }
-            } catch (icsErr) {
-              console.error('ICS Error', icsErr);
+            } catch (_icsErr) {
+      /* empty */
+
             }
           }
           
           await sendEmailNotification(applicant.email, subject, body, attachments);
         }
-      } catch (emailErr) {
-        console.error('Email error:', emailErr);
+      } catch (_emailErr) {
+      /* empty */
+
       }
     }
     
     res.json({ success: true, message: 'Applicant stage updated' });
-  } catch (error) {
-    console.error('updateApplicantStage error:', error);
+  } catch (_error) {
+
     res.status(500).json({ success: false, message: 'Failed to update stage' });
   }
 };
@@ -579,7 +641,7 @@ export const deleteJob = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params; 
     await db.delete(recruitmentJobs).where(eq(recruitmentJobs.id, Number(id))); 
     res.json({ success: true, message: 'Job deleted' }); 
-  } catch (error) { 
+  } catch (_error) { 
     res.status(500).json({ success: false, message: 'Failed to delete job' }); 
   } 
 };
@@ -599,33 +661,34 @@ export const updateJob = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const { title, department, job_description, requirements, location, status, employment_type, application_email, require_civil_service, require_government_ids, require_education_experience } = parseResult.data;
+    const { title, department, jobDescription, requirements, location, status, employmentType, dutyType, applicationEmail, requireCivilService, requireGovernmentIds, requireEducationExperience } = parseResult.data;
   
     const updateValues: Partial<typeof recruitmentJobs.$inferInsert> = {
       title, 
       department, 
-      job_description: job_description, 
+      jobDescription: jobDescription, 
       requirements: requirements || null, 
       location, 
       status, 
-      employment_type, 
-      application_email: application_email,
-      require_civil_service: typeof require_civil_service !== 'undefined' ? (require_civil_service ? true : false) : undefined,
-      require_government_ids: typeof require_government_ids !== 'undefined' ? (require_government_ids ? true : false) : undefined,
-      require_education_experience: typeof require_education_experience !== 'undefined' ? (require_education_experience ? true : false) : undefined,
-      updated_at: currentManilaDateTime()
+      employmentType: employmentType, 
+      dutyType: dutyType as "Standard" | "Irregular",
+      applicationEmail: applicationEmail,
+      requireCivilService: typeof requireCivilService !== 'undefined' ? (requireCivilService ? true : false) : undefined,
+      requireGovernmentIds: typeof requireGovernmentIds !== 'undefined' ? (requireGovernmentIds ? true : false) : undefined,
+      requireEducationExperience: typeof requireEducationExperience !== 'undefined' ? (requireEducationExperience ? true : false) : undefined,
+      updatedAt: currentManilaDateTime()
     };
 
     if (req.file) {
-      updateValues.attachment_path = `/uploads/general/${req.file.filename}`;
+      updateValues.attachmentPath = `/uploads/general/${req.file.filename}`;
     }
     
     const currentJob = await db.query.recruitmentJobs.findFirst({
         where: eq(recruitmentJobs.id, Number(id))
     });
 
-    if (currentJob && status === 'Open' && !currentJob.posted_at) {
-        updateValues.posted_at = currentManilaDateTime();
+    if (currentJob && status === 'Open' && !currentJob.postedAt) {
+        updateValues.postedAt = currentManilaDateTime();
     }
 
     await db.update(recruitmentJobs)
@@ -633,8 +696,8 @@ export const updateJob = async (req: Request, res: Response): Promise<void> => {
       .where(eq(recruitmentJobs.id, Number(id)));
       
     res.json({ success: true, message: 'Job updated successfully' }); 
-  } catch (error) { 
-    console.error(error); 
+  } catch (_error) { 
+
     res.status(500).json({ success: false, message: 'Failed to update job' }); 
   }
 };
@@ -644,36 +707,37 @@ export const generateJobFeed = async (_req: Request, res: Response): Promise<voi
     const jobs = await db.select()
       .from(recruitmentJobs)
       .where(eq(recruitmentJobs.status, 'Open'))
-      .orderBy(desc(recruitmentJobs.created_at));
+      .orderBy(desc(recruitmentJobs.createdAt));
 
       
     const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173'; 
     let xml = '<?xml version="1.0" encoding="UTF-8"?>\n<source>\n'; 
     xml += `<publisher>NEBR HR System</publisher>\n<publisherurl>${baseUrl}</publisherurl>\n<lastBuildDate>${new Date().toUTCString()}</lastBuildDate>\n`; 
     jobs.forEach(job => { 
-      const createdDate = job.created_at ? new Date(job.created_at).toUTCString() : new Date().toUTCString();
-      xml += `<job>\n<title><![CDATA[${job.title}]]></title>\n<date><![CDATA[${createdDate}]]></date>\n<referencenumber><![CDATA[${job.id}]]></referencenumber>\n<url><![CDATA[${baseUrl}/careers/job/${job.id}]]></url>\n<company><![CDATA[Local Government of Meycauayan]]></company>\n<city><![CDATA[${job.location}]]></city>\n<state><![CDATA[Bulacan]]></state>\n<country><![CDATA[PH]]></country>\n<description><![CDATA[${job.job_description}]]></description>\n<category><![CDATA[${job.department}]]></category>\n</job>\n`; 
+      const createdDate = job.createdAt ? new Date(job.createdAt).toUTCString() : new Date().toUTCString();
+      xml += `<job>\n<title><![CDATA[${job.title}]]></title>\n<date><![CDATA[${createdDate}]]></date>\n<referencenumber><![CDATA[${job.id}]]></referencenumber>\n<url><![CDATA[${baseUrl}/careers/job/${job.id}]]></url>\n<company><![CDATA[Local Government of Meycauayan]]></company>\n<city><![CDATA[${job.location}]]></city>\n<state><![CDATA[Bulacan]]></state>\n<country><![CDATA[PH]]></country>\n<description><![CDATA[${job.jobDescription}]]></description>\n<category><![CDATA[${job.department}]]></category>\n</job>\n`; 
     }); 
-    xml += '</source>'; 
+    xml += '</source>';   
     res.header('Content-Type', 'application/xml'); 
     res.send(xml); 
   } catch (error) { 
-    console.error(error); 
-    res.status(500).send('Error generating feed'); 
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+    res.status(500).json({ success: false, message: `Failed to generate feed: ${errorMessage}` });
   }
 };
 
 export const getPotentialInterviewers = async (_req: Request, res: Response): Promise<void> => { 
   const users = await db.select({
     id: authentication.id,
-    first_name: authentication.firstName,
-    last_name: authentication.lastName,
+    firstName: authentication.firstName,
+    lastName: authentication.lastName,
     email: authentication.email,
     role: authentication.role,
-    job_title: authentication.jobTitle
+    jobTitle: authentication.jobTitle
   })
   .from(authentication)
-  .where(inArray(authentication.role, ['Admin', 'Employee']))
+  .where(inArray(authentication.role, ['Administrator', 'Employee']))
   .orderBy(authentication.firstName);
   
   res.json(users); 
@@ -692,7 +756,7 @@ export const getApplicantStats = async (_req: Request, res: Response): Promise<v
     
     res.json(stats); 
   } catch (error) {
-    console.error('Error fetching applicant stats:', error);
+
     const message = error instanceof Error ? error.message : 'Unknown database error';
     res.status(500).json({ success: false, message: 'Failed to fetch applicant stats', error: message });
   }
@@ -732,17 +796,17 @@ export const generateOfferLetter = async (req: Request, res: Response): Promise<
     doc.on('end', () => { 
       const pdfBuffer = Buffer.concat(chunks); 
       res.setHeader('Content-Type', 'application/pdf'); 
-      res.setHeader('Content-Disposition', `attachment; filename=offer_letter_${applicant.first_name}_${applicant.last_name}.pdf`); 
+      res.setHeader('Content-Disposition', `attachment; filename=offer_letter_${applicant.firstName}_${applicant.lastName}.pdf`); 
       res.send(pdfBuffer); 
     }); 
     doc.fontSize(20).font('Helvetica-Bold').text('OFFER OF EMPLOYMENT', { align: 'center' }); 
     doc.moveDown(2); 
     doc.fontSize(12).font('Helvetica').text(`Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`); 
     doc.moveDown(); 
-    doc.text(`${applicant.first_name} ${applicant.last_name}`); 
+    doc.text(`${applicant.firstName} ${applicant.lastName}`); 
     doc.text(applicant.email); 
     doc.moveDown(2); 
-    doc.text(`Dear ${applicant.first_name},`); 
+    doc.text(`Dear ${applicant.firstName},`); 
     doc.moveDown(); 
     doc.text(`We are pleased to offer you the position of ${position || jobTitle}. We believe your skills and experience will be a valuable addition to our team.`); 
     doc.moveDown(); 
@@ -770,8 +834,8 @@ export const generateOfferLetter = async (req: Request, res: Response): Promise<
     doc.text('__________________________'); 
     doc.text('Employee Signature'); 
     doc.end(); 
-  } catch (error) { 
-    console.error(error); 
+  } catch (_error) { 
+
     res.status(500).json({ success: false, message: 'Failed to generate offer letter' }); 
   }
 };
@@ -788,10 +852,10 @@ export const assignInterviewer = async (req: Request, res: Response): Promise<vo
 
     const { interviewerId } = bodyResult.data;
     await db.update(recruitmentApplicants)
-      .set({ interviewer_id: interviewerId, stage: 'Screening' })
+      .set({ interviewerId: interviewerId, stage: 'Screening' })
       .where(eq(recruitmentApplicants.id, Number(applicantId))); 
     res.json({ message: 'Assigned' }); 
-  } catch (error) {
+  } catch (_error) {
     res.status(500).json({ success: false, message: 'Assignment failed' });
   }
 };
@@ -831,12 +895,12 @@ export const generateMeetingLink: AuthenticatedHandler = async (req, res) => {
 
     const result = await generateGoogleMeetLink({
       userId: req.user.id,
-      title: `Interview: ${jobTitle || 'Position'} - ${applicant.first_name} ${applicant.last_name}`,
+      title: `Interview: ${jobTitle || 'Position'} - ${applicant.firstName} ${applicant.lastName}`,
       startTime: interviewDate,
       duration: duration,
-      description: `Interview for ${jobTitle || 'the position'} with ${applicant.first_name} ${applicant.last_name}`,
+      description: `Interview for ${jobTitle || 'the position'} with ${applicant.firstName} ${applicant.lastName}`,
       attendeeEmail: applicant.email,
-      attendeeName: `${applicant.first_name} ${applicant.last_name}`
+      attendeeName: `${applicant.firstName} ${applicant.lastName}`
     });
 
     if (!result.success) {
@@ -849,8 +913,8 @@ export const generateMeetingLink: AuthenticatedHandler = async (req, res) => {
       meetingLink: result.meetingLink,
       meetingId: result.meetingId
     });
-  } catch (error) {
-    console.error('Error generating meeting link:', error);
+  } catch (_error) {
+
     res.status(500).json({ success: false, message: 'Failed to generate meeting link' });
   }
 };
@@ -861,11 +925,11 @@ export const generateApplicationPDF = async (req: Request, res: Response): Promi
     
     const [applicantData] = await db.select({
         ...getTableColumns(recruitmentApplicants),
-        job_title: sql<string>`COALESCE(${recruitmentJobs.title}, 'General Application')`,
-        job_department: sql<string>`COALESCE(${recruitmentJobs.department}, 'HR')`
+        jobTitle: sql<string>`COALESCE(${recruitmentJobs.title}, 'General Application')`,
+        jobDepartment: sql<string>`COALESCE(${recruitmentJobs.department}, 'HR')`
     })
     .from(recruitmentApplicants)
-    .leftJoin(recruitmentJobs, eq(recruitmentApplicants.job_id, recruitmentJobs.id))
+    .leftJoin(recruitmentJobs, eq(recruitmentApplicants.jobId, recruitmentJobs.id))
     .where(eq(recruitmentApplicants.id, Number(id)))
     .limit(1);
 
@@ -875,13 +939,16 @@ export const generateApplicationPDF = async (req: Request, res: Response): Promi
     }
 
     const applicant = applicantData;
+
     const doc = new PDFDocument({ 
         margin: 40, 
         size: 'LEGAL',
+        /* eslint-disable @typescript-eslint/naming-convention */
         info: {
-            Title: `Application - ${applicant.last_name}, ${applicant.first_name}`,
+            Title: `Application - ${applicant.lastName}, ${applicant.firstName}`,
             Author: 'City of Meycauayan HRMO'
         }
+        /* eslint-enable @typescript-eslint/naming-convention */
     });
 
     const chunks: Buffer[] = [];
@@ -889,7 +956,7 @@ export const generateApplicationPDF = async (req: Request, res: Response): Promi
     doc.on('end', () => {
       const pdfBuffer = Buffer.concat(chunks);
       res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `inline; filename=application_${applicant.last_name}.pdf`);
+      res.setHeader('Content-Disposition', `inline; filename=application_${applicant.lastName}.pdf`);
       res.send(pdfBuffer);
     });
 
@@ -919,13 +986,13 @@ export const generateApplicationPDF = async (req: Request, res: Response): Promi
     const photoY = 35;
 
     doc.lineWidth(0.5).strokeColor(borderLight);
-    if (applicant.photo_path) {
-        const photoFullPath = path.join(process.cwd(), 'uploads/resumes', applicant.photo_path);
+    if (applicant.photoPath) {
+        const photoFullPath = path.join(process.cwd(), 'uploads/resumes', applicant.photoPath);
         if (fs.existsSync(photoFullPath)) {
             try {
                 doc.image(photoFullPath, photoX, photoY, { width: photoSize, height: photoSize });
                 doc.rect(photoX, photoY, photoSize, photoSize).stroke();
-            } catch (e) {
+            } catch (_e) {
                 doc.rect(photoX, photoY, photoSize, photoSize).stroke();
                 doc.fontSize(7).fillColor(textGray).text('IMAGE ERROR', photoX, photoY + 40, { width: photoSize, align: 'center' });
             }
@@ -965,73 +1032,74 @@ export const generateApplicationPDF = async (req: Request, res: Response): Promi
 
     // --- POSITION INFO ---
     doc.y = 135; // Tighter start
-    dataField('Position Applied For', applicant.job_title, 40, 135, 250);
-    dataField('Date of Application', applicant.created_at ? new Date(applicant.created_at).toLocaleDateString() : 'N/A', 300, 135, 150);
+    dataField('Position Applied For', applicant.jobTitle, 40, 135, 250);
+    dataField('Date of Application', applicant.createdAt ? new Date(applicant.createdAt).toLocaleDateString() : 'N/A', 300, 135, 150);
+
     doc.y = 160; // Tighter jump
 
     // --- 1. PERSONAL DETAILS ---
     sectionHeader('1. Personal Details', 'Core identity profile');
     const pY = doc.y + 5;
-    dataField('Last Name', applicant.last_name, 40, pY, 120);
-    dataField('First Name', applicant.first_name, 175, pY, 120);
-    dataField('Middle Name', applicant.middle_name, 310, pY, 120);
+    dataField('Last Name', applicant.lastName, 40, pY, 120);
+    dataField('First Name', applicant.firstName, 175, pY, 120);
+    dataField('Middle Name', applicant.middleName, 310, pY, 120);
     dataField('Suffix', applicant.suffix, 445, pY, 70);
 
     const pY2 = pY + 42; 
-    dataField('Birth Date', applicant.birth_date ? new Date(applicant.birth_date).toLocaleDateString() : '', 40, pY2, 120);
-    dataField('Place of Birth', applicant.birth_place, 175, pY2, 340);
+    dataField('Birth Date', applicant.birthDate ? new Date(applicant.birthDate).toLocaleDateString() : '', 40, pY2, 120);
+    dataField('Place of Birth', applicant.birthPlace, 175, pY2, 340);
 
     const pY3 = pY2 + 42; 
     dataField('Gender', applicant.sex, 40, pY3, 90);
-    dataField('Civil Status', applicant.civil_status, 145, pY3, 90);
+    dataField('Civil Status', applicant.civilStatus, 145, pY3, 90);
     dataField('Height (m)', applicant.height, 250, pY3, 80);
     dataField('Weight (kg)', applicant.weight, 345, pY3, 80);
-    dataField('Blood Type', applicant.blood_type, 440, pY3, 75);
+    dataField('Blood Type', applicant.bloodType, 440, pY3, 75);
     doc.y = pY3 + 35; 
 
     // --- 2. RESIDENCY & CONTACT ---
     const headerY = sectionHeader('2. Residency & Contact', '');
-    doc.fontSize(8.5).font('Helvetica-Bold').fillColor(applicant.is_meycauayan_resident ? '#059669' : '#64748b').text(
-        applicant.is_meycauayan_resident ? 'Meycauayan Resident' : 'Non-Resident', 350, headerY + 5, { width: 190, align: 'right' }
+    doc.fontSize(8.5).font('Helvetica-Bold').fillColor(applicant.isMeycauayanResident ? '#059669' : '#64748b').text(
+        applicant.isMeycauayanResident ? 'Meycauayan Resident' : 'Non-Resident', 350, headerY + 5, { width: 190, align: 'right' }
     );
     const rY = doc.y + 5;
     
     dataField('Residential Address', applicant.address, 40, rY, 400);
-    dataField('Res. Zip Code', applicant.zip_code, 450, rY, 70);
+    dataField('Res. Zip Code', applicant.zipCode, 450, rY, 70);
 
     const rY2 = rY + 42; 
-    dataField('Permanent Address', applicant.permanent_address, 40, rY2, 400);
-    dataField('Perm. Zip Code', applicant.permanent_zip_code, 450, rY2, 70);
+    dataField('Permanent Address', applicant.permanentAddress, 40, rY2, 400);
+    dataField('Perm. Zip Code', applicant.permanentZipCode, 450, rY2, 70);
 
     const rY3 = rY2 + 42; 
     dataField('Email Address', applicant.email, 40, rY3, 250);
-    dataField('Contact Number', applicant.phone_number, 300, rY3, 220);
+    dataField('Contact Number', applicant.phoneNumber, 300, rY3, 220);
     doc.y = rY3 + 35; 
 
     // --- 3. GOVERNMENT RECORDS ---
     sectionHeader('3. Government Records', 'Identification and social records');
     const gY = doc.y + 5;
-    dataField('GSIS Number', applicant.gsis_no, 40, gY, 160);
-    dataField('Pag-IBIG Number', applicant.pagibig_no, 215, gY, 160);
-    dataField('PhilHealth Number', applicant.philhealth_no, 390, gY, 130);
+    dataField('GSIS Number', applicant.gsisNumber, 40, gY, 160);
+    dataField('Pag-IBIG Number', applicant.pagibigNumber, 215, gY, 160);
+    dataField('PhilHealth Number', applicant.philhealthNumber, 390, gY, 130);
 
-    const gY2 = gY + 42; 
-    dataField('UMID Number', applicant.umid_no, 40, gY2, 160);
-    dataField('PhilSys ID', applicant.philsys_id, 215, gY2, 160);
-    dataField('TIN Number', applicant.tin_no, 390, gY2, 130);
+    const gY2 = gY + 42;  
+    dataField('UMID Number', applicant.umidNumber, 40, gY2, 160);
+    dataField('PhilSys ID', applicant.philsysId, 215, gY2, 160);
+    dataField('TIN Number', applicant.tinNumber, 390, gY2, 130);
     doc.y = gY2 + 35; 
 
     // --- 4. PROFESSIONAL QUALIFICATIONS ---
     sectionHeader('4. Professional Qualifications', 'Education and eligibility');
     const qY = doc.y + 5;
     dataField('Eligibility Name', applicant.eligibility, 40, qY, 200);
-    dataField('Category', applicant.eligibility_type?.replace(/_/g, ' '), 250, qY, 150);
-    dataField('Rating', applicant.eligibility_rating, 410, qY, 110);
+    dataField('Category', applicant.eligibilityType?.replace(/_/g, ' '), 250, qY, 150);
+    dataField('Rating', applicant.eligibilityRating, 410, qY, 110);
 
     const qY2 = qY + 45; 
-    dataField('Place of Exam', applicant.eligibility_place, 40, qY2, 250);
-    dataField('License Number', applicant.license_no, 305, qY2, 120);
-    dataField('Date Released', applicant.eligibility_date ? new Date(applicant.eligibility_date).toLocaleDateString() : '', 440, qY2, 80);
+    dataField('Place of Exam', applicant.eligibilityPlace, 40, qY2, 250);
+    dataField('License Number', applicant.licenseNo, 305, qY2, 120);
+    dataField('Date Released', applicant.eligibilityDate ? new Date(applicant.eligibilityDate).toLocaleDateString() : '', 440, qY2, 80);
 
     doc.y = qY2 + 40; 
     doc.x = 40; 
@@ -1041,12 +1109,12 @@ export const generateApplicationPDF = async (req: Request, res: Response): Promi
         doc.moveDown(1.0);
     };
 
-    drawLongText('Education History', applicant.education);
+    drawLongText('Education History', applicant.educationalBackground);
     drawLongText('Work Experience Log', applicant.experience);
     drawLongText('Core Competencies / Skills', applicant.skills);
     
     doc.moveDown(0.1); // Tighter
-    dataField('Total Experience (Years)', applicant.total_experience_years?.toString(), 40, doc.y, 150);
+    dataField('Total Experience (Years)', applicant.totalExperienceYears?.toString(), 40, doc.y, 150);
 
     // --- FOOTER & SIGNATURE ---
     const footerHeight = 110; // Slightly more space
@@ -1072,8 +1140,9 @@ export const generateApplicationPDF = async (req: Request, res: Response): Promi
 
     doc.end();
   } catch (error) {
-    console.error('PDF Generation Error:', error);
-    res.status(500).json({ success: false, message: 'Failed to generate PDF' });
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+    res.status(500).json({ success: false, message: `Failed to generate PDF: ${errorMessage}` });
   }
 };
 
@@ -1094,13 +1163,14 @@ export const saveInterviewNotes = async (req: Request, res: Response): Promise<v
  
     // Use interview_notes column
     await db.update(recruitmentApplicants)
-      .set({ interview_notes: notes || '' })
+      .set({ interviewNotes: notes || '' })
       .where(eq(recruitmentApplicants.id, Number(applicantId)));
 
     res.json({ success: true, message: 'Interview notes saved successfully' });
   } catch (error) {
-    console.error('Error saving interview notes:', error);
-    res.status(500).json({ success: false, message: 'Failed to save interview notes' });
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+    res.status(500).json({ success: false, message: `Failed to save notes: ${errorMessage}` });
   }
 };
 
@@ -1108,24 +1178,24 @@ export const getSecurityLogs = async (_req: Request, res: Response): Promise<voi
     try {
         const logs = await db.select({
             id: recruitmentSecurityLogs.id,
-            job_id: recruitmentSecurityLogs.job_id,
-            first_name: recruitmentSecurityLogs.first_name,
-            last_name: recruitmentSecurityLogs.last_name,
+            jobId: recruitmentSecurityLogs.jobId,
+            firstName: recruitmentSecurityLogs.firstName,
+            lastName: recruitmentSecurityLogs.lastName,
             email: recruitmentSecurityLogs.email,
-            violation_type: recruitmentSecurityLogs.violation_type,
+            violationType: recruitmentSecurityLogs.violationType,
             details: recruitmentSecurityLogs.details,
-            ip_address: recruitmentSecurityLogs.ip_address,
-            created_at: recruitmentSecurityLogs.created_at,
-            job_title: recruitmentJobs.title
+            ipAddress: recruitmentSecurityLogs.ipAddress,
+            createdAt: recruitmentSecurityLogs.createdAt,
+            jobTitle: recruitmentJobs.title
         })
         .from(recruitmentSecurityLogs)
-        .leftJoin(recruitmentJobs, eq(recruitmentSecurityLogs.job_id, recruitmentJobs.id))
-        .orderBy(desc(recruitmentSecurityLogs.created_at))
+        .leftJoin(recruitmentJobs, eq(recruitmentSecurityLogs.jobId, recruitmentJobs.id))
+        .orderBy(desc(recruitmentSecurityLogs.createdAt))
         .limit(100);
 
         res.status(200).json({ success: true, logs });
-    } catch (error) {
-        console.error('Failed to fetch security logs:', error);
+    } catch (_error) {
+
         res.status(500).json({ success: false, message: 'Failed to fetch security logs' });
     }
 };
@@ -1159,8 +1229,8 @@ export const deleteApplicant = async (req: Request, res: Response): Promise<void
         await db.delete(recruitmentApplicants).where(eq(recruitmentApplicants.id, applicantId));
         
         res.status(200).json({ success: true, message: 'Applicant permanently deleted' });
-    } catch (error) {
-        console.error('Failed to delete applicant:', error);
+    } catch (_error) {
+
         res.status(500).json({ success: false, message: 'Failed to delete applicant' });
     }
 };

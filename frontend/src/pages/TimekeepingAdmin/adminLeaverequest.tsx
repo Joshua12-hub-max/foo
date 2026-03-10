@@ -12,7 +12,6 @@ import { useCredits } from '@features/LeaveRequests/hooks/Admin/useCredits';
 import Header from '@features/LeaveRequests/components/Admin/Header';
 import Filters from '@features/LeaveRequests/components/Admin/Filters';
 import SearchBar from '@features/LeaveRequests/components/Admin/SearchBar';
-import ExportOptions from '@features/LeaveRequests/components/Admin/ExportOptions';
 import Table from '@features/LeaveRequests/components/Admin/Table';
 import LoadingSpinner from '@features/LeaveRequests/components/Admin/LoadingSpinner';
 import ErrorAlert from '@features/LeaveRequests/components/Admin/ErrorAlert';
@@ -86,8 +85,6 @@ const AdminLeaveRequest = () => {
     handleClear
   } = useAdminLeaveFilters();
 
-  const { isExporting, exportError, handleExportCSV, handleExportPDF } = useExport();
-
   // Credits Hook
   const { 
     credits, 
@@ -106,11 +103,11 @@ const AdminLeaveRequest = () => {
 
   // Auto-dismiss messages
   useEffect(() => {
-    if (errorObj || dataError || exportError) {
+    if (errorObj || dataError) {
       const timer = setTimeout(() => setErrorObj(null), 5000);
       return () => clearTimeout(timer);
     }
-  }, [errorObj, dataError, exportError]);
+  }, [errorObj, dataError]);
 
   useEffect(() => {
     if (successMessage) {
@@ -181,7 +178,7 @@ const AdminLeaveRequest = () => {
   // Credits handlers
   const handleAddCreditSubmit = async (data: AddCreditInput) => {
     await updateCredit({
-      employeeId: data.employee_id,
+      employeeId: data.employeeId,
       creditType: data.creditType,
       balance: data.balance
     });
@@ -190,7 +187,7 @@ const AdminLeaveRequest = () => {
   const handleEditCreditSubmit = async (data: CreditUpdateInput) => {
     if (!editCredit.data) return;
     await updateCredit({
-      employeeId: editCredit.data.employee_id,
+      employeeId: editCredit.data.employeeId,
       creditType: data.creditType,
       balance: data.balance
     });
@@ -199,14 +196,14 @@ const AdminLeaveRequest = () => {
   const handleDeleteConfirm = async () => {
     if (!deleteCredit.data) return;
     await removeCredit({
-      employeeId: String(deleteCredit.data.employee_id),
-      creditType: deleteCredit.data.credit_type // Corrected to credit_type
+      employeeId: String(deleteCredit.data.employeeId),
+      creditType: deleteCredit.data.creditType // Corrected to creditType
     });
     setDeleteCredit({ isOpen: false, data: null });
   };
 
   // Combined error
-  const currentError = errorObj || dataError || exportError;
+  const currentError = errorObj || dataError;
 
   return (
     <div className={`min-h-screen flex flex-col bg-gradient-to-br from-neutral-100 to-stone-50 rounded-xl shadow-xl p-7 w-full overflow-hidden text-gray-800 transition-all duration-300 ${sidebarOpen ? 'max-w-[1400px] xl:max-w-[77vw]' : 'max-w-[1600px] xl:max-w-[88vw]'}`}>
@@ -214,7 +211,7 @@ const AdminLeaveRequest = () => {
       {/* Header */}
       <Header 
         onRefresh={handleRefresh}
-        isLoading={loading || isExporting}
+        isLoading={loading}
         today={today}
       />
 
@@ -285,7 +282,7 @@ const AdminLeaveRequest = () => {
                     show={deleteCredit.isOpen}
                     title="Delete Leave Credit"
                     message={deleteCredit.data 
-                        ? `Are you sure you want to delete ${deleteCredit.data.credit_type} for ${deleteCredit.data.first_name} ${deleteCredit.data.last_name}?\nThis action cannot be undone.`
+                        ? `Are you sure you want to delete ${deleteCredit.data.creditType} for ${deleteCredit.data.firstName} ${deleteCredit.data.lastName}?\nThis action cannot be undone.`
                         : 'Are you sure you want to delete this credit?'
                     }
                     onConfirm={handleDeleteConfirm}
@@ -315,14 +312,8 @@ const AdminLeaveRequest = () => {
                 onChange={handleSearchChange}
               />
 
-              {/* Export Options */}
-              <ExportOptions
-                onExportCSV={() => handleExportCSV(leaves)} // Pass visible leaves for now or all if export implemented backend-side
-                onExportPDF={() => handleExportPDF(leaves)}
-              />
-
               {/* Table */}
-              {loading && leaves.length === 0 && !isExporting ? (
+              {loading && leaves.length === 0 ? (
                  <LoadingSpinner />
               ) : (
                  <Table

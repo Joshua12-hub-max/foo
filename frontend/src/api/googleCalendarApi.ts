@@ -36,54 +36,34 @@ export const googleCalendarApi = {
    * Get the Google OAuth authorization URL
    */
   getAuthUrl: async (): Promise<AxiosResponse<GoogleAuthUrlResponse>> => {
-    try {
-      return await api.get<GoogleAuthUrlResponse>('/google-calendar/auth');
-    } catch (error) {
-      throw error;
-    }
+    return await api.get<GoogleAuthUrlResponse>('/google-calendar/auth');
   },
 
   /**
    * Get the current sync status
    */
   getSyncStatus: async (): Promise<AxiosResponse<GoogleSyncStatusResponse>> => {
-    try {
-      return await api.get<GoogleSyncStatusResponse>('/google-calendar/sync/status');
-    } catch (error) {
-      throw error;
-    }
+    return await api.get<GoogleSyncStatusResponse>('/google-calendar/sync/status');
   },
 
   /**
    * Disconnect Google Calendar
    */
   disconnect: async (): Promise<AxiosResponse<GoogleDisconnectResponse>> => {
-    try {
-      return await api.post<GoogleDisconnectResponse>('/google-calendar/disconnect');
-    } catch (error) {
-      throw error;
-    }
+    return await api.post<GoogleDisconnectResponse>('/google-calendar/disconnect');
   },
 
   /**
    * Import events from Google Calendar
    */
   importEvents: async (): Promise<AxiosResponse<GoogleSyncResultResponse>> => {
-    try {
-      return await api.post<GoogleSyncResultResponse>('/google-calendar/sync/import');
-    } catch (error) {
-      throw error;
-    }
+    return await api.post<GoogleSyncResultResponse>('/google-calendar/sync/import');
   },
 
   /**
    * Export events to Google Calendar
    */
   exportEvents: async (): Promise<AxiosResponse<GoogleSyncResultResponse>> => {
-    try {
-      return await api.post<GoogleSyncResultResponse>('/google-calendar/sync/export');
-    } catch (error) {
-      throw error;
-    }
+    return await api.post<GoogleSyncResultResponse>('/google-calendar/sync/export');
   },
 };

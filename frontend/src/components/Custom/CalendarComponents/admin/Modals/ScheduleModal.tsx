@@ -8,9 +8,9 @@ import { formatFullName } from '@/utils/nameUtils';
 
 interface EmployeeOption {
   id: number | string;
-  employee_id?: string;
-  first_name?: string;
-  last_name?: string;
+  employeeId?: string;
+  firstName?: string;
+  lastName?: string;
   employeeId?: string;
   firstName?: string;
   lastName?: string;
@@ -34,12 +34,12 @@ export default function ScheduleModal({ show, onClose, onCreate, hours = [] }: S
   } = useForm({
     resolver: zodResolver(scheduleSchema),
     defaultValues: {
-      employee_id: '',
+      employeeId: '',
       title: '',
-      start_date: '',
-      end_date: '',
-      start_time: '9:00 AM',
-      end_time: '5:00 PM',
+      startDate: '',
+      endDate: '',
+      startTime: '9:00 AM',
+      endTime: '5:00 PM',
       repeat: 'none',
       description: ''
     }
@@ -48,12 +48,12 @@ export default function ScheduleModal({ show, onClose, onCreate, hours = [] }: S
   useEffect(() => {
     if (show) {
       reset({
-          employee_id: '',
+          employeeId: '',
           title: '',
-          start_date: '',
-          end_date: '',
-          start_time: '9:00 AM',
-          end_time: '5:00 PM',
+          startDate: '',
+          endDate: '',
+          startTime: '9:00 AM',
+          endTime: '5:00 PM',
           repeat: 'none',
           description: ''
       }); // Reset form when modal opens
@@ -103,8 +103,8 @@ export default function ScheduleModal({ show, onClose, onCreate, hours = [] }: S
                     <User className="w-3 h-3" /> Select Employee
                     </label>
                     <select
-                    {...register('employee_id')}
-                    className={`w-full px-4 py-2 border ${errors.employee_id ? 'border-red-500' : 'border-gray-200'} rounded-lg focus:outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100 transition-all text-sm bg-white`}
+                    {...register('employeeId')}
+                    className={`w-full px-4 py-2 border ${errors.employeeId ? 'border-red-500' : 'border-gray-200'} rounded-lg focus:outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100 transition-all text-sm bg-white`}
                     >
                     <option value="">Select an employee...</option>
                     {employees.map((emp) => (
@@ -113,7 +113,7 @@ export default function ScheduleModal({ show, onClose, onCreate, hours = [] }: S
                         </option>
                     ))}
                     </select>
-                    {errors.employee_id && <p className="text-red-500 text-xs mt-1">{errors.employee_id.message as string}</p>}
+                    {errors.employeeId && <p className="text-red-500 text-xs mt-1">{errors.employeeId.message as string}</p>}
                 </div>
 
                 {/* Title and Repeat - Grid Layout */}
@@ -152,10 +152,10 @@ export default function ScheduleModal({ show, onClose, onCreate, hours = [] }: S
                     </label>
                     <input
                         type="date"
-                        {...register('start_date')}
-                        className={`w-full px-4 py-2 border ${errors.start_date ? 'border-red-500' : 'border-gray-200'} rounded-lg focus:outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100 transition-all text-sm`}
+                        {...register('startDate')}
+                        className={`w-full px-4 py-2 border ${errors.startDate ? 'border-red-500' : 'border-gray-200'} rounded-lg focus:outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100 transition-all text-sm`}
                     />
-                    {errors.start_date && <p className="text-red-500 text-xs mt-1">{errors.start_date.message as string}</p>}
+                    {errors.startDate && <p className="text-red-500 text-xs mt-1">{errors.startDate.message as string}</p>}
                     </div>
 
                     <div>
@@ -164,10 +164,10 @@ export default function ScheduleModal({ show, onClose, onCreate, hours = [] }: S
                     </label>
                     <input
                         type="date"
-                        {...register('end_date')}
-                        className={`w-full px-4 py-2 border ${errors.end_date ? 'border-red-500' : 'border-gray-200'} rounded-lg focus:outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100 transition-all text-sm`}
+                        {...register('endDate')}
+                        className={`w-full px-4 py-2 border ${errors.endDate ? 'border-red-500' : 'border-gray-200'} rounded-lg focus:outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100 transition-all text-sm`}
                     />
-                     {errors.end_date && <p className="text-red-500 text-xs mt-1">{errors.end_date.message as string}</p>}
+                     {errors.endDate && <p className="text-red-500 text-xs mt-1">{errors.endDate.message as string}</p>}
                     </div>
                 </div>
 
@@ -178,14 +178,14 @@ export default function ScheduleModal({ show, onClose, onCreate, hours = [] }: S
                         <Clock className="w-3 h-3" /> Start Time
                     </label>
                     <select
-                        {...register('start_time')}
-                        className={`w-full px-4 py-2 border ${errors.start_time ? 'border-red-500' : 'border-gray-200'} rounded-lg focus:outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100 transition-all text-sm bg-white`}
+                        {...register('startTime')}
+                        className={`w-full px-4 py-2 border ${errors.startTime ? 'border-red-500' : 'border-gray-200'} rounded-lg focus:outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100 transition-all text-sm bg-white`}
                     >
                         {hours.map((hour) => (
                           <option key={hour} value={hour}>{hour}</option>
                         ))}
                     </select>
-                     {errors.start_time && <p className="text-red-500 text-xs mt-1">{errors.start_time.message as string}</p>}
+                     {errors.startTime && <p className="text-red-500 text-xs mt-1">{errors.startTime.message as string}</p>}
                     </div>
 
                     <div>
@@ -193,14 +193,14 @@ export default function ScheduleModal({ show, onClose, onCreate, hours = [] }: S
                         <Clock className="w-3 h-3" /> End Time
                     </label>
                     <select
-                        {...register('end_time')}
-                        className={`w-full px-4 py-2 border ${errors.end_time ? 'border-red-500' : 'border-gray-200'} rounded-lg focus:outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100 transition-all text-sm bg-white`}
+                        {...register('endTime')}
+                        className={`w-full px-4 py-2 border ${errors.endTime ? 'border-red-500' : 'border-gray-200'} rounded-lg focus:outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100 transition-all text-sm bg-white`}
                     >
                         {hours.map((hour) => (
                           <option key={hour} value={hour}>{hour}</option>
                         ))}
                     </select>
-                     {errors.end_time && <p className="text-red-500 text-xs mt-1">{errors.end_time.message as string}</p>}
+                     {errors.endTime && <p className="text-red-500 text-xs mt-1">{errors.endTime.message as string}</p>}
                     </div>    
                 </div>
 

@@ -4,15 +4,16 @@ import { Applicant } from '@/types/recruitment';
 
 export interface KanbanApplicant {
   id: number;
-  first_name: string;
-  last_name: string;
+  firstName: string;
+  lastName: string;
   email: string;
   stage: string;
-  job_title?: string;
+  jobTitle?: string;
   source?: string;
-  created_at?: string;
-  interviewer_name?: string;
-  interview_date?: string;
+  createdAt?: string;
+  interviewerName?: string;
+  interviewDate?: string;
+  phoneNumber?: string;
 }
 
 const useKanbanData = (showNotification: (message: string, type: 'success' | 'error') => void) => {

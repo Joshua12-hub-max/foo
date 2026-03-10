@@ -2,21 +2,20 @@ import { LeaveStatus } from "@/components/Custom/Timekeeping/LeaveRequestCompone
 
 export interface EmployeeLeaveRequest {
   id: number;
-  employee_id: string;
+  employeeId: string;
   leaveType: string;
   fromDate: string;
   toDate: string;
   reason: string;
   status: LeaveStatus;
-  with_pay: boolean | number;
-  attachment_path: string | null;
+  isWithPay: boolean | number;
+  attachmentPath: string | null;
   department: string;
   name: string;
-  first_name?: string;
-  last_name?: string;
-  start_date?: string;
-  end_date?: string;
-  leave_type?: string;
+  firstName?: string;
+  lastName?: string;
+  startDate?: string;
+  endDate?: string;
 }
 
 export interface EmployeeLeaveFilters {

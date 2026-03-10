@@ -4,10 +4,10 @@ export const CreateAnnouncementSchema = z.object({
   title: z.string().min(1, "Title is required"),
   content: z.string().min(1, "Content is required"),
   priority: z.enum(['normal', 'high', 'urgent']).optional().default('normal'),
-  start_date: z.string().nullable().optional(),
-  end_date: z.string().nullable().optional(),
-  start_time: z.string().nullable().optional(),
-  end_time: z.string().nullable().optional(),
+  startDate: z.string().nullable().optional(),
+  endDate: z.string().nullable().optional(),
+  startTime: z.string().nullable().optional(),
+  endTime: z.string().nullable().optional(),
 });
 
 export const UpdateAnnouncementSchema = CreateAnnouncementSchema.partial();

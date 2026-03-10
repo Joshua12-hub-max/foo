@@ -2,12 +2,12 @@ import { mysqlTable, varchar, int, date, timestamp, decimal, text, mysqlEnum, bo
 import { authentication } from './auth.js';
 
 export const performanceCriteria = mysqlTable("performance_criteria", {
-	id: int().autoincrement().notNull(),
-	title: varchar({ length: 255 }).notNull(),
-	description: text(),
-	category: varchar({ length: 100 }).default('General'),
+	id: int("id").autoincrement().notNull(),
+	title: varchar("title", { length: 255 }).notNull(),
+	description: text("description"),
+	category: varchar("category", { length: 100 }).default('General'),
 	criteriaType: mysqlEnum("criteria_type", ['core_function','support_function','core_competency','organizational_competency']).default('core_function'),
-	weight: decimal({ precision: 5, scale: 2 }).default('1.00'),
+	weight: decimal("weight", { precision: 5, scale: 2 }).default('1.00'),
 	maxScore: int("max_score").default(5),
     // Rating Matrix Definitions
     ratingDefinition5: text("rating_definition_5"),
@@ -25,12 +25,12 @@ export const performanceCriteria = mysqlTable("performance_criteria", {
 ]);
 
 export const performanceReviewCycles = mysqlTable("performance_review_cycles", {
-	id: int().autoincrement().notNull(),
-	title: varchar({ length: 255 }).notNull(),
-	description: text(),
+	id: int("id").autoincrement().notNull(),
+	title: varchar("title", { length: 255 }).notNull(),
+	description: text("description"),
 	startDate: date("start_date", { mode: 'string' }).notNull(),
 	endDate: date("end_date", { mode: 'string' }).notNull(),
-	status: mysqlEnum(['Draft','Active','Completed','Archived']).default('Draft'),
+	status: mysqlEnum("status", ['Draft','Active','Completed','Archived']).default('Draft'),
 	createdBy: int("created_by").references(() => authentication.id, { onDelete: "set null" } ),
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
 	ratingPeriod: mysqlEnum("rating_period", ['1st_sem','2nd_sem','annual']).default('annual'),
@@ -43,32 +43,32 @@ export const performanceReviewCycles = mysqlTable("performance_review_cycles", {
 ]);
 
 export const performanceReviews = mysqlTable("performance_reviews", {
-	id: int().autoincrement().notNull(),
+	id: int("id").autoincrement().notNull(),
 	employeeId: int("employee_id").notNull().references(() => authentication.id),
 	reviewerId: int("reviewer_id").notNull().references(() => authentication.id),
 	reviewPeriodStart: date("review_period_start", { mode: 'string' }).notNull(),
 	reviewPeriodEnd: date("review_period_end", { mode: 'string' }).notNull(),
-	status: mysqlEnum(['Draft','Self-Rated','Submitted','Acknowledged','Approved','Finalized']).default('Draft'),
+	status: mysqlEnum("status", ['Draft','Self-Rated','Submitted','Acknowledged','Approved','Finalized']).default('Draft'),
 	totalScore: decimal("total_score", { precision: 5, scale: 2 }),
 	selfRatingScore: decimal("self_rating_score", { precision: 3, scale: 2 }),
-	supervisorRatingScore: decimal("supervisor_rating_score", { precision: 3, scale: 2 }),
+	reviewerRatingScore: decimal("reviewer_rating_score", { precision: 3, scale: 2 }),
 	finalRatingScore: decimal("final_rating_score", { precision: 3, scale: 2 }),
 	selfRatingStatus: mysqlEnum("self_rating_status", ['pending','submitted']).default('pending'),
 	overallFeedback: text("overall_feedback"),
-	supervisorRemarks: text("supervisor_remarks"),
+	reviewerRemarks: text("reviewer_remarks"),
 	employeeRemarks: text("employee_remarks"),
 	headRemarks: text("head_remarks"),
 	disagreeRemarks: text("disagree_remarks"),
 	approvedBy: int("approved_by"),
 	approvedAt: timestamp("approved_at", { mode: 'string' }),
-	disagreed: boolean().default(false),
+	disagreed: boolean("disagreed").default(false),
 	ratingPeriod: mysqlEnum("rating_period", ['1st_sem','2nd_sem','annual']).default('annual'),
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
 	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow(),
 	reviewCycleId: int("review_cycle_id"),
 	isSelfAssessment: boolean("is_self_assessment").default(false),
 	cycleId: int("cycle_id"),
-	evaluationMode: mysqlEnum("evaluation_mode", ['CSC','IPCR']).default('CSC'),
+	evaluationMode: mysqlEnum("evaluation_mode", ['CSC','IPCR','Senior']).default('CSC'),
 },
 (table) => [
 	index("employee_id").on(table.employeeId),
@@ -77,11 +77,11 @@ export const performanceReviews = mysqlTable("performance_reviews", {
 ]);
 
 export const performanceAuditLog = mysqlTable("performance_audit_log", {
-	id: int().autoincrement().notNull(),
+	id: int("id").autoincrement().notNull(),
 	reviewId: int("review_id").notNull().references(() => performanceReviews.id, { onDelete: "cascade" } ),
-	action: varchar({ length: 50 }).notNull(),
+	action: varchar("action", { length: 50 }).notNull(),
 	actorId: int("actor_id").notNull().references(() => authentication.id, { onDelete: "cascade" } ),
-	details: text(),
+	details: text("details"),
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
 },
 (table) => [
@@ -91,19 +91,19 @@ export const performanceAuditLog = mysqlTable("performance_audit_log", {
 ]);
 
 export const performanceGoals = mysqlTable("performance_goals", {
-	id: int().autoincrement().notNull(),
+	id: int("id").autoincrement().notNull(),
 	employeeId: int("employee_id").notNull().references(() => authentication.id, { onDelete: "cascade" } ),
 	reviewCycleId: int("review_cycle_id"),
-	title: varchar({ length: 255 }).notNull(),
-	description: text(),
-	metric: varchar({ length: 255 }),
+	title: varchar("title", { length: 255 }).notNull(),
+	description: text("description"),
+	metric: varchar("metric", { length: 255 }),
 	targetValue: decimal("target_value", { precision: 10, scale: 2 }),
 	currentValue: decimal("current_value", { precision: 10, scale: 2 }).default('0.00'),
-	weight: decimal({ precision: 5, scale: 2 }).default('1.00'),
+	weight: decimal("weight", { precision: 5, scale: 2 }).default('1.00'),
 	startDate: date("start_date", { mode: 'string' }),
 	dueDate: date("due_date", { mode: 'string' }),
-	status: mysqlEnum(['Not Started','In Progress','Completed','Cancelled']).default('Not Started'),
-	progress: int().default(0),
+	status: mysqlEnum("status", ['Not Started','In Progress','Completed','Cancelled']).default('Not Started'),
+	progress: int("progress").default(0),
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
 },
 (table) => [
@@ -118,39 +118,39 @@ export const performanceGoals = mysqlTable("performance_goals", {
 ]);
 
 export const performanceImprovementPlans = mysqlTable("performance_improvement_plans", {
-	id: int().autoincrement().notNull(),
+	id: int("id").autoincrement().notNull(),
 	employeeId: int("employee_id").notNull().references(() => authentication.id, { onDelete: "cascade" } ),
-	supervisorId: int("supervisor_id").notNull().references(() => authentication.id, { onDelete: "cascade" } ),
+	reviewerId: int("reviewer_id").notNull().references(() => authentication.id, { onDelete: "cascade" } ),
 	startDate: date("start_date", { mode: 'string' }).notNull(),
 	endDate: date("end_date", { mode: 'string' }).notNull(),
 	areasOfConcern: text("areas_of_concern").notNull(),
 	actionPlan: text("action_plan").notNull(),
-	status: mysqlEnum(['Active','Completed','Failed','Terminated']).default('Active'),
+	status: mysqlEnum("status", ['Active','Completed','Failed','Terminated']).default('Active'),
 	outcomeNotes: text("outcome_notes"),
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
 },
 (table) => [
 	index("employee_id").on(table.employeeId),
-	index("supervisor_id").on(table.supervisorId),
+	index("reviewer_id").on(table.reviewerId),
 	primaryKey({ columns: [table.id], name: "performance_improvement_plans_id"}),
 ]);
 
 export const performanceReviewItems = mysqlTable("performance_review_items", {
-	id: int().autoincrement().notNull(),
+	id: int("id").autoincrement().notNull(),
 	reviewId: int("review_id").notNull().references(() => performanceReviews.id, { onDelete: "cascade" } ),
 	criteriaId: int("criteria_id").references(() => performanceCriteria.id, { onDelete: "set null" } ),
-	score: decimal({ precision: 5, scale: 2 }),
+	score: decimal("score", { precision: 5, scale: 2 }),
 	selfScore: decimal("self_score", { precision: 3, scale: 2 }),
 	actualAccomplishments: text("actual_accomplishments"),
-	comment: text(),
+	comment: text("comment"),
 	qScore: decimal("q_score", { precision: 5, scale: 2 }),
 	eScore: decimal("e_score", { precision: 5, scale: 2 }),
 	tScore: decimal("t_score", { precision: 5, scale: 2 }),
 	criteriaTitle: varchar("criteria_title", { length: 255 }),
 	criteriaDescription: text("criteria_description"),
-	weight: decimal({ precision: 5, scale: 2 }).default('0.00'),
+	weight: decimal("weight", { precision: 5, scale: 2 }).default('0.00'),
 	maxScore: int("max_score").default(5),
-	category: varchar({ length: 100 }).default('General'),
+	category: varchar("category", { length: 100 }).default('General'),
     // Evidence / MOV
     evidenceFilePath: text("evidence_file_path"), // JSON string or comma-separated paths
     evidenceDescription: text("evidence_description"),
@@ -161,10 +161,10 @@ export const performanceReviewItems = mysqlTable("performance_review_items", {
 ]);
 
 export const performanceTemplates = mysqlTable("performance_templates", {
-	id: int().autoincrement().notNull(),
-	title: varchar({ length: 255 }).notNull(),
-	description: text(),
-	sections: json(),
+	id: int("id").autoincrement().notNull(),
+	title: varchar("title", { length: 255 }).notNull(),
+	description: text("description"),
+	sections: json("sections"),
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
 },
 (table) => [

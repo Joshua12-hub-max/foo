@@ -10,7 +10,8 @@ import { formatFullName } from '../utils/nameUtils.js';
 const convertTo24Hour = (time12h: string): string => {
   const [time, modifier] = time12h.split(' ');
   if (!time || !modifier) return time12h;
-  let [hours, minutes] = time.split(':');
+  const [hoursStr, minutes] = time.split(':');
+  let hours = hoursStr;
   if (hours === '12') hours = '00';
   if (modifier.toUpperCase() === 'PM') hours = String(parseInt(hours, 10) + 12);
   return `${hours.padStart(2, '0')}:${minutes}:00`;
@@ -21,17 +22,17 @@ const getDayName = (dateString: string): string => {
   return date.toLocaleDateString('en-US', { weekday: 'long' });
 };
 
-export const getSchedules = async (_req: Request, res: Response) => {
+export const getSchedules = async (_req: Request, res: Response): Promise<void> => {
   try {
     const result = await db.select({
       id: schedules.id,
-      employee_id: schedules.employeeId,
-      day_of_week: schedules.dayOfWeek,
-      start_time: schedules.startTime,
-      end_time: schedules.endTime,
-      first_name: authentication.firstName,
-      last_name: authentication.lastName,
-      middle_name: authentication.middleName,
+      employeeId: schedules.employeeId,
+      dayOfWeek: schedules.dayOfWeek,
+      startTime: schedules.startTime,
+      endTime: schedules.endTime,
+      firstName: authentication.firstName,
+      lastName: authentication.lastName,
+      middleName: authentication.middleName,
       suffix: authentication.suffix,
       department: authentication.department
     })
@@ -40,64 +41,61 @@ export const getSchedules = async (_req: Request, res: Response) => {
     
     const formattedSchedules = result.map(s => ({
         ...s,
-        employee_name: formatFullName(s.last_name, s.first_name, s.middle_name, s.suffix)
+        employeeName: formatFullName(s.lastName, s.firstName, s.middleName, s.suffix)
     }));
 
-    res.json({ schedules: formattedSchedules });
-  } catch (error) {
-    console.error('Get Schedules Error:', error);
-    res.status(500).json({ message: 'Failed to fetch schedules' });
+    res.json({ success: true, schedules: formattedSchedules });
+  } catch (_error) {
+
+    res.status(500).json({ success: false, message: 'Failed to fetch schedules' });
   }
 };
 
 export const createSchedule = async (req: Request, res: Response): Promise<void> => {
   try {
     const authReq = req as AuthenticatedRequest;
-    const senderId = authReq.user?.employeeId;
+    const senderId = authReq.user?.employeeId || null;
 
     const validation = scheduleSchema.safeParse(req.body);
     
     if (!validation.success) {
       res.status(400).json({ 
+        success: false,
         message: 'Validation Error', 
         errors: validation.error.format() 
       });
       return;
     }
 
-    const { employee_id, start_date, start_time, end_time, repeat, title } = validation.data;
-
+    const { employeeId, startDate, startTime, endTime, repeat, title } = validation.data;
     
-    const daysToSet = [];
+    const daysToSet: string[] = [];
     
     if (repeat === 'daily') {
       // Mon-Fri
       daysToSet.push('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday');
     } else if (repeat === 'weekly') {
-        const startDay = getDayName(start_date);
+        const startDay = getDayName(startDate || '');
         daysToSet.push(startDay);
     } else {
-        // Default behavior for 'none' or 'monthly': Set for the specific day of start_date (treated as weekly pattern in this simple schema)
-        const startDay = getDayName(start_date);
+        // Default behavior for 'none' or 'monthly': Set for the specific day of start_date
+        const startDay = getDayName(startDate || '');
         daysToSet.push(startDay);
     }
 
+    const startTime24 = convertTo24Hour(startTime || '');
+    const endTime24 = convertTo24Hour(endTime || '');
+
     const queries = daysToSet.map(day => {
-      // Convert 12-hour format to 24-hour format for MySQL TIME column
-      const startTime24 = convertTo24Hour(start_time || '');
-      const endTime24 = convertTo24Hour(end_time || '');
-      
       return db.insert(schedules).values({
-        employeeId: employee_id,
+        employeeId: employeeId,
         dayOfWeek: day,
         startTime: startTime24,
-        endTime: endTime24,
-        // isRestDay: is_rest_day ? 1 : 0 // Column missing in schema
+        endTime: endTime24
       }).onDuplicateKeyUpdate({
         set: {
           startTime: startTime24,
-          endTime: endTime24,
-          // isRestDay: is_rest_day ? 1 : 0 // Column missing in schema
+          endTime: endTime24
         }
       });
     });
@@ -107,21 +105,22 @@ export const createSchedule = async (req: Request, res: Response): Promise<void>
     // Send notification to the employee
     try {
       await createNotification({
-        recipientId: employee_id,
+        recipientId: employeeId,
         senderId: senderId,
         title: 'New Schedule Assigned',
-        message: `A new schedule "${title || 'Work Schedule'}" has been assigned to you. Details: ${start_time} - ${end_time} (${repeat === 'none' ? 'One-time' : repeat}).`,
+        message: `A new schedule "${title || 'Work Schedule'}" has been assigned to you. Details: ${startTime} - ${endTime} (${repeat === 'none' ? 'One-time' : repeat}).`,
         type: 'schedule',
         referenceId: null 
       });
-    } catch (notifError) {
-      console.error('Failed to send notification for schedule:', notifError);
+    } catch (_notifError) {
+      /* empty */
+
     }
 
-    res.status(201).json({ message: 'Schedule created/updated successfully' });
-  } catch (error) {
-    console.error('Create Schedule Error:', error);
-    res.status(500).json({ message: 'Failed to create schedule' });
+    res.status(201).json({ success: true, message: 'Schedule created/updated successfully' });
+  } catch (_error) {
+
+    res.status(500).json({ success: false, message: 'Failed to create schedule' });
   }
 };
 
@@ -131,32 +130,33 @@ export const updateSchedule = async (req: Request, res: Response): Promise<void>
         const validation = updateScheduleSchema.safeParse(req.body);
 
         if (!validation.success) {
-             res.status(400).json({ message: 'Validation Error', errors: validation.error.format() });
+             res.status(400).json({ success: false, message: 'Validation Error', errors: validation.error.format() });
              return;
         }
     
-        const { start_time, end_time } = validation.data;
-        const startTime24 = convertTo24Hour(start_time || '');
-        const endTime24 = convertTo24Hour(end_time || '');
+        const { startTime, endTime } = validation.data;
+        const startTime24 = convertTo24Hour(startTime || '');
+        const endTime24 = convertTo24Hour(endTime || '');
         
         await db.update(schedules)
             .set({ startTime: startTime24, endTime: endTime24 })
             .where(eq(schedules.id, Number(id)));
 
-        res.json({ message: 'Schedule updated successfully' });
-    } catch (error) {
-        console.error('Update Schedule Error:', error);
-        res.status(500).json({ message: 'Failed to update schedule' });
+        res.json({ success: true, message: 'Schedule updated successfully' });
+    } catch (_error) {
+
+        res.status(500).json({ success: false, message: 'Failed to update schedule' });
     }
 };
 
-export const deleteSchedule = async (req: Request, res: Response) => {
+export const deleteSchedule = async (req: Request, res: Response): Promise<void> => {
     try {
         const { id } = req.params;
         await db.delete(schedules).where(eq(schedules.id, Number(id)));
-        res.json({ message: 'Schedule deleted successfully' });
-    } catch (error) {
-        console.error('Delete Schedule Error:', error);
-        res.status(500).json({ message: 'Failed to delete schedule' });
+        res.json({ success: true, message: 'Schedule deleted successfully' });
+    } catch (_error) {
+
+        res.status(500).json({ success: false, message: 'Failed to delete schedule' });
     }
 };
+

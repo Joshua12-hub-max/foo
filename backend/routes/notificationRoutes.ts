@@ -12,7 +12,7 @@ const router: Router = Router();
 router.use(verifyToken);
 
 router.get('/', getNotifications);
-router.get('/unread-count', getUnreadCount);
+router.get('/unreadCount', getUnreadCount);
 router.put('/:id/read', markAsRead);
 router.delete('/:id', deleteNotification);
 

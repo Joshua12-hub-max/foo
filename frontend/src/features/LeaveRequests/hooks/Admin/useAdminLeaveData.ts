@@ -42,31 +42,29 @@ export const useAdminLeaveData = (initialFilters?: Record<string, string>) => {
       const res = await leaveApi.getAllApplications(params);
       
       const rawLeaves = res?.data?.applications;
-      const leaves = Array.isArray(rawLeaves) ? rawLeaves.map((l: LeaveApplication) => {
+      const leaves: AdminLeaveRequest[] = Array.isArray(rawLeaves) ? rawLeaves.map((l: LeaveApplication) => {
         // Build employee name with fallbacks
-        const firstName = l.first_name || '';
-        const lastName = l.last_name || '';
+        const firstName = l.firstName || '';
+        const lastName = l.lastName || '';
         const fullName = formatFullName(lastName, firstName).trim();
-        const displayName = fullName || l.employee_id || 'Unknown Employee';
+        const displayName = fullName || l.employeeId || 'Unknown Employee';
 
         return {
           id: l.id,
-          employee_id: l.employee_id || 'N/A',
+          employeeId: l.employeeId || 'N/A',
+          firstName,
+          lastName,
           name: displayName,
           department: l.department || 'N/A',
-          leaveType: l.leave_type || 'N/A',
-          fromDate: l.start_date,
-          toDate: l.end_date,
+          leaveType: l.leaveType || 'N/A',
+          startDate: l.startDate,
+          endDate: l.endDate,
           reason: l.reason || '',
           status: l.status || 'Pending',
-          with_pay: l.is_with_pay ?? true,
-          attachment_path: l.attachment_path ?? undefined,
-          final_attachment_path: l.final_attachment_path ?? undefined,
-          first_name: firstName,
-          last_name: lastName,
-          leave_type: l.leave_type,
-          start_date: l.start_date,
-          end_date: l.end_date,
+          isWithPay: l.isWithPay ?? true,
+          attachmentPath: l.attachmentPath ?? undefined,
+          adminFormPath: l.adminFormPath ?? undefined,
+          finalAttachmentPath: l.finalAttachmentPath ?? undefined,
         };
       }) : [];
 

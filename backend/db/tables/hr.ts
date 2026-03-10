@@ -2,15 +2,15 @@ import { mysqlTable, varchar, int, timestamp, decimal, text, mysqlEnum, foreignK
 import { sql } from 'drizzle-orm';
 
 export const departments = mysqlTable("departments", {
-	id: int().autoincrement().notNull(),
-	name: varchar({ length: 100 }).notNull(),
-	description: text(),
+	id: int("id").autoincrement().notNull(),
+	name: varchar("name", { length: 100 }).notNull(),
+	description: text("description"),
 	headOfDepartment: varchar("head_of_department", { length: 100 }),
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
 	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow(),
-	budget: decimal({ precision: 15, scale: 2 }).default('0.00'),
+	budget: decimal("budget", { precision: 15, scale: 2 }).default('0.00'),
 	parentDepartmentId: int("parent_department_id"),
-	location: varchar({ length: 255 }),
+	location: varchar("location", { length: 255 }),
 },
 (table) => [
 	foreignKey({
@@ -23,14 +23,14 @@ export const departments = mysqlTable("departments", {
 ]);
 
 export const budgetAllocation = mysqlTable("budget_allocation", {
-	id: int().autoincrement().notNull(),
-	year: int().notNull(),
-	department: varchar({ length: 255 }).notNull(),
+	id: int("id").autoincrement().notNull(),
+	year: int("year").notNull(),
+	department: varchar("department", { length: 255 }).notNull(),
 	totalBudget: decimal("total_budget", { precision: 15, scale: 2 }).notNull(),
 	utilizedBudget: decimal("utilized_budget", { precision: 15, scale: 2 }).default('0.00'),
-	remainingBudget: decimal("remaining_budget", { precision: 15, scale: 2 }).generatedAlwaysAs(sql`(\`total_budget\` - \`utilized_budget\`)`, { mode: "stored" }),
-	utilizationRate: decimal("utilization_rate", { precision: 5, scale: 2 }).generatedAlwaysAs(sql`((\`utilized_budget\` / \`total_budget\`) * 100)`, { mode: "stored" }),
-	notes: text(),
+	remainingBudget: decimal("remaining_budget", { precision: 15, scale: 2 }).generatedAlwaysAs(sql`total_budget - utilized_budget`, { mode: "stored" }),
+	utilizationRate: decimal("utilization_rate", { precision: 5, scale: 2 }).generatedAlwaysAs(sql`(utilized_budget / NULLIF(total_budget, 0)) * 100`, { mode: "stored" }),
+	notes: text("notes"),
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
 	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow(),
 },
@@ -42,14 +42,14 @@ export const budgetAllocation = mysqlTable("budget_allocation", {
 ]);
 
 export const nepotismRelationships = mysqlTable("nepotism_relationships", {
-	id: int().autoincrement().notNull(),
+	id: int("id").autoincrement().notNull(),
 	employeeId1: int("employee_id_1").notNull(),
 	employeeId2: int("employee_id_2").notNull(),
 	relationshipType: mysqlEnum("relationship_type", ['Parent','Child','Sibling','Spouse','Uncle/Aunt','Nephew/Niece','Cousin','Grandparent','Grandchild','In-Law']).notNull(),
-	degree: int().notNull(),
+	degree: int("degree").notNull(),
 	verifiedBy: int("verified_by"),
 	verifiedAt: timestamp("verified_at", { mode: 'string' }),
-	notes: text(),
+	notes: text("notes"),
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
 },
 (table) => [

@@ -9,15 +9,15 @@ import { PlantillaSchema } from '@/schemas/plantilla';
 
 export interface Employee {
   id: number;
-  first_name: string;
-  last_name: string;
+  firstName: string;
+  lastName: string;
 }
 
 export interface HistoryRecord {
   id: number;
-  employee_name: string;
-  start_date: string;
-  end_date?: string;
+  employeeName: string;
+  startDate: string;
+  endDate?: string;
   reason?: string;
 }
 
@@ -202,8 +202,8 @@ export const usePlantilla = ({ showNotification }: UsePlantillaOptions = {}): Us
 
     const filteredPositions = useMemo(() => 
         (positionsData || []).filter((p: Position) => 
-          p.position_title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          p.item_number.toLowerCase().includes(searchTerm.toLowerCase())
+          p.positionTitle.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          p.itemNumber.toLowerCase().includes(searchTerm.toLowerCase())
         ), [positionsData, searchTerm]
     );
 

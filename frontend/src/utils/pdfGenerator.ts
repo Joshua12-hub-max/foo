@@ -3,7 +3,7 @@
 export interface LeaveRequest {
   id: string | number;
   name?: string;
-  employee_id?: string | number;
+  employeeId?: string | number;
   department?: string;
   leaveType?: string;
   status: string;
@@ -46,7 +46,7 @@ export const generateLeaveRequestPDF = async (leaveRequest: LeaveRequest): Promi
     const requestData = [
       ['Request ID', leaveRequest.id || 'N/A'],
       ['Employee Name', leaveRequest.name || 'N/A'],
-      ['Employee ID', leaveRequest.employee_id || 'N/A'],
+      ['Employee ID', leaveRequest.employeeId || 'N/A'],
       ['Department', leaveRequest.department || 'N/A'],
       ['Leave Type', leaveRequest.leaveType || 'N/A'],
       ['Status', leaveRequest.status || 'N/A'],
@@ -74,8 +74,9 @@ export const generateLeaveRequestPDF = async (leaveRequest: LeaveRequest): Promi
     doc.text('Approval Status', 20, finalY);
 
     const approvalData = [
-      ['Admin Action', leaveRequest.status === 'Approved' ? 'Approved' : leaveRequest.status === 'Rejected' ? 'Rejected' : 'Pending'],
-      ['Processed By', 'Admin'], // Placeholder, can be dynamic if data available
+      ['Administrator Action', leaveRequest.status === 'Approved' ? 'Approved' : leaveRequest.status === 'Rejected' ? 'Rejected' : 'Pending'],
+      ['Processed By', 'Administrator'], // Placeholder, can be dynamic if data available
+
       ['Date Processed', new Date().toLocaleDateString()], // Placeholder
     ];
 
@@ -123,18 +124,13 @@ export interface UndertimeRequest {
   employeeName?: string;
   name?: string;
   employeeId?: string | number;
-  employee_id?: string | number;
   department?: string;
   date?: string | Date;
   timeOut?: string;
-  time_out?: string;
   status: string;
   reason?: string;
-  approved_by?: string;
   approvedBy?: string;
-  rejection_reason?: string;
   rejectionReason?: string;
-  reviewed_at?: string | Date;
   reviewedAt?: string | Date;
   [key: string]: string | number | boolean | null | undefined | Date;
 }
@@ -173,10 +169,10 @@ export const generateUndertimeRequestPDF = async (undertimeRequest: UndertimeReq
     const requestData = [
       ['Request ID', undertimeRequest.id || 'N/A'],
       ['Employee Name', undertimeRequest.employeeName || undertimeRequest.name || 'N/A'],
-      ['Employee ID', undertimeRequest.employee_id || undertimeRequest.employeeId || 'N/A'],
+      ['Employee ID', undertimeRequest.employeeId || 'N/A'],
       ['Department', undertimeRequest.department || 'N/A'],
       ['Date', undertimeRequest.date ? new Date(undertimeRequest.date).toLocaleDateString() : 'N/A'],
-      ['Time Out', undertimeRequest.timeOut || undertimeRequest.time_out || 'N/A'],
+      ['Time Out', undertimeRequest.timeOut || 'N/A'],
       ['Status', undertimeRequest.status || 'Pending'],
       ['Reason', undertimeRequest.reason || 'N/A'],
     ];
@@ -200,10 +196,11 @@ export const generateUndertimeRequestPDF = async (undertimeRequest: UndertimeReq
     doc.text('Approval Status', 20, finalY);
 
     const approvalData = [
-      ['Admin Action', undertimeRequest.status === 'Approved' ? 'Approved' : undertimeRequest.status === 'Rejected' ? 'Rejected' : 'Pending'],
-      ['Processed By', undertimeRequest.approved_by || undertimeRequest.approvedBy || 'Pending'],
-      ['Rejection Reason', undertimeRequest.rejection_reason || undertimeRequest.rejectionReason || 'N/A'],
-      ['Date Processed', undertimeRequest.reviewed_at || undertimeRequest.reviewedAt ? new Date(String(undertimeRequest.reviewed_at || undertimeRequest.reviewedAt)).toLocaleDateString() : 'Pending'],
+      ['Administrator Action', undertimeRequest.status === 'Approved' ? 'Approved' : undertimeRequest.status === 'Rejected' ? 'Rejected' : 'Pending'],
+
+      ['Processed By', undertimeRequest.approvedBy || 'Pending'],
+      ['Rejection Reason', undertimeRequest.rejectionReason || 'N/A'],
+      ['Date Processed', undertimeRequest.reviewedAt ? new Date(String(undertimeRequest.reviewedAt)).toLocaleDateString() : 'Pending'],
     ];
 
     autoTable(doc, {
@@ -231,10 +228,10 @@ export const generateUndertimeRequestPDF = async (undertimeRequest: UndertimeReq
     doc.setTextColor(100, 100, 100);
     doc.text('Date: _______________', 20, finalY + 22);
 
-    // Supervisor Signature
+    // Reviewer Signature
     doc.setFontSize(12);
     doc.setTextColor(0, 0, 0);
-    doc.text('Supervisor Signature:', 120, finalY);
+    doc.text('Reviewer Signature:', 120, finalY);
     doc.line(120, finalY + 15, 190, finalY + 15);
     doc.setFontSize(9);
     doc.setTextColor(100, 100, 100);

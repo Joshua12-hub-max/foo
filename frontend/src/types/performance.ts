@@ -16,7 +16,7 @@ export interface PerformanceCriteria {
     evidenceRequirements?: string;
 }
 
-export type QETField = 'q_score' | 'e_score' | 't_score';
+export type QETField = 'qScore' | 'eScore' | 'tScore';
 
 export interface Assessment {
     id: string | number;
@@ -32,20 +32,20 @@ export interface Assessment {
 
 export interface ReviewItem {
     id: string | number;
-    review_id: number;
-    criteria_id: number | null;
+    reviewId: number;
+    criteriaId: number | null;
     score: number;
     weight: number;
-    max_score: number;
+    maxScore: number;
     comment: string | null;
-    self_score: number | null;
-    actual_accomplishments: string | null;
-    q_score: number | string | null;
-    e_score: number | string | null;
-    t_score: number | string | null;
+    selfScore: number | null;
+    actualAccomplishments: string | null;
+    qScore: number | string | null;
+    eScore: number | string | null;
+    tScore: number | string | null;
     category: string | null;
-    criteria_title: string | null;
-    criteria_description: string | null;
+    criteriaTitle: string | null;
+    criteriaDescription: string | null;
 }
 
 export interface AttendanceDetails {
@@ -58,35 +58,38 @@ export interface AttendanceDetails {
 
 export interface InternalReview {
     id: number;
-    employee_id: number;
-    reviewer_id: number;
-    review_cycle_id: number;
+    employeeId: number;
+    reviewerId: number;
+    reviewCycleId: number;
     status: string;
-    total_score: string;
-    overall_feedback: string | null;
-    supervisor_remarks: string | null;
-    employee_remarks: string | null;
-    additional_comments?: string;
-    created_at: string;
+    totalScore: string;
+    overallFeedback: string | null;
+    reviewerRemarks: string | null;
+    reviewerRatingScore?: string | number | null;
+    selfRatingScore?: string | number | null;
+    employeeRemarks: string | null;
+    additionalComments?: string;
+    createdAt: string;
+    updatedAt?: string;
     items?: ReviewItem[];
-    attendance_details?: AttendanceDetails | null;
-    violation_count?: number;
-    // flattened names for frontend (standardizing on both variants for compatibility)
-    employee_first_name?: string;
-    employee_last_name?: string;
-    employee_first?: string;
-    employee_last?: string;
-    employee_department?: string;
-    employee_job_title?: string;
-    employee_position_title?: string;
-    reviewer_first_name?: string;
-    reviewer_last_name?: string;
-    reviewer_first?: string;
-    reviewer_last?: string;
-    // cycle / period info (returned in list views)
-    cycle_title?: string;
-    review_period_start?: string;
-    review_period_end?: string;
+    attendanceDetails?: AttendanceDetails | null;
+    violationCount?: number;
+    // flattened names for frontend
+    employeeFirstName?: string;
+    employeeLastName?: string;
+    employeeFirst?: string;
+    employeeLast?: string;
+    employeeDepartment?: string;
+    employeeJobTitle?: string;
+    employeePositionTitle?: string;
+    reviewerFirstName?: string;
+    reviewerLastName?: string;
+    reviewerFirst?: string;
+    reviewerLast?: string;
+    // cycle / period info
+    cycleTitle?: string;
+    reviewPeriodStart?: string;
+    reviewPeriodEnd?: string;
 }
 
 export interface ReviewCycle {

@@ -28,7 +28,7 @@ const notifyDepartmentEmployees = async (params: { senderId: string; title: stri
 export const getEvents = async (req: Request, res: Response): Promise<void> => {
   try {
     const authReq = req as AuthenticatedRequest;
-    const isAdminOrHr = ['Admin', 'Human Resource'].includes(authReq.user.role || '');
+    const isAdminOrHr = ['Administrator', 'Human Resource'].includes(authReq.user.role || '');
 
     const baseCondition = or(
       gte(events.endDate, sql`CURDATE()`),
@@ -60,8 +60,8 @@ export const getEvents = async (req: Request, res: Response): Promise<void> => {
       .orderBy(asc(events.date));
 
     res.status(200).json({ events: result });
-  } catch (error) {
-    console.error('Error fetching events:', error);
+  } catch (_error) {
+
     res.status(500).json({ message: 'Failed to fetch events' });
   }
 };
@@ -75,10 +75,10 @@ export const createEvent = async (req: Request, res: Response): Promise<void> =>
       res.status(400).json({ message: 'Validation Error', errors: validation.error.format() });
       return;
   }
-  const { title, date, start_date, end_date, time, description, recurring_pattern, recurring_end_date, department } = validation.data;
+  const { title, date, startDate, endDate, time, description, recurringPattern, recurringEndDate, department } = validation.data;
   
-  const eventStartDate = start_date || date;
-  const eventEndDate = end_date || eventStartDate;
+  const eventStartDate = startDate || date;
+  const eventEndDate = endDate || eventStartDate;
 
   if (!title || !eventStartDate) { res.status(400).json({ message: 'Title and start date are required' }); return; }
 
@@ -90,8 +90,8 @@ export const createEvent = async (req: Request, res: Response): Promise<void> =>
       endDate: eventEndDate,
       time: time || 9,
       description: description || null,
-      recurringPattern: recurring_pattern || 'none',
-      recurringEndDate: recurring_end_date || null,
+      recurringPattern: recurringPattern || 'none',
+      recurringEndDate: recurringEndDate || null,
       department: department || null
     });
 
@@ -125,17 +125,17 @@ export const createEvent = async (req: Request, res: Response): Promise<void> =>
         id: result.insertId, 
         title, 
         date: eventStartDate, 
-        start_date: eventStartDate, 
-        end_date: eventEndDate, 
+        startDate: eventStartDate, 
+        endDate: eventEndDate, 
         time, 
         description, 
-        recurring_pattern, 
-        recurring_end_date, 
+        recurringPattern, 
+        recurringEndDate, 
         department 
       } 
     });
   } catch (error) {
-    console.error('Error creating event:', error);
+
     res.status(500).json({ message: 'Failed to create event', error: (error as Error).message });
   }
 };
@@ -149,10 +149,10 @@ export const updateEvent = async (req: Request, res: Response): Promise<void> =>
       res.status(400).json({ message: 'Validation Error', errors: validation.error.format() });
       return;
   }
-  const { title, date, start_date, end_date, time, description, recurring_pattern, recurring_end_date, department } = validation.data;
+  const { title, date, startDate, endDate, time, description, recurringPattern, recurringEndDate, department } = validation.data;
   
-  const eventStartDate = start_date || date;
-  const eventEndDate = end_date || eventStartDate;
+  const eventStartDate = startDate || date;
+  const eventEndDate = endDate || eventStartDate;
 
   if (!title || !eventStartDate) { res.status(400).json({ message: 'Title and start date are required' }); return; }
 
@@ -171,8 +171,8 @@ export const updateEvent = async (req: Request, res: Response): Promise<void> =>
         endDate: eventEndDate,
         time: time || 9,
         description: description || null,
-        recurringPattern: recurring_pattern || 'none',
-        recurringEndDate: recurring_end_date || null,
+        recurringPattern: recurringPattern || 'none',
+        recurringEndDate: recurringEndDate || null,
         department: department || null
       })
       .where(eq(events.id, Number(id)));
@@ -183,17 +183,17 @@ export const updateEvent = async (req: Request, res: Response): Promise<void> =>
         id, 
         title, 
         date: eventStartDate, 
-        start_date: eventStartDate, 
-        end_date: eventEndDate, 
+        startDate: eventStartDate, 
+        endDate: eventEndDate, 
         time, 
         description, 
-        recurring_pattern, 
-        recurring_end_date, 
+        recurringPattern, 
+        recurringEndDate, 
         department 
       } 
     });
-  } catch (error) {
-    console.error('Error updating event:', error);
+  } catch (_error) {
+
     res.status(500).json({ message: 'Failed to update event' });
   }
 };
@@ -210,8 +210,9 @@ export const deleteEvent = async (req: Request, res: Response): Promise<void> =>
     await db.delete(events).where(eq(events.id, Number(id)));
     
     res.status(200).json({ message: 'Event deleted successfully' });
-  } catch (error) {
-    console.error('Error deleting event:', error);
+  } catch (_error) {
+
     res.status(500).json({ message: 'Failed to delete event' });
   }
 };
+

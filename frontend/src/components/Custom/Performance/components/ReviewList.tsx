@@ -4,12 +4,11 @@ import { FileText, Edit3, ArrowRight } from 'lucide-react';
 interface ReviewItem {
   id: string | number;
   status: string;
-  review_period?: string;
-  cycle_name?: string;
-  created_at?: string;
-  reviewer_name?: string;
-  final_score?: number | string;
-  [key: string]: unknown;
+  reviewPeriod?: string;
+  cycleTitle?: string;
+  createdAt?: string;
+  reviewerName?: string;
+  finalScore?: number | string;
 }
 
 interface ReviewListProps {
@@ -22,24 +21,26 @@ interface ReviewListProps {
 // Minimalist status styling
 const getStatusBadge = (status: string) => {
   const styles: Record<string, string> = {
-    pending_self_rating: 'bg-black text-white border border-black',
-    pending_acknowledgment: 'bg-gray-900 text-white border border-gray-900',
-    acknowledged: 'bg-white text-gray-800 border border-gray-300',
-    disputed: 'bg-white text-gray-800 border border-gray-300 dashed',
-    draft: 'bg-gray-50 text-gray-400 border border-gray-100',
+    'Self-Rated': 'bg-black text-white border border-black',
+    'Submitted': 'bg-gray-900 text-white border border-gray-900',
+    'Acknowledged': 'bg-white text-gray-800 border border-gray-300',
+    'Finalized': 'bg-white text-gray-800 border border-gray-300',
+    'Disputed': 'bg-white text-gray-800 border border-gray-300 dashed',
+    'Draft': 'bg-gray-50 text-gray-400 border border-gray-100',
   };
   return styles[status] || 'bg-gray-50 text-gray-500 border border-gray-100';
 };
 
 const formatStatus = (status: string) => {
   const labels: Record<string, string> = {
-    pending_self_rating: 'Self Rating Required',
-    pending_acknowledgment: 'Acknowledgment Pending',
-    acknowledged: 'Completed',
-    disputed: 'Under Review',
-    draft: 'Draft',
+    'Self-Rated': 'Self Rating Submitted',
+    'Submitted': 'Reviewer Review Submitted',
+    'Acknowledged': 'Completed',
+    'Finalized': 'Finalized',
+    'Disputed': 'Under Review',
+    'Draft': 'Evaluation Required',
   };
-  return labels[status] || status.replace(/_/g, ' ');
+  return labels[status] || status;
 };
 
 const formatDate = (dateStr?: string) => {
@@ -104,27 +105,27 @@ const ReviewList: React.FC<ReviewListProps> = ({
                 <td className="px-6 py-4">
                   <div>
                       <span className="block text-sm font-bold text-gray-900">
-                        {review.review_period || review.cycle_name || 'Annual Review'}
+                        {review.reviewPeriod || review.cycleTitle || 'Annual Review'}
                       </span>
-                      <span className="text-xs text-gray-400 font-medium">{formatDate(review.created_at)}</span>
+                      <span className="text-xs text-gray-400 font-medium">{formatDate(review.createdAt)}</span>
                   </div>
                 </td>
                 <td className="px-6 py-4">
                   <span className="text-sm font-medium text-gray-600">
-                    {review.reviewer_name || '—'}
+                    {review.reviewerName || '—'}
                   </span>
                 </td>
                 <td className="px-6 py-4">
-                  {review.final_score ? (
+                  {review.finalScore ? (
                     <div className="flex items-center gap-2">
-                        <span className="text-lg font-black text-gray-900">{parseFloat(review.final_score.toString()).toFixed(2)}</span>
+                        <span className="text-lg font-black text-gray-900">{parseFloat(review.finalScore.toString()).toFixed(2)}</span>
                     </div>
                   ) : (
                     <span className="text-xs text-gray-400 font-medium italic">Pending</span>
                   )}
                 </td>
                 <td className="px-6 py-4 text-right">
-                    {review.status === 'pending_self_rating' ? (
+                    {review.status === 'Draft' ? (
                       <button
                         onClick={(e) => { e.stopPropagation(); onStartSelfRating(review); }}
                         className="inline-flex items-center gap-2 px-4 py-2 bg-black text-white text-xs font-bold uppercase tracking-wider rounded-lg hover:bg-gray-800 transition-all shadow-lg shadow-gray-200"

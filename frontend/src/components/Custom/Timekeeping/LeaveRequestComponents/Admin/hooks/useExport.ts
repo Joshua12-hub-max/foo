@@ -34,7 +34,7 @@ export const useExport = () => {
       const keys = ['employeeId', 'employeeName', 'department', 'leaveType', 'fromDate', 'toDate', 'duration', 'status'];
       
       const transformData = data.map(item => ({
-        employeeId: item.employee_id,
+        employeeId: item.employeeId,
         employeeName: item.name,
         department: item.department,
         leaveType: item.leaveType,
@@ -118,7 +118,7 @@ export const useExport = () => {
             <tbody>
               ${data.map(row => `
                 <tr>
-                  <td>${row.employee_id}</td>
+                  <td>${row.employeeId}</td>
                   <td>${row.name}</td>
                   <td>${row.department}</td>
                   <td>${row.leaveType}</td>

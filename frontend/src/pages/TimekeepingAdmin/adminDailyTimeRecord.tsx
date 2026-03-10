@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { AdminDTRHeader } from "@features/DailyTimeRecord/components/Admin/AdminDTRHeader";
 import { AdminDTRNotification } from "@features/DailyTimeRecord/components/Admin/AdminDTRNotification";
 import { AdminDTRFilters } from "@features/DailyTimeRecord/components/Admin/AdminDTRFilters";
-import { AdminDTRExportButtons } from "@features/DailyTimeRecord/components/Admin/AdminDTRExportButtons";
 import { AdminDTRTable } from "@features/DailyTimeRecord/components/Admin/AdminDTRTable";
 import { AdminDTRPagination } from "@features/DailyTimeRecord/components/Admin/AdminDTRPagination";
 import { AdminDTREditModal } from "@features/DailyTimeRecord/components/Admin/AdminDTREditModal";
@@ -40,8 +39,6 @@ const DailyTimeRecord = () => {
     handleRefresh,
     handlePrevPage,
     handleNextPage,
-    handleExportCSV,
-    handleExportPDF,
     getStatusBadge,
     handleEdit,
     handleSaveEdit
@@ -107,13 +104,6 @@ const DailyTimeRecord = () => {
         uniqueDepartments={uniqueDepartments}
         uniqueEmployees={uniqueEmployees}
         isLoading={isLoading}
-      />
-
-      <AdminDTRExportButtons 
-        handleExportCSV={handleExportCSV}
-        handleExportPDF={handleExportPDF}
-        isLoading={isLoading}
-        filteredDataLength={currentItems.length}
       />
 
       <AdminDTRTable 

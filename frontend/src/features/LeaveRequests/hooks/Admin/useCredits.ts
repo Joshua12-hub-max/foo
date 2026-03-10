@@ -42,9 +42,9 @@ export const useCredits = () => {
       const raw = res.employees || [];
       return raw.map((e) => ({
         ...e,
-        employee_id: String(e.employee_id || e.id),
-        first_name: e.first_name || '',
-        last_name: e.last_name || ''
+        employeeId: String(e.employeeId || e.id),
+        firstName: e.firstName || '',
+        lastName: e.lastName || ''
       }));
     },
 

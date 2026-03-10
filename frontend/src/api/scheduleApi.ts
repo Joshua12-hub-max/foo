@@ -5,11 +5,11 @@ export const scheduleApi = {
     return await api.get('/schedules');
   },
 
-  createSchedule: async (data: { employee_id: string; start_date: string; end_date: string; start_time: string; end_time: string; repeat?: string; is_rest_day?: boolean; }) => {
+  createSchedule: async (data: { employeeId: string; startDate: string; endDate: string; startTime: string; endTime: string; repeat?: string; isRestDay?: boolean; }) => {
     return await api.post('/schedules', data);
   },
 
-  updateSchedule: async (id: string | number, data: Partial<{ employee_id: string; start_date: string; end_date: string; start_time: string; end_time: string; repeat: string; is_rest_day: boolean; }>) => {
+  updateSchedule: async (id: string | number, data: Partial<{ employeeId: string; startDate: string; endDate: string; startTime: string; endTime: string; repeat: string; isRestDay: boolean; }>) => {
     return await api.put(`/schedules/${id}`, data);
   },
 

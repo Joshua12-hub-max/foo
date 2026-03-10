@@ -49,10 +49,10 @@ const formatTime = (timeStr: string): string => {
  */
 const getEmployeeName = (record: AttendanceRecord): string => {
   if (record.name) return record.name;
-  if (record.first_name || record.last_name) {
-    return `${record.first_name || ''} ${record.last_name || ''}`.trim();
+  if (record.firstName || record.lastName) {
+    return `${record.firstName || ''} ${record.lastName || ''}`.trim();
   }
-  return `Employee #${record.employee_id}`;
+  return `Employee #${record.employeeId}`;
 };
 
 /**
@@ -123,8 +123,8 @@ const AttendanceExport: React.FC<AttendanceExportProps> = ({ data, title, dateRa
       const tableData = data.map(record => [
         getEmployeeName(record),
         formatDate(record.date),
-        formatTime(record.time_in),
-        formatTime(record.time_out),
+        formatTime(record.timeIn),
+        formatTime(record.timeOut),
         formatMinutes(record.late),
         formatMinutes(record.undertime),
         record.status || '-'

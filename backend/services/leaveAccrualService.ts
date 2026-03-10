@@ -102,13 +102,13 @@ export const accrueCreditsForMonth = async (month: number, year: number, specifi
     // 1. Get eligible employees (Regular, Co-Terminous?)
     // Filtering by NOT 'Job Order' / 'Contractual' if they don't get leave?
     // Usually only Permanent/Regular/Casual get leave.
-    // Let's assume anyone NOT 'admin' and validation handled by employment_type if needed.
-    // For now, getting all non-admin.
+    // Let's assume anyone NOT 'Administrator' and validation handled by employment_type if needed.
+    // For now, getting all non-Administrator.
 
     const accruingTypes = ['Permanent', 'Contractual', 'Casual', 'Temporary', 'Coterminous'] as const;
 
     const conditions = [
-      ne(authentication.role, 'admin'),
+      ne(authentication.role, 'Administrator'),
       inArray(authentication.appointmentType, accruingTypes as ['Permanent', 'Contractual', 'Casual', 'Temporary', 'Coterminous'])
     ];
     
@@ -192,7 +192,7 @@ const updateBalanceInternal = async (
     const year = new Date().getFullYear();
     
     // Check if balance exists
-    let balanceRecord = await db.query.leaveBalances.findFirst({
+    const balanceRecord = await db.query.leaveBalances.findFirst({
         where: and(
             eq(leaveBalances.employeeId, employeeId),
             eq(leaveBalances.creditType, creditType),
@@ -200,8 +200,8 @@ const updateBalanceInternal = async (
         )
     });
 
-    let currentBalance = balanceRecord ? Number(balanceRecord.balance) : 0;
-    let newBalance = currentBalance + amount;
+    const currentBalance = balanceRecord ? Number(balanceRecord.balance) : 0;
+    const newBalance = currentBalance + amount;
 
     if (!balanceRecord) {
         await db.insert(leaveBalances).values({

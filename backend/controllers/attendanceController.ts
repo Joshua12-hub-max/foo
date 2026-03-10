@@ -12,7 +12,7 @@ import {
   dtrCorrections,
   departments
 } from "../db/schema.js";
-import { eq, and, sql, desc, between, ne, or, like } from "drizzle-orm";
+import { eq, and, sql, desc, between, or, like } from "drizzle-orm";
 import type { AuthenticatedRequest } from "../types/index.js";
 import {
   GetLogsSchema,
@@ -23,7 +23,7 @@ import { formatToManilaDateTime } from "../utils/dateUtils.js";
 
 
 const handleError = (res: Response, error: Error, context: string): void => {
-  console.error(`Error in ${context}:`, error);
+
   res.status(500).json({
     success: false,
     message: `An unexpected error occurred in ${context}.`,
@@ -69,39 +69,36 @@ const toTitleCase = (str: string | null | undefined): string => {
 
 interface AttendanceLog {
   id: number;
-  employee_id?: string | null;
-  employeeId?: string | null;
-  scan_time?: string | Date | null;
-  scanTime?: string | Date | null;
-  type?: 'IN' | 'OUT' | null;
-  source?: string | null;
-  first_name?: string | null;
-  firstName?: string | null;
-  last_name?: string | null;
-  lastName?: string | null;
-  department?: string | null;
-  duties?: string | null;
-  dtr_status?: string | null;
+  employeeId: string | null;
+  scanTime: string | Date | null;
+  type: 'IN' | 'OUT' | null;
+  source: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  department: string | null;
+  duties: string | null;
+  dtrStatus: string | null;
 }
 
 const mapToAttendanceLogApi = (log: AttendanceLog): AttendanceLogApiResponse => {
-  const employeeId = log.employee_id || log.employeeId || '';
-  const scanTimeRaw = log.scan_time || log.scanTime;
+  const employeeId = log.employeeId || '';
+  const scanTimeRaw = log.scanTime;
   const scanTime = scanTimeRaw ? new Date(scanTimeRaw).toISOString() : '';
   
   return {
     id: log.id,
-    employee_id: employeeId, 
-    scan_time: scanTime,
+    employeeId, 
+    scanTime,
     type: (log.type || 'IN') as 'IN' | 'OUT',
     source: log.source || 'Unknown',
-    first_name: log.first_name || log.firstName || null,
-    last_name: log.last_name || log.lastName || null,
+    firstName: log.firstName || null,
+    lastName: log.lastName || null,
     department: log.department || 'N/A',
-    duties: log.duties || 'No Schedule',
-    dtr_status: log.dtr_status || 'Present'
+    duties: log.duties || 'N/A',
+    dtrStatus: log.dtrStatus || 'N/A'
   };
 };
+
 
 
 
@@ -120,7 +117,7 @@ export const getLogs = async (req: Request, res: Response): Promise<void> => {
   const { query } = validation.data;
   const authReq = req as AuthenticatedRequest;
   const user = authReq.user;
-  const isAdminOrHr = ["admin", "hr", "human resource"].includes(user.role?.toLowerCase());
+  const isAdminOrHr = ["Administrator", "Human Resource"].includes(user.role);
 
   // Extract query parameters
   const { 
@@ -182,17 +179,17 @@ export const getLogs = async (req: Request, res: Response): Promise<void> => {
       status: dailyTimeRecords.status,
       createdAt: dailyTimeRecords.createdAt,
       updatedAt: dailyTimeRecords.updatedAt,
-      first_name: authentication.firstName,
-      last_name: authentication.lastName,
-      middle_name: authentication.middleName,
+      firstName: authentication.firstName,
+      lastName: authentication.lastName,
+      middleName: authentication.middleName,
       suffix: authentication.suffix,
       department: sql<string>`COALESCE(${departments.name}, ${authentication.department}, 'N/A')`,
       duties: sql<string>`(SELECT schedule_title FROM schedules WHERE employee_id = ${dailyTimeRecords.employeeId} ORDER BY updated_at DESC LIMIT 1)`,
-      correction_id: dtrCorrections.id,
-      correction_status: dtrCorrections.status,
-      correction_reason: dtrCorrections.reason,
-      correction_time_in: dtrCorrections.correctedTimeIn,
-      correction_time_out: dtrCorrections.correctedTimeOut,
+      correctionId: dtrCorrections.id,
+      correctionStatus: dtrCorrections.status,
+      correctionReason: dtrCorrections.reason,
+      correctionTimeIn: dtrCorrections.correctedTimeIn,
+      correctionTimeOut: dtrCorrections.correctedTimeOut,
     })
     .from(dailyTimeRecords)
     .leftJoin(authentication, eq(dailyTimeRecords.employeeId, authentication.employeeId))
@@ -243,38 +240,38 @@ export const getLogs = async (req: Request, res: Response): Promise<void> => {
     const formattedLogs: DTRApiResponse[] = logs.map((log) => {
       // Precise Name Formatting: Normal Case (Title Case)
       let fullName = "Unknown Employee";
-      if (log.first_name && log.last_name) {
-          const last = toTitleCase(log.last_name);
-          const first = toTitleCase(log.first_name);
-          const middle = log.middle_name ? ` ${toTitleCase(log.middle_name)}` : "";
+      if (log.firstName && log.lastName) {
+          const last = toTitleCase(log.lastName);
+          const first = toTitleCase(log.firstName);
+          const middle = log.middleName ? ` ${toTitleCase(log.middleName)}` : "";
           const suffix = log.suffix ? ` ${log.suffix}` : ""; // Suffix like Jr. usually kept as provided
           fullName = `${last}, ${first}${middle}${suffix}`;
       }
 
       return {
         id: log.id,
-        employee_id: log.employeeId,
+        employeeId: log.employeeId,
         date: log.date, 
-        time_in: log.timeIn ? formatToManilaDateTime(log.timeIn) : null,
-        time_out: log.timeOut ? formatToManilaDateTime(log.timeOut) : null,
-        late_minutes: log.lateMinutes || 0,
-        undertime_minutes: log.undertimeMinutes || 0,
-        overtime_minutes: log.overtimeMinutes || 0,
+        timeIn: log.timeIn ? formatToManilaDateTime(log.timeIn) : null,
+        timeOut: log.timeOut ? formatToManilaDateTime(log.timeOut) : null,
+        lateMinutes: log.lateMinutes || 0,
+        undertimeMinutes: log.undertimeMinutes || 0,
+        overtimeMinutes: log.overtimeMinutes || 0,
         status: log.status || 'Pending',
-        created_at: log.createdAt ? new Date(log.createdAt).toISOString() : null,
-        updated_at: log.updatedAt ? new Date(log.updatedAt).toISOString() : null,
-        employee_name: fullName,
-        first_name: log.first_name || '',
-        last_name: log.last_name || '',
-        middle_name: log.middle_name || null,
+        createdAt: log.createdAt ? new Date(log.createdAt).toISOString() : null,
+        updatedAt: log.updatedAt ? new Date(log.updatedAt).toISOString() : null,
+        employeeName: fullName,
+        firstName: log.firstName || '',
+        lastName: log.lastName || '',
+        middleName: log.middleName || null,
         suffix: log.suffix || null,
         department: log.department || "N/A",
         duties: log.duties || 'No Schedule',
-        correction_id: log.correction_id ?? null,
-        correction_status: log.correction_status ?? null,
-        correction_reason: log.correction_reason ?? null,
-        correction_time_in: log.correction_time_in ? formatToManilaDateTime(log.correction_time_in) : null,
-        correction_time_out: log.correction_time_out ? formatToManilaDateTime(log.correction_time_out) : null,
+        correctionId: log.correctionId ?? null,
+        correctionStatus: log.correctionStatus ?? null,
+        correctionReason: log.correctionReason ?? null,
+        correctionTimeIn: log.correctionTimeIn ? formatToManilaDateTime(log.correctionTimeIn) : null,
+        correctionTimeOut: log.correctionTimeOut ? formatToManilaDateTime(log.correctionTimeOut) : null,
       };
     });
 
@@ -327,20 +324,20 @@ export const getRecentActivity = async (_req: Request, res: Response): Promise<v
 
       return {
         id: log.id,
-        employee_id: log.employeeId,
+        employeeId: log.employeeId,
         date: log.date,
-        time_in: log.timeIn ? formatToManilaDateTime(log.timeIn) : null,
-        time_out: log.timeOut ? formatToManilaDateTime(log.timeOut) : null,
-        late_minutes: 0, 
-        undertime_minutes: 0,
-        overtime_minutes: 0,
+        timeIn: log.timeIn ? formatToManilaDateTime(log.timeIn) : null,
+        timeOut: log.timeOut ? formatToManilaDateTime(log.timeOut) : null,
+        lateMinutes: 0, 
+        undertimeMinutes: 0,
+        overtimeMinutes: 0,
         status: log.status || 'Pending',
-        created_at: null,
-        updated_at: log.updatedAt || null,
-        employee_name: fullName,
-        first_name: log.firstName || '',
-        last_name: log.lastName || '',
-        middle_name: log.middleName || null,
+        createdAt: null,
+        updatedAt: log.updatedAt || null,
+        employeeName: fullName,
+        firstName: log.firstName || '',
+        lastName: log.lastName || '',
+        middleName: log.middleName || null,
         suffix: log.suffix || null,
         department: log.department || "N/A",
         duties: 'No Schedule' 
@@ -369,7 +366,7 @@ export const getTodayStatus = async (req: Request, res: Response): Promise<void>
   const authReq = req as AuthenticatedRequest;
   const user = authReq.user;
 
-  let employeeId = query.employeeId || user.employeeId;
+  const employeeId = query.employeeId || user.employeeId;
 
   if (!employeeId) {
     res.status(400).json({
@@ -446,15 +443,15 @@ export const getRawLogs = async (req: Request, res: Response): Promise<void> => 
 
     const logs = await db.select({
       id: attendanceLogs.id,
-      employee_id: attendanceLogs.employeeId,
-      scan_time: attendanceLogs.scanTime,
+      employeeId: attendanceLogs.employeeId,
+      scanTime: attendanceLogs.scanTime,
       type: attendanceLogs.type,
       source: attendanceLogs.source,
-      first_name: sql<string>`COALESCE(
+      firstName: sql<string>`COALESCE(
         ${authentication.firstName},
         SUBSTRING_INDEX(${bioEnrolledUsers.fullName}, ' ', 1)
       )`,
-      last_name: sql<string>`COALESCE(
+      lastName: sql<string>`COALESCE(
         ${authentication.lastName},
         CASE WHEN LOCATE(' ', ${bioEnrolledUsers.fullName}) > 0
           THEN SUBSTRING(${bioEnrolledUsers.fullName}, LOCATE(' ', ${bioEnrolledUsers.fullName}) + 1)
@@ -463,7 +460,7 @@ export const getRawLogs = async (req: Request, res: Response): Promise<void> => 
       )`,
       department: sql<string>`COALESCE(${authentication.department}, ${bioEnrolledUsers.department}, 'N/A')`,
       duties: sql<string>`COALESCE((SELECT schedule_title FROM schedules WHERE employee_id = ${attendanceLogs.employeeId} ORDER BY updated_at DESC LIMIT 1), 'No Schedule')`,
-      dtr_status: sql<string>`COALESCE((SELECT status FROM daily_time_records WHERE employee_id = ${attendanceLogs.employeeId} AND date = DATE(${attendanceLogs.scanTime}) LIMIT 1), 'Present')`
+      dtrStatus: sql<string>`COALESCE((SELECT status FROM daily_time_records WHERE employee_id = ${attendanceLogs.employeeId} AND date = DATE(${attendanceLogs.scanTime}) LIMIT 1), 'Present')`
     })
     .from(attendanceLogs)
     .leftJoin(authentication, eq(attendanceLogs.employeeId, authentication.employeeId))
@@ -473,6 +470,7 @@ export const getRawLogs = async (req: Request, res: Response): Promise<void> => 
     .limit(Number(limit));
 
     const formattedLogs = logs.map(mapToAttendanceLogApi);
+
 
     res.status(200).json({ success: true, data: formattedLogs });
   } catch (err) {
@@ -503,8 +501,8 @@ export const getDashboardStats = async (_req: Request, res: Response): Promise<v
       eq(authentication.employeeId, schedules.employeeId),
       eq(schedules.dayOfWeek, dayName)
     ))
-    .where(ne(authentication.role, 'admin'))
     .orderBy(desc(authentication.dateHired));
+
 
     const dtrRecords = await db.select({
       employeeId: dailyTimeRecords.employeeId,
@@ -520,7 +518,7 @@ export const getDashboardStats = async (_req: Request, res: Response): Promise<v
     })
     .from(dailyTimeRecords)
     .leftJoin(authentication, eq(dailyTimeRecords.employeeId, authentication.employeeId))
-    .leftJoin(bioEnrolledUsers, sql`${dailyTimeRecords.employeeId} = CAST(${bioEnrolledUsers.employeeId} AS CHAR)`)
+    .leftJoin(bioEnrolledUsers, sql`${dailyTimeRecords.employeeId} = CAST(${bioEnrolledUsers.employeeId} AS CHAR) COLLATE utf8mb4_0900_ai_ci`)
     .where(eq(dailyTimeRecords.date, todayStr));
 
     const leaves = await db.select({
@@ -542,18 +540,21 @@ export const getDashboardStats = async (_req: Request, res: Response): Promise<v
 
     const hiredApplicants = await db.select({
       id: recruitmentApplicants.id,
-      firstName: recruitmentApplicants.first_name,
-      lastName: recruitmentApplicants.last_name,
+      firstName: recruitmentApplicants.firstName,
+      lastName: recruitmentApplicants.lastName,
       email: recruitmentApplicants.email,
-      createdAt: recruitmentApplicants.created_at,
-      hiredDate: recruitmentApplicants.hired_date,
+      createdAt: recruitmentApplicants.createdAt,
+      hiredDate: recruitmentApplicants.hiredDate,
       jobTitle: recruitmentJobs.title,
       departmentName: recruitmentJobs.department
     })
     .from(recruitmentApplicants)
-    .leftJoin(recruitmentJobs, eq(recruitmentApplicants.job_id, recruitmentJobs.id))
+    .leftJoin(recruitmentJobs, eq(recruitmentApplicants.jobId, recruitmentJobs.id))
     .where(eq(recruitmentApplicants.stage, 'Hired'))
-    .orderBy(desc(recruitmentApplicants.hired_date), desc(recruitmentApplicants.created_at));
+    .orderBy(desc(recruitmentApplicants.hiredDate), desc(recruitmentApplicants.createdAt));
+
+    const enrolledBio = await db.select({ employeeId: bioEnrolledUsers.employeeId }).from(bioEnrolledUsers);
+    const enrolledSet = new Set(enrolledBio.map(b => String(b.employeeId)));
 
     interface StatusRecord {
       id: string;
@@ -604,32 +605,17 @@ export const getDashboardStats = async (_req: Request, res: Response): Promise<v
           minutesLate: record.lateMinutes || 0,
         };
 
-        if (record.status === 'Late') {
+        if (record.status === 'Late' || record.status === 'Late/Undertime') {
             lateList.push(statusItem);
             presentList.push(statusItem);
-        } else if (record.status === 'Present' || record.status === 'Undertime' || record.status === 'Late/Undertime') {
+        } else if (record.status === 'Present' || record.status === 'Undertime') {
             presentList.push(statusItem);
         }
     });
 
-    allEmployees.forEach((emp) => {
-      const employeeId = emp.employeeId;
-      if (processedIds.has(employeeId)) return;
-      if (onLeaveEmployeeIds.has(employeeId)) return;
-
-      const name = `${toTitleCase(emp.firstName)} ${toTitleCase(emp.lastName)}`;
-
-      if (emp.startTime) {
-        absentList.push({
-          id: employeeId,
-          name,
-          department: emp.department || "-",
-          status: "Absent",
-          reason: "No clock-in recorded",
-          date: todayStr,
-        });
-      }
-    });
+    // User specifically requested NOT to synthesize Absent records without Time In/Out
+    // Removed allEmployees loop that adds to absentList.
+    // Dashboard will only show records with actual physical clock-ins or approved leaves.
 
     res.status(200).json({
       success: true,
@@ -646,11 +632,11 @@ export const getDashboardStats = async (_req: Request, res: Response): Promise<v
           absent: absentList,
           late: lateList,
           hired: hiredApplicants.map((a) => ({
-            id: `EMP-${a.id}`,
+            id: String(a.id),
             name: `${toTitleCase(a.firstName)} ${toTitleCase(a.lastName)}`,
             department: a.departmentName || "-",
             position: a.jobTitle || "-",
-            date_hired: formatDate(a.hiredDate || a.createdAt),
+            dateHired: formatDate(a.hiredDate || a.createdAt),
           })),
           onLeave: leaves.map((l) => ({
             id: l.employeeId,
@@ -667,3 +653,5 @@ export const getDashboardStats = async (_req: Request, res: Response): Promise<v
     handleError(res, err as Error, "getDashboardStats");
   }
 };
+
+

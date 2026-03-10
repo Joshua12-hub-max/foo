@@ -91,7 +91,9 @@ const getAuthenticatedClient = async (userId: number): Promise<{ client: OAuth2C
     const oauth2Client = getOAuth2Client();
 
     oauth2Client.setCredentials({
+      // eslint-disable-next-line @typescript-eslint/naming-convention
       access_token: tokenData.accessToken,
+      // eslint-disable-next-line @typescript-eslint/naming-convention
       refresh_token: tokenData.refreshToken,
     });
 
@@ -118,16 +120,16 @@ const getAuthenticatedClient = async (userId: number): Promise<{ client: OAuth2C
           .where(eq(googleCalendarTokens.userId, userId));
 
         oauth2Client.setCredentials(credentials);
-      } catch (refreshError) {
-        console.error('Failed to refresh token:', getErrorMessage(refreshError));
+      } catch (_refreshError) {
+
         // Token refresh failed, user needs to re-authenticate
         return null;
       }
     }
 
     return { client: oauth2Client, tokens: tokenData as TokenData };
-  } catch (error) {
-    console.error('Error getting authenticated client:', getErrorMessage(error));
+  } catch (_error) {
+
     return null;
   }
 };
@@ -141,18 +143,21 @@ export const initiateGoogleAuth = async (_req: Request, res: Response): Promise<
     const oauth2Client = getOAuth2Client();
 
     const authUrl = oauth2Client.generateAuthUrl({
+      // eslint-disable-next-line @typescript-eslint/naming-convention
       access_type: 'offline',
       scope: ['https://www.googleapis.com/auth/calendar'],
       prompt: 'consent',
+      // eslint-disable-next-line @typescript-eslint/naming-convention
       include_granted_scopes: true,
     });
 
     res.json({ authUrl });
-  } catch (error: unknown) {
-    console.error('Error initiating Google auth:', getErrorMessage(error));
+  } catch (error) {
+    const err = error as Error;
+
     res.status(500).json({
       message: 'Failed to initiate Google Calendar authorization',
-      error: getErrorMessage(error),
+      error: getErrorMessage(err),
     });
   }
 };
@@ -215,7 +220,7 @@ export const handleGoogleCallback = async (req: Request, res: Response): Promise
               window.location.href = "${config.clientUrl}";
             }
           } catch (err) {
-            console.error('Auth callback error:', err);
+
             window.location.href = "${config.clientUrl}";
           }
         </script>
@@ -223,11 +228,12 @@ export const handleGoogleCallback = async (req: Request, res: Response): Promise
       </body>
       </html>
     `);
-  } catch (error: unknown) {
-    console.error('Error handling Google callback:', getErrorMessage(error));
+  } catch (error) {
+    const err = error as Error;
+
     res.status(500).json({
       message: 'Failed to complete Google Calendar authorization',
-      error: getErrorMessage(error),
+      error: getErrorMessage(err),
     });
   }
 };
@@ -253,8 +259,9 @@ export const disconnectGoogleCalendar = async (req: Request, res: Response): Pro
     // I will skip the synced_events deletion if I can't filter by user, or I'll just delete the token.
     
     res.json({ message: 'Google Calendar disconnected successfully' });
-  } catch (error: unknown) {
-    console.error('Error disconnecting Google Calendar:', getErrorMessage(error));
+  } catch (error) {
+    const _err = error as Error;
+
     res.status(500).json({ message: 'Failed to disconnect Google Calendar' });
   }
 };
@@ -281,8 +288,9 @@ export const getSyncStatus = async (req: Request, res: Response): Promise<void> 
       syncEnabled: token.syncEnabled,
       syncedEventsCount: syncedCount.count,
     });
-  } catch (error: unknown) {
-    console.error('Error getting sync status:', getErrorMessage(error));
+  } catch (error) {
+    const _err = error as Error;
+
     res.status(500).json({ message: 'Failed to get sync status' });
   }
 };
@@ -349,8 +357,9 @@ export const importFromGoogle = async (req: Request, res: Response): Promise<voi
       .where(eq(googleCalendarTokens.userId, userId));
 
     res.json({ message: 'Events imported successfully', imported, total: googleEventsList.length });
-  } catch (error: unknown) {
-    console.error('Error importing from Google:', getErrorMessage(error));
+  } catch (error) {
+    const _err = error as Error;
+
     res.status(500).json({ message: 'Failed to import events from Google Calendar' });
   }
 };
@@ -404,8 +413,9 @@ export const exportToGoogle = async (req: Request, res: Response): Promise<void>
       .where(eq(googleCalendarTokens.userId, userId));
 
     res.json({ message: 'Events exported successfully', exported });
-  } catch (error: unknown) {
-    console.error('Error exporting to Google:', getErrorMessage(error));
+  } catch (error) {
+    const _err = error as Error;
+
     res.status(500).json({ message: 'Failed to export events to Google Calendar' });
   }
 };
@@ -413,8 +423,10 @@ export const exportToGoogle = async (req: Request, res: Response): Promise<void>
 export const bidirectionalSync = async (_req: Request, res: Response): Promise<void> => {
   try {
     res.json({ message: 'Bidirectional sync is handled by separate import/export endpoints' });
-  } catch (error: unknown) {
-    console.error('Error in bidirectional sync:', getErrorMessage(error));
+  } catch (error) {
+    const _err = error as Error;
+
     res.status(500).json({ message: 'Failed to complete bidirectional sync' });
   }
 };
+

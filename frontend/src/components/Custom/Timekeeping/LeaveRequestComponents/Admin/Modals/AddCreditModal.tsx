@@ -8,7 +8,7 @@ interface AddCreditModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: AddCreditInput) => Promise<void>;
-  employees: { id?: string | number; employee_id?: string | number; employeeId?: string | number; first_name?: string; firstName?: string; last_name?: string; lastName?: string; }[];
+  employees: { id?: string | number; employeeId?: string | number; employeeId?: string | number; firstName?: string; firstName?: string; lastName?: string; lastName?: string; }[];
   isLoadingEmployees: boolean;
   isSubmitting: boolean;
 }
@@ -76,14 +76,14 @@ const AddCreditModal = ({ isOpen, onClose, onSubmit, employees, isLoadingEmploye
               </div>
             ) : (
               <select
-                {...register('employee_id')}
-                className={`w-full border ${errors.employee_id ? 'border-red-300' : 'border-gray-200'} rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-600/20 focus:border-gray-600 outline-none transition-all`}
+                {...register('employeeId')}
+                className={`w-full border ${errors.employeeId ? 'border-red-300' : 'border-gray-200'} rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-600/20 focus:border-gray-600 outline-none transition-all`}
               >
                 <option value="">Select an employee...</option>
                 {employees.map(emp => {
-                  const empId = emp.employeeId || emp.employee_id || emp.id;
-                  const firstName = emp.firstName || emp.first_name || '';
-                  const lastName = emp.lastName || emp.last_name || '';
+                  const empId = emp.employeeId || emp.employeeId || emp.id;
+                  const firstName = emp.firstName || emp.firstName || '';
+                  const lastName = emp.lastName || emp.lastName || '';
                   return (
                     <option key={empId} value={empId}>
                       {formatFullName(lastName, firstName)} ({empId})
@@ -93,8 +93,8 @@ const AddCreditModal = ({ isOpen, onClose, onSubmit, employees, isLoadingEmploye
 
               </select>
             )}
-            {errors.employee_id && (
-              <p className="mt-1 text-xs text-red-500 font-medium">{errors.employee_id.message}</p>
+            {errors.employeeId && (
+              <p className="mt-1 text-xs text-red-500 font-medium">{errors.employeeId.message}</p>
             )}
           </div>
 

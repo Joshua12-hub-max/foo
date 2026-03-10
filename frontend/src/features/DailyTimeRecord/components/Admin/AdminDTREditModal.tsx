@@ -6,11 +6,11 @@ import { dtrEditSchema, DtrEditSchema } from '@/schemas/dtr';
 import { DTRRecord } from '../../Utils/adminDTRUtils';
 
 export interface DTRUpdatePayload {
-  time_in: string | null;
-  time_out: string | null;
+  timeIn: string | null;
+  timeOut: string | null;
   status: string;
-  late_minutes: number;
-  undertime_minutes: number;
+  lateMinutes: number;
+  undertimeMinutes: number;
 }
 
 interface AdminDTREditModalProps {
@@ -90,11 +90,11 @@ export const AdminDTREditModal: React.FC<AdminDTREditModalProps> = ({
       }
 
       await onSave(record.id, {
-        time_in: timeInISO,
-        time_out: timeOutISO,
+        timeIn: timeInISO,
+        timeOut: timeOutISO,
         status: data.status,
-        late_minutes: data.late ?? 0,
-        undertime_minutes: data.undertime ?? 0
+        lateMinutes: data.late ?? 0,
+        undertimeMinutes: data.undertime ?? 0
       });
       onClose();
     } catch (error) {

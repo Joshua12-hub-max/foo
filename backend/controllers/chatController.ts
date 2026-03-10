@@ -11,7 +11,7 @@ const MAX_MESSAGE_LENGTH = 2000;
 const MAX_NAME_LENGTH = 100;
 
 // Valid sender types for strict type checking
-const VALID_SENDER_TYPES = ['Applicant', 'Admin'] as const;
+const VALID_SENDER_TYPES = ['Applicant', 'Administrator'] as const;
 type SenderType = typeof VALID_SENDER_TYPES[number];
 
 const isSenderType = (value: string): value is SenderType => {
@@ -25,7 +25,7 @@ const isSenderType = (value: string): value is SenderType => {
  */
 export const startConversation = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { name, email } = req.body;
+    const { name, email } = req.body as { name: string; email: string };
 
     if (!name || !email) {
       res.status(400).json({ success: false, message: 'Name and email are required' });
@@ -73,11 +73,9 @@ export const startConversation = async (req: Request, res: Response): Promise<vo
 
     res.status(201).json({ 
       success: true, 
-      conversation: { id: result.insertId, applicant_name: sanitizedName, applicant_email: email } 
+      conversation: { id: result.insertId, applicantName: sanitizedName, applicantEmail: email } 
     });
-  } catch (error) {
-    const err = error instanceof Error ? error : new Error('Unknown error');
-    console.error('Start Conversation Error:', err.message);
+  } catch (_error) {
     res.status(500).json({ success: false, message: 'Failed to start chat' });
   }
 };
@@ -89,17 +87,17 @@ export const startConversation = async (req: Request, res: Response): Promise<vo
  */
 export const sendMessage = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { conversation_id, message, sender_type } = req.body;
+    const { conversationId, message, senderType } = req.body as { conversationId: string | number; message: string; senderType: string };
     const authReq = req as AuthenticatedRequest;
 
-    if (!conversation_id || !message || !sender_type) {
+    if (!conversationId || !message || !senderType) {
       res.status(400).json({ success: false, message: 'Missing parameters' });
       return;
     }
 
     // Anti-Spam: Validate sender type strictly (no `as any`)
-    if (typeof sender_type !== 'string' || !isSenderType(sender_type)) {
-      res.status(400).json({ success: false, message: 'Invalid sender type. Must be "Applicant" or "Admin".' });
+    if (typeof senderType !== 'string' || !isSenderType(senderType)) {
+      res.status(400).json({ success: false, message: 'Invalid sender type. Must be "Applicant" or "Administrator".' });
       return;
     }
 
@@ -118,12 +116,12 @@ export const sendMessage = async (req: Request, res: Response): Promise<void> =>
     // Anti-Spam: Sanitize message content
     const sanitizedMessage = sanitizeInput(message);
 
-    const sender_id = sender_type === 'Admin' ? authReq.user?.id : null;
+    const senderId = senderType === 'Administrator' ? authReq.user?.id : null;
 
     const [result] = await db.insert(chatMessages).values({
-      conversationId: Number(conversation_id),
-      senderType: sender_type,
-      senderId: sender_id,
+      conversationId: Number(conversationId),
+      senderType: senderType,
+      senderId: senderId,
       message: sanitizedMessage,
       isRead: false
     });
@@ -131,12 +129,10 @@ export const sendMessage = async (req: Request, res: Response): Promise<void> =>
     // Update conversation's updated_at
     await db.update(chatConversations)
       .set({ updatedAt: new Date().toISOString() })
-      .where(eq(chatConversations.id, Number(conversation_id)));
+      .where(eq(chatConversations.id, Number(conversationId)));
 
-    res.status(201).json({ success: true, message_id: result.insertId });
-  } catch (error) {
-    const err = error instanceof Error ? error : new Error('Unknown error');
-    console.error('Send Message Error:', err.message);
+    res.status(201).json({ success: true, messageId: result.insertId });
+  } catch (_error) {
     res.status(500).json({ success: false, message: 'Failed to send message' });
   }
 };
@@ -148,28 +144,25 @@ export const sendMessage = async (req: Request, res: Response): Promise<void> =>
 export const getMessages = async (req: Request, res: Response): Promise<void> => {
   try {
     const { conversationId } = req.params;
-    const { mark_read, reader } = req.query;
+    const { markRead, reader } = req.query;
 
     const messages = await db.select()
       .from(chatMessages)
       .where(eq(chatMessages.conversationId, Number(conversationId)))
       .orderBy(asc(chatMessages.createdAt));
 
-    if (mark_read === 'true' && typeof reader === 'string' && isSenderType(reader)) {
-        const sender_type_to_mark: SenderType = reader === 'Admin' ? 'Applicant' : 'Admin';
+    if (markRead === 'true' && typeof reader === 'string' && isSenderType(reader)) {
+        const senderTypeToMark: SenderType = reader === 'Administrator' ? 'Applicant' : 'Administrator';
         await db.update(chatMessages)
           .set({ isRead: true })
           .where(and(
             eq(chatMessages.conversationId, Number(conversationId)),
-            eq(chatMessages.senderType, sender_type_to_mark)
+            eq(chatMessages.senderType, senderTypeToMark)
           ));
     }
 
     res.json({ success: true, messages });
-  } catch (error) {
-    const err = error instanceof Error ? error : new Error('Unknown error');
-    console.error('Get Messages Error:', err.message);
-    res.status(500).json({ success: false, message: 'Failed to fetch messages' });
+  } catch (_error) {res.status(500).json({ success: false, message: 'Failed to fetch messages' });
   }
 };
 
@@ -194,10 +187,7 @@ export const getActiveConversations = async (_req: Request, res: Response): Prom
     .orderBy(desc(chatConversations.updatedAt));
 
     res.json({ success: true, conversations });
-  } catch (error) {
-    const err = error instanceof Error ? error : new Error('Unknown error');
-    console.error('Get Active Conversations Error:', err.message);
-    res.status(500).json({ success: false, message: 'Failed to fetch conversations' });
+  } catch (_error) {res.status(500).json({ success: false, message: 'Failed to fetch conversations' });
   }
 };
 
@@ -212,9 +202,8 @@ export const closeConversation = async (req: Request, res: Response): Promise<vo
       .set({ status: 'Closed' })
       .where(eq(chatConversations.id, Number(id)));
     res.json({ success: true, message: 'Conversation closed' });
-  } catch (error) {
-    const err = error instanceof Error ? error : new Error('Unknown error');
-    console.error('Close Conversation Error:', err.message);
-    res.status(500).json({ success: false, message: 'Failed to close conversation' });
+  } catch (_error) {res.status(500).json({ success: false, message: 'Failed to close conversation' });
   }
 };
+
+

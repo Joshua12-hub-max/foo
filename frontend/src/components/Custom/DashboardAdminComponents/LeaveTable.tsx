@@ -2,6 +2,19 @@ import { useState, useMemo, useEffect } from 'react';
 import { Search, X, Loader2, Calendar } from 'lucide-react';
 import { leaveApi } from '../../../api/leaveApi';
 
+interface LeaveRequest {
+  id: number;
+  employeeId: string;
+  name: string;
+  department: string;
+  leaveType: string;
+  startDate: string;
+  endDate: string;
+  startDateRaw: string;
+  endDateRaw: string;
+  status: string;
+}
+
 interface LeaveTableProps {
   onClose: () => void;
 }
@@ -9,7 +22,7 @@ interface LeaveTableProps {
 const ITEMS_PER_PAGE = 10;
 
 export default function LeaveTable({ onClose }: LeaveTableProps) {
-  const [leaveRequests, setLeaveRequests] = useState<any[]>([]);
+  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -21,32 +34,34 @@ export default function LeaveTable({ onClose }: LeaveTableProps) {
         setLoading(true);
         setError(null);
         const response = await leaveApi.getAllLeaves();
-        // Handle both old (leaves) and new (applications) response formats
-        const resData = response.data as { applications?: unknown[]; leaves?: unknown[] };
-        const leavesData = resData?.applications || resData?.leaves || [];
+        // Rely on axios toCamelCase interceptor for property naming
+        const data = response.data as { success: boolean; applications?: any[]; leaves?: any[] };
+        const leavesData = data.applications || data.leaves || [];
+        
         if (leavesData.length > 0) {
           const today = new Date();
           today.setHours(0, 0, 0, 0);
           
-          const approvedLeaves = leavesData
+          const approvedLeaves: LeaveRequest[] = leavesData
             .filter((leave: any) => {
               if (leave.status !== 'Approved') return false;
-              const startDate = new Date(leave.start_date);
-              const endDate = new Date(leave.end_date);
+              const startDate = new Date(leave.startDate || leave.startDate);
+              const endDate = new Date(leave.endDate || leave.endDate);
               startDate.setHours(0, 0, 0, 0);
               endDate.setHours(23, 59, 59, 999);
               return today >= startDate && today <= endDate;
             })
             .map((leave: any) => ({
               id: leave.id,
-              employeeId: leave.employee_id,
-              name: `${leave.first_name || ''} ${leave.last_name || ''}`.trim() || 'Unknown',
+              employeeId: leave.employeeId || leave.employeeId,
+              name: `${leave.firstName || leave.firstName || ''} ${leave.lastName || leave.lastName || ''}`.trim() || 'Unknown',
               department: leave.department || 'N/A',
-              leaveType: leave.leave_type,
-              startDate: new Date(leave.start_date).toLocaleDateString(),
-              endDate: new Date(leave.end_date).toLocaleDateString(),
-              startDateRaw: leave.start_date,
-              endDateRaw: leave.end_date
+              leaveType: leave.leaveType || leave.leaveType,
+              startDate: new Date(leave.startDate || leave.startDate).toLocaleDateString(),
+              endDate: new Date(leave.endDate || leave.endDate).toLocaleDateString(),
+              startDateRaw: leave.startDate || leave.startDate,
+              endDateRaw: leave.endDate || leave.endDate,
+              status: leave.status
             }));
           setLeaveRequests(approvedLeaves);
         }

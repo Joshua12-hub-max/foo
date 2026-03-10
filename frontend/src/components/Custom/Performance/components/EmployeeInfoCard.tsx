@@ -4,16 +4,16 @@ import { AttendanceDetails, ReviewCycle } from '@/types/performance';
 import { Employee } from '@/types';
 
 interface PerformanceFormData {
-  employee_id?: string | number;
-  review_cycle_id?: string | number;
+  employeeId?: string | number;
+  reviewCycleId?: string | number;
   status?: string;
-  employee_first_name?: string;
-  employee_last_name?: string;
-  employee_job_title?: string;
-  employee_position_title?: string;
-  employee_department?: string;
-  attendance_details?: AttendanceDetails | null;
-  violation_count?: number;
+  employeeFirstName?: string;
+  employeeLastName?: string;
+  employeeJobTitle?: string;
+  employeePositionTitle?: string;
+  employeeDepartment?: string;
+  attendanceDetails?: AttendanceDetails | null;
+  violationCount?: number;
 }
 
 interface EmployeeInfoCardProps {
@@ -33,8 +33,8 @@ const EmployeeInfoCard: React.FC<EmployeeInfoCardProps> = ({
   onEmployeeChange,
   onCycleChange
 }) => {
-  const selectedEmployee = employees.find(e => e.id == formData.employee_id);
-  const selectedCycle = cycles.find(c => c.id == formData.review_cycle_id);
+  const selectedEmployee = employees.find(e => e.id == formData.employeeId);
+  const selectedCycle = cycles.find(c => c.id == formData.reviewCycleId);
 
   return (
     <div className="bg-white rounded-sm shadow-sm border border-gray-200 overflow-hidden">
@@ -53,29 +53,29 @@ const EmployeeInfoCard: React.FC<EmployeeInfoCardProps> = ({
           <label className="text-sm font-medium text-gray-500">Employee Name</label>
           {isNew ? (
             <select
-              value={formData.employee_id}
+              value={formData.employeeId}
               onChange={(e) => onEmployeeChange(e.target.value)}
               className="w-full p-2 border border-gray-300 rounded bg-white focus:ring-2 focus:ring-gray-300 outline-none text-sm"
             >
               <option value="">-- Select Employee --</option>
               {employees.map(emp => (
                 <option key={emp.id} value={emp.id}>
-                  {emp.first_name} {emp.last_name}
+                  {emp.firstName} {emp.lastName}
                 </option>
               ))}
             </select>
           ) : (
             <div className="font-bold text-gray-800 text-lg">
-              {formData.employee_first_name} {formData.employee_last_name}
+              {formData.employeeFirstName} {formData.employeeLastName}
             </div>
-          )}
+          )}  
         </div>
 
         {/* Position */}
         <div className="space-y-1">
           <label className="text-sm font-medium text-gray-500">Position / Title</label>
           <div className="font-medium text-gray-700">
-            {formData.employee_position_title || formData.employee_job_title || selectedEmployee?.position_title || selectedEmployee?.job_title || 'N/A'}
+            {formData.employeePositionTitle || formData.employeeJobTitle || selectedEmployee?.positionTitle || selectedEmployee?.jobTitle || 'N/A'}
           </div>
         </div>
 
@@ -84,9 +84,9 @@ const EmployeeInfoCard: React.FC<EmployeeInfoCardProps> = ({
           <label className="text-sm font-medium text-gray-500">Department / Office</label>
           <div 
             className="font-medium text-gray-700 whitespace-nowrap overflow-hidden text-ellipsis"
-            title={formData.employee_department || selectedEmployee?.department || 'N/A'}
+            title={formData.employeeDepartment || selectedEmployee?.department || 'N/A'}
           >
-            {formData.employee_department || selectedEmployee?.department || 'N/A'}
+            {formData.employeeDepartment || selectedEmployee?.department || 'N/A'}
           </div>
         </div>
 
@@ -95,7 +95,7 @@ const EmployeeInfoCard: React.FC<EmployeeInfoCardProps> = ({
           <label className="text-sm font-medium text-gray-500">Review Period</label>
           {isNew ? (
             <select
-              value={formData.review_cycle_id}
+              value={formData.reviewCycleId}
               onChange={(e) => onCycleChange(e.target.value)}
               className="w-full p-2 border border-gray-300 rounded bg-white focus:ring-2 focus:ring-gray-300 outline-none text-sm"
             >
@@ -123,7 +123,7 @@ const EmployeeInfoCard: React.FC<EmployeeInfoCardProps> = ({
               </div>
               <div className="flex items-baseline gap-2">
                 <span className="text-xl font-black text-gray-800">
-                  {formData.attendance_details?.ratingDescription || 'Pending'}
+                  {formData.attendanceDetails?.ratingDescription || 'Pending'}
                 </span>
               </div>
             </div>
@@ -134,9 +134,9 @@ const EmployeeInfoCard: React.FC<EmployeeInfoCardProps> = ({
                 <span className="text-xs font-bold uppercase tracking-wider">Tardiness</span>
               </div>
               <div className="text-sm font-bold text-gray-700">
-                {formData.attendance_details?.totalLates || 0} Instances 
+                {formData.attendanceDetails?.totalLates || 0} Instances 
                 <span className="text-gray-400 font-normal ml-1">
-                  ({formData.attendance_details?.totalLateMinutes || 0} mins)
+                  ({formData.attendanceDetails?.totalLateMinutes || 0} mins)
                 </span>
               </div>
             </div>
@@ -147,7 +147,7 @@ const EmployeeInfoCard: React.FC<EmployeeInfoCardProps> = ({
                 <span className="text-xs font-bold uppercase tracking-wider">Absences</span>
               </div>
               <div className="text-sm font-bold text-gray-700">
-                {formData.attendance_details?.totalAbsences || 0} Unexplained
+                {formData.attendanceDetails?.totalAbsences || 0} Unexplained
               </div>
             </div>
 
@@ -156,8 +156,8 @@ const EmployeeInfoCard: React.FC<EmployeeInfoCardProps> = ({
                 <AlertTriangle size={14} />
                 <span className="text-xs font-bold uppercase tracking-wider">Policy Violations</span>
               </div>
-              <div className={`text-sm font-bold ${formData.violation_count && formData.violation_count > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                {formData.violation_count || 0} Active Violations
+              <div className={`text-sm font-bold ${formData.violationCount && formData.violationCount > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                {formData.violationCount || 0} Active Violations
               </div>
             </div>
           </div>

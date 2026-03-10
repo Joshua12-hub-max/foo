@@ -32,21 +32,21 @@ const DrawerSidebar: React.FC<DrawerSidebarProps> = ({isOpen,onClose,currentDate
      const checkDate = new Date(currentDate);
      checkDate.setHours(0,0,0,0);
 
-     if (a.start_date && a.end_date) {
-         const start = new Date(a.start_date);
-         const end = new Date(a.end_date);
+     if (a.startDate && a.endDate) {
+         const start = new Date(a.startDate);
+         const end = new Date(a.endDate);
          start.setHours(0,0,0,0);
          end.setHours(23,59,59,999);
          return checkDate >= start && checkDate <= end;
      } else {
-         const created = new Date(a.created_at ?? '');
+         const created = new Date(a.createdAt ?? '');
          created.setHours(0,0,0,0);
          return created.getTime() === checkDate.getTime();
      }
   }).map(a => {
       let time = '09:00'; // Default time
-      if (a.start_time) {
-          time = a.start_time;
+      if (a.startTime) {
+          time = a.startTime;
       }
             let color = 'bg-gray-200 border-gray-300 text-gray-700';
        if (a.priority === 'high') color = 'bg-gray-200 border-gray-300 text-gray-700';

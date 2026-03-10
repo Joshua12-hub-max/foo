@@ -3,35 +3,15 @@ import { AxiosResponse } from 'axios';
 
 export const notificationApi = {
     getNotifications: async (params: Record<string, unknown>): Promise<AxiosResponse> => {
-        try {
-            const response = await api.get('/notifications', { params });
-            return response;
-        } catch (error) {
-            throw error;
-        }
+        return await api.get('/notifications', { params });
     },
     getUnreadCount: async (): Promise<AxiosResponse> => {
-        try {
-            const response = await api.get('/notifications/unread-count');
-            return response;
-        } catch (error) {
-            throw error;
-        }
+        return await api.get('/notifications/unreadCount');
     },
     markAsRead: async (id: string | number): Promise<AxiosResponse> => {
-        try {
-            const response = await api.put(`/notifications/${id}/read`);
-            return response;
-        } catch (error) {
-            throw error;
-        }
+        return await api.put(`/notifications/${id}/read`);
     },
     deleteNotification: async (id: string | number): Promise<AxiosResponse> => {
-        try {
-            const response = await api.delete(`/notifications/${id}`);
-            return response;
-        } catch (error) {
-            throw error;
-        }
+        return await api.delete(`/notifications/${id}`);
     }
 };

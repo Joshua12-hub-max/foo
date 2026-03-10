@@ -11,7 +11,7 @@ import { eq, and, gt } from 'drizzle-orm';
 export const startForcedLeaveCron = () => {
     // Run at 23:59 every December 31st
     cron.schedule('59 23 31 12 *', async () => {
-        console.log('[CRON] Starting Mandatory Forced Leave Deduction...');
+        console.warn('[CRON] Starting Mandatory Forced Leave Deduction...');
         
         try {
             const year = new Date().getFullYear();
@@ -50,11 +50,11 @@ export const startForcedLeaveCron = () => {
                 });
             }
             
-            console.log(`[CRON] Forced Leave Processed completely for ${eligibleBalances.length} eligible employees.`);
+            console.warn(`[CRON] Forced Leave Processed completely for ${eligibleBalances.length} eligible employees.`);
         } catch (error) {
             console.error('[CRON] Error executing forced leave deduction:', error);
         }
     });
 
-    console.log('[CRON] Forced Leave auto-deduction job scheduled (Dec 31, 23:59).');
+    console.warn('[CRON] Forced Leave auto-deduction job scheduled (Dec 31, 23:59).');
 };

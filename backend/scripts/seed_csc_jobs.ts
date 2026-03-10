@@ -192,11 +192,11 @@ const seedCSCJobs = async () => {
       await db.insert(recruitmentJobs).values({
         title: job.title,
         department: job.department,
-        job_description: job.description,
+        jobDescription: job.description,
         requirements: job.requirements,
-        employment_type: 'Full-time',
+        employmentType: 'Full-time',
         status: 'Open',
-        posted_at: new Date().toISOString().slice(0, 19).replace('T', ' ')
+        postedAt: new Date().toISOString().slice(0, 19).replace('T', ' ')
       });
     }
     console.log(`Successfully seeded ${cscJobs.length} jobs.`);

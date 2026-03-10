@@ -6,7 +6,7 @@ interface EmployeeLeaveTableProps {
 }
 
 interface LeaveCredit {
-  credit_type: string;
+  creditType: string;
   balance: string | number;
 }
 
@@ -68,7 +68,7 @@ const EmployeeLeaveTable: React.FC<EmployeeLeaveTableProps> = ({ onClose }) => {
             <tbody className="divide-y divide-gray-200">
               {credits.map((credit, index) => (
                 <tr key={index} className="hover:bg-gray-50">
-                  <td className="py-2 px-4 capitalize">{credit.credit_type}</td>
+                  <td className="py-2 px-4 capitalize">{credit.creditType}</td>
                   <td className="py-2 px-4 text-right font-medium">{credit.balance}</td>
                 </tr>
               ))}

@@ -158,15 +158,16 @@ export default function Sidebar({ isOpen, navItems, onLogout, onSectionChange }:
       </div>
 
       <div className="p-4 border-t border-green-900/50 rounded-b-lg flex-shrink-0 bg-green-900/30 space-y-3">
-        {['admin', 'human resource'].includes(localStorage.getItem('user-role')?.toLowerCase() || '') && (
+        {['Administrator', 'Human Resource'].includes(localStorage.getItem('user-role') || '') && (
           <Link 
             to="/admin-dashboard"
-            className="w-full flex items-center justify-center gap-2 py-2.5 text-gray-300 font-semibold bg-slate-800/50 hover:bg-slate-800 rounded-md transition-all border border-slate-700 hover:border-slate-600 hover:text-white text-sm"
+            className="w-full flex items-center justify-center gap-2 py-2.5 text-gray-300 font-semibold bg-gray-800/50 hover:bg-gray-800 rounded-md transition-all border border-gray-700 hover:border-gray-600 hover:text-white text-sm"
           >
             <Shield className="w-4 h-4 flex-shrink-0" />
-            {sidebarOpen && (localStorage.getItem('user-role')?.toLowerCase() === 'human resource' ? 'Switch to HR Portal' : 'Switch to Admin Portal')}
+            {sidebarOpen && (localStorage.getItem('user-role') === 'Human Resource' ? 'Switch to HR Portal' : 'Switch to Admin Portal')}
           </Link>
         )}
+
         <button
           onClick={onLogout}
           className="w-full flex items-center justify-center gap-2 py-2.5 text-[#F8F9FA] font-semibold bg-slate-950 hover:bg-slate-950/20 rounded-md transition-all border border-slate-950/10 hover:border-slate-950/20 focus:ring-2 focus:ring-slate-950/20 active:scale-95 text-sm"

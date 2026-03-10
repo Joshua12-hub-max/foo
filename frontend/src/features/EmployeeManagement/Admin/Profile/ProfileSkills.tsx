@@ -6,10 +6,10 @@ import { SkillData } from '@/types';
 
 interface Skill {
   id: number;
-  skill_name: string;
+  skillName: string;
   category: string;
-  proficiency_level: string;
-  years_experience?: string | number;
+  proficiencyLevel: string;
+  yearsExperience?: string | number;
 }
 
 interface Profile {
@@ -23,33 +23,33 @@ interface ProfileSkillsProps {
 }
 
 interface NewSkill {
-  skill_name: string;
+  skillName: string;
   category: string;
-  proficiency_level: string;
-  years_experience: string;
+  proficiencyLevel: string;
+  yearsExperience: string;
 }
 
 const ProfileSkills: React.FC<ProfileSkillsProps> = ({ profile, onUpdate }) => {
   const [isAdding, setIsAdding] = useState(false);
   const [newSkill, setNewSkill] = useState<NewSkill>({
-    skill_name: '',
+    skillName: '',
     category: 'Technical',
-    proficiency_level: 'Intermediate',
-    years_experience: ''
+    proficiencyLevel: 'Intermediate',
+    yearsExperience: ''
   });
 
   const handleAdd = async (e: FormEvent) => {
     e.preventDefault();
     try {
       const payload: SkillData = {
-        skill_name: newSkill.skill_name,
+        skillName: newSkill.skillName,
         category: newSkill.category,
-        proficiency_level: newSkill.proficiency_level,
-        years_experience: newSkill.years_experience ? Number(newSkill.years_experience) : null
+        proficiencyLevel: newSkill.proficiencyLevel,
+        yearsExperience: newSkill.yearsExperience ? Number(newSkill.yearsExperience) : null
       };
       await addEmployeeSkill(profile.id, payload);
       setIsAdding(false);
-      setNewSkill({ skill_name: '', category: 'Technical', proficiency_level: 'Intermediate', years_experience: '' });
+      setNewSkill({ skillName: '', category: 'Technical', proficiencyLevel: 'Intermediate', yearsExperience: '' });
       onUpdate();
     } catch (err) {
       // Error handled silently
@@ -112,8 +112,8 @@ const ProfileSkills: React.FC<ProfileSkillsProps> = ({ profile, onUpdate }) => {
               <input
                 type="text"
                 required
-                value={newSkill.skill_name}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => setNewSkill({...newSkill, skill_name: e.target.value})}
+                value={newSkill.skillName}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => setNewSkill({...newSkill, skillName: e.target.value})}
                 className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-gray-500 outline-none"
                 placeholder="e.g. React.js"
               />
@@ -134,8 +134,8 @@ const ProfileSkills: React.FC<ProfileSkillsProps> = ({ profile, onUpdate }) => {
             <div>
               <label className="block text-[10px] font-black text-gray-400 uppercase mb-1">Proficiency</label>
               <select
-                value={newSkill.proficiency_level}
-                onChange={(e: ChangeEvent<HTMLSelectElement>) => setNewSkill({...newSkill, proficiency_level: e.target.value})}
+                value={newSkill.proficiencyLevel}
+                onChange={(e: ChangeEvent<HTMLSelectElement>) => setNewSkill({...newSkill, proficiencyLevel: e.target.value})}
                 className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-gray-500 outline-none bg-white font-bold"
               >
                 <option value="Beginner">Beginner</option>
@@ -182,21 +182,21 @@ const ProfileSkills: React.FC<ProfileSkillsProps> = ({ profile, onUpdate }) => {
               </button>
             </div>
             
-            <h3 className="text-sm font-bold text-gray-800 uppercase mb-3">{skill.skill_name}</h3>
+            <h3 className="text-sm font-bold text-gray-800 uppercase mb-3">{skill.skillName}</h3>
             
             <div className="space-y-2">
               <div className="flex justify-between text-[10px] font-black uppercase tracking-wider">
-                <span className={getProficiencyColor(skill.proficiency_level).replace('rounded-full', 'rounded')}>
-                  {skill.proficiency_level}
+                <span className={getProficiencyColor(skill.proficiencyLevel).replace('rounded-full', 'rounded')}>
+                  {skill.proficiencyLevel}
                 </span>
-                {skill.years_experience && (
-                  <span className="text-gray-400">{skill.years_experience} years</span>
+                {skill.yearsExperience && (
+                  <span className="text-gray-400">{skill.yearsExperience} years</span>
                 )}
               </div>
               <div className="h-1 w-full bg-gray-100 rounded-full overflow-hidden">
                 <div 
                   className="h-full bg-gray-600 rounded-full"
-                  style={{ width: getProficiencyWidth(skill.proficiency_level) }}
+                  style={{ width: getProficiencyWidth(skill.proficiencyLevel) }}
                 ></div>
               </div>
             </div>

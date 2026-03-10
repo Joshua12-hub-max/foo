@@ -21,9 +21,12 @@ import {
   ResendOTPSchema, 
   ForgotPasswordSchema, 
   ResetPasswordSchema,
-  GoogleLoginSchema
+  GoogleLoginSchema,
+  UpdateProfileSchema,
+  SetupPortalSchema
 } from '../schemas/authSchema.js';
-import { UserRole, EmploymentStatus, Gender, CivilStatus } from '../types/index.js';
+import { UserRole, EmploymentStatus } from '../types/index.js';
+import { sanitizeInput } from '../utils/spamUtils.js';
 
 // Google OAuth Client
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
@@ -37,58 +40,50 @@ const transporter = nodemailer.createTransport({
   }
 });
 
-// interfaces removed, using Drizzle types and schema definitions
+import { InferSelectModel } from 'drizzle-orm';
 
-interface UserData {
-  id: number;
-  email: string;
-  firstName: string | null;
-  middleName: string | null;
-  lastName: string | null;
-  suffix: string | null;
-  role: string;
-  department: string | null;
-  employeeId: string | null;
-  avatarUrl: string | null;
-  jobTitle: string | null;
-  employmentStatus: string | null;
-  twoFactorEnabled: boolean | null;
-  dateHired: string | null;
-  address: string | null;
-  residentialAddress: string | null;
-  permanentAddress: string | null;
-  emergencyContact: string | null;
-  emergencyContactNumber: string | null;
-  educationalBackground: string | null;
+// Define the shape of the user object with relations as returned by findFirst/select
+type UserWithRelations = InferSelectModel<typeof authentication> & {
+  department?: { id: number; name: string } | string | null;
+  plantillaPosition?: { positionTitle: string | null } | null;
+  pdsEducations?: { schoolName: string | null }[] | null;
   duties?: string;
-  loginAttempts?: number | null;
-  lockUntil?: string | null;
-}
+};
 
 /**
  * Strictly maps an internal user/employee object to the Auth API response format.
  * Ensures consistency between /auth/me and /user/ profile data.
  */
-const mapToAuthUser = (user: UserData) => {
-  const parts = [];
+const mapToAuthUser = (user: UserWithRelations) => {
+  const parts: string[] = [];
   if (user.lastName) parts.push(`${user.lastName},`);
   if (user.firstName) parts.push(user.firstName);
-  if (user.middleName) parts.push(`${user.middleName.charAt(0)}.`);
+  if (user.middleName && user.middleName.length > 0) parts.push(`${user.middleName.charAt(0)}.`);
   if (user.suffix) parts.push(user.suffix);
+
+  // Handle department as either a string (from table column) or object (from relation)
+  let departmentName: string | null = null;
+  if (typeof user.department === 'string') {
+    departmentName = user.department;
+  } else if (user.department && typeof user.department === 'object') {
+    const deptObj = user.department as { id: number; name: string };
+    departmentName = deptObj.name;
+  }
 
   return {
     id: user.id,
     email: user.email,
     firstName: user.firstName,
-    middleName: user.middleName,
     lastName: user.lastName,
+    middleName: user.middleName,
     suffix: user.suffix,
     name: parts.join(' ').trim(),
     role: user.role as UserRole,
-    department: user.department,
+    department: departmentName,
+    departmentId: user.departmentId,
     employeeId: user.employeeId,
     avatarUrl: user.avatarUrl,
-    jobTitle: user.jobTitle,
+    jobTitle: user.plantillaPosition?.positionTitle || user.jobTitle || null,
     employmentStatus: user.employmentStatus as EmploymentStatus,
     twoFactorEnabled: !!user.twoFactorEnabled,
     dateHired: user.dateHired,
@@ -97,10 +92,35 @@ const mapToAuthUser = (user: UserData) => {
     permanentAddress: user.permanentAddress,
     emergencyContact: user.emergencyContact,
     emergencyContactNumber: user.emergencyContactNumber,
-    educationalBackground: user.educationalBackground,
-    duties: user.duties || 'No Schedule'
+    educationalBackground: user.pdsEducations?.[0]?.schoolName || user.educationalBackground || null,
+    duties: user.duties || 'No Schedule',
+    dutyType: (user.dutyType as string) || 'Standard',
+    appointmentType: (user.appointmentType as string) || 'Permanent',
+    isVerified: user.isVerified ?? false,
+    profileStatus: user.profileStatus || 'Initial',
+    
+    // Personal Details
+    birthDate: user.birthDate,
+    gender: user.gender,
+    civilStatus: user.civilStatus,
+    nationality: user.nationality,
+    bloodType: user.bloodType,
+    heightM: user.heightM,
+    weightKg: user.weightKg,
+    mobileNo: user.mobileNo,
+    telephoneNo: user.telephoneNo,
+
+    // Government IDs
+    gsisNumber: user.gsisNumber,
+    pagibigNumber: user.pagibigNumber,
+    philhealthNumber: user.philhealthNumber,
+    umidNumber: user.umidNumber,
+    philsysId: user.philsysId,
+    tinNumber: user.tinNumber,
+    agencyEmployeeNo: user.agencyEmployeeNo
   };
 };
+
 
 // ============================================================================
 // Helper Functions
@@ -110,7 +130,7 @@ const mapToAuthUser = (user: UserData) => {
  * Mask email for display (e.g., jo***@email.com)
  */
 const maskEmail = (email: string): string => {
-  return email.replace(/(.{2})(.*)(?=@)/, (_, g1, g2) => g1 + '*'.repeat(g2.length));
+  return email.replace(/(.{2})(.*)(?=@)/, (_: string, g1: string, g2: string) => g1 + '*'.repeat(g2.length));
 };
 
 /**
@@ -120,8 +140,10 @@ const generateOTP = (): string => {
   return crypto.randomInt(100000, 999999).toString();
 };
 
+import { sendEmail } from '../utils/emailUtils.js';
+
 /**
- * Send OTP email
+ * Send OTP email using the secure shared transporter
  */
 const sendOTPEmail = async (
   to: string,
@@ -130,21 +152,25 @@ const sendOTPEmail = async (
   subject: string,
   purpose: string
 ): Promise<void> => {
-
-
-  const mailOptions = {
-    from: process.env.EMAIL_USER,
-    to,
-    subject: `${subject} - NEBR`,
-    html: `
-      <h1>${subject}</h1>
+  const html = `
+    <div style="font-family: sans-serif; padding: 20px; color: #333;">
+      <h1 style="color: #111;">${subject}</h1>
       <p>Hi ${firstName},</p>
       <p>${purpose}</p>
-      <h2 style="font-size: 24px; font-weight: bold; letter-spacing: 5px;">${otp}</h2>
-      <p>This code expires in 10 minutes.</p>
-    `
-  };
-  await transporter.sendMail(mailOptions);
+      <div style="background: #f4f4f4; padding: 15px; border-radius: 8px; text-align: center; margin: 20px 0;">
+        <h2 style="font-size: 32px; font-weight: bold; letter-spacing: 10px; margin: 0; color: #000;">${otp}</h2>
+      </div>
+      <p style="font-size: 12px; color: #666;">This code expires in 10 minutes.</p>
+    </div>
+  `;
+  
+  try {
+    await sendEmail(to, subject, html);
+  } catch (error: unknown) {
+    // Log error but don't crash the request
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error(`[AUTH EMAIL] Failed to send OTP to ${to}:`, msg);
+  }
 };
 
 // ============================================================================
@@ -195,29 +221,26 @@ export const googleLogin = async (req: Request, res: Response): Promise<void> =>
     if (user.employmentStatus === 'Terminated') {
       res.status(403).json({
         success: false,
-        message: 'Access Denied: Your account has been terminated. Please contact HR.',
+        message: 'Access Denied: Your account has been terminated. Please contact Human Resource.',
         data: null
       });
       return;
     }
 
     // BIOMETRIC ENFORCEMENT: Check bio_enrolled_users (C# biometric data)
-    const isCHRMO = (user.department && (
-      user.department.toUpperCase().includes('CHRMO') || 
-      user.department.toUpperCase().includes('HUMAN RESOURCE')
-    )) || (user.employeeId && user.employeeId.toUpperCase().startsWith('CHRMO'));
+    // BIOMETRIC ENFORCEMENT: Check bio_enrolled_users (C# biometric data)
+    const deptName = user.department || '';
+      
+    const isCHRMO = typeof deptName === 'string' && (
+      deptName.toUpperCase().includes('CHRMO') || 
+      deptName.toUpperCase().includes('HUMAN RESOURCE')
+    );
 
-    if (user.role !== 'admin' && !isCHRMO) {
-      // Extract numeric ID from EMP-XXX format OR use raw ID
-      let bioId = 0;
-      if (user.employeeId) {
-        const bioIdMatch = user.employeeId.match(/EMP-(\d+)/);
-        if (bioIdMatch) {
-             bioId = parseInt(bioIdMatch[1], 10);
-        } else {
-             bioId = parseInt(user.employeeId, 10);
-        }
-      }
+
+    if (user.role !== 'Administrator' && user.role !== 'Human Resource') {
+      // Use raw numeric ID (strip any legacy prefix if it exists in DB)
+      const rawId = user.employeeId || '0';
+      const bioId = parseInt(rawId.replace(/\D/g, ''), 10);
 
       const [enrolled] = await db.select().from(bioEnrolledUsers).where(
         and(
@@ -229,11 +252,14 @@ export const googleLogin = async (req: Request, res: Response): Promise<void> =>
       if (!enrolled) {
         res.status(403).json({
           success: false,
-          message: 'Access Denied: You are not yet registered in the biometric system. Please contact your HR Administrator to complete your enrollment.',
+          message: 'Access Denied: You are not yet registered in the biometric system. Please contact your Human Resource or Administrator to complete your enrollment.',
           code: 'BIOMETRIC_NOT_ENROLLED'
         });
         return;
       }
+    } else if (isCHRMO) {
+      /* empty */
+
     }
 
     // Link Google ID if missing
@@ -252,8 +278,8 @@ export const googleLogin = async (req: Request, res: Response): Promise<void> =>
 
     try {
       await sendOTPEmail(user.email, user.firstName || 'User', otp, 'Google Login Verification', 'You are attempting to login via Google.');
-    } catch (emailErr) {
-      console.error('Failed to send Google 2FA OTP:', emailErr);
+    } catch (_emailErr) {
+
       res.status(500).json({ success: false, message: 'Failed to send verification code.' });
       return;
     }
@@ -267,8 +293,8 @@ export const googleLogin = async (req: Request, res: Response): Promise<void> =>
         maskedEmail: maskEmail(user.email)
       }
     });
-  } catch (error) {
-    console.error('Google Auth Error:', error);
+  } catch (_error) {
+
     res.status(500).json({ message: 'Google authentication failed' });
   }
 };
@@ -307,7 +333,7 @@ export const verifyEnrollment = async (req: Request, res: Response): Promise<voi
     if (!enrolled) {
       res.status(404).json({
         success: false,
-        message: 'Employee ID not found in biometric enrollment. Please contact HR to enroll first.',
+        message: 'Employee ID not found in biometric enrollment. Please contact Human Resource to enroll first.',
         code: 'NOT_ENROLLED'
       });
       return;
@@ -335,8 +361,8 @@ export const verifyEnrollment = async (req: Request, res: Response): Promise<voi
         alreadyRegistered: !!existingAccount
       }
     });
-  } catch (error) {
-    console.error('Verify Enrollment Error:', error);
+  } catch (_error) {
+
     res.status(500).json({ success: false, message: 'Failed to verify enrollment.' });
   }
 };
@@ -344,16 +370,17 @@ export const verifyEnrollment = async (req: Request, res: Response): Promise<voi
 export const register = async (req: Request, res: Response): Promise<void> => {
   try {
     const validatedData = RegisterSchema.parse(req.body);
-    const { employee_id, email, password } = validatedData;
-    const file = req.file;
+    const { employeeId, email, password } = validatedData;
+    const file = (req as any).file;
+    const isFinalizingSetup = req.query.mode === 'finalize-setup';
 
     // 1. Parse bio ID from input
     let bioId: number;
-    const empMatch = employee_id?.match(/EMP-(\d+)/i);
-    if (empMatch) {
-      bioId = parseInt(empMatch[1], 10);
+    if (typeof employeeId === 'number') {
+        bioId = employeeId;
     } else {
-      bioId = parseInt(employee_id || '0', 10);
+        const empMatch = String(employeeId || '').match(/EMP-(\d+)/i);
+        bioId = empMatch ? parseInt(empMatch[1], 10) : parseInt(String(employeeId || '0'), 10);
     }
 
     if (isNaN(bioId) || bioId <= 0) {
@@ -362,46 +389,51 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     }
 
     // 2. Verify biometric enrollment — MUST be enrolled to register
-    const [enrolled] = await db.select().from(bioEnrolledUsers).where(
-      and(
+    const enrolled = await db.query.bioEnrolledUsers.findFirst({
+      where: and(
         eq(bioEnrolledUsers.employeeId, bioId),
         eq(bioEnrolledUsers.userStatus, 'active')
       )
-    ).limit(1);
+    });
 
     if (!enrolled) {
+      console.error(`[Register] Biometric record not found for ID: ${bioId}`);
       res.status(403).json({
         success: false,
-        message: 'You are not enrolled in the biometric system. Please contact HR to enroll first.',
-        code: 'NOT_ENROLLED',
-        data: null
+        message: `Biometric record not found for ID ${bioId}. Please scan your fingerprint again.`,
+        code: 'NOT_ENROLLED'
       });
       return;
     }
 
     // 3. Convert to system employee ID format
-    const employeeId = String(bioId);
+    const actualEmployeeId = String(bioId);
 
     // 4. Use provided name if available, otherwise pull from bio_enrolled_users
-    const firstName = validatedData.firstName || enrolled.fullName.split(' ')[0];
-    const lastName = validatedData.lastName || (enrolled.fullName.split(' ').length > 1 ? enrolled.fullName.split(' ').slice(1).join(' ') : '');
-    const department = validatedData.department || enrolled.department || 'Unassigned';
-
+    const firstName = sanitizeInput(validatedData.firstName || enrolled.fullName.split(' ')[0]);
+    const lastName = sanitizeInput(validatedData.lastName || (enrolled.fullName.split(' ').length > 1 ? enrolled.fullName.split(' ').slice(1).join(' ') : ''));
+    
     // 5. Check if already registered
     const existingUser = await db.query.authentication.findFirst({
       where: or(
-        eq(authentication.employeeId, employeeId),
+        eq(authentication.employeeId, actualEmployeeId),
         eq(authentication.email, email)
       )
     });
 
+    // Auto-detect finalize mode if the matched user is still in 'Initial' setup state
+    // This makes the system resilient if the frontend loses the ?mode=finalize-setup query param
+    const effectiveFinalizingSetup = isFinalizingSetup || (existingUser?.profileStatus === 'Initial');
+
     if (existingUser) {
-      if (existingUser.email === email) {
-        res.status(409).json({ success: false, message: 'Email already exists.', data: null });
+      if (!effectiveFinalizingSetup) {
+        if (existingUser.email === email) {
+          res.status(409).json({ success: false, message: 'Email already exists.', data: null });
+          return;
+        }
+        res.status(409).json({ success: false, message: 'This Employee ID is already registered.', data: null });
         return;
       }
-      res.status(409).json({ success: false, message: 'This Employee ID is already registered.', data: null });
-      return;
     }
 
     // New: Homonym (Duplicate Name) Detection
@@ -409,7 +441,8 @@ export const register = async (req: Request, res: Response): Promise<void> => {
         const nameMatch = await db.query.authentication.findFirst({
             where: and(
                 eq(authentication.firstName, firstName),
-                eq(authentication.lastName, lastName)
+                eq(authentication.lastName, lastName),
+                effectiveFinalizingSetup && existingUser ? sql`${authentication.id} != ${existingUser.id}` : sql`TRUE`
             )
         });
         if (nameMatch) {
@@ -423,7 +456,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     }
 
     // 6. Handle Avatar Upload (or copy from applicant photo)
-    let avatarUrl: string | null = null;
+    let avatarUrl: string | null = existingUser?.avatarUrl || null;
     if (file) {
         avatarUrl = `${process.env.BACKEND_URL || 'http://localhost:5000'}/uploads/avatars/${file.filename}`;
     } else if (validatedData.applicantPhotoPath) {
@@ -440,128 +473,249 @@ export const register = async (req: Request, res: Response): Promise<void> => {
                 fs.copyFileSync(srcPath, destPath);
                 avatarUrl = `${process.env.BACKEND_URL || 'http://localhost:5000'}/uploads/avatars/${destFilename}`;
             }
-        } catch (copyErr) {
-            console.error('Failed to copy applicant photo:', copyErr);
+        } catch (_copyErr) {
+            // Silently fail if photo copy fails
         }
     }
 
-    // 7. Hash password
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
+    // 7. Hash password ONLY IF PROVIDED (allows keeping old password in setup mode)
+    // CRITICAL FIX: Robust protection against browser auto-fill and visual dummy strings
+    let hashedPassword = existingUser?.passwordHash || '';
+    
+    const isDummyPassword = password === "********" || password === "••••••••";
+    const shouldUpdatePassword = password && !isDummyPassword && password.length >= 8;
+
+    if (shouldUpdatePassword) {
+        const salt = await bcrypt.genSalt(10);
+        hashedPassword = await bcrypt.hash(password, salt);
+    } else if (!effectiveFinalizingSetup && !existingUser) {
+        // This is a new user and no valid password was provided (should have been caught by Zod but adding safety)
+        res.status(400).json({ success: false, message: 'A valid password is required for new accounts.' });
+        return;
+    }
 
     // 8. Generate Verification OTP
     const verificationOTP = generateOTP();
 
     // 9. Determine Portal Role & Parse Position
-    let assignedRole: 'admin' | 'hr' | 'employee' = 'employee';
+    let assignedRole: UserRole = 'Employee';
     const rawPos = validatedData.position || '';
     
-    // Extract "Title" from "Title (Item Number)"
     const posMatch = rawPos.match(/^(.*)\s\((.*)\)$/);
     const positionTitle = posMatch ? posMatch[1].trim() : rawPos;
     const itemNumber = posMatch ? posMatch[2].trim() : null;
 
     const posTitleLower: string = positionTitle.toLowerCase();
-    const deptLower: string = (validatedData.department || '').toLowerCase();
+    const department = validatedData.department || enrolled.department || 'Unassigned';
+    const deptLower: string = (department || '').toLowerCase();
 
-    if (deptLower === 'city human resource management office' && posTitleLower.includes('department head')) {
-        assignedRole = 'hr';
-    } else if (posTitleLower.includes('administrative')) {
-        assignedRole = 'admin';
+    if (deptLower.includes('human resource') && posTitleLower.includes('department head')) {
+        assignedRole = 'Human Resource';
+    } else if (posTitleLower.includes('administrative officer')) {
+        assignedRole = 'Administrator';
     }
 
-    // 10. Insert user
-    await db.insert(authentication).values({
+    // Resolve IDs
+    let departmentId: number | null = null;
+    if (department && department !== 'Unassigned') {
+      const existingDept = await db.query.departments.findFirst({
+        where: eq(departments.name, department)
+      });
+      if (existingDept) {
+        departmentId = existingDept.id;
+      }
+    }
+
+    let positionId: number | null = null;
+    if (itemNumber) {
+      const pos = await db.query.plantillaPositions.findFirst({
+        where: eq(plantillaPositions.itemNumber, itemNumber)
+      });
+      if (pos) {
+        positionId = pos.id;
+      }
+    }
+
+    // Fallback for departmentId preservation in finalize-setup
+    if (effectiveFinalizingSetup && !departmentId && existingUser?.departmentId) {
+        departmentId = existingUser.departmentId;
+    }
+
+    const userDataValues: typeof authentication.$inferInsert = {
       firstName,
       lastName,
-      middleName: validatedData.middleName,
-      suffix: validatedData.suffix,
+      middleName: validatedData.middleName ? sanitizeInput(validatedData.middleName) : undefined,
+      suffix: validatedData.suffix ? sanitizeInput(validatedData.suffix) : undefined,
       email,
       role: assignedRole,
-      department,
-      employeeId,
+      department: department, 
+      departmentId,            
+      employeeId: actualEmployeeId,
       passwordHash: hashedPassword,
-      isVerified: false,
-      verificationToken: verificationOTP,
+      isVerified: effectiveFinalizingSetup ? true : false,
+      verificationToken: effectiveFinalizingSetup ? null : (verificationOTP || null),
       avatarUrl,
-      // Work Info
       jobTitle: positionTitle,
       positionTitle: positionTitle,
       itemNumber: itemNumber,
       dateHired: validatedData.applicantHiredDate || new Date().toISOString().split('T')[0],
-      // Personal Info
-      birthDate: validatedData.birthDate,
-      placeOfBirth: validatedData.placeOfBirth,
-      gender: (validatedData.gender || undefined) as Gender | undefined,
-      civilStatus: (validatedData.civilStatus || undefined) as CivilStatus | undefined,
+      birthDate: (validatedData.birthDate && validatedData.birthDate !== "" ? validatedData.birthDate : null),
+      placeOfBirth: (validatedData.placeOfBirth && validatedData.placeOfBirth !== "" ? validatedData.placeOfBirth : null),
+      gender: (validatedData.gender && (validatedData.gender as string) !== "" ? validatedData.gender : null) as 'Male' | 'Female' | null,
+      civilStatus: (validatedData.civilStatus && (validatedData.civilStatus as string) !== "" ? validatedData.civilStatus : null) as 'Single' | 'Married' | 'Widowed' | 'Separated' | 'Annulled' | null,
       nationality: validatedData.nationality || 'Filipino',
-      bloodType: validatedData.bloodType,
-      heightM: validatedData.heightM,
-      weightKg: validatedData.weightKg,
-
-      // Address & Contact
+      bloodType: (validatedData.bloodType && (validatedData.bloodType as string) !== "" ? validatedData.bloodType : null),
+      heightM: (() => {
+        if (!validatedData.heightM || validatedData.heightM === "") return null;
+        let h = parseFloat(validatedData.heightM as string);
+        if (isNaN(h)) return null;
+        if (h > 10) h = h / 100; // e.g. 150cm becomes 1.50m
+        return h.toFixed(2);
+      })(),
+      weightKg: (() => {
+        if (!validatedData.weightKg || validatedData.weightKg === "") return null;
+        let w = parseFloat(validatedData.weightKg as string);
+        if (isNaN(w)) return null;
+        return w.toFixed(2);
+      })(),
       address: validatedData.address || validatedData.residentialAddress || undefined,
       residentialAddress: validatedData.residentialAddress || validatedData.address || undefined,
-      residentialZipCode: validatedData.residentialZipCode,
-      permanentAddress: validatedData.permanentAddress,
-      permanentZipCode: validatedData.permanentZipCode,
-      mobileNo: validatedData.mobileNo,
-      telephoneNo: validatedData.telephoneNo,
-      emergencyContact: validatedData.emergencyContact,
-      emergencyContactNumber: validatedData.emergencyContactNumber,
+      residentialZipCode: validatedData.residentialZipCode || undefined,
+      permanentAddress: validatedData.permanentAddress || undefined,
+      permanentZipCode: validatedData.permanentZipCode || undefined,
+      resHouseBlockLot: validatedData.resHouseBlockLot || undefined,
+      resStreet: validatedData.resStreet || undefined,
+      resSubdivision: validatedData.resSubdivision || undefined,
+      resBarangay: validatedData.resBrgy || validatedData.resBarangay || undefined,
+      resCity: validatedData.resCity || undefined,
+      resProvince: validatedData.resProvince || undefined,
+      permHouseBlockLot: validatedData.permHouseBlockLot || undefined,
+      permStreet: validatedData.permStreet || undefined,
+      permSubdivision: validatedData.permSubdivision || undefined,
+      permBarangay: validatedData.permBrgy || validatedData.permBarangay || undefined,
+      permCity: validatedData.permCity || undefined,
+      permProvince: validatedData.permProvince || undefined,
+      mobileNo: validatedData.mobileNo || undefined,
+      telephoneNo: validatedData.telephoneNo || undefined,
+      emergencyContact: validatedData.emergencyContact || undefined,
+      emergencyContactNumber: validatedData.emergencyContactNumber || undefined,
+      umidNumber: validatedData.umidNumber || undefined,
+      philsysId: validatedData.philsysId || undefined,
+      gsisNumber: validatedData.gsisNumber || undefined,
+      pagibigNumber: validatedData.pagibigNumber || undefined,
+      philhealthNumber: validatedData.philhealthNumber || undefined,
+      tinNumber: validatedData.tinNumber || undefined,
+      agencyEmployeeNo: validatedData.agencyEmployeeNo || undefined,
+      educationalBackground: validatedData.educationalBackground || undefined,
+      schoolName: validatedData.schoolName || undefined,
+      course: validatedData.course || undefined,
+      yearGraduated: validatedData.yearGraduated || undefined,
+      yearsOfExperience: validatedData.yearsOfExperience || undefined,
+      experience: validatedData.experience || undefined,
+      skills: validatedData.skills || undefined,
+      eligibilityType: validatedData.eligibilityType || undefined,
+      eligibilityNumber: validatedData.eligibilityNumber || undefined,
+      eligibilityDate: validatedData.eligibilityDate || undefined,
+      facebookUrl: validatedData.facebookUrl || undefined,
+      linkedinUrl: validatedData.linkedinUrl || undefined,
+      twitterHandle: validatedData.twitterHandle || undefined,
+      dutyType: (validatedData.dutyType || 'Standard') as "Standard" | "Irregular",
+      appointmentType: (validatedData.appointmentType || 'Permanent') as 'Permanent' | 'Contractual' | 'Casual' | 'Job Order' | 'Coterminous' | 'Temporary' | 'Contract of Service' | 'JO' | 'COS',
+      profileStatus: 'Complete' as const,
+      employmentStatus: 'Active' as const, 
+    };
 
-      // Government Identification (Mapping to both sets of columns for compatibility)
-      umidNo: validatedData.umidId,
-      philsysId: validatedData.philsysId,
-      gsisNumber: validatedData.gsisIdNo,
-      gsisIdNo: validatedData.gsisIdNo,
-      pagibigNumber: validatedData.pagibigIdNo,
-      pagibigIdNo: validatedData.pagibigIdNo,
-      philhealthNumber: validatedData.philhealthNo,
-      philhealthNo: validatedData.philhealthNo,
-      tinNumber: validatedData.tinNo,
-      tinNo: validatedData.tinNo,
-      agencyEmployeeNo: validatedData.agencyEmployeeNo,
+    let newUserId: number;
 
-      // Others
-      educationalBackground: validatedData.educationalBackground,
-      schoolName: validatedData.schoolName,
-      course: validatedData.course,
-      yearGraduated: validatedData.yearGraduated,
-      highestEducation: validatedData.highestEducation,
-      yearsOfExperience: validatedData.yearsOfExperience,
-      experience: validatedData.experience,
-      skills: validatedData.skills,
-      eligibilityType: validatedData.eligibilityType,
-      eligibilityNumber: validatedData.eligibilityNumber,
-      eligibilityDate: validatedData.eligibilityDate,
+    if (effectiveFinalizingSetup && existingUser) {
+        // UPDATE EXISTING ADMIN/HR
+        await db.update(authentication).set(userDataValues).where(eq(authentication.id, existingUser.id));
+        newUserId = existingUser.id;
 
-      facebookUrl: validatedData.facebookUrl,
-      linkedinUrl: validatedData.linkedinUrl,
-      twitterHandle: validatedData.twitterHandle,
-      dutyType: validatedData.duties === 'Irregular Duties' ? 'Irregular' : 'Standard',
-    });
+        // Allocate default credits and schedules for the finalized admin
+        await allocateDefaultCredits(actualEmployeeId);
+        
+        const workDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+        const scheduleValues = workDays.map(day => ({
+          employeeId: actualEmployeeId,
+          scheduleTitle: 'Standard Office Hours',
+          dayOfWeek: day,
+          startTime: '08:00:00',
+          endTime: '17:00:00',
+          repeatPattern: 'Weekly',
+          isRestDay: false
+        }));
+        
+        scheduleValues.push({
+          employeeId: actualEmployeeId,
+          scheduleTitle: 'Standard Office Hours',
+          dayOfWeek: 'Saturday',
+          startTime: '08:00:00',
+          endTime: '17:00:00',
+          repeatPattern: 'Weekly',
+          isRestDay: true
+        });
+        scheduleValues.push({
+          employeeId: actualEmployeeId,
+          scheduleTitle: 'Standard Office Hours',
+          dayOfWeek: 'Sunday',
+          startTime: '08:00:00',
+          endTime: '17:00:00',
+          repeatPattern: 'Weekly',
+          isRestDay: true
+        });
 
-    // 10. AUTO-ALLOCATION: Assign default leave credits
-    await allocateDefaultCredits(employeeId);
-
-    // 11. Send Verification Email
-    try {
-      if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-        throw new Error('Email credentials are not configured.');
-      }
-      await sendOTPEmail(email, firstName, verificationOTP, 'Email Verification', 'Thank you for registering. Please use the code below to verify your email address:');
-    } catch (emailErr) {
-      console.error('Failed to send verification email:', emailErr);
+        await db.insert(schedules).values(scheduleValues);
+    } else {
+        // INSERT NEW USER
+        const [insertResult] = await db.insert(authentication).values(userDataValues);
+        newUserId = insertResult.insertId;
+        
+        // Initial leave allocation for brand new users
+        await allocateDefaultCredits(actualEmployeeId);
     }
 
-    res.status(201).json({
+    // Update position status if linked
+    if (positionId) {
+      await db.update(plantillaPositions)
+        .set({ 
+          isVacant: false, 
+          incumbentId: newUserId,
+          filledDate: new Date().toISOString().split('T')[0]
+        })
+        .where(eq(plantillaPositions.id, positionId));
+    }
+
+    // 11. Send Verification Email (SKIP IF FINALIZING SETUP FOR ADMIN/HR)
+    if (!effectiveFinalizingSetup) {
+        try {
+          if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+            throw new Error('Email credentials are not configured.');
+          }
+          await sendOTPEmail(email, firstName, verificationOTP, 'Email Verification', 'Thank you for registering. Please use the code below to verify your email address:');
+        } catch (_emailErr) {
+      /* empty */
+
+        }
+    }
+
+    res.status(effectiveFinalizingSetup ? 200 : 201).json({
       success: true,
-      message: 'Registration successful! Please check your email for the verification code.',
-      data: { email, employeeId, fullName: `${firstName} ${lastName}`, department }
+      message: effectiveFinalizingSetup 
+        ? 'Registration completed successfully! Your profile has been updated permanently.' 
+        : 'Registration successful! Please check your email for the verification code.',
+      data: { 
+        email, 
+        employeeId: actualEmployeeId, 
+        fullName: `${firstName} ${lastName}`, 
+        department,
+        requiresVerification: !effectiveFinalizingSetup
+      }
     });
-  } catch (err) {
+  } catch (err: unknown) {
+    console.error('[REGISTER ERROR] Registration failed with details:', err instanceof Error ? err.stack : err);
     if (err instanceof z.ZodError) {
+      console.error('[REGISTER ERROR] Zod validation failed:', JSON.stringify(err.issues, null, 2));
       res.status(400).json({
         success: false,
         message: 'Validation Error',
@@ -570,7 +724,6 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    console.error('Registration Error:', err);
     res.status(500).json({
       success: false,
       message: 'An unexpected error occurred during registration.',
@@ -599,11 +752,48 @@ export const verifyRegistrationOTP = async (req: Request, res: Response): Promis
       return;
     }
 
-    await AuthService.updateUser(user.id, { isVerified: true, verificationToken: null });
+    await db.update(authentication)
+      .set({ isVerified: true, verificationToken: null })
+      .where(eq(authentication.id, user.id));
 
-    res.status(200).json({ success: true, message: 'Email verified successfully. You can now login.' });
-  } catch (err) {
-    console.error('Verification Error:', err);
+    // AUTO LOGIN AFTER VERIFICATION
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+      throw new Error('JWT_SECRET is not configured');
+    }
+
+    const token = jwt.sign(
+      { 
+        id: Number(user.id), 
+        employeeId: String(user.employeeId),
+        role: String(user.role)
+      },
+      jwtSecret,
+      { expiresIn: '1d' }
+    );
+
+    res.cookie('accessToken', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 24 * 60 * 60 * 1000
+    });
+
+    const [userSchedule] = await db.select({
+      duties: sql<string>`COALESCE((SELECT schedule_title FROM schedules WHERE employee_id = ${user.employeeId} ORDER BY updated_at DESC LIMIT 1), 'No Schedule')`
+    }).from(authentication).where(eq(authentication.id, user.id));
+
+    res.status(200).json({ 
+      success: true, 
+      message: 'Email verified successfully. Logging you in...',
+      data: mapToAuthUser({
+        ...user,
+        isVerified: true,
+        duties: userSchedule?.duties || 'No Schedule'
+      })
+    });
+  } catch (_err) {
+
     res.status(500).json({ success: false, message: 'Server Error' });
   }
 };
@@ -637,8 +827,8 @@ export const resendVerificationEmail = async (req: Request, res: Response): Prom
     await sendOTPEmail(email, user.firstName, verificationOTP, 'Resend: Verify Your Email', 'You requested a new verification code.');
 
     res.status(200).json({ success: true, message: 'Verification code resent successfully.' });
-  } catch (error) {
-    console.error('Resend Verification Error:', error);
+  } catch (_error) {
+
     res.status(500).json({ success: false, message: 'Failed to resend verification code.' });
   }
 };
@@ -683,8 +873,8 @@ export const forgotPassword = async (req: Request, res: Response): Promise<void>
 
     await transporter.sendMail(mailOptions);
     res.status(200).json({ success: true, message: 'Password reset email sent.' });
-  } catch (error) {
-    console.error('Forgot Password Error:', error);
+  } catch (_error) {
+
     res.status(500).json({ success: false, message: 'Failed to send password reset email.' });
   }
 };
@@ -715,8 +905,8 @@ export const resetPassword = async (req: Request, res: Response): Promise<void> 
       .where(eq(authentication.id, user.id));
 
     res.status(200).json({ success: true, message: 'Password reset successfully. You can now login.' });
-  } catch (error) {
-    console.error('Reset Password Error:', error);
+  } catch (_error) {
+
     res.status(500).json({ success: false, message: 'Failed to reset password.' });
   }
 };
@@ -745,10 +935,12 @@ export const getMe = async (req: Request, res: Response): Promise<void> => {
 
     res.status(200).json({
       success: true,
-      data: mapToAuthUser(user)
+      data: {
+        user: mapToAuthUser(user)
+      }
     });
-  } catch (error) {
-    console.error('GetMe Error:', error);
+  } catch (_error) {
+
     res.status(500).json({ success: false, message: 'Server Error' });
   }
 };
@@ -756,20 +948,18 @@ export const getMe = async (req: Request, res: Response): Promise<void> => {
 export const login = async (req: Request, res: Response): Promise<void> => {
   try {
     const { identifier, password } = LoginSchema.parse(req.body);
-    console.log(`[LOGIN ATTEMPT] Identifier: "${identifier}", Password length: ${password.length}`);
+    console.warn(`[LOGIN DEBUG] Attempt for: ${identifier}`);
 
     const user = await AuthService.findUserByIdentifier(identifier);
-    console.log(`[LOGIN DEBUG] User found: ${user ? 'YES' : 'NO'} (ID: ${user?.id}, EmpID: ${user?.employeeId})`);
     
     if (!user) {
-      console.log(`[LOGIN FAIL] User not found for identifier: ${identifier}`);
+
       res.status(401).json({ success: false, message: 'Invalid Credentials' });
       return;
     }
-    console.log(`[LOGIN FOUND] User: ${user.email} | Role: ${user.role} | Verified: ${user.isVerified}`);
 
     if (!user.isVerified) {
-      console.log(`[LOGIN FAIL] User not verified`);
+
       res.status(403).json({
         success: false,
         message: 'Email not verified. Please check your email.',
@@ -783,7 +973,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
         const lockDate = new Date(user.lockUntil);
         if (lockDate > new Date()) {
             const minutesLeft = Math.ceil((lockDate.getTime() - Date.now()) / (60 * 1000));
-            console.log(`[LOGIN FAIL] Account locked for ${user.email} until ${user.lockUntil}`);
+
             res.status(403).json({ 
                 success: false, 
                 message: `Account is temporarily locked due to multiple failed attempts. Please try again in ${minutesLeft} minutes.`,
@@ -795,32 +985,27 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 
     // CHECK TERMINATION STATUS
     if (user.employmentStatus === 'Terminated') {
-      console.log(`[LOGIN FAIL] User is Terminated: ${user.email}`);
+
       res.status(403).json({
         success: false,
-        message: 'Access Denied: Your account has been terminated. Please contact HR.',
+        message: 'Access Denied: Your account has been terminated. Please contact Human Resource.',
         data: null
       });
       return;
     }
 
     // BIOMETRIC ENFORCEMENT: Check bio_enrolled_users (C# biometric data)
-    const isCHRMO = (user.department && (
-      user.department.toUpperCase().includes('CHRMO') || 
-      user.department.toUpperCase().includes('HUMAN RESOURCE')
-    )) || (user.employeeId && user.employeeId.toUpperCase().startsWith('CHRMO'));
+    const deptName = user.department || '';
+      
+    const isCHRMO = typeof deptName === 'string' && (
+      deptName.toUpperCase().includes('CHRMO') || 
+      deptName.toUpperCase().includes('HUMAN RESOURCE')
+    );
 
-    if (user.role !== 'admin' && !isCHRMO) {
-      // Extract numeric ID from EMP-XXX format OR use raw ID
-      let bioId = 0;
-      if (user.employeeId) {
-        const bioIdMatch = user.employeeId.match(/EMP-(\d+)/);
-        if (bioIdMatch) {
-             bioId = parseInt(bioIdMatch[1], 10);
-        } else {
-             bioId = parseInt(user.employeeId, 10);
-        }
-      }
+    if (user.role !== 'Administrator' && user.role !== 'Human Resource') {
+      // Use raw numeric ID (strip any legacy prefix if it exists in DB)
+      const rawId = user.employeeId || '0';
+      const bioId = parseInt(rawId.replace(/\D/g, ''), 10);
 
       const [enrolled] = await db.select().from(bioEnrolledUsers).where(
         and(
@@ -830,25 +1015,28 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       ).limit(1);
 
       if (!enrolled) {
-        console.log(`[LOGIN FAIL] Biometric not enrolled for: ${user.employeeId}`);
+
         res.status(403).json({
           success: false,
-          message: 'Access Denied: You are not yet registered in the biometric system. Please contact your HR Administrator to complete your enrollment.',
+          message: 'Access Denied: You are not yet registered in the biometric system. Please contact your Human Resource Administrator to complete your enrollment.',
           code: 'BIOMETRIC_NOT_ENROLLED',
           data: null
         });
         return;
       }
-      console.log(`[LOGIN SUCCESS] Biometric enrollment verification passed.`);
-    } else if (isCHRMO) {
-      console.log(`[LOGIN SUCCESS] Biometric enrollment bypassed for CHRMO employee: ${user.employeeId}`);
+
+    }
+ else if (isCHRMO) {
+      /* empty */
+
     }
 
     const passwordMatch = await bcrypt.compare(password, user.passwordHash || '');
-
+    console.warn(`[LOGIN DEBUG] Password match result: ${passwordMatch}`);
     if (!passwordMatch) {
-      console.log(`[LOGIN FAIL] Password mismatch for ${user.email}`);
-      
+      console.warn(`[LOGIN DEBUG] Input password: "${password}"`);
+      console.warn(`[LOGIN DEBUG] Hash in DB: "${user.passwordHash}"`);
+
       const newAttempts = (user.loginAttempts || 0) + 1;
       const updateData: { loginAttempts: number; lockUntil?: string | null } = { loginAttempts: newAttempts };
       
@@ -865,8 +1053,9 @@ export const login = async (req: Request, res: Response): Promise<void> => {
                   text: `Your account has been temporarily locked for 30 minutes due to 5 consecutive failed login attempts. If this wasn't you, please reset your password immediately.`
               };
               await transporter.sendMail(mailOptions);
-          } catch (e) {
-              console.error('Failed to send lock alert email:', e);
+          } catch (_e) {
+      /* empty */
+
           }
       }
 
@@ -889,7 +1078,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 
     // Check for 2FA
     if (user.twoFactorEnabled) {
-      console.log(`[LOGIN 2FA] 2FA required for ${user.email}`);
+
       const otp = generateOTP();
       const otpExpires = new Date(Date.now() + 10 * 60 * 1000);
 
@@ -899,8 +1088,8 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 
       try {
         await sendOTPEmail(user.email, user.firstName, otp, 'Your Login OTP', 'Your One-Time Password (OTP) for login is:');
-      } catch (emailErr) {
-        console.error('Failed to send 2FA OTP:', emailErr);
+      } catch (_emailErr) {
+
         res.status(500).json({ success: false, message: 'Failed to send 2FA code.' });
         return;
       }
@@ -941,21 +1130,30 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     });
 
     // Fetch schedule for the logged in user to include in response
-    const [userSchedule] = await db.select({
-      duties: sql<string>`COALESCE((SELECT schedule_title FROM schedules WHERE employee_id = ${user.employeeId} ORDER BY updated_at DESC LIMIT 1), 'No Schedule')`
-    }).from(authentication).where(eq(authentication.id, user.id));
+    let duties = 'No Schedule';
+    try {
+      const [userSchedule] = await db.select({
+        duties: sql<string>`COALESCE((SELECT schedule_title FROM schedules WHERE employee_id = ${authentication.employeeId} ORDER BY updated_at DESC LIMIT 1), 'No Schedule')`
+      }).from(authentication).where(eq(authentication.id, user.id));
+      duties = userSchedule?.duties || 'No Schedule';
+    } catch (schedErr: unknown) {
+      const msg = schedErr instanceof Error ? schedErr.message : String(schedErr);
+      console.error('[LOGIN] Schedule fetch failed:', msg);
+    }
 
-    console.log(`[LOGIN SUCCESS] Token generated for ${user.email}`);
     res.status(200).json({
       success: true,
       message: 'Login successful!',
-      data: mapToAuthUser({
-        ...user,
-        duties: userSchedule?.duties || 'No Schedule'
-      })
+      data: {
+        user: mapToAuthUser({
+          ...user,
+          duties
+        })
+      }
     });
-  } catch (err) {
-    console.error('Login Error:', err);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('[LOGIN ERROR]', msg);
     res.status(500).json({
       success: false,
       message: 'An unexpected error occurred during login.',
@@ -1030,8 +1228,8 @@ export const verifyTwoFactorOTP = async (req: Request, res: Response): Promise<v
         employeeId: user.employeeId
       }
     });
-  } catch (err) {
-    console.error('2FA Verify Error:', err);
+  } catch (_err) {
+
     res.status(500).json({ success: false, message: 'Verification failed.' });
   }
 };
@@ -1045,8 +1243,8 @@ export const enableTwoFactor = async (req: Request, res: Response): Promise<void
       .set({ twoFactorEnabled: true })
       .where(eq(authentication.id, userId));
     res.status(200).json({ success: true, message: 'Two-factor authentication enabled.' });
-  } catch (err) {
-    console.error('Enable 2FA Error:', err);
+  } catch (_err) {
+
     res.status(500).json({ success: false, message: 'Failed to enable 2FA.' });
   }
 };
@@ -1060,8 +1258,8 @@ export const disableTwoFactor = async (req: Request, res: Response): Promise<voi
       .set({ twoFactorEnabled: false })
       .where(eq(authentication.id, userId));
     res.status(200).json({ success: true, message: 'Two-factor authentication disabled.' });
-  } catch (err) {
-    console.error('Disable 2FA Error:', err);
+  } catch (_err) {
+
     res.status(500).json({ success: false, message: 'Failed to disable 2FA.' });
   }
 };
@@ -1090,8 +1288,8 @@ export const resendTwoFactorOTP = async (req: Request, res: Response): Promise<v
     await sendOTPEmail(user.email, user.firstName, otp, 'New Login OTP', 'You requested a new One-Time Password (OTP) for login:');
 
     res.status(200).json({ success: true, message: 'OTP resent successfully.' });
-  } catch (err) {
-    console.error('Resend OTP Error:', err);
+  } catch (_err) {
+
     res.status(500).json({ success: false, message: 'Failed to resend OTP.' });
   }
 };
@@ -1100,17 +1298,17 @@ export const getUsers = async (_req: Request, res: Response): Promise<void> => {
   try {
     const users = await db.select({
       id: authentication.id,
-      employee_id: authentication.employeeId,
-      first_name: authentication.firstName,
-      last_name: authentication.lastName,
+      employeeId: authentication.employeeId,
+      firstName: authentication.firstName,
+      lastName: authentication.lastName,
       email: authentication.email,
       department: authentication.department,
-      position_title: authentication.positionTitle,
-      job_title: authentication.jobTitle,
-      employment_status: authentication.employmentStatus,
+      positionTitle: authentication.positionTitle,
+      jobTitle: authentication.jobTitle,
+      employmentStatus: authentication.employmentStatus,
       role: authentication.role,
-      avatar_url: authentication.avatarUrl,
-      two_factor_enabled: authentication.twoFactorEnabled,
+      avatarUrl: authentication.avatarUrl,
+      twoFactorEnabled: authentication.twoFactorEnabled,
       duties: sql<string>`COALESCE((SELECT schedule_title FROM schedules WHERE employee_id = ${authentication.employeeId} ORDER BY updated_at DESC LIMIT 1), 'No Schedule')`
     }).from(authentication).orderBy(authentication.lastName);
 
@@ -1119,8 +1317,8 @@ export const getUsers = async (_req: Request, res: Response): Promise<void> => {
       message: 'Users retrieved successfully.',
       data: users
     });
-  } catch (err) {
-    console.error('Get Users Error:', err);
+  } catch (_err) {
+
     res.status(500).json({
       success: false,
       message: 'An unexpected error occurred while fetching users.',
@@ -1146,13 +1344,13 @@ export const getUserById = async (req: Request, res: Response): Promise<void> =>
     }
 
     // Fetch Manager Name if managerId exists
-    let supervisor: string | null = null;
+    let managerName: string | null = null;
     if (user.managerId) {
       const manager = await db.query.authentication.findFirst({
         where: eq(authentication.id, user.managerId)
       });
       if (manager) {
-        supervisor = `${manager.firstName} ${manager.lastName}`;
+        managerName = `${manager.firstName} ${manager.lastName}`;
       }
     }
 
@@ -1161,11 +1359,11 @@ export const getUserById = async (req: Request, res: Response): Promise<void> =>
       message: 'User retrieved successfully.',
       data: {
         ...user,
-        supervisor
+        managerName
       }
     });
-  } catch (err) {
-    console.error('Get User By ID Error:', err);
+  } catch (_err) {
+
     res.status(500).json({ success: false, message: 'Failed to fetch user details' });
   }
 };
@@ -1180,8 +1378,14 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
       return;
     }
 
-    const updates = req.body as Record<string, string | number | undefined>;
-    const file = req.file;
+    // Safe Parse Body
+    const parsed = UpdateProfileSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ success: false, message: 'Invalid update data', errors: parsed.error.format() });
+      return;
+    }
+    const updates = parsed.data;
+    const file = (req as any).file;
 
     let avatarUrl: string | undefined;
     if (file) {
@@ -1200,9 +1404,9 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
     }
 
     const mappedUpdates: Partial<typeof authentication.$inferInsert> = {};
-    if (updates.first_name) mappedUpdates.firstName = String(updates.first_name);
-    if (updates.last_name) mappedUpdates.lastName = String(updates.last_name);
-    if (updates.middle_name) mappedUpdates.middleName = String(updates.middle_name);
+    if (updates.firstName) mappedUpdates.firstName = String(updates.firstName);
+    if (updates.lastName) mappedUpdates.lastName = String(updates.lastName);
+    if (updates.middleName) mappedUpdates.middleName = String(updates.middleName);
     if (updates.suffix !== undefined) mappedUpdates.suffix = String(updates.suffix);
     
     // Only reset verification if email CHANGED
@@ -1212,76 +1416,77 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
       mappedUpdates.verificationToken = null;
     }
 
-    if (updates.phone_number !== undefined) mappedUpdates.mobileNo = String(updates.phone_number);
-    if (updates.mobile_no !== undefined) mappedUpdates.mobileNo = String(updates.mobile_no);
-    if (updates.telephone_no !== undefined) mappedUpdates.telephoneNo = String(updates.telephone_no);
-    if (updates.birth_date !== undefined) {
-        mappedUpdates.birthDate = String(updates.birth_date);
-        mappedUpdates.dateOfBirth = String(updates.birth_date);
+    if (updates.phoneNumber !== undefined) mappedUpdates.mobileNo = String(updates.phoneNumber);
+    if (updates.mobileNo !== undefined) mappedUpdates.mobileNo = String(updates.mobileNo);
+    if (updates.telephoneNo !== undefined) mappedUpdates.telephoneNo = String(updates.telephoneNo);
+    if (updates.birthDate !== undefined) {
+        mappedUpdates.birthDate = String(updates.birthDate);
     }
-    if (updates.place_of_birth !== undefined) mappedUpdates.placeOfBirth = String(updates.place_of_birth);
+    if (updates.placeOfBirth !== undefined) mappedUpdates.placeOfBirth = String(updates.placeOfBirth);
     if (updates.gender !== undefined) mappedUpdates.gender = updates.gender as "Male" | "Female";
-    if (updates.civil_status !== undefined) mappedUpdates.civilStatus = updates.civil_status as "Single" | "Married" | "Widowed" | "Separated" | "Annulled";
+    if (updates.civilStatus !== undefined) mappedUpdates.civilStatus = updates.civilStatus as "Single" | "Married" | "Widowed" | "Separated" | "Annulled";
     if (updates.nationality !== undefined) mappedUpdates.nationality = String(updates.nationality);
     
     if (updates.address !== undefined) mappedUpdates.address = String(updates.address);
-    if (updates.residential_address !== undefined) mappedUpdates.residentialAddress = String(updates.residential_address);
-    if (updates.residential_zip_code !== undefined) mappedUpdates.residentialZipCode = String(updates.residential_zip_code);
-    if (updates.permanent_address !== undefined) mappedUpdates.permanentAddress = String(updates.permanent_address);
-    if (updates.permanent_zip_code !== undefined) mappedUpdates.permanentZipCode = String(updates.permanent_zip_code);
+    if (updates.residentialAddress !== undefined) mappedUpdates.residentialAddress = String(updates.residentialAddress);
+    if (updates.residentialZipCode !== undefined) mappedUpdates.residentialZipCode = String(updates.residentialZipCode);
+    if (updates.permanentAddress !== undefined) mappedUpdates.permanentAddress = String(updates.permanentAddress);
+    if (updates.permanentZipCode !== undefined) mappedUpdates.permanentZipCode = String(updates.permanentZipCode);
+
+    // Atomic Address Fields
+    if (updates.resHouseBlockLot !== undefined) mappedUpdates.resHouseBlockLot = String(updates.resHouseBlockLot);
+    if (updates.resStreet !== undefined) mappedUpdates.resStreet = String(updates.resStreet);
+    if (updates.resSubdivision !== undefined) mappedUpdates.resSubdivision = String(updates.resSubdivision);
+    if (updates.resBarangay !== undefined) mappedUpdates.resBarangay = String(updates.resBarangay);
+    if (updates.resCity !== undefined) mappedUpdates.resCity = String(updates.resCity);
+    if (updates.resProvince !== undefined) mappedUpdates.resProvince = String(updates.resProvince);
     
-    if (updates.emergency_contact !== undefined) mappedUpdates.emergencyContact = String(updates.emergency_contact);
-    if (updates.emergency_contact_number !== undefined) mappedUpdates.emergencyContactNumber = String(updates.emergency_contact_number);
+    if (updates.permHouseBlockLot !== undefined) mappedUpdates.permHouseBlockLot = String(updates.permHouseBlockLot);
+    if (updates.permStreet !== undefined) mappedUpdates.permStreet = String(updates.permStreet);
+    if (updates.permSubdivision !== undefined) mappedUpdates.permSubdivision = String(updates.permSubdivision);
+    if (updates.permBarangay !== undefined) mappedUpdates.permBarangay = String(updates.permBarangay);
+    if (updates.permCity !== undefined) mappedUpdates.permCity = String(updates.permCity);
+    if (updates.permProvince !== undefined) mappedUpdates.permProvince = String(updates.permProvince);
     
-    if (updates.umid_id !== undefined) mappedUpdates.umidNo = String(updates.umid_id);
-    if (updates.philsys_id !== undefined) mappedUpdates.philsysId = String(updates.philsys_id);
-    if (updates.gsis_number !== undefined) {
-        mappedUpdates.gsisNumber = String(updates.gsis_number);
-        mappedUpdates.gsisIdNo = String(updates.gsis_number);
-    }
-    if (updates.philhealth_number !== undefined) {
-        mappedUpdates.philhealthNumber = String(updates.philhealth_number);
-        mappedUpdates.philhealthNo = String(updates.philhealth_number);
-    }
-    if (updates.pagibig_number !== undefined) {
-        mappedUpdates.pagibigNumber = String(updates.pagibig_number);
-        mappedUpdates.pagibigIdNo = String(updates.pagibig_number);
-    }
-    if (updates.tin_number !== undefined) {
-        mappedUpdates.tinNumber = String(updates.tin_number);
-        mappedUpdates.tinNo = String(updates.tin_number);
-    }
-    if (updates.agency_employee_no !== undefined) mappedUpdates.agencyEmployeeNo = String(updates.agency_employee_no);
+    if (updates.emergencyContact !== undefined) mappedUpdates.emergencyContact = String(updates.emergencyContact);
+    if (updates.emergencyContactNumber !== undefined) mappedUpdates.emergencyContactNumber = String(updates.emergencyContactNumber);
+
+    if (updates.umidNumber !== undefined) mappedUpdates.umidNumber = String(updates.umidNumber);
+    if (updates.philsysId !== undefined) mappedUpdates.philsysId = String(updates.philsysId);
+    if (updates.gsisNumber !== undefined) mappedUpdates.gsisNumber = String(updates.gsisNumber);
+    if (updates.philhealthNumber !== undefined) mappedUpdates.philhealthNumber = String(updates.philhealthNumber);
+    if (updates.pagibigNumber !== undefined) mappedUpdates.pagibigNumber = String(updates.pagibigNumber);
+    if (updates.tinNumber !== undefined) mappedUpdates.tinNumber = String(updates.tinNumber);
+    if (updates.agencyEmployeeNo !== undefined) mappedUpdates.agencyEmployeeNo = String(updates.agencyEmployeeNo);
     
-    if (updates.educational_background !== undefined) mappedUpdates.educationalBackground = String(updates.educational_background);
-    if (updates.school_name !== undefined) mappedUpdates.schoolName = String(updates.school_name);
+    if (updates.educationalBackground !== undefined) mappedUpdates.educationalBackground = String(updates.educationalBackground);
+    if (updates.schoolName !== undefined) mappedUpdates.schoolName = String(updates.schoolName);
     if (updates.course !== undefined) mappedUpdates.course = String(updates.course);
-    if (updates.year_graduated !== undefined) mappedUpdates.yearGraduated = String(updates.year_graduated);
-    if (updates.highest_education !== undefined) mappedUpdates.highestEducation = String(updates.highest_education);
-    if (updates.eligibility_type !== undefined) mappedUpdates.eligibilityType = String(updates.eligibility_type);
-    if (updates.eligibility_number !== undefined) mappedUpdates.eligibilityNumber = String(updates.eligibility_number);
-    if (updates.eligibility_date !== undefined) mappedUpdates.eligibilityDate = String(updates.eligibility_date);
-    if (updates.years_of_experience !== undefined) mappedUpdates.yearsOfExperience = String(updates.years_of_experience);
+    if (updates.yearGraduated !== undefined) mappedUpdates.yearGraduated = String(updates.yearGraduated);
+    if (updates.eligibilityType !== undefined) mappedUpdates.eligibilityType = String(updates.eligibilityType);
+    if (updates.eligibilityNumber !== undefined) mappedUpdates.eligibilityNumber = String(updates.eligibilityNumber);
+    if (updates.eligibilityDate !== undefined) mappedUpdates.eligibilityDate = String(updates.eligibilityDate);
+    if (updates.yearsOfExperience !== undefined) mappedUpdates.yearsOfExperience = String(updates.yearsOfExperience);
     
-    if (updates.blood_type !== undefined) mappedUpdates.bloodType = String(updates.blood_type);
-    if (updates.height_m !== undefined) mappedUpdates.heightM = String(updates.height_m);
-    if (updates.weight_kg !== undefined) mappedUpdates.weightKg = String(updates.weight_kg);
+    if (updates.bloodType !== undefined) mappedUpdates.bloodType = String(updates.bloodType);
+    if (updates.heightM !== undefined) mappedUpdates.heightM = String(updates.heightM);
+    if (updates.weightKg !== undefined) mappedUpdates.weightKg = String(updates.weightKg);
     
-    if (updates.facebook_url !== undefined) mappedUpdates.facebookUrl = String(updates.facebook_url);
-    if (updates.linkedin_url !== undefined) mappedUpdates.linkedinUrl = String(updates.linkedin_url);
-    if (updates.twitter_handle !== undefined) mappedUpdates.twitterHandle = String(updates.twitter_handle);
+    if (updates.facebookUrl !== undefined) mappedUpdates.facebookUrl = String(updates.facebookUrl);
+    if (updates.linkedinUrl !== undefined) mappedUpdates.linkedinUrl = String(updates.linkedinUrl);
+    if (updates.twitterHandle !== undefined) mappedUpdates.twitterHandle = String(updates.twitterHandle);
     
-    if (updates.position_title !== undefined) mappedUpdates.positionTitle = String(updates.position_title);
-    if (updates.item_number !== undefined) mappedUpdates.itemNumber = String(updates.item_number);
-    if (updates.salary_grade !== undefined) mappedUpdates.salaryGrade = String(updates.salary_grade);
-    if (updates.step_increment !== undefined) mappedUpdates.stepIncrement = Number(updates.step_increment);
-    if (updates.appointment_type !== undefined) mappedUpdates.appointmentType = updates.appointment_type as 'Permanent' | 'Contractual' | 'Casual' | 'Job Order' | 'Coterminous' | 'Temporary';
-    if (updates.employment_status !== undefined) mappedUpdates.employmentStatus = updates.employment_status as 'Active' | 'Probationary' | 'Terminated' | 'Resigned' | 'On Leave' | 'Suspended' | 'Verbal Warning' | 'Written Warning' | 'Show Cause';
+    if (updates.positionTitle !== undefined) mappedUpdates.positionTitle = String(updates.positionTitle);
+    if (updates.itemNumber !== undefined) mappedUpdates.itemNumber = String(updates.itemNumber);
+    if (updates.salaryGrade !== undefined) mappedUpdates.salaryGrade = String(updates.salaryGrade);
+    if (updates.stepIncrement !== undefined) mappedUpdates.stepIncrement = Number(updates.stepIncrement);
+    if (updates.appointmentType !== undefined) mappedUpdates.appointmentType = updates.appointmentType as 'Permanent' | 'Contractual' | 'Casual' | 'Job Order' | 'Coterminous' | 'Temporary';
+    if (updates.employmentStatus !== undefined) mappedUpdates.employmentStatus = updates.employmentStatus as 'Active' | 'Probationary' | 'Terminated' | 'Resigned' | 'On Leave' | 'Suspended' | 'Verbal Warning' | 'Written Warning' | 'Show Cause';
     if (updates.station !== undefined) mappedUpdates.station = String(updates.station);
-    if (updates.office_address !== undefined) mappedUpdates.officeAddress = String(updates.office_address);
-    if (updates.date_hired !== undefined) mappedUpdates.dateHired = String(updates.date_hired);
-    if (updates.original_appointment_date !== undefined) mappedUpdates.originalAppointmentDate = String(updates.original_appointment_date);
-    if (updates.last_promotion_date !== undefined) mappedUpdates.lastPromotionDate = String(updates.last_promotion_date);
+    if (updates.officeAddress !== undefined) mappedUpdates.officeAddress = String(updates.officeAddress);
+    if (updates.dateHired !== undefined) mappedUpdates.dateHired = String(updates.dateHired);
+    if (updates.originalAppointmentDate !== undefined) mappedUpdates.originalAppointmentDate = String(updates.originalAppointmentDate);
+    if (updates.lastPromotionDate !== undefined) mappedUpdates.lastPromotionDate = String(updates.lastPromotionDate);
     if (avatarUrl) mappedUpdates.avatarUrl = avatarUrl;
 
     if (Object.keys(mappedUpdates).length === 0) {
@@ -1297,7 +1502,7 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
       res.json({
         success: true,
         message: 'No changes detected',
-        data: mapToAuthUser(user as UserData)
+        data: mapToAuthUser(user as UserWithRelations)
       });
       return;
     }
@@ -1317,10 +1522,10 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
     res.json({
       success: true,
       message: 'Profile updated successfully',
-      data: mapToAuthUser(updatedUser as UserData)
+      data: mapToAuthUser(updatedUser as UserWithRelations)
     });
-  } catch (error) {
-    console.error('Update Profile Error:', error);
+  } catch (_error) {
+
     res.status(500).json({ success: false, message: 'Failed to update profile' });
   }
 };
@@ -1338,8 +1543,8 @@ export const getNextId = async (_req: Request, res: Response): Promise<void> => 
       success: true,
       data: String(nextId)
     });
-  } catch (error) {
-    console.error('Get Next ID Error:', error);
+  } catch (_error) {
+
     res.status(500).json({ success: false, message: 'Failed to fetch next ID' });
   }
 };
@@ -1356,54 +1561,58 @@ export const findHiredApplicant = async (req: Request, res: Response): Promise<v
     // Only select registration-relevant fields — exclude interview notes, interviewer IDs, etc.
     const [applicant] = await db.select({
       id: recruitmentApplicants.id,
-      first_name: recruitmentApplicants.first_name,
-      last_name: recruitmentApplicants.last_name,
-      middle_name: recruitmentApplicants.middle_name,
+      firstName: recruitmentApplicants.firstName,
+      lastName: recruitmentApplicants.lastName,
+      middleName: recruitmentApplicants.middleName,
       suffix: recruitmentApplicants.suffix,
       email: recruitmentApplicants.email,
-      phone_number: recruitmentApplicants.phone_number,
-      photo_path: recruitmentApplicants.photo_path,
-      birth_date: recruitmentApplicants.birth_date,
-      birth_place: recruitmentApplicants.birth_place,
+      phoneNumber: recruitmentApplicants.phoneNumber,
+      photoPath: recruitmentApplicants.photoPath,
+      birthDate: recruitmentApplicants.birthDate,
+      birthPlace: recruitmentApplicants.birthPlace,
       sex: recruitmentApplicants.sex,
-      civil_status: recruitmentApplicants.civil_status,
+      civilStatus: recruitmentApplicants.civilStatus,
       height: recruitmentApplicants.height,
       weight: recruitmentApplicants.weight,
-      blood_type: recruitmentApplicants.blood_type,
-      gsis_no: recruitmentApplicants.gsis_no,
-      pagibig_no: recruitmentApplicants.pagibig_no,
-      philhealth_no: recruitmentApplicants.philhealth_no,
-      umid_no: recruitmentApplicants.umid_no,
-      philsys_id: recruitmentApplicants.philsys_id,
-      tin_no: recruitmentApplicants.tin_no,
+      bloodType: recruitmentApplicants.bloodType,
+      gsisNumber: recruitmentApplicants.gsisNumber,
+      pagibigNumber: recruitmentApplicants.pagibigNumber,
+      philhealthNumber: recruitmentApplicants.philhealthNumber,
+      umidNumber: recruitmentApplicants.umidNumber,
+      philsysId: recruitmentApplicants.philsysId,
+      tinNumber: recruitmentApplicants.tinNumber,
       address: recruitmentApplicants.address,
-      zip_code: recruitmentApplicants.zip_code,
-      permanent_address: recruitmentApplicants.permanent_address,
-      permanent_zip_code: recruitmentApplicants.permanent_zip_code,
-      is_meycauayan_resident: recruitmentApplicants.is_meycauayan_resident,
-      education: recruitmentApplicants.education,
-      school_name: recruitmentApplicants.school_name,
+      zipCode: recruitmentApplicants.zipCode,
+      permanentAddress: recruitmentApplicants.permanentAddress,
+      permanentZipCode: recruitmentApplicants.permanentZipCode,
+      isMeycauayanResident: recruitmentApplicants.isMeycauayanResident,
+      educationalBackground: recruitmentApplicants.educationalBackground,
+      schoolName: recruitmentApplicants.schoolName,
       course: recruitmentApplicants.course,
-      year_graduated: recruitmentApplicants.year_graduated,
+      yearGraduated: recruitmentApplicants.yearGraduated,
       experience: recruitmentApplicants.experience,
       skills: recruitmentApplicants.skills,
-      hired_date: recruitmentApplicants.hired_date,
+      emergencyContact: recruitmentApplicants.emergencyContact,
+      emergencyContactNumber: recruitmentApplicants.emergencyContactNumber,
+      hiredDate: recruitmentApplicants.hiredDate,
       eligibility: recruitmentApplicants.eligibility,
-      eligibility_type: recruitmentApplicants.eligibility_type,
-      eligibility_date: recruitmentApplicants.eligibility_date,
-      eligibility_rating: recruitmentApplicants.eligibility_rating,
-      eligibility_place: recruitmentApplicants.eligibility_place,
-      license_no: recruitmentApplicants.license_no,
-      total_experience_years: recruitmentApplicants.total_experience_years,
-      job_title: recruitmentJobs.title,
+      eligibilityType: recruitmentApplicants.eligibilityType,
+      eligibilityDate: recruitmentApplicants.eligibilityDate,
+      eligibilityRating: recruitmentApplicants.eligibilityRating,
+      eligibilityPlace: recruitmentApplicants.eligibilityPlace,
+      licenseNo: recruitmentApplicants.licenseNo,
+      totalExperienceYears: recruitmentApplicants.totalExperienceYears,
+      jobTitle: recruitmentJobs.title,
       department: recruitmentJobs.department,
+      employmentType: recruitmentJobs.employmentType,
+      dutyType: recruitmentJobs.dutyType,
     })
     .from(recruitmentApplicants)
-    .leftJoin(recruitmentJobs, eq(recruitmentApplicants.job_id, recruitmentJobs.id))
+    .leftJoin(recruitmentJobs, eq(recruitmentApplicants.jobId, recruitmentJobs.id))
     .where(
       and(
-        eq(recruitmentApplicants.first_name, String(firstName)),
-        eq(recruitmentApplicants.last_name, String(lastName)),
+        eq(recruitmentApplicants.firstName, String(firstName)),
+        eq(recruitmentApplicants.lastName, String(lastName)),
         eq(recruitmentApplicants.stage, 'Hired')
       )
     )
@@ -1416,19 +1625,19 @@ export const findHiredApplicant = async (req: Request, res: Response): Promise<v
 
     // Construct full photo URL for frontend display
     const backendUrl = process.env.BACKEND_URL || 'http://localhost:5000';
-    const photoUrl = applicant.photo_path
-      ? `${backendUrl}/uploads/applications/${applicant.photo_path}`
+    const photoUrl = applicant.photoPath
+      ? `${backendUrl}/uploads/applications/${applicant.photoPath}`
       : null;
 
     res.status(200).json({
       success: true,
       data: {
         ...applicant,
-        photo_url: photoUrl
+        photoUrl: photoUrl
       }
     });
-  } catch (error) {
-    console.error('Find Hired Applicant Error:', error);
+  } catch (_error) {
+
     res.status(500).json({ success: false, message: 'Failed to search for applicant' });
   }
 };
@@ -1445,118 +1654,134 @@ export const logout = (_req: Request, res: Response): void => {
 
 export const getSetupPositions = async (_req: Request, res: Response): Promise<void> => {
   try {
+    // 1. Ensure HR Department exists with official name
     const hrDept = await db.query.departments.findFirst({
-      where: or(
-        eq(departments.name, "Human Resource Management Office"),
-        eq(departments.name, "City Human Resource Management Office"),
-        eq(departments.name, "Human Resource"),
-        eq(departments.name, "CHRMO")
-      )
+      where: eq(departments.name, "Office of the City Human Resource Management Officer")
     });
 
     if (!hrDept) {
-      res.status(404).json({ success: false, message: "HR Department not found." });
+      res.status(500).json({ success: false, message: "HR Department not initialized. Please run the seeding script." });
       return;
     }
 
+    // 2. Fetch the top 2 seeded positions for HR
     const positions = await db.query.plantillaPositions.findMany({
-      where: and(
-        eq(plantillaPositions.departmentId, hrDept.id),
-        eq(plantillaPositions.isVacant, true)
-      ),
+      where: eq(plantillaPositions.departmentId, hrDept.id),
       orderBy: [desc(plantillaPositions.salaryGrade)],
       limit: 2
     });
 
-    res.status(200).json({ success: true, departmentId: hrDept.id, positions });
-  } catch (error) {
-    console.error("Setup Positions Error:", error);
+    if (positions.length === 0) {
+      res.status(500).json({ success: false, message: "HR positions not found. Please run the seeding script." });
+      return;
+    }
+
+    // 3. Check if initialization is already complete (no more vacant setup positions)
+    const vacantSetupPositions = positions.filter(p => p.isVacant);
+
+    // 4. Generate the NEXT available numeric ID to pass to the frontend
+    // NO LONGER GENERATING THIS IN SETUP PORTAL - See User Request
+    const reservedId = null;
+
+    // 5. Enumerated Types for Frontend (No Hardcoding)
+    const appointmentTypes = ['Permanent', 'Contractual', 'Casual', 'Job Order', 'Coterminous', 'Temporary', 'Contract of Service', 'JO', 'COS'];
+    const dutyTypes = ['Standard', 'Irregular'];
+    const roles = ['Administrator', 'Human Resource'];
+
+    res.status(200).json({ 
+      success: true, 
+      departmentId: hrDept.id, 
+      positions: vacantSetupPositions,
+      reservedId,
+      appointmentTypes,
+      dutyTypes,
+      roles
+    });
+  } catch (_error) {
     res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
 
-export const setupAdminHR = async (req: Request, res: Response): Promise<void> => {
+export const setupPortal = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { firstName, lastName, email, password, departmentId, positionId } = req.body;
+    const validatedData = SetupPortalSchema.parse(req.body);
+    const { 
+      firstName, middleName, lastName, suffix, email, password, 
+      departmentId, positionId, role, dutyType, appointmentType 
+    } = validatedData;
+
+    const safeFirstName = sanitizeInput(firstName);
+    const safeMiddleName = middleName ? sanitizeInput(middleName) : null;
+    const safeLastName = sanitizeInput(lastName);
+    const safeSuffix = suffix ? sanitizeInput(suffix) : null;
 
     const hrDept = await db.query.departments.findFirst({
-      where: eq(departments.id, parseInt(departmentId, 10))
+      where: eq(departments.id, departmentId)
     });
 
-    if (!hrDept || (!hrDept.name.includes("Human Resource") && !hrDept.name.includes("CHRMO") && !hrDept.name.includes("HR"))) {
-      res.status(400).json({ success: false, message: "Invalid department for setup." });
+    if (!hrDept) {
+      res.status(400).json({ success: false, message: "Invalid department." });
       return;
     }
 
-    const availablePositions = await db.query.plantillaPositions.findMany({
+    const selectedPosition = await db.query.plantillaPositions.findFirst({
       where: and(
-        eq(plantillaPositions.departmentId, hrDept.id),
+        eq(plantillaPositions.id, positionId),
         eq(plantillaPositions.isVacant, true)
-      ),
-      orderBy: [desc(plantillaPositions.salaryGrade)],
-      limit: 2
+      )
     });
-
-    const selectedPosition = availablePositions.find(p => p.id === parseInt(positionId, 10));
     
     if (!selectedPosition) {
-      res.status(400).json({ success: false, message: "Invalid or unavailable position." });
+      res.status(400).json({ success: false, message: "Position is either invalid or already filled." });
       return;
     }
 
-    // Determine role: highest sg -> 'Human Resource', 2nd -> 'admin'
-    // since ordered by desc salary grade, index 0 is highest
-    const isHighest = availablePositions[0].id === selectedPosition.id;
-    const assignedRole = isHighest ? 'Human Resource' : 'admin';
-
-    // check if email exists
+    // Verify email uniqueness
     const existing = await db.query.authentication.findFirst({ where: eq(authentication.email, email) });
-    if(existing) {
-        res.status(400).json({ success: false, message: "Email already exists." });
-        return;
+    if (existing) {
+      res.status(400).json({ success: false, message: "Email already exists." });
+      return;
     }
-    
-    // next id
-    const authRecords = await db.query.authentication.findMany({
-      columns: { employeeId: true }
-    });
-    
-    let maxId = 0;
-    for (const record of authRecords) {
-        if (record.employeeId) {
-            const numericPart = parseInt(record.employeeId.replace(/\D/g, ''), 10);
-            if (!isNaN(numericPart) && numericPart > maxId) {
-                maxId = numericPart;
-            }
-        }
-    }
-    const nextNumericId = maxId + 1;
-    const newEmployeeId = `EMP-${String(nextNumericId).padStart(3, '0')}`;
 
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
 
+    // Generate Verification OTP
+    const verificationOTP = generateOTP();
+
+    // The Setup Portal should strictly NOT assign an Employee ID yet.
+    // That happens later during biometric registration.
+    const newEmployeeId = null;
+
     const [authResult] = await db.insert(authentication).values({
-      firstName,
-      lastName,
+      firstName: safeFirstName,
+      middleName: safeMiddleName,
+      lastName: safeLastName,
+      suffix: safeSuffix,
       email,
+      employeeId: newEmployeeId,
       passwordHash,
-      role: assignedRole,
+      role: role as UserRole,
       department: hrDept.name,
       departmentId: hrDept.id,
       positionId: selectedPosition.id,
-      jobTitle: selectedPosition.positionTitle,
-      salaryGrade: selectedPosition.salaryGrade.toString(),
+      jobTitle: selectedPosition.itemNumber 
+        ? `${selectedPosition.positionTitle} (${selectedPosition.itemNumber})`
+        : selectedPosition.positionTitle,
+      salaryGrade: String(selectedPosition.salaryGrade),
       stepIncrement: selectedPosition.stepIncrement ?? 1,
-      dutyType: 'Standard',
+      dutyType: dutyType as "Standard" | "Irregular",
+      appointmentType: appointmentType as 'Permanent' | 'Contractual' | 'Casual' | 'Job Order' | 'Coterminous' | 'Temporary' | 'Contract of Service' | 'JO' | 'COS',
       employmentStatus: 'Active',
-      isVerified: true,
-      employeeId: newEmployeeId,
+      profileStatus: 'Initial',
+      isVerified: false, // User MUST verify email first
+      verificationToken: verificationOTP,
       firstDayOfService: new Date().toISOString().split('T')[0]
     });
 
     const newUserId = authResult.insertId;
 
+    // Update position status
     await db.update(plantillaPositions)
       .set({ 
         isVacant: false, 
@@ -1565,9 +1790,20 @@ export const setupAdminHR = async (req: Request, res: Response): Promise<void> =
       })
       .where(eq(plantillaPositions.id, selectedPosition.id));
 
-    res.status(201).json({ success: true, message: "Setup completed successfully." });
-  } catch (error) {
-    console.error("Setup Admin HR Error:", error);
+    // Send Verification Email
+    try {
+      await sendOTPEmail(email, safeFirstName, verificationOTP, 'System Initialization: Verify Your Email', 'Welcome to the system. Please use the code below to verify your administrative access:');
+    } catch (_emailErr) {
+      /* empty */
+
+    }
+
+    res.status(201).json({ 
+      success: true, 
+      message: `${role} account created. Please verify your email.`,
+      data: { email, role: role }
+    });
+  } catch (_error) {
     res.status(500).json({ success: false, message: "Internal server error" });
   }
 };

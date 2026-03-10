@@ -30,7 +30,7 @@ const AddEducationModal: React.FC<AddEducationModalProps> = ({
   const { register, handleSubmit, formState: { errors }, reset, watch, setValue } = useForm<AddEducationInput>({
     resolver: zodResolver(AddEducationSchema),
     defaultValues: {
-      is_current: false,
+      isCurrent: false,
       type: 'Education'
     }
   });
@@ -39,26 +39,26 @@ const AddEducationModal: React.FC<AddEducationModalProps> = ({
     if (isOpen && initialData) {
        setValue('institution', initialData.institution);
        setValue('degree', initialData.degree || '');
-       setValue('field_of_study', initialData.field_of_study || '');
-       setValue('start_date', initialData.start_date ? new Date(initialData.start_date).toISOString().split('T')[0] : '');
-       setValue('end_date', initialData.end_date ? new Date(initialData.end_date).toISOString().split('T')[0] : '');
-       setValue('is_current', !!initialData.is_current);
+       setValue('fieldOfStudy', initialData.fieldOfStudy || '');
+       setValue('startDate', initialData.startDate ? new Date(initialData.startDate).toISOString().split('T')[0] : '');
+       setValue('endDate', initialData.endDate ? new Date(initialData.endDate).toISOString().split('T')[0] : '');
+       setValue('isCurrent', !!initialData.isCurrent);
        setValue('type', initialData.type || 'Education'); 
     } else if (isOpen && !initialData) {
-       reset({ is_current: false, type: 'Education' });
+       reset({ isCurrent: false, type: 'Education' });
     }
   }, [isOpen, initialData, setValue, reset]);
 
-  const isCurrent = watch('is_current');
+  const isCurrent = watch('isCurrent');
 
   const mutation = useMutation({
     mutationFn: async (data: AddEducationInput) => {
       const cleanData: EducationData = {
         institution: data.institution,
         degree: data.degree || null,
-        field_of_study: data.field_of_study || null,
-        start_date: data.start_date || null,
-        end_date: data.end_date || null,
+        fieldOfStudy: data.fieldOfStudy || null,
+        startDate: data.startDate || null,
+        endDate: data.endDate || null,
         type: data.type || 'Education',
         description: data.description || null
       };
@@ -132,7 +132,7 @@ const AddEducationModal: React.FC<AddEducationModalProps> = ({
               <div>
                 <label className="text-xs font-semibold text-gray-700 mb-1 block">Major / Field</label>
                 <input 
-                  {...register('field_of_study')}
+                  {...register('fieldOfStudy')}
                   className="w-full px-3 py-2 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900"
                   placeholder="e.g. Software Engineering"
                 />
@@ -144,7 +144,7 @@ const AddEducationModal: React.FC<AddEducationModalProps> = ({
                 <label className="text-xs font-semibold text-gray-700 mb-1 block">Start Date</label>
                 <input 
                   type="date"
-                  {...register('start_date')}
+                  {...register('startDate')}
                   className="w-full px-3 py-2 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900"
                 />
               </div>
@@ -152,7 +152,7 @@ const AddEducationModal: React.FC<AddEducationModalProps> = ({
                 <label className="text-xs font-semibold text-gray-700 mb-1 block">End Date</label>
                 <input 
                   type="date"
-                  {...register('end_date')}
+                  {...register('endDate')}
                   disabled={isCurrent}
                   className="w-full px-3 py-2 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 disabled:opacity-50"
                 />
@@ -160,8 +160,8 @@ const AddEducationModal: React.FC<AddEducationModalProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
-             <input type="checkbox" id="is_current" {...register('is_current')} className="rounded border-gray-300" />
-             <label htmlFor="is_current" className="text-sm text-gray-700">Currently studying here</label>
+             <input type="checkbox" id="isCurrent" {...register('isCurrent')} className="rounded border-gray-300" />
+             <label htmlFor="isCurrent" className="text-sm text-gray-700">Currently studying here</label>
           </div>
 
           <div className="pt-4 flex gap-3">

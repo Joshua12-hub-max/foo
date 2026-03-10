@@ -111,13 +111,13 @@ const CreditsTable = ({
             ) : credits.map((credit, idx) => (
               <tr key={idx} className="hover:bg-[#F8F9FA] hover:shadow-xl transition-colors">
                 <td className="px-6 py-4 text-sm font-medium text-gray-700 whitespace-nowrap">
-                  {credit.employee_id || 'N/A'}
+                  {credit.employeeId || 'N/A'}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex flex-col">
                     <span className="text-sm font-medium text-gray-900 whitespace-nowrap">
-                      {(credit.first_name || credit.last_name) 
-                        ? `${credit.first_name || ''} ${credit.last_name || ''}`.trim()
+                      {(credit.firstName || credit.lastName) 
+                        ? `${credit.firstName || ''} ${credit.lastName || ''}`.trim()
                         : 'Unknown Employee'
                       }
                     </span>
@@ -126,11 +126,11 @@ const CreditsTable = ({
                 </td>
                 <td className="px-6 py-4 text-center">
                   <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${
-                    credit.credit_type === 'Vacation Leave' ? 'bg-blue-100 text-blue-800' :
-                    credit.credit_type === 'Sick Leave' ? 'bg-amber-100 text-amber-800' :
+                    credit.creditType === 'Vacation Leave' ? 'bg-blue-100 text-blue-800' :
+                    credit.creditType === 'Sick Leave' ? 'bg-amber-100 text-amber-800' :
                     'bg-gray-100 text-gray-800'
                   }`}>
-                    {credit.credit_type}
+                    {credit.creditType}
                   </span>
                 </td>
                 <td className="px-6 py-4 text-center">
@@ -140,18 +140,18 @@ const CreditsTable = ({
                 </td>
                 <td className="px-6 py-4 text-center">
                   <div className="flex flex-col gap-1 items-center">
-                    {(credit.days_used_with_pay > 0 || credit.days_used_without_pay > 0) ? (
+                    {(credit.daysUsedWithPay > 0 || credit.daysUsedWithoutPay > 0) ? (
                       <>
-                        {credit.days_used_with_pay > 0 && (
+                        {credit.daysUsedWithPay > 0 && (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-green-50 text-green-700 whitespace-nowrap">
                             <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                            {credit.days_used_with_pay}d Paid
+                            {credit.daysUsedWithPay}d Paid
                           </span>
                         )}
-                        {credit.days_used_without_pay > 0 && (
+                        {credit.daysUsedWithoutPay > 0 && (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-gray-50 text-gray-600 whitespace-nowrap">
                             <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />
-                            {credit.days_used_without_pay}d Unpaid
+                            {credit.daysUsedWithoutPay}d Unpaid
                           </span>
                         )}
                       </>

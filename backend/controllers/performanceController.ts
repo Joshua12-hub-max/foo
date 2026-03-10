@@ -14,6 +14,14 @@ import { alias } from 'drizzle-orm/mysql-core';
 import type { AuthenticatedRequest, ReviewStatus, PerformanceCriteriaType } from '../types/index.js';
 import { calculateAttendanceScore } from '../services/attendanceRatingService.js';
 import { formatToManilaDateTime } from '../utils/dateUtils.js';
+import { 
+  createReviewSchema, 
+  updateReviewSchema,
+  submitSelfRatingSchema,
+  submitReviewerRatingSchema,
+  createReviewCycleSchema,
+} from '../schemas/performanceSchema.js';
+import { z } from 'zod';
 
 const formatDateForMySQL = (date: Date | string) => {
   return formatToManilaDateTime(date);
@@ -21,27 +29,27 @@ const formatDateForMySQL = (date: Date | string) => {
 
 interface ReviewItemInput {
   id?: number | string;
-  criteria_id?: number;
+  criteriaId?: number;
   score?: number;
   weight?: number;
-  max_score?: number;
-  q_score?: number;
-  e_score?: number;
-  t_score?: number;
+  maxScore?: number;
+  qScore?: number;
+  eScore?: number;
+  tScore?: number;
   comment?: string;
-  criteria_title?: string;
-  criteria_description?: string;
+  criteriaTitle?: string;
+  criteriaDescription?: string;
   category?: string;
-  self_score?: number;
-  actual_accomplishments?: string;
-  evidence_file_path?: string;
-  evidence_description?: string;
+  selfScore?: number;
+  actualAccomplishments?: string;
+  evidenceFilePath?: string;
+  evidenceDescription?: string;
 }
 
 const getStats = async () => {
   const [totalEmployees] = await db.select({ count: count() })
     .from(authentication)
-    .where(sql`${authentication.role} != 'Admin'`);
+    .where(sql`${authentication.role} != 'Administrator'`);
 
   const [pendingReviews] = await db.select({ count: count() })
     .from(performanceReviews)
@@ -59,10 +67,10 @@ const getStats = async () => {
     ));
 
   return {
-    total_employees: totalEmployees?.count || 0,
-    pending_evaluations: pendingReviews?.count || 0,
-    completed_evaluations: completedReviews?.count || 0,
-    overdue_evaluations: overdueReviews?.count || 0
+    totalEmployees: totalEmployees?.count || 0,
+    pendingEvaluations: pendingReviews?.count || 0,
+    completedEvaluations: completedReviews?.count || 0,
+    overdueEvaluations: overdueReviews?.count || 0
   };
 };
 
@@ -74,8 +82,9 @@ const logAudit = async (reviewId: number, action: string, actorId: number, detai
       actorId,
       details: details ? JSON.stringify(details) : null
     });
-  } catch (error) {
-    console.error('Audit Log Error:', error);
+  } catch (_error) {
+      /* empty */
+
   }
 };
 
@@ -108,7 +117,7 @@ const calculateReviewScore = async (reviewId: number): Promise<string> => {
     totalWeight += weight;
   });
 
-  let baseScore = totalWeight > 0 ? (totalWeightedScore / totalWeight) : 0;
+  const baseScore = totalWeight > 0 ? (totalWeightedScore / totalWeight) : 0;
 
   try {
     const attendance = await calculateAttendanceScore(review.employeeId.toString(), review.reviewPeriodStart, review.reviewPeriodEnd);
@@ -159,8 +168,8 @@ const calculateReviewScore = async (reviewId: number): Promise<string> => {
     if (baseScore === 0) finalScore = 0;
 
     return finalScore.toFixed(2);
-  } catch (error) {
-    console.error('Error calculating final review score with deductions:', error);
+  } catch (_error) {
+
     return baseScore.toFixed(2);
   }
 };
@@ -185,57 +194,59 @@ export const getEvaluationSummary = async (_req: Request, res: Response): Promis
 
     const employees = await db.select({
       id: authentication.id,
-      first_name: authentication.firstName,
-      last_name: authentication.lastName,
+      firstName: authentication.firstName,
+      lastName: authentication.lastName,
       middleName: authentication.middleName,
       suffix: authentication.suffix,
       department: authentication.department,
-      job_title: authentication.jobTitle,
-      position_title: authentication.positionTitle,
-      avatar_url: authentication.avatarUrl,
-      employee_id: authentication.employeeId,
-      review_id: performanceReviews.id,
+      jobTitle: authentication.jobTitle,
+      positionTitle: authentication.positionTitle,
+      avatarUrl: authentication.avatarUrl,
+      employeeId: authentication.employeeId,
+      reviewId: performanceReviews.id,
       status: performanceReviews.status,
-      last_evaluation_date: performanceReviews.updatedAt,
-      total_score: performanceReviews.totalScore,
-      supervisor_rating_score: performanceReviews.supervisorRatingScore,
-      self_rating_score: performanceReviews.selfRatingScore,
-      calculated_score: calculatedScoreSubquery,
-      duties: sql<string>`COALESCE((SELECT schedule_title FROM schedules WHERE employee_id = ${authentication.employeeId} ORDER BY updated_at DESC LIMIT 1), 'No Schedule')`
+      lastEvaluationDate: performanceReviews.updatedAt,
+      totalScore: performanceReviews.totalScore,
+      reviewerRatingScore: performanceReviews.reviewerRatingScore,
+      selfRatingScore: performanceReviews.selfRatingScore,
+      calculatedScore: calculatedScoreSubquery,
+      duties: sql<string>`COALESCE((SELECT schedule_title FROM schedules WHERE employee_id = ${authentication.employeeId} ORDER BY updated_at DESC LIMIT 1), 'No Schedule')`,
+      birthDate: authentication.birthDate
     })
     .from(authentication)
     .leftJoin(performanceReviews, and(
       eq(authentication.id, performanceReviews.employeeId),
       eq(performanceReviews.id, maxReviewIdSubquery)
     ))
-    .where(sql`${authentication.role} != 'Admin'`)
+    .where(sql`${authentication.role} != 'Administrator'`)
     .orderBy(authentication.lastName);
 
     const formattedEmployees = employees.map(emp => {
-      const storedScore = emp.total_score || emp.supervisor_rating_score || emp.self_rating_score;
+      const storedScore = emp.totalScore || emp.reviewerRatingScore || emp.selfRatingScore;
       const middleInitial = emp.middleName && emp.middleName.trim() ? ` ${emp.middleName.trim().charAt(0)}.` : "";
       const suffixStr = emp.suffix && emp.suffix.trim() ? ` ${emp.suffix.trim()}` : "";
       return {
         id: emp.id,
-        name: `${emp.last_name}, ${emp.first_name}${middleInitial}${suffixStr}`.trim() || 'Unknown Employee',
-        first_name: emp.first_name,
-        last_name: emp.last_name,
+        name: `${emp.lastName}, ${emp.firstName}${middleInitial}${suffixStr}`.trim() || 'Unknown Employee',
+        firstName: emp.firstName,
+        lastName: emp.lastName,
         department: emp.department,
-        job_title: emp.job_title,
-        position_title: emp.position_title,
-        avatar_url: emp.avatar_url,
-        employee_id: emp.employee_id,
-        review_id: emp.review_id,
+        jobTitle: emp.jobTitle,
+        positionTitle: emp.positionTitle,
+        avatarUrl: emp.avatarUrl,
+        employeeId: emp.employeeId,
+        reviewId: emp.reviewId,
         status: emp.status || 'Not Started',
-        last_evaluation_date: emp.last_evaluation_date,
+        lastEvaluationDate: emp.lastEvaluationDate,
         duties: emp.duties || 'No Schedule',
-        score: (storedScore && parseFloat(String(storedScore)) > 0) ? storedScore : (emp.calculated_score || null)
+        score: (storedScore && parseFloat(String(storedScore)) > 0) ? storedScore : (emp.calculatedScore || null),
+        birthDate: emp.birthDate
       };
     });
 
     res.json({ success: true, stats, employees: formattedEmployees });
-  } catch (error) {
-    console.error('Get Evaluation Summary Error:', error);
+  } catch (_error) {
+
     res.status(500).json({ success: false, message: 'Failed to fetch summary' });
   }
 };
@@ -251,7 +262,7 @@ export const getRatingDistribution = async (_req: Request, res: Response): Promi
       employeeId: performanceReviews.employeeId,
       finalRatingScore: performanceReviews.finalRatingScore,
       totalScore: performanceReviews.totalScore,
-      supervisorRatingScore: performanceReviews.supervisorRatingScore,
+      reviewerRatingScore: performanceReviews.reviewerRatingScore,
       status: performanceReviews.status
     })
     .from(performanceReviews)
@@ -277,8 +288,8 @@ export const getRatingDistribution = async (_req: Request, res: Response): Promi
     };
 
     latestReviewsMap.forEach(review => {
-      // Coalesce score logic: Final -> Total -> Supervisor
-      const scoreStr = review.finalRatingScore || review.totalScore || review.supervisorRatingScore;
+      // Coalesce score logic: Final -> Total -> Reviewer
+      const scoreStr = review.finalRatingScore || review.totalScore || review.reviewerRatingScore;
       
       if (scoreStr) {
         const score = parseFloat(String(scoreStr));
@@ -293,8 +304,8 @@ export const getRatingDistribution = async (_req: Request, res: Response): Promi
 
     const total = Object.values(distribution).reduce((sum, val) => sum + val, 0);
     res.json({ success: true, distribution, total });
-  } catch (error) {
-    console.error('Get Rating Distribution Error:', error);
+  } catch (_error) {
+
     res.status(500).json({ success: false, message: 'Failed to fetch rating distribution' });
   }
 };
@@ -305,7 +316,7 @@ export const getReviewCycles = async (_req: Request, res: Response): Promise<voi
       .from(performanceReviewCycles)
       .orderBy(desc(performanceReviewCycles.startDate));
     res.json({ success: true, cycles });
-  } catch (error) {
+  } catch (_error) {
     res.status(500).json({ success: false, message: 'Failed to fetch cycles' });
   }
 };
@@ -313,15 +324,16 @@ export const getReviewCycles = async (_req: Request, res: Response): Promise<voi
 export const getReviews = async (req: Request, res: Response): Promise<void> => {
   try {
     const authReq = req as AuthenticatedRequest;
-    let { employee_id, cycle_id, status, department } = req.query;
+    const { cycleId, status, department } = req.query;
+    let employeeId = req.query.employeeId;
 
-    if (authReq.user.role !== 'Admin' && authReq.user.role !== 'Human Resource') {
-      employee_id = String(authReq.user.id);
+    if (authReq.user.role !== 'Administrator' && authReq.user.role !== 'Human Resource') {
+      employeeId = String(authReq.user.id);
     }
 
     const conditions = [];
-    if (employee_id) conditions.push(eq(performanceReviews.employeeId, Number(employee_id)));
-    if (cycle_id) conditions.push(eq(performanceReviews.reviewCycleId, Number(cycle_id)));
+    if (employeeId) conditions.push(eq(performanceReviews.employeeId, Number(employeeId)));
+    if (cycleId) conditions.push(eq(performanceReviews.reviewCycleId, Number(cycleId)));
     if (status) conditions.push(eq(performanceReviews.status, status as ReviewStatus));
     if (department && department !== 'All') conditions.push(eq(authentication.department, department as string));
 
@@ -333,18 +345,18 @@ export const getReviews = async (req: Request, res: Response): Promise<void> => 
       reviewerId: performanceReviews.reviewerId,
       reviewCycleId: performanceReviews.reviewCycleId,
       status: performanceReviews.status,
-      totalScore: sql`COALESCE(${performanceReviews.totalScore}, ${performanceReviews.supervisorRatingScore}, ${performanceReviews.selfRatingScore})`,
+      totalScore: sql<string>`COALESCE(${performanceReviews.totalScore}, ${performanceReviews.reviewerRatingScore}, ${performanceReviews.selfRatingScore})`,
       reviewPeriodStart: performanceReviews.reviewPeriodStart,
       reviewPeriodEnd: performanceReviews.reviewPeriodEnd,
       createdAt: performanceReviews.createdAt,
       updatedAt: performanceReviews.updatedAt,
       // Joins
-      reviewer_first_name: reviewer.firstName,
-      reviewer_last_name: reviewer.lastName,
-      emp_first_name: authentication.firstName,
-      emp_last_name: authentication.lastName,
+      reviewerFirstName: reviewer.firstName,
+      reviewerLastName: reviewer.lastName,
+      employeeFirstName: authentication.firstName,
+      employeeLastName: authentication.lastName,
       department: authentication.department,
-      cycle_title: performanceReviewCycles.title
+      cycleTitle: performanceReviewCycles.title
     })
     .from(performanceReviews)
     .leftJoin(authentication, eq(performanceReviews.employeeId, authentication.id))
@@ -354,8 +366,8 @@ export const getReviews = async (req: Request, res: Response): Promise<void> => 
     .orderBy(desc(performanceReviews.createdAt));
     
     res.json({ success: true, reviews });
-  } catch (error) {
-    console.error('Get Reviews Error:', error);
+  } catch (_error) {
+
     res.status(500).json({ success: false, message: 'Failed to fetch reviews' });
   }
 };
@@ -368,8 +380,8 @@ export const getReview = async (req: Request, res: Response): Promise<void> => {
     const review = await db.query.performanceReviews.findFirst({
       where: eq(performanceReviews.id, Number(id)),
       with: {
-        authentication_employeeId: true,
-        authentication_reviewerId: true
+        authenticationEmployeeId: true,
+        authenticationReviewerId: true
       }
     });
 
@@ -378,7 +390,7 @@ export const getReview = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    if (authReq.user.role !== 'Admin' && authReq.user.role !== 'Human Resource') {
+    if (authReq.user.role !== 'Administrator' && authReq.user.role !== 'Human Resource') {
       if (review.employeeId != authReq.user.id && review.reviewerId != authReq.user.id) {
         res.status(403).json({ success: false, message: 'Unauthorized access to this review' });
         return;
@@ -446,7 +458,7 @@ export const getReview = async (req: Request, res: Response): Promise<void> => {
     .leftJoin(performanceCriteria, eq(performanceReviewItems.criteriaId, performanceCriteria.id))
     .where(eq(performanceReviewItems.reviewId, Number(id)))
     .orderBy(
-      sql`COALESCE(${performanceReviewItems.category}, ${performanceCriteria.category})`,
+      sql<string>`COALESCE(${performanceReviewItems.category}, ${performanceCriteria.category})`,
       performanceReviewItems.id
     );
 
@@ -461,21 +473,21 @@ export const getReview = async (req: Request, res: Response): Promise<void> => {
     // 4. Resolve flattened structure
     const flatReview = {
         ...review,
-        employee_first_name: review.authentication_employeeId.firstName,
-        employee_last_name: review.authentication_employeeId.lastName,
-        employee_department: review.authentication_employeeId.department,
-        employee_job_title: review.authentication_employeeId.jobTitle,
-        reviewer_first_name: review.authentication_reviewerId.firstName,
-        reviewer_last_name: review.authentication_reviewerId.lastName,
-        employee_position_title: review.authentication_employeeId.positionTitle,
-        attendance_details: attendanceDetails,
-        violation_count: violations[0].count,
+        employeeFirstName: review.authenticationEmployeeId.firstName,
+        employeeLastName: review.authenticationEmployeeId.lastName,
+        employeeDepartment: review.authenticationEmployeeId.department,
+        employeeJobTitle: review.authenticationEmployeeId.jobTitle,
+        reviewerFirstName: review.authenticationReviewerId.firstName,
+        reviewerLastName: review.authenticationReviewerId.lastName,
+        employeePositionTitle: review.authenticationEmployeeId.positionTitle,
+        attendanceDetails: attendanceDetails,
+        violationCount: violations[0].count,
         items
     };
 
     res.json({ success: true, review: flatReview });
-  } catch (error) {
-    console.error('Get Review Error:', error);
+  } catch (_error) {
+
     res.status(500).json({ success: false, message: 'Failed to fetch review' });
   }
 };
@@ -510,7 +522,7 @@ export const acknowledgeReview = async (req: Request, res: Response): Promise<vo
 
     await logAudit(Number(id), 'acknowledged', authReq.user.id, {});
     res.json({ success: true, message: 'Review acknowledged successfully' });
-  } catch (error) {
+  } catch (_error) {
     res.status(500).json({ success: false, message: 'Failed to acknowledge review' });
   }
 };
@@ -518,7 +530,7 @@ export const acknowledgeReview = async (req: Request, res: Response): Promise<vo
 export const disagreeWithReview = async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params as { id: string };
   const authReq = req as AuthenticatedRequest;
-  const { disagree_remarks } = req.body;
+  const { disagreeRemarks } = req.body as { disagreeRemarks?: string };
 
   try {
     const review = await db.query.performanceReviews.findFirst({
@@ -548,32 +560,27 @@ export const disagreeWithReview = async (req: Request, res: Response): Promise<v
     await db.update(performanceReviews)
       .set({
         disagreed: true,
-        disagreeRemarks: disagree_remarks || null,
-        employeeRemarks: disagree_remarks || null
+        disagreeRemarks: disagreeRemarks || null,
+        employeeRemarks: disagreeRemarks || null
       })
       .where(eq(performanceReviews.id, Number(id)));
 
-    await logAudit(Number(id), 'disagreed', authReq.user.id, { disagree_remarks });
+    await logAudit(Number(id), 'disagreed', authReq.user.id, { disagreeRemarks });
     res.json({ success: true, message: 'Review disagreement recorded successfully' });
-  } catch (error) {
-    console.error('Disagree With Review Error:', error);
+  } catch (_error) {
+
     res.status(500).json({ success: false, message: 'Failed to record disagreement' });
   }
 };
 
 export const createReview = async (req: Request, res: Response): Promise<void> => {
   const authReq = req as AuthenticatedRequest;
-  const { employee_id, reviewer_id, cycle_id, review_cycle_id, start_date, end_date, review_period_start, review_period_end } = req.body;
-  const cycleId = cycle_id || review_cycle_id || null;
-  let periodStart = start_date || review_period_start || null;
-  let periodEnd = end_date || review_period_end || null;
-
-  if (!employee_id || !reviewer_id) {
-    res.status(400).json({ success: false, message: 'Employee and Reviewer are required' });
-    return;
-  }
-
   try {
+    const validatedData = createReviewSchema.parse(req.body);
+    const { employeeId, reviewerId, reviewCycleId } = validatedData;
+    let { reviewPeriodStart: periodStart, reviewPeriodEnd: periodEnd } = validatedData;
+    const cycleId = reviewCycleId || null;
+
     if (cycleId && (!periodStart || !periodEnd)) {
       const cycle = await db.query.performanceReviewCycles.findFirst({
         where: eq(performanceReviewCycles.id, cycleId)
@@ -595,7 +602,7 @@ export const createReview = async (req: Request, res: Response): Promise<void> =
     if (cycleId) {
       const existing = await db.query.performanceReviews.findFirst({
         where: and(
-          eq(performanceReviews.employeeId, employee_id),
+          eq(performanceReviews.employeeId, employeeId),
           eq(performanceReviews.reviewCycleId, cycleId)
         )
       });
@@ -608,7 +615,7 @@ export const createReview = async (req: Request, res: Response): Promise<void> =
     // Check draft
     const existingDraft = await db.query.performanceReviews.findFirst({
       where: and(
-        eq(performanceReviews.employeeId, employee_id),
+        eq(performanceReviews.employeeId, employeeId),
         eq(performanceReviews.status, 'Draft')
       ),
       orderBy: [desc(performanceReviews.createdAt)]
@@ -619,13 +626,33 @@ export const createReview = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
+    // Auto-Senior Logic
+    let evaluationMode: 'CSC' | 'IPCR' | 'Senior' = 'CSC';
+    const employee = await db.query.authentication.findFirst({
+      where: eq(authentication.id, employeeId)
+    });
+
+    if (employee?.birthDate) {
+      const birthDate = new Date(employee.birthDate);
+      const today = new Date();
+      let age = today.getFullYear() - birthDate.getFullYear();
+      const m = today.getMonth() - birthDate.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+      }
+      if (age >= 60) {
+        evaluationMode = 'Senior';
+      }
+    }
+
     const [result] = await db.insert(performanceReviews).values({
-      employeeId: employee_id,
-      reviewerId: reviewer_id,
+      employeeId: employeeId,
+      reviewerId: reviewerId,
       reviewCycleId: cycleId,
       reviewPeriodStart: periodStart,
       reviewPeriodEnd: periodEnd,
       status: 'Draft',
+      evaluationMode: evaluationMode,
       createdAt: formatDateForMySQL(new Date())
     });
 
@@ -652,10 +679,14 @@ export const createReview = async (req: Request, res: Response): Promise<void> =
       }
     }
 
-    await logAudit(reviewId, 'created', authReq.user.id, { employee_id, reviewer_id, cycle_id: cycleId });
+    await logAudit(reviewId, 'created', authReq.user.id, { employeeId, reviewerId, cycleId: cycleId });
     res.status(201).json({ success: true, message: 'Review initialized', reviewId });
   } catch (error) {
-    console.error('Create Review Error:', error);
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ success: false, message: 'Validation failed', errors: error.flatten() });
+      return;
+    }
+
     const msg = error instanceof Error ? error.message : 'Unknown error';
     res.status(500).json({ success: false, message: 'Failed to create review: ' + msg });
   }
@@ -664,9 +695,10 @@ export const createReview = async (req: Request, res: Response): Promise<void> =
 export const updateReview = async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params as { id: string };
   const authReq = req as AuthenticatedRequest;
-  const { items, overall_feedback, strengths, improvements, additional_comments } = req.body;
-
   try {
+    const validatedData = updateReviewSchema.parse(req.body);
+    const { items, overallFeedback, strengths, improvements, additionalComments } = validatedData;
+
     const review = await db.query.performanceReviews.findFirst({
       where: eq(performanceReviews.id, Number(id))
     });
@@ -676,7 +708,7 @@ export const updateReview = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
-    const isReviewer = ['admin', 'human resource'].includes(authReq.user.role.toLowerCase()) || review.reviewerId == authReq.user.id;
+    const isReviewer = ['Administrator', 'Human Resource'].includes(authReq.user.role) || review.reviewerId == authReq.user.id;
     const isEmployee = review.employeeId == authReq.user.id;
 
     if (!isReviewer && !isEmployee) {
@@ -689,16 +721,16 @@ export const updateReview = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
-    let feedbackJson: string | null = overall_feedback;
-    if (overall_feedback === undefined || overall_feedback === null) {
-      if (strengths || improvements || additional_comments) {
+    let feedbackJson: string | null = overallFeedback || null;
+    if (overallFeedback === undefined || overallFeedback === null) {
+      if (strengths || improvements || additionalComments) {
         let existingFeedback: Record<string, string> = {};
         try {
-          existingFeedback = JSON.parse(review.overallFeedback || '{}');
+          existingFeedback = JSON.parse(review.overallFeedback || '{}') as Record<string, string>;
         } catch { /* ignore */ }
         if (strengths) existingFeedback.strengths = strengths;
         if (improvements) existingFeedback.improvements = improvements;
-        if (additional_comments) existingFeedback.additional_comments = additional_comments;
+        if (additionalComments) existingFeedback.additionalComments = additionalComments;
         feedbackJson = JSON.stringify(existingFeedback);
       } else {
         feedbackJson = review.overallFeedback || null;
@@ -726,26 +758,26 @@ export const updateReview = async (req: Request, res: Response): Promise<void> =
       for (const item of items as ReviewItemInput[]) {
         const score = parseFloat(String(item.score)) || 0;
         const weight = parseFloat(String(item.weight)) || 1;
-        const maxScore = parseFloat(String(item.max_score)) || 5;
+        const maxScore = parseFloat(String(item.maxScore)) || 5;
         const isExistingItem = item.id && (typeof item.id === 'number' || !String(item.id).startsWith('temp'));
 
         if (isExistingItem) {
           await db.update(performanceReviewItems)
             .set({
               score: String(score),
-              qScore: item.q_score ? String(item.q_score) : null,
-              eScore: item.e_score ? String(item.e_score) : null,
-              tScore: item.t_score ? String(item.t_score) : null,
+              qScore: item.qScore ? String(item.qScore) : null,
+              eScore: item.eScore ? String(item.eScore) : null,
+              tScore: item.tScore ? String(item.tScore) : null,
               comment: item.comment || '',
-              criteriaTitle: item.criteria_title,
-              criteriaDescription: item.criteria_description,
+              criteriaTitle: item.criteriaTitle,
+              criteriaDescription: item.criteriaDescription,
               weight: String(weight),
               maxScore,
-              selfScore: item.self_score ? String(item.self_score) : '0',
+              selfScore: item.selfScore ? String(item.selfScore) : '0',
 
-              actualAccomplishments: item.actual_accomplishments || '',
-              evidenceFilePath: item.evidence_file_path || null,
-              evidenceDescription: item.evidence_description || null
+              actualAccomplishments: item.actualAccomplishments || '',
+              evidenceFilePath: item.evidenceFilePath || null,
+              evidenceDescription: item.evidenceDescription || null
             })
             .where(and(
               eq(performanceReviewItems.id, Number(item.id)),
@@ -754,21 +786,21 @@ export const updateReview = async (req: Request, res: Response): Promise<void> =
         } else {
           await db.insert(performanceReviewItems).values({
             reviewId: Number(id),
-            criteriaId: item.criteria_id || null,
+            criteriaId: item.criteriaId || null,
             score: String(score),
-            qScore: item.q_score ? String(item.q_score) : null,
-            eScore: item.e_score ? String(item.e_score) : null,
-            tScore: item.t_score ? String(item.t_score) : null,
+            qScore: item.qScore ? String(item.qScore) : null,
+            eScore: item.eScore ? String(item.eScore) : null,
+            tScore: item.tScore ? String(item.tScore) : null,
             comment: item.comment || '',
-            criteriaTitle: item.criteria_title,
-            criteriaDescription: item.criteria_description,
+            criteriaTitle: item.criteriaTitle,
+            criteriaDescription: item.criteriaDescription,
             weight: String(weight),
             maxScore,
-            selfScore: item.self_score ? String(item.self_score) : '0',
+            selfScore: item.selfScore ? String(item.selfScore) : '0',
 
-            actualAccomplishments: item.actual_accomplishments || '',
-            evidenceFilePath: item.evidence_file_path || null,
-            evidenceDescription: item.evidence_description || null
+            actualAccomplishments: item.actualAccomplishments || '',
+            evidenceFilePath: item.evidenceFilePath || null,
+            evidenceDescription: item.evidenceDescription || null
           });
         }
       }
@@ -783,10 +815,14 @@ export const updateReview = async (req: Request, res: Response): Promise<void> =
       })
       .where(eq(performanceReviews.id, Number(id)));
 
-    await logAudit(parseInt(id), 'updated', authReq.user.id, { items_updated: items?.length || 0 });
-    res.json({ success: true, message: 'Review updated successfully', total_score: totalScore });
+    await logAudit(parseInt(id), 'updated', authReq.user.id, { itemsUpdated: items?.length || 0 });
+    res.json({ success: true, message: 'Review updated successfully', totalScore: totalScore });
   } catch (error) {
-    console.error('Update Review Error:', error);
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ success: false, message: 'Validation failed', errors: error.flatten() });
+      return;
+    }
+
     const msg = error instanceof Error ? error.message : 'Unknown error';
     res.status(500).json({ success: false, message: 'Failed to update review: ' + msg });
   }
@@ -800,12 +836,12 @@ export const submitReview = async (req: Request, res: Response): Promise<void> =
       .set({ 
         status: 'Submitted', 
         totalScore, 
-        supervisorRatingScore: totalScore 
+        reviewerRatingScore: totalScore 
       })
       .where(eq(performanceReviews.id, Number(id)));
     
-    res.json({ success: true, message: 'Review submitted', total_score: totalScore });
-  } catch (error) {
+    res.json({ success: true, message: 'Review submitted', totalScore: totalScore });
+  } catch (_error) {
     res.status(500).json({ success: false, message: 'Failed to submit review' });
   }
 };
@@ -837,7 +873,7 @@ export const deleteReview = async (req: Request, res: Response): Promise<void> =
     await db.delete(performanceReviews).where(eq(performanceReviews.id, Number(id)));
 
     res.json({ success: true, message: 'Draft review deleted successfully' });
-  } catch (error) {
+  } catch (_error) {
     res.status(500).json({ success: false, message: 'Failed to delete review' });
   }
 };
@@ -846,11 +882,11 @@ export const deleteReview = async (req: Request, res: Response): Promise<void> =
 
 export const getCriteria = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { criteria_type, is_active } = req.query;
+    const { criteriaType, isActive } = req.query;
     const conditions = [];
     
-    if (criteria_type) conditions.push(eq(performanceCriteria.criteriaType, criteria_type as PerformanceCriteriaType));
-    if (is_active !== undefined) conditions.push(eq(performanceCriteria.isActive, is_active === 'true' ? true : false));
+    if (criteriaType) conditions.push(eq(performanceCriteria.criteriaType, criteriaType as PerformanceCriteriaType));
+    if (isActive !== undefined) conditions.push(eq(performanceCriteria.isActive, isActive === 'true' ? true : false));
 
     const criteria = await db.select()
       .from(performanceCriteria)
@@ -858,36 +894,36 @@ export const getCriteria = async (req: Request, res: Response): Promise<void> =>
       .orderBy(performanceCriteria.category, performanceCriteria.createdAt);
 
     res.json({ success: true, criteria });
-  } catch (error) {
+  } catch (_error) {
     res.status(500).json({ success: false, message: 'Failed to fetch criteria' });
   }
 };
 
 export const addCriteria = async (req: Request, res: Response): Promise<void> => {
-  const { title, description, weight, max_score, category } = req.body;
+  const { title, description, weight, maxScore, category } = req.body as { title: string; description: string; weight?: number; maxScore?: number; category?: string };
   try {
     await db.insert(performanceCriteria).values({
       title,
       description,
       weight: weight || 1,
-      maxScore: max_score || 5,
+      maxScore: maxScore || 5,
       category: category || 'General'
     });
     res.status(201).json({ success: true, message: 'Criteria added' });
-  } catch (error) {
+  } catch (_error) {
     res.status(500).json({ success: false, message: 'Failed to add criteria' });
   }
 };
 
 export const updateCriteria = async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params as { id: string };
-  const { title, description, weight, max_score, category } = req.body;
+  const { title, description, weight, maxScore, category } = req.body as { title?: string; description?: string; weight?: number; maxScore?: number; category?: string };
   try {
     await db.update(performanceCriteria)
-      .set({ title, description, weight, maxScore: max_score, category })
+      .set({ title, description, weight, maxScore, category })
       .where(eq(performanceCriteria.id, Number(id)));
     res.json({ success: true, message: 'Criteria updated' });
-  } catch (error) {
+  } catch (_error) {
     res.status(500).json({ success: false, message: 'Failed to update criteria' });
   }
 };
@@ -897,27 +933,23 @@ export const deleteCriteria = async (req: Request, res: Response): Promise<void>
   try {
     await db.delete(performanceCriteria).where(eq(performanceCriteria.id, Number(id)));
     res.json({ success: true, message: 'Criteria deleted' });
-  } catch (error) {
+  } catch (_error) {
     res.status(500).json({ success: false, message: 'Failed to delete criteria' });
   }
 };
 
 export const createReviewCycle = async (req: Request, res: Response): Promise<void> => {
-  const { title, description, startDate, endDate, start_date, end_date } = req.body;
-  const start = startDate || start_date;
-  const end = endDate || end_date;
-
-  if (!title || !start || !end) {
-    res.status(400).json({ success: false, message: 'Title, start date, and end date are required' });
-    return;
-  }
-  const startDateObj = new Date(start);
-  const endDateObj = new Date(end);
-  if (endDateObj <= startDateObj) {
-    res.status(400).json({ success: false, message: 'End date must be after start date' });
-    return;
-  }
   try {
+    const validatedData = createReviewCycleSchema.parse(req.body);
+    const { title, description, startDate: start, endDate: end } = validatedData;
+
+    const startDateObj = new Date(start);
+    const endDateObj = new Date(end);
+    if (endDateObj <= startDateObj) {
+      res.status(400).json({ success: false, message: 'End date must be after start date' });
+      return;
+    }
+    
     await db.insert(performanceReviewCycles).values({
       title,
       description,
@@ -926,22 +958,26 @@ export const createReviewCycle = async (req: Request, res: Response): Promise<vo
     });
     res.status(201).json({ success: true, message: 'Review cycle created' });
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ success: false, message: 'Validation failed', errors: error.flatten() });
+      return;
+    }
     res.status(500).json({ success: false, message: 'Failed to create review cycle' });
   }
 };
 
 export const updateReviewCycle = async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params as { id: string };
-  const { title, description, startDate, endDate, start_date, end_date } = req.body;
-  const start = startDate || start_date;
-  const end = endDate || end_date;
+  const { title, description, startDate, endDate } = req.body as { title?: string; description?: string; startDate?: string; endDate?: string };
+  const start = startDate;
+  const end = endDate;
 
   try {
     await db.update(performanceReviewCycles)
       .set({ title, description, startDate: start, endDate: end })
       .where(eq(performanceReviewCycles.id, Number(id)));
     res.json({ success: true, message: 'Review cycle updated' });
-  } catch (error) {
+  } catch (_error) {
     res.status(500).json({ success: false, message: 'Failed to update review cycle' });
   }
 };
@@ -951,7 +987,7 @@ export const deleteReviewCycle = async (req: Request, res: Response): Promise<vo
   try {
     await db.delete(performanceReviewCycles).where(eq(performanceReviewCycles.id, Number(id)));
     res.json({ success: true, message: 'Review cycle deleted' });
-  } catch (error) {
+  } catch (_error) {
     res.status(500).json({ success: false, message: 'Failed to delete review cycle' });
   }
 };
@@ -959,9 +995,9 @@ export const deleteReviewCycle = async (req: Request, res: Response): Promise<vo
 export const submitSelfRating = async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params as { id: string };
   const authReq = req as AuthenticatedRequest;
-  const { items, employee_remarks, isDraft } = req.body;
-
   try {
+    const validatedData = submitSelfRatingSchema.parse(req.body);
+    const { items, employeeRemarks, isDraft } = validatedData;
     const review = await db.query.performanceReviews.findFirst({
       where: eq(performanceReviews.id, Number(id))
     });
@@ -984,58 +1020,63 @@ export const submitSelfRating = async (req: Request, res: Response): Promise<voi
         if (item.id) {
           await db.update(performanceReviewItems)
             .set({ 
-              selfScore: String(item.self_score || 0), 
-              actualAccomplishments: item.actual_accomplishments || '' 
+              selfScore: String(item.selfScore || 0), 
+              actualAccomplishments: item.actualAccomplishments || '' 
             })
             .where(and(
               eq(performanceReviewItems.id, Number(item.id)),
               eq(performanceReviewItems.reviewId, Number(id))
             ));
-        } else if (item.criteria_id) {
+        } else if (item.criteriaId) {
           await db.update(performanceReviewItems)
             .set({ 
-              selfScore: String(item.self_score || 0), 
-              actualAccomplishments: item.actual_accomplishments || '' 
+              selfScore: String(item.selfScore || 0), 
+              actualAccomplishments: item.actualAccomplishments || '' 
             })
             .where(and(
               eq(performanceReviewItems.reviewId, Number(id)),
-              eq(performanceReviewItems.criteriaId, Number(item.criteria_id))
+              eq(performanceReviewItems.criteriaId, Number(item.criteriaId))
             ));
         }
-        const weight = parseFloat(String(item.weight)) || 1;
-        const score = parseFloat(String(item.self_score)) || 0;
+        const weight = parseFloat(String(item.weight || 1));
+        const score = parseFloat(String(item.selfScore || 0));
         totalSelfScore += score * weight;
         totalWeight += weight;
       }
     }
 
     const calculatedSelfScore = totalWeight > 0 ? (totalSelfScore / totalWeight).toFixed(2) : '0';
-    const newStatus = isDraft ? 'Draft' : 'Self-Rated';
+    const newStatus: ReviewStatus = isDraft ? 'Draft' : 'Self-Rated';
 
     await db.update(performanceReviews)
       .set({ 
         selfRatingScore: calculatedSelfScore, 
-        employeeRemarks: employee_remarks || '', 
-        status: newStatus as ReviewStatus, 
+        employeeRemarks: (employeeRemarks as string) || '', 
+        status: newStatus, 
         updatedAt: new Date().toISOString() 
       })
       .where(eq(performanceReviews.id, Number(id)));
 
-    await logAudit(parseInt(id), isDraft ? 'self_rating_draft' : 'self_rated', authReq.user.id, { self_rating_score: calculatedSelfScore });
-    res.json({ success: true, message: isDraft ? 'Draft saved successfully' : 'Self-rating submitted successfully', self_rating_score: calculatedSelfScore });
+    await logAudit(parseInt(id), isDraft ? 'self_rating_draft' : 'self_rated', authReq.user.id, { selfRatingScore: calculatedSelfScore });
+    res.json({ success: true, message: isDraft ? 'Draft saved successfully' : 'Self-rating submitted successfully', selfRatingScore: calculatedSelfScore });
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ success: false, message: 'Validation failed', errors: error.flatten() });
+      return;
+    }
+
     res.status(500).json({ success: false, message: 'Failed to submit self rating' });
   }
 };
 
-export const submitSupervisorRating = async (req: Request, res: Response): Promise<void> => {
+export const submitReviewerRating = async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params as { id: string };
   const authReq = req as AuthenticatedRequest;
-  const { items, supervisor_remarks, overall_feedback } = req.body;
-
   try {
-    if (!['admin', 'human resource', 'supervisor'].includes(authReq.user.role.toLowerCase())) {
-      res.status(403).json({ success: false, message: 'Only supervisors can submit ratings' });
+    const validatedData = submitReviewerRatingSchema.parse(req.body);
+    const { items, reviewerRemarks, overallFeedback } = validatedData;
+    if (!['Administrator', 'Human Resource'].includes(authReq.user.role)) {
+      res.status(403).json({ success: false, message: 'Only authorized reviewers can submit ratings' });
       return;
     }
 
@@ -1048,7 +1089,7 @@ export const submitSupervisorRating = async (req: Request, res: Response): Promi
       return;
     }
 
-    if (review.reviewerId != authReq.user.id && !['admin', 'human resource'].includes(authReq.user.role.toLowerCase())) {
+    if (review.reviewerId != authReq.user.id && !['Administrator', 'Human Resource'].includes(authReq.user.role)) {
       res.status(403).json({ success: false, message: 'Unauthorized: You are not the assigned reviewer for this employee.' });
       return;
     }
@@ -1057,10 +1098,10 @@ export const submitSupervisorRating = async (req: Request, res: Response): Promi
       for (const item of items as ReviewItemInput[]) {
         const updateValues: Partial<typeof performanceReviewItems.$inferInsert> = {
           score: String(item.score || 0),
-          qScore: item.q_score ? String(item.q_score) : null,
-          eScore: item.e_score ? String(item.e_score) : null,
-          tScore: item.t_score ? String(item.t_score) : null,
-          comment: item.comment || ''
+          qScore: item.qScore ? String(item.qScore) : null,
+          eScore: item.eScore ? String(item.eScore) : null,
+          tScore: item.tScore ? String(item.tScore) : null,
+          comment: (item.comment as string) || ''
         };
 
         if (item.id) {
@@ -1070,42 +1111,47 @@ export const submitSupervisorRating = async (req: Request, res: Response): Promi
               eq(performanceReviewItems.id, Number(item.id)),
               eq(performanceReviewItems.reviewId, Number(id))
             ));
-        } else if (item.criteria_id) {
+        } else if (item.criteriaId) {
           await db.update(performanceReviewItems)
             .set(updateValues)
             .where(and(
               eq(performanceReviewItems.reviewId, Number(id)),
-              eq(performanceReviewItems.criteriaId, Number(item.criteria_id))
+              eq(performanceReviewItems.criteriaId, Number(item.criteriaId))
             ));
         }
       }
     }
 
-    const supervisorRatingScore = await calculateReviewScore(parseInt(id));
+    const reviewerRatingScore = await calculateReviewScore(parseInt(id));
     await db.update(performanceReviews)
       .set({ 
-        supervisorRatingScore, 
-        supervisorRemarks: supervisor_remarks || '', 
-        overallFeedback: overall_feedback || '', 
-        totalScore: supervisorRatingScore, 
+        reviewerRatingScore, 
+        reviewerRemarks: (reviewerRemarks as string) || '', 
+        overallFeedback: (overallFeedback as string) || '', 
+        totalScore: reviewerRatingScore, 
         status: 'Submitted' 
       })
       .where(eq(performanceReviews.id, Number(id)));
 
-    await logAudit(parseInt(id), 'supervisor_rated', authReq.user.id, { supervisor_rating_score: supervisorRatingScore });
-    res.json({ success: true, message: 'Supervisor rating submitted successfully', supervisor_rating_score: supervisorRatingScore });
+    await logAudit(parseInt(id), 'reviewer_rated', authReq.user.id, { reviewerRatingScore });
+    res.json({ success: true, message: 'Reviewer rating submitted successfully', reviewerRatingScore });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Failed to submit supervisor rating' });
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ success: false, message: 'Validation failed', errors: error.flatten() });
+      return;
+    }
+
+    res.status(500).json({ success: false, message: 'Failed to submit reviewer rating' });
   }
 };
 
 export const approveReview = async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params as { id: string };
   const authReq = req as AuthenticatedRequest;
-  const { head_remarks, final_rating_score } = req.body;
+  const { headRemarks, finalRatingScore } = req.body as { headRemarks?: string; finalRatingScore?: string };
 
   try {
-    if (!['admin', 'human resource'].includes(authReq.user.role.toLowerCase())) {
+    if (!['Administrator', 'Human Resource'].includes(authReq.user.role)) {
       res.status(403).json({ success: false, message: 'Only Head of Office can approve reviews' });
       return;
     }
@@ -1124,31 +1170,33 @@ export const approveReview = async (req: Request, res: Response): Promise<void> 
       return;
     }
 
-    const finalScore = final_rating_score || review.supervisorRatingScore || review.totalScore;
+    const finalScore = (finalRatingScore as string) || review.reviewerRatingScore || review.totalScore;
     
     await db.update(performanceReviews)
       .set({ 
         status: 'Approved', 
         finalRatingScore: finalScore, 
-        headRemarks: head_remarks || '', 
+        headRemarks: (headRemarks as string) || '', 
         approvedBy: authReq.user.id, 
         approvedAt: new Date().toISOString() 
       })
       .where(eq(performanceReviews.id, Number(id)));
 
-    await logAudit(parseInt(id), 'approved', authReq.user.id, { final_rating_score: finalScore });
+    await logAudit(parseInt(id), 'approved', authReq.user.id, { finalRatingScore: finalScore });
     res.json({ success: true, message: 'Review approved successfully' });
-  } catch (error) {
+  } catch (_error) {
+
     res.status(500).json({ success: false, message: 'Failed to approve review' });
   }
 };
+
 
 export const finalizeReview = async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params as { id: string };
   const authReq = req as AuthenticatedRequest;
 
   try {
-    if (!['admin', 'human resource'].includes(authReq.user.role.toLowerCase())) {
+    if (!['Administrator', 'Human Resource'].includes(authReq.user.role)) {
       res.status(403).json({ success: false, message: 'Only Admin/HR can finalize reviews' });
       return;
     }
@@ -1173,42 +1221,42 @@ export const finalizeReview = async (req: Request, res: Response): Promise<void>
 
     await logAudit(parseInt(id), 'finalized', authReq.user.id, {});
     res.json({ success: true, message: 'Review finalized' });
-  } catch (error) {
+  } catch (_error) {
     res.status(500).json({ success: false, message: 'Failed to finalize review' });
   }
 };
 
 export const addItemToReview = async (req: Request, res: Response): Promise<void> => {
-  const { review_id, criteria_id, criteria_title, criteria_description, weight, max_score, category } = req.body;
+  const { reviewId, criteriaId, criteriaTitle, criteriaDescription, weight, maxScore, category } = req.body as { reviewId: number; criteriaId?: number; criteriaTitle: string; criteriaDescription: string; weight?: number; maxScore?: number; category?: string };
   try {
     const [result] = await db.insert(performanceReviewItems).values({
-      reviewId: review_id,
-      criteriaId: criteria_id || null,
+      reviewId: reviewId,
+      criteriaId: criteriaId || null,
       score: '0',
       comment: '',
-      criteriaTitle: criteria_title,
-      criteriaDescription: criteria_description,
+      criteriaTitle: criteriaTitle,
+      criteriaDescription: criteriaDescription,
       weight: weight || 1,
-      maxScore: max_score || 5,
+      maxScore: maxScore || 5,
       category: category || 'General',
       selfScore: '0',
       actualAccomplishments: ''
     });
 
-    const totalScore = await calculateReviewScore(review_id);
+    const totalScore = await calculateReviewScore(reviewId);
     await db.update(performanceReviews)
       .set({ totalScore })
-      .where(eq(performanceReviews.id, review_id));
+      .where(eq(performanceReviews.id, reviewId));
 
-    res.status(201).json({ success: true, message: 'Item added', itemId: result.insertId, total_score: totalScore });
-  } catch (error) {
+    res.status(201).json({ success: true, message: 'Item added', itemId: result.insertId, totalScore });
+  } catch (_error) {
     res.status(500).json({ success: false, message: 'Failed to add item' });
   }
 };
 
 export const updateReviewItem = async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params as { id: string };
-  const { score, comment, self_score, actual_accomplishments, q_score, e_score, t_score, criteria_title, criteria_description, category, weight, max_score } = req.body;
+  const { score, comment, selfScore, actualAccomplishments, qScore, eScore, tScore, criteriaTitle, criteriaDescription, category, weight, maxScore } = req.body as { score?: number; comment?: string; selfScore?: number; actualAccomplishments?: string; qScore?: number; eScore?: number; tScore?: number; criteriaTitle?: string; criteriaDescription?: string; category?: string; weight?: number; maxScore?: number };
   try {
     const item = await db.query.performanceReviewItems.findFirst({
       where: eq(performanceReviewItems.id, Number(id)),
@@ -1224,17 +1272,18 @@ export const updateReviewItem = async (req: Request, res: Response): Promise<voi
 
     const updates: Partial<typeof performanceReviewItems.$inferInsert> = {};
     if (score !== undefined) updates.score = String(score);
-    if (comment !== undefined) updates.comment = comment;
-    if (self_score !== undefined) updates.selfScore = String(self_score);
-    if (actual_accomplishments !== undefined) updates.actualAccomplishments = actual_accomplishments;
-    if (q_score !== undefined) updates.qScore = String(q_score);
-    if (e_score !== undefined) updates.eScore = String(e_score);
-    if (t_score !== undefined) updates.tScore = String(t_score);
-    if (criteria_title !== undefined) updates.criteriaTitle = criteria_title;
-    if (criteria_description !== undefined) updates.criteriaDescription = criteria_description;
-    if (category !== undefined) updates.category = category;
+    if (comment !== undefined) updates.comment = comment as string;
+    if (selfScore !== undefined) updates.selfScore = String(selfScore);
+    if (actualAccomplishments !== undefined) updates.actualAccomplishments = actualAccomplishments as string;
+    if (qScore !== undefined) updates.qScore = String(qScore);
+    if (eScore !== undefined) updates.eScore = String(eScore);
+    if (tScore !== undefined) updates.tScore = String(tScore);
+    if (criteriaTitle !== undefined) updates.criteriaTitle = criteriaTitle as string;
+    if (criteriaDescription !== undefined) updates.criteriaDescription = criteriaDescription as string;
+    if (category !== undefined) updates.category = category as string;
     if (weight !== undefined) updates.weight = String(weight);
-    if (max_score !== undefined) updates.maxScore = Number(max_score);
+    if (maxScore !== undefined) updates.maxScore = Number(maxScore);
+
 
     if (Object.keys(updates).length > 0) {
       await db.update(performanceReviewItems)
@@ -1247,8 +1296,8 @@ export const updateReviewItem = async (req: Request, res: Response): Promise<voi
       .set({ totalScore })
       .where(eq(performanceReviews.id, reviewId));
 
-    res.json({ success: true, message: 'Item updated', total_score: totalScore });
-  } catch (error) {
+    res.json({ success: true, message: 'Item updated', totalScore });
+  } catch (_error) {
     res.status(500).json({ success: false, message: 'Failed to update item' });
   }
 };
@@ -1274,8 +1323,8 @@ export const deleteReviewItem = async (req: Request, res: Response): Promise<voi
       .set({ totalScore })
       .where(eq(performanceReviews.id, reviewId));
 
-    res.json({ success: true, message: 'Item deleted', total_score: totalScore });
-  } catch (error) {
+    res.json({ success: true, message: 'Item deleted', totalScore });
+  } catch (_error) {
     res.status(500).json({ success: false, message: 'Failed to delete item' });
   }
 };

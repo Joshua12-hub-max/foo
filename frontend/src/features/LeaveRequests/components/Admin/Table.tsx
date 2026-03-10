@@ -1,7 +1,5 @@
-import React, { useCallback, useState } from 'react';
-import { Eye } from 'lucide-react';
+import React, { useCallback } from 'react';
 import { AdminLeaveRequest } from '../../types';
-const LeaveDetailsModal = React.lazy(() => import('../../Modals/LeaveDetailsModal'));
 
 interface TableProps {
   data: AdminLeaveRequest[];
@@ -11,14 +9,6 @@ interface TableProps {
 }
 
 const Table: React.FC<TableProps> = ({ data, onOpenApprove, onOpenReject, onOpenProcess }) => {
-  const [selectedLeave, setSelectedLeave] = useState<AdminLeaveRequest | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-
-  const handleViewDetails = (leave: AdminLeaveRequest) => {
-    setSelectedLeave(leave);
-    setIsModalOpen(true);
-  };
-  
   const getStatusBadge = useCallback((status: string) => {
     const statusStyles: Record<string, string> = {
       Approved: 'bg-green-100 text-green-800',
@@ -54,11 +44,11 @@ const Table: React.FC<TableProps> = ({ data, onOpenApprove, onOpenReject, onOpen
                       {item.status}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-sm font-medium text-gray-700 whitespace-nowrap">{item.employee_id || 'N/A'}</td>
+                  <td className="px-6 py-4 text-sm font-medium text-gray-700 whitespace-nowrap">{item.employeeId || 'N/A'}</td>
                   <td className="px-6 py-4">
                     <div className="flex flex-col">
                       <span className="text-sm font-medium text-gray-900 whitespace-nowrap">
-                        {item.name || item.first_name ? `${item.first_name || ''} ${item.last_name || ''}`.trim() : 'Unknown'}
+                        {item.name || item.firstName ? `${item.firstName || ''} ${item.lastName || ''}`.trim() : 'Unknown'}
                       </span>
                       <span className="text-xs text-gray-500 whitespace-nowrap">{item.department || 'No Department'}</span>
                     </div>
@@ -67,32 +57,25 @@ const Table: React.FC<TableProps> = ({ data, onOpenApprove, onOpenReject, onOpen
                   <td className="px-6 py-4">
                     <span
                       className={`px-2.5 py-1 text-xs font-semibold rounded-full whitespace-nowrap ${
-                        item.with_pay 
+                        item.isWithPay 
                           ? 'bg-green-100 text-green-700 border border-green-200' 
                           : 'bg-gray-100 text-gray-600 border border-gray-200'
                       }`}
                     >
-                      {item.with_pay ? 'With Pay' : 'Without Pay'}
+                      {item.isWithPay ? 'With Pay' : 'Without Pay'}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">{new Date(item.fromDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</td>
-                  <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">{new Date(item.toDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</td>
+                  <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">{new Date(item.startDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</td>
+                  <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">{new Date(item.endDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</td>
                   <td className="px-6 py-4">
                     <span className={`font-semibold ${
-                      (item.current_balance || 0) > 0 ? 'text-teal-600' : 'text-gray-400'
+                      (item.currentBalance || 0) > 0 ? 'text-teal-600' : 'text-gray-400'
                     }`}>
-                      {item.current_balance !== undefined ? item.current_balance : '-'}
+                      {item.currentBalance !== undefined ? item.currentBalance : '-'}
                     </span>
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex gap-2">
-                      <button
-                        onClick={() => handleViewDetails(item)}
-                        className="bg-blue-100 hover:bg-blue-200 text-blue-700 p-1.5 rounded-md transition-colors"
-                        title="View Details"
-                      >
-                        <Eye size={16} />
-                      </button>
                       {item.status === 'Pending' && (
                         <>
                           <button
@@ -126,22 +109,6 @@ const Table: React.FC<TableProps> = ({ data, onOpenApprove, onOpenReject, onOpen
           </tbody>
         </table>
       </div>
-
-      <React.Suspense fallback={null}>
-        <LeaveDetailsModal 
-          isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
-          leaveRequest={selectedLeave}
-          onApprove={() => {
-            setIsModalOpen(false);
-            if (selectedLeave) onOpenApprove(selectedLeave);
-          }}
-          onReject={() => {
-            setIsModalOpen(false);
-            if (selectedLeave) onOpenReject(selectedLeave);
-          }}
-        />
-      </React.Suspense>
     </div>
   );
 };

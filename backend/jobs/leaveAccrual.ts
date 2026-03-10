@@ -21,15 +21,15 @@ export const initLeaveAccrualJob = () => {
         year -= 1;
     }
     
-    console.log(`[CRON] Starting Monthly Leave Accrual for ${month}/${year}...`);
+    console.warn(`[CRON] Starting Monthly Leave Accrual for ${month}/${year}...`);
     
     try {
         const result = await accrueCreditsForMonth(month, year);
-        console.log(`[CRON] Leave Accrual Completed: Processed ${result.processedCount} employees.`);
+        console.warn(`[CRON] Leave Accrual Completed: Processed ${result.processedCount} employees.`);
     } catch (error) {
         console.error('[CRON] Leave Accrual Failed:', error);
     }
   });
   
-  console.log('Leave Accrual Cron Job initialized (Monthly on 1st at 00:00)');
+  console.warn('Leave Accrual Cron Job initialized (Monthly on 1st at 00:00)');
 };

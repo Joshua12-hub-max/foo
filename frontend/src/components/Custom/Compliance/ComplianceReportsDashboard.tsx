@@ -59,20 +59,22 @@ import {
 
 import PSIPOPModal from '@features/EmployeeManagement/Admin/Plantilla/components/PSIPOPModal';
 
+import { Position } from '@/api/plantillaApi';
+
 const ComplianceReportsDashboard: React.FC = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalReportId, setModalReportId] = useState<string | null>(null);
-    const [positions, setPositions] = useState<any[]>([]);
+    const [positions, setPositions] = useState<Position[]>([]);
     const [selectedPositionId, setSelectedPositionId] = useState<string>('');
     const [loadingPositions, setLoadingPositions] = useState(false);
     
     // New state for Complex Modal
     const [isAppointmentFormOpen, setIsAppointmentFormOpen] = useState(false);
-    const [selectedAppointmentPosition, setSelectedAppointmentPosition] = useState<any>(null);
+    const [selectedAppointmentPosition, setSelectedAppointmentPosition] = useState<Position | null>(null);
     
     // PSI-POP Modal State (New WYSIWYG)
     const [isPSIPOPModalOpen, setIsPSIPOPModalOpen] = useState(false);
-    const [psipopPositions, setPsipopPositions] = useState<any[]>([]); 
+    const [psipopPositions, setPsipopPositions] = useState<Position[]>([]); 
     const [loadingPsipop, setLoadingPsipop] = useState(false);
     
     // Form 9 Hook (Zustand + React Query)
@@ -92,7 +94,7 @@ const ComplianceReportsDashboard: React.FC = () => {
         
         doc.setFontSize(12);
         doc.setFont("helvetica", "normal");
-        doc.text(meta.form_name || "Official Report", 105, 40, { align: "center" });
+        doc.text(meta.formName || meta.form_name || "Official Report", 105, 40, { align: "center" });
         doc.setFontSize(16);
         doc.setFont("helvetica", "bold");
         doc.text(meta.title || "Report Document", 105, 48, { align: "center" });
@@ -141,7 +143,6 @@ const ComplianceReportsDashboard: React.FC = () => {
                      setPsipopPositions(response.data.positions);
                      setIsPSIPOPModalOpen(true);
                      toast.dismiss(toastId);
-                     // toast.success("Ready", { id: toastId }); // Don't show success, just open modal
                 } else {
                      toast.error("No positions found", { id: toastId });
                 }
@@ -167,7 +168,7 @@ const ComplianceReportsDashboard: React.FC = () => {
             try {
                 const response = await plantillaApi.getPositions({});
                 // Filter only filled positions for appointments
-                const filled = response.data.positions.filter((p: any) => p.incumbent_id);
+                const filled = response.data.positions.filter((p: Position) => p.incumbentId);
                 setPositions(filled);
             } catch (err) {
                 toast.error("Failed to load positions");
@@ -195,15 +196,15 @@ const ComplianceReportsDashboard: React.FC = () => {
                 }
                 
                 // Transform API data to Form9Position format
-                const positions: Form9Position[] = response.data.map((pos: any, idx: number) => ({
+                const positionsData: Form9Position[] = response.data.map((pos: any, idx: number) => ({
                     no: idx + 1,
-                    positionTitle: pos.position_title || '',
-                    plantillaItemNo: pos.item_number || '',
-                    salaryGrade: pos.salary_grade?.toString() || '',
-                    monthlySalary: pos.monthly_salary?.toLocaleString() || '',
+                    positionTitle: pos.positionTitle || pos.positionTitle || '',
+                    plantillaItemNo: pos.itemNumber || pos.itemNumber || '',
+                    salaryGrade: (pos.salaryGrade || pos.salaryGrade || '').toString(),
+                    monthlySalary: (pos.monthlySalary || pos.monthlySalary || '').toLocaleString(),
                     education: pos.education || '',
-                    training: pos.training ? `${pos.training} hours` : 'None required',
-                    experience: pos.experience ? `${pos.experience} years` : 'None required',
+                    training: (pos.training !== undefined) ? `${pos.training} hours` : 'None required',
+                    experience: (pos.experience !== undefined) ? `${pos.experience} years` : 'None required',
                     eligibility: pos.eligibility || '',
                     competency: pos.competency || '',
                     placeOfAssignment: pos.assignment || pos.department || ''
@@ -220,9 +221,9 @@ const ComplianceReportsDashboard: React.FC = () => {
                 };
                 
                 if (type === 'pdf') {
-                    exportForm9ToPDF(header, positions);
+                    exportForm9ToPDF(header, positionsData);
                 } else {
-                    await exportForm9ToExcel(header, positions);
+                    await exportForm9ToExcel(header, positionsData);
                 }
                 toast.success(`Form 9 exported to ${type.toUpperCase()}`);
                 return;
@@ -242,7 +243,7 @@ const ComplianceReportsDashboard: React.FC = () => {
                 setLoadingPositions(true);
                 try {
                     const response = await plantillaApi.getPositions({});
-                    const filled = response.data.positions.filter((p: any) => p.incumbent_id);
+                    const filled = response.data.positions.filter((p: Position) => p.incumbentId);
                     setPositions(filled);
                 } catch (err) {
                     toast.error("Failed to load positions");
@@ -272,8 +273,8 @@ const ComplianceReportsDashboard: React.FC = () => {
                     
                     const ws = XLSX.utils.json_to_sheet(data);
                     const wb = XLSX.utils.book_new();
-                    XLSX.utils.book_append_sheet(wb, ws, response.meta?.form_name || 'Report');
-                    const filename = `${response.meta?.form_name || reportId}_${new Date().toISOString().split('T')[0]}.xlsx`;
+                    XLSX.utils.book_append_sheet(wb, ws, response.meta?.formName || response.meta?.form_name || 'Report');
+                    const filename = `${response.meta?.formName || response.meta?.form_name || reportId}_${new Date().toISOString().split('T')[0]}.xlsx`;
                     XLSX.writeFile(wb, filename);
                     toast.success(`Exported to ${filename}`);
                 }
@@ -399,7 +400,7 @@ const ComplianceReportsDashboard: React.FC = () => {
                                     <option value="">-- Select a Position --</option>
                                     {positions.map((p) => (
                                         <option key={p.id} value={p.id}>
-                                            {p.position_title} - {p.incumbent_name || 'Unknown'} ({p.item_number})
+                                            {p.positionTitle} - {p.incumbent_name || 'Unknown'} ({p.itemNumber})
                                         </option>
                                     ))}
                                 </select>

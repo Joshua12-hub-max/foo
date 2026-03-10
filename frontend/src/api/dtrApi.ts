@@ -30,7 +30,7 @@ export const dtrApi = {
         return await api.put(`/dtr/${id}`, data);
     },
 
-    requestCorrection: async (data: { employee_id: string | number; date: string; originalTimeIn?: string | null; originalTimeOut?: string | null; correctedTimeIn?: string | null; correctedTimeOut?: string | null; reason: string; }) => {
+    requestCorrection: async (data: { employeeId: string | number; date: string; originalTimeIn?: string | null; originalTimeOut?: string | null; correctedTimeIn?: string | null; correctedTimeOut?: string | null; reason: string; }) => {
         return await api.post('/dtr/request', data);
     },
 

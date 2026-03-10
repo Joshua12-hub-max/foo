@@ -28,40 +28,40 @@ const PlantillaFormModal: React.FC<PlantillaFormModalProps> = ({
   const { register, handleSubmit, formState: { errors }, reset, watch, setValue } = useForm<PlantillaSchema>({
     resolver: zodResolver(plantillaSchema),
     defaultValues: {
-      item_number: '',
-      position_title: '',
-      salary_grade: 0,
-      step_increment: 1,
-      monthly_salary: 0,
+      itemNumber: '',
+      positionTitle: '',
+      salaryGrade: 0,
+      stepIncrement: 1,
+      monthlySalary: 0,
       department: '',
-      is_vacant: true
+      isVacant: true
     }
   });
 
-  const salaryGrade = watch('salary_grade');
-  const stepIncrement = watch('step_increment');
+  const salaryGrade = watch('salaryGrade');
+  const stepIncrement = watch('stepIncrement');
 
   useEffect(() => {
     if (isOpen) {
       if (mode === 'edit' && initialData) {
         reset({
-          item_number: initialData.item_number,
-          position_title: initialData.position_title,
-          salary_grade: Number(initialData.salary_grade),
-          step_increment: Number(initialData.step_increment),
-          monthly_salary: Number(initialData.monthly_salary),
+          itemNumber: initialData.itemNumber,
+          positionTitle: initialData.positionTitle,
+          salaryGrade: Number(initialData.salaryGrade),
+          stepIncrement: Number(initialData.stepIncrement),
+          monthlySalary: Number(initialData.monthlySalary),
           department: initialData.department,
-          is_vacant: initialData.is_vacant
+          isVacant: initialData.isVacant
         });
       } else {
         reset({
-           item_number: '',
-           position_title: '',
-           salary_grade: 0,
-           step_increment: 1,
-           monthly_salary: 0,
+           itemNumber: '',
+           positionTitle: '',
+           salaryGrade: 0,
+           stepIncrement: 1,
+           monthlySalary: 0,
            department: '',
-           is_vacant: true
+           isVacant: true
         }); // Clear for create
       }
     }
@@ -73,8 +73,8 @@ const PlantillaFormModal: React.FC<PlantillaFormModalProps> = ({
         const fetchSalary = async () => {
             try {
                 const res = await plantillaApi.getSalarySchedule(salaryGrade, stepIncrement);
-                if (res.data.success && res.data.monthly_salary) {
-                    setValue('monthly_salary', res.data.monthly_salary);
+                if (res.data.success && res.data.monthlySalary) {
+                    setValue('monthlySalary', res.data.monthlySalary);
                 }
             } catch (err) {
                 console.error("Failed to fetch suggested salary", err);
@@ -113,20 +113,20 @@ const PlantillaFormModal: React.FC<PlantillaFormModalProps> = ({
                 <label className="block text-xs font-bold text-gray-700 mb-1">Item Number*</label>
                 <input 
                   type="text"
-                  {...register('item_number')}
-                  className={`w-full px-3 py-2 bg-gray-50 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-100 transition-all ${errors.item_number ? 'border-red-500' : 'border-gray-200'}`}
+                  {...register('itemNumber')}
+                  className={`w-full px-3 py-2 bg-gray-50 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-100 transition-all ${errors.itemNumber ? 'border-red-500' : 'border-gray-200'}`}
                   placeholder="e.g. ADOF3-1"
                 />
-                {errors.item_number && <p className="text-xs text-red-500 mt-1">{errors.item_number.message}</p>}
+                {errors.itemNumber && <p className="text-xs text-red-500 mt-1">{errors.itemNumber.message}</p>}
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">Salary Grade (1-33)*</label>
                 <input 
                   type="number" min={1} max={33}
-                  {...register('salary_grade')}
-                  className={`w-full px-3 py-2 bg-gray-50 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-100 transition-all ${errors.salary_grade ? 'border-red-500' : 'border-gray-200'}`}
+                  {...register('salaryGrade')}
+                  className={`w-full px-3 py-2 bg-gray-50 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-100 transition-all ${errors.salaryGrade ? 'border-red-500' : 'border-gray-200'}`}
                 />
-                 {errors.salary_grade && <p className="text-xs text-red-500 mt-1">{errors.salary_grade.message}</p>}
+                 {errors.salaryGrade && <p className="text-xs text-red-500 mt-1">{errors.salaryGrade.message}</p>}
               </div>
             </div>
 
@@ -134,11 +134,11 @@ const PlantillaFormModal: React.FC<PlantillaFormModalProps> = ({
               <label className="block text-xs font-bold text-gray-700 mb-1">Position Title*</label>
               <input 
                 type="text" 
-                {...register('position_title')}
-                className={`w-full px-3 py-2 bg-gray-50 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-100 transition-all ${errors.position_title ? 'border-red-500' : 'border-gray-200'}`}
+                {...register('positionTitle')}
+                className={`w-full px-3 py-2 bg-gray-50 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-100 transition-all ${errors.positionTitle ? 'border-red-500' : 'border-gray-200'}`}
                 placeholder="e.g. Administrative Officer III"
               />
-              {errors.position_title && <p className="text-xs text-red-500 mt-1">{errors.position_title.message}</p>}
+              {errors.positionTitle && <p className="text-xs text-red-500 mt-1">{errors.positionTitle.message}</p>}
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -146,7 +146,7 @@ const PlantillaFormModal: React.FC<PlantillaFormModalProps> = ({
                 <label className="block text-xs font-bold text-gray-700 mb-1">Step Increment</label>
                 <input 
                   type="number" min={1} max={8}
-                  {...register('step_increment')}
+                  {...register('stepIncrement')}
                   className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-100 transition-all"
                 />
               </div>
@@ -154,7 +154,7 @@ const PlantillaFormModal: React.FC<PlantillaFormModalProps> = ({
                 <label className="block text-xs font-bold text-gray-700 mb-1">Monthly Salary</label>
                 <input 
                   type="number" step="0.01"
-                  {...register('monthly_salary')}
+                  {...register('monthlySalary')}
                   className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-100 transition-all"
                 />
               </div>

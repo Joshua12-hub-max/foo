@@ -1,45 +1,35 @@
 export interface PerformanceEmployee {
   id: string | number;
   status?: string;
-  review_id?: string | number;
-  avatar_url?: string;
-  first_name?: string;
-  last_name?: string;
+  reviewId?: string | number;
+  avatarUrl?: string;
+  firstName?: string;
+  lastName?: string;
   name?: string;
-  job_title?: string;
-  employee_id?: string;
+  jobTitle?: string;
+  employeeId?: string;
   department?: string;
   score?: number | string | null;
-  last_evaluation_date?: string | null;
+  lastEvaluationDate?: string | null;
   duties?: string;
-  [key: string]: string | number | boolean | null | undefined | object | any[];
 }
 
 export interface PerformanceItem {
   id?: string | number;
-  criteria_id?: string | number | null;
+  criteriaId?: string | number | null;
   category?: string | null;
-  criteria_title?: string | null;
+  criteriaTitle?: string | null;
   title?: string | null;
-  criteria_description?: string | null;
+  criteriaDescription?: string | null;
   description?: string | null;
   weight?: number | string | null;
   score?: number | null;
-  self_score?: number | null;
-  actual_accomplishments?: string | null;
+  selfScore?: number | null;
+  actualAccomplishments?: string | null;
   comment?: string | null;
-  q_score?: number | string | null;
-  e_score?: number | string | null;
-  t_score?: number | string | null;
-  rating_definition_5?: string;
-  rating_definition_4?: string;
-  rating_definition_3?: string;
-  rating_definition_2?: string;
-  rating_definition_1?: string;
-  evidence_requirements?: string;
-  evidence_file_path?: string;
-  evidence_description?: string;
-  // CamelCase variants for consistency with API
+  qScore?: number | string | null;
+  eScore?: number | string | null;
+  tScore?: number | string | null;
   ratingDefinition5?: string;
   ratingDefinition4?: string;
   ratingDefinition3?: string;
@@ -48,5 +38,36 @@ export interface PerformanceItem {
   evidenceRequirements?: string;
   evidenceFilePath?: string;
   evidenceDescription?: string | null;
-  [key: string]: string | number | boolean | null | undefined | object | any[];
+  section?: string | null;
+  maxScore?: number | string | null;
+}
+
+export interface PerformanceReview {
+  id: string | number;
+  employeeId: string | number;
+  reviewerId?: string | number;
+  reviewCycleId?: string | number;
+  status: string;
+  totalScore?: string | number;
+  selfRatingScore?: string | number;
+  reviewerRatingScore?: string | number;
+  reviewPeriodStart?: string;
+  reviewPeriodEnd?: string;
+  overallFeedback?: string;
+  disagreed?: boolean;
+  disagreeRemarks?: string;
+  strengths?: string;
+  improvements?: string;
+  goals?: string;
+  attendanceDetails?: {
+    totalLates: number;
+    totalUndertime: number;
+    totalAbsences: number;
+    totalLateMinutes: number;
+    ratingDescription: string;
+  } | null;
+  violationCount?: number;
+  createdAt?: string;
+  updatedAt?: string;
+  items?: PerformanceItem[];
 }

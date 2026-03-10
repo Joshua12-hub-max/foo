@@ -37,20 +37,21 @@ export const useLeaveData = (initialFilters?: Record<string, string>) => {
       const response = await leaveApi.getMyApplications(params);
       const rawLeaves = response.data?.applications || [];
       
-      const leaves = rawLeaves.map((l: LeaveApplication) => ({
+      const leaves: EmployeeLeaveRequest[] = rawLeaves.map((l: LeaveApplication) => ({
         id: l.id,
-        employee_id: l.employee_id,
-        leaveType: l.leave_type,
-        fromDate: l.start_date,
-        toDate: l.end_date,
+        employeeId: l.employeeId,
+        leaveType: l.leaveType,
+        startDate: l.startDate,
+        endDate: l.endDate,
         reason: l.reason,
         status: l.status,
-        with_pay: l.is_with_pay,
-        attachment_path: l.attachment_path,
-        admin_form_path: l.admin_form_path,
-        final_attachment_path: l.final_attachment_path,
+        isWithPay: l.isWithPay,
+        attachmentPath: l.attachmentPath,
+        adminFormPath: l.adminFormPath,
+        finalAttachmentPath: l.finalAttachmentPath,
         department: l.department || 'N/A',
-        name: `${l.first_name || ''} ${l.last_name || ''}`.trim() || 'N/A'
+        firstName: l.firstName || '',
+        lastName: l.lastName || '',
       }));
 
       return {

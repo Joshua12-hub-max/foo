@@ -1,9 +1,7 @@
-
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { attendanceApi } from '@/api/attendanceApi';
-import { DTRApiResponse } from '@/types/attendance';
+import { AttendanceLogApiResponse } from '@/types/attendance';
 
-// Keys for caching
 // Keys for caching
 export const BIOMETRICS_KEYS = {
   logs: ['biometrics', 'logs'],
@@ -15,24 +13,23 @@ export const useBiometricsLogs = (enabled = true) => {
     queryKey: BIOMETRICS_KEYS.logs,
     queryFn: async () => {
       const res = await attendanceApi.getLogs({
-          limit: 100 // Fetch recent 100 logs for pagination
+          limit: 100 // Fetch recent 100 logs
       });
 
       if (res.data && res.data.success) {
-        // Map AttendanceRecord to MonitorLogData format
-        return res.data.data.map((record: DTRApiResponse) => ({
+        // Map AttendanceLogApiResponse to local format
+        return res.data.data.map((record: AttendanceLogApiResponse) => ({
              id: record.id,
-             employeeId: record.employee_id,
-             date: record.date,
-             timeIn: record.time_in,
-             timeOut: record.time_out,
-             status: record.status || 'Present',
-             updatedAt: record.updated_at || new Date().toISOString(),
-             firstName: record.employee_name?.split(' ')[0] || '',
-             lastName: record.employee_name?.split(' ').slice(1).join(' ') || '',
-             name: record.employee_name || 'Unknown',
+             employeeId: record.employeeId,
+             time: record.scanTime,
+             type: record.type,
+             status: record.dtrStatus || 'Present',
+             firstName: record.firstName || '',
+             lastName: record.lastName || '',
+             name: `${record.firstName || ''} ${record.lastName || ''}`.trim() || 'Unknown',
              department: record.department || 'N/A',
-             duties: record.duties || 'No Schedule'
+             duties: record.duties || 'No Schedule',
+             source: record.source || 'BIOMETRIC'
         }));
       }
       return [];
@@ -42,3 +39,4 @@ export const useBiometricsLogs = (enabled = true) => {
     staleTime: 1000,
   });
 };
+

@@ -8,7 +8,7 @@ export const creditUpdateSchema = z.object({
 });
 
 export const addCreditSchema = creditUpdateSchema.extend({
-  employee_id: z.string().min(1, "Employee is required"),
+  employeeId: z.string().min(1, "Employee is required"),
 });
 
 export type CreditUpdateInput = z.infer<typeof creditUpdateSchema>;

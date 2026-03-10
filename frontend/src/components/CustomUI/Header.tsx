@@ -5,11 +5,11 @@ import NotificationMenu from "./NotificationMenu";
 /* -------------------- Helper Components -------------------- */
 export interface HeaderUser {
   name?: string;
-  first_name?: string;
+  firstName?: string;
   role?: string;
   avatar?: string | null;
   profilePicture?: string | null;
-  avatar_url?: string | null;
+  avatarUrl?: string | null;
 }
 
 interface ProfilePictureProps {
@@ -158,7 +158,7 @@ export default function Header({
             onClick={onProfileClick}
           />
 
-          <UserInfo name={user?.name || user?.first_name} role={user?.role} />
+          <UserInfo name={user?.name || user?.firstName} role={user?.role} />
         </div>
       </div>
     </header>

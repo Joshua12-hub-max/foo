@@ -36,9 +36,8 @@ const sendNotification = async (to: string, subject: string, html: string): Prom
       subject,
       html
     });
-  } catch (error) {
-    const err = error instanceof Error ? error : new Error('Unknown error');
-    console.error('Email Notification Error:', err.message);
+  } catch (_error) {
+    /* empty */
   }
 };
 
@@ -49,21 +48,21 @@ const sendNotification = async (to: string, subject: string, html: string): Prom
  */
 export const submitInquiry = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { first_name, last_name, email, message } = req.body;
+    const { firstName, lastName, email, message } = req.body as { firstName: string; lastName: string; email: string; message: string };
 
-    if (!first_name || !last_name || !email || !message) {
+    if (!firstName || !lastName || !email || !message) {
       res.status(400).json({ success: false, message: 'All fields are required' });
       return;
     }
 
     // Anti-Spam: Validate types
-    if (typeof first_name !== 'string' || typeof last_name !== 'string' || typeof email !== 'string' || typeof message !== 'string') {
+    if (typeof firstName !== 'string' || typeof lastName !== 'string' || typeof email !== 'string' || typeof message !== 'string') {
       res.status(400).json({ success: false, message: 'Invalid input types' });
       return;
     }
 
     // Anti-Spam: Validate name lengths
-    if (!isWithinMaxLength(first_name, MAX_NAME_LENGTH) || !isWithinMaxLength(last_name, MAX_NAME_LENGTH)) {
+    if (!isWithinMaxLength(firstName, MAX_NAME_LENGTH) || !isWithinMaxLength(lastName, MAX_NAME_LENGTH)) {
       res.status(400).json({ success: false, message: `Names must be ${MAX_NAME_LENGTH} characters or less` });
       return;
     }
@@ -87,13 +86,13 @@ export const submitInquiry = async (req: Request, res: Response): Promise<void> 
     }
 
     // Anti-Spam: Sanitize all user inputs (especially message — embedded in HTML emails)
-    const safeFirstName = sanitizeInput(first_name);
-    const safeLastName = sanitizeInput(last_name);
+    const safeFirstName = sanitizeInput(firstName);
+    const safeLastName = sanitizeInput(lastName);
     const safeMessage = sanitizeInput(message);
 
     const [result] = await db.insert(contactInquiries).values({
-      first_name: safeFirstName,
-      last_name: safeLastName,
+      firstName: safeFirstName,
+      lastName: safeLastName,
       email,
       message: safeMessage,
       status: 'Pending'
@@ -139,10 +138,7 @@ export const submitInquiry = async (req: Request, res: Response): Promise<void> 
       message: 'Inquiry submitted successfully. We have sent a confirmation to your email.',
       id: result.insertId 
     });
-  } catch (error) {
-    const err = error instanceof Error ? error : new Error('Unknown error');
-    console.error('Submit Inquiry Error:', err.message);
-    res.status(500).json({ success: false, message: 'Failed to submit inquiry. Please try again later.' });
+  } catch (_error) {res.status(500).json({ success: false, message: 'Failed to submit inquiry. Please try again later.' });
   }
 };
 
@@ -162,13 +158,10 @@ export const getInquiries = async (req: Request, res: Response): Promise<void> =
     const inquiries = await db.select()
       .from(contactInquiries)
       .where(conditions.length > 0 ? conditions[0] : undefined)
-      .orderBy(desc(contactInquiries.created_at));
+      .orderBy(desc(contactInquiries.createdAt));
 
     res.json({ success: true, inquiries });
-  } catch (error) {
-    const err = error instanceof Error ? error : new Error('Unknown error');
-    console.error('Get Inquiries Error:', err.message);
-    res.status(500).json({ success: false, message: 'Failed to fetch inquiries' });
+  } catch (_error) {res.status(500).json({ success: false, message: 'Failed to fetch inquiries' });
   }
 };
 
@@ -179,7 +172,7 @@ export const getInquiries = async (req: Request, res: Response): Promise<void> =
 export const updateStatus = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const body = req.body as { status?: string; admin_notes?: string };
+    const body = req.body as { status?: string; adminNotes?: string };
 
     if (!body.status || typeof body.status !== 'string') {
       res.status(400).json({ success: false, message: 'Status is required' });
@@ -195,8 +188,8 @@ export const updateStatus = async (req: Request, res: Response): Promise<void> =
         status: body.status
     };
     
-    if (body.admin_notes !== undefined) {
-      updateData.admin_notes = typeof body.admin_notes === 'string' ? body.admin_notes : null;
+    if (body.adminNotes !== undefined) {
+      updateData.adminNotes = typeof body.adminNotes === 'string' ? body.adminNotes : null;
     }
 
     await db.update(contactInquiries)
@@ -204,10 +197,7 @@ export const updateStatus = async (req: Request, res: Response): Promise<void> =
       .where(eq(contactInquiries.id, Number(id)));
 
     res.json({ success: true, message: 'Inquiry status updated' });
-  } catch (error) {
-    const err = error instanceof Error ? error : new Error('Unknown error');
-    console.error('Update Status Error:', err.message);
-    res.status(500).json({ success: false, message: 'Failed to update status' });
+  } catch (_error) {res.status(500).json({ success: false, message: 'Failed to update status' });
   }
 };
 
@@ -220,9 +210,8 @@ export const deleteInquiry = async (req: Request, res: Response): Promise<void> 
     const { id } = req.params;
     await db.delete(contactInquiries).where(eq(contactInquiries.id, Number(id)));
     res.json({ success: true, message: 'Inquiry deleted successfully' });
-  } catch (error) {
-    const err = error instanceof Error ? error : new Error('Unknown error');
-    console.error('Delete Inquiry Error:', err.message);
-    res.status(500).json({ success: false, message: 'Failed to delete inquiry' });
+  } catch (_error) {res.status(500).json({ success: false, message: 'Failed to delete inquiry' });
   }
 };
+
+

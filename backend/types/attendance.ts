@@ -6,57 +6,57 @@ export type DTRDbModel = InferSelectModel<typeof dailyTimeRecords>;
 export type AttendanceLogDbModel = InferSelectModel<typeof attendanceLogs>;
 export type TardinessSummaryDbModel = InferSelectModel<typeof tardinessSummary>;
 
-// --- API Response Models (snake_case) ---
+// --- API Response Models (camelCase for Project Consistency) ---
 
 export interface DTRApiResponse {
   id: number;
-  employee_id: string;
+  employeeId: string;
   date: string;
-  time_in: string | null;
-  time_out: string | null;
-  late_minutes: number;
-  undertime_minutes: number;
-  overtime_minutes: number;
+  timeIn: string | null;
+  timeOut: string | null;
+  lateMinutes: number;
+  undertimeMinutes: number;
+  overtimeMinutes: number;
   status: string;
-  created_at: string | null;
-  updated_at: string | null;
-  employee_name: string;
-  first_name: string;
-  last_name: string;
-  middle_name: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+  employeeName: string;
+  firstName: string;
+  lastName: string;
+  middleName: string | null;
   suffix: string | null;
   department: string;
   duties: string;
-  correction_id?: number | null;
-  correction_status?: string | null;
-  correction_reason?: string | null;
-  correction_time_in?: string | null;
-  correction_time_out?: string | null;
+  correctionId?: number | null;
+  correctionStatus?: string | null;
+  correctionReason?: string | null;
+  correctionTimeIn?: string | null;
+  correctionTimeOut?: string | null;
 }
 
 export interface AttendanceLogApiResponse {
   id: number;
-  employee_id: string;
-  scan_time: string;
+  employeeId: string;
+  scanTime: string;
   type: 'IN' | 'OUT';
   source: string;
-  first_name: string | null;
-  last_name: string | null;
+  firstName: string | null;
+  lastName: string | null;
   department: string;
   duties: string;
-  dtr_status: string;
+  dtrStatus: string;
 }
 
 export interface TardinessSummaryApiResponse {
   id: number;
-  employee_id: string;
+  employeeId: string;
   year: number;
   month: number;
-  total_late_minutes: number;
-  total_undertime_minutes: number;
-  total_late_count: number;
-  total_undertime_count: number;
-  total_absence_count: number;
-  days_equivalent: string;
-  processed_at: string | null;
+  totalLateMinutes: number;
+  totalUndertimeMinutes: number;
+  totalLateCount: number;
+  totalUndertimeCount: number;
+  totalAbsenceCount: number;
+  daysEquivalent: string;
+  processedAt: string | null;
 }

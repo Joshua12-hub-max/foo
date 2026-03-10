@@ -82,7 +82,7 @@ const PerformanceCriteriaContent: React.FC = () => {
   };
 
   const filteredCriteria = criteriaList.filter(item => 
-    (item.title || item.criteria_title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (item.title || item.criteriaTitle || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
     (item.category || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -157,8 +157,8 @@ const PerformanceCriteriaContent: React.FC = () => {
                   </div>
                 </div>
 
-                <h3 className="text-base font-bold text-gray-900 mb-2 tracking-tight group-hover:text-blue-900 transition-colors leading-tight">{item.title || item.criteria_title}</h3>
-                <p className="text-gray-500 text-xs mb-6 line-clamp-3 leading-relaxed min-h-[3em] flex-1">{item.description || item.criteria_description}</p>
+                <h3 className="text-base font-bold text-gray-900 mb-2 tracking-tight group-hover:text-blue-900 transition-colors leading-tight">{item.title || item.criteriaTitle}</h3>
+                <p className="text-gray-500 text-xs mb-6 line-clamp-3 leading-relaxed min-h-[3em] flex-1">{item.description || item.criteriaDescription}</p>
 
                 <div className="flex items-center justify-between pt-5 border-t border-gray-50 text-xs mt-auto">
                   <div className="flex items-center gap-2.5 text-gray-500 font-medium">
@@ -199,7 +199,7 @@ const PerformanceCriteriaContent: React.FC = () => {
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
         onConfirm={handleDeleteConfirm}
-        itemName={String(selectedCriteria?.title || selectedCriteria?.criteria_title || '')}
+        itemName={String(selectedCriteria?.title || selectedCriteria?.criteriaTitle || '')}
       />
     </div>
   );

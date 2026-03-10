@@ -12,28 +12,28 @@ import { formatToManilaDateTime } from '../utils/dateUtils.js';
 /** Shape returned by the getAllRecords db.select() query */
 interface DTRRecordRow {
   id: number;
-  employee_id: string;
+  employeeId: string;
   date: string;
-  time_in: string | Date | null;
-  time_out: string | Date | null;
-  late_minutes: number | null;
-  undertime_minutes: number | null;
-  overtime_minutes?: number | null;
+  timeIn: string | Date | null;
+  timeOut: string | Date | null;
+  lateMinutes: number | null;
+  undertimeMinutes: number | null;
+  overtimeMinutes?: number | null;
   status: string | null;
-  created_at: string | Date | null;
-  updated_at: string | Date | null;
-  employee_name: string;
-  first_name: string;
-  last_name: string;
-  middle_name: string | null;
+  createdAt: string | Date | null;
+  updatedAt: string | Date | null;
+  employeeName: string;
+  firstName: string;
+  lastName: string;
+  middleName: string | null;
   suffix: string | null;
   department: string;
   duties: string;
-  correction_id: number | null;
-  correction_status: string | null;
-  correction_reason: string | null;
-  correction_time_in: string | Date | null;
-  correction_time_out: string | Date | null;
+  correctionId: number | null;
+  correctionStatus: string | null;
+  correctionReason: string | null;
+  correctionTimeIn: string | Date | null;
+  correctionTimeOut: string | Date | null;
 }
 
 const toMySQLDatetime = (isoStr: string | null | undefined): string | null => {
@@ -42,8 +42,8 @@ const toMySQLDatetime = (isoStr: string | null | undefined): string | null => {
     const date = new Date(isoStr);
     if (isNaN(date.getTime())) return null;
     return formatToManilaDateTime(date);
-  } catch (e: unknown) {
-    console.error('toMySQLDatetime error:', e);
+  } catch (_e: unknown) {
+
     return null;
   }
 };
@@ -51,28 +51,28 @@ const toMySQLDatetime = (isoStr: string | null | undefined): string | null => {
 const mapToDtrApi = (record: DTRRecordRow): DTRApiResponse => {
     return {
         id: record.id,
-        employee_id: record.employee_id,
+        employeeId: record.employeeId,
         date: record.date ? new Date(record.date).toISOString().split('T')[0] : '',
-        time_in: record.time_in ? formatToManilaDateTime(record.time_in) : null,
-        time_out: record.time_out ? formatToManilaDateTime(record.time_out) : null,
-        late_minutes: record.late_minutes ?? 0,
-        undertime_minutes: record.undertime_minutes ?? 0,
-        overtime_minutes: record.overtime_minutes ?? 0,
+        timeIn: record.timeIn ? formatToManilaDateTime(record.timeIn) : null,
+        timeOut: record.timeOut ? formatToManilaDateTime(record.timeOut) : null,
+        lateMinutes: record.lateMinutes ?? 0,
+        undertimeMinutes: record.undertimeMinutes ?? 0,
+        overtimeMinutes: record.overtimeMinutes ?? 0,
         status: record.status || 'Pending',
-        created_at: record.created_at ? new Date(record.created_at).toISOString() : null,
-        updated_at: record.updated_at ? new Date(record.updated_at).toISOString() : null,
-        employee_name: record.employee_name || 'Unknown Employee',
-        first_name: record.first_name || '',
-        last_name: record.last_name || '',
-        middle_name: record.middle_name || null,
+        createdAt: record.createdAt ? new Date(record.createdAt).toISOString() : null,
+        updatedAt: record.updatedAt ? new Date(record.updatedAt).toISOString() : null,
+        employeeName: record.employeeName || 'Unknown Employee',
+        firstName: record.firstName || '',
+        lastName: record.lastName || '',
+        middleName: record.middleName || null,
         suffix: record.suffix || null,
         department: record.department || 'N/A',
         duties: record.duties || 'No Schedule',
-        correction_id: record.correction_id,
-        correction_status: record.correction_status,
-        correction_reason: record.correction_reason,
-        correction_time_in: record.correction_time_in ? formatToManilaDateTime(record.correction_time_in) : null,
-        correction_time_out: record.correction_time_out ? formatToManilaDateTime(record.correction_time_out) : null
+        correctionId: record.correctionId,
+        correctionStatus: record.correctionStatus,
+        correctionReason: record.correctionReason,
+        correctionTimeIn: record.correctionTimeIn ? formatToManilaDateTime(record.correctionTimeIn) : null,
+        correctionTimeOut: record.correctionTimeOut ? formatToManilaDateTime(record.correctionTimeOut) : null
     };
 };
 
@@ -114,24 +114,28 @@ export const getAllRecords = async (req: Request, res: Response): Promise<void> 
 
         const records = await db.select({
             id: dailyTimeRecords.id,
-            employee_id: sql<string>`${dailyTimeRecords.employeeId}`,
+            employeeId: sql<string>`${dailyTimeRecords.employeeId}`,
             date: dailyTimeRecords.date,
-            time_in: dailyTimeRecords.timeIn,
-            time_out: dailyTimeRecords.timeOut,
-            late_minutes: dailyTimeRecords.lateMinutes,
-            undertime_minutes: dailyTimeRecords.undertimeMinutes,
+            timeIn: dailyTimeRecords.timeIn,
+            timeOut: dailyTimeRecords.timeOut,
+            lateMinutes: dailyTimeRecords.lateMinutes,
+            undertimeMinutes: dailyTimeRecords.undertimeMinutes,
             status: dailyTimeRecords.status,
-            created_at: dailyTimeRecords.createdAt,
-            updated_at: dailyTimeRecords.updatedAt,
-            employee_name: sql<string>`COALESCE(TRIM(CONCAT(${authentication.lastName}, ', ', ${authentication.firstName}, IF(${authentication.middleName} IS NOT NULL && ${authentication.middleName} != '', CONCAT(' ', SUBSTRING(${authentication.middleName}, 1, 1), '.'), ''), IF(${authentication.suffix} IS NOT NULL && ${authentication.suffix} != '', CONCAT(' ', ${authentication.suffix}), ''))), 'Unknown Employee')`,
+            createdAt: dailyTimeRecords.createdAt,
+            updatedAt: dailyTimeRecords.updatedAt,
+            employeeName: sql<string>`COALESCE(TRIM(CONCAT(${authentication.lastName}, ', ', ${authentication.firstName}, IF(${authentication.middleName} IS NOT NULL && ${authentication.middleName} != '', CONCAT(' ', SUBSTRING(${authentication.middleName}, 1, 1), '.'), ''), IF(${authentication.suffix} IS NOT NULL && ${authentication.suffix} != '', CONCAT(' ', ${authentication.suffix}), ''))), 'Unknown Employee')`,
+            firstName: authentication.firstName,
+            lastName: authentication.lastName,
+            middleName: authentication.middleName,
+            suffix: authentication.suffix,
             department: sql<string>`COALESCE(${departments.name}, 'N/A')`,
             duties: sql<string>`COALESCE((SELECT schedule_title FROM schedules WHERE employee_id = ${dailyTimeRecords.employeeId} ORDER BY updated_at DESC LIMIT 1), 'No Schedule')`,
             // Correction info via LEFT JOIN
-            correction_id: dtrCorrections.id,
-            correction_status: dtrCorrections.status,
-            correction_reason: dtrCorrections.reason,
-            correction_time_in: dtrCorrections.correctedTimeIn,
-            correction_time_out: dtrCorrections.correctedTimeOut,
+            correctionId: dtrCorrections.id,
+            correctionStatus: dtrCorrections.status,
+            correctionReason: dtrCorrections.reason,
+            correctionTimeIn: dtrCorrections.correctedTimeIn,
+            correctionTimeOut: dtrCorrections.correctedTimeOut,
         })
         .from(dailyTimeRecords)
         .leftJoin(authentication, eq(dailyTimeRecords.employeeId, authentication.employeeId))
@@ -168,8 +172,8 @@ export const getAllRecords = async (req: Request, res: Response): Promise<void> 
                 totalPages: Math.ceil(total / limit)
             }
         });
-    } catch (err: unknown) {
-        console.error('Get all DTR records error:', err);
+    } catch (_err: unknown) {
+
         res.status(500).json({ message: 'Something went wrong!' });
     }
 };
@@ -190,9 +194,7 @@ export const updateRecord = async (req: Request, res: Response): Promise<void> =
   }
   
   const { id } = validation.data.params;
-  const { time_in, time_out, status } = validation.data.body;
-
-  console.log(`[DTR Update] Request Body for ID ${id}:`, { time_in, time_out, status });
+  const { timeIn, timeOut, status } = validation.data.body;
 
   try {
     // 1. Check if record exists
@@ -246,9 +248,10 @@ export const updateRecord = async (req: Request, res: Response): Promise<void> =
         return toMySQLDatetime(inputTime);
     };
 
-    const mysqlTimeIn = processInputTime(time_in, existing.date);
-    const mysqlTimeOut = processInputTime(time_out, existing.date);
+    const mysqlTimeIn = processInputTime(timeIn, existing.date);
+    const mysqlTimeOut = processInputTime(timeOut, existing.date);
     const now = toMySQLDatetime(new Date().toISOString());
+
 
     let calculatedLate = 0;
     let calculatedUndertime = 0;
@@ -304,11 +307,9 @@ export const updateRecord = async (req: Request, res: Response): Promise<void> =
         }
     }
 
-    console.log(`[DTR Update] Calculated for ID ${id}: Late=${calculatedLate}, Undertime=${calculatedUndertime}, Status=${newStatus}`);
-    console.log(`[DTR Update] Formatted values for ID ${id}:`, { mysqlTimeIn, mysqlTimeOut, now });
 
     // 3. Perform update
-    const [result] = await db.update(dailyTimeRecords)
+    const [_result] = await db.update(dailyTimeRecords)
       .set({
         timeIn: mysqlTimeIn,
         timeOut: mysqlTimeOut,
@@ -319,14 +320,12 @@ export const updateRecord = async (req: Request, res: Response): Promise<void> =
       })
       .where(eq(dailyTimeRecords.id, Number(id)));
 
-    console.log(`[DTR Update] Success for ID ${id}. Result:`, result);
-
     // 4. Update Summary to reflect this manual change
     await updateTardinessSummary(existing.employeeId, existing.date);
 
     res.status(200).json({ success: true, message: 'Record updated successfully' });
-  } catch (err: unknown) {
-    console.error(`[DTR Update] CRITICAL ERROR for ID ${id}:`, err);
+  } catch (_err: unknown) {
+
     res.status(500).json({ success: false, message: 'Failed to update record' });
   }
 };
@@ -362,7 +361,7 @@ const parseTimeInput = (timeStr: string | null | undefined, dateStr: string): st
     const time12Regex = /^(\d{1,2}):(\d{2})\s?(AM|PM)$/i;
     const match12 = timeStr.match(time12Regex);
     if (match12) {
-      let [_, hours, minutes, period] = match12;
+      const [_, hours, minutes, period] = match12;
       let h = parseInt(hours, 10);
       if (period.toUpperCase() === 'PM' && h < 12) h += 12;
       if (period.toUpperCase() === 'AM' && h === 12) h = 0;
@@ -388,14 +387,13 @@ const parseTimeInput = (timeStr: string | null | undefined, dateStr: string): st
     }
 
     return null;
-  } catch (e) {
-    console.error('Time parsing error:', e);
+  } catch (_e) {
+
     return null;
   }
 };
 
   try {
-    console.log('[DTR Correction] Requesting correction for:', { employeeId, date, originalTimeIn, correctedTimeIn });
 
     // Format times to MySQL DateTime
     const dbOriginalIn = parseTimeInput(originalTimeIn, date);
@@ -419,7 +417,7 @@ const parseTimeInput = (timeStr: string | null | undefined, dateStr: string): st
       message: 'Correction request submitted successfully. Waiting for Admin approval.' 
     });
   } catch (err: unknown) {
-    console.error('Request DTR correction error:', err);
+
     if (err instanceof Error && 'sqlMessage' in err) console.error('SQL Error:', (err as Error & { sqlMessage: string }).sqlMessage);
     res.status(500).json({ success: false, message: 'Failed to submit correction request' });
   }
@@ -461,8 +459,8 @@ export const getCorrectionRequests = async (req: Request, res: Response): Promis
         success: true,
         data: requests
     });
-  } catch (error) {
-    console.error('getCorrectionRequests error:', error);
+  } catch (_error) {
+
     res.status(500).json({ success: false, message: 'Failed to fetch correction requests' });
   }
 };
@@ -518,6 +516,15 @@ export const updateCorrectionStatus = async (req: Request, res: Response): Promi
             const startStr = schedule ? schedule.startTime : '08:00:00';
             const endStr = schedule ? schedule.endTime : '17:00:00';
             
+            const getTimePart = (d: string | Date | null): string | null => {
+                if (!d) return null;
+                // Handle DB string "YYYY-MM-DD HH:mm:ss"
+                if (typeof d === 'string' && d.includes(' ')) return d.split(' ')[1];
+                // Handle Date object or ISO string
+                const dateObj = new Date(d);
+                return isNaN(dateObj.getTime()) ? null : dateObj.toTimeString().split(' ')[0];
+            };
+
             // Wait, logic needs checking.
             // request.correctedTimeIn is "YYYY-MM-DD HH:mm:ss"
             // We need to parse TIME part for calculation.
@@ -530,21 +537,25 @@ export const updateCorrectionStatus = async (req: Request, res: Response): Promi
             let newStatus = 'Present';
 
             if (finalTimeIn) {
-                    const inTimePart = finalTimeIn.split(' ')[1]; // HH:mm:ss
+                    const inTimePart = getTimePart(finalTimeIn);
+                    if (inTimePart) {
                     const [inH, inM] = inTimePart.split(':').map(Number);
                     const [schH, schM] = startStr.split(':').map(Number);
                     const inTotal = inH * 60 + inM;
                     const schTotal = schH * 60 + schM;
                     if (inTotal > schTotal) calculatedLate = inTotal - schTotal;
+                    }
             }
 
             if (finalTimeOut) {
-                    const outTimePart = finalTimeOut.split(' ')[1]; // HH:mm:ss
+                    const outTimePart = getTimePart(finalTimeOut);
+                    if (outTimePart) {
                     const [outH, outM] = outTimePart.split(':').map(Number);
                     const [schEH, schEM] = endStr.split(':').map(Number);
                     const outTotal = outH * 60 + outM;
                     const schEndTotal = schEH * 60 + schEM;
                     if (outTotal < schEndTotal) calculatedUndertime = schEndTotal - outTotal;
+                    }
             }
 
             const isLate = calculatedLate > 0;
@@ -590,8 +601,8 @@ export const updateCorrectionStatus = async (req: Request, res: Response): Promi
     }
 
     res.json({ success: true, message: `Requests ${status} successfully` });
-  } catch (err) {
-      console.error('updateCorrectionStatus error:', err);
+  } catch (_err) {
+
       res.status(500).json({ success: false, message: 'Failed to update status' });
   }
 };

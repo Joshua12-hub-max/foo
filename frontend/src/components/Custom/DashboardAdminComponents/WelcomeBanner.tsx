@@ -4,7 +4,7 @@ interface WelcomeBannerProps {
   user?: {
     name?: string;
     role?: string;
-    avatar_url?: string | null;
+    avatarUrl?: string | null;
   };
 }
 

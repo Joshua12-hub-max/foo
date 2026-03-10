@@ -1,25 +1,53 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ShieldAlert, Loader2, ArrowRight } from "lucide-react";
+import { ShieldAlert, Loader2, ArrowRight, User, Mail, Lock, Briefcase, Calendar, Clock, ChevronDown } from "lucide-react";
 import AuthLayout from "@components/Custom/Auth/AuthLayout";
 import { toast } from "react-hot-toast";
-import { useSetupPortalMutation } from "@/hooks/useAuthQueries";
 import api from "@/api/axios";
+import { useAuthStore } from "@/stores";
+import { ApiError } from "@/types";
+
+interface SetupPosition {
+  id: number;
+  positionTitle: string;
+  itemNumber: string;
+  salaryGrade: number;
+  isVacant: boolean;
+}
+
+interface SetupPositionsResponse {
+  success: boolean;
+  departmentId: number;
+  positions: SetupPosition[];
+  reservedId: string;
+  appointmentTypes: string[];
+  dutyTypes: string[];
+  roles: string[];
+}
 
 export default function SetupPortal() {
   const navigate = useNavigate();
-  const setupMutation = useSetupPortalMutation();
+  const logout = useAuthStore((state) => state.logout);
   
   const [formData, setFormData] = useState({
     firstName: "",
+    middleName: "",
     lastName: "",
+    suffix: "",
     email: "",
     password: "",
     positionId: "",
+    role: "Administrator",
+    dutyType: "Standard",
+    appointmentType: "Permanent",
   });
 
   const [departmentId, setDepartmentId] = useState<number | null>(null);
-  const [positions, setPositions] = useState<any[]>([]);
+  const [positions, setPositions] = useState<SetupPosition[]>([]);
+  const [roles, setRoles] = useState<string[]>([]);
+  const [dutyTypes, setDutyTypes] = useState<string[]>([]);
+  const [appointmentTypes, setAppointmentTypes] = useState<string[]>([]);
+  
   const [loading, setLoading] = useState(false);
   const [verifying, setVerifying] = useState(true);
 
@@ -27,20 +55,28 @@ export default function SetupPortal() {
     const fetchHRDepartmentAndPositions = async () => {
       try {
         setVerifying(true);
-        // We'll call an endpoint that fetches the exact setup positions, 
-        // to keep the frontend clean and fast.
-        const res = await api.get("/auth/setup-positions");
+        
+        // 100% Cleanup: Wiping any old user session data before starting Setup
+        logout();
+        localStorage.clear();
+        sessionStorage.clear();
+
+        const res = await api.get<SetupPositionsResponse>("/auth/setup-positions");
         setPositions(res.data.positions);
         setDepartmentId(res.data.departmentId);
-      } catch (err: any) {
-        toast.error(err.response?.data?.message || "Setup portal is not available.");
+        setRoles(res.data.roles || ["Administrator", "Human Resource"]);
+        setDutyTypes(res.data.dutyTypes || ["Standard", "Irregular"]);
+        setAppointmentTypes(res.data.appointmentTypes || ["Permanent", "Contractual", "Casual", "Job Order", "Coterminous", "Temporary", "Contract of Service", "JO", "COS"]);
+      } catch (err: unknown) {
+        const apiErr = err as ApiError;
+        toast.error(apiErr.response?.data?.message || "Setup portal is not available.");
         navigate("/login");
       } finally {
         setVerifying(false);
       }
     };
     fetchHRDepartmentAndPositions();
-  }, [navigate]);
+  }, [navigate, logout]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -48,22 +84,29 @@ export default function SetupPortal() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.firstName || !formData.lastName || !formData.email || !formData.password || !formData.positionId) {
-      toast.error("Please fill all fields.");
+    if (!formData.firstName || !formData.lastName || !formData.email || !formData.password || !formData.positionId|| !formData.role || !formData.appointmentType) {
+      toast.error("Please fill all required fields.");
       return;
     }
 
     try {
       setLoading(true);
-      await setupMutation.mutateAsync({
+      const res = await api.post<{ success: boolean; message?: string }>("/auth/setup-portal", {
         ...formData,
-        departmentId
+        departmentId: departmentId
       });
-      toast.success("Portal setup successful! You can now log in.");
-      navigate("/login");
-    } catch (err: any) {
-      console.error(err);
-      toast.error(err.response?.data?.message || "Setup failed.");
+
+      if (res.data.success) {
+        // Cleanup again before redirecting to verification
+        localStorage.clear();
+        sessionStorage.clear();
+        
+        toast.success(res.data.message || "Account created! Please check your email.");
+        navigate("/verify-account", { state: { email: formData.email } });
+      }
+    } catch (err: unknown) {
+      const apiErr = err as ApiError;
+      toast.error(apiErr.response?.data?.message || "Failed to initialize account.");
     } finally {
       setLoading(false);
     }
@@ -71,26 +114,25 @@ export default function SetupPortal() {
 
   if (verifying) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-green-600" />
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
       </div>
     );
   }
 
   if (!positions || positions.length === 0) {
     return (
-      <AuthLayout title="Setup Portal" maxWidth="max-w-md">
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm text-center">
-          <div className="mx-auto w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-            <ShieldAlert className="w-6 h-6 text-gray-400" />
+      <AuthLayout title="Initialization Complete" maxWidth="max-w-md">
+        <div className="text-center py-6">
+          <div className="mx-auto w-14 h-14 bg-gray-50 rounded-full flex items-center justify-center mb-5 border border-gray-100">
+            <ShieldAlert className="w-7 h-7 text-gray-400" />
           </div>
-          <h3 className="text-lg font-bold text-gray-900 mb-2">Setup Complete</h3>
-          <p className="text-sm text-gray-500 mb-6">
-            The initial HR and Administrator accounts have already been established. This portal is no longer accepting setups.
+          <p className="text-sm text-gray-500 mb-6 px-4 leading-relaxed">
+            The initial administrative access has already been established.
           </p>
           <button
             onClick={() => navigate("/login")}
-            className="w-full bg-gray-900 text-white rounded-xl py-2.5 font-bold hover:bg-gray-800 transition shadow-sm"
+            className="w-full bg-gray-900 text-white rounded-lg py-3 font-semibold hover:bg-black transition-all active:scale-[0.98]"
           >
             Go to Login
           </button>
@@ -99,101 +141,181 @@ export default function SetupPortal() {
     );
   }
 
-  const inputClass = "w-full pl-3 pr-3 py-2.5 text-sm border-[1.5px] rounded-xl shadow-sm bg-gray-50/50 hover:bg-white focus:bg-white focus:ring-[3px] focus:ring-green-100 focus:border-green-600 focus:outline-none border-gray-200 transition-all text-gray-900";
+  const labelClass = "text-xs font-semibold text-gray-600 mb-1.5 ml-1 block";
+  const inputContainerClass = "relative flex items-center bg-white border border-gray-300 rounded-lg focus-within:ring-2 focus-within:ring-blue-500/10 focus-within:border-blue-500 transition-all overflow-hidden shadow-sm";
+  const iconClass = "absolute left-3.5 text-gray-400";
+  const inputClass = "w-full bg-transparent pl-11 pr-4 py-2.5 text-sm text-gray-900 outline-none placeholder:text-gray-400";
+  const selectClass = "w-full bg-transparent pl-11 pr-10 py-2.5 text-sm text-gray-900 outline-none appearance-none cursor-pointer";
 
   return (
     <AuthLayout 
       title="System Initialization" 
-      subtitle="Establish the first Administrator and Human Resource access."
-      maxWidth="max-w-md"
+      subtitle="Complete the initial portal setup"
+      maxWidth="max-w-2xl"
     >
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-4 mt-2">
         
-        <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100 space-y-3 mb-6">
-          <div className="space-y-1">
-            <label className="text-xs font-bold uppercase tracking-wider text-blue-800">Department</label>
-            <input 
-              type="text" 
-              disabled 
-              value="Human Resource Management Office" 
-              className="w-full bg-white/50 border border-blue-200 rounded-lg text-sm text-blue-900 font-medium px-3 py-2 cursor-not-allowed" 
-            />
+        {/* Row 1: Role & Position */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className={labelClass}>Administrative Role</label>
+            <div className={inputContainerClass}>
+              <ShieldAlert className={iconClass} size={16} />
+              <select
+                name="role"
+                value={formData.role}
+                onChange={handleChange}
+                className={selectClass}
+                required
+              >
+                {roles.map((r) => (
+                  <option key={r} value={r}>{r}</option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-3.5 text-gray-400 pointer-events-none" size={14} />
+            </div>
           </div>
-          <div className="space-y-1">
-            <label className="text-xs font-bold uppercase tracking-wider text-blue-800">Select Position</label>
-            <select
-              name="positionId"
-              value={formData.positionId}
-              onChange={handleChange}
-              className="w-full bg-white border border-blue-300 rounded-lg text-sm text-blue-900 font-medium px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+          <div>
+            <label className={labelClass}>Official Position</label>
+            <div className={inputContainerClass}>
+              <Briefcase className={iconClass} size={16} />
+              <select
+                name="positionId"
+                value={formData.positionId}
+                onChange={handleChange}
+                className={selectClass}
+                required
+              >
+                <option value="">Select position</option>
+                {positions.map((pos) => (
+                  <option key={pos.id} value={pos.id}>{pos.positionTitle}</option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-3.5 text-gray-400 pointer-events-none" size={14} />
+            </div>
+          </div>
+        </div>
+
+        {/* Row 2: Duty & Appointment */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className={labelClass}>Duty Status</label>
+            <div className={inputContainerClass}>
+              <Clock className={iconClass} size={16} />
+              <select
+                name="dutyType"
+                value={formData.dutyType}
+                onChange={handleChange}
+                className={selectClass}
+                required
+              >
+                {dutyTypes.map((d) => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-3.5 text-gray-400 pointer-events-none" size={14} />
+            </div>
+          </div>
+          <div>
+            <label className={labelClass}>Appointment Type</label>
+            <div className={inputContainerClass}>
+              <Calendar className={iconClass} size={16} />
+              <select
+                name="appointmentType"
+                value={formData.appointmentType}
+                onChange={handleChange}
+                className={selectClass}
+                required
+              >
+                {appointmentTypes.map((a) => (
+                  <option key={a} value={a}>{a}</option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-3.5 text-gray-400 pointer-events-none" size={14} />
+            </div>
+          </div>
+        </div>
+
+        <div className="h-px bg-gray-100 my-2" />
+
+        {/* Row 3: Names */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className={labelClass}>Last Name</label>
+            <div className={inputContainerClass}>
+              <User className={iconClass} size={16} />
+              <input name="lastName" placeholder="Dela Cruz" value={formData.lastName} onChange={handleChange} className={inputClass} required />
+            </div>
+          </div>
+          <div>
+            <label className={labelClass}>First Name</label>
+            <div className={inputContainerClass}>
+              <User className={iconClass} size={16} />
+              <input name="firstName" placeholder="Juan" value={formData.firstName} onChange={handleChange} className={inputClass} required />
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className={labelClass}>Middle Name</label>
+            <div className={inputContainerClass}>
+              <User className={iconClass} size={16} />
+              <input name="middleName" placeholder="Optional" value={formData.middleName} onChange={handleChange} className={inputClass} />
+            </div>
+          </div>
+          <div>
+            <label className={labelClass}>Suffix</label>
+            <div className={inputContainerClass}>
+              <User className={iconClass} size={16} />
+              <input name="suffix" placeholder="Jr., III, etc." value={formData.suffix} onChange={handleChange} className={inputClass} />
+            </div>
+          </div>
+        </div>
+
+        {/* Row 4: Credentials */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className={labelClass}>Official Email</label>
+            <div className={inputContainerClass}>
+              <Mail className={iconClass} size={16} />
+              <input name="email" type="email" placeholder="name@gov.ph" value={formData.email} onChange={handleChange} className={inputClass} required />
+            </div>
+          </div>
+          <div>
+            <label className={labelClass}>Initial Password</label>
+            <div className={inputContainerClass}>
+              <Lock className={iconClass} size={16} />
+              <input name="password" type="password" placeholder="••••••••" value={formData.password} onChange={handleChange} className={inputClass} required />
+            </div>
+          </div>
+        </div>
+
+        {/* Action Button */}
+        <div className="pt-3">
+            <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-slate-900 text-white py-3 rounded-lg font-bold text-sm hover:bg-black transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md flex justify-center items-center gap-2 active:scale-[0.98]"
             >
-              <option value="">Select a role...</option>
-              {positions.map((pos) => (
-                <option key={pos.id} value={pos.id}>{pos.positionTitle}</option>
-              ))}
-            </select>
-          </div>
+            {loading ? <Loader2 className="animate-spin h-4 w-4" /> : (
+                <>
+                Initialize System
+                <ArrowRight size={18} />
+                </>
+            )}
+            </button>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-gray-600 ml-1">Last Name</label>
-            <input
-              name="lastName"
-              placeholder="Ex: Dela Cruz"
-              value={formData.lastName}
-              onChange={handleChange}
-              className={inputClass}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-gray-600 ml-1">First Name</label>
-            <input
-              name="firstName"
-              placeholder="Ex: Juan"
-              value={formData.firstName}
-              onChange={handleChange}
-              className={inputClass}
-            />
-          </div>
+        <div className="text-center">
+          <button 
+            type="button"
+            onClick={() => navigate("/login")}
+            className="text-xs font-medium text-gray-400 hover:text-gray-900 transition-colors"
+          >
+            Back to Login
+          </button>
         </div>
-
-        <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-gray-600 ml-1">Official Email Address</label>
-          <input
-            name="email"
-            type="email"
-            placeholder="Ex: hr.admin@meycauayan.gov.ph"
-            value={formData.email}
-            onChange={handleChange}
-            className={inputClass}
-          />
-        </div>
-
-        <div className="space-y-1.5 pb-2">
-          <label className="text-xs font-semibold text-gray-600 ml-1">Setup Password</label>
-          <input
-            name="password"
-            type="password"
-            placeholder="Min 8 characters"
-            value={formData.password}
-            onChange={handleChange}
-            className={inputClass}
-          />
-        </div>
-
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full bg-gray-900 text-white rounded-xl py-3 font-bold hover:bg-gray-800 transition disabled:opacity-50 disabled:cursor-not-allowed shadow-md flex justify-center items-center gap-2 mt-2"
-        >
-          {loading ? <Loader2 className="animate-spin h-5 w-5" /> : (
-            <>
-              Complete Registration
-              <ArrowRight size={16} />
-            </>
-          )}
-        </button>
       </form>
     </AuthLayout>
   );

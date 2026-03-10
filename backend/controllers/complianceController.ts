@@ -65,7 +65,7 @@ export const getEmployeeMetrics = async (req: Request, res: Response): Promise<v
     const [summary] = await db.select()
     .from(tardinessSummary)
     .where(and(
-      eq(tardinessSummary.employeeId, employee.employeeId),
+      eq(tardinessSummary.employeeId, employee.employeeId as string),
       eq(tardinessSummary.year, currentYear),
       eq(tardinessSummary.month, currentMonth)
     ))
@@ -104,8 +104,8 @@ export const getEmployeeMetrics = async (req: Request, res: Response): Promise<v
       }
     });
 
-  } catch (error) {
-    console.error('[COMPLIANCE] Error fetching employee metrics:', error);
+  } catch (_error) {
+
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
@@ -131,8 +131,10 @@ export const getAllViolations = async (_req: Request, res: Response): Promise<vo
         .limit(100);
 
         res.json({ success: true, violations });
-    } catch (error) {
-        console.error('[COMPLIANCE] Error fetching violations:', error);
+    } catch (_error) {
+
         res.status(500).json({ success: false, message: 'Internal server error' });
     }
 };
+
+

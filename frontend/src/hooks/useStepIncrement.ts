@@ -13,7 +13,7 @@ export const stepIncrementKeys = {
 
 // ==================== QUERIES ====================
 
-export const useStepIncrements = (params?: { status?: string; employee_id?: number }) => {
+export const useStepIncrements = (params?: { status?: string; employeeId?: number }) => {
   return useQuery({
     queryKey: stepIncrementKeys.list(params || {}),
     queryFn: async () => {
@@ -39,7 +39,7 @@ export const useEligibleEmployees = () => {
         return response.data;
       } catch (error) {
          console.error('Failed to fetch eligible employees:', error);
-         return { eligible_employees: [], count: 0 };
+         return { eligibleEmployees: [], count: 0 };
       }
     },
     staleTime: 0,
@@ -54,10 +54,10 @@ export const useCreateStepIncrement = () => {
 
   return useMutation({
     mutationFn: async (data: {
-      employee_id: number;
-      position_id: number;
-      current_step: number;
-      eligible_date: string;
+      employeeId: number;
+      positionId: number;
+      currentStep: number;
+      eligibleDate: string;
       status?: string;
       remarks?: string;
     }) => {
@@ -70,7 +70,8 @@ export const useCreateStepIncrement = () => {
       toast.success('Step increment request created successfully');
     },
     onError: (error: unknown) => {
-      const message = (error as { response?: { data?: { message?: string } } }).response?.data?.message || 'Failed to create step increment request';
+      const apiErr = error as { response?: { data?: { message?: string } } };
+      const message = apiErr.response?.data?.message || 'Failed to create step increment request';
       toast.error(message);
     },
   });
@@ -81,7 +82,7 @@ export const useProcessStepIncrement = () => {
 
   return useMutation({
     mutationFn: async (data: {
-      increment_id: number;
+      incrementId: number;
       status: 'Approved' | 'Denied';
       remarks?: string;
     }) => {
@@ -99,7 +100,8 @@ export const useProcessStepIncrement = () => {
       toast.success(`Step increment ${action} successfully`);
     },
     onError: (error: unknown) => {
-      const message = (error as { response?: { data?: { message?: string } } }).response?.data?.message || 'Failed to process step increment';
+      const apiErr = error as { response?: { data?: { message?: string } } };
+      const message = apiErr.response?.data?.message || 'Failed to process step increment';
       toast.error(message);
     },
   });

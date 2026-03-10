@@ -10,10 +10,10 @@ interface Education {
   id: number;
   institution: string;
   degree: string;
-  field_of_study?: string;
-  start_date?: string;
-  end_date?: string;
-  is_current?: boolean;
+  fieldOfStudy?: string;
+  startDate?: string;
+  endDate?: string;
+  isCurrent?: boolean;
   type: string;
 }
 
@@ -41,15 +41,15 @@ const ProfileEducation: React.FC<ProfileEducationProps> = ({ profile, onUpdate }
     defaultValues: {
       institution: '',
       degree: '',
-      field_of_study: '',
-      start_date: '',
-      end_date: '',
-      is_current: false,
+      fieldOfStudy: '',
+      startDate: '',
+      endDate: '',
+      isCurrent: false,
       type: 'Education',
     },
   });
 
-  const isCurrent = watch('is_current');
+  const isCurrent = watch('isCurrent');
 
   const onFormSubmit = async (data: AddEducationInput) => {
     try {
@@ -114,7 +114,7 @@ const ProfileEducation: React.FC<ProfileEducationProps> = ({ profile, onUpdate }
               <label className="block text-[10px] font-black text-gray-400 uppercase mb-1">Field of Study</label>
               <input
                 type="text"
-                {...register('field_of_study')}
+                {...register('fieldOfStudy')}
                 className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-gray-500 outline-none"
               />
             </div>
@@ -122,7 +122,7 @@ const ProfileEducation: React.FC<ProfileEducationProps> = ({ profile, onUpdate }
               <label className="block text-[10px] font-black text-gray-400 uppercase mb-1">Start Date</label>
               <input
                 type="date"
-                {...register('start_date')}
+                {...register('startDate')}
                 className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-gray-500 outline-none"
               />
             </div>
@@ -130,7 +130,7 @@ const ProfileEducation: React.FC<ProfileEducationProps> = ({ profile, onUpdate }
               <label className="block text-[10px] font-black text-gray-400 uppercase mb-1">End Date</label>
               <input
                 type="date"
-                {...register('end_date')}
+                {...register('endDate')}
                 disabled={isCurrent}
                 className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-gray-500 outline-none disabled:bg-gray-100"
               />
@@ -139,7 +139,7 @@ const ProfileEducation: React.FC<ProfileEducationProps> = ({ profile, onUpdate }
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
-                  {...register('is_current')}
+                  {...register('isCurrent')}
                   className="w-4 h-4 text-emerald-600 rounded focus:ring-gray-500"
                 />
                 <span className="text-xs font-bold text-gray-700 uppercase">Currently studying here</span>
@@ -193,13 +193,13 @@ const ProfileEducation: React.FC<ProfileEducationProps> = ({ profile, onUpdate }
                     </span>
                   </div>
                   <p className="text-xs font-bold text-gray-600">{edu.degree}</p>
-                  {edu.field_of_study && (
-                    <p className="text-[10px] text-gray-400 font-semibold">{edu.field_of_study}</p>
+                  {edu.fieldOfStudy && (
+                    <p className="text-[10px] text-gray-400 font-semibold">{edu.fieldOfStudy}</p>
                   )}
                   <div className="flex items-center gap-2 mt-2 text-[9px] font-black text-gray-400 uppercase tracking-widest">
                     <span>
-                      {edu.start_date ? new Date(edu.start_date).getFullYear() : 'N/A'} - 
-                      {edu.is_current ? 'Present' : (edu.end_date ? new Date(edu.end_date).getFullYear() : 'N/A')}
+                      {edu.startDate ? new Date(edu.startDate).getFullYear() : 'N/A'} - 
+                      {edu.isCurrent ? 'Present' : (edu.endDate ? new Date(edu.endDate).getFullYear() : 'N/A')}
                     </span>
                   </div>
                 </div>

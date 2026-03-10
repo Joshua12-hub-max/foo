@@ -55,16 +55,16 @@ const Table: React.FC<TableProps> = ({ data, onOpenApprove, onOpenReject }) => {
                     </span>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-800">{item.department || 'N/A'}</td>
-                  <td className="px-6 py-4 text-sm text-gray-800">{item.employee_id || 'N/A'}</td>
-                  <td className="px-6 py-4 text-sm text-gray-800">{item.name || item.employee_id || 'Unknown'}</td>
+                  <td className="px-6 py-4 text-sm text-gray-800">{item.employeeId || 'N/A'}</td>
+                  <td className="px-6 py-4 text-sm text-gray-800">{item.name || item.employeeId || 'Unknown'}</td>
                   <td className="px-6 py-4 text-sm text-gray-800">{item.leaveType || 'N/A'}</td>
                   <td className="px-6 py-4 text-sm text-gray-800">{new Date(item.fromDate).toLocaleDateString()}</td>
                   <td className="px-6 py-4 text-sm text-gray-800">{new Date(item.toDate).toLocaleDateString()}</td>
                   <td className="px-6 py-4">
                     <span className={`font-semibold ${
-                      (item.current_balance || 0) > 0 ? 'text-teal-600' : 'text-gray-400'
+                      (item.currentBalance || 0) > 0 ? 'text-teal-600' : 'text-gray-400'
                     }`}>
-                      {item.current_balance !== undefined ? item.current_balance : '-'}
+                      {item.currentBalance !== undefined ? item.currentBalance : '-'}
                     </span>
                   </td>
                   <td className="px-6 py-4">

@@ -6,10 +6,10 @@ import { toast } from 'react-hot-toast';
 
 interface FamilyMember {
     id?: number;
-    relation_type: 'Spouse' | 'Father' | 'Mother' | 'Child';
-    last_name: string;
-    first_name: string;
-    middle_name: string;
+    relationType: 'Spouse' | 'Father' | 'Mother' | 'Child';
+    lastName: string;
+    firstName: string;
+    middleName: string;
     name_extension?: string;
     occupation?: string;
     employer?: string;
@@ -26,9 +26,9 @@ export const FamilyBackground: React.FC<FamilyBackgroundProps> = ({ employeeId }
     const queryClient = useQueryClient();
     
     // State management
-    const [spouse, setSpouse] = useState<FamilyMember>({ relation_type: 'Spouse', last_name: '', first_name: '', middle_name: '' });
-    const [father, setFather] = useState<FamilyMember>({ relation_type: 'Father', last_name: '', first_name: '', middle_name: '' });
-    const [mother, setMother] = useState<FamilyMember>({ relation_type: 'Mother', last_name: '', first_name: '', middle_name: '' });
+    const [spouse, setSpouse] = useState<FamilyMember>({ relationType: 'Spouse', lastName: '', firstName: '', middleName: '' });
+    const [father, setFather] = useState<FamilyMember>({ relationType: 'Father', lastName: '', firstName: '', middleName: '' });
+    const [mother, setMother] = useState<FamilyMember>({ relationType: 'Mother', lastName: '', firstName: '', middleName: '' });
     const [childrenData, setChildrenData] = useState<FamilyMember[]>([]);
 
     // Fetch Data
@@ -43,16 +43,16 @@ export const FamilyBackground: React.FC<FamilyBackgroundProps> = ({ employeeId }
     // Populate State on Load
     useEffect(() => {
         if (apiData) {
-            const s = apiData.find(m => m.relation_type === 'Spouse');
+            const s = apiData.find(m => m.relationType === 'Spouse');
             if (s) setSpouse(s);
 
-            const f = apiData.find(m => m.relation_type === 'Father');
+            const f = apiData.find(m => m.relationType === 'Father');
             if (f) setFather(f);
 
-            const m = apiData.find(m => m.relation_type === 'Mother');
+            const m = apiData.find(m => m.relationType === 'Mother');
             if (m) setMother(m);
 
-            const c = apiData.filter(m => m.relation_type === 'Child');
+            const c = apiData.filter(m => m.relationType === 'Child');
             setChildrenData(c);
         }
     }, [apiData]);
@@ -88,10 +88,10 @@ export const FamilyBackground: React.FC<FamilyBackgroundProps> = ({ employeeId }
 
     const addChild = () => {
         setChildrenData([...childrenData, { 
-            relation_type: 'Child', 
-            last_name: '', 
-            first_name: '', 
-            middle_name: '',
+            relationType: 'Child', 
+            lastName: '', 
+            firstName: '', 
+            middleName: '',
             date_of_birth: '' 
         }]);
     };
@@ -131,17 +131,17 @@ export const FamilyBackground: React.FC<FamilyBackgroundProps> = ({ employeeId }
                     <div>
                         <label className="text-xs font-semibold text-slate-500 uppercase">Surname</label>
                         <input type="text" className="w-full mt-1 p-2 border rounded" 
-                            value={spouse.last_name || ''} onChange={e => setSpouse({...spouse, last_name: e.target.value})} />
+                            value={spouse.lastName || ''} onChange={e => setSpouse({...spouse, lastName: e.target.value})} />
                     </div>
                     <div>
                         <label className="text-xs font-semibold text-slate-500 uppercase">First Name</label>
                         <input type="text" className="w-full mt-1 p-2 border rounded" 
-                            value={spouse.first_name || ''} onChange={e => setSpouse({...spouse, first_name: e.target.value})} />
+                            value={spouse.firstName || ''} onChange={e => setSpouse({...spouse, firstName: e.target.value})} />
                     </div>
                     <div>
                         <label className="text-xs font-semibold text-slate-500 uppercase">Middle Name</label>
                         <input type="text" className="w-full mt-1 p-2 border rounded" 
-                            value={spouse.middle_name || ''} onChange={e => setSpouse({...spouse, middle_name: e.target.value})} />
+                            value={spouse.middleName || ''} onChange={e => setSpouse({...spouse, middleName: e.target.value})} />
                     </div>
                     <div>
                         <label className="text-xs font-semibold text-slate-500 uppercase">Extension (Jr/Sr)</label>
@@ -182,18 +182,18 @@ export const FamilyBackground: React.FC<FamilyBackgroundProps> = ({ employeeId }
                         <div>
                             <label className="text-xs font-semibold text-slate-500 uppercase">Surname</label>
                             <input type="text" className="w-full mt-1 p-2 border rounded" 
-                                value={father.last_name || ''} onChange={e => setFather({...father, last_name: e.target.value})} />
+                                value={father.lastName || ''} onChange={e => setFather({...father, lastName: e.target.value})} />
                         </div>
                         <div>
                             <label className="text-xs font-semibold text-slate-500 uppercase">First Name</label>
                             <input type="text" className="w-full mt-1 p-2 border rounded" 
-                                value={father.first_name || ''} onChange={e => setFather({...father, first_name: e.target.value})} />
+                                value={father.firstName || ''} onChange={e => setFather({...father, firstName: e.target.value})} />
                         </div>
                         <div className="grid grid-cols-2 gap-2">
                             <div>
                                 <label className="text-xs font-semibold text-slate-500 uppercase">Middle Name</label>
                                 <input type="text" className="w-full mt-1 p-2 border rounded" 
-                                    value={father.middle_name || ''} onChange={e => setFather({...father, middle_name: e.target.value})} />
+                                    value={father.middleName || ''} onChange={e => setFather({...father, middleName: e.target.value})} />
                             </div>
                             <div>
                                 <label className="text-xs font-semibold text-slate-500 uppercase">Ext</label>
@@ -211,17 +211,17 @@ export const FamilyBackground: React.FC<FamilyBackgroundProps> = ({ employeeId }
                         <div>
                             <label className="text-xs font-semibold text-slate-500 uppercase">Surname</label>
                             <input type="text" className="w-full mt-1 p-2 border rounded" 
-                                value={mother.last_name || ''} onChange={e => setMother({...mother, last_name: e.target.value})} />
+                                value={mother.lastName || ''} onChange={e => setMother({...mother, lastName: e.target.value})} />
                         </div>
                         <div>
                             <label className="text-xs font-semibold text-slate-500 uppercase">First Name</label>
                             <input type="text" className="w-full mt-1 p-2 border rounded" 
-                                value={mother.first_name || ''} onChange={e => setMother({...mother, first_name: e.target.value})} />
+                                value={mother.firstName || ''} onChange={e => setMother({...mother, firstName: e.target.value})} />
                         </div>
                         <div>
                             <label className="text-xs font-semibold text-slate-500 uppercase">Middle Name</label>
                             <input type="text" className="w-full mt-1 p-2 border rounded" 
-                                value={mother.middle_name || ''} onChange={e => setMother({...mother, middle_name: e.target.value})} />
+                                value={mother.middleName || ''} onChange={e => setMother({...mother, middleName: e.target.value})} />
                         </div>
                     </div>
                 </div>
@@ -244,23 +244,23 @@ export const FamilyBackground: React.FC<FamilyBackgroundProps> = ({ employeeId }
                             <div className="md:col-span-4">
                                 <label className="text-[10px] font-bold text-slate-400 uppercase">Full Name of Child</label>
                                 <input type="text" placeholder="Last, First Middle" className="w-full p-2 text-sm border rounded" 
-                                    value={child.last_name} onChange={e => updateChild(idx, 'last_name', e.target.value)} />
+                                    value={child.lastName} onChange={e => updateChild(idx, 'lastName', e.target.value)} />
                                 {/* Note: PDS usually just asks for Name, but schema has split fields. 
-                                    I'll map last_name input to single Name field in UI or split inputs? 
+                                    I'll map lastName input to single Name field in UI or split inputs? 
                                     Schema has last, first, middle. UI "Name of Children" usually one line.
                                     Let's use just First/Last inputs or assume simpler UI.
-                                    Wait, my schema HAS last_name, first_name etc. 
+                                    Wait, my schema HAS lastName, firstName etc. 
                                     I'll stick to Last Name input being "Name" for now visually or add more inputs.
                                     Let's add multiple inputs for correctness.
                                  */}
                             </div>
                             <div className="md:col-span-3">
                                  <input type="text" placeholder="First Name" className="w-full p-2 text-sm border rounded" 
-                                    value={child.first_name} onChange={e => updateChild(idx, 'first_name', e.target.value)} />
+                                    value={child.firstName} onChange={e => updateChild(idx, 'firstName', e.target.value)} />
                             </div>
                              <div className="md:col-span-2">
                                  <input type="text" placeholder="Middle" className="w-full p-2 text-sm border rounded" 
-                                    value={child.middle_name} onChange={e => updateChild(idx, 'middle_name', e.target.value)} />
+                                    value={child.middleName} onChange={e => updateChild(idx, 'middleName', e.target.value)} />
                             </div>
                             <div className="md:col-span-2">
                                 <label className="text-[10px] font-bold text-slate-400 uppercase">Date of Birth</label>

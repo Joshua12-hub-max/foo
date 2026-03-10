@@ -6,8 +6,8 @@ import { useToastStore } from '@/stores';
 
 interface Employee {
   id: number | string;
-  first_name?: string;
-  last_name?: string;
+  firstName?: string;
+  lastName?: string;
 }
 
 interface DeleteEmployeeModalProps {
@@ -72,7 +72,7 @@ const DeleteEmployeeModal: React.FC<DeleteEmployeeModalProps> = ({
               <div>
                 <h4 className="text-sm font-bold text-red-800 mb-1">Confirm Deletion</h4>
                 <p className="text-sm text-red-700">
-                  Are you sure you want to delete <strong>{employee.first_name} {employee.last_name}</strong>?
+                  Are you sure you want to delete <strong>{employee.firstName} {employee.lastName}</strong>?
                 </p>
               </div>
             </div>

@@ -17,7 +17,7 @@ import { formatFullName } from '../utils/nameUtils.js';
  */
 export const getNepotismRelationships = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { employee_id, degree } = req.query;
+    const { employeeId, degree } = req.query;
 
     // Aliases for joins
     const e1 = alias(authentication, 'e1');
@@ -25,10 +25,10 @@ export const getNepotismRelationships = async (req: Request, res: Response): Pro
     const v = alias(authentication, 'v');
 
     const conditions = [];
-    if (employee_id) {
+    if (employeeId) {
       conditions.push(or(
-        eq(nepotismRelationships.employeeId1, Number(employee_id)),
-        eq(nepotismRelationships.employeeId2, Number(employee_id))
+        eq(nepotismRelationships.employeeId1, Number(employeeId)),
+        eq(nepotismRelationships.employeeId2, Number(employeeId))
       ));
     }
     if (degree) {
@@ -45,18 +45,18 @@ export const getNepotismRelationships = async (req: Request, res: Response): Pro
       verifiedAt: nepotismRelationships.verifiedAt,
       notes: nepotismRelationships.notes,
       createdAt: nepotismRelationships.createdAt,
-      e1_first: e1.firstName,
-      e1_last: e1.lastName,
-      e1_middle: e1.middleName,
-      e1_suffix: e1.suffix,
-      e2_first: e2.firstName,
-      e2_last: e2.lastName,
-      e2_middle: e2.middleName,
-      e2_suffix: e2.suffix,
-      v_first: v.firstName,
-      v_last: v.lastName,
-      v_middle: v.middleName,
-      v_suffix: v.suffix
+      e1First: e1.firstName,
+      e1Last: e1.lastName,
+      e1Middle: e1.middleName,
+      e1Suffix: e1.suffix,
+      e2First: e2.firstName,
+      e2Last: e2.lastName,
+      e2Middle: e2.middleName,
+      e2Suffix: e2.suffix,
+      vFirst: v.firstName,
+      vLast: v.lastName,
+      vMiddle: v.middleName,
+      vSuffix: v.suffix
     })
     .from(nepotismRelationships)
     .leftJoin(e1, eq(nepotismRelationships.employeeId1, e1.id))
@@ -67,17 +67,17 @@ export const getNepotismRelationships = async (req: Request, res: Response): Pro
 
     const formattedRelationships = relationships.map(r => ({
         ...r,
-        employee1Name: formatFullName(r.e1_last, r.e1_first, r.e1_middle, r.e1_suffix),
-        employee2Name: formatFullName(r.e2_last, r.e2_first, r.e2_middle, r.e2_suffix),
-        verifierName: r.verifiedBy ? formatFullName(r.v_last, r.v_first, r.v_middle, r.v_suffix) : null
+        employee1Name: formatFullName(r.e1Last, r.e1First, r.e1Middle, r.e1Suffix),
+        employee2Name: formatFullName(r.e2Last, r.e2First, r.e2Middle, r.e2Suffix),
+        verifierName: r.verifiedBy ? formatFullName(r.vLast, r.vFirst, r.vMiddle, r.vSuffix) : null
     }));
 
     res.json({
       success: true,
       relationships: formattedRelationships
     });
-  } catch (error) {
-    console.error('Get Nepotism Relationships Error:', error);
+  } catch (_error) {
+
     res.status(500).json({
       success: false,
       message: 'Failed to fetch nepotism relationships'
@@ -91,8 +91,8 @@ export const getNepotismRelationships = async (req: Request, res: Response): Pro
  */
 export const getEmployeeRelationships = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { employee_id } = req.params;
-    const empId = Number(employee_id);
+    const { employeeId } = req.params;
+    const empId = Number(employeeId);
 
     const e1 = alias(authentication, 'e1');
     const e2 = alias(authentication, 'e2');
@@ -108,18 +108,18 @@ export const getEmployeeRelationships = async (req: Request, res: Response): Pro
       verifiedAt: nepotismRelationships.verifiedAt,
       notes: nepotismRelationships.notes,
       createdAt: nepotismRelationships.createdAt,
-      e1_first: e1.firstName,
-      e1_last: e1.lastName,
-      e1_middle: e1.middleName,
-      e1_suffix: e1.suffix,
-      e2_first: e2.firstName,
-      e2_last: e2.lastName,
-      e2_middle: e2.middleName,
-      e2_suffix: e2.suffix,
-      v_first: v.firstName,
-      v_last: v.lastName,
-      v_middle: v.middleName,
-      v_suffix: v.suffix
+      e1First: e1.firstName,
+      e1Last: e1.lastName,
+      e1Middle: e1.middleName,
+      e1Suffix: e1.suffix,
+      e2First: e2.firstName,
+      e2Last: e2.lastName,
+      e2Middle: e2.middleName,
+      e2Suffix: e2.suffix,
+      vFirst: v.firstName,
+      vLast: v.lastName,
+      vMiddle: v.middleName,
+      vSuffix: v.suffix
     })
     .from(nepotismRelationships)
     .leftJoin(e1, eq(nepotismRelationships.employeeId1, e1.id))
@@ -133,17 +133,17 @@ export const getEmployeeRelationships = async (req: Request, res: Response): Pro
 
     const formattedRelationships = relationships.map(r => ({
         ...r,
-        employee1Name: formatFullName(r.e1_last, r.e1_first, r.e1_middle, r.e1_suffix),
-        employee2Name: formatFullName(r.e2_last, r.e2_first, r.e2_middle, r.e2_suffix),
-        verifierName: r.verifiedBy ? formatFullName(r.v_last, r.v_first, r.v_middle, r.v_suffix) : null
+        employee1Name: formatFullName(r.e1Last, r.e1First, r.e1Middle, r.e1Suffix),
+        employee2Name: formatFullName(r.e2Last, r.e2First, r.e2Middle, r.e2Suffix),
+        verifierName: r.verifiedBy ? formatFullName(r.vLast, r.vFirst, r.vMiddle, r.vSuffix) : null
     }));
 
     res.json({
       success: true,
       relationships: formattedRelationships
     });
-  } catch (error) {
-    console.error('Get Employee Relationships Error:', error);
+  } catch (_error) {
+
     res.status(500).json({
       success: false,
       message: 'Failed to fetch employee relationships'
@@ -204,7 +204,6 @@ export const createNepotismRelationship = async (req: Request, res: Response): P
       id: result.insertId
     });
   } catch (error) {
-    console.error('Create Nepotism Relationship Error:', error);
 
     if (error instanceof ZodError) {
       res.status(400).json({
@@ -233,11 +232,11 @@ export const createNepotismRelationship = async (req: Request, res: Response): P
 export const checkNepotism = async (req: Request, res: Response): Promise<void> => {
   try {
     const validatedData = CheckNepotismSchema.parse(req.body);
-    const { employeeId: employee_id, positionId: position_id, appointingAuthorityId: appointing_authority_id } = validatedData;
+    const { employeeId, positionId, appointingAuthorityId } = validatedData;
 
     // Get employee details
     const employee = await db.query.authentication.findFirst({
-      where: eq(authentication.id, employee_id),
+      where: eq(authentication.id, employeeId),
       columns: { id: true, firstName: true, lastName: true, middleName: true, suffix: true, employeeId: true, department: true }
     });
 
@@ -251,7 +250,7 @@ export const checkNepotism = async (req: Request, res: Response): Promise<void> 
 
     // Get position details
     const position = await db.query.plantillaPositions.findFirst({
-      where: eq(plantillaPositions.id, position_id),
+      where: eq(plantillaPositions.id, positionId),
       columns: { id: true, positionTitle: true, department: true }
     });
 
@@ -272,27 +271,27 @@ export const checkNepotism = async (req: Request, res: Response): Promise<void> 
       degree: nepotismRelationships.degree,
       employeeId1: nepotismRelationships.employeeId1,
       employeeId2: nepotismRelationships.employeeId2,
-      e1_first: e1.firstName,
-      e1_last: e1.lastName,
-      e1_middle: e1.middleName,
-      e1_suffix: e1.suffix,
-      e2_first: e2.firstName,
-      e2_last: e2.lastName,
-      e2_middle: e2.middleName,
-      e2_suffix: e2.suffix
+      e1First: e1.firstName,
+      e1Last: e1.lastName,
+      e1Middle: e1.middleName,
+      e1Suffix: e1.suffix,
+      e2First: e2.firstName,
+      e2Last: e2.lastName,
+      e2Middle: e2.middleName,
+      e2Suffix: e2.suffix
     })
     .from(nepotismRelationships)
     .leftJoin(e1, eq(nepotismRelationships.employeeId1, e1.id))
     .leftJoin(e2, eq(nepotismRelationships.employeeId2, e2.id))
     .where(and(
-      or(eq(nepotismRelationships.employeeId1, employee_id), eq(nepotismRelationships.employeeId2, employee_id)),
+      or(eq(nepotismRelationships.employeeId1, employeeId), eq(nepotismRelationships.employeeId2, employeeId)),
       sql`${nepotismRelationships.degree} <= 3`
     ));
 
     const mappedRelationships = relationships.map(r => ({
         ...r,
-        employee1Name: formatFullName(r.e1_last, r.e1_first, r.e1_middle, r.e1_suffix),
-        employee2Name: formatFullName(r.e2_last, r.e2_first, r.e2_middle, r.e2_suffix)
+        employee1Name: formatFullName(r.e1Last, r.e1First, r.e1Middle, r.e1Suffix),
+        employee2Name: formatFullName(r.e2Last, r.e2First, r.e2Middle, r.e2Suffix)
     }));
 
     // Find department head for the position's department
@@ -304,7 +303,7 @@ export const checkNepotism = async (req: Request, res: Response): Promise<void> 
         .where(and(
           eq(authentication.department, position.department),
           or(
-            eq(authentication.role, 'Admin'),
+            eq(authentication.role, 'Administrator'),
             like(plantillaPositions.positionTitle, '%Head%'),
             like(plantillaPositions.positionTitle, '%Chief%')
           )
@@ -317,19 +316,19 @@ export const checkNepotism = async (req: Request, res: Response): Promise<void> 
     }
 
     // Check for violations
-    const violations: { type: string; relationship: string; degree: number; related_person: string; severity: 'CRITICAL' | 'WARNING' | 'INFO' }[] = [];
+    const violations: { type: string; relationship: string; degree: number; relatedPerson: string; severity: 'CRITICAL' | 'WARNING' | 'INFO' }[] = [];
 
     for (const rel of mappedRelationships) {
-      const relatedPersonId = rel.employeeId1 === employee_id ? rel.employeeId2 : rel.employeeId1;
-      const relatedPersonName = rel.employeeId1 === employee_id ? rel.employee2Name : rel.employee1Name;
+      const relatedPersonId = rel.employeeId1 === employeeId ? rel.employeeId2 : rel.employeeId1;
+      const relatedPersonName = rel.employeeId1 === employeeId ? rel.employee2Name : rel.employee1Name;
 
       // Check if related person is the appointing authority
-      if (appointing_authority_id && relatedPersonId === appointing_authority_id) {
+      if (appointingAuthorityId && relatedPersonId === appointingAuthorityId) {
         violations.push({
           type: 'Appointing Authority',
           relationship: rel.relationshipType,
           degree: rel.degree,
-          related_person: relatedPersonName,
+          relatedPerson: relatedPersonName,
           severity: 'CRITICAL'
         });
       }
@@ -340,7 +339,7 @@ export const checkNepotism = async (req: Request, res: Response): Promise<void> 
           type: 'Department Head',
           relationship: rel.relationshipType,
           degree: rel.degree,
-          related_person: relatedPersonName,
+          relatedPerson: relatedPersonName,
           severity: 'CRITICAL'
         });
       }
@@ -356,7 +355,7 @@ export const checkNepotism = async (req: Request, res: Response): Promise<void> 
           type: 'Same Department',
           relationship: rel.relationshipType,
           degree: rel.degree,
-          related_person: relatedPersonName,
+          relatedPerson: relatedPersonName,
           severity: rel.degree <= 3 ? 'WARNING' : 'INFO'
         });
       }
@@ -371,21 +370,20 @@ export const checkNepotism = async (req: Request, res: Response): Promise<void> 
       employee: {
         id: employee.id,
         name: formatFullName(employee.lastName, employee.firstName, employee.middleName, employee.suffix),
-        employee_id: employee.employeeId
+        employeeId: employee.employeeId
       },
       position: {
         id: position.id,
         title: position.positionTitle,
         department: position.department
       },
-      warning_message: hasViolation
+      warningMessage: hasViolation
         ? '⚠️ NEPOTISM VIOLATION DETECTED: This appointment violates CSC nepotism rules. The employee has a 3rd degree or closer relationship with the appointing authority or department head.'
         : violations.length > 0
         ? '⚠️ WARNING: Employee has relatives in the same department. Please review carefully.'
         : '✅ No nepotism violations detected.'
     });
   } catch (error) {
-    console.error('Check Nepotism Error:', error);
 
     if (error instanceof ZodError) {
       res.status(400).json({
@@ -429,11 +427,12 @@ export const deleteNepotismRelationship = async (req: Request, res: Response): P
       success: true,
       message: 'Relationship deleted successfully'
     });
-  } catch (error) {
-    console.error('Delete Nepotism Relationship Error:', error);
+  } catch (_error) {
+
     res.status(500).json({
       success: false,
       message: 'Failed to delete relationship'
     });
   }
 };
+

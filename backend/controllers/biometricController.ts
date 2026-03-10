@@ -28,8 +28,8 @@ export const getEnrolledUsers = async (_req: Request, res: Response): Promise<vo
       data: users,
       total: users.length,
     });
-  } catch (error) {
-    console.error('[BIOMETRIC] Get Enrolled Users Error:', error);
+  } catch (_error) {
+
     res.status(500).json({
       success: false,
       message: 'Failed to retrieve enrolled users.',
@@ -77,8 +77,8 @@ export const getBiometricLogs = async (req: Request, res: Response): Promise<voi
       data: logs,
       total: logs.length,
     });
-  } catch (error) {
-    console.error('[BIOMETRIC] Get Logs Error:', error);
+  } catch (_error) {
+
     res.status(500).json({
       success: false,
       message: 'Failed to retrieve biometric logs.',
@@ -114,11 +114,13 @@ export const getSyncStatus = async (_req: Request, res: Response): Promise<void>
         status: syncInfo.lastSyncedBioId >= (bioCount?.count ?? 0) ? 'SYNCED' : 'SYNCING',
       },
     });
-  } catch (error) {
-    console.error('[BIOMETRIC] Sync Status Error:', error);
+  } catch (_error) {
+
     res.status(500).json({
       success: false,
       message: 'Failed to retrieve sync status.',
     });
   }
 };
+
+

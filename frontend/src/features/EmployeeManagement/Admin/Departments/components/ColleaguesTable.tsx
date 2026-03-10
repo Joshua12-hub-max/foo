@@ -3,11 +3,11 @@ import { Users, Briefcase, Mail } from 'lucide-react';
 
 interface Colleague {
   id: number;
-  first_name?: string;
-  last_name?: string;
-  employee_id?: string;
-  position_title?: string;
-  job_title?: string;
+  firstName?: string;
+  lastName?: string;
+  employeeId?: string;
+  positionTitle?: string;
+  jobTitle?: string;
   email?: string;
 }
 
@@ -22,20 +22,20 @@ const ColleagueRow: React.FC<ColleagueRowProps> = memo(({ colleague }) => {
       <td className="px-6 py-4">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 font-medium text-sm">
-            {colleague.first_name?.[0]}{colleague.last_name?.[0]}
+            {colleague.firstName?.[0]}{colleague.lastName?.[0]}
           </div>
           <div>
             <p className="font-medium text-gray-800 text-sm">
-              {colleague.first_name} {colleague.last_name}
+              {colleague.firstName} {colleague.lastName}
             </p>
-            <p className="text-xs text-gray-400">{colleague.employee_id}</p>
+            <p className="text-xs text-gray-400">{colleague.employeeId}</p>
           </div>
         </div>
       </td>
       <td className="px-6 py-4">
         <div className="flex items-center gap-2 text-sm text-gray-600">
           <Briefcase className="w-4 h-4 text-gray-400" />
-          {colleague.position_title || colleague.job_title || 'N/A'}
+          {colleague.positionTitle || colleague.jobTitle || 'N/A'}
         </div>
       </td>
       <td className="px-6 py-4">

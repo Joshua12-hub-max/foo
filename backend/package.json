@@ -11,11 +11,13 @@
     "seed:reset": "node db/seed.js --reset",
     "wipe-data": "node --import @swc-node/register/esm-register scripts/wipe_clean.ts",
     "db:reset": "node --import @swc-node/register/esm-register scripts/reset_db.ts",
-    "db:generate": "drizzle-kit generate",
-    "db:push": "drizzle-kit push",
+    "db:generate": "tsx node_modules/drizzle-kit/bin.cjs generate",
+    "db:push": "tsx node_modules/drizzle-kit/bin.cjs push",
+    "db:migrate": "tsx node_modules/drizzle-kit/bin.cjs migrate",
     "db:studio": "drizzle-kit studio",
     "clean": "rimraf node_modules package-lock.json dist && npm install",
     "type-check": "tsc --noEmit",
+    "lint": "eslint .",
     "build": "swc src -d dist"
   },
   "dependencies": {
@@ -68,12 +70,19 @@
     "@types/nodemailer": "^7.0.4",
     "@types/pdfkit": "^0.17.4",
     "@types/serialport": "^8.0.5",
+    "@typescript-eslint/eslint-plugin": "^8.56.1",
+    "@typescript-eslint/parser": "^8.56.1",
     "drizzle-kit": "^0.31.9",
+    "eslint": "^10.0.3",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.5",
     "kysely": "^0.28.11",
     "nodemon": "^3.1.11",
+    "prettier": "^3.8.1",
     "supertest": "^7.2.2",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
+    "typescript-eslint": "^8.56.1",
     "vitest": "^4.0.17"
   }
 }

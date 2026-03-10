@@ -18,7 +18,7 @@ const DepartmentFormModal: React.FC<DepartmentFormModalProps> = ({ isOpen, onClo
     defaultValues: {
       name: '',
       description: '',
-      head_of_department: ''
+      headOfDepartment: ''
     }
   });
 
@@ -27,7 +27,7 @@ const DepartmentFormModal: React.FC<DepartmentFormModalProps> = ({ isOpen, onClo
         reset({
             name: initialData?.name || '',
             description: initialData?.description || '',
-            head_of_department: initialData?.head_of_department || ''
+            headOfDepartment: initialData?.headOfDepartment || ''
         });
     }
   }, [initialData, isOpen, reset]);
@@ -86,7 +86,7 @@ const DepartmentFormModal: React.FC<DepartmentFormModalProps> = ({ isOpen, onClo
                 <label className="block text-xs font-bold text-gray-700 mb-1">Head of Department</label>
                 <input
                   type="text"
-                  {...register('head_of_department')}
+                  {...register('headOfDepartment')}
                   className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-gray-100 focus:border-gray-300 outline-none transition-all"
                   placeholder="e.g. John Doe"
                 />

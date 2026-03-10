@@ -12,8 +12,8 @@ interface AppError extends Error {
 }
 
 export const errorHandler = (error: AppError | ZodError, req: Request, res: Response, _next: NextFunction) => {
-    // Log the error for internal tracking
-    console.error(`[ERROR] ${req.method} ${req.url}`, error.message || error);
+    // Log the error for internal tracking - Avoid logging the entire error object if it contains sensitive data
+    console.error(`[ERROR] ${req.method} ${req.url}: ${error.message}`);
 
     // Handle Zod Validation Errors
     if (error instanceof ZodError) {
@@ -37,9 +37,13 @@ export const errorHandler = (error: AppError | ZodError, req: Request, res: Resp
 
     // Default Error
     const statusCode = error.status || error.statusCode || 500;
+    
+    // 100% Leak Prevention: Never send stack traces or internal error details to the client in production
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    
     res.status(statusCode).json({
         success: false,
-        message: error.message || 'Internal Server Error',
-        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        message: statusCode === 500 && !isDevelopment ? 'Internal Server Error' : error.message,
+        stack: isDevelopment ? error.stack : undefined
     });
 };

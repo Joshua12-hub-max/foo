@@ -14,9 +14,9 @@ interface SalaryUploadModalProps {
 }
 
 interface ParsedSalaryRow {
-    salary_grade: number;
+    salaryGrade: number;
     step: number;
-    monthly_salary: number;
+    monthlySalary: number;
 }
 
 // ... imports and interfaces ...
@@ -45,7 +45,7 @@ export const SalaryUploadModal: React.FC<SalaryUploadModalProps> = ({
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const createTrancheMutation = useMutation({
-        mutationFn: (data: { name: string; tranche_number: number; circular_number: string; effective_date: string }) =>
+        mutationFn: (data: { name: string; trancheNumber: number; circularNumber: string; effectiveDate: string }) =>
             plantillaApi.createTranche(data),
         onSuccess: (response) => {
             queryClient.invalidateQueries({ queryKey: ['tranches'] });
@@ -135,9 +135,9 @@ export const SalaryUploadModal: React.FC<SalaryUploadModalProps> = ({
 
                 if (salary > 0) {
                     rows.push({
-                        salary_grade: grade,
+                        salaryGrade: grade,
                         step: step,
-                        monthly_salary: salary
+                        monthlySalary: salary
                     });
                 }
             }
@@ -163,11 +163,11 @@ export const SalaryUploadModal: React.FC<SalaryUploadModalProps> = ({
                 }
                 const newTrancheRes = await createTrancheMutation.mutateAsync({
                     name: newTrancheName,
-                    tranche_number: newTrancheNum,
-                    circular_number: newCircular,
-                    effective_date: newEffectiveDate
+                    trancheNumber: newTrancheNum,
+                    circularNumber: newCircular,
+                    effectiveDate: newEffectiveDate
                 });
-                targetTrancheId = newTrancheRes.data.tranche.tranche_number;
+                targetTrancheId = newTrancheRes.data.tranche.trancheNumber;
                 // Update parent state so UI switches to this new tranche
                 setTrancheId(targetTrancheId);
             }
@@ -230,8 +230,8 @@ export const SalaryUploadModal: React.FC<SalaryUploadModalProps> = ({
                                 >
                                     <option value="" disabled>Select Tranche</option>
                                     {tranches.map(t => (
-                                        <option key={t.id} value={t.tranche_number}>
-                                            {t.name} ({t.circular_number})
+                                        <option key={t.id} value={t.trancheNumber}>
+                                            {t.name} ({t.circularNumber})
                                         </option>
                                     ))}
                                 </select>
@@ -398,10 +398,10 @@ export const SalaryUploadModal: React.FC<SalaryUploadModalProps> = ({
                                             <tbody className="divide-y divide-gray-50">
                                                 {parsedData.slice(0, 50).map((row, idx) => (
                                                     <tr key={idx}>
-                                                        <td className="px-3 py-1.5 text-gray-900">SG {row.salary_grade}</td>
+                                                        <td className="px-3 py-1.5 text-gray-900">SG {row.salaryGrade}</td>
                                                         <td className="px-3 py-1.5 text-gray-500">{row.step}</td>
                                                         <td className="px-3 py-1.5 text-right font-mono text-gray-700">
-                                                            {row.monthly_salary.toLocaleString()}
+                                                            {row.monthlySalary.toLocaleString()}
                                                         </td>
                                                     </tr>
                                                 ))}

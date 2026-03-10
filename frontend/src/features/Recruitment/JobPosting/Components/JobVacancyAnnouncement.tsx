@@ -18,8 +18,8 @@ const JobVacancyAnnouncement: React.FC<JobVacancyAnnouncementProps> = ({ job, on
   });
 
   // Helper to check employment status
-  const isJobOrder = job.employment_type?.toLowerCase().includes('job order');
-  const isContract = job.employment_type?.toLowerCase().includes('contract') || job.employment_type?.toLowerCase().includes('service');
+  const isJobOrder = job.employmentType?.toLowerCase().includes('job order');
+  const isContract = job.employmentType?.toLowerCase().includes('contract') || job.employmentType?.toLowerCase().includes('service');
 
   return (
     <div className="flex flex-col h-full bg-gray-100 overflow-hidden">
@@ -103,18 +103,24 @@ const JobVacancyAnnouncement: React.FC<JobVacancyAnnouncementProps> = ({ job, on
               <tr>
                 <td className="border border-black p-2 font-bold bg-gray-100">EMPLOYMENT STATUS</td>
                 <td className="border border-black p-2" colSpan={3}>
-                   <div className="flex gap-12">
-                      <div className="flex items-center gap-2">
-                        <div className={`w-4 h-4 border border-black flex items-center justify-center ${isJobOrder ? 'bg-black' : ''}`}>
-                          {isJobOrder && <span className="text-white text-xs">✓</span>}
+                   <div className="flex flex-col gap-2">
+                      <div className="flex gap-12">
+                        <div className="flex items-center gap-2">
+                          <div className={`w-4 h-4 border border-black flex items-center justify-center ${isJobOrder ? 'bg-black' : ''}`}>
+                            {isJobOrder && <span className="text-white text-xs">✓</span>}
+                          </div>
+                          <span>Job Order</span>
                         </div>
-                        <span>Job Order</span>
+                        <div className="flex items-center gap-2">
+                          <div className={`w-4 h-4 border border-black flex items-center justify-center ${isContract ? 'bg-black' : ''}`}>
+                              {isContract && <span className="text-white text-xs">✓</span>}
+                          </div>
+                          <span>Contract of Service</span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                         <div className={`w-4 h-4 border border-black flex items-center justify-center ${isContract ? 'bg-black' : ''}`}>
-                             {isContract && <span className="text-white text-xs">✓</span>}
-                         </div>
-                        <span>Contract of Service</span>
+                      <div className="pt-1 border-t border-gray-200">
+                        <span className="font-bold text-xs uppercase">Duty Type: </span>
+                        <span className="text-xs">{job.dutyType || 'Standard'}</span>
                       </div>
                    </div>
                 </td>
@@ -132,7 +138,7 @@ const JobVacancyAnnouncement: React.FC<JobVacancyAnnouncementProps> = ({ job, on
            <div className="border border-black mb-6">
                <div className="border-b border-black p-2 font-bold text-sm text-center bg-gray-100 uppercase">JOB DESCRIPTION</div>
                <div className="p-4 text-sm whitespace-pre-wrap min-h-[150px] text-justify leading-relaxed">
-                   {job.job_description}
+                   {job.jobDescription}
                </div>
            </div>
 
@@ -161,7 +167,7 @@ const JobVacancyAnnouncement: React.FC<JobVacancyAnnouncementProps> = ({ job, on
                   <p>Saluysoy, City of Meycauayan, Bulacan</p>
               </div>
 
-              <p>or email at <span className="text-blue-800 underline font-bold">{job.application_email}</span> with the subject line : [POSITION APPLIED - APPLICANT'S NAME]</p>
+              <p>or email at <span className="text-blue-800 underline font-bold">{job.applicationEmail}</span> with the subject line : [POSITION APPLIED - APPLICANT'S NAME]</p>
               
               <p className="font-bold uppercase">APPLICATIONS WITH INCOMPLETE DOCUMENTS SHALL NOT BE ENTERTAINED.</p>
 

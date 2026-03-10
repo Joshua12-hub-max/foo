@@ -11,28 +11,15 @@ interface FinalizeModalProps {
 }
 
 const FinalizeModal: React.FC<FinalizeModalProps> = ({ isOpen, request, onConfirm, onCancel }) => {
-  const [signedForm, setSignedForm] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-  const file = e.target.files?.[0];
-    if (file) setSignedForm(file);
-  };
-
   const handleFinalize = async () => {
     if (!request) return;
-    if (!signedForm) {
-      setError("Please upload the signed leave form.");
-      return;
-    }
     
     setLoading(true);
     try {
-      const formData = new FormData();
-      formData.append('finalForm', signedForm);
-      
-      await leaveApi.finalizeLeave(request.id, formData);
+      await leaveApi.finalizeLeave(request.id);
       onConfirm();
     } catch (err) {
       console.error(err);
@@ -70,33 +57,7 @@ const FinalizeModal: React.FC<FinalizeModalProps> = ({ isOpen, request, onConfir
             )}
             
             <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl text-sm space-y-3">
-                <p className="text-blue-900 leading-relaxed font-medium">The HR/Admin has processed your request. Please download the form below, sign it, and upload it back to finalize your request.</p>
-                {Boolean(request.admin_form_path) && (
-                     <div>
-                        <a href={`${import.meta.env.VITE_API_URL?.replace('/api', '') ?? ''}/uploads/${request.admin_form_path}`} target="_blank" rel="noreferrer" className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-white text-blue-700 rounded-lg hover:bg-blue-50 transition-colors text-sm font-semibold border border-blue-200 shadow-sm">
-                            <Download className="w-4 h-4" /> Download Admin Form
-                        </a>
-                     </div>
-                )}
-            </div>
-
-            {/* Upload Signed Form */}
-            <div>
-                <label className="block text-sm font-bold text-gray-900 mb-2">
-                    Upload Signed Form <span className="text-red-500">*</span>
-                </label>
-                <div className={`border-2 border-dashed ${signedForm ? 'border-green-500 bg-green-50/30' : 'border-gray-200 hover:border-gray-300'} rounded-xl p-6 text-center transition-all cursor-pointer`}>
-                    <input type="file" onChange={handleFileChange} className="hidden" id="signedFormUpload" accept=".pdf,.jpg,.png,.docx" />
-                    <label htmlFor="signedFormUpload" className="cursor-pointer flex flex-col items-center gap-2">
-                        <div className={`p-3 rounded-full ${signedForm ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
-                            {signedForm ? <CheckCircle className="w-6 h-6" /> : <Upload className="w-6 h-6" />}
-                        </div>
-                        <span className={`text-sm font-medium ${signedForm ? 'text-green-700' : 'text-gray-600'}`}>
-                            {signedForm ? signedForm.name : "Click to upload signed form"}
-                        </span>
-                        {!signedForm && <span className="text-xs text-gray-400">PDF, JPG, PNG, DOCX</span>}
-                    </label>
-                </div>
+                <p className="text-blue-900 leading-relaxed font-medium">The HR/Admin has processed your request. Please click the button below to finalize your request.</p>
             </div>
         </div>
 
@@ -112,7 +73,7 @@ const FinalizeModal: React.FC<FinalizeModalProps> = ({ isOpen, request, onConfir
                 disabled={loading} 
                 className="flex-1 px-4 py-2.5 bg-gray-900 text-white font-medium rounded-lg hover:bg-gray-800 disabled:opacity-50 transition-all shadow-lg shadow-gray-900/20 text-sm"
             >
-                {loading ? 'Uploading...' : 'Submit Signed Form'}
+                {loading ? 'Processing...' : 'Finalize Request'}
             </button>
         </div>
       </div>

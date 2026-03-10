@@ -143,12 +143,11 @@ export default function EmployeeDashboard(): React.ReactElement {
               limit: 100 // Get all logs for the current month for accurate stats
           });
           
-          // Simple calculation (logic might need adjustment based on actual API response structure)
+          // Precise calculation matching backend logic
           const logs = logsRes.data?.data || [];
-          const present = logs.filter((l: { status: string }) => l.status === 'Present').length;
-          const late = logs.filter((l: { status: string }) => l.status === 'Late').length;
-          // Absent logic might be complex (missing logs vs status='Absent'), assuming API returns it or we rely on just present/late for now.
-          const absent = logs.filter((l: { status: string }) => l.status === 'Absent').length; 
+          const present = logs.filter((l: { status: string }) => ['Present', 'Late', 'Undertime', 'Late/Undertime'].includes(l.status)).length;
+          const late = logs.filter((l: { status: string }) => ['Late', 'Late/Undertime'].includes(l.status)).length;
+          const absent = logs.filter((l: { status: string }) => l.status === 'Absent' || l.status === 'No Logs').length; 
 
           // Fetch leave credits
           const creditsRes = await leaveApi.getMyCredits();
@@ -258,7 +257,7 @@ export default function EmployeeDashboard(): React.ReactElement {
         />
 
         {/* SUSPENSION WARNING BANNER */}
-        {user?.completion_status === 'Suspended' || user?.employment_status === 'Suspended' || user?.status === 'Suspended' ? (
+        {user?.completionStatus === 'Suspended' || user?.employmentStatus === 'Suspended' || user?.status === 'Suspended' ? (
           <div className="bg-red-600 text-white px-6 py-4 mx-7 mt-6 rounded-xl shadow-lg border-l-8 border-red-800 flex items-start gap-4 animate-pulse">
             <div className="bg-white/20 p-2 rounded-full">
                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
@@ -268,7 +267,7 @@ export default function EmployeeDashboard(): React.ReactElement {
               <p className="text-red-100 font-medium mt-1">
                 Your account is currently under suspension. You have limited access to the portal. 
                 You cannot submit requests, update your profile, or perform administrative actions. 
-                Please contact HR for more information.
+                Please contact Human Resource for more information.
               </p>
             </div>
           </div>

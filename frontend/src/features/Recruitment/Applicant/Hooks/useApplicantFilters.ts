@@ -13,9 +13,9 @@ const useApplicantFilters = (applicants: Applicant[], itemsPerPage = 10) => {
   const filteredApplicants = useMemo(() => {
     return applicants.filter(app => {
       const matchesSearch = 
-        (app.first_name + ' ' + app.last_name).toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (app.firstName + ' ' + app.lastName).toLowerCase().includes(searchTerm.toLowerCase()) ||
         app.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (app.job_title || app.email_subject || '').toLowerCase().includes(searchTerm.toLowerCase());
+        (app.jobTitle || app.emailSubject || '').toLowerCase().includes(searchTerm.toLowerCase());
         
       const matchesSource = sourceFilter === 'All' || app.source === sourceFilter.toLowerCase();
       

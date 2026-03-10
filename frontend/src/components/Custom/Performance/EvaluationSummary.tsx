@@ -2,9 +2,9 @@ import React from 'react';
 import { Users, Clock, AlertCircle } from 'lucide-react';
 
 interface SummaryStats {
-  total_employees?: number;
-  pending_evaluations?: number;
-  overdue_evaluations?: number;
+  totalEmployees?: number;
+  pendingEvaluations?: number;
+  overdueEvaluations?: number;
 }
 
 interface EvaluationSummaryProps {
@@ -15,17 +15,17 @@ const EvaluationSummary: React.FC<EvaluationSummaryProps> = ({ stats }) => {
   const cards = [
     {
       title: 'Total Employees',
-      value: stats.total_employees || 0,
+      value: stats.totalEmployees || 0,
       icon: Users
     },
     {
       title: 'Pending Evaluations',
-      value: stats.pending_evaluations || 0,
+      value: stats.pendingEvaluations || 0,
       icon: Clock
     },
     {
       title: 'Overdue',
-      value: stats.overdue_evaluations || 0,
+      value: stats.overdueEvaluations || 0,
       icon: AlertCircle
     }
   ];

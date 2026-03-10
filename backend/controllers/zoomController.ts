@@ -13,28 +13,31 @@ interface ZoomConfig {
   clientSecret: string;
 }
 
+/* eslint-disable @typescript-eslint/naming-convention */
 interface ZoomTokenResponse {
   access_token: string;
   token_type: string;
   expires_in: number;
   scope: string;
 }
+/* eslint-enable @typescript-eslint/naming-convention */
 
 interface ZoomMeetingRequest {
   topic: string;
   type: number;
-  start_time: string;
+  startTime: string;
   duration: number;
   timezone: string;
   settings: {
-    host_video: boolean;
-    participant_video: boolean;
-    join_before_host: boolean;
-    waiting_room: boolean;
-    auto_recording: string;
+    hostVideo: boolean;
+    participantVideo: boolean;
+    joinBeforeHost: boolean;
+    waitingRoom: boolean;
+    autoRecording: string;
   };
 }
 
+/* eslint-disable @typescript-eslint/naming-convention */
 interface ZoomMeetingResponse {
   id: number;
   host_id: string;
@@ -45,6 +48,7 @@ interface ZoomMeetingResponse {
   join_url: string;
   password?: string;
 }
+/* eslint-enable @typescript-eslint/naming-convention */
 
 interface CreateMeetingRequestBody {
   topic: string;
@@ -66,9 +70,9 @@ let cachedToken: { token: string; expiresAt: number } | null = null;
 /**
  * Type-safe error message extractor
  */
-const getErrorMessage = (error: unknown): string => {
+const getErrorMessage = (error: Error | { response?: { data?: { message?: string } }; message?: string } | string | null | undefined): string => {
   if (axios.isAxiosError(error)) {
-    return error.response?.data?.message || error.message;
+    return (error.response?.data as { message?: string })?.message || error.message;
   }
   if (error instanceof Error) {
     return error.message;
@@ -117,8 +121,10 @@ const getZoomAccessToken = async (): Promise<string> => {
       null,
       {
         params: {
+          /* eslint-disable @typescript-eslint/naming-convention */
           grant_type: 'account_credentials',
           account_id: config.accountId,
+          /* eslint-enable @typescript-eslint/naming-convention */
         },
         headers: {
           'Authorization': `Basic ${credentials}`,
@@ -134,8 +140,9 @@ const getZoomAccessToken = async (): Promise<string> => {
     };
 
     return response.data.access_token;
-  } catch (error: unknown) {
-    console.error('Failed to get Zoom access token:', getErrorMessage(error));
+  } catch (error) {
+    const _err = error as Error;
+
     throw new Error('Failed to authenticate with Zoom. Please check your credentials.');
   }
 };
@@ -166,14 +173,16 @@ export const getZoomStatus = async (_req: Request, res: Response): Promise<void>
         configured: true, 
         message: 'Zoom is configured and ready' 
       });
-    } catch (error: unknown) {
+    } catch (error) {
+      const err = error as Error;
       res.json({ 
         configured: false, 
-        message: 'Zoom credentials are invalid: ' + getErrorMessage(error) 
+        message: 'Zoom credentials are invalid: ' + getErrorMessage(err) 
       });
     }
-  } catch (error: unknown) {
-    console.error('Error checking Zoom status:', getErrorMessage(error));
+  } catch (error) {
+    const _err = error as Error;
+
     res.status(500).json({ message: 'Failed to check Zoom status' });
   }
 };
@@ -200,15 +209,15 @@ export const createZoomMeeting = async (req: Request, res: Response): Promise<vo
     const meetingRequest: ZoomMeetingRequest = {
       topic: meetingTopic,
       type: 2, // Scheduled meeting
-      start_time: startTime,
+      startTime: startTime,
       duration: duration,
       timezone: 'Asia/Manila',
       settings: {
-        host_video: true,
-        participant_video: true,
-        join_before_host: true,
-        waiting_room: false,
-        auto_recording: 'none',
+        hostVideo: true,
+        participantVideo: true,
+        joinBeforeHost: true,
+        waitingRoom: false,
+        autoRecording: 'none',
       },
     };
 
@@ -217,24 +226,30 @@ export const createZoomMeeting = async (req: Request, res: Response): Promise<vo
       meetingRequest,
       {
         headers: {
+          /* eslint-disable @typescript-eslint/naming-convention */
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
+          /* eslint-enable @typescript-eslint/naming-convention */
         },
       }
     );
 
+    /* eslint-disable @typescript-eslint/naming-convention */
+    const { id, join_url, password, topic: resTopic, start_time, duration: resDuration } = response.data;
+    /* eslint-enable @typescript-eslint/naming-convention */
+
     res.json({
       success: true,
-      meetingId: response.data.id,
-      meetingLink: response.data.join_url,
-      password: response.data.password,
-      topic: response.data.topic,
-      startTime: response.data.start_time,
-      duration: response.data.duration,
+      meetingId: id,
+      meetingLink: join_url,
+      password: password,
+      topic: resTopic,
+      startTime: start_time,
+      duration: resDuration,
     });
-  } catch (error: unknown) {
-    console.error('Error creating Zoom meeting:', getErrorMessage(error));
-    
+  } catch (error) {
+    const err = error as Error;
+
     // Check for specific Zoom API errors
     if (axios.isAxiosError(error) && error.response) {
       const status = error.response.status;
@@ -256,7 +271,7 @@ export const createZoomMeeting = async (req: Request, res: Response): Promise<vo
 
     res.status(500).json({ 
       message: 'Failed to create Zoom meeting',
-      error: getErrorMessage(error),
+      error: getErrorMessage(err),
     });
   }
 };
@@ -312,8 +327,10 @@ export const generateZoomSignature = async (req: Request, res: Response): Promis
       signature: jwtSignature,
       sdkKey,
     });
-  } catch (error: unknown) {
-    console.error('Error generating Zoom signature:', getErrorMessage(error));
+  } catch (error) {
+    const _err = error as Error;
+
     res.status(500).json({ message: 'Failed to generate Zoom signature' });
   }
 };
+

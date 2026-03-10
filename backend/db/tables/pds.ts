@@ -2,16 +2,16 @@ import { mysqlTable, varchar, int, date, timestamp, decimal, mysqlEnum, boolean,
 import { authentication } from './auth.js';
 
 export const pdsEducation = mysqlTable("pds_education", {
-	id: int().autoincrement().notNull(),
+	id: int("id").autoincrement().notNull(),
 	employeeId: int("employee_id").notNull().references(() => authentication.id, { onDelete: "cascade" } ),
-	level: mysqlEnum(['Elementary','Secondary','Vocational','College','Graduate Studies']).notNull(),
+	level: mysqlEnum("level", ['Elementary','Secondary','Vocational','College','Graduate Studies']).notNull(),
 	schoolName: varchar("school_name", { length: 255 }).notNull(),
 	degreeCourse: varchar("degree_course", { length: 255 }),
 	yearGraduated: int("year_graduated"),
 	unitsEarned: varchar("units_earned", { length: 50 }),
 	dateFrom: int("date_from"),
 	dateTo: int("date_to"),
-	honors: varchar({ length: 255 }),
+	honors: varchar("honors", { length: 255 }),
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
 },
 (table) => [
@@ -20,10 +20,10 @@ export const pdsEducation = mysqlTable("pds_education", {
 ]);
 
 export const pdsEligibility = mysqlTable("pds_eligibility", {
-	id: int().autoincrement().notNull(),
+	id: int("id").autoincrement().notNull(),
 	employeeId: int("employee_id").notNull().references(() => authentication.id, { onDelete: "cascade" } ),
 	eligibilityName: varchar("eligibility_name", { length: 255 }).notNull(),
-	rating: decimal({ precision: 5, scale: 2 }),
+	rating: decimal("rating", { precision: 5, scale: 2 }),
 	examDate: date("exam_date", { mode: 'string' }),
 	examPlace: varchar("exam_place", { length: 255 }),
 	licenseNumber: varchar("license_number", { length: 50 }),
@@ -36,15 +36,15 @@ export const pdsEligibility = mysqlTable("pds_eligibility", {
 ]);
 
 export const pdsFamily = mysqlTable("pds_family", {
-	id: int().autoincrement().notNull(),
+	id: int("id").autoincrement().notNull(),
 	employeeId: int("employee_id").notNull().references(() => authentication.id, { onDelete: "cascade" } ),
 	relationType: mysqlEnum("relation_type", ['Spouse','Father','Mother','Child']).notNull(),
 	lastName: varchar("last_name", { length: 100 }),
 	firstName: varchar("first_name", { length: 100 }),
 	middleName: varchar("middle_name", { length: 100 }),
 	nameExtension: varchar("name_extension", { length: 10 }),
-	occupation: varchar({ length: 100 }),
-	employer: varchar({ length: 100 }),
+	occupation: varchar("occupation", { length: 100 }),
+	employer: varchar("employer", { length: 100 }),
 	businessAddress: varchar("business_address", { length: 255 }),
 	telephoneNo: varchar("telephone_no", { length: 50 }),
 	dateOfBirth: date("date_of_birth", { mode: 'string' }),
@@ -56,9 +56,9 @@ export const pdsFamily = mysqlTable("pds_family", {
 ]);
 
 export const pdsLearningDevelopment = mysqlTable("pds_learning_development", {
-	id: int().autoincrement().notNull(),
+	id: int("id").autoincrement().notNull(),
 	employeeId: int("employee_id").notNull().references(() => authentication.id, { onDelete: "cascade" } ),
-	title: varchar({ length: 255 }).notNull(),
+	title: varchar("title", { length: 255 }).notNull(),
 	dateFrom: date("date_from", { mode: 'string' }),
 	dateTo: date("date_to", { mode: 'string' }),
 	hoursNumber: int("hours_number"),
@@ -72,10 +72,10 @@ export const pdsLearningDevelopment = mysqlTable("pds_learning_development", {
 ]);
 
 export const pdsOtherInfo = mysqlTable("pds_other_info", {
-	id: int().autoincrement().notNull(),
+	id: int("id").autoincrement().notNull(),
 	employeeId: int("employee_id").notNull().references(() => authentication.id, { onDelete: "cascade" } ),
-	type: mysqlEnum(['Skill','Recognition','Membership']).notNull(),
-	description: varchar({ length: 255 }).notNull(),
+	type: mysqlEnum("type", ['Skill','Recognition','Membership']).notNull(),
+	description: varchar("description", { length: 255 }).notNull(),
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
 },
 (table) => [
@@ -84,10 +84,10 @@ export const pdsOtherInfo = mysqlTable("pds_other_info", {
 ]);
 
 export const pdsReferences = mysqlTable("pds_references", {
-	id: int().autoincrement().notNull(),
+	id: int("id").autoincrement().notNull(),
 	employeeId: int("employee_id").notNull().references(() => authentication.id, { onDelete: "cascade" } ),
-	name: varchar({ length: 255 }).notNull(),
-	address: varchar({ length: 255 }),
+	name: varchar("name", { length: 255 }).notNull(),
+	address: varchar("address", { length: 255 }),
 	telNo: varchar("tel_no", { length: 50 }),
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
 },
@@ -97,14 +97,14 @@ export const pdsReferences = mysqlTable("pds_references", {
 ]);
 
 export const pdsVoluntaryWork = mysqlTable("pds_voluntary_work", {
-	id: int().autoincrement().notNull(),
+	id: int("id").autoincrement().notNull(),
 	employeeId: int("employee_id").notNull().references(() => authentication.id, { onDelete: "cascade" } ),
 	organizationName: varchar("organization_name", { length: 255 }).notNull(),
-	address: varchar({ length: 255 }),
+	address: varchar("address", { length: 255 }),
 	dateFrom: date("date_from", { mode: 'string' }),
 	dateTo: date("date_to", { mode: 'string' }),
 	hoursNumber: int("hours_number"),
-	position: varchar({ length: 100 }),
+	position: varchar("position", { length: 100 }),
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
 },
 (table) => [
@@ -113,7 +113,7 @@ export const pdsVoluntaryWork = mysqlTable("pds_voluntary_work", {
 ]);
 
 export const pdsWorkExperience = mysqlTable("pds_work_experience", {
-	id: int().autoincrement().notNull(),
+	id: int("id").autoincrement().notNull(),
 	employeeId: int("employee_id").notNull().references(() => authentication.id, { onDelete: "cascade" } ),
 	dateFrom: date("date_from", { mode: 'string' }).notNull(),
 	dateTo: date("date_to", { mode: 'string' }),
@@ -131,9 +131,9 @@ export const pdsWorkExperience = mysqlTable("pds_work_experience", {
 ]);
 
 export const employeeCustomFields = mysqlTable("employee_custom_fields", {
-	id: int().autoincrement().notNull(),
+	id: int("id").autoincrement().notNull(),
 	employeeId: int("employee_id").notNull().references(() => authentication.id, { onDelete: "cascade" } ),
-	section: varchar({ length: 255 }).notNull(),
+	section: varchar("section", { length: 255 }).notNull(),
 	fieldName: varchar("field_name", { length: 255 }).notNull(),
 	fieldValue: text("field_value"),
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
@@ -162,16 +162,16 @@ export const employeeDocuments = mysqlTable("employee_documents", {
 ]);
 
 export const employeeEducation = mysqlTable("employee_education", {
-	id: int().autoincrement().notNull(),
+	id: int("id").autoincrement().notNull(),
 	employeeId: int("employee_id").notNull().references(() => authentication.id, { onDelete: "cascade" } ),
-	institution: varchar({ length: 255 }).notNull(),
-	degree: varchar({ length: 255 }),
+	institution: varchar("institution", { length: 255 }).notNull(),
+	degree: varchar("degree", { length: 255 }),
 	fieldOfStudy: varchar("field_of_study", { length: 255 }),
 	startDate: date("start_date", { mode: 'string' }),
 	endDate: date("end_date", { mode: 'string' }),
 	isCurrent: boolean("is_current").default(false),
-	description: text(),
-	type: mysqlEnum(['Education','Certification','Training']).default('Education'),
+	description: text("description"),
+	type: mysqlEnum("type", ['Education','Certification','Training']).default('Education'),
 	expiryDate: date("expiry_date", { mode: 'string' }),
 	credentialUrl: varchar("credential_url", { length: 255 }),
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
@@ -182,13 +182,13 @@ export const employeeEducation = mysqlTable("employee_education", {
 ]);
 
 export const employeeEmergencyContacts = mysqlTable("employee_emergency_contacts", {
-	id: int().autoincrement().notNull(),
+	id: int("id").autoincrement().notNull(),
 	employeeId: int("employee_id").notNull().references(() => authentication.id, { onDelete: "cascade" } ),
-	name: varchar({ length: 100 }).notNull(),
-	relationship: varchar({ length: 50 }).notNull(),
+	name: varchar("name", { length: 100 }).notNull(),
+	relationship: varchar("relationship", { length: 50 }).notNull(),
 	phoneNumber: varchar("phone_number", { length: 20 }).notNull(),
-	email: varchar({ length: 100 }),
-	address: text(),
+	email: varchar("email", { length: 100 }),
+	address: text("address"),
 	isPrimary: boolean("is_primary").default(false),
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
 },
@@ -198,14 +198,14 @@ export const employeeEmergencyContacts = mysqlTable("employee_emergency_contacts
 ]);
 
 export const employeeEmploymentHistory = mysqlTable("employee_employment_history", {
-	id: int().autoincrement().notNull(),
+	id: int("id").autoincrement().notNull(),
 	employeeId: int("employee_id").notNull().references(() => authentication.id, { onDelete: "cascade" } ),
 	companyName: varchar("company_name", { length: 255 }).notNull(),
 	jobTitle: varchar("job_title", { length: 100 }).notNull(),
 	startDate: date("start_date", { mode: 'string' }).notNull(),
 	endDate: date("end_date", { mode: 'string' }),
 	isCurrent: boolean("is_current").default(false),
-	description: text(),
+	description: text("description"),
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
 },
 (table) => [
@@ -214,19 +214,19 @@ export const employeeEmploymentHistory = mysqlTable("employee_employment_history
 ]);
 
 export const employeeMemos = mysqlTable("employee_memos", {
-	id: int().autoincrement().notNull(),
+	id: int("id").autoincrement().notNull(),
 	memoNumber: varchar("memo_number", { length: 50 }).notNull(),
 	employeeId: int("employee_id").notNull().references(() => authentication.id, { onDelete: "cascade" } ),
 	authorId: int("author_id").notNull().references(() => authentication.id, { onDelete: "cascade" } ),
 	memoType: mysqlEnum("memo_type", ['Verbal Warning','Written Warning','Reprimand','Suspension Notice','Termination Notice','Show Cause']).default('Written Warning').notNull(),
-	subject: varchar({ length: 255 }).notNull(),
-	content: text().notNull(),
-	priority: mysqlEnum(['Low','Normal','High','Urgent']).default('Normal').notNull(),
+	subject: varchar("subject", { length: 255 }).notNull(),
+	content: text("content").notNull(),
+	priority: mysqlEnum("priority", ['Low','Normal','High','Urgent']).default('Normal').notNull(),
 	severity: mysqlEnum("severity", ['minor','moderate','major','grave','terminal']).default('minor').notNull(),
 	effectiveDate: date("effective_date", { mode: 'string' }),
 	acknowledgmentRequired: boolean("acknowledgment_required").default(false),
 	acknowledgedAt: datetime("acknowledged_at", { mode: 'string'}),
-	status: mysqlEnum(['Draft','Sent','Acknowledged','Archived']).default('Draft').notNull(),
+	status: mysqlEnum("status", ['Draft','Sent','Acknowledged','Archived']).default('Draft').notNull(),
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
 	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow(),
 },
@@ -240,11 +240,11 @@ export const employeeMemos = mysqlTable("employee_memos", {
 ]);
 
 export const employeeNotes = mysqlTable("employee_notes", {
-	id: int().autoincrement().notNull(),
+	id: int("id").autoincrement().notNull(),
 	employeeId: int("employee_id").notNull().references(() => authentication.id, { onDelete: "cascade" } ),
 	authorId: int("author_id").notNull().references(() => authentication.id, { onDelete: "cascade" } ),
 	noteContent: text("note_content").notNull(),
-	category: varchar({ length: 50 }).default('General'),
+	category: varchar("category", { length: 50 }).default('General'),
 	isPrivate: boolean("is_private").default(true),
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
 },
@@ -255,13 +255,13 @@ export const employeeNotes = mysqlTable("employee_notes", {
 ]);
 
 export const employeeSkills = mysqlTable("employee_skills", {
-	id: int().autoincrement().notNull(),
+	id: int("id").autoincrement().notNull(),
 	employeeId: int("employee_id").notNull().references(() => authentication.id, { onDelete: "cascade" } ),
 	skillName: varchar("skill_name", { length: 100 }).notNull(),
-	category: varchar({ length: 50 }).default('Technical'),
+	category: varchar("category", { length: 50 }).default('Technical'),
 	proficiencyLevel: mysqlEnum("proficiency_level", ['Beginner','Intermediate','Advanced','Expert']).default('Intermediate'),
 	yearsExperience: decimal("years_experience", { precision: 4, scale: 1 }),
-	endorsements: int().default(0),
+	endorsements: int("endorsements").default(0),
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
 },
 (table) => [
@@ -270,7 +270,7 @@ export const employeeSkills = mysqlTable("employee_skills", {
 ]);
 
 export const serviceRecords = mysqlTable("service_records", {
-	id: int().autoincrement().notNull(),
+	id: int("id").autoincrement().notNull(),
 	employeeId: varchar("employee_id", { length: 50 }).notNull(),
 	eventType: mysqlEnum("event_type", ['Appointment','Promotion','Leave','LWOP','Return from Leave','Transfer','Suspension','Resignation','Retirement','Other']).notNull(),
 	eventDate: date("event_date", { mode: 'string' }).notNull(),
@@ -278,7 +278,7 @@ export const serviceRecords = mysqlTable("service_records", {
 	leaveType: varchar("leave_type", { length: 50 }),
 	daysCount: decimal("days_count", { precision: 5, scale: 1 }),
 	isWithPay: boolean("is_with_pay").default(true),
-	remarks: text(),
+	remarks: text("remarks"),
 	referenceId: int("reference_id"),
 	referenceType: varchar("reference_type", { length: 50 }),
 	processedBy: varchar("processed_by", { length: 50 }),

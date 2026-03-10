@@ -48,7 +48,7 @@ export const verifyEmailDomain = async (email: string): Promise<boolean> => {
 
     const mxRecords = await resolveMx(domain);
     return mxRecords && mxRecords.length > 0;
-  } catch (error) {
+  } catch (_error) {
     // If DNS query fails (e.g. timeout, domain doesn't exist), return false
     return false;
   }
@@ -58,23 +58,23 @@ export const verifyEmailDomain = async (email: string): Promise<boolean> => {
  * Logs a security violation during the application process
  */
 export const logSecurityViolation = async (data: {
-  job_id?: number | null;
-  first_name?: string | null;
-  last_name?: string | null;
+  jobId?: number | null;
+  firstName?: string | null;
+  lastName?: string | null;
   email?: string | null;
-  violation_type?: string | null;
+  violationType?: string | null;
   details?: string | null;
-  ip_address?: string | null;
+  ipAddress?: string | null;
 }): Promise<void> => {
   try {
     await db.insert(recruitmentSecurityLogs).values({
-      job_id: data.job_id || null,
-      first_name: data.first_name || null,
-      last_name: data.last_name || null,
+      jobId: data.jobId || null,
+      firstName: data.firstName || null,
+      lastName: data.lastName || null,
       email: data.email || null,
-      violation_type: data.violation_type || null,
+      violationType: data.violationType || null,
       details: data.details || null,
-      ip_address: data.ip_address || null,
+      ipAddress: data.ipAddress || null,
     });
   } catch (error) {
     console.error('Failed to log security violation:', error);

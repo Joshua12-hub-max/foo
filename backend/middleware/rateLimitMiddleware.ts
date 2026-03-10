@@ -23,7 +23,7 @@ export const authLimiter: RateLimitRequestHandler = rateLimit(authLimiterOptions
  */
 export const strictAuthLimiter: RateLimitRequestHandler = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // 5 attempts
+  max: 100, // Increased for recovery
   message: {
     success: false,
     message: 'Too many authentication attempts. Please try again in 15 minutes.'

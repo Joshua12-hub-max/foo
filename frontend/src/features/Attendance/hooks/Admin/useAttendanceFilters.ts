@@ -17,8 +17,8 @@ export const useAttendanceFilters = (data: AttendanceRecord[]) => {
     return data.filter(item => {
       // Search Filter
       const searchLower = searchQuery.toLowerCase();
-      const employeeName = item.employee_name || item.name || '';
-      const employeeId = item.employeeId || item.employee_id;
+      const employeeName = item.employeeName || item.name || '';
+      const employeeId = item.employeeId || item.employeeId;
 
       const matchesSearch = 
         (employeeName && employeeName.toLowerCase().includes(searchLower)) ||

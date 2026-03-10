@@ -14,15 +14,15 @@ const EMPLOYEE_TABLE_HEADERS = [
 
 interface Employee {
   id: number;
-  first_name?: string;
-  last_name?: string;
+  firstName?: string;
+  lastName?: string;
   email?: string;
-  employee_id?: string;
+  employeeId?: string;
   department?: string | null;
-  position_title?: string | null;
-  job_title?: string | null;
-  employment_status?: string;
-  avatar_url?: string;
+  positionTitle?: string | null;
+  jobTitle?: string | null;
+  employmentStatus?: string;
+  avatarUrl?: string;
 }
 
 interface EmployeeGridProps {
@@ -75,7 +75,7 @@ const EmployeeTable: React.FC<EmployeeGridProps> = ({
           </thead>
           <tbody className="divide-y divide-gray-100">
             {employees.map((employee) => {
-              const isTerminated = employee.employment_status === 'Terminated';
+              const isTerminated = employee.employmentStatus === 'Terminated';
               return (
                 <tr 
                   key={employee.id} 
@@ -86,19 +86,19 @@ const EmployeeTable: React.FC<EmployeeGridProps> = ({
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-gray-100 overflow-hidden flex-shrink-0 border-2 border-white ring-1 ring-gray-200">
-                        {employee.avatar_url ? (
-                          <img src={employee.avatar_url} alt="" className="w-full h-full object-cover" />
+                        {employee.avatarUrl ? (
+                          <img src={employee.avatarUrl} alt="" className="w-full h-full object-cover" />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center text-gray-600 font-bold">
-                            {employee.first_name?.[0]}{employee.last_name?.[0]}
+                            {employee.firstName?.[0]}{employee.lastName?.[0]}
                           </div>
                         )}
                       </div>
                       <div>
                         <div className={`font-bold text-gray-800 ${isTerminated ? 'line-through decoration-red-400' : ''}`}>
-                          {employee.first_name} {employee.last_name}
+                          {employee.firstName} {employee.lastName}
                         </div>
-                        <div className="text-xs font-mono text-gray-500">{employee.employee_id}</div>
+                        <div className="text-xs font-mono text-gray-500">{employee.employeeId}</div>
                       </div>
                     </div>
                   </td>
@@ -115,13 +115,13 @@ const EmployeeTable: React.FC<EmployeeGridProps> = ({
 
                   {/* Position */}
                   <td className="px-6 py-4">
-                    <span className="text-sm text-gray-700">{employee.position_title || employee.job_title || <span className="text-gray-400 italic">—</span>}</span>
+                    <span className="text-sm text-gray-700">{employee.positionTitle || employee.jobTitle || <span className="text-gray-400 italic">—</span>}</span>
                   </td>
 
                   {/* Status */}
                   <td className="px-6 py-4">
-                    <span className={`px-2.5 py-1 rounded-md text-xs font-bold shadow-sm ${getStatusBadgeClass(employee.employment_status || 'Active')}`}>
-                      {employee.employment_status || 'Active'}
+                    <span className={`px-2.5 py-1 rounded-md text-xs font-bold shadow-sm ${getStatusBadgeClass(employee.employmentStatus || 'Active')}`}>
+                      {employee.employmentStatus || 'Active'}
                     </span>
                   </td>
 

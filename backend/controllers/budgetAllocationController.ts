@@ -33,8 +33,8 @@ export const getBudgetAllocations = async (req: Request, res: Response): Promise
       success: true,
       allocations
     });
-  } catch (error) {
-    console.error('Get Budget Allocations Error:', error);
+  } catch (_error) {
+
     res.status(500).json({
       success: false,
       message: 'Failed to fetch budget allocations'
@@ -79,7 +79,6 @@ export const createBudgetAllocation = async (req: Request, res: Response): Promi
       id: result.insertId
     });
   } catch (error) {
-    console.error('Create Budget Allocation Error:', error);
 
     if (error instanceof ZodError) {
       res.status(400).json({
@@ -143,7 +142,6 @@ export const updateBudgetAllocation = async (req: Request, res: Response): Promi
       message: 'Budget allocation updated successfully'
     });
   } catch (error) {
-    console.error('Update Budget Allocation Error:', error);
 
     if (error instanceof ZodError) {
       res.status(400).json({
@@ -167,7 +165,7 @@ export const updateBudgetAllocation = async (req: Request, res: Response): Promi
  */
 export const recalculateBudgetUtilization = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { year, department } = req.body;
+    const { year, department } = req.body as { year: string | number; department: string };
 
     if (!year || !department) {
       res.status(400).json({
@@ -212,8 +210,8 @@ export const recalculateBudgetUtilization = async (req: Request, res: Response):
       message: 'Budget utilization recalculated successfully',
       allocation: updated
     });
-  } catch (error) {
-    console.error('Recalculate Budget Error:', error);
+  } catch (_error) {
+
     res.status(500).json({
       success: false,
       message: 'Failed to recalculate budget utilization'
@@ -263,11 +261,13 @@ export const getBudgetSummary = async (req: Request, res: Response): Promise<voi
       summary,
       byDepartment: byDepartment
     });
-  } catch (error) {
-    console.error('Get Budget Summary Error:', error);
+  } catch (_error) {
+
     res.status(500).json({
       success: false,
       message: 'Failed to fetch budget summary'
     });
   }
 };
+
+

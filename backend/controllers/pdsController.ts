@@ -1,118 +1,143 @@
 import { Request, Response } from 'express';
 import { db } from '../db/index.js';
-import { sql } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
+import { MySqlTable } from 'drizzle-orm/mysql-core';
 import { AuthenticatedRequest } from '../types/index.js';
-import '../db/schema.js';
+import { 
+  pdsFamily, 
+  pdsEducation, 
+  pdsEligibility, 
+  pdsWorkExperience, 
+  pdsVoluntaryWork, 
+  pdsLearningDevelopment, 
+  pdsOtherInfo, 
+  pdsReferences 
+} from '../db/schema.js';
 import { PDSUpdateSchema } from '../schemas/employeeSchema.js';
 
-// Generic handler for PDS list tables
-// Tables: pds_family, pds_education, pds_eligibility, pds_work_experience, pds_voluntary_work, pds_learning_development, pds_other_info, pds_references
-
-
-
-const getTableName = (section: string): string | null => {
-  switch (section) {
-    case 'family': return 'pds_family';
-    case 'education': return 'pds_education';
-    case 'eligibility': return 'pds_eligibility';
-    case 'work_experience': return 'pds_work_experience';
-    case 'voluntary_work': return 'pds_voluntary_work';
-    case 'learning_development': return 'pds_learning_development';
-    case 'other_info': return 'pds_other_info';
-    case 'references': return 'pds_references';
-    default: return null;
-  }
+/**
+ * PdsTableWithEmployeeId represents the structure of a PDS-related Drizzle table
+ * ensuring we can safely access the employeeId column.
+ */
+// PdsTableWithEmployeeId removed
+/* eslint-disable @typescript-eslint/naming-convention */
+const PDS_TABLES: Record<string, MySqlTable> = {
+  'family': pdsFamily,
+  'education': pdsEducation,
+  'eligibility': pdsEligibility,
+  'work_experience': pdsWorkExperience,
+  'voluntary_work': pdsVoluntaryWork,
+  'learning_development': pdsLearningDevelopment,
+  'other_info': pdsOtherInfo,
+  'references': pdsReferences
 };
+/* eslint-enable @typescript-eslint/naming-convention */
 
-export const getPDSSection = async (req: Request, res: Response) => {
+/**
+ * Get a specific PDS section for an employee.
+ */
+export const getPDSSection = async (req: Request, res: Response): Promise<void> => {
   try {
     const authReq = req as AuthenticatedRequest;
     const requesterId = authReq.user?.id;
     const requesterRole = authReq.user?.role?.toLowerCase();
     const { section } = req.params as { section: string };
-    const targetEmployeeId = req.query.employee_id || req.query.employeeId;
+    const targetEmployeeId = req.query.employeeId as string;
 
     if (!requesterId) {
       res.status(401).json({ success: false, message: 'Not authenticated' });
       return;
     }
 
+    const table = PDS_TABLES[section];
+    if (!table) {
+      res.status(400).json({ success: false, message: 'Invalid PDS section' });
+      return;
+    }
+
     // Determine whose data to fetch
     let userId = requesterId;
     if (targetEmployeeId && targetEmployeeId !== requesterId.toString()) {
-      if (!['admin', 'human resource'].includes(requesterRole)) {
+      if (!['admin', 'human resource'].includes(requesterRole || '')) {
         res.status(403).json({ success: false, message: 'Access Denied' });
         return;
       }
       userId = parseInt(targetEmployeeId as string);
     }
 
-    const tableName = getTableName(section);
-    if (!tableName) {
-      res.status(400).json({ success: false, message: 'Invalid PDS section' });
-      return;
-    }
-
-    // Use parameterized query for safety
-    const [rows] = await db.execute(sql`SELECT * FROM ${sql.raw(tableName)} WHERE employee_id = ${userId}`);
-
+    // Use Drizzle's typed selection
+    // Explicitly cast to internal base table with employeeId
+    const baseTable = table as unknown as { employeeId: unknown } & MySqlTable;
+    const rows = await db.select().from(table).where(eq(baseTable.employeeId, userId));
     res.json({ success: true, data: rows });
-  } catch (error) {
-    console.error('Get PDS Section Error:', error);
+  } catch (_error) {
+
     res.status(500).json({ success: false, message: 'Failed to fetch PDS data' });
   }
 };
 
-    export const updatePDSSection = async (req: Request, res: Response) => {
-    try {
-      const authReq = req as AuthenticatedRequest;
-      const requesterId = authReq.user?.id;
-      const requesterRole = authReq.user?.role?.toLowerCase();
-      const { section } = req.params as { section: string };
-      
-      const { items, employee_id, employeeId } = PDSUpdateSchema.parse(req.body);
-      
-      const targetEmployeeId = employee_id || employeeId;
-  
-      if (!requesterId) return res.status(401).json({ success: false, message: 'Not authenticated' });
-  
-      // Determine whose data to update
-      let userId = requesterId;
-      if (targetEmployeeId && targetEmployeeId.toString() !== requesterId.toString()) {
-        if (!['admin', 'human resource'].includes(requesterRole)) {
-          return res.status(403).json({ success: false, message: 'Access Denied' });
-        }
-        userId = parseInt(targetEmployeeId.toString());
-      }
+/**
+ * Update a specific PDS section (Bulk replace).
+ */
+export const updatePDSSection = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const authReq = req as AuthenticatedRequest;
+    const requesterId = authReq.user?.id;
+    const requesterRole = authReq.user?.role?.toLowerCase();
+    const { section } = req.params as { section: string };
+    
+    const { items, employeeId } = PDSUpdateSchema.parse(req.body);
+    const targetEmployeeId = employeeId;
 
-      const tableName = getTableName(section);
-      if (!tableName) return res.status(400).json({ success: false, message: 'Invalid PDS section' });
-  
-      await db.transaction(async (tx) => {
-        // Strategy: Delete all existing for this user and section, then insert new.
-        await tx.execute(sql`DELETE FROM ${sql.raw(tableName)} WHERE employee_id = ${userId}`);
-  
-        if (items.length > 0) {
-          // Get columns from first item, filter out system columns
-          const columns = Object.keys(items[0]).filter(k => k !== 'id' && k !== 'employee_id' && k !== 'created_at' && k !== 'updated_at');
-          
-          if (columns.length > 0) {
-            for (const item of items) {
-               const colNames = [...columns, 'employee_id'];
-               const values = [...columns.map(col => item[col] ?? null), userId];
-               
-               const colNamesSql = sql.raw(colNames.join(', '));
-               const valuesSql = sql.join(values.map(v => sql`${v}`), sql`, `);
-               
-               await tx.execute(sql`INSERT INTO ${sql.raw(tableName)} (${colNamesSql}) VALUES (${valuesSql})`);
-            }
-          }
-        }
-      });
-  
-      res.json({ success: true, message: 'PDS section updated successfully' });
-    } catch (error) {
-      console.error('Update PDS Section Error:', error);
-      res.status(500).json({ success: false, message: 'Failed to update PDS data' });
+    if (!requesterId) {
+      res.status(401).json({ success: false, message: 'Not authenticated' });
+      return;
     }
+
+    const table = PDS_TABLES[section];
+    if (!table) {
+      res.status(400).json({ success: false, message: 'Invalid PDS section' });
+      return;
+    }
+
+    // Determine whose data to update
+    let userId = requesterId;
+    if (targetEmployeeId && targetEmployeeId.toString() !== requesterId.toString()) {
+      if (!['admin', 'human resource'].includes(requesterRole || '')) {
+        res.status(403).json({ success: false, message: 'Access Denied' });
+        return;
+      }
+      userId = parseInt(targetEmployeeId.toString());
+    }
+
+    const baseTable = table as unknown as { employeeId: unknown } & MySqlTable;
+    await db.transaction(async (tx) => {
+      // 1. Delete all existing records for this user and section
+      await tx.delete(table).where(eq(baseTable.employeeId, userId));
+
+      // 2. Insert new records
+      if (items.length > 0) {
+        const valuesToInsert = items.map((item) => {
+          // Filter out system columns and ensure employeeId is set
+          const filteredItem: Record<string, unknown> = { ...item, employeeId: userId };
+          delete filteredItem.id;
+          delete filteredItem.createdAt;
+          delete filteredItem.updatedAt;
+          return filteredItem;
+        });
+
+        // Batch insert
+        await tx.insert(table).values(valuesToInsert as unknown[]); // Explicitly typed array
+      }
+    });
+
+    res.json({ success: true, message: 'PDS section updated successfully' });
+  } catch (_error) {
+
+    res.status(500).json({ success: false, message: 'Failed to update PDS data' });
+  }
 };
+
+
+
+

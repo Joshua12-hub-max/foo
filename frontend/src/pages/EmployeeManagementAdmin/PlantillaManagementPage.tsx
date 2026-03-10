@@ -27,13 +27,13 @@ export interface PlantillaManagementRef {
 }
 
 interface FormData {
-  item_number: string;
-  position_title: string;
-  salary_grade: string;
-  step_increment: number;
+  itemNumber: string;
+  positionTitle: string;
+  salaryGrade: string;
+  stepIncrement: number;
   department: string;
-  monthly_salary: string;
-  is_vacant: boolean;
+  monthlySalary: string;
+  isVacant: boolean;
 }
 
 type TabType = 'positions' | 'qualifications' | 'step-increment' | 'budget' | 'reports';

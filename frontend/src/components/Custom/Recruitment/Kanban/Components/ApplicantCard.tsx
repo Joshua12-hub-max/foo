@@ -5,7 +5,7 @@ import { User, Mail, Phone, ClipboardList, Calendar, GripVertical } from 'lucide
 import { KanbanApplicant } from '../Hooks/useKanbanData';
 
 interface ApplicantCardProps {
-  applicant: KanbanApplicant & { phone_number?: string };
+  applicant: KanbanApplicant & { phoneNumber?: string };
   isDragging?: boolean;
   onViewRequirements?: (applicant: KanbanApplicant) => void;
 }
@@ -63,7 +63,7 @@ const ApplicantCard: React.FC<ApplicantCardProps> = memo(({ applicant, isDraggin
               <User size={14} className="text-gray-500" />
             </div>
             <h4 className="font-semibold text-gray-900 truncate text-sm">
-              {applicant.first_name} {applicant.last_name}
+              {applicant.firstName} {applicant.lastName}
             </h4>
           </div>
           <div className="mt-2 space-y-1 text-xs text-gray-500">
@@ -71,15 +71,15 @@ const ApplicantCard: React.FC<ApplicantCardProps> = memo(({ applicant, isDraggin
               <Mail size={11} />
               <span className="truncate">{applicant.email}</span>
             </div>
-            {applicant.phone_number && (
+            {applicant.phoneNumber && (
               <div className="flex items-center gap-1.5">
                 <Phone size={11} />
-                <span>{applicant.phone_number}</span>
+                <span>{applicant.phoneNumber}</span>
               </div>
             )}
             <div className="flex items-center gap-1.5">
               <Calendar size={11} />
-              <span>{applicant.job_title || 'General Application'}</span>
+              <span>{applicant.jobTitle || 'General Application'}</span>
             </div>
           </div>
           <button

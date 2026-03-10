@@ -49,19 +49,21 @@ export const useBiometricDevice = ({
         if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
       };
 
-      ws.onclose = () => {
+      ws.onclose = (event) => {
         setStatus('DISCONNECTED');
-        console.log('Biometric WS Disconnected - Retrying in 3s...');
+        // Only log retry message if it wasn't a clean close and not a repetitive refusal
+        if (!event.wasClean) {
+            // console.log('Biometric WS Disconnected - Retrying in 5s...');
+        }
         socketRef.current = null;
-        // Auto-reconnect
+        // Auto-reconnect with longer interval
         if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
-        reconnectTimeoutRef.current = setTimeout(connect, 3000);
+        reconnectTimeoutRef.current = setTimeout(connect, 5000);
       };
 
-      ws.onerror = (err) => {
-        console.error('Biometric WS Error', err);
+      ws.onerror = () => {
+        // Silently handle connection refusal to avoid console spam
         setStatus('ERROR');
-        // socketRef.current = null; // Don't null here, gawin ko na siya null sa onclose
       };
 
       ws.onmessage = (event) => {

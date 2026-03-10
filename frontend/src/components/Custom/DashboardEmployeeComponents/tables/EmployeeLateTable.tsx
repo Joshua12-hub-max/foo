@@ -80,10 +80,10 @@ const EmployeeLateTable: React.FC<EmployeeLateTableProps> = ({ onClose }) => {
                 <tr key={record.id} className="hover:bg-gray-50 transition-colors">
                   <td className="py-3 px-4 text-sm text-gray-700 font-medium">{record.date}</td>
                   <td className="py-3 px-4 text-sm text-orange-600 font-semibold">
-                    {record.time_in ? new Date(record.time_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
+                    {record.timeIn ? new Date(record.timeIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
                   </td>
                   <td className="py-3 px-4 text-sm text-red-600 font-bold text-right">
-                    {record.late_minutes || 0}
+                    {record.lateMinutes || 0}
                   </td>
                 </tr>
               ))}

@@ -8,8 +8,7 @@ let lastSyncedBioId = 0;
 let isPolling = false;
 
 /**
- * Convert biometric employee_id (int: 1, 2, 3...) to system format (EMP-001, EMP-002, EMP-003...).
- * Capacity: up to EMP-200.
+ * Track the last synced bio_attendance_logs ID (monotonic, avoids clock drift)
  */
 /**
  * Convert biometric employee_id (int) to system format.
@@ -21,7 +20,7 @@ const convertBioIdToEmployeeId = (bioId: number): string => {
 
 /**
  * Polls bio_attendance_logs for new entries created by the C# biometric middleware.
- * Syncs them into attendance_logs with proper EMP-XXX conversion, then triggers DTR processing.
+ * Triggers DTR processing for affect employees.
  */
 async function pollBiometricLogs() {
   if (isPolling) return;
@@ -36,14 +35,14 @@ async function pollBiometricLogs() {
 
     if (newBioLogs.length === 0) return;
 
-    console.log(`[BIO-SYNC] Found ${newBioLogs.length} new biometric log(s) since ID ${lastSyncedBioId}`);
+    console.warn(`[BIO-SYNC] Found ${newBioLogs.length} new biometric log(s) since ID ${lastSyncedBioId}`);
 
     // Track which employee+date combos need DTR reprocessing
     const processQueue = new Map<string, { employeeId: string; dateStr: string }>();
 
     for (const bioLog of newBioLogs) {
       try {
-        // 2. Convert bio employee_id (int) → system format (EMP-XXX)
+        // 2. Map bio employee_id (int) → system employeeId (string)
         const systemEmployeeId = convertBioIdToEmployeeId(bioLog.employeeId);
 
         // 4. Map card_type → type (both use 'IN'/'OUT' so direct mapping)
@@ -106,12 +105,12 @@ async function initializeLastSyncedId() {
     }).from(attendanceLogs)
     .where(eq(attendanceLogs.source, 'BIOMETRIC'));
 
-    console.log(`[BIO-SYNC] Initialized: lastSyncedBioId=${lastSyncedBioId}, bioLogs=${bioCount?.count ?? 0}, syncedAttLogs=${attCount?.count ?? 0}`);
+    console.warn(`[BIO-SYNC] Initialized: lastSyncedBioId=${lastSyncedBioId}, bioLogs=${bioCount?.count ?? 0}, syncedAttLogs=${attCount?.count ?? 0}`);
 
     // If there are unsynced bio logs (bio count > synced attendance count), reset to 0 to re-sync
     if ((bioCount?.count ?? 0) > (attCount?.count ?? 0)) {
       lastSyncedBioId = 0;
-      console.log('[BIO-SYNC] Detected unsynced bio logs. Resetting lastSyncedBioId to 0 for full sync.');
+      console.warn('[BIO-SYNC] Detected unsynced bio logs. Resetting lastSyncedBioId to 0 for full sync.');
     }
 
   } catch (error) {
@@ -134,7 +133,7 @@ export const getSyncInfo = () => ({
  */
 export const startPollingService = async (intervalMs: number = 5000) => {
   try {
-    console.log(`[BIO-SYNC] Starting biometric sync service... Interval: ${intervalMs}ms`);
+    console.warn(`[BIO-SYNC] Starting biometric sync service... Interval: ${intervalMs}ms`);
 
     // Initialize the last synced ID from the database
     await initializeLastSyncedId();

@@ -86,8 +86,8 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
               <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Employment Type</label>
               <select 
                 className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-400 focus:outline-none transition-all bg-gray-50 cursor-pointer"
-                value={formData.employment_type || 'Full-time'}
-                onChange={e => handleFormChange('employment_type', e.target.value)}
+                value={formData.employmentType || 'Full-time'}
+                onChange={e => handleFormChange('employmentType', e.target.value)}
               >
                 {EMPLOYMENT_TYPES.map(type => (
                   <option key={type} value={type}>{type}</option>
@@ -116,8 +116,8 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
                 type="text" 
                 placeholder=""
                 className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-400 focus:outline-none transition-all bg-gray-50"
-                value={formData.salary_range || ''}
-                onChange={e => handleFormChange('salary_range', e.target.value)}
+                value={formData.salaryRange || ''}
+                onChange={e => handleFormChange('salaryRange', e.target.value)}
               />
             </div>
             <div>
@@ -127,8 +127,8 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
                 required
                 placeholder=""
                 className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-400 focus:outline-none transition-all bg-gray-50"
-                value={formData.application_email || ''}
-                onChange={e => handleFormChange('application_email', e.target.value)}
+                value={formData.applicationEmail || ''}
+                onChange={e => handleFormChange('applicationEmail', e.target.value)}
               />
             </div>
           </div>
@@ -141,8 +141,8 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
               rows={4}
               placeholder=""
               className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-400 focus:outline-none transition-all resize-none bg-gray-50"
-              value={formData.job_description || ''}
-              onChange={e => handleFormChange('job_description', e.target.value)}
+              value={formData.jobDescription || ''}
+              onChange={e => handleFormChange('jobDescription', e.target.value)}
             />
           </div>
 
@@ -158,8 +158,8 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
                       type="text" 
                       placeholder="e.g. CITY HUMAN RESOURCE..."
                       className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-400 focus:outline-none transition-all bg-gray-50"
-                      value={formData.office_name || ''}
-                      onChange={e => handleFormChange('office_name', e.target.value)}
+                      value={formData.officeName || ''}
+                      onChange={e => handleFormChange('officeName', e.target.value)}
                     />
                   </div>
                    <div>
@@ -168,8 +168,8 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
                       type="text" 
                       placeholder="e.g. ATTY. HENRY R. VILLARICA..."
                       className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-400 focus:outline-none transition-all bg-gray-50"
-                      value={formData.submission_address || ''}
-                      onChange={e => handleFormChange('submission_address', e.target.value)}
+                      value={formData.submissionAddress || ''}
+                      onChange={e => handleFormChange('submissionAddress', e.target.value)}
                     />
                   </div>
                </div>
@@ -226,8 +226,8 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
                     type="text" 
                     placeholder=""
                     className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-400 focus:outline-none transition-all bg-gray-50"
-                    value={formData.other_qualifications || ''}
-                    onChange={e => handleFormChange('other_qualifications', e.target.value)}
+                    value={formData.otherQualifications || ''}
+                    onChange={e => handleFormChange('otherQualifications', e.target.value)}
                   />
                 </div>
             </div>

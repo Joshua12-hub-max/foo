@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { MapPin, Fingerprint, Upload, CheckCircle2, AlertCircle, Loader2, Mail, Lock, Check, X, Calendar, Droplet, Hash, Phone, Building2, Facebook, Twitter, Linkedin, Briefcase } from "lucide-react";
 import AuthLayout from "@components/Custom/Auth/AuthLayout";
 import Combobox from "@/components/Custom/Combobox";
 import ConfirmationModal from '../components/CustomUI/ConfirmationModal';
 import { PhilippineAddressSelector } from '@components/Custom/Shared/PhilippineAddressSelector';
-import type { Region, Province, CityMunicipality, Barangay } from '@/types/ph-address';
+import type { Region, Province, CityMunicipality } from '@/types/ph-address';
 import { useBiometricDevice } from "@/hooks/useBiometricDevice";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -13,7 +13,8 @@ import { RegisterSchema } from "@/schemas/authSchema";
 import { z } from "zod";
 import { toast } from "react-hot-toast";
 import { useRegisterMutation } from "@/hooks/useAuthQueries";
-import { useBarangaysQuery, useDepartmentsQuery, usePositionsQuery, useNextEmployeeIdQuery, useHiredApplicantSearch } from "@/hooks/useCommonQueries";
+import { useDepartmentsQuery, usePositionsQuery, useNextEmployeeIdQuery, useHiredApplicantSearch } from "@/hooks/useCommonQueries";
+import { useAuth } from "@/hooks/useAuth";
 import { HiredApplicant } from "@/types/recruitment_applicant";
 import ph from 'phil-reg-prov-mun-brgy';
 import { EDUCATION_LEVELS } from "../schemas/recruitment";
@@ -21,15 +22,123 @@ import { EDUCATION_LEVELS } from "../schemas/recruitment";
 type EducationLevel = typeof EDUCATION_LEVELS[number] | "";
 type RegisterFormValues = z.infer<typeof RegisterSchema>;
 
+interface SetupData {
+  firstName?: string;
+  lastName?: string;
+  middleName?: string;
+  suffix?: string;
+  email?: string;
+  password?: string;
+  department?: string;
+  position?: string;
+  role?: "Administrator" | "Human Resource" | "Employee";
+  dutyType?: "Standard" | "Irregular";
+  appointmentType?: string; // This can be many values, keeping as string or can use union
+}
+
+interface LocationState {
+  setupData?: SetupData;
+}
+
+/* eslint-disable @typescript-eslint/naming-convention */
+interface PhilAddressLibraryLocal {
+  regions: Region[];
+  provinces: Province[];
+  city_mun: CityMunicipality[];
+}
+/* eslint-enable @typescript-eslint/naming-convention */
+
+const addressLib = ph as unknown as PhilAddressLibraryLocal;
+
 export default function Register() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const state = location.state as LocationState;
+  const setupData = state?.setupData;
+  
   const registerMutation = useRegisterMutation();
   const loading = registerMutation.isPending;
-  const { data: nextEmployeeId } = useNextEmployeeIdQuery();
-  const actualEmployeeId = nextEmployeeId || "1";
+  const [searchParams] = useSearchParams();
   
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
-  const [bioEnrolled, setBioEnrolled] = useState(false);
+  const { user, checkAuth } = useAuth();
+  
+  // Robust Detection: Use both URL mode and user's profile status
+  const isFinalizingSetup = searchParams.get('mode') === 'finalize-setup' || user?.profileStatus === 'Initial';
+
+  const { 
+    register,
+    handleSubmit,
+    watch,
+    setValue,
+    formState: { errors, isSubmitting }
+  } = useForm<RegisterFormValues>({
+    resolver: zodResolver(RegisterSchema),
+    defaultValues: {
+      employeeId: "",
+      firstName: "",
+      lastName: "",
+      middleName: "",
+      suffix: "",
+      email: "",
+      password: "",
+      educationalBackground: "",
+      yearsOfExperience: "",
+      experience: "",
+      skills: "",
+      eligibilityType: "",
+      eligibilityNumber: "",
+      eligibilityDate: "",
+      address: "",
+      residentialZipCode: "",
+      permanentAddress: "",
+      permanentZipCode: "",
+      emergencyContact: "",
+      emergencyContactNumber: "",
+      isMeycauayan: "false",
+      barangay: "",
+      department: "",
+      position: "",
+      role: "Employee",
+      avatar: undefined,
+      gender: "",
+      civilStatus: "",
+      dutyType: "Standard",
+      appointmentType: "Permanent",
+      gsisNumber: "",
+      pagibigNumber: "",
+      philhealthNumber: "",
+      umidNumber: "",
+      philsysId: "",
+      tinNumber: "",
+      schoolName: "",
+      yearGraduated: "",
+      course: ""
+    }
+  });
+
+  useEffect(() => {
+    register("department");
+    register("position");
+  }, [register]);
+
+  useEffect(() => {
+    if (isFinalizingSetup && user) {
+      setValue("firstName", user.firstName || "");
+      setValue("lastName", user.lastName || "");
+      setValue("middleName", user.middleName || "");
+      setValue("suffix", user.suffix || "");
+      setValue("department", user.department || "");
+      setValue("employeeId", user.employeeId || "");
+      setValue("dutyType", user.dutyType || "Standard");
+      setValue("appointmentType", (user.appointmentType as RegisterFormValues["appointmentType"]) || "Permanent");
+      // Visual Pre-fill: Leave blank so placeholder shows
+      setValue("password", "");
+      // Role is already correct in user object
+      setValue("role", user.role as unknown as RegisterFormValues["role"]);
+      toast.success("Initial account verified! Please complete your PDS and Biometrics.");
+    }
+  }, [isFinalizingSetup, user, setValue]);
+
   const [isResetModalOpen, setResetModalOpen] = useState(false);
   const [enrollStep, setEnrollStep] = useState(0);
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
@@ -37,7 +146,6 @@ export default function Register() {
   const [matchedApplicant, setMatchedApplicant] = useState<HiredApplicant | null>(null);
   const [hasAutomaticallyChecked, setHasAutomaticallyChecked] = useState(false);
   
-  const { data: barangays = [] } = useBarangaysQuery();
   const { data: departments = [] } = useDepartmentsQuery();
   const { data: positions = [] } = usePositionsQuery();
 
@@ -46,13 +154,36 @@ export default function Register() {
   const [prefilledAddress, setPrefilledAddress] = useState("");
   const [prefilledPermanentAddress, setPrefilledPermanentAddress] = useState("");
 
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [bioEnrolled, setBioEnrolled] = useState(false);
+  
+  const { data: nextIdData } = useNextEmployeeIdQuery();
+  const actualEmployeeId = nextIdData || "";
+
   const [enrollError, setEnrollError] = useState<string | null>(null);
+
+  const enrollStepRef = useRef(enrollStep);
+  useEffect(() => { enrollStepRef.current = enrollStep; }, [enrollStep]);
+
+  useEffect(() => {
+    if (setupData) {
+      setValue("firstName", setupData.firstName || "");
+      setValue("lastName", setupData.lastName || "");
+      setValue("middleName", setupData.middleName || "");
+      setValue("suffix", setupData.suffix || "");
+      setValue("email", setupData.email || "");
+      setValue("password", setupData.password || "");
+      setValue("department", setupData.department || "");
+      setValue("position", setupData.position || "");
+      setValue("role", setupData.role as RegisterFormValues["role"] || "Employee");
+      toast.success(`Initializing as ${setupData.role}. Some fields are locked.`);
+    }
+  }, [setupData, setValue]);
 
   const { 
       status: bioStatus, 
       deviceConnected, 
       enroll, 
-      cancel, 
       resetDevice
   } = useBiometricDevice({
       onEnrollSuccess: () => {
@@ -83,51 +214,63 @@ export default function Register() {
       }
   });
 
-  const {
-    register,
-    handleSubmit,
-    watch,
-    setValue,
-    formState: { errors }
-  } = useForm<RegisterFormValues>({
-    resolver: zodResolver(RegisterSchema),
-    defaultValues: {
-      employee_id: "",
-      firstName: "",
-      lastName: "",
-      middleName: "",
-      suffix: "",
-      email: "",
-      password: "",
-      educationalBackground: "",
-      yearsOfExperience: "",
-      experience: "",
-      skills: "",
-      eligibilityType: "",
-      eligibilityNumber: "",
-      eligibilityDate: "",
-      address: "",
-      residentialZipCode: "",
-      permanentAddress: "",
-      permanentZipCode: "",
-      emergencyContact: "",
-      emergencyContactNumber: "",
-      isMeycauayan: "false",
-      barangay: "",
-      department: "",
-      position: "",
-      role: "employee",
-      avatar: undefined,
-      gender: "",
-      civilStatus: "",
-      duties: "Standard"
-    }
-  });
 
   const isMeycauayan = watch("isMeycauayan") === "true";
   const firstName = watch("firstName");
   const lastName = watch("lastName");
+   // Watch for dynamic address preview
+  const resRegion = watch("resRegion");
+  const resProvince = watch("resProvince");
+  const resCity = watch("resCity");
+  const resBrgy = watch("resBrgy");
+  const resHouse = watch("resHouseBlockLot");
+  const resSubd = watch("resSubdivision");
+  const resStreet = watch("resStreet");
+  const permRegion = watch("permRegion");
+  const permProvince = watch("permProvince");
+  const permCity = watch("permCity");
+  const permBrgy = watch("permBrgy");
+  const permHouse = watch("permHouseBlockLot");
+  const permSubd = watch("permSubdivision");
+  const permStreet = watch("permStreet");
   const avatarRef = useRef<HTMLInputElement>(null);
+
+  const formatAddr = (reg: string, prov: string, city: string, brgy: string, house: string, subd: string, street: string) => {
+      const rName = addressLib.regions.find(x => x.reg_code === reg)?.name || '';
+      const pName = addressLib.provinces.find(x => x.prov_code === prov)?.name || '';
+      const cName = addressLib.city_mun.find(x => x.mun_code === city)?.name || '';
+      const bName = brgy; // Barangay values are stored as their name
+      return [house, subd, street, bName, cName, pName, rName].filter(Boolean).join(', ');
+  };
+
+  // Real-time residential address
+  useEffect(() => {
+      if (prefilledAddress || (isFinalizingSetup && user?.address)) {
+          if (!watch("barangay")) setValue("barangay", "Prefilled"); // Bypass Zod Validation
+          return;
+      }
+      const addr = formatAddr(resRegion||'', resProvince||'', resCity||'', resBrgy||'', resHouse||'', resSubd||'', resStreet||'');
+      if (addr) {
+          setValue("address", addr);
+          setValue("residentialAddress", addr);
+      }
+      if (resBrgy) {
+          setValue("barangay", resBrgy);
+      } else {
+          setValue("barangay", "");
+      }
+  }, [resRegion, resProvince, resCity, resBrgy, resHouse, resSubd, resStreet, setValue, prefilledAddress, isFinalizingSetup, user]);
+
+  // Real-time permanent address
+  useEffect(() => {
+      if (prefilledPermanentAddress || (isFinalizingSetup && user?.permanentAddress)) {
+          return;
+      }
+      const addr = formatAddr(permRegion||'', permProvince||'', permCity||'', permBrgy||'', permHouse||'', permSubd||'', permStreet||'');
+      if (addr) {
+          setValue("permanentAddress", addr);
+      }
+  }, [permRegion, permProvince, permCity, permBrgy, permHouse, permSubd, permStreet, setValue, prefilledPermanentAddress, isFinalizingSetup, user]);
 
   // Search for hired applicant when name is entered
   const { data: hiredApplicant } = useHiredApplicantSearch(
@@ -148,40 +291,54 @@ export default function Register() {
     if (!matchedApplicant) return;
 
     // Map applicant fields to form fields
-    setValue("middleName", matchedApplicant.middle_name || "");
+    setValue("middleName", matchedApplicant.middleName || "");
     setValue("suffix", matchedApplicant.suffix || "");
     setValue("email", matchedApplicant.email || "");
-    setValue("birthDate", matchedApplicant.birth_date ? matchedApplicant.birth_date.split('T')[0] : "");
-    setValue("placeOfBirth", matchedApplicant.birth_place || "");
+    setValue("birthDate", matchedApplicant.birthDate ? matchedApplicant.birthDate.split('T')[0] : "");
+    setValue("placeOfBirth", matchedApplicant.birthPlace || "");
     setValue("gender", matchedApplicant.sex || "");
-    setValue("civilStatus", matchedApplicant.civil_status || "");
-    setValue("bloodType", matchedApplicant.blood_type || "");
+    setValue("civilStatus", matchedApplicant.civilStatus || "");
+    setValue("bloodType", matchedApplicant.bloodType || "");
     setValue("heightM", matchedApplicant.height || "");
     setValue("weightKg", matchedApplicant.weight || "");
-    setValue("mobileNo", matchedApplicant.phone_number || "");
+    setValue("mobileNo", matchedApplicant.phoneNumber || "");
+    
+    // Emergency Contact
+    setValue("emergencyContact", matchedApplicant.emergencyContact || "");
+    setValue("emergencyContactNumber", matchedApplicant.emergencyContactNumber || "");
 
     // Government IDs — correct mappings
-    setValue("gsisIdNo", matchedApplicant.gsis_no || "");
-    setValue("pagibigIdNo", matchedApplicant.pagibig_no || "");
-    setValue("philhealthNo", matchedApplicant.philhealth_no || "");
-    setValue("umidId", matchedApplicant.umid_no || "");
-    setValue("philsysId", matchedApplicant.philsys_id || "");
-    setValue("tinNo", matchedApplicant.tin_no || "");
+    setValue("gsisNumber", matchedApplicant.gsisNumber || "");
+    setValue("pagibigNumber", matchedApplicant.pagibigNumber || "");
+    setValue("philhealthNumber", matchedApplicant.philhealthNumber || "");
+    setValue("umidNumber", matchedApplicant.umidNumber || "");
+    setValue("philsysId", matchedApplicant.philsysId || "");
+    setValue("tinNumber", matchedApplicant.tinNumber || "");
     
-    // Education & Background
-    setValue("educationalBackground", (matchedApplicant.education as EducationLevel) || "");
-    setValue("schoolName", matchedApplicant.school_name || "");
+    // Education & Background - Handle HTML escaping from backend
+    let educationalBackgroundValue = matchedApplicant.educationalBackground || "";
+    if (educationalBackgroundValue) {
+        // Unescape common HTML entities that come from sanitizeInput
+        educationalBackgroundValue = educationalBackgroundValue
+            .replace(/&#039;/g, "'")
+            .replace(/&quot;/g, '"')
+            .replace(/&amp;/g, '&')
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>');
+    }
+    setValue("educationalBackground", (educationalBackgroundValue as EducationLevel) || "");
+    setValue("schoolName", matchedApplicant.schoolName || "");
     setValue("course", matchedApplicant.course || "");
-    setValue("yearGraduated", matchedApplicant.year_graduated || "");
+    setValue("yearGraduated", matchedApplicant.yearGraduated || "");
     setValue("experience", matchedApplicant.experience || "");
     setValue("skills", matchedApplicant.skills || "");
-    setValue("yearsOfExperience", matchedApplicant.total_experience_years?.toString() || "");
+    setValue("yearsOfExperience", matchedApplicant.totalExperienceYears?.toString() || "");
 
     // Eligibility
-    setValue("eligibilityType", matchedApplicant.eligibility_type || "");
-    setValue("eligibilityNumber", matchedApplicant.license_no || "");
-    if (matchedApplicant.eligibility_date) {
-        setValue("eligibilityDate", matchedApplicant.eligibility_date.split('T')[0]);
+    setValue("eligibilityType", matchedApplicant.eligibilityType || "");
+    setValue("eligibilityNumber", matchedApplicant.licenseNo || "");
+    if (matchedApplicant.eligibilityDate) {
+        setValue("eligibilityDate", matchedApplicant.eligibilityDate.split('T')[0]);
     }
     
     // Residential Address
@@ -195,37 +352,41 @@ export default function Register() {
         setIsAddressPrefilled(false);
         setPrefilledAddress("");
     }
-    if (matchedApplicant.zip_code) {
-        setValue("residentialZipCode", matchedApplicant.zip_code);
+    if (matchedApplicant.zipCode) {
+        setValue("residentialZipCode", matchedApplicant.zipCode);
     }
 
     // Permanent Address
-    if (matchedApplicant.permanent_address) {
-        setPrefilledPermanentAddress(matchedApplicant.permanent_address);
+    if (matchedApplicant.permanentAddress) {
+        setPrefilledPermanentAddress(matchedApplicant.permanentAddress);
         // Defer form hook population logic to onSubmit identical to residential address parsing
         setValue("permStreet", "");
     } else {
         setPrefilledPermanentAddress("");
     }
-    if (matchedApplicant.permanent_zip_code) {
-        setValue("permanentZipCode", matchedApplicant.permanent_zip_code);
+    if (matchedApplicant.permanentZipCode) {
+        setValue("permanentZipCode", matchedApplicant.permanentZipCode);
     }
 
     // Meycauayan Resident
-    setValue("isMeycauayan", matchedApplicant.is_meycauayan_resident ? "true" : "false");
+    setValue("isMeycauayan", matchedApplicant.isMeycauayanResident ? "true" : "false");
+
+    // Pre-fill Duty and Appointment from Job Posting
+    setValue("dutyType", (matchedApplicant.dutyType || "Standard") as RegisterFormValues["dutyType"]);
+    setValue("appointmentType", (matchedApplicant.employmentType || "Permanent") as RegisterFormValues["appointmentType"]);
 
     // Photo — display applicant's ID photo as avatar preview
-    if (matchedApplicant.photo_url) {
-        setAvatarPreview(matchedApplicant.photo_url);
+    if (matchedApplicant.photoUrl) {
+        setAvatarPreview(matchedApplicant.photoUrl);
     }
 
     // Store applicant metadata for linking during registration
     setValue("applicantId", matchedApplicant.id);
-    if (matchedApplicant.hired_date) {
-        setValue("applicantHiredDate", matchedApplicant.hired_date.split('T')[0]);
+    if (matchedApplicant.hiredDate) {
+        setValue("applicantHiredDate", matchedApplicant.hiredDate.split('T')[0]);
     }
-    if (matchedApplicant.photo_path) {
-        setValue("applicantPhotoPath", matchedApplicant.photo_path);
+    if (matchedApplicant.photoPath) {
+        setValue("applicantPhotoPath", matchedApplicant.photoPath);
     }
 
     toast.success("Form pre-filled from your application data!");
@@ -249,16 +410,6 @@ export default function Register() {
 
     const formData = new FormData();
     
-    // Map Geography codes to names
-    const extractName = <T extends { name: string }>(arr: T[], key: keyof T, val: string): string => arr.find(x => String(x[key]) === val)?.name || '';
-    const formatAddr = (reg: string, prov: string, city: string, brgy: string, street: string) => {
-        const rName = extractName(ph.regions as Region[], 'reg_code', reg);
-        const pName = extractName(ph.provinces as Province[], 'prov_code', prov);
-        const cName = extractName(ph.city_mun as CityMunicipality[], 'mun_code', city);
-        const bName = extractName(ph.barangays as Barangay[], 'name', brgy); // Barangay values are stored as their name
-        return [street, bName, cName, pName, rName].filter(Boolean).join(', ');
-    };
-
     // If address was pre-filled and never cleared by the user, we keep the original string
     // Otherwise we format it from the PhilippineAddressSelector fields
     if (isAddressPrefilled) {
@@ -268,16 +419,9 @@ export default function Register() {
         // Use prefilled permanent address if available, otherwise fallback to residential
         const finalPerm = prefilledPermanentAddress || prefilledAddress;
         data.permanentAddress = finalPerm;
-    } else {
-        const resAddress = formatAddr(data.resRegion||'', data.resProvince||'', data.resCity||'', data.resBrgy||'', data.resStreet||'');
-        const permAddress = formatAddr(data.permRegion||'', data.permProvince||'', data.permCity||'', data.permBrgy||'', data.permStreet||'');
+    } 
 
-        data.address = resAddress;
-        data.residentialAddress = resAddress;
-        data.permanentAddress = permAddress;
-    }
-
-    const ignoreKeys = ['avatar', 'employee_id', 'resRegion', 'resProvince', 'resCity', 'resBrgy', 'resStreet', 'permRegion', 'permProvince', 'permCity', 'permBrgy', 'permStreet'];
+    const ignoreKeys = ['avatar', 'employeeId'];
 
     // Append simple fields
     (Object.keys(data) as Array<keyof RegisterFormValues>).forEach((key) => {
@@ -286,7 +430,7 @@ export default function Register() {
             formData.append(key, String(value));
         }
     });
-    formData.append("employee_id", data.employee_id || actualEmployeeId);
+    formData.append("employeeId", data.employeeId || actualEmployeeId);
     if (avatarRef.current?.files?.[0]) {
         formData.append("avatar", avatarRef.current.files[0]);
     }
@@ -297,10 +441,22 @@ export default function Register() {
     if (data.applicantPhotoPath) formData.append("applicantPhotoPath", data.applicantPhotoPath);
 
     try {
-      await registerMutation.mutateAsync(formData);
-      toast.success("Registration Successful! Please check your email.");
-      navigate("/verify-account", { state: { email: data.email } });
-    } catch (error) {
+      await registerMutation.mutateAsync({ 
+        data: formData, 
+        mode: isFinalizingSetup ? 'finalize-setup' : undefined 
+      });
+
+      if (isFinalizingSetup) {
+          toast.success("Profile permanently saved! Redirecting to your dashboard...");
+          // Sync auth state to get full permissions
+          await checkAuth();
+          navigate("/dashboard");
+      } else {
+          toast.success("Registration Successful! Please check your email.");
+          navigate("/verify-account", { state: { email: data.email } });
+      }
+    } catch (error: unknown) {
+
       console.error(error);
       let msg = "Registration failed";
       
@@ -380,7 +536,14 @@ export default function Register() {
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-gray-600 ml-1">Email Address <span className="text-red-500">*</span></label>
                 <div className="relative">
-                  <input {...register("email")} type="email" autoComplete="email" className={`${inputClass} !pl-3 ${errors.email ? errorClass : ''}`} placeholder="" />
+                  <input 
+                    {...register("email")} 
+                    type="email" 
+                    autoComplete="email" 
+                    className={`${inputClass} !pl-3 ${errors.email ? errorClass : ''} ${setupData ? 'bg-gray-100 cursor-not-allowed' : ''}`} 
+                    placeholder="" 
+                    readOnly={!!setupData}
+                  />
                 </div>
                 {errors.email && <p className="text-red-500 text-[11px] ml-1">{errors.email.message}</p>}
               </div>
@@ -388,8 +551,14 @@ export default function Register() {
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-gray-600 ml-1">Password <span className="text-red-500">*</span></label>
                 <div className="relative">
-                  <input {...register("password")} type="password" autoComplete="new-password" className={`${inputClass} !pl-3 ${errors.password ? errorClass : ''}`} placeholder="" />
-                </div>
+                  <input 
+                    {...register("password")} 
+                    type="password" 
+                    autoComplete="new-password" 
+                    className={`${inputClass} !pl-3 ${errors.password ? errorClass : ''} ${(setupData || isFinalizingSetup) ? 'bg-gray-100 cursor-not-allowed' : ''}`} 
+                    placeholder={isFinalizingSetup ? "••••••••" : ""} 
+                    readOnly={!!setupData || isFinalizingSetup}
+                  />                </div>
                 {errors.password && <p className="text-red-500 text-[11px] ml-1">{errors.password.message}</p>}
               </div>
            </div>
@@ -628,19 +797,19 @@ export default function Register() {
            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               <div className="space-y-1">
                  <label className="text-xs font-semibold text-gray-600 ml-1">GSIS ID No.</label>
-                 <input {...register("gsisIdNo")} className={`${inputClass} !pl-3`} placeholder="" />
+                 <input {...register("gsisNumber")} className={`${inputClass} !pl-3`} placeholder="" />
               </div>
               <div className="space-y-1">
                  <label className="text-xs font-semibold text-gray-600 ml-1">PAG-IBIG No.</label>
-                 <input {...register("pagibigIdNo")} className={`${inputClass} !pl-3`} placeholder="" />
+                 <input {...register("pagibigNumber")} className={`${inputClass} !pl-3`} placeholder="" />
               </div>
               <div className="space-y-1">
                  <label className="text-xs font-semibold text-gray-600 ml-1">PhilHealth No.</label>
-                 <input {...register("philhealthNo")} className={`${inputClass} !pl-3`} placeholder="" />
+                 <input {...register("philhealthNumber")} className={`${inputClass} !pl-3`} placeholder="" />
               </div>
               <div className="space-y-1">
-                 <label className="text-xs font-semibold text-gray-600 ml-1">UMID ID</label>
-                 <input {...register("umidId")} className={`${inputClass} !pl-3`} placeholder="" />
+                 <label className="text-xs font-semibold text-gray-600 ml-1">UMID Number</label>
+                 <input {...register("umidNumber")} className={`${inputClass} !pl-3`} placeholder="" />
               </div>
               <div className="space-y-1">
                  <label className="text-xs font-semibold text-gray-600 ml-1">PHILSYS ID</label>
@@ -648,7 +817,7 @@ export default function Register() {
               </div>
               <div className="space-y-1">
                  <label className="text-xs font-semibold text-gray-600 ml-1">TIN No.</label>
-                 <input {...register("tinNo")} className={`${inputClass} !pl-3`} placeholder="" />
+                 <input {...register("tinNumber")} className={`${inputClass} !pl-3`} placeholder="" />
               </div>
               <div className="space-y-1">
                  <label className="text-xs font-semibold text-gray-600 ml-1">Agency Employee No.</label>
@@ -754,7 +923,8 @@ export default function Register() {
                        onChange={(val) => setValue("department", val)}
                        placeholder=""
                        error={!!errors.department}
-                       buttonClassName="pl-3"
+                       buttonClassName={`pl-3 ${setupData ? 'bg-gray-100 cursor-not-allowed opacity-80' : ''}`}
+                       disabled={!!setupData}
                    />
                </div>
                <div>
@@ -762,22 +932,38 @@ export default function Register() {
                    <Combobox
                        options={positions
                            .filter((p) => !watch("department") || p.department === watch("department"))
-                           .map((p) => ({ value: `${p.position_title} (${p.item_number})`, label: `${p.position_title} (${p.item_number})` }))}
+                           .map((p) => ({ value: `${p.positionTitle} (${p.itemNumber})`, label: `${p.positionTitle} (${p.itemNumber})` }))}
                        value={watch("position") || ""}
                        onChange={(val) => setValue("position", val)}
                        placeholder=""
                        error={!!errors.position}
-                       buttonClassName="pl-3"
+                       buttonClassName={`pl-3 ${setupData ? 'bg-gray-100 cursor-not-allowed opacity-80' : ''}`}
+                       disabled={!!setupData}
                    />
                </div>
-               <div className="md:col-span-2">
+               <div>
                    <label className="text-xs font-semibold text-gray-600 ml-1 mb-1 block">Type of Duties</label>
                    <select 
-                     {...register("duties")} 
+                     {...register("dutyType")} 
                      className={`${inputClass} !pl-3 text-gray-700`}
                    >
                      <option value="Standard">Standard</option>
-                     <option value="Irregular Duties">Irregular Duties</option>
+                     <option value="Irregular">Irregular</option>
+                   </select>
+               </div>
+               <div>
+                   <label className="text-xs font-semibold text-gray-600 ml-1 mb-1 block">Appointment Type</label>
+                   <select 
+                     {...register("appointmentType")} 
+                     className={`${inputClass} !pl-3 text-gray-700`}
+                   >
+                     <option value="Permanent">Permanent</option>
+                     <option value="Contractual">Contractual</option>
+                     <option value="Casual">Casual</option>
+                     <option value="Job Order">Job Order</option>
+                     <option value="Coterminous">Coterminous</option>
+                     <option value="Temporary">Temporary</option>
+                     <option value="Contract of Service">Contract of Service</option>
                    </select>
                </div>
             </div>
@@ -942,7 +1128,7 @@ export default function Register() {
       <ConfirmationModal
         isOpen={showPreFillModal}
         title="Application Found!"
-        message={`We found a hired application for ${matchedApplicant?.first_name} ${matchedApplicant?.last_name}. Would you like to automatically pre-fill the form with your information?`}
+        message={`We found a hired application for ${matchedApplicant?.firstName} ${matchedApplicant?.lastName}. Would you like to automatically pre-fill the form with your information?`}
         confirmText="Yes, Pre-fill Form"
         cancelText="No, Type Manually"
         onConfirm={handlePreFill}

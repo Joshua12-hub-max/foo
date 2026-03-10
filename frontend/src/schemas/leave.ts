@@ -161,11 +161,10 @@ export type LeaveActionSchema = z.infer<typeof leaveActionSchema>;
 
 // Re-export old names
 export const leaveRequestSchema = z.object({
-  leave_type: z.string().min(1, 'Leave type is required'),
-  start_date: z.string().min(1, 'Start date is required'),
-  end_date: z.string().min(1, 'End date is required'),
+  leaveType: z.string().min(1, 'Leave type is required'),
+  startDate: z.string().min(1, 'Start date is required'),
+  endDate: z.string().min(1, 'End date is required'),
   reason: z.string().optional(),
-  attachment: z.any().optional(),
 });
 export type LeaveRequestSchema = z.infer<typeof leaveRequestSchema>;
 
@@ -177,6 +176,5 @@ export const submitLeaveRequestSchema = z.object({
   endDate: z.string().min(1, 'End date is required'),
   reason: z.string().min(10, 'Reason must be at least 10 characters').max(1000).optional(),
   description: z.string().min(10, 'Reason must be at least 10 characters').max(1000).optional(), // Legacy alias
-  attachment: z.any().optional(),
 });
 export type SubmitLeaveRequestSchema = z.infer<typeof submitLeaveRequestSchema>;

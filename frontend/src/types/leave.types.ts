@@ -90,58 +90,58 @@ export type MonetizationPurpose = typeof MONETIZATION_PURPOSE[number];
 
 export interface LeaveBalance {
   id: number;
-  employee_id: string;
-  credit_type: CreditType;
+  employeeId: string;
+  creditType: CreditType;
   balance: number;
   year: number;
-  updated_at: string;
-  first_name?: string;
-  last_name?: string;
+  updatedAt: string;
+  firstName?: string;
+  lastName?: string;
   department?: string;
-  days_used_with_pay?: number;
-  days_used_without_pay?: number;
+  daysUsedWithPay?: number;
+  daysUsedWithoutPay?: number;
 }
 
 export interface LedgerEntry {
   id: number;
-  employee_id: string;
-  credit_type: CreditType;
-  transaction_type: TransactionType;
+  employeeId: string;
+  creditType: CreditType;
+  transactionType: TransactionType;
   amount: number;
-  balance_after: number;
-  reference_id: number | null;
-  reference_type: string | null;
+  balanceAfter: number;
+  referenceId: number | null;
+  referenceType: string | null;
   remarks: string | null;
-  created_by: string | null;
-  created_at: string;
+  createdBy: string | null;
+  createdAt: string;
 }
 
 export interface LeaveApplication {
   id: number;
-  employee_id: string;
-  leave_type: LeaveType;
-  start_date: string;
-  end_date: string;
-  working_days: number;
-  is_with_pay: boolean;
-  actual_payment_status: PaymentStatus;
-  days_with_pay: number;
-  days_without_pay: number;
-  cross_charged_from: string | null;
+  employeeId: string;
+  leaveType: LeaveType;
+  startDate: string;
+  endDate: string;
+  workingDays: number;
+  isWithPay: boolean;
+  actualPaymentStatus: PaymentStatus;
+  daysWithPay: number;
+  daysWithoutPay: number;
+  crossChargedFrom: string | null;
   reason: string;
-  medical_certificate_path: string | null;
+  medicalCertificatePath: string | null;
   status: ApplicationStatus;
-  attachment_path: string | null;
-  admin_form_path: string | null;
-  final_attachment_path: string | null;
-  rejection_reason: string | null;
-  approved_by: string | null;
-  approved_at: string | null;
-  created_at: string;
-  updated_at: string;
+  attachmentPath: string | null;
+  adminFormPath: string | null;
+  finalAttachmentPath: string | null;
+  rejectionReason: string | null;
+  approvedBy: string | null;
+  approvedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
   // Joined fields
-  first_name?: string;
-  last_name?: string;
+  firstName?: string;
+  lastName?: string;
   department?: string;
 }
 
@@ -151,31 +151,31 @@ export interface Holiday {
   date: string;
   type: HolidayType;
   year: number;
-  created_at: string;
+  createdAt: string;
 }
 
 export interface LWOPSummary {
   id: number;
-  employee_id: string;
+  employeeId: string;
   year: number;
-  total_lwop_days: number;
-  cumulative_lwop_days: number;
-  updated_at: string;
+  totalLwopDays: number;
+  cumulativeLwopDays: number;
+  updatedAt: string;
 }
 
 export interface MonetizationRequest {
   id: number;
-  employee_id: string;
-  credit_type: 'Vacation Leave' | 'Sick Leave';
-  requested_days: number;
-  daily_rate: number;
-  total_amount: number;
+  employeeId: string;
+  creditType: 'Vacation Leave' | 'Sick Leave';
+  requestedDays: number;
+  dailyRate: number;
+  totalAmount: number;
   purpose: MonetizationPurpose;
   status: 'Pending' | 'Approved' | 'Rejected';
-  approved_by: string | null;
+  approvedBy: string | null;
   remarks: string | null;
-  created_at: string;
-  updated_at: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // ============================================================================

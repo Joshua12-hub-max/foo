@@ -5,7 +5,6 @@ import { EmployeeDTRHeader } from "@features/DailyTimeRecord/components/Employee
 import { EmployeeDTRNotification } from "@features/DailyTimeRecord/components/Employee/EmployeeDTRNotification";
 import { EmployeeDTRFilters } from "@features/DailyTimeRecord/components/Employee/EmployeeDTRFilters";
 import { EmployeeDTRSearchBar } from "@features/DailyTimeRecord/components/Employee/EmployeeDTRSearchBar";
-import { EmployeeDTRExportButtons } from "@features/DailyTimeRecord/components/Employee/EmployeeDTRExportButtons";
 import { EmployeeDTRTable } from "@features/DailyTimeRecord/components/Employee/EmployeeDTRTable";
 import { EmployeeDTRPagination } from "@features/DailyTimeRecord/components/Employee/EmployeeDTRPagination";
 import { EmployeeDTRLoadingSpinner } from "@features/DailyTimeRecord/components/Employee/EmployeeDTRLoadingSpinner";
@@ -14,8 +13,7 @@ import { EmployeeDTRRecord } from "@features/DailyTimeRecord/Utils/employeeDTRUt
 
 const EmployeeDailyTimeRecord = () => {
   const { today, filters, searchQuery, debouncedSearchQuery, currentPage, isLoading, loadingType, error, successMessage, employeeInfo, filteredData, paginationData, totals,
-    setError, setSuccessMessage, handleFilterChange, handleApply, handleClear, handleSearchChange, handleRefresh, handlePrevPage, handleNextPage, handleExportCSV, 
-    handleExportPDF, getStatusBadge } = useEmployeeDTR();
+    setError, setSuccessMessage, handleFilterChange, handleApply, handleClear, handleSearchChange, handleRefresh, handlePrevPage, handleNextPage, getStatusBadge } = useEmployeeDTR();
   
   const sidebarOpen = useUIStore((state) => state.sidebarOpen);
 
@@ -81,13 +79,6 @@ const EmployeeDailyTimeRecord = () => {
         handleSearchChange={handleSearchChange}
         filteredDataLength={filteredData.length}
         isLoading={isLoading}
-      />
-
-      <EmployeeDTRExportButtons 
-        handleExportCSV={handleExportCSV}
-        handleExportPDF={handleExportPDF}
-        isLoading={isLoading}
-        filteredDataLength={filteredData.length}
       />
 
       <EmployeeDTRTable 

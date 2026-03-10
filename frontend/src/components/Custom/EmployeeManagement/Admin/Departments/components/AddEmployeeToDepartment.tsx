@@ -12,11 +12,11 @@ interface Department {
 
 interface Employee {
   id: number;
-  first_name?: string;
-  last_name?: string;
-  employee_id?: string;
+  firstName?: string;
+  lastName?: string;
+  employeeId?: string;
   email?: string;
-  avatar_url?: string | null;
+  avatarUrl?: string | null;
 }
 
 interface AddEmployeeToDepartmentProps {
@@ -117,15 +117,15 @@ const AddEmployeeToDepartment: React.FC<AddEmployeeToDepartmentProps> = ({ isOpe
                 >
                   <div className="flex items-center gap-2">
                     <div className="w-8 h-8 rounded-full bg-gray-200 overflow-hidden flex items-center justify-center text-xs font-medium text-gray-500">
-                      {emp.avatar_url ? (
-                        <img src={emp.avatar_url} alt="" className="w-full h-full object-cover" />
+                      {emp.avatarUrl ? (
+                        <img src={emp.avatarUrl} alt="" className="w-full h-full object-cover" />
                       ) : (
-                        `${emp.first_name?.[0] || ''}${emp.last_name?.[0] || ''}`
+                        `${emp.firstName?.[0] || ''}${emp.lastName?.[0] || ''}`
                       )}
                     </div>
                     <div>
-                      <p className="font-medium text-gray-800 text-sm">{emp.first_name} {emp.last_name}</p>
-                      <p className="text-xs text-gray-500">{emp.employee_id || emp.email}</p>
+                      <p className="font-medium text-gray-800 text-sm">{emp.firstName} {emp.lastName}</p>
+                      <p className="text-xs text-gray-500">{emp.employeeId || emp.email}</p>
                     </div>
                   </div>
                   <button

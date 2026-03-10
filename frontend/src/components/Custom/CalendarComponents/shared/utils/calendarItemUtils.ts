@@ -68,7 +68,7 @@ export const combineCalendarItems = (events: CalendarDisplayItem[], holidays: Ho
       type: 'announcement', // Explicit type
       time: '00:00', // All day
       isAnnouncement: true,
-      date: a.start_date || a.created_at, // Use start_date or created_at
+      date: a.startDate || a.createdAt, // Use startDate or createdAt
     }));
     allItems = [...allItems, ...announcementItems];
   }
@@ -79,8 +79,8 @@ export const combineCalendarItems = (events: CalendarDisplayItem[], holidays: Ho
     console.log('📅 Processing schedules for calendar:', schedules);
     
     schedules.forEach(schedule => {
-      const startDateStr = schedule.start_date || schedule.startDate;
-      const endDateStr = schedule.end_date || schedule.endDate;
+      const startDateStr = schedule.startDate || schedule.startDate;
+      const endDateStr = schedule.endDate || schedule.endDate;
       const daysString = schedule.days || '';
       // @ts-ignore
       const scheduleDays = daysString ? daysString.split(',').map(d => d.trim()) : [];
@@ -121,8 +121,8 @@ export const combineCalendarItems = (events: CalendarDisplayItem[], holidays: Ho
                 title: schedule.duties || schedule.scheduleName || 'Work Duties',
                 type: 'schedule',
                 isSchedule: true,
-                time: schedule.start_time || schedule.startTime || '09:00',
-                endTime: schedule.end_time || schedule.endTime || '17:00',
+                time: schedule.startTime || schedule.startTime || '09:00',
+                endTime: schedule.endTime || schedule.endTime || '17:00',
                 date: dateStr,
                 startDate: startDateStr,
                 endDate: endDateStr,
@@ -148,8 +148,8 @@ export const combineCalendarItems = (events: CalendarDisplayItem[], holidays: Ho
               title: schedule.duties || schedule.scheduleName || 'Work Duties',
               type: 'schedule',
               isSchedule: true,
-              time: schedule.start_time || schedule.startTime || '09:00',
-              endTime: schedule.end_time || schedule.endTime || '17:00',
+              time: schedule.startTime || schedule.startTime || '09:00',
+              endTime: schedule.endTime || schedule.endTime || '17:00',
               date: dateStr,
               originalSchedule: schedule
             });

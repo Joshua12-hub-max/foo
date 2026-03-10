@@ -9,11 +9,11 @@ interface EditCreditModalProps {
   onClose: () => void;
   onSubmit: (data: CreditUpdateInput) => Promise<void>;
   credit: {
-    credit_type: string;
+    creditType: string;
     balance: number;
-    first_name?: string;
-    last_name?: string;
-    employee_id?: string | number;
+    firstName?: string;
+    lastName?: string;
+    employeeId?: string | number;
   } | null;
   isSubmitting: boolean;
 }
@@ -31,7 +31,7 @@ const EditCreditModal = ({ isOpen, onClose, onSubmit, credit, isSubmitting }: Ed
   useEffect(() => {
     if (credit) {
       reset({
-        creditType: credit.credit_type,
+        creditType: credit.creditType,
         balance: credit.balance,
       });
     }
@@ -77,7 +77,7 @@ const EditCreditModal = ({ isOpen, onClose, onSubmit, credit, isSubmitting }: Ed
           <div className="bg-teal-50/50 p-3 rounded-xl border border-teal-100 mb-2">
             <p className="text-xs text-teal-700 font-medium uppercase tracking-wider mb-1">Employee</p>
             <p className="text-sm text-gray-800 font-semibold">
-              {credit?.first_name} {credit?.last_name} ({credit?.employee_id})
+              {credit?.firstName} {credit?.lastName} ({credit?.employeeId})
             </p>
           </div>
 

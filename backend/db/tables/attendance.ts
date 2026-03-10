@@ -2,11 +2,11 @@ import { mysqlTable, varchar, int, bigint, date, timestamp, decimal, mysqlEnum, 
 import { sql } from 'drizzle-orm';
 
 export const attendanceLogs = mysqlTable("attendance_logs", {
-	id: int().autoincrement().notNull(),
+	id: int("id").autoincrement().notNull(),
 	employeeId: varchar("employee_id", { length: 50 }).notNull(),
 	scanTime: datetime("scan_time", { mode: 'string'}).notNull(),
-	type: mysqlEnum(['IN','OUT']).notNull(),
-	source: varchar({ length: 50 }).default('BIOMETRIC'),
+	type: mysqlEnum("type", ['IN','OUT']).notNull(),
+	source: varchar("source", { length: 50 }).default('BIOMETRIC'),
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
 },
 (table) => [
@@ -14,15 +14,15 @@ export const attendanceLogs = mysqlTable("attendance_logs", {
 ]);
 
 export const dailyTimeRecords = mysqlTable("daily_time_records", {
-	id: int().autoincrement().notNull(),
+	id: int("id").autoincrement().notNull(),
 	employeeId: varchar("employee_id", { length: 50 }).notNull(),
-	date: date({ mode: 'string' }).notNull(),
+	date: date("date", { mode: 'string' }).notNull(),
 	timeIn: datetime("time_in", { mode: 'string'}),
 	timeOut: datetime("time_out", { mode: 'string'}),
 	lateMinutes: int("late_minutes").default(0),
 	undertimeMinutes: int("undertime_minutes").default(0),
 	overtimeMinutes: int("overtime_minutes").default(0),
-	status: varchar({ length: 50 }).default('Present'),
+	status: varchar("status", { length: 50 }).default('Present'),
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
 	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow(),
 },
@@ -32,15 +32,15 @@ export const dailyTimeRecords = mysqlTable("daily_time_records", {
 ]);
 
 export const dtrCorrections = mysqlTable("dtr_corrections", {
-	id: int().autoincrement().notNull(),
+	id: int("id").autoincrement().notNull(),
 	employeeId: varchar("employee_id", { length: 50 }).notNull(),
 	dateTime: date("date_time", { mode: 'string' }).notNull(),
 	originalTimeIn: datetime("original_time_in", { mode: 'string'}),
 	originalTimeOut: datetime("original_time_out", { mode: 'string'}),
 	correctedTimeIn: datetime("corrected_time_in", { mode: 'string'}),
 	correctedTimeOut: datetime("corrected_time_out", { mode: 'string'}),
-	reason: text(),
-	status: mysqlEnum(['Pending','Approved','Rejected']).default('Pending'),
+	reason: text("reason"),
+	status: mysqlEnum("status", ['Pending','Approved','Rejected']).default('Pending'),
 	rejectionReason: text("rejection_reason"),
 	approvedBy: varchar("approved_by", { length: 50 }),
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
@@ -53,7 +53,7 @@ export const dtrCorrections = mysqlTable("dtr_corrections", {
 export const fingerprints = mysqlTable("fingerprints", {
 	fingerprintId: int("fingerprint_id").notNull(),
 	employeeId: varchar("employee_id", { length: 50 }).notNull(),
-	template: longtext(),
+	template: longtext("template"),
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
 },
 (table) => [
@@ -62,7 +62,7 @@ export const fingerprints = mysqlTable("fingerprints", {
 ]);
 
 export const schedules = mysqlTable("schedules", {
-	id: int().autoincrement().notNull(),
+	id: int("id").autoincrement().notNull(),
 	employeeId: varchar("employee_id", { length: 50 }).notNull(),
 	scheduleTitle: varchar("schedule_title", { length: 255 }).default('Regular Schedule'),
 	startDate: date("start_date", { mode: 'string' }),
@@ -82,10 +82,10 @@ export const schedules = mysqlTable("schedules", {
 ]);
 
 export const tardinessSummary = mysqlTable("tardiness_summary", {
-	id: int().autoincrement().notNull(),
+	id: int("id").autoincrement().notNull(),
 	employeeId: varchar("employee_id", { length: 50 }).notNull(),
-	year: int().notNull(),
-	month: int().notNull(),
+	year: int("year").notNull(),
+	month: int("month").notNull(),
 	totalLateMinutes: int("total_late_minutes").default(0),
 	totalUndertimeMinutes: int("total_undertime_minutes").default(0),
 	totalLateCount: int("total_late_count").default(0),
@@ -115,7 +115,7 @@ export const tardinessSummary = mysqlTable("tardiness_summary", {
 export const bioEnrolledUsers = mysqlTable("bio_enrolled_users", {
 	employeeId: int("employee_id").primaryKey().notNull(),
 	fullName: varchar("full_name", { length: 150 }).notNull(),
-	department: varchar({ length: 100 }),
+	department: varchar("department", { length: 100 }),
 	userStatus: mysqlEnum("user_status", ['active', 'inactive']).notNull().default('active'),
 	enrolledAt: datetime("enrolled_at", { mode: 'string' }).default(sql`(CURRENT_TIMESTAMP)`),
 	updatedAt: datetime("updated_at", { mode: 'string' }).default(sql`(CURRENT_TIMESTAMP)`),

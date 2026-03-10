@@ -17,15 +17,15 @@ export const DTRQuerySchema = DTRFilterSchema.merge(PaginationSchema);
 
 // Update DTR Schema (for Modal)
 export const UpdateDTRSchema = z.object({
-    time_in: z.string().nullable().optional(),
-    time_out: z.string().nullable().optional(),
+    timeIn: z.string().nullable().optional(),
+    timeOut: z.string().nullable().optional(),
     status: z.string().min(1, 'Status is required'),
-    late_minutes: z.preprocess((val) => {
+    lateMinutes: z.preprocess((val) => {
         if (typeof val === 'string' && val === '') return 0;
         if (typeof val === 'string') return parseInt(val, 10);
         return val;
     }, z.number().nonnegative().default(0)),
-    undertime_minutes: z.preprocess((val) => {
+    undertimeMinutes: z.preprocess((val) => {
         if (typeof val === 'string' && val === '') return 0;
         if (typeof val === 'string') return parseInt(val, 10);
         return val;

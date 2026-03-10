@@ -15,6 +15,7 @@ export const useAuth = () => {
     setUser: store.setUser,
     updateProfile: store.updateProfile,
     logout: store.logout,
+    checkAuth: store.checkAuth,
     
     // Error state
     authError: store.authError

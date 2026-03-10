@@ -3,16 +3,6 @@ import { db } from '../db/index.js';
 import { recruitmentEmailTemplates } from '../db/schema.js';
 import { eq, asc } from 'drizzle-orm';
 
-// ============================================================================
-// Interfaces
-// ============================================================================
-
-
-
-// ============================================================================
-// Controllers
-// ============================================================================
-
 export const getTemplates = async (_req: Request, res: Response): Promise<void> => {
   try {
     const templates = await db.select()
@@ -20,8 +10,8 @@ export const getTemplates = async (_req: Request, res: Response): Promise<void> 
       .orderBy(asc(recruitmentEmailTemplates.id));
       
     res.json({ success: true, templates });
-  } catch (error) {
-    console.error('Error fetching templates:', error);
+  } catch (_error) {
+
     res.status(500).json({ success: false, message: 'Failed to fetch email templates' });
   }
 };
@@ -30,16 +20,20 @@ export const updateTemplate = async (req: Request, res: Response): Promise<void>
   try {
     const { id } = req.params;
 
+    const { subjectTemplate, bodyTemplate } = req.body as { subjectTemplate: string; bodyTemplate: string };
+
     await db.update(recruitmentEmailTemplates)
       .set({ 
-        subject_template: req.body.subject_template, 
-        body_template: req.body.body_template 
+        subjectTemplate, 
+        bodyTemplate 
       })
       .where(eq(recruitmentEmailTemplates.id, Number(id)));
 
     res.json({ success: true, message: 'Template updated successfully' });
-  } catch (error) {
-    console.error('Error updating template:', error);
+  } catch (_error) {
+
     res.status(500).json({ success: false, message: 'Failed to update template' });
   }
 };
+
+
