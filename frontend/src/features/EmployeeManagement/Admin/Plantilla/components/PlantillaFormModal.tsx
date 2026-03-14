@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { X, Loader } from 'lucide-react';
 import { plantillaApi, type Position } from '@/api/plantillaApi';
 import { plantillaSchema, PlantillaSchema } from '@/schemas/plantilla';
+import Combobox from '@/components/Custom/Combobox';
 
 interface PlantillaFormModalProps {
   isOpen: boolean;
@@ -129,11 +130,11 @@ const PlantillaFormModal: React.FC<PlantillaFormModalProps> = ({
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50 p-4 transition-all">
       <div 
-        className="fixed inset-0 bg-black/30 backdrop-blur-sm" 
+        className="fixed inset-0 bg-black/50" 
         onClick={onClose} 
         aria-hidden="true" 
       />
-      <div className="bg-white rounded-xl w-full max-w-md shadow-2xl border border-gray-100 overflow-hidden animate-in fade-in zoom-in duration-200 z-10 relative">
+      <div className="bg-white rounded-xl w-full max-w-xl shadow-2xl border border-gray-100 overflow-hidden animate-in fade-in zoom-in duration-200 z-10 relative">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 bg-gray-50 border-b border-gray-100">
           <h2 className="text-lg font-bold text-gray-900">
@@ -206,56 +207,62 @@ const PlantillaFormModal: React.FC<PlantillaFormModalProps> = ({
 
             <div>
               <label className="block text-xs font-bold text-gray-700 mb-1">Department*</label>
-              <select 
-                {...register('departmentId', { valueAsNumber: true })}
-                className={`w-full px-3 py-2 bg-gray-50 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all ${errors.departmentId ? 'border-red-500' : 'border-gray-200'}`}
-              >
-                <option value={0}>Select Department</option>
-                {departments.map(dept => (
-                  <option key={dept.id} value={dept.id}>{dept.name}</option>
-                ))}
-              </select>
+              <Combobox
+                options={departments.map(dept => ({ value: dept.id.toString(), label: dept.name }))}
+                value={watch('departmentId').toString()}
+                onChange={(val) => setValue('departmentId', Number(val))}
+                placeholder="Select Department"
+                className={errors.departmentId ? 'border-red-500' : ''}
+              />
                {errors.departmentId && <p className="text-xs text-red-500 mt-1">{errors.departmentId.message}</p>}
              </div>
 
-            <div className="pt-4 border-t border-gray-100">
-               <h3 className="text-xs font-bold text-gray-900 mb-3 uppercase tracking-wider">Area Classification (CSC Compliance)</h3>
-               <div className="grid grid-cols-3 gap-4">
-                 <div>
-                   <label className="block text-xs font-bold text-gray-700 mb-1">Area Code</label>
+            <div className="pt-6 border-t border-gray-100">
+               <div className="flex items-center gap-2 mb-4">
+                 <div className="w-1.5 h-4 bg-gray-900 rounded-full" />
+                 <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider">Area Classification</h3>
+                 <span className="text-[10px] text-gray-400 font-medium">(CSC COMPLIANCE)</span>
+               </div>
+               <div className="grid grid-cols-12 gap-4">
+                 <div className="col-span-3">
+                   <label className="block text-xs font-bold text-gray-700 mb-1.5">Area Code</label>
                    <input 
                      type="text"
                      {...register('areaCode')}
-                     className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all"
+                     className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all placeholder:text-gray-300"
                      placeholder="e.g. REG-01"
                    />
                  </div>
-                 <div>
-                   <label className="block text-xs font-bold text-gray-700 mb-1">Area Type</label>
-                   <select 
-                     {...register('areaType')}
-                     className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all"
-                   >
-                     <option value="R">Region</option>
-                     <option value="P">Province</option>
-                     <option value="D">District</option>
-                     <option value="M">Municipality</option>
-                     <option value="F">Foreign Post</option>
-                     <option value="B">Bureau</option>
-                   </select>
-                 </div>
-                 <div>
-                   <label className="block text-xs font-bold text-gray-700 mb-1">Level</label>
-                   <select 
-                     {...register('areaLevel')}
-                     className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all"
-                   >
-                     <option value="K">Key</option>
-                     <option value="T">Technical</option>
-                     <option value="S">Support</option>
-                     <option value="A">Administrative</option>
-                   </select>
-                 </div>
+                  <div className="col-span-5">
+                    <label className="block text-xs font-bold text-gray-700 mb-1.5">Area Type</label>
+                    <Combobox
+                      options={[
+                        { value: 'R', label: 'Region' },
+                        { value: 'P', label: 'Province' },
+                        { value: 'D', label: 'District' },
+                        { value: 'M', label: 'Municipality' },
+                        { value: 'F', label: 'Foreign Post' },
+                        { value: 'B', label: 'Bureau' },
+                      ]}
+                      value={watch('areaType') || ''}
+                      onChange={(val) => setValue('areaType', val)}
+                      placeholder="Select Type"
+                    />
+                  </div>
+                  <div className="col-span-4">
+                    <label className="block text-xs font-bold text-gray-700 mb-1.5">Level</label>
+                    <Combobox
+                      options={[
+                        { value: 'K', label: 'Key' },
+                        { value: 'T', label: 'Technical' },
+                        { value: 'S', label: 'Support' },
+                        { value: 'A', label: 'Administrative' },
+                      ]}
+                      value={watch('areaLevel') || ''}
+                      onChange={(val) => setValue('areaLevel', val)}
+                      placeholder="Select Level"
+                    />
+                  </div>
                </div>
              </div>
           </div>

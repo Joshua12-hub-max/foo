@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, ReactNode } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, Link } from "react-router-dom";
 
 // NOTE: `quotes.json` can be large. Dynamically import it so it doesn't
 // bloat the initial auth chunk. It will be loaded only when the AuthLayout
@@ -42,11 +42,13 @@ const AnimatedQuote = ({ quote, fadeIn }: AnimatedQuoteProps) => (
 
 const BrandingSection = () => (
   <div className="max-w-4xl text-center space-y-6 px-4">
-    <img 
-      src={DEFAULT_LOGO}
-      alt="Meycauayan Logo" 
-      className="w-56 h-56 mx-auto object-contain mb-4 transition-transform duration-300 hover:scale-105"
-    />
+    <Link to="/login" className="block transition-transform duration-300 hover:scale-105 active:scale-95">
+      <img 
+        src={DEFAULT_LOGO}
+        alt="Meycauayan Logo" 
+        className="w-56 h-56 mx-auto object-contain mb-4"
+      />
+    </Link>
     <h2 className="text-3xl font-extrabold text-slate-50 mb-2 tracking-wide drop-shadow-lg">
       City Human Resources Management Office
     </h2>
@@ -68,11 +70,13 @@ interface FormHeaderProps {
 
 const FormHeader = ({ image, title, subtitle }: FormHeaderProps) => (
   <div className="flex flex-col items-center justify-center gap-2 mb-4">
-    <img 
-      src={image ?? DEFAULT_LOGO} 
-      alt="Municipal of Meycauayan Logo" 
-      className="w-12 h-12 rounded-lg object-contain" 
-    />
+    <Link to="/login" className="transition-transform duration-200 hover:scale-110 active:scale-90">
+      <img 
+        src={image ?? DEFAULT_LOGO} 
+        alt="Municipal of Meycauayan Logo" 
+        className="w-12 h-12 rounded-lg object-contain" 
+      />
+    </Link>
     <h1 className="font-bold text-slate-950 text-xl text-center">
       {title}
     </h1>
@@ -115,11 +119,11 @@ export default function AuthLayout({
   useEffect(() => {
     let mounted = true;
     import("@/data/quotes_small.json")
-      .then((m) => {
-        // @ts-ignore
-        if (mounted) setQuotes(m.default || m);
+      .then((m: { default: Quote[] }) => {
+        if (mounted) setQuotes(m.default);
       })
-      .catch(() => {
+      .catch((err: Error) => {
+        console.error("Failed to load quotes:", err);
         if (mounted) setQuotes([]);
       });
 
@@ -127,7 +131,7 @@ export default function AuthLayout({
   }, []);
 
   // Current quote object
-  const quote = useMemo(() => 
+  const quote = useMemo((): Quote => 
     quotes?.[currentQuote] ?? { quoteText: "", quoteAuthor: "" },
     [currentQuote, quotes]
   );

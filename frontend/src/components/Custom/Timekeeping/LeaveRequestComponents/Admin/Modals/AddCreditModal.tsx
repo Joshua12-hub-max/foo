@@ -8,7 +8,7 @@ interface AddCreditModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: AddCreditInput) => Promise<void>;
-  employees: { id?: string | number; employeeId?: string | number; employeeId?: string | number; firstName?: string; firstName?: string; lastName?: string; lastName?: string; }[];
+  employees: { id?: string | number; employeeId?: string | number; firstName?: string; lastName?: string; }[];
   isLoadingEmployees: boolean;
   isSubmitting: boolean;
 }

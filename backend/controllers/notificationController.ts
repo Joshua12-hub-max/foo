@@ -57,7 +57,7 @@ export const notifyAdmins = async ({
 
     const notificationPromises = admins.map((admin) =>
       createNotification({
-        recipientId: admin.employeeId,
+        recipientId: admin.employeeId || '',
         senderId,
         title,
         message,
@@ -89,7 +89,7 @@ export const notifyAllUsers = async ({
 
     const notificationPromises = users.map((user) =>
       createNotification({
-        recipientId: user.employeeId,
+        recipientId: user.employeeId || '',
         senderId,
         title,
         message,

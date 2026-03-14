@@ -43,39 +43,39 @@ export const fetchReviewCycles = async (): Promise<ReviewCyclesApiResponse> => {
 };
 
 // 1. Fetch all reviews
-export const fetchReviews = async (params?: Record<string, string | number>) => {
+export const fetchReviews = async (params?: Record<string, string | number>): Promise<InternalReviewListResponse> => {
   const query = params ? '?' + new URLSearchParams(params as Record<string, string>).toString() : '';
-  const response = await axios.get(`/performance/reviews${query}`);
+  const response = await axios.get<InternalReviewListResponse>(`/performance/reviews${query}`);
   return response.data;
 };
 
 // 2. Fetch specific review
-export const fetchReviewById = async (id: string | number) => {
-  const response = await axios.get(`/performance/reviews/${id}`);
+export const fetchReviewById = async (id: string | number): Promise<ReviewApiResponse> => {
+  const response = await axios.get<ReviewApiResponse>(`/performance/reviews/${id}`);
   return response.data;
 };
 
 // 3. Create a review draft
-export const createReview = async (reviewData: Partial<InternalReview>) => {
-  const response = await axios.post('/performance/reviews', reviewData);
+export const createReview = async (reviewData: Partial<InternalReview>): Promise<ApiResponse<{ reviewId: number | string }>> => {
+  const response = await axios.post<ApiResponse<{ reviewId: number | string }>>('/performance/reviews', reviewData);
   return response.data;
 };
 
 // 4. Update a review (Draft/Ongoing)
-export const updateReview = async (id: string | number, reviewData: Partial<InternalReview>) => {
-  const response = await axios.put(`/performance/reviews/${id}`, reviewData);
+export const updateReview = async (id: string | number, reviewData: Partial<InternalReview>): Promise<ApiResponse<{ success: boolean; totalScore?: string | number }>> => {
+  const response = await axios.put<ApiResponse<{ success: boolean; totalScore?: string | number }>>(`/performance/reviews/${id}`, reviewData);
   return response.data;
 };
 
 // 5. Submit Self-Rating
-export const submitSelfRating = async (id: string | number, data: { items: ReviewItem[]; employeeRemarks?: string; isDraft?: boolean }) => {
-  const response = await axios.post(`/performance/reviews/${id}/self-rate`, data);
+export const submitSelfRating = async (id: string | number, data: { items: Partial<ReviewItem>[]; employeeRemarks?: string; isDraft?: boolean }): Promise<ApiResponse<{ selfRatingScore?: string | number }>> => {
+  const response = await axios.post<ApiResponse<{ selfRatingScore?: string | number }>>(`/performance/reviews/${id}/self-rate`, data);
   return response.data;
 };
 
 // 6. Submit Reviewer Rating
-export const submitReviewerRating = async (id: string | number, data: { items: ReviewItem[]; reviewerRemarks?: string; overallFeedback?: string }) => {
-  const response = await axios.post(`/performance/reviews/${id}/submit`, data);
+export const submitReviewerRating = async (id: string | number, data: { items: Partial<ReviewItem>[]; reviewerRemarks?: string; overallFeedback?: string }): Promise<ApiResponse<{ reviewerRatingScore?: string | number }>> => {
+  const response = await axios.post<ApiResponse<{ reviewerRatingScore?: string | number }>>(`/performance/reviews/${id}/submit`, data);
   return response.data;
 };
 

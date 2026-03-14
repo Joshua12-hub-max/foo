@@ -44,8 +44,8 @@ async function alignDatabase() {
     
     connection.release();
     console.log('Alignment complete! Drizzle Push should now be silent.');
-  } catch (err) {
-    console.error('Alignment failed!', err);
+  } catch (error) {
+    const err = error as NodeJS.ErrnoException;    console.error('Alignment failed!', err);
   } finally {
     await pool.end();
   }

@@ -100,12 +100,50 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
           </div>
 
           {/* Requirements */}
-          {selectedJob.requirements && (
+          {(selectedJob.requirements || selectedJob.education || selectedJob.experience || selectedJob.training || selectedJob.eligibility || selectedJob.otherQualifications) && (
             <div>
               <h4 className="font-bold text-gray-800 mb-2 text-sm uppercase tracking-wide">Requirements</h4>
-               <div className="text-sm text-gray-600 whitespace-pre-wrap leading-relaxed bg-gray-50/50 p-4 rounded-lg border border-gray-100">
-                {Array.isArray(selectedJob.requirements) ? selectedJob.requirements.join('\n') : selectedJob.requirements}
-              </div>
+              
+              {/* Structured Requirements */}
+              {(selectedJob.education || selectedJob.experience || selectedJob.training || selectedJob.eligibility || selectedJob.otherQualifications) ? (
+                 <div className="grid grid-cols-1 gap-3 bg-gray-50/50 p-4 rounded-lg border border-gray-100">
+                   {selectedJob.education && (
+                     <div>
+                       <div className="text-[10px] font-bold text-blue-600 uppercase tracking-wider mb-0.5">Education</div>
+                       <div className="text-sm text-gray-700 font-medium">{selectedJob.education}</div>
+                     </div>
+                   )}
+                   {selectedJob.experience && (
+                     <div className="pt-2 border-t border-gray-100">
+                       <div className="text-[10px] font-bold text-blue-600 uppercase tracking-wider mb-0.5">Experience</div>
+                       <div className="text-sm text-gray-700 font-medium">{selectedJob.experience}</div>
+                     </div>
+                   )}
+                   {selectedJob.training && (
+                     <div className="pt-2 border-t border-gray-100">
+                       <div className="text-[10px] font-bold text-blue-600 uppercase tracking-wider mb-0.5">Training</div>
+                       <div className="text-sm text-gray-700 font-medium">{selectedJob.training}</div>
+                     </div>
+                   )}
+                   {selectedJob.eligibility && (
+                     <div className="pt-2 border-t border-gray-100">
+                       <div className="text-[10px] font-bold text-blue-600 uppercase tracking-wider mb-0.5">Eligibility</div>
+                       <div className="text-sm text-gray-700 font-medium">{selectedJob.eligibility}</div>
+                     </div>
+                   )}
+                   {selectedJob.otherQualifications && (
+                     <div className="pt-2 border-t border-gray-100">
+                       <div className="text-[10px] font-bold text-blue-600 uppercase tracking-wider mb-0.5">Other Qualifications</div>
+                       <div className="text-sm text-gray-700 font-medium whitespace-pre-wrap">{selectedJob.otherQualifications}</div>
+                     </div>
+                   )}
+                 </div>
+              ) : (
+                /* Legacy fallback */
+                <div className="text-sm text-gray-600 whitespace-pre-wrap leading-relaxed bg-gray-50/50 p-4 rounded-lg border border-gray-100">
+                  {Array.isArray(selectedJob.requirements) ? selectedJob.requirements.join('\n') : selectedJob.requirements}
+                </div>
+              )}
             </div>
           )}
           

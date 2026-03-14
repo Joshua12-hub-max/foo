@@ -96,7 +96,7 @@ export const StepIncrementDashboard: React.FC = () => {
         return { grades, matrix };
     }, [salaryScheduleData]);
 
-    const eligibleEmployees = eligibleData?.eligible_employees || [];
+    const eligibleEmployees = eligibleData?.eligibleEmployees || [];
     const eligibleCount = eligibleData?.count || 0;
 
     const handleApproveClick = (employee: EligibleEmployee) => {
@@ -249,21 +249,30 @@ export const StepIncrementDashboard: React.FC = () => {
             {/* Tab Content: Eligible */}
             {activeTab === 'eligible' && (
                 <div className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="bg-slate-50 p-4 rounded-xl border border-gray-100 shadow-sm">
-                            <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Eligible Staff</div>
-                            <div className="text-xl font-black text-slate-800">{eligibleCount}</div>
-                        </div>
-                        <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-100 shadow-sm">
-                            <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Step Progress</div>
-                            <div className="text-xl font-black text-emerald-600">+{eligibleEmployees.length}</div>
-                        </div>
-                        <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 shadow-sm">
-                            <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Tenure Avg</div>
-                            <div className="text-xl font-black text-blue-600">
-                                {eligibleEmployees.length > 0 ? (eligibleEmployees.reduce((s, e) => s + (e.years_in_position || 0), 0) / eligibleEmployees.length).toFixed(1) : '0.0'}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 group">
+                            <div className="flex items-center justify-between mb-2">
+                                <div className="w-8 h-8 bg-gray-800 rounded-lg shadow-sm transition-transform"></div>
                             </div>
+                            <div className="text-2xl font-bold text-gray-900">{eligibleCount}</div>
+                            <div className="text-xs font-semibold text-gray-500 mt-1">Eligible Staff</div>
                         </div>
+                        <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 group">
+                            <div className="flex items-center justify-between mb-2">
+                                <div className="w-8 h-8 bg-gray-700 rounded-lg shadow-sm transition-transform"></div>
+                            </div>
+                            <div className="text-2xl font-bold text-gray-900">+{eligibleEmployees.length}</div>
+                            <div className="text-xs font-semibold text-gray-500 mt-1">Step Progress</div>
+                        </div>
+                        <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 group">
+                            <div className="flex items-center justify-between mb-2">
+                                <div className="w-8 h-8 bg-gray-600 rounded-lg shadow-sm transition-transform"></div>
+                            </div>
+                            <div className="text-2xl font-bold text-gray-900">
+                                {eligibleEmployees.length > 0 ? (eligibleEmployees.reduce((s: number, e: EligibleEmployee) => s + (e.yearsInPosition || 0), 0) / eligibleEmployees.length).toFixed(1) : '0.0'}
+                            </div>
+                            <div className="text-xs font-semibold text-gray-500 mt-1">Tenure Avg</div>
+ bitumen                        </div>
                     </div>
 
                     <div className="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
@@ -272,31 +281,31 @@ export const StepIncrementDashboard: React.FC = () => {
                         </div>
                         <div className="overflow-x-auto">
                             <table className="w-full text-left">
-                                <thead className="bg-gray-50 text-gray-500 text-xs font-semibold uppercase tracking-wider border-b">
+                                <thead className="bg-gray-200 shadow-md text-gray-700">
                                     <tr>
-                                        <th className="px-5 py-3">Employee</th>
-                                        <th className="px-5 py-3">Position</th>
-                                        <th className="px-5 py-3 text-center">Step Progress</th>
-                                        <th className="px-5 py-3 text-center">Tenure</th>
-                                        <th className="px-5 py-3 text-center">Actions</th>
+                                        <th className="px-5 py-4 text-sm font-bold tracking-wide whitespace-nowrap">Employee</th>
+                                        <th className="px-5 py-4 text-sm font-bold tracking-wide whitespace-nowrap">Position</th>
+                                        <th className="px-5 py-4 text-sm font-bold tracking-wide text-center whitespace-nowrap">Step Progress</th>
+                                        <th className="px-5 py-4 text-sm font-bold tracking-wide text-center whitespace-nowrap">Tenure</th>
+                                        <th className="px-5 py-4 text-sm font-bold tracking-wide text-center whitespace-nowrap">Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-gray-100 text-sm">
-                                    {eligibleEmployees.length > 0 ? eligibleEmployees.map((emp) => (
-                                        <tr key={emp.employeeId} className="hover:bg-gray-50 transition-colors">
+                                <tbody className="divide-y divide-slate-100">
+                                    {eligibleEmployees.length > 0 ? (eligibleEmployees as EligibleEmployee[]).map((emp) => (
+                                        <tr key={emp.employeeId} className="hover:bg-[#F8F9FA] hover:shadow-xl transition-colors group bg-white">
                                             <td className="px-5 py-4">
                                                 <div className="font-bold text-gray-900">{emp.employeeName}</div>
-                                                <div className="text-[10px] text-gray-400 font-mono">{emp.employee_employee_id}</div>
+                                                <div className="text-[10px] text-gray-400 font-mono">{emp.employeeId}</div>
                                             </td>
                                             <td className="px-5 py-4 text-gray-700">{emp.positionTitle}</td>
                                             <td className="px-5 py-4 text-center">
                                                 <div className="flex items-center justify-center gap-2">
                                                     <span className="text-gray-500">Step {emp.currentStep}</span>
                                                     <ArrowRight size={10} className="text-gray-300" />
-                                                    <span className="text-emerald-600 font-black">Step {emp.next_step}</span>
+                                                    <span className="text-emerald-600 font-black">Step {emp.nextStep}</span>
                                                 </div>
                                             </td>
-                                            <td className="px-5 py-4 text-center font-medium">{emp.years_in_position} Yrs</td>
+                                            <td className="px-5 py-4 text-center font-medium">{emp.yearsInPosition} Yrs</td>
                                             <td className="px-5 py-4 text-center">
                                                 <button
                                                     onClick={() => handleApproveClick(emp)}
@@ -323,26 +332,20 @@ export const StepIncrementDashboard: React.FC = () => {
             {activeTab === 'salary-schedule' && (
                 <div className="space-y-6">
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-100">
-                            <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Salary Grades</div>
-                            <div className="text-xl font-black text-emerald-700">{salaryMatrix.grades.length}</div>
-                        </div>
-                        <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
-                            <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Steps</div>
-                            <div className="text-xl font-black text-blue-700">8</div>
-                        </div>
-                        <div className="bg-purple-50 p-4 rounded-xl border border-purple-100">
-                            <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Min Salary</div>
-                            <div className="text-xl font-black text-purple-700">
-                                {salaryMatrix.matrix[1]?.[1] ? formatCurrency(salaryMatrix.matrix[1][1]) : '-'}
+                        {[
+                            { label: 'Salary Grades', value: salaryMatrix.grades.length, color: 'bg-gray-800' },
+                            { label: 'Steps', value: 8, color: 'bg-gray-700' },
+                            { label: 'Min Salary', value: salaryMatrix.matrix[1]?.[1] ? formatCurrency(salaryMatrix.matrix[1][1]) : '-', color: 'bg-gray-600' },
+                            { label: 'Max Salary', value: salaryMatrix.matrix[33]?.[8] ? formatCurrency(salaryMatrix.matrix[33][8]) : '-', color: 'bg-gray-900' },
+                        ].map((stat, i) => (
+                            <div key={i} className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm hover:shadow-md hover:border-gray-300 transition-all group">
+                                <div className="flex items-center justify-between mb-2">
+                                    <div className={`w-8 h-8 ${stat.color} rounded-lg shadow-sm transition-transform`}></div>
+                                </div>
+                                <div className="text-2xl font-bold text-gray-900">{stat.value}</div>
+                                <div className="text-xs font-semibold text-gray-500 mt-1">{stat.label}</div>
                             </div>
-                        </div>
-                        <div className="bg-amber-50 p-4 rounded-xl border border-amber-100">
-                            <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Max Salary</div>
-                            <div className="text-xl font-black text-amber-700">
-                                {salaryMatrix.matrix[33]?.[8] ? formatCurrency(salaryMatrix.matrix[33][8]) : '-'}
-                            </div>
-                        </div>
+                        ))}
                     </div>
 
                     <div className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm flex items-center gap-3 flex-wrap">
@@ -380,13 +383,13 @@ export const StepIncrementDashboard: React.FC = () => {
                         ) : (
                             <div className="overflow-x-auto">
                                 <table className="w-full">
-                                    <thead className="bg-gray-50 text-gray-600 border-b border-gray-200 sticky top-0">
-                                        <tr className="border-b border-gray-100">
-                                            <th rowSpan={2} className="px-3 py-2 text-left text-[10px] font-black uppercase tracking-wider bg-gray-100 sticky left-0 z-10 border-r border-gray-200">
+                                    <thead className="bg-gray-200 shadow-md text-gray-700 sticky top-0 z-20">
+                                        <tr className="border-b border-gray-300/50">
+                                            <th rowSpan={2} className="px-3 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap bg-gray-200 sticky left-0 z-30 border-r border-gray-300/50">
                                                 SG
                                             </th>
                                             {[1, 2, 3, 4, 5, 6, 7, 8].map((step) => (
-                                                <th key={step} colSpan={2} className="px-2 py-2 text-center text-[10px] font-black uppercase tracking-wider bg-indigo-50 border-x border-gray-100">
+                                                <th key={step} colSpan={2} className="px-2 py-4 text-center text-sm font-bold tracking-wide whitespace-nowrap bg-indigo-50/50 border-x border-gray-300/50">
                                                     Step {step}
                                                 </th>
                                             ))}
@@ -394,26 +397,26 @@ export const StepIncrementDashboard: React.FC = () => {
                                         <tr>
                                             {[1, 2, 3, 4, 5, 6, 7, 8].map((step) => (
                                                 <React.Fragment key={step}>
-                                                    <th className="px-2 py-1 text-center text-[8px] font-bold uppercase tracking-wider bg-blue-50 text-blue-600 border-l border-gray-100">
+                                                    <th className="px-2 py-2 text-center text-[10px] font-bold uppercase tracking-widest bg-blue-50/50 text-blue-700 border-l border-gray-300/50">
                                                         Monthly
                                                     </th>
-                                                    <th className="px-2 py-1 text-center text-[8px] font-bold uppercase tracking-wider bg-green-50 text-green-600 border-r border-gray-100">
+                                                    <th className="px-2 py-2 text-center text-[10px] font-bold uppercase tracking-widest bg-green-50/50 text-green-700 border-r border-gray-300/50">
                                                         Annual
                                                     </th>
                                                 </React.Fragment>
                                             ))}
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-gray-100">
+                                    <tbody className="divide-y divide-slate-100">
                                         {(selectedGrade ? [selectedGrade] : salaryMatrix.grades).map((grade) => (
                                             <tr 
                                                 key={grade} 
-                                                className={`hover:bg-blue-50/50 transition-colors ${
-                                                    selectedGrade === grade ? 'bg-indigo-50' : ''
-                                                }`}
+                                                className="hover:bg-[#F8F9FA] hover:shadow-xl transition-all group bg-white"
                                             >
-                                                <td className="px-3 py-2 text-sm font-black text-gray-700 bg-gray-50 sticky left-0 border-r border-gray-200">
-                                                    <span className="bg-indigo-100 text-indigo-700 px-2.5 py-1 rounded text-xs font-black">
+                                                <td className={`px-3 py-3 text-sm font-bold text-gray-900 sticky left-0 border-r border-gray-200 z-10 bg-white group-hover:bg-[#F8F9FA] transition-colors ${
+                                                    selectedGrade === grade ? 'bg-indigo-50' : 'bg-gray-50/30'
+                                                }`}>
+                                                    <span className="bg-indigo-100 text-indigo-700 px-2.5 py-1 rounded text-xs font-bold">
                                                         {grade}
                                                     </span>
                                                 </td>
@@ -422,16 +425,16 @@ export const StepIncrementDashboard: React.FC = () => {
                                                     const annual = monthly * 12;
                                                     return (
                                                         <React.Fragment key={step}>
-                                                            <td className={`px-2 py-2 text-center border-l border-gray-50 ${step === 1 ? 'bg-blue-50/30' : ''}`}>
-                                                                <span className={`text-[10px] font-bold ${
-                                                                    step === 1 ? 'text-blue-700' : 'text-gray-600'
+                                                            <td className={`px-2 py-3 text-center border-l border-gray-100/50 ${step === 1 ? 'bg-blue-50/20' : ''}`}>
+                                                                <span className={`text-[11px] font-bold ${
+                                                                    step === 1 ? 'text-blue-700' : 'text-gray-700'
                                                                 }`}>
                                                                     {monthly > 0 ? formatCurrency(monthly) : '-'}
                                                                 </span>
                                                             </td>
-                                                            <td className={`px-2 py-2 text-center border-r border-gray-100 ${step === 1 ? 'bg-green-50/30' : ''}`}>
-                                                                <span className={`text-[10px] font-bold ${
-                                                                    step === 1 ? 'text-green-700' : 'text-gray-500'
+                                                            <td className={`px-2 py-3 text-center border-r border-gray-100/50 ${step === 1 ? 'bg-green-50/20' : ''}`}>
+                                                                <span className={`text-[11px] font-bold ${
+                                                                    step === 1 ? 'text-green-700' : 'text-gray-600'
                                                                 }`}>
                                                                     {annual > 0 ? formatCurrency(annual) : '-'}
                                                                 </span>
@@ -459,7 +462,7 @@ export const StepIncrementDashboard: React.FC = () => {
                 }}
                 onConfirm={confirmApprove}
                 title="Approve Step Increment"
-                message={selectedEmployee ? `Approve step increment for ${selectedEmployee.employeeName}? They will move from Step ${selectedEmployee.currentStep} to Step ${selectedEmployee.next_step}.` : ''}
+                message={selectedEmployee ? `Approve step increment for ${selectedEmployee.employeeName}? They will move from Step ${selectedEmployee.currentStep} to Step ${selectedEmployee.nextStep}.` : ''}
                 confirmText="Confirm"
                 cancelText="Cancel"
             />

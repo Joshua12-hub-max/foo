@@ -53,12 +53,16 @@ const BaseEmployeeSchema = z.object({
   resBarangay: z.string().optional().nullable(),
   resCity: z.string().optional().nullable(),
   resProvince: z.string().optional().nullable(),
+  resRegion: z.string().optional().nullable(),
+  resBrgy: z.string().optional().nullable(),
   permHouseBlockLot: z.string().optional().nullable(),
   permStreet: z.string().optional().nullable(),
   permSubdivision: z.string().optional().nullable(),
   permBarangay: z.string().optional().nullable(),
   permCity: z.string().optional().nullable(),
   permProvince: z.string().optional().nullable(),
+  permRegion: z.string().optional().nullable(),
+  permBrgy: z.string().optional().nullable(),
   rightThumbmarkUrl: z.string().optional().nullable(),
   ctcNo: z.string().optional().nullable(),
   ctcIssuedAt: z.string().optional().nullable(),
@@ -100,6 +104,7 @@ const BaseEmployeeSchema = z.object({
   facebookUrl: z.string().optional().nullable(),
   linkedinUrl: z.string().optional().nullable(),
   twitterHandle: z.string().optional().nullable(),
+  applicantId: z.number().optional().nullable(),
 });
 
 export const CreateEmployeeSchema = BaseEmployeeSchema.extend({

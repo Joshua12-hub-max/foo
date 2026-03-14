@@ -20,6 +20,7 @@ const LEAVE_TYPE_VALUES = [
   'Special Leave Benefits for Women',
   'Wellness Leave',
   'Adoption Leave',
+  'Other',
 ] as const;
 
 const CREDIT_TYPE_VALUES = [
@@ -40,15 +41,6 @@ const CREDIT_TYPE_VALUES = [
 ] as const;
 
 const MONETIZATION_PURPOSE_VALUES = ['Health', 'Medical', 'Financial Emergency'] as const;
-
-const APPLICATION_STATUS_VALUES = [
-  'Pending',
-  'Processing',
-  'Finalizing',
-  'Approved',
-  'Rejected',
-  'Cancelled',
-] as const;
 
 // ============================================================================
 // Leave Application Schemas
@@ -169,7 +161,7 @@ export const leaveRequestSchema = z.object({
 export type LeaveRequestSchema = z.infer<typeof leaveRequestSchema>;
 
 export const submitLeaveRequestSchema = z.object({
-  leaveType: z.string().min(1, 'Leave type is required'),
+  leaveType: z.enum(LEAVE_TYPE_VALUES),
   isWithPay: z.boolean().default(true),
   isPaid: z.boolean().default(true), // Legacy alias
   startDate: z.string().min(1, 'Start date is required'),

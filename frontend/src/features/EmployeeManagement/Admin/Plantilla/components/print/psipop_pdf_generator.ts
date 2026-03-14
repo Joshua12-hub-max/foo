@@ -76,8 +76,8 @@ export const generatePSIPOPPDF = (positions: Position[], config: PSIPOPConfig = 
         const actualSalary = pos.isVacant ? 0 : annualSalary;
         
         let lastName = '', firstName = '', middleName = '';
-        if (pos.incumbent_name) {
-            const nameParts = pos.incumbent_name.split(',').map(s => s.trim());
+        if (pos.incumbentName) {
+            const nameParts = pos.incumbentName.split(',').map((s: string) => s.trim());
             if (nameParts.length > 0) lastName = nameParts[0];
             if (nameParts.length > 1) {
                 const firstParts = nameParts[1].split(' ');
@@ -95,15 +95,15 @@ export const generatePSIPOPPDF = (positions: Position[], config: PSIPOPConfig = 
             annualSalary > 0 ? annualSalary.toLocaleString('en-PH', { minimumFractionDigits: 2 }) : '-',
             actualSalary > 0 ? actualSalary.toLocaleString('en-PH', { minimumFractionDigits: 2 }) : '-',
             String(pos.stepIncrement || ''),
-            pos.area_code || '',
-            pos.area_type || '',
-            pos.area_level || '',
+            pos.areaCode || '',
+            pos.areaType || '',
+            pos.areaLevel || '',
             lastName,
             firstName,
             middleName,
             formatDate(pos.birthDate),
-            formatDate(pos.original_appointment_date),
-            formatDate(pos.last_promotion_date),
+            formatDate(pos.originalAppointmentDate),
+            formatDate(pos.lastPromotionDate),
             pos.isVacant ? 'Vacant' : (pos.status || 'Filled').substring(0, 1)
         ];
     });

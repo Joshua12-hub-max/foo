@@ -60,20 +60,20 @@ export const useAdminLeaveFilters = (data: AdminLeaveRequest[] = []) => {
     }
 
     if (appliedFilters.employee) {
-      result = result.filter(item => item.name === appliedFilters.employee);
+      result = result.filter(item => `${item.firstName} ${item.lastName}` === appliedFilters.employee);
     }
 
     if (appliedFilters.fromDate) {
-      result = result.filter(item => item.fromDate >= appliedFilters.fromDate);
+      result = result.filter(item => item.startDate >= appliedFilters.fromDate);
     }
     if (appliedFilters.toDate) {
-      result = result.filter(item => item.toDate <= appliedFilters.toDate);
+      result = result.filter(item => item.endDate <= appliedFilters.toDate);
     }
 
     const query = debouncedSearchQuery.toLowerCase();
     if (query) {
       result = result.filter(item =>
-        item.name.toLowerCase().includes(query) ||
+        `${item.firstName} ${item.lastName}`.toLowerCase().includes(query) ||
         String(item.id).toLowerCase().includes(query) ||
         item.department.toLowerCase().includes(query)
       );

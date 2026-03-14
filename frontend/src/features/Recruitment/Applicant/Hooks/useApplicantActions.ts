@@ -94,12 +94,31 @@ const useApplicantActions = (
     }
   };
 
+  const handleConfirmHired = async (
+    applicantId: number,
+    startDate: string,
+    selectedDocs: string[],
+    customNotes: string,
+    onSuccess?: () => void
+  ): Promise<void> => {
+    try {
+      await recruitmentApi.confirmApplicant(applicantId, startDate, selectedDocs, customNotes);
+      showNotification('Applicant confirmed & archived. Notification sent!', 'success');
+      if (onSuccess) onSuccess();
+      fetchData(true);
+    } catch (err) {
+      console.error(err);
+      showNotification('Failed to confirm applicant', 'error');
+    }
+  };
+
   return {
     handleAssignInterviewer,
     handleScheduleInterview,
     handleRejectApplicant,
     handleRestoreApplicant,
-    handleDeleteApplicant
+    handleDeleteApplicant,
+    handleConfirmHired
   };
 };
 

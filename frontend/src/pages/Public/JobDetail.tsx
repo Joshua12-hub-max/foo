@@ -3,9 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useForm, Resolver } from 'react-hook-form';
 import { zodResolver } from '@/lib/zodResolver';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  ArrowLeft, Loader2, ChevronRight, Fingerprint, ShieldCheck, 
-  Briefcase, Send, Mail, Plus, Minus, UserSquare2
+import {
+  ArrowLeft, Loader2, ChevronRight, Fingerprint, ShieldCheck,
+  Briefcase, Send, Mail, Plus, Minus, UserSquare2, Upload, Info, FileText, FileCheck, CheckCircle2, Download
 } from 'lucide-react';
 import { useToastStore } from '@/stores';
 import PublicLayout from '@components/Public/PublicLayout';
@@ -85,9 +85,11 @@ const JobDetail = () => {
     const isCSCJob = ['Permanent', 'Temporary', 'Probationary'].includes(jobData?.employmentType || '');
 
     const isPermanent = jobData?.employmentType === 'Permanent';
-    const requireIds = isPermanent || jobData?.requireGovernmentIds;
-    const requireCsc = isPermanent || jobData?.requireCivilService;
-    const requireEdu = isPermanent || jobData?.requireEducationExperience;
+    const requireIds = !!(isPermanent || jobData?.requireGovernmentIds);
+    const requireCsc = !!(isPermanent || jobData?.requireCivilService || (jobData?.eligibility && jobData.eligibility !== 'None required'));
+    const requireEdu = !!(isPermanent || jobData?.requireEducationExperience || (jobData?.education && jobData.education !== 'None required'));
+    const requireExp = !!(isPermanent || jobData?.requireEducationExperience || (jobData?.experience && jobData.experience !== 'None required'));
+    const requireTraining = !!(jobData?.training && jobData.training !== 'None required');
 
     // Dynamic Schema based on job requirements
     const dynamicSchema = useMemo(() => {
@@ -95,9 +97,14 @@ const JobDetail = () => {
             jobData?.employmentType,
             requireIds,
             requireCsc,
-            requireEdu
+            requireEdu,
+            requireExp,
+            jobData?.education || undefined,
+            jobData?.experience || undefined,
+            jobData?.training || undefined,
+            jobData?.eligibility || undefined
         );
-    }, [jobData?.employmentType, requireIds, requireCsc, requireEdu]);
+    }, [jobData?.employmentType, requireIds, requireCsc, requireEdu, requireExp, jobData?.education, jobData?.experience, jobData?.training, jobData?.eligibility]);
 
     // Form
     const { register, handleSubmit, formState: { errors, isSubmitting }, setValue, watch } = useForm<JobApplicationSchema>({
@@ -119,6 +126,8 @@ const JobDetail = () => {
             course: '',
             experience: '',
             skills: '',
+            totalExperienceYears: '',
+            totalTrainingHours: '',
             firstName: '',
             lastName: '',
             email: '',
@@ -239,6 +248,23 @@ const JobDetail = () => {
         hToken: `v-${Math.random().toString(36).substring(2, 10)}-${Date.now()}`
     };
 
+    // Make sure we pass the explicitly separated fields from the form over to the API 
+    if (data.resRegion !== undefined) finalData.resRegion = data.resRegion;
+    if (data.resProvince !== undefined) finalData.resProvince = data.resProvince;
+    if (data.resCity !== undefined) finalData.resCity = data.resCity;
+    if (data.resBrgy !== undefined) finalData.resBrgy = data.resBrgy;
+    if (data.resHouseBlockLot !== undefined) finalData.resHouseBlockLot = data.resHouseBlockLot;
+    if (data.resSubdivision !== undefined) finalData.resSubdivision = data.resSubdivision;
+    if (data.resStreet !== undefined) finalData.resStreet = data.resStreet;
+
+    if (data.permRegion !== undefined) finalData.permRegion = data.permRegion;
+    if (data.permProvince !== undefined) finalData.permProvince = data.permProvince;
+    if (data.permCity !== undefined) finalData.permCity = data.permCity;
+    if (data.permBrgy !== undefined) finalData.permBrgy = data.permBrgy;
+    if (data.permHouseBlockLot !== undefined) finalData.permHouseBlockLot = data.permHouseBlockLot;
+    if (data.permSubdivision !== undefined) finalData.permSubdivision = data.permSubdivision;
+    if (data.permStreet !== undefined) finalData.permStreet = data.permStreet;
+
     mutation.mutate({ id, data: finalData });
   };
 
@@ -357,9 +383,47 @@ const JobDetail = () => {
                                 <span className="w-1.5 h-6 bg-green-500 rounded-full"></span>
                                 Requirements
                            </h3>
-                           <div className="text-[15px] text-slate-400 font-semibold leading-relaxed whitespace-pre-wrap max-w-3xl">
-                                {job.requirements}
-                           </div>
+                           
+                           {/* Display structured requirements first */}
+                           {(job.education || job.experience || job.training || job.eligibility || job.otherQualifications) ? (
+                             <div className="grid grid-cols-1 gap-4 max-w-3xl">
+                               {job.education && (
+                                 <div className="bg-white/5 border border-white/5 rounded-xl p-4">
+                                   <div className="text-[10px] font-bold text-green-500 uppercase tracking-wider mb-1">Education</div>
+                                   <div className="text-[14px] text-slate-300 font-semibold">{job.education}</div>
+                                 </div>
+                               )}
+                               {job.experience && (
+                                 <div className="bg-white/5 border border-white/5 rounded-xl p-4">
+                                   <div className="text-[10px] font-bold text-green-500 uppercase tracking-wider mb-1">Experience</div>
+                                   <div className="text-[14px] text-slate-300 font-semibold">{job.experience}</div>
+                                 </div>
+                               )}
+                               {job.training && (
+                                 <div className="bg-white/5 border border-white/5 rounded-xl p-4">
+                                   <div className="text-[10px] font-bold text-green-500 uppercase tracking-wider mb-1">Training</div>
+                                   <div className="text-[14px] text-slate-300 font-semibold">{job.training}</div>
+                                 </div>
+                               )}
+                               {job.eligibility && (
+                                 <div className="bg-white/5 border border-white/5 rounded-xl p-4">
+                                   <div className="text-[10px] font-bold text-green-500 uppercase tracking-wider mb-1">Eligibility</div>
+                                   <div className="text-[14px] text-slate-300 font-semibold">{job.eligibility}</div>
+                                 </div>
+                               )}
+                               {job.otherQualifications && (
+                                 <div className="bg-white/5 border border-white/5 rounded-xl p-4">
+                                   <div className="text-[10px] font-bold text-green-500 uppercase tracking-wider mb-1">Other Qualifications</div>
+                                   <div className="text-[14px] text-slate-300 font-semibold whitespace-pre-wrap">{job.otherQualifications}</div>
+                                 </div>
+                               )}
+                             </div>
+                           ) : (
+                             // Fallback to legacy requirements text if structured fields are empty
+                             <div className="text-[15px] text-slate-400 font-semibold leading-relaxed whitespace-pre-wrap max-w-3xl">
+                                  {job.requirements || 'No specific requirements listed.'}
+                             </div>
+                           )}
                        </section>
                    </div>
                </div>
@@ -372,6 +436,29 @@ const JobDetail = () => {
                                 Join the City Government of Meycauayan.
                            </p>
                        </div>
+                       
+                       {/* Qualification Document block */}
+                       {job.attachmentPath && (
+                           <div className="mb-6 bg-blue-500/10 border border-blue-500/20 rounded-2xl p-4">
+                             <div className="flex items-start gap-3">
+                                <div className="p-2 bg-blue-500/20 text-blue-400 rounded-lg">
+                                  <FileText size={18} />
+                                </div>
+                                <div className="flex-1">
+                                  <h4 className="text-blue-400 font-bold text-sm mb-1">Qualification Document</h4>
+                                  <p className="text-blue-400/70 text-[10px] leading-tight mb-3">Download the required document format provided by HR.</p>
+                                  <a 
+                                    href={`http://localhost:5000${job.attachmentPath}`} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center justify-center gap-2 w-full py-2 bg-blue-500 hover:bg-blue-600 text-white text-[11px] font-bold rounded-xl transition-all shadow-[0_0_15px_rgba(59,130,246,0.2)] active:scale-[0.98]"
+                                  >
+                                    <Download size={14} /> Download File
+                                  </a>
+                                </div>
+                             </div>
+                           </div>
+                       )}
                        
                        
                         {success && (
@@ -620,7 +707,7 @@ const JobDetail = () => {
 
                             <div className="space-y-8">
                                 <div>
-                                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 ml-0.5">Residential Address</h4>
+                                    <h4 className="text-[10px] font-black text-slate-400 tracking-[0.2em] mb-4 ml-0.5">Residential Address</h4>
                                     <PhilippineAddressSelector 
                                         prefix="res"
                                         register={register}
@@ -633,7 +720,7 @@ const JobDetail = () => {
                                 </div>
 
                                 <div className="pt-6 border-t border-gray-50">
-                                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 ml-0.5">Permanent Address</h4>
+                                    <h4 className="text-[10px] font-black text-slate-400 tracking-[0.2em] mb-4 ml-0.5">Permanent Address</h4>
                                     <PhilippineAddressSelector 
                                         prefix="perm"
                                         register={register}
@@ -709,10 +796,62 @@ const JobDetail = () => {
                             </div>
                         </FormSection>
 
+                        {/* Educational Background Section - Matches Registration Form Design */}
+                        <FormSection 
+                            title="Educational Background" 
+                            subtitle="Your academic qualifications" 
+                        >
+                            <div className="space-y-4">
+                                <div className="space-y-2">
+                                    <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Highest Degree/Level Attained {requireEdu && <span className="text-red-500">*</span>}</label>
+                                    <select 
+                                        {...register('educationalBackground')} 
+                                        className={`w-full px-3 py-2 bg-white border border-gray-300 ${errors.educationalBackground ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`}
+                                    >
+                                        <option value="">Select highest education attained</option>
+                                        {EDUCATION_LEVELS.map((level) => (
+                                            <option key={level} value={level}>{level}</option>
+                                        ))}
+                                    </select>
+                                    {errors.educationalBackground && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.educationalBackground.message}</p>}
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">School / University Name {requireEdu && <span className="text-red-500">*</span>}</label>
+                                        <input 
+                                            {...register('schoolName')} 
+                                            className={`w-full px-3 py-2 bg-white border border-gray-300 ${errors.schoolName ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`}
+                                            placeholder="e.g. Bulacan State University"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Year Graduated {requireEdu && <span className="text-red-500">*</span>}</label>
+                                        <input 
+                                            {...register('yearGraduated')} 
+                                            className={`w-full px-3 py-2 bg-white border border-gray-300 ${errors.yearGraduated ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`}
+                                            placeholder="e.g. 2020"
+                                        />
+                                    </div>
+                                </div>
+
+                                {watch('educationalBackground') && !["Elementary School Graduate", "High School Graduate", "Senior High School Graduate"].includes(watch('educationalBackground') || "") && (
+                                    <div className="space-y-2">
+                                        <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Course / Degree {requireEdu && <span className="text-red-500">*</span>}</label>
+                                        <input 
+                                            {...register('course')} 
+                                            className={`w-full px-3 py-2 bg-white border border-gray-300 ${errors.course ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`}
+                                            placeholder="e.g. BS in Information Technology"
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                        </FormSection>
+
                         {/* Professional Qualifications Section */}
                         <FormSection 
                             title="Professional Qualifications" 
-                            subtitle="Your education and eligibility" 
+                            subtitle="Your eligibility and experience" 
                         >
                             <div className="grid grid-cols-1 gap-8">
                                 <div className="p-8 bg-gray-50/50 rounded-md border border-gray-300">
@@ -764,67 +903,27 @@ const JobDetail = () => {
                                     </div>
                                 </div>
 
-                                <div className="space-y-4">
-                                    <div className="space-y-2">
-                                        <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Highest Degree/Level Attained {requireEdu && <span className="text-red-500">*</span>}</label>
-                                        <select 
-                                            {...register('educationalBackground')} 
-                                            className={`w-full px-3 py-2 bg-white border border-gray-300 ${errors.educationalBackground ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`}
-                                        >
-                                            <option value="">Select highest education attained</option>
-                                            {EDUCATION_LEVELS.map((level) => (
-                                                <option key={level} value={level}>{level}</option>
-                                            ))}
-                                        </select>
-                                        {errors.educationalBackground && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.educationalBackground.message}</p>}
-                                    </div>
-
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">School / University Name {requireEdu && <span className="text-red-500">*</span>}</label>
-                                            <input 
-                                                {...register('schoolName')} 
-                                                className={`w-full px-3 py-2 bg-white border border-gray-300 ${errors.schoolName ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`}
-                                                placeholder="e.g. Bulacan State University"
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Year Graduated {requireEdu && <span className="text-red-500">*</span>}</label>
-                                            <input 
-                                                {...register('yearGraduated')} 
-                                                className={`w-full px-3 py-2 bg-white border border-gray-300 ${errors.yearGraduated ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`}
-                                                placeholder="e.g. 2020"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    {watch('educationalBackground') && !["Elementary School Graduate", "High School Graduate", "Senior High School Graduate"].includes(watch('educationalBackground') || "") && (
-                                        <div className="space-y-2">
-                                            <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Course / Degree {requireEdu && <span className="text-red-500">*</span>}</label>
-                                            <input 
-                                                {...register('course')} 
-                                                className={`w-full px-3 py-2 bg-white border border-gray-300 ${errors.course ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`}
-                                                placeholder="e.g. BS in Information Technology"
-                                            />
-                                        </div>
-                                    )}
-                                </div>
-
                                 <div className="space-y-2">
-                                    <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Work Experience Log {requireEdu && <span className="text-red-500">*</span>}</label>
-                                    <textarea {...register('experience')} rows={3} className={`w-full px-3 py-2 bg-white border border-gray-300 ${errors.experience ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`} placeholder={requireEdu ? "List roles and responsibilities... (Required)" : "List roles and responsibilities..."} />
+                                    <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Work Experience Log {requireExp && <span className="text-red-500">*</span>}</label>
+                                    <textarea {...register('experience')} rows={3} className={`w-full px-3 py-2 bg-white border border-gray-300 ${errors.experience ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`} placeholder={requireExp ? "List roles and responsibilities... (Required)" : "List roles and responsibilities..."} />
                                     {errors.experience && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.experience.message}</p>}
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                     <div className="md:col-span-2 space-y-2">
-                                        <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Core Competencies {requireEdu && <span className="text-red-500">*</span>}</label>
-                                        <textarea {...register('skills')} rows={2} className={`w-full px-3 py-2 bg-white border border-gray-300 ${errors.skills ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`} placeholder={requireEdu ? "List key skills... (Required)" : "List key skills..."} />
+                                        <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Core Competencies {requireExp && <span className="text-red-500">*</span>}</label>
+                                        <textarea {...register('skills')} rows={2} className={`w-full px-3 py-2 bg-white border border-gray-300 ${errors.skills ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`} placeholder={requireExp ? "List key skills... (Required)" : "List key skills..."} />
                                         {errors.skills && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.skills.message}</p>}
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Total Exp. (Years)</label>
-                                        <input type="number" {...register('totalExperienceYears')} className="w-full px-3 py-2 bg-white border border-gray-300 border-gray-200 rounded-md outline-none font-medium text-sm text-slate-700" placeholder="Value" />
+                                        <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Total Exp. (Years) {requireExp && <span className="text-red-500">*</span>}</label>
+                                        <input type="number" step="0.1" min="0" {...register('totalExperienceYears')} className={`w-full px-3 py-2 bg-white border border-gray-300 ${errors.totalExperienceYears ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`} placeholder="Value" />
+                                        {errors.totalExperienceYears && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.totalExperienceYears.message}</p>}
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Total Training (Hrs) {requireTraining && <span className="text-red-500">*</span>}</label>
+                                        <input type="number" step="1" min="0" {...register('totalTrainingHours')} className={`w-full px-3 py-2 bg-white border border-gray-300 ${errors.totalTrainingHours ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`} placeholder="Hours" />
+                                        {errors.totalTrainingHours && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.totalTrainingHours.message}</p>}
                                     </div>
                                 </div>
                             </div>
@@ -838,7 +937,7 @@ const JobDetail = () => {
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 {/* Photo Upload */}
                                 <div className="space-y-2">
-                                    <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">2x2 ID Photo</label>
+                                    <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">2x2 ID Photo <span className="text-red-500">*</span></label>
                                     <div className="border border-gray-200 rounded-md p-6 text-center bg-gray-50/30 cursor-pointer relative overflow-hidden group h-full">
                                         <input type="file" accept=".jpg,.jpeg,.png" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" onChange={async (e) => {
                                             const file = e.target.files?.[0];
@@ -858,7 +957,7 @@ const JobDetail = () => {
                                             </div>
                                             <div>
                                                 <p className="text-slate-900 font-bold text-[11px] truncate max-w-[150px]">{watch('photo') ? (watch('photo') as File).name : "Upload Photo"}</p>
-                                                <p className="text-slate-400 text-[9px] font-bold tracking-widest mt-1 uppercase">JPG/PNG</p>
+                                                <p className="text-red-500 text-[9px] font-bold tracking-widest mt-1 uppercase">Required JPG/PNG</p>
                                             </div>
                                         </div>
                                     </div>
@@ -867,7 +966,7 @@ const JobDetail = () => {
 
                                 {/* Resume Upload */}
                                 <div className="space-y-2">
-                                    <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Resume / CV</label>
+                                    <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Resume / CV <span className="text-red-500">*</span></label>
                                     <div className="border border-gray-200 rounded-md p-6 text-center bg-gray-50/30 cursor-pointer relative overflow-hidden group h-full">
                                         <input type="file" accept=".pdf,.doc,.docx" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" onChange={async (e) => {
                                             const file = e.target.files?.[0];
@@ -887,7 +986,7 @@ const JobDetail = () => {
                                             </div>
                                             <div>
                                                 <p className="text-slate-900 font-bold text-[11px] truncate max-w-[150px]">{watch('resume') ? (watch('resume') as File).name : "Select Resume"}</p>
-                                                <p className="text-slate-400 text-[9px] font-bold tracking-widest mt-1 uppercase">PDF/DOCX</p>
+                                                <p className="text-red-500 text-[9px] font-bold tracking-widest mt-1 uppercase">Required PDF/DOCX</p>
                                             </div>
                                         </div>
                                     </div>

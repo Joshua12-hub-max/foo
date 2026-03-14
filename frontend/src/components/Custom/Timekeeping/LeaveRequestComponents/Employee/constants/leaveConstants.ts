@@ -1,26 +1,11 @@
+import { LEAVE_TYPES as CENTRAL_LEAVE_TYPES, CROSS_CHARGE_MAP as CENTRAL_CROSS_CHARGE } from '@/types/leave.types';
+
 // Pagination
 export const PAGE_SIZE = 10;
 
 // Leave Types (CSC Guidelines)
-export const LEAVE_TYPES = [
-  'Vacation Leave',
-  'Sick Leave',
-  'Maternity Leave',
-  'Paternity Leave',
-  'Solo Parent Leave',
-  'Special Leave Benefits for Women',
-  'Special Emergency Leave',
-  'Rehabilitation Leave',
-  'Study Leave',
-  'VAWC Leave',
-  'Special Privilege Leave',
-  'Wellness Leave',           // CSC 2025/2026 Memo - 5 days
-  'Forced/Mandatory Leave',
-
-  'Other'
-] as const;
-
-export type LeaveType = typeof LEAVE_TYPES[number];
+export const CROSS_CHARGE_MAP = CENTRAL_CROSS_CHARGE;
+export const LEAVE_TYPES = CENTRAL_LEAVE_TYPES;
 
 // Leave Status
 export const LEAVE_STATUS = {

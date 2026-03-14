@@ -115,7 +115,7 @@ const InterviewPanel: React.FC<InterviewPanelProps> = ({
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
                 </span>
-                <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Live Panel</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Live Panel</p>
               </div>
             </div>
           </div>
@@ -138,8 +138,8 @@ const InterviewPanel: React.FC<InterviewPanelProps> = ({
                   <p className="text-sm text-slate-400 truncate mb-2">{applicantEmail || 'email@example.com'}</p>
                   
                   {jobTitle && (
-                    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-700/50 border border-slate-600/50 text-xs font-medium text-slate-300">
-                       <Sparkles size={12} className="text-amber-400" />
+                    <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-slate-700/50 border border-slate-600/50 text-[10px] font-bold uppercase tracking-wider text-slate-300">
+                       <Sparkles size={10} className="text-amber-400" />
                        {jobTitle}
                     </div>
                   )}
@@ -150,8 +150,8 @@ const InterviewPanel: React.FC<InterviewPanelProps> = ({
 
           {/* MAIN ACTION - VIDEO CALL */}
           <div className="space-y-4">
-            <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
-              <Monitor size={14} /> Connection
+            <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+              <Monitor size={12} /> Connection
             </h4>
             
             {!isCallActive ? (

@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useUIStore } from '@/stores';
 import { useToastStore } from '@/stores';
+import { Archive, UserCheck } from 'lucide-react';
 import { useApplicantData, useApplicantFilters, useApplicantActions, Applicant } from '@applicant/Hooks';
-import { AssignInterviewerModal, ScheduleInterviewModal } from '@applicant/Modals';
-import { ApplicantTabs, ApplicantFilters, ApplicantTable, InterviewPanel, PublicInquiries, LiveSupportChat, SecurityAuditLogs } from '@applicant/Components';
+import { AssignInterviewerModal, ScheduleInterviewModal, DocumentListModal, ConfirmHiredModal } from '@applicant/Modals';
+import { ApplicantTabs, ApplicantFilters, ApplicantTable, InterviewPanel, PublicInquiries, LiveSupportChat, ApplicantDetailModal, SecurityAuditLogs } from '@applicant/Components';
 import ConfirmDialog from '@/components/Custom/Shared/ConfirmDialog';
 import Pagination from '@/components/CustomUI/Pagination';
 import type { ScheduleInterviewFormData } from '@/schemas/recruitmentSchema';
@@ -16,18 +17,28 @@ const ApplicantList = () => {
   // Custom Hooks
   const { applicants, interviewers, loading, isRefetching, fetchData } = useApplicantData(showNotification);
   const { 
-    searchTerm, setSearchTerm, 
-    sourceFilter, setSourceFilter, 
-    activeTab, setActiveTab, 
-    currentPage, setCurrentPage, 
-    filteredApplicants, currentItems, totalPages 
-  } = useApplicantFilters(applicants);
-  
-  const { handleAssignInterviewer, handleScheduleInterview, handleRejectApplicant, handleRestoreApplicant, handleDeleteApplicant } = useApplicantActions(fetchData, showNotification);
+  searchTerm, setSearchTerm, 
+  sourceFilter, setSourceFilter, 
+  activeTab, setActiveTab, 
+  archiveSubTab, setArchiveSubTab,
+  currentPage, setCurrentPage, 
+  filteredApplicants, currentItems, totalPages 
+  } = useApplicantFilters(applicants);  
+  const { 
+    handleAssignInterviewer, 
+    handleScheduleInterview, 
+    handleRejectApplicant, 
+    handleRestoreApplicant, 
+    handleDeleteApplicant,
+    handleConfirmHired
+  } = useApplicantActions(fetchData, showNotification);
 
   // Modal State - Properly typed
   const [showAssignModal, setShowAssignModal] = useState<boolean>(false);
   const [showScheduleModal, setShowScheduleModal] = useState<boolean>(false);
+  const [showDocumentModal, setShowDocumentModal] = useState<boolean>(false);
+  const [showDetailModal, setShowDetailModal] = useState<boolean>(false);
+  const [showConfirmHiredModal, setShowConfirmHiredModal] = useState<boolean>(false);
   const [selectedApplicant, setSelectedApplicant] = useState<Applicant | null>(null);
   const [selectedInterviewer, setSelectedInterviewer] = useState<string>('');
   const [confirmModal, setConfirmModal] = useState({
@@ -53,6 +64,11 @@ const ApplicantList = () => {
     setShowScheduleModal(true);
   };
 
+  const onViewDocumentsClick = (applicant: Applicant): void => {
+    setSelectedApplicant(applicant);
+    setShowDocumentModal(true);
+  };
+
   const onJoinInterview = (applicant: Applicant): void => {
     if (applicant.interviewLink) {
       setInterviewApplicant(applicant);
@@ -63,7 +79,13 @@ const ApplicantList = () => {
   };
 
   const onViewDetailsClick = (applicant: Applicant): void => {
-    window.open(`${import.meta.env.VITE_API_URL || ''}/api/recruitment/applicants/${applicant.id}/pdf`, '_blank');
+    setSelectedApplicant(applicant);
+    setShowDetailModal(true);
+  };
+
+  const onConfirmClick = (applicant: Applicant): void => {
+    setSelectedApplicant(applicant);
+    setShowConfirmHiredModal(true);
   };
   
   const onRejectClick = (applicant: Applicant): void => {
@@ -144,45 +166,83 @@ const ApplicantList = () => {
 
       <ApplicantTabs activeTab={activeTab} setActiveTab={setActiveTab} />
       
-      {activeTab !== 'Inquiries' && activeTab !== 'Chat' && activeTab !== 'Security Audit' ? (
-        <>
-          <ApplicantFilters 
-            searchTerm={searchTerm} 
-            setSearchTerm={setSearchTerm} 
-            sourceFilter={sourceFilter} 
-            setSourceFilter={setSourceFilter} 
-          />
-
-          <ApplicantTable 
-            loading={loading}
-            isRefetching={isRefetching}
-            filteredApplicants={currentItems}
-            onAssign={onAssignClick}
-            onSchedule={onScheduleClick}
-            onJoinInterview={onJoinInterview}
-            onReject={onRejectClick}
-            onRestore={onRestoreClick}
-            onViewDetails={onViewDetailsClick}
-            onDelete={onDeleteClick}
-          />
-
-          <Pagination 
-            currentPage={currentPage}
-            itemsPerPage={10}
-            totalItems={filteredApplicants.length}
-            onPageChange={setCurrentPage}
-            totalPages={totalPages}
-          />
-        </>
-      ) : activeTab === 'Inquiries' ? (
-        <PublicInquiries />
-      ) : activeTab === 'Chat' ? (
-        <LiveSupportChat />
-      ) : (
-        <SecurityAuditLogs />
+      {activeTab === 'Archive' && (
+        <div className="flex gap-2 mb-6 bg-white/50 p-1.5 rounded-xl border border-gray-200 w-fit">
+          <button
+            onClick={() => setArchiveSubTab('Rejected')}
+            className={`px-6 py-2 rounded-lg text-sm font-bold transition-all duration-200 ${
+              archiveSubTab === 'Rejected'
+                ? 'bg-gray-300 text-gray-800 shadow-sm'
+                : 'text-gray-500 hover:bg-gray-100'
+            }`}
+          >
+            Rejected Applicants
+          </button>
+          <button
+            onClick={() => setArchiveSubTab('Hired')}
+            className={`px-6 py-2 rounded-lg text-sm font-bold transition-all duration-200 ${
+              archiveSubTab === 'Hired'
+                ? 'bg-gray-300 text-gray-800 shadow-sm'
+                : 'text-gray-500 hover:bg-gray-100'
+            }`}
+          >
+            Archived Hired
+          </button>
+        </div>
       )}
 
+      <ApplicantFilters 
+        searchTerm={searchTerm} 
+        setSearchTerm={setSearchTerm} 
+        sourceFilter={sourceFilter} 
+        setSourceFilter={setSourceFilter} 
+      />
+
+      <ApplicantTable 
+        loading={loading}
+        isRefetching={isRefetching}
+        filteredApplicants={currentItems}
+        onAssign={onAssignClick}
+        onSchedule={onScheduleClick}
+        onJoinInterview={onJoinInterview}
+        onReject={onRejectClick}
+        onRestore={onRestoreClick}
+        onViewDetails={onViewDetailsClick}
+        onViewDocuments={onViewDocumentsClick}
+        onDelete={onDeleteClick}
+        onConfirm={onConfirmClick}
+        isArchiveHired={activeTab === 'Archive' && archiveSubTab === 'Hired'}
+      />
+
+      <Pagination 
+        currentPage={currentPage}
+        itemsPerPage={10}
+        totalItems={filteredApplicants.length}
+        onPageChange={setCurrentPage}
+        totalPages={totalPages}
+      />
+
       {/* Modals */}
+      <ConfirmHiredModal
+        isOpen={showConfirmHiredModal}
+        onClose={() => setShowConfirmHiredModal(false)}
+        applicant={selectedApplicant}
+        onConfirm={async (id, startDate, selectedDocs, customNotes) => {
+            await handleConfirmHired(id, startDate, selectedDocs, customNotes, () => setShowConfirmHiredModal(false));
+        }}
+      />
+      <ApplicantDetailModal
+        isOpen={showDetailModal}
+        onClose={() => setShowDetailModal(false)}
+        applicant={selectedApplicant!}
+      />
+
+      <DocumentListModal
+        isOpen={showDocumentModal}
+        onClose={() => setShowDocumentModal(false)}
+        applicant={selectedApplicant}
+      />
+
       <AssignInterviewerModal 
         isOpen={showAssignModal}
         onClose={() => setShowAssignModal(false)}

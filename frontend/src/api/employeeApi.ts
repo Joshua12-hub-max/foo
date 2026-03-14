@@ -11,6 +11,7 @@ import {
     EducationData, 
     ContactData, 
     CustomFieldData,
+    EmployeeDocument,
     ApiResponse 
 } from '../types';
 
@@ -386,6 +387,39 @@ export const getNextStepIncrement = async (id: string | number): Promise<{ succe
     }
 };
 
+// EMPLOYEE DOCUMENTS
+export const fetchEmployeeDocuments = async (id: string | number): Promise<{ success: boolean; documents?: EmployeeDocument[]; message?: string }> => {
+  try {
+    const response = await axios.get(`/employees/${id}/documents`);
+    return response.data;
+  } catch (error: unknown) {
+    return { success: false, documents: [] };
+  }
+};
+
+export const uploadEmployeeDocument = async (id: string | number, file: File, documentType: string): Promise<{ success: boolean; message?: string }> => {
+  try {
+    const formData = new FormData();
+    formData.append('document', file);
+    formData.append('documentType', documentType);
+    const response = await axios.post(`/employees/${id}/documents`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return response.data;
+  } catch (error: unknown) {
+    return { success: false, message: 'Failed to upload document' };
+  }
+};
+
+export const deleteEmployeeDocument = async (id: string | number, docId: number): Promise<{ success: boolean; message?: string }> => {
+  try {
+    const response = await axios.delete(`/employees/${id}/documents/${docId}`);
+    return response.data;
+  } catch (error: unknown) {
+    return { success: false, message: 'Failed to delete document' };
+  }
+};
+
 export const employeeApi = {
     fetchEmployees,
     fetchEmployeeProfile,
@@ -410,7 +444,9 @@ export const employeeApi = {
     updateEmployeeCustomField,
     deleteEmployeeCustomField,
     fetchEmployeeOptions,
-
+    fetchEmployeeDocuments,
+    uploadEmployeeDocument,
+    deleteEmployeeDocument,
     getNextStepIncrement,
     
     // Generic PDS Section Updates

@@ -1,7 +1,7 @@
 import React from 'react';
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { SquarePen, Eye, Search, RefreshCw, Plus, AlertTriangle, FileText, Calendar, User, ChevronLeft, ChevronRight, Filter, Trash2 } from 'lucide-react';
+import { SquarePen, Search, RefreshCw, Plus, AlertTriangle, FileText, Calendar, User, ChevronLeft, ChevronRight, Filter, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { fetchReviews, deleteReview } from '@api';
 import { InternalReview } from '@/types/performance';
@@ -92,12 +92,12 @@ const EvaluationHistory = () => {
 
   const filteredReviews = useMemo(() => {
     return reviews.filter(review => {
-      const firstName = review.employee_first_name || review.employee_first || '';
-      const lastName = review.employee_last_name || review.employee_last || '';
+      const firstName = review.employeeFirstName || review.employeeFirst || '';
+      const lastName = review.employeeLastName || review.employeeLast || '';
       // Evaluation API returns flattened strings; if no mid/suffix assume empty
       const employeeName = formatFullName(lastName, firstName).toLowerCase();
       const matchesSearch = employeeName.includes(searchTerm.toLowerCase());
-      const matchesDept = selectedDepartment === 'All' || review.employee_department === selectedDepartment;
+      const matchesDept = selectedDepartment === 'All' || review.employeeDepartment === selectedDepartment;
       return matchesSearch && matchesDept;
     });
   }, [reviews, searchTerm, selectedDepartment]);
@@ -284,8 +284,8 @@ const EvaluationHistory = () => {
                         <div>
                           <p className="font-bold text-gray-800 text-sm">
                             {formatFullName(
-                                review.employee_last_name || review.employee_last,
-                                review.employee_first_name || review.employee_first
+                                review.employeeLastName || review.employeeLast,
+                                review.employeeFirstName || review.employeeFirst
                             )}
                           </p>
                           <p className="text-[10px] text-gray-500 font-mono">{formatDate(review.createdAt)}</p>
@@ -294,18 +294,18 @@ const EvaluationHistory = () => {
                     </td>
                     <td className="px-6 py-4">
                       <span className="text-xs text-gray-800">
-                        {review.employee_department || 'N/A'}
+                        {review.employeeDepartment || 'N/A'}
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <p className="text-sm font-medium text-gray-700">{review.cycle_title || 'Direct Evaluation'}</p>
+                      <p className="text-sm font-medium text-gray-700">{review.cycleTitle || 'Direct Evaluation'}</p>
                       <p className="text-xs text-gray-400">
-                        {formatDate(review.review_period_start ?? null)} - {formatDate(review.review_period_end ?? null)}
+                        {formatDate(review.reviewPeriodStart ?? null)} - {formatDate(review.reviewPeriodEnd ?? null)}
                       </p>
                     </td>
                     <td className="px-6 py-4 text-center">
                       <div className="inline-block py-1 px-3 bg-white rounded-lg border border-gray-100 shadow-sm font-bold text-gray-800 text-sm">
-                        {review.total_score ? `${((parseFloat(review.total_score) / 5) * 100).toFixed(0)}%` : '-'}
+                        {review.totalScore ? `${((parseFloat(String(review.totalScore)) / 5) * 100).toFixed(0)}%` : '-'}
                       </div>
                     </td>
                     <td className="px-6 py-4">
@@ -319,8 +319,8 @@ const EvaluationHistory = () => {
                           onClick={() => handleAction(review)}
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white text-gray-700 border border-gray-200 text-xs font-medium rounded-lg hover:bg-gray-100 hover:border-gray-300 transition-all shadow-sm"
                         >
-                          {review.status === 'Draft' ? <SquarePen size={14} /> : <Eye size={14} />}
-                          {review.status === 'Draft' ? 'Continue' : 'Details'}
+                          {review.status === 'Draft' ? <SquarePen size={14} /> : <FileText size={14} />}
+                          {review.status === 'Draft' ? 'Continue' : 'Review'}
                         </button>
                         {review.status === 'Draft' && (
                           <button
@@ -388,7 +388,7 @@ const EvaluationHistory = () => {
             
             <p className="text-sm text-gray-600 mb-6 bg-gray-50 p-4 rounded-lg border border-gray-100">
               Are you sure you want to delete the evaluation for{' '}
-              <strong className="text-gray-900">{selectedReview?.employee_first_name || selectedReview?.employee_first} {selectedReview?.employee_last_name || selectedReview?.employee_last}</strong>?
+              <strong className="text-gray-900">{selectedReview?.employeeFirstName || selectedReview?.employeeFirst} {selectedReview?.employeeLastName || selectedReview?.employeeLast}</strong>?
             </p>
 
             <div className="flex gap-3 justify-end">

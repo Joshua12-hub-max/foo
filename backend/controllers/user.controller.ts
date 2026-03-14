@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
+import path from 'path';
 import { db } from '../db/index.js';
 import { eq, and, or, sql, desc, ne, InferSelectModel, SQL } from 'drizzle-orm';
 import type { AuthenticatedRequest, EmploymentStatus, Gender, CivilStatus, AppointmentType, UserRole } from '../types/index.js';
@@ -20,7 +21,9 @@ import {
   pdsLearningDevelopment,
   pdsWorkExperience,
   pdsOtherInfo,
-  pdsReferences
+  pdsReferences,
+  recruitmentApplicants,
+  employeeDocuments
 } from '../db/schema.js';
 import { 
   EmployeeApiResponse, 
@@ -217,6 +220,7 @@ export const mapToEmployeeApi = (emp: EmployeeMapperInput): EmployeeApiResponse 
     ctcIssuedDate: emp.ctcIssuedDate || null,
     originalAppointmentDate: emp.originalAppointmentDate || null,
     lastPromotionDate: emp.lastPromotionDate || null,
+    isBiometricEnrolled: !!emp.isBiometricEnrolled,
   };
 };
 
@@ -378,7 +382,7 @@ export const getEmployeeById = async (req: Request, res: Response): Promise<void
     const requester = authReq.user;
     const isSelf = requester.id === parseInt(id);
     const roleLower = requester.role?.toLowerCase() || '';
-    const isAdmin = ['Administrator', 'Human Resource'].includes(roleLower);
+    const isAdmin = ['administrator', 'human resource'].includes(roleLower);
 
     if (!isSelf && !isAdmin) {
       res.status(403).json({ success: false, message: 'Access Denied: You can only view your own profile.' });
@@ -527,6 +531,7 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
     // Sanitize PDS fields (height/weight conversion)
     const sanitizedData = sanitizePDSFields({ ...validatedData });
 
+    // 2. Insert Authentication Record
     const [result] = await db.insert(authentication).values({
       firstName,
       lastName,
@@ -539,8 +544,8 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
       employmentType: (sanitizedData.employmentType || 'Probationary') as string,
       employeeId: finalEmployeeId,
       passwordHash: hashedPassword,
-      isVerified: true, // boolean
-      birthDate: birthDate ? String(birthDate) : null, // date mode string
+      isVerified: true,
+      birthDate: birthDate ? String(birthDate) : null,
       gender: gender as Gender,
       civilStatus: civilStatus as CivilStatus,
       nationality: nationality || 'Filipino',
@@ -562,7 +567,7 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
       positionId: finalPosId,
       contractEndDate: sanitizedData.contractEndDate ? String(sanitizedData.contractEndDate) : null,
       regularizationDate: finalRegularizationDate ? finalRegularizationDate.toISOString().split('T')[0] : null,
-      isRegular: !!sanitizedData.isRegular, // boolean
+      isRegular: !!sanitizedData.isRegular,
       heightCm: sanitizedData.heightM ? String(sanitizedData.heightM) : null,
       heightM: sanitizedData.heightM ? String(sanitizedData.heightM) : null,
       weightKg: sanitizedData.weightKg ? String(sanitizedData.weightKg) : null,
@@ -579,10 +584,66 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
       eligibilityType: sanitizedData.eligibilityType || null,
       eligibilityNumber: sanitizedData.eligibilityNumber || null,
       eligibilityDate: sanitizedData.eligibilityDate ? String(sanitizedData.eligibilityDate) : null,
-      yearsOfExperience: sanitizedData.yearsOfExperience ? String(sanitizedData.yearsOfExperience) : '0'
+      yearsOfExperience: sanitizedData.yearsOfExperience ? String(sanitizedData.yearsOfExperience) : '0',
+      resHouseBlockLot: sanitizedData.resHouseBlockLot || null,
+      resStreet: sanitizedData.resStreet || null,
+      resSubdivision: sanitizedData.resSubdivision || null,
+      resBarangay: sanitizedData.resBarangay || null,
+      resCity: sanitizedData.resCity || null,
+      resProvince: sanitizedData.resProvince || null,
+      permHouseBlockLot: sanitizedData.permHouseBlockLot || null,
+      permStreet: sanitizedData.permStreet || null,
+      permSubdivision: sanitizedData.permSubdivision || null,
+      permBarangay: sanitizedData.permBarangay || null,
+      permCity: sanitizedData.permCity || null,
+      permProvince: sanitizedData.permProvince || null,
+      resRegion: sanitizedData.resRegion || null,
+      permRegion: sanitizedData.permRegion || null
     });
 
     const newEmployeeIdNum = result.insertId;
+
+    // --- AUTOMATIC DOCUMENT SYNC FROM RECRUITMENT ---
+    if (newEmployeeIdNum && validatedData.applicantId) {
+      const applicant = await db.query.recruitmentApplicants.findFirst({
+        where: eq(recruitmentApplicants.id, validatedData.applicantId)
+      });
+
+      if (applicant) {
+        const docsToSync = [];
+        if (applicant.resumePath) {
+          docsToSync.push({
+            employeeId: newEmployeeIdNum,
+            documentType: 'Resume',
+            documentName: `Resume_${lastName}_${newEmployeeIdNum}${path.extname(applicant.resumePath)}`,
+            filePath: `/uploads/resumes/${applicant.resumePath}`,
+            mimeType: 'application/pdf'
+          });
+        }
+        if (applicant.photoPath) {
+          docsToSync.push({
+            employeeId: newEmployeeIdNum,
+            documentType: '2x2 ID Photo',
+            documentName: `Photo2x2_${lastName}_${newEmployeeIdNum}${path.extname(applicant.photoPath)}`,
+            filePath: `/uploads/resumes/${applicant.photoPath}`, // Recruitment stores all in resumes folder usually
+            mimeType: applicant.photoPath.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg'
+          });
+        }
+        if (applicant.eligibilityPath) {
+          docsToSync.push({
+            employeeId: newEmployeeIdNum,
+            documentType: 'Eligibility Certificate',
+            documentName: `Eligibility_${lastName}_${newEmployeeIdNum}${path.extname(applicant.eligibilityPath)}`,
+            filePath: `/uploads/resumes/${applicant.eligibilityPath}`,
+            mimeType: 'application/pdf'
+          });
+        }
+
+        if (docsToSync.length > 0) {
+          await db.insert(employeeDocuments).values(docsToSync);
+        }
+      }
+    }
     
     if (finalPosId && newEmployeeIdNum) {
        const today = new Date().toISOString().split('T')[0];
@@ -601,8 +662,76 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
 
     res.status(201).json({ success: true, message: 'Employee created successfully', employeeId: finalEmployeeId });
   } catch (_error) {
-
     res.status(500).json({ success: false, message: 'Failed to create employee' });
+  }
+};
+
+// ============================================================================
+// DOCUMENT MANAGEMENT
+// ============================================================================
+
+export const getEmployeeDocuments = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const documents = await db.select().from(employeeDocuments).where(eq(employeeDocuments.employeeId, parseInt(id as string)));
+    res.json({ success: true, documents });
+  } catch (_error) {
+    res.status(500).json({ success: false, message: 'Failed to fetch documents' });
+  }
+};
+
+export const uploadEmployeeDocument = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { documentType } = req.body;
+    const file = req.file;
+
+    if (!file) {
+      res.status(400).json({ success: false, message: 'No file uploaded' });
+      return;
+    }
+
+    const [result] = await db.insert(employeeDocuments).values({
+      employeeId: parseInt(id as string),
+      documentType: documentType || 'Other',
+      documentName: file.originalname,
+      filePath: `/uploads/resumes/${file.filename}`,
+      fileSize: file.size,
+      mimeType: file.mimetype
+    });
+
+    res.json({ 
+      success: true, 
+      message: 'Document uploaded successfully', 
+      document: { id: result.insertId, documentName: file.originalname, filePath: `/uploads/resumes/${file.filename}` } 
+    });
+  } catch (_error) {
+    res.status(500).json({ success: false, message: 'Failed to upload document' });
+  }
+};
+
+export const deleteEmployeeDocument = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id, docId } = req.params;
+    
+    const [doc] = await db.select().from(employeeDocuments).where(and(
+      eq(employeeDocuments.id, parseInt(docId as string)),
+      eq(employeeDocuments.employeeId, parseInt(id as string))
+    ));
+
+    if (!doc) {
+      res.status(404).json({ success: false, message: 'Document not found' });
+      return;
+    }
+
+    // Optional: Delete physical file
+    // const fullPath = path.join(process.cwd(), doc.filePath);
+    // if (fs.existsSync(fullPath)) fs.unlinkSync(fullPath);
+
+    await db.delete(employeeDocuments).where(eq(employeeDocuments.id, parseInt(docId as string)));
+    res.json({ success: true, message: 'Document deleted successfully' });
+  } catch (_error) {
+    res.status(500).json({ success: false, message: 'Failed to delete document' });
   }
 };
 
@@ -715,6 +844,20 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
       residentialAddress: 'residentialAddress',
       residentialZipCode: 'residentialZipCode',
       permanentZipCode: 'permanentZipCode',
+      resHouseBlockLot: 'resHouseBlockLot',
+      resStreet: 'resStreet',
+      resSubdivision: 'resSubdivision',
+      resBarangay: 'resBarangay',
+      resCity: 'resCity',
+      resProvince: 'resProvince',
+      resRegion: 'resRegion',
+      permHouseBlockLot: 'permHouseBlockLot',
+      permStreet: 'permStreet',
+      permSubdivision: 'permSubdivision',
+      permBarangay: 'permBarangay',
+      permCity: 'permCity',
+      permProvince: 'permProvince',
+      permRegion: 'permRegion',
       telephoneNo: 'telephoneNo',
       mobileNo: 'mobileNo',
       agencyEmployeeNo: 'agencyEmployeeNo',

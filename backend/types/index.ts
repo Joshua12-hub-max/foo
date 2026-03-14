@@ -426,4 +426,10 @@ export interface MySQLError extends Error {
   sqlState?: string;
   sqlMessage?: string;
   sql?: string;
+  cause?: Error & {
+    code?: string;
+    errno?: number;
+    sqlState?: string;
+    sqlMessage?: string;
+  };
 }

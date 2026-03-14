@@ -1,9 +1,9 @@
-import React from "react";
-import { useForm } from "react-hook-form";
+import React, { useEffect } from "react";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { DTRFilterSchema, DTRFilterValues } from "@/schemas/dtrSchema";
 import { useDTRStore } from "@/stores/dtrStore";
-import { Calendar } from "lucide-react";
+import Combobox from "@/components/Custom/Combobox";
 
 interface AdminDTRFiltersProps {
   uniqueDepartments?: string[];
@@ -16,102 +16,128 @@ export const AdminDTRFilters: React.FC<AdminDTRFiltersProps> = ({
   uniqueEmployees = [], 
   isLoading 
 }) => {
-  const { setFilters, resetFilters } = useDTRStore();
+  const { filters, setFilters, resetFilters } = useDTRStore();
 
-  const { register, handleSubmit, reset } = useForm<DTRFilterValues>({
+  const { register, handleSubmit, reset, control } = useForm<DTRFilterValues>({
     resolver: zodResolver(DTRFilterSchema),
-    defaultValues: {
-      department: '',
-      employeeId: '',
-      startDate: '',
-      endDate: ''
-    }
+    defaultValues: filters
   });
+
+  // Sync form with store
+  useEffect(() => {
+    reset(filters);
+  }, [filters, reset]);
 
   const onSubmit = (data: DTRFilterValues) => {
     setFilters(data);
   };
 
   const handleClear = () => {
-    reset();
     resetFilters();
   };
 
+  const departmentOptions = [
+    { value: "", label: "Department" },
+    ...uniqueDepartments.map(dept => ({ value: dept, label: dept }))
+  ];
+
+  const employeeOptions = [
+    { value: "", label: "Employee" },
+    ...uniqueEmployees.map(emp => ({ value: emp.id, label: emp.name }))
+  ];
+
   return (
-    <div className="bg-[#F8F9FA] p-4 rounded-lg shadow-md mb-6">
-      <form onSubmit={handleSubmit(onSubmit)}>
-        <div className="grid grid-cols-1 gap-4 items-center md:grid-cols-2 lg:grid-cols-5">
-
-          {/* Department Filter */}
-          <div className="w-full">
-            <select
-              {...register("department")}
-              disabled={isLoading}
-              className="w-full bg-white border border-gray-300 rounded-lg shadow-sm px-3 py-2 text-sm focus:ring-2 focus:ring-[#274b46] focus:border-transparent outline-none transition-all"
-            >
-              <option value="">All Departments</option>
-              {uniqueDepartments.map((dept) => (
-                <option key={dept} value={dept}>{dept}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Employee Filter */}
-          <div className="w-full">
-            <select
-              {...register("employeeId")}
-              disabled={isLoading}
-              className="w-full bg-white border border-gray-300 rounded-lg shadow-sm px-3 py-2 text-sm focus:ring-2 focus:ring-[#274b46] focus:border-transparent outline-none transition-all"
-            >
-              <option value="">All Employees</option>
-              {uniqueEmployees.map((emp) => (
-                <option key={emp.id} value={emp.id}>{emp.name}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* From Date */}
-          <div className="relative w-full">
-            <Calendar className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#274b46] pointer-events-none z-10" />
-            <input
-              type="date"
-              {...register("startDate")}
-              disabled={isLoading}
-              className="w-full pl-10 bg-white border border-gray-300 rounded-lg shadow-sm px-3 py-2 text-sm focus:ring-2 focus:ring-[#274b46] focus:border-transparent outline-none transition-all placeholder-gray-400"
-            />
-          </div>
-
-          {/* To Date */}
-          <div className="relative w-full">
-            <Calendar className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#274b46] pointer-events-none z-10" />
-            <input
-              type="date"
-              {...register("endDate")}
-              disabled={isLoading}
-              className="w-full pl-10 bg-white border border-gray-300 rounded-lg shadow-sm px-3 py-2 text-sm focus:ring-2 focus:ring-[#274b46] focus:border-transparent outline-none transition-all placeholder-gray-400"
-            />
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex gap-2 justify-end lg:justify-start w-full">
-            <button
-              type="button"
-              onClick={handleClear}
-              disabled={isLoading}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#274b46] transition-colors shadow-sm"
-            >
-              Clear
-            </button>
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="px-4 py-2 text-sm font-medium text-white bg-[#274b46] rounded-lg hover:bg-[#1f3d39] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#274b46] transition-colors shadow-sm"
-            >
-              Apply Filter
-            </button>
-          </div>
+    <div className="grid grid-cols-1 md:grid-cols-6 gap-4 mb-6 items-start bg-[#F8F9FA] p-4 rounded-lg shadow-md">
+        
+        {/* Department Filter */}
+        <div className="md:col-span-1">
+          <Controller
+            name="department"
+            control={control}
+            render={({ field }) => (
+              <Combobox
+                options={departmentOptions}
+                value={field.value}
+                onChange={(val) => {
+                    field.onChange(val);
+                    handleSubmit(onSubmit)();
+                }}
+                placeholder="Department"
+                disabled={isLoading}
+                buttonClassName="pl-3 bg-[#F8F9FA] border-gray-300 shadow-md"
+              />
+            )}
+          />
         </div>
-      </form>
+
+        {/* Employee Filter */}
+        <div className="md:col-span-1">
+          <Controller
+            name="employeeId"
+            control={control}
+            render={({ field }) => (
+              <Combobox
+                options={employeeOptions}
+                value={field.value}
+                onChange={(val) => {
+                    field.onChange(val);
+                    handleSubmit(onSubmit)();
+                }}
+                placeholder="Employee"
+                disabled={isLoading}
+                buttonClassName="pl-3 bg-[#F8F9FA] border-gray-300 shadow-sm"
+              />
+            )}
+          />
+        </div>
+
+        {/* Start Date */}
+        <div className="md:col-span-1">
+          <input
+            type="date"
+            {...register("startDate")}
+            disabled={isLoading}
+            onChange={(e) => {
+                register("startDate").onChange(e);
+                handleSubmit(onSubmit)();
+            }}
+            className="w-full px-3 bg-white border border-gray-200 rounded-lg shadow-sm py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200 focus:border-gray-200 hover:border-gray-200 transition-all appearance-none cursor-pointer min-h-[38px]"
+          />
+        </div>
+
+        {/* End Date */}
+        <div className="md:col-span-1">
+          <input
+            type="date"
+            {...register("endDate")}
+            disabled={isLoading}
+            onChange={(e) => {
+                register("endDate").onChange(e);
+                handleSubmit(onSubmit)();
+            }}
+            className="w-full px-3 bg-white border border-gray-200 rounded-lg shadow-sm py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200 focus:border-gray-200 hover:border-gray-200 transition-all appearance-none cursor-pointer min-h-[38px]"
+          />
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex gap-2 md:col-span-2">
+          <button
+            type="button"
+            onClick={handleSubmit(onSubmit)}
+            disabled={isLoading}
+            className="flex-1 flex items-center justify-center gap-2 bg-[#F8F9FA] text-gray-700 font-medium px-4 py-2 rounded-lg text-sm shadow-sm hover:bg-[#F8F9FA] transition-all active:scale-95 border border-gray-200 disabled:opacity-50"
+          >
+            Apply Filter
+          </button>
+          <button
+            type="button"
+            onClick={handleClear}
+            disabled={isLoading}
+            className="flex-1 bg-[#F8F9FA] text-gray-700 font-medium px-4 py-2 rounded-lg text-sm shadow-sm hover:bg-[#F8F9FA] transition-all active:scale-95 border border-gray-200 disabled:opacity-50"
+          >
+             Clear
+          </button>
+        </div>
     </div>
   );
 };

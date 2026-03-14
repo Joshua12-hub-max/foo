@@ -36,7 +36,8 @@ export const updateMonthlyTardinessSummary = async (
     let absenceCount = 0;
 
     dtrs.forEach(dtr => {
-      if (dtr.status === 'Absent') {
+      // L2 FIX: Include 'No Logs' to match tardinessUtils.ts (was only 'Absent')
+      if (dtr.status === 'Absent' || dtr.status === 'No Logs') {
         absenceCount++;
       }
       if (dtr.lateMinutes && dtr.lateMinutes > 0) {

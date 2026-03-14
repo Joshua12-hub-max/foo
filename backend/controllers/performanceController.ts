@@ -9,7 +9,7 @@ import { performanceReviews,
   policyViolations,
   leaveApplications
 } from '../db/schema.js';
-import { eq, and, sql, desc, or, max, count, inArray, isNull, like, gte, lte } from 'drizzle-orm';
+import { eq, and, sql, desc, or, max, count, inArray, isNull, like, gte, lte, ne } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/mysql-core';
 import type { AuthenticatedRequest, ReviewStatus, PerformanceCriteriaType } from '../types/index.js';
 import { calculateAttendanceScore } from '../services/attendanceRatingService.js';
@@ -99,10 +99,15 @@ const calculateReviewScore = async (reviewId: number): Promise<string> => {
   .where(eq(performanceReviewItems.reviewId, reviewId));
 
   const review = await db.query.performanceReviews.findFirst({
-    where: eq(performanceReviews.id, reviewId)
+    where: eq(performanceReviews.id, reviewId),
+    with: {
+      authenticationEmployeeId: true
+    }
   });
 
   if (!review) return '0';
+
+  const empIdStr = review.authenticationEmployeeId.employeeId || review.employeeId.toString();
 
   let totalWeightedScore = 0;
   let totalWeight = 0;
@@ -120,24 +125,27 @@ const calculateReviewScore = async (reviewId: number): Promise<string> => {
   const baseScore = totalWeight > 0 ? (totalWeightedScore / totalWeight) : 0;
 
   try {
-    const attendance = await calculateAttendanceScore(review.employeeId.toString(), review.reviewPeriodStart, review.reviewPeriodEnd);
+    const attendance = await calculateAttendanceScore(review.employeeId, review.reviewPeriodStart, review.reviewPeriodEnd);
     
     // Fetch exact violations within period to deduct
+    // S4 FIX: Use resolved empIdStr (varchar) instead of numeric employeeId
     const violations = await db.select({ count: sql<number>`count(*)` })
       .from(policyViolations)
       .where(and(
-        eq(policyViolations.employeeId, review.employeeId.toString()),
+        eq(policyViolations.employeeId, empIdStr),
         gte(policyViolations.createdAt, `${review.reviewPeriodStart} 00:00:00`),
-        lte(policyViolations.createdAt, `${review.reviewPeriodEnd} 23:59:59`)
+        lte(policyViolations.createdAt, `${review.reviewPeriodEnd} 23:59:59`),
+        ne(policyViolations.status, 'cancelled')
       ));
     
     const violationCount = Number(violations[0]?.count) || 0;
 
     // Fetch exact "Over Leave" Days (Leave Without Pay) within period
+    // S4 FIX: Use resolved empIdStr (varchar) instead of numeric employeeId
     const overLeaves = await db.select({ lwopSum: sql<number>`SUM(${leaveApplications.daysWithoutPay})` })
       .from(leaveApplications)
       .where(and(
-        eq(leaveApplications.employeeId, review.employeeId.toString()),
+        eq(leaveApplications.employeeId, empIdStr),
         eq(leaveApplications.status, 'Approved'),
         gte(leaveApplications.startDate, review.reviewPeriodStart),
         lte(leaveApplications.endDate, review.reviewPeriodEnd)
@@ -462,12 +470,15 @@ export const getReview = async (req: Request, res: Response): Promise<void> => {
       performanceReviewItems.id
     );
 
-    // 3. Fetch Violation Count
+    // 3. Fetch Violation Count (Consistent with calculation logic: period-based, non-cancelled)
+    const empIdStr = review.authenticationEmployeeId.employeeId || review.employeeId.toString();
     const violations = await db.select({ count: count() })
       .from(policyViolations)
       .where(and(
-        eq(policyViolations.employeeId, String(review.employeeId)),
-        eq(policyViolations.status, 'pending')
+        eq(policyViolations.employeeId, empIdStr),
+        gte(policyViolations.createdAt, `${review.reviewPeriodStart} 00:00:00`),
+        lte(policyViolations.createdAt, `${review.reviewPeriodEnd} 23:59:59`),
+        ne(policyViolations.status, 'cancelled')
       ));
 
     // 4. Resolve flattened structure
@@ -905,7 +916,7 @@ export const addCriteria = async (req: Request, res: Response): Promise<void> =>
     await db.insert(performanceCriteria).values({
       title,
       description,
-      weight: weight || 1,
+      weight: String(weight || 1),
       maxScore: maxScore || 5,
       category: category || 'General'
     });
@@ -920,7 +931,7 @@ export const updateCriteria = async (req: Request, res: Response): Promise<void>
   const { title, description, weight, maxScore, category } = req.body as { title?: string; description?: string; weight?: number; maxScore?: number; category?: string };
   try {
     await db.update(performanceCriteria)
-      .set({ title, description, weight, maxScore, category })
+      .set({ title, description, weight: weight !== undefined ? String(weight) : undefined, maxScore, category })
       .where(eq(performanceCriteria.id, Number(id)));
     res.json({ success: true, message: 'Criteria updated' });
   } catch (_error) {
@@ -1236,7 +1247,7 @@ export const addItemToReview = async (req: Request, res: Response): Promise<void
       comment: '',
       criteriaTitle: criteriaTitle,
       criteriaDescription: criteriaDescription,
-      weight: weight || 1,
+      weight: String(weight || 1),
       maxScore: maxScore || 5,
       category: category || 'General',
       selfScore: '0',

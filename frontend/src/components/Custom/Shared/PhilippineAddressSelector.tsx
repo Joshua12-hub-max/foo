@@ -114,6 +114,12 @@ export const PhilippineAddressSelector = <T extends FieldValues>({
     }
   }, [watchCity, prefix, setValue, zipField]);
 
+  // Helper to format names to Capital Case
+  const formatName = (name: string) => {
+    if (!name) return '';
+    return name.toLowerCase().split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+  };
+
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -121,7 +127,7 @@ export const PhilippineAddressSelector = <T extends FieldValues>({
         <div className="space-y-1">
           <label className="text-xs font-semibold text-gray-600 ml-1">Region</label>
           <Combobox 
-             options={regions.map((r: Region) => ({ value: r.reg_code, label: r.name }))}
+             options={regions.map((r: Region) => ({ value: r.reg_code, label: formatName(r.name) }))}
              value={watchRegion || ''}
              onChange={(val: string) => {
                  setValue(`${prefix}Region` as Path<T>, val as PathValue<T, Path<T>>, { shouldValidate: true });
@@ -138,7 +144,7 @@ export const PhilippineAddressSelector = <T extends FieldValues>({
         <div className="space-y-1">
           <label className="text-xs font-semibold text-gray-600 ml-1">Province</label>
           <Combobox 
-             options={provinces.map((p: Province) => ({ value: p.prov_code, label: p.name }))}
+             options={provinces.map((p: Province) => ({ value: p.prov_code, label: formatName(p.name) }))}
              value={watchProvince || ''}
              onChange={(val: string) => {
                  setValue(`${prefix}Province` as Path<T>, val as PathValue<T, Path<T>>, { shouldValidate: true });
@@ -154,7 +160,7 @@ export const PhilippineAddressSelector = <T extends FieldValues>({
         <div className="space-y-1">
           <label className="text-xs font-semibold text-gray-600 ml-1">City/municipality <span className="text-red-500">*</span></label>
           <Combobox 
-             options={cities.map((c: CityMunicipality) => ({ value: c.mun_code, label: c.name }))}
+             options={cities.map((c: CityMunicipality) => ({ value: c.mun_code, label: formatName(c.name) }))}
              value={watchCity || ''}
              onChange={(val: string) => {
                  setValue(`${prefix}City` as Path<T>, val as PathValue<T, Path<T>>, { shouldValidate: true });
@@ -162,7 +168,7 @@ export const PhilippineAddressSelector = <T extends FieldValues>({
              }}
              placeholder="Select city"
              className={isMeycauayanOnly || (!watchProvince && watchRegion !== '13') ? 'opacity-60 pointer-events-none' : ''}
-             error={!!errors[`${prefix}City`]}
+             error={!!errors[`${prefix}City`] as boolean}
           />
         </div>
 
@@ -170,12 +176,12 @@ export const PhilippineAddressSelector = <T extends FieldValues>({
         <div className="space-y-1">
           <label className="text-xs font-semibold text-gray-600 ml-1">Barangay <span className="text-red-500">*</span></label>
           <Combobox 
-             options={barangays.map((b: Barangay) => ({ value: b.name, label: b.name }))}
+             options={barangays.map((b: Barangay) => ({ value: b.name, label: formatName(b.name) }))}
              value={watchBrgy || ''}
              onChange={(val: string) => setValue(`${prefix}Brgy` as Path<T>, val as PathValue<T, Path<T>>, { shouldValidate: true })}
              placeholder="Select barangay"
              className={!watchCity ? 'opacity-60 pointer-events-none' : ''}
-             error={!!errors[`${prefix}Brgy`]}
+             error={!!errors[`${prefix}Brgy`] as boolean}
           />
         </div>
       </div>

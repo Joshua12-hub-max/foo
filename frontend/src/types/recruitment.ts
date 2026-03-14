@@ -66,6 +66,10 @@ export interface Applicant {
   jobRequirements?: string;
   jobDepartment?: string;
   jobStatus?: JobStatus;
+  jobEmploymentType?: string;
+  jobDutyType?: string;
+  isConfirmed?: boolean;
+  startDate?: string;
 }
 
 export interface Interviewer {

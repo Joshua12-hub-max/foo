@@ -12,7 +12,7 @@ export const getEnrolledUsers = async (_req: Request, res: Response): Promise<vo
   try {
     const users = await db.select({
       employeeId: bioEnrolledUsers.employeeId,
-      systemEmployeeId: sql<string>`CONCAT('EMP-', LPAD(${bioEnrolledUsers.employeeId}, 3, '0'))`,
+      systemEmployeeId: bioEnrolledUsers.employeeId,
       fullName: bioEnrolledUsers.fullName,
       department: bioEnrolledUsers.department,
       userStatus: bioEnrolledUsers.userStatus,
@@ -28,8 +28,7 @@ export const getEnrolledUsers = async (_req: Request, res: Response): Promise<vo
       data: users,
       total: users.length,
     });
-  } catch (_error) {
-
+  } catch (_error: unknown) {
     res.status(500).json({
       success: false,
       message: 'Failed to retrieve enrolled users.',
@@ -48,7 +47,7 @@ export const getBiometricLogs = async (req: Request, res: Response): Promise<voi
     const conditions = [];
 
     if (employeeId) {
-      conditions.push(eq(bioAttendanceLogs.employeeId, Number(employeeId)));
+      conditions.push(eq(bioAttendanceLogs.employeeId, String(employeeId)));
     }
 
     if (date) {
@@ -60,7 +59,7 @@ export const getBiometricLogs = async (req: Request, res: Response): Promise<voi
     const logs = await db.select({
       id: bioAttendanceLogs.id,
       employeeId: bioAttendanceLogs.employeeId,
-      systemEmployeeId: sql<string>`CONCAT('EMP-', LPAD(${bioAttendanceLogs.employeeId}, 3, '0'))`,
+      systemEmployeeId: bioAttendanceLogs.employeeId,
       cardType: bioAttendanceLogs.cardType,
       logDate: bioAttendanceLogs.logDate,
       logTime: bioAttendanceLogs.logTime,
@@ -77,8 +76,7 @@ export const getBiometricLogs = async (req: Request, res: Response): Promise<voi
       data: logs,
       total: logs.length,
     });
-  } catch (_error) {
-
+  } catch (_error: unknown) {
     res.status(500).json({
       success: false,
       message: 'Failed to retrieve biometric logs.',
@@ -114,8 +112,7 @@ export const getSyncStatus = async (_req: Request, res: Response): Promise<void>
         status: syncInfo.lastSyncedBioId >= (bioCount?.count ?? 0) ? 'SYNCED' : 'SYNCING',
       },
     });
-  } catch (_error) {
-
+  } catch (_error: unknown) {
     res.status(500).json({
       success: false,
       message: 'Failed to retrieve sync status.',

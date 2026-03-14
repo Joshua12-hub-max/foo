@@ -64,10 +64,10 @@ export const useAdminLeaveFilters = (data: AdminLeaveRequest[] = []) => {
     }
 
     if (appliedFilters.fromDate) {
-      result = result.filter(item => item.fromDate >= appliedFilters.fromDate);
+      result = result.filter(item => item.startDate >= appliedFilters.fromDate);
     }
     if (appliedFilters.toDate) {
-      result = result.filter(item => item.toDate <= appliedFilters.toDate);
+      result = result.filter(item => item.endDate <= appliedFilters.toDate);
     }
 
     const query = debouncedSearchQuery.toLowerCase();

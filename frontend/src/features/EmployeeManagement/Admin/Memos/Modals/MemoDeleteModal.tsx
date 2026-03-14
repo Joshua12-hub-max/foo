@@ -8,7 +8,6 @@ import React, { memo } from 'react';
 interface Memo {
   id: number;
   memoNumber?: string;
-  memoNumber?: string;
 }
 
 interface MemoDeleteModalProps {

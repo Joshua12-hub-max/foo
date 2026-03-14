@@ -307,7 +307,13 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, cu
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className={labelClass}>Birth Date</label>
-                <input type="date" name="birthDate" value={formData.birthDate} onChange={handleChange} className={inputClass} />
+                <input 
+                  type="date" 
+                  name="birthDate" 
+                  value={formData.birthDate ? new Date(formData.birthDate).toISOString().split('T')[0] : ''} 
+                  onChange={handleChange} 
+                  className={inputClass} 
+                />
               </div>
               <div>
                 <label className={labelClass}>Gender</label>

@@ -1,5 +1,5 @@
 import React, { memo, useMemo, useCallback } from 'react';
-import { Users, Phone, SquarePen, Trash2, Calendar } from 'lucide-react';
+import { Users, Phone, SquarePen, Trash2, Calendar, Fingerprint } from 'lucide-react';
 import EmploymentStatusBadge from '@/components/Custom/Common/EmploymentStatusBadge';
 
 import { Employee } from '@/types';
@@ -59,7 +59,15 @@ const EmployeeRow: React.FC<EmployeeRowProps> = memo(({ employee, onView, onEdit
         </div>
       </td>
       <td className="px-6 py-4">
-        <EmploymentStatusBadge status={employee.employmentStatus || 'Active'} />
+        <div className="flex flex-col gap-2">
+            <EmploymentStatusBadge status={employee.employmentStatus || 'Active'} />
+            <div className={`flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-bold w-fit ${
+                employee.isBiometricEnrolled ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'
+            }`}>
+                <Fingerprint size={10} />
+                <span>{employee.isBiometricEnrolled ? 'BIO ENROLLED' : 'NO BIOMETRICS'}</span>
+            </div>
+        </div>
       </td>
       <td className="px-6 py-4">
         <div className="flex items-center gap-2">

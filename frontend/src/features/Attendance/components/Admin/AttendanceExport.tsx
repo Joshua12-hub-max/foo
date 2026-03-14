@@ -131,8 +131,25 @@ const AttendanceExport: React.FC<AttendanceExportProps> = ({ data, title, dateRa
   }
 
   const fetchAllData = async (): Promise<AttendanceRecord[]> => {
+    const transformLogs = (logs: DTRApiResponse[]): AttendanceRecord[] => {
+        return logs.map(l => ({
+            id: l.id,
+            employeeId: String(l.employeeId),
+            employeeName: l.employeeName || 'Unknown',
+            name: l.employeeName || 'Unknown',
+            date: String(l.date),
+            timeIn: l.timeIn || undefined,
+            timeOut: l.timeOut || undefined,
+            lateMinutes: Number(l.lateMinutes || 0),
+            undertimeMinutes: Number(l.undertimeMinutes || 0),
+            status: l.status || 'Present',
+            department: l.department || 'N/A',
+            duties: l.duties
+        }));
+    };
+
     try {
-      const selectedDept = filters?.department && filters?.department !== 'All Departments' && filters?.department !== 'all' ? filters.department : null;
+      const selectedDept = filters?.department && filters?.department !== 'All Departments' && filters?.department !== 'all' ? filters.department : undefined;
 
       // 1. Fetch data in parallel
       const [logsResponse, employeesResponse, leavesResponse] = await Promise.all([
@@ -143,7 +160,7 @@ const AttendanceExport: React.FC<AttendanceExportProps> = ({ data, title, dateRa
           page: 1,
           limit: 100000 
         }),
-        employeeApi.fetchEmployees({ department: selectedDept }),
+        employeeApi.fetchEmployees({ department: selectedDept } as { department?: string | null }),
         leaveApi.getAllApplications({
           status: 'Approved',
           startDate: appliedStartDate,
@@ -227,7 +244,7 @@ const AttendanceExport: React.FC<AttendanceExportProps> = ({ data, title, dateRa
           }
       } catch (e) {
           console.error("Date parsing failed", e);
-          return rawLogs;
+          return transformLogs(rawLogs);
       }
 
       // 4. Build Final Data
@@ -252,7 +269,21 @@ const AttendanceExport: React.FC<AttendanceExportProps> = ({ data, title, dateRa
           });
       }
 
-      if (targetEmployeesList.length === 0 && rawLogs.length > 0) return rawLogs;
+      if (targetEmployeesList.length === 0 && rawLogs.length > 0) {
+          return rawLogs.map(l => ({
+              id: l.id,
+              employeeId: String(l.employeeId),
+              name: l.employeeName || 'Unknown',
+              date: String(l.date),
+              timeIn: l.timeIn || undefined,
+              timeOut: l.timeOut || undefined,
+              lateMinutes: Number(l.lateMinutes || 0),
+              undertimeMinutes: Number(l.undertimeMinutes || 0),
+              status: l.status || 'Present',
+              department: l.department || 'N/A',
+              duties: l.duties
+          }));
+      }
 
       const manilaToday = new Date().toLocaleString("en-US", {timeZone: "Asia/Manila"});
       const todayStr = new Date(manilaToday).toISOString().split('T')[0];

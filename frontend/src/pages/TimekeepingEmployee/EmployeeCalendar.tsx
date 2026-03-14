@@ -1,4 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
+import { DndProvider } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
 import {
   useCalendarState,
   useCalendarNav,
@@ -68,68 +70,70 @@ export default function EmployeeCalendar() {
   const { month, day, year, dayName, displayedEvents } = calendarData;
 
   return (
-    <div className="flex h-screen bg-[#274b46] overflow-hidden">
-      {/* MAIN CALENDAR AREA */}
-      <div className="flex-1 flex flex-col">
-        <CalendarHeader month={month} year={year} />
+    <DndProvider backend={HTML5Backend}>
+      <div className="flex h-screen bg-[#274b46] overflow-hidden">
+        {/* MAIN CALENDAR AREA */}
+        <div className="flex-1 flex flex-col">
+          <CalendarHeader month={month} year={year} />
 
-        <CalendarControls
+          <CalendarControls
+            onPrevMonth={navigation.handlePrevMonth}
+            onNextMonth={navigation.handleNextMonth}
+            onToday={navigation.handleToday}
+            showHolidays={showHolidays}
+            onToggleHolidays={() => setShowHolidays(!showHolidays)}
+            actions={
+              <EmployeeCalendarActions
+                onOpenDrawer={() => setIsDrawerOpen(true)}
+              />
+            }
+          />
+
+          {/* Calendar Body */}
+          <div className="flex-1 overflow-auto p-8 bg-[#F8F9FA]">
+            <CalendarGrid
+              currentDate={currentDate}
+              today={today}
+              onDateClick={navigation.handleDateClick}
+              showHolidays={showHolidays}
+              holidays={holidays as unknown as import('@components/Custom/CalendarComponents/shared/components/CalendarGrid').GridItem[]}
+              announcements={announcements}
+              displayedEvents={displayedEvents}
+            />
+          </div>
+        </div>
+
+        {/* DRAWER SIDEBAR */}
+        <DrawerSidebar
+          isOpen={isDrawerOpen}
+          onClose={() => setIsDrawerOpen(false)}
+          currentDate={currentDate}
+          today={today}
+          month={month}
+          year={year}
+          onDateClick={navigation.handleDateClick}
           onPrevMonth={navigation.handlePrevMonth}
           onNextMonth={navigation.handleNextMonth}
-          onToday={navigation.handleToday}
-          showHolidays={showHolidays}
-          onToggleHolidays={() => setShowHolidays(!showHolidays)}
-          actions={
-            <EmployeeCalendarActions
-              onOpenDrawer={() => setIsDrawerOpen(true)}
-            />
-          }
-        />
-
-        {/* Calendar Body */}
-        <div className="flex-1 overflow-auto p-8 bg-[#F8F9FA]">
-          <CalendarGrid
-            currentDate={currentDate}
-            today={today}
-            onDateClick={navigation.handleDateClick}
-            showHolidays={showHolidays}
-            holidays={holidays as unknown as import('@components/Custom/CalendarComponents/shared/components/CalendarGrid').GridItem[]}
-            announcements={announcements}
-            displayedEvents={displayedEvents}
-          />
-        </div>
-      </div>
-
-      {/* DRAWER SIDEBAR */}
-      <DrawerSidebar
-        isOpen={isDrawerOpen}
-        onClose={() => setIsDrawerOpen(false)}
-        currentDate={currentDate}
-        today={today}
-        month={month}
-        year={year}
-        onDateClick={navigation.handleDateClick}
-        onPrevMonth={navigation.handlePrevMonth}
-        onNextMonth={navigation.handleNextMonth}
-        displayedEvents={displayedEvents}
-        hours={HOURS_12}
-        onEventClick={(e) => setShowEventDetails(e as unknown as typeof showEventDetails)}
-        showHolidays={showHolidays}
-        holidays={holidays.map(h => ({ ...h, name: h.title })) as unknown as Holiday[]}
-        announcements={announcements}
-      />
-
-      {/* Event Details Modal */}
-      {showEventDetails && (
-        <EventDetailsModal
-          event={showEventDetails as unknown as CalendarEvent}
-          onClose={() => setShowEventDetails(null)}
+          displayedEvents={displayedEvents}
           hours={HOURS_12}
-          month={month}
-          day={day}
-          dayName={dayName}
+          onEventClick={(e) => setShowEventDetails(e as unknown as typeof showEventDetails)}
+          showHolidays={showHolidays}
+          holidays={holidays.map(h => ({ ...h, name: h.title })) as unknown as Holiday[]}
+          announcements={announcements}
         />
-      )}
-    </div>
+
+        {/* Event Details Modal */}
+        {showEventDetails && (
+          <EventDetailsModal
+            event={showEventDetails as unknown as CalendarEvent}
+            onClose={() => setShowEventDetails(null)}
+            hours={HOURS_12}
+            month={month}
+            day={day}
+            dayName={dayName}
+          />
+        )}
+      </div>
+    </DndProvider>
   );
 }

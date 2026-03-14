@@ -52,7 +52,7 @@ const Form9Modal: React.FC = memo(() => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 print:p-0 print:bg-white print:block print:inset-auto print:static">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 print:p-0 print:bg-white print:block print:inset-auto print:static">
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-7xl max-h-[95vh] flex flex-col print:shadow-none print:max-w-none print:max-h-none print:h-auto print:w-full">
         {/* Header - No Print */}
         <div className="flex justify-between items-center p-4 border-b border-gray-200 bg-gray-50 print:hidden rounded-t-xl">

@@ -22,11 +22,11 @@ const ReviewDetailsModal: React.FC<ReviewDetailsModalProps> = ({
 }) => {
   if (!isOpen || !selectedReview) return null;
 
-  const selfRatingInfo = selectedReview.selfRatingScore 
-    ? getAdjectivalRating(selectedReview.selfRatingScore) 
+  const selfRatingInfo = (selectedReview.selfRatingScore !== null && selectedReview.selfRatingScore !== undefined)
+    ? getAdjectivalRating(Number(selectedReview.selfRatingScore)) 
     : null;
-  const reviewerRatingInfo = selectedReview.totalScore 
-    ? getAdjectivalRating(selectedReview.totalScore) 
+  const reviewerRatingInfo = (selectedReview.totalScore !== null && selectedReview.totalScore !== undefined)
+    ? getAdjectivalRating(Number(selectedReview.totalScore)) 
     : null;
 
   return (
@@ -145,7 +145,7 @@ const ReviewDetailsModal: React.FC<ReviewDetailsModalProps> = ({
                           </div>
                         )}
                         <div 
-                          className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm shadow-sm border ${getScoreColor(item.score)}`} 
+                          className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm shadow-sm border ${getScoreColor(Number(item.score))}`} 
                           title="Reviewer Rating"
                         >
                           {item.score}

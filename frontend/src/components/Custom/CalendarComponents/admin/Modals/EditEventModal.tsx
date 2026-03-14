@@ -11,7 +11,7 @@ interface EditEventModalProps {
   show: boolean;
   event: CalendarEvent | null;
   onClose: () => void;
-  onUpdate: (data: EventFormData) => void;
+  onUpdate: (data: CalendarEvent) => void;
   hours: string[];
   departments?: Department[];
 }
@@ -57,7 +57,7 @@ const EditEventModal = ({ show, event, onClose, onUpdate, hours = [], department
         date: event.startDate || event.date || '',
         startDate: event.startDate || event.date || '', 
         endDate: event.endDate || event.startDate || event.date || '', 
-        time: formatHour12(convertTo24Hour(event.time ?? undefined)), 
+        time: event.time ? formatHour12(convertTo24Hour(String(event.time))) : '', 
         description: event.description || '', 
         department: event.department || '', 
         recurringPattern: event.recurringPattern || 'none', 
@@ -78,16 +78,13 @@ const EditEventModal = ({ show, event, onClose, onUpdate, hours = [], department
   }, []);
 
   const onSubmit = (data: EventFormData) => {
+    if (!event) return;
     onUpdate({ 
-      title: data.title, 
-      startDate: data.startDate, 
-      endDate: data.endDate, 
-      date: data.startDate, 
-      time: data.time ? (convertTo24Hour(data.time) as unknown as string) : null, 
-      description: data.description, 
-      department: data.department || null, 
-      recurringPattern: data.recurringPattern, 
-      recurringEndDate: data.recurringEndDate 
+      ...event,
+      ...data,
+      date: data.startDate,
+      time: data.time ? convertTo24Hour(data.time) : null,
+      department: data.department || null
     });
   };
 

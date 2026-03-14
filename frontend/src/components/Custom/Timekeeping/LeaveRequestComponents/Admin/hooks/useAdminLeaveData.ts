@@ -53,7 +53,6 @@ export const useAdminLeaveData = (initialFilters?: Record<string, string>) => {
           finalAttachmentPath: l.finalAttachmentPath,
           firstName: firstName,
           lastName: lastName,
-          leaveType: l.leaveType,
           startDate: l.startDate, // Ensuring date properties exist as expected by UI
           endDate: l.endDate,
           currentBalance: undefined // Handle missing field if needed or use other from L

@@ -91,21 +91,21 @@ export const DTRCorrectionModal: React.FC<DTRCorrectionModalProps> = ({
   if (!isOpen || !record) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 transition-all duration-300" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4 transition-all duration-300" onClick={onClose}>
       <div 
-        className="bg-white/95 backdrop-blur-md rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] w-full max-w-md border border-white/20 overflow-hidden animate-in fade-in zoom-in duration-300"
+        className="bg-white rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] w-full max-w-md border border-white/20 overflow-hidden animate-in fade-in zoom-in duration-300"
         onClick={(e) => e.stopPropagation()}
       >
         
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
             <div className="flex items-center gap-3">
-              <div className="bg-slate-50 p-2.5 rounded-xl">
-                <Clock className="w-5 h-5 text-slate-600" />
+              <div className="p-2.5 rounded-xl">
+                <Clock className="w-5 h-5 text-gray-400" />
               </div>
               <div>
-                <h2 className="text-lg font-bold text-gray-900 leading-tight">Request Correction</h2>
-                <p className="text-xs text-gray-500 font-medium">For {record.date}</p>
+                <h2 className="text-xl font-bold text-gray-800 leading-tight">Request Correction</h2>
+                <p className="text-sm text-gray-800 mt-1">For {record.date}</p>
               </div>
             </div>
             <button 
@@ -113,7 +113,7 @@ export const DTRCorrectionModal: React.FC<DTRCorrectionModalProps> = ({
               onClick={onClose} 
               className="text-gray-400 hover:text-gray-600 transition-colors p-1.5 rounded-full hover:bg-gray-100"
             >
-              <X className="w-5 h-5" />
+              <X className="w-5 h-5 text-gray-400" />
             </button>
           </div>
 
@@ -122,8 +122,8 @@ export const DTRCorrectionModal: React.FC<DTRCorrectionModalProps> = ({
           <div className="px-6 py-6 space-y-6">
             
             {/* Info Box */}
-            <div className="flex items-start gap-3 p-3.5 bg-slate-50 text-slate-600 rounded-xl text-sm border border-slate-200">
-              <Info size={18} className="shrink-0 mt-0.5 text-slate-400" />
+            <div className="flex items-start gap-3 p-3.5 bg-slate-50 text-gray-800 rounded-xl text-sm border border-slate-200">
+              <Info size={18} className="shrink-0 mt-0.5 text-gray-400" />
               <p className="font-medium leading-relaxed">
                 Provide the correct times and a valid reason. Your request will be reviewed by HR/Admin.
               </p>
@@ -131,37 +131,37 @@ export const DTRCorrectionModal: React.FC<DTRCorrectionModalProps> = ({
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-xs font-bold text-gray-700 mb-1.5 block uppercase tracking-wider">Corrected Time In</label>
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Corrected Time In</label>
                 <div className="relative">
                   <input
                     type="time"
                     {...register('timeIn')}
-                    className="w-full pl-3 pr-3 py-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-slate-500/10 focus:border-slate-500 text-gray-900 transition-all font-medium"
+                    className="w-full pl-3 pr-3 py-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-slate-500/10 focus:border-slate-500 text-gray-800 transition-all font-medium"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1.5 uppercase tracking-wider">Corrected Time Out</label>
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Corrected Time Out</label>
                 <div className="relative">
                   <input
                     type="time"
                     {...register('timeOut')}
-                    className="w-full pl-3 pr-3 py-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-slate-500/10 focus:border-slate-500 text-gray-900 transition-all font-medium"
+                    className="w-full pl-3 pr-3 py-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-slate-500/10 focus:border-slate-500 text-gray-800 transition-all font-medium"
                   />
                 </div>
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1.5 uppercase tracking-wider">Reason for Correction</label>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Reason for Correction</label>
               <textarea
                 {...register('reason')}
                 rows={3}
                 placeholder="Why is a correction needed? (e.g., system glitch, forgot to scan)"
-                className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-slate-500/10 focus:border-slate-500 text-gray-900 transition-all font-medium placeholder:text-gray-400 resize-none text-sm"
+                className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-slate-500/10 focus:border-slate-500 text-gray-800 transition-all font-medium placeholder:text-gray-400 resize-none text-sm"
               />
-              {errors.reason && <p className="text-red-500 text-[10px] mt-1.5 font-bold uppercase tracking-wide px-1">{errors.reason.message}</p>}
+              {errors.reason && <p className="text-red-500 text-[10px] mt-1.5 font-bold tracking-wide px-1">{errors.reason.message}</p>}
             </div>
           </div>
 
@@ -186,7 +186,7 @@ export const DTRCorrectionModal: React.FC<DTRCorrectionModalProps> = ({
                 </>
               ) : (
                 <>
-                  <Send className="w-4 h-4" />
+                  <Send className="w-4 h-4 text-gray-400" />
                   Submit Request
                 </>
               )}

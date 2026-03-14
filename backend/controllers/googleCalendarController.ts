@@ -260,7 +260,7 @@ export const disconnectGoogleCalendar = async (req: Request, res: Response): Pro
     
     res.json({ message: 'Google Calendar disconnected successfully' });
   } catch (error) {
-    const _err = error as Error;
+    // const _err = error as Error;
 
     res.status(500).json({ message: 'Failed to disconnect Google Calendar' });
   }
@@ -289,7 +289,7 @@ export const getSyncStatus = async (req: Request, res: Response): Promise<void> 
       syncedEventsCount: syncedCount.count,
     });
   } catch (error) {
-    const _err = error as Error;
+    // const _err = error as Error;
 
     res.status(500).json({ message: 'Failed to get sync status' });
   }
@@ -358,7 +358,7 @@ export const importFromGoogle = async (req: Request, res: Response): Promise<voi
 
     res.json({ message: 'Events imported successfully', imported, total: googleEventsList.length });
   } catch (error) {
-    const _err = error as Error;
+    // const _err = error as Error;
 
     res.status(500).json({ message: 'Failed to import events from Google Calendar' });
   }
@@ -414,7 +414,7 @@ export const exportToGoogle = async (req: Request, res: Response): Promise<void>
 
     res.json({ message: 'Events exported successfully', exported });
   } catch (error) {
-    const _err = error as Error;
+    // const _err = error as Error;
 
     res.status(500).json({ message: 'Failed to export events to Google Calendar' });
   }
@@ -424,7 +424,7 @@ export const bidirectionalSync = async (_req: Request, res: Response): Promise<v
   try {
     res.json({ message: 'Bidirectional sync is handled by separate import/export endpoints' });
   } catch (error) {
-    const _err = error as Error;
+    // const _err = error as Error;
 
     res.status(500).json({ message: 'Failed to complete bidirectional sync' });
   }

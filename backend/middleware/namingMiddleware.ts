@@ -4,16 +4,13 @@ import { toCamelCase } from '../utils/caseUtils.js';
 type JsonValue = string | number | boolean | null | undefined | { [key: string]: JsonValue } | JsonValue[];
 
 export const namingMiddleware = (req: Request, _res: Response, next: NextFunction) => {
+  // Use structural type assertion to allow mutation of body and query if they are marked readonly in the environment
   if (req.body && typeof req.body === 'object') {
-    // Cast to JsonValue for toCamelCase then back to req.body's type
-    const camelBody = toCamelCase(req.body as JsonValue);
-    req.body = camelBody as typeof req.body;
+    (req as { body: JsonValue }).body = toCamelCase(req.body as JsonValue);
   }
   
   if (req.query && typeof req.query === 'object') {
-    // Cast to JsonValue for toCamelCase then back to req.query's type
-    const camelQuery = toCamelCase(req.query as unknown as JsonValue);
-    req.query = camelQuery as typeof req.query;
+    (req as { query: JsonValue }).query = toCamelCase(req.query as JsonValue);
   }
 
   next();

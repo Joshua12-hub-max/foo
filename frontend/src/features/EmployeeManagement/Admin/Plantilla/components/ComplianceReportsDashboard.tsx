@@ -155,7 +155,7 @@ const ComplianceReportsDashboard: React.FC<ReportsDashboardProps> = memo(({ depa
                                    experience: String(p.experience),
                                    eligibility: p.eligibility,
                                    competency: p.competency,
-                                   placeOfAssignment: p.place_of_assignment || 'City Hall'
+                                   placeOfAssignment: p.placeOfAssignment || 'City Hall'
                                }))
                            };
                            await generateForm9Excel(mappedData);
@@ -166,7 +166,7 @@ const ComplianceReportsDashboard: React.FC<ReportsDashboardProps> = memo(({ depa
                             // Map PSIPOPRow to Position (adding mock id/properties)
                              const positions = psipop.data.data.map((p: PSIPOPRow) => ({
                                  ...p,
-                                 incumbent_name: p.incumbent_name ?? undefined,
+                                 incumbentName: p.incumbentName ?? undefined,
                                  id: Math.random(),
                                  departmentId: 0,
                                  education: '',
@@ -222,7 +222,7 @@ const ComplianceReportsDashboard: React.FC<ReportsDashboardProps> = memo(({ depa
                                    experience: String(p.experience),
                                    eligibility: p.eligibility,
                                    competency: p.competency,
-                                   placeOfAssignment: p.place_of_assignment || 'City Hall'
+                                   placeOfAssignment: p.placeOfAssignment || 'City Hall'
                                }))
                            };
                            generateForm9PDF(mappedData);
@@ -232,7 +232,7 @@ const ComplianceReportsDashboard: React.FC<ReportsDashboardProps> = memo(({ depa
                          if (psipop?.data?.data) {
                             const positions = psipop.data.data.map((p: PSIPOPRow) => ({
                                  ...p,
-                                 incumbent_name: p.incumbent_name ?? undefined,
+                                 incumbentName: p.incumbentName ?? undefined,
                                  id: Math.random(),
                                  departmentId: 0,
                                  education: '',
@@ -301,7 +301,7 @@ const ComplianceReportsDashboard: React.FC<ReportsDashboardProps> = memo(({ depa
                         row.salaryGrade, 
                         formatPHP(row.monthlySalary),
                         row.department,
-                        row.incumbent_name || 'VACANT',
+                        row.incumbentName || 'VACANT',
                         row.isVacant ? 'Vacant' : 'Filled'
                     ]) || []}
                 />
@@ -344,24 +344,48 @@ const TablePreview = ({ loading, headers, data }: { loading: boolean; headers: s
     );
 
     return (
-        <table className="w-full text-left border-collapse">
-            <thead>
-                <tr className="bg-gray-50 border-b border-gray-100">
-                    {headers.map(h => (
-                        <th key={h} className="px-6 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">{h}</th>
-                    ))}
-                </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-                {data.map((row, i) => (
-                    <tr key={i} className="hover:bg-gray-50/50 transition-colors">
-                        {row.map((cell, j) => (
-                            <td key={j} className="px-6 py-3 text-[11px] font-bold text-gray-700">{cell}</td>
+        <div className="overflow-x-auto bg-gray-50 rounded-lg">
+            <table className="w-full min-w-[1000px]">
+                <thead className="bg-gray-200 shadow-md text-gray-700">
+                    <tr>
+                        {headers.map(h => (
+                            <th key={h} className="px-6 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap uppercase">{h}</th>
                         ))}
                     </tr>
-                ))}
-            </tbody>
-        </table>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                    {data.map((row, i) => (
+                        <tr key={i} className="hover:bg-[#F8F9FA] hover:shadow-xl transition-colors group bg-white">
+                            {row.map((cell, j) => {
+                                // Specialized rendering for Status column if it's the last one in PSIPOP
+                                const isStatusColumn = headers[j] === 'Status';
+                                const isItemNoColumn = headers[j] === 'Item No.';
+                                
+                                return (
+                                    <td key={j} className="px-6 py-4 whitespace-nowrap">
+                                        {isStatusColumn ? (
+                                            <span className={`px-3 py-1 text-[11px] font-bold rounded-full border transition-all ${
+                                                cell === 'Vacant' 
+                                                    ? 'bg-amber-50 text-amber-700 border-amber-100' 
+                                                    : 'bg-green-50 text-green-700 border-green-100'
+                                            }`}>
+                                                {String(cell).toUpperCase()}
+                                            </span>
+                                        ) : isItemNoColumn ? (
+                                            <span className="text-sm font-medium text-gray-700">{cell}</span>
+                                        ) : (
+                                            <span className={`text-sm ${headers[j] === 'Position' ? 'font-semibold text-gray-800' : 'text-gray-600'}`}>
+                                                {cell}
+                                            </span>
+                                        )}
+                                    </td>
+                                );
+                            })}
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
     );
 };
 

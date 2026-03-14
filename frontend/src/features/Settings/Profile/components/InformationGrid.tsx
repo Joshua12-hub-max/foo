@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronDown, Lock, Loader2 } from 'lucide-react';
+import { ChevronDown, Lock, Loader2, Mail, Phone, MapPin, Calendar, User as LucideUser, Briefcase, GraduationCap, Shield, ChevronRight, Ruler, Weight, Droplets, MapPinIcon, Globe, CreditCard, Building2, BadgeCheck, FileText } from 'lucide-react';
 import InfoItem from './InfoItem';
 import EmploymentStatusBadge from '@components/Custom/Common/EmploymentStatusBadge';
 import { enableTwoFactor, disableTwoFactor } from '@/Service/Auth';
@@ -13,7 +13,7 @@ interface InformationGridProps {
   formData: ProfileFormData;
   handleChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   setIsEditing: (isEditing: boolean) => void;
-  setProfile: React.Dispatch<React.SetStateAction<User | null>>;
+  setProfile: React.Dispatch<React.SetStateAction<Profile | null>>;
 }
 
 // Toggle Section Component
@@ -28,13 +28,13 @@ const ToggleSection: React.FC<{ title: string; defaultOpen?: boolean; children: 
         onClick={() => setIsOpen(!isOpen)}
         className="w-full flex items-center justify-between py-4 text-left group"
       >
-        <h3 className="text-xs font-black text-gray-800 uppercase tracking-widest">{title}</h3>
+        <h3 className="text-xs font-black text-gray-800">{title}</h3>
         <ChevronDown 
           size={16} 
           className={`text-gray-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} 
         />
       </button>
-      <div className={`overflow-hidden transition-all duration-200 ${isOpen ? 'max-h-[1000px] opacity-100 pb-4' : 'max-h-0 opacity-0'}`}>
+      <div className={`overflow-hidden transition-all duration-200 ${isOpen ? 'max-h-[2000px] opacity-100 pb-4' : 'max-h-0 opacity-0'}`}>
         {children}
       </div>
     </div>
@@ -71,95 +71,191 @@ const InformationGrid: React.FC<InformationGridProps> = ({
       }
   };
 
+  const renderInput = (label: string, name: keyof ProfileFormData, type: string = "text", placeholder: string = "") => (
+    <div className="mb-4">
+      <label className="block text-[10px] font-semibold text-gray-400 mb-1.5">{label}</label>
+      <input
+        type={type}
+        name={name}
+        value={formData[name] || ''}
+        onChange={handleChange}
+        className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-200 transition-all font-medium"
+        placeholder={placeholder}
+      />
+    </div>
+  );
+
   return (
     <div className="w-full">
       
-      {/* Personal Information */}
+      {/* 1. Personal Information */}
       <ToggleSection title="Personal Information">
         {isEditing ? (
-          <div className="space-y-4">
-            <div>
-              <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Last Name</label>
-              <input
-                type="text"
-                name="lastName"
-                value={formData.lastName}
-                onChange={handleChange}
-                className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-200 transition-all"
-                placeholder="Enter last name"
-              />
-            </div>
-            <div>
-              <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">First Name</label>
-              <input
-                type="text"
-                name="firstName"
-                value={formData.firstName}
-                onChange={handleChange}
-                className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-200 transition-all"
-                placeholder="Enter first name"
-              />
-            </div>
-            <div>
-              <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Email Address</label>
-              <input
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-200 transition-all"
-                placeholder="Enter email"
-              />
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6">
+            {renderInput("First Name", "firstName")}
+            {renderInput("Last Name", "lastName")}
+            {renderInput("Middle Name", "middleName")}
+            {renderInput("Suffix", "suffix")}
+            {renderInput("Birth Date", "birthDate", "date")}
+            {renderInput("Sex / Gender", "gender")}
+            {renderInput("Civil Status", "civilStatus")}
+            {renderInput("Nationality", "nationality")}
+            {renderInput("Place of Birth", "placeOfBirth")}
+            {renderInput("Religion", "religion")}
+            {renderInput("Citizenship", "citizenship")}
+            {renderInput("Citizenship Type", "citizenshipType")}
           </div>
         ) : (
-          <div>
-            <InfoItem label="Full Name" value={profile?.name} editable setIsEditing={setIsEditing} />
-            <InfoItem label="Email Address" value={profile?.email} editable setIsEditing={setIsEditing} />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8">
+            <InfoItem label="Full Name" value={profile?.name || `${profile?.firstName} ${profile?.lastName}`} editable setIsEditing={setIsEditing} />
             <InfoItem label="Employee ID" value={profile?.employeeId || user?.employeeId} />
-            <InfoItem label="Role" value={profile?.role ? profile.role.charAt(0).toUpperCase() + profile.role.slice(1) : ''} />
+            <InfoItem label="Birth Date" value={profile?.birthDate} />
+            <InfoItem label="Sex / Gender" value={profile?.gender} />
+            <InfoItem label="Civil Status" value={profile?.civilStatus} />
+            <InfoItem label="Nationality" value={profile?.nationality} />
+            <InfoItem label="Place of Birth" value={profile?.placeOfBirth} />
+            <InfoItem label="Religion" value={profile?.religion} />
+            <InfoItem label="Citizenship" value={profile?.citizenship} />
+            <InfoItem label="Citizenship Type" value={profile?.citizenshipType} />
           </div>
         )}
       </ToggleSection>
 
-      {/* Contact Information */}
+      {/* 2. Contact Information */}
       <ToggleSection title="Contact Information">
-        <div>
-          <InfoItem label="Residential Address" value={profile?.residentialAddress || profile?.address} />
-          <InfoItem label="Permanent Address" value={profile?.permanentAddress} />
-          <InfoItem label="Emergency Contact Person" value={profile?.emergencyContact} />
-          <InfoItem label="Emergency Contact Number" value={profile?.emergencyContactNumber} />
-        </div>
+        {isEditing ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6">
+             {renderInput("Email Address", "email", "email")}
+             {renderInput("Mobile Number", "mobileNo")}
+             {renderInput("Telephone Number", "telephoneNo")}
+             <div className="md:col-span-2">
+                {renderInput("Residential Address", "residentialAddress")}
+                {renderInput("Permanent Address", "permanentAddress")}
+             </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8">
+            <InfoItem label="Email Address" value={profile?.email} />
+            <InfoItem label="Mobile Number" value={profile?.mobileNo || profile?.phoneNumber} />
+            <InfoItem label="Telephone Number" value={profile?.telephoneNo} />
+            <div className="md:col-span-2">
+              <InfoItem label="Residential Address" value={profile?.residentialAddress || profile?.address} />
+              <InfoItem label="Permanent Address" value={profile?.permanentAddress} />
+            </div>
+            <InfoItem label="Emergency Contact" value={profile?.emergencyContact} />
+            <InfoItem label="Emergency Number" value={profile?.emergencyContactNumber} />
+          </div>
+        )}
       </ToggleSection>
 
-      {/* Educational Background */}
-      <ToggleSection title="Educational Background">
-        <div>
-          <InfoItem label="Highest Achievement / Details" value={profile?.educationalBackground} />
-        </div>
-      </ToggleSection>
-
-      {/* Work Information */}
+      {/* 3. Work Information */}
       <ToggleSection title="Work Information">
-        <div>
-          <InfoItem label="Department" value={profile?.department} />
-          <InfoItem label="Position Title" value={profile?.jobTitle} />
-          <InfoItem 
-            label="Date Hired" 
-            value={profile?.dateHired 
-              ? new Date(profile.dateHired).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) 
-              : null
-            } 
-          />
-          <div className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0">
-            <div>
-              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Employment Status</p>
-              <div className="mt-1">
-                <EmploymentStatusBadge status={profile?.employmentStatus || 'Active'} />
+        {isEditing ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6">
+            {renderInput("Office Address", "officeAddress")}
+            {renderInput("Station", "station")}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8">
+            <InfoItem label="Department" value={profile?.department} />
+            <InfoItem label="Position Title" value={profile?.jobTitle || profile?.positionTitle} />
+            <InfoItem label="Appointment Type" value={profile?.appointmentType} />
+            <InfoItem label="Employment Type" value={profile?.employmentType} />
+            <InfoItem label="Salary Grade" value={profile?.salaryGrade} />
+            <InfoItem label="Step Increment" value={profile?.stepIncrement} />
+            <InfoItem label="Item Number" value={profile?.itemNumber} />
+            <InfoItem label="Station" value={profile?.station} />
+            <div className="md:col-span-2">
+               <InfoItem label="Office Address" value={profile?.officeAddress} />
+            </div>
+            <InfoItem 
+              label="Date Hired" 
+              value={profile?.dateHired 
+                ? new Date(profile.dateHired).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) 
+                : null
+              } 
+            />
+            <InfoItem 
+              label="Original Appointment" 
+              value={profile?.originalAppointmentDate} 
+            />
+            <InfoItem label="Last Promotion" value={profile?.lastPromotionDate} />
+            <div className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0 md:col-span-2">
+              <div>
+                <p className="text-[10px] font-semibold text-gray-400">Employment Status</p>
+                <div className="mt-1">
+                  <EmploymentStatusBadge status={profile?.employmentStatus || 'Active'} />
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
+      </ToggleSection>
+
+      {/* 4. Government Identifiers */}
+      <ToggleSection title="Government Identifiers">
+        {isEditing ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6">
+            {renderInput("UMID Number", "umidNumber")}
+            {renderInput("PhilSys ID", "philsysId")}
+            {renderInput("PhilHealth Number", "philhealthNumber")}
+            {renderInput("Pag-IBIG Number", "pagibigNumber")}
+            {renderInput("TIN Number", "tinNumber")}
+            {renderInput("GSIS BP Number", "gsisNumber")}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8">
+            <InfoItem label="UMID Number" value={profile?.umidNumber} />
+            <InfoItem label="PhilSys ID" value={profile?.philsysId} />
+            <InfoItem label="PhilHealth Number" value={profile?.philhealthNumber} />
+            <InfoItem label="Pag-IBIG Number" value={profile?.pagibigNumber} />
+            <InfoItem label="TIN Number" value={profile?.tinNumber} />
+            <InfoItem label="GSIS BP Number" value={profile?.gsisNumber} />
+          </div>
+        )}
+      </ToggleSection>
+
+      {/* 5. Physical Characteristics */}
+      <ToggleSection title="Physical Characteristics">
+        {isEditing ? (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4">
+            {renderInput("Height (m)", "heightM", "number")}
+            {renderInput("Weight (kg)", "weightKg", "number")}
+            {renderInput("Blood Type", "bloodType")}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8">
+            <InfoItem label="Height (m)" value={profile?.heightM} />
+            <InfoItem label="Weight (kg)" value={profile?.weightKg} />
+            <InfoItem label="Blood Type" value={profile?.bloodType} />
+          </div>
+        )}
+      </ToggleSection>
+
+      {/* 6. Academic & Eligibility */}
+      <ToggleSection title="Academic & Eligibility">
+        {isEditing ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6">
+            {renderInput("Highest Educational Background", "educationalBackground")}
+            {renderInput("School Name", "schoolName")}
+            {renderInput("Course", "course")}
+            {renderInput("Year Graduated", "yearGraduated")}
+            {renderInput("Eligibility Type", "eligibilityType")}
+            {renderInput("Eligibility Number", "eligibilityNumber")}
+            {renderInput("Eligibility Date", "eligibilityDate", "date")}
+            {renderInput("Years of Experience", "yearsOfExperience", "number")}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8">
+            <InfoItem label="Highest Degree" value={profile?.educationalBackground} />
+            <InfoItem label="School Name" value={profile?.schoolName} />
+            <InfoItem label="Course" value={profile?.course} />
+            <InfoItem label="Year Graduated" value={profile?.yearGraduated} />
+            <InfoItem label="Eligibility Type" value={profile?.eligibilityType} />
+            <InfoItem label="Eligibility Date" value={profile?.eligibilityDate} />
+            <InfoItem label="Years of Experience" value={profile?.yearsOfExperience} />
+          </div>
+        )}
       </ToggleSection>
 
       {/* Security Settings */}
@@ -188,7 +284,6 @@ const InformationGrid: React.FC<InformationGridProps> = ({
           </button>
         </div>
       </ToggleSection>
-
     </div>
   );
 };

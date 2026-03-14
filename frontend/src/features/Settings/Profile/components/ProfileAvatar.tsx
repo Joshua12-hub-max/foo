@@ -2,23 +2,11 @@ import React from 'react';
 import { Camera } from 'lucide-react';
 import EmploymentStatusBadge from '@/components/Custom/Common/EmploymentStatusBadge';
 
-interface Profile {
-  name?: string;
-  role?: string;
-  department?: string | null;
-  employmentStatus?: string | null;
-  avatar?: string;
-}
-
-interface FormData {
-  firstName: string;
-  lastName: string;
-  email: string;
-}
+import { Profile, ProfileFormData } from '../types';
 
 interface ProfileAvatarProps {
   profile: Profile | null;
-  formData: FormData;
+  formData: ProfileFormData;
   isEditing: boolean;
   avatarPreview: string | null;
   handleAvatarChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -34,7 +22,7 @@ const ProfileAvatar: React.FC<ProfileAvatarProps> = ({ profile, formData, isEdit
               <img src={avatarPreview} alt="Avatar" className="w-full h-full object-cover" />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-gray-500 text-xl font-bold">
-                {formData.firstName?.[0]?.toUpperCase()}{formData.lastName?.[0]?.toUpperCase()}
+                {formData.firstName?.[0]}{formData.lastName?.[0]}
               </div>
             )}
           </div>
@@ -47,7 +35,9 @@ const ProfileAvatar: React.FC<ProfileAvatarProps> = ({ profile, formData, isEdit
         </div>
         
         <div className="flex-1">
-          <h2 className="text-lg font-bold text-gray-900">{profile?.name || 'User'}</h2>
+          <h2 className="text-lg font-bold text-gray-900">
+            {profile?.name || (profile?.firstName ? `${profile.firstName} ${profile.lastName}` : 'User')}
+          </h2>
           <div className="flex items-center gap-2 mt-1.5 flex-wrap">
             <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold ${
               profile?.role === 'Administrator' || profile?.role === 'Human Resource'
@@ -55,7 +45,7 @@ const ProfileAvatar: React.FC<ProfileAvatarProps> = ({ profile, formData, isEdit
                 ? 'bg-purple-100 text-purple-700' 
                 : 'bg-gray-200 text-gray-700'
             }`}>
-              {profile?.role?.charAt(0).toUpperCase() + (profile?.role?.slice(1) || '') || 'Employee'}
+              {profile?.role || 'Employee'}
             </span>
             {profile?.department && (
               <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-50 text-blue-700">

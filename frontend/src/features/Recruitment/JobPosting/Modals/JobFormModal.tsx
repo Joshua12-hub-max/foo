@@ -5,9 +5,70 @@ import { Department } from '@/types/org';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { jobSchema, JobSchema } from '@/schemas/jobSchema';
+import { Job, JobStatus, EmploymentType } from '@/types';
+import Combobox from '@/components/Custom/Combobox';
 
-const EMPLOYMENT_TYPES = ['Full-time', 'Part-time', 'Contractual', 'Job Order'];
+const EMPLOYMENT_TYPES = [
+  'Full-time', 
+  'Part-time', 
+  'Contractual', 
+  'Job Order', 
+  'Coterminous', 
+  'Temporary', 
+  'Probationary', 
+  'Casual', 
+  'Permanent'
+];
 const JOB_STATUSES = ['Open', 'Closed', 'On Hold'];
+
+const EMPLOYMENT_TYPE_OPTIONS = EMPLOYMENT_TYPES.map(type => ({ value: type, label: type }));
+const JOB_STATUS_OPTIONS = JOB_STATUSES.map(status => ({ value: status, label: status }));
+
+const DUTY_TYPE_OPTIONS = [
+  { value: 'Standard', label: 'Standard' },
+  { value: 'Irregular', label: 'Irregular' }
+];
+
+const EDUCATION_OPTIONS = [
+  { value: 'None required', label: 'None required' },
+  { value: 'Elementary Graduate', label: 'Elementary Graduate' },
+  { value: 'High School Graduate', label: 'High School Graduate' },
+  { value: 'Senior High School Graduate', label: 'Senior High School Graduate' },
+  { value: 'College Graduate', label: 'College Graduate' },
+  { value: "Master's Degree", label: "Master's Degree" },
+  { value: 'Doctorate Degree', label: 'Doctorate Degree' },
+  { value: 'Vocational/Technical', label: 'Vocational/Technical' }
+];
+
+const EXPERIENCE_OPTIONS = [
+  { value: 'None required', label: 'None required' },
+  { value: '6 months relevant experience', label: '6 months relevant experience' },
+  { value: '1 year relevant experience', label: '1 year relevant experience' },
+  { value: '2 years relevant experience', label: '2 years relevant experience' },
+  { value: '3 years relevant experience', label: '3 years relevant experience' },
+  { value: '4 years relevant experience', label: '4 years relevant experience' },
+  { value: '5+ years relevant experience', label: '5+ years relevant experience' }
+];
+
+const TRAINING_OPTIONS = [
+  { value: 'None required', label: 'None required' },
+  { value: '4 hours relevant training', label: '4 hours relevant training' },
+  { value: '8 hours relevant training', label: '8 hours relevant training' },
+  { value: '16 hours relevant training', label: '16 hours relevant training' },
+  { value: '24 hours relevant training', label: '24 hours relevant training' },
+  { value: '40 hours relevant training', label: '40 hours relevant training' }
+];
+
+const ELIGIBILITY_OPTIONS = [
+  { value: 'None required', label: 'None required' },
+  { value: 'Career Service (Professional)', label: 'Career Service (Professional)' },
+  { value: 'Career Service (Sub-Professional)', label: 'Career Service (Sub-Professional)' },
+  { value: 'Board/Bar RA 1080', label: 'Board/Bar RA 1080' },
+  { value: 'Special Laws (CES/CSEE)', label: 'Special Laws (CES/CSEE)' },
+  { value: "Driver's License", label: "Driver's License" },
+  { value: 'TESDA', label: 'TESDA' },
+  { value: 'NBI Clearance', label: 'NBI Clearance' }
+];
 
 interface JobFormModalProps {
   isOpen: boolean;
@@ -48,21 +109,34 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
       applicationEmail: '',
       jobDescription: '',
       requirements: '',
+      education: '',
+      experience: '',
+      training: '',
+      eligibility: '',
+      otherQualifications: '',
       requireCivilService: false,
       requireGovernmentIds: false,
       requireEducationExperience: false,
     }
     });
   const [departments, setDepartments] = useState<Department[]>([]);
-  const [isDeptOpen, setIsDeptOpen] = useState(false);
-  const [deptSearch, setDeptSearch] = useState('');
   
   // Watch fields
   const currentDept = watch('department');
   const currentEmploymentType = watch('employmentType');
   const isPermanent = currentEmploymentType === 'Permanent';
+  
+  const currentDutyType = watch('dutyType') || 'Standard';
+  const currentStatus = watch('status') || 'Open';
+  
+  const currentEducation = watch('education') || '';
+  const currentExperience = watch('experience') || '';
+  const currentTraining = watch('training') || '';
+  const currentEligibility = watch('eligibility') || '';
 
-  // Auto-lock toggles if Permanent is selected
+  // Options derived from state
+  const departmentOptions = departments.map(d => ({ value: d.name, label: d.name }));
+
   useEffect(() => {
     if (isPermanent) {
       setValue('requireCivilService', true, { shouldValidate: true });
@@ -70,16 +144,6 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
       setValue('requireEducationExperience', true, { shouldValidate: true });
     }
   }, [isPermanent, setValue]);
-
-  // Derived state for filtered departments
-  const filteredDepartments = departments.filter(d => 
-    d.name.toLowerCase().includes(deptSearch.toLowerCase())
-  );
-
-  useEffect(() => {
-    // Sync local search state with form value when it changes externally (e.g. edit mode)
-    if (currentDept) setDeptSearch(currentDept);
-  }, [currentDept]);
 
   useEffect(() => {
     const loadDepartments = async () => {
@@ -90,7 +154,6 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
     };
     if (isOpen) {
         loadDepartments();
-        setIsDeptOpen(false); // Reset dropdown state on open
     }
   }, [isOpen]);
 
@@ -107,6 +170,11 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
           applicationEmail: initialData.applicationEmail || '',
           jobDescription: initialData.jobDescription || '',
           requirements: initialData.requirements || '',
+          education: initialData.education || '',
+          experience: initialData.experience || '',
+          training: initialData.training || '',
+          eligibility: initialData.eligibility || '',
+          otherQualifications: initialData.otherQualifications || '',
           attachmentPath: initialData.attachmentPath || null,
           requireCivilService: initialData.requireCivilService || false,
           requireGovernmentIds: initialData.requireGovernmentIds || false,
@@ -123,6 +191,11 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
           applicationEmail: '',
           jobDescription: '',
           requirements: '',
+          education: '',
+          experience: '',
+          training: '',
+          eligibility: '',
+          otherQualifications: '',
           attachmentPath: null,
           requireCivilService: false,
           requireGovernmentIds: false,
@@ -141,6 +214,7 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
       const fields: (keyof JobSchema)[] = [
         'title', 'department', 'location', 'employmentType', 'dutyType',
         'status', 'applicationEmail', 'jobDescription', 'requirements',
+        'education', 'experience', 'training', 'eligibility', 'otherQualifications',
         'requireCivilService', 'requireGovernmentIds', 'requireEducationExperience'
       ];
 
@@ -216,65 +290,18 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
                 )}
             </div>
 
-            {/* Department (Moved Up) */}
+            {/* Department */}
             <div className="relative group z-20">
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Department <span className="text-red-500">*</span></label>
-                
-                <div className="relative">
-                  <input 
-                    type="text" 
+                <Combobox
+                    options={departmentOptions}
+                    value={currentDept}
+                    onChange={(val) => setValue('department', val, { shouldValidate: true })}
                     placeholder="Search or Select Department..."
-                    className={`w-full border ${errors.department ? 'border-red-500 ring-2 ring-red-200' : 'border-gray-200'} rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-400 focus:outline-none transition-all bg-gray-50`}
-                    {...register('department', {
-                        onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
-                            setDeptSearch(e.target.value);
-                            setIsDeptOpen(true);
-                        }
-                    })}
-                    onFocus={() => setIsDeptOpen(true)}
-                    autoComplete="off"
-                  />
-                  
-                  {/* Dropdown Indicator */}
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
-                    <ChevronDown size={14} />
-                  </div>
-
-                  {/* Dropdown List */}
-                  {isDeptOpen && (
-                    <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-60 overflow-y-auto animate-in fade-in zoom-in-95 duration-100">
-                        {filteredDepartments.length > 0 ? (
-                            filteredDepartments.map((dept, index) => (
-                                <button
-                                    key={dept.id}
-                                    type="button"
-                                    className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 transition-colors flex items-center group/item"
-                                    onClick={() => {
-                                        setValue('department', dept.name, { shouldValidate: true });
-                                        setDeptSearch(dept.name);
-                                        setIsDeptOpen(false);
-                                    }}
-                                >
-                                    <span className="text-gray-400 font-mono mr-3 text-xs">#{index + 1}</span>
-                                    <span className="font-medium text-gray-700 group-hover/item:text-gray-900">{dept.name}</span>
-                                </button>
-                            ))
-                        ) : (
-                            <div className="px-4 py-3 text-xs text-gray-500 text-center">
-                                No departments found. 
-                                <br />
-                                <span className="opacity-70">Type to create new validity check later...</span>
-                            </div>
-                        )}
-                    </div>
-                  )}
-                </div>
-
-                {/* Overlay to close when clicking outside */}
-                {isDeptOpen && (
-                    <div className="fixed inset-0 z-40" onClick={() => setIsDeptOpen(false)} />
-                )}
-
+                    className="w-full"
+                    buttonClassName="px-4 text-sm"
+                    error={!!errors.department}
+                />
                 {errors.department && <p className="text-red-500 text-xs mt-1 ml-1">{errors.department.message}</p>}
             </div>
 
@@ -307,13 +334,15 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
             <div className="grid grid-cols-1 gap-4">
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Duty Type</label>
-                <select 
-                  className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-400 focus:outline-none transition-all bg-gray-50 cursor-pointer"
-                  {...register('dutyType')}
-                >
-                  <option value="Standard">Standard</option>
-                  <option value="Irregular">Irregular</option>
-                </select>
+                <Combobox
+                    options={DUTY_TYPE_OPTIONS}
+                    value={currentDutyType}
+                    onChange={(val) => setValue('dutyType', val as 'Standard' | 'Irregular', { shouldValidate: true })}
+                    placeholder="Select Duty Type"
+                    className="w-full z-10"
+                    buttonClassName="px-4 text-sm"
+                    error={!!errors.dutyType}
+                />
                 {errors.dutyType && <p className="text-red-500 text-xs mt-1 ml-1">{errors.dutyType.message}</p>}
               </div>
             </div>
@@ -321,26 +350,28 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Employment Type</label>
-                <select 
-                  className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-400 focus:outline-none transition-all bg-gray-50 cursor-pointer"
-                  {...register('employmentType')}
-                >
-                  {EMPLOYMENT_TYPES.map(type => (
-                    <option key={type} value={type}>{type}</option>
-                  ))}
-                </select>
+                <Combobox
+                    options={EMPLOYMENT_TYPE_OPTIONS}
+                    value={currentEmploymentType}
+                    onChange={(val) => setValue('employmentType', val as EmploymentType, { shouldValidate: true })}
+                    placeholder="Select Employment Type"
+                    className="w-full z-10"
+                    buttonClassName="px-4 text-sm"
+                    error={!!errors.employmentType}
+                />
                  {errors.employmentType && <p className="text-red-500 text-xs mt-1 ml-1">{errors.employmentType.message}</p>}
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Status</label>
-                <select 
-                  className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-400 focus:outline-none transition-all bg-gray-50 cursor-pointer"
-                  {...register('status')}
-                >
-                  {JOB_STATUSES.map(status => (
-                    <option key={status} value={status}>{status}</option>
-                  ))}
-                </select>
+                <Combobox
+                    options={JOB_STATUS_OPTIONS}
+                    value={currentStatus}
+                    onChange={(val) => setValue('status', val as JobStatus, { shouldValidate: true })}
+                    placeholder="Select Status"
+                    className="w-full z-10"
+                    buttonClassName="px-4 text-sm"
+                    error={!!errors.status}
+                />
               </div>
             </div>
 
@@ -428,15 +459,80 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
               {errors.jobDescription && <p className="text-red-500 text-xs mt-1 ml-1">{errors.jobDescription.message}</p>}
             </div>
 
-            {/* Requirements */}
-            <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Requirements</label>
-              <textarea 
-                rows={3}
-                placeholder="List qualifications and requirements..."
-                className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-400 focus:outline-none transition-all resize-none bg-gray-50"
-                {...register('requirements')}
-              />
+            {/* Requirements (Structured) */}
+            <div className="space-y-4 pt-4 border-t border-gray-100">
+              <h3 className="block text-sm font-bold text-gray-800 uppercase tracking-wider mb-2">Qualifications & Requirements</h3>
+              
+              <div>
+                 <label className="block text-xs font-bold text-gray-500 tracking-wider mb-1.5 ml-1">Education</label>
+                 <Combobox
+                    options={EDUCATION_OPTIONS}
+                    value={currentEducation}
+                    onChange={(val) => setValue('education', val, { shouldValidate: true })}
+                    placeholder="Select Education Requirement"
+                    className="w-full"
+                    buttonClassName="px-4 text-sm"
+                    error={!!errors.education}
+                 />
+                 {errors.education && <p className="text-red-500 text-xs mt-1 ml-1">{errors.education.message}</p>}
+              </div>
+
+              <div>
+                 <label className="block text-xs font-bold text-gray-500 tracking-wider mb-1.5 ml-1">Experience</label>
+                 <Combobox
+                    options={EXPERIENCE_OPTIONS}
+                    value={currentExperience}
+                    onChange={(val) => setValue('experience', val, { shouldValidate: true })}
+                    placeholder="Select Experience Requirement"
+                    className="w-full"
+                    buttonClassName="px-4 text-sm"
+                    error={!!errors.experience}
+                 />
+                 {errors.experience && <p className="text-red-500 text-xs mt-1 ml-1">{errors.experience.message}</p>}
+              </div>
+
+              <div>
+                 <label className="block text-xs font-bold text-gray-500 tracking-wider mb-1.5 ml-1">Training</label>
+                 <Combobox
+                    options={TRAINING_OPTIONS}
+                    value={currentTraining}
+                    onChange={(val) => setValue('training', val, { shouldValidate: true })}
+                    placeholder="Select Training Requirement"
+                    className="w-full"
+                    buttonClassName="px-4 text-sm"
+                    error={!!errors.training}
+                 />
+                 {errors.training && <p className="text-red-500 text-xs mt-1 ml-1">{errors.training.message}</p>}
+              </div>
+
+              <div>
+                 <label className="block text-xs font-bold text-gray-500 tracking-wider mb-1.5 ml-1">Eligibility</label>
+                 <Combobox
+                    options={ELIGIBILITY_OPTIONS}
+                    value={currentEligibility}
+                    onChange={(val) => setValue('eligibility', val, { shouldValidate: true })}
+                    placeholder="Select Eligibility Requirement"
+                    className="w-full"
+                    buttonClassName="px-4 text-sm"
+                    error={!!errors.eligibility}
+                 />
+                 {errors.eligibility && <p className="text-red-500 text-xs mt-1 ml-1">{errors.eligibility.message}</p>}
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-500 tracking-wider mb-1.5 ml-1">Other Qualifications</label>
+                <textarea 
+                  rows={2}
+                  placeholder="Any additional requirements or specific skills..."
+                  className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-400 focus:outline-none transition-all resize-none bg-gray-50"
+                  {...register('otherQualifications')}
+                />
+              </div>
+
+              <div className="hidden">
+                 {/* Preserved for backwards compatibility or raw text storage if needed */}
+                <textarea {...register('requirements')} />
+              </div>
             </div>
           </div>
         </form>

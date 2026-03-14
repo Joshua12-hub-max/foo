@@ -217,6 +217,16 @@ export const googleLogin = async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
+    // MANDATORY VERIFICATION CHECK
+    if (!user.isVerified) {
+      res.status(403).json({
+        success: false,
+        message: 'Email not verified. Please verify your email first.',
+        data: null
+      });
+      return;
+    }
+
     // CHECK TERMINATION STATUS
     if (user.employmentStatus === 'Terminated') {
       res.status(403).json({
@@ -238,13 +248,14 @@ export const googleLogin = async (req: Request, res: Response): Promise<void> =>
 
 
     if (user.role !== 'Administrator' && user.role !== 'Human Resource') {
-      // Use raw numeric ID (strip any legacy prefix if it exists in DB)
+      // Format to match new Emp-XXX biometric ID format
       const rawId = user.employeeId || '0';
-      const bioId = parseInt(rawId.replace(/\D/g, ''), 10);
+      const bioNumericId = parseInt(rawId.replace(/\D/g, ''), 10);
+      const formattedBioId = `Emp-${String(bioNumericId).padStart(3, '0')}`;
 
       const [enrolled] = await db.select().from(bioEnrolledUsers).where(
         and(
-          eq(bioEnrolledUsers.employeeId, bioId),
+          eq(bioEnrolledUsers.employeeId, formattedBioId),
           eq(bioEnrolledUsers.userStatus, 'active')
         )
       ).limit(1);
@@ -308,24 +319,26 @@ export const verifyEnrollment = async (req: Request, res: Response): Promise<voi
   try {
     const { employeeId } = req.params as { employeeId: string };
     
-    // Parse the input — accept "1", "001", or "EMP-001"
-    let bioId: number;
-    const empMatch = employeeId.match(/EMP-(\d+)/i);
+    // Parse the input — accept "1", "001", or "EMP-001" / "Emp-001"
+    let bioNumericId: number;
+    const empMatch = employeeId.match(/Emp-(\d+)/i);
     if (empMatch) {
-      bioId = parseInt(empMatch[1], 10);
+      bioNumericId = parseInt(empMatch[1], 10);
     } else {
-      bioId = parseInt(employeeId, 10);
+      bioNumericId = parseInt(employeeId, 10);
     }
 
-    if (isNaN(bioId) || bioId <= 0) {
+    if (isNaN(bioNumericId) || bioNumericId <= 0) {
       res.status(400).json({ success: false, message: 'Invalid Employee ID format.' });
       return;
     }
 
+    const formattedBioId = `Emp-${String(bioNumericId).padStart(3, '0')}`;
+
     // Check bio_enrolled_users
     const [enrolled] = await db.select().from(bioEnrolledUsers).where(
       and(
-        eq(bioEnrolledUsers.employeeId, bioId),
+        eq(bioEnrolledUsers.employeeId, formattedBioId),
         eq(bioEnrolledUsers.userStatus, 'active')
       )
     ).limit(1);
@@ -339,9 +352,8 @@ export const verifyEnrollment = async (req: Request, res: Response): Promise<voi
       return;
     }
 
-    // Convert to system ID format
-    // NOW CHANGED: Use raw ID string (e.g. "1") instead of "EMP-001"
-    const systemEmployeeId = String(bioId);
+    // Convert to system ID format using the new Emp-XXX format
+    const systemEmployeeId = formattedBioId;
 
     // Check if already registered in the web system
     const [existingAccount] = await db.select({ employeeId: authentication.employeeId })
@@ -353,7 +365,7 @@ export const verifyEnrollment = async (req: Request, res: Response): Promise<voi
       success: true,
       message: 'Employee is enrolled in biometrics.',
       data: {
-        bioEmployeeId: bioId,
+        bioEmployeeId: bioNumericId,
         systemEmployeeId,
         fullName: enrolled.fullName,
         department: enrolled.department,
@@ -367,47 +379,49 @@ export const verifyEnrollment = async (req: Request, res: Response): Promise<voi
   }
 };
 
-export const register = async (req: Request, res: Response): Promise<void> => {
+export const register = async (req: Request & { file?: Express.Multer.File }, res: Response): Promise<void> => {
   try {
     const validatedData = RegisterSchema.parse(req.body);
     const { employeeId, email, password } = validatedData;
-    const file = (req as any).file;
+    const file = req.file;
     const isFinalizingSetup = req.query.mode === 'finalize-setup';
 
     // 1. Parse bio ID from input
-    let bioId: number;
+    let bioNumericId: number;
     if (typeof employeeId === 'number') {
-        bioId = employeeId;
+        bioNumericId = employeeId;
     } else {
-        const empMatch = String(employeeId || '').match(/EMP-(\d+)/i);
-        bioId = empMatch ? parseInt(empMatch[1], 10) : parseInt(String(employeeId || '0'), 10);
+        const empMatch = String(employeeId || '').match(/Emp-(\d+)/i);
+        bioNumericId = empMatch ? parseInt(empMatch[1], 10) : parseInt(String(employeeId || '0'), 10);
     }
 
-    if (isNaN(bioId) || bioId <= 0) {
+    if (isNaN(bioNumericId) || bioNumericId <= 0) {
       res.status(400).json({ success: false, message: 'Invalid Employee ID format.', data: null });
       return;
     }
 
+    const formattedBioId = `Emp-${String(bioNumericId).padStart(3, '0')}`;
+
     // 2. Verify biometric enrollment — MUST be enrolled to register
     const enrolled = await db.query.bioEnrolledUsers.findFirst({
       where: and(
-        eq(bioEnrolledUsers.employeeId, bioId),
+        eq(bioEnrolledUsers.employeeId, formattedBioId),
         eq(bioEnrolledUsers.userStatus, 'active')
       )
     });
 
     if (!enrolled) {
-      console.error(`[Register] Biometric record not found for ID: ${bioId}`);
+      console.error(`[Register] Biometric record not found for ID: ${formattedBioId}`);
       res.status(403).json({
         success: false,
-        message: `Biometric record not found for ID ${bioId}. Please scan your fingerprint again.`,
+        message: `Biometric record not found for ID ${formattedBioId}. Please scan your fingerprint again.`,
         code: 'NOT_ENROLLED'
       });
       return;
     }
 
     // 3. Convert to system employee ID format
-    const actualEmployeeId = String(bioId);
+    const actualEmployeeId = formattedBioId;
 
     // 4. Use provided name if available, otherwise pull from bio_enrolled_users
     const firstName = sanitizeInput(validatedData.firstName || enrolled.fullName.split(' ')[0]);
@@ -552,8 +566,8 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       departmentId,            
       employeeId: actualEmployeeId,
       passwordHash: hashedPassword,
-      isVerified: effectiveFinalizingSetup ? true : false,
-      verificationToken: effectiveFinalizingSetup ? null : (verificationOTP || null),
+      isVerified: (effectiveFinalizingSetup && (assignedRole === 'Administrator' || assignedRole === 'Human Resource')) ? true : false,
+      verificationToken: (effectiveFinalizingSetup && (assignedRole === 'Administrator' || assignedRole === 'Human Resource')) ? null : (verificationOTP || null),
       avatarUrl,
       jobTitle: positionTitle,
       positionTitle: positionTitle,
@@ -574,7 +588,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       })(),
       weightKg: (() => {
         if (!validatedData.weightKg || validatedData.weightKg === "") return null;
-        let w = parseFloat(validatedData.weightKg as string);
+        const w = parseFloat(validatedData.weightKg as string);
         if (isNaN(w)) return null;
         return w.toFixed(2);
       })(),
@@ -699,6 +713,20 @@ export const register = async (req: Request, res: Response): Promise<void> => {
         }
     }
 
+    // Link recruitment record if this was a pre-filled registration
+    if (validatedData.applicantId) {
+        try {
+            await db.update(recruitmentApplicants)
+                .set({
+                    isRegistered: true,
+                    registeredEmployeeId: actualEmployeeId
+                })
+                .where(eq(recruitmentApplicants.id, validatedData.applicantId));
+        } catch (_linkErr) {
+            // Silently fail link update
+        }
+    }
+
     res.status(effectiveFinalizingSetup ? 200 : 201).json({
       success: true,
       message: effectiveFinalizingSetup 
@@ -709,7 +737,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
         employeeId: actualEmployeeId, 
         fullName: `${firstName} ${lastName}`, 
         department,
-        requiresVerification: !effectiveFinalizingSetup
+        requiresVerification: !(effectiveFinalizingSetup && (assignedRole === 'Administrator' || assignedRole === 'Human Resource'))
       }
     });
   } catch (err: unknown) {
@@ -988,7 +1016,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 
       res.status(403).json({
         success: false,
-        message: 'Access Denied: Your account has been terminated. Please contact Human Resource.',
+        message: 'access denied: your account has been terminated. please contact human resource.',
         data: null
       });
       return;
@@ -1003,13 +1031,14 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     );
 
     if (user.role !== 'Administrator' && user.role !== 'Human Resource') {
-      // Use raw numeric ID (strip any legacy prefix if it exists in DB)
+      // Format to match new Emp-XXX biometric ID format
       const rawId = user.employeeId || '0';
-      const bioId = parseInt(rawId.replace(/\D/g, ''), 10);
+      const bioNumericId = parseInt(rawId.replace(/\D/g, ''), 10);
+      const formattedBioId = `Emp-${String(bioNumericId).padStart(3, '0')}`;
 
       const [enrolled] = await db.select().from(bioEnrolledUsers).where(
         and(
-          eq(bioEnrolledUsers.employeeId, bioId),
+          eq(bioEnrolledUsers.employeeId, formattedBioId),
           eq(bioEnrolledUsers.userStatus, 'active')
         )
       ).limit(1);
@@ -1018,7 +1047,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 
         res.status(403).json({
           success: false,
-          message: 'Access Denied: You are not yet registered in the biometric system. Please contact your Human Resource Administrator to complete your enrollment.',
+          message: 'access denied: you are not yet registered in the biometric system. please contact your human resource administrator to complete your enrollment.',
           code: 'BIOMETRIC_NOT_ENROLLED',
           data: null
         });
@@ -1059,11 +1088,9 @@ export const login = async (req: Request, res: Response): Promise<void> => {
           }
       }
 
-      await db.update(authentication).set(updateData).where(eq(authentication.id, user.id));
-
       const message = newAttempts >= 5 
-        ? 'Too many failed attempts. Your account has been locked for 30 minutes.'
-        : `Invalid Credentials. ${5 - newAttempts} attempts remaining before account lock.`;
+        ? 'too many failed attempts. your account has been locked for 30 minutes.'
+        : `invalid credentials. ${5 - newAttempts} attempts remaining before account lock.`;
 
       res.status(401).json({ success: false, message, data: null });
       return;
@@ -1096,7 +1123,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 
       res.status(200).json({
         success: true,
-        message: '2FA Verification Required',
+        message: '2fa verification required',
         data: {
           requires2FA: true,
           identifier: user.email,
@@ -1178,17 +1205,17 @@ export const verifyTwoFactorOTP = async (req: Request, res: Response): Promise<v
     }
 
     if (!user.twoFactorOtp || !user.twoFactorOtpExpires) {
-      res.status(400).json({ success: false, message: 'No OTP request found. Please login again.' });
+      res.status(400).json({ success: false, message: 'no otp request found. please login again.' });
       return;
     }
 
     if (new Date() > new Date(user.twoFactorOtpExpires)) {
-      res.status(400).json({ success: false, message: 'OTP has expired. Please login again.' });
+      res.status(400).json({ success: false, message: 'otp has expired. please login again.' });
       return;
     }
 
     if (user.twoFactorOtp !== otp) {
-      res.status(400).json({ success: false, message: 'Invalid OTP.' });
+      res.status(400).json({ success: false, message: 'invalid otp.' });
       return;
     }
 
@@ -1385,7 +1412,7 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
       return;
     }
     const updates = parsed.data;
-    const file = (req as any).file;
+    const file = (req as Request & { file?: Express.Multer.File }).file;
 
     let avatarUrl: string | undefined;
     if (file) {
@@ -1412,8 +1439,50 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
     // Only reset verification if email CHANGED
     if (updates.email && updates.email !== currentUser.email) {
       mappedUpdates.email = String(updates.email);
-      mappedUpdates.isVerified = false;
-      mappedUpdates.verificationToken = null;
+      
+      // Determine if verification is required (Admins/HR might be exempt depending on policy, 
+      // but for employees it MUST be mandatory as per requirements)
+      const userToUpdate = await db.query.authentication.findFirst({
+          where: eq(authentication.id, userId),
+          columns: { role: true, firstName: true }
+      });
+      
+      const isEmployee = userToUpdate?.role !== 'Administrator' && userToUpdate?.role !== 'Human Resource';
+      
+      if (isEmployee) {
+          const verificationOTP = generateOTP();
+          mappedUpdates.isVerified = false;
+          mappedUpdates.verificationToken = verificationOTP;
+          
+          // Send verification email
+          try {
+              await sendOTPEmail(
+                  String(updates.email), 
+                  userToUpdate?.firstName || 'User', 
+                  verificationOTP, 
+                  'Email Change Verification', 
+                  'You have updated your email address. Please use the code below to verify your new email:'
+              );
+          } catch (_e) {
+              console.error('[UPDATE PROFILE] Failed to send verification email');
+          }
+      } else {
+          // Admins/HR still get reset for security, but might not be forced if we want to be lenient
+          // However, consistency is better. Let's force it for everyone for 100% integrity.
+          const verificationOTP = generateOTP();
+          mappedUpdates.isVerified = false;
+          mappedUpdates.verificationToken = verificationOTP;
+          
+          try {
+              await sendOTPEmail(
+                  String(updates.email), 
+                  userToUpdate?.firstName || 'User', 
+                  verificationOTP, 
+                  'Email Change Verification', 
+                  'Security Alert: Your email address has been changed. Please verify to maintain access:'
+              );
+          } catch (_e) { /* empty */ }
+      }
     }
 
     if (updates.phoneNumber !== undefined) mappedUpdates.mobileNo = String(updates.phoneNumber);
@@ -1532,16 +1601,24 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
 
 export const getNextId = async (_req: Request, res: Response): Promise<void> => {
   try {
-    const result = await db.select({
-      maxId: sql<number>`MAX(CAST(employee_id AS UNSIGNED))`
-    })
-    .from(authentication)
-    .where(sql`employee_id REGEXP '^[0-9]+$'`);
+    const result = await db.execute(sql`
+      SELECT MAX(CAST(SUBSTRING(employee_id, 5) AS UNSIGNED)) as maxId
+      FROM authentication
+      WHERE employee_id LIKE 'Emp-%'
+    `);
 
-    const nextId = (result[0]?.maxId || 0) + 1;
+    interface MaxIdResult {
+      maxId: number | string | null;
+    }
+
+    const rows = (result[0] as unknown) as MaxIdResult[];
+    const maxId = Number(rows[0]?.maxId || 0);
+    const nextId = maxId + 1;
+    const formattedNextId = `Emp-${String(nextId).padStart(3, '0')}`;
+
     res.status(200).json({
       success: true,
-      data: String(nextId)
+      data: formattedNextId
     });
   } catch (_error) {
 

@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, Search, Filter, ChevronRight } from 'lucide-react';
 import { fetchReviews, fetchReviewCycles } from '@api';
 import { useNavigate } from 'react-router-dom';
 import { InternalReview, ReviewCycle } from '@/types/performance';
+import Combobox from '@/components/Custom/Combobox';
 
 const PerformanceReviews = () => {
   const navigate = useNavigate();
@@ -33,6 +34,22 @@ const PerformanceReviews = () => {
   useEffect(() => {
     loadData();
   }, []);
+
+  const cycleOptions = useMemo(() => {
+    const options = cycles.map(cycle => ({
+      value: String(cycle.id),
+      label: cycle.title || `Cycle ${cycle.id}`
+    }));
+    return [{ value: 'All', label: 'All Cycles' }, ...options];
+  }, [cycles]);
+
+  const statusOptions = [
+    { value: 'All', label: 'All Statuses' },
+    { value: 'Draft', label: 'Draft' },
+    { value: 'In Progress', label: 'In Progress' },
+    { value: 'Pending Approval', label: 'Pending Approval' },
+    { value: 'Completed', label: 'Completed' },
+  ];
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -86,29 +103,24 @@ const PerformanceReviews = () => {
             className="flex-1 bg-transparent outline-none text-gray-700 placeholder-gray-400"
           />
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-4">
           <Filter size={20} className="text-gray-400" />
-          <select
+          <Combobox
+            options={cycleOptions}
             value={filterCycle}
-            onChange={(e) => setFilterCycle(e.target.value)}
-            className="px-4 py-2 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-green-500 bg-white text-gray-700"
-          >
-            <option value="All">All Cycles</option>
-            {cycles.map(cycle => (
-              <option key={cycle.id} value={cycle.id}>{cycle.title}</option>
-            ))}
-          </select>
-          <select
+            onChange={(val) => setFilterCycle(val)}
+            placeholder="All Cycles"
+            className="w-48"
+            buttonClassName="bg-white border-gray-200"
+          />
+          <Combobox
+            options={statusOptions}
             value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-            className="px-4 py-2 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-green-500 bg-white text-gray-700"
-          >
-            <option value="All">All Statuses</option>
-            <option value="Draft">Draft</option>
-            <option value="In Progress">In Progress</option>
-            <option value="Pending Approval">Pending Approval</option>
-            <option value="Completed">Completed</option>
-          </select>
+            onChange={(val) => setFilterStatus(val)}
+            placeholder="All Statuses"
+            className="w-48"
+            buttonClassName="bg-white border-gray-200"
+          />
         </div>
       </div>
 

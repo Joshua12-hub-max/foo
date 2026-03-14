@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { InferSelectModel } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/mysql-core';
 import { db } from '../db/index.js';
-import { departments, authentication, plantillaPositions } from '../db/schema.js';
+import { departments, authentication, plantillaPositions, bioEnrolledUsers } from '../db/schema.js';
 import { eq, asc, sql, or, isNull, ne, and, like, getTableColumns } from 'drizzle-orm';
 import { DepartmentApiResponse, DepartmentDetailedApiResponse, DepartmentDbModel } from '../types/org.js';
 import { EmployeeApiResponse } from '../types/employee.js';
@@ -112,9 +112,11 @@ export const getDepartmentById = async (req: Request, res: Response): Promise<vo
       employmentStatus: auth.employmentStatus,
       dateHired: auth.dateHired,
       department: auth.department,
-      duties: sql<string>`COALESCE((SELECT schedule_title FROM schedules WHERE schedules.employee_id = auth.employee_id ORDER BY schedules.updated_at DESC LIMIT 1), 'No Schedule')`
+      duties: sql<string>`COALESCE((SELECT schedule_title FROM schedules WHERE schedules.employee_id = auth.employee_id ORDER BY schedules.updated_at DESC LIMIT 1), 'No Schedule')`,
+      isBiometricEnrolled: sql<boolean>`CASE WHEN ${bioEnrolledUsers.employeeId} IS NOT NULL THEN true ELSE false END`
     })
     .from(auth)
+    .leftJoin(bioEnrolledUsers, eq(auth.employeeId, bioEnrolledUsers.employeeId))
     .where(eq(auth.departmentId, Number(id)));
 
     const mappedEmployees: EmployeeApiResponse[] = employees.map(mapToEmployeeApi);
@@ -366,7 +368,7 @@ export const deleteDepartment = async (req: Request, res: Response): Promise<voi
 
     res.status(200).json({ success: true, message: 'Department successfully deleted' });
   } catch (error: unknown) {
-    const _errMsg = error instanceof Error ? error.message : String(error);
+    // const _errMsg = error instanceof Error ? error.message : String(error);
 
     res.status(500).json({ success: false, message: 'Failed to delete department.' });
   }

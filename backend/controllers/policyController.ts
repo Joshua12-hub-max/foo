@@ -16,7 +16,7 @@ export const getPolicies = async (req: Request, res: Response): Promise<void> =>
         res.json({ success: true, policies });
     } catch (_error) {
 
-        res.status(500).json({ success: false, message: 'Failed to fetch policies' });
+        res.status(500).json({ success: false, message: 'failed to fetch policies' });
     }
 };
 
@@ -35,10 +35,10 @@ export const updatePolicy = async (req: Request, res: Response): Promise<void> =
             })
             .where(eq(internalPolicies.id, Number(id)));
             
-        res.json({ success: true, message: 'Policy updated successfully' });
+        res.json({ success: true, message: 'policy updated successfully' });
     } catch (_error) {
 
-        res.status(500).json({ success: false, message: 'Failed to update policy' });
+        res.status(500).json({ success: false, message: 'failed to update policy' });
     }
 };
 
@@ -53,10 +53,10 @@ export const createPolicy = async (req: Request, res: Response): Promise<void> =
             versionLabel,
         });
         
-        res.status(201).json({ success: true, message: 'Policy created successfully', id: result.insertId });
+        res.status(201).json({ success: true, message: 'policy created successfully', id: result.insertId });
     } catch (_error) {
 
-        res.status(500).json({ success: false, message: 'Failed to create policy' });
+        res.status(500).json({ success: false, message: 'failed to create policy' });
     }
 };
 

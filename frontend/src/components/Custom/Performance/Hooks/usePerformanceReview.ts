@@ -71,7 +71,14 @@ export const usePerformanceReview = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [saving, setSaving] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [formData, setFormData] = useState<FormDataState>(INITIAL_REVIEW_FORM as unknown as FormDataState);
+  
+  // Initialize with proper explicit types avoiding 'as' assertions
+  const initialData: FormDataState = {
+      ...INITIAL_REVIEW_FORM,
+      items: [],
+      additionalComments: ''
+  };
+  const [formData, setFormData] = useState<FormDataState>(initialData);
   const [qualitativeAssessments, setQualitativeAssessments] = useState<Assessment[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [cycles, setCycles] = useState<ReviewCycle[]>([]);
@@ -92,50 +99,65 @@ export const usePerformanceReview = () => {
 
         if (!isMounted) return;
 
-        if (empData.success) setEmployees(empData.employees as Employee[]);
-        if (cycleData.success) setCycles(cycleData.cycles || []);
+        if (empData.success && empData.employees) {
+            const fetchedEmployees: Employee[] = empData.employees;
+            setEmployees(fetchedEmployees);
+        }
+        if (cycleData.success && cycleData.cycles) {
+            setCycles(cycleData.cycles);
+        }
 
         if (currentReviewId && currentReviewId !== 'new') {
           const reviewData = await fetchReviewById(currentReviewId);
           if (!isMounted) return;
           
-          if (reviewData.success) {
-            const review = reviewData.review as InternalReview;
+          if (reviewData.success && reviewData.review) {
+            const review: InternalReview = reviewData.review;
+            
+            const isRecord = (val: unknown): val is Record<string, JsonValue> => typeof val === 'object' && val !== null && !Array.isArray(val);
+            const isAssessmentArray = (val: unknown): val is Assessment[] => Array.isArray(val) && val.every(v => typeof v === 'object' && v !== null && 'id' in v);
             
             // Parse overallFeedback
             let parsedFeedback: Record<string, JsonValue> = {};
             try {
-              parsedFeedback = JSON.parse(review.overallFeedback || '{}');
-            } catch (e) {
+              const parsed: unknown = JSON.parse(review.overallFeedback || '{}');
+              if (isRecord(parsed)) {
+                  parsedFeedback = parsed;
+              }
+            } catch {
               parsedFeedback = { additionalComments: review.overallFeedback };
             }
 
             // Load Assessments
             let loadedAssessments: Assessment[] = [];
-            if (parsedFeedback.assessments && Array.isArray(parsedFeedback.assessments)) {
-               loadedAssessments = parsedFeedback.assessments as unknown as Assessment[];
+            if (isAssessmentArray(parsedFeedback.assessments)) {
+               loadedAssessments = parsedFeedback.assessments;
             } else {
-               loadedAssessments = DEFAULT_QUALITATIVE_CONFIG.map(conf => ({
-                   id: conf.id,
-                   title: conf.label,
-                   description: conf.placeholder,
-                   value: (parsedFeedback[conf.id] as string) || '',
-                   badge: conf.badge,
-                   badgeColor: conf.badgeColor,
-                   iconName: conf.iconName
-               }));
+               loadedAssessments = DEFAULT_QUALITATIVE_CONFIG.map(conf => {
+                   const valStr = String(parsedFeedback[conf.id] || '');
+                   const newAss: Assessment = {
+                       id: conf.id,
+                       title: conf.label,
+                       description: conf.placeholder,
+                       value: valStr,
+                       badge: conf.badge,
+                       badgeColor: conf.badgeColor,
+                       iconName: conf.iconName
+                   };
+                   return newAss;
+               });
             }
             
             setQualitativeAssessments(loadedAssessments);
 
             // Merge Items with Criteria
             let items: Partial<ReviewItem>[] = review.items || [];
-            if (review.status === 'Draft' && criteriaData.success) {
-                 const criteria = criteriaData.criteria || [];
-                 const existingCriteriaIds = new Set(items.map(i => i.criteriaId).filter(id => id));
+            if (review.status === 'Draft' && criteriaData.success && criteriaData.criteria) {
+                 const criteria: PerformanceCriteria[] = criteriaData.criteria;
+                 const existingCriteriaIds = new Set(items.map(i => i.criteriaId).filter(i => Boolean(i)));
                  const missingCriteria = criteria.filter((c: PerformanceCriteria) => !existingCriteriaIds.has(c.id));
                  if (missingCriteria.length > 0) {
-                     const newItems = missingCriteria.map((c: PerformanceCriteria, index: number) => ({
+                     const newItems: Partial<ReviewItem>[] = missingCriteria.map((c: PerformanceCriteria, index: number) => ({
                          id: Date.now() + index + Math.floor(Math.random() * 1000), 
                          criteriaId: c.id,
                          score: 0,
@@ -155,14 +177,14 @@ export const usePerformanceReview = () => {
             setFormData({
               ...review,
               items: items,
-              additionalComments: (parsedFeedback.additionalComments as string) || ''
+              additionalComments: String(parsedFeedback.additionalComments || '')
             });
 
             // Fetch Metrics for existing review
             try {
               if (review.employeeId) {
                   const metricRes = await complianceApi.getEmployeeMetrics(review.employeeId.toString());
-                  if (metricRes.data.success) {
+                  if (metricRes.data && metricRes.data.success) {
                     setFormData(prev => ({
                         ...prev,
                         employeeMetrics: metricRes.data.metrics,
@@ -170,31 +192,34 @@ export const usePerformanceReview = () => {
                     }));
                   }
               }
-            } catch (e) {
-              console.error("Failed to fetch initial metrics", e);
+            } catch (err) {
+              console.error("Failed to fetch initial metrics", err);
             }
           }
         } else {
           // New Review Initialization
-          if (criteriaData.success && isMounted) {
-            setFormData(prev => ({
-              ...prev,
-              reviewerId: user?.id,
-              items: (criteriaData.criteria || []).map((c: PerformanceCriteria) => ({
-                criteriaId: c.id,
-                score: 0,
-                comment: '',
-                selfScore: 0,
-                actualAccomplishments: '',
-                criteriaTitle: c.title,
-                criteriaDescription: c.description,
-                category: c.category,
-                weight: c.weight,
-                maxScore: c.maxScore
-              }))
-            }));
+          if (criteriaData.success && criteriaData.criteria && isMounted) {
+            setFormData(prev => {
+                const newItems: Partial<ReviewItem>[] = criteriaData.criteria!.map((c: PerformanceCriteria) => ({
+                    criteriaId: c.id,
+                    score: 0,
+                    comment: '',
+                    selfScore: 0,
+                    actualAccomplishments: '',
+                    criteriaTitle: c.title,
+                    criteriaDescription: c.description,
+                    category: c.category,
+                    weight: c.weight,
+                    maxScore: c.maxScore
+                }));
+                return {
+                    ...prev,
+                    reviewerId: user?.id,
+                    items: newItems
+                };
+            });
           }
-           const initialAssessments = DEFAULT_QUALITATIVE_CONFIG.map(conf => ({
+           const initialAssessments: Assessment[] = DEFAULT_QUALITATIVE_CONFIG.map(conf => ({
                id: conf.id,
                title: conf.label,
                description: conf.placeholder,
@@ -229,8 +254,9 @@ export const usePerformanceReview = () => {
     
     const fetchMetrics = async () => {
         try {
-            const res = await complianceApi.getEmployeeMetrics((formData.employeeId as number).toString());
-            if (res.data.success) {
+            const empIdStr = String(formData.employeeId);
+            const res = await complianceApi.getEmployeeMetrics(empIdStr);
+            if (res.data && res.data.success) {
                 setFormData(prev => ({
                     ...prev,
                     employeeMetrics: res.data.metrics,
@@ -272,8 +298,31 @@ export const usePerformanceReview = () => {
       totalWeightedScore += score * weight;
       totalWeight += weight;
     });
-    return totalWeight > 0 ? (totalWeightedScore / totalWeight).toFixed(2) : '0.00';
-  }, [formData.items]);
+    
+    const baseScore = totalWeight > 0 ? (totalWeightedScore / totalWeight) : 0;
+    
+    // Apply Deductions (Sync with Backend Logic)
+    let totalDeduction = 0;
+    if (formData.employeeMetrics) {
+      const { attendance, violations } = formData.employeeMetrics;
+      const lateCount = attendance.totalLateCount || 0;
+      const undertimeCount = attendance.totalUndertimeCount || 0;
+      const absenceCount = attendance.totalAbsenceCount || 0;
+      const violationCount = violations?.length || 0;
+      
+      // Precision Rates: 0.01 per instance, 0.05 per absence, 0.50 per violation
+      totalDeduction += (lateCount + undertimeCount) * 0.01;
+      totalDeduction += absenceCount * 0.05;
+      totalDeduction += violationCount * 0.50;
+    }
+
+    let finalScore = baseScore - totalDeduction;
+    if (finalScore < 1.00 && baseScore > 0) finalScore = 1.00;
+    if (finalScore > 5.00) finalScore = 5.00;
+    if (baseScore === 0) finalScore = 0;
+
+    return finalScore.toFixed(2);
+  }, [formData.items, formData.employeeMetrics]);
 
   const handleScoreChange = useCallback((criteriaId: string | number, value: string | number) => {
     setFormData(prev => ({
@@ -328,7 +377,7 @@ export const usePerformanceReview = () => {
 
 
   const onEditItem = useCallback(async (updatedItem: Partial<ReviewItem>) => {
-    const isRealDbId = (id: unknown) => typeof id === 'number' && (id as number) < 10000000000;
+    const isRealDbId = (iId: unknown) => typeof iId === 'number' && iId < 10000000000;
 
     try {
       if (updatedItem.id && isRealDbId(updatedItem.id)) {
@@ -344,8 +393,8 @@ export const usePerformanceReview = () => {
         })
       }));
       showNotification("Item updated.", "success");
-    } catch (error) {
-      console.error("Failed to update item:", error);
+    } catch (err) {
+      console.error("Failed to update item:", err);
       showNotification("Failed to update item.", "error");
     }
   }, [showNotification]);
@@ -354,7 +403,7 @@ export const usePerformanceReview = () => {
     const itemToDelete = formData.items.find(i => (i.id == itemId) || (i.criteriaId == itemId));
     if (!itemToDelete) return;
 
-    const isRealDbId = (id: unknown) => typeof id === 'number' && (id as number) < 10000000000;
+    const isRealDbId = (iId: unknown) => typeof iId === 'number' && iId < 10000000000;
 
     try {
       if (itemToDelete.id && isRealDbId(itemToDelete.id)) {
@@ -370,13 +419,13 @@ export const usePerformanceReview = () => {
         })
       }));
       showNotification("Item removed from review.", "success");
-    } catch (error) {
-      console.error("Failed to delete item:", error);
+    } catch (err) {
+      console.error("Failed to delete item:", err);
       showNotification("Failed to remove item.", "error");
     }
   }, [formData.items, showNotification]);
 
-  const ensureReviewExists = useCallback(async () => {
+  const ensureReviewExists = useCallback(async (): Promise<string | number | null> => {
     if (currentReviewId && currentReviewId !== 'new') return currentReviewId;
     if (creationInProgress.current) return null; 
     
@@ -401,7 +450,7 @@ export const usePerformanceReview = () => {
       };
       
       const res = await createReview(payload);
-      if (res.success && res.data.reviewId) {
+      if (res.success && res.data?.reviewId) {
         setCurrentReviewId(res.data.reviewId);
         window.history.replaceState(null, '', `/admin-dashboard/performance/reviews/${res.data.reviewId}`);
         return res.data.reviewId;
@@ -409,9 +458,9 @@ export const usePerformanceReview = () => {
         showNotification(res.message || "Failed to initialize review record.", "error");
         return null;
       }
-    } catch (error: unknown) {
-      console.error("Auto-create failed:", error);
-      const errMsg = error instanceof Error ? error.message : 'Connection error while creating review.';
+    } catch (err: unknown) {
+      console.error("Auto-create failed:", err);
+      const errMsg = err instanceof Error ? err.message : 'Connection error while creating review.';
       showNotification(errMsg, "error");
       return null;
     } finally {
@@ -435,15 +484,15 @@ export const usePerformanceReview = () => {
       };
 
       const res = await addItemApi(payload);
-      if (res.success && res.data.itemId) {
+      if (res.success && res.data?.itemId) {
         setFormData(prev => ({
           ...prev,
-          items: [...prev.items, { ...newItemData, id: res.data.itemId, score: 0, selfScore: 0 }]
+          items: [...prev.items, { ...newItemData, id: res.data!.itemId, score: 0, selfScore: 0 }]
         }));
         showNotification("Criteria added successfully.", "success");
       }
-    } catch (error) {
-      console.error("Failed to add item:", error);
+    } catch (err) {
+      console.error("Failed to add item:", err);
       showNotification("Failed to add criteria.", "error");
     }
   }, [ensureReviewExists, showNotification]);
@@ -458,20 +507,20 @@ export const usePerformanceReview = () => {
       await updateReview(reviewId, {
         overallFeedback
       });
-    } catch (e) {
-      console.error("QA Save failed", e);
+    } catch (err) {
+      console.error("QA Save failed", err);
     }
-  }, [formData.additionalComments, qualitativeAssessments]);
+  }, [formData.additionalComments]);
 
   const handleAddAssessment = useCallback(async (newAssessment: Partial<Assessment>) => {
     const newItem: Assessment = {
-      ...newAssessment as Assessment, 
       id: Date.now().toString(), 
       value: newAssessment.value || '',
       title: newAssessment.title || '',
       badge: newAssessment.badge || 'CUSTOM', 
       badgeColor: newAssessment.badgeColor || 'bg-indigo-50 text-indigo-700', 
-      iconName: newAssessment.iconName || 'MessageSquare'
+      iconName: newAssessment.iconName || 'MessageSquare',
+      description: newAssessment.description || ''
     };
     const updated = [...qualitativeAssessments, newItem];
     setQualitativeAssessments(updated);
@@ -482,7 +531,21 @@ export const usePerformanceReview = () => {
 
   const handleEditAssessment = useCallback(async (updatedAssessment: Assessment | Partial<Assessment>) => {
     if (!updatedAssessment.id) return;
-    const updated = qualitativeAssessments.map(i => i.id === updatedAssessment.id ? { ...i, ...updatedAssessment } as Assessment : i);
+    const updated = qualitativeAssessments.map(i => {
+        if (i.id === updatedAssessment.id) {
+            const merged: Assessment = {
+                id: i.id,
+                title: updatedAssessment.title ?? i.title,
+                description: updatedAssessment.description ?? i.description,
+                value: updatedAssessment.value ?? i.value,
+                badge: updatedAssessment.badge ?? i.badge,
+                badgeColor: updatedAssessment.badgeColor ?? i.badgeColor,
+                iconName: updatedAssessment.iconName ?? i.iconName
+            };
+            return merged;
+        }
+        return i;
+    });
     setQualitativeAssessments(updated);
     const rid = await ensureReviewExists();
     if (rid) saveAssessmentsToBackend(updated, rid);
@@ -495,8 +558,8 @@ export const usePerformanceReview = () => {
     if (rid) saveAssessmentsToBackend(updated, rid);
   }, [qualitativeAssessments, ensureReviewExists, saveAssessmentsToBackend]);
 
-  const handleAssessmentValueChange = useCallback((id: string | number, val: string) => {
-    setQualitativeAssessments(prev => prev.map(i => i.id === id ? { ...i, value: val } : i));
+  const handleAssessmentValueChange = useCallback((assId: string | number, val: string) => {
+    setQualitativeAssessments(prev => prev.map(i => i.id === assId ? { ...i, value: val } : i));
   }, []);
 
   const handleSave = async (action: string = 'save') => {
@@ -519,12 +582,13 @@ export const usePerformanceReview = () => {
         });
 
         // Filter out temporary frontend IDs (Date.now() based ones)
-        const itemsPayload = (formData.items || []).map(item => {
+        const itemsPayload: Partial<ReviewItem>[] = (formData.items || []).map(item => {
             const isTempId = typeof item.id === 'string' || (typeof item.id === 'number' && item.id > 2000000000);
-            return {
+            const filteredItem: Partial<ReviewItem> = {
                 ...item,
                 id: isTempId ? undefined : item.id,
-            } as ReviewItem;
+            };
+            return filteredItem;
         });
 
         if (permissions.isEmployee) {

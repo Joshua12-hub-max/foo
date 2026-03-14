@@ -72,7 +72,7 @@ const notifyEmployeeOfMemo = async (employeeId: number, authorId: number, memoTy
 
     if (empData && authorData) {
       await createNotification({ 
-        recipientId: empData.employeeId, 
+        recipientId: empData.employeeId || '', 
         senderId: authorData.employeeId, 
         title: `New ${memoType}`, 
         message: `You have received a ${memoType}: ${subject}`, 
@@ -100,7 +100,7 @@ const notifyAuthorOfAcknowledgment = async (employeeId: number, authorId: number
     if (empData && authorData) {
       const empName = formatFullName(empData.lastName, empData.firstName, empData.middleName, empData.suffix);
       await createNotification({ 
-        recipientId: authorData.employeeId, 
+        recipientId: authorData.employeeId || '', 
         senderId: empData.employeeId, 
         title: 'Memo Acknowledged', 
         message: `${empName} has acknowledged the ${memoType}: ${memoSubject}`, 
@@ -316,7 +316,7 @@ export const createMemo = async (req: Request, res: Response): Promise<void> => 
       memoNumber: memoNumber,
       employeeId: employeeId,
       authorId: authorId,
-      memoType: memoType,
+      memoType: memoType as 'Verbal Warning' | 'Written Warning' | 'Reprimand' | 'Suspension Notice' | 'Termination Notice' | 'Show Cause',
       subject,
       content,
       priority: priority as MemoPriority,
@@ -375,7 +375,7 @@ export const updateMemo = async (req: Request, res: Response): Promise<void> => 
       const targetEmpId = employeeId || currentMemo.employeeId;
       const targetAuthorId = currentMemo.authorId;
 
-      const newStatus = getStatusFromMemoType(targetType);
+      const newStatus = getStatusFromMemoType(targetType as MemoType);
       if (newStatus) await updateEmployeeStatus(targetEmpId, newStatus);
       await notifyEmployeeOfMemo(targetEmpId, targetAuthorId, targetType, targetSubject, Number(id));
     }

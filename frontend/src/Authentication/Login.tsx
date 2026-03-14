@@ -4,7 +4,7 @@ import { Mail, Lock, Eye, EyeOff, Loader2, CheckCircle, ArrowLeft } from "lucide
 import AuthLayout from "@/components/Custom/Auth/AuthLayout";
 import { useAuthStore, useToastStore, useFormWizardStore } from "@/stores";
 import api from "@/api/axios";
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 import OTPInput from "./OTPInput";
 import { User, ApiError } from "@/types";
 import { useVerify2FAMutation, useResend2FAMutation } from "@/hooks/useAuthQueries";
@@ -24,7 +24,7 @@ interface AuthPayload {
 }
 
 interface SetupPositionsResponse {
-  positions: unknown[];
+  positions: Array<{ id: number; positionTitle: string }>;
 }
 
 const Login: React.FC = () => {
@@ -53,14 +53,15 @@ const Login: React.FC = () => {
   const [showSetupLink, setShowSetupLink] = useState(false);
 
   useEffect(() => {
-    const checkSetup = async () => {
+    const checkSetup = async (): Promise<void> => {
       try {
         const res = await api.get<SetupPositionsResponse>("/auth/setup-positions");
         if (res.data.positions && res.data.positions.length > 0) {
           setShowSetupLink(true);
         }
-      } catch {
-        setShowSetupLink(false);
+      } catch (err: unknown) {
+        // Fallback or log if needed, though link is permanent now
+        console.error("Setup check failed", err);
       }
     };
     checkSetup();
@@ -129,7 +130,8 @@ const Login: React.FC = () => {
     } catch (err: unknown) {
       let message = "Invalid credentials";
       if (axios.isAxiosError(err)) {
-          message = err.response?.data?.message || message;
+          const axiosError = err as AxiosError<{ message?: string }>;
+          message = axiosError.response?.data?.message || message;
       }
       setError(message);
       showToast(message, "error");
@@ -319,15 +321,15 @@ const Login: React.FC = () => {
         </form>
 
         <div className="text-center pt-2">
-          {showSetupLink && (
-            <Link 
-              to="/setup-portal" 
-              onClick={handleSetupClick}
-              className="text-xs font-bold text-gray-400 hover:text-gray-900 transition-colors uppercase tracking-wider"
-            >
-              Initialize Portal
-            </Link>
-          )}
+          <Link 
+            to="/setup-portal" 
+            onClick={handleSetupClick}
+            className={`text-xs font-bold transition-colors uppercase tracking-wider ${
+              showSetupLink ? 'text-blue-600 hover:text-blue-800' : 'text-gray-400 hover:text-gray-900'
+            }`}
+          >
+            Initialize Portal
+          </Link>
         </div>
       </div>
     </AuthLayout>

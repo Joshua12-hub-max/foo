@@ -165,7 +165,7 @@ export const VacateModal: React.FC<VacateModalProps> = memo(({ isOpen, onClose, 
             <div>
               <p className="text-sm text-gray-600 mb-4">
                 Vacating: <strong>{currentPosition?.positionTitle}</strong><br/>
-                Current Incumbent: <strong>{currentPosition?.incumbent_name}</strong>
+                Current Incumbent: <strong>{currentPosition?.incumbentName}</strong>
               </p>
               <div className="mb-4">
                 <label className="block text-xs font-semibold text-gray-700 mb-1">Reason (Optional)</label>

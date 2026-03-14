@@ -38,6 +38,7 @@ export const LEAVE_TYPES = [
   'Special Leave Benefits for Women',
   'Wellness Leave',
   'Adoption Leave',
+  'Other',
 ] as const;
 
 export type LeaveType = typeof LEAVE_TYPES[number];
@@ -293,6 +294,7 @@ export const SPECIAL_LEAVES_NO_DEDUCTION: LeaveType[] = [
   'Solo Parent Leave',
   'Special Leave Benefits for Women',
   'Adoption Leave',
+  'Other',
 ];
 
 /**
@@ -325,6 +327,7 @@ export const LEAVE_TO_CREDIT_MAP: Partial<Record<LeaveType, CreditType | null>> 
   'Rehabilitation Leave': null,
   'Special Leave Benefits for Women': null,
   'Adoption Leave': 'Adoption Leave',
+  'Other': null,
 };
 
 /**

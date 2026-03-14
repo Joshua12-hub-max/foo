@@ -1,3 +1,5 @@
+import React, { useMemo } from 'react';
+import Combobox from '@/components/Custom/Combobox';
 import { getStatusColor } from '../constants/performanceConstants';
 import { Clock, AlertTriangle, Calendar, TrendingDown, Info } from 'lucide-react';
 import { AttendanceDetails, ReviewCycle } from '@/types/performance';
@@ -36,6 +38,22 @@ const EmployeeInfoCard: React.FC<EmployeeInfoCardProps> = ({
   const selectedEmployee = employees.find(e => e.id == formData.employeeId);
   const selectedCycle = cycles.find(c => c.id == formData.reviewCycleId);
 
+  const employeeOptions = useMemo(() => 
+    employees.map(emp => ({ 
+      value: String(emp.id), 
+      label: `${emp.firstName} ${emp.lastName}` 
+    })),
+    [employees]
+  );
+
+  const cycleOptions = useMemo(() => 
+    cycles.map(c => ({ 
+      value: String(c.id), 
+      label: c.title || 'Standard Cycle' 
+    })),
+    [cycles]
+  );
+
   return (
     <div className="bg-white rounded-sm shadow-sm border border-gray-200 overflow-hidden">
       {/* Header */}
@@ -52,18 +70,14 @@ const EmployeeInfoCard: React.FC<EmployeeInfoCardProps> = ({
         <div className="space-y-1">
           <label className="text-sm font-medium text-gray-500">Employee Name</label>
           {isNew ? (
-            <select
-              value={formData.employeeId}
-              onChange={(e) => onEmployeeChange(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded bg-white focus:ring-2 focus:ring-gray-300 outline-none text-sm"
-            >
-              <option value="">-- Select Employee --</option>
-              {employees.map(emp => (
-                <option key={emp.id} value={emp.id}>
-                  {emp.firstName} {emp.lastName}
-                </option>
-              ))}
-            </select>
+            <Combobox
+              options={employeeOptions}
+              value={formData.employeeId ? String(formData.employeeId) : undefined}
+              onChange={(val) => onEmployeeChange(val)}
+              placeholder="Select Employee"
+              className="w-full"
+              buttonClassName="bg-white border-gray-300"
+            />
           ) : (
             <div className="font-bold text-gray-800 text-lg">
               {formData.employeeFirstName} {formData.employeeLastName}
@@ -94,16 +108,14 @@ const EmployeeInfoCard: React.FC<EmployeeInfoCardProps> = ({
         <div className="space-y-1">
           <label className="text-sm font-medium text-gray-500">Review Period</label>
           {isNew ? (
-            <select
-              value={formData.reviewCycleId}
-              onChange={(e) => onCycleChange(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded bg-white focus:ring-2 focus:ring-gray-300 outline-none text-sm"
-            >
-              <option value="">-- Select Cycle --</option>
-              {cycles.map(c => (
-                <option key={c.id} value={c.id}>{c.title}</option>
-              ))}
-            </select>
+            <Combobox
+              options={cycleOptions}
+              value={formData.reviewCycleId ? String(formData.reviewCycleId) : undefined}
+              onChange={(val) => onCycleChange(val)}
+              placeholder="Select Cycle"
+              className="w-full"
+              buttonClassName="bg-white border-gray-300"
+            />
           ) : (
             <div className="font-medium text-gray-700">
               {selectedCycle?.title || 'Standard Cycle'}
@@ -119,7 +131,7 @@ const EmployeeInfoCard: React.FC<EmployeeInfoCardProps> = ({
             <div className="flex flex-col">
               <div className="flex items-center gap-2 text-gray-500 mb-1">
                 <Clock size={14} />
-                <span className="text-xs font-bold uppercase tracking-wider">Attendance Rate</span>
+                <span className="text-xs font-bold">Attendance Rate</span>
               </div>
               <div className="flex items-baseline gap-2">
                 <span className="text-xl font-black text-gray-800">
@@ -131,7 +143,7 @@ const EmployeeInfoCard: React.FC<EmployeeInfoCardProps> = ({
             <div className="flex flex-col border-l border-gray-200 pl-4">
               <div className="flex items-center gap-2 text-gray-500 mb-1">
                 <TrendingDown size={14} />
-                <span className="text-xs font-bold uppercase tracking-wider">Tardiness</span>
+                <span className="text-xs font-bold">Tardiness</span>
               </div>
               <div className="text-sm font-bold text-gray-700">
                 {formData.attendanceDetails?.totalLates || 0} Instances 
@@ -144,7 +156,7 @@ const EmployeeInfoCard: React.FC<EmployeeInfoCardProps> = ({
             <div className="flex flex-col border-l border-gray-200 pl-4">
               <div className="flex items-center gap-2 text-gray-500 mb-1">
                 <Calendar size={14} />
-                <span className="text-xs font-bold uppercase tracking-wider">Absences</span>
+                <span className="text-xs font-bold">Absences</span>
               </div>
               <div className="text-sm font-bold text-gray-700">
                 {formData.attendanceDetails?.totalAbsences || 0} Unexplained
@@ -154,7 +166,7 @@ const EmployeeInfoCard: React.FC<EmployeeInfoCardProps> = ({
             <div className="flex flex-col border-l border-gray-200 pl-4">
               <div className="flex items-center gap-2 text-red-500 mb-1">
                 <AlertTriangle size={14} />
-                <span className="text-xs font-bold uppercase tracking-wider">Policy Violations</span>
+                <span className="text-xs font-bold">Policy Violations</span>
               </div>
               <div className={`text-sm font-bold ${formData.violationCount && formData.violationCount > 0 ? 'text-red-600' : 'text-green-600'}`}>
                 {formData.violationCount || 0} Active Violations

@@ -60,7 +60,7 @@ export default function VerifyAccount() {
 
     try {
         const response = await verifyRegistrationOTP({ email, otp });
-        const user = response.data;
+        const user = response.data.data;
         
         setSuccess("Account verified successfully!");
         setVerifiedData({

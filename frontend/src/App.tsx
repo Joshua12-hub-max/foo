@@ -13,6 +13,7 @@ const TestBio = lazy(() => import("./pages/TestBio"));
 
 // Static imports for core shell and priority pages to improve LCP
 const AdminDashboard = lazy(() => import("./pages/DashboardAdmin/AdminDashboard"));
+const ChatDashboard = lazy(() => import("./pages/DashboardAdmin/ChatDashboard"));
 import LeaveRequestHR from "./pages/TimekeepingAdmin/adminLeaverequest";
 
 // Lazy load other dashboards 
@@ -48,6 +49,9 @@ const AdminRegister = lazy(() => import("./pages/EmployeeManagementAdmin/AdminRe
 const JobPosting = lazy(() => import("./pages/Recruitment/JobPosting"));
 const ApplicantList = lazy(() => import("./pages/Recruitment/ApplicantList"));
 const InterviewKanban = lazy(() => import("./pages/Recruitment/InterviewKanban"));
+const InquiriesPage = lazy(() => import("./pages/Recruitment/InquiriesPage"));
+const LiveSupportPage = lazy(() => import("./pages/Recruitment/LiveSupportPage"));
+const SecurityAuditPage = lazy(() => import("./pages/Recruitment/SecurityAuditPage"));
 
 
 
@@ -183,6 +187,16 @@ export default function App() {
 
   useEffect(() => {
     checkAuth();
+    
+    // Cross-tab authentication synchronization
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'isLoggedIn') {
+        checkAuth();
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
   }, [checkAuth]);
 
   if (loading) {
@@ -454,6 +468,30 @@ export default function App() {
               </Suspense>
             }
           />
+          <Route
+            path="recruitment/inquiries"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <InquiriesPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="recruitment/support"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <LiveSupportPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="recruitment/audit"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <SecurityAuditPage />
+              </Suspense>
+            }
+          />
 
           <Route
             path="performance-criteria"
@@ -525,6 +563,14 @@ export default function App() {
             element={
               <Suspense fallback={<PageLoader />}>
                 <InternalPolicies />
+              </Suspense>
+            }
+          />
+          <Route
+            path="chat"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <ChatDashboard />
               </Suspense>
             }
           />

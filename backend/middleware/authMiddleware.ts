@@ -1,7 +1,20 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import type { JwtPayload, AuthenticatedRequest, UserRole, UserRow } from '../types/index.js';
-import db from '../db/index.js';
+import type { JwtPayload, AuthenticatedRequest, UserRole } from '../types/index.js';
+import { db } from '../db/index.js';
+import { eq } from 'drizzle-orm';
+import { authentication } from '../db/schema.js';
+import fs from 'fs';
+import path from 'path';
+
+const DEBUG_LOG_PATH = path.join(process.cwd(), 'auth_debug.log');
+
+const logDebug = (msg: string) => {
+  const timestamp = new Date().toISOString();
+  const logMessage = `[${timestamp}] ${msg}\n`;
+  fs.appendFileSync(DEBUG_LOG_PATH, logMessage);
+  console.warn(msg);
+};
 
 // ============================================================================
 // Type Definitions
@@ -105,8 +118,11 @@ export const verifyToken: MiddlewareFunction = (
     const token = req.cookies?.accessToken as string | undefined;
 
     if (!token) {
+      logDebug(`[AUTH] No accessToken cookie found for ${req.method} ${req.originalUrl}`);
+      logDebug(`[AUTH] Cookies keys: ${JSON.stringify(Object.keys(req.cookies || {}))}`);
+      logDebug(`[AUTH] Headers: ${JSON.stringify(req.headers)}`);
       res.status(401).json({ 
-        message: 'Authentication required. Please log in.',
+        message: 'authentication required. please log in.',
         code: 'NO_TOKEN'
       } satisfies AuthErrorResponse);
       return;
@@ -114,7 +130,7 @@ export const verifyToken: MiddlewareFunction = (
 
     const secret = getJwtSecret();
     if (!secret) {
-      console.error('[AUTH] JWT_SECRET is not configured in environment variables.');
+      logDebug('[AUTH] JWT_SECRET is not configured in environment variables.');
       res.status(500).json({ 
         message: 'Server configuration error. Please contact administrator.',
         code: 'SERVER_ERROR'
@@ -125,6 +141,7 @@ export const verifyToken: MiddlewareFunction = (
     jwt.verify(token, secret, (err, decoded) => {
       try {
         if (err) {
+          logDebug(`[AUTH] Token verification failed for ${req.method} ${req.originalUrl}: ${err.message}`);
           const errorResponse = getJwtErrorResponse(err);
           const statusCode = errorResponse.code === 'EXPIRED_TOKEN' ? 401 : 403;
           res.status(statusCode).json(errorResponse);
@@ -132,9 +149,9 @@ export const verifyToken: MiddlewareFunction = (
         }
 
         if (!isValidJwtPayload(decoded)) {
-          console.error('[AUTH] Decoded token has invalid structure:', decoded);
+          logDebug(`[AUTH] Decoded token has invalid structure: ${JSON.stringify(decoded)}`);
           res.status(403).json({ 
-            message: 'Token payload is invalid.',
+            message: 'token payload is invalid.',
             code: 'INVALID_TOKEN'
           } satisfies AuthErrorResponse);
           return;
@@ -144,7 +161,7 @@ export const verifyToken: MiddlewareFunction = (
         (req as AuthenticatedRequest).user = decoded;
         next();
       } catch (callbackError) {
-        console.error('[AUTH] Error in JWT verify callback:', callbackError);
+        logDebug(`[AUTH] Error in JWT verify callback: ${callbackError instanceof Error ? callbackError.message : String(callbackError)}`);
         res.status(500).json({ 
           message: 'Internal authentication error.',
           code: 'SERVER_ERROR'
@@ -177,7 +194,7 @@ export const verifyAdmin: MiddlewareFunction = (
         
         if (!userRole) {
           res.status(403).json({ 
-            message: 'User role not found.',
+            message: 'Access denied: User role not found in token.',
             code: 'FORBIDDEN'
           } satisfies AuthErrorResponse);
           return;
@@ -189,7 +206,7 @@ export const verifyAdmin: MiddlewareFunction = (
           next();
         } else {
           res.status(403).json({ 
-            message: 'Access denied. Admin or HR privileges required.',
+            message: `Access denied: Admin or HR privileges required. Your role: ${userRole}`,
             code: 'FORBIDDEN'
           } satisfies AuthErrorResponse);
         }
@@ -381,10 +398,13 @@ export const restrictSuspended = async (
     const userId = authReq.user.id;
 
     // Check status from DB for real-time enforcement
-    const [users] = await db.query<UserRow[]>('SELECT employment_status as employmentStatus FROM authentication WHERE id = ?', [userId]);
+    const user = await db.query.authentication.findFirst({
+      where: eq(authentication.id, userId),
+      columns: { employmentStatus: true }
+    });
 
-    if (users.length > 0) {
-      const status = users[0].employmentStatus;
+    if (user) {
+      const status = user.employmentStatus;
       if (status === 'Suspended') {
          res.status(403).json({
           message: 'Action Restricted: Your account is currently under SUSPENSION. You cannot perform this action.',

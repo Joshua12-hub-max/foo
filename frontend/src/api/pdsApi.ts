@@ -13,14 +13,14 @@ export interface PDSFamily {
 
 export interface PDSEducation {
     id?: number;
-    level: string;
+    level: 'Elementary' | 'Secondary' | 'Vocational' | 'College' | 'Graduate Studies';
     schoolName: string;
     degreeCourse?: string;
-    yearGraduated?: string;
-    highestLevel?: string;
-    startDate?: string;
-    endDate?: string;
-    scholarshipHonors?: string;
+    yearGraduated?: number;
+    unitsEarned?: string;
+    dateFrom?: number;
+    dateTo?: number;
+    honors?: string;
 }
 
 // ... other interfaces can be added as needed

@@ -1,21 +1,10 @@
 import React from 'react';
 import { CheckCircle, AlertTriangle, RefreshCw } from 'lucide-react';
 
-interface LogItem {
-  id?: number | string;
-  status?: string;
-  employeeId?: string | number;
-  employeeName?: string;
-  timestamp?: string;
-  createdAt?: string;
-  updated_at?: string;
-  name?: string;
-  department?: string;
-  type?: string;
-}
+import { BiometricsLog } from '@/types';
 
 interface MonitorStatsProps {
-  logs: LogItem[];
+  logs: BiometricsLog[];
 }
 
 const MonitorStats: React.FC<MonitorStatsProps> = ({ logs }) => {

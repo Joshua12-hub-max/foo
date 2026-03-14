@@ -103,7 +103,7 @@ const CSForm33 = ({ data }: { data: Form33Data }) => (
                     </div>
                     <div>
                         <div className="text-[10px] uppercase font-black text-gray-500">Nature of Appointment</div>
-                        <div className="text-[13px] font-bold">{data.nature_of_appointment}</div>
+                        <div className="text-[13px] font-bold">{data.natureOfAppointment}</div>
                     </div>
                     <div>
                         <div className="text-[10px] uppercase font-black text-gray-500">Page of Plantilla</div>
@@ -115,7 +115,7 @@ const CSForm33 = ({ data }: { data: Form33Data }) => (
                 <div className="border-t-2 border-black pt-2 text-center">
                     <div className="font-black uppercase text-[14px]">MAYOR JUAN DELA CRUZ</div>
                     <div className="text-[10px] uppercase font-medium">Appointing Officer / Head of Agency</div>
-                    <div className="text-[10px] font-bold mt-4 italic">Date of Signing: {new Date(data.date_of_signing).toLocaleDateString()}</div>
+                    <div className="text-[10px] font-bold mt-4 italic">Date of Signing: {new Date(data.dateOfSigning).toLocaleDateString()}</div>
                 </div>
             </div>
         </div>

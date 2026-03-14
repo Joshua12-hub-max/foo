@@ -1,4 +1,4 @@
-﻿import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { 
   AlertCircle, Loader2,
   Pencil, X, Check, Plus, Trash2,
@@ -6,8 +6,9 @@ import {
   Calendar as LucideCalendar, Phone, Heart, Building, Link as LinkIcon, ScanLine
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { employeeApi } from '@/api/employeeApi';
-import { ApiError, Education, Skill, EmergencyContact, CustomField, EmployeeDetailed } from '@/types';
+import { employeeApi, fetchEmployeeDocuments } from '@/api/employeeApi';
+import DocumentGallery from '@features/Settings/Profile/components/DocumentGallery';
+import { ApiError, Education, Skill, EmergencyContact, CustomField, EmployeeDetailed, EmployeeDocument } from '@/types';
 import { useToastStore } from '@/stores';
 import AddSkillModal from './Modals/AddSkillModal';
 import AddEducationModal from './Modals/AddEducationModal';
@@ -27,14 +28,14 @@ import {
 
 // Type alias for Profile to match EmployeeDetailed but with optional legacy fields if needed
 type Profile = EmployeeDetailed & {
-  jobTitle?: string;
-  employeeId?: string;
-  employmentStatus?: string;
-  itemNumber?: string;
-  salaryGrade?: string;
-  stepIncrement?: string | number;
-  dateHired?: string;
-  agencyEmployeeNo?: string;
+  jobTitle?: string | null;
+  employeeId?: string | null;
+  employmentStatus?: string | null;
+  itemNumber?: string | null;
+  salaryGrade?: string | null;
+  stepIncrement?: string | number | null;
+  dateHired?: string | null;
+  agencyEmployeeNo?: string | null;
   emergencyContacts?: EmergencyContact[];
   customFields?: CustomField[];
   suffix?: string | null;
@@ -138,7 +139,7 @@ const EditableDataField: React.FC<EditableDataFieldProps> = ({
 
   return (
     <div className={`space-y-1 ${fullWidth ? 'col-span-full' : ''}`}>
-      <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1">{label}</label>
+      <label className="text-[10px] font-bold text-gray-500 tracking-widest ml-1">{label}</label>
       
       <div className={`relative min-h-[38px] group rounded-[10px] border-[1.5px] transition-all ${
         isEditing ? 'border-green-500 ring-2 ring-green-50' : 'border-gray-200 bg-gray-50/50 hover:border-gray-300 hover:bg-white'
@@ -253,7 +254,7 @@ const CustomEditableDataField: React.FC<CustomEditableDataFieldProps> = ({
       </button>
 
       {/* Label */}
-      <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1 pr-5">
+      <span className="text-[10px] font-semibold text-gray-400 tracking-wider mb-1 pr-5">
           {label}
       </span>
 
@@ -310,7 +311,7 @@ const DataField: React.FC<{label: string; value?: string | number | null; icon?:
   
   return (
     <div className={`flex flex-col rounded-lg p-3 ${getColSpanClass()} ${highlight ? 'bg-gray-50 border border-gray-200' : 'bg-white'}`}>
-      <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1">{label}</span>
+      <span className="text-[10px] font-semibold text-gray-400 tracking-wider mb-1">{label}</span>
       <span className={`text-sm font-semibold truncate ${highlight ? 'text-gray-900' : 'text-gray-700'}`}>
         {value || <span className="text-gray-300 font-normal">-</span>}
       </span>
@@ -321,7 +322,7 @@ const DataField: React.FC<{label: string; value?: string | number | null; icon?:
 // Section Container matching Register.tsx card styling
 const Section: React.FC<SectionProps> = ({ title, children, columns = "grid-cols-1 md:grid-cols-2 lg:grid-cols-4" }) => (
   <div className="bg-white p-5 rounded-[15px] border border-gray-100 shadow-sm space-y-4 mb-6 relative overflow-hidden">
-    <h4 className="text-sm font-bold text-gray-800 tracking-wide uppercase border-b border-gray-100 pb-2 mb-3 flex items-center gap-2">
+    <h4 className="text-sm font-bold text-gray-800 tracking-wide border-b border-gray-100 pb-2 mb-3 flex items-center gap-2">
       {title}
     </h4>
     <div className={`grid ${columns} gap-4`}>
@@ -381,11 +382,20 @@ const EditableProfileView: React.FC<EmployeeProfileViewProps> = ({ profile, load
   // Step Increment Data
   const [nextStepData, setNextStepData] = useState<{ nextStepDate?: string | null, totalLwopDays?: number } | null>(null);
 
+  // Employee Documents
+  const [employeeDocuments, setEmployeeDocuments] = useState<EmployeeDocument[]>([]);
+
   React.useEffect(() => {
     if (profile?.id) {
         employeeApi.getNextStepIncrement(profile.id).then(res => {
             if (res.success) {
                 setNextStepData({ nextStepDate: res.nextStepDate, totalLwopDays: res.totalLwopDays });
+            }
+        }).catch(err => console.error(err));
+
+        fetchEmployeeDocuments(profile.id).then(res => {
+            if (res.success && res.documents) {
+                setEmployeeDocuments(res.documents);
             }
         }).catch(err => console.error(err));
     }
@@ -743,7 +753,7 @@ const EditableProfileView: React.FC<EmployeeProfileViewProps> = ({ profile, load
         {/* BIOMETRIC & COMPLIANCE */}
         <Section title="Biometric & Compliance" columns="grid-cols-1 md:grid-cols-2">
            <div className="p-4 border border-gray-100 rounded-xl bg-gray-50/30 flex flex-col items-center">
-             <h5 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Right Thumbmark URL</h5>
+             <h5 className="text-[10px] font-bold text-gray-400 tracking-widest mb-3">Right Thumbmark URL</h5>
              <EditableDataField 
                 label="Thumbmark URL" 
                 value={profile.rightThumbmarkUrl} 
@@ -841,7 +851,7 @@ const EditableProfileView: React.FC<EmployeeProfileViewProps> = ({ profile, load
                         <button onClick={() => { setEditingFamily({ relationType: relation } as any); setShowAddFamily(true); }} className="p-1 text-gray-400 hover:text-green-600 bg-white rounded shadow-sm border border-gray-100"><Plus size={12} /></button>
                       )}
                     </div>
-                    <h5 className="text-[10px] font-bold text-green-600 uppercase tracking-widest mb-3">{relation}'s Information</h5>
+                    <h5 className="text-[10px] font-bold text-green-600 tracking-widest mb-3">{relation}'s Information</h5>
                     <div className="space-y-3">
                       <DataField label="Full Name" value={member ? `${member.firstName || ''} ${member.lastName || ''}`.trim() : '-'} />
                       <DataField label="Occupation" value={member?.occupation} />
@@ -983,7 +993,7 @@ const EditableProfileView: React.FC<EmployeeProfileViewProps> = ({ profile, load
              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {['Skill', 'Recognition', 'Membership'].map(type => (
                   <div key={type} className="p-4 border border-gray-100 rounded-xl bg-gray-50/30">
-                    <h6 className="text-[10px] font-bold text-blue-600 uppercase mb-2">{type}s</h6>
+                    <h6 className="text-[10px] font-bold text-blue-600 mb-2">{type}s</h6>
                     <div className="space-y-2">
                        {profile.otherInfo?.filter(oi => oi.type === type).map((oi, i) => (
                          <div key={i} className="text-xs font-semibold text-gray-700 bg-white p-2 rounded border border-gray-200 flex justify-between items-center group">
@@ -1063,6 +1073,24 @@ const EditableProfileView: React.FC<EmployeeProfileViewProps> = ({ profile, load
         <Section title="Additional Information" columns="grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
            {renderCustomFields('General')}
            <AddCard label="Add Field" onClick={() => openCustomFieldModal('General')} />
+        </Section>
+
+        {/* DOCUMENTS & ATTACHMENTS */}
+        <Section title="Documents & Attachments" columns="grid-cols-1">
+          <DocumentGallery 
+            employeeId={profile.id}
+            documents={employeeDocuments}
+            onDocumentChange={() => {
+              if (profile?.id) {
+                fetchEmployeeDocuments(profile.id).then(res => {
+                  if (res.success && res.documents) {
+                    setEmployeeDocuments(res.documents);
+                  }
+                }).catch(err => console.error(err));
+              }
+              onRefresh();
+            }}
+          />
         </Section>
       </div> {/* DATA GRID - REORGANIZED SECTIONS END */}
 

@@ -18,6 +18,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { HiredApplicant } from "@/types/recruitment_applicant";
 import ph from 'phil-reg-prov-mun-brgy';
 import { EDUCATION_LEVELS } from "../schemas/recruitment";
+import axios, { AxiosError } from "axios";
 
 type EducationLevel = typeof EDUCATION_LEVELS[number] | "";
 type RegisterFormValues = z.infer<typeof RegisterSchema>;
@@ -134,7 +135,7 @@ export default function Register() {
       // Visual Pre-fill: Leave blank so placeholder shows
       setValue("password", "");
       // Role is already correct in user object
-      setValue("role", user.role as unknown as RegisterFormValues["role"]);
+      setValue("role", user.role as RegisterFormValues["role"]);
       toast.success("Initial account verified! Please complete your PDS and Biometrics.");
     }
   }, [isFinalizingSetup, user, setValue]);
@@ -325,14 +326,35 @@ export default function Register() {
             .replace(/&amp;/g, '&')
             .replace(/&lt;/g, '<')
             .replace(/&gt;/g, '>');
+            
+        // Map backend strings to exact frontend enum values (EDUCATION_LEVELS)
+        const lowerVal = educationalBackgroundValue.toLowerCase();
+        if (lowerVal.includes('elementary')) educationalBackgroundValue = "Elementary School Graduate";
+        else if (lowerVal.includes('senior high')) educationalBackgroundValue = "Senior High School Graduate";
+        else if (lowerVal.includes('high school')) educationalBackgroundValue = "High School Graduate";
+        else if (lowerVal.includes('vocational') || lowerVal.includes('technical')) educationalBackgroundValue = "Vocational / Technical Course";
+        else if (lowerVal.includes('some college')) educationalBackgroundValue = "Some College Units";
+        else if (lowerVal.includes('college graduate') || lowerVal.includes('bachelor')) educationalBackgroundValue = "College Graduate (Bachelor's Degree)";
+        else if (lowerVal.includes('some graduate') || (lowerVal.includes('master') && lowerVal.includes('some'))) educationalBackgroundValue = "Some Graduate Studies (Master's)";
+        else if (lowerVal.includes('master')) educationalBackgroundValue = "Master's Degree Graduate";
+        else if (lowerVal.includes('some doctoral') || (lowerVal.includes('doctor') && lowerVal.includes('some'))) educationalBackgroundValue = "Some Doctoral Studies";
+        else if (lowerVal.includes('doctor')) educationalBackgroundValue = "Doctorate Degree Graduate";
     }
-    setValue("educationalBackground", (educationalBackgroundValue as EducationLevel) || "");
+    
+    // Final safety check: if not in enum, default to empty to avoid Zod crash
+    const isValidEnum = (EDUCATION_LEVELS as readonly string[]).includes(educationalBackgroundValue);
+    setValue("educationalBackground", isValidEnum ? (educationalBackgroundValue as EducationLevel) : "");
+    
+    // Explicitly set these fields with fallback to empty string
     setValue("schoolName", matchedApplicant.schoolName || "");
     setValue("course", matchedApplicant.course || "");
     setValue("yearGraduated", matchedApplicant.yearGraduated || "");
     setValue("experience", matchedApplicant.experience || "");
     setValue("skills", matchedApplicant.skills || "");
-    setValue("yearsOfExperience", matchedApplicant.totalExperienceYears?.toString() || "");
+    
+    // Pre-fill years of experience — ensure it's a string
+    const years = matchedApplicant.totalExperienceYears;
+    setValue("yearsOfExperience", years !== undefined && years !== null ? String(years) : "");
 
     // Eligibility
     setValue("eligibilityType", matchedApplicant.eligibilityType || "");
@@ -441,45 +463,45 @@ export default function Register() {
     if (data.applicantPhotoPath) formData.append("applicantPhotoPath", data.applicantPhotoPath);
 
     try {
-      await registerMutation.mutateAsync({ 
+      const response = await registerMutation.mutateAsync({ 
         data: formData, 
         mode: isFinalizingSetup ? 'finalize-setup' : undefined 
       });
 
-      if (isFinalizingSetup) {
+      // Use the requiresVerification flag from backend to determine next step
+      // This ensures all employees must verify, even in finalize-setup mode (Initial profile)
+      if (response.data.data.requiresVerification) {
+          toast.success("Registration Successful! Please check your email for the verification code.");
+          navigate("/verify-account", { state: { email: data.email } });
+      } else {
           toast.success("Profile permanently saved! Redirecting to your dashboard...");
-          // Sync auth state to get full permissions
+          // Sync auth state to get full permissions (for Admin/HR who might skip verification in finalize mode)
           await checkAuth();
           navigate("/dashboard");
-      } else {
-          toast.success("Registration Successful! Please check your email.");
-          navigate("/verify-account", { state: { email: data.email } });
       }
     } catch (error: unknown) {
-
       console.error(error);
       let msg = "Registration failed";
       
-      interface ServerErrorData {
-          message?: string;
-          code?: string;
-          errors?: Array<{ path: string[]; message: string }>;
-      }
-      
-      const serverError = error as { response?: { data?: ServerErrorData } };
-      const resData = serverError.response?.data;
+      if (axios.isAxiosError(error)) {
+          const resData = error.response?.data as { 
+              message?: string; 
+              code?: string; 
+              errors?: Array<{ path: string[]; message: string }> 
+          } | undefined;
 
-      if (resData?.code === 'DUPLICATE_NAME') {
-          setShowDuplicateModal(true);
-          return;
-      }
+          if (resData?.code === 'DUPLICATE_NAME') {
+              setShowDuplicateModal(true);
+              return;
+          }
 
-      if (resData?.code === 'ACCOUNT_LOCKED') {
-          msg = resData.message || "Account is temporarily locked.";
-      } else if (resData?.errors && Array.isArray(resData.errors)) {
-          msg = resData.errors.map((err) => `${err.path.join('.')}: ${err.message}`).join(' | ');
-      } else {
-          msg = resData?.message || msg;
+          if (resData?.code === 'ACCOUNT_LOCKED') {
+              msg = resData.message || "Account is temporarily locked.";
+          } else if (resData?.errors && Array.isArray(resData.errors)) {
+              msg = resData.errors.map(err => `${err.path.join('.')}: ${err.message}`).join(' | ');
+          } else {
+              msg = resData?.message || msg;
+          }
       }
       
       toast.error(msg, { duration: 5000 });

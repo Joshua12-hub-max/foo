@@ -1,6 +1,8 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import cookieParser from "cookie-parser";
 import helmet from 'helmet';
 import compression from 'compression';
@@ -129,12 +131,16 @@ app.use(cors({
     "http://localhost:5174",
     "https://localhost:5173",
     "https://localhost:5174",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:5174",
+    "https://127.0.0.1:5173",
+    "https://127.0.0.1:5174",
   ],
   credentials: true
 }));
+app.use(cookieParser());
 app.use(express.json());
 app.use(namingMiddleware);
-app.use(cookieParser());
 app.use(compression());
 
 import { verifyToken } from './middleware/authMiddleware.js';

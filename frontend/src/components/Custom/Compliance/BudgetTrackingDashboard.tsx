@@ -211,42 +211,42 @@ const BudgetTrackingDashboard: React.FC<BudgetDashboardProps> = ({ selectedDeptN
             {/* Main Stats Cards - Master Design */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {/* Total Allocated */}
-                <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
-
-                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Total Allocation</p>
-                    <h2 className="text-3xl font-black text-gray-900 tracking-tight">
-                        ₱{displayData.total.toLocaleString()}
-                    </h2>
-                    <p className="text-xs text-gray-400 mt-2 font-medium">Approved Annual Budget</p>
+                <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 group">
+                    <div className="flex items-center justify-between mb-2">
+                        <div className="w-8 h-8 bg-gray-800 rounded-lg shadow-sm transition-transform"></div>
+                    </div>
+                    <div className="text-2xl font-bold text-gray-900">₱{displayData.total.toLocaleString()}</div>
+                    <div className="text-xs font-semibold text-gray-500 mt-1">Total Allocation</div>
+                    <p className="text-[11px] text-gray-400 mt-1 font-medium">Approved Annual Budget</p>
                 </div>
 
                 {/* Utilized */}
-                <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
-
-                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Utilized Budget</p>
-                    <h2 className="text-3xl font-black text-red-600 tracking-tight">
-                        ₱{displayData.utilized.toLocaleString()}
-                    </h2>
-                    <div className="flex items-center gap-2 mt-3">
-                        <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 group">
+                    <div className="flex items-center justify-between mb-2">
+                        <div className="w-8 h-8 bg-gray-700 rounded-lg shadow-sm transition-transform"></div>
+                    </div>
+                    <div className="text-2xl font-bold text-gray-900">₱{displayData.utilized.toLocaleString()}</div>
+                    <div className="text-xs font-semibold text-gray-500 mt-1">Utilized Budget</div>
+                    <div className="flex items-center gap-2 mt-2">
+                        <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
                             <div 
                                 className="h-full bg-red-500 rounded-full transition-all duration-500" 
                                 style={{ width: `${Math.min(displayData.rate, 100)}%` }}
                             />
                         </div>
-                        <span className="text-xs font-bold text-red-600">{displayData.rate.toFixed(1)}%</span>
+                        <span className="text-[10px] font-bold text-gray-700">{displayData.rate.toFixed(1)}%</span>
                     </div>
                 </div>
 
                 {/* Remaining */}
-                <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
-
-                   <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Remaining Balance</p>
-                    <h2 className="text-3xl font-black text-green-600 tracking-tight">
-                        ₱{displayData.remaining.toLocaleString()}
-                    </h2>
-                     <p className="text-xs text-green-600 mt-2 font-medium flex items-center gap-1">
-                        <CheckCircle size={12} /> Available for disbursement
+                <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 group">
+                    <div className="flex items-center justify-between mb-2">
+                        <div className="w-8 h-8 bg-gray-600 rounded-lg shadow-sm transition-transform"></div>
+                    </div>
+                    <div className="text-2xl font-bold text-gray-900">₱{displayData.remaining.toLocaleString()}</div>
+                    <div className="text-xs font-semibold text-gray-500 mt-1">Remaining Balance</div>
+                     <p className="text-[10px] text-gray-500 mt-1 font-medium flex items-center gap-1">
+                        <CheckCircle size={10} /> Available for disbursement
                      </p>
                 </div>
             </div>
@@ -301,29 +301,29 @@ const BudgetTrackingDashboard: React.FC<BudgetDashboardProps> = ({ selectedDeptN
                     
                     <div className="overflow-x-auto flex-1">
                         <table className="w-full text-sm text-left">
-                            <thead className="bg-gray-100 text-gray-700">
+                            <thead className="bg-gray-200 shadow-md text-gray-700">
                                 <tr>
-                                    <th className="px-6 py-3 font-semibold whitespace-nowrap">Department</th>
-                                    <th className="px-6 py-3 font-semibold text-right whitespace-nowrap">Total Budget</th>
-                                    <th className="px-6 py-3 font-semibold text-right whitespace-nowrap">Utilized</th>
-                                    <th className="px-6 py-3 font-semibold text-right whitespace-nowrap">Remaining</th>
-                                    <th className="px-6 py-3 font-semibold text-center whitespace-nowrap">% Used</th>
-                                    <th className="px-6 py-3 font-semibold text-center whitespace-nowrap">Actions</th>
+                                    <th className="px-6 py-4 text-sm font-bold tracking-wide whitespace-nowrap">Department</th>
+                                    <th className="px-6 py-4 text-sm font-bold tracking-wide text-right whitespace-nowrap">Total Budget</th>
+                                    <th className="px-6 py-4 text-sm font-bold tracking-wide text-right whitespace-nowrap">Utilized</th>
+                                    <th className="px-6 py-4 text-sm font-bold tracking-wide text-right whitespace-nowrap">Remaining</th>
+                                    <th className="px-6 py-4 text-sm font-bold tracking-wide text-center whitespace-nowrap">% Used</th>
+                                    <th className="px-6 py-4 text-sm font-bold tracking-wide text-center whitespace-nowrap">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-100">
+                            <tbody className="divide-y divide-slate-100">
                                 {paginatedData.map((item: BudgetAllocation) => (
-                                    <tr key={item.id} className="hover:bg-gray-50 transition-colors group">
-                                        <td className="px-6 py-4 font-medium text-gray-900 border-l-2 border-transparent group-hover:border-blue-500 transition-all">
+                                    <tr key={item.id} className="hover:bg-[#F8F9FA] hover:shadow-xl transition-colors group bg-white">
+                                        <td className="px-6 py-4 font-semibold text-gray-900 border-l-2 border-transparent group-hover:border-blue-500 transition-all">
                                             {item.department}
                                         </td>
-                                        <td className="px-6 py-4 text-right tabular-nums text-gray-600">
+                                        <td className="px-6 py-4 text-right tabular-nums text-gray-700 font-medium">
                                             ₱{Number(item.totalBudget).toLocaleString()}
                                         </td>
-                                        <td className="px-6 py-4 text-right tabular-nums text-red-600 font-medium">
+                                        <td className="px-6 py-4 text-right tabular-nums text-red-600 font-bold">
                                             ₱{Number(item.utilizedBudget).toLocaleString()}
                                         </td>
-                                        <td className="px-6 py-4 text-right tabular-nums text-green-600 font-medium">
+                                        <td className="px-6 py-4 text-right tabular-nums text-green-600 font-bold">
                                             ₱{Number(item.remainingBudget).toLocaleString()}
                                         </td>
                                         <td className="px-6 py-4 text-center">

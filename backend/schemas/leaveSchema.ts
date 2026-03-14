@@ -22,6 +22,7 @@ const LEAVE_TYPE_VALUES = [
   'Special Leave Benefits for Women',
   'Wellness Leave',
   'Adoption Leave',
+  'Other',
 ] as const;
 
 const CREDIT_TYPE_VALUES = [
@@ -232,3 +233,43 @@ export const validateVLAdvanceFiling = (startDate: string): boolean => {
   
   return diffDays >= VL_ADVANCE_FILING_DAYS;
 };
+
+// ============================================================================
+// Internal Policy Schemas (Replacing Type Erasure)
+// ============================================================================
+
+export const leavePolicySchema = z.object({
+  types: z.array(z.string()),
+  annualLimits: z.record(z.string(), z.number()),
+  advanceFilingDays: z.object({
+    days: z.number(),
+    appliesTo: z.array(z.string()),
+    description: z.string().optional(),
+  }),
+  sickLeaveWindow: z.object({
+    maxDaysAfterReturn: z.number(),
+    description: z.string().optional(),
+  }),
+  crossChargeMap: z.record(z.string(), z.string()),
+  leaveToCreditMap: z.record(z.string(), z.string()),
+  specialLeavesNoDeduction: z.array(z.string()),
+  requiredAttachments: z.record(
+    z.string(),
+    z.object({
+      condition: z.string(),
+      required: z.string(),
+    })
+  ).optional().default({}),
+  forcedLeaveRule: z.object({
+    minimumVLRequired: z.number(),
+    description: z.string(),
+  }),
+  deemedApprovalGracePeriod: z.number(),
+  deemedApproval: z.object({
+    days: z.number(),
+    description: z.string(),
+    reference: z.string(),
+  }),
+});
+
+export type LeavePolicyContentStrict = z.infer<typeof leavePolicySchema>;

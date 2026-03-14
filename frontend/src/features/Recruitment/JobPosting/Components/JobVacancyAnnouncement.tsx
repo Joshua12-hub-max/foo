@@ -143,15 +143,51 @@ const JobVacancyAnnouncement: React.FC<JobVacancyAnnouncementProps> = ({ job, on
            </div>
 
            {/* Requirements Section */}
-           {/* If requirements are stored as a list or string, try to format them nicely */}
            <div className="border border-black mb-8 p-4 text-sm">
                <div className="font-bold text-center mb-4 uppercase underline">REQUIREMENTS:</div>
-               <div className="whitespace-pre-wrap leading-relaxed px-4">
-                  {job.requirements || (
-                    <ol className="list-decimal pl-5 space-y-1 italic text-gray-500">
-                        <li>Requirements not specified.</li>
-                    </ol>
-                  )}
+               <div className="px-4 space-y-3">
+                 {(job.education || job.experience || job.training || job.eligibility || job.otherQualifications) ? (
+                   <>
+                     {job.education && (
+                       <div className="grid grid-cols-[150px_1fr] gap-4">
+                         <div className="font-bold">Education:</div>
+                         <div>{job.education}</div>
+                       </div>
+                     )}
+                     {job.experience && (
+                       <div className="grid grid-cols-[150px_1fr] gap-4">
+                         <div className="font-bold">Experience:</div>
+                         <div>{job.experience}</div>
+                       </div>
+                     )}
+                     {job.training && (
+                       <div className="grid grid-cols-[150px_1fr] gap-4">
+                         <div className="font-bold">Training:</div>
+                         <div>{job.training}</div>
+                       </div>
+                     )}
+                     {job.eligibility && (
+                       <div className="grid grid-cols-[150px_1fr] gap-4">
+                         <div className="font-bold">Eligibility:</div>
+                         <div>{job.eligibility}</div>
+                       </div>
+                     )}
+                     {job.otherQualifications && (
+                       <div className="grid grid-cols-[150px_1fr] gap-4 mt-2">
+                         <div className="font-bold">Other Qualifications:</div>
+                         <div className="whitespace-pre-wrap leading-relaxed">{job.otherQualifications}</div>
+                       </div>
+                     )}
+                   </>
+                 ) : (
+                   <div className="whitespace-pre-wrap leading-relaxed">
+                     {job.requirements || (
+                       <ol className="list-decimal pl-5 space-y-1 italic text-gray-500">
+                           <li>Requirements not specified.</li>
+                       </ol>
+                     )}
+                   </div>
+                 )}
                </div>
            </div>
 

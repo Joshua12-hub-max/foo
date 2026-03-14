@@ -72,8 +72,8 @@ const RejectModal: React.FC<RejectModalProps> = ({
   // Helper to get display values
   const getName = () => request.name || `${request.firstName} ${request.lastName}`;
   const getLeaveType = () => request.leaveType || request.leaveType;
-  const getFromDate = () => formatDate(request.fromDate || request.startDate);
-  const getToDate = () => formatDate(request.toDate || request.endDate);
+  const getFromDate = () => formatDate(request.startDate);
+  const getToDate = () => formatDate(request.endDate);
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 transition-all" onClick={onCancel}>

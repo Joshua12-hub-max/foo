@@ -4,6 +4,7 @@ import { eq, and, asc, sql } from 'drizzle-orm';
 import { updateTardinessSummary } from '../utils/tardinessUtils.js';
 import { formatToManilaDateTime } from '../utils/dateUtils.js';
 import { checkPolicyViolations } from './violationService.js';
+import { compareIds } from '../utils/idUtils.js';
 
 const DAYS_OF_WEEK = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as const;
 
@@ -19,11 +20,6 @@ interface TardinessPolicy {
   gracePeriod?: string | number;
 }
 
-/**
- * Core logic to process attendance logs into a Daily Time Record.
- * Calculates Late, Undertime, and updates the status.
- * Handles split shifts (multiple blocks) and defaults to 8 AM - 5 PM.
- */
 export const processDailyAttendance = async (
   employeeId: string,
   dateStr: string
@@ -36,7 +32,7 @@ export const processDailyAttendance = async (
     })
     .from(attendanceLogs)
     .where(and(
-      eq(attendanceLogs.employeeId, employeeId),
+      compareIds(attendanceLogs.employeeId, employeeId),
       eq(sql`DATE(${attendanceLogs.scanTime})`, dateStr)
     ))
     .orderBy(asc(attendanceLogs.scanTime));
@@ -47,8 +43,7 @@ export const processDailyAttendance = async (
       dailyTargetHours: authentication.dailyTargetHours
     })
     .from(authentication)
-    .where(eq(authentication.employeeId, employeeId))
-
+    .where(compareIds(authentication.employeeId, employeeId))
     .limit(1);
 
     // 2b. Check for Approved Leave
@@ -57,7 +52,7 @@ export const processDailyAttendance = async (
     })
     .from(leaveApplications)
     .where(and(
-      eq(leaveApplications.employeeId, employeeId),
+      compareIds(leaveApplications.employeeId, employeeId),
       eq(leaveApplications.status, 'Approved'),
       sql`DATE(${leaveApplications.startDate}) <= ${dateStr}`,
       sql`DATE(${leaveApplications.endDate}) >= ${dateStr}`
@@ -83,7 +78,7 @@ export const processDailyAttendance = async (
     })
     .from(schedules)
     .where(and(
-      eq(schedules.employeeId, employeeId),
+      compareIds(schedules.employeeId, employeeId),
       eq(schedules.dayOfWeek, dayName)
     ))
     .orderBy(asc(schedules.startTime));
@@ -124,8 +119,8 @@ export const processDailyAttendance = async (
         const content = (typeof policyRow.content === 'string' ? JSON.parse(policyRow.content) : policyRow.content) as TardinessPolicy;
         gracePeriod = Number(content.gracePeriod) || 0;
       }
-    } catch (e) {
-      console.warn('[ATTENDANCE] Error fetching tardiness policy (defaulting to 0):', e);
+    } catch (_e: unknown) {
+      console.warn('[ATTENDANCE] Error fetching tardiness policy (defaulting to 0):', _e);
     }
     
     let totalLateMinutes = 0;
@@ -148,8 +143,9 @@ export const processDailyAttendance = async (
         blockEnd.setHours(eH, eM, eS);
 
         // Find applicable logs for this block
-        // Threshold: Look for logs within 4 hours of the block start/end
-        const thresholdMs = 4 * 60 * 60 * 1000;
+        // Threshold: Look for logs within 10 hours of the block start/end
+        // Increased from 4h to 10h to capture early OUTs (like 11 AM for a 5 PM shift)
+        const thresholdMs = 10 * 60 * 60 * 1000;
 
         const blockInLogs = logs.filter(l => 
           l.type === 'IN' && 
@@ -167,9 +163,10 @@ export const processDailyAttendance = async (
           
           if (firstIn > blockStart) {
             const minutesLate = Math.floor((firstIn.getTime() - blockStart.getTime()) / 60000);
-            // Apply Grace Period Rule
+            // L1 FIX: Grace period deducts from late minutes, not just gates them
+            // If grace = 15 and late = 20, charge 5 (not 20)
             if (minutesLate > gracePeriod) {
-              totalLateMinutes += minutesLate;
+              totalLateMinutes += (minutesLate - gracePeriod);
             }
           }
         }
@@ -217,7 +214,7 @@ export const processDailyAttendance = async (
     }
 
     // ── STATUS DETERMINATION ──
-    let status: string = 'Present';
+    let status: string = 'Pending';
     const hasScheduleOrTarget = activeBlocks.length > 0 || useTargetHoursMode;
 
     if (hasScheduleOrTarget) {
@@ -279,7 +276,7 @@ export const processDailyAttendance = async (
     }
 
     // console.log(`Processed DTR for ${employeeId} on ${dateStr}: Late=${totalLateMinutes}, Undertime=${totalUndertimeMinutes}`);
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error processing daily attendance:', error);
     throw error;
   }

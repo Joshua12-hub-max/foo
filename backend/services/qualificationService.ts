@@ -40,7 +40,7 @@ export class QualificationService {
         lastName: authentication.lastName,
         employeeId: authentication.employeeId,
         eligibilityType: authentication.eligibilityType,
-        highestEducation: authentication.highestEducation,
+        highestEducation: authentication.educationalBackground,
         yearsOfExperience: authentication.yearsOfExperience
     })
     .from(authentication)
@@ -74,7 +74,7 @@ export class QualificationService {
             employeeDetails: {
                 id: employee.id,
                 name: `${employee.firstName} ${employee.lastName}`,
-                employeeId: employee.employeeId,
+                employeeId: employee.employeeId || '',
                 education: employee.highestEducation,
                 experienceYears: Number(employee.yearsOfExperience) || 0,
                 eligibility: employee.eligibilityType
@@ -164,7 +164,7 @@ export class QualificationService {
         employeeDetails: {
             id: employee.id,
             name: `${employee.firstName} ${employee.lastName}`,
-            employeeId: employee.employeeId,
+            employeeId: employee.employeeId || '',
             education: employee.highestEducation,
             experienceYears: empExp,
             eligibility: employee.eligibilityType

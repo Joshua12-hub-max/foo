@@ -1,5 +1,6 @@
 import React, { memo, ChangeEvent } from 'react';
 import { Plus, Search } from 'lucide-react';
+import Combobox from '@/components/Custom/Combobox';
 
 import { PlantillaSummary } from '../constants/plantillaConstants';
 
@@ -78,14 +79,17 @@ const PlantillaHeader: React.FC<PlantillaHeaderProps> = ({
             {/* Quick Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                 {[
-                    { label: 'Total Positions', value: summary.total, color: 'text-slate-900', bg: 'bg-slate-50' },
-                    { label: 'Filled Positions', value: summary.filled, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-                    { label: 'Vacant Positions', value: summary.vacant, color: 'text-amber-600', bg: 'bg-amber-50' },
-                    { label: 'Vacancy Rate', value: `${summary.vacancyRate}%`, color: 'text-blue-600', bg: 'bg-blue-50' },
+                    { label: 'Total Positions', value: summary.total, color: 'bg-gray-800' },
+                    { label: 'Filled Positions', value: summary.filled, color: 'bg-gray-700' },
+                    { label: 'Vacant Positions', value: summary.vacant, color: 'bg-gray-600' },
+                    { label: 'Vacancy Rate', value: `${summary.vacancyRate}%`, color: 'bg-gray-900' },
                 ].map((stat, i) => (
-                    <div key={i} className={`${stat.bg} p-4 rounded-xl border border-white/50 shadow-sm transition-transform hover:scale-[1.02]`}>
-                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{stat.label}</div>
-                        <div className={`text-xl font-black ${stat.color}`}>{stat.value}</div>
+                    <div key={i} className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm transition-all hover:shadow-md hover:border-gray-300 group">
+                        <div className="flex items-center justify-between mb-2">
+                            <div className={`w-8 h-8 ${stat.color} rounded-lg shadow-sm transition-transform`}></div>
+                        </div>
+                        <div className="text-2xl font-bold text-gray-900">{stat.value}</div>
+                        <div className="text-xs font-semibold text-gray-500 mt-1">{stat.label}</div>
                     </div>
                 ))}
             </div>
@@ -102,16 +106,17 @@ const PlantillaHeader: React.FC<PlantillaHeaderProps> = ({
                     onChange={(e: ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
                 />
                 </div>
-                <select 
-                className="bg-white border border-gray-200 rounded-lg shadow-sm px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200 cursor-pointer"
-                value={selectedDept}
-                onChange={(e: ChangeEvent<HTMLSelectElement>) => setSelectedDept(e.target.value)}
-                >
-                <option value="All">All Departments</option>
-                {departments.map(dept => (
-                    <option key={dept.id} value={dept.id}>{dept.name}</option>
-                ))}
-                </select>
+                <div className="min-w-[320px]">
+                    <Combobox
+                        options={[
+                            { value: 'All', label: 'All Departments' },
+                            ...departments.map(dept => ({ value: dept.id.toString(), label: dept.name }))
+                        ]}
+                        value={selectedDept}
+                        onChange={(val) => setSelectedDept(val)}
+                        placeholder="Select Department"
+                    />
+                </div>
             </div>
         </>
     );

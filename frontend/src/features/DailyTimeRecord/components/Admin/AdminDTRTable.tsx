@@ -128,7 +128,7 @@ export const AdminDTRTable: React.FC<AdminDTRTableProps> = ({
                         {item.correctionStatus === 'Pending' && (
                           <button
                             onClick={() => onReview && onReview(item)}
-                            className="p-2 text-orange-600 hover:bg-orange-50 rounded-full transition-colors"
+                            className="p-2 text-gray-400 hover:bg-gray-100 rounded-full transition-colors"
                             title="Review Correction Request"
                           >
                             <FileText size={18} />
@@ -136,7 +136,7 @@ export const AdminDTRTable: React.FC<AdminDTRTableProps> = ({
                         )}
                         <button
                           onClick={() => onEdit(item)}
-                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
+                          className="p-2 text-gray-400 hover:bg-gray-100 rounded-full transition-colors"
                           title="Edit Record"
                         >
                           <Edit size={18} />
@@ -145,7 +145,18 @@ export const AdminDTRTable: React.FC<AdminDTRTableProps> = ({
                     </td>
                   </tr>
                 ))}
-                {/* Summary Row removed as per request */}
+                {/* Summary Row */}
+                {totals && (
+                  <tr className="bg-gray-100 font-bold border-t-2 border-gray-300">
+                    <td colSpan={7} className="px-6 py-4 text-right text-gray-700 text-sm">
+                      Totals:
+                    </td>
+                    <td className="px-6 py-4 text-center text-red-700 text-sm">{totals.lateMinutes}m</td>
+                    <td className="px-6 py-4 text-center text-orange-700 text-sm">{totals.undertimeMinutes}m</td>
+                    <td className="px-6 py-4 text-center text-gray-900 text-sm">{totals.hoursWorked}h</td>
+                    <td className="bg-gray-100 text-sm"></td>
+                  </tr>
+                )}
               </>
             ) : (
               <tr>

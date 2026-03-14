@@ -71,7 +71,7 @@ const AdminLeaveRequestProcess: React.FC<ProcessModalProps> = ({ isOpen, request
             {/* Details */}
             <div className="bg-gray-50 p-4 rounded-lg text-sm space-y-2">
                 <p><strong>Employee:</strong> {request.firstName} {request.lastName}</p>
-                <p><strong>Type:</strong> {request.leaveType} ({request.withPay ? 'With Pay' : 'Without Pay'})</p>
+                <p><strong>Type:</strong> {request.leaveType} ({request.isWithPay ? 'With Pay' : 'Without Pay'})</p>
                 <p><strong>Dates:</strong> {request.startDate} to {request.endDate}</p>
                 <p><strong>Reason:</strong> {request.reason}</p>
                 {request.attachmentPath && (

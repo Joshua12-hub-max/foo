@@ -1,9 +1,10 @@
 import React, { useEffect } from 'react';
 import { X } from 'lucide-react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { performanceCriteriaSchema, PerformanceCriteriaSchema } from '@/schemas/performanceSchema';
 import { PerformanceItem } from '../../types';
+import Combobox from '@/components/Custom/Combobox';
 
 interface EditCriteriaModalProps {
   isOpen: boolean;
@@ -12,11 +13,19 @@ interface EditCriteriaModalProps {
   initialData?: PerformanceItem | null;
 }
 
+const categoryOptions = [
+  { value: 'Strategic Priorities', label: 'Strategic Priorities' },
+  { value: 'Core Functions', label: 'Core Functions' },
+  { value: 'Support Functions', label: 'Support Functions' },
+  { value: 'General', label: 'General' },
+];
+
 const EditCriteriaModal: React.FC<EditCriteriaModalProps> = ({ isOpen, onClose, onSubmit, initialData }) => {
   const {
     register,
     handleSubmit,
     reset,
+    control,
     formState: { errors },
   } = useForm<PerformanceCriteriaSchema>({
     resolver: zodResolver(performanceCriteriaSchema),
@@ -108,20 +117,20 @@ const EditCriteriaModal: React.FC<EditCriteriaModalProps> = ({ isOpen, onClose, 
               <label className="block text-sm font-semibold text-gray-900 mb-1.5">
                 Category
               </label>
-              <div className="relative">
-                <select
-                  {...register('category')}
-                  className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100 transition-all appearance-none text-gray-900 cursor-pointer"
-                >
-                  <option value="Strategic Priorities">Strategic Priorities</option>
-                  <option value="Core Functions">Core Functions</option>
-                  <option value="Support Functions">Support Functions</option>
-                  <option value="General">General</option>
-                </select>
-                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
-                  <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg>
-                </div>
-              </div>
+              <Controller
+                name="category"
+                control={control}
+                render={({ field }) => (
+                  <Combobox
+                    options={categoryOptions}
+                    value={field.value}
+                    onChange={field.onChange}
+                    placeholder="Select Category"
+                    className="w-full"
+                    buttonClassName="bg-white border-gray-200"
+                  />
+                )}
+              />
               {errors.category && <p className="text-red-500 text-xs mt-1">{errors.category.message}</p>}
             </div>
             

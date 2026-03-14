@@ -129,44 +129,44 @@ export const FamilyBackground: React.FC<FamilyBackgroundProps> = ({ employeeId }
                 <h3 className="text-lg font-bold text-slate-800 mb-4 border-b border-slate-200 pb-2">Spouse's Name</h3>
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <div>
-                        <label className="text-xs font-semibold text-slate-500 uppercase">Surname</label>
+                        <label className="text-xs font-semibold text-slate-500">Surname</label>
                         <input type="text" className="w-full mt-1 p-2 border rounded" 
                             value={spouse.lastName || ''} onChange={e => setSpouse({...spouse, lastName: e.target.value})} />
                     </div>
                     <div>
-                        <label className="text-xs font-semibold text-slate-500 uppercase">First Name</label>
+                        <label className="text-xs font-semibold text-slate-500">First Name</label>
                         <input type="text" className="w-full mt-1 p-2 border rounded" 
                             value={spouse.firstName || ''} onChange={e => setSpouse({...spouse, firstName: e.target.value})} />
                     </div>
                     <div>
-                        <label className="text-xs font-semibold text-slate-500 uppercase">Middle Name</label>
+                        <label className="text-xs font-semibold text-slate-500">Middle Name</label>
                         <input type="text" className="w-full mt-1 p-2 border rounded" 
                             value={spouse.middleName || ''} onChange={e => setSpouse({...spouse, middleName: e.target.value})} />
                     </div>
                     <div>
-                        <label className="text-xs font-semibold text-slate-500 uppercase">Extension (Jr/Sr)</label>
+                        <label className="text-xs font-semibold text-slate-500">Extension (Jr/Sr)</label>
                         <input type="text" className="w-full mt-1 p-2 border rounded" 
                             value={spouse.name_extension || ''} onChange={e => setSpouse({...spouse, name_extension: e.target.value})} />
                     </div>
                     
                     {/* Additional Spouse Fields */}
                     <div className="md:col-span-2">
-                        <label className="text-xs font-semibold text-slate-500 uppercase">Occupation</label>
+                        <label className="text-xs font-semibold text-slate-500">Occupation</label>
                         <input type="text" className="w-full mt-1 p-2 border rounded" 
                             value={spouse.occupation || ''} onChange={e => setSpouse({...spouse, occupation: e.target.value})} />
                     </div>
                     <div className="md:col-span-2">
-                        <label className="text-xs font-semibold text-slate-500 uppercase">Employer/Business Name</label>
+                        <label className="text-xs font-semibold text-slate-500">Employer/Business Name</label>
                         <input type="text" className="w-full mt-1 p-2 border rounded" 
                             value={spouse.employer || ''} onChange={e => setSpouse({...spouse, employer: e.target.value})} />
                     </div>
                     <div className="md:col-span-2">
-                        <label className="text-xs font-semibold text-slate-500 uppercase">Business Address</label>
+                        <label className="text-xs font-semibold text-slate-500">Business Address</label>
                         <input type="text" className="w-full mt-1 p-2 border rounded" 
                             value={spouse.business_address || ''} onChange={e => setSpouse({...spouse, business_address: e.target.value})} />
                     </div>
                      <div className="md:col-span-2">
-                        <label className="text-xs font-semibold text-slate-500 uppercase">Telephone No.</label>
+                        <label className="text-xs font-semibold text-slate-500">Telephone No.</label>
                         <input type="text" className="w-full mt-1 p-2 border rounded" 
                             value={spouse.telephone_no || ''} onChange={e => setSpouse({...spouse, telephone_no: e.target.value})} />
                     </div>
@@ -180,23 +180,23 @@ export const FamilyBackground: React.FC<FamilyBackgroundProps> = ({ employeeId }
                     <h3 className="text-lg font-bold text-slate-800 mb-4 border-b border-slate-200 pb-2">Father's Name</h3>
                     <div className="space-y-3">
                         <div>
-                            <label className="text-xs font-semibold text-slate-500 uppercase">Surname</label>
+                            <label className="text-xs font-semibold text-slate-500">Surname</label>
                             <input type="text" className="w-full mt-1 p-2 border rounded" 
                                 value={father.lastName || ''} onChange={e => setFather({...father, lastName: e.target.value})} />
                         </div>
                         <div>
-                            <label className="text-xs font-semibold text-slate-500 uppercase">First Name</label>
+                            <label className="text-xs font-semibold text-slate-500">First Name</label>
                             <input type="text" className="w-full mt-1 p-2 border rounded" 
                                 value={father.firstName || ''} onChange={e => setFather({...father, firstName: e.target.value})} />
                         </div>
                         <div className="grid grid-cols-2 gap-2">
                             <div>
-                                <label className="text-xs font-semibold text-slate-500 uppercase">Middle Name</label>
+                                <label className="text-xs font-semibold text-slate-500">Middle Name</label>
                                 <input type="text" className="w-full mt-1 p-2 border rounded" 
                                     value={father.middleName || ''} onChange={e => setFather({...father, middleName: e.target.value})} />
                             </div>
                             <div>
-                                <label className="text-xs font-semibold text-slate-500 uppercase">Ext</label>
+                                <label className="text-xs font-semibold text-slate-500">Ext</label>
                                 <input type="text" className="w-full mt-1 p-2 border rounded" 
                                     value={father.name_extension || ''} onChange={e => setFather({...father, name_extension: e.target.value})} />
                             </div>
@@ -209,17 +209,17 @@ export const FamilyBackground: React.FC<FamilyBackgroundProps> = ({ employeeId }
                     <h3 className="text-lg font-bold text-slate-800 mb-4 border-b border-slate-200 pb-2">Mother's Maiden Name</h3>
                     <div className="space-y-3">
                         <div>
-                            <label className="text-xs font-semibold text-slate-500 uppercase">Surname</label>
+                            <label className="text-xs font-semibold text-slate-500">Surname</label>
                             <input type="text" className="w-full mt-1 p-2 border rounded" 
                                 value={mother.lastName || ''} onChange={e => setMother({...mother, lastName: e.target.value})} />
                         </div>
                         <div>
-                            <label className="text-xs font-semibold text-slate-500 uppercase">First Name</label>
+                            <label className="text-xs font-semibold text-slate-500">First Name</label>
                             <input type="text" className="w-full mt-1 p-2 border rounded" 
                                 value={mother.firstName || ''} onChange={e => setMother({...mother, firstName: e.target.value})} />
                         </div>
                         <div>
-                            <label className="text-xs font-semibold text-slate-500 uppercase">Middle Name</label>
+                            <label className="text-xs font-semibold text-slate-500">Middle Name</label>
                             <input type="text" className="w-full mt-1 p-2 border rounded" 
                                 value={mother.middleName || ''} onChange={e => setMother({...mother, middleName: e.target.value})} />
                         </div>
@@ -242,7 +242,7 @@ export const FamilyBackground: React.FC<FamilyBackgroundProps> = ({ employeeId }
                     {childrenData.map((child, idx) => (
                         <div key={idx} className="grid grid-cols-1 md:grid-cols-12 gap-2 items-end bg-white p-3 rounded-lg border border-slate-100 shadow-sm">
                             <div className="md:col-span-4">
-                                <label className="text-[10px] font-bold text-slate-400 uppercase">Full Name of Child</label>
+                                <label className="text-[10px] font-bold text-slate-400">Full Name of Child</label>
                                 <input type="text" placeholder="Last, First Middle" className="w-full p-2 text-sm border rounded" 
                                     value={child.lastName} onChange={e => updateChild(idx, 'lastName', e.target.value)} />
                                 {/* Note: PDS usually just asks for Name, but schema has split fields. 
@@ -263,7 +263,7 @@ export const FamilyBackground: React.FC<FamilyBackgroundProps> = ({ employeeId }
                                     value={child.middleName} onChange={e => updateChild(idx, 'middleName', e.target.value)} />
                             </div>
                             <div className="md:col-span-2">
-                                <label className="text-[10px] font-bold text-slate-400 uppercase">Date of Birth</label>
+                                <label className="text-[10px] font-bold text-slate-400">Date of Birth</label>
                                 <input type="date" className="w-full p-2 text-sm border rounded" 
                                     value={child.date_of_birth ? child.date_of_birth.substring(0, 10) : ''} 
                                     onChange={e => updateChild(idx, 'date_of_birth', e.target.value)} />

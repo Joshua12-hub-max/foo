@@ -47,7 +47,7 @@ export const useLeaveData = (initialFilters?: Record<string, string>) => {
       
       const response = await leaveApi.getMyApplications(params);
       
-      const leaves = (response.data?.leaves || []).map((l: LeaveApplication) => ({
+      const leaves = (response.data?.applications || []).map((l: LeaveApplication) => ({
         id: l.id,
         employeeId: l.employeeId,
         leaveType: l.leaveType,

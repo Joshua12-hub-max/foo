@@ -1,6 +1,6 @@
 export interface PDSEducation {
     id: number;
-    employeeId: number;
+    employeeId: string;
     level: 'Elementary' | 'Secondary' | 'Vocational' | 'College' | 'Graduate Studies';
     schoolName: string;
     degreeCourse?: string;
@@ -14,7 +14,7 @@ export interface PDSEducation {
 
 export interface PDSEligibility {
     id: number;
-    employeeId: number;
+    employeeId: string;
     eligibilityName: string;
     rating?: number;
     examDate?: string;
@@ -26,7 +26,7 @@ export interface PDSEligibility {
 
 export interface PDSFamily {
     id: number;
-    employeeId: number;
+    employeeId: string;
     relationType: 'Spouse' | 'Father' | 'Mother' | 'Child';
     lastName?: string;
     firstName?: string;
@@ -42,7 +42,7 @@ export interface PDSFamily {
 
 export interface PDSLearningDevelopment {
     id: number;
-    employeeId: number;
+    employeeId: string;
     title: string;
     dateFrom?: string;
     dateTo?: string;
@@ -54,7 +54,7 @@ export interface PDSLearningDevelopment {
 
 export interface PDSOtherInfo {
     id: number;
-    employeeId: number;
+    employeeId: string;
     type: 'Skill' | 'Recognition' | 'Membership';
     description: string;
     createdAt?: string;
@@ -62,7 +62,7 @@ export interface PDSOtherInfo {
 
 export interface PDSReference {
     id: number;
-    employeeId: number;
+    employeeId: string;
     name: string;
     address?: string;
     telNo?: string;
@@ -71,7 +71,7 @@ export interface PDSReference {
 
 export interface PDSVoluntaryWork {
     id: number;
-    employeeId: number;
+    employeeId: string;
     organizationName: string;
     address?: string;
     dateFrom?: string;
@@ -83,7 +83,7 @@ export interface PDSVoluntaryWork {
 
 export interface PDSWorkExperience {
     id: number;
-    employeeId: number;
+    employeeId: string;
     dateFrom: string;
     dateTo?: string;
     positionTitle: string;
@@ -97,7 +97,7 @@ export interface PDSWorkExperience {
 
 export interface EmployeeCustomField {
     id: number;
-    employeeId: number;
+    employeeId: string;
     section: string;
     fieldName: string;
     fieldValue?: string;

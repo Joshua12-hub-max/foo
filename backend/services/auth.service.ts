@@ -1,3 +1,4 @@
+
 import { db } from '../db/index.js';
 import { authentication } from '../db/schema.js';
 import { eq, or, and, gt, sql, desc } from 'drizzle-orm';
@@ -109,8 +110,8 @@ export class AuthService {
      .orderBy(desc(sql`CAST(${authentication.employeeId} AS UNSIGNED)`))
      .limit(1);
 
-    if (latestSmallUser.length > 0 && !isNaN(parseInt(latestSmallUser[0].employeeId))) {
-      return (parseInt(latestSmallUser[0].employeeId) + 1).toString();
+    if (latestSmallUser.length > 0 && !isNaN(parseInt(latestSmallUser[0].employeeId || '0'))) {
+      return (parseInt(latestSmallUser[0].employeeId || '0') + 1).toString();
     }
     return '1';
   }

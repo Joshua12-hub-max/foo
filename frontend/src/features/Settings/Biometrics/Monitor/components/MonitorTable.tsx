@@ -2,10 +2,10 @@ import React, { useState, useMemo } from 'react';
 import { StatusBadge } from './StatusBadge';
 import Pagination from '@/components/CustomUI/Pagination';
 
-import { MonitorLogData } from '@/types';
+import { BiometricsLog } from '@/types';
 
 // Use strict type from API
-type MonitorLog = MonitorLogData;
+type MonitorLog = BiometricsLog;
 
 const ITEMS_PER_PAGE = 10;
 
@@ -44,18 +44,17 @@ const MonitorTable: React.FC<MonitorTableProps> = ({ logs, loading }) => {
               <th className="px-6 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap">Status</th>
               <th className="px-6 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap">Employee ID</th>
               <th className="px-6 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap">Employee Name</th>
-              <th className="px-6 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap">Date</th>
+              <th className="px-6 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap">Date/Time</th>
               <th className="px-6 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap">Duties</th>
               <th className="px-6 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap">Department</th>
-              <th className="px-6 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap">Time In</th>
-              <th className="px-6 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap">Time Out</th>
+              <th className="px-6 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap">Source</th>
               <th className="px-6 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap">Action</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {loading ? (
               <tr>
-                <td colSpan={9} className="px-3 py-8 text-center text-gray-500 text-sm">
+                <td colSpan={8} className="px-3 py-8 text-center text-gray-500 text-sm">
                   <div className="flex flex-col items-center gap-2">
                     <div className="w-5 h-5 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
                     <span>Loading live feed...</span>
@@ -64,17 +63,17 @@ const MonitorTable: React.FC<MonitorTableProps> = ({ logs, loading }) => {
               </tr>
             ) : paginatedLogs.length === 0 ? (
               <tr>
-                <td colSpan={9} className="px-3 py-8 text-center text-gray-500 text-sm">
+                <td colSpan={8} className="px-3 py-8 text-center text-gray-500 text-sm">
                   No scans recorded today.
                 </td>
               </tr>
             ) : (
               paginatedLogs.map((log) => {
-                  const isOut = !!log.timeOut;
+                  const isOut = log.type === 'OUT';
                   return (
                 <tr key={log.id} className="hover:bg-gray-50 transition-colors group">
                   <td className="px-6 py-4">
-                    <StatusBadge status={log.status || ''} />
+                    <StatusBadge status={log.status || 'Pending'} />
                   </td>
                   <td className="px-6 py-4">
                       <span className="text-sm text-gray-500 font-mono font-bold leading-tight uppercase tracking-tighter">{log.employeeId}</span>
@@ -90,7 +89,7 @@ const MonitorTable: React.FC<MonitorTableProps> = ({ logs, loading }) => {
                     </div>
                   </td>
                   <td className="px-6 py-4 text-gray-600 font-medium whitespace-nowrap">
-                    {log.date ? new Date(log.date).toLocaleDateString() : '-'}
+                    {log.scanTime ? new Date(log.scanTime).toLocaleString() : '-'}
                   </td>
                   <td className="px-6 py-4">
                     <span className="text-sm font-bold text-blue-600 uppercase tracking-tighter">{log.duties || 'No Schedule'}</span>
@@ -99,18 +98,7 @@ const MonitorTable: React.FC<MonitorTableProps> = ({ logs, loading }) => {
                     {log.department || '-'}
                   </td>
                    <td className="px-6 py-4">
-                    <div className="flex flex-col">
-                      <span className="text-gray-900 font-medium">
-                        {log.timeIn ? new Date(log.timeIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
-                      </span>
-                    </div>
-                  </td>
-                   <td className="px-6 py-4">
-                    <div className="flex flex-col">
-                      <span className="text-gray-900 font-medium">
-                        {log.timeOut ? new Date(log.timeOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
-                      </span>
-                    </div>
+                    <span className="text-gray-500 text-xs font-bold uppercase">{log.source}</span>
                   </td>
                   <td className="px-6 py-4">
                     <span className={`text-xs font-black px-2 py-1 rounded-lg ${

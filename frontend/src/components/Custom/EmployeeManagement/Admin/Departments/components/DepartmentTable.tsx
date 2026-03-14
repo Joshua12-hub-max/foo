@@ -45,52 +45,52 @@ const DepartmentTable: React.FC<DepartmentTableProps> = memo(({ departments, loa
           <thead className="bg-gray-200 shadow-md text-gray-700">
             <tr>
               {DEPARTMENT_TABLE_HEADERS.map((header: { key: string; label: string; align?: string }) => (
-                <th key={header.key} className={`px-6 py-4 font-semibold text-xs uppercase tracking-wider whitespace-nowrap ${header.align === 'right' ? 'text-right' : ''}`}>
+                <th key={header.key} className={`px-6 py-4 font-bold text-sm tracking-wide whitespace-nowrap ${header.align === 'right' ? 'text-right' : ''}`}>
                   {header.label}
                 </th>
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
+          <tbody className="divide-y divide-slate-100">
             {departments.map((dept, index) => (
-              <tr key={dept.id} className="hover:bg-gray-50 transition-colors group">
-                <td className="px-6 py-4 text-sm font-mono text-gray-500">
+              <tr key={dept.id} className="hover:bg-[#F8F9FA] hover:shadow-xl transition-colors group bg-white">
+                <td className="px-6 py-4 text-sm font-medium text-gray-700 whitespace-nowrap">
                     DEPT-{String(index + 1).padStart(3, '0')}
                 </td>
                 <td className="px-6 py-4">
-                   <div className="text-sm font-medium text-gray-800">{dept.name}</div>
+                   <div className="text-sm font-semibold text-gray-800">{dept.name}</div>
                 </td>
-                <td className="px-6 py-4 text-sm text-gray-700 font-medium">
-                   {dept.headOfDepartment || <span className="text-gray-400 italic">Not Assigned</span>}
+                <td className="px-6 py-4 text-sm text-gray-600 font-medium">
+                   {dept.headOfDepartment || <span className="text-gray-300 italic">Not Assigned</span>}
                 </td>
                 <td className="px-6 py-4">
-                    <div className="flex items-center gap-2">
-                         <div className="h-2 w-16 bg-gray-100 rounded-full overflow-hidden">
-                            <div className="h-full bg-gray-800" style={{ width: `${Math.min((dept.employeeCount || 0) * 5, 100)}%` }}></div>
+                    <div className="flex items-center gap-3">
+                         <div className="h-1.5 w-12 bg-gray-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-gray-300 group-hover:bg-gray-400 transition-colors" style={{ width: `${Math.min((dept.employeeCount || 0) * 10, 100)}%` }}></div>
                          </div>
-                         <span className="text-xs font-medium text-gray-600">
+                         <span className="text-xs text-gray-500 font-medium">
                             {dept.employeeCount || 0} Members
                         </span>
                     </div>
                 </td>
-                <td className="px-6 py-4">
-                  <div className="flex items-center justify-end gap-2">
+                <td className="px-6 py-4 text-right">
+                  <div className="flex items-center justify-end gap-2 transition-opacity">
                     <button 
                         onClick={() => navigate(`/admin-dashboard/departments/${dept.id}`)}
-                        className="flex items-center gap-1 px-3 py-1.5 bg-gray-100 border border-gray-200 rounded-lg text-xs font-medium text-gray-700 hover:bg-white hover:shadow-sm transition-all"
+                        className="flex items-center gap-1 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-bold text-gray-500 hover:text-gray-900 hover:border-gray-300 transition-all"
                     >
                         <span>Details</span>
                     </button>
                     <button 
                         onClick={() => onEdit(dept)}
-                        className="p-1.5 border border-gray-200 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-white hover:shadow-sm transition-all"
+                        className="p-1.5 border border-gray-200 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 hover:border-blue-100 transition-all"
                         title="Edit Department"
                     >
                         <SquarePen size={14} />
                     </button>
                     <button 
                         onClick={() => onDelete(dept)}
-                        className="p-1.5 border border-gray-200 rounded-lg text-gray-500 hover:text-red-600 hover:bg-red-50 transition-all"
+                        className="p-1.5 border border-gray-200 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 hover:border-red-100 transition-all"
                          title="Delete Department"
                     >
                         <Trash2 size={14} />

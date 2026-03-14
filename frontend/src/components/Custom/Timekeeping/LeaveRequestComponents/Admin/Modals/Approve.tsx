@@ -65,8 +65,8 @@ const ApproveModal: React.FC<ApproveModalProps> = ({
   // Calculate working days duration
   const duration = useMemo(() => {
     if (!request) return 0;
-    const start = new Date(request.startDate || request.fromDate);
-    const end = new Date(request.endDate || request.toDate);
+    const start = new Date(request.startDate);
+    const end = new Date(request.endDate);
     if (isNaN(start.getTime()) || isNaN(end.getTime())) return 0;
 
     let count = 0;
@@ -84,17 +84,17 @@ const ApproveModal: React.FC<ApproveModalProps> = ({
     if (!request) return null;
     
     // Check special leave
-    const isSpecialLeave = SPECIAL_LEAVES_NO_DEDUCTION.includes((request.leaveType || request.leaveType) as unknown as typeof SPECIAL_LEAVES_NO_DEDUCTION[number]);
+    const isSpecialLeave = SPECIAL_LEAVES_NO_DEDUCTION.includes(request.leaveType as any);
     if (isSpecialLeave) {
       return { type: 'special', label: 'Special Leave (No Deduction)' };
     }
 
-    if (!request.withPay) {
+    if (!request.isWithPay) {
       return { type: 'lwop', label: 'Leave Without Pay' };
     }
 
     // Determine credit type
-    const leaveType = request.leaveType || request.leaveType;
+    const leaveType = request.leaveType;
     const primaryType = LEAVE_TO_CREDIT_MAP[leaveType] || leaveType;
     
     // Helper to get balance
@@ -172,9 +172,9 @@ const ApproveModal: React.FC<ApproveModalProps> = ({
 
   // Helper to get display values (handling potential prop naming diffs)
   const getName = () => request.name || `${request.firstName} ${request.lastName}`;
-  const getLeaveType = () => request.leaveType || request.leaveType;
-  const getFromDate = () => formatDate(request.fromDate || request.startDate);
-  const getToDate = () => formatDate(request.toDate || request.endDate);
+  const getLeaveType = () => request.leaveType;
+  const getFromDate = () => formatDate(request.startDate);
+  const getToDate = () => formatDate(request.endDate);
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 transition-all">

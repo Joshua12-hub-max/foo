@@ -1,274 +1,430 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { chatApi, ChatConversation, ChatMessage } from '@/api/chatApi';
-import { useToastStore } from '@/stores';
-import { MessageSquare, Send, Clock, CheckCircle2, ChevronLeft, Loader2, Search } from 'lucide-react';
-import ConfirmDialog from '@/components/Custom/Shared/ConfirmDialog';
+import React, { useState, useEffect, useRef } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { chatApi, ChatMessage } from '@/api/chatApi';
+import { 
+  Send, CheckCircle2, 
+  Search, Loader2, MoreVertical, Pencil, Trash2,
+  ChevronLeft
+} from 'lucide-react';
+import { useToastStore, useAuthStore } from '@/stores';
 
 const LiveSupportChat: React.FC = () => {
-    const [conversations, setConversations] = useState<ChatConversation[]>([]);
-    const [selectedConversation, setSelectedConversation] = useState<ChatConversation | null>(null);
+    const [selectedId, setSelectedId] = useState<number | null>(null);
     const [messages, setMessages] = useState<ChatMessage[]>([]);
-    const [newMessage, setNewMessage] = useState('');
-    const [loading, setLoading] = useState(true);
-    const [messagesLoading, setMessagesLoading] = useState(false);
-    const [sending, setSending] = useState(false);
+    const [input, setInput] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
-    const showToast = useToastStore((state) => state.showToast);
-    const messagesEndRef = useRef<HTMLDivElement>(null);
+    const [editingId, setEditingId] = useState<number | null>(null);
+    const [editInput, setEditInput] = useState('');
+    const [deletingId, setDeletingId] = useState<number | null>(null);
     
-    const [confirmModal, setConfirmModal] = useState({
-        isOpen: false,
-        idToClose: 0
+    const queryClient = useQueryClient();
+    const showToast = useToastStore((state) => state.showToast);
+    const currentUser = useAuthStore((state) => state.user);
+    const scrollRef = useRef<HTMLDivElement>(null);
+
+    // List of conversations
+    const { data: convData, isLoading: loadingConv } = useQuery({
+        queryKey: ['chat-conversations'],
+        queryFn: () => chatApi.getConversations(),
+        refetchInterval: 5000 // Poll for new chats
     });
 
-    const fetchConversations = async () => {
-        try {
-            setLoading(true);
-            const response = await chatApi.getConversations();
-            if (response.data.success) {
-                setConversations(response.data.conversations);
-            }
-        } catch (error) {
-            console.error('Failed to fetch conversations:', error);
-            showToast('Failed to load chat sessions', 'error');
-        } finally {
-            setLoading(false);
-        }
-    };
+    const conversations = convData?.data.conversations || [];
 
-    const fetchMessages = async (id: number) => {
-        try {
-            setMessagesLoading(true);
-            const response = await chatApi.getMessages(id, true, 'Administrator');
-            if (response.data.success) {
-                setMessages(response.data.messages);
-            }
-        } catch (error) {
-            console.error('Failed to fetch messages:', error);
-            showToast('Failed to load messages', 'error');
-        } finally {
-            setMessagesLoading(false);
-        }
-    };
-
+    // Messages for selected conversation - Using effect for immediate UI update on selection
     useEffect(() => {
-        fetchConversations();
-        const interval = setInterval(fetchConversations, 10000); // Poll every 10s
+        let interval: NodeJS.Timeout;
+        if (selectedId) {
+            const fetchMsgs = async () => {
+                try {
+                    const res = await chatApi.getMessages(selectedId, true, 'Administrator');
+                    if (res.data.success) {
+                        setMessages(res.data.messages);
+                    }
+                } catch (err) {
+                    console.error('Fetch messages error:', err);
+                }
+            };
+            fetchMsgs();
+            interval = setInterval(fetchMsgs, 3000);
+        } else {
+            setMessages([]);
+        }
         return () => clearInterval(interval);
-    }, []);
+    }, [selectedId]);
 
     useEffect(() => {
-        if (selectedConversation) {
-            fetchMessages(selectedConversation.id);
-            const interval = setInterval(() => fetchMessages(selectedConversation.id), 3000); // Poll messages every 3s
-            return () => clearInterval(interval);
+        if (scrollRef.current) {
+            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
         }
-    }, [selectedConversation]);
-
-    useEffect(() => {
-        scrollToBottom();
     }, [messages]);
 
-    const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    };
+    // --- MUTATIONS ---
 
-    const handleSendMessage = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!selectedConversation || !newMessage.trim() || sending) return;
-
-        try {
-            setSending(true);
-            const response = await chatApi.sendMessage({
-                conversationId: selectedConversation.id,
-                message: newMessage.trim(),
-                senderType: 'Administrator'
-            });
-
-            if (response.data.success) {
-                setNewMessage('');
-                fetchMessages(selectedConversation.id);
+    const sendMutation = useMutation({
+        mutationFn: (msg: string) => chatApi.sendMessage({
+            conversationId: selectedId!,
+            message: msg,
+            senderType: 'Administrator'
+        }),
+        onSuccess: () => {
+            setInput('');
+            if (selectedId) {
+                queryClient.invalidateQueries({ queryKey: ['chat-messages', selectedId] });
+                // Force immediate local update
+                chatApi.getMessages(selectedId, false, 'Administrator').then(res => {
+                    if (res.data.success) setMessages(res.data.messages);
+                });
             }
-        } catch (error) {
+        },
+        onError: () => {
             showToast('Failed to send message', 'error');
-        } finally {
-            setSending(false);
         }
-    };
+    });
 
-    const handleCloseConversation = async (id: number) => {
-        setConfirmModal({ isOpen: true, idToClose: id });
-    };
-
-    const confirmCloseChat = async () => {
-        const id = confirmModal.idToClose;
-        if (!id) return;
-        try {
-            const response = await chatApi.close(id);
-            if (response.data.success) {
-                showToast('Chat closed', 'success');
-                setSelectedConversation(null);
-                fetchConversations();
+    const editMutation = useMutation({
+        mutationFn: (data: { msgId: number, text: string }) => 
+            chatApi.editMessage(data.msgId, { 
+                message: data.text, 
+                senderType: 'Administrator',
+                conversationId: selectedId ?? undefined
+            }),
+        onSuccess: () => {
+            setEditingId(null);
+            setEditInput('');
+            if (selectedId) {
+                chatApi.getMessages(selectedId, false, 'Administrator').then(res => {
+                    if (res.data.success) setMessages(res.data.messages);
+                });
             }
-        } catch (error) {
-            showToast('Failed to close chat', 'error');
-        } finally {
-            setConfirmModal({ isOpen: false, idToClose: 0 });
+        },
+        onError: () => {
+            showToast('Failed to edit message', 'error');
         }
+    });
+
+    const deleteMutation = useMutation({
+        mutationFn: (data: { msgId: number, type: 'me' | 'everyone' }) => 
+            chatApi.deleteMessage(data.msgId, data.type, 'Administrator', selectedId!),
+        onSuccess: () => {
+            setDeletingId(null);
+            if (selectedId) {
+                chatApi.getMessages(selectedId, false, 'Administrator').then(res => {
+                    if (res.data.success) setMessages(res.data.messages);
+                });
+            }
+        },
+        onError: () => {
+            showToast('Failed to delete message', 'error');
+        }
+    });
+
+    const deleteConvMutation = useMutation({
+        mutationFn: (id: number) => chatApi.deleteConversation(id, 'Administrator'),
+        onSuccess: () => {
+            showToast('Conversation deleted', 'success');
+            queryClient.invalidateQueries({ queryKey: ['chat-conversations'] });
+            setSelectedId(null);
+        },
+        onError: () => {
+            showToast('Failed to delete conversation', 'error');
+        }
+    });
+
+    const closeMutation = useMutation({
+        mutationFn: (id: number) => chatApi.close(id),
+        onSuccess: () => {
+            showToast('Conversation closed', 'success');
+            queryClient.invalidateQueries({ queryKey: ['chat-conversations'] });
+            setSelectedId(null);
+        }
+    });
+
+    const handleSend = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!input.trim() || !selectedId || sendMutation.isPending) return;
+        sendMutation.mutate(input.trim());
     };
 
-    const filteredConversations = conversations.filter(conv => 
-        (conv.applicantName?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-        (conv.applicantEmail?.toLowerCase() || '').includes(searchTerm.toLowerCase())
+    const handleSaveEdit = (msgId: number) => {
+        if (!editInput.trim() || editMutation.isPending) return;
+        editMutation.mutate({ msgId, text: editInput.trim() });
+    };
+
+    const filteredConversations = conversations.filter(c => 
+        (c.applicantName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (c.applicantEmail || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
 
+    const selectedConv = conversations.find(c => c.id === selectedId);
+
     return (
-        <div className="h-[600px] flex bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-lg">
-            {/* Sidebar: Conversations List */}
-            <div className={`w-full md:w-80 flex-shrink-0 border-r border-gray-100 flex flex-col ${selectedConversation ? 'hidden md:flex' : 'flex'}`}>
-                <div className="p-4 border-b border-gray-100 bg-gray-50">
-                    <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
-                        <MessageSquare size={18} className="text-blue-600" />
-                        Live Chats
+        <div className="h-[750px] flex bg-white rounded-lg border border-slate-200 overflow-hidden animate-in fade-in duration-500 w-full relative">
+            {/* Conversations List */}
+            <div className={`w-full md:w-80 lg:w-96 flex-shrink-0 border-r border-slate-200 flex flex-col transition-all duration-300 ${selectedId ? 'hidden md:flex' : 'flex'}`}>
+                <div className="p-4 border-b border-slate-200 bg-slate-50">
+                    <h3 className="font-semibold text-slate-800 mb-3 text-sm">
+                        Messages
                     </h3>
                     <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                         <input
                             type="text"
-                            placeholder="Search chats..."
+                            placeholder="Search applicant or email..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500/20 outline-none"
+                            className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-slate-300 outline-none transition-all placeholder:text-slate-400"
                         />
                     </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto">
-                    {loading ? (
-                        <div className="flex justify-center p-8">
-                            <Loader2 className="animate-spin text-gray-400" size={24} />
+                <div className="flex-1 overflow-y-auto custom-scrollbar">
+                    {loadingConv ? (
+                        <div className="flex flex-col items-center justify-center p-12 space-y-3">
+                            <Loader2 className="animate-spin text-slate-300" size={24} />
+                            <p className="text-xs text-slate-400">Loading chats...</p>
                         </div>
                     ) : filteredConversations.length === 0 ? (
-                        <div className="p-8 text-center text-gray-400 text-sm italic font-medium">
-                            No active chats
+                        <div className="p-12 text-center">
+                            <p className="text-sm text-slate-400">No active conversations</p>
                         </div>
                     ) : (
-                        filteredConversations.map((conv) => (
-                            <button
-                                key={conv.id}
-                                onClick={() => setSelectedConversation(conv)}
-                                className={`w-full p-4 flex items-start gap-3 border-b border-gray-50 hover:bg-blue-50/30 transition-colors text-left ${selectedConversation?.id === conv.id ? 'bg-blue-50 border-l-4 border-l-blue-600' : ''}`}
-                            >
-                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center text-blue-700 font-bold shrink-0">
-                                    {conv.applicantName ? conv.applicantName[0] : '?'}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex justify-between items-center mb-0.5">
-                                        <h4 className="font-bold text-gray-900 truncate text-sm">{conv.applicantName || 'Anonymous'}</h4>
-                                        <span className="text-[10px] text-gray-400 shrink-0">{new Date(conv.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                        <div className="divide-y divide-slate-100">
+                            {filteredConversations.map((conv) => (
+                                <button
+                                    key={conv.id}
+                                    onClick={() => setSelectedId(conv.id)}
+                                    className={`w-full p-4 flex items-center gap-3 hover:bg-slate-50 transition-all text-left ${selectedId === conv.id ? 'bg-slate-50 border-l-2 border-slate-700' : 'border-l-2 border-transparent'}`}
+                                >
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex justify-between items-center mb-1">
+                                            <h4 className="font-medium text-slate-800 truncate text-sm">{conv.applicantName || 'Anonymous'}</h4>
+                                            <span className="text-[10px] text-slate-400 shrink-0">{new Date(conv.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                        </div>
+                                        <div className="flex items-center justify-between gap-2">
+                                            <p className={`text-xs truncate flex-1 ${conv.unreadCount && conv.unreadCount > 0 ? 'text-slate-700 font-medium' : 'text-slate-400'}`}>
+                                                {conv.lastMessage || 'Click to view chat'}
+                                            </p>
+                                            {conv.unreadCount && conv.unreadCount > 0 ? (
+                                                <span className="bg-slate-600 text-white text-[9px] font-medium px-1.5 py-0.5 rounded-full">
+                                                    {conv.unreadCount}
+                                                </span>
+                                            ) : null}
+                                        </div>
                                     </div>
-                                    <p className="text-xs text-gray-500 truncate">{conv.lastMessage || 'No messages yet'}</p>
-                                    {conv.unreadCount && conv.unreadCount > 0 ? (
-                                        <span className="inline-block mt-1 px-1.5 py-0.5 bg-blue-600 text-white text-[10px] font-bold rounded-full">
-                                            {conv.unreadCount} new
-                                        </span>
-                                    ) : null}
-                                </div>
-                            </button>
-                        ))
+                                </button>
+                            ))}
+                        </div>
                     )}
                 </div>
             </div>
 
             {/* Chat Area */}
-            <div className={`flex-1 flex flex-col bg-slate-50 relative ${!selectedConversation ? 'hidden md:flex' : 'flex'}`}>
-                {selectedConversation ? (
+            <div className={`flex-1 flex flex-col bg-white relative transition-all duration-300 ${!selectedId ? 'hidden md:flex' : 'flex'}`}>
+                {selectedId && selectedConv ? (
                     <>
                         {/* Chat Header */}
-                        <div className="p-4 bg-white border-b border-gray-100 flex items-center justify-between shadow-sm z-10">
-                            <div className="flex items-center gap-3">
-                                <button onClick={() => setSelectedConversation(null)} className="md:hidden p-2 -ml-2 text-gray-400 hover:text-gray-600">
+                        <div className="p-4 bg-white border-b border-slate-200 flex items-center justify-between z-10 sticky top-0">
+                            <div className="flex items-center gap-3 min-w-0">
+                                <button onClick={() => setSelectedId(null)} className="md:hidden p-2 -ml-2 text-slate-400 hover:text-slate-800 transition-colors">
                                     <ChevronLeft size={20} />
                                 </button>
-                                <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-xs">
-                                    {selectedConversation.applicantName ? selectedConversation.applicantName[0] : '?'}
-                                </div>
-                                <div>
-                                    <h4 className="font-bold text-gray-900 leading-tight">{selectedConversation.applicantName || 'Anonymous'}</h4>
-                                    <p className="text-[10px] text-gray-500">{selectedConversation.applicantEmail}</p>
+                                <div className="min-w-0">
+                                    <h4 className="font-medium text-slate-800 leading-tight truncate text-sm">{selectedConv.applicantName || 'Anonymous'}</h4>
+                                    <p className="text-xs text-slate-400 truncate flex items-center gap-1.5 mt-0.5">
+                                        <span className="w-1.5 h-1.5 bg-slate-400 rounded-full"></span>
+                                        {selectedConv.applicantEmail}
+                                    </p>
                                 </div>
                             </div>
-                            <button
-                                onClick={() => handleCloseConversation(selectedConversation.id)}
-                                className="px-3 py-1.5 text-xs font-bold text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors flex items-center gap-1.5"
-                            >
-                                <CheckCircle2 size={14} />
-                                Close Session
-                            </button>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => closeMutation.mutate(selectedId)}
+                                    className="px-3 py-1.5 text-xs font-medium text-slate-600 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 transition-all flex items-center gap-1.5"
+                                >
+                                    <CheckCircle2 size={14} />
+                                    <span className="hidden sm:inline">Resolve</span>
+                                </button>
+                                <button 
+                                    onClick={() => {
+                                        if (confirm('Are you sure you want to PERMANENTLY delete this entire conversation?')) {
+                                            deleteConvMutation.mutate(selectedId);
+                                        }
+                                    }}
+                                    className="p-2 text-slate-400 hover:bg-slate-50 hover:text-slate-600 rounded-lg transition-all"
+                                    title="Delete Conversation"
+                                >
+                                    <Trash2 size={16} />
+                                </button>
+                                <button className="p-2 text-slate-400 hover:bg-slate-50 rounded-lg transition-all">
+                                    <MoreVertical size={16} />
+                                </button>
+                            </div>
                         </div>
 
                         {/* Messages Area */}
-                        <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
-                            {messagesLoading && messages.length === 0 ? (
-                                <div className="flex-1 flex items-center justify-center">
-                                    <Loader2 className="animate-spin text-blue-600" size={32} />
-                                </div>
-                            ) : (
-                                messages.map((msg, idx) => {
-                                    const isMe = msg.senderType === 'Administrator';
-                                    return (
-                                        <div key={msg.id || idx} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
-                                            <div className={`max-w-[80%] rounded-2xl px-4 py-2 text-sm shadow-sm ${
-                                                isMe ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-white text-gray-800 rounded-tl-none border border-gray-100'
-                                            }`}>
-                                                <p>{msg.message}</p>
-                                                <div className={`text-[10px] mt-1 flex items-center gap-1 ${isMe ? 'text-blue-100 justify-end' : 'text-gray-400'}`}>
-                                                    <Clock size={10} />
-                                                    {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        <div 
+                            ref={scrollRef}
+                            className="flex-1 overflow-y-auto p-6 space-y-5 custom-scrollbar bg-slate-50/30"
+                        >
+                            {messages.map((msg, idx) => {
+                                const isMe = msg.senderType === 'Administrator';
+                                return (
+                                    <div key={msg.id || idx} className={`flex items-end gap-3 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
+
+                                        <div className={`max-w-[75%] lg:max-w-[65%] group flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
+                                            <div className={`flex items-center gap-2 ${isMe ? 'flex-row' : 'flex-row-reverse'}`}>
+                                                {/* Actions appear on hover */}
+                                                {!msg.isDeletedForEveryone && (
+                                                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all duration-200">
+                                                        {isMe && msg.senderId === currentUser?.id && (
+                                                            <button 
+                                                                onClick={() => {
+                                                                    setEditingId(msg.id);
+                                                                    setEditInput(msg.message);
+                                                                }}
+                                                                className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-600 transition-all"
+                                                                title="Edit"
+                                                            >
+                                                                <Pencil size={12} />
+                                                            </button>
+                                                        )}
+                                                        <button 
+                                                            onClick={() => {
+                                                                setDeletingId(msg.id);
+                                                            }}
+                                                            className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-600 transition-all"
+                                                            title={isMe ? "Delete for everyone" : "Remove for me"}
+                                                        >
+                                                            <Trash2 size={12} />
+                                                        </button>
+                                                    </div>
+                                                )}
+                                                
+                                                <div className={`px-4 py-3 rounded-xl border transition-all ${
+                                                    msg.isDeletedForEveryone
+                                                    ? 'bg-slate-50 border-slate-200 text-slate-400 italic rounded-br-none'
+                                                    : isMe
+                                                    ? 'bg-slate-700 border-slate-700 text-white rounded-br-none'
+                                                    : 'bg-white border-slate-200 text-slate-700 rounded-bl-none'
+                                                }`}>
+                                                    {editingId === msg.id ? (
+                                                        <div className="flex flex-col gap-3 min-w-[250px]">
+                                                            <textarea 
+                                                                className="w-full bg-white/10 text-white p-3 text-xs rounded-lg outline-none border border-slate-500 focus:border-slate-300 transition-all min-h-[80px]"
+                                                                value={editInput}
+                                                                onChange={(e) => setEditInput(e.target.value)}
+                                                                autoFocus
+                                                            />
+                                                            <div className="flex justify-end gap-2">
+                                                                <button onClick={() => setEditingId(null)} className="px-3 py-1.5 text-xs text-slate-300 hover:text-white transition-colors">Cancel</button>
+                                                                <button 
+                                                                    onClick={() => handleSaveEdit(msg.id)} 
+                                                                    disabled={editMutation.isPending}
+                                                                    className="px-3 py-1.5 bg-white text-slate-800 text-xs font-medium rounded-lg hover:bg-slate-100 disabled:opacity-50 transition-all"
+                                                                >
+                                                                    {editMutation.isPending ? 'Saving...' : 'Save'}
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    ) : deletingId === msg.id ? (
+                                                        <div className="flex flex-col gap-2 min-w-[200px] text-center p-1">
+                                                            <p className="text-xs font-medium text-slate-500 mb-1">Delete this message?</p>
+                                                            <button 
+                                                                onClick={() => deleteMutation.mutate({ msgId: msg.id, type: 'everyone' })}
+                                                                className="w-full py-2 bg-slate-600 text-white text-xs font-medium rounded-lg hover:bg-slate-700 transition-all"
+                                                            >
+                                                                Delete for everyone
+                                                            </button>
+                                                            <button 
+                                                                onClick={() => deleteMutation.mutate({ msgId: msg.id, type: 'me' })}
+                                                                className="w-full py-2 bg-slate-100 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-200 transition-all"
+                                                            >
+                                                                Remove for me
+                                                            </button>
+                                                            <button 
+                                                                onClick={() => setDeletingId(null)} 
+                                                                className="w-full py-1.5 text-xs text-slate-400 hover:text-slate-600 transition-colors"
+                                                            >
+                                                                Cancel
+                                                            </button>
+                                                        </div>
+                                                    ) : (
+                                                        <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.message}</p>
+                                                    )}
                                                 </div>
                                             </div>
+
+                                            <div className={`flex items-center gap-2 mt-1.5 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
+                                                {msg.isEdited && !msg.isDeletedForEveryone && (
+                                                    <span className="text-[10px] text-slate-300 italic">edited</span>
+                                                )}
+                                                <span className="text-[10px] text-slate-300">
+                                                    {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                </span>
+                                            </div>
                                         </div>
-                                    );
-                                })
-                            )}
-                            <div ref={messagesEndRef} />
+                                    </div>
+                                );
+                            })}
                         </div>
 
                         {/* Message Input */}
-                        <form onSubmit={handleSendMessage} className="p-4 bg-white border-t border-gray-100 flex gap-2 items-center">
-                            <input
-                                type="text"
-                                value={newMessage}
-                                onChange={(e) => setNewMessage(e.target.value)}
-                                placeholder="Type your response..."
-                                className="flex-1 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all text-sm"
-                            />
-                            <button
-                                type="submit"
-                                disabled={!newMessage.trim() || sending}
-                                className="p-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 transition-all shadow-md shadow-blue-200"
-                            >
-                                <Send size={20} strokeWidth={2.5} />
-                            </button>
-                        </form>
+                        <div className="p-4 bg-white border-t border-slate-200">
+                            <form onSubmit={handleSend} className="relative">
+                                <input
+                                    type="text"
+                                    value={input}
+                                    onChange={(e) => setInput(e.target.value)}
+                                    disabled={sendMutation.isPending}
+                                    placeholder="Write a message..."
+                                    className="w-full pl-4 pr-14 py-3 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:bg-white focus:border-slate-300 focus:ring-2 focus:ring-slate-200 transition-all text-sm placeholder:text-slate-400"
+                                />
+                                <button
+                                    type="submit"
+                                    disabled={!input.trim() || sendMutation.isPending}
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 disabled:opacity-30 transition-all flex items-center justify-center"
+                                >
+                                    {sendMutation.isPending ? (
+                                        <Loader2 className="animate-spin" size={16} />
+                                    ) : (
+                                        <Send size={16} />
+                                    )}
+                                </button>
+                            </form>
+                            <p className="text-[10px] text-center text-slate-300 mt-2">
+                                Press Enter to send message
+                            </p>
+                        </div>
                     </>
                 ) : (
-                    <div className="flex-1 flex flex-col items-center justify-center text-gray-400 animate-in fade-in duration-500">
-                        <h3 className="text-xl font-bold text-gray-600 mb-1">Select a conversation</h3>
-                        <p className="text-sm">Choose an active session from the left to start chatting.</p>
+                    <div className="flex-1 flex flex-col items-center justify-center text-center p-12 space-y-3 animate-in fade-in duration-500">
+                        <div className="max-w-sm">
+                            <h4 className="text-lg font-semibold text-slate-700">Chat Hub</h4>
+                            <p className="text-sm text-slate-400 mt-2 leading-relaxed">
+                                Select a candidate conversation to provide support and manage their application process in real-time.
+                            </p>
+                        </div>
                     </div>
                 )}
             </div>
-
-            <ConfirmDialog
-                isOpen={confirmModal.isOpen}
-                title="Close Chat Session"
-                message="Are you sure you want to close this chat session? The applicant will no longer be able to reply."
-                isDestructive={false}
-                confirmText="Close Session"
-                onClose={() => setConfirmModal({ isOpen: false, idToClose: 0 })}
-                onConfirm={confirmCloseChat}
-            />
+            
+            <style>{`
+                .custom-scrollbar::-webkit-scrollbar {
+                    width: 5px;
+                }
+                .custom-scrollbar::-webkit-scrollbar-track {
+                    background: transparent;
+                }
+                .custom-scrollbar::-webkit-scrollbar-thumb {
+                    background: #e2e8f0;
+                    border-radius: 10px;
+                }
+                .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+                    background: #cbd5e1;
+                }
+            `}
+            </style>
         </div>
     );
 };

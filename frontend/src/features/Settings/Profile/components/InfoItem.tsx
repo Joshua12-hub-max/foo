@@ -19,7 +19,7 @@ const InfoItem: React.FC<InfoItemProps> = ({
 }) => (
   <div className={`flex items-center justify-between py-3 border-b border-gray-100 last:border-0 group ${className}`}>
     <div className="min-w-0">
-      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{label}</p>
+      <p className="text-[10px] font-semibold text-gray-400">{label}</p>
       <p className="text-sm text-gray-800 font-medium mt-0.5">{value || <span className="text-gray-300">—</span>}</p>
     </div>
     {editable && setIsEditing && (

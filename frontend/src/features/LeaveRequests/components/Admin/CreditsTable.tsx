@@ -65,7 +65,7 @@ const CreditsTable = ({
               placeholder="Search employee..." 
               value={localSearch}
               onChange={(e) => setLocalSearch(e.target.value)}
-              className="pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all w-64"
+              className="pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-gray-500/20 focus:border-gray-500 outline-none transition-all w-64"
             />
           </div>
           <button
@@ -124,27 +124,19 @@ const CreditsTable = ({
                     <span className="text-xs text-gray-500 whitespace-nowrap">{credit.department || 'No Department'}</span>
                   </div>
                 </td>
-                <td className="px-6 py-4 text-center">
-                  <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${
-                    credit.creditType === 'Vacation Leave' ? 'bg-blue-100 text-blue-800' :
-                    credit.creditType === 'Sick Leave' ? 'bg-amber-100 text-amber-800' :
-                    'bg-gray-100 text-gray-800'
-                  }`}>
-                    {credit.creditType}
-                  </span>
+                <td className="px-6 py-4 text-center text-sm font-medium text-gray-700">
+                  {credit.creditType}
                 </td>
-                <td className="px-6 py-4 text-center">
-                  <span className={`font-bold text-sm ${credit.balance > 0 ? 'text-teal-600' : 'text-red-500'}`}>
-                    {credit.balance}
-                  </span>
+                <td className="px-6 py-4 text-center text-sm font-medium text-gray-700">
+                  {credit.balance}
                 </td>
                 <td className="px-6 py-4 text-center">
                   <div className="flex flex-col gap-1 items-center">
                     {(credit.daysUsedWithPay > 0 || credit.daysUsedWithoutPay > 0) ? (
                       <>
                         {credit.daysUsedWithPay > 0 && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-green-50 text-green-700 whitespace-nowrap">
-                            <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-gray-50 text-gray-600 whitespace-nowrap">
+                            <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />
                             {credit.daysUsedWithPay}d Paid
                           </span>
                         )}
@@ -164,14 +156,14 @@ const CreditsTable = ({
                   <div className="flex items-center justify-center gap-2">
                     <button 
                       onClick={() => onEdit(credit)}
-                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
+                      className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
                       title="Edit Balance"
                     >
                       <SquarePen className="w-4 h-4" />
                     </button>
                     <button 
                       onClick={() => onDelete(credit)}
-                      className="p-2 text-red-600 hover:bg-red-50 rounded-full transition-colors"
+                      className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
                       title="Delete Credit"
                     >
                       <Trash2 className="w-4 h-4" />

@@ -1,25 +1,61 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import api from '@/api/axios';
-import { updateMyProfile } from '@/api/employeeApi';
-import { User, Employee, ApiResponse } from '@/types';
+import { updateMyProfile, employeeApi } from '@/api/employeeApi';
+import { User, Employee, ApiResponse, EmployeeDetailed } from '@/types';
 
-interface FormData {
-  firstName: string;
-  lastName: string;
-  email: string;
-}
+import { Profile, ProfileFormData } from '../types';
 
 export const useProfile = () => {
   const { user, setUser, updateProfile } = useAuth();
-  const [profile, setProfile] = useState<User | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   
-  const [formData, setFormData] = useState<FormData>({firstName: '', lastName: '', email: ''});
+  const initialFormData: ProfileFormData = {
+    firstName: '',
+    lastName: '',
+    middleName: '',
+    suffix: '',
+    email: '',
+    phoneNumber: '',
+    mobileNo: '',
+    telephoneNo: '',
+    birthDate: '',
+    gender: '',
+    civilStatus: '',
+    nationality: '',
+    placeOfBirth: '',
+    residentialAddress: '',
+    permanentAddress: '',
+    religion: '',
+    citizenship: '',
+    citizenshipType: '',
+    officeAddress: '',
+    station: '',
+    educationalBackground: '',
+    schoolName: '',
+    course: '',
+    yearGraduated: '',
+    umidNumber: '',
+    philsysId: '',
+    philhealthNumber: '',
+    pagibigNumber: '',
+    tinNumber: '',
+    gsisNumber: '',
+    heightM: '',
+    weightKg: '',
+    bloodType: '',
+    eligibilityType: '',
+    eligibilityNumber: '',
+    eligibilityDate: '',
+    yearsOfExperience: '',
+  };
+
+  const [formData, setFormData] = useState<ProfileFormData>(initialFormData);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
 
@@ -29,16 +65,75 @@ export const useProfile = () => {
         setLoading(true);
         const response = await api.get('/auth/me');
         if (response.data.success) {
-          const userData = response.data.data;
-          setProfile(userData);
+          const userData = response.data.data.user || response.data.data;
           
-          // Use firstName/lastName directly if available, fallback to splitting name
+          let detailedData: Partial<Profile> = {};
+          // Use the primary key ID for fetching detailed profile
+          const fetchId = userData.id;
+          
+          if (fetchId) {
+            try {
+              const [employeeRes, docsRes] = await Promise.all([
+                employeeApi.fetchEmployeeProfile(fetchId),
+                employeeApi.fetchEmployeeDocuments(fetchId)
+              ]);
+
+              if (employeeRes.success && employeeRes.profile) {
+                detailedData = employeeRes.profile as Partial<Profile>;
+              }
+
+              if (docsRes.success && docsRes.documents) {
+                detailedData.documents = docsRes.documents;
+              }
+            } catch (empErr) {
+              console.error('Failed to fetch detailed employee profile/documents:', empErr);
+            }
+          }
+
+          const mergedData = { ...userData, ...detailedData };
+          setProfile(mergedData);
+          
+          // Populate Form Data
           setFormData({
-            firstName: userData.firstName || userData.name?.split(' ')[0] || '',
-            lastName: userData.lastName || userData.name?.split(' ').slice(1).join(' ') || '',
-            email: userData.email || ''
+            firstName: mergedData.firstName || mergedData.name?.split(' ')[0] || '',
+            lastName: mergedData.lastName || mergedData.name?.split(' ').slice(1).join(' ') || '',
+            middleName: mergedData.middleName || '',
+            suffix: mergedData.suffix || '',
+            email: mergedData.email || '',
+            phoneNumber: mergedData.phoneNumber || '',
+            mobileNo: mergedData.mobileNo || '',
+            telephoneNo: mergedData.telephoneNo || '',
+            birthDate: mergedData.birthDate || '',
+            gender: mergedData.gender || '',
+            civilStatus: mergedData.civilStatus || '',
+            nationality: mergedData.nationality || '',
+            placeOfBirth: mergedData.placeOfBirth || '',
+            residentialAddress: mergedData.residentialAddress || mergedData.address || '',
+            permanentAddress: mergedData.permanentAddress || '',
+            religion: mergedData.religion || '',
+            citizenship: mergedData.citizenship || '',
+            citizenshipType: mergedData.citizenshipType || '',
+            officeAddress: mergedData.officeAddress || '',
+            station: mergedData.station || '',
+            educationalBackground: mergedData.educationalBackground || '',
+            schoolName: mergedData.schoolName || '',
+            course: mergedData.course || '',
+            yearGraduated: mergedData.yearGraduated || '',
+            umidNumber: mergedData.umidNumber || '',
+            philsysId: mergedData.philsysId || '',
+            philhealthNumber: mergedData.philhealthNumber || '',
+            pagibigNumber: mergedData.pagibigNumber || '',
+            tinNumber: mergedData.tinNumber || '',
+            gsisNumber: mergedData.gsisNumber || '',
+            heightM: String(mergedData.heightM || ''),
+            weightKg: String(mergedData.weightKg || ''),
+            bloodType: mergedData.bloodType || '',
+            eligibilityType: mergedData.eligibilityType || '',
+            eligibilityNumber: mergedData.eligibilityNumber || '',
+            eligibilityDate: mergedData.eligibilityDate || '',
+            yearsOfExperience: String(mergedData.yearsOfExperience || ''),
           });
-          setAvatarPreview(userData.avatarUrl || userData.avatar || null);
+          setAvatarPreview(mergedData.avatarUrl || mergedData.avatar || null);
         }
       } catch (err) {
         console.error('Failed to fetch profile:', err);
@@ -69,9 +164,11 @@ export const useProfile = () => {
 
     try {
       const data = new FormData();
-      data.append('firstName', formData.firstName);
-      data.append('lastName', formData.lastName);
-      data.append('email', formData.email);
+      // Add all fields to FormData
+      Object.entries(formData).forEach(([key, value]) => {
+        data.append(key, String(value || ''));
+      });
+      
       if (avatarFile) {
         data.append('avatar', avatarFile);
       }
@@ -79,9 +176,9 @@ export const useProfile = () => {
       const result = await updateMyProfile(data);
       
       if (result.success) {
-        const userData = result.data as Employee & { name?: string; avatarUrl?: string; firstName?: string; lastName?: string };
-        const newName = userData?.name || `${userData?.firstName || formData.firstName} ${userData?.lastName || formData.lastName}`.trim();
-        const newAvatar = userData?.avatarUrl || avatarPreview || profile?.avatarUrl;
+        const userData = result.data as Partial<User>;
+        const newName = (userData?.name as string) || `${formData.firstName} ${formData.lastName}`.trim();
+        const newAvatar = (userData?.avatarUrl as string) || avatarPreview || profile?.avatarUrl;
         
         setSuccess('Profile updated successfully!');
         
@@ -91,22 +188,22 @@ export const useProfile = () => {
           return {
             ...prev,
             ...userData,
+            ...formData, // Spread all form fields back into profile
+            yearsOfExperience: formData.yearsOfExperience ? Number(formData.yearsOfExperience) : null,
             name: newName,
-            email: formData.email,
             avatarUrl: newAvatar
-          } as User;
+          } as Profile;
         });
         
         // Prepare updates for useAuth
         const updates: Partial<User> = {
-          firstName: userData?.firstName || formData.firstName,
-          lastName: userData?.lastName || formData.lastName,
+          firstName: formData.firstName,
+          lastName: formData.lastName,
           name: newName,
-          email: userData?.email || formData.email,
+          email: formData.email,
           avatarUrl: newAvatar
         };
 
-        // Use updateProfile from useAuth for partial updates
         updateProfile(updates);
         
         setIsEditing(false);
@@ -132,7 +229,41 @@ export const useProfile = () => {
       setFormData({
         firstName: profile.firstName || profile.name?.split(' ')[0] || '',
         lastName: profile.lastName || profile.name?.split(' ').slice(1).join(' ') || '',
-        email: profile.email || ''
+        middleName: profile.middleName || '',
+        suffix: profile.suffix || '',
+        email: profile.email || '',
+        phoneNumber: profile.phoneNumber || '',
+        mobileNo: profile.mobileNo || '',
+        telephoneNo: profile.telephoneNo || '',
+        birthDate: profile.birthDate || '',
+        gender: profile.gender || '',
+        civilStatus: profile.civilStatus || '',
+        nationality: profile.nationality || '',
+        placeOfBirth: profile.placeOfBirth || '',
+        residentialAddress: profile.residentialAddress || profile.address || '',
+        permanentAddress: profile.permanentAddress || '',
+        religion: profile.religion || '',
+        citizenship: profile.citizenship || '',
+        citizenshipType: profile.citizenshipType || '',
+        officeAddress: profile.officeAddress || '',
+        station: profile.station || '',
+        educationalBackground: profile.educationalBackground || '',
+        schoolName: profile.schoolName || '',
+        course: profile.course || '',
+        yearGraduated: profile.yearGraduated || '',
+        umidNumber: profile.umidNumber || '',
+        philsysId: profile.philsysId || '',
+        philhealthNumber: profile.philhealthNumber || '',
+        pagibigNumber: profile.pagibigNumber || '',
+        tinNumber: profile.tinNumber || '',
+        gsisNumber: profile.gsisNumber || '',
+        heightM: String(profile.heightM || ''),
+        weightKg: String(profile.weightKg || ''),
+        bloodType: profile.bloodType || '',
+        eligibilityType: profile.eligibilityType || '',
+        eligibilityNumber: profile.eligibilityNumber || '',
+        eligibilityDate: profile.eligibilityDate || '',
+        yearsOfExperience: String(profile.yearsOfExperience || ''),
       });
       setAvatarPreview(profile.avatarUrl || null);
     }

@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useUIStore } from '@/stores';
-import { getPolicies, type InternalPolicy } from '@/api/policyApi';
+import { type InternalPolicy } from '@/api/policyApi';
 import { Loader2, ChevronDown } from 'lucide-react';
 
 interface InternalPoliciesPageProps {
@@ -18,7 +17,7 @@ const ToggleSection: React.FC<{ title: string; defaultOpen?: boolean; children: 
         onClick={() => setIsOpen(!isOpen)}
         className="w-full flex items-center justify-between py-4 text-left group"
       >
-        <h3 className="text-xs font-black text-gray-800 uppercase tracking-widest">{title}</h3>
+        <h3 className="text-xs font-bold text-gray-800">{title}</h3>
         <ChevronDown 
           size={16} 
           className={`text-gray-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} 
@@ -31,21 +30,10 @@ const ToggleSection: React.FC<{ title: string; defaultOpen?: boolean; children: 
   );
 };
 
-// Reusable item matching InfoItem.tsx from Profile
-const PolicyItem: React.FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => (
-  <div className="py-4 border-b border-gray-100 last:border-0 hover:bg-gray-50/50 transition-colors px-4 -mx-4 rounded-xl">
-    <div className="min-w-0">
-      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{label}</p>
-      <div className="text-sm text-gray-800 font-medium mt-1">{value}</div>
-    </div>
-  </div>
-);
+
 
 const InternalPoliciesPage: React.FC<InternalPoliciesPageProps> = ({ hideHeader = false }) => {
-    const sidebarOpen = useUIStore((state) => state.sidebarOpen);
-    
-
-    const [policies, setPolicies] = useState<InternalPolicy[]>([]);
+    const [policies] = useState<InternalPolicy[]>([]);
     const [loading, setLoading] = useState(false);
 
 
@@ -77,7 +65,7 @@ const InternalPoliciesPage: React.FC<InternalPoliciesPageProps> = ({ hideHeader 
                     <p className="text-sm text-gray-500">Guidelines and regulations governing professional standards at CGM</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <span className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-[10px] font-bold uppercase tracking-wider border border-gray-200">
+                    <span className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-[10px] font-bold border border-gray-200">
                         {policies.length > 0 && policies[0].versionLabel ? policies[0].versionLabel : 'Office Order 164-2025'}
                     </span>
                 </div>
@@ -90,10 +78,11 @@ const InternalPoliciesPage: React.FC<InternalPoliciesPageProps> = ({ hideHeader 
                     <Loader2 className="w-8 h-8 text-slate-500 animate-spin mb-4" />
                     <p className="text-sm text-gray-400 font-medium">Loading official policies...</p>
                 </div>
-            ) : false /* policies.length > 0 */ ? (
+            ) : policies.length > 0 ? (
                 <div className="w-full animate-in fade-in duration-500">
                     {policies.map(policy => (
                         <div key={policy.id} className="prose prose-sm max-w-none prose-slate">
+                             {/* eslint-disable-next-line @typescript-eslint/naming-convention */}
                              <div dangerouslySetInnerHTML={{ __html: policy.content }} />
                         </div>
                     ))}
@@ -108,7 +97,7 @@ const InternalPoliciesPage: React.FC<InternalPoliciesPageProps> = ({ hideHeader 
                             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                                 <div className="lg:col-span-1 space-y-6 flex flex-col">
                                     <section className="p-6 border border-gray-200 rounded-2xl bg-white shadow-sm flex flex-col h-full">
-                                        <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider mb-4 border-l-4 border-slate-500 pl-3">Schedule Overview</h3>
+                                        <h3 className="text-sm font-bold text-gray-800 mb-4 border-l-4 border-slate-500 pl-3">Schedule Overview</h3>
                                         <div className="bg-gray-50 p-5 rounded-xl border border-gray-100 flex-1 space-y-4 flex flex-col overflow-hidden">
                                             <div className="space-y-4">
                                                 <div className="flex justify-between items-center text-xs font-bold text-gray-700">
@@ -135,21 +124,21 @@ const InternalPoliciesPage: React.FC<InternalPoliciesPageProps> = ({ hideHeader 
 
                                 <div className="lg:col-span-2 space-y-8">
                                     <section className="p-6 border border-gray-200 rounded-2xl bg-white shadow-sm">
-                                        <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider mb-6 border-l-4 border-slate-500 pl-3">SOP & Working Hours</h3>
+                                        <h3 className="text-sm font-bold text-gray-800 mb-6 border-l-4 border-slate-500 pl-3">SOP & Working Hours</h3>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
                                             <div className="p-5 border border-gray-100 rounded-2xl bg-slate-50/30 flex flex-col h-full">
                                                 <div className="mb-4">
-                                                    <span className="px-2 py-1 bg-slate-100 text-slate-700 rounded-md text-[9px] font-bold uppercase tracking-widest">Standard Duties</span>
+                                                    <span className="px-2 py-1 bg-slate-100 text-slate-700 rounded-md text-[9px] font-bold">Standard Duties</span>
                                                 </div>
                                                 <h4 className="text-sm font-bold text-gray-800 mb-4">General Rule</h4>
                                                 <div className="space-y-3 flex-1 border-t border-slate-100/50 pt-4">
                                                     <div className="flex items-center gap-3">
                                                         <div className="w-1.5 h-1.5 rounded-full bg-slate-500 shrink-0" />
-                                                        <p className="text-sm font-bold text-gray-700">08:00 AM — 12:00 NN</p>
+                                                        <p className="text-sm font-bold text-gray-700">08:00 am — 12:00 nn</p>
                                                     </div>
                                                     <div className="flex items-center gap-3">
                                                         <div className="w-1.5 h-1.5 rounded-full bg-slate-500 shrink-0" />
-                                                        <p className="text-sm font-bold text-gray-700">01:00 PM — 05:00 PM</p>
+                                                        <p className="text-sm font-bold text-gray-700">01:00 pm — 05:00 pm</p>
                                                     </div>
                                                 </div>
                                                 <div className="mt-4 p-3 bg-white rounded-xl border border-slate-100/30">
@@ -159,7 +148,7 @@ const InternalPoliciesPage: React.FC<InternalPoliciesPageProps> = ({ hideHeader 
                                             
                                             <div className="p-5 border border-gray-100 rounded-2xl bg-amber-50/30 flex flex-col h-full">
                                                 <div className="mb-4">
-                                                    <span className="px-2 py-1 bg-amber-100 text-amber-700 rounded-md text-[9px] font-bold uppercase tracking-widest">Irregular Duties</span>
+                                                    <span className="px-2 py-1 bg-amber-100 text-amber-700 rounded-md text-[9px] font-bold">Irregular Duties</span>
                                                 </div>
                                                 <h4 className="text-sm font-bold text-gray-800 mb-4">Target Hours Mode</h4>
                                                 <div className="space-y-3 flex-1 border-t border-amber-100/50 pt-4">
@@ -177,19 +166,19 @@ const InternalPoliciesPage: React.FC<InternalPoliciesPageProps> = ({ hideHeader 
                                                     </div>
                                                 </div>
                                                 <div className="mt-4 p-3 bg-white rounded-xl border border-amber-100/30">
-                                                    <p className="text-[10px] text-gray-500 leading-tight">No fixed start/end time. Schedule is assigned by head. (JO / COS)</p>
+                                                    <p className="text-[10px] text-gray-500 leading-tight">No fixed start/end time. Schedule is assigned by head. (jo / cos)</p>
                                                 </div>
                                             </div>
                                         </div>
                                     </section>
 
                                     <section className="p-6 border border-gray-200 rounded-2xl bg-white shadow-sm">
-                                        <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider mb-6 border-l-4 border-slate-500 pl-3">Standard Protocols</h3>
+                                        <h3 className="text-sm font-bold text-gray-800 mb-6 border-l-4 border-slate-500 pl-3">Standard Protocols</h3>
                                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                                             {[
                                                 { title: "Time Tracking", desc: "Digital logging via official biometric machines." },
                                                 { title: "Business Slips", desc: "Use Locator/Pass Slips for all outside movements." },
-                                                { title: "Leave Filing", desc: "Regulars via app; JO/COS notify department head." },
+                                                { title: "Leave Filing", desc: "Regulars via app; jo/cos notify department head." },
                                                 { title: "Professionalism", desc: "Report on time; avoid unauthorized departures." }
                                             ].map((item, idx) => (
                                                 <div key={idx} className="p-4 bg-gray-50/50 rounded-xl border border-gray-100 flex flex-col h-full hover:border-gray-200 transition-colors">
@@ -210,33 +199,33 @@ const InternalPoliciesPage: React.FC<InternalPoliciesPageProps> = ({ hideHeader 
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                                 <div className="space-y-6">
                                     <section className="p-6 border border-gray-200 rounded-2xl bg-white shadow-sm">
-                                        <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider mb-6 border-l-4 border-slate-500 pl-3">Definitions (CSC MC No. 17, s. 2010)</h3>
+                                        <h3 className="text-sm font-bold text-gray-800 mb-6 border-l-4 border-slate-500 pl-3">Definitions (CSC MC No. 17, s. 2010)</h3>
                                         <div className="space-y-6">
                                             <div className="space-y-3">
-                                                <h4 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Tardiness (Late)</h4>
+                                                <h4 className="text-[11px] font-bold text-gray-400">Tardiness (Late)</h4>
                                                 <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
                                                     <p className="text-xs text-gray-800 font-bold mb-2">Reporting after prescribed time of arrival</p>
                                                     <p className="text-[11px] text-gray-600 leading-relaxed">
-                                                        An employee is considered <strong>tardy/late</strong> when they report for work after the prescribed time of arrival (8:00 AM for Standard Duty). Late minutes are counted from <strong>minute 1</strong>.
+                                                        An employee is considered <strong>tardy/late</strong> when they report for work after the prescribed time of arrival (8:00 am for Standard Duty). Late minutes are counted from <strong>minute 1</strong>.
                                                     </p>
                                                 </div>
                                             </div>
                                             <div className="space-y-3">
-                                                <h4 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Undertime</h4>
+                                                <h4 className="text-[11px] font-bold text-gray-400">Undertime</h4>
                                                 <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
                                                     <p className="text-xs text-gray-800 font-bold mb-2">Leaving before prescribed end of office hours</p>
                                                     <p className="text-[11px] text-gray-600 leading-relaxed">
-                                                        An employee is on <strong>undertime</strong> when they leave the office before the prescribed end of office hours (5:00 PM for Standard Duty). A single day can be <strong>both Late and Undertime</strong>.
+                                                        An employee is on <strong>undertime</strong> when they leave the office before the prescribed end of office hours (5:00 pm for Standard Duty). A single day can be <strong>both Late and Undertime</strong>.
                                                     </p>
                                                 </div>
                                             </div>
                                             <div className="h-px bg-gray-100" />
                                             <div className="space-y-3">
-                                                <h4 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Deduction Formula</h4>
+                                                <h4 className="text-[11px] font-bold text-gray-400">Deduction Formula</h4>
                                                 <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
                                                     <p className="text-xs text-slate-800 font-bold mb-2">Total Minutes ÷ 480 = Days Equivalent</p>
                                                     <p className="text-[11px] text-gray-600 leading-relaxed">
-                                                        480 minutes = 8 working hours = 1 day. Late + Undertime minutes are combined and deducted from <strong>Vacation Leave</strong> first. If VL is insufficient, the remainder is charged as <strong>LWOP</strong> (Leave Without Pay).
+                                                        480 minutes = 8 working hours = 1 day. Late + undertime minutes are combined and deducted from <strong>vacation leave</strong> first. If vl is insufficient, the remainder is charged as <strong>lwop</strong> (leave without pay).
                                                     </p>
                                                 </div>
                                             </div>
@@ -246,24 +235,24 @@ const InternalPoliciesPage: React.FC<InternalPoliciesPageProps> = ({ hideHeader 
 
                                 <div className="space-y-6">
                                     <section className="p-6 border border-gray-200 rounded-2xl bg-white shadow-sm">
-                                        <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider mb-6 border-l-4 border-rose-500 pl-3">Habitual Tardiness / Undertime (CSC MC No. 1, s. 2017)</h3>
+                                        <h3 className="text-sm font-bold text-gray-800 mb-6 border-l-4 border-rose-500 pl-3">Habitual Tardiness / Undertime (CSC MC No. 1, s. 2017)</h3>
                                         <div className="space-y-6">
                                             <div className="grid grid-cols-2 gap-4">
                                                 <div className="p-4 border border-gray-100 rounded-xl bg-gray-50/50">
-                                                    <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Threshold</h4>
+                                                    <h4 className="text-[10px] font-bold text-gray-400 mb-1">Threshold</h4>
                                                     <p className="text-[11px] font-bold text-gray-700">10 or more times per month</p>
                                                 </div>
                                                 <div className="p-4 border border-rose-100 rounded-xl bg-rose-50/30">
-                                                    <h4 className="text-[10px] font-bold text-rose-600 uppercase tracking-widest mb-1">Trigger</h4>
+                                                    <h4 className="text-[10px] font-bold text-rose-600 mb-1">Trigger</h4>
                                                     <p className="text-[11px] font-bold text-gray-700">2 months in a semester or 2 consecutive months</p>
                                                 </div>
                                             </div>
 
                                             <div className="bg-gray-900 text-white p-5 rounded-2xl relative overflow-hidden">
-                                                <h4 className="text-[11px] font-bold text-rose-400 uppercase tracking-widest mb-4">Progressive Penalties</h4>
+                                                <h4 className="text-[11px] font-bold text-rose-400 mb-4">Progressive Penalties</h4>
                                                 <div className="grid grid-cols-2 gap-6">
                                                     <div className="space-y-3">
-                                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Regular / Plantilla</p>
+                                                        <p className="text-[10px] font-bold text-slate-400">Regular / Plantilla</p>
                                                         {[
                                                             { offense: '1st', penalty: 'Reprimand (Stern Warning)', sev: 'Minor' },
                                                             { offense: '2nd', penalty: 'Suspension 1-30 days', sev: 'Major' },
@@ -276,7 +265,7 @@ const InternalPoliciesPage: React.FC<InternalPoliciesPageProps> = ({ hideHeader 
                                                         ))}
                                                     </div>
                                                     <div className="space-y-3">
-                                                        <p className="text-[10px] font-bold text-amber-400 uppercase tracking-widest">JO / COS</p>
+                                                        <p className="text-[10px] font-bold text-amber-400">jo / cos</p>
                                                         {[
                                                             { offense: '1st', penalty: 'Written Warning', sev: 'Minor' },
                                                             { offense: '2nd', penalty: 'Reprimand', sev: 'Moderate' },
@@ -362,7 +351,7 @@ const InternalPoliciesPage: React.FC<InternalPoliciesPageProps> = ({ hideHeader 
                                         </div>
                                         <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-8">
                                             <div className="space-y-3">
-                                                <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-50 pb-1">Regular / Plantilla</h4>
+                                                <h4 className="text-[10px] font-bold text-gray-400 border-b border-gray-50 pb-1">Regular / Plantilla</h4>
                                                 <div className="space-y-2">
                                                     {category.regular.map((p, i) => (
                                                         <div key={i} className="flex justify-between items-center text-[11px]">
@@ -373,7 +362,7 @@ const InternalPoliciesPage: React.FC<InternalPoliciesPageProps> = ({ hideHeader 
                                                 </div>
                                             </div>
                                             <div className="space-y-3">
-                                                <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-50 pb-1">JO / COS</h4>
+                                                <h4 className="text-[10px] font-bold text-gray-400 border-b border-gray-50 pb-1">jo / cos</h4>
                                                 <div className="space-y-2">
                                                     {category.contract.map((p, i) => (
                                                         <div key={i} className="flex justify-between items-center text-[11px]">
@@ -399,7 +388,7 @@ const InternalPoliciesPage: React.FC<InternalPoliciesPageProps> = ({ hideHeader 
                                     </div>
                                     <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-8">
                                         <div className="space-y-4">
-                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Memo Severity → Rating Ceiling</p>
+                                            <p className="text-[10px] font-bold text-slate-400">Memo Severity → Rating Ceiling</p>
                                             <div className="space-y-2">
                                                 {[
                                                     { sev: 'Minor (Reprimand)', ceiling: 'Max Score: 3 (Satisfactory)' },
@@ -415,7 +404,7 @@ const InternalPoliciesPage: React.FC<InternalPoliciesPageProps> = ({ hideHeader 
                                             </div>
                                         </div>
                                         <div className="space-y-4">
-                                            <p className="text-[10px] font-bold text-rose-400 uppercase tracking-widest">AWOL Rule (CSC MC No. 38, s. 1993)</p>
+                                            <p className="text-[10px] font-bold text-rose-400">Awol rule (csc mc no. 38, s. 1993)</p>
                                             <div className="p-4 bg-rose-950/30 rounded-xl border border-rose-900/30">
                                                 <p className="text-[11px] font-bold text-rose-300 mb-1">30 consecutive working days</p>
                                                 <p className="text-[11px] text-gray-400 leading-relaxed">
@@ -436,7 +425,7 @@ const InternalPoliciesPage: React.FC<InternalPoliciesPageProps> = ({ hideHeader 
                                 {[
                                     { title: "Vacation Leave", filing: "5 working days prior", max: "Earned 1.25 days/month", remarks: "Advance filing required. Accrue 15 days annually. EO No. 292.", attachment: "None" },
                                     { title: "Sick Leave", filing: "Within 3 days of return", max: "Earned 1.25 days/month", remarks: "Medical Certificate required if 5+ consecutive days. CSC MC No. 41, s. 1998.", attachment: "MedCert if ≥ 5 days" },
-                                    { title: "Forced/Mandatory Leave", filing: "5 working days prior", max: "5 days annually", remarks: "Must have 10 VL credits. Auto-deducted Dec 31st. Use-it-or-lose-it. CSC MC No. 41, s. 1998.", attachment: "None" },
+                                    { title: "Forced Leave", filing: "5 working days prior", max: "5 days annually", remarks: "Must have 10 VL credits. Auto-deducted Dec 31st. Use-it-or-lose-it. CSC MC No. 41, s. 1998.", attachment: "None" },
                                     { title: "Special Privilege Leave", filing: "5 working days prior", max: "3 days annually", remarks: "Non-cumulative, non-convertible to cash. Limited to 3 applications per year.", attachment: "None" },
                                     { title: "Special Emergency Leave", filing: "Within 30 days", max: "5 days annually", remarks: "Only for declared state of calamity. RA 9263.", attachment: "None" },
                                     { title: "Solo Parent Leave", filing: "5 working days prior", max: "7 days annually", remarks: "Solo Parent ID required. RA 8972. Non-convertible.", attachment: "Solo Parent ID" },
@@ -448,15 +437,15 @@ const InternalPoliciesPage: React.FC<InternalPoliciesPageProps> = ({ hideHeader 
                                     { title: "Rehabilitation Leave", filing: "5 working days prior", max: "Subject to approval", remarks: "For work-related injuries or illnesses requiring rehabilitation.", attachment: "Medical Certificate" }
                                 ].map((leave, idx) => (
                                     <div key={idx} className="p-6 border border-gray-100 rounded-2xl bg-white shadow-sm hover:border-gray-200 transition-colors flex flex-col h-full">
-                                        <h3 className="text-xs font-bold text-gray-800 uppercase tracking-tight mb-4">{leave.title}</h3>
+                                        <h3 className="text-xs font-bold text-gray-800 mb-4">{leave.title}</h3>
                                         <div className="space-y-4 flex-1">
                                             <div className="grid grid-cols-2 gap-4">
                                                 <div className="space-y-1">
-                                                    <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Filing Window</p>
+                                                    <p className="text-[9px] font-bold text-gray-400">Filing Window</p>
                                                     <p className="text-[11px] font-bold text-gray-700">{leave.filing}</p>
                                                 </div>
                                                 <div className="space-y-1">
-                                                    <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Duration</p>
+                                                    <p className="text-[9px] font-bold text-gray-400">Duration</p>
                                                     <p className="text-[11px] font-bold text-gray-700">{leave.max}</p>
                                                 </div>
                                             </div>
@@ -476,13 +465,13 @@ const InternalPoliciesPage: React.FC<InternalPoliciesPageProps> = ({ hideHeader 
                             {/* Deemed Approval & Monthly Accrual */}
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                                 <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100">
-                                    <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-3">⏰ Deemed Approved Rule</h4>
+                                    <h4 className="text-xs font-bold text-slate-800 mb-3">⏰ Deemed Approved Rule</h4>
                                     <p className="text-[11px] text-gray-700 leading-relaxed">
                                         Any leave application pending action for <strong>5 or more working days</strong> is automatically deemed approved. (CSC MC No. 41, s. 1998, Section 49)
                                     </p>
                                 </div>
                                 <div className="p-6 bg-emerald-50 rounded-2xl border border-emerald-100">
-                                    <h4 className="text-xs font-bold text-emerald-800 uppercase tracking-wider mb-3">📅 Monthly Leave Accrual</h4>
+                                    <h4 className="text-xs font-bold text-emerald-800 mb-3">📅 Monthly Leave Accrual</h4>
                                     <p className="text-[11px] text-gray-700 leading-relaxed">
                                         Regular employees earn <strong>1.25 days VL + 1.25 days SL = 2.5 days/month</strong> (15 VL + 15 SL = 30 days/year). JO/COS do not earn leave credits. (EO No. 292)
                                     </p>
@@ -497,7 +486,7 @@ const InternalPoliciesPage: React.FC<InternalPoliciesPageProps> = ({ hideHeader 
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                                 <div className="space-y-6">
                                     <section className="p-6 border border-gray-200 rounded-2xl bg-white shadow-sm">
-                                        <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider mb-6 border-l-4 border-blue-500 pl-3">Employment Classification Matrix</h3>
+                                        <h3 className="text-sm font-bold text-gray-800 mb-6 border-l-4 border-blue-500 pl-3">Employment Classification Matrix</h3>
                                         <div className="space-y-4">
                                             <p className="text-[11px] text-gray-600 leading-relaxed">
                                                 Each appointment type determines the employee's duty schedule, penalty track, and leave credit eligibility.
@@ -505,11 +494,11 @@ const InternalPoliciesPage: React.FC<InternalPoliciesPageProps> = ({ hideHeader 
                                             <div className="overflow-x-auto">
                                                 <table className="w-full text-sm">
                                                     <thead>
-                                                        <tr className="border-b border-gray-200 bg-gray-50/50">
-                                                            <th className="text-left py-3 px-4 text-gray-700 font-semibold whitespace-nowrap">Type</th>
-                                                            <th className="text-left py-3 pr-4 text-gray-700 font-semibold whitespace-nowrap">Duty</th>
-                                                            <th className="text-left py-3 pr-4 text-gray-700 font-semibold whitespace-nowrap">Penalty Track</th>
-                                                            <th className="text-left py-3 text-gray-700 font-semibold whitespace-nowrap">Leave Credits</th>
+                                                        <tr className="border-b border-gray-100 bg-[#FAFAFA]">
+                                                            <th className="text-left py-3 px-4 text-gray-400 font-bold text-[10px] whitespace-nowrap">Type</th>
+                                                            <th className="text-left py-3 pr-4 text-gray-400 font-bold text-[10px] whitespace-nowrap">Duty</th>
+                                                            <th className="text-left py-3 pr-4 text-gray-400 font-bold text-[10px] whitespace-nowrap">Penalty Track</th>
+                                                            <th className="text-left py-3 text-gray-400 font-bold text-[10px] whitespace-nowrap">Leave Credits</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody>
@@ -522,17 +511,25 @@ const InternalPoliciesPage: React.FC<InternalPoliciesPageProps> = ({ hideHeader 
                                                             { type: 'Job Order (JO)', duty: 'Irregular', track: 'JO/COS', leave: false },
                                                             { type: 'Contract of Service (COS)', duty: 'Irregular', track: 'JO/COS', leave: false }
                                                         ].map((row, i) => (
-                                                            <tr key={i} className="border-b border-gray-100 hover:bg-gray-50/50 transition-colors">
-                                                                <td className="py-3 px-4 font-medium text-gray-900 whitespace-nowrap">{row.type}</td>
-                                                                <td className="py-3 pr-4 text-gray-700 whitespace-nowrap">{row.duty}</td>
+                                                            <tr key={i} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors group">
+                                                                <td className="py-3 px-4 font-semibold text-gray-800 whitespace-nowrap">{row.type}</td>
+                                                                <td className="py-3 pr-4 text-gray-600 whitespace-nowrap">{row.duty}</td>
                                                                 <td className="py-3 pr-4 whitespace-nowrap">
-                                                                    <span className={`px-2.5 py-1 rounded-md text-xs font-semibold ${row.track === 'Regular' ? 'bg-slate-100 text-slate-700' : 'bg-amber-100 text-amber-700'}`}>
+                                                                    <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border transition-all ${
+                                                                        row.track === 'Regular' 
+                                                                            ? 'bg-gray-50 text-gray-500 border-gray-100 group-hover:bg-slate-50 group-hover:text-slate-700 group-hover:border-slate-200' 
+                                                                            : 'bg-gray-50 text-gray-400 border-gray-100 group-hover:bg-amber-50 group-hover:text-amber-700 group-hover:border-amber-200'
+                                                                    }`}>
                                                                         {row.track}
                                                                     </span>
                                                                 </td>
                                                                 <td className="py-3 whitespace-nowrap">
-                                                                    <span className={`text-sm font-semibold ${row.leave ? 'text-emerald-600' : 'text-rose-500'}`}>
-                                                                        {row.leave ? '✅ Yes' : '❌ No'}
+                                                                    <span className={`text-[10px] font-bold transition-all ${
+                                                                        row.leave 
+                                                                            ? 'text-gray-300 group-hover:text-emerald-600' 
+                                                                            : 'text-gray-300 group-hover:text-rose-500'
+                                                                    }`}>
+                                                                        {row.leave ? '✓ Available' : '× Not Applicable'}
                                                                     </span>
                                                                 </td>
                                                             </tr>
@@ -544,7 +541,7 @@ const InternalPoliciesPage: React.FC<InternalPoliciesPageProps> = ({ hideHeader 
                                     </section>
                                     
                                     <section className="p-6 border border-gray-200 rounded-2xl bg-white shadow-sm">
-                                        <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider mb-4 border-l-4 border-emerald-500 pl-3">Step Increments</h3>
+                                        <h3 className="text-sm font-bold text-gray-800 mb-4 border-l-4 border-emerald-500 pl-3">Step Increments</h3>
                                         <div className="space-y-3">
                                             <p className="text-[11px] text-gray-600 font-medium leading-relaxed">
                                                 Granted every 3 years of continuous satisfactory service in the same position (Rule XI, CSC MC No. 19 s. 2005).
@@ -561,7 +558,7 @@ const InternalPoliciesPage: React.FC<InternalPoliciesPageProps> = ({ hideHeader 
 
                                 <div className="space-y-6">
                                     <section className="p-6 border border-gray-200 rounded-2xl bg-white shadow-sm">
-                                        <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider mb-6 border-l-4 border-slate-500 pl-3">Qualification Standards (QS)</h3>
+                                        <h3 className="text-sm font-bold text-gray-800 mb-6 border-l-4 border-slate-500 pl-3">Qualification Standards (QS)</h3>
                                         <div className="space-y-4">
                                             {[
                                                 { title: "Education", desc: "Formal academic degree required for the specific position." },
@@ -572,27 +569,27 @@ const InternalPoliciesPage: React.FC<InternalPoliciesPageProps> = ({ hideHeader 
                                                 <div key={i} className="flex gap-4 items-start pb-4 border-b border-gray-50 last:border-0 last:pb-0">
                                                     <div className="w-2 h-2 rounded-full bg-slate-400 mt-1.5 shrink-0" />
                                                     <div>
-                                                        <h4 className="text-[11px] font-bold text-gray-800 uppercase">{qs.title}</h4>
+                                                        <h4 className="text-[11px] font-bold text-gray-800">{qs.title}</h4>
                                                         <p className="text-[11px] text-gray-500 leading-tight mt-0.5">{qs.desc}</p>
                                                     </div>
                                                 </div>
                                             ))}
                                         </div>
                                         <div className="mt-8 p-4 bg-gray-900 rounded-xl text-white">
-                                            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Audit Compliance</p>
+                                            <p className="text-[10px] font-bold text-slate-400 mb-2">Audit Compliance</p>
                                             <p className="text-[11px] text-gray-400 leading-relaxed italic">
-                                                "Positions must match the DBM PSIPOP report exactly. Any deviation triggers audit findings from COA."
+                                                "Positions must match the dbm psipop report exactly. Any deviation triggers audit findings from coa."
                                             </p>
                                         </div>
                                     </section>
 
                                     <section className="p-6 border border-gray-200 rounded-2xl bg-white shadow-sm">
-                                        <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider mb-4 border-l-4 border-rose-500 pl-3">Key Policy Notes</h3>
+                                        <h3 className="text-sm font-bold text-gray-800 mb-4 border-l-4 border-rose-500 pl-3">Key Policy Notes</h3>
                                         <div className="space-y-3">
                                             {[
-                                                'Standard Duty = Regular Mon-Fri 8AM-5PM schedule',
-                                                'Irregular Duty = Schedule assigned by department head, may include weekends',
-                                                'JO/COS do not earn leave credits under CSC rules',
+                                                'Standard duty = Regular Mon-Fri 8am-5pm schedule',
+                                                'Irregular duty = Schedule assigned by department head, may include weekends',
+                                                'jo/cos do not earn leave credits under csc rules',
                                                 'Penalty track for JO/COS is shorter (Warning → Termination)',
                                                 'All employees must complete 8 working hours per day'
                                             ].map((note, i) => (
@@ -614,12 +611,12 @@ const InternalPoliciesPage: React.FC<InternalPoliciesPageProps> = ({ hideHeader 
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                                 <div className="p-8 border border-gray-200 rounded-2xl bg-white shadow-sm space-y-6">
                                     <div className="space-y-1">
-                                        <span className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">MC No. 1, s. 2017</span>
+                                        <span className="text-[10px] font-bold text-slate-600">MC No. 1, s. 2017</span>
                                         <h4 className="text-base font-bold text-gray-800">2017-RACCS: Habitual Offenses</h4>
                                     </div>
                                     <div className="space-y-4">
                                         <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
-                                            <p className="text-[11px] font-bold text-gray-700 uppercase mb-2">Habitually Absent</p>
+                                            <p className="text-[11px] font-bold text-gray-700 mb-2">Habitually Absent</p>
                                             <p className="text-xs text-gray-600 leading-relaxed">
                                                 Unauthorized absences exceeding the allowable 2.5 days monthly leave credit for at least:
                                             </p>
@@ -629,7 +626,7 @@ const InternalPoliciesPage: React.FC<InternalPoliciesPageProps> = ({ hideHeader 
                                             </ul>
                                         </div>
                                         <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
-                                            <p className="text-[11px] font-bold text-gray-700 uppercase mb-2">Habitually Tardy</p>
+                                            <p className="text-[11px] font-bold text-gray-700 mb-2">Habitually Tardy</p>
                                             <p className="text-xs text-gray-600 leading-relaxed">
                                                 Late regardless of the number of minutes, ten (10) times a month for at least:
                                             </p>
@@ -644,7 +641,7 @@ const InternalPoliciesPage: React.FC<InternalPoliciesPageProps> = ({ hideHeader 
                                 <div className="space-y-6">
                                     <div className="p-8 border border-gray-200 rounded-2xl bg-white shadow-sm space-y-6">
                                         <div className="space-y-1">
-                                            <span className="text-[10px] font-bold text-amber-600 uppercase tracking-widest">MC No. 16, s. 2010</span>
+                                            <span className="text-[10px] font-bold text-amber-600">MC No. 16, s. 2010</span>
                                             <h4 className="text-base font-bold text-gray-800">Policy on Habitual Undertime</h4>
                                         </div>
                                         <p className="text-xs text-gray-500 leading-relaxed italic border-l-2 border-gray-100 pl-4 py-1">
@@ -652,11 +649,11 @@ const InternalPoliciesPage: React.FC<InternalPoliciesPageProps> = ({ hideHeader 
                                         </p>
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="p-3 bg-gray-50 rounded-lg border border-gray-100">
-                                                <p className="text-[10px] text-gray-400 uppercase font-bold mb-1">Default</p>
+                                                <p className="text-[10px] text-gray-400 font-bold mb-1">Default</p>
                                                 <p className="text-[11px] font-bold text-gray-700">Simple Misconduct</p>
                                             </div>
                                             <div className="p-3 bg-rose-50 rounded-lg border border-rose-100">
-                                                <p className="text-[10px] text-rose-400 uppercase font-bold mb-1">If Tagged</p>
+                                                <p className="text-[10px] text-rose-400 font-bold mb-1">If Tagged</p>
                                                 <p className="text-[11px] font-bold text-gray-700">Prejudicial to Service</p>
                                             </div>
                                         </div>
@@ -664,7 +661,7 @@ const InternalPoliciesPage: React.FC<InternalPoliciesPageProps> = ({ hideHeader 
 
                                     <div className="p-8 border border-gray-200 rounded-2xl bg-white shadow-sm space-y-6">
                                         <div className="space-y-1">
-                                            <span className="text-[10px] font-bold text-rose-600 uppercase tracking-widest">MC No. 17, s. 2010</span>
+                                            <span className="text-[10px] font-bold text-rose-600">MC No. 17, s. 2010</span>
                                             <h4 className="text-base font-bold text-gray-800">Tardiness / Undertime Deduction</h4>
                                         </div>
                                         <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
@@ -680,7 +677,7 @@ const InternalPoliciesPage: React.FC<InternalPoliciesPageProps> = ({ hideHeader 
                             {/* Additional CSC References */}
                             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                                 <div className="p-6 border border-gray-200 rounded-2xl bg-white shadow-sm">
-                                    <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">MC No. 41, s. 1998</span>
+                                    <span className="text-[10px] font-bold text-emerald-600">MC No. 41, s. 1998</span>
                                     <h4 className="text-sm font-bold text-gray-800 mt-1 mb-3">Omnibus Rules on Leave</h4>
                                     <ul className="text-[11px] text-gray-600 space-y-2 list-disc pl-4">
                                         <li>Advance filing of 5 working days for VL</li>
@@ -691,7 +688,7 @@ const InternalPoliciesPage: React.FC<InternalPoliciesPageProps> = ({ hideHeader 
                                     </ul>
                                 </div>
                                 <div className="p-6 border border-gray-200 rounded-2xl bg-white shadow-sm">
-                                    <span className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">MC No. 38, s. 1993</span>
+                                    <span className="text-[10px] font-bold text-slate-600">MC No. 38, s. 1993</span>
                                     <h4 className="text-sm font-bold text-gray-800 mt-1 mb-3">AWOL / Dropping from Rolls</h4>
                                     <ul className="text-[11px] text-gray-600 space-y-2 list-disc pl-4">
                                         <li>30 consecutive working days continuous absence</li>
@@ -701,7 +698,7 @@ const InternalPoliciesPage: React.FC<InternalPoliciesPageProps> = ({ hideHeader 
                                     </ul>
                                 </div>
                                 <div className="p-6 border border-gray-200 rounded-2xl bg-white shadow-sm">
-                                    <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">EO No. 292</span>
+                                    <span className="text-[10px] font-bold text-blue-600">EO No. 292</span>
                                     <h4 className="text-sm font-bold text-gray-800 mt-1 mb-3">Administrative Code Leave Credits</h4>
                                     <ul className="text-[11px] text-gray-600 space-y-2 list-disc pl-4">
                                         <li>Vacation Leave: 1.25 days/month (15 days/year)</li>
@@ -718,7 +715,7 @@ const InternalPoliciesPage: React.FC<InternalPoliciesPageProps> = ({ hideHeader 
                 )}
 
             <footer className="mt-12 pt-8 border-t border-gray-100 text-center">
-                <p className="text-[10px] font-bold text-gray-300 uppercase tracking-[0.2em]">CGM Human Resource Management Office &copy; {new Date().getFullYear()}</p>
+                <p className="text-[10px] font-bold text-gray-300 tracking-[0.2em]">CGM Human Resource Management Office &copy; {new Date().getFullYear()}</p>
             </footer>
         </div>
     );

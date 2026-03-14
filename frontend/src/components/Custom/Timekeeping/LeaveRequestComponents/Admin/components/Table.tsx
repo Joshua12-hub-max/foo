@@ -58,8 +58,8 @@ const Table: React.FC<TableProps> = ({ data, onOpenApprove, onOpenReject }) => {
                   <td className="px-6 py-4 text-sm text-gray-800">{item.employeeId || 'N/A'}</td>
                   <td className="px-6 py-4 text-sm text-gray-800">{item.name || item.employeeId || 'Unknown'}</td>
                   <td className="px-6 py-4 text-sm text-gray-800">{item.leaveType || 'N/A'}</td>
-                  <td className="px-6 py-4 text-sm text-gray-800">{new Date(item.fromDate).toLocaleDateString()}</td>
-                  <td className="px-6 py-4 text-sm text-gray-800">{new Date(item.toDate).toLocaleDateString()}</td>
+                  <td className="px-6 py-4 text-sm text-gray-800">{new Date(item.startDate).toLocaleDateString()}</td>
+                  <td className="px-6 py-4 text-sm text-gray-800">{new Date(item.endDate).toLocaleDateString()}</td>
                   <td className="px-6 py-4">
                     <span className={`font-semibold ${
                       (item.currentBalance || 0) > 0 ? 'text-teal-600' : 'text-gray-400'

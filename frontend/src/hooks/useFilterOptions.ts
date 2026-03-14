@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { fetchDepartments, fetchPublicDepartments } from '@api/departmentApi';
 import { fetchEmployees } from '@api/employeeApi';
+import { Employee } from '@/types';
 
 export interface FilterEmployee {
   id: string;

@@ -2,10 +2,12 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useUIStore } from '@/stores';
   
 // Hooks
-import { useAdminLeaveData } from '@features/LeaveRequests/hooks/Admin/useAdminLeaveData';
-import { useAdminLeaveFilters } from '@features/LeaveRequests/hooks/Admin/useAdminLeaveFilters';
-import { useExport } from '@features/LeaveRequests/hooks/Admin/useExport';
-import { useCredits } from '@features/LeaveRequests/hooks/Admin/useCredits';
+import { 
+  useAdminLeaveData, 
+  useAdminLeaveFilters, 
+  useExport,
+  useCredits 
+} from '@features/LeaveRequests/hooks/Admin';
 
 // Components
 // Components - Direct imports for faster initial parse
@@ -27,11 +29,9 @@ const AddCreditModal = React.lazy(() => import('@features/LeaveRequests/Modals/A
 const EditCreditModal = React.lazy(() => import('@features/LeaveRequests/Modals/EditCreditModal'));
 // ConfirmDeleteModal is a named export, so handle differently or change export
 // Assuming ConfirmDeleteModal is default export in its file or handled via module
-const ConfirmDeleteModal = React.lazy(() => import('@components/Custom/CalendarComponents/shared/Modals').then(module => ({ default: module.ConfirmDeleteModal })));
+const DeleteCreditModal = React.lazy(() => import('@features/LeaveRequests/Modals/DeleteCreditModal'));
 
-
-// API
-// API
+// API YAN BOI OK!
 import { useFilterOptions } from '@/hooks/useFilterOptions';
 import { AddCreditInput, CreditUpdateInput } from '@/schemas/creditsSchema';
 import type { LeaveCredit, AdminLeaveRequest } from '@features/LeaveRequests/types';
@@ -278,16 +278,12 @@ const AdminLeaveRequest = () => {
                     />
                   )}
 
-                  <ConfirmDeleteModal 
-                    show={deleteCredit.isOpen}
-                    title="Delete Leave Credit"
-                    message={deleteCredit.data 
-                        ? `Are you sure you want to delete ${deleteCredit.data.creditType} for ${deleteCredit.data.firstName} ${deleteCredit.data.lastName}?\nThis action cannot be undone.`
-                        : 'Are you sure you want to delete this credit?'
-                    }
+                  <DeleteCreditModal 
+                    isOpen={deleteCredit.isOpen}
+                    onClose={() => setDeleteCredit({ isOpen: false, data: null })}
                     onConfirm={handleDeleteConfirm}
-                    onCancel={() => setDeleteCredit({ isOpen: false, data: null })}
                     isDeleting={isDeleting}
+                    credit={deleteCredit.data}
                   />
               </React.Suspense>
           </div>

@@ -189,10 +189,65 @@ export const generateJobVacancyWord = async (job: Job) => {
                                        children: [new TextRun({ text: "REQUIREMENTS", ...tableHeaderStyle, underline: {} })],
                                        spacing: { after: 200 }
                                    }),
-                                   new Paragraph({
-                                       children: [new TextRun({ text: job.requirements || "Requirements not specified.", ...tableCellStyle })],
-                                       spacing: { before: 100, after: 100 }
-                                   })
+                                   ...(job.education || job.experience || job.training || job.eligibility || job.otherQualifications
+                                     ? [
+                                         ...(job.education ? [
+                                           new Paragraph({
+                                               children: [
+                                                   new TextRun({ text: "Education: ", bold: true, ...tableCellStyle }),
+                                                   new TextRun({ text: job.education, ...tableCellStyle })
+                                               ],
+                                               spacing: { before: 100, after: 50 }
+                                           })
+                                         ] : []),
+                                         ...(job.experience ? [
+                                           new Paragraph({
+                                               children: [
+                                                   new TextRun({ text: "Experience: ", bold: true, ...tableCellStyle }),
+                                                   new TextRun({ text: job.experience, ...tableCellStyle })
+                                               ],
+                                               spacing: { after: 50 }
+                                           })
+                                         ] : []),
+                                         ...(job.training ? [
+                                            new Paragraph({
+                                                children: [
+                                                    new TextRun({ text: "Training: ", bold: true, ...tableCellStyle }),
+                                                    new TextRun({ text: job.training, ...tableCellStyle })
+                                                ],
+                                                spacing: { after: 50 }
+                                            })
+                                         ] : []),
+                                         ...(job.eligibility ? [
+                                            new Paragraph({
+                                                children: [
+                                                    new TextRun({ text: "Eligibility: ", bold: true, ...tableCellStyle }),
+                                                    new TextRun({ text: job.eligibility, ...tableCellStyle })
+                                                ],
+                                                spacing: { after: job.otherQualifications ? 50 : 100 }
+                                            })
+                                         ] : []),
+                                         ...(job.otherQualifications ? [
+                                            new Paragraph({
+                                                children: [
+                                                    new TextRun({ text: "Other Qualifications: ", bold: true, ...tableCellStyle }),
+                                                ],
+                                            }),
+                                            new Paragraph({
+                                                children: [
+                                                    new TextRun({ text: job.otherQualifications, ...tableCellStyle })
+                                                ],
+                                                spacing: { after: 100 }
+                                            })
+                                         ] : [])
+                                       ]
+                                     : [
+                                         new Paragraph({
+                                             children: [new TextRun({ text: job.requirements || "Requirements not specified.", ...tableCellStyle })],
+                                             spacing: { before: 100, after: 100 }
+                                         })
+                                       ]
+                                   )
                                ]
                            })
                        ]

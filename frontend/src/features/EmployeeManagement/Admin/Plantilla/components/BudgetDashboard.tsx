@@ -161,37 +161,37 @@ const BudgetDashboard: React.FC<BudgetDashboardProps> = memo(({ departments }) =
             </div>
         </div>
         
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-gray-50/30">
-                <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Department</th>
-                <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Allocation</th>
-                <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Utilized (Annual)</th>
-                <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Utilization %</th>
-                <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Actions</th>
+        <div className="overflow-x-auto bg-gray-50 rounded-lg">
+          <table className="w-full min-w-[800px]">
+            <thead className="bg-gray-200 shadow-md text-gray-700">
+              <tr>
+                <th className="px-6 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap uppercase">Department</th>
+                <th className="px-6 py-4 text-right text-sm font-bold tracking-wide whitespace-nowrap uppercase">Allocation</th>
+                <th className="px-6 py-4 text-right text-sm font-bold tracking-wide whitespace-nowrap uppercase">Utilized (Annual)</th>
+                <th className="px-6 py-4 text-center text-sm font-bold tracking-wide whitespace-nowrap uppercase">Utilization %</th>
+                <th className="px-6 py-4 text-center text-sm font-bold tracking-wide whitespace-nowrap uppercase">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-slate-100">
               {filteredDepartments.map((dept) => (
-                <tr key={dept.department} className="hover:bg-gray-50/50 transition-colors group">
+                <tr key={dept.department} className="hover:bg-[#F8F9FA] hover:shadow-xl transition-colors group bg-white">
                   <td className="px-6 py-4">
-                    <div className="font-bold text-gray-700">{dept.department}</div>
+                    <div className="font-bold text-gray-700 text-sm">{dept.department}</div>
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <div className="font-bold text-gray-900">{formatPHP(dept.totalBudget)}</div>
+                    <div className="font-bold text-gray-900 text-sm">{formatPHP(dept.totalBudget)}</div>
                     {dept.totalBudget === 0 && (
-                        <div className="text-[10px] text-amber-600 flex items-center justify-end gap-1">
-                            <AlertTriangle size={10} /> Not Set
+                        <div className="text-[10px] text-amber-600 font-bold flex items-center justify-end gap-1">
+                            <AlertTriangle size={10} /> NOT SET
                         </div>
                     )}
                   </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="font-medium text-gray-600">{formatPHP(dept.utilizedBudget)}</div>
+                  <td className="px-6 py-4 text-right text-sm font-medium text-gray-600">
+                    {formatPHP(dept.utilizedBudget)}
                   </td>
                   <td className="px-6 py-4">
-                    <div className="flex items-center flex-col gap-1">
-                        <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden max-w-[100px]">
+                    <div className="flex items-center flex-col gap-1.5">
+                        <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden max-w-[120px] border border-gray-200">
                             <div 
                                 className={`h-full rounded-full transition-all duration-1000 ${
                                     dept.utilizationRate > 90 ? 'bg-red-500' : 
@@ -200,7 +200,7 @@ const BudgetDashboard: React.FC<BudgetDashboardProps> = memo(({ departments }) =
                                 style={{ width: `${Math.min(dept.utilizationRate, 100)}%` }}
                             />
                         </div>
-                        <span className={`text-[10px] font-bold ${
+                        <span className={`text-[11px] font-black ${
                             dept.utilizationRate > 90 ? 'text-red-600' : 
                             dept.utilizationRate > 70 ? 'text-amber-600' : 'text-emerald-600'
                         }`}>
@@ -208,21 +208,21 @@ const BudgetDashboard: React.FC<BudgetDashboardProps> = memo(({ departments }) =
                         </span>
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <td className="px-6 py-4">
+                    <div className="flex justify-center gap-3">
                         <button
                           onClick={() => recalculate(year, dept.department)}
-                          className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+                          className="p-1.5 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
                           title="Recalculate Utilization"
                         >
-                          <RotateCw size={16} />
+                          <RotateCw size={18} />
                         </button>
                         <button
                           onClick={() => handleOpenEdit(dept.department)}
-                          className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+                          className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
                           title="Adjust Budget"
                         >
-                          <Edit2 size={16} />
+                          <Edit2 size={18} />
                         </button>
                     </div>
                   </td>
@@ -230,8 +230,8 @@ const BudgetDashboard: React.FC<BudgetDashboardProps> = memo(({ departments }) =
               ))}
               {filteredDepartments.length === 0 && (
                   <tr>
-                      <td colSpan={5} className="px-6 py-12 text-center">
-                          <div className="text-gray-400 font-medium">No department allocations found for FY {year}</div>
+                      <td colSpan={5} className="px-6 py-16 text-center">
+                          <div className="text-gray-400 font-bold uppercase tracking-widest text-xs">No department allocations found for FY {year}</div>
                       </td>
                   </tr>
               )}

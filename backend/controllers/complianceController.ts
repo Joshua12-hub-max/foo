@@ -81,7 +81,7 @@ export const getEmployeeMetrics = async (req: Request, res: Response): Promise<v
     })
     .from(policyViolations)
     .leftJoin(employeeMemos, eq(policyViolations.memoId, employeeMemos.id))
-    .where(eq(policyViolations.employeeId, employee.employeeId))
+    .where(eq(policyViolations.employeeId, employee.employeeId || ''))
     .orderBy(desc(policyViolations.createdAt))
     .limit(5);
 

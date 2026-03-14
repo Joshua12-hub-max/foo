@@ -46,15 +46,19 @@ export const leaveApi = {
   /**
    * Process leave - admin marks as processing
    */
-  processLeave: async (id: number): Promise<AxiosResponse<{ message: string }>> => {
-    return await api.put<{ message: string }>(`/leave/${id}/process`);
+  processLeave: async (id: number, data: FormData): Promise<AxiosResponse<{ message: string }>> => {
+    return await api.put<{ message: string }>(`/leave/${id}/process`, data, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
   },
 
   /**
    * Finalize leave - employee marks as finalized
    */
-  finalizeLeave: async (id: number): Promise<AxiosResponse<{ message: string }>> => {
-    return await api.put<{ message: string }>(`/leave/${id}/finalize`);
+  finalizeLeave: async (id: number, data?: FormData): Promise<AxiosResponse<{ message: string }>> => {
+    return await api.put<{ message: string }>(`/leave/${id}/finalize`, data, {
+      headers: data ? { 'Content-Type': 'multipart/form-data' } : undefined,
+    });
   },
 
   /**

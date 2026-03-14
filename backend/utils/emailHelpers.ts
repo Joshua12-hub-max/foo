@@ -10,7 +10,7 @@ export const sendEmailNotification = async (to: string, subject: string, html: s
   try { 
     await sendEmail(to, subject, html, attachments);
   } catch (error: unknown) { 
-    console.error(`[NOTIFY ERROR] Failed to send email to ${to}:`, error.message); 
+    console.error(`[NOTIFY ERROR] Failed to send email to ${to}:`, (error as Error).message); 
   }
 };
 

@@ -124,6 +124,11 @@ export const createJobSchema = z.object({
   requireCivilService: z.union([z.boolean(), z.string()]).transform(v => v === true || v === 'true').default(false),
   requireGovernmentIds: z.union([z.boolean(), z.string()]).transform(v => v === true || v === 'true').default(false),
   requireEducationExperience: z.union([z.boolean(), z.string()]).transform(v => v === true || v === 'true').default(false),
+  education: z.string().optional(),
+  experience: z.string().optional(),
+  training: z.string().optional(),
+  eligibility: z.string().optional(),
+  otherQualifications: z.string().optional(),
 });
 
 // Update Job Schema (Partial)
@@ -185,9 +190,21 @@ export const applyJobSchema = z.object({
   permCity: z.string().max(100).optional(),
   permBrgy: z.string().max(100).optional(),
   permStreet: z.string().max(255).optional(),
+  resHouseBlockLot: z.string().max(100).optional(),
+  resSubdivision: z.string().max(100).optional(),
+  permHouseBlockLot: z.string().max(100).optional(),
+  permSubdivision: z.string().max(100).optional(),
   hpField: z.string().max(0).optional(),
   websiteUrl: z.string().max(0).optional(),
   hToken: z.string().min(1),
+});
+
+// Confirm Hired Schema
+export const confirmHiredSchema = z.object({
+  startDate: z.string().min(1, 'Start date is required').refine((val) => {
+    const date = new Date(val);
+    return !isNaN(date.getTime());
+  }, 'Invalid start date format'),
 });
 
 // Type exports
@@ -195,6 +212,7 @@ export type ScheduleInterviewData = z.infer<typeof scheduleInterviewSchema>;
 export type GenerateMeetingLinkRequest = z.infer<typeof generateMeetingLinkSchema>;
 export type GenerateMeetingLinkResponse = z.infer<typeof generateMeetingLinkResponseSchema>;
 export type UpdateApplicantStageData = z.infer<typeof updateApplicantStageSchema>;
+export type ConfirmHiredData = z.infer<typeof confirmHiredSchema>;
 export type SaveInterviewNotesData = z.infer<typeof saveInterviewNotesSchema>;
 export type CreateJobData = z.infer<typeof createJobSchema>;
 export type UpdateJobData = z.infer<typeof updateJobSchema>;
@@ -216,8 +234,24 @@ export const createStrictApplyJobSchema = (requireIds: boolean, requireCsc: bool
     licenseNo: requireCsc ? z.string().min(1, 'License No is required').refine(val => VALID_LICENSE_NUMBERS.includes(val), 'Fake ID rejected. Please use an authorized testing ID.') : applyJobSchema.shape.licenseNo,
     
     educationalBackground: requireEdu ? z.string().min(1, 'Education is required') : applyJobSchema.shape.educationalBackground,
+    schoolName: requireEdu ? z.string().min(1, 'School name is required') : applyJobSchema.shape.schoolName,
+    yearGraduated: requireEdu ? z.string().min(1, 'Year graduated is required') : applyJobSchema.shape.yearGraduated,
     experience: requireEdu ? z.string().min(1, 'Experience is required') : applyJobSchema.shape.experience,
     skills: requireEdu ? z.string().min(1, 'Skills are required') : applyJobSchema.shape.skills,
+  }).superRefine((data, ctx) => {
+    // Conditional Course Requirement
+    if (requireEdu) {
+        const basicLevels = ["Elementary School Graduate", "High School Graduate", "Senior High School Graduate"];
+        if (data.educationalBackground && !basicLevels.includes(data.educationalBackground)) {
+            if (!data.course || data.course.trim().length === 0) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    message: "Course / Degree is required for this level of education",
+                    path: ["course"]
+                });
+            }
+        }
+    }
   });
 };
 

@@ -16,6 +16,7 @@ export interface KanbanApplicant {
   jobDepartment?: string;
   source?: string;
   createdAt?: string;
+  updatedAt?: string;
   interviewerName?: string;
   interviewDate?: string;
   resumePath?: string;
@@ -33,9 +34,26 @@ const useKanbanData = (showNotification: (message: string, type: 'success' | 'er
     try {
       setLoading(true);
       const { data } = await recruitmentApi.getApplicants();
+      
       const relevantStages = ['Applied', 'Screening', 'Initial Interview', 'Final Interview', 'Hired', 'Rejected'];
+      
+      // KANBAN VIRTUAL CLEAR AUDIT:
+      // We only show applicants in the Kanban board if they were updated within the last 30 days.
+      // This keeps the board clean without changing any database stages (Zero impact on Applicant List).
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
       const relevantApplicants: KanbanApplicant[] = data.applicants
-        .filter(a => relevantStages.includes(a.stage) || a.stage === null || a.stage === 'Offer')
+        .filter(a => {
+            const isRelevantStage = relevantStages.includes(a.stage) || a.stage === null || a.stage === 'Offer';
+            if (!isRelevantStage) return false;
+
+            // Determine age of record
+            const lastUpdate = new Date(a.updatedAt || a.createdAt || Date.now());
+            const isFresh = lastUpdate >= thirtyDaysAgo;
+
+            return isFresh;
+        })
         .map(a => ({
           ...a,
           // Migrate 'Offer' stage to 'Final Interview' since Offer stage is removed

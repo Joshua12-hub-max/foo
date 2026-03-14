@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useMemo } from 'react';
+import Combobox from '@/components/Custom/Combobox';
 
 interface FiltersState {
   department: string;
@@ -26,57 +27,65 @@ export const PerformanceFilters: React.FC<PerformanceFiltersProps> = ({
   uniqueDepartments, 
   uniqueEmployees 
 }) => {
+  const departmentOptions = useMemo(() => 
+    uniqueDepartments.map(dept => ({ value: dept, label: dept })),
+    [uniqueDepartments]
+  );
+
+  const employeeOptions = useMemo(() => 
+    uniqueEmployees.map(emp => ({ value: emp, label: emp })),
+    [uniqueEmployees]
+  );
+
+  const statusOptions = [
+    { value: 'All Status', label: 'All Status' },
+    { value: 'Not Started', label: 'Not Started' },
+    { value: 'Draft', label: 'Draft' },
+    { value: 'Submitted', label: 'Submitted' },
+    { value: 'Acknowledged', label: 'Acknowledged' },
+    { value: 'Finalized', label: 'Finalized' },
+    { value: 'Overdue', label: 'Overdue' },
+  ];
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6 items-start bg-[#F8F9FA] p-4 rounded-lg shadow-md">
+    <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6 items-start bg-[#F8F9FA] p-4 rounded-lg shadow-md border border-gray-100">
       {/* Department Filter */}
       <div className="md:col-span-1">
-        <select
+        <Combobox
+          options={departmentOptions}
           value={filters.department}
-          onChange={(e) => handleFilterChange("department", e.target.value)}
+          onChange={(val) => handleFilterChange("department", val)}
+          placeholder="Department"
           disabled={isLoading}
-          className="w-full bg-[#F8F9FA] border border-gray-300 rounded-lg shadow-md px-3 py-2 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-200 transition-all disabled:opacity-50"
-          aria-label="Filter by department"
-        >
-          <option value="">Department</option>
-          {uniqueDepartments.map((dept) => (
-            <option key={dept} value={dept}>{dept}</option>
-          ))}
-        </select>
+          className="w-full"
+          buttonClassName="bg-white border-gray-300 shadow-sm"
+        />
       </div>
 
       {/* Employee Filter */}
       <div className="md:col-span-1">
-        <select
+        <Combobox
+          options={employeeOptions}
           value={filters.employee}
-          onChange={(e) => handleFilterChange("employee", e.target.value)}
+          onChange={(val) => handleFilterChange("employee", val)}
+          placeholder="Employee"
           disabled={isLoading}
-          className="w-full bg-[#F8F9FA] border border-gray-200 rounded-lg shadow-sm px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200 focus:border-gray-200 hover:border-gray-200 transition-all disabled:opacity-50 appearance-none cursor-pointer"
-          aria-label="Filter by employee"
-        >
-          <option value="">Employee</option>
-          {uniqueEmployees.map((emp) => (
-            <option key={emp} value={emp}>{emp}</option>
-          ))}
-        </select>
+          className="w-full"
+          buttonClassName="bg-white border-gray-300 shadow-sm"
+        />
       </div>
 
-       {/* Status Filter - Unique to Performance */}
+       {/* Status Filter */}
        <div className="md:col-span-1">
-        <select
+        <Combobox
+          options={statusOptions}
           value={filters.status || 'All Status'}
-          onChange={(e) => handleFilterChange("status", e.target.value)}
+          onChange={(val) => handleFilterChange("status", val)}
+          placeholder="Status"
           disabled={isLoading}
-          className="w-full bg-[#F8F9FA] border border-gray-200 rounded-lg shadow-sm px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200 focus:border-gray-200 hover:border-gray-200 transition-all disabled:opacity-50 appearance-none cursor-pointer"
-          aria-label="Filter by status"
-        >
-            <option value="All Status">All Status</option>
-            <option value="Not Started">Not Started</option>
-            <option value="Draft">Draft</option>
-            <option value="Submitted">Submitted</option>
-            <option value="Acknowledged">Acknowledged</option>
-            <option value="Finalized">Finalized</option>
-            <option value="Overdue">Overdue</option>
-        </select>
+          className="w-full"
+          buttonClassName="bg-white border-gray-300 shadow-sm"
+        />
       </div>
 
         {/* Action Buttons */}
@@ -84,7 +93,7 @@ export const PerformanceFilters: React.FC<PerformanceFiltersProps> = ({
           <button
             onClick={handleApply}
             disabled={isLoading}
-            className="flex-1 flex items-center justify-center gap-2 bg-[#F8F9FA] text-gray-700 font-medium px-4 py-2 rounded-lg text-sm shadow-sm hover:bg-[#F8F9FA] transition-all active:scale-95 border border-gray-200 disabled:opacity-50"
+            className="flex-1 flex items-center justify-center gap-2 bg-gray-900 text-white font-bold px-4 py-2.5 rounded-lg text-xs shadow-md shadow-gray-200 hover:bg-gray-800 transition-all active:scale-95 disabled:opacity-50"
             aria-label="Apply filters"
           >
             Apply Filter
@@ -93,7 +102,7 @@ export const PerformanceFilters: React.FC<PerformanceFiltersProps> = ({
           <button
             onClick={handleClear}
             disabled={isLoading}
-            className="flex-1 bg-[#F8F9FA] text-gray-700 font-medium px-4 py-2 rounded-lg text-sm shadow-sm hover:bg-[#F8F9FA] transition-all active:scale-95 border border-gray-200 disabled:opacity-50"
+            className="flex-1 bg-white text-gray-700 font-bold px-4 py-2.5 rounded-lg text-xs shadow-sm hover:bg-gray-50 transition-all active:scale-95 border border-gray-200 disabled:opacity-50"
             aria-label="Clear filters"
           >
             Clear

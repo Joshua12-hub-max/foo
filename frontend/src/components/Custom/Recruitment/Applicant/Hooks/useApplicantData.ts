@@ -15,6 +15,7 @@ export interface Applicant {
   interviewDate?: string;
   interviewLink?: string;
   interviewPlatform?: string;
+  interviewNotes?: string;
   interviewerId?: number;
   interviewerName?: string;
   notes?: string;

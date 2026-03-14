@@ -4,6 +4,8 @@ import { useState, useMemo, useCallback } from 'react';
 
 import { AttendanceRecord } from '@/types/index';
 
+import { DTRApiResponse } from '@/types/attendance';
+
 const ITEMS_PER_PAGE = 15;
 
 export const useAttendanceData = (isAdmin = false) => {
@@ -24,9 +26,18 @@ export const useAttendanceData = (isAdmin = false) => {
                 : [];
 
             // Rely on axios interceptor for camelCase conversion
-            return items.map((item: AttendanceRecord) => ({
-              ...item,
-              status: item.status || 'Absent',
+            return items.map((item: DTRApiResponse) => ({
+              id: item.id,
+              employeeId: item.employeeId,
+              employeeName: item.employeeName,
+              name: item.employeeName,
+              date: item.date,
+              timeIn: item.timeIn || undefined,
+              timeOut: item.timeOut || undefined,
+              lateMinutes: Number(item.lateMinutes ?? 0),
+              undertimeMinutes: Number(item.undertimeMinutes ?? 0),
+              status: item.status || 'Present',
+              department: item.department,
               duties: item.duties || 'No Schedule',
             }));
         }

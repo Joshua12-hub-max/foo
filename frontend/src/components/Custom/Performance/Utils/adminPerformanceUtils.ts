@@ -24,6 +24,7 @@ export interface ApiEvaluationEmployee {
 export interface PerformanceTableItem {
   id: string | number;
   reviewId?: string | number;
+  employeeDbId: string | number;
   status: string;
   name: string;
   department: string;
@@ -41,6 +42,8 @@ export interface PerformanceFilters {
 export const mapPerformanceData = (apiData: ApiEvaluationEmployee[]): PerformanceTableItem[] => {
   return apiData.map(item => ({
     id: String(item.employeeId || item.id),
+    reviewId: item.reviewId,
+    employeeDbId: item.id,
     name: item.name,
     department: item.department || 'N/A',
     jobTitle: item.jobTitle || 'N/A',
@@ -48,8 +51,7 @@ export const mapPerformanceData = (apiData: ApiEvaluationEmployee[]): Performanc
       ? new Date(item.lastEvaluationDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) 
       : 'Never',
     score: item.score !== null && item.score !== undefined ? parseFloat(String(item.score)).toFixed(2) : 'N/A',
-    status: item.status || 'Not Started',
-    reviewId: item.reviewId
+    status: item.status || 'Not Started'
   }));
 };
 

@@ -29,9 +29,11 @@ export const PerformanceTable: React.FC<PerformanceTableProps> = ({
   const navigate = useNavigate();
   const hasActiveFilters = debouncedSearchQuery || Object.values(filters).some(v => v && v !== 'All Status');
 
-  const handleView = (reviewId: string | number | undefined) => {
+  const handleView = (reviewId?: string | number, employeeDbId?: string | number) => {
     if (reviewId) {
         navigate(`/admin-dashboard/performance/reviews/${reviewId}`);
+    } else if (employeeDbId) {
+        navigate(`/admin-dashboard/performance/reviews/new?employeeId=${employeeDbId}`);
     }
   };
   
@@ -75,14 +77,14 @@ export const PerformanceTable: React.FC<PerformanceTableProps> = ({
                 <tr 
                     key={`${item.id}-${item.reviewId || 'new'}`} 
                     className="hover:bg-[#F8F9FA] hover:shadow-xl transition-colors cursor-pointer group"
-                    onClick={() => handleView(item.reviewId)}
+                    onClick={() => handleView(item.reviewId, item.employeeDbId)}
                 >
                   <td className="px-6 py-4">
-                    <span className={`${getBadgeStyle(item.status)} px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded inline-block`}>
+                    <span className={`${getBadgeStyle(item.status)} px-2.5 py-1 text-[10px] font-bold tracking-wider rounded inline-block`}>
                       {item.status}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-xs font-bold text-gray-900">{item.employeeId || item.id}</td>
+                  <td className="px-6 py-4 text-xs font-bold text-gray-900">{item.id}</td>
                   <td className="px-6 py-4">
                       <div className="text-sm font-bold text-gray-900">{item.name}</div>
                   </td>

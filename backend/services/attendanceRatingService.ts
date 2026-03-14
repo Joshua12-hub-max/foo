@@ -1,6 +1,6 @@
 import { db } from '../db/index.js';
-import { dailyTimeRecords, policyViolations, employeeMemos } from '../db/schema.js';
-import { and, eq, gte, lte, inArray } from 'drizzle-orm';
+import { dailyTimeRecords, policyViolations, employeeMemos, authentication } from '../db/schema.js';
+import { and, eq, gte, lte, inArray, ne } from 'drizzle-orm';
 
 interface AttendanceScoreResult {
   score: number; // 1-5
@@ -13,15 +13,65 @@ interface AttendanceScoreResult {
   };
 }
 
+/**
+ * Resolves the employee's numeric auth.id from a string or numeric identifier.
+ * Handles both `auth.id` (int) and `auth.employeeId` (varchar "Emp-XXX") inputs.
+ * Returns the numeric PK `auth.id` for tables that reference it (e.g., employeeMemos).
+ * Returns the varchar `auth.employeeId` for tables that use it (e.g., DTR, violations).
+ */
+interface ResolvedEmployeeIds {
+  authId: number;        // authentication.id (PK, int) — used by employeeMemos
+  empIdStr: string;      // authentication.employeeId (varchar) — used by DTR, policyViolations
+}
+
+const resolveEmployeeIds = async (employeeId: string | number): Promise<ResolvedEmployeeIds | null> => {
+  const inputStr = String(employeeId);
+  const inputNum = Number(employeeId);
+
+  // If the input looks like a number (e.g., from performanceReviews.employeeId which is int → auth.id)
+  if (!isNaN(inputNum) && inputNum > 0) {
+    const row = await db.select({
+      id: authentication.id,
+      employeeId: authentication.employeeId
+    }).from(authentication).where(eq(authentication.id, inputNum)).limit(1);
+
+    if (row.length > 0 && row[0].employeeId) {
+      return { authId: row[0].id, empIdStr: row[0].employeeId };
+    }
+  }
+
+  // If the input is a string like "Emp-001", look up by employeeId
+  const row = await db.select({
+    id: authentication.id,
+    employeeId: authentication.employeeId
+  }).from(authentication).where(eq(authentication.employeeId, inputStr)).limit(1);
+
+  if (row.length > 0 && row[0].employeeId) {
+    return { authId: row[0].id, empIdStr: row[0].employeeId };
+  }
+
+  return null;
+};
+
 export const calculateAttendanceScore = async (
   employeeId: string | number,
   startDate: string,
   endDate: string
 ): Promise<AttendanceScoreResult> => {
-  const empIdStr = String(employeeId);
+  // C1 FIX: Resolve both ID formats from a single lookup
+  const resolved = await resolveEmployeeIds(employeeId);
 
-  // Parse strings to full date boundaries if needed, but since date column is date YYYY-MM-DD
-  // and created_at is timestamp, we use string comparisons compatible with MySQL
+  if (!resolved) {
+    // Employee not found — return default outstanding (no data)
+    return {
+      score: 5,
+      details: { totalLates: 0, totalUndertime: 0, totalAbsences: 0, totalLateMinutes: 0, ratingDescription: 'Outstanding (No Data)' }
+    };
+  }
+
+  const { authId, empIdStr } = resolved;
+
+  // DTR uses varchar employeeId (e.g., "Emp-001")
   const dtrRecords = await db.select()
   .from(dailyTimeRecords)
   .where(and(
@@ -30,7 +80,7 @@ export const calculateAttendanceScore = async (
       lte(dailyTimeRecords.date, endDate)
   ));
 
-  // Fetch Policy Violations within the period
+  // S3 FIX: Policy violations — uses varchar employeeId, filtered by active status
   const violations = await db.select({
       id: policyViolations.id
   })
@@ -38,33 +88,39 @@ export const calculateAttendanceScore = async (
   .where(and(
       eq(policyViolations.employeeId, empIdStr),
       inArray(policyViolations.type, ['habitual_tardiness', 'habitual_undertime', 'absence']),
+      ne(policyViolations.status, 'cancelled'),
+      ne(policyViolations.status, 'resolved'),
       gte(policyViolations.createdAt, `${startDate} 00:00:00`),
       lte(policyViolations.createdAt, `${endDate} 23:59:59`)
   ));
 
   const violationCount = violations.length;
 
-  // Fetch issued Memos within the period to enforce strict Performance Ceilings
+  // C1 FIX: Memos use int auth.id (PK), NOT string employeeId
+  // S3 FIX: Filter out Draft and Archived memos — only 'Sent' and 'Acknowledged' affect scores
   const memos = await db.select({
       severity: employeeMemos.severity
   })
   .from(employeeMemos)
   .where(and(
-      eq(employeeMemos.employeeId, Number(employeeId)),
+      eq(employeeMemos.employeeId, authId),
+      inArray(employeeMemos.status, ['Sent', 'Acknowledged']),
       gte(employeeMemos.createdAt, `${startDate} 00:00:00`),
       lte(employeeMemos.createdAt, `${endDate} 23:59:59`)
   ));
 
+  let hasTerminal = false;
+  let hasGrave = false;
   let hasMajor = false;
   let hasModerate = false;
   let hasMinor = false;
-  let _memoCount = 0;
 
   memos.forEach(memo => {
+      if (memo.severity === 'terminal') hasTerminal = true;
+      if (memo.severity === 'grave') hasGrave = true;
       if (memo.severity === 'major') hasMajor = true;
       if (memo.severity === 'moderate') hasModerate = true;
       if (memo.severity === 'minor') hasMinor = true;
-      memoCount++;
   });
 
   let totalLates = 0;
@@ -122,21 +178,26 @@ export const calculateAttendanceScore = async (
       ratingDescription = 'Poor';
   }
 
-  // ENFORCE CEILING CAPS BASED ON MEMO SEVERITY
+  // S4 FIX: ENFORCE CEILING CAPS BASED ON MEMO SEVERITY (all 5 levels)
   // These override the base score if a memo penalty was formally issued.
-  if (hasMajor) {
+  if (hasTerminal || hasGrave) {
       score = 1;
-      ratingDescription = `Poor (Formally Reprimanded - Major Offense)`;
+      ratingDescription = hasTerminal
+        ? 'Poor (Formally Reprimanded - Terminal Offense)'
+        : 'Poor (Formally Reprimanded - Grave Offense)';
+  } else if (hasMajor && score > 1) {
+      score = 1;
+      ratingDescription = 'Poor (Formally Reprimanded - Major Offense)';
   } else if (hasModerate && score > 2) {
       score = 2; // Ceiling of 2 for moderate offenses
-      ratingDescription = `Unsatisfactory (Formally Reprimanded - Moderate Offense)`;
+      ratingDescription = 'Unsatisfactory (Formally Reprimanded - Moderate Offense)';
   } else if (hasMinor && score > 3) {
       score = 3; // Ceiling of 3 for minor offenses
-      ratingDescription = `Satisfactory (Formally Reprimanded - Minor Offense)`;
+      ratingDescription = 'Satisfactory (Formally Reprimanded - Minor Offense)';
   } 
   
-  // Failsafes for extreme violations that bypassed memos or were ignored
-  else if (violationCount > 0 && score > 1) {
+  // S3 FIX: Failsafes — only count unresolved violations (already filtered above)
+  if (violationCount > 0 && score > 1) {
       score = 1;
       ratingDescription = `Poor (Has ${violationCount} Unresolved Policy Violation/s)`;
   } else if (totalAbsences >= 3 && score > 1) {

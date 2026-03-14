@@ -58,7 +58,7 @@ export interface AttendanceDetails {
 
 export interface InternalReview {
     id: number;
-    employeeId: number;
+    employeeId: string;
     reviewerId: number;
     reviewCycleId: number;
     status: string;

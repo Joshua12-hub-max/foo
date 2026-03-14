@@ -8,7 +8,7 @@ export const eventSchema = z.object({
   time: z.string().optional().nullable(),
   description: z.string().optional().nullable(),
   department: z.string().optional().nullable(),
-  recurringPattern: z.enum(['none', 'daily', 'weekly', 'monthly']).optional().nullable().default('none'),
+  recurringPattern: z.enum(['none', 'daily', 'weekly', 'monthly']),
   recurringEndDate: z.string().optional().nullable(),
 });
 
@@ -17,7 +17,7 @@ export type EventSchema = z.infer<typeof eventSchema>;
 export const announcementSchema = z.object({
   title: z.string().min(1, "Title is required"),
   content: z.string().min(1, "Content is required"),
-  priority: z.enum(['normal', 'high', 'urgent']).default('normal'),
+  priority: z.enum(['normal', 'high', 'urgent']),
   startDate: z.string().optional().nullable(),
   endDate: z.string().optional().nullable(),
   startTime: z.string().optional().nullable(),

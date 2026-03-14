@@ -39,13 +39,14 @@ export const useLeaveData = (initialFilters?: Record<string, string>) => {
       
       const leaves: EmployeeLeaveRequest[] = rawLeaves.map((l: LeaveApplication) => ({
         id: l.id,
-        employeeId: l.employeeId,
+        employeeId: l.employeeId || 'Missing',
         leaveType: l.leaveType,
         startDate: l.startDate,
         endDate: l.endDate,
         reason: l.reason,
         status: l.status,
-        isWithPay: l.isWithPay,
+        isWithPay: !!l.isWithPay,
+        workingDays: l.workingDays,
         attachmentPath: l.attachmentPath,
         adminFormPath: l.adminFormPath,
         finalAttachmentPath: l.finalAttachmentPath,

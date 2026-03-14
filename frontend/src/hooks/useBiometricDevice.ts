@@ -20,6 +20,8 @@ export const useBiometricDevice = ({
   const [lastMessage, setLastMessage] = useState<string>('');
   const socketRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const reconnectDelayRef = useRef<number>(2000); // Start with 2s
+  const isVisibleRef = useRef<boolean>(true);
 
   // Store callbacks in refs to avoid dependency changes triggering reconnects
   const onMatchRef = useRef(onMatch);
@@ -35,8 +37,9 @@ export const useBiometricDevice = ({
   }, [onMatch, onEnrollSuccess, onEnrollFail, onEnrollProgress]);
 
   const connect = useCallback(() => {
-    // If already connected or connecting, don't do anything
+    // If already connected or connecting, or tab is hidden, don't do anything
     if (socketRef.current?.readyState === WebSocket.OPEN || socketRef.current?.readyState === WebSocket.CONNECTING) return;
+    if (!isVisibleRef.current) return;
 
     setStatus('CONNECTING');
     try {
@@ -46,19 +49,23 @@ export const useBiometricDevice = ({
         setStatus('CONNECTED');
         setDeviceConnected(true); // Optimistic: Assume device is ready to avoid UI flicker
         console.log('Biometric WS Connected');
+        reconnectDelayRef.current = 2000; // Reset delay on successful connection
         if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
       };
 
       ws.onclose = (event) => {
         setStatus('DISCONNECTED');
-        // Only log retry message if it wasn't a clean close and not a repetitive refusal
-        if (!event.wasClean) {
-            // console.log('Biometric WS Disconnected - Retrying in 5s...');
-        }
         socketRef.current = null;
-        // Auto-reconnect with longer interval
-        if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
-        reconnectTimeoutRef.current = setTimeout(connect, 5000);
+        
+        // Only attempt reconnect if tab is visible
+        if (isVisibleRef.current) {
+            if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
+            
+            // Exponential backoff: cap at 30 seconds
+            const delay = reconnectDelayRef.current;
+            reconnectTimeoutRef.current = setTimeout(connect, delay);
+            reconnectDelayRef.current = Math.min(delay * 1.5, 30000);
+        }
       };
 
       ws.onerror = () => {
@@ -101,6 +108,19 @@ export const useBiometricDevice = ({
       setStatus('ERROR');
     }
   }, []); // Empty dependency array - connect never changes now
+
+  // Handle visibility changes to pause reconnection when tab is backgrounded
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      isVisibleRef.current = document.visibilityState === 'visible';
+      if (isVisibleRef.current && status === 'DISCONNECTED') {
+        // Re-trigger connect if we became visible and are disconnected
+        connect();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [status, connect]);
 
   useEffect(() => {
     connect();

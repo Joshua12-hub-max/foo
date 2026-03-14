@@ -40,9 +40,12 @@ function isApplicantStage(val: string): val is ApplicantStage {
 
 export const getHiredByDuty: AuthenticatedHandler = async (req, res) => {
   try {
-    const { duty } = req.query; // 'Standard' | 'Irregular Duties'
+    const { duty, department } = req.query; // 'Standard' | 'Irregular Duties', 'Department Name'
 
-    if (!duty || (duty !== 'Standard' && duty !== 'Irregular')) {
+    // Normalize duty input
+    const normalizedDuty = (duty === 'Irregular Duties' || duty === 'Irregular') ? 'Irregular' : duty;
+
+    if (!normalizedDuty || (normalizedDuty !== 'Standard' && normalizedDuty !== 'Irregular')) {
       res.status(400).json({ success: false, message: 'Invalid duty type. Must be Standard or Irregular.' });
       return;
     }
@@ -52,7 +55,20 @@ export const getHiredByDuty: AuthenticatedHandler = async (req, res) => {
     const irregularTypes = ['Job Order', 'Contractual', 'Casual', 'Coterminous', 'Part-time', 'Contract of Service', 'JO', 'COS'] as const;
 
     // Explicitly type targetTypes based on recruitmentJobs.employment_type enum
-    const targetTypes = (duty === 'Standard' ? [...standardTypes] : [...irregularTypes]);
+    const targetTypes = (normalizedDuty === 'Standard' ? [...standardTypes] : [...irregularTypes]);
+
+    const andConditions = [
+        eq(recruitmentApplicants.isConfirmed, true),
+        eq(recruitmentApplicants.stage, 'Hired'),
+        or(
+          inArray(recruitmentJobs.employmentType, targetTypes as ("Full-time" | "Part-time" | "Contractual" | "Job Order" | "Coterminous" | "Temporary" | "Probationary" | "Casual" | "Permanent" | "Contract of Service" | "JO" | "COS")[]),
+          eq(recruitmentJobs.dutyType, normalizedDuty as 'Standard' | 'Irregular')
+        )
+    ];
+
+    if (department && typeof department === 'string') {
+        andConditions.push(eq(recruitmentJobs.department, department));
+    }
 
     // Fetch hired applicants whose job corresponds to the target employment types OR the duty type category
     const results = await db.select({
@@ -61,24 +77,13 @@ export const getHiredByDuty: AuthenticatedHandler = async (req, res) => {
     })
     .from(recruitmentApplicants)
     .innerJoin(recruitmentJobs, eq(recruitmentApplicants.jobId, recruitmentJobs.id))
-    .where(
-      and(
-        eq(recruitmentApplicants.stage, 'Hired'),
-        or(
-          inArray(recruitmentJobs.employmentType, targetTypes as ("Full-time" | "Part-time" | "Contractual" | "Job Order" | "Coterminous" | "Temporary" | "Probationary" | "Casual" | "Permanent" | "Contract of Service" | "JO" | "COS")[]),
-          eq(recruitmentJobs.dutyType, duty as 'Standard' | 'Irregular')
-        )
-      )
-    )
+    .where(and(...andConditions))
     .orderBy(desc(recruitmentApplicants.hiredDate));
 
-    // To prevent registering the same applicant twice, we should ideally exclude those whose emails 
-    // are already in the authentication table.
-    const allAuthEmailsRes = await db.select({ email: authentication.email }).from(authentication);
-    const existingEmails = new Set(allAuthEmailsRes.map(a => a.email.toLowerCase()));
-
+    // Refined filtering: Only hide if ALREADY LINKED to an employee ID.
+    // This allows test accounts with same email to show up as separate applicants.
     const filteredApplicants = results
-      .filter(row => !existingEmails.has(row.applicant.email.toLowerCase()))
+      .filter(row => !row.applicant.registeredEmployeeId)
       .map(row => ({
         id: row.applicant.id,
         firstName: row.applicant.firstName,
@@ -151,7 +156,8 @@ export const createJob: AuthenticatedHandler = async (req, res) => {
     const { 
         title, department, jobDescription, requirements, location, 
         employmentType, dutyType, applicationEmail, status, 
-        requireCivilService, requireGovernmentIds, requireEducationExperience
+        requireCivilService, requireGovernmentIds, requireEducationExperience,
+        education, experience, training, eligibility, otherQualifications
     } = parseResult.data;
 
     const jobStatus = status || 'Open';
@@ -172,6 +178,11 @@ export const createJob: AuthenticatedHandler = async (req, res) => {
       requireCivilService: requireCivilService,
       requireGovernmentIds: requireGovernmentIds,
       requireEducationExperience: requireEducationExperience,
+      education: education || null,
+      experience: experience || null,
+      training: training || null,
+      eligibility: eligibility || null,
+      otherQualifications: otherQualifications || null,
       postedBy: req.user.id,
       postedAt: postedAt,
       createdAt: currentManilaDateTime()
@@ -260,7 +271,9 @@ export const applyJob = async (req: Request, res: Response): Promise<void> => {
       birthDate, birthPlace, sex, civilStatus, height,
       weight, bloodType, gsisNumber, pagibigNumber, philhealthNumber, umidNumber, philsysId, tinNumber,
       eligibility, eligibilityType, eligibilityDate, eligibilityRating, eligibilityPlace, licenseNo, totalExperienceYears,
-      educationalBackground, schoolName, yearGraduated, course, experience, skills, emergencyContact, emergencyContactNumber
+      educationalBackground, schoolName, yearGraduated, course, experience, skills, emergencyContact, emergencyContactNumber,
+      resRegion, resProvince, resCity, resBrgy, resHouseBlockLot, resSubdivision, resStreet,
+      permRegion, permProvince, permCity, permBrgy, permHouseBlockLot, permSubdivision, permStreet
     } = parseResult.data;
 
     const { hpField, websiteUrl, hToken } = req.body as { hpField?: string; websiteUrl?: string; hToken?: string };
@@ -363,7 +376,7 @@ export const applyJob = async (req: Request, res: Response): Promise<void> => {
     }
 
     // Process Application
-    await db.insert(recruitmentApplicants).values({
+    const [insertedApplicant] = await db.insert(recruitmentApplicants).values({
         jobId: Number(jobId),
         firstName: sanitizeInput(firstName),
         lastName: sanitizeInput(lastName),
@@ -407,15 +420,88 @@ export const applyJob = async (req: Request, res: Response): Promise<void> => {
         emergencyContactNumber: emergencyContactNumber || null,
         resumePath: resume?.filename || null,
         photoPath: photo?.filename || null,
+        resRegion: resRegion || null,
+        resProvince: resProvince || null,
+        resCity: resCity || null,
+        resBarangay: resBrgy || null,
+        resHouseBlockLot: resHouseBlockLot || null,
+        resSubdivision: resSubdivision || null,
+        resStreet: resStreet || null,
+        permRegion: permRegion || null,
+        permProvince: permProvince || null,
+        permCity: permCity || null,
+        permBarangay: permBrgy || null,
+        permHouseBlockLot: permHouseBlockLot || null,
+        permSubdivision: permSubdivision || null,
+        permStreet: permStreet || null,
         createdAt: currentManilaDateTime()
-    });
+    }).$returningId();
+
+    const applicantId = (insertedApplicant as unknown as { insertId: number }).insertId;
+
+    // --- AUTO-GENERATE AND SAVE PHYSICAL PDF COPY ---
+    try {
+        const appPath = path.join(process.cwd(), 'uploads/applications');
+        if (!fs.existsSync(appPath)) fs.mkdirSync(appPath, { recursive: true });
+
+        const fileName = `application_${lastName}_${applicantId}.pdf`;
+        const filePath = path.join(appPath, fileName);
+        
+        const saveDoc = new PDFDocument({ margin: 40, size: 'LEGAL', bufferPages: true });
+        const writeStream = fs.createWriteStream(filePath);
+        saveDoc.pipe(writeStream);
+
+        // Reuse the enhanced PDF design logic (Simplified version for background saving)
+        const colors = { primary: '#1e293b', secondary: '#334155', accent: '#0284c7', text: '#1a1a1a', muted: '#64748b', border: '#e2e8f0', background: '#f8fafc', white: '#ffffff' };
+        
+        const drawBorder = (d: PDFKit.PDFDocument) => { d.rect(20, 20, d.page.width - 40, d.page.height - 40).lineWidth(0.5).strokeColor(colors.border).stroke(); };
+        const sHeader = (d: PDFKit.PDFDocument, t: string) => { 
+            if (d.y + 60 > d.page.height - 60) { d.addPage(); drawBorder(d); }
+            d.moveDown(0.8); const y = d.y; d.rect(40, y, d.page.width - 80, 20).fill(colors.primary); 
+            d.fillColor(colors.white).fontSize(10).font('Helvetica-Bold').text(t.toUpperCase(), 50, y + 6); d.moveDown(0.5); 
+        };
+        const fld = (d: PDFKit.PDFDocument, l: string, v: unknown, x: number, y: number, w: number) => {
+            d.fontSize(7).font('Helvetica-Bold').fillColor(colors.muted).text(l.toUpperCase(), x, y);
+            d.fontSize(10).font('Helvetica').fillColor(colors.text).text(v != null ? String(v) : '---', x, y + 10, { width: w - 10, lineBreak: false });
+            d.moveTo(x, y + 24).lineTo(x + w - 10, y + 24).lineWidth(0.1).strokeColor(colors.border).stroke();
+        };
+
+        drawBorder(saveDoc);
+        const lPath = path.join(process.cwd(), '../frontend/src/assets/meycauayan-logo.png');
+        if (fs.existsSync(lPath)) saveDoc.image(lPath, 50, 45, { width: 50 });
+        saveDoc.fillColor(colors.secondary).fontSize(8).font('Helvetica').text('Republic of the Philippines', { align: 'center' });
+        saveDoc.fontSize(12).font('Helvetica-Bold').text('CITY GOVERNMENT OF MEYCAUAYAN', { align: 'center' });
+        saveDoc.fontSize(10).font('Helvetica-Bold').fillColor(colors.accent).text('CITY HUMAN RESOURCE MANAGEMENT OFFICE', { align: 'center' });
+        saveDoc.moveTo(40, 110).lineTo(saveDoc.page.width - 40, 110).lineWidth(1.5).strokeColor(colors.primary).stroke();
+        
+        saveDoc.y = 125;
+        saveDoc.rect(40, saveDoc.y, 300, 25).fill(colors.background);
+        saveDoc.fillColor(colors.primary).fontSize(12).font('Helvetica-Bold').text('JOB APPLICATION FORM', 50, saveDoc.y + 7);
+        saveDoc.fillColor(colors.muted).fontSize(8).font('Helvetica').text(`Ref ID: APP-${applicantId.toString().padStart(6, '0')}`, 350, 125 - 8, { align: 'right', width: 180 });
+        
+        saveDoc.moveDown(2);
+        const yStart = saveDoc.y;
+        fld(saveDoc, 'POSITION APPLIED FOR', jobConfig.title, 40, yStart, 350);
+        fld(saveDoc, 'DEPARTMENT', jobConfig.department, 400, yStart, 170);
+        
+        saveDoc.y = yStart + 40;
+        sHeader(saveDoc, '1. Personal Information');
+        const r1 = saveDoc.y + 5;
+        fld(saveDoc, 'Last Name', lastName, 40, r1, 130);
+        fld(saveDoc, 'First Name', firstName, 180, r1, 130);
+        fld(saveDoc, 'Middle Name', middleName, 320, r1, 130);
+        fld(saveDoc, 'Suffix', suffix, 460, r1, 60);
+
+        saveDoc.end();
+    } catch (_pdfErr) {
+        // Continue application even if PDF save fails, but log it
+    }
 
     // Trigger Notifications
     await sendApplicationNotifications({ jobId: Number(jobId), firstName: firstName, lastName: lastName, email });
 
     res.status(201).json({ success: true, message: 'Application submitted successfully' });
   } catch (error) {
-    const _err = error instanceof Error ? error : new Error('Unknown database error');
     res.status(500).json({ 
       success: false, 
       message: 'Failed to submit application', 
@@ -428,6 +514,49 @@ export const applyJob = async (req: Request, res: Response): Promise<void> => {
 export const getApplicants = async (req: Request, res: Response): Promise<void> => {
   try {
     const { jobId, stage, source } = req.query;
+
+    // --- 100% AUDIT & SELF-HEALING: DATA INTEGRITY BLOCK ---
+    try {
+        // Fix legacy applicants who have a hiredDate but were incorrectly marked as 'Rejected'
+        // This restores their semantic integrity to 'Hired' while keeping them Archived via isConfirmed
+        await db.update(recruitmentApplicants)
+            .set({ 
+                stage: 'Hired', 
+                status: 'Hired',
+                isConfirmed: true 
+            })
+            .where(
+                and(
+                    eq(recruitmentApplicants.stage, 'Rejected'),
+                    sql`${recruitmentApplicants.hiredDate} IS NOT NULL`
+                )
+            );
+    } catch (healError) {
+        console.error('[RecruitmentController] Self-healing failed:', healError);
+    }
+
+    // --- AUTO-ARCHIVE HIRED APPLICANTS AFTER 3 DAYS ---
+    try {
+        const threeDaysAgo = new Date();
+        threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+        const threeDaysAgoStr = threeDaysAgo.toISOString().slice(0, 19).replace('T', ' ');
+
+        // Update applicants who were hired more than 3 days ago to be Confirmed/Archived, keeping stage 'Hired'
+        await db.update(recruitmentApplicants)
+            .set({ 
+                isConfirmed: true
+            })
+            .where(
+                and(
+                    eq(recruitmentApplicants.stage, 'Hired'),
+                    eq(recruitmentApplicants.isConfirmed, false),
+                    sql`${recruitmentApplicants.hiredDate} <= ${threeDaysAgoStr}`
+                )
+            );
+    } catch (archiveError) {
+        console.error('[RecruitmentController] Auto-archive failed:', archiveError);
+        // Continue even if archiving fails
+    }
 
     const conditions = [];
     if (jobId && typeof jobId === 'string' && !isNaN(Number(jobId))) {
@@ -471,6 +600,20 @@ export const getApplicants = async (req: Request, res: Response): Promise<void> 
       permanentAddress: recruitmentApplicants.permanentAddress,
       zipCode: recruitmentApplicants.zipCode,
       permanentZipCode: recruitmentApplicants.permanentZipCode,
+      resHouseBlockLot: recruitmentApplicants.resHouseBlockLot,
+      resStreet: recruitmentApplicants.resStreet,
+      resSubdivision: recruitmentApplicants.resSubdivision,
+      resBarangay: recruitmentApplicants.resBarangay,
+      resCity: recruitmentApplicants.resCity,
+      resProvince: recruitmentApplicants.resProvince,
+      resRegion: recruitmentApplicants.resRegion,
+      permHouseBlockLot: recruitmentApplicants.permHouseBlockLot,
+      permStreet: recruitmentApplicants.permStreet,
+      permSubdivision: recruitmentApplicants.permSubdivision,
+      permBarangay: recruitmentApplicants.permBarangay,
+      permCity: recruitmentApplicants.permCity,
+      permProvince: recruitmentApplicants.permProvince,
+      permRegion: recruitmentApplicants.permRegion,
       isMeycauayanResident: recruitmentApplicants.isMeycauayanResident,
       birthDate: recruitmentApplicants.birthDate,
       birthPlace: recruitmentApplicants.birthPlace,
@@ -491,6 +634,7 @@ export const getApplicants = async (req: Request, res: Response): Promise<void> 
       eligibilityRating: recruitmentApplicants.eligibilityRating,
       eligibilityPlace: recruitmentApplicants.eligibilityPlace,
       licenseNo: recruitmentApplicants.licenseNo,
+      eligibilityPath: recruitmentApplicants.eligibilityPath,
       educationalBackground: recruitmentApplicants.educationalBackground,
       experience: recruitmentApplicants.experience,
       skills: recruitmentApplicants.skills,
@@ -502,10 +646,15 @@ export const getApplicants = async (req: Request, res: Response): Promise<void> 
       interviewNotes: recruitmentApplicants.interviewNotes,
       source: recruitmentApplicants.source,
       createdAt: recruitmentApplicants.createdAt,
+      hiredDate: recruitmentApplicants.hiredDate,
+      startDate: recruitmentApplicants.startDate,
+      isConfirmed: recruitmentApplicants.isConfirmed,
       jobTitle: sql`COALESCE(${recruitmentJobs.title}, 'General Application')`,
       jobRequirements: sql`COALESCE(${recruitmentJobs.requirements}, '')`,
       jobDepartment: sql`COALESCE(${recruitmentJobs.department}, 'HR')`,
       jobStatus: sql`COALESCE(${recruitmentJobs.status}, 'Open')`,
+      jobEmploymentType: sql`COALESCE(${recruitmentJobs.employmentType}, 'Full-time')`,
+      jobDutyType: sql`COALESCE(${recruitmentJobs.dutyType}, 'Standard')`,
       interviewerName: sql`TRIM(CONCAT(${authentication.lastName}, ', ', ${authentication.firstName}, IF(${authentication.middleName} IS NOT NULL && ${authentication.middleName} != '', CONCAT(' ', SUBSTRING(${authentication.middleName}, 1, 1), '.'), ''), IF(${authentication.suffix} IS NOT NULL && ${authentication.suffix} != '', CONCAT(' ', ${authentication.suffix}), '')))`
     })
     .from(recruitmentApplicants)
@@ -608,7 +757,7 @@ export const updateApplicantStage = async (req: Request, res: Response): Promise
                 url: interviewLink,
                 status: 'CONFIRMED',
                 busyStatus: 'BUSY',
-                organizer: { name: 'Recruitment Team', email: process.env.EMAIL_USER || '' },
+                organizer: { name: 'Office of the City Human Resource Management Officer', email: process.env.EMAIL_USER || '' },
                 attendees: [{ name: `${applicant.firstName} ${applicant.lastName}`, email: applicant.email, rsvp: true }]
               };
               const { error, value } = ics.createEvent(event);
@@ -661,7 +810,7 @@ export const updateJob = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const { title, department, jobDescription, requirements, location, status, employmentType, dutyType, applicationEmail, requireCivilService, requireGovernmentIds, requireEducationExperience } = parseResult.data;
+    const { title, department, jobDescription, requirements, location, status, employmentType, dutyType, applicationEmail, requireCivilService, requireGovernmentIds, requireEducationExperience, education, experience, training, eligibility, otherQualifications } = parseResult.data;
   
     const updateValues: Partial<typeof recruitmentJobs.$inferInsert> = {
       title, 
@@ -676,6 +825,11 @@ export const updateJob = async (req: Request, res: Response): Promise<void> => {
       requireCivilService: typeof requireCivilService !== 'undefined' ? (requireCivilService ? true : false) : undefined,
       requireGovernmentIds: typeof requireGovernmentIds !== 'undefined' ? (requireGovernmentIds ? true : false) : undefined,
       requireEducationExperience: typeof requireEducationExperience !== 'undefined' ? (requireEducationExperience ? true : false) : undefined,
+      education: education !== undefined ? (education || null) : undefined,
+      experience: experience !== undefined ? (experience || null) : undefined,
+      training: training !== undefined ? (training || null) : undefined,
+      eligibility: eligibility !== undefined ? (eligibility || null) : undefined,
+      otherQualifications: otherQualifications !== undefined ? (otherQualifications || null) : undefined,
       updatedAt: currentManilaDateTime()
     };
 
@@ -940,9 +1094,11 @@ export const generateApplicationPDF = async (req: Request, res: Response): Promi
 
     const applicant = applicantData;
 
+    // CRITICAL: bufferPages: true is REQUIRED for switchToPage() and bufferedPageRange()
     const doc = new PDFDocument({ 
-        margin: 40, 
+        margin: 30, 
         size: 'LEGAL',
+        bufferPages: true,
         /* eslint-disable @typescript-eslint/naming-convention */
         info: {
             Title: `Application - ${applicant.lastName}, ${applicant.firstName}`,
@@ -956,194 +1112,419 @@ export const generateApplicationPDF = async (req: Request, res: Response): Promi
     doc.on('end', () => {
       const pdfBuffer = Buffer.concat(chunks);
       res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `inline; filename=application_${applicant.lastName}.pdf`);
+      const safeLastName = (applicant.lastName || 'Applicant').replace(/"/g, '');
+      res.setHeader('Content-Disposition', `inline; filename="application_${safeLastName}.pdf"`);
       res.send(pdfBuffer);
     });
 
-    // --- COLOR PALETTE ---
-    const primaryBlue = '#1e293b';
-    const textGray = '#64748b';
-    const valueBlack = '#1a1a1a';
-    const borderLight = '#e2e8f0';
-    const bgLight = '#f8fafc';
+    // --- DESIGN SYSTEM (Tabular, Black/White/Grey) ---
+    const colors = {
+        black: '#000000',
+        grey: '#e5e5e5',
+        darkGrey: '#404040',
+        white: '#ffffff'
+    };
 
-    // --- OFFICIAL LOGO & HEADER ---
+    // --- HELPERS ---
+    const drawBox = (x: number, y: number, w: number, h: number, label: string, value: string | number | null | undefined, fillColor?: string) => {
+        if (fillColor) {
+            doc.rect(x, y, w, h).fillAndStroke(fillColor, colors.black);
+            doc.fillColor(colors.black);
+        } else {
+            doc.rect(x, y, w, h).lineWidth(0.5).strokeColor(colors.black).stroke();
+        }
+        
+        doc.fontSize(6).font('Helvetica').fillColor(colors.black).text(label, x + 3, y + 3, { lineBreak: false });
+        
+        const displayValue = value?.toString() || '';
+        if (displayValue) {
+            doc.fontSize(9).font('Helvetica-Bold').fillColor(colors.black).text(displayValue, x + 3, y + 12, { width: w - 6, height: h - 14, ellipsis: true });
+        }
+    };
+
+    const drawLongBox = (x: number, y: number, w: number, h: number, label: string, value: string | null | undefined) => {
+        doc.rect(x, y, w, h).lineWidth(0.5).strokeColor(colors.black).stroke();
+        doc.fontSize(6).font('Helvetica').fillColor(colors.black).text(label, x + 3, y + 3);
+        const displayValue = value || '';
+        if (displayValue) {
+            doc.fontSize(9).font('Helvetica').fillColor(colors.black).text(displayValue, x + 3, y + 12, { width: w - 6, height: h - 14, align: 'justify' });
+        }
+    };
+
+    const drawSectionHeader = (y: number, title: string) => {
+        doc.rect(30, y, doc.page.width - 60, 14).fillAndStroke(colors.grey, colors.black);
+        doc.fontSize(9).font('Helvetica-Bold').fillColor(colors.black).text(title.toUpperCase(), 35, y + 3);
+        return y + 14;
+    };
+
+    // --- HEADER ---
     const logoPath = path.join(process.cwd(), '../frontend/src/assets/meycauayan-logo.png');
     if (fs.existsSync(logoPath)) {
-        doc.image(logoPath, 40, 35, { width: 55 });
+        doc.image(logoPath, 45, 35, { width: 50 });
     }
 
-    doc.fillColor(valueBlack);
+    doc.fillColor(colors.darkGrey);
     doc.fontSize(8).font('Helvetica').text('Republic of the Philippines', { align: 'center' });
-    doc.fontSize(11).font('Helvetica-Bold').text('CITY GOVERNMENT OF MEYCAUAYAN', { align: 'center' });
-    doc.fontSize(8).font('Helvetica').text('Province of Bulacan', { align: 'center' });
-    doc.fontSize(9).font('Helvetica-Bold').text('CITY HUMAN RESOURCE MANAGEMENT OFFICE', { align: 'center' });
-    doc.moveDown(1.5);
+    doc.fontSize(13).font('Helvetica-Bold').text('CITY GOVERNMENT OF MEYCAUAYAN', { align: 'center' });
+    doc.fontSize(9).font('Helvetica').text('Province of Bulacan', { align: 'center' });
+    doc.moveDown(0.8);
+    doc.fontSize(11).font('Helvetica-Bold').fillColor(colors.black).text('CITY HUMAN RESOURCE MANAGEMENT OFFICE', { align: 'center' });
     
-    // --- 2x2 PHOTO SLOT ---
-    const photoSize = 95;
-    const photoX = doc.page.width - 40 - photoSize;
-    const photoY = 35;
+    const dividerY = doc.y + 5;
+    doc.moveTo(30, dividerY).lineTo(doc.page.width - 30, dividerY).lineWidth(2).strokeColor(colors.black).stroke();
+    doc.moveTo(30, dividerY + 4).lineTo(doc.page.width - 30, dividerY + 4).lineWidth(0.5).strokeColor(colors.black).stroke();
 
-    doc.lineWidth(0.5).strokeColor(borderLight);
+    doc.y = dividerY + 15;
+
+    doc.fontSize(16).font('Helvetica-Bold').fillColor(colors.black).text('Standard Application for Employment', { align: 'center' });
+    doc.moveDown(0.2);
+    
+    // --- PHOTO BOX ROW ---
+    let currentY = doc.y + 10;
+    const pageWidth = doc.page.width - 60; // 552
+    
+    // Position/Employer logic aligned with top right photo
+    const photoSize = 100;
+    const infoWidth = pageWidth - photoSize;
+    
+    drawBox(30, currentY, infoWidth / 2, 40, 'Employer', 'CITY GOVERNMENT OF MEYCAUAYAN');
+    drawBox(30 + infoWidth / 2, currentY, infoWidth / 2, 40, 'Position applying for', applicant.jobTitle);
+    
+    // Photo box (spans exactly 90 points height to match the 3 rows on the left)
+    const photoX = 30 + infoWidth;
+    doc.rect(photoX, currentY, photoSize, 90).lineWidth(0.5).strokeColor(colors.black).stroke();
+    doc.fontSize(6).font('Helvetica').fillColor(colors.black).text('2x2 PHOTO', photoX, currentY + 40, { align: 'center', width: photoSize });
+    
     if (applicant.photoPath) {
         const photoFullPath = path.join(process.cwd(), 'uploads/resumes', applicant.photoPath);
         if (fs.existsSync(photoFullPath)) {
             try {
-                doc.image(photoFullPath, photoX, photoY, { width: photoSize, height: photoSize });
-                doc.rect(photoX, photoY, photoSize, photoSize).stroke();
-            } catch (_e) {
-                doc.rect(photoX, photoY, photoSize, photoSize).stroke();
-                doc.fontSize(7).fillColor(textGray).text('IMAGE ERROR', photoX, photoY + 40, { width: photoSize, align: 'center' });
+                doc.image(photoFullPath, photoX + 1, currentY + 1, { width: photoSize - 2, height: 88 });
+            } catch {
+                /* ignore image error */
             }
-        } else {
-            doc.rect(photoX, photoY, photoSize, photoSize).stroke();
-            doc.fontSize(7).fillColor(textGray).text('2x2 PHOTO', photoX, photoY + 40, { width: photoSize, align: 'center' });
         }
-    } else {
-        doc.rect(photoX, photoY, photoSize, photoSize).stroke();
-        doc.fontSize(7).fillColor(textGray).text('2x2 PHOTO', photoX, photoY + 40, { width: photoSize, align: 'center' });
     }
 
-    // --- FORM TITLE ---
-    const titleY = 105;
-    doc.y = titleY;
-    doc.rect(40, doc.y, 350, 24).fill(primaryBlue);
-    doc.fillColor('white').fontSize(11).font('Helvetica-Bold').text('Job Application Form', 50, titleY + 6);
-    doc.moveDown(1.2);
-
-    // --- HELPERS ---
-    const sectionHeader = (title: string, subtitle: string) => {
-        doc.moveDown(1.2); // Add solid breathing room before the section starts
-        const y = doc.y;
-        doc.rect(40, y, doc.page.width - 80, 18).fill(bgLight);
-        doc.fillColor(primaryBlue).fontSize(9).font('Helvetica-Bold').text(title, 50, y + 5);
-        doc.fillColor(textGray).fontSize(7).font('Helvetica').text(subtitle, 200, y + 6, { align: 'right', width: 340 });
-        doc.moveDown(0.4); // Tight space after header
-        return y;
-    };
-
-    const dataField = (label: string, value: string | null | undefined, x: number, y: number, width: number) => {
-        doc.fontSize(8).font('Helvetica-Bold').fillColor(textGray).text(label, x, y);
-        const val = value || '---';
-        doc.fontSize(12).font('Helvetica').fillColor(valueBlack).text(val, x, y + 11, { width: width - 5, lineBreak: false }); 
-        doc.moveTo(x, y + 28).lineTo(x + width - 10, y + 28).lineWidth(0.2).strokeColor(borderLight).stroke(); 
-    };
-
-    // --- POSITION INFO ---
-    doc.y = 135; // Tighter start
-    dataField('Position Applied For', applicant.jobTitle, 40, 135, 250);
-    dataField('Date of Application', applicant.createdAt ? new Date(applicant.createdAt).toLocaleDateString() : 'N/A', 300, 135, 150);
-
-    doc.y = 160; // Tighter jump
-
-    // --- 1. PERSONAL DETAILS ---
-    sectionHeader('1. Personal Details', 'Core identity profile');
-    const pY = doc.y + 5;
-    dataField('Last Name', applicant.lastName, 40, pY, 120);
-    dataField('First Name', applicant.firstName, 175, pY, 120);
-    dataField('Middle Name', applicant.middleName, 310, pY, 120);
-    dataField('Suffix', applicant.suffix, 445, pY, 70);
-
-    const pY2 = pY + 42; 
-    dataField('Birth Date', applicant.birthDate ? new Date(applicant.birthDate).toLocaleDateString() : '', 40, pY2, 120);
-    dataField('Place of Birth', applicant.birthPlace, 175, pY2, 340);
-
-    const pY3 = pY2 + 42; 
-    dataField('Gender', applicant.sex, 40, pY3, 90);
-    dataField('Civil Status', applicant.civilStatus, 145, pY3, 90);
-    dataField('Height (m)', applicant.height, 250, pY3, 80);
-    dataField('Weight (kg)', applicant.weight, 345, pY3, 80);
-    dataField('Blood Type', applicant.bloodType, 440, pY3, 75);
-    doc.y = pY3 + 35; 
-
-    // --- 2. RESIDENCY & CONTACT ---
-    const headerY = sectionHeader('2. Residency & Contact', '');
-    doc.fontSize(8.5).font('Helvetica-Bold').fillColor(applicant.isMeycauayanResident ? '#059669' : '#64748b').text(
-        applicant.isMeycauayanResident ? 'Meycauayan Resident' : 'Non-Resident', 350, headerY + 5, { width: 190, align: 'right' }
-    );
-    const rY = doc.y + 5;
+    currentY += 40;
     
-    dataField('Residential Address', applicant.address, 40, rY, 400);
-    dataField('Res. Zip Code', applicant.zipCode, 450, rY, 70);
-
-    const rY2 = rY + 42; 
-    dataField('Permanent Address', applicant.permanentAddress, 40, rY2, 400);
-    dataField('Perm. Zip Code', applicant.permanentZipCode, 450, rY2, 70);
-
-    const rY3 = rY2 + 42; 
-    dataField('Email Address', applicant.email, 40, rY3, 250);
-    dataField('Contact Number', applicant.phoneNumber, 300, rY3, 220);
-    doc.y = rY3 + 35; 
-
-    // --- 3. GOVERNMENT RECORDS ---
-    sectionHeader('3. Government Records', 'Identification and social records');
-    const gY = doc.y + 5;
-    dataField('GSIS Number', applicant.gsisNumber, 40, gY, 160);
-    dataField('Pag-IBIG Number', applicant.pagibigNumber, 215, gY, 160);
-    dataField('PhilHealth Number', applicant.philhealthNumber, 390, gY, 130);
-
-    const gY2 = gY + 42;  
-    dataField('UMID Number', applicant.umidNumber, 40, gY2, 160);
-    dataField('PhilSys ID', applicant.philsysId, 215, gY2, 160);
-    dataField('TIN Number', applicant.tinNumber, 390, gY2, 130);
-    doc.y = gY2 + 35; 
-
-    // --- 4. PROFESSIONAL QUALIFICATIONS ---
-    sectionHeader('4. Professional Qualifications', 'Education and eligibility');
-    const qY = doc.y + 5;
-    dataField('Eligibility Name', applicant.eligibility, 40, qY, 200);
-    dataField('Category', applicant.eligibilityType?.replace(/_/g, ' '), 250, qY, 150);
-    dataField('Rating', applicant.eligibilityRating, 410, qY, 110);
-
-    const qY2 = qY + 45; 
-    dataField('Place of Exam', applicant.eligibilityPlace, 40, qY2, 250);
-    dataField('License Number', applicant.licenseNo, 305, qY2, 120);
-    dataField('Date Released', applicant.eligibilityDate ? new Date(applicant.eligibilityDate).toLocaleDateString() : '', 440, qY2, 80);
-
-    doc.y = qY2 + 40; 
-    doc.x = 40; 
-    const drawLongText = (label: string, value: string | null | undefined) => {
-        doc.fontSize(9).font('Helvetica-Bold').fillColor(textGray).text(label, 40); 
-        doc.fontSize(12).font('Helvetica').fillColor(valueBlack).text(value || 'Not provided', { align: 'justify', width: 512 });
-        doc.moveDown(1.0);
-    };
-
-    drawLongText('Education History', applicant.educationalBackground);
-    drawLongText('Work Experience Log', applicant.experience);
-    drawLongText('Core Competencies / Skills', applicant.skills);
+    // Continue info boxes next to photo
+    drawBox(30, currentY, infoWidth, 25, 'Department / Category', applicant.jobDepartment);
+    currentY += 25;
     
-    doc.moveDown(0.1); // Tighter
-    dataField('Total Experience (Years)', applicant.totalExperienceYears?.toString(), 40, doc.y, 150);
-
-    // --- FOOTER & SIGNATURE ---
-    const footerHeight = 110; // Slightly more space
-    const currentY = doc.y;
+    const submittedDate = applicant.createdAt ? new Date(applicant.createdAt).toLocaleDateString() : '';
+    drawBox(30, currentY, infoWidth / 3, 25, 'Ref ID', `APP-${(applicant.id || 0).toString().padStart(6, '0')}`);
+    drawBox(30 + infoWidth / 3, currentY, infoWidth / 3, 25, 'Date Submitted', submittedDate);
+    drawBox(30 + (infoWidth / 3) * 2, currentY, infoWidth / 3, 25, 'Source', applicant.source?.toUpperCase() || 'MANUAL');
     
-    if (currentY + footerHeight > doc.page.height - 20) {
+    currentY += 25; // Now currentY is roughly aligned with the bottom of the photo box
+
+    // --- PERSONAL DATA ---
+    currentY = drawSectionHeader(currentY, 'PERSONAL DATA');
+    
+    // Name Row
+    const nameColW = pageWidth / 4;
+    drawBox(30, currentY, nameColW + 20, 25, 'Last Name', applicant.lastName);
+    drawBox(30 + nameColW + 20, currentY, nameColW, 25, 'First Name', applicant.firstName);
+    drawBox(30 + nameColW * 2 + 20, currentY, nameColW - 10, 25, 'Middle Name', applicant.middleName);
+    drawBox(30 + nameColW * 3 + 10, currentY, nameColW - 10, 25, 'Suffix', applicant.suffix);
+    currentY += 25;
+
+    // Contact Row
+    drawBox(30, currentY, pageWidth / 2, 25, 'Email Address', applicant.email);
+    drawBox(30 + pageWidth / 2, currentY, pageWidth / 2, 25, 'Cellular Telephone Number', applicant.phoneNumber);
+    currentY += 25;
+
+    // Address Row (Residential)
+    drawBox(30, currentY, pageWidth * 0.8, 25, 'Residential Address', applicant.address);
+    drawBox(30 + pageWidth * 0.8, currentY, pageWidth * 0.2, 25, 'Zip', applicant.zipCode);
+    currentY += 25;
+
+    // Address Row (Permanent)
+    drawBox(30, currentY, pageWidth * 0.8, 25, 'Permanent Address', applicant.permanentAddress || applicant.address);
+    drawBox(30 + pageWidth * 0.8, currentY, pageWidth * 0.2, 25, 'Zip', applicant.permanentZipCode || applicant.zipCode);
+    currentY += 25;
+
+    // Bio Row
+    const bioColW = pageWidth / 7;
+    const bDate = applicant.birthDate ? new Date(applicant.birthDate).toLocaleDateString() : '';
+    drawBox(30, currentY, bioColW, 25, 'Gender', applicant.sex);
+    drawBox(30 + bioColW, currentY, bioColW, 25, 'Civil Status', applicant.civilStatus);
+    drawBox(30 + bioColW * 2, currentY, bioColW * 1.5, 25, 'Birth Date', bDate);
+    drawBox(30 + bioColW * 3.5, currentY, bioColW * 2, 25, 'Place of Birth', applicant.birthPlace);
+    drawBox(30 + bioColW * 5.5, currentY, bioColW * 1.5, 25, 'Resident of Meycauayan?', applicant.isMeycauayanResident ? 'Yes' : 'No');
+    currentY += 25;
+
+    // Metrics Row
+    drawBox(30, currentY, pageWidth / 4, 25, 'Height (m)', applicant.height);
+    drawBox(30 + pageWidth / 4, currentY, pageWidth / 4, 25, 'Weight (kg)', applicant.weight);
+    drawBox(30 + pageWidth / 2, currentY, pageWidth / 4, 25, 'Blood Type', applicant.bloodType);
+    drawBox(30 + pageWidth * 0.75, currentY, pageWidth / 4, 25, 'Nationality', 'Filipino');
+    currentY += 25;
+
+    // Emergency Row
+    drawBox(30, currentY, pageWidth * 0.6, 25, 'Emergency Contact Person', applicant.emergencyContact);
+    drawBox(30 + pageWidth * 0.6, currentY, pageWidth * 0.4, 25, 'Emergency Contact Number', applicant.emergencyContactNumber);
+    currentY += 25;
+
+    // --- GOVERNMENT IDENTIFIERS ---
+    currentY = drawSectionHeader(currentY, 'GOVERNMENT IDENTIFIERS');
+    const govColW = pageWidth / 3;
+    drawBox(30, currentY, govColW, 25, 'GSIS Number', applicant.gsisNumber);
+    drawBox(30 + govColW, currentY, govColW, 25, 'Pag-IBIG Number', applicant.pagibigNumber);
+    drawBox(30 + govColW * 2, currentY, govColW, 25, 'PhilHealth Number', applicant.philhealthNumber);
+    currentY += 25;
+    drawBox(30, currentY, govColW, 25, 'UMID Number', applicant.umidNumber);
+    drawBox(30 + govColW, currentY, govColW, 25, 'PhilSys ID (National ID)', applicant.philsysId);
+    drawBox(30 + govColW * 2, currentY, govColW, 25, 'TIN Number', applicant.tinNumber);
+    currentY += 25;
+
+    // --- QUALIFICATIONS / EDUCATION ---
+    currentY = drawSectionHeader(currentY, 'QUALIFICATIONS (Education, Training, & Eligibility)');
+    
+    // Education Header
+    drawBox(30, currentY, pageWidth * 0.25, 14, 'Educational Level', '', colors.grey);
+    drawBox(30 + pageWidth * 0.25, currentY, pageWidth * 0.35, 14, 'School/University Name', '', colors.grey);
+    drawBox(30 + pageWidth * 0.60, currentY, pageWidth * 0.25, 14, 'Course / Degree', '', colors.grey);
+    drawBox(30 + pageWidth * 0.85, currentY, pageWidth * 0.15, 14, 'Year Graduated', '', colors.grey);
+    currentY += 14;
+
+    // Education Data (Single Row based on DB)
+    drawBox(30, currentY, pageWidth * 0.25, 20, '', applicant.educationalBackground);
+    drawBox(30 + pageWidth * 0.25, currentY, pageWidth * 0.35, 20, '', applicant.schoolName);
+    drawBox(30 + pageWidth * 0.60, currentY, pageWidth * 0.25, 20, '', applicant.course);
+    drawBox(30 + pageWidth * 0.85, currentY, pageWidth * 0.15, 20, '', applicant.yearGraduated);
+    currentY += 20;
+
+    // Eligibility Header
+    drawBox(30, currentY, pageWidth * 0.3, 14, 'Eligibility / License Name', '', colors.grey);
+    drawBox(30 + pageWidth * 0.3, currentY, pageWidth * 0.25, 14, 'Category / Type', '', colors.grey);
+    drawBox(30 + pageWidth * 0.55, currentY, pageWidth * 0.1, 14, 'Rating', '', colors.grey);
+    drawBox(30 + pageWidth * 0.65, currentY, pageWidth * 0.2, 14, 'Place of Examination', '', colors.grey);
+    drawBox(30 + pageWidth * 0.85, currentY, pageWidth * 0.15, 14, 'Date Released', '', colors.grey);
+    currentY += 14;
+
+    // Eligibility Data
+    const eligDate = applicant.eligibilityDate ? new Date(applicant.eligibilityDate).toLocaleDateString() : '';
+    const eligType = applicant.eligibilityType?.replace(/_/g, ' ').toUpperCase();
+    drawBox(30, currentY, pageWidth * 0.3, 20, '', applicant.eligibility);
+    drawBox(30 + pageWidth * 0.3, currentY, pageWidth * 0.25, 20, '', eligType);
+    drawBox(30 + pageWidth * 0.55, currentY, pageWidth * 0.1, 20, '', applicant.eligibilityRating);
+    drawBox(30 + pageWidth * 0.65, currentY, pageWidth * 0.2, 20, '', applicant.eligibilityPlace);
+    drawBox(30 + pageWidth * 0.85, currentY, pageWidth * 0.15, 20, '', eligDate);
+    currentY += 20;
+
+    // License Detail
+    drawBox(30, currentY, pageWidth, 20, 'License / ID Number (if applicable)', applicant.licenseNo);
+    currentY += 20;
+
+    // --- EXPERIENCE & SKILLS ---
+    let remainingSpace = doc.page.height - currentY - 60; // Calculate remaining space on first page
+    
+    // Check if we need a new page for experience block
+    if (remainingSpace < 200) {
         doc.addPage();
-    } else {
-        // Force to bottom
-        doc.y = Math.max(currentY + 20, doc.page.height - footerHeight);
+        currentY = 30; // reset to top margin
     }
 
-    const startFooterY = doc.y;
-
-    doc.fontSize(8).font('Helvetica-Oblique').fillColor(textGray).text(
-        'I hereby certify that the information provided in this form is true and correct to the best of my knowledge.',
-        40, startFooterY, { align: 'center', width: 512 }
-    );
+    currentY = drawSectionHeader(currentY, 'PROFESSIONAL EXPERIENCE & SPECIAL SKILLS');
     
-    const sigLineY = startFooterY + 45;
-    doc.moveTo(100, sigLineY).lineTo(500, sigLineY).lineWidth(0.8).strokeColor(primaryBlue).stroke();
-    doc.fontSize(10).font('Helvetica-Bold').fillColor(primaryBlue).text('SIGNATURE OVER PRINTED NAME', 40, sigLineY + 8, { align: 'center', width: 512 });
+    // Totals
+    drawBox(30, currentY, pageWidth / 2, 25, 'Total Years of Experience', applicant.totalExperienceYears);
+    drawBox(30 + pageWidth / 2, currentY, pageWidth / 2, 25, 'Total Training Hours', 'N/A');
+    currentY += 25;
+
+    // Extensive text areas
+    drawLongBox(30, currentY, pageWidth, 120, 'Work Experience Log (List roles and responsibilities)', applicant.experience);
+    currentY += 120;
+    
+    drawLongBox(30, currentY, pageWidth, 80, 'Core Competencies & Skills (List any special skills or experience)', applicant.skills);
+    currentY += 80;
+
+    // --- SIGNATURE BLOCK (Always at the very bottom or push to next page) ---
+    remainingSpace = doc.page.height - currentY - 60;
+    if (remainingSpace < 100) {
+         doc.addPage();
+         currentY = 30;
+    }
+
+    currentY += 20;
+    doc.fontSize(8).font('Helvetica').text('I hereby certify that all information provided in this application is true, correct, and complete to the best of my knowledge.', 30, currentY, { align: 'justify', width: pageWidth });
+    currentY += 40;
+
+    // Signature Line
+    doc.moveTo(30, currentY).lineTo(250, currentY).lineWidth(0.5).strokeColor(colors.black).stroke();
+    doc.moveTo(doc.page.width - 250, currentY).lineTo(doc.page.width - 30, currentY).lineWidth(0.5).strokeColor(colors.black).stroke();
+    
+    currentY += 5;
+    doc.fontSize(8).font('Helvetica').text('Signature of Applicant', 30, currentY, { width: 220, align: 'center' });
+    doc.text('Date Signed', doc.page.width - 250, currentY, { width: 220, align: 'center' });
+
+    // --- ADD BORDERS TO ALL PAGES ---
+    const range = doc.bufferedPageRange();
+    for (let i = range.start; i < range.start + range.count; i++) {
+    doc.switchToPage(i);
+    // Outer Page Border
+    doc.rect(20, 20, doc.page.width - 40, doc.page.height - 40).lineWidth(1.5).strokeColor(colors.black).stroke();
+    doc.rect(22, 22, doc.page.width - 44, doc.page.height - 44).lineWidth(0.5).strokeColor(colors.black).stroke();
+
+    doc.fontSize(6).fillColor(colors.darkGrey).text(
+        `Page ${i + 1} of ${range.count} | Form Generated via System`,
+        30, doc.page.height - 35, { align: 'right', width: pageWidth }
+    );
+    }
 
     doc.end();
-  } catch (error) {
+    } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-
     res.status(500).json({ success: false, message: `Failed to generate PDF: ${errorMessage}` });
-  }
+    }
+    };
+
+    export const confirmHiredApplicant: AuthenticatedHandler = async (req, res) => {
+    try {
+    const { id } = req.params;
+    const { startDate, selectedDocs, customNotes } = req.body as { 
+        startDate: string; 
+        selectedDocs?: string[]; 
+        customNotes?: string 
+    };
+
+    if (!startDate) {
+    res.status(400).json({ success: false, message: 'Start date is required' });
+    return;
+    }
+
+    const [applicant] = await db.select()
+    .from(recruitmentApplicants)
+    .where(eq(recruitmentApplicants.id, Number(id)))
+    .limit(1);
+
+    if (!applicant) {
+    res.status(404).json({ success: false, message: 'Applicant not found' });
+    return;
+    }
+
+    if (applicant.stage !== 'Hired') {
+    res.status(400).json({ success: false, message: 'Only hired applicants can be confirmed for duty' });
+    return;
+    }
+
+    // 1. Data Migration: Mark as confirmed and move to Archived Hired
+    await db.update(recruitmentApplicants)
+    .set({
+        isConfirmed: true,
+        startDate: startDate,
+        stage: 'Hired', 
+        status: 'Hired'
+    })
+    .where(eq(recruitmentApplicants.id, Number(id)));
+
+    // 2. Dispatch "Start of Duty" Email with Attachments
+    try {
+    const template = await getTemplateForStage(db, 'Confirmed');
+    const job = await db.query.recruitmentJobs.findFirst({ where: eq(recruitmentJobs.id, applicant.jobId || 0) });
+
+    const formattedStart = new Date(startDate).toLocaleString('en-US', { 
+        year: 'numeric', month: 'long', day: 'numeric', 
+        hour: '2-digit', minute: '2-digit', hour12: true 
+    });
+
+    const variables = {
+        applicantFirstName: applicant.firstName,
+        applicantLastName: applicant.lastName,
+        jobTitle: job?.title || 'the position',
+        startDate: formattedStart,
+        department: job?.department || 'HR'
+    };
+
+    let subject = `Start of Duty Notification - ${variables.jobTitle}`;
+    let body = `Dear ${applicant.firstName},\n\nCongratulations! We are pleased to inform you that your official start date is ${variables.startDate}. Please proceed to Office of the City Human Resource Management Officer to register your initial data from your application form.`;
+
+    if (customNotes) {
+        body += `\n\nAdditional Instructions from HR:\n${customNotes}`;
+    }
+
+    body += `\n\nBest regards,\nOffice of the City Human Resource Management Officer`;
+
+    if (template) {
+        subject = replaceVariables(template.subjectTemplate, variables);
+        body = replaceVariables(template.bodyTemplate, variables);
+    }
+
+    // Process Attachments
+    const attachments: { filename: string; path: string }[] = [];
+    if (selectedDocs && selectedDocs.length > 0) {
+        for (const docPath of selectedDocs) {
+            const fullPath = path.join(process.cwd(), 'uploads/resumes', docPath);
+            if (fs.existsSync(fullPath)) {
+                attachments.push({
+                    filename: docPath.split('-').pop() || 'document.pdf',
+                    path: fullPath
+                });
+            }
+        }
+    }
+
+    await sendEmailNotification(applicant.email, subject, body, attachments);
+    } catch (emailErr) {
+    console.error('[RecruitmentController] Confirm email failed:', emailErr);
+    }
+
+    res.status(200).json({ success: true, message: 'Applicant confirmed and notification sent.' });
+    } catch (_error) {
+    console.error('[RecruitmentController] confirmHiredApplicant failed:', _error);
+    res.status(500).json({ success: false, message: 'Failed to confirm applicant' });
+    }
+    };
+export const generatePhotoPDF = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { id } = req.params;
+        const applicant = await db.query.recruitmentApplicants.findFirst({
+            where: eq(recruitmentApplicants.id, Number(id))
+        });
+
+        if (!applicant || !applicant.photoPath) {
+            res.status(404).json({ success: false, message: '2x2 Photo not found' });
+            return;
+        }
+
+        const photoFullPath = path.join(process.cwd(), 'uploads/resumes', applicant.photoPath);
+        if (!fs.existsSync(photoFullPath)) {
+            res.status(404).json({ success: false, message: 'Physical photo file missing' });
+            return;
+        }
+
+        const sizeInPts = 144; // 2 inches
+        
+        const doc = new PDFDocument({ 
+            size: [sizeInPts + 20, sizeInPts + 40],
+            margin: 10 
+        });
+
+        const chunks: Buffer[] = [];
+        doc.on('data', (chunk: Buffer) => chunks.push(chunk));
+        doc.on('end', () => {
+            const pdfBuffer = Buffer.concat(chunks);
+            res.setHeader('Content-Type', 'application/pdf');
+            res.setHeader('Content-Disposition', `inline; filename="2x2_photo_${applicant.lastName}.pdf"`);
+            res.send(pdfBuffer);
+        });
+
+        doc.fontSize(8).font('Helvetica-Bold').text(`OFFICIAL 2x2 PHOTO`, { align: 'center' });
+        doc.moveDown(0.5);
+        
+        try {
+            doc.image(photoFullPath, 10, doc.y, { width: sizeInPts, height: sizeInPts });
+            doc.rect(10, doc.y, sizeInPts, sizeInPts).lineWidth(0.5).strokeColor('#000000').stroke();
+        } catch {
+            doc.text('Error loading image', { align: 'center' });
+        }
+
+        doc.end();
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Failed to generate photo PDF' });
+    }
 };
 
 export const saveInterviewNotes = async (req: Request, res: Response): Promise<void> => {

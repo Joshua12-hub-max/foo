@@ -26,7 +26,16 @@ export const saveInterviewNotesSchema = z.object({
   duration: z.number().optional(), // in minutes
 });
 
+// Confirm Hired Schema
+export const confirmHiredSchema = z.object({
+  startDate: z.string().min(1, 'Start date is required').refine((val) => {
+    const date = new Date(val);
+    return !isNaN(date.getTime());
+  }, 'Invalid start date format'),
+});
+
 // Type exports
 export type ScheduleInterviewFormData = z.infer<typeof scheduleInterviewSchema>;
 export type GenerateMeetingLinkResponse = z.infer<typeof generateMeetingLinkResponseSchema>;
 export type SaveInterviewNotesFormData = z.infer<typeof saveInterviewNotesSchema>;
+export type ConfirmHiredData = z.infer<typeof confirmHiredSchema>;

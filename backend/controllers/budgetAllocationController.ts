@@ -193,14 +193,14 @@ export const recalculateBudgetUtilization = async (req: Request, res: Response):
     await db.update(budgetAllocation)
       .set({ utilizedBudget: String(utilizedBudget) })
       .where(and(
-        eq(budgetAllocation.year, year),
+        eq(budgetAllocation.year, Number(year)),
         eq(budgetAllocation.department, department)
       ));
 
     // Get updated allocation
     const updated = await db.query.budgetAllocation.findFirst({
       where: and(
-        eq(budgetAllocation.year, year),
+        eq(budgetAllocation.year, Number(year)),
         eq(budgetAllocation.department, department)
       )
     });

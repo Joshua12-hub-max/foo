@@ -145,6 +145,11 @@ class CSCViolationTracker {
          currentOffense = [];
       }
     }
+
+    // L4 FIX: Check remaining months after loop ends (prevents silent drop)
+    if (currentOffense.length >= config.minMonthsPerOffense) {
+      offenses.push(this.createOffenseRecord(currentOffense, offenseCounter++, config));
+    }
     
     return offenses;
   }
@@ -207,24 +212,27 @@ const penaltyMatrix: Record<string, { regular: Penalty[]; joCos: Penalty[] }> = 
         { penalty: 'Termination of Contract', memoType: 'Termination Notice', severity: 'terminal' }
       ]
     },
-    'habitual_undertime-Simple Misconduct': {
+    // C2+E1 FIX: Key must match camelCase violationType enum (was snake_case → crash)
+    'habitualUndertime-Simple Misconduct': {
       regular: [
         { penalty: 'Reprimand (Stern Warning)', memoType: 'Reprimand', severity: 'minor' },
         { penalty: 'Suspension of one (1) to thirty (30) days', memoType: 'Suspension Notice', severity: 'major' },
         { penalty: 'Dismissal from the Service', memoType: 'Termination Notice', severity: 'terminal' }
       ],
-      joCos: [        { penalty: 'Warning', memoType: 'Written Warning', severity: 'minor' },
+      joCos: [
+        { penalty: 'Warning', memoType: 'Written Warning', severity: 'minor' },
         { penalty: 'Reprimand', memoType: 'Reprimand', severity: 'moderate' },
         { penalty: 'Termination of Contract', memoType: 'Termination Notice', severity: 'terminal' }
       ]
     },
-    'habitual_undertime-Prejudicial to Service': {
+    'habitualUndertime-Prejudicial to Service': {
       regular: [
         { penalty: 'Suspension of six (6) months and one (1) day to one (1) year', memoType: 'Suspension Notice', severity: 'grave' },
         { penalty: 'Dismissal from the Service', memoType: 'Termination Notice', severity: 'terminal' },
         { penalty: 'Dismissal from the Service', memoType: 'Termination Notice', severity: 'terminal' }
       ],
-      joCos: [        { penalty: 'Reprimand', memoType: 'Reprimand', severity: 'moderate' },
+      joCos: [
+        { penalty: 'Reprimand', memoType: 'Reprimand', severity: 'moderate' },
         { penalty: 'Termination of Contract', memoType: 'Termination Notice', severity: 'terminal' },
         { penalty: 'Termination of Contract', memoType: 'Termination Notice', severity: 'terminal' }
       ]

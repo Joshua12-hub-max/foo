@@ -40,6 +40,7 @@ type RegisterFormValues = RegisterInput & {
   avatar?: File;
   applicantId?: number;
   applicantHiredDate?: string;
+  applicantStartDate?: string;
   applicantPhotoPath?: string;
   ignoreDuplicateWarning?: boolean;
   
@@ -111,6 +112,18 @@ export default function AdminRegister() {
   const registerMutation = useRegisterMutation();
   const loading = registerMutation.isPending;
 
+  // Helper to safely format any date string or Date object to YYYY-MM-DD
+  const formatDateForInput = (dateInput: string | Date | null | undefined): string => {
+    if (!dateInput) return "";
+    try {
+      const d = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
+      if (isNaN(d.getTime())) return "";
+      return d.toISOString().split('T')[0];
+    } catch {
+      return "";
+    }
+  };
+
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<RegisterFormValues>({
     resolver: zodResolver(RegisterSchema),
     defaultValues: {
@@ -133,7 +146,19 @@ export default function AdminRegister() {
       tinNumber: "",
       schoolName: "",
       yearGraduated: "",
-      course: ""
+      course: "",
+      facebookUrl: "",
+      linkedinUrl: "",
+      twitterHandle: "",
+      agencyEmployeeNo: "",
+      nationality: "",
+      placeOfBirth: "",
+      birthDate: "",
+      bloodType: "",
+      heightM: "",
+      weightKg: "",
+      mobileNo: "",
+      telephoneNo: ""
     }
   });
 
@@ -305,7 +330,7 @@ export default function AdminRegister() {
     }
     
     if (applicant.birthDate) {
-        setValue("birthDate", applicant.birthDate.split('T')[0]);
+        setValue("birthDate", formatDateForInput(applicant.birthDate));
     }
     setValue("placeOfBirth", applicant.birthPlace || "");
     setValue("gender", applicant.sex || "");
@@ -348,27 +373,43 @@ export default function AdminRegister() {
     setValue("eligibilityType", applicant.eligibilityType || "");
     setValue("eligibilityNumber", applicant.licenseNo || "");
     if (applicant.eligibilityDate) {
-        setValue("eligibilityDate", applicant.eligibilityDate.split('T')[0]);
+        setValue("eligibilityDate", formatDateForInput(applicant.eligibilityDate));
     }
     
     if (applicant.address) {
         setPrefilledAddress(applicant.address);
         setValue("address", applicant.address);
         setValue("residentialAddress", applicant.address);
-        setValue("resStreet", ""); // clear street to prevent leak into forms
     }
     if (applicant.zipCode) {
         setValue("residentialZipCode", applicant.zipCode);
     }
 
+    // Explicitly set residential address sub-fields
+    if (applicant.resRegion) setValue("resRegion", applicant.resRegion);
+    if (applicant.resProvince) setValue("resProvince", applicant.resProvince);
+    if (applicant.resCity) setValue("resCity", applicant.resCity);
+    if (applicant.resBarangay) setValue("resBrgy", applicant.resBarangay);
+    if (applicant.resHouseBlockLot) setValue("resHouseBlockLot", applicant.resHouseBlockLot);
+    if (applicant.resSubdivision) setValue("resSubdivision", applicant.resSubdivision);
+    if (applicant.resStreet) setValue("resStreet", applicant.resStreet);
+
     if (applicant.permanentAddress) {
         setPrefilledPermanentAddress(applicant.permanentAddress);
         setValue("permanentAddress", applicant.permanentAddress);
-        setValue("permStreet", ""); // clear street to prevent leak
     }
     if (applicant.permanentZipCode) {
         setValue("permanentZipCode", applicant.permanentZipCode);
     }
+
+    // Explicitly set permanent address sub-fields
+    if (applicant.permRegion) setValue("permRegion", applicant.permRegion);
+    if (applicant.permProvince) setValue("permProvince", applicant.permProvince);
+    if (applicant.permCity) setValue("permCity", applicant.permCity);
+    if (applicant.permBarangay) setValue("permBrgy", applicant.permBarangay);
+    if (applicant.permHouseBlockLot) setValue("permHouseBlockLot", applicant.permHouseBlockLot);
+    if (applicant.permSubdivision) setValue("permSubdivision", applicant.permSubdivision);
+    if (applicant.permStreet) setValue("permStreet", applicant.permStreet);
     
     setValue("mobileNo", applicant.phoneNumber || "");
     setValue("emergencyContactNumber", applicant.phoneNumber || "");
@@ -381,7 +422,11 @@ export default function AdminRegister() {
 
     setValue("applicantId", applicant.id);
     if (applicant.hiredDate) {
-        setValue("applicantHiredDate", applicant.hiredDate.split('T')[0]);
+        setValue("applicantHiredDate", formatDateForInput(applicant.hiredDate));
+    }
+    if (applicant.startDate) {
+        setValue("dateHired", formatDateForInput(applicant.startDate));
+        setValue("applicantStartDate", formatDateForInput(applicant.startDate));
     }
     if (applicant.photoPath) {
         setValue("applicantPhotoPath", applicant.photoPath);
@@ -433,8 +478,7 @@ export default function AdminRegister() {
 
       // Personal Details
       if (authUser.birthDate) {
-          const bday = authUser.birthDate.includes('T') ? authUser.birthDate.split('T')[0] : authUser.birthDate;
-          setValue("birthDate", bday);
+          setValue("birthDate", formatDateForInput(authUser.birthDate));
       }
       if (authUser.gender) {
           const gender = authUser.gender;
@@ -463,10 +507,27 @@ export default function AdminRegister() {
           _setIsAddressPrefilled(true);
           setPrefilledAddress(authUser.address);
       }
+      if (authUser.residentialZipCode) setValue("residentialZipCode", authUser.residentialZipCode);
+      if (authUser.resRegion) setValue("resRegion", authUser.resRegion);
+      if (authUser.resProvince) setValue("resProvince", authUser.resProvince);
+      if (authUser.resCity) setValue("resCity", authUser.resCity);
+      if (authUser.resBarangay) setValue("resBrgy", authUser.resBarangay);
+      if (authUser.resHouseBlockLot) setValue("resHouseBlockLot", authUser.resHouseBlockLot);
+      if (authUser.resSubdivision) setValue("resSubdivision", authUser.resSubdivision);
+      if (authUser.resStreet) setValue("resStreet", authUser.resStreet);
+
       if (authUser.permanentAddress) {
           setValue("permanentAddress", authUser.permanentAddress);
           setPrefilledPermanentAddress(authUser.permanentAddress);
       }
+      if (authUser.permanentZipCode) setValue("permanentZipCode", authUser.permanentZipCode);
+      if (authUser.permRegion) setValue("permRegion", authUser.permRegion);
+      if (authUser.permProvince) setValue("permProvince", authUser.permProvince);
+      if (authUser.permCity) setValue("permCity", authUser.permCity);
+      if (authUser.permBarangay) setValue("permBrgy", authUser.permBarangay);
+      if (authUser.permHouseBlockLot) setValue("permHouseBlockLot", authUser.permHouseBlockLot);
+      if (authUser.permSubdivision) setValue("permSubdivision", authUser.permSubdivision);
+      if (authUser.permStreet) setValue("permStreet", authUser.permStreet);
 
       // IDs
       if (authUser.gsisNumber) {
@@ -535,14 +596,15 @@ export default function AdminRegister() {
 
     if (prefilledPermanentAddress) {
         data.permanentAddress = prefilledPermanentAddress;
+        // Do not overwrite individual components since the user can edit them
     }
 
     if (prefilledAddress) {
-        data.residentialAddress = prefilledAddress;
         data.address = prefilledAddress;
+        // Do not overwrite residentialAddress, let the object keep the decomposed values
     }
 
-    const ignoreKeys = ['avatar', 'employeeId'];
+    const ignoreKeys = ['avatar', 'employeeId', 'applicantId', 'applicantHiredDate', 'applicantStartDate', 'applicantPhotoPath', 'dateHired'];
 
     // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
     (Object.keys(data) as Array<keyof RegisterFormValues>).forEach((key) => {
@@ -563,16 +625,25 @@ export default function AdminRegister() {
 
     try {
       setIsSubmitting(true);
-      await registerMutation.mutateAsync({ 
+      const response = await registerMutation.mutateAsync({ 
         data: formData, 
         mode: isFinalizingSetup ? 'finalize-setup' : undefined 
       });
+      
       if (isFinalizingSetup) {
           await checkAuth();
       } else {
           // 100% Cleanup: Ensure no temp data stays for the next employee registration
           sessionStorage.clear();
       }
+
+      // 100% Verification - Check if email verification is required
+      if (response.data?.data?.requiresVerification) {
+          toast.success("Registration Successful! Please check the email for the verification code.");
+          navigate("/verify-account", { state: { email: data.email } });
+          return;
+      }
+
       toast.success("Employee Record Created Successfully!");
       navigate(`/admin-dashboard/departments?department=${queryDept || ''}`); // Return to department
     } catch (error) {
@@ -778,7 +849,12 @@ export default function AdminRegister() {
                 <div className="space-y-1">
                    <label className="text-xs font-semibold text-gray-600 ml-1">Birth Date</label>
                    <div className="relative">
-                      <input type="date" {...register("birthDate")} className={`${inputClass}`} />
+                      <input 
+                        type="date" 
+                        {...register("birthDate")} 
+                        value={watch("birthDate") ? new Date(watch("birthDate")!).toISOString().split('T')[0] : ''}
+                        className={`${inputClass}`} 
+                      />
                    </div>
                 </div>
                 

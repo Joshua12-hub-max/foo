@@ -2,7 +2,7 @@ import React from "react";
 import { X, AlertCircle } from "lucide-react";
 import { leaveApi } from "@/api/leaveApi";
 import { useToastStore } from '@/stores';
-import { AdminLeaveRequest } from "@/components/Custom/Timekeeping/LeaveRequestComponents/Admin/types";
+import { AdminLeaveRequest } from "../types";
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -70,91 +70,86 @@ const RejectModal: React.FC<RejectModalProps> = ({
   };
 
   // Helper to get display values
-  const getName = () => request.name || `${request.firstName} ${request.lastName}`;
+  const getName = () => `${request.firstName} ${request.lastName}`;
   const getLeaveType = () => request.leaveType;
-  const getFromDate = () => formatDate(request.fromDate);
-  const getToDate = () => formatDate(request.toDate);
+  const getFromDate = () => formatDate(request.startDate);
+  const getToDate = () => formatDate(request.endDate);
 
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 transition-all duration-300" onClick={onCancel}>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 transition-all duration-300" onClick={onCancel}>
       <div 
-        className="bg-white/95 backdrop-blur-md rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] w-full max-w-md border border-white/20 overflow-hidden animate-in fade-in zoom-in duration-300"
+        className="bg-white rounded-xl shadow-xl w-full max-w-md border border-gray-100 overflow-hidden animate-in fade-in zoom-in duration-300 flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
-        <form onSubmit={handleSubmit(onSubmit)}>
-          <div className="flex items-center justify-between px-6 py-4 shrink-0 border-b border-gray-100">
-            <div className="flex items-center gap-2">
-              <div className="bg-red-50 p-2 rounded-lg">
-                 <X className="w-5 h-5 text-red-600" />
-              </div>
-              <h2 className="text-xl font-bold text-gray-900">Reject Request</h2>
-            </div>
+        <form onSubmit={handleSubmit(onSubmit)} className="overflow-y-auto max-h-[90vh]">
+          {/* Header */}
+          <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-white z-10 sticky top-0">
+            <h2 className="text-xl font-bold text-gray-800">Reject Request</h2>
             <button 
               type="button"
               onClick={onCancel} 
               className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-full hover:bg-gray-100"
             >
-              <X className="w-5 h-5" />
+              <X size={20} />
             </button>
           </div>
 
-          <div className="p-6 space-y-4">
-            <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-3 shadow-sm">
-              <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Request Information</h3>
+          <div className="p-6 space-y-5">
+            {/* Request Info Card */}
+            <div className="bg-gray-50 border border-gray-200 rounded-xl p-5 space-y-4">
+              <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Request Information</h3>
               <div className="space-y-3">
-                <div className="flex justify-between items-center pb-2 border-b border-gray-50 last:border-0 last:pb-0">
-                  <span className="text-sm text-gray-500">Employee Name</span>
-                  <span className="text-sm font-semibold text-gray-900">{getName()}</span>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-500">Employee</span>
+                  <span className="text-sm font-bold text-gray-800">{getName()}</span>
                 </div>
-                <div className="flex justify-between items-center pb-2 border-b border-gray-50 last:border-0 last:pb-0">
+                <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-500">Leave Type</span>
-                  <span className="text-sm font-semibold text-gray-900">{getLeaveType()}</span>
+                  <span className="text-sm font-bold text-gray-800">{getLeaveType()}</span>
                 </div>
-                <div className="flex justify-between items-center pb-2 border-b border-gray-50 last:border-0 last:pb-0">
-                  <span className="text-sm text-gray-500">From Date</span>
-                  <span className="text-sm font-semibold text-gray-900">{getFromDate()}</span>
-                </div>
-                <div className="flex justify-between items-center pb-2 border-b border-gray-50 last:border-0 last:pb-0">
-                  <span className="text-sm text-gray-500">To Date</span>
-                  <span className="text-sm font-semibold text-gray-900">{getToDate()}</span>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-500">Duration</span>
+                  <span className="text-sm font-bold text-gray-800">{getFromDate()} - {getToDate()}</span>
                 </div>
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-2">Rejection Reason <span className="text-red-500">*</span></label>
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">
+                Rejection Reason <span className="text-red-500">*</span>
+              </label>
               <textarea
                 {...register('reason')}
                 placeholder="Provide reason for rejection..."
-                className={`w-full border rounded-xl px-4 py-3 text-sm focus:ring-4 focus:outline-none resize-none transition-all placeholder:text-gray-400 ${errors.reason ? 'border-red-500 focus:ring-red-50 focus:border-red-500' : 'border-gray-200 focus:ring-red-50 focus:border-red-500'}`}
-                aria-label="Description"
+                className={`w-full border ${errors.reason ? 'border-red-500 ring-2 ring-red-200' : 'border-gray-200'} rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-400 focus:outline-none transition-all resize-none bg-gray-50`}
                 rows={3}
               />
               {errors.reason && (
-                <div className="flex items-center gap-1.5 mt-2 text-red-500 text-xs">
-                    <AlertCircle className="w-3.5 h-3.5" />
+                <div className="flex items-center gap-1.5 mt-2 text-red-600 text-[11px] font-bold uppercase ml-1">
+                    <AlertCircle size={12} />
                     <p>{errors.reason.message}</p>
                 </div>
               )}
             </div>
           </div>
 
-          <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex gap-3">
-              <button
-                type="button"
-                onClick={onCancel}
-                disabled={rejectMutation.isPending}
-                className="flex-1 px-4 py-2.5 bg-white border border-gray-200 text-gray-700 font-medium rounded-lg hover:bg-gray-50 hover:text-gray-900 transition-colors shadow-sm disabled:opacity-50 text-sm"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={rejectMutation.isPending}
-                className="flex-1 px-4 py-2.5 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 transition-all shadow-lg shadow-red-900/20 disabled:opacity-50 text-sm"
-              >
-                {rejectMutation.isPending ? "Rejecting..." : "Reject Request"}
-              </button>
+          {/* Footer */}
+          <div className="bg-gray-50 px-6 py-4 border-t border-gray-100 flex justify-end gap-3 sticky bottom-0">
+            <button
+              type="button"
+              onClick={onCancel}
+              disabled={rejectMutation.isPending}
+              className="px-4 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 hover:text-gray-900 transition-all shadow-sm disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={rejectMutation.isPending}
+              className="px-4 py-2 text-sm font-bold text-white bg-red-600 rounded-lg hover:bg-red-700 transition-all shadow-md disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {rejectMutation.isPending ? "Rejecting..." : "Reject Request"}
+            </button>
           </div>
         </form>
       </div>

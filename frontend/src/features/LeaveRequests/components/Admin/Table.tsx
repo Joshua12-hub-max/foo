@@ -1,5 +1,6 @@
 import React, { useCallback } from 'react';
 import { AdminLeaveRequest } from '../../types';
+import { CheckCircle, Trash2, Info } from 'lucide-react';
 
 interface TableProps {
   data: AdminLeaveRequest[];
@@ -26,7 +27,7 @@ const Table: React.FC<TableProps> = ({ data, onOpenApprove, onOpenReject, onOpen
         <table className="w-full min-w-[1500px]">
           <thead className="bg-gray-200 shadow-md text-gray-700">
             <tr>
-              {['Status', 'Employee ID', 'Employee Name', 'Leave Type', 'Payment', 'From Date', 'To Date', 'Credits', 'Actions'].map((header) => (
+              {['Employee Id', 'Employee Name', 'Department', 'Leave Type', 'Payment', 'From Date', 'Status', 'To Date', 'Credits', 'Actions'].map((header) => (
                 <th key={header} className="px-6 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap">
                   {header}
                 </th>
@@ -37,63 +38,70 @@ const Table: React.FC<TableProps> = ({ data, onOpenApprove, onOpenReject, onOpen
             {data.length ? (
               data.map((item) => (
                 <tr key={item.id} className="hover:bg-[#F8F9FA] hover:shadow-xl transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={`${getStatusBadge(item.status)} px-3 py-1 text-xs font-semibold rounded-full`}
-                    >
-                      {item.status}
+                  <td className="px-6 py-4 text-sm font-medium text-gray-700 whitespace-nowrap">{item.employeeId || 'Missing'}</td>
+                  <td className="px-6 py-4">
+                    <span className="text-sm font-medium text-gray-900 whitespace-nowrap">
+                      {`${item.firstName || ''} ${item.lastName || ''}`.trim() || 'Unknown'}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-sm font-medium text-gray-700 whitespace-nowrap">{item.employeeId || 'N/A'}</td>
-                  <td className="px-6 py-4">
-                    <div className="flex flex-col">
-                      <span className="text-sm font-medium text-gray-900 whitespace-nowrap">
-                        {item.name || item.firstName ? `${item.firstName || ''} ${item.lastName || ''}`.trim() : 'Unknown'}
-                      </span>
-                      <span className="text-xs text-gray-500 whitespace-nowrap">{item.department || 'No Department'}</span>
-                    </div>
-                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">{item.department || 'No Department'}</td>
                   <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">{item.leaveType || 'N/A'}</td>
                   <td className="px-6 py-4">
                     <span
-                      className={`px-2.5 py-1 text-xs font-semibold rounded-full whitespace-nowrap ${
+                      className={`px-2.5 py-1 text-xs font-medium rounded-full whitespace-nowrap ${
                         item.isWithPay 
-                          ? 'bg-green-100 text-green-700 border border-green-200' 
-                          : 'bg-gray-100 text-gray-600 border border-gray-200'
+                          ? 'bg-gray-50 text-gray-600 border border-gray-100' 
+                          : 'bg-gray-50 text-gray-600 border border-gray-100'
                       }`}
                     >
                       {item.isWithPay ? 'With Pay' : 'Without Pay'}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">{new Date(item.startDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</td>
-                  <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">{new Date(item.endDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</td>
-                  <td className="px-6 py-4">
-                    <span className={`font-semibold ${
-                      (item.currentBalance || 0) > 0 ? 'text-teal-600' : 'text-gray-400'
-                    }`}>
-                      {item.currentBalance !== undefined ? item.currentBalance : '-'}
+                  <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">{new Date(item.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span
+                      className={`${getStatusBadge(item.status)} px-2 py-0.5 rounded-md text-[10px] font-bold shadow-sm inline-block`}
+                    >
+                      {item.status}
                     </span>
                   </td>
+                  <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">{new Date(item.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
                   <td className="px-6 py-4">
-                    <div className="flex gap-2">
+                    <div className="flex items-center gap-1.5">
+                      <div className={`flex items-center justify-center w-8 h-8 rounded-lg bg-white text-gray-900 border border-gray-200 shadow-sm`}>
+                        <span className="text-sm font-medium">
+                          {Number(item.workingDays || 0).toFixed(1)}
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-gray-400 font-medium uppercase tracking-tighter">Days</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-1">
                       {item.status === 'Pending' && (
                         <>
                           <button
                             onClick={() => onOpenApprove(item)}
-                            className="bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border border-emerald-200 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1"
+                            title="Approve Request"
+                            className="p-2 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-full transition-colors"
                           >
-                            Approve
+                            <CheckCircle size={16} />
                           </button>
                           <button
                             onClick={() => onOpenReject(item)}
-                            className="bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1"
+                            title="Reject Request"
+                            className="p-2 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-full transition-colors"
                           >
-                            Reject
+                            <Trash2 size={16} />
                           </button>
                         </>
                       )}
-                      {(item.status === 'Approved' || item.status === 'Rejected') && (
-                        <span className="text-gray-400 text-xs italic">Completed</span>
+                      
+                      {(item.status === 'Approved' || item.status === 'Rejected') && !onOpenProcess && (
+                         <div className="flex items-center gap-1 text-gray-400 bg-gray-50 px-2 py-1 rounded border border-gray-100">
+                            <Info size={12} />
+                            <span className="text-[10px] font-normal uppercase">Locked</span>
+                         </div>
                       )}
                     </div>
                   </td>
@@ -102,7 +110,10 @@ const Table: React.FC<TableProps> = ({ data, onOpenApprove, onOpenReject, onOpen
             ) : (
               <tr>
                 <td colSpan={10} className="px-6 py-12 text-center text-gray-500">
-                  No records found
+                  <div className="flex flex-col items-center gap-2 opacity-60">
+                    <Info size={40} strokeWidth={1.5} />
+                    <p className="font-medium tracking-tight">No leave applications found matching current filters.</p>
+                  </div>
                 </td>
               </tr>
             )}
@@ -114,3 +125,5 @@ const Table: React.FC<TableProps> = ({ data, onOpenApprove, onOpenReject, onOpen
 };
 
 export default Table;
+
+

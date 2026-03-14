@@ -132,7 +132,7 @@ const Jobs = () => {
                                 </div>
                                 <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 text-slate-400 rounded-lg text-[10px] font-bold border border-white/5 group-hover:bg-white/10 group-hover:border-green-800/20 transition-colors">
                                     <Clock size={12} className="opacity-40" />
-                                    {job.employment_type}
+                                    {job.employmentType}
                                 </div>
                             </div>
                          </div>

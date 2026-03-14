@@ -45,7 +45,7 @@ const LeaveRequest = () => {
     updateFilters: updateServerFilters 
   } = useLeaveData();
 
-  // Fetch Credits using React Query
+  // Fetch Credits gamit ang React Query boi
   const { data: credits = [] } = useQuery<LeaveBalance[]>({
     queryKey: ['employee-leave-credits'],
     queryFn: async () => {
@@ -55,7 +55,7 @@ const LeaveRequest = () => {
     staleTime: 1000 * 60 * 10, // 10 minutes
   });
   
-  // useFilters now manages UI state of filters only
+  // useFilters para e-manage ang UI state of filters only
   const { 
     filters, 
     appliedFilters, 
@@ -165,17 +165,22 @@ const LeaveRequest = () => {
 
         {/* Right Side: Credits + Create Button */}
         <div className="flex items-center gap-4">
-            {/* Credit Cards */}
+            {/* Credit Cards - Enhanced */}
             <div className="flex items-center gap-2">
               {credits.map((credit, idx) => (
                 <div 
                   key={idx} 
-                  className="bg-white px-3 py-2 rounded-lg border border-gray-300 shadow-sm flex items-center gap-2"
+                  className="bg-white px-3 h-10 rounded-md border border-gray-200 shadow-sm flex flex-col justify-center min-w-[100px] transition-all hover:shadow-md hover:border-gray-300"
                 >
-                  <span className="text-xs font-medium text-gray-500">{credit.creditType}:</span>
-                  <span className={`text-sm font-bold ${Number(credit.balance || 0) > 0 ? 'text-gray-800' : 'text-gray-400'}`}>
-                    {Number(credit.balance || 0).toFixed(1)}
+                  <span className="text-[9px] font-bold text-gray-400 capitalize whitespace-nowrap leading-tight">
+                    {credit.creditType.replace(' Leave', '').toLowerCase()}
                   </span>
+                  <div className="flex items-baseline gap-1 leading-tight">
+                    <span className={`text-sm font-black tracking-tight ${Number(credit.balance || 0) > 0 ? 'text-gray-900' : 'text-gray-400'}`}>
+                      {Number(credit.balance || 0).toFixed(1)}
+                    </span>
+                    <span className="text-[8px] font-medium text-gray-400 uppercase">Days</span>
+                  </div>
                 </div>
               ))}
             </div>
@@ -183,9 +188,9 @@ const LeaveRequest = () => {
             {/* Create New Request Button */}
             <button
               onClick={() => setIsSubmitModalOpen(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-lg font-medium shadow-md hover:bg-gray-800 transition-all active:scale-95 whitespace-nowrap text-sm"
+              className="flex items-center gap-2 px-4 h-10 bg-gray-900 text-white rounded-md font-bold shadow-md hover:bg-gray-800 transition-all active:scale-95 whitespace-nowrap text-xs"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M5 12h14"></path>
                 <path d="M12 5v14"></path>
               </svg>

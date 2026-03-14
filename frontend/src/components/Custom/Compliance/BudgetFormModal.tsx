@@ -3,6 +3,7 @@ import { useForm, SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { X, Loader, Save } from 'lucide-react';
+import Combobox from '@/components/Custom/Combobox';
 
 // --- Schema ---
 const budgetSchema = z.object({
@@ -34,7 +35,7 @@ const BudgetFormModal: React.FC<BudgetFormModalProps> = ({
   onSubmit, 
   isProcessing = false 
 }) => {
-  const { register, handleSubmit, formState: { errors }, reset, setValue } = useForm<BudgetSchema>({
+  const { register, handleSubmit, formState: { errors }, reset, setValue, watch } = useForm<BudgetSchema>({
     resolver: zodResolver(budgetSchema),
     defaultValues: {
       year: new Date().getFullYear(),
@@ -78,7 +79,7 @@ const BudgetFormModal: React.FC<BudgetFormModalProps> = ({
   return (
     <div className="fixed inset-0 flex items-center justify-center z-[60] p-4 transition-all">
       <div 
-        className="fixed inset-0 bg-black/30 backdrop-blur-sm" 
+        className="fixed inset-0 bg-black/50" 
         onClick={onClose} 
         aria-hidden="true" 
       />
@@ -115,16 +116,14 @@ const BudgetFormModal: React.FC<BudgetFormModalProps> = ({
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">Department</label>
-                <select 
-                  {...register('department')}
-                  disabled={mode === 'edit'} // Lock dept on edit to prevent identity change
-                  className={`w-full px-3 py-2 bg-gray-50 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all ${errors.department ? 'border-red-500' : 'border-gray-200'} ${mode === 'edit' ? 'cursor-not-allowed opacity-70' : ''}`}
-                >
-                  <option value="">Select Dept</option>
-                  {departments.map(dept => (
-                    <option key={dept.id} value={dept.name}>{dept.name}</option>
-                  ))}
-                </select>
+                <Combobox
+                  options={departments.map(dept => ({ value: dept.name, label: dept.name }))}
+                  value={watch('department') || ''}
+                  onChange={(val) => setValue('department', val)}
+                  disabled={mode === 'edit'}
+                  placeholder="Select Dept"
+                  className={errors.department ? 'border-red-500' : ''}
+                />
                 {errors.department && <p className="text-xs text-red-500 mt-1">{errors.department.message}</p>}
               </div>
             </div>

@@ -14,7 +14,7 @@ const notifyDepartmentEmployees = async (params: { senderId: string; title: stri
 
     for (const employee of employees) {
       await createNotification({ 
-        recipientId: employee.employeeId, 
+        recipientId: employee.employeeId || '', 
         senderId: params.senderId, 
         title: params.title, 
         message: params.message, 

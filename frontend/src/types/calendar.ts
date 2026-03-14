@@ -35,7 +35,7 @@ export type EventFormData = {
   time?: string | null;
   description?: string | null;
   department?: string | null;
-  recurringPattern?: 'none' | 'daily' | 'weekly' | 'monthly' | null;
+  recurringPattern: 'none' | 'daily' | 'weekly' | 'monthly';
   recurringEndDate?: string | null;
 };
 

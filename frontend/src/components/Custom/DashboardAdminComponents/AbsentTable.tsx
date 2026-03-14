@@ -72,36 +72,36 @@ export default function AbsentTable({ onClose, employees = [] }: AbsentTableProp
         )}
       </div>
 
-      {/* Styled Table matching PlantillaTable */}
+      {/* Styled Table matching the new design */}
       <div className="flex-1 overflow-auto rounded-lg border border-gray-100">
         <table className="w-full text-sm">
-          <thead className="bg-gray-100 text-gray-700 sticky top-0 z-10">
+          <thead className="bg-gray-200 shadow-md text-gray-700">
             <tr>
-              <th className="px-4 py-3 text-left font-semibold">Status</th>
-              <th className="px-4 py-3 text-left font-semibold">ID</th>
-              <th className="px-4 py-3 text-left font-semibold">Name</th>
-              <th className="px-4 py-3 text-left font-semibold">Department</th>
-              <th className="px-4 py-3 text-left font-semibold">Date</th>
+              <th className="px-4 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap">Status</th>
+              <th className="px-4 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap">ID</th>
+              <th className="px-4 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap">Name</th>
+              <th className="px-4 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap">Department</th>
+              <th className="px-4 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap">Date</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
+          <tbody className="divide-y divide-slate-100">
             {currentEmployees.length ? (
               currentEmployees.map(employee => (
-                <tr key={employee.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-3">
-                    <span className="bg-red-100 text-red-700 px-2 py-1 text-xs font-semibold rounded-full">
+                <tr key={employee.id} className="hover:bg-[#F8F9FA] hover:shadow-xl transition-colors group bg-white">
+                  <td className="px-4 py-4 whitespace-nowrap">
+                    <span className="px-3 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-700">
                       {employee.status}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-gray-600 font-medium">{employee.id}</td>
-                  <td className="px-4 py-3 text-gray-800 font-medium">{employee.name}</td>
-                  <td className="px-4 py-3 text-gray-600">{employee.department}</td>
-                  <td className="px-4 py-3 text-gray-600">{employee.date}</td>
+                  <td className="px-4 py-4 text-sm font-medium text-gray-700 whitespace-nowrap">{employee.id}</td>
+                  <td className="px-4 py-4 text-sm font-semibold text-gray-900 whitespace-nowrap">{employee.name}</td>
+                  <td className="px-4 py-4 text-sm text-gray-600 font-medium whitespace-nowrap">{employee.department}</td>
+                  <td className="px-4 py-4 text-sm text-gray-700 whitespace-nowrap">{employee.date}</td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
+                <td colSpan={5} className="px-4 py-8 text-center text-gray-400 text-sm font-medium">
                   {searchQuery ? 'No matching records' : 'No data available'}
                 </td>
               </tr>

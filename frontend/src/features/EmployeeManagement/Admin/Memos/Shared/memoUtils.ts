@@ -33,8 +33,7 @@ export const formatDate = (dateStr: string | null | undefined): string => {
  * @returns CSS class string
  */
 export const getStatusBadge = (status: string): string => {
-  const normalizedStatus = Object.keys(STATUS_BADGE_STYLES).find(key => key.toLowerCase() === status.toLowerCase());
-  return STATUS_BADGE_STYLES[normalizedStatus || ''] || 'bg-gray-100 text-gray-700';
+  return 'bg-gray-50 text-gray-500 border border-gray-100 uppercase text-[10px] font-bold tracking-wider';
 };
 
 /**
@@ -43,8 +42,7 @@ export const getStatusBadge = (status: string): string => {
  * @returns CSS class string
  */
 export const getPriorityBadge = (priority: string): string => {
-  const normalizedPriority = Object.keys(PRIORITY_BADGE_STYLES).find(key => key.toLowerCase() === priority.toLowerCase());
-  return PRIORITY_BADGE_STYLES[normalizedPriority || ''] || 'bg-gray-100 text-gray-600';
+  return 'bg-gray-50 text-gray-400 border border-gray-100 uppercase text-[10px] font-bold tracking-wider';
 };
 
 /**
@@ -53,13 +51,7 @@ export const getPriorityBadge = (priority: string): string => {
  * @returns CSS class string
  */
 export const getEmployeeStatusBadge = (memo: Memo): string => {
-  if (memo.acknowledgedAt) {
-    return 'bg-green-100 text-green-700';
-  }
-  if (memo.acknowledgmentRequired) {
-    return 'bg-yellow-100 text-yellow-700';
-  }
-  return 'bg-blue-100 text-blue-700';
+  return 'bg-gray-50 text-gray-500 border border-gray-100 uppercase text-[10px] font-bold tracking-wider';
 };
 
 /**

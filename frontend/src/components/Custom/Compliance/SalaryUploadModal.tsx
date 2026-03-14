@@ -3,6 +3,7 @@ import React, { useState, useRef } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Upload, X, AlertCircle, HelpCircle, ArrowRight, FileSpreadsheet, Plus, CornerUpLeft } from 'lucide-react';
 import ExcelJS from 'exceljs';
+import Combobox from '@/components/Custom/Combobox';
 
 interface SalaryUploadModalProps {
     isOpen: boolean;
@@ -187,7 +188,7 @@ export const SalaryUploadModal: React.FC<SalaryUploadModalProps> = ({
     return (
         <div className="fixed inset-0 flex items-center justify-center z-50 p-4 transition-all">
             <div 
-                className="fixed inset-0 bg-black/30 backdrop-blur-sm" 
+                className="fixed inset-0 bg-black/50" 
                 onClick={handleClose}
                 aria-hidden="true"
             />
@@ -223,18 +224,15 @@ export const SalaryUploadModal: React.FC<SalaryUploadModalProps> = ({
                             </div>
                             
                             {mode === 'existing' ? (
-                                <select 
-                                    value={trancheId} 
-                                    onChange={(e) => setTrancheId(Number(e.target.value))}
-                                    className="w-full text-sm border-gray-200 rounded-md bg-gray-50 py-1.5 focus:ring-indigo-500 focus:border-indigo-500 transition-all font-medium text-gray-700"
-                                >
-                                    <option value="" disabled>Select Tranche</option>
-                                    {tranches.map(t => (
-                                        <option key={t.id} value={t.trancheNumber}>
-                                            {t.name} ({t.circularNumber})
-                                        </option>
-                                    ))}
-                                </select>
+                                <Combobox
+                                    options={tranches.map(t => ({ 
+                                        value: String(t.trancheNumber), 
+                                        label: `${t.name} (${t.circularNumber})` 
+                                    }))}
+                                    value={String(trancheId)}
+                                    onChange={(val) => setTrancheId(Number(val))}
+                                    placeholder="Select Tranche"
+                                />
                             ) : (
                                 <div className="space-y-2 bg-gray-50 p-3 rounded-lg border border-gray-200 animate-in fade-in slide-in-from-top-2">
                                     <div className="grid grid-cols-3 gap-2">

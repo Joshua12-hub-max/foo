@@ -33,4 +33,5 @@ export const STATUS_STYLES: Record<string, string> = {
   Late: 'bg-orange-100 text-orange-700',
   Leave: 'bg-blue-100 text-blue-700',
   Rest: 'bg-gray-100 text-gray-700',
+  Pending: 'bg-blue-100 text-blue-700',
 };

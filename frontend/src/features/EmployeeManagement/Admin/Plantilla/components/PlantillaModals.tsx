@@ -182,43 +182,58 @@ export const HistoryModal: React.FC<HistoryModalProps> = memo(({ isOpen, onClose
 
     return (
         <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl border-2 border-gray-200 w-full max-w-md shadow-xl p-6">
+          <div className="bg-white rounded-xl border-2 border-gray-200 w-full max-w-4xl shadow-xl p-6">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-lg font-bold text-gray-800">Position History</h2>
               <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
                 <X size={20} />
               </button>
             </div>
-            <div className="max-h-96 overflow-y-auto text-gray-800">
+            <div className="max-h-[70vh] overflow-y-auto text-gray-800">
               <div className="flex justify-between items-start mb-4">
                 <div>
                   <p className="text-sm text-gray-600 font-bold uppercase tracking-wider">{position?.itemNumber}</p>
-                  <p className="text-sm font-black text-gray-900 leading-tight">{position?.positionTitle}</p>
+                  <p className="text-xl font-black text-gray-900 leading-tight">{position?.positionTitle}</p>
                 </div>
                 {position && !position.isVacant && onPreviewForm33 && (
                     <button 
                         onClick={() => position && onPreviewForm33(position.id)}
-                        className="bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-lg text-[10px] font-black hover:bg-indigo-100 transition-colors flex items-center gap-1.5 shadow-sm border border-indigo-100"
+                        className="bg-indigo-50 text-indigo-700 px-4 py-2 rounded-lg text-xs font-black hover:bg-indigo-100 transition-colors flex items-center gap-2 shadow-sm border border-indigo-100"
                     >
-                        <FileText size={14} /> VIEW CS FORM 33
+                        <FileText size={16} /> VIEW CS FORM 33
                     </button>
                 )}
               </div>
 
               {history.length > 0 ? (
-                <div className="space-y-3">
-                  {history.map((h) => (
-                    <div key={h.id} className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                      <p className="font-medium text-gray-800">{h.employeeName}</p>
-                      <p className="text-sm text-gray-600">
-                        {formatDate(h.startDate)} - {h.endDate ? formatDate(h.endDate) : 'Present'}
-                      </p>
-                      {h.reason && <p className="text-xs text-gray-500 mt-1">Reason: {h.reason}</p>}
-                    </div>
-                  ))}
+                <div className="overflow-x-auto bg-gray-50 rounded-lg border border-gray-100 mt-4">
+                  <table className="w-full min-w-[700px]">
+                    <thead className="bg-gray-200 shadow-md text-gray-700">
+                      <tr>
+                        <th className="px-6 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap uppercase">Employee Name</th>
+                        <th className="px-6 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap uppercase">Start Date</th>
+                        <th className="px-6 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap uppercase">End Date</th>
+                        <th className="px-6 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap uppercase">Reason</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {history.map((h) => (
+                        <tr key={h.id} className="hover:bg-[#F8F9FA] hover:shadow-xl transition-colors bg-white group">
+                          <td className="px-6 py-4 text-sm font-bold text-gray-800">{h.employeeName}</td>
+                          <td className="px-6 py-4 text-sm font-medium text-gray-600">{formatDate(h.startDate)}</td>
+                          <td className="px-6 py-4 text-sm font-medium text-gray-600">
+                            {h.endDate ? formatDate(h.endDate) : <span className="px-2.5 py-1 bg-green-50 text-green-700 rounded-full text-[11px] font-bold tracking-wider border border-green-100">PRESENT</span>}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-500 italic">{h.reason || '-'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               ) : (
-                <p className="text-gray-500 text-center py-8">No history records found.</p>
+                <div className="p-12 text-center text-gray-400 font-bold uppercase tracking-widest text-sm bg-gray-50 rounded-xl border border-gray-100 mt-4">
+                  No history records found for this position.
+                </div>
               )}
             </div>
           </div>

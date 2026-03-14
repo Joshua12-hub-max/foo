@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Drawing;
 using System.IO;
 using System.IO.Ports;
@@ -13,7 +13,7 @@ namespace BioMiddleware
     {
         // Config
         private const int HOST_BAUD = 115200;
-        private const int SCAN_INTERVAL_MS = 350;
+        private const int SCAN_INTERVAL_MS = 1000; // Slower polling for better stability
         private const int NO_MATCH_UI_THROTTLE_SEC = 2;
         private const int MATCH_COOLDOWN_SEC = 60; // Up from 6 to prevent spam scans
 
@@ -53,11 +53,25 @@ namespace BioMiddleware
             SetupCommon();
         }
 
-        // Keep constructor for backward compatibility / debug
         public Form1(string empId, string name) : this()
         {
-             // This logic is now mostly superseded by WebSocket commands, 
-             // but keeping it won't hurt.
+             // Support URI-based enrollment (e.g., nebr-bio://enroll?employeeId=Emp-001&name=Joshua)
+             if (!string.IsNullOrEmpty(empId))
+             {
+                 // Extract numeric ID
+                 string rawId = empId.Replace("Emp-", "").Trim();
+                 if (int.TryParse(rawId, out int id))
+                 {
+                     // Use a small delay to ensure device is connected before starting enrollment
+                     Timer t = new Timer();
+                     t.Interval = 2000;
+                     t.Tick += (s, e) => {
+                         t.Stop();
+                         if (IsDeviceReady()) StartEnrollment(id, name, "Unassigned");
+                     };
+                     t.Start();
+                 }
+             }
         }
 
         // Tray Icon
@@ -139,19 +153,28 @@ namespace BioMiddleware
                     try 
                     {
                         var parts = payload.Split('|');
-                        if (parts.Length > 0 && int.TryParse(parts[0], out int id))
+                        if (parts.Length > 0)
                         {
-                            string name = parts.Length > 1 ? parts[1] : "Unknown";
-                            string dept = parts.Length > 2 ? parts[2] : "Unassigned";
-                            // Invoke on UI Thread
-                            this.Invoke((MethodInvoker)delegate {
-                                StartEnrollment(id, name, dept);
-                            });
+                            string rawId = parts[0].Replace("Emp-", "").Trim();
+                            if (int.TryParse(rawId, out int id))
+                            {
+                                string name = parts.Length > 1 ? parts[1] : "Unknown";
+                                string dept = parts.Length > 2 ? parts[2] : "Unassigned";
+                                // Invoke on UI Thread
+                                this.Invoke((MethodInvoker)delegate {
+                                    StartEnrollment(id, name, dept);
+                                });
+                            }
+                            else
+                            {
+                                Console.WriteLine("Invalid ID format in ENROLL_START: " + parts[0]);
+                                _wsServer?.Broadcast("DEBUG: Invalid ID Format " + parts[0]);
+                            }
                         }
                         else 
                         {
-                            Console.WriteLine("Invalid ENROLL_START payload: " + payload);
-                            _wsServer?.Broadcast("DEBUG: Invalid Payload");
+                            Console.WriteLine("Empty ENROLL_START payload");
+                            _wsServer?.Broadcast("DEBUG: Empty Payload");
                         }
                     }
                     catch(Exception ex)
@@ -233,6 +256,9 @@ namespace BioMiddleware
 
         private void tmrScan_Tick(object? sender, EventArgs e)
         {
+            // DISABLED: Polling with SCAN causes serial congestion while in ATTEND mode.
+            // Arduino is now responsible for pushing EVENT MATCH autonomously.
+            /*
             if (!IsDeviceReady()) return;
             if (_isEnrolling) return;
 
@@ -244,6 +270,7 @@ namespace BioMiddleware
             {
                 Log("SCAN_ERR: " + ex.Message);
             }
+            */
         }
 
         // Device lifecycle
@@ -281,13 +308,10 @@ namespace BioMiddleware
                     line = (line ?? "").Trim();
                     if (line.Length == 0) return;
 
-                    if (line.StartsWith("OK ")) return;
+                    // Log all incoming lines for debugging (except spam OKs)
+                    if (!line.StartsWith("OK ")) Log(line);
 
-                    if (line.StartsWith("ERR ") || line.StartsWith("EVENT "))
-                    {
-                        Log(line);
-                        HandleDeviceLine(line);
-                    }
+                    HandleDeviceLine(line);
                 }));
 
                 _serial.Status += s => BeginInvoke((Action)(() =>
@@ -302,7 +326,7 @@ namespace BioMiddleware
                 }));
 
                 _serial.Open();
-                _serial.SendLine("MODE ENROLL");
+                _serial.SendLine("MODE ATTEND");
 
                 ResetEnrollSession();
                 ResetUiThrottles();
@@ -314,7 +338,6 @@ namespace BioMiddleware
 
                 ResumeScanning();
                 Log("SYS CONNECTED: " + port);
-                Log("SYS SCANNER READY");
             }
             catch (Exception ex)
             {
@@ -353,10 +376,11 @@ namespace BioMiddleware
 
         private void ResumeScanning()
         {
-            if (IsDeviceReady() && !_isEnrolling)
-            {
-                try { tmrScan.Start(); } catch { }
-            }
+            // Scanning is now passive; tmrScan is disabled to prevent congestion.
+            // if (IsDeviceReady() && !_isEnrolling)
+            // {
+            //     try { tmrScan.Start(); } catch { }
+            // }
         }
 
         private void ResetEnrollSession()
@@ -375,17 +399,57 @@ namespace BioMiddleware
         }
 
         // Device line handling
+        private string _lastReportedErr = "";
         private void HandleDeviceLine(string line)
         {
-            if (!line.StartsWith("EVENT ")) return;
-            
-            // Forward raw events to WS for debug (optional)
-            // _wsServer?.Broadcast("DEBUG:" + line);
-
             var parts = line.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
             if (parts.Length < 2) return;
 
+            var type = parts[0];
             var kind = parts[1];
+
+            // Handle Device Errors on UI
+            if (type == "ERR")
+            {
+                if (line == _lastReportedErr) return; // Suppress spam
+                _lastReportedErr = line;
+
+                lblBigStatus.Text = "SENSOR ERROR";
+                SetIconWarning();
+                
+                // Human Readable Diagnostics
+                if (line.Contains("SENSOR_NOT_RESPONDING") || line.Contains("PACKETRECIEVEERR") || line.EndsWith(" 1"))
+                {
+                    lblStatus.Text = "Hardware Connection Issue (Check Wires/USB)";
+                    Log("SYS SENSOR_ERROR: Connection Failure");
+                }
+                else
+                {
+                    lblStatus.Text = "Error: " + line;
+                }
+
+                _wsServer?.Broadcast("DEBUG: Device Error " + line);
+                return;
+            }
+
+            if (type == "OK")
+            {
+                if (kind == "READY" || kind == "BOOT")
+                {
+                    lblBigStatus.Text = "SCANNER READY";
+                    lblStatus.Text = "Connected and Ready";
+                    SetIconStandby();
+                    Log("SYS SCANNER READY");
+                    _wsServer?.Broadcast("SCANNER_READY");
+                }
+                return;
+            }
+
+            _lastReportedErr = ""; // Reset on event
+            if (type != "EVENT") return;
+            
+            // Forward raw events to WS for debug (optional)
+            // _wsServer?.Broadcast("DEBUG:" + line);
 
             if (kind == "ENROLL_OK" && parts.Length >= 3)
             {
@@ -429,66 +493,106 @@ namespace BioMiddleware
             }
         }
 
+        private string FormatEmpId(int id) => $"Emp-{id:D3}";
+        
         private void HandleMatch(string[] parts)
         {
-            if (!int.TryParse(parts[2], out int empId)) return;
+            if (!int.TryParse(parts[2], out int rawBioId)) return;
             if (!int.TryParse(parts[3], out int confidence)) confidence = 0;
 
+            string empId = FormatEmpId(rawBioId);
             var now = DateTime.Now;
 
-            if (empId == _lastMatchEmpId && (now - _lastMatchLogAt).TotalSeconds < MATCH_COOLDOWN_SEC)
+            // Cooldown check to prevent multiple inserts for the same physical scan trigger
+            if (rawBioId == _lastMatchEmpId && (now - _lastMatchLogAt).TotalSeconds < MATCH_COOLDOWN_SEC)
                 return;
 
-            _lastMatchEmpId = empId;
+            _lastMatchEmpId = rawBioId;
             _lastMatchLogAt = now;
 
-            var name = DbGetEmployeeName(empId);
-            
-            // Websocket Broadcast Match
-            _wsServer?.Broadcast($"SCAN_MATCH:{empId}|{name ?? "Unknown"}");
-
-            if (string.IsNullOrWhiteSpace(name))
+            try 
             {
-                lblBigStatus.Text = $"NOT REGISTERED (ID {empId})";
-                lblStatus.Text = "Unenrolled";
-                SetIconUnenrolled();
+                var name = DbGetEmployeeName(empId);
+                
+                // Websocket Broadcast Match - ALWAYS broadcast so the UI knows SOMEONE scanned
+                _wsServer?.Broadcast($"SCAN_MATCH:{empId}|{name ?? "Unknown User"}");
 
-                Log($"SYS NOT_REGISTERED: {empId} (conf {confidence})");
-                ScheduleStandbyReturn();
-                return;
-            }
+                if (string.IsNullOrWhiteSpace(name))
+                {
+                    lblBigStatus.Text = $"NOT REGISTERED (ID {rawBioId})";
+                    lblStatus.Text = "Unenrolled";
+                    SetIconUnenrolled();
 
-            var allowed = DbGetAllowedCardTypeForToday(empId, now, out var reason);
-            if (allowed == null)
-            {
-                lblBigStatus.Text = "Already completed today";
-                lblStatus.Text = $"{name} (ID {empId})";
-                SetIconWarning();
+                    Log($"SYS NOT_REGISTERED: BioID {rawBioId} (Mapped to {empId})");
+                    
+                    try { _serial?.SendLine("LCD_UNENROLLED"); } catch { }
+                    
+                    ScheduleStandbyReturn();
+                    return;
+                }
 
-                Log($"SYS BLOCKED: {empId} | {name} | {reason}");
-                ScheduleStandbyReturn();
-                return;
-            }
+                // Get the suggested card type (flexible logic, never returns null under normal conditions)
+                var allowed = DbGetAllowedCardTypeForToday(empId, now, out var reason);
+                
+                if (allowed == null)
+                {
+                    // Backup safety (though DbGetAllowedCardTypeForToday is now designed to always return a type)
+                    lblBigStatus.Text = "Scan Blocked";
+                    lblStatus.Text = reason ?? "Policy violation";
+                    SetIconWarning();
 
-            try
-            {
+                    Log($"SYS BLOCKED: {empId} | {name} | {reason}");
+                    try { _serial?.SendLine($"LCD_BLOCK {name}|{reason}"); } catch { }
+                    ScheduleStandbyReturn();
+                    return;
+                }
+
+                // Double Log Strategy: Insert to BOTH biometric-dedicated and HR-general logs
                 DbInsertBioAttendance(empId, allowed, now);
                 DbInsertHrAttendance(empId, allowed, now);
 
                 lblBigStatus.Text = $"{allowed} - {name}";
-                lblStatus.Text = $"Logged {now:yyyy-MM-dd HH:mm:ss} (conf {confidence})";
+                lblStatus.Text = $"Logged {now:yyyy-MM-dd HH:mm:ss}";
                 SetIconSuccess();
 
-                Log($"SYS LOGGED: {empId} | {name} | {allowed} | {now:yyyy-MM-dd HH:mm:ss} | conf {confidence}");
+                Log($"SYS LOGGED: {empId} | {name} | {allowed}");
+                
+                // Build LCD_INFO with First-In/Current-Out data
+                var timeInStr = "--:--";
+                var timeOutStr = "--:--";
+
+                if (allowed == "IN")
+                {
+                    timeInStr = now.ToString("hh:mmtt");
+                }
+                else
+                {
+                    var timeIn = DbGetTimeInForToday(empId, now);
+                    timeInStr = timeIn?.ToString("hh:mmtt") ?? "--:--";
+                    timeOutStr = now.ToString("hh:mmtt");
+                }
+
+                var lcdName = name!.Length > 12 ? name!.Substring(0, 12) : name;
+                var lcdDate = now.ToString("MM/dd");
+                var lcdTime = now.ToString("hh:mmtt");
+
+                try 
+                { 
+                    _serial?.SendLine($"LCD_INFO {empId}|{lcdName}|{lcdDate}|{lcdTime}|{allowed}|{timeInStr}|{timeOutStr}"); 
+                } 
+                catch (Exception ex)
+                {
+                    Log("LCD_WRITE_FAIL: " + ex.Message);
+                }
+                
                 ScheduleStandbyReturn();
             }
             catch (Exception ex)
             {
-                lblBigStatus.Text = "DB LOG FAILED";
-                lblStatus.Text = "Database error";
+                lblBigStatus.Text = "DB ERROR";
+                lblStatus.Text = "Scan failed to log";
                 SetIconWarning();
-
-                Log("DB_ERR LOG: " + ex.Message);
+                Log("DB_ERR HANDLE_MATCH: " + ex.Message);
                 ScheduleStandbyReturn();
             }
         }
@@ -504,6 +608,8 @@ namespace BioMiddleware
             SetIconUnenrolled();
             
             _wsServer?.Broadcast("SCAN_NO_MATCH");
+
+            try { _serial?.SendLine("LCD_UNENROLLED"); } catch { }
 
             Log("SYS NO_MATCH");
             ScheduleStandbyReturn();
@@ -585,25 +691,27 @@ namespace BioMiddleware
             }
         }
 
-        private void HandleEnrollOk(int enrolledId)
+        private void HandleEnrollOk(int rawEnrolledId)
         {
-            if (!_isEnrolling || enrolledId != _pendingEnrollId)
+            if (!_isEnrolling || rawEnrolledId != _pendingEnrollId)
             {
-                Log($"SYS ENROLL_OK (IGNORED): {enrolledId}");
+                Log($"SYS ENROLL_OK (IGNORED): {rawEnrolledId}");
                 return;
             }
 
+            string empId = FormatEmpId(rawEnrolledId);
+
             try
             {
-                DbUpsertEnrolledUser(_pendingEnrollId, _pendingEnrollName, _pendingEnrollDept);
+                DbUpsertEnrolledUser(empId, _pendingEnrollName, _pendingEnrollDept);
 
-                lblBigStatus.Text = $"✅ ENROLLED ID {_pendingEnrollId}";
+                lblBigStatus.Text = $"✅ ENROLLED ID {empId}";
                 lblStatus.Text = "Saved";
                 SetIconSuccess();
                 
                 _wsServer?.Broadcast("ENROLL_SUCCESS");
 
-                Log($"SYS ENROLL_SAVED: {_pendingEnrollId} | {_pendingEnrollName}");
+                Log($"SYS ENROLL_SAVED: {empId} | {_pendingEnrollName}");
             }
             catch (Exception ex)
             {
@@ -620,7 +728,7 @@ namespace BioMiddleware
             {
                 ResetEnrollSession();
 
-                try { _serial?.SendLine("MODE ENROLL"); } catch { }
+                try { _serial?.SendLine("MODE ATTEND"); } catch { }
 
                 SetUiStandby("ENROLL_DONE");
                 ResumeScanning();
@@ -635,27 +743,27 @@ namespace BioMiddleware
             con.Open();
 
             using var cmd = con.CreateCommand();
+            // Handle both 'Emp-1' and '1' formats for ID sequence detection
             cmd.CommandText = @"
-                SELECT employee_id
+                SELECT DISTINCT CAST(REGEXP_REPLACE(employee_id, '[^0-9]', '') AS UNSIGNED) as id
                 FROM bio_enrolled_users
-                WHERE employee_id BETWEEN 1 AND 200
-                ORDER BY employee_id ASC";
+                ORDER BY id ASC";
 
             using var r = cmd.ExecuteReader();
             int expected = 1;
 
             while (r.Read())
             {
-                int id = r.GetInt32(0);
+                int id = Convert.ToInt32(r["id"]);
                 if (id == expected) expected++;
                 else if (id > expected) break;
             }
 
-            if (expected > 200) throw new Exception("No available ID slots (1–200) left.");
+            if (expected > 200) throw new Exception("No available biometric slots (1–200) left.");
             return expected;
         }
 
-        private void DbUpsertEnrolledUser(int employeeId, string fullName, string department)
+        private void DbUpsertEnrolledUser(string employeeId, string fullName, string department)
         {
             using var con = new MySqlConnection(_cs);
             con.Open();
@@ -676,16 +784,18 @@ namespace BioMiddleware
         }
 
 
-        private string? DbGetEmployeeName(int employeeId)
+        private string? DbGetEmployeeName(string employeeId)
         {
             using var con = new MySqlConnection(_cs);
             con.Open();
 
             using var cmd = con.CreateCommand();
+            // Robust lookup: try literal match first, then numeric normalization if needed
             cmd.CommandText = @"
                 SELECT full_name
                 FROM bio_enrolled_users
-                WHERE employee_id=@id AND user_status='active'
+                WHERE (employee_id=@id OR CAST(REGEXP_REPLACE(employee_id, '[^0-9]', '') AS UNSIGNED) = CAST(REGEXP_REPLACE(@id, '[^0-9]', '') AS UNSIGNED))
+                  AND user_status='active'
                 LIMIT 1";
             cmd.Parameters.AddWithValue("@id", employeeId);
 
@@ -693,7 +803,7 @@ namespace BioMiddleware
             return val?.ToString();
         }
 
-        private string? DbGetAllowedCardTypeForToday(int employeeId, DateTime now, out string? blockReason)
+        private string DbGetAllowedCardTypeForToday(string employeeId, DateTime now, out string? blockReason)
         {
             blockReason = null;
 
@@ -719,14 +829,19 @@ namespace BioMiddleware
                 outCount = r.IsDBNull(1) ? 0 : Convert.ToInt32(r.GetValue(1));
             }
 
-            if (inCount <= 0 && outCount <= 0) return "IN";
-            if (inCount > 0 && outCount <= 0) return "OUT";
+            // FLEXIBLE LOGIC:
+            // 1. No logs yet? -> Suggest IN
+            if (inCount == 0) return "IN";
+            
+            // 2. Already has IN but no OUT? -> Suggest OUT
+            if (outCount == 0) return "OUT";
 
-            blockReason = "Already completed today";
-            return null;
+            // 3. Already has both? -> Default to OUT (allows re-logging exit time)
+            // This ensures they are never locked out of the system.
+            return "OUT";
         }
 
-        private void DbInsertBioAttendance(int employeeId, string cardType, DateTime now)
+        private void DbInsertBioAttendance(string employeeId, string cardType, DateTime now)
         {
             using var con = new MySqlConnection(_cs);
             con.Open();
@@ -737,12 +852,12 @@ namespace BioMiddleware
                 VALUES(@id,@ct,@d,@t)";
             cmd.Parameters.AddWithValue("@id", employeeId);
             cmd.Parameters.AddWithValue("@ct", cardType);
-            cmd.Parameters.AddWithValue("@d", now.Date);
-            cmd.Parameters.AddWithValue("@t", now.TimeOfDay);
+            cmd.Parameters.AddWithValue("@d", now.ToString("yyyy-MM-dd"));
+            cmd.Parameters.AddWithValue("@t", now.ToString("HH:mm:ss"));
             cmd.ExecuteNonQuery();
         }
 
-        private void DbInsertHrAttendance(int employeeId, string cardType, DateTime now)
+        private void DbInsertHrAttendance(string employeeId, string cardType, DateTime now)
         {
             using var con = new MySqlConnection(_cs);
             con.Open();
@@ -751,10 +866,34 @@ namespace BioMiddleware
             cmd.CommandText = @"
                 INSERT INTO attendance_logs(employee_id, scan_time, type, source)
                 VALUES(@eid,@scan,@type,'BIOMETRIC')";
-            cmd.Parameters.AddWithValue("@eid", employeeId.ToString());
-            cmd.Parameters.AddWithValue("@scan", now);
+            cmd.Parameters.AddWithValue("@eid", employeeId);
+            cmd.Parameters.AddWithValue("@scan", now.ToString("yyyy-MM-dd HH:mm:ss"));
             cmd.Parameters.AddWithValue("@type", cardType);
             cmd.ExecuteNonQuery();
+        }
+
+        private DateTime? DbGetTimeInForToday(string employeeId, DateTime now)
+        {
+            using var con = new MySqlConnection(_cs);
+            con.Open();
+
+            using var cmd = con.CreateCommand();
+            cmd.CommandText = @"
+                SELECT log_time
+                FROM bio_attendance_logs
+                WHERE employee_id=@id AND log_date=@d AND card_type='IN'
+                ORDER BY log_time ASC
+                LIMIT 1";
+            cmd.Parameters.AddWithValue("@id", employeeId);
+            cmd.Parameters.AddWithValue("@d", now.Date);
+
+            var val = cmd.ExecuteScalar();
+            if (val == null || val is DBNull) return null;
+
+            if (val is TimeSpan ts)
+                return now.Date.Add(ts);
+
+            return null;
         }
 
         // Icons

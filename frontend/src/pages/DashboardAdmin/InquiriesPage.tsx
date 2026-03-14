@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { inquiryApi, Inquiry } from '@/api/inquiryApi';
 import { 
   Mail, MessageSquare, Clock, Filter, CheckCircle2, 
-  Trash2, Eye, Archive, Reply, Loader2, Search, AlertCircle
+  Trash2, Archive, Reply, Loader2, Search, AlertCircle, X, CheckCircle2
 } from 'lucide-react';
 import { useToastStore } from '@/stores';
 
@@ -177,7 +177,7 @@ const InquiriesPage = () => {
                     onClick={() => setSelectedInquiry(null)}
                     className="p-2.5 text-slate-400 hover:bg-slate-100 rounded-xl transition-colors"
                   >
-                    <Eye size={20} />
+                    <X size={20} />
                   </button>
                 </div>
               </div>
@@ -226,7 +226,7 @@ const InquiriesPage = () => {
                           onClick={() => updateStatusMutation.mutate({ id: selectedInquiry.id, status: 'Read' })}
                           className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl text-xs font-black shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all active:scale-95"
                         >
-                          <Eye size={14} /> MARK AS READ
+                          <CheckCircle2 size={14} /> MARK AS READ
                         </button>
                       )}
                       {selectedInquiry.status !== 'Archived' && (

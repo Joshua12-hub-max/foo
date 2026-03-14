@@ -58,6 +58,7 @@ import {
 } from '@/utils/cscFormExports';
 
 import PSIPOPModal from '@features/EmployeeManagement/Admin/Plantilla/components/PSIPOPModal';
+import Combobox from '@/components/Custom/Combobox';
 
 import { Position } from '@/api/plantillaApi';
 
@@ -329,43 +330,48 @@ const ComplianceReportsDashboard: React.FC = () => {
                 {reports.map((report) => (
                     <div 
                         key={report.id} 
-                        className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm hover:shadow-md hover:border-gray-300 transition-all group"
+                        className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm hover:shadow-md hover:border-gray-300 transition-all duration-300 group"
                     >
-                        <div className="flex items-start justify-end mb-3">
-                            <span className="px-2.5 py-1 bg-gray-100 text-gray-600 text-[10px] font-bold rounded-full uppercase tracking-wider">
+                        <div className="flex items-center justify-between mb-3">
+                            <div className={`w-8 h-8 rounded-lg shadow-sm group-hover:scale-110 transition-transform ${
+                                report.id === 'form9' ? 'bg-blue-500' :
+                                report.id === 'form33' ? 'bg-emerald-500' :
+                                'bg-amber-500'
+                            }`}></div>
+                            <span className="px-2.5 py-1 bg-gray-100 text-gray-500 text-[10px] font-bold rounded-full uppercase tracking-widest">
                                 {report.frequency}
                             </span>
                         </div>
                         
-                        <h4 className="text-base font-bold text-gray-900 mb-1 transition-colors">
+                        <h4 className="text-sm font-bold text-gray-900 group-hover:text-blue-600 transition-colors mb-1">
                             {report.title}
                         </h4>
-                        <p className="text-gray-500 text-xs mb-4 h-8 line-clamp-2 leading-relaxed">
+                        <p className="text-gray-500 text-[11px] mb-4 h-8 line-clamp-2 leading-relaxed">
                             {report.description}
                         </p>
 
                         <div className="flex gap-2 pt-3 border-t border-gray-100">
                             <button 
                                 onClick={() => handlePreviewClick(report.id)}
-                                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300 text-gray-600 hover:text-gray-800 rounded-lg text-xs font-semibold transition-all active:scale-95"
+                                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300 text-gray-700 hover:text-gray-900 rounded-lg text-xs font-bold transition-all active:scale-95 shadow-sm"
                             >
-                                <Printer size={14} />
+                                <Printer size={14} className="text-gray-400 group-hover:text-blue-500 transition-colors" />
                                 Preview
                             </button>
                             <button 
                                 onClick={() => handleDownload(report.id, 'excel')}
-                                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300 text-gray-600 hover:text-gray-800 rounded-lg text-xs font-semibold transition-all active:scale-95"
+                                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300 text-gray-700 hover:text-gray-900 rounded-lg text-xs font-bold transition-all active:scale-95 shadow-sm"
                                 title="Export to Excel"
                             >
-                                <Download size={14} />
+                                <Download size={14} className="text-gray-400 group-hover:text-green-500 transition-colors" />
                                 Excel
                             </button>
                             <button 
                                 onClick={() => handleDownload(report.id, 'pdf')}
-                                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300 text-gray-600 hover:text-gray-800 rounded-lg text-xs font-semibold transition-all active:scale-95"
+                                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300 text-gray-700 hover:text-gray-900 rounded-lg text-xs font-bold transition-all active:scale-95 shadow-sm"
                                 title="Export to PDF"
                             >
-                                <Download size={14} />
+                                <Download size={14} className="text-gray-400 group-hover:text-red-500 transition-colors" />
                                 PDF
                             </button>
                         </div>
@@ -375,7 +381,7 @@ const ComplianceReportsDashboard: React.FC = () => {
 
             {/* Selection Modal */}
             {isModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-in fade-in">
                     <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6 animate-in zoom-in-95 duration-200">
                         <div className="flex justify-between items-center mb-4">
                             <h3 className="text-lg font-bold text-gray-900">Select Appointment</h3>
@@ -392,18 +398,15 @@ const ComplianceReportsDashboard: React.FC = () => {
                             {loadingPositions ? (
                                 <div className="text-center py-4 text-emerald-600">Loading positions...</div>
                             ) : (
-                                <select 
-                                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none"
+                                <Combobox
+                                    options={positions.map((p) => ({ 
+                                        value: String(p.id), 
+                                        label: `${p.positionTitle} - ${p.incumbentName || 'Unknown'} (${p.itemNumber})` 
+                                    }))}
                                     value={selectedPositionId}
-                                    onChange={(e) => setSelectedPositionId(e.target.value)}
-                                >
-                                    <option value="">-- Select a Position --</option>
-                                    {positions.map((p) => (
-                                        <option key={p.id} value={p.id}>
-                                            {p.positionTitle} - {p.incumbent_name || 'Unknown'} ({p.itemNumber})
-                                        </option>
-                                    ))}
-                                </select>
+                                    onChange={(val) => setSelectedPositionId(val)}
+                                    placeholder="Select employee/position"
+                                />
                             )}
                             
                             <div className="flex justify-end gap-2 mt-6">

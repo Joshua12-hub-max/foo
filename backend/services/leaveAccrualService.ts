@@ -132,7 +132,7 @@ export const accrueCreditsForMonth = async (month: number, year: number, specifi
       const { employeeId } = employee;
 
       // 2. Calculate LWOP
-      const lwopDays = await getLWOPDays(employeeId, month, year);
+      const lwopDays = await getLWOPDays(employeeId || '', month, year);
       
       // 3. Calculate Days Present (Service)
       // Standard 30 days - LWOP
@@ -145,7 +145,7 @@ export const accrueCreditsForMonth = async (month: number, year: number, specifi
       if (earnedCredits > 0) {
            // Update VL
            await updateBalanceInternal(
-               employeeId,
+               employeeId || '',
                'Vacation Leave',
                earnedCredits,
                remarks
@@ -153,7 +153,7 @@ export const accrueCreditsForMonth = async (month: number, year: number, specifi
 
            // Update SL
             await updateBalanceInternal(
-               employeeId,
+               employeeId || '',
                'Sick Leave',
                earnedCredits,
                remarks

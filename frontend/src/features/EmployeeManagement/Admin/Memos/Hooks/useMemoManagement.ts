@@ -107,12 +107,12 @@ export const useMemoManagement = (): UseMemoManagementReturn => {
         fetchMemos({ ...currentFilters, page: currentPage, limit: LIMIT }),
         fetchEmployees()
       ]);
-      const employeesResult = employeesRes as { employees?: Array<{ id: number; firstName?: string; firstName?: string; lastName?: string; lastName?: string }> };
+      const employeesResult = employeesRes as { employees?: Array<{ id: number; firstName?: string; lastName?: string }> };
       const rawEmployees = employeesResult.employees || (Array.isArray(employeesRes) ? employeesRes : []);
       const mappedEmployees: Employee[] = rawEmployees.map((emp) => ({
         id: emp.id,
-        firstName: emp.firstName || emp.firstName || '',
-        lastName: emp.lastName || emp.lastName || ''
+        firstName: emp.firstName || '',
+        lastName: emp.lastName || ''
       }));
       setEmployees(mappedEmployees);
 

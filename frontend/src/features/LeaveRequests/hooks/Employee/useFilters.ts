@@ -75,9 +75,9 @@ export const useFilters = (data: EmployeeLeaveRequest[] = []) => {
     // Apply date filter
     if (appliedFilters.date) {
       result = result.filter((item) => 
-        item.fromDate === appliedFilters.date || 
-        item.toDate === appliedFilters.date ||
-        (appliedFilters.date >= item.fromDate && appliedFilters.date <= item.toDate)
+        item.startDate === appliedFilters.date || 
+        item.endDate === appliedFilters.date ||
+        (appliedFilters.date >= item.startDate && appliedFilters.date <= item.endDate)
       );
     }
 

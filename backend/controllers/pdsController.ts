@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { db } from '../db/index.js';
-import { eq } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
 import { MySqlTable } from 'drizzle-orm/mysql-core';
 import { AuthenticatedRequest } from '../types/index.js';
 import { 
@@ -65,10 +65,8 @@ export const getPDSSection = async (req: Request, res: Response): Promise<void> 
       userId = parseInt(targetEmployeeId as string);
     }
 
-    // Use Drizzle's typed selection
-    // Explicitly cast to internal base table with employeeId
-    const baseTable = table as unknown as { employeeId: unknown } & MySqlTable;
-    const rows = await db.select().from(table).where(eq(baseTable.employeeId, userId));
+    // Use Drizzle's sql tagged template for typesafe querying
+    const rows = await db.select().from(table).where(sql`employee_id = ${userId}`);
     res.json({ success: true, data: rows });
   } catch (_error) {
 
@@ -110,10 +108,9 @@ export const updatePDSSection = async (req: Request, res: Response): Promise<voi
       userId = parseInt(targetEmployeeId.toString());
     }
 
-    const baseTable = table as unknown as { employeeId: unknown } & MySqlTable;
     await db.transaction(async (tx) => {
       // 1. Delete all existing records for this user and section
-      await tx.delete(table).where(eq(baseTable.employeeId, userId));
+      await tx.delete(table).where(sql`employee_id = ${userId}`);
 
       // 2. Insert new records
       if (items.length > 0) {

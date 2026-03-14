@@ -6,7 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@hooks/useAuth";
 import { attendanceApi, DashboardStatsResponse, EmployeeStats } from "@api/attendanceApi";
 import { useUIStore } from "@/stores/uiStore";
-import { User, Employee } from "@/types";
+import { User } from "@/types";
 
 // Dashboard Components
 import Sidebar from "@components/Custom/DashboardAdminComponents/Sidebar";
@@ -27,7 +27,7 @@ import RegularizationWidget from "../../features/Dashboard/components/Regulariza
 import { 
   LayoutDashboard, Clock, Users, Briefcase, 
   Award, Settings, Mail, MessageCircle, LucideIcon,
-  Wallet, FileText
+  Wallet, FileText, MessageSquare, ShieldCheck
 } from "lucide-react";
 
 // --- Interfaces ---
@@ -38,12 +38,25 @@ export interface StatCardData {
   data: number;
 }
 
+export interface DashboardEmployee extends EmployeeStats {
+  name: string;
+  department: string;
+  status?: string;
+  timeIn?: string;
+  timeOut?: string;
+  date?: string;
+  position?: string;
+  jobTitle?: string;
+  dateHired?: string;
+  [key: string]: any;
+}
+
 export interface EmployeeLists {
-  present: Employee[];
-  absent: Employee[];
-  late: Employee[];
-  onLeave: Employee[];
-  hired: Employee[];
+  present: DashboardEmployee[];
+  absent: DashboardEmployee[];
+  late: DashboardEmployee[];
+  onLeave: DashboardEmployee[];
+  hired: DashboardEmployee[];
 }
 
 export interface NavItem {
@@ -162,12 +175,12 @@ export default function HDashboard(): React.ReactElement {
   }, [dashboardData]);
 
   const employeeLists = useMemo(() => {
-    const processList = (list?: EmployeeStats[]): Employee[] => (list || []).map(emp => ({
+    const processList = (list?: EmployeeStats[]): DashboardEmployee[] => (list || []).map(emp => ({
       ...emp,
       id: Number(emp.id) || 0,
       name: String(emp.name || `${emp.firstName || ''} ${emp.lastName || ''}`.trim()),
       department: String(emp.department || emp.departmentName || ''),
-    } as Employee));
+    } as DashboardEmployee));
 
     const lists = dashboardData?.lists;
     return {
@@ -230,6 +243,9 @@ export default function HDashboard(): React.ReactElement {
         { name: "Job Postings", action: "recruitment/jobs" },
         { name: "Applicant List", action: "recruitment/applicants" },
         { name: "Interview Pipeline", action: "recruitment/interviews" },
+        { name: "Live Support Chat", action: "recruitment/support" },
+        { name: "Public Inquiries", action: "recruitment/inquiries" },
+        { name: "Security Audit Logs", action: "recruitment/audit" },
       ]
     },
     { name: "Performance Evaluation", icon: Award, action: "performance-reviews" },

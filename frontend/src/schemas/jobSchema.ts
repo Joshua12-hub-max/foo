@@ -16,6 +16,11 @@ export const jobSchema = z.object({
   requireCivilService: z.boolean(),
   requireGovernmentIds: z.boolean(),
   requireEducationExperience: z.boolean(),
+  education: z.string().nullish(),
+  experience: z.string().nullish(),
+  training: z.string().nullish(),
+  eligibility: z.string().nullish(),
+  otherQualifications: z.string().nullish(),
 });
 
 export type JobSchema = z.infer<typeof jobSchema>;

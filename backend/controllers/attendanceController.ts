@@ -4,7 +4,6 @@ import {
   attendanceLogs, 
   dailyTimeRecords, 
   authentication, 
-  schedules, 
   leaveApplications, 
   recruitmentApplicants, 
   recruitmentJobs,
@@ -20,9 +19,10 @@ import {
 } from "../schemas/attendanceSchema.js";
 import { AttendanceLogApiResponse, DTRApiResponse } from "../types/attendance.js";
 import { formatToManilaDateTime } from "../utils/dateUtils.js";
+import { compareIds } from "../utils/idUtils.js";
 
 
-const handleError = (res: Response, error: Error, context: string): void => {
+const handleError = (res: Response, _error: Error, context: string): void => {
 
   res.status(500).json({
     success: false,
@@ -144,7 +144,7 @@ export const getLogs = async (req: Request, res: Response): Promise<void> => {
   try {
     const whereConditions = [];
     if (targetEmployeeId && targetEmployeeId !== 'all' && targetEmployeeId !== 'All Employees') {
-      whereConditions.push(eq(dailyTimeRecords.employeeId, targetEmployeeId as string));
+      whereConditions.push(compareIds(dailyTimeRecords.employeeId, targetEmployeeId as string));
     }
     if (startDate && endDate) {
       whereConditions.push(between(dailyTimeRecords.date, startDate, endDate));
@@ -183,7 +183,8 @@ export const getLogs = async (req: Request, res: Response): Promise<void> => {
       lastName: authentication.lastName,
       middleName: authentication.middleName,
       suffix: authentication.suffix,
-      department: sql<string>`COALESCE(${departments.name}, ${authentication.department}, 'N/A')`,
+      bioFullName: bioEnrolledUsers.fullName,
+      department: sql<string>`COALESCE(${departments.name}, ${authentication.department}, ${bioEnrolledUsers.department}, 'N/A')`,
       duties: sql<string>`(SELECT schedule_title FROM schedules WHERE employee_id = ${dailyTimeRecords.employeeId} ORDER BY updated_at DESC LIMIT 1)`,
       correctionId: dtrCorrections.id,
       correctionStatus: dtrCorrections.status,
@@ -192,8 +193,9 @@ export const getLogs = async (req: Request, res: Response): Promise<void> => {
       correctionTimeOut: dtrCorrections.correctedTimeOut,
     })
     .from(dailyTimeRecords)
-    .leftJoin(authentication, eq(dailyTimeRecords.employeeId, authentication.employeeId))
+    .leftJoin(authentication, compareIds(dailyTimeRecords.employeeId, authentication.employeeId))
     .leftJoin(departments, eq(authentication.departmentId, departments.id))
+    .leftJoin(bioEnrolledUsers, compareIds(bioEnrolledUsers.employeeId, dailyTimeRecords.employeeId))
     .leftJoin(
       dtrCorrections,
       and(
@@ -223,7 +225,7 @@ export const getLogs = async (req: Request, res: Response): Promise<void> => {
       )`
     })
     .from(dailyTimeRecords)
-    .leftJoin(authentication, eq(dailyTimeRecords.employeeId, authentication.employeeId))
+    .leftJoin(authentication, compareIds(dailyTimeRecords.employeeId, authentication.employeeId))
     .leftJoin(departments, eq(authentication.departmentId, departments.id))
     .where(whereClause);
 
@@ -231,7 +233,7 @@ export const getLogs = async (req: Request, res: Response): Promise<void> => {
       total: sql<number>`count(*)`
     })
     .from(dailyTimeRecords)
-    .leftJoin(authentication, eq(dailyTimeRecords.employeeId, authentication.employeeId))
+    .leftJoin(authentication, compareIds(dailyTimeRecords.employeeId, authentication.employeeId))
     .leftJoin(departments, eq(authentication.departmentId, departments.id))
     .where(whereClause);
 
@@ -240,12 +242,17 @@ export const getLogs = async (req: Request, res: Response): Promise<void> => {
     const formattedLogs: DTRApiResponse[] = logs.map((log) => {
       // Precise Name Formatting: Normal Case (Title Case)
       let fullName = "Unknown Employee";
-      if (log.firstName && log.lastName) {
-          const last = toTitleCase(log.lastName);
-          const first = toTitleCase(log.firstName);
+      
+      const hasAuthName = log.firstName?.trim() && log.lastName?.trim();
+      
+      if (hasAuthName) {
+          const last = toTitleCase(log.lastName!);
+          const first = toTitleCase(log.firstName!);
           const middle = log.middleName ? ` ${toTitleCase(log.middleName)}` : "";
-          const suffix = log.suffix ? ` ${log.suffix}` : ""; // Suffix like Jr. usually kept as provided
+          const suffix = log.suffix ? ` ${log.suffix}` : "";
           fullName = `${last}, ${first}${middle}${suffix}`;
+      } else if (log.bioFullName?.trim()) {
+          fullName = log.bioFullName.trim();
       }
 
       return {
@@ -305,10 +312,12 @@ export const getRecentActivity = async (_req: Request, res: Response): Promise<v
       lastName: authentication.lastName,
       middleName: authentication.middleName,
       suffix: authentication.suffix,
-      department: authentication.department
+      department: authentication.department,
+      bioFullName: bioEnrolledUsers.fullName
     })
     .from(dailyTimeRecords)
-    .leftJoin(authentication, eq(dailyTimeRecords.employeeId, authentication.employeeId))
+    .leftJoin(authentication, compareIds(dailyTimeRecords.employeeId, authentication.employeeId))
+    .leftJoin(bioEnrolledUsers, compareIds(bioEnrolledUsers.employeeId, dailyTimeRecords.employeeId))
     .orderBy(desc(dailyTimeRecords.updatedAt))
     .limit(20);
 
@@ -320,6 +329,8 @@ export const getRecentActivity = async (_req: Request, res: Response): Promise<v
           const middle = log.middleName ? ` ${toTitleCase(log.middleName)}` : "";
           const suffix = log.suffix ? ` ${log.suffix}` : "";
           fullName = `${last}, ${first}${middle}${suffix}`;
+      } else if (log.bioFullName) {
+          fullName = log.bioFullName;
       }
 
       return {
@@ -416,7 +427,7 @@ export const getRawLogs = async (req: Request, res: Response): Promise<void> => 
     const whereConditions = [];
 
     if (employeeId && employeeId !== 'all' && employeeId !== 'All Employees') {
-      whereConditions.push(eq(attendanceLogs.employeeId, String(employeeId)));
+      whereConditions.push(compareIds(attendanceLogs.employeeId, String(employeeId)));
     }
 
     if (startDate && endDate) {
@@ -460,11 +471,11 @@ export const getRawLogs = async (req: Request, res: Response): Promise<void> => 
       )`,
       department: sql<string>`COALESCE(${authentication.department}, ${bioEnrolledUsers.department}, 'N/A')`,
       duties: sql<string>`COALESCE((SELECT schedule_title FROM schedules WHERE employee_id = ${attendanceLogs.employeeId} ORDER BY updated_at DESC LIMIT 1), 'No Schedule')`,
-      dtrStatus: sql<string>`COALESCE((SELECT status FROM daily_time_records WHERE employee_id = ${attendanceLogs.employeeId} AND date = DATE(${attendanceLogs.scanTime}) LIMIT 1), 'Present')`
+      dtrStatus: sql<string>`COALESCE((SELECT status FROM daily_time_records WHERE employee_id = ${attendanceLogs.employeeId} AND date = DATE(${attendanceLogs.scanTime}) LIMIT 1), 'Pending')`
     })
     .from(attendanceLogs)
-    .leftJoin(authentication, eq(attendanceLogs.employeeId, authentication.employeeId))
-    .leftJoin(bioEnrolledUsers, sql`${bioEnrolledUsers.employeeId} = CAST(REPLACE(${attendanceLogs.employeeId}, 'EMP-', '') AS UNSIGNED)`)
+    .leftJoin(authentication, compareIds(attendanceLogs.employeeId, authentication.employeeId))
+    .leftJoin(bioEnrolledUsers, compareIds(bioEnrolledUsers.employeeId, attendanceLogs.employeeId))
     .where(whereClause)
     .orderBy(desc(attendanceLogs.scanTime))
     .limit(Number(limit));
@@ -481,11 +492,11 @@ export const getRawLogs = async (req: Request, res: Response): Promise<void> => 
 export const getDashboardStats = async (_req: Request, res: Response): Promise<void> => {
   try {
     const todayStr = getLocalDate();
-    const now = new Date();
-    const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-    const dayName = days[now.getDay()];
+    // const now = new Date();
+    // const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    // const dayName = days[now.getDay()];
 
-    const allEmployees = await db.select({
+    /* const allEmployees = await db.select({
       employeeId: authentication.employeeId,
       firstName: authentication.firstName,
       lastName: authentication.lastName,
@@ -501,7 +512,7 @@ export const getDashboardStats = async (_req: Request, res: Response): Promise<v
       eq(authentication.employeeId, schedules.employeeId),
       eq(schedules.dayOfWeek, dayName)
     ))
-    .orderBy(desc(authentication.dateHired));
+    .orderBy(desc(authentication.dateHired)); */
 
 
     const dtrRecords = await db.select({
@@ -517,8 +528,8 @@ export const getDashboardStats = async (_req: Request, res: Response): Promise<v
       bioDepartment: bioEnrolledUsers.department
     })
     .from(dailyTimeRecords)
-    .leftJoin(authentication, eq(dailyTimeRecords.employeeId, authentication.employeeId))
-    .leftJoin(bioEnrolledUsers, sql`${dailyTimeRecords.employeeId} = CAST(${bioEnrolledUsers.employeeId} AS CHAR) COLLATE utf8mb4_0900_ai_ci`)
+    .leftJoin(authentication, compareIds(dailyTimeRecords.employeeId, authentication.employeeId))
+    .leftJoin(bioEnrolledUsers, compareIds(bioEnrolledUsers.employeeId, dailyTimeRecords.employeeId))
     .where(eq(dailyTimeRecords.date, todayStr));
 
     const leaves = await db.select({
@@ -531,7 +542,7 @@ export const getDashboardStats = async (_req: Request, res: Response): Promise<v
       endDate: leaveApplications.endDate
     })
     .from(leaveApplications)
-    .innerJoin(authentication, eq(leaveApplications.employeeId, authentication.employeeId))
+    .innerJoin(authentication, compareIds(leaveApplications.employeeId, authentication.employeeId))
     .where(and(
       eq(leaveApplications.status, 'Approved'),
       sql`DATE(${todayStr}) >= DATE(${leaveApplications.startDate})`,
@@ -553,8 +564,8 @@ export const getDashboardStats = async (_req: Request, res: Response): Promise<v
     .where(eq(recruitmentApplicants.stage, 'Hired'))
     .orderBy(desc(recruitmentApplicants.hiredDate), desc(recruitmentApplicants.createdAt));
 
-    const enrolledBio = await db.select({ employeeId: bioEnrolledUsers.employeeId }).from(bioEnrolledUsers);
-    const enrolledSet = new Set(enrolledBio.map(b => String(b.employeeId)));
+    // const enrolledBio = await db.select({ employeeId: bioEnrolledUsers.employeeId }).from(bioEnrolledUsers);
+    // const enrolledSet = new Set(enrolledBio.map(b => String(b.employeeId)));
 
     interface StatusRecord {
       id: string;
@@ -598,7 +609,7 @@ export const getDashboardStats = async (_req: Request, res: Response): Promise<v
           id: record.employeeId,
           name,
           department: dept,
-          status: record.status || "Present",
+          status: record.status || "Pending",
           timeIn: formatTime(record.timeIn),
           timeOut: formatTime(record.timeOut),
           date: todayStr,
@@ -608,7 +619,7 @@ export const getDashboardStats = async (_req: Request, res: Response): Promise<v
         if (record.status === 'Late' || record.status === 'Late/Undertime') {
             lateList.push(statusItem);
             presentList.push(statusItem);
-        } else if (record.status === 'Present' || record.status === 'Undertime') {
+        } else if (record.status === 'Present' || record.status === 'Undertime' || record.status === 'Pending' || !record.status) {
             presentList.push(statusItem);
         }
     });
@@ -649,7 +660,7 @@ export const getDashboardStats = async (_req: Request, res: Response): Promise<v
         },
       },
     });
-  } catch (err) {
+  } catch (err: unknown) {
     handleError(res, err as Error, "getDashboardStats");
   }
 };

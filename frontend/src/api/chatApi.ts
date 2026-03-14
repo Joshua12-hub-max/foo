@@ -8,13 +8,18 @@ export interface ChatMessage {
   senderId?: number | null;
   message: string;
   isRead: boolean;
+  isEdited?: boolean;
+  isDeletedForEveryone?: boolean;
   createdAt: string;
+  adminAvatar?: string | null;
+  applicantAvatar?: string | null;
 }
 
 export interface ChatConversation {
   id: number;
   applicantName: string;
   applicantEmail: string;
+  applicantAvatar?: string | null;
   status: 'Active' | 'Closed' | 'Archived';
   unreadCount?: number;
   lastMessage?: string;
@@ -32,16 +37,20 @@ export const chatApi = {
 
   /**
    * Public/Admin: Send a message
+   * Uses dedicated admin route if senderType is Administrator
    */
   sendMessage: async (data: { conversationId: number; message: string; senderType: 'Applicant' | 'Administrator' }): Promise<AxiosResponse<{ success: boolean; messageId: number }>> => {
-    return await api.post('/chat/message', data);
+    const url = data.senderType === 'Administrator' ? '/chat/admin/message' : '/chat/message';
+    return await api.post(url, data);
   },
 
   /**
    * Public/Admin: Get messages for a conversation
+   * Uses dedicated admin route if readerRole is Administrator
    */
   getMessages: async (conversationId: number, markRead = false, readerRole?: 'Applicant' | 'Administrator'): Promise<AxiosResponse<{ success: boolean; messages: ChatMessage[] }>> => {
-    return await api.get(`/chat/messages/${conversationId}`, { 
+    const url = readerRole === 'Administrator' ? `/chat/admin/messages/${conversationId}` : `/chat/messages/${conversationId}`;
+    return await api.get(url, { 
       params: { markRead, reader: readerRole } 
     });
   },
@@ -58,5 +67,32 @@ export const chatApi = {
    */
   close: async (id: number): Promise<AxiosResponse<{ success: boolean; message: string }>> => {
     return await api.patch(`/chat/conversations/${id}/close`);
+  },
+
+  /**
+   * Public/Admin: Edit a message
+   * Uses dedicated admin route if senderType is Administrator
+   */
+  editMessage: (id: number, data: { message: string; senderType: 'Applicant' | 'Administrator'; conversationId?: number }) => {
+      const url = data.senderType === 'Administrator' ? `/chat/admin/message/${id}` : `/chat/message/${id}`;
+      return api.patch(url, data);
+  },
+
+  /**
+   * Public/Admin: Delete a message
+   * Uses dedicated admin route if senderType is Administrator
+   */
+  deleteMessage: (id: number, type: 'me' | 'everyone', senderType: 'Applicant' | 'Administrator', conversationId?: number) => {
+      const url = senderType === 'Administrator' ? `/chat/admin/message/${id}` : `/chat/message/${id}`;
+      return api.delete(url, { params: { type, senderType, conversationId } });
+  },
+
+  /**
+   * Public/Admin: Delete Entire Conversation
+   * Uses dedicated admin route if senderType is Administrator
+   */
+  deleteConversation: async (id: number, senderType: 'Applicant' | 'Administrator'): Promise<AxiosResponse<{ success: boolean; message: string }>> => {
+    const url = senderType === 'Administrator' ? `/chat/admin/conversations/${id}` : `/chat/conversations/${id}`;
+    return await api.delete(url, { params: { senderType } });
   }
 };

@@ -113,7 +113,7 @@ export const tardinessSummary = mysqlTable("tardiness_summary", {
 // =============================================================================
 
 export const bioEnrolledUsers = mysqlTable("bio_enrolled_users", {
-	employeeId: int("employee_id").primaryKey().notNull(),
+	employeeId: varchar("employee_id", { length: 50 }).primaryKey().notNull(),
 	fullName: varchar("full_name", { length: 150 }).notNull(),
 	department: varchar("department", { length: 100 }),
 	userStatus: mysqlEnum("user_status", ['active', 'inactive']).notNull().default('active'),
@@ -123,7 +123,7 @@ export const bioEnrolledUsers = mysqlTable("bio_enrolled_users", {
 
 export const bioAttendanceLogs = mysqlTable("bio_attendance_logs", {
 	id: bigint({ mode: 'number' }).primaryKey().autoincrement().notNull(),
-	employeeId: int("employee_id").notNull(),
+	employeeId: varchar("employee_id", { length: 50 }).notNull(),
 	cardType: mysqlEnum("card_type", ['IN', 'OUT']).notNull(),
 	logDate: date("log_date", { mode: 'string' }).notNull(),
 	logTime: time("log_time").notNull(),

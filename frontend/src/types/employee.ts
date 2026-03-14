@@ -95,6 +95,7 @@ export interface Employee {
   firstDayOfService: string | null;
   originalAppointmentDate: string | null;
   lastPromotionDate: string | null;
+  isBiometricEnrolled: boolean;
 }
 
 export interface Skill {
@@ -204,4 +205,14 @@ export interface EmployeeDetailed extends Employee {
   workExperience: WorkplaceExperience[];
   otherInfo: PdsOtherInfo[];
   references: PdsReference[];
+}
+
+export interface EmployeeDocument {
+  id: number;
+  documentType: string;
+  fileName: string;
+  filePath: string;
+  fileSize: number | null;
+  mimeType: string | null;
+  uploadedAt: string;
 }

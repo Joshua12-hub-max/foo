@@ -29,7 +29,7 @@ const ApplicantFilters: React.FC<ApplicantFiltersProps> = ({
       </div>
       <div className="relative w-40">
           <select 
-            className="w-full appearance-none bg-gray-200 border border-gray-200 text-gray-700 py-2 pl-4 pr-10 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-200 focus:border-gray-300 cursor-pointer"
+            className="w-full appearance-none bg-gray-100 border border-gray-200 text-gray-700 py-2 pl-4 pr-10 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-200 focus:border-gray-300 cursor-pointer transition-all"
             value={sourceFilter}
             onChange={(e) => setSourceFilter(e.target.value as SourceFilter)}
           >

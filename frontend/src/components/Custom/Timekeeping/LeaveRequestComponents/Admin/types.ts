@@ -4,8 +4,8 @@ export interface AdminLeaveRequest {
   name: string;
   department: string;
   leaveType: string;
-  fromDate: string;
-  toDate: string;
+  startDate: string;
+  endDate: string;
   reason: string;
   status: string;
   isWithPay: boolean;

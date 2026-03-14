@@ -7,21 +7,11 @@ import { processDailyAttendance } from './attendanceProcessor.js';
 let lastSyncedBioId = 0;
 let isPolling = false;
 
-/**
- * Track the last synced bio_attendance_logs ID (monotonic, avoids clock drift)
- */
-/**
- * Convert biometric employee_id (int) to system format.
- * NOW CHANGED: Returns raw ID string (e.g. "1") instead of "EMP-001".
- */
-const convertBioIdToEmployeeId = (bioId: number): string => {
-  return String(bioId); // Return raw ID, formatting happens on frontend
+const convertBioIdToEmployeeId = (bioId: string): string => {
+  return bioId; // Already formatted as Emp-XXX in the database
 };
 
-/**
- * Polls bio_attendance_logs for new entries created by the C# biometric middleware.
- * Triggers DTR processing for affect employees.
- */
+
 async function pollBiometricLogs() {
   if (isPolling) return;
   isPolling = true;
@@ -33,7 +23,13 @@ async function pollBiometricLogs() {
       .where(gt(bioAttendanceLogs.id, lastSyncedBioId))
       .orderBy(bioAttendanceLogs.id);
 
-    if (newBioLogs.length === 0) return;
+    if (newBioLogs.length === 0) {
+      // Periodic heartbeat for visibility in backend console (once every 12 polls = 1 minute)
+      if (Math.floor(Date.now() / 1000) % 60 < 5) {
+        console.warn(`[BIO-SYNC] Heartbeat: Service active, waiting for middleware data... (Last ID: ${lastSyncedBioId})`);
+      }
+      return;
+    }
 
     console.warn(`[BIO-SYNC] Found ${newBioLogs.length} new biometric log(s) since ID ${lastSyncedBioId}`);
 
@@ -88,29 +84,33 @@ async function pollBiometricLogs() {
  */
 async function initializeLastSyncedId() {
   try {
-    const [result] = await db.select({
+    // 1. Get the current max ID in bio_attendance_logs
+    const [bioMax] = await db.select({
       maxId: sql<number>`COALESCE(MAX(id), 0)`
     }).from(bioAttendanceLogs);
 
-    lastSyncedBioId = result?.maxId ?? 0;
+    const maxBioId = bioMax?.maxId ?? 0;
 
-    // Also check if existing attendance_logs already cover these bio logs
-    // by counting how many bio logs we have vs attendance_logs with BIOMETRIC source
-    const [bioCount] = await db.select({
-      count: sql<number>`COUNT(*)`
-    }).from(bioAttendanceLogs);
-
+    // 2. Count how many records we have in attendance_logs from BIOMETRIC source
     const [attCount] = await db.select({
       count: sql<number>`COUNT(*)`
     }).from(attendanceLogs)
     .where(eq(attendanceLogs.source, 'BIOMETRIC'));
 
-    console.warn(`[BIO-SYNC] Initialized: lastSyncedBioId=${lastSyncedBioId}, bioLogs=${bioCount?.count ?? 0}, syncedAttLogs=${attCount?.count ?? 0}`);
+    const syncedCount = attCount?.count ?? 0;
 
-    // If there are unsynced bio logs (bio count > synced attendance count), reset to 0 to re-sync
-    if ((bioCount?.count ?? 0) > (attCount?.count ?? 0)) {
-      lastSyncedBioId = 0;
-      console.warn('[BIO-SYNC] Detected unsynced bio logs. Resetting lastSyncedBioId to 0 for full sync.');
+    // 3. Robust Sync Strategy:
+    // If syncedCount is less than maxBioId logs we've seen (roughly), 
+    // it's safer to start from a lower ID or 0 to ensure no data loss.
+    // Since we use onDuplicateKeyUpdate or existing logic in C#, 
+    // re-polling is safe but triggering DTR is essential.
+    
+    if (syncedCount === 0 || syncedCount < maxBioId) {
+        lastSyncedBioId = 0;
+        console.warn(`[BIO-SYNC] Detected gap or fresh start (Bio: ${maxBioId}, Synced: ${syncedCount}). Starting full re-sync.`);
+    } else {
+        lastSyncedBioId = maxBioId;
+        console.warn(`[BIO-SYNC] Initialized: lastSyncedBioId=${lastSyncedBioId}`);
     }
 
   } catch (error) {
@@ -140,7 +140,7 @@ export const startPollingService = async (intervalMs: number = 5000) => {
 
     // Start polling
     setInterval(pollBiometricLogs, intervalMs);
-  } catch (err) {
+  } catch (err: unknown) {
     const error = err as Error;
     console.error('[BIO-SYNC] Failed to start polling service:', error.message);
   }

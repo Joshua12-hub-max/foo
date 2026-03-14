@@ -245,7 +245,7 @@ export const generatePSIPOPExcel = async (positions: Position[], config: PSIPOPC
         ? Number(pos.monthlySalary) * 12
         : 0;
       const actualSalary = pos.isVacant ? null : annualSalary;
-      const { lastName, firstName, middleName } = parseIncumbentName(pos.incumbent_name);
+      const { lastName, firstName, middleName } = parseIncumbentName(pos.incumbentName);
 
       // Status abbreviation
       let statusCode = '';
@@ -264,15 +264,15 @@ export const generatePSIPOPExcel = async (positions: Position[], config: PSIPOPC
         annualSalary,
         actualSalary,
         pos.stepIncrement?.toString() || '1',
-        pos.area_code || '',
-        pos.area_type || '',
-        pos.area_level || '',
+        pos.areaCode || '',
+        pos.areaType || '',
+        pos.areaLevel || '',
         lastName,
         firstName,
         middleName,
         formatDate(pos.birthDate),
-        formatDate(pos.original_appointment_date),
-        formatDate(pos.last_promotion_date),
+        formatDate(pos.originalAppointmentDate),
+        formatDate(pos.lastPromotionDate),
         statusCode
       ];
 

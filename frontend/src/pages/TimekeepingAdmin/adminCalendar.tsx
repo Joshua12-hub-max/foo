@@ -244,9 +244,9 @@ export default function AdminCalendar() {
     setModal('editEvent', true);
   }, [setShowEventDetails, setSelectedItem, setModal]);
 
-  const handleUpdateEvent = useCallback((updatedData: EventFormData) => {
+  const handleUpdateEvent = useCallback((updatedData: CalendarEvent) => {
     if (!selectedItem) return;
-    updateEventMutation.mutate({ id: (selectedItem as CalendarEvent).id, data: updatedData });
+    updateEventMutation.mutate({ id: (selectedItem as CalendarEvent).id, data: updatedData as unknown as EventFormData });
   }, [selectedItem, updateEventMutation]);
 
   const handleEditAnnouncement = useCallback((announcement: Announcement) => {

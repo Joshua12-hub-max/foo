@@ -61,7 +61,7 @@ export interface PlantillaAuditLog {
 export interface PlantillaHistory {
   id: number;
   positionId: number;
-  employeeId: number;
+  employeeId: string;
   employeeName: string | null;
   positionTitle: string | null;
   startDate: string;

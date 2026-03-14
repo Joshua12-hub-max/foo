@@ -76,7 +76,12 @@ export const useAuthStore = create<AuthStore>()(
              // Logic mirrored from AuthContext
              const mightBeLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
              if (!mightBeLoggedIn) {
-                 set({ isLoading: false });
+                 // CRITICAL: Clear state if persistence says we're logged in but localStorage says we're not
+                 if (get().isAuthenticated || get().user) {
+                    set({ ...initialState, isLoading: false });
+                 } else {
+                    set({ isLoading: false });
+                 }
                  return;
              }
 
@@ -94,7 +99,7 @@ export const useAuthStore = create<AuthStore>()(
                          localStorage.removeItem('isLoggedIn');
                      }
                  }
-                 get().setUser(null);
+                 set({ ...initialState, isLoading: false });
              } finally {
                  set({ isLoading: false });
              }

@@ -12,7 +12,7 @@ export const useBiometricsLogs = (enabled = true) => {
   return useQuery({
     queryKey: BIOMETRICS_KEYS.logs,
     queryFn: async () => {
-      const res = await attendanceApi.getLogs({
+      const res = await attendanceApi.getRawLogs({
           limit: 100 // Fetch recent 100 logs
       });
 
@@ -23,7 +23,7 @@ export const useBiometricsLogs = (enabled = true) => {
              employeeId: record.employeeId,
              time: record.scanTime,
              type: record.type,
-             status: record.dtrStatus || 'Present',
+             status: record.dtrStatus || 'Pending',
              firstName: record.firstName || '',
              lastName: record.lastName || '',
              name: `${record.firstName || ''} ${record.lastName || ''}`.trim() || 'Unknown',

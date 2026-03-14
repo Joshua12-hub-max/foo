@@ -37,17 +37,20 @@ export const recruitmentApi = {
         api.put(`/recruitment/jobs/${id}/posted`, { platform }),
 
     // Applicants
-    getApplicants: async (params?: { jobId?: number | string; stage?: string; source?: string }): Promise<AxiosResponse<{ applicants: Applicant[] }>> =>
+    getApplicants: async (params?: { jobId?: number | string; stage?: string; source?: string }): Promise<AxiosResponse<{ success: boolean; applicants: Applicant[] }>> =>
         api.get('/recruitment/applicants', { params }),
 
-    getHiredApplicantsByDuty: async <T = Applicant>(duty: 'Standard' | 'Irregular'): Promise<AxiosResponse<{ applicants: T[] }>> =>
-        api.get('/recruitment/hired-by-duty', { params: { duty } }),
+    getHiredApplicantsByDuty: async <T = Applicant>(duty: 'Standard' | 'Irregular', department?: string): Promise<AxiosResponse<{ success: boolean; applicants: T[] }>> =>
+        api.get('/recruitment/hired-by-duty', { params: { duty, department } }),
 
     applyJob: async (formData: FormData): Promise<AxiosResponse> =>
         api.post('/recruitment/apply', formData),
 
     updateApplicantStage: async (id: string | number, data: { stage: ApplicantStage }): Promise<AxiosResponse> =>
         api.put(`/recruitment/applicants/${id}/stage`, data),
+
+    confirmApplicant: async (id: string | number, startDate: string, selectedDocs: string[] = [], customNotes: string = ''): Promise<AxiosResponse> =>
+        api.post(`/recruitment/applicants/${id}/confirm`, { startDate, selectedDocs, customNotes }),
 
     deleteApplicant: async (id: string | number): Promise<AxiosResponse> =>
         api.delete(`/recruitment/applicants/${id}`),

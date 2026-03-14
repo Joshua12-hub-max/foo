@@ -8,7 +8,6 @@ interface HiredApplicant {
   position?: string;
   jobTitle?: string;
   dateHired?: string;
-  dateHired?: string;
   [key: string]: unknown;
 }
 
@@ -88,32 +87,32 @@ export default function HiredTable({ onClose, employees = [] }: HiredTableProps)
         )}
       </div>
 
-      {/* Styled Table matching PlantillaTable */}
+      {/* Styled Table matching the new design */}
       <div className="flex-1 overflow-auto rounded-lg border border-gray-100">
         <table className="w-full text-sm">
-          <thead className="bg-gray-100 text-gray-700 sticky top-0 z-10">
+          <thead className="bg-gray-200 shadow-md text-gray-700">
             <tr>
-              <th className="px-4 py-3 text-left font-semibold">ID</th>
-              <th className="px-4 py-3 text-left font-semibold">Name</th>
-              <th className="px-4 py-3 text-left font-semibold">Department</th>
-              <th className="px-4 py-3 text-left font-semibold">Position</th>
-              <th className="px-4 py-3 text-left font-semibold">Date Hired</th>
+              <th className="px-4 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap">ID</th>
+              <th className="px-4 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap">Name</th>
+              <th className="px-4 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap">Department</th>
+              <th className="px-4 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap">Position</th>
+              <th className="px-4 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap">Date Hired</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
+          <tbody className="divide-y divide-slate-100">
             {currentEmployees.length ? (
               currentEmployees.map(employee => (
-                <tr key={employee.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-3 text-gray-600 font-medium">{employee.id}</td>
-                  <td className="px-4 py-3 text-gray-800 font-medium">{employee.name}</td>
-                  <td className="px-4 py-3 text-gray-600">{employee.department || '-'}</td>
-                  <td className="px-4 py-3 text-gray-600">{employee.position || employee.jobTitle || '-'}</td>
-                  <td className="px-4 py-3 text-gray-600 text-sm">{formatDate(employee.dateHired || employee.dateHired)}</td>
+                <tr key={employee.id} className="hover:bg-[#F8F9FA] hover:shadow-xl transition-colors group bg-white">
+                  <td className="px-4 py-4 text-sm font-medium text-gray-700 whitespace-nowrap">{employee.id}</td>
+                  <td className="px-4 py-4 text-sm font-semibold text-gray-900 whitespace-nowrap">{employee.name}</td>
+                  <td className="px-4 py-4 text-sm text-gray-600 font-medium whitespace-nowrap">{employee.department || '-'}</td>
+                  <td className="px-4 py-4 text-sm text-gray-600 whitespace-nowrap">{employee.position || employee.jobTitle || '-'}</td>
+                  <td className="px-4 py-4 text-sm text-gray-700 whitespace-nowrap">{formatDate(employee.dateHired || employee.dateHired)}</td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
+                <td colSpan={5} className="px-4 py-8 text-center text-gray-400 text-sm font-medium">
                   <UserCheck className="w-8 h-8 mx-auto mb-2 opacity-50" />
                   {searchQuery ? 'No matching records' : 'No hired applicants yet'}
                 </td>

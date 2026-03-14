@@ -52,7 +52,9 @@ router.delete('/jobs/:id', verifyAdmin, recruitmentController.deleteJob as Reque
 router.get('/applicants', verifyAdmin, recruitmentController.getApplicants as RequestHandler);
 router.get('/hired-by-duty', verifyAdmin, recruitmentController.getHiredByDuty as RequestHandler);
 router.get('/applicants/:id/pdf', verifyAdmin, recruitmentController.generateApplicationPDF as RequestHandler);
+router.get('/applicants/:id/photo/:type', verifyAdmin, recruitmentController.generatePhotoPDF as RequestHandler);
 router.put('/applicants/:id/stage', verifyAdmin, recruitmentController.updateApplicantStage as RequestHandler);
+router.post('/applicants/:id/confirm', verifyAdmin, recruitmentController.confirmHiredApplicant as RequestHandler);
 router.delete('/applicants/:id', verifyAdmin, recruitmentController.deleteApplicant as RequestHandler);
 
 

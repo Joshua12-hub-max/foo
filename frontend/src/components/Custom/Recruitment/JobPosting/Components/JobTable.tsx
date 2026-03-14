@@ -1,5 +1,5 @@
 import React from 'react';
-import { ExternalLink, SquarePen, Trash2 } from 'lucide-react';
+import { ExternalLink, SquarePen, Trash2, UserSquare2, Mail } from 'lucide-react';
 import TableSkeleton from '@components/Custom/Shared/TableSkeleton';
 import { Job } from '@/types';
 
@@ -69,19 +69,36 @@ const JobTable: React.FC<JobTableProps> = ({
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap font-medium">{job.title}</td>
                 <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">{job.department}</td>
-                <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">{job.employment_type || 'Full-time'}</td>
-                <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">{job.salary_range || '-'}</td>
                 <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">
-                    {job.application_email ? (
-                    <a href={`mailto:${job.application_email}`} onClick={e => e.stopPropagation()} className="text-blue-600 hover:underline">{job.application_email}</a>
+                    <div className="flex flex-col gap-1.5 min-w-0">
+                      <div className="flex items-center gap-2 text-sm text-gray-500">
+                        <UserSquare2 size={14} className="flex-shrink-0" />
+                        <span className="truncate">{job.employmentType || 'Full-time'}</span>
+                        {job.salaryRange && (
+                          <>
+                            <span className="w-1 h-1 rounded-full bg-gray-300 flex-shrink-0"></span>
+                            <span className="font-medium text-gray-700 truncate">{job.salaryRange}</span>
+                          </>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-gray-400">
+                        <Mail size={12} className="flex-shrink-0" />
+                        <span className="truncate" title={job.applicationEmail}>{job.applicationEmail}</span>
+                      </div>
+                    </div>
+                </td>
+                <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">{job.salaryRange || '-'}</td>
+                <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">
+                    {job.applicationEmail ? (
+                    <a href={`mailto:${job.applicationEmail}`} onClick={e => e.stopPropagation()} className="text-blue-600 hover:underline">{job.applicationEmail}</a>
                     ) : (
                     <span className="text-gray-400">-</span>
                     )}
                 </td>
                 <td className="px-6 py-4 text-sm whitespace-nowrap">
-                    {job.posted_at ? (
+                    {job.postedAt ? (
                     <div className="flex flex-col gap-0.5">
-                        <span className="text-green-600 font-medium">{formatDate(job.posted_at)}</span>
+                        <span className="text-green-600 font-medium">{formatDate(job.postedAt)}</span>
                     </div>
                     ) : (
                     <span className="text-gray-400 italic">Not posted</span>

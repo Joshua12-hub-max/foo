@@ -3,15 +3,15 @@ import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, Check, Search } from "lucide-react";
 
-interface Option {
-  value: string;
+interface Option<T extends string> {
+  value: T;
   label: string;
 }
 
-interface ComboboxProps {
-  options: Option[];
-  value: string;
-  onChange: (value: string) => void;
+interface ComboboxProps<T extends string> {
+  options: Option<T>[];
+  value: T | undefined | null;
+  onChange: (value: T) => void;
   placeholder?: string;
   className?: string;
   buttonClassName?: string;
@@ -19,7 +19,7 @@ interface ComboboxProps {
   disabled?: boolean;
 }
 
-export default function Combobox({ 
+export default function Combobox<T extends string>({ 
   options, 
   value, 
   onChange, 
@@ -28,7 +28,7 @@ export default function Combobox({
   buttonClassName = "",
   error = false,
   disabled = false
-}: ComboboxProps) {
+}: ComboboxProps<T>) {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [position, setPosition] = useState({ top: 0, left: 0, width: 0 });
@@ -60,11 +60,13 @@ export default function Combobox({
     if (!isOpen) return;
 
     const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target;
       if (
         dropdownRef.current && 
-        !dropdownRef.current.contains(event.target as Node) &&
+        target instanceof Node &&
+        !dropdownRef.current.contains(target) &&
         buttonRef.current &&
-        !buttonRef.current.contains(event.target as Node)
+        !buttonRef.current.contains(target)
       ) {
         setIsOpen(false);
         setSearch("");
@@ -72,8 +74,9 @@ export default function Combobox({
     };
 
     const handleScroll = (e: Event) => {
+       const target = e.target;
        // Ignore scroll events inside the dropdown itself
-       if (dropdownRef.current && dropdownRef.current.contains(e.target as Node)) return;
+       if (dropdownRef.current && target instanceof Node && dropdownRef.current.contains(target)) return;
        if(isOpen) setIsOpen(false);
     };
 
@@ -95,7 +98,7 @@ export default function Combobox({
   }, [options, search]);
 
   const selectedOption = useMemo(() => {
-    if (value === undefined || value === null || value === "") return null;
+    if (!value) return null;
     return options.find(o => String(o.value) === String(value)) || null;
   }, [options, value]);
 
@@ -106,11 +109,11 @@ export default function Combobox({
         type="button"
         disabled={disabled}
         onClick={() => !disabled && setIsOpen(!isOpen)}
-        className={`w-full flex items-center justify-between ${buttonClassName || "pl-10"} pr-3 py-1.5 border rounded-md transition-all
+        className={`w-full flex items-center justify-between border rounded-md transition-all
           ${error ? "border-red-500 ring-red-100" : "border-gray-300 focus:ring-gray-100"}
           ${isOpen ? "ring-2 ring-gray-100 border-gray-400" : ""}
           ${disabled ? "bg-gray-100 cursor-not-allowed opacity-60" : "bg-white"}
-          focus:outline-none text-left min-h-[38px] text-sm`}
+          ${buttonClassName} px-4 py-2 focus:outline-none text-left min-h-[40px] text-sm`}
       >
         <span className={`block truncate ${!selectedOption ? "text-gray-400" : "text-gray-900"}`}>
           {selectedOption ? selectedOption.label : placeholder}
@@ -158,9 +161,9 @@ export default function Combobox({
                     const isSelected = String(option.value) === String(value);
                     return (
                       <li
-                        key={`${option.value}-${idx}`}
+                        key={`${String(option.value)}-${idx}`}
                         onClick={() => {
-                          onChange(String(option.value));
+                          onChange(option.value);
                           setIsOpen(false);
                           setSearch("");
                         }}

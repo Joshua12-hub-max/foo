@@ -80,6 +80,7 @@ export const jobApplicationSchema = z.object({
 
   // Background
   totalExperienceYears: z.string().or(z.number()).optional(),
+  totalTrainingHours: z.string().or(z.number()).optional(),
   educationalBackground: z.enum(EDUCATION_LEVELS).or(z.literal('')).optional(),
   schoolName: z.string().optional(),
   course: z.string().optional(),
@@ -94,9 +95,9 @@ export const jobApplicationSchema = z.object({
   websiteUrl: z.string().max(0, 'Spam detected').optional(),
   hToken: z.string().optional(),
   
-  photo: z.instanceof(File).optional(),
+  photo: z.instanceof(File, { message: '2x2 Photo is required' }),
   photoPreview: z.string().optional(),
-  resume: z.instanceof(File).optional(),
+  resume: z.instanceof(File, { message: 'Resume is required' }),
   eligibilityCert: z.instanceof(File).optional(),
 });
 
@@ -107,12 +108,27 @@ export const createDynamicJobApplicationSchema = (
   employmentType: string | undefined,
   requireIds?: boolean,
   requireCsc?: boolean,
-  requireEdu?: boolean
+  requireEdu?: boolean,
+  requireExp?: boolean,
+  educationReq?: string,
+  experienceReq?: string,
+  trainingReq?: string,
+  eligibilityReq?: string
 ) => {
   const isPermanent = employmentType === 'Permanent';
   const needIds = isPermanent || requireIds;
   const needCsc = isPermanent || requireCsc;
   const needEdu = isPermanent || requireEdu;
+  const needExp = isPermanent || requireExp;
+
+  const minEduRank = getEducationRank(educationReq);
+  const validEducationLevels = minEduRank > 0 
+    ? EDUCATION_LEVELS.slice(minEduRank) as unknown as readonly [string, ...string[]]
+    : EDUCATION_LEVELS;
+
+  const minExpYears = getRequiredExperienceYears(experienceReq);
+  const minTrainingHours = getRequiredTrainingHours(trainingReq);
+  const minEligibilityRank = getEligibilityRank(eligibilityReq);
 
   return jobApplicationSchema.extend({
     gsisNumber: needIds ? z.string().min(1, 'GSIS Number is required') : z.string().optional(),
@@ -122,12 +138,118 @@ export const createDynamicJobApplicationSchema = (
     philsysId: needIds ? z.string().min(1, 'PhilSys ID is required') : z.string().optional(),
     tinNumber: needIds ? z.string().min(1, 'TIN is required') : z.string().optional(),
     
-    eligibilityType: needCsc ? z.enum(['csc_prof', 'csc_sub', 'ra_1080', 'special_laws', 'drivers_license', 'tesda', 'others']) : jobApplicationSchema.shape.eligibilityType,
+    eligibilityType: needCsc ? z.enum(['csc_prof', 'csc_sub', 'ra_1080', 'special_laws', 'drivers_license', 'tesda', 'others'], { message: 'Eligibility is required' }) : jobApplicationSchema.shape.eligibilityType,
     
-    educationalBackground: needEdu ? z.enum(EDUCATION_LEVELS) : jobApplicationSchema.shape.educationalBackground,
-    experience: needEdu ? z.string().min(1, 'Professional experience is required') : z.string().optional(),
-    skills: needEdu ? z.string().min(1, 'Relevant skills are required') : z.string().optional(),
+    educationalBackground: needEdu ? z.enum(validEducationLevels, { message: `Minimum education requirement: ${educationReq}` }) : jobApplicationSchema.shape.educationalBackground,
+    schoolName: needEdu ? z.string().min(1, 'School name is required') : z.string().optional(),
+    yearGraduated: needEdu ? z.string().min(1, 'Year graduated is required') : z.string().optional(),
+    experience: needExp ? z.string().min(1, 'Professional experience is required') : z.string().optional(),
+    skills: needExp ? z.string().min(1, 'Relevant skills are required') : z.string().optional(),
+  }).superRefine((data, ctx) => {
+    // Conditional Course Requirement
+    if (needEdu) {
+        const basicLevels = ["Elementary School Graduate", "High School Graduate", "Senior High School Graduate"];
+        if (data.educationalBackground && !basicLevels.includes(data.educationalBackground)) {
+            if (!data.course || data.course.trim().length === 0) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    message: "Course / Degree is required for this level of education",
+                    path: ["course"]
+                });
+            }
+        }
+    }
+
+    // Hierarchical Experience Check
+    if (needExp && minExpYears > 0) {
+      const years = Number(data.totalExperienceYears);
+      if (isNaN(years) || years < minExpYears) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Minimum ${minExpYears} year(s) of relevant experience required.`,
+          path: ['totalExperienceYears']
+        });
+      }
+    }
+
+    // Hierarchical Training Check
+    if (minTrainingHours > 0) {
+      const hours = Number(data.totalTrainingHours);
+      if (isNaN(hours) || hours < minTrainingHours) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Minimum ${minTrainingHours} hours of relevant training required.`,
+          path: ['totalTrainingHours']
+        });
+      }
+    }
+
+    // Hierarchical Eligibility Check
+    if (needCsc && minEligibilityRank > 0) {
+      const applicantRank = getApplicantEligibilityRank(data.eligibilityType);
+      if (applicantRank < minEligibilityRank) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Eligibility requirement not met. Minimum required: ${eligibilityReq}`,
+          path: ['eligibilityType']
+        });
+      }
+    }
   });
+};
+
+// --- Hierarchical Ranking Utilities ---
+
+export const getEducationRank = (requiredLevel: string | undefined): number => {
+  switch (requiredLevel) {
+    case 'Elementary Graduate': return 0;
+    case 'High School Graduate': return 1;
+    case 'Senior High School Graduate': return 2;
+    case 'Vocational/Technical': return 3;
+    case 'College Graduate': return 5;
+    case "Master's Degree": return 7;
+    case 'Doctorate Degree': return 9;
+    default: return -1;
+  }
+};
+
+export const getRequiredExperienceYears = (req: string | undefined): number => {
+  if (req === '6 months relevant experience') return 0.5;
+  if (req === '1 year relevant experience') return 1;
+  if (req === '2 years relevant experience') return 2;
+  if (req === '3 years relevant experience') return 3;
+  if (req === '4 years relevant experience') return 4;
+  if (req === '5+ years relevant experience') return 5;
+  return 0;
+};
+
+export const getRequiredTrainingHours = (req: string | undefined): number => {
+  if (req === '4 hours relevant training') return 4;
+  if (req === '8 hours relevant training') return 8;
+  if (req === '16 hours relevant training') return 16;
+  if (req === '24 hours relevant training') return 24;
+  if (req === '40 hours relevant training') return 40;
+  return 0;
+};
+
+export const getEligibilityRank = (eligibility: string | undefined): number => {
+  switch (eligibility) {
+     case 'Career Service (Sub-Professional)': return 1;
+     case 'Career Service (Professional)': return 2;
+     case 'Board/Bar RA 1080': return 3;
+     case 'Special Laws (CES/CSEE)': return 4;
+     default: return 0;
+  }
+};
+
+export const getApplicantEligibilityRank = (eligibilityType: string | undefined): number => {
+  switch (eligibilityType) {
+     case 'csc_sub': return 1;
+     case 'csc_prof': return 2;
+     case 'ra_1080': return 3;
+     case 'special_laws': return 4;
+     default: return 0;
+  }
 };
 
 // Public Job Schema for type safety in public views
@@ -144,6 +266,12 @@ export interface PublicJob {
     jobDescription: string;
     requirements: string;
     status: string;
+    attachmentPath?: string | null;
+    education?: string | null;
+    experience?: string | null;
+    training?: string | null;
+    eligibility?: string | null;
+    otherQualifications?: string | null;
     requireCivilService: boolean;
     requireGovernmentIds: boolean;
     requireEducationExperience: boolean;

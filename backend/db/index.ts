@@ -1,6 +1,5 @@
 import mysql, { Pool, PoolOptions } from 'mysql2/promise';
 import { drizzle } from 'drizzle-orm/mysql2';
-import dotenv from 'dotenv';
 import * as schema from './schema.js';
 import * as relations from './relations.js';
 import { migrate } from 'drizzle-orm/mysql2/migrator';
@@ -12,8 +11,6 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const combinedSchema = { ...schema, ...relations };
-
-dotenv.config();
 
 const poolConfig: PoolOptions = {
   host: process.env.DB_HOST || 'localhost',
@@ -86,6 +83,12 @@ export const runMigrations = async () => {
     const errorString = err.toString().toLowerCase();
     const sqlMessage = (err.sqlMessage || err.message || '').toLowerCase();
     const errorCode = String(err.code || '');
+
+    // Check in 'cause' property if it exists (common in Drizzle errors)
+    const cause = err.cause;
+    const causeMessage = (cause?.sqlMessage || cause?.message || '').toLowerCase();
+    const causeCode = String(cause?.code || cause?.errno || '');
+    const causeSqlState = String(cause?.sqlState || '');
     
     if (
       errorString.includes("already exists") || 
@@ -95,7 +98,13 @@ export const runMigrations = async () => {
       errorCode === '1050' || // ER_TABLE_EXISTS_ERROR
       errorCode === '1060' || // ER_DUP_FIELDNAME
       err.sqlState === '42S01' || // Table already exists
-      err.sqlState === '42S21'    // Duplicate column name
+      err.sqlState === '42S21' ||   // Duplicate column name
+      causeMessage.includes("already exists") ||
+      causeMessage.includes("duplicate column") ||
+      causeCode === '1050' ||
+      causeCode === '1060' ||
+      causeSqlState === '42S01' ||
+      causeSqlState === '42S21'
     ) {
       console.warn('Database schema conflict detected (already existing). Skipping.');
       return;

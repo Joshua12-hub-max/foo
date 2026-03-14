@@ -25,7 +25,7 @@ export const EmployeeDTRTable: React.FC<EmployeeDTRTableProps> = ({
   totals
 }) => {
   const hasActiveFilters = debouncedSearchQuery || Object.values(filters).some(v => v);
-  const headers = [...TABLE_HEADERS, "ACTIONS"];
+  const headers = [...TABLE_HEADERS, "Actions"];
   
   return (
     <div className="flex-1 overflow-hidden rounded-xl bg-[#F8F9FA] p-1">
@@ -61,7 +61,7 @@ export const EmployeeDTRTable: React.FC<EmployeeDTRTableProps> = ({
                     <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">
                       <button
                         onClick={() => onRequestCorrection(item)}
-                        className="p-2 hover:bg-blue-50 text-blue-600 rounded-lg transition-colors group relative"
+                        className="p-2 hover:bg-gray-100 text-gray-400 rounded-lg transition-colors group relative"
                         title="Request Correction"
                       >
                         <SquarePen className="w-4 h-4" />
@@ -75,13 +75,13 @@ export const EmployeeDTRTable: React.FC<EmployeeDTRTableProps> = ({
                 {/* Summary Row */}
                 {totals && (
                   <tr className="bg-gray-100 font-bold border-t-2 border-gray-300">
-                    <td colSpan={6} className="px-6 py-4 text-right text-gray-700 uppercase tracking-wider">
+                    <td colSpan={6} className="px-6 py-4 text-right text-gray-700 text-sm">
                       Totals:
                     </td>
-                    <td className="px-6 py-4 text-center text-red-700">{totals.lateMinutes}m</td>
-                    <td className="px-6 py-4 text-center text-orange-700">{totals.undertimeMinutes}m</td>
-                    <td className="px-6 py-4 text-center text-gray-900">{totals.hoursWorked}h</td>
-                    <td className="bg-gray-100"></td>
+                    <td className="px-6 py-4 text-center text-red-700 text-sm">{totals.lateMinutes}m</td>
+                    <td className="px-6 py-4 text-center text-orange-700 text-sm">{totals.undertimeMinutes}m</td>
+                    <td className="px-6 py-4 text-center text-gray-900 text-sm">{totals.hoursWorked}h</td>
+                    <td className="bg-gray-100 text-sm"></td>
                   </tr>
                 )}
               </>

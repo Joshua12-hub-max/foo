@@ -4,7 +4,7 @@ import { mysqlTable, varchar, int, date, timestamp, decimal, text, mysqlEnum, bo
 export const leaveApplications = mysqlTable("leave_applications", {
 	id: int("id").autoincrement().notNull(),
 	employeeId: varchar("employee_id", { length: 50 }).notNull(),
-	leaveType: mysqlEnum("leave_type", ['Vacation Leave','Sick Leave','Special Privilege Leave','Forced Leave','Maternity Leave','Paternity Leave','Solo Parent Leave','Study Leave','Special Emergency Leave','VAWC Leave','Rehabilitation Leave','Special Leave Benefits for Women','Wellness Leave','Adoption Leave']).notNull(),
+	leaveType: mysqlEnum("leave_type", ['Vacation Leave','Sick Leave','Special Privilege Leave','Forced Leave','Maternity Leave','Paternity Leave','Solo Parent Leave','Study Leave','Special Emergency Leave','VAWC Leave','Rehabilitation Leave','Special Leave Benefits for Women','Wellness Leave','Adoption Leave','Other']).notNull(),
 	startDate: date("start_date", { mode: 'string' }).notNull(),
 	endDate: date("end_date", { mode: 'string' }).notNull(),
 	workingDays: decimal("working_days", { precision: 10, scale: 3 }).notNull(),
@@ -18,6 +18,9 @@ export const leaveApplications = mysqlTable("leave_applications", {
 	rejectionReason: text("rejection_reason"),
 	approvedBy: varchar("approved_by", { length: 50 }),
 	approvedAt: timestamp("approved_at", { mode: 'string' }),
+	adminFormPath: varchar("admin_form_path", { length: 500 }),
+	finalAttachmentPath: varchar("final_attachment_path", { length: 500 }),
+	attachmentPath: varchar("attachment_path", { length: 500 }),
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
 	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow(),
 },

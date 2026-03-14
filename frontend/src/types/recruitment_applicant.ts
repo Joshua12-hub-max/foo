@@ -31,6 +31,20 @@ export interface HiredApplicant {
   zipCode: string | null;
   permanentAddress: string | null;
   permanentZipCode: string | null;
+  resHouseBlockLot: string | null;
+  resStreet: string | null;
+  resSubdivision: string | null;
+  resBarangay: string | null;
+  resCity: string | null;
+  resProvince: string | null;
+  resRegion: string | null;
+  permHouseBlockLot: string | null;
+  permStreet: string | null;
+  permSubdivision: string | null;
+  permBarangay: string | null;
+  permCity: string | null;
+  permProvince: string | null;
+  permRegion: string | null;
   isMeycauayanResident: boolean | null;
   educationalBackground: string | null;
   schoolName: string | null;
@@ -42,6 +56,7 @@ export interface HiredApplicant {
   emergencyContact?: string | null;
   emergencyContactNumber?: string | null;
   hiredDate: string | null;
+  startDate: string | null;
   department?: string | null;
   jobTitle?: string | null;
   employmentType?: string | null;

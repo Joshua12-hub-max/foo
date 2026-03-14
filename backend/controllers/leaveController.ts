@@ -5,44 +5,29 @@ import { eq, and, between, ne, or, sql, desc, lt, lte, gte } from 'drizzle-orm';
 import { createNotification, notifyAdmins } from './notificationController.js';
 import { accrueCreditsForMonth } from '../services/leaveAccrualService.js';
 import type { AuthenticatedRequest } from '../types/index.js';
-import { type CreditType, type LeaveType, type PaymentStatus, type TransactionType, SPECIAL_LEAVES_NO_DEDUCTION,
-  LEAVE_TO_CREDIT_MAP, WORKING_DAYS_PER_MONTH,
-} from '../types/leave.types.js';
-import { applyLeaveSchema, rejectLeaveSchema, creditUpdateSchema, accrueCreditsSchema, validateVLAdvanceFiling,
-} from '../schemas/leaveSchema.js';
+import { type CreditType, type LeaveType, type PaymentStatus, type TransactionType, CREDIT_TYPES, SPECIAL_LEAVES_NO_DEDUCTION, LEAVE_TO_CREDIT_MAP, WORKING_DAYS_PER_MONTH,} from '../types/leave.types.js';
+import { applyLeaveSchema, rejectLeaveSchema, creditUpdateSchema, accrueCreditsSchema, leavePolicySchema, type LeavePolicyContentStrict,} from '../schemas/leaveSchema.js';
 import { formatFullName } from '../utils/nameUtils.js';
+
+// T1 FIX: Typed interface for multer request (replaces `req as any`)
+interface MulterRequest extends Request {
+  file?: Express.Multer.File;
+}
+
+// T1 FIX: Typed record for leave update data (replaces `any`)
+// Uses Record to stay compatible with Drizzle's .set() which expects partial column types
+type LeaveUpdateData = Partial<{
+  status: 'Pending' | 'Approved' | 'Rejected' | 'Cancelled' | 'Processing' | 'Finalizing';
+  updatedAt: ReturnType<typeof sql>;
+  adminFormPath: string;
+  finalAttachmentPath: string;
+}>;
 
 // ============================================================================
 // Types & Interfaces
 // ============================================================================
 
-interface LeavePolicyContent {
-  types: string[];
-  annualLimits: Record<string, number>;
-  advanceFilingDays: {
-    days: number;
-    appliesTo: string[];
-    description?: string;
-  };
-  sickLeaveWindow: {
-    maxDaysAfterReturn: number;
-    description?: string;
-  };
-  crossChargeMap: Record<string, CreditType>;
-  leaveToCreditMap: Record<string, CreditType>;
-  specialLeavesNoDeduction: string[];
-  requiredAttachments: Record<string, { condition: string; required: string }>;
-  forcedLeaveRule: {
-    minimumVLRequired: number;
-    description: string;
-  };
-  deemedApprovalGracePeriod: number;
-  deemedApproval: {
-    days: number;
-    description: string;
-    reference: string;
-  };
-}
+// Removed manually typed LeavePolicyContent in favor of Zod inference LeavePolicyContentStrict
 
 
 const getHolidaysInRange = async (startDate: string, endDate: string): Promise<string[]> => {
@@ -152,24 +137,67 @@ const processDeemedApprovedLeaves = async (): Promise<void> => {
 
                 const isSpecialLeave = policy.specialLeavesNoDeduction.includes(application.leaveType);
 
+                // S1 FIX: Re-check balance before deduction (may have changed since application was filed)
+                // Credit Deduction
+                let finalSafeDeduction = 0;
+                // S1 FIX: Re-check balance before deduction (may have changed since application was filed)
                 // Credit Deduction
                 if ((application.actualPaymentStatus === 'WITH_PAY' || application.actualPaymentStatus === 'PARTIAL') && !isSpecialLeave) {
                     const primaryCreditType = policy.leaveToCreditMap[application.leaveType] as CreditType || 'Vacation Leave';
+                    const deductionAmount = Number(application.workingDays); // Calculate absolute required deduction based on total working days requested
+                    
                     if (application.crossChargedFrom) {
-                        await updateBalance(application.employeeId, application.crossChargedFrom as CreditType, -Number(application.daysWithPay), 'DEDUCTION', application.id, 'leave_application', `${application.leaveType} cross-charged (Deemed Approved)`, approvedBy);
+                        const currentBalance = await getEmployeeBalance(application.employeeId, application.crossChargedFrom as CreditType);
+                        finalSafeDeduction = Math.min(deductionAmount, currentBalance);
+                        if (finalSafeDeduction > 0) {
+                            await updateBalance(application.employeeId, application.crossChargedFrom as CreditType, -finalSafeDeduction, 'DEDUCTION', application.id, 'leave_application', `${application.leaveType} cross-charged (Deemed Approved)`, approvedBy);
+                        }
+                        // Remainder becomes LWOP
+                        const remainder = deductionAmount - finalSafeDeduction;
+                        if (remainder > 0) {
+                            await updateLWOPSummary(application.employeeId, remainder);
+                        }
                     } else {
-                        await updateBalance(application.employeeId, primaryCreditType, -Number(application.daysWithPay), 'DEDUCTION', application.id, 'leave_application', `${application.leaveType} (Deemed Approved)`, approvedBy);
+                        const currentBalance = await getEmployeeBalance(application.employeeId, primaryCreditType);
+                        finalSafeDeduction = Math.min(deductionAmount, currentBalance);
+                        if (finalSafeDeduction > 0) {
+                            await updateBalance(application.employeeId, primaryCreditType, -finalSafeDeduction, 'DEDUCTION', application.id, 'leave_application', `${application.leaveType} (Deemed Approved)`, approvedBy);
+                        }
+                        const remainder = deductionAmount - finalSafeDeduction;
+                        if (remainder > 0) {
+                            await updateLWOPSummary(application.employeeId, remainder);
+                        }
                     }
+                } else if (isSpecialLeave) {
+                    finalSafeDeduction = Number(application.workingDays); // Special leaves are always fully paid without deduction
                 }
 
-                // LWOP Tracking
-                if (Number(application.daysWithoutPay) > 0) {
-                    await updateLWOPSummary(application.employeeId, Number(application.daysWithoutPay));
+                // Recalculate and update final daysWithPay and daysWithoutPay to ensure historical accuracy based on live exact deductions
+                let finalPaymentStatus = application.actualPaymentStatus;
+                if (!isSpecialLeave && application.actualPaymentStatus !== 'WITHOUT_PAY') {
+                    if (finalSafeDeduction === Number(application.workingDays)) finalPaymentStatus = 'WITH_PAY';
+                    else if (finalSafeDeduction > 0) finalPaymentStatus = 'PARTIAL';
+                    else finalPaymentStatus = 'WITHOUT_PAY';
+                }
+
+                const finalWithoutPay = Number(application.workingDays) - finalSafeDeduction;
+
+                // LWOP Tracking (for explicit WITHOUT_PAY or purely zero balance leaves calculated above)
+                if (application.actualPaymentStatus === 'WITHOUT_PAY') {
+                    await updateLWOPSummary(application.employeeId, Number(application.workingDays));
                 }
 
                 // Status Update
                 await db.update(leaveApplications)
-                    .set({ status: 'Approved', approvedBy, approvedAt: sql`CURRENT_TIMESTAMP`, updatedAt: sql`CURRENT_TIMESTAMP` })
+                    .set({ 
+                        status: 'Approved', 
+                        approvedBy, 
+                        approvedAt: sql`CURRENT_TIMESTAMP`, 
+                        updatedAt: sql`CURRENT_TIMESTAMP`,
+                        daysWithPay: finalSafeDeduction.toString(),
+                        daysWithoutPay: finalWithoutPay.toString(),
+                        actualPaymentStatus: finalPaymentStatus
+                    })
                     .where(eq(leaveApplications.id, application.id));
 
                 // DTR Update
@@ -191,19 +219,18 @@ const processDeemedApprovedLeaves = async (): Promise<void> => {
                 await logToServiceRecord(application.employeeId, eventType as 'LWOP' | 'Leave', String(application.startDate).split('T')[0], String(application.endDate).split('T')[0], application.leaveType, Number(application.workingDays), application.actualPaymentStatus !== 'WITHOUT_PAY', `${application.leaveType} - Deemed Approved`, application.id, 'leave_application', approvedBy);
             }
         }
-    } catch (_error) {
-      /* empty */
-
+    } catch (error) {
+      // S2 FIX: Log errors instead of silently swallowing
+      console.error('[LEAVE] Error processing deemed approved leaves:', error);
     }
 };
 
 /**
  * Get dynamic leave policy from database
  */
-const getLeavePolicy = async (): Promise<LeavePolicyContent> => {
-  const fallbackPolicy: LeavePolicyContent = {
+const getLeavePolicy = async (): Promise<LeavePolicyContentStrict> => {
+  const fallbackPolicy: LeavePolicyContentStrict = {
     types: ['Vacation Leave', 'Sick Leave', 'Special Privilege Leave', 'Forced Leave', 'Maternity Leave', 'Paternity Leave', 'Study Leave', 'Solo Parent Leave', 'Rehabilitation Leave', 'Special Leave Benefits for Women', 'Special Emergency Leave', 'Calamity Leave'],
-    /* eslint-disable @typescript-eslint/naming-convention */
     annualLimits: {
       'Vacation Leave': 15,
       'Sick Leave': 15,
@@ -211,11 +238,10 @@ const getLeavePolicy = async (): Promise<LeavePolicyContent> => {
       'Forced Leave': 5,
       'Solo Parent Leave': 7,
     },
-    advanceFilingDays: { days: 5, appliesTo: ['Vacation Leave', 'Forced Leave'] },
-    sickLeaveWindow: { maxDaysAfterReturn: 5 },
+    advanceFilingDays: { days: 5, appliesTo: ['Vacation Leave', 'Forced Leave'], description: 'Must be filed 5 working days in advance' },
+    sickLeaveWindow: { maxDaysAfterReturn: 5, description: 'Must be filed within 5 working days upon return' },
     crossChargeMap: { 'Sick Leave': 'Vacation Leave', 'Forced Leave': 'Vacation Leave' },
     leaveToCreditMap: { 'Vacation Leave': 'Vacation Leave', 'Sick Leave': 'Sick Leave', 'Special Privilege Leave': 'Special Privilege Leave', 'Forced Leave': 'Vacation Leave', 'Solo Parent Leave': 'Solo Parent Leave' },
-    /* eslint-enable @typescript-eslint/naming-convention */
     specialLeavesNoDeduction: ['Study Leave', 'Maternity Leave', 'Paternity Leave', 'Rehabilitation Leave', 'Special Leave Benefits for Women', 'Special Emergency Leave', 'Calamity Leave'],
     requiredAttachments: {}, 
     forcedLeaveRule: { minimumVLRequired: 10, description: 'Forced leave is mandatory if VL balance is 10 or more.' },
@@ -232,9 +258,11 @@ const getLeavePolicy = async (): Promise<LeavePolicyContent> => {
     const policy = results[0];
 
     if (policy) {
-        return typeof policy.content === 'string' 
+        const rawJson = typeof policy.content === 'string' 
           ? JSON.parse(policy.content) 
-          : policy.content as unknown as LeavePolicyContent;
+          : policy.content;
+          
+        return leavePolicySchema.parse(rawJson);
     }
 
     return fallbackPolicy;
@@ -542,27 +570,27 @@ export const applyLeave = async (req: Request, res: Response): Promise<void> => 
       return;
     }
 
-    // Validate advance filing
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    // Validate advance filing using calculateWorkingDays instead of calendar days
     const advanceFiling = policy.advanceFilingDays;
-    if (advanceFiling.appliesTo.includes(leaveType) && !validateVLAdvanceFiling(startDate)) {
-      res.status(400).json({
-        message: `${leaveType} must be filed at least ${advanceFiling.days} days in advance per policy.`,
-      });
-      return;
+    if (advanceFiling.appliesTo.includes(leaveType)) {
+      const workingDaysAdvance = await calculateWorkingDays(todayStr, startDate);
+      if (workingDaysAdvance <= advanceFiling.days) {
+        res.status(400).json({
+          message: `${leaveType} must be filed at least ${advanceFiling.days} working days in advance per policy.`,
+        });
+        return;
+      }
     }
 
-    // Validate Sick Leave window
+    // Validate Sick Leave window (filed upon return, meaning after endDate)
     if (leaveType === 'Sick Leave') {
-      const start = new Date(startDate);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const diffTime = today.getTime() - start.getTime();
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      
+      const workingDaysPassed = await calculateWorkingDays(endDate, todayStr);
       const window = policy.sickLeaveWindow.maxDaysAfterReturn;
-      if (diffDays > window) {
+      if (workingDaysPassed > window + 1) { // +1 because the range calculation usually includes both start and end dates
         res.status(400).json({
-          message: `Sick Leave must be filed within ${window} days of returning to work.`,
+          message: `Sick Leave must be filed within ${window} working days upon returning to work.`,
         });
         return;
       }
@@ -605,8 +633,15 @@ export const applyLeave = async (req: Request, res: Response): Promise<void> => 
 
     if (isWithPay && !isSpecialLeave) {
       // Get credit type to deduct from
-      const primaryCreditType = policy.leaveToCreditMap[leaveType as keyof typeof policy.leaveToCreditMap] || leaveType as CreditType;
-      const primaryBalance = await getEmployeeBalance(String(employeeId), primaryCreditType);
+      const mappedCreditType = policy.leaveToCreditMap[leaveType as keyof typeof policy.leaveToCreditMap];
+      const primaryCreditType = mappedCreditType || (CREDIT_TYPES.find(ct => ct === leaveType) || null);
+      
+      if (!primaryCreditType) {
+        res.status(400).json({ message: `Leave type ${leaveType} does not have a linked credit type for deduction.` });
+        return;
+      }
+
+      const primaryBalance = await getEmployeeBalance(String(employeeId), primaryCreditType as CreditType);
 
       if (primaryBalance >= workingDays) {
         // Sufficient primary credits
@@ -617,7 +652,7 @@ export const applyLeave = async (req: Request, res: Response): Promise<void> => 
         daysWithPay = primaryBalance;
 
         // Check cross-charging for remaining
-        const crossChargeType = policy.crossChargeMap[leaveType as keyof typeof policy.crossChargeMap];
+        const crossChargeType = policy.crossChargeMap[leaveType as keyof typeof policy.crossChargeMap] as CreditType | undefined;
         if (crossChargeType) {
           const crossBalance = await getEmployeeBalance(String(employeeId), crossChargeType);
           const remaining = workingDays - primaryBalance;
@@ -638,7 +673,7 @@ export const applyLeave = async (req: Request, res: Response): Promise<void> => 
         }
       } else {
         // No primary credits, check cross-charging
-        const crossChargeType = policy.crossChargeMap[leaveType as keyof typeof policy.crossChargeMap];
+        const crossChargeType = policy.crossChargeMap[leaveType as keyof typeof policy.crossChargeMap] as CreditType | undefined;
         if (crossChargeType) {
           const crossBalance = await getEmployeeBalance(String(employeeId), crossChargeType);
           if (crossBalance >= workingDays) {
@@ -682,6 +717,7 @@ export const applyLeave = async (req: Request, res: Response): Promise<void> => 
       daysWithoutPay: daysWithoutPay.toString(),
       crossChargedFrom,
       reason,
+      attachmentPath: (req as MulterRequest).file?.filename || null,
       status: 'Pending'
     });
 
@@ -790,6 +826,7 @@ export const getMyLeaves = async (req: Request, res: Response): Promise<void> =>
 
     res.status(200).json({
       leaves: formattedLeaves,
+      applications: formattedLeaves, // Align with frontend hook useLeaveData
       pagination: { page, limit, totalItems, totalPages },
     });
   } catch (_err) {
@@ -920,9 +957,19 @@ export const processLeave = async (req: Request, res: Response): Promise<void> =
     const { id } = req.params as { id: string };
     const authReq = req as AuthenticatedRequest;
     const adminId = authReq.user ? String(authReq.user.employeeId || authReq.user.id) : 'Administrator';
+    const file = (req as MulterRequest).file;
+
+    const updateData: LeaveUpdateData = { 
+      status: 'Processing', 
+      updatedAt: sql`CURRENT_TIMESTAMP` 
+    };
+
+    if (file) {
+      updateData.adminFormPath = file.filename;
+    }
 
     await db.update(leaveApplications)
-      .set({ status: 'Processing', updatedAt: sql`CURRENT_TIMESTAMP` })
+      .set(updateData)
       .where(eq(leaveApplications.id, parseInt(id)));
 
     // Notify employee
@@ -957,9 +1004,19 @@ export const finalizeLeave = async (req: Request, res: Response): Promise<void> 
     const { id } = req.params as { id: string };
     const authReq = req as AuthenticatedRequest;
     const employeeId = authReq.user ? String(authReq.user.employeeId || authReq.user.id) : null;
+    const file = (req as MulterRequest).file;
+
+    const updateData: LeaveUpdateData = { 
+      status: 'Finalizing', 
+      updatedAt: sql`CURRENT_TIMESTAMP` 
+    };
+
+    if (file) {
+      updateData.finalAttachmentPath = file.filename;
+    }
 
     await db.update(leaveApplications)
-      .set({ status: 'Finalizing', updatedAt: sql`CURRENT_TIMESTAMP` })
+      .set(updateData)
       .where(eq(leaveApplications.id, parseInt(id)));
 
     if (employeeId) {

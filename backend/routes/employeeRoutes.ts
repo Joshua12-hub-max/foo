@@ -20,10 +20,13 @@ import {
   updateEmployeeCustomField,
   updateEmployeeSkill,
   updateEmployeeEducation,
-  updateEmployeeContact
+  updateEmployeeContact,
+  getEmployeeDocuments,
+  uploadEmployeeDocument,
+  deleteEmployeeDocument
 } from '../controllers/user.controller.js';
 import { verifyToken, verifyAdmin, verifyOwnerOrAdmin } from '../middleware/authMiddleware.js';
-import { uploadAvatar } from '../middleware/uploadMiddleware.js';
+import { uploadAvatar, uploadResume } from '../middleware/uploadMiddleware.js';
 
 const router: Router = Router();
 
@@ -61,5 +64,10 @@ router.delete('/:id/contacts/:contactId', verifyToken, verifyOwnerOrAdmin, delet
 router.post('/:id/custom-fields', verifyToken, verifyOwnerOrAdmin, addEmployeeCustomField);
 router.put('/:id/custom-fields/:fieldId', verifyToken, verifyOwnerOrAdmin, updateEmployeeCustomField);
 router.delete('/:id/custom-fields/:fieldId', verifyToken, verifyOwnerOrAdmin, deleteEmployeeCustomField);
+
+// Employee Documents
+router.get('/:id/documents', verifyToken, getEmployeeDocuments);
+router.post('/:id/documents', verifyToken, verifyOwnerOrAdmin, uploadResume.single('document'), uploadEmployeeDocument);
+router.delete('/:id/documents/:docId', verifyToken, verifyOwnerOrAdmin, deleteEmployeeDocument);
 
 export default router;

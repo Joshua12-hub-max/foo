@@ -1,5 +1,5 @@
 import { db } from '../db/index.js';
-import { authentication, employeeSkills, employeeEducation, employeeEmergencyContacts, employeeCustomFields, pdsFamily, pdsVoluntaryWork, pdsLearningDevelopment, pdsWorkExperience, pdsOtherInfo, pdsReferences } from '../db/schema.js';
+import { authentication, employeeSkills, employeeEducation, employeeEmergencyContacts, employeeCustomFields, pdsFamily, pdsVoluntaryWork, pdsLearningDevelopment, pdsWorkExperience, pdsOtherInfo, pdsReferences, bioEnrolledUsers } from '../db/schema.js';
 import { eq, and, desc, SQL, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/mysql-core';
 
@@ -77,9 +77,11 @@ export class UserService {
       twitterHandle: auth.twitterHandle,
       firstDayOfService: auth.firstDayOfService,
       officeAddress: auth.officeAddress,
-      duties: sql<string>`COALESCE((SELECT schedule_title FROM schedules WHERE schedules.employee_id = auth.employee_id ORDER BY schedules.updated_at DESC LIMIT 1), 'No Schedule')`
+      duties: sql<string>`COALESCE((SELECT schedule_title FROM schedules WHERE schedules.employee_id = auth.employee_id ORDER BY schedules.updated_at DESC LIMIT 1), 'No Schedule')`,
+      isBiometricEnrolled: sql<boolean>`CASE WHEN ${bioEnrolledUsers.employeeId} IS NOT NULL THEN true ELSE false END`
     })
     .from(auth)
+    .leftJoin(bioEnrolledUsers, eq(auth.employeeId, bioEnrolledUsers.employeeId))
     .where(where)
     .orderBy(auth.lastName);
 
@@ -92,16 +94,19 @@ export class UserService {
     const auth = alias(authentication, 'auth');
     const results = await db.select({
       authentication: auth,
-      duties: sql<string>`COALESCE((SELECT schedule_title FROM schedules WHERE schedules.employee_id = auth.employee_id ORDER BY schedules.updated_at DESC LIMIT 1), 'No Schedule')`
+      duties: sql<string>`COALESCE((SELECT schedule_title FROM schedules WHERE schedules.employee_id = auth.employee_id ORDER BY schedules.updated_at DESC LIMIT 1), 'No Schedule')`,
+      isBiometricEnrolled: sql<boolean>`CASE WHEN ${bioEnrolledUsers.employeeId} IS NOT NULL THEN true ELSE false END`
     })
     .from(auth)
+    .leftJoin(bioEnrolledUsers, eq(auth.employeeId, bioEnrolledUsers.employeeId))
     .where(eq(auth.id, id));
 
     if (results.length === 0) return null;
 
     return {
       ...results[0].authentication,
-      duties: results[0].duties
+      duties: results[0].duties,
+      isBiometricEnrolled: results[0].isBiometricEnrolled
     };
   }
 

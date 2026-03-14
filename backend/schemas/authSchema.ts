@@ -172,6 +172,8 @@ export const UpdateProfileSchema = z.object({
   resBarangay: z.string().optional(),
   resCity: z.string().optional(),
   resProvince: z.string().optional(),
+  resRegion: z.string().optional(),
+  resBrgy: z.string().optional(),
   
   permHouseBlockLot: z.string().optional(),
   permStreet: z.string().optional(),
@@ -179,6 +181,8 @@ export const UpdateProfileSchema = z.object({
   permBarangay: z.string().optional(),
   permCity: z.string().optional(),
   permProvince: z.string().optional(),
+  permRegion: z.string().optional(),
+  permBrgy: z.string().optional(),
   
   emergencyContact: z.string().optional(),
   emergencyContactNumber: z.string().optional(),

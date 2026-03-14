@@ -10,6 +10,7 @@ interface ApplicantTableProps {
   filteredApplicants: Applicant[];
   onAssign: (applicant: Applicant) => void;
   onSchedule: (applicant: Applicant) => void;
+  onViewDetails: (applicant: Applicant) => void;
 }
 
 const ApplicantTable: React.FC<ApplicantTableProps> = ({ 
@@ -17,7 +18,8 @@ const ApplicantTable: React.FC<ApplicantTableProps> = ({
   isRefetching, 
   filteredApplicants, 
   onAssign, 
-  onSchedule 
+  onSchedule,
+  onViewDetails
 }) => {
 
   const formatDate = (dateString: string | undefined): string => {
@@ -107,10 +109,9 @@ const ApplicantTable: React.FC<ApplicantTableProps> = ({
                          )}
 
                          {/* Eligibility Link */}
-                         {app.eligibility_path ? (
-                            <a 
-                                href={`http://localhost:5000/uploads/resumes/${app.eligibility_path}`} 
-                                target="_blank" rel="noopener noreferrer"
+                         {app.eligibilityPath ? (
+                                                         <a 
+                                                         href={`http://localhost:5000/uploads/resumes/${app.eligibilityPath}`}                                target="_blank" rel="noopener noreferrer"
                                 className="p-1.5 text-amber-600 hover:bg-amber-50 rounded-lg"
                                 title="View Eligibility Certificate"
                             >
@@ -139,6 +140,15 @@ const ApplicantTable: React.FC<ApplicantTableProps> = ({
                 </td>
                 <td className="px-6 py-4 text-center">
                     <div className="flex justify-center gap-2">
+                         {/* View Details Button */}
+                         <button 
+                            onClick={() => onViewDetails(app)}
+                            className="p-1.5 text-gray-600 hover:bg-gray-100 rounded-lg"
+                            title="View Full Details"
+                         >
+                            <FileText size={16} />
+                         </button>
+
                          {/* Assign Interviewer Button */}
                         {!app.interviewerName && (
                             <button 

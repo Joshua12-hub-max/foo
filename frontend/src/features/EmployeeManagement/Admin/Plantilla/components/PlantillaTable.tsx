@@ -25,98 +25,108 @@ const PlantillaTable: React.FC<PlantillaTableProps> = ({
     onDelete,
 }) => {
     return (
-        <div className="bg-white rounded-lg shadow-md border border-gray-100 overflow-hidden flex-1">
+        <div className="flex-1 overflow-hidden rounded-xl bg-[#F8F9FA] p-1 relative min-h-[400px]">
             {loading ? (
-            <div className="p-8 text-center text-gray-500 flex flex-col items-center justify-center h-64">
-                <div className="w-8 h-8 border-4 border-gray-500 border-t-transparent rounded-full animate-spin mb-3"></div>
-                Loading positions...
+            <div className="w-full h-64 flex items-center justify-center bg-white rounded-xl shadow-sm border border-gray-100">
+                <div className="flex flex-col items-center gap-3">
+                    <div className="w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full animate-spin"></div>
+                    <p className="text-gray-500 text-sm font-medium">Loading positions...</p>
+                </div>
             </div>
             ) : error ? (
-            <div className="p-8 text-center text-red-500">{error}</div>
+            <div className="w-full h-64 flex items-center justify-center bg-white rounded-xl shadow-sm border border-gray-100">
+                <p className="text-red-500 font-medium">{error}</p>
+            </div>
             ) : (
-            <div className="overflow-x-auto">
-                <table className="w-full">
-                <thead className="bg-gray-100 text-gray-700">
+            <div className="overflow-x-auto bg-gray-50 rounded-lg">
+                <table className="w-full min-w-[1000px]">
+                <thead className="bg-gray-200 shadow-md text-gray-700">
                     <tr>
-                    <th className="px-4 py-3 text-left text-sm font-semibold">Item No.</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold">Position Title</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold">SG</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold">Department</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold">Area</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold">Incumbent</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold">Status</th>
-                    <th className="px-4 py-3 text-center text-sm font-semibold">Actions</th>
+                    <th className="px-6 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap">Status</th>
+                    <th className="px-6 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap">Item No.</th>
+                    <th className="px-6 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap">Position Title</th>
+                    <th className="px-6 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap">SG</th>
+                    <th className="px-6 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap">Department</th>
+                    <th className="px-6 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap">Area</th>
+                    <th className="px-6 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap">Incumbent</th>
+                    <th className="px-6 py-4 text-center text-sm font-bold tracking-wide whitespace-nowrap">Actions</th>
                     </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-slate-100">
                     {positions.length > 0 ? positions.map(pos => {
                       if (!pos) return null;
                       return (
-                    <tr key={pos.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-4 py-3 text-sm font-medium">{pos.itemNumber}</td>
-                        <td className="px-4 py-3 text-sm">{pos.positionTitle}</td>
-                        <td className="px-4 py-3 text-sm">{pos.salaryGrade}-{pos.stepIncrement}</td>
-                        <td className="px-4 py-3 text-sm">{pos.departmentName || pos.department || '-'}</td>
-                        <td className="px-4 py-3 text-sm">
+                    <tr key={pos.id} className="hover:bg-[#F8F9FA] hover:shadow-xl transition-colors group">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`px-3 py-1 text-[11px] font-bold rounded-full border transition-all ${
+                                pos.isVacant 
+                                    ? 'bg-transparent text-gray-400 border-gray-200 group-hover:bg-amber-50 group-hover:text-amber-700 group-hover:border-amber-100' 
+                                    : 'bg-transparent text-gray-400 border-gray-200 group-hover:bg-green-50 group-hover:text-green-700 group-hover:border-green-100'
+                            }`}>
+                                {pos.isVacant ? 'VACANT' : 'FILLED'}
+                            </span>
+                        </td>
+                        <td className="px-6 py-4 text-sm font-medium text-gray-700 whitespace-nowrap">{pos.itemNumber}</td>
+                        <td className="px-6 py-4 text-sm font-semibold text-gray-800">{pos.positionTitle}</td>
+                        <td className="px-6 py-4 text-sm text-gray-600 font-medium">{pos.salaryGrade}-{pos.stepIncrement}</td>
+                        <td className="px-6 py-4 text-sm text-gray-600">{pos.departmentName || pos.department || '-'}</td>
+                        <td className="px-6 py-4 text-sm">
                             <div className="flex flex-col">
-                                <span className="font-medium text-gray-700">{pos.areaCode || '-'}</span>
+                                <span className="font-bold text-gray-700 text-xs">{pos.areaCode || '-'}</span>
                                 {(pos.areaType || pos.areaLevel) && (
-                                    <span className="text-[10px] text-gray-400 font-mono">
+                                    <span className="text-[10px] text-gray-400 font-bold uppercase">
                                         {pos.areaType || '?'}/{pos.areaLevel || '?'}
                                     </span>
                                 )}
                             </div>
                         </td>
-                        <td className="px-4 py-3 text-sm">
-                        {pos.incumbentName || <span className="text-gray-400 italic">Vacant</span>}
+                        <td className="px-6 py-4 text-sm text-gray-700">
+                        {pos.incumbentName ? (
+                            <span className="font-bold text-gray-900">{pos.incumbentName}</span>
+                        ) : (
+                            <span className="text-gray-300 italic">No appointee</span>
+                        )}
                         </td>
-                        <td className="px-4 py-3 text-sm">
-                        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                            pos.isVacant ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'
-                        }`}>
-                            {pos.isVacant ? 'Vacant' : 'Filled'}
-                        </span>
-                        </td>
-                        <td className="px-4 py-3">
-                        <div className="flex justify-center gap-1">
+                        <td className="px-6 py-4">
+                        <div className="flex justify-center gap-3">
                             {pos.isVacant ? (
                             <button 
                                 onClick={() => onAssign(pos)}
-                                className="text-gray-600 hover:text-gray-800 p-1.5 rounded hover:bg-gray-100 transition"
+                                className="text-gray-500 hover:text-blue-600 transition-colors"
                                 title="Assign Employee"
                             >
-                                <UserPlus size={16} />
+                                <UserPlus size={18} />
                             </button>
                             ) : (
                             <button 
                                 onClick={() => onVacate(pos)}
-                                className="text-amber-600 hover:text-amber-800 p-1.5 rounded hover:bg-amber-50 transition"
+                                className="text-gray-500 hover:text-amber-600 transition-colors"
                                 title="Vacate Position"
                             >
-                                <UserMinus size={16} />
+                                <UserMinus size={18} />
                             </button>
                             )}
-
+ 
                             <button 
-                            onClick={() => onViewHistory(pos)}
-                            className="text-purple-600 hover:text-purple-800 p-1.5 rounded hover:bg-purple-50 transition"
-                            title="View History"
+                                onClick={() => onViewHistory(pos)}
+                                className="text-gray-500 hover:text-purple-600 transition-colors"
+                                title="View History"
                             >
-                            <History size={16} />
+                                <History size={18} />
                             </button>
                             <button 
-                            onClick={() => onEdit(pos)}
-                            className="text-blue-600 hover:text-blue-800 p-1.5 rounded hover:bg-blue-50 transition"
-                            title="Edit"
+                                onClick={() => onEdit(pos)}
+                                className="text-gray-500 hover:text-blue-600 transition-colors"
+                                title="Edit"
                             >
-                            <SquarePen size={16} />
+                                <SquarePen size={18} />
                             </button>
                             <button 
-                            onClick={() => onDelete(pos.id)}
-                            className="text-red-600 hover:text-red-800 p-1.5 rounded hover:bg-red-50 transition"
-                            title="Delete"
+                                onClick={() => onDelete(pos.id)}
+                                className="text-gray-500 hover:text-red-600 transition-colors"
+                                title="Delete"
                             >
-                            <Trash2 size={16} />
+                                <Trash2 size={18} />
                             </button>
                         </div>
                         </td>
@@ -124,7 +134,7 @@ const PlantillaTable: React.FC<PlantillaTableProps> = ({
                     );
                     }) : (
                     <tr>
-                        <td colSpan={7} className="p-8 text-center text-gray-500">
+                        <td colSpan={8} className="p-8 text-center text-gray-400 text-sm font-medium">
                         No positions found matching your criteria.
                         </td>
                     </tr>

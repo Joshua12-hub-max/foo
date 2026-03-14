@@ -52,7 +52,7 @@ export const sendEmail = async (
       to: safeTo,
       subject: safeSubject,
       html,
-      attachments
+      attachments: attachments as nodemailer.SendMailOptions['attachments']
     });
   } catch (error: unknown) {
     // Log only the error message, NOT sensitive transporter details

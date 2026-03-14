@@ -80,8 +80,8 @@ const AttendanceTable: React.FC<AttendanceTableProps> = memo(({ data, headers, i
                 
                 {/* Status - First Column */}
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`px-3 py-1 text-xs font-semibold rounded-full ${getStatusColor(row.status || 'Present', STATUS_STYLES)}`}>
-                    {row.status || 'Present'}
+                  <span className={`px-3 py-1 text-xs font-semibold rounded-full ${getStatusColor(row.status || 'Pending', STATUS_STYLES)}`}>
+                    {row.status || 'Pending'}
                   </span>
                 </td>
 

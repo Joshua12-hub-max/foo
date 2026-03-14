@@ -3,7 +3,7 @@ import { leaveApi } from "@/api/leaveApi";
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@/lib/zodResolver';
 import { submitLeaveRequestSchema, SubmitLeaveRequestSchema } from '@/schemas/leave';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import ModalHeader from '@/components/Custom/Timekeeping/LeaveRequestComponents/Employee/Modals/components/ModalHeader';
 import FormInput from '@/components/Custom/Timekeeping/LeaveRequestComponents/Employee/Modals/components/FormInput';
 import DateInput from '@/components/Custom/Timekeeping/LeaveRequestComponents/Employee/Modals/components/DateInput';
@@ -11,10 +11,11 @@ import { AlertTriangle, CheckCircle, Info, XCircle } from 'lucide-react';
 import { useLeavePolicy } from '@/hooks/useLeavePolicy';
 import Combobox from '@/components/Custom/Combobox';
 import { useAuth } from '@/hooks/useAuth';
+import { User } from '@/types';
 
 // ... (interfaces remain same)
 
-import { LeaveBalance } from '@/types/leave.types';
+import { LeaveBalance, LeaveType, ApplyLeavePayload, SPECIAL_LEAVES_NO_DEDUCTION } from '@/types/leave.types';
 
 interface SubmitLeaveRequestModalProps {
   isOpen: boolean;
@@ -30,13 +31,23 @@ export const SubmitLeaveRequestModal: React.FC<SubmitLeaveRequestModalProps> = (
   credits = [] 
 }) => {
   const { data: policy, isLoading: isLoadingPolicy } = useLeavePolicy();
+  const currentYear = new Date().getFullYear();
+  const { data: holidaysData } = useQuery({
+    queryKey: ['holidays', currentYear],
+    queryFn: () => leaveApi.getHolidays(currentYear),
+    enabled: isOpen
+  });
+
+  const holidayDates = useMemo(() => {
+    return new Set(holidaysData?.data?.holidays?.map(h => h.date.split('T')[0]) || []);
+  }, [holidaysData]);
+
   const leaveTypes = policy?.types || [];
   const { user, department: userDepartment } = useAuth();
   const queryClient = useQueryClient();
 
   const { 
     register, 
-    control,
     handleSubmit, 
     watch, 
     reset,
@@ -45,7 +56,7 @@ export const SubmitLeaveRequestModal: React.FC<SubmitLeaveRequestModalProps> = (
   } = useForm<SubmitLeaveRequestSchema>({
     resolver: zodResolver(submitLeaveRequestSchema),
     defaultValues: {
-      leaveType: '',
+      leaveType: 'Vacation Leave',
       isPaid: true,
       startDate: '',
       endDate: '',
@@ -56,38 +67,58 @@ export const SubmitLeaveRequestModal: React.FC<SubmitLeaveRequestModalProps> = (
   const watchAllFields = watch();
   const { leaveType, isPaid, startDate, endDate } = watchAllFields;
 
-  // Calculate duration (excluding weekends)
-  const duration = useMemo(() => {
-    if (!startDate || !endDate) return 0;
-    
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    
-    // Validate dates
-    if (isNaN(start.getTime()) || isNaN(end.getTime()) || start > end) {
-      return 0;
-    }
+  // Helper to calculate working days (frontend version)
+  const calculateWorkingDays = (startStr: string, endStr: string) => {
+    if (!startStr || !endStr) return 0;
+    const start = new Date(startStr);
+    const end = new Date(endStr);
+    if (isNaN(start.getTime()) || isNaN(end.getTime()) || start > end) return 0;
 
     let count = 0;
-    const curDate = new Date(start);
-    
-    while (curDate <= end) {
-      const dayOfWeek = curDate.getDay();
-      if (dayOfWeek !== 0 && dayOfWeek !== 6) { // Exclude Sun(0) and Sat(6)
+    const cur = new Date(start);
+    while (cur <= end) {
+      const dayOfWeek = cur.getDay();
+      const dateStr = cur.toISOString().split('T')[0];
+      if (dayOfWeek !== 0 && dayOfWeek !== 6 && !holidayDates.has(dateStr)) {
         count++;
       }
-      curDate.setDate(curDate.getDate() + 1);
+      cur.setDate(cur.getDate() + 1);
     }
-    
     return count;
-  }, [startDate, endDate]);
+  };
+
+  // Calculate duration (excluding weekends and holidays)
+  const duration = useMemo(() => calculateWorkingDays(startDate, endDate), [startDate, endDate, holidayDates]);
+
+  // Advance filing check
+  const advanceFilingStatus = useMemo(() => {
+    if (!startDate || !leaveType || !policy || !policy.advanceFilingDays) return { isOk: true };
+    
+    const advanceFiling = policy.advanceFilingDays;
+    if (!advanceFiling.appliesTo.includes(leaveType)) return { isOk: true };
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    // Backend uses calculateWorkingDays(todayStr, startDate)
+    const workingDaysAdvance = calculateWorkingDays(todayStr, startDate);
+    
+    if (workingDaysAdvance <= advanceFiling.days) {
+      return { 
+        isOk: false, 
+        message: `${leaveType} must be filed at least ${advanceFiling.days} working days in advance.`,
+        required: advanceFiling.days,
+        current: workingDaysAdvance
+      };
+    }
+
+    return { isOk: true };
+  }, [startDate, leaveType, policy, holidayDates]);
 
   // Get credit info including cross-charging details
   const creditInfo = useMemo(() => {
     if (!leaveType || !policy) return null;
 
     // Check if special leave (no deduction)
-    const isSpecialLeave = policy.specialLeavesNoDeduction.includes(leaveType);
+    const isSpecialLeave = policy.specialLeavesNoDeduction.includes(leaveType) || SPECIAL_LEAVES_NO_DEDUCTION.includes(leaveType);
     
     // Identify primary credit type
     const primaryCreditType = policy.leaveToCreditMap[leaveType] || leaveType;
@@ -153,7 +184,7 @@ export const SubmitLeaveRequestModal: React.FC<SubmitLeaveRequestModalProps> = (
           throw new Error(`Insufficient leave credits. You have ${availableCredit || 0} days but need ${duration} days.`);
       }
 
-      const payload = {
+      const payload: ApplyLeavePayload = {
         leaveType: data.leaveType,
         startDate: data.startDate,
         endDate: data.endDate,
@@ -169,7 +200,7 @@ export const SubmitLeaveRequestModal: React.FC<SubmitLeaveRequestModalProps> = (
         onSubmit();
         onClose();
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
         console.error('Error applying for leave:', error);
         // Errors handled by mutation state, shown below
     }
@@ -188,9 +219,9 @@ export const SubmitLeaveRequestModal: React.FC<SubmitLeaveRequestModalProps> = (
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 transition-all duration-300" onClick={handleClose}>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 transition-all" onClick={handleClose}>
       <div 
-        className="bg-white/95 backdrop-blur-md rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] w-full max-w-md border border-white/20 overflow-hidden animate-in fade-in zoom-in duration-300 flex flex-col max-h-[90vh]"
+        className="bg-white rounded-xl shadow-2xl w-full max-w-md border border-gray-100 overflow-hidden animate-in fade-in zoom-in duration-200 flex flex-col max-h-[90vh]"
         onClick={e => e.stopPropagation()}
       >
         <ModalHeader onClose={handleClose} />
@@ -198,97 +229,61 @@ export const SubmitLeaveRequestModal: React.FC<SubmitLeaveRequestModalProps> = (
         <div className="overflow-y-auto p-6 space-y-4">
           <form onSubmit={handleSubmit(onFormSubmit)} id="leave-request-form" className="space-y-4">
             {/* Error Alert */}
-            {(errors.root || submitMutation.error) && (
+            {(errors.root || submitMutation.error) ? (
               <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-sm">
                 <XCircle className="w-4 h-4 flex-shrink-0" />
-                <span>{errors.root?.message || (submitMutation.error instanceof Error ? submitMutation.error.message : '') || 'Submission failed'}</span>
+                <span>{String(errors.root?.message || (submitMutation.error instanceof Error ? submitMutation.error.message : submitMutation.error) || 'Submission failed')}</span>
               </div>
-            )}
+            ) : null}
 
-            {/* Credit Info Banner */}
-            {leaveType && creditInfo && (
-              <div className={`flex items-start gap-2 px-3 py-2 rounded-lg text-sm ${
-                creditInfo.isSpecialLeave
-                  ? 'bg-blue-50 border border-blue-200 text-blue-700'
-                  : hasSufficientCredits 
-                  ? 'bg-emerald-50 border border-emerald-200 text-emerald-700'
-                  : 'bg-amber-50 border border-amber-200 text-amber-700'
-              }`}>
-                {creditInfo.isSpecialLeave ? (
-                  <Info className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                ) : hasSufficientCredits ? (
-                  <CheckCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                ) : (
-                  <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                )}
-                
-                <div className="flex-1">
-                  {creditInfo.isSpecialLeave ? (
-                     <span><strong>Special Leave:</strong> This leave type does not deduct from your pending leave credits.</span>
-                  ) : (
-                     <div className="flex flex-col gap-1">
-                        <div className="flex justify-between items-center">
-                           <span><strong>{creditInfo.primaryType} Credits:</strong> {creditInfo.primaryBalance} days</span>
-                        </div>
-                        {creditInfo.fallbackType && (
-                           <div className="text-xs opacity-90 border-t border-black/10 pt-1 mt-1">
-                              <span>+ {creditInfo.fallbackType}: {creditInfo.fallbackBalance} days</span>
-                              <span className="font-bold block mt-0.5">Total Available: {creditInfo.totalAvailable} days</span>
-                              {creditInfo.totalAvailable >= duration && duration > 0 && creditInfo.primaryBalance < duration && (
-                                <span className="block text-[10px] italic mt-0.5">(This will use cross-charged credits)</span>
-                              )}
-                           </div>
-                        )}
-                        {!creditInfo.fallbackType && isPaid && duration > 0 && hasSufficientCredits && (
-                           <span className="text-xs block">
-                             Remaining after request: <strong>{remainingCredits} days</strong>
-                           </span>
-                        )}
-                     </div>
-                  )}
+            {/* Leave Credit Outlook (Static vs Dynamic) */}
+            {leaveType && creditInfo && !creditInfo.isSpecialLeave && (
+              <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-3 shadow-sm">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="bg-teal-50 p-1.5 rounded-lg">
+                    <Info className="w-4 h-4 text-teal-600" />
+                  </div>
+                  <h3 className="text-xs font-bold text-gray-700">Leave Credit Outlook</h3>
                 </div>
-              </div>
-            )}
-
-            {/* Payment Breakdown - 100% Automated Transparency */}
-            {duration > 0 && leaveType && !creditInfo?.isSpecialLeave && (
-              <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                <h4 className="text-xs font-semibold text-gray-700 uppercase tracking-wider mb-2">Payment Breakdown (Automated)</h4>
                 
                 <div className="space-y-2">
-                  {/* Paid Portion */}
                   <div className="flex justify-between items-center text-sm">
-                    <div className="flex items-center gap-2">
-                       <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
-                       <span className="text-gray-600">With Pay (Credits)</span>
-                    </div>
-                    <span className="font-medium text-emerald-700">
-                      {Math.min(duration, (creditInfo?.totalAvailable || 0))} days
+                    <span className="text-gray-500">Current Balance (Static)</span>
+                    <span className="font-semibold text-gray-900">{creditInfo.totalAvailable.toFixed(1)} days</span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-gray-500">Request Duration</span>
+                    <span className="font-semibold text-amber-600">-{duration.toFixed(1)} days</span>
+                  </div>
+                  <div className="pt-2 border-t border-gray-100 flex justify-between items-center text-sm">
+                    <span className="text-gray-700 font-medium">Remaining (Dynamic)</span>
+                    <span className={`font-bold ${remainingCredits && remainingCredits >= 0 ? 'text-teal-600' : 'text-red-600'}`}>
+                      {remainingCredits?.toFixed(1) || '0.0'} days
                     </span>
                   </div>
+                </div>
 
-                  {/* Unpaid Portion */}
-                  {duration > (creditInfo?.totalAvailable || 0) && (
-                    <div className="flex justify-between items-center text-sm">
-                      <div className="flex items-center gap-2">
-                         <div className="w-2 h-2 rounded-full bg-amber-500"></div>
-                         <span className="text-gray-600">Without Pay (LWOP)</span>
-                      </div>
-                      <span className="font-bold text-amber-700">
-                        {(duration - (creditInfo?.totalAvailable || 0)).toFixed(1)} days
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Summary Footer */}
-                  <div className="pt-2 mt-1 border-t border-gray-200 flex justify-between items-center text-xs text-gray-500">
-                     <span>Based on your {availableCredit} available credits</span>
-                     {duration > (creditInfo?.totalAvailable || 0) ? (
-                        <span className="text-amber-600 font-medium">Insufficient credits • Auto-LWOP applied</span>
-                     ) : (
-                        <span className="text-emerald-600 font-medium">Fully covered by credits</span>
-                     )}
+                {!hasSufficientCredits && isPaid && (
+                  <div className="mt-2 flex items-start gap-2 bg-red-50 p-2 rounded-lg border border-red-100">
+                    <AlertTriangle className="w-3.5 h-3.5 text-red-600 mt-0.5" />
+                    <p className="text-[10px] text-red-700 leading-tight">
+                      Insufficient credits. {(duration - creditInfo.totalAvailable).toFixed(1)} days will be marked as Leave Without Pay (LWOP).
+                    </p>
                   </div>
+                )}
+              </div>
+            )}
+
+            {/* Advance Filing Warning */}
+            {!advanceFilingStatus.isOk && (
+              <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 text-amber-700 px-3 py-2 rounded-lg text-sm">
+                <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <span className="font-semibold block">{advanceFilingStatus.message}</span>
+                  <p className="text-xs mt-1 opacity-90">
+                    Current advance filing: <strong>{advanceFilingStatus.current} working days</strong>. 
+                    Minimum required: <strong>{advanceFilingStatus.required} working days</strong>.
+                  </p>
                 </div>
               </div>
             )}
@@ -298,7 +293,7 @@ export const SubmitLeaveRequestModal: React.FC<SubmitLeaveRequestModalProps> = (
               <FormInput label="Employee Name" required>
                 <input
                   type="text"
-                  value={(user as unknown as Record<string, unknown>)?.name as string || 'Loading...'}
+                  value={user?.name || 'Loading...'}
                   readOnly
                   placeholder="Your name"
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 text-gray-500 font-medium cursor-not-allowed focus:outline-none"
@@ -308,7 +303,7 @@ export const SubmitLeaveRequestModal: React.FC<SubmitLeaveRequestModalProps> = (
               <FormInput label="Department" required>
                 <input
                   type="text"
-                  value={userDepartment || (user as unknown as Record<string, unknown>)?.department as string || 'Loading...'}
+                  value={userDepartment || user?.department || 'Loading...'}
                   readOnly
                   placeholder="Your department"
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 text-gray-500 font-medium cursor-not-allowed focus:outline-none"
@@ -321,8 +316,8 @@ export const SubmitLeaveRequestModal: React.FC<SubmitLeaveRequestModalProps> = (
               <FormInput label="Leave Type" error={errors.leaveType?.message} required>
                 <Combobox
                   options={leaveTypes.map(type => ({ value: type, label: type }))}
-                  value={watch('leaveType') || ''}
-                  onChange={(val) => setValue('leaveType', val, { shouldValidate: true })}
+                  value={watch('leaveType')}
+                  onChange={(val) => setValue('leaveType', val as LeaveType, { shouldValidate: true })}
                   placeholder={isLoadingPolicy ? "Loading leave types..." : "Select leave type..."}
                   error={!!errors.leaveType}
                 />
@@ -346,26 +341,14 @@ export const SubmitLeaveRequestModal: React.FC<SubmitLeaveRequestModalProps> = (
               />
             </div>
 
-            {/* Duration Display - Compact */}
-            <div className="p-3 bg-blue-50 border border-blue-100 rounded-lg">
-              <p className="text-sm text-blue-800">
-                <span className="font-semibold">Duration:</span> {duration} {duration === 1 ? 'day' : 'days'}
-                {availableCredit !== null && (
-                  <span className="ml-2">
-                    • <span className="font-semibold">Available Credits:</span> {availableCredit} days
-                  </span>
-                )}
-              </p>
-            </div>
-
             {/* Description - Compact */}
             <FormInput label="Reason for Leave" error={errors.description?.message} required>
               <textarea
                 {...register('description')}
                 placeholder="Please provide a detailed reason..."
-                className={`w-full px-3 py-2 text-sm border ${
-                  errors.description ? 'border-red-500' : 'border-gray-200'
-                } rounded-lg focus:outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100 transition-all resize-none`}
+                className={`w-full px-4 py-2.5 text-sm border ${
+                  errors.description ? 'border-red-500 ring-2 ring-red-200' : 'border-gray-200'
+                } rounded-lg focus:ring-2 focus:ring-gray-200 focus:border-gray-400 focus:outline-none transition-all resize-none bg-gray-50`}
                 rows={3}
               />
               <p className="text-gray-400 text-xs mt-1 text-right">
@@ -376,20 +359,21 @@ export const SubmitLeaveRequestModal: React.FC<SubmitLeaveRequestModalProps> = (
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex gap-3 shrink-0">
+        <div className="bg-gray-50 px-6 py-4 border-t border-gray-100 flex justify-end gap-3 z-10 shrink-0">
           <button
             type="button"
             onClick={handleClose}
             disabled={submitMutation.isPending}
-            className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 hover:text-gray-900 transition-colors shadow-sm disabled:opacity-50"
+            className="px-4 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 hover:text-gray-900 transition-all shadow-sm disabled:opacity-50"
           >
             Cancel
           </button>
           <button
             type="submit"
             form="leave-request-form"
-            disabled={submitMutation.isPending}
-            className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-gray-900 rounded-lg hover:bg-gray-800 transition-all shadow-lg shadow-gray-900/20 disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={submitMutation.isPending || !advanceFilingStatus.isOk}
+            title={!advanceFilingStatus.isOk ? advanceFilingStatus.message : ""}
+            className="px-4 py-2 text-sm font-bold text-white bg-gray-900 rounded-lg hover:bg-gray-800 transition-all shadow-md disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {submitMutation.isPending ? 'Submitting...' : 'Submit Request'}
           </button>

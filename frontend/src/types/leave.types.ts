@@ -37,6 +37,7 @@ export const LEAVE_TYPES = [
   'Special Leave Benefits for Women',
   'Wellness Leave',
   'Adoption Leave',
+  'Other',
 ] as const;
 
 export type LeaveType = typeof LEAVE_TYPES[number];
@@ -182,13 +183,13 @@ export interface MonetizationRequest {
 // API Request Types
 // ============================================================================
 
-export interface ApplyLeavePayload {
+export type ApplyLeavePayload = {
   leaveType: LeaveType;
   startDate: string;
   endDate: string;
   reason: string;
   isWithPay: boolean;
-}
+} | FormData;
 
 export interface RejectLeavePayload {
   reason: string;
@@ -337,6 +338,7 @@ export const SPECIAL_LEAVES_NO_DEDUCTION: LeaveType[] = [
   'Solo Parent Leave',
   'Special Leave Benefits for Women',
   'Adoption Leave',
+  'Other',
 ];
 
 /** Cross-charging rules: SL can use VL, VL cannot use SL */
@@ -344,4 +346,23 @@ export const CROSS_CHARGE_MAP: Partial<Record<LeaveType, CreditType | null>> = {
   'Sick Leave': 'Vacation Leave',
   'Vacation Leave': null,
   'Forced Leave': 'Vacation Leave',
+};
+
+/** Maps leave types to their credit type for deduction */
+export const LEAVE_TO_CREDIT_MAP: Partial<Record<LeaveType, CreditType | null>> = {
+  'Vacation Leave': 'Vacation Leave',
+  'Sick Leave': 'Sick Leave',
+  'Special Privilege Leave': 'Special Privilege Leave',
+  'Forced Leave': 'Vacation Leave',
+  'Maternity Leave': 'Maternity Leave',
+  'Paternity Leave': 'Paternity Leave',
+  'Solo Parent Leave': 'Solo Parent Leave',
+  'Study Leave': 'Study Leave',
+  'Special Emergency Leave': null,
+  'Wellness Leave': null,
+  'VAWC Leave': null,
+  'Rehabilitation Leave': null,
+  'Special Leave Benefits for Women': null,
+  'Adoption Leave': 'Adoption Leave',
+  'Other': null,
 };

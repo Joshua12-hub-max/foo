@@ -10,7 +10,7 @@ interface Department {
   name: string;
 }
 
-interface InitialData extends DepartmentModalInput {
+interface InitialData extends Partial<DepartmentModalInput> {
   id?: number;
   headOfDepartment?: string;
 }

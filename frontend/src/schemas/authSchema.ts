@@ -28,6 +28,7 @@ export const RegisterSchema = z.object({
   position: z.string().optional(),
   dutyType: z.enum(["Standard", "Irregular"]),
   appointmentType: z.enum(['Permanent', 'Contractual', 'Casual', 'Job Order', 'Coterminous', 'Temporary', 'Contract of Service', 'JO', 'COS', '']).optional(),
+  dateHired: z.string().optional(),
   avatar: z.instanceof(File).optional(),
 
   // Personal Info
@@ -156,3 +157,17 @@ export type EmailVerifyInput = z.infer<typeof EmailVerifySchema>;
 export type ResendOTPInput = z.infer<typeof ResendOTPSchema>;
 export type ForgotPasswordInput = z.infer<typeof ForgotPasswordSchema>;
 export type ResetPasswordInput = z.infer<typeof ResetPasswordSchema>;
+
+export interface RegisterData {
+  email: string;
+  employeeId: string;
+  fullName: string;
+  department: string | null;
+  requiresVerification: boolean;
+}
+
+export interface RegisterResponse {
+  success: boolean;
+  message: string;
+  data: RegisterData;
+}

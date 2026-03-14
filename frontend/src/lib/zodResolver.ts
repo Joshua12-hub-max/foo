@@ -9,7 +9,6 @@ import { zodResolver as baseZodResolver } from '@hookform/resolvers/zod';
 import type { Resolver, FieldValues } from 'react-hook-form';
 import type { ZodType } from 'zod';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function zodResolver<T extends FieldValues>(schema: ZodType<T>): Resolver<T> {
-  return baseZodResolver(schema as any) as unknown as Resolver<T>;
+  return baseZodResolver(schema as Parameters<typeof baseZodResolver>[0]) as Resolver<T>;
 }

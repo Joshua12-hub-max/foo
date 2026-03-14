@@ -91,6 +91,7 @@ export interface EmployeeMapperInput {
   ctcNo?: string | null;
   ctcIssuedAt?: string | null;
   ctcIssuedDate?: string | null;
+  isBiometricEnrolled?: boolean;
 }
 
 /**
@@ -195,6 +196,7 @@ export interface EmployeeApiResponse {
   ctcNo: string | null;
   ctcIssuedAt: string | null;
   ctcIssuedDate: string | null;
+  isBiometricEnrolled: boolean;
 }
 
 /**

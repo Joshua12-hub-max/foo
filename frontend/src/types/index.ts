@@ -37,7 +37,23 @@ export interface User {
   telephoneNo?: string | null;
   address?: string | null;
   residentialAddress?: string | null;
+  residentialZipCode?: string | null;
+  resHouseBlockLot?: string | null;
+  resStreet?: string | null;
+  resSubdivision?: string | null;
+  resBarangay?: string | null;
+  resCity?: string | null;
+  resProvince?: string | null;
+  resRegion?: string | null;
   permanentAddress?: string | null;
+  permanentZipCode?: string | null;
+  permHouseBlockLot?: string | null;
+  permStreet?: string | null;
+  permSubdivision?: string | null;
+  permBarangay?: string | null;
+  permCity?: string | null;
+  permProvince?: string | null;
+  permRegion?: string | null;
   
   // Identifications
   gsisNumber?: string | null;
@@ -99,7 +115,7 @@ export interface AttendanceHeader {
 // Biometrics Log (Merged DTR & Raw)
 export interface BiometricsLog {
   id: string | number;
-  employeeId: string | number;
+  employeeId: string;
   // Raw fields
   scanTime?: string;
   type?: 'IN' | 'OUT';
@@ -136,7 +152,7 @@ export interface MonitorLogData {
 // Attendance Record (General)
 export interface AttendanceRecord {
   id: string | number;
-  employeeId: string | number;
+  employeeId: string;
   employeeName?: string;
   name?: string; 
   date: string;
@@ -163,7 +179,7 @@ export interface NewEvent {
 // Leave Credit
 export interface LeaveCredit {
   id: number;
-  employeeId: number;
+  employeeId: string;
   leaveType: string;
   balance: string;
   used?: string;

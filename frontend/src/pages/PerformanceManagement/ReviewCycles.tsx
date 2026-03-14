@@ -164,7 +164,7 @@ const ReviewCycles = () => {
                 className={`bg-white p-6 rounded-2xl border border-gray-100 hover:border-gray-200 hover:shadow-lg transition-all group border-l-4 ${borderLColor[status.label] || 'border-l-slate-300'} shadow-sm flex flex-col h-full`}
               >
                 <div className="flex justify-between items-start mb-4">
-                  <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border border-gray-100 ${statusColors[status.label] || 'bg-gray-50 text-gray-500'}`}>
+                  <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black tracking-widest border border-gray-100 ${statusColors[status.label] || 'bg-gray-50 text-gray-500'}`}>
                     {status.label}
                   </span>
                   <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
@@ -194,7 +194,7 @@ const ReviewCycles = () => {
                       <Calendar size={14} className="text-gray-400 group-hover:text-blue-600 transition-colors" />
                     </div>
                     <div className="flex flex-col">
-                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter leading-none mb-1">Start Date</span>
+                      <span className="text-[10px] font-bold text-gray-400 tracking-tighter leading-none mb-1">Start Date</span>
                       <span className="font-black text-gray-900 text-[11px] leading-none">{new Date(cycle.startDate).toLocaleDateString()}</span>
                     </div>
                   </div>
@@ -203,7 +203,7 @@ const ReviewCycles = () => {
                       <StatusIcon size={14} className="text-gray-400 group-hover:text-purple-600 transition-colors" />
                     </div>
                     <div className="flex flex-col items-end">
-                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter leading-none mb-1">End Date</span>
+                      <span className="text-[10px] font-bold text-gray-400 tracking-tighter leading-none mb-1">End Date</span>
                       <span className="font-black text-gray-900 text-[11px] leading-none">{new Date(cycle.endDate).toLocaleDateString()}</span>
                     </div>
                   </div>
@@ -217,7 +217,7 @@ const ReviewCycles = () => {
       {/* Create/Edit Modal */}
       <AnimatePresence>
         {isModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/5 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
             <motion.div
               initial={{ opacity: 0, y: 20, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -229,7 +229,7 @@ const ReviewCycles = () => {
                   <h2 className="text-lg font-bold text-gray-900">
                     {editingCycle ? 'Edit Review Cycle' : 'Create Review Cycle'}
                   </h2>
-                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">Performance Management</p>
+                  <p className="text-[10px] text-gray-400 font-bold mt-0.5">Performance Management</p>
                 </div>
                 <button onClick={closeModal} className="p-2 hover:bg-red-50 hover:text-red-600 rounded-xl transition-all text-gray-400 border border-transparent hover:border-red-100">
                   <X size={18} />
@@ -238,7 +238,7 @@ const ReviewCycles = () => {
               <form onSubmit={handleSubmit} className="p-6 space-y-4">
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Cycle Title</label>
+                    <label className="block text-[10px] font-bold text-gray-400 tracking-widest mb-1.5 ml-1">Cycle Title</label>
                     <input
                       type="text"
                       required
@@ -249,7 +249,7 @@ const ReviewCycles = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Description</label>
+                    <label className="block text-[10px] font-bold text-gray-400 tracking-widest mb-1.5 ml-1">Description</label>
                     <textarea
                       rows={3}
                       value={formData.description}
@@ -260,7 +260,7 @@ const ReviewCycles = () => {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Start Date</label>
+                      <label className="block text-[10px] font-bold text-gray-400 tracking-widest mb-1.5 ml-1">Start Date</label>
                       <input
                         type="date"
                         required
@@ -270,7 +270,7 @@ const ReviewCycles = () => {
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">End Date</label>
+                      <label className="block text-[10px] font-bold text-gray-400 tracking-widest mb-1.5 ml-1">End Date</label>
                       <input
                         type="date"
                         required
@@ -285,13 +285,13 @@ const ReviewCycles = () => {
                   <button
                     type="button"
                     onClick={closeModal}
-                    className="flex-1 px-4 py-2.5 bg-white text-gray-500 font-bold rounded-xl hover:bg-gray-50 hover:text-gray-900 transition-all border border-gray-200 text-xs uppercase tracking-widest"
+                    className="flex-1 px-4 py-2.5 bg-white text-gray-500 font-bold rounded-xl hover:bg-gray-50 hover:text-gray-900 transition-all border border-gray-200 text-xs tracking-widest"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 px-4 py-2.5 bg-gray-900 text-white font-bold rounded-xl hover:bg-gray-800 transition-all shadow-md shadow-gray-200 text-xs uppercase tracking-widest"
+                    className="flex-1 px-4 py-2.5 bg-gray-900 text-white font-bold rounded-xl hover:bg-gray-800 transition-all shadow-md shadow-gray-200 text-xs tracking-widest"
                   >
                     {editingCycle ? 'Update Cycle' : 'Create Cycle'}
                   </button>

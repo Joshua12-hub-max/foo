@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Mail, Video, Globe, Wand2, Loader2, AlertCircle } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -53,7 +53,7 @@ const ScheduleInterviewModal: React.FC<ScheduleInterviewModalProps> = ({
       reset({
         date: initialData?.date || selectedApplicant?.interviewDate?.split('T')[0] || '',
         time: initialData?.time || (selectedApplicant?.interviewDate ? new Date(selectedApplicant.interviewDate).toTimeString().substring(0, 5) : ''),
-        platform: initialData?.platform || selectedApplicant?.interviewPlatform || 'Jitsi Meet',
+        platform: (initialData?.platform as "Google Meet" | "Zoom" | "Other" | "Jitsi Meet") || (selectedApplicant?.interviewPlatform as "Google Meet" | "Zoom" | "Other" | "Jitsi Meet") || 'Jitsi Meet',
         link: initialData?.link || selectedApplicant?.interviewLink || '',
         notes: initialData?.notes || selectedApplicant?.interviewNotes || ''
       });

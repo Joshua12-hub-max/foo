@@ -1,13 +1,14 @@
 import { Request, Response } from 'express';
 
 import { db } from '../db/index.js';
-import { dailyTimeRecords, authentication, dtrCorrections, departments, schedules } from '../db/schema.js';
+import { dailyTimeRecords, authentication, dtrCorrections, departments, schedules, bioEnrolledUsers } from '../db/schema.js';
 import { eq, and, desc, gte, lte, count, sql } from 'drizzle-orm';
 import { GetDTRSchema, UpdateDTRSchema, RequestCorrectionSchema } from '../schemas/dtrSchema.js';
 import { AuthenticatedRequest } from '../types/index.js';
 import { updateTardinessSummary } from '../utils/tardinessUtils.js';
 import { DTRApiResponse } from '../types/attendance.js';
-import { formatToManilaDateTime } from '../utils/dateUtils.js';
+import { formatToManilaDateTime } from "../utils/dateUtils.js";
+import { compareIds } from "../utils/idUtils.js";
 
 /** Shape returned by the getAllRecords db.select() query */
 interface DTRRecordRow {
@@ -47,6 +48,8 @@ const toMySQLDatetime = (isoStr: string | null | undefined): string | null => {
     return null;
   }
 };
+
+const toTitleCase = (str: string) => str.replace(/\w\S*/g, txt => txt.charAt(0).toUpperCase() + txt.substring(1).toLowerCase());
 
 const mapToDtrApi = (record: DTRRecordRow): DTRApiResponse => {
     return {
@@ -98,7 +101,7 @@ export const getAllRecords = async (req: Request, res: Response): Promise<void> 
 
         // 2. Dynamic Filtering
         if (employeeId) {
-            conditions.push(eq(dailyTimeRecords.employeeId, employeeId));
+            conditions.push(compareIds(dailyTimeRecords.employeeId, employeeId));
         }
 
         if (startDate && endDate) {
@@ -123,12 +126,21 @@ export const getAllRecords = async (req: Request, res: Response): Promise<void> 
             status: dailyTimeRecords.status,
             createdAt: dailyTimeRecords.createdAt,
             updatedAt: dailyTimeRecords.updatedAt,
-            employeeName: sql<string>`COALESCE(TRIM(CONCAT(${authentication.lastName}, ', ', ${authentication.firstName}, IF(${authentication.middleName} IS NOT NULL && ${authentication.middleName} != '', CONCAT(' ', SUBSTRING(${authentication.middleName}, 1, 1), '.'), ''), IF(${authentication.suffix} IS NOT NULL && ${authentication.suffix} != '', CONCAT(' ', ${authentication.suffix}), ''))), 'Unknown Employee')`,
+            employeeName: sql<string>`COALESCE(
+                NULLIF(TRIM(CONCAT(
+                    COALESCE(NULLIF(TRIM(${authentication.lastName}), ''), ''), 
+                    IF(NULLIF(TRIM(${authentication.firstName}), '') IS NOT NULL, CONCAT(', ', TRIM(${authentication.firstName})), ''),
+                    IF(NULLIF(TRIM(${authentication.middleName}), '') IS NOT NULL, CONCAT(' ', SUBSTRING(TRIM(${authentication.middleName}), 1, 1), '.'), ''),
+                    IF(NULLIF(TRIM(${authentication.suffix}), '') IS NOT NULL, CONCAT(' ', TRIM(${authentication.suffix})), '')
+                )), ''),
+                NULLIF(TRIM(${bioEnrolledUsers.fullName}), ''),
+                'Unknown Employee'
+            )`,
             firstName: authentication.firstName,
             lastName: authentication.lastName,
             middleName: authentication.middleName,
             suffix: authentication.suffix,
-            department: sql<string>`COALESCE(${departments.name}, 'N/A')`,
+            department: sql<string>`COALESCE(${departments.name}, ${bioEnrolledUsers.department}, 'N/A')`,
             duties: sql<string>`COALESCE((SELECT schedule_title FROM schedules WHERE employee_id = ${dailyTimeRecords.employeeId} ORDER BY updated_at DESC LIMIT 1), 'No Schedule')`,
             // Correction info via LEFT JOIN
             correctionId: dtrCorrections.id,
@@ -138,8 +150,9 @@ export const getAllRecords = async (req: Request, res: Response): Promise<void> 
             correctionTimeOut: dtrCorrections.correctedTimeOut,
         })
         .from(dailyTimeRecords)
-        .leftJoin(authentication, eq(dailyTimeRecords.employeeId, authentication.employeeId))
+        .leftJoin(authentication, compareIds(dailyTimeRecords.employeeId, authentication.employeeId))
         .leftJoin(departments, eq(authentication.departmentId, departments.id))
+        .leftJoin(bioEnrolledUsers, compareIds(bioEnrolledUsers.employeeId, dailyTimeRecords.employeeId))
         .leftJoin(
             dtrCorrections,
             and(
@@ -440,6 +453,7 @@ export const getCorrectionRequests = async (req: Request, res: Response): Promis
         employeeId: dtrCorrections.employeeId,
         firstName: authentication.firstName,
         lastName: authentication.lastName,
+        bioFullName: bioEnrolledUsers.fullName,
         date: dtrCorrections.dateTime,
         originalTimeIn: dtrCorrections.originalTimeIn,
         originalTimeOut: dtrCorrections.originalTimeOut,
@@ -451,16 +465,26 @@ export const getCorrectionRequests = async (req: Request, res: Response): Promis
         createdAt: dtrCorrections.createdAt
     })
     .from(dtrCorrections)
-    .leftJoin(authentication, eq(dtrCorrections.employeeId, authentication.employeeId))
+    .leftJoin(authentication, compareIds(dtrCorrections.employeeId, authentication.employeeId))
+    .leftJoin(bioEnrolledUsers, compareIds(bioEnrolledUsers.employeeId, dtrCorrections.employeeId))
     .where(and(...conditions))
     .orderBy(desc(dtrCorrections.createdAt));
     
+    const formattedRequests = requests.map(req => {
+        let name = "Unknown Employee";
+        if (req.firstName && req.lastName) {
+            name = `${toTitleCase(req.lastName)}, ${toTitleCase(req.firstName)}`;
+        } else if (req.bioFullName) {
+            name = req.bioFullName;
+        }
+        return { ...req, employeeName: name };
+    });
+
     res.json({
         success: true,
-        data: requests
+        data: formattedRequests
     });
-  } catch (_error) {
-
+  } catch (_error: unknown) {
     res.status(500).json({ success: false, message: 'Failed to fetch correction requests' });
   }
 };
@@ -601,8 +625,7 @@ export const updateCorrectionStatus = async (req: Request, res: Response): Promi
     }
 
     res.json({ success: true, message: `Requests ${status} successfully` });
-  } catch (_err) {
-
-      res.status(500).json({ success: false, message: 'Failed to update status' });
+  } catch (_err: unknown) {
+    res.status(500).json({ success: false, message: 'Failed to update status' });
   }
 };

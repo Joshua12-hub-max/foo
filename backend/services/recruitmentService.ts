@@ -76,7 +76,7 @@ export const sendApplicationNotifications = async (params: NoticeParams) => {
         } else {
             // Fallback generic email
             const subject = `Application Received: ${job?.title || 'General Application'}`;
-            const body = `Dear ${params.firstName},<br><br>Thank you for applying for the position of ${job?.title || 'General Application'} at the Local Government of Meycauayan. We have received your application and will review it shortly.<br><br>Best regards,<br>Recruitment Team`;
+            const body = `Dear ${params.firstName},<br><br>Thank you for applying for the position of ${job?.title || 'General Application'} at the Local Government of Meycauayan. We have received your application and will review it shortly.<br><br>Best regards,<br>Office of the City Human Resource Management Officer`;
             await sendEmailNotification(params.email, subject, body);
         }
     } catch (error) {

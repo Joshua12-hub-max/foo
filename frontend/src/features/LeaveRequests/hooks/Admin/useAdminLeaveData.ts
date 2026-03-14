@@ -51,7 +51,7 @@ export const useAdminLeaveData = (initialFilters?: Record<string, string>) => {
 
         return {
           id: l.id,
-          employeeId: l.employeeId || 'N/A',
+          employeeId: l.employeeId || 'Missing',
           firstName,
           lastName,
           name: displayName,

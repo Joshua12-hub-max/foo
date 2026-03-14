@@ -6,8 +6,11 @@ import {
   EmailVerifyInput, 
   ResendOTPInput, 
   ForgotPasswordInput, 
-  ResetPasswordInput 
+  ResetPasswordInput,
+  RegisterResponse 
 } from '@/schemas/authSchema';
+import { AxiosResponse } from 'axios';
+import { User } from '@/types';
 
 // Define response types if needed, or use generic any for data for now, 
 // but inputs are strictly typed.
@@ -27,8 +30,8 @@ export const verifyEnrollment = async (employeeId: string) => {
   return response.data;
 };
 
-export const register = (data: RegisterInput | FormData, mode?: string) => 
-  api.post(`/auth/register${mode ? `?mode=${mode}` : ""}`, data);
+export const register = (data: RegisterInput | FormData, mode?: string): Promise<AxiosResponse<RegisterResponse>> => 
+  api.post<RegisterResponse>(`/auth/register${mode ? `?mode=${mode}` : ""}`, data);
 
 export const login = (data: LoginInput) => api.post("/auth/login", data);
 
@@ -87,9 +90,9 @@ export const updateProfile = async (formData: FormData) => {
     return response.data;
 };
 
-export const verifyRegistrationOTP = async (data: EmailVerifyInput) => {
-    const response = await api.post("/auth/verify-registration", data);
-    return response.data;
+export const verifyRegistrationOTP = async (data: EmailVerifyInput): Promise<AxiosResponse<{ success: boolean; message: string; data: User }>> => {
+    const response = await api.post<{ success: boolean; message: string; data: User }>("/auth/verify-registration", data);
+    return response;
 };
 
 export const setupPortal = async (data: Record<string, unknown>) => {

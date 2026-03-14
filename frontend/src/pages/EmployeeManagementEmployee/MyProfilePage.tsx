@@ -25,7 +25,7 @@ const MyProfilePage: React.FC<MyProfilePageProps> = ({ hideHeader = false }) => 
       )}
 
       <EditableProfileView 
-        profile={profile ?? undefined}
+        profile={profile as any}
         loading={loading}
         error={error || undefined}
         onRefresh={fetchProfile}

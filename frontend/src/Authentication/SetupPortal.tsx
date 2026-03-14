@@ -6,6 +6,7 @@ import { toast } from "react-hot-toast";
 import api from "@/api/axios";
 import { useAuthStore } from "@/stores";
 import { ApiError } from "@/types";
+import axios, { AxiosError } from "axios";
 
 interface SetupPosition {
   id: number;
@@ -68,8 +69,12 @@ export default function SetupPortal() {
         setDutyTypes(res.data.dutyTypes || ["Standard", "Irregular"]);
         setAppointmentTypes(res.data.appointmentTypes || ["Permanent", "Contractual", "Casual", "Job Order", "Coterminous", "Temporary", "Contract of Service", "JO", "COS"]);
       } catch (err: unknown) {
-        const apiErr = err as ApiError;
-        toast.error(apiErr.response?.data?.message || "Setup portal is not available.");
+        let message = "Setup portal is not available.";
+        if (axios.isAxiosError(err)) {
+          const axiosError = err as AxiosError<{ message?: string }>;
+          message = axiosError.response?.data?.message || message;
+        }
+        toast.error(message);
         navigate("/login");
       } finally {
         setVerifying(false);
@@ -105,8 +110,12 @@ export default function SetupPortal() {
         navigate("/verify-account", { state: { email: formData.email } });
       }
     } catch (err: unknown) {
-      const apiErr = err as ApiError;
-      toast.error(apiErr.response?.data?.message || "Failed to initialize account.");
+      let message = "Failed to initialize account.";
+      if (axios.isAxiosError(err)) {
+        const axiosError = err as AxiosError<{ message?: string }>;
+        message = axiosError.response?.data?.message || message;
+      }
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -153,6 +162,16 @@ export default function SetupPortal() {
       subtitle="Complete the initial portal setup"
       maxWidth="max-w-2xl"
     >
+      <div className="flex justify-start mb-6 -mt-2">
+        <button 
+          onClick={() => navigate("/login")}
+          className="group flex items-center gap-1.5 text-xs font-bold text-gray-400 hover:text-blue-600 transition-all uppercase tracking-widest"
+        >
+          <ArrowRight className="rotate-180 w-3.5 h-3.5 transition-transform group-hover:-translate-x-0.5" />
+          Back to Terminal Login
+        </button>
+      </div>
+
       <form onSubmit={handleSubmit} className="space-y-4 mt-2">
         
         {/* Row 1: Role & Position */}

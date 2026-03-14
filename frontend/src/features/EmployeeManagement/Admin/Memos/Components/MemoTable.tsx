@@ -35,50 +35,50 @@ const MemoRow: React.FC<MemoRowProps> = memo(({ memo, onView, onEdit, onDelete }
   const handleDelete = useCallback(() => onDelete(memo), [memo, onDelete]);
 
   return (
-    <tr className="hover:bg-gray-50 transition-colors">
+    <tr className="hover:bg-[#F8F9FA] hover:shadow-xl transition-colors group bg-white">
       <td className="px-6 py-4">
-        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${getStatusBadge(memo.status)}`}>
+        <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold tracking-wider ${getStatusBadge(memo.status)}`}>
           {memo.status}
         </span>
       </td>
-      <td className="px-6 py-4 text-sm text-gray-800 font-medium whitespace-nowrap">{memo.memoNumber}</td>
-      <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">{memo.memoType}</td>
+      <td className="px-6 py-4 text-sm font-medium text-gray-700 whitespace-nowrap">{memo.memoNumber}</td>
+      <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">{memo.memoType}</td>
       <td className="px-6 py-4 text-sm text-gray-800">
         <div>
-          <div className="font-medium text-gray-900 whitespace-nowrap">{memo.employeeName}</div>
+          <div className="text-sm font-semibold text-gray-800 whitespace-nowrap">{memo.employeeName}</div>
           <div className="text-xs text-gray-500 truncate max-w-[200px]" title={memo.department}>{memo.department || 'N/A'}</div>
         </div>
       </td>
-      <td className="px-6 py-4 text-sm text-gray-700 min-w-[300px] max-w-[400px]">
+      <td className="px-6 py-4 text-sm text-gray-600 min-w-[300px] max-w-[400px]">
         <div className="truncate" title={memo.subject}>
           {memo.subject}
         </div>
       </td>
       <td className="px-6 py-4">
-        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getPriorityBadge(memo.priority)}`}>
+        <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold tracking-wider ${getPriorityBadge(memo.priority)}`}>
           {memo.priority}
         </span>
       </td>
-      <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">{formatDate(memo.createdAt)}</td>
+      <td className="px-6 py-4 text-xs font-mono text-gray-400 whitespace-nowrap">{formatDate(memo.createdAt)}</td>
       <td className="px-6 py-4">
-        <div className="flex items-center justify-center gap-2">
+        <div className="flex items-center justify-center gap-2 transition-opacity">
           <button
             onClick={handleView}
-            className="p-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg transition-colors"
+            className="p-2 border border-gray-100 bg-white hover:bg-blue-50 text-gray-400 hover:text-blue-600 rounded-lg transition-colors shadow-sm"
             title="View"
           >
             <Eye size={16} />
           </button>
           <button
             onClick={handleEdit}
-            className="p-2 bg-amber-50 hover:bg-amber-100 text-amber-600 rounded-lg transition-colors"
+            className="p-2 border border-gray-100 bg-white hover:bg-amber-50 text-gray-400 hover:text-amber-600 rounded-lg transition-colors shadow-sm"
             title="Edit"
           >
             <SquarePen size={16} />
           </button>
           <button
             onClick={handleDelete}
-            className="p-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition-colors"
+            className="p-2 border border-gray-100 bg-white hover:bg-red-50 text-gray-400 hover:text-red-600 rounded-lg transition-colors shadow-sm"
             title="Delete"
           >
             <Trash2 size={16} />
@@ -138,7 +138,7 @@ const MemoTable: React.FC<MemoTableProps> = memo(({ memos, loading, page = 1, to
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-sm flex-1 overflow-hidden">
+    <div className="bg-white rounded-xl shadow-sm flex-1 overflow-hidden border border-gray-100">
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead className="bg-gray-200 shadow-md text-gray-700">
@@ -153,7 +153,7 @@ const MemoTable: React.FC<MemoTableProps> = memo(({ memos, loading, page = 1, to
               <th className="px-6 py-4 text-center text-sm font-bold tracking-wide whitespace-nowrap">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-50">
+          <tbody className="divide-y divide-slate-100">
             {tableRows}
           </tbody>
         </table>

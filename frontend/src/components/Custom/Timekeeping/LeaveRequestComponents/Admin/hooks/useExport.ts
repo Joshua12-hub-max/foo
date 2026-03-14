@@ -30,17 +30,17 @@ export const useExport = () => {
       setExportError(null);
       
       // Native CSV Export
-      const headers = ['Employee ID', 'Employee Name', 'Department', 'Leave Type', 'From Date', 'To Date', 'Duration', 'Status'];
-      const keys = ['employeeId', 'employeeName', 'department', 'leaveType', 'fromDate', 'toDate', 'duration', 'status'];
+      const headers = ['Employee ID', 'Employee Name', 'Department', 'Leave Type', 'Start Date', 'End Date', 'Duration', 'Status'];
+      const keys = ['employeeId', 'employeeName', 'department', 'leaveType', 'startDate', 'endDate', 'duration', 'status'];
       
       const transformData = data.map(item => ({
         employeeId: item.employeeId,
         employeeName: item.name,
         department: item.department,
         leaveType: item.leaveType,
-        fromDate: item.fromDate,
-        toDate: item.toDate,
-        duration: calculateDuration(item.fromDate, item.toDate),
+        startDate: item.startDate,
+        endDate: item.endDate,
+        duration: calculateDuration(item.startDate, item.endDate),
         status: item.status
       }));
 
@@ -122,9 +122,9 @@ export const useExport = () => {
                   <td>${row.name}</td>
                   <td>${row.department}</td>
                   <td>${row.leaveType}</td>
-                  <td>${new Date(row.fromDate).toLocaleDateString()}</td>
-                  <td>${new Date(row.toDate).toLocaleDateString()}</td>
-                  <td>${calculateDuration(row.fromDate, row.toDate)}</td>
+                  <td>${new Date(row.startDate).toLocaleDateString()}</td>
+                  <td>${new Date(row.endDate).toLocaleDateString()}</td>
+                  <td>${calculateDuration(row.startDate, row.endDate)}</td>
                   <td>${row.status}</td>
                 </tr>
               `).join('')}

@@ -1,4 +1,4 @@
-import { mysqlTable, varchar, int, date, timestamp, text, mysqlEnum, datetime, primaryKey, mysqlView, unique } from 'drizzle-orm/mysql-core';
+import { mysqlTable, varchar, int, date, timestamp, text, mysqlEnum, datetime, primaryKey, mysqlView, unique, time } from 'drizzle-orm/mysql-core';
 import { sql } from 'drizzle-orm';
 
 export const announcements = mysqlTable("announcements", {
@@ -122,4 +122,4 @@ export const addressRefBarangays = mysqlTable("address_ref_barangays", {
 	unique("unique_barangay_name").on(table.name),
 ]);
 
-import { time } from 'drizzle-orm/mysql-core';
+

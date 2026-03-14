@@ -204,7 +204,7 @@ export const getEligibleEmployees = async (_req: Request, res: Response): Promis
           eligibleEmployees.push({
             employeeId: emp.employeeId,
             employeeName: formatFullName(emp.lastName, emp.firstName, emp.middleName, emp.suffix),
-            employeeEmployeeId: emp.employeeEmployeeId,
+            employeeEmployeeId: emp.employeeEmployeeId || '',
             positionTitle: emp.positionTitle,
             salaryGrade: Number(emp.salaryGrade),
             currentStep: Number(emp.currentStep),

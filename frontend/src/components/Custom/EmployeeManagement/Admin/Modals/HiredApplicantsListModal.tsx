@@ -22,13 +22,13 @@ const HiredApplicantsListModal: React.FC<HiredApplicantsListModalProps> = ({
   const [searchTerm, setSearchTerm] = React.useState('');
 
   const { data: response, isLoading, error } = useQuery({
-    queryKey: ['hiredApplicants', dutyType],
-    queryFn: () => recruitmentApi.getHiredApplicantsByDuty(dutyType),
+    queryKey: ['hiredApplicants', dutyType, departmentName],
+    queryFn: () => recruitmentApi.getHiredApplicantsByDuty<HiredApplicant>(dutyType, departmentName),
     enabled: isOpen,
     staleTime: 1000 * 60, // 1 minute
   });
 
-  const applicants: HiredApplicant[] = (response?.data?.applicants as any[]) || [];
+  const applicants = response?.data?.applicants || [];
   const filteredApplicants = applicants.filter(app => {
     const fullName = `${app.firstName} ${app.lastName} ${app.middleName || ''}`.toLowerCase();
     return fullName.includes(searchTerm.toLowerCase()) || 

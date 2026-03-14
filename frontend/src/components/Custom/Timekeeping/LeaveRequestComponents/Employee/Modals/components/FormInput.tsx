@@ -10,11 +10,11 @@ interface FormInputProps {
 export const FormInput: React.FC<FormInputProps> = ({ label, error, required, children }) => {
   return (
     <div>
-      <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">
         {label} {required && <span className="text-red-500">*</span>}
       </label>
       {children}
-      {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
+      {error && <p className="text-red-500 text-xs mt-1 ml-1">{error}</p>}
     </div>
   );
 };
