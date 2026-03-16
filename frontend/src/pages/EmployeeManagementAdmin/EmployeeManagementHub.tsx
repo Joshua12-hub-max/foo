@@ -7,6 +7,7 @@ import DepartmentList, { DepartmentListRef } from '@/pages/EmployeeManagementAdm
 import PlantillaManagement, { PlantillaManagementRef } from '@/pages/EmployeeManagementAdmin/PlantillaManagementPage';
 import EmployeeMemos, { AdminMemoPageRef } from '@/pages/EmployeeManagementAdmin/AdminMemoPage';
 import InternalPoliciesPage from '@/pages/InternalPolicies/InternalPoliciesPage';
+import ShiftTemplateManagement from '@/pages/EmployeeManagementAdmin/ShiftTemplateManagement';
 
 interface OutletContext {
   sidebarOpen?: boolean;
@@ -59,6 +60,7 @@ const EmployeeManagementHub: React.FC = () => {
         { id: 'departments', label: 'Departments' },
         { id: 'plantilla', label: 'Plantilla' },
         { id: 'memos', label: 'Memos' },
+        { id: 'shifts', label: 'Shift Templates' },
         { id: 'policies', label: 'Policies' }
     ];
 
@@ -80,7 +82,7 @@ const EmployeeManagementHub: React.FC = () => {
                     <p className="text-sm text-gray-500">Manage your organization's workforce, departments, and plantilla</p>
                 </div>
 
-                {activeTab !== 'policies' && (
+                {activeTab !== 'policies' && activeTab !== 'shifts' && (
                 <button 
                     onClick={handleAddClick}
                     className="bg-white hover:bg-gray-50 text-gray-900 border border-gray-300 px-5 py-2.5 rounded-lg flex items-center gap-2 shadow-sm transition-all active:scale-95 text-sm font-bold"
@@ -116,6 +118,7 @@ const EmployeeManagementHub: React.FC = () => {
                 {activeTab === 'departments' && <DepartmentList ref={departmentRef} hideHeader={true} />}
                 {activeTab === 'plantilla' && <PlantillaManagement ref={plantillaRef} hideHeader={true} />}
                 {activeTab === 'memos' && <EmployeeMemos ref={memoRef} hideHeader={true} />}
+                {activeTab === 'shifts' && <ShiftTemplateManagement />}
                 {activeTab === 'policies' && <InternalPoliciesPage hideHeader={true} />}
             </div>
         </div>

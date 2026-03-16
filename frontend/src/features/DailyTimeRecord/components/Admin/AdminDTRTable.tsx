@@ -2,6 +2,7 @@ import React from "react";
 import { Edit, FileText } from "lucide-react";
 import { TABLE_COLUMNS, TableColumn } from "../../Constants/adminDTR.constant";
 import { DTRRecord, DTRFilters } from "../../Utils/adminDTRUtils";
+import { formatDuration } from "@/utils/formatters";
 
 interface AdminDTRTableProps {
   currentItems: DTRRecord[];
@@ -58,6 +59,11 @@ const renderCell = (
         <span className="text-xs text-gray-500">{departmentName}</span>
       </div>
     );
+  }
+
+  // Special rendering for lates/undertime
+  if (column.key === 'lateMinutes' || column.key === 'undertimeMinutes') {
+    return formatDuration(Number(value || 0));
   }
 
   // Special rendering for duties
@@ -151,8 +157,8 @@ export const AdminDTRTable: React.FC<AdminDTRTableProps> = ({
                     <td colSpan={7} className="px-6 py-4 text-right text-gray-700 text-sm">
                       Totals:
                     </td>
-                    <td className="px-6 py-4 text-center text-red-700 text-sm">{totals.lateMinutes}m</td>
-                    <td className="px-6 py-4 text-center text-orange-700 text-sm">{totals.undertimeMinutes}m</td>
+                    <td className="px-6 py-4 text-center text-red-700 text-sm">{formatDuration(totals.lateMinutes)}</td>
+                    <td className="px-6 py-4 text-center text-orange-700 text-sm">{formatDuration(totals.undertimeMinutes)}</td>
                     <td className="px-6 py-4 text-center text-gray-900 text-sm">{totals.hoursWorked}h</td>
                     <td className="bg-gray-100 text-sm"></td>
                   </tr>

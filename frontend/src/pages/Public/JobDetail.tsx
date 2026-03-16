@@ -161,12 +161,23 @@ const JobDetail = () => {
     const permStreet = watch('permStreet');
     const permanentZip = watch('permanentZipCode');
 
+    // Helper to format names to Normal/Title Case
+    const formatName = (name: string) => {
+      if (!name) return '';
+      if (name.toUpperCase() === 'NATIONAL CAPITAL REGION [NCR]') return 'National Capital Region (NCR)';
+      if (name.toUpperCase() === 'NCR') return 'NCR';
+      return name.toLowerCase().split(' ').map(word => {
+          if (word === 'of') return 'of';
+          return word.charAt(0).toUpperCase() + word.slice(1);
+      }).join(' ');
+    };
+
     // Build full address string from selector codes → names (real-time)
     const buildAddress = (reg: string, prov: string, city: string, brgy: string, house: string, subd: string, street: string): string => {
       const rName = (ph.regions as Region[]).find(r => r.reg_code === reg)?.name || '';
       const pName = (ph.provinces as Province[]).find(p => p.prov_code === prov)?.name || '';
       const cName = (ph.city_mun as CityMunicipality[]).find(c => c.mun_code === city)?.name || '';
-      return [house, subd, street, brgy, cName, pName, rName].filter(Boolean).join(', ');
+      return [house, subd, street, formatName(brgy), formatName(cName), formatName(pName), formatName(rName)].filter(Boolean).join(', ');
     };
 
     // Real-time residential address → `address` + `zip_code`

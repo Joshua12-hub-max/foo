@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@/lib/zodResolver';
-import { X, ChevronUp, ChevronDown, FileText, Loader } from 'lucide-react';
+import { X, ChevronUp, ChevronDown, FileText, Loader, Sparkles, Clock, Loader2 } from 'lucide-react';
 import { plantillaApi } from '@/api/plantillaApi';
 import { employeeApi } from '@/api/employeeApi';
+import { scheduleApi, ShiftTemplateData } from '@/api/scheduleApi';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToastStore } from '@/stores';
 import { UpdateEmployeeSchema, UpdateEmployeeInput } from '@/schemas/employeeSchema';
+import { formatHour12 } from '@/components/Custom/CalendarComponents/shared/utils/eventUtils';
 import {
   ROLE_OPTIONS,
   EMPLOYMENT_STATUS_OPTIONS,
@@ -69,9 +71,12 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
     government: false,
     eligibility: false,
     socialMedia: false,
-    employment: true
+    employment: true,
+    schedule: true
   });
   const [vacantPositions, setVacantPositions] = useState<Position[]>([]);
+  const [templates, setTemplates] = useState<ShiftTemplateData[]>([]);
+  const [loadingTemplates, setLoadingTemplates] = useState(false);
   
   const queryClient = useQueryClient();
   const showToast = useToastStore((state) => state.showToast);
@@ -107,6 +112,7 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
   useEffect(() => {
     if (isOpen && employee) {
       loadPlantillaOptions();
+      fetchTemplates();
       // Reset form with employee data
       reset({
         firstName: employee.firstName || '',
@@ -137,8 +143,11 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
         eligibilityNumber: employee.eligibilityNumber || '',
         eligibilityDate: employee.eligibilityDate ? new Date(employee.eligibilityDate).toISOString().split('T')[0] : null,
         educationalBackground: employee.educationalBackground || '',
-        yearsOfExperience: employee.yearsOfExperience || 0,
-        // Social Media
+        yearsOfExperience: employee.yearsOfExperience ? Number(employee.yearsOfExperience) : 0,
+        // Schedule fields
+        startTime: employee.startTime || '',
+        endTime: employee.endTime || '',
+        // IDs
         departmentId: employee.departmentId,
         positionId: employee.positionId
       });
@@ -167,6 +176,31 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
       setVacantPositions(positions);
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const fetchTemplates = async () => {
+    setLoadingTemplates(true);
+    try {
+      const response = await scheduleApi.getShiftTemplates();
+      if (response.success) {
+        setTemplates(response.templates || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch shift templates:', err);
+    } finally {
+      setLoadingTemplates(false);
+    }
+  };
+
+  const handleTemplateChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const templateId = e.target.value;
+    if (!templateId) return;
+    const template = templates.find(t => String(t.id) === templateId);
+    if (template) {
+      // Input type="time" expects HH:mm or HH:mm:ss
+      setValue('startTime', template.startTime, { shouldValidate: true });
+      setValue('endTime', template.endTime, { shouldValidate: true });
     }
   };
 
@@ -265,6 +299,62 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
           </div>
 
           {/* COLLAPSIBLE SECTIONS */}
+
+          {/* Work Schedule */}
+          <CollapsibleSection title="WORK SCHEDULE & SHIFTS" isOpen={openSections.schedule} onToggle={() => toggleSection('schedule')}>
+             <div className="bg-blue-50 p-3 rounded-lg border border-blue-100 mb-2">
+                <div className="flex items-center gap-2 mb-2">
+                    <Sparkles size={14} className="text-blue-600" />
+                    <p className="text-[10px] text-blue-600 font-bold uppercase">Quick Shift Template</p>
+                </div>
+                <div className="relative">
+                    <select 
+                    onChange={handleTemplateChange}
+                    disabled={loadingTemplates}
+                    className="w-full px-2 py-1.5 bg-white border border-blue-200 rounded text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 shadow-sm disabled:opacity-50 appearance-none"
+                    >
+                    <option value="">{loadingTemplates ? 'Loading templates...' : '(Select a shift template...)'}</option>
+                    {!loadingTemplates && templates.length === 0 && <option value="" disabled>No templates found</option>}
+                    {templates.map(temp => (
+                        <option key={temp.id} value={temp.id}>
+                        {temp.name} ({temp.startTime.substring(0,5)} - {temp.endTime.substring(0,5)})
+                        </option>
+                    ))}
+                    </select>
+                    {loadingTemplates && (
+                        <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                            <Loader2 size={12} className="animate-spin text-blue-400" />
+                        </div>
+                    )}
+                </div>
+             </div>
+
+             <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[9px] font-bold text-gray-500 uppercase flex items-center gap-1">
+                      <Clock size={10} /> Shift Start
+                  </label>
+                  <input 
+                    type="time"
+                    step="1"
+                    {...register('startTime')}
+                    className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs focus:outline-none focus:border-gray-900 font-mono" 
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[9px] font-bold text-gray-500 uppercase flex items-center gap-1">
+                      <Clock size={10} /> Shift End
+                  </label>
+                  <input 
+                    type="time"
+                    step="1"
+                    {...register('endTime')}
+                    className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs focus:outline-none focus:border-gray-900 font-mono" 
+                  />
+                </div>
+             </div>
+             <p className="text-[9px] text-gray-400 mt-1 italic italic">Setting the shift here defines the employee's default daily work hours for attendance tracking.</p>
+          </CollapsibleSection>
           
           {/* Employment Linkage */}
           <CollapsibleSection title="EMPLOYMENT & PLANTILLA" isOpen={openSections.employment} onToggle={() => toggleSection('employment')}>

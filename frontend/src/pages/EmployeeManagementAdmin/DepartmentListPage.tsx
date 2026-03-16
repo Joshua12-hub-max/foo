@@ -2,7 +2,7 @@ import React, { forwardRef, useImperativeHandle } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUIStore } from '@/stores';
 import { RefreshCw, Plus } from 'lucide-react';
-import { useDepartments, DepartmentSearch, DepartmentTable, DepartmentFormModal, DepartmentDeleteModal, RemoveEmployeeModal } from '@features/EmployeeManagement/Admin/Departments';
+import { useDepartments, DepartmentSearch, DepartmentTable, DepartmentFormModal, DepartmentDeleteModal, RemoveEmployeeModal, DepartmentScheduleModal } from '@features/EmployeeManagement/Admin/Departments';
 import { useState } from 'react';
 import RegistrationTypeModal from '@/components/Custom/EmployeeManagement/Admin/Modals/RegistrationTypeModal';
 import { Department } from '@/types/org';
@@ -87,6 +87,15 @@ const DepartmentList = forwardRef<DepartmentListRef, DepartmentListProps>(({ hid
     navigate(`/admin-dashboard/register?${params.toString()}`);
   };
 
+  // Schedule Modal Flow
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+  const [schedulingDepartment, setSchedulingDepartment] = useState<Department | null>(null);
+
+  const handleSetScheduleClick = (dept: Department) => {
+    setSchedulingDepartment(dept);
+    setIsScheduleModalOpen(true);
+  };
+
   return (
     <div className="w-full">
       {/* Header Section - Modernized */}
@@ -135,6 +144,7 @@ const DepartmentList = forwardRef<DepartmentListRef, DepartmentListProps>(({ hid
         onDelete={handleDeleteClick}
         onRemoveEmployee={handleRemoveEmployeeClick}
         onRegister={handleRegisterClick}
+        onSetSchedule={handleSetScheduleClick}
       />
 
       {/* Add/Edit Modal */}
@@ -181,6 +191,13 @@ const DepartmentList = forwardRef<DepartmentListRef, DepartmentListProps>(({ hid
         onClose={() => setIsRegModalOpen(false)}
         departmentName={registeringDepartment?.name || ''}
         onSelectType={handleSelectRegistrationType}
+      />
+
+      {/* Department Schedule Modal */}
+      <DepartmentScheduleModal
+        isOpen={isScheduleModalOpen}
+        onClose={() => setIsScheduleModalOpen(false)}
+        department={schedulingDepartment}
       />
       </div>
     </div>

@@ -6,6 +6,7 @@ import { db } from '../db/index.js';
 import { authentication, bioEnrolledUsers, schedules, recruitmentApplicants, departments, plantillaPositions, recruitmentJobs } from '../db/schema.js';
 import { eq, or, and, sql, gt, getTableColumns, desc } from 'drizzle-orm';
 import { AuthService } from '../services/auth.service.js';
+import { checkSystemWideUniqueness } from '../services/validationService.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
@@ -427,7 +428,22 @@ export const register = async (req: Request & { file?: Express.Multer.File }, re
     const firstName = sanitizeInput(validatedData.firstName || enrolled.fullName.split(' ')[0]);
     const lastName = sanitizeInput(validatedData.lastName || (enrolled.fullName.split(' ').length > 1 ? enrolled.fullName.split(' ').slice(1).join(' ') : ''));
     
-    // 5. Check if already registered
+    // 5. Check System-Wide Uniqueness
+    const uniqueErrors = await checkSystemWideUniqueness({
+        email,
+        umidNumber: validatedData.umidNumber,
+        philsysId: validatedData.philsysId,
+        philhealthNumber: validatedData.philhealthNumber,
+        pagibigNumber: validatedData.pagibigNumber,
+        tinNumber: validatedData.tinNumber,
+        gsisNumber: validatedData.gsisNumber
+    });
+
+    if (uniqueErrors.length > 0) {
+        res.status(409).json({ success: false, message: 'Uniqueness validation failed.', errors: uniqueErrors });
+        return;
+    }
+
     const existingUser = await db.query.authentication.findFirst({
       where: or(
         eq(authentication.employeeId, actualEmployeeId),
@@ -566,8 +582,8 @@ export const register = async (req: Request & { file?: Express.Multer.File }, re
       departmentId,            
       employeeId: actualEmployeeId,
       passwordHash: hashedPassword,
-      isVerified: (effectiveFinalizingSetup && (assignedRole === 'Administrator' || assignedRole === 'Human Resource')) ? true : false,
-      verificationToken: (effectiveFinalizingSetup && (assignedRole === 'Administrator' || assignedRole === 'Human Resource')) ? null : (verificationOTP || null),
+      isVerified: (effectiveFinalizingSetup && (assignedRole === 'Administrator' || assignedRole === 'Human Resource')) ? (existingUser?.isVerified ?? false) : false,
+      verificationToken: (effectiveFinalizingSetup && (assignedRole === 'Administrator' || assignedRole === 'Human Resource') && existingUser?.isVerified) ? null : (verificationOTP || null),
       avatarUrl,
       jobTitle: positionTitle,
       positionTitle: positionTitle,
@@ -700,16 +716,16 @@ export const register = async (req: Request & { file?: Express.Multer.File }, re
         .where(eq(plantillaPositions.id, positionId));
     }
 
-    // 11. Send Verification Email (SKIP IF FINALIZING SETUP FOR ADMIN/HR)
-    if (!effectiveFinalizingSetup) {
+    // 11. Send Verification Email (SKIP IF ALREADY VERIFIED, e.g. Admin/HR who verified after setup-portal)
+    if (!userDataValues.isVerified) {
         try {
           if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
             throw new Error('Email credentials are not configured.');
           }
           await sendOTPEmail(email, firstName, verificationOTP, 'Email Verification', 'Thank you for registering. Please use the code below to verify your email address:');
         } catch (_emailErr) {
-      /* empty */
-
+          // Log but don't fail registration
+          console.error('[REGISTER] Email send failed:', _emailErr instanceof Error ? _emailErr.message : _emailErr);
         }
     }
 
@@ -1428,6 +1444,23 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
     if (!currentUser) {
       res.status(404).json({ success: false, message: 'User not found' });
       return;
+    }
+
+    // Check System-Wide Uniqueness
+    const uniqueErrors = await checkSystemWideUniqueness({
+        email: updates.email && updates.email !== currentUser.email ? updates.email : undefined,
+        umidNumber: updates.umidNumber,
+        philsysId: updates.philsysId,
+        philhealthNumber: updates.philhealthNumber,
+        pagibigNumber: updates.pagibigNumber,
+        tinNumber: updates.tinNumber,
+        gsisNumber: updates.gsisNumber,
+        excludeAuthId: userId
+    });
+
+    if (uniqueErrors.length > 0) {
+        res.status(409).json({ success: false, message: 'Uniqueness validation failed.', errors: uniqueErrors });
+        return;
     }
 
     const mappedUpdates: Partial<typeof authentication.$inferInsert> = {};

@@ -26,6 +26,8 @@ import {
   EditEventModal,
   CreateAnnouncementModal,
   EditAnnouncementModal,
+  ScheduleModal,
+  EditScheduleModal,
 } from '@components/Custom/CalendarComponents/admin/Modals';
 import { 
   CalendarEvent, 
@@ -34,8 +36,11 @@ import {
   AnnouncementFormData,
   CalendarItem,
   CalendarDisplayItem,
-  Holiday
+  Holiday,
+  Schedule
 } from '@/types/calendar';
+import { scheduleApi } from '@api';
+import { ScheduleSchema } from '@/schemas/calendar';
 import { ApiError } from '@/types';
 import {
   useCalendarStore,
@@ -385,12 +390,11 @@ export default function AdminCalendar() {
         )}
 
         {/* Add Event Modal */}
-        <AddEventModal
+        <ScheduleModal
           show={modals.addEvent}
           onClose={() => setModal('addEvent', false)}
-          onAdd={handleAddEvent}
+          onCreate={(data) => handleAddEvent(data as unknown as EventFormData)}
           hours={HOURS_LIST}
-          departments={departments}
         />
 
         {/* Announcement Modal */}
@@ -402,16 +406,15 @@ export default function AdminCalendar() {
         />
 
         {/* Edit Event Modal */}
-        <EditEventModal
+        <EditScheduleModal
           show={modals.editEvent}
-          event={selectedItem as CalendarEvent}
+          schedule={selectedItem as unknown as Schedule}
           onClose={() => {
             setModal('editEvent', false);
             setSelectedItem(null, null);
           }}
-          onUpdate={handleUpdateEvent}
+          onUpdate={(id, data) => handleUpdateEvent(data as unknown as CalendarEvent)}
           hours={HOURS_LIST}
-          departments={departments}
         />
 
         {/* Edit Announcement Modal */}

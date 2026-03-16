@@ -2,6 +2,7 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, CheckCircle, AlertCircle, Clock, ThumbsDown, AlertTriangle, TrendingDown, Info } from 'lucide-react';
 import { getAdjectivalRating, getScoreColor } from '../constants/performanceConstants';
+import { formatDuration } from '@/utils/formatters';
 
 import { PerformanceItem, PerformanceReview } from '../types';
 
@@ -97,7 +98,7 @@ const ReviewDetailsModal: React.FC<ReviewDetailsModalProps> = ({
                           <span className="text-[10px] text-gray-400 font-bold uppercase">Tardiness</span>
                           <span className="text-sm font-bold text-gray-800">
                                {selectedReview.attendanceDetails.totalLates || 0}x 
-                               <span className="text-gray-500 font-normal ml-1">({selectedReview.attendanceDetails.totalLateMinutes || 0}m)</span>
+                               <span className="text-gray-500 font-normal ml-1">({formatDuration(selectedReview.attendanceDetails.totalLateMinutes || 0)})</span>
                           </span>
                       </div>
                       <div className="flex flex-col border-l border-gray-200 pl-3">

@@ -64,10 +64,16 @@ const getEmployeeName = (record: AttendanceRecord): string => {
  * keep it for CSV, but in Excel we will pass raw numbers.
  */
 const formatMinutes = (value: string | number): string => {
-  if (!value || value === 0 || value === '0') return '0';
-  const mins = typeof value === 'string' ? parseInt(value, 10) : value;
-  if (isNaN(mins) || mins === 0) return '0';
-  return mins.toString();
+  const mins = typeof value === 'string' ? parseInt(value, 10) : Number(value || 0);
+  if (isNaN(mins) || mins <= 0) return '0';
+  
+  const hours = Math.floor(mins / 60);
+  const remainingMinutes = mins % 60;
+  
+  if (hours > 0) {
+    return `${hours}h${remainingMinutes > 0 ? ` ${remainingMinutes}m` : ''}`;
+  }
+  return `${remainingMinutes}m`;
 };
 
 /**

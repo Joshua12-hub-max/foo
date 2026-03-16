@@ -1,10 +1,12 @@
-import { Clock, X, User } from "lucide-react";
+import { Clock, X, User, Sparkles, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { fetchEmployees } from "../../../../../api/employeeApi";
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { scheduleSchema, ScheduleSchema } from '@/schemas/calendar';
 import { formatFullName } from '@/utils/nameUtils';
+import { scheduleApi, ShiftTemplateData } from "@/api/scheduleApi";
+import { formatHour12 } from "../../shared/utils/eventUtils";
 
 interface EmployeeOption {
   id: number | string;
@@ -22,11 +24,15 @@ interface ScheduleModalProps {
 
 export default function ScheduleModal({ show, onClose, onCreate, hours = [] }: ScheduleModalProps) {
   const [employees, setEmployees] = useState<EmployeeOption[]>([]);
+  const [templates, setTemplates] = useState<ShiftTemplateData[]>([]);
+  const [loadingTemplates, setLoadingTemplates] = useState(false);
 
   const {
     register,
     handleSubmit,
     reset,
+    setValue,
+    watch,
     formState: { errors, isSubmitting }
   } = useForm({
     resolver: zodResolver(scheduleSchema),
@@ -54,23 +60,53 @@ export default function ScheduleModal({ show, onClose, onCreate, hours = [] }: S
           repeat: 'none',
           description: ''
       }); // Reset form when modal opens
-      const loadEmployees = async () => {
+      
+      const loadData = async () => {
+        setLoadingTemplates(true);
         try {
-          const data = await fetchEmployees();
-          setEmployees(data.employees || []);
-        } catch (err) {
-          console.error(err);
+          // Load templates independently
+          try {
+            const templateData = await scheduleApi.getShiftTemplates();
+            if (templateData && templateData.templates) {
+                setTemplates(templateData.templates);
+            }
+          } catch (tErr) {
+            console.error('Failed to load shift templates:', tErr);
+          }
+
+          // Load employees independently
+          try {
+            const empData = await fetchEmployees();
+            setEmployees(empData.employees || []);
+          } catch (eErr) {
+            console.error('Failed to load employees:', eErr);
+          }
+        } finally {
+          setLoadingTemplates(false);
         }
       };
-      loadEmployees();
+      loadData();
     }
   }, [show, reset]);
+
+  const handleTemplateChange = (templateId: string) => {
+    if (!templateId) return;
+    const template = templates.find(t => String(t.id) === templateId);
+    if (template) {
+      setValue('startTime', formatHour12(template.startTime), { shouldValidate: true });
+      setValue('endTime', formatHour12(template.endTime), { shouldValidate: true });
+      if (!watch('title')) {
+        setValue('title', template.name);
+      }
+    }
+  };
   
   const onSubmit = (data: ScheduleSchema) => {
       onCreate(data);
   };
 
   if (!show) return null;
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 transition-all">
       {/* Modal Card */}
@@ -94,6 +130,33 @@ export default function ScheduleModal({ show, onClose, onCreate, hours = [] }: S
             <div className="p-6 overflow-y-auto">
             <div className="space-y-3">
                 
+                {/* Shift Template Selection */}
+                <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1 flex items-center gap-1">
+                    <Sparkles className="w-3 h-3 text-amber-500" /> Quick Shift Template
+                    </label>
+                    <div className="relative">
+                        <select
+                        onChange={(e) => handleTemplateChange(e.target.value)}
+                        disabled={loadingTemplates}
+                        className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100 transition-all text-sm bg-white disabled:bg-gray-50 disabled:cursor-not-allowed appearance-none"
+                        >
+                        <option value="">{loadingTemplates ? 'Loading templates...' : 'Select a template for quick fill...'}</option>
+                        {!loadingTemplates && templates.length === 0 && <option value="" disabled>No templates found</option>}
+                        {templates.map((temp) => (
+                            <option key={temp.id} value={temp.id}>
+                            {temp.name} ({formatHour12(temp.startTime)} - {formatHour12(temp.endTime)})
+                            </option>
+                        ))}
+                        </select>
+                        {loadingTemplates && (
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+                            </div>
+                        )}
+                    </div>
+                </div>
+
                 {/* Employee Selection */}
                 <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-1 flex items-center gap-1">

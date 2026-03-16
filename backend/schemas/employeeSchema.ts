@@ -1,6 +1,7 @@
 import { z } from 'zod';
+import { createIdValidator, ID_REGEX } from './idValidation.js';
 
-const BaseEmployeeSchema = z.object({
+export const BaseEmployeeSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
   middleName: z.string().optional().nullable(),
@@ -69,12 +70,12 @@ const BaseEmployeeSchema = z.object({
   ctcIssuedDate: z.string().optional().nullable(),
   
   // Government IDs
-  umidNumber: z.string().optional().nullable(),
-  philsysId: z.string().optional().nullable(),
-  philhealthNumber: z.string().optional().nullable(),
-  pagibigNumber: z.string().optional().nullable(),
-  tinNumber: z.string().optional().nullable(),
-  gsisNumber: z.string().optional().nullable(),
+  umidNumber: createIdValidator(ID_REGEX.UMID, "UMID Number"),
+  philsysId: createIdValidator(ID_REGEX.PHILSYS, "PhilSys ID"),
+  philhealthNumber: createIdValidator(ID_REGEX.PHILHEALTH, "PhilHealth Number"),
+  pagibigNumber: createIdValidator(ID_REGEX.PAGIBIG, "Pag-IBIG Number"),
+  tinNumber: createIdValidator(ID_REGEX.TIN, "TIN"),
+  gsisNumber: createIdValidator(ID_REGEX.GSIS, "GSIS Number"),
   educationalBackground: z.string().optional().nullable(),
   schoolName: z.string().optional().nullable(),
   course: z.string().optional().nullable(),
@@ -105,6 +106,8 @@ const BaseEmployeeSchema = z.object({
   linkedinUrl: z.string().optional().nullable(),
   twitterHandle: z.string().optional().nullable(),
   applicantId: z.number().optional().nullable(),
+  startTime: z.string().optional().nullable(),
+  endTime: z.string().optional().nullable(),
 });
 
 export const CreateEmployeeSchema = BaseEmployeeSchema.extend({

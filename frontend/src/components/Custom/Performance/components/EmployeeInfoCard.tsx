@@ -4,6 +4,7 @@ import { getStatusColor } from '../constants/performanceConstants';
 import { Clock, AlertTriangle, Calendar, TrendingDown, Info } from 'lucide-react';
 import { AttendanceDetails, ReviewCycle } from '@/types/performance';
 import { Employee } from '@/types';
+import { formatDuration } from '@/utils/formatters';
 
 interface PerformanceFormData {
   employeeId?: string | number;
@@ -148,7 +149,7 @@ const EmployeeInfoCard: React.FC<EmployeeInfoCardProps> = ({
               <div className="text-sm font-bold text-gray-700">
                 {formData.attendanceDetails?.totalLates || 0} Instances 
                 <span className="text-gray-400 font-normal ml-1">
-                  ({formData.attendanceDetails?.totalLateMinutes || 0} mins)
+                  ({formatDuration(formData.attendanceDetails?.totalLateMinutes || 0)})
                 </span>
               </div>
             </div>

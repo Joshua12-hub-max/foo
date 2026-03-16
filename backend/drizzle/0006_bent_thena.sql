@@ -1,0 +1,2 @@
+ALTER TABLE `authentication` MODIFY COLUMN `profile_status` enum('Initial','Pending','Complete') DEFAULT 'Initial';--> statement-breakpoint
+ALTER TABLE `authentication` ADD `is_old_employee` boolean DEFAULT false;

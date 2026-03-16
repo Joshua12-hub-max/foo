@@ -11,6 +11,7 @@ export { default as DepartmentModal } from './components/DepartmentModal';
 export { default as DepartmentDeleteModal } from './components/DepartmentDeleteModal';
 export { default as DepartmentFormModal } from './components/DepartmentFormModal';
 export { default as RemoveEmployeeModal } from './components/RemoveEmployeeModal';
+export { default as DepartmentScheduleModal } from './components/DepartmentScheduleModal';
 
 // Hooks
 export { useDepartmentManagement as useDepartments } from './hooks/useDepartmentManagement';

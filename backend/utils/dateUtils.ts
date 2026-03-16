@@ -23,6 +23,20 @@ export const currentManilaDateTime = (): string => {
 };
 
 /**
+ * Format minutes into a readable duration string (e.g. "8h 40m")
+ */
+export const formatDuration = (totalMinutes: number): string => {
+  if (!totalMinutes || totalMinutes <= 0) return '0';
+  const hours = Math.floor(totalMinutes / 60);
+  const remainingMinutes = totalMinutes % 60;
+  
+  if (hours > 0) {
+    return `${hours}h${remainingMinutes > 0 ? ` ${remainingMinutes}m` : ''}`;
+  }
+  return `${remainingMinutes}m`;
+};
+
+/**
  * Format date for MySQL DATETIME column (YYYY-MM-DD HH:mm:ss)
  * Uses UTC by default as toISOString() does.
  */

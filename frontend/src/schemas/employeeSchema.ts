@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { createIdValidator, ID_REGEX } from './idValidation';
 
 export const CreateEmployeeSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
@@ -56,10 +57,10 @@ export const CreateEmployeeSchema = z.object({
   ctcIssuedDate: z.string().optional().nullable(),
   
   // Government Identification
-  philhealthNumber: z.string().optional().nullable(),
-  pagibigNumber: z.string().optional().nullable(),
-  tinNumber: z.string().optional().nullable(),
-  gsisNumber: z.string().optional().nullable(),
+  philhealthNumber: createIdValidator(ID_REGEX.PHILHEALTH, "PhilHealth Number"),
+  pagibigNumber: createIdValidator(ID_REGEX.PAGIBIG, "Pag-IBIG Number"),
+  tinNumber: createIdValidator(ID_REGEX.TIN, "TIN"),
+  gsisNumber: createIdValidator(ID_REGEX.GSIS, "GSIS Number"),
   
   // Employment Details
   salaryGrade: z.coerce.number().optional().nullable(),

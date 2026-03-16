@@ -8,6 +8,7 @@ import path from 'path';
 import fs from 'fs';
 import * as ics from 'ics';
 import { getTemplateForStage, replaceVariables, sendEmailNotification } from '../utils/emailHelpers.js';
+import { checkSystemWideUniqueness } from '../services/validationService.js';
 import { generateGoogleMeetLink } from '../services/meetingService.js';
 import { currentManilaDateTime } from '../utils/dateUtils.js';
 import { sanitizeInput, isDisposableEmail } from '../utils/spamUtils.js';
@@ -32,6 +33,7 @@ import {
   checkDuplicateApplication, 
   sendApplicationNotifications 
 } from '../services/recruitmentService.js';
+import { createNotification, notifyAdmins } from './notificationController.js';
 import type { AuthenticatedHandler } from '../types/index.js';
 
 function isApplicantStage(val: string): val is ApplicantStage {
@@ -353,6 +355,21 @@ export const applyJob = async (req: Request, res: Response): Promise<void> => {
     }
 
     // Duplicate & Identity Fraud Check
+    const uniqueErrors = await checkSystemWideUniqueness({
+        email,
+        umidNumber,
+        philsysId,
+        philhealthNumber,
+        pagibigNumber,
+        tinNumber,
+        gsisNumber
+    });
+
+    if (uniqueErrors.length > 0) {
+        res.status(409).json({ success: false, message: 'Identity verification failed. Information already in use.', errors: uniqueErrors });
+        return;
+    }
+
     const existingApplication = await checkDuplicateApplication({
         firstName, lastName, middleName, suffix, email, birthDate, tinNumber, gsisNumber, philsysId
     });
@@ -499,6 +516,24 @@ export const applyJob = async (req: Request, res: Response): Promise<void> => {
 
     // Trigger Notifications
     await sendApplicationNotifications({ jobId: Number(jobId), firstName: firstName, lastName: lastName, email });
+
+    // Internal System Notifications
+    try {
+      // 1. Notify Admins/HR
+      await notifyAdmins({
+        senderId: null,
+        title: 'New Job Application',
+        message: `${firstName} ${lastName} has applied for ${jobConfig.title}.`,
+        type: 'job_application',
+        referenceId: applicantId
+      });
+
+      // 2. Notify Applicant (Internal placeholder if they have an account, though applicants usually don't yet)
+      // Since applicants don't have accounts yet, we primarily rely on the email sent by sendApplicationNotifications.
+      // But we log it for the system audit.
+    } catch (notifErr) {
+      console.error('Failed to send internal application notifications:', notifErr);
+    }
 
     res.status(201).json({ success: true, message: 'Application submitted successfully' });
   } catch (error) {

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { EDUCATION_LEVELS } from './recruitment';
+import { createIdValidator, ID_REGEX } from './idValidation';
 
 export const LoginSchema = z.object({
   identifier: z.string().min(1, "Email or Employee ID is required"),
@@ -68,12 +69,12 @@ export const RegisterSchema = z.object({
   emergencyContactNumber: z.string().optional(),
 
   // Government Identification
-  gsisNumber: z.string().optional(),
-  pagibigNumber: z.string().optional(),
-  philhealthNumber: z.string().optional(),
-  umidNumber: z.string().optional(),
-  philsysId: z.string().optional(),
-  tinNumber: z.string().optional(),
+  gsisNumber: createIdValidator(ID_REGEX.GSIS, "GSIS Number"),
+  pagibigNumber: createIdValidator(ID_REGEX.PAGIBIG, "Pag-IBIG Number"),
+  philhealthNumber: createIdValidator(ID_REGEX.PHILHEALTH, "PhilHealth Number"),
+  umidNumber: createIdValidator(ID_REGEX.UMID, "UMID Number"),
+  philsysId: createIdValidator(ID_REGEX.PHILSYS, "PhilSys ID"),
+  tinNumber: createIdValidator(ID_REGEX.TIN, "TIN"),
   agencyEmployeeNo: z.string().optional(),
 
   // Educational Background

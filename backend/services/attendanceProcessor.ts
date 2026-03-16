@@ -40,7 +40,9 @@ export const processDailyAttendance = async (
     // 2. Get Employee Duty Info
     const employees = await db.select({
       dutyType: authentication.dutyType,
-      dailyTargetHours: authentication.dailyTargetHours
+      dailyTargetHours: authentication.dailyTargetHours,
+      startTime: authentication.startTime,
+      endTime: authentication.endTime
     })
     .from(authentication)
     .where(compareIds(authentication.employeeId, employeeId))
@@ -64,6 +66,8 @@ export const processDailyAttendance = async (
 
     const dutyType = employees[0]?.dutyType || 'Standard';
     const dailyTargetHours = Number(employees[0]?.dailyTargetHours) || 8;
+    const empDefaultStart = employees[0]?.startTime || '08:00:00';
+    const empDefaultEnd = employees[0]?.endTime || '17:00:00';
     const dailyTargetMinutes = dailyTargetHours * 60;
     const LUNCH_BREAK_MINUTES = 60; // 1 hour lunch deduction for rendered time calc
 
@@ -93,8 +97,8 @@ export const processDailyAttendance = async (
          const isWeekend = dayName === 'Saturday' || dayName === 'Sunday';
          if (!isWeekend) {
             scheduleBlocks = [{
-              startTime: '08:00:00',
-              endTime: '17:00:00'
+              startTime: empDefaultStart,
+              endTime: empDefaultEnd
             }];
          }
       } else {

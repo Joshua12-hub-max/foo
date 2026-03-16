@@ -1,6 +1,7 @@
 import React, { memo } from 'react';
-import { formatDate, getStatusColor } from './utils/attendanceUtils';
+import { formatDate, getStatusColor, formatTime } from './utils/attendanceUtils';
 import { STATUS_STYLES } from './constants/attendanceConstants';
+import { formatDuration } from '@/utils/formatters';
 
 interface AttendanceRow {
   employeeId: string;
@@ -122,12 +123,12 @@ const AttendanceTable: React.FC<AttendanceTableProps> = memo(({ data, headers, i
 
                 {/* Late */}
                 <td className="px-6 py-4 text-sm text-red-600 whitespace-nowrap">
-                  {row.lateMinutes > 0 ? `${row.lateMinutes} min` : '-'}
+                  {formatDuration(row.lateMinutes)}
                 </td>
 
                 {/* Undertime */}
                 <td className="px-6 py-4 text-sm text-orange-600 whitespace-nowrap">
-                  {row.undertimeMinutes > 0 ? `${row.undertimeMinutes} min` : '-'}
+                  {formatDuration(row.undertimeMinutes)}
                 </td>
 
               </tr>

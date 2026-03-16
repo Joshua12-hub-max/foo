@@ -114,10 +114,17 @@ export const PhilippineAddressSelector = <T extends FieldValues>({
     }
   }, [watchCity, prefix, setValue, zipField]);
 
-  // Helper to format names to Capital Case
+  // Helper to format names to Normal/Title Case
   const formatName = (name: string) => {
     if (!name) return '';
-    return name.toLowerCase().split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+    // Special case for NCR
+    if (name.toUpperCase() === 'NATIONAL CAPITAL REGION [NCR]') return 'National Capital Region (NCR)';
+    if (name.toUpperCase() === 'NCR') return 'NCR';
+    
+    return name.toLowerCase().split(' ').map(word => {
+        if (word === 'of') return 'of'; // Keep 'of' lowercase in middle of name
+        return word.charAt(0).toUpperCase() + word.slice(1);
+    }).join(' ');
   };
 
   return (

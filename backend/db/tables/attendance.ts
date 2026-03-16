@@ -106,6 +106,22 @@ export const tardinessSummary = mysqlTable("tardiness_summary", {
 	unique("unique_tardiness").on(table.employeeId, table.year, table.month),
 ]);
 
+export const shiftTemplates = mysqlTable("shift_templates", {
+	id: int("id").autoincrement().notNull(),
+	name: varchar("name", { length: 100 }).notNull(),
+	startTime: time("start_time").notNull(),
+	endTime: time("end_time").notNull(),
+	departmentId: int("department_id"),
+	employeeId: varchar("employee_id", { length: 50 }),
+	description: text("description"),
+	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow(),
+},
+(table) => [
+	primaryKey({ columns: [table.id], name: "shift_templates_id"}),
+	unique("name").on(table.name),
+]);
+
 // =============================================================================
 // C# Biometric Middleware Tables (READ-ONLY from Node.js side)
 // These tables are managed by the external C# biometric enrollment program.

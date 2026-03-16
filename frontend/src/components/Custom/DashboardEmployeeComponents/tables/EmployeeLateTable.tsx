@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { attendanceApi } from '../../../../api/attendanceApi';
 import { useAuth } from '../../../../hooks/useAuth';
 import { format } from 'date-fns';
+import { formatDuration } from '@/utils/formatters';
 
 interface EmployeeLateTableProps {
   onClose: () => void;
@@ -83,7 +84,7 @@ const EmployeeLateTable: React.FC<EmployeeLateTableProps> = ({ onClose }) => {
                     {record.timeIn ? new Date(record.timeIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
                   </td>
                   <td className="py-3 px-4 text-sm text-red-600 font-bold text-right">
-                    {record.lateMinutes || 0}
+                    {formatDuration(record.lateMinutes)}
                   </td>
                 </tr>
               ))}

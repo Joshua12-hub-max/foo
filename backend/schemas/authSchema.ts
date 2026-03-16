@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { createIdValidator, ID_REGEX } from './idValidation.js';
 
 export const LoginSchema = z.object({
   identifier: z.string().min(1, "Email or Employee ID is required"),
@@ -70,12 +71,12 @@ export const RegisterSchema = z.object({
   emergencyContactNumber: z.string().optional().or(z.null()),
 
   // Government Identification
-  gsisNumber  : z.string().optional().or(z.null()),
-  pagibigNumber: z.string().optional().or(z.null()),
-  philhealthNumber: z.string().optional().or(z.null()),
-  umidNumber: z.string().optional().or(z.null()),
-  philsysId: z.string().optional().or(z.null()),
-  tinNumber: z.string().optional().or(z.null()),
+  gsisNumber: createIdValidator(ID_REGEX.GSIS, "GSIS Number"),
+  pagibigNumber: createIdValidator(ID_REGEX.PAGIBIG, "Pag-IBIG Number"),
+  philhealthNumber: createIdValidator(ID_REGEX.PHILHEALTH, "PhilHealth Number"),
+  umidNumber: createIdValidator(ID_REGEX.UMID, "UMID Number"),
+  philsysId: createIdValidator(ID_REGEX.PHILSYS, "PhilSys ID"),
+  tinNumber: createIdValidator(ID_REGEX.TIN, "TIN"),
   agencyEmployeeNo: z.string().optional().or(z.null()),
 
   // Educational Background
@@ -188,12 +189,12 @@ export const UpdateProfileSchema = z.object({
   emergencyContactNumber: z.string().optional(),
   
   // Identification
-  umidNumber: z.string().optional(),
-  philsysId: z.string().optional(),
-  gsisNumber: z.string().optional(),
-  philhealthNumber: z.string().optional(),
-  pagibigNumber: z.string().optional(),
-  tinNumber: z.string().optional(),
+  umidNumber: createIdValidator(ID_REGEX.UMID, "UMID Number"),
+  philsysId: createIdValidator(ID_REGEX.PHILSYS, "PhilSys ID"),
+  gsisNumber: createIdValidator(ID_REGEX.GSIS, "GSIS Number"),
+  philhealthNumber: createIdValidator(ID_REGEX.PHILHEALTH, "PhilHealth Number"),
+  pagibigNumber: createIdValidator(ID_REGEX.PAGIBIG, "Pag-IBIG Number"),
+  tinNumber: createIdValidator(ID_REGEX.TIN, "TIN"),
   agencyEmployeeNo: z.string().optional(),
   
   // Background

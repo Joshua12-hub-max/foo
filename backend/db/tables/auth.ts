@@ -114,6 +114,12 @@ export const authentication = mysqlTable("authentication", {
 	ctcIssuedDate: date("ctc_issued_date", { mode: 'string' }),
 	loginAttempts: int("login_attempts").default(0),
 	lockUntil: datetime("lock_until", { mode: 'string'}),
+	startTime: varchar("start_time", { length: 50 }),
+	endTime: varchar("end_time", { length: 50 }),
+	isOldEmployee: boolean("is_old_employee").default(false),
+	motherMaidenName: varchar("mother_maiden_name", { length: 255 }),
+	spouseName: varchar("spouse_name", { length: 255 }),
+	fatherName: varchar("father_name", { length: 255 }),
 },
 (table) => [
 	foreignKey({
@@ -125,6 +131,12 @@ export const authentication = mysqlTable("authentication", {
 	unique("email").on(table.email),
 	unique("employee_id").on(table.employeeId),
 	unique("google_id").on(table.googleId),
+	unique("umid_no_unique").on(table.umidNumber),
+	unique("philsys_id_unique").on(table.philsysId),
+	unique("philhealth_no_unique").on(table.philhealthNumber),
+	unique("pagibig_no_unique").on(table.pagibigNumber),
+	unique("tin_no_unique").on(table.tinNumber),
+	unique("gsis_no_unique").on(table.gsisNumber),
 ]);
 
 export const googleCalendarTokens = mysqlTable("google_calendar_tokens", {

@@ -1,6 +1,7 @@
 import { db } from '../db/index.js';
 import { dailyTimeRecords, policyViolations, employeeMemos, authentication } from '../db/schema.js';
 import { and, eq, gte, lte, inArray, ne } from 'drizzle-orm';
+import { formatDuration } from '../utils/dateUtils.js';
 
 interface AttendanceScoreResult {
   score: number; // 1-5
@@ -205,7 +206,7 @@ export const calculateAttendanceScore = async (
       ratingDescription = `Poor (Habitual Absenteeism: ${totalAbsences} days)`;
   } else if (totalLateMinutes > 240 && score > 1) { // > 4 hours total
       score = 1;
-      ratingDescription = `Poor (Severe Tardiness: ${totalLateMinutes} mins)`;
+      ratingDescription = `Poor (Severe Tardiness: ${formatDuration(totalLateMinutes)})`;
   }
 
   return {

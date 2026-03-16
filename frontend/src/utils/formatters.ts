@@ -8,3 +8,20 @@ export const formatEmployeeId = (id: string | number | null | undefined): string
   if (!id) return '';
   return String(id);
 };
+
+/**
+ * Formats minutes into a readable duration string.
+ * Example: 520 => "8h 40m", 40 => "40m"
+ */
+export const formatDuration = (totalMinutes: number | string | null | undefined): string => {
+  const mins = typeof totalMinutes === 'string' ? parseInt(totalMinutes, 10) : Number(totalMinutes || 0);
+  if (isNaN(mins) || mins <= 0) return '-';
+  
+  const hours = Math.floor(mins / 60);
+  const remainingMinutes = mins % 60;
+  
+  if (hours > 0) {
+    return `${hours}h${remainingMinutes > 0 ? ` ${remainingMinutes}m` : ''}`;
+  }
+  return `${remainingMinutes}m`;
+};

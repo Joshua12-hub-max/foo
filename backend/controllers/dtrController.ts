@@ -6,6 +6,7 @@ import { eq, and, desc, gte, lte, count, sql } from 'drizzle-orm';
 import { GetDTRSchema, UpdateDTRSchema, RequestCorrectionSchema } from '../schemas/dtrSchema.js';
 import { AuthenticatedRequest } from '../types/index.js';
 import { updateTardinessSummary } from '../utils/tardinessUtils.js';
+import { createNotification, notifyAdmins } from './notificationController.js';
 import { DTRApiResponse } from '../types/attendance.js';
 import { formatToManilaDateTime } from "../utils/dateUtils.js";
 import { compareIds } from "../utils/idUtils.js";
@@ -425,6 +426,19 @@ const parseTimeInput = (timeStr: string | null | undefined, dateStr: string): st
       status: 'Pending'
     });
 
+    // Notify Admins
+    try {
+      await notifyAdmins({
+        senderId: employeeId,
+        title: 'New DTR Correction Request',
+        message: `Employee ${employeeId} has requested a DTR correction for ${date}.`,
+        type: 'dtr_correction',
+        referenceId: null
+      });
+    } catch (notifErr) {
+      console.error('Failed to notify admins:', notifErr);
+    }
+
     res.status(201).json({ 
       success: true, 
       message: 'Correction request submitted successfully. Waiting for Admin approval.' 
@@ -520,6 +534,19 @@ export const updateCorrectionStatus = async (req: Request, res: Response): Promi
                       updatedAt: toMySQLDatetime(new Date().toISOString())
                   })
                   .where(eq(dtrCorrections.id, id));
+
+              // Notify Employee
+              try {
+                await createNotification({
+                  recipientId: request.employeeId,
+                  senderId: adminId,
+                  title: 'DTR Correction Rejected',
+                  message: `Your DTR correction request for ${request.dateTime} has been rejected. Reason: ${rejectionReason || 'No reason provided.'}`,
+                  type: 'dtr_correction_result',
+                  referenceId: id
+                });
+              } catch (nErr) { console.error(nErr); }
+
           } else if (status === 'Approved') {
               // APPROVED LOGIC
               // A. Fetch existing DTR record
@@ -621,6 +648,18 @@ export const updateCorrectionStatus = async (req: Request, res: Response): Promi
                     updatedAt: toMySQLDatetime(new Date().toISOString())
                 })
                 .where(eq(dtrCorrections.id, id));
+
+            // Notify Employee
+            try {
+              await createNotification({
+                recipientId: request.employeeId,
+                senderId: adminId,
+                title: 'DTR Correction Approved',
+                message: `Your DTR correction request for ${request.dateTime} has been approved.`,
+                type: 'dtr_correction_result',
+                referenceId: id
+              });
+            } catch (nErr) { console.error(nErr); }
         }
     }
 

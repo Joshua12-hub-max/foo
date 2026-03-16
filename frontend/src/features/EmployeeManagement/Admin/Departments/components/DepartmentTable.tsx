@@ -1,5 +1,5 @@
 import React, { memo, useState, useCallback } from 'react';
-import { SquarePen, Trash2, ChevronDown, ChevronRight, Users, Loader2 } from 'lucide-react';
+import { SquarePen, Trash2, ChevronDown, ChevronRight, Users, Loader2, Calendar } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { departmentApi } from '@/api/departmentApi';
 import DepartmentEmployeeTable from './DepartmentEmployeeTable';
@@ -22,9 +22,10 @@ interface DepartmentTableProps {
   onDelete: (dept: Department) => void;
   onRemoveEmployee: (employee: Employee, deptId: number) => void;
   onRegister: (dept: Department) => void;
+  onSetSchedule: (dept: Department) => void;
 }
 
-const DepartmentTable: React.FC<DepartmentTableProps> = memo(({ departments, loading, onEdit, onDelete, onRemoveEmployee, onRegister }) => {
+const DepartmentTable: React.FC<DepartmentTableProps> = memo(({ departments, loading, onEdit, onDelete, onRemoveEmployee, onRegister, onSetSchedule }) => {
   const navigate = useNavigate();
   const [expandedRows, setExpandedRows] = useState<Record<number, boolean>>({});
   const [departmentEmployees, setDepartmentEmployees] = useState<Record<number, Employee[]>>({});
@@ -132,6 +133,13 @@ const DepartmentTable: React.FC<DepartmentTableProps> = memo(({ departments, loa
                                     >
                                         <Users size={14} />
                                         <span>{isExpanded ? 'Hide Employees' : 'View Employees'}</span>
+                                    </button>
+                                    <button 
+                                        onClick={() => onSetSchedule(dept)}
+                                        className="p-1.5 border border-gray-200 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-50 transition-all"
+                                        title="Set Department Schedule"
+                                    >
+                                        <Calendar size={14} />
                                     </button>
                                     <button 
                                         onClick={() => onRegister(dept)}

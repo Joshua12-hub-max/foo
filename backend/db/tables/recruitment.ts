@@ -164,6 +164,13 @@ export const recruitmentApplicants = mysqlTable("recruitment_applicants", {
 (table) => [
 	index("job_id").on(table.jobId),
 	primaryKey({ columns: [table.id], name: "recruitment_applicants_id"}),
+	unique("email_unique").on(table.email),
+	unique("umid_no_unique").on(table.umidNo),
+	unique("philsys_id_unique").on(table.philsysId),
+	unique("philhealth_no_unique").on(table.philhealthNo),
+	unique("pagibig_no_unique").on(table.pagibigNo),
+	unique("tin_no_unique").on(table.tinNo),
+	unique("gsis_no_unique").on(table.gsisNo),
 ]);
 
 export const recruitmentEmailTemplates = mysqlTable("recruitment_email_templates", {

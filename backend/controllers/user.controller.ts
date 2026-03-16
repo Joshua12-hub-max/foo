@@ -54,6 +54,7 @@ import {
   UpdateContactSchema
 } from '../schemas/employeeSchema.js';
 import { formatFullName } from '../utils/nameUtils.js';
+import { checkSystemWideUniqueness } from '../services/validationService.js';
 
 
 // Standardized role type from global types
@@ -120,6 +121,8 @@ interface UpdateFields {
   officeAddress?: string | null;
   originalAppointmentDate?: string | null;
   lastPromotionDate?: string | null;
+  startTime?: string | null;
+  endTime?: string | null;
   [key: string]: string | number | boolean | null | undefined;
 }
 
@@ -220,6 +223,8 @@ export const mapToEmployeeApi = (emp: EmployeeMapperInput): EmployeeApiResponse 
     ctcIssuedDate: emp.ctcIssuedDate || null,
     originalAppointmentDate: emp.originalAppointmentDate || null,
     lastPromotionDate: emp.lastPromotionDate || null,
+    startTime: emp.startTime || null,
+    endTime: emp.endTime || null,
     isBiometricEnrolled: !!emp.isBiometricEnrolled,
   };
 };
@@ -455,17 +460,20 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
       finalDeptId = dept.id;
     }
 
-    // Check uniqueness
-    const existing = await db.query.authentication.findFirst({
-      where: or(
-        eq(authentication.email, email),
-        eq(authentication.employeeId, employeeId || '')
-      )
+    // Check system-wide uniqueness
+    const uniqueErrors = await checkSystemWideUniqueness({
+        email,
+        umidNumber: validatedData.umidNumber,
+        philsysId: validatedData.philsysId,
+        philhealthNumber: validatedData.philhealthNumber,
+        pagibigNumber: validatedData.pagibigNumber,
+        tinNumber: validatedData.tinNumber,
+        gsisNumber: validatedData.gsisNumber
     });
 
-    if (existing) {
-      res.status(409).json({ success: false, message: 'Email or Employee ID already exists' });
-      return;
+    if (uniqueErrors.length > 0) {
+        res.status(409).json({ success: false, message: 'Uniqueness validation failed.', errors: uniqueErrors });
+        return;
     }
 
     // Generate Sequential Numeric ID if not provided
@@ -786,6 +794,23 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
       return;
     }
 
+    // Check system-wide uniqueness
+    const uniqueErrors = await checkSystemWideUniqueness({
+        email: updates.email && updates.email !== currentEmployee.email ? updates.email : undefined,
+        umidNumber: updates.umidNumber,
+        philsysId: updates.philsysId,
+        philhealthNumber: updates.philhealthNumber,
+        pagibigNumber: updates.pagibigNumber,
+        tinNumber: updates.tinNumber,
+        gsisNumber: updates.gsisNumber,
+        excludeAuthId: parseInt(id)
+    });
+
+    if (uniqueErrors.length > 0) {
+        res.status(409).json({ success: false, message: 'Uniqueness validation failed.', errors: uniqueErrors });
+        return;
+    }
+
     // 1. Sanitize PDS fields (height/weight conversion)
     const sanitizedUpdates = sanitizePDSFields({ ...updates });
 
@@ -883,6 +908,8 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
       religion: 'religion',
       citizenship: 'citizenship',
       citizenshipType: 'citizenshipType',
+      startTime: 'startTime',
+      endTime: 'endTime',
       duties: 'duties' // Special handling
     };
 

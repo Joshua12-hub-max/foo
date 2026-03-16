@@ -81,6 +81,7 @@ enum class EnrollState : uint8_t {
   WAIT_SECOND_FINGER, CONVERT_SECOND, CREATE_MODEL, STORE_MODEL, DONE
 };
 
+
 EnrollState g_enrollState = EnrollState::IDLE;
 uint16_t     g_enrollId = 0;
 uint32_t     g_enrollStateSinceMs = 0;
@@ -251,7 +252,50 @@ void handleLine(char* line) {
   cmd.toUpperCase();
 
   if (cmd == F("LCD_INFO")) {
-    showTempLCD(F("LOGGED OK"), arg.c_str(), 4000);
+    // Expected arg: empId|name|date|time|status|timeIn|timeOut
+    // Split the pipe-separated argument
+    int p1 = arg.indexOf('|');
+    int p2 = arg.indexOf('|', p1 + 1);
+    int p3 = arg.indexOf('|', p2 + 1);
+    int p4 = arg.indexOf('|', p3 + 1);
+    int p5 = arg.indexOf('|', p4 + 1);
+    int p6 = arg.indexOf('|', p5 + 1);
+
+    if (p1 > 0) {
+      String id = arg.substring(0, p1);
+      String name = arg.substring(p1 + 1, p2);
+      String dateStr = arg.substring(p2 + 1, p3);
+      String timeStr = arg.substring(p3 + 1, p4);
+      String status = arg.substring(p4 + 1, p5);
+      String inStr = arg.substring(p5 + 1, p6);
+      String outStr = arg.substring(p6 + 1);
+
+      lcd.clear();
+      lcd.setCursor(0, 0); lcd.print(status + ": " + name);
+      lcd.setCursor(0, 1); lcd.print(dateStr + " " + timeStr);
+      lcd.setCursor(0, 2); lcd.print("IN: " + inStr);
+      lcd.setCursor(0, 3); lcd.print("OUT: " + outStr);
+      
+      g_lcdMessageTimer = millis() + 5000;
+      g_isTempMessage = true;
+    }
+    return;
+  }
+
+  if (cmd == F("LCD_UNENROLLED")) {
+    showTempLCD(F("ACCESS DENIED"), "User Not Enrolled", 3000);
+    return;
+  }
+
+  if (cmd == F("LCD_BLOCK")) {
+    int p1 = arg.indexOf('|');
+    String name = (p1 > 0) ? arg.substring(0, p1) : arg;
+    String reason = (p1 > 0) ? arg.substring(p1 + 1) : "Blocked";
+    lcd.clear();
+    lcd.setCursor(0, 0); lcd.print("BLOCKED: " + name);
+    lcd.setCursor(0, 1); lcd.print(reason);
+    g_lcdMessageTimer = millis() + 4000;
+    g_isTempMessage = true;
     return;
   }
 

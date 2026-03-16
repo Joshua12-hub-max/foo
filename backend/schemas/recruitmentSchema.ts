@@ -1,35 +1,5 @@
 import { z } from 'zod';
-
-// STRICT AUTHORIZED TESTING IDS
-const VALID_PAGIBIG = [
-  "1234-5678-9012", "9876-5432-1098", "1122-3344-5566", "4455-6677-8899", "7788-9900-1122",
-  "1029-3847-5610", "5647-3829-1029", "2039-4857-6019", "9102-8374-6510", "5060-7080-9010"
-];
-
-const VALID_PHILHEALTH = [
-  "12-123456789-0", "98-765432109-8", "11-223344556-6", "44-556677889-9", "77-889900112-2",
-  "10-293847561-0", "56-473829102-9", "20-394857601-9", "91-028374651-0", "50-607080901-0"
-];
-
-const VALID_TIN = [
-  "123-456-789-000", "987-654-321-000", "112-233-445-000", "445-566-778-000", "778-899-001-001",
-  "102-938-475-000", "564-738-291-001", "203-948-576-000", "910-283-746-000", "506-070-809-002"
-];
-
-const VALID_UMID = [
-  "1234-5678901-2", "9876-5432109-8", "1122-3344556-6", "4455-6677889-9", "7788-9900112-2",
-  "1029-3847561-0", "5647-3829102-9", "2039-4857601-9", "9102-8374651-0", "5060-7080901-0"
-];
-
-const VALID_PHILSYS = [
-  "1234-5678-9012-3456", "9876-5432-1098-7654", "1122-3344-5566-7788", "4455-6677-8899-0011", "7788-9900-1122-3344",
-  "1029-3847-5610-2938", "5647-3829-1029-3847", "2039-4857-6019-2837", "9102-8374-6510-2938", "5060-7080-9010-2030"
-];
-
-const VALID_GSIS = [
-  "12-3456789-0", "98-7654321-0", "11-2233445-5", "44-5566778-8", "77-8899001-1",
-  "10-2938475-6", "56-4738291-0", "20-3948576-0", "91-0283746-5", "50-6070809-0"
-];
+import { createIdValidator, createStrictIdValidator, ID_REGEX } from './idValidation.js';
 
 // STRICT AUTHORIZED TESTING VALUES FOR ELIGIBILITY & CERTIFICATIONS
 const VALID_ELIGIBILITY_NAMES = [
@@ -157,12 +127,12 @@ export const applyJobSchema = z.object({
   height: z.string().max(20, 'Height is too long').optional(),
   weight: z.string().max(20, 'Weight is too long').optional(),
   bloodType: z.string().max(10, 'Blood type is too long').optional(),
-  gsisNumber: z.string().max(50).optional().refine(val => !val || VALID_GSIS.includes(val), 'Fake ID rejected. Please use an authorized testing ID.'),
-  pagibigNumber: z.string().max(50).optional().refine(val => !val || VALID_PAGIBIG.includes(val), 'Fake ID rejected. Please use an authorized testing ID.'),
-  philhealthNumber: z.string().max(50).optional().refine(val => !val || VALID_PHILHEALTH.includes(val), 'Fake ID rejected. Please use an authorized testing ID.'),
-  umidNumber: z.string().max(50).optional().refine(val => !val || VALID_UMID.includes(val), 'Fake ID rejected. Please use an authorized testing ID.'),
-  philsysId: z.string().max(50).optional().refine(val => !val || VALID_PHILSYS.includes(val), 'Fake ID rejected. Please use an authorized testing ID.'),
-  tinNumber: z.string().max(50).optional().refine(val => !val || VALID_TIN.includes(val), 'Fake ID rejected. Please use an authorized testing ID.'),
+  gsisNumber: createIdValidator(ID_REGEX.GSIS, "GSIS Number"),
+  pagibigNumber: createIdValidator(ID_REGEX.PAGIBIG, "Pag-IBIG Number"),
+  philhealthNumber: createIdValidator(ID_REGEX.PHILHEALTH, "PhilHealth Number"),
+  umidNumber: createIdValidator(ID_REGEX.UMID, "UMID Number"),
+  philsysId: createIdValidator(ID_REGEX.PHILSYS, "PhilSys ID"),
+  tinNumber: createIdValidator(ID_REGEX.TIN, "TIN"),
   eligibility: z.string().max(255).optional().refine(val => !val || VALID_ELIGIBILITY_NAMES.includes(val), 'Fake Record rejected. Please use an authorized testing ID.'),
   eligibilityType: z.string().max(100).optional(),
   eligibilityDate: z.string().max(30).optional(),
@@ -220,12 +190,12 @@ export type ApplyJobData = z.infer<typeof applyJobSchema>;
 
 export const createStrictApplyJobSchema = (requireIds: boolean, requireCsc: boolean, requireEdu: boolean) => {
   return applyJobSchema.extend({
-    gsisNumber: requireIds ? z.string().min(1, 'GSIS Number is required').refine(val => VALID_GSIS.includes(val), 'Fake ID rejected. Please use an authorized testing ID.') : applyJobSchema.shape.gsisNumber,
-    pagibigNumber: requireIds ? z.string().min(1, 'Pag-IBIG Number is required').refine(val => VALID_PAGIBIG.includes(val), 'Fake ID rejected. Please use an authorized testing ID.') : applyJobSchema.shape.pagibigNumber,
-    philhealthNumber: requireIds ? z.string().min(1, 'PhilHealth Number is required').refine(val => VALID_PHILHEALTH.includes(val), 'Fake ID rejected. Please use an authorized testing ID.') : applyJobSchema.shape.philhealthNumber,
-    umidNumber: requireIds ? z.string().min(1, 'UMID is required').refine(val => VALID_UMID.includes(val), 'Fake ID rejected. Please use an authorized testing ID.') : applyJobSchema.shape.umidNumber,
-    philsysId: requireIds ? z.string().min(1, 'PhilSys ID is required').refine(val => VALID_PHILSYS.includes(val), 'Fake ID rejected. Please use an authorized testing ID.') : applyJobSchema.shape.philsysId,
-    tinNumber: requireIds ? z.string().min(1, 'TIN is required').refine(val => VALID_TIN.includes(val), 'Fake ID rejected. Please use an authorized testing ID.') : applyJobSchema.shape.tinNumber,
+    gsisNumber: requireIds ? createStrictIdValidator(ID_REGEX.GSIS, "GSIS Number") : applyJobSchema.shape.gsisNumber,
+    pagibigNumber: requireIds ? createStrictIdValidator(ID_REGEX.PAGIBIG, "Pag-IBIG Number") : applyJobSchema.shape.pagibigNumber,
+    philhealthNumber: requireIds ? createStrictIdValidator(ID_REGEX.PHILHEALTH, "PhilHealth Number") : applyJobSchema.shape.philhealthNumber,
+    umidNumber: requireIds ? createStrictIdValidator(ID_REGEX.UMID, "UMID Number") : applyJobSchema.shape.umidNumber,
+    philsysId: requireIds ? createStrictIdValidator(ID_REGEX.PHILSYS, "PhilSys ID") : applyJobSchema.shape.philsysId,
+    tinNumber: requireIds ? createStrictIdValidator(ID_REGEX.TIN, "TIN") : applyJobSchema.shape.tinNumber,
     
     eligibility: requireCsc ? z.string().min(1, 'Eligibility is required').refine(val => VALID_ELIGIBILITY_NAMES.includes(val), 'Fake Record rejected. Please use an authorized testing ID.') : applyJobSchema.shape.eligibility,
     eligibilityType: requireCsc ? z.enum(['none', 'csc_prof', 'csc_sub', 'ra_1080', 'special_laws', 'drivers_license', 'tesda', 'nbi_clearance', 'others']) : applyJobSchema.shape.eligibilityType,

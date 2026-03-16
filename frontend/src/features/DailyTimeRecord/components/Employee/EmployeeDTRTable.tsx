@@ -1,6 +1,7 @@
 import { Search, SquarePen } from "lucide-react";
 import { TABLE_HEADERS } from "../../Constants/employeeDTR.constant";
 import { EmployeeDTRRecord, EmployeeDTRFilters, EmployeeInfo } from "../../Utils/employeeDTRUtils";
+import { formatDuration } from "@/utils/formatters";
 interface EmployeeDTRTableProps {
   currentItems: EmployeeDTRRecord[];
   getStatusBadge: (status: string) => string;
@@ -55,8 +56,8 @@ export const EmployeeDTRTable: React.FC<EmployeeDTRTableProps> = ({
                     <td className="px-6 py-4 text-sm text-gray-800 font-medium whitespace-nowrap">{item.date}</td>
                     <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">{item.timeIn}</td>
                     <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">{item.timeOut}</td>
-                    <td className="px-6 py-4 text-sm text-gray-800 text-center font-medium">{item.lateMinutes || 0}</td>
-                    <td className="px-6 py-4 text-sm text-gray-800 text-center font-medium">{item.undertimeMinutes || 0}</td>
+                    <td className="px-6 py-4 text-sm text-gray-800 text-center font-medium">{formatDuration(item.lateMinutes)}</td>
+                    <td className="px-6 py-4 text-sm text-gray-800 text-center font-medium">{formatDuration(item.undertimeMinutes)}</td>
                     <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">{item.hoursWorked}</td>
                     <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">
                       <button
@@ -78,8 +79,8 @@ export const EmployeeDTRTable: React.FC<EmployeeDTRTableProps> = ({
                     <td colSpan={6} className="px-6 py-4 text-right text-gray-700 text-sm">
                       Totals:
                     </td>
-                    <td className="px-6 py-4 text-center text-red-700 text-sm">{totals.lateMinutes}m</td>
-                    <td className="px-6 py-4 text-center text-orange-700 text-sm">{totals.undertimeMinutes}m</td>
+                    <td className="px-6 py-4 text-center text-red-700 text-sm">{formatDuration(totals.lateMinutes)}</td>
+                    <td className="px-6 py-4 text-center text-orange-700 text-sm">{formatDuration(totals.undertimeMinutes)}</td>
                     <td className="px-6 py-4 text-center text-gray-900 text-sm">{totals.hoursWorked}h</td>
                     <td className="bg-gray-100 text-sm"></td>
                   </tr>
