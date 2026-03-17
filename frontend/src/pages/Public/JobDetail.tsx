@@ -164,11 +164,27 @@ const JobDetail = () => {
     // Helper to format names to Normal/Title Case
     const formatName = (name: string) => {
       if (!name) return '';
-      if (name.toUpperCase() === 'NATIONAL CAPITAL REGION [NCR]') return 'National Capital Region (NCR)';
-      if (name.toUpperCase() === 'NCR') return 'NCR';
-      return name.toLowerCase().split(' ').map(word => {
-          if (word === 'of') return 'of';
-          return word.charAt(0).toUpperCase() + word.slice(1);
+      const upper = name.toUpperCase();
+      
+      // Special handling for common abbreviations that should stay uppercase
+      const specifics = ['NCR', 'CAR', 'BARMM', 'IV-A', 'IV-B', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII'];
+      
+      return upper.split(' ').map(word => {
+        if (!word) return '';
+        
+        // Clean word for comparison (removing surrounding parentheses)
+        const cleanWord = word.replace(/^\(|\)$/g, '');
+        
+        if (specifics.includes(cleanWord)) return word; // Keep the whole word (including parens) as is
+        
+        const lowerWord = word.toLowerCase();
+        if (lowerWord === 'of' || lowerWord === 'de' || lowerWord === 'del') return lowerWord;
+        
+        // Handle Title Case for normal words, potentially with leading paren
+        if (word.startsWith('(')) {
+          return '(' + word.charAt(1).toUpperCase() + word.slice(2).toLowerCase();
+        }
+        return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
       }).join(' ');
     };
 
@@ -196,9 +212,19 @@ const JobDetail = () => {
 
   // Mutation using custom hook
   const mutation = useJobApplication(
-    () => {
-      setSuccess(true);
-      window.scrollTo(0, 0);
+    (response: { data: { requiresVerification?: boolean; email?: string; applicantId?: number } }) => {
+      const data = response.data;
+      if (data?.requiresVerification) {
+        navigate('/verify-applicant', { 
+            state: { 
+                email: data.email, 
+                applicantId: data.applicantId 
+            } 
+        });
+      } else {
+        setSuccess(true);
+        window.scrollTo(0, 0);
+      }
     },
     (err: Error) => {
         const axiosErr = err as Error & { response?: { data?: { message?: string; error?: string; errors?: Record<string, string[]> } } };
@@ -550,13 +576,13 @@ const JobDetail = () => {
                         >
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-2">
                                     <div className="space-y-2">
-                                        <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Last name <span className="text-red-500">*</span></label>
-                                        <input type="text" {...register('lastName')} className={`w-full px-3 py-2 bg-white border ${errors.lastName ? 'border-red-500' : 'border-gray-300'} rounded-md outline-none font-medium text-sm text-slate-700`} placeholder="Last name" />
+                                        <label className={`text-[11px] font-bold ${errors.lastName ? 'text-red-500' : 'text-slate-500'} tracking-tight ml-0.5`}>Last name <span className="text-red-500">*</span></label>
+                                        <input type="text" {...register('lastName')} className={`w-full px-3 py-2 bg-white border ${errors.lastName ? 'border-red-500 bg-red-50/30' : 'border-gray-300'} rounded-md outline-none font-medium text-sm text-slate-700 transition-all`} placeholder="Last name" />
                                         {errors.lastName && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.lastName.message}</p>}
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">First name <span className="text-red-500">*</span></label>
-                                        <input type="text" {...register('firstName')} className={`w-full px-3 py-2 bg-white border ${errors.firstName ? 'border-red-500' : 'border-gray-300'} rounded-md outline-none font-medium text-sm text-slate-700`} placeholder="First name" />
+                                        <label className={`text-[11px] font-bold ${errors.firstName ? 'text-red-500' : 'text-slate-500'} tracking-tight ml-0.5`}>First name <span className="text-red-500">*</span></label>
+                                        <input type="text" {...register('firstName')} className={`w-full px-3 py-2 bg-white border ${errors.firstName ? 'border-red-500 bg-red-50/30' : 'border-gray-300'} rounded-md outline-none font-medium text-sm text-slate-700 transition-all`} placeholder="First name" />
                                         {errors.firstName && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.firstName.message}</p>}
                                     </div>
                                     <div className="space-y-2">
@@ -571,32 +597,36 @@ const JobDetail = () => {
 
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-y-3 gap-x-6">
                                 <div className="space-y-2">
-                                    <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Birth date <span className="text-red-500">*</span></label>
-                                    <input type="date" {...register('birthDate')} className={`w-full px-3 py-2 bg-white border border-gray-300 ${errors.birthDate ? 'border-red-500' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`} />
+                                    <label className={`text-[11px] font-bold ${errors.birthDate ? 'text-red-500' : 'text-slate-500'} tracking-tight ml-0.5`}>Birth date <span className="text-red-500">*</span></label>
+                                    <input type="date" {...register('birthDate')} className={`w-full px-3 py-2 bg-white border ${errors.birthDate ? 'border-red-500 bg-red-50/30' : 'border-gray-300'} rounded-md outline-none font-medium text-sm text-slate-700 transition-all`} />
+                                    {errors.birthDate && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.birthDate.message}</p>}
                                 </div>
                                 <div className="md:col-span-2 space-y-2">
-                                    <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Place of birth <span className="text-red-500">*</span></label>
-                                    <input type="text" {...register('birthPlace')} className={`w-full px-3 py-2 bg-white border border-gray-300 ${errors.birthPlace ? 'border-red-500' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`} placeholder="City/municipality, province" />
+                                    <label className={`text-[11px] font-bold ${errors.birthPlace ? 'text-red-500' : 'text-slate-500'} tracking-tight ml-0.5`}>Place of birth <span className="text-red-500">*</span></label>
+                                    <input type="text" {...register('birthPlace')} className={`w-full px-3 py-2 bg-white border ${errors.birthPlace ? 'border-red-500 bg-red-50/30' : 'border-gray-300'} rounded-md outline-none font-medium text-sm text-slate-700 transition-all`} placeholder="City/municipality, province" />
+                                    {errors.birthPlace && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.birthPlace.message}</p>}
                                 </div>
                             </div>
 
                             <div className="grid grid-cols-2 lg:grid-cols-6 gap-y-4 gap-x-6">
                                 <div className="space-y-2">
-                                    <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Gender <span className="text-red-500">*</span></label>
-                                    <select {...register('sex')} className={`w-full px-3 py-2 bg-white border ${errors.sex ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`}>
+                                    <label className={`text-[11px] font-bold ${errors.sex ? 'text-red-500' : 'text-slate-500'} tracking-tight ml-0.5`}>Gender <span className="text-red-500">*</span></label>
+                                    <select {...register('sex')} className={`w-full px-3 py-2 bg-white border ${errors.sex ? 'border-red-500 bg-red-50/30' : 'border-gray-300'} rounded-md outline-none font-medium text-sm text-slate-700 transition-all`}>
                                         <option value="Male">Male</option>
                                         <option value="Female">Female</option>
                                     </select>
+                                    {errors.sex && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.sex.message}</p>}
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Civil status <span className="text-red-500">*</span></label>
-                                    <select {...register('civilStatus')} className={`w-full px-3 py-2 bg-white border ${errors.civilStatus ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`}>
+                                    <label className={`text-[11px] font-bold ${errors.civilStatus ? 'text-red-500' : 'text-slate-500'} tracking-tight ml-0.5`}>Civil status <span className="text-red-500">*</span></label>
+                                    <select {...register('civilStatus')} className={`w-full px-3 py-2 bg-white border ${errors.civilStatus ? 'border-red-500 bg-red-50/30' : 'border-gray-300'} rounded-md outline-none font-medium text-sm text-slate-700 transition-all`}>
                                         <option value="Single">Single</option>
                                         <option value="Married">Married</option>
                                         <option value="Widowed">Widowed</option>
                                         <option value="Separated">Separated</option>
                                         <option value="Annulled">Annulled</option>
                                     </select>
+                                    {errors.civilStatus && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.civilStatus.message}</p>}
                                 </div>
                                 
                                 {/* Adjustable Height */}
@@ -743,26 +773,28 @@ const JobDetail = () => {
                                 </div>
                             </div>
                             
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
+                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
                                 <div className="space-y-2">
-                                    <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Email address <span className="text-red-500">*</span></label>
-                                    <input type="email" {...register('email')} className={`w-full px-3 py-2 bg-white border border-gray-300 ${errors.email ? 'border-red-500' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`} placeholder="email@address.com" />
+                                    <label className={`text-[11px] font-bold ${errors.email ? 'text-red-500' : 'text-slate-500'} tracking-tight ml-0.5`}>Email address <span className="text-red-500">*</span></label>
+                                    <input type="email" {...register('email')} className={`w-full px-3 py-2 bg-white border ${errors.email ? 'border-red-500 bg-red-50/30' : 'border-gray-300'} rounded-md outline-none font-medium text-sm text-slate-700 transition-all`} placeholder="email@address.com" />
+                                    {errors.email && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.email.message}</p>}
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Contact number <span className="text-red-500">*</span></label>
-                                    <input type="text" {...register('phoneNumber')} className={`w-full px-3 py-2 bg-white border border-gray-300 ${errors.phoneNumber ? 'border-red-500' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`} placeholder="+63 9XX XXX XXXX" />
+                                    <label className={`text-[11px] font-bold ${errors.phoneNumber ? 'text-red-500' : 'text-slate-500'} tracking-tight ml-0.5`}>Contact number <span className="text-red-500">*</span></label>
+                                    <input type="text" {...register('phoneNumber')} className={`w-full px-3 py-2 bg-white border ${errors.phoneNumber ? 'border-red-500 bg-red-50/30' : 'border-gray-300'} rounded-md outline-none font-medium text-sm text-slate-700 transition-all`} placeholder="+63 9XX XXX XXXX" />
+                                    {errors.phoneNumber && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.phoneNumber.message}</p>}
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 mt-6 border-t border-gray-100">
+                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 mt-6 border-t border-gray-100">
                                 <div className="space-y-2">
-                                    <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5 uppercase tracking-widest text-green-700">Emergency Contact Person <span className="text-red-500">*</span></label>
-                                    <input type="text" {...register('emergencyContact')} className={`w-full px-3 py-2 bg-white border border-gray-300 ${errors.emergencyContact ? 'border-red-500' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`} placeholder="Full Name" />
+                                    <label className={`text-[11px] font-bold ${errors.emergencyContact ? 'text-red-500' : 'text-green-700'} tracking-tight ml-0.5 uppercase tracking-widest`}>Emergency Contact Person <span className="text-red-500">*</span></label>
+                                    <input type="text" {...register('emergencyContact')} className={`w-full px-3 py-2 bg-white border ${errors.emergencyContact ? 'border-red-500 bg-red-50/30' : 'border-gray-300'} rounded-md outline-none font-medium text-sm text-slate-700 transition-all`} placeholder="Full Name" />
                                     {errors.emergencyContact && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.emergencyContact.message}</p>}
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5 uppercase tracking-widest text-green-700">Emergency Contact No. <span className="text-red-500">*</span></label>
-                                    <input type="text" {...register('emergencyContactNumber')} className={`w-full px-3 py-2 bg-white border border-gray-300 ${errors.emergencyContactNumber ? 'border-red-500' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`} placeholder="+63 9XX XXX XXXX" />
+                                    <label className={`text-[11px] font-bold ${errors.emergencyContactNumber ? 'text-red-500' : 'text-green-700'} tracking-tight ml-0.5 uppercase tracking-widest`}>Emergency Contact No. <span className="text-red-500">*</span></label>
+                                    <input type="text" {...register('emergencyContactNumber')} className={`w-full px-3 py-2 bg-white border ${errors.emergencyContactNumber ? 'border-red-500 bg-red-50/30' : 'border-gray-300'} rounded-md outline-none font-medium text-sm text-slate-700 transition-all`} placeholder="+63 9XX XXX XXXX" />
                                     {errors.emergencyContactNumber && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.emergencyContactNumber.message}</p>}
                                 </div>
                             </div>
@@ -773,35 +805,35 @@ const JobDetail = () => {
                             title={<span>Government Records {requireIds && <span className="text-red-500 ml-1.5">*</span>}</span>} 
                             subtitle="Your identification details" 
                         >
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                  <div className="space-y-2">
-                                    <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">GSIS Number {requireIds && <span className="text-red-500 ml-1">*</span>}</label>
-                                    <input type="text" {...register('gsisNumber')} className={`w-full px-3 py-2 bg-white border ${errors.gsisNumber ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`} placeholder={requireIds ? "Required" : "Optional"} />
+                                    <label className={`text-[11px] font-bold ${errors.gsisNumber ? 'text-red-500' : 'text-slate-500'} tracking-tight ml-0.5`}>GSIS Number {requireIds && <span className="text-red-500 ml-1">*</span>}</label>
+                                    <input type="text" {...register('gsisNumber')} className={`w-full px-3 py-2 bg-white border ${errors.gsisNumber ? 'border-red-500 bg-red-50/30' : 'border-gray-300'} rounded-md outline-none font-medium text-sm text-slate-700 transition-all`} placeholder={requireIds ? "Required" : "Optional"} />
                                     {errors.gsisNumber && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.gsisNumber.message}</p>}
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Pag-IBIG Number {requireIds && <span className="text-red-500 ml-1">*</span>}</label>
-                                    <input type="text" {...register('pagibigNumber')} className={`w-full px-3 py-2 bg-white border ${errors.pagibigNumber ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`} placeholder={requireIds ? "Required" : "Optional"} />
+                                    <label className={`text-[11px] font-bold ${errors.pagibigNumber ? 'text-red-500' : 'text-slate-500'} tracking-tight ml-0.5`}>Pag-IBIG Number {requireIds && <span className="text-red-500 ml-1">*</span>}</label>
+                                    <input type="text" {...register('pagibigNumber')} className={`w-full px-3 py-2 bg-white border ${errors.pagibigNumber ? 'border-red-500 bg-red-50/30' : 'border-gray-300'} rounded-md outline-none font-medium text-sm text-slate-700 transition-all`} placeholder={requireIds ? "Required" : "Optional"} />
                                     {errors.pagibigNumber && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.pagibigNumber.message}</p>}
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">PhilHealth Number {requireIds && <span className="text-red-500 ml-1">*</span>}</label>
-                                    <input type="text" {...register('philhealthNumber')} className={`w-full px-3 py-2 bg-white border ${errors.philhealthNumber ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`} placeholder={requireIds ? "Required" : "Optional"} />
+                                    <label className={`text-[11px] font-bold ${errors.philhealthNumber ? 'text-red-500' : 'text-slate-500'} tracking-tight ml-0.5`}>PhilHealth Number {requireIds && <span className="text-red-500 ml-1">*</span>}</label>
+                                    <input type="text" {...register('philhealthNumber')} className={`w-full px-3 py-2 bg-white border ${errors.philhealthNumber ? 'border-red-500 bg-red-50/30' : 'border-gray-300'} rounded-md outline-none font-medium text-sm text-slate-700 transition-all`} placeholder={requireIds ? "Required" : "Optional"} />
                                     {errors.philhealthNumber && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.philhealthNumber.message}</p>}
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">UMID Number {requireIds && <span className="text-red-500 ml-1">*</span>}</label>
-                                    <input type="text" {...register('umidNumber')} className={`w-full px-3 py-2 bg-white border ${errors.umidNumber ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`} placeholder={requireIds ? "Required" : "Optional"} />
+                                    <label className={`text-[11px] font-bold ${errors.umidNumber ? 'text-red-500' : 'text-slate-500'} tracking-tight ml-0.5`}>UMID Number {requireIds && <span className="text-red-500 ml-1">*</span>}</label>
+                                    <input type="text" {...register('umidNumber')} className={`w-full px-3 py-2 bg-white border ${errors.umidNumber ? 'border-red-500 bg-red-50/30' : 'border-gray-300'} rounded-md outline-none font-medium text-sm text-slate-700 transition-all`} placeholder={requireIds ? "Required" : "Optional"} />
                                     {errors.umidNumber && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.umidNumber.message}</p>}
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">PhilSys ID (National ID) {requireIds && <span className="text-red-500 ml-1">*</span>}</label>
-                                    <input type="text" {...register('philsysId')} className={`w-full px-3 py-2 bg-white border ${errors.philsysId ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`} placeholder={requireIds ? "Required" : "Optional"} />
+                                    <label className={`text-[11px] font-bold ${errors.philsysId ? 'text-red-500' : 'text-slate-500'} tracking-tight ml-0.5`}>PhilSys ID (National ID) {requireIds && <span className="text-red-500 ml-1">*</span>}</label>
+                                    <input type="text" {...register('philsysId')} className={`w-full px-3 py-2 bg-white border ${errors.philsysId ? 'border-red-500 bg-red-50/30' : 'border-gray-300'} rounded-md outline-none font-medium text-sm text-slate-700 transition-all`} placeholder={requireIds ? "Required" : "Optional"} />
                                     {errors.philsysId && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.philsysId.message}</p>}
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">TIN Number {requireIds && <span className="text-red-500 ml-1">*</span>}</label>
-                                    <input type="text" {...register('tinNumber')} className={`w-full px-3 py-2 bg-white border ${errors.tinNumber ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`} placeholder={requireIds ? "Required" : "Optional"} />
+                                    <label className={`text-[11px] font-bold ${errors.tinNumber ? 'text-red-500' : 'text-slate-500'} tracking-tight ml-0.5`}>TIN Number {requireIds && <span className="text-red-500 ml-1">*</span>}</label>
+                                    <input type="text" {...register('tinNumber')} className={`w-full px-3 py-2 bg-white border ${errors.tinNumber ? 'border-red-500 bg-red-50/30' : 'border-gray-300'} rounded-md outline-none font-medium text-sm text-slate-700 transition-all`} placeholder={requireIds ? "Required" : "Optional"} />
                                     {errors.tinNumber && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.tinNumber.message}</p>}
                                 </div>
                             </div>

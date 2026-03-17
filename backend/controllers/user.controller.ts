@@ -3,7 +3,7 @@ import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 import path from 'path';
 import { db } from '../db/index.js';
-import { eq, and, or, sql, desc, ne, InferSelectModel, SQL } from 'drizzle-orm';
+import { eq, and, sql, desc, ne, InferSelectModel, SQL } from 'drizzle-orm';
 import type { AuthenticatedRequest, EmploymentStatus, Gender, CivilStatus, AppointmentType, UserRole } from '../types/index.js';
 import { UserService } from '../services/user.service.js';
 import { 
@@ -22,6 +22,8 @@ import {
   pdsWorkExperience,
   pdsOtherInfo,
   pdsReferences,
+  pdsEducation,
+  pdsEligibility,
   recruitmentApplicants,
   employeeDocuments
 } from '../db/schema.js';
@@ -37,7 +39,8 @@ import {
   EmployeeEmergencyContactResponse, 
   EmployeeCustomFieldResponse,
   PdsOtherInfoResponse,
-  PdsReferenceResponse
+  PdsReferenceResponse,
+  EmployeeEligibilityResponse
 } from '../types/employee.js';
 import { 
   CreateEmployeeSchema, 
@@ -123,6 +126,9 @@ interface UpdateFields {
   lastPromotionDate?: string | null;
   startTime?: string | null;
   endTime?: string | null;
+  isMeycauayan?: boolean;
+  dateAccomplished?: string | null;
+  pdsQuestions?: any;
   [key: string]: string | number | boolean | null | undefined;
 }
 
@@ -190,17 +196,17 @@ export const mapToEmployeeApi = (emp: EmployeeMapperInput): EmployeeApiResponse 
     eligibilityType: emp.eligibilityType || null,
     eligibilityNumber: emp.eligibilityNumber || null,
     eligibilityDate: emp.eligibilityDate || null,
-    schoolName: emp.schoolName || null,
-    course: emp.course || null,
-    yearGraduated: String(emp.yearGraduated || ''),
-    coreCompetencies: emp.skillsText || null,
-    yearsOfExperience: emp.yearsOfExperience ? Number(emp.yearsOfExperience) : 0,
+    yearsOfExperience: parseInt(String(emp.yearsOfExperience || '0')),
 
     facebookUrl: emp.facebookUrl || null,
     linkedinUrl: emp.linkedinUrl || null,
     twitterHandle: emp.twitterHandle || null,
+
     firstDayOfService: emp.firstDayOfService || null,
     officeAddress: emp.officeAddress || null,
+    originalAppointmentDate: emp.originalAppointmentDate || null,
+    lastPromotionDate: emp.lastPromotionDate || null,
+
     barangay: emp.resBarangay || null,
     religion: emp.religion || null,
     citizenship: emp.citizenship || null,
@@ -217,15 +223,48 @@ export const mapToEmployeeApi = (emp: EmployeeMapperInput): EmployeeApiResponse 
     permBarangay: emp.permBarangay || null,
     permCity: emp.permCity || null,
     permProvince: emp.permProvince || null,
-    rightThumbmarkUrl: emp.rightThumbmarkUrl || null,
-    ctcNo: emp.ctcNo || null,
-    ctcIssuedAt: emp.ctcIssuedAt || null,
-    ctcIssuedDate: emp.ctcIssuedDate || null,
-    originalAppointmentDate: emp.originalAppointmentDate || null,
-    lastPromotionDate: emp.lastPromotionDate || null,
+    isBiometricEnrolled: !!emp.isBiometricEnrolled,
     startTime: emp.startTime || null,
     endTime: emp.endTime || null,
-    isBiometricEnrolled: !!emp.isBiometricEnrolled,
+
+    relatedThirdDegree: emp.relatedThirdDegree || null,
+    relatedThirdDetails: emp.relatedThirdDetails || null,
+    relatedFourthDegree: emp.relatedFourthDegree || null,
+    relatedFourthDetails: emp.relatedFourthDetails || null,
+    foundGuiltyAdmin: emp.foundGuiltyAdmin || null,
+    foundGuiltyDetails: emp.foundGuiltyDetails || null,
+    criminallyCharged: emp.criminallyCharged || null,
+    dateFiled: emp.dateFiled || null,
+    statusOfCase: emp.statusOfCase || null,
+    convictedCrime: emp.convictedCrime || null,
+    convictedDetails: emp.convictedDetails || null,
+    separatedFromService: emp.separatedFromService || null,
+    separatedDetails: emp.separatedDetails || null,
+    electionCandidate: emp.electionCandidate || null,
+    electionDetails: emp.electionDetails || null,
+    resignedToPromote: emp.resignedToPromote || null,
+    resignedDetails: emp.resignedDetails || null,
+    immigrantStatus: emp.immigrantStatus || null,
+    immigrantDetails: emp.immigrantDetails || null,
+    indigenousMember: emp.indigenousMember || null,
+    indigenousDetails: emp.indigenousDetails || null,
+    personWithDisability: emp.personWithDisability || null,
+    disabilityIdNo: emp.disabilityIdNo || null,
+    soloParent: emp.soloParent || null,
+    soloParentIdNo: emp.soloParentIdNo || null,
+
+    dualCountry: emp.dualCountry || null,
+    govtIdType: emp.govtIdType || null,
+    govtIdNo: emp.govtIdNo || null,
+    govtIdIssuance: emp.govtIdIssuance || null,
+
+    schoolName: emp.schoolName || null,
+    course: emp.course || null,
+    yearGraduated: String(emp.yearGraduated || ''),
+    coreCompetencies: emp.skillsText || null,
+    isMeycauayan: !!emp.isMeycauayan,
+    dateAccomplished: emp.dateAccomplished || null,
+    pdsQuestions: emp.pdsQuestions || null,
   };
 };
 
@@ -237,14 +276,28 @@ const mapToSkillApi = (skill: InferSelectModel<typeof employeeSkills>): Employee
   yearsExperience: skill.yearsExperience ? Number(skill.yearsExperience) : null
 });
 
-const mapToEducationApi = (edu: InferSelectModel<typeof employeeEducation>): EmployeeEducationResponse => ({
+const mapToEducationApi = (edu: InferSelectModel<typeof pdsEducation>): EmployeeEducationResponse => ({
   id: edu.id,
-  institution: edu.institution,
-  degree: edu.degree || null,
-  fieldOfStudy: edu.fieldOfStudy || null,
-  startDate: edu.startDate || null,
-  endDate: edu.endDate || null,
-  isCurrent: edu.isCurrent || false
+  institution: edu.schoolName || '',
+  degree: edu.degreeCourse || null,
+  fieldOfStudy: null,
+  startDate: edu.dateFrom ? String(edu.dateFrom) : null,
+  endDate: edu.dateTo ? String(edu.dateTo) : null,
+  isCurrent: false,
+  level: edu.level,
+  yearGraduated: edu.yearGraduated ? String(edu.yearGraduated) : null,
+  honors: edu.honors,
+  unitsEarned: edu.unitsEarned
+});
+
+const mapToEligibilityApi = (el: InferSelectModel<typeof pdsEligibility>): EmployeeEligibilityResponse => ({
+  id: el.id,
+  eligibilityType: el.eligibilityName || '',
+  rating: el.rating,
+  examDate: el.examDate,
+  examPlace: el.examPlace,
+  eligibilityNumber: el.licenseNumber,
+  validityDate: el.validityDate
 });
 
 const mapToContactApi = (contact: InferSelectModel<typeof employeeEmergencyContacts>): EmployeeEmergencyContactResponse => ({
@@ -396,7 +449,7 @@ export const getEmployeeById = async (req: Request, res: Response): Promise<void
 
     // Map everything to the strict API response format
     const mappedEmployee = mapToEmployeeApi(employeeData);
-    const { skills, education, emergencyContacts, customFields, familyBackground, voluntaryWork, learningDevelopment, workExperience, otherInfo, references } = relatedData;
+    const { skills, education, emergencyContacts, customFields, familyBackground, voluntaryWork, learningDevelopment, workExperience, otherInfo, references, eligibilities } = relatedData;
 
     // Filter contacts for non-admins
     const finalContacts = !isSelf && !isAdmin ? [] : emergencyContacts;
@@ -406,7 +459,7 @@ export const getEmployeeById = async (req: Request, res: Response): Promise<void
       employee: {
         ...mappedEmployee,
         skills: skills.map(mapToSkillApi),
-        education: education.map(mapToEducationApi),
+        education: (education as InferSelectModel<typeof pdsEducation>[]).map(mapToEducationApi),
         emergencyContacts: finalContacts.map(mapToContactApi),
         customFields: customFields.map(mapToCustomFieldApi),
         familyBackground: familyBackground.map(mapToFamilyApi),
@@ -414,7 +467,8 @@ export const getEmployeeById = async (req: Request, res: Response): Promise<void
         learningDevelopment: learningDevelopment.map(mapToLdApi),
         workExperience: workExperience.map(mapToWorkExperienceApi),
         otherInfo: otherInfo.map(mapToOtherInfoApi),
-        references: references.map(mapToReferencesApi)
+        references: references.map(mapToReferencesApi),
+        eligibilities: eligibilities.map(mapToEligibilityApi)
       }
     });
   } catch (_error) {
@@ -433,7 +487,7 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
       phoneNumber, address, permanentAddress,
       philhealthNumber, pagibigNumber, tinNumber, gsisNumber, umidNumber,
       salaryGrade, stepIncrement, appointmentType, station, positionTitle,
-      itemNumber, positionId, educationalBackground
+      itemNumber, positionId, educationalBackground, isMeycauayan, dateAccomplished, pdsQuestions
     } = validatedData;
 
     // Validate department
@@ -605,8 +659,10 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
       permBarangay: sanitizedData.permBarangay || null,
       permCity: sanitizedData.permCity || null,
       permProvince: sanitizedData.permProvince || null,
-      resRegion: sanitizedData.resRegion || null,
-      permRegion: sanitizedData.permRegion || null
+      permRegion: sanitizedData.permRegion || null,
+      isMeycauayan: isMeycauayan === true,
+      dateAccomplished: dateAccomplished ? String(dateAccomplished) : null,
+      pdsQuestions: pdsQuestions || null
     });
 
     const newEmployeeIdNum = result.insertId;
@@ -858,6 +914,7 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
       positionId: 'positionId',
       dateHired: 'dateHired',
       avatarUrl: 'avatarUrl',
+      isMeycauayan: 'isMeycauayan',
       contractEndDate: 'contractEndDate',
       regularizationDate: 'regularizationDate',
       isRegular: 'isRegular',
@@ -910,7 +967,41 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
       citizenshipType: 'citizenshipType',
       startTime: 'startTime',
       endTime: 'endTime',
-      duties: 'duties' // Special handling
+      duties: 'duties',
+      motherMaidenName: 'motherMaidenName',
+      spouseName: 'spouseName',
+      fatherName: 'fatherName',
+      dualCountry: 'dualCountry',
+      govtIdType: 'govtIdType',
+      govtIdNo: 'govtIdNo',
+      govtIdIssuance: 'govtIdIssuance',
+      dateAccomplished: 'dateAccomplished',
+      relatedThirdDegree: 'relatedThirdDegree',
+      relatedThirdDetails: 'relatedThirdDetails',
+      relatedFourthDegree: 'relatedFourthDegree',
+      relatedFourthDetails: 'relatedFourthDetails',
+      foundGuiltyAdmin: 'foundGuiltyAdmin',
+      foundGuiltyDetails: 'foundGuiltyDetails',
+      criminallyCharged: 'criminallyCharged',
+      dateFiled: 'dateFiled',
+      statusOfCase: 'statusOfCase',
+      convictedCrime: 'convictedCrime',
+      convictedDetails: 'convictedDetails',
+      separatedFromService: 'separatedFromService',
+      separatedDetails: 'separatedDetails',
+      electionCandidate: 'electionCandidate',
+      electionDetails: 'electionDetails',
+      resignedToPromote: 'resignedToPromote',
+      resignedDetails: 'resignedDetails',
+      immigrantStatus: 'immigrantStatus',
+      immigrantDetails: 'immigrantDetails',
+      indigenousMember: 'indigenousMember',
+      indigenousDetails: 'indigenousDetails',
+      personWithDisability: 'personWithDisability',
+      disabilityIdNo: 'disabilityIdNo',
+      soloParent: 'soloParent',
+      soloParentIdNo: 'soloParentIdNo',
+      pdsQuestions: 'pdsQuestions'
     };
 
     for (const [jsonKey, value] of Object.entries(sanitizedUpdates)) {
@@ -923,7 +1014,7 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
              processedVal = String(processedVal);
            }
            // Handle booleans
-           if (['isRegular'].includes(drizzleKey)) {
+           if (['isRegular', 'isMeycauayan'].includes(drizzleKey)) {
              processedVal = processedVal ? true : false;
            }
            // Handle salaryGrade (varchar in authentication)
@@ -1231,11 +1322,10 @@ export const getEmployeeEducation = async (req: Request, res: Response): Promise
   try {
     const { id } = req.params as { id: string };
     const education = await db.select()
-      .from(employeeEducation)
-      .where(eq(employeeEducation.employeeId, parseInt(id)))
-      .orderBy(desc(employeeEducation.startDate));
+      .from(pdsEducation)
+      .where(eq(pdsEducation.employeeId, parseInt(id)));
     
-    const mappedEducation = education.map(mapToEducationApi);
+    const mappedEducation = (education as InferSelectModel<typeof pdsEducation>[]).map(mapToEducationApi);
     res.json({ success: true, education: mappedEducation });
   } catch (_error) {
     res.status(500).json({ success: false, message: 'Failed to fetch education' });

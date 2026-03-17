@@ -95,7 +95,7 @@ const ApproveModal: React.FC<ApproveModalProps> = ({
 
     // Determine credit type
     const leaveType = request.leaveType;
-    const primaryType = LEAVE_TO_CREDIT_MAP[leaveType] || leaveType;
+    const primaryType = (LEAVE_TO_CREDIT_MAP as any)[leaveType] || leaveType;
     
     // Helper to get balance
     const getBalance = (type: string | null) => {
@@ -121,7 +121,7 @@ const ApproveModal: React.FC<ApproveModalProps> = ({
 
     // Cross-charging check
     if (remaining > 0) {
-      const crossChargeType = CROSS_CHARGE_MAP[leaveType] as string; // cast as string to fix indexing
+      const crossChargeType = (CROSS_CHARGE_MAP as any)[leaveType];
       if (crossChargeType) {
         fallbackType = crossChargeType;
         const fallbackBalance = getBalance(crossChargeType);

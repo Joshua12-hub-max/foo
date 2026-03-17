@@ -14,6 +14,7 @@ export interface AdminLeaveRequest {
   firstName: string;
   lastName: string;
   currentBalance?: number;
+  daysRequested?: number;
 }
 
 export interface LeaveFilters {

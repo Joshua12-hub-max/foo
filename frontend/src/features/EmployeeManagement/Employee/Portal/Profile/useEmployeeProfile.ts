@@ -47,8 +47,20 @@ export const useEmployeeProfile = (): UseEmployeeProfileReturn => {
       if (fullProfileRes.data.success) {
         setProfile(fullProfileRes.data.employee);
       } else {
-        // Fallback to basic auth data if full fetch fails
-        setProfile(authRes.data.data);
+        // Fallback to basic auth data with empty detailed fields to satisfy EmployeeDetailed type
+        setProfile({
+          ...authRes.data.data,
+          skills: [],
+          education: [],
+          emergencyContacts: [],
+          customFields: [],
+          familyBackground: [],
+          voluntaryWork: [],
+          learningDevelopment: [],
+          workExperience: [],
+          otherInfo: [],
+          references: []
+        });
       }
 
     } catch (err: unknown) {

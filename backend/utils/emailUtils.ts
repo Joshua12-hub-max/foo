@@ -1,5 +1,6 @@
 import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
+import crypto from 'crypto';
 
 dotenv.config();
 
@@ -37,7 +38,7 @@ export const sendEmail = async (
   to: string, 
   subject: string, 
   html: string, 
-  attachments: unknown[] = []
+  attachments: nodemailer.SendMailOptions['attachments'] = []
 ): Promise<void> => {
   try {
     if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
@@ -72,6 +73,41 @@ export const maskEmail = (email: string): string => {
     ? user.substring(0, 2) + '*'.repeat(user.length - 2) 
     : user + '*';
   return `${maskedUser}@${domain}`;
+};
+
+/**
+ * Generate a 6-digit OTP
+ */
+export const generateOTP = (): string => {
+  return crypto.randomInt(100000, 999999).toString();
+};
+
+/**
+ * Send OTP email using the secure shared transporter
+ */
+export const sendOTPEmail = async (
+  email: string,
+  firstName: string,
+  otp: string,
+  subjectLine: string = 'Verification Code',
+  bodyPrefix: string = 'Please use the code below to verify your account:'
+): Promise<void> => {
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
+      <h2 style="color: #333; text-align: center;">NEBR System Verification</h2>
+      <p>Hello <strong>${firstName}</strong>,</p>
+      <p>${bodyPrefix}</p>
+      <div style="background-color: #f4f4f4; padding: 20px; text-align: center; border-radius: 5px; margin: 25px 0;">
+        <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #000;">${otp}</span>
+      </div>
+      <p style="font-size: 14px; color: #666;">This code will expire in 10 minutes. If you did not request this, please ignore this email.</p>
+      <div style="border-top: 1px solid #eee; padding-top: 20px; font-size: 12px; color: #999; text-align: center;">
+        &copy; ${new Date().getFullYear()} Local Government of Meycauayan - HRMS
+      </div>
+    </div>
+  `;
+  
+  await sendEmail(email, subjectLine, html);
 };
 
 export default transporter;

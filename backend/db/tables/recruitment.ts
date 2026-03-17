@@ -145,6 +145,8 @@ export const recruitmentApplicants = mysqlTable("recruitment_applicants", {
 	isRegistered: boolean("is_registered").default(false),
 	registeredEmployeeId: varchar("registered_employee_id", { length: 50 }),
 	isMeycauayanResident: boolean("is_meycauayan_resident").default(false),
+	isEmailVerified: boolean("is_email_verified").default(false),
+	verificationToken: varchar("verification_token", { length: 6 }),
 	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow(),
 	resHouseBlockLot: varchar("res_house_block_lot", { length: 100 }),
 	resStreet: varchar("res_street", { length: 100 }),
@@ -165,12 +167,12 @@ export const recruitmentApplicants = mysqlTable("recruitment_applicants", {
 	index("job_id").on(table.jobId),
 	primaryKey({ columns: [table.id], name: "recruitment_applicants_id"}),
 	unique("email_unique").on(table.email),
-	unique("umid_no_unique").on(table.umidNo),
+	unique("umid_no_unique").on(table.umidNumber),
 	unique("philsys_id_unique").on(table.philsysId),
-	unique("philhealth_no_unique").on(table.philhealthNo),
-	unique("pagibig_no_unique").on(table.pagibigNo),
-	unique("tin_no_unique").on(table.tinNo),
-	unique("gsis_no_unique").on(table.gsisNo),
+	unique("philhealth_no_unique").on(table.philhealthNumber),
+	unique("pagibig_no_unique").on(table.pagibigNumber),
+	unique("tin_no_unique").on(table.tinNumber),
+	unique("gsis_no_unique").on(table.gsisNumber),
 ]);
 
 export const recruitmentEmailTemplates = mysqlTable("recruitment_email_templates", {

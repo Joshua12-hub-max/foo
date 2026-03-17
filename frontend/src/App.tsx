@@ -9,6 +9,7 @@ const SetupPortal = lazy(() => import("./Authentication/SetupPortal"));
 const VerifyAccount = lazy(() => import("./Authentication/VerifyAccount"));
 const ForgotPassword = lazy(() => import("./Authentication/ForgotPassword"));
 const ResetPassword = lazy(() => import("./Authentication/ResetPassword"));
+const VerifyApplicant = lazy(() => import("./Authentication/VerifyApplicant"));
 const TestBio = lazy(() => import("./pages/TestBio"));
 
 // Static imports for core shell and priority pages to improve LCP
@@ -289,6 +290,16 @@ export default function App() {
             <PublicRoute>
               <Suspense fallback={<PageLoader />}>
                 <VerifyAccount />
+              </Suspense>
+            </PublicRoute>
+          }
+        />
+        <Route
+          path="/verify-applicant"
+          element={
+            <PublicRoute>
+              <Suspense fallback={<PageLoader />}>
+                <VerifyApplicant />
               </Suspense>
             </PublicRoute>
           }

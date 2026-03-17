@@ -11,6 +11,7 @@ export interface CheckUniquenessParams {
   pagibigNumber?: string | null;
   tinNumber?: string | null;
   gsisNumber?: string | null;
+  eligibilityNumber?: string | null;
   excludeAuthId?: number; // Don't flag the user's own record when updating
   excludeApplicantId?: number; // Don't flag the applicant's own record
 }
@@ -23,7 +24,7 @@ export interface CheckUniquenessParams {
 export async function checkSystemWideUniqueness(params: CheckUniquenessParams): Promise<string[]> {
   const errors: string[] = [];
   
-  if (!params.email && !params.umidNumber && !params.philsysId && !params.philhealthNumber && !params.pagibigNumber && !params.tinNumber && !params.gsisNumber) {
+  if (!params.email && !params.umidNumber && !params.philsysId && !params.philhealthNumber && !params.pagibigNumber && !params.tinNumber && !params.gsisNumber && !params.eligibilityNumber) {
     return errors;
   }
 
@@ -36,6 +37,7 @@ export async function checkSystemWideUniqueness(params: CheckUniquenessParams): 
   if (params.pagibigNumber) authConditions.push(eq(authentication.pagibigNumber, params.pagibigNumber));
   if (params.tinNumber) authConditions.push(eq(authentication.tinNumber, params.tinNumber));
   if (params.gsisNumber) authConditions.push(eq(authentication.gsisNumber, params.gsisNumber));
+  if (params.eligibilityNumber) authConditions.push(eq(authentication.eligibilityNumber, params.eligibilityNumber));
 
   if (authConditions.length > 0) {
     const existingAuths = await db.query.authentication.findMany({
@@ -52,6 +54,7 @@ export async function checkSystemWideUniqueness(params: CheckUniquenessParams): 
       if (params.pagibigNumber && auth.pagibigNumber === params.pagibigNumber) errors.push(`Pag-IBIG Number '${params.pagibigNumber}' is already registered to an employee.`);
       if (params.tinNumber && auth.tinNumber === params.tinNumber) errors.push(`TIN '${params.tinNumber}' is already registered to an employee.`);
       if (params.gsisNumber && auth.gsisNumber === params.gsisNumber) errors.push(`GSIS Number '${params.gsisNumber}' is already registered to an employee.`);
+      if (params.eligibilityNumber && auth.eligibilityNumber === params.eligibilityNumber) errors.push(`License/Eligibility Number '${params.eligibilityNumber}' is already registered to an employee.`);
     }
   }
 
@@ -64,6 +67,7 @@ export async function checkSystemWideUniqueness(params: CheckUniquenessParams): 
   if (params.pagibigNumber) appConditions.push(eq(recruitmentApplicants.pagibigNumber, params.pagibigNumber));
   if (params.tinNumber) appConditions.push(eq(recruitmentApplicants.tinNumber, params.tinNumber));
   if (params.gsisNumber) appConditions.push(eq(recruitmentApplicants.gsisNumber, params.gsisNumber));
+  if (params.eligibilityNumber) appConditions.push(eq(recruitmentApplicants.licenseNo, params.eligibilityNumber));
 
   if (appConditions.length > 0) {
     const existingApps = await db.query.recruitmentApplicants.findMany({
@@ -84,6 +88,7 @@ export async function checkSystemWideUniqueness(params: CheckUniquenessParams): 
       if (params.pagibigNumber && app.pagibigNumber === params.pagibigNumber) errors.push(`Pag-IBIG Number '${params.pagibigNumber}' is already used by an applicant.`);
       if (params.tinNumber && app.tinNumber === params.tinNumber) errors.push(`TIN '${params.tinNumber}' is already used by an applicant.`);
       if (params.gsisNumber && app.gsisNumber === params.gsisNumber) errors.push(`GSIS Number '${params.gsisNumber}' is already used by an applicant.`);
+      if (params.eligibilityNumber && app.licenseNo === params.eligibilityNumber) errors.push(`License/Eligibility Number '${params.eligibilityNumber}' is already used by an applicant.`);
     }
   }
 

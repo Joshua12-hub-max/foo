@@ -113,7 +113,7 @@ const DocumentGallery: React.FC<DocumentGalleryProps> = ({ employeeId, documents
                       {doc.fileName}
                     </span>
                     <span className="text-[9px] text-slate-400 font-bold">
-                      {new Date(doc.createdAt || '').toLocaleDateString()}
+                      {new Date(doc.uploadedAt || '').toLocaleDateString()}
                     </span>
                   </div>
                 ) : (

@@ -249,9 +249,6 @@ export const createSchedule = async (req: Request, res: Response): Promise<void>
 
 export const createDepartmentSchedule = async (req: Request, res: Response): Promise<void> => {
     try {
-        const authReq = req as AuthenticatedRequest;
-        const senderId = authReq.user?.employeeId || null;
-        
         const { departmentId, startDate, endDate, startTime, endTime, repeat, scheduleTitle } = req.body;
 
         if (!departmentId || !startDate || !endDate || !startTime || !endTime) {

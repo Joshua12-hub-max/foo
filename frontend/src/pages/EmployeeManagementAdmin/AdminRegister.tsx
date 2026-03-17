@@ -19,6 +19,7 @@ import type { HiredApplicant } from '@/types/recruitment_applicant';
 
 import Combobox from "@/components/Custom/Combobox";
 import ConfirmationModal from '@/components/CustomUI/ConfirmationModal';
+import EmailVerificationModal from '@/Authentication/EmailVerificationModal';
 import { PhilippineAddressSelector } from '@/components/Custom/Shared/PhilippineAddressSelector';
 import HiredApplicantsListModal from '@/components/Custom/EmployeeManagement/Admin/Modals/HiredApplicantsListModal';
 import ph from 'phil-reg-prov-mun-brgy';
@@ -37,53 +38,10 @@ interface PhilAddressLibraryLocal {
 /* eslint-enable @typescript-eslint/naming-convention */
 
 type RegisterFormValues = RegisterInput & {
-  avatar?: File;
-  applicantId?: number;
-  applicantHiredDate?: string;
-  applicantStartDate?: string;
-  applicantPhotoPath?: string;
-  ignoreDuplicateWarning?: boolean;
-  
-  resRegion?: string;
-  resProvince?: string;
-  resCity?: string;
-  resBrgy?: string;
-  resHouseBlockLot?: string;
-  resSubdivision?: string;
-  resStreet?: string;
-  
-  permRegion?: string;
-  permProvince?: string;
-  permCity?: string;
-  permBrgy?: string;
-  permHouseBlockLot?: string;
-  permSubdivision?: string;
-  permStreet?: string;
-
-  facebookUrl?: string;
-  linkedinUrl?: string;
-  twitterHandle?: string;
-  
-  agencyEmployeeNo?: string;
-  schoolName?: string;
-  course?: string;
-  yearGraduated?: string;
-
-  gsisNumber?: string;
-  pagibigNumber?: string;
-  philhealthNumber?: string;
-  umidNumber?: string;
-  philsysId?: string;
-  tinNumber?: string;
-  
-  nationality?: string;
-  placeOfBirth?: string;
-  birthDate?: string;
-  bloodType?: string;
-  heightM?: string;
-  weightKg?: string;
-  mobileNo?: string;
-  telephoneNo?: string;
+  isMeycauayan?: string;
+  dutyType?: "Standard" | "Irregular";
+  department?: string;
+  position?: string;
 };
 
 export default function AdminRegister() {
@@ -151,7 +109,7 @@ export default function AdminRegister() {
       linkedinUrl: "",
       twitterHandle: "",
       agencyEmployeeNo: "",
-      nationality: "",
+      nationality: "", 
       placeOfBirth: "",
       birthDate: "",
       bloodType: "",
@@ -173,10 +131,13 @@ export default function AdminRegister() {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [bioEnrolled, setBioEnrolled] = useState(false);
   const [_unusedReset, _setResetModalOpen] = useState(false);
+  const [isVerifyModalOpen, setIsVerifyModalOpen] = useState(false);
+  const [verificationEmail, setVerificationEmail] = useState("");
   const [enrollStep, setEnrollStep] = useState(0);
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [enrollError, setEnrollError] = useState<string | null>(null);
+  const [createdEmployeeDbId, setCreatedEmployeeDbId] = useState<number | undefined>(undefined);
 
   useEffect(() => {
     if (!isFinalizingSetup && actualEmployeeId) {
@@ -621,6 +582,7 @@ export default function AdminRegister() {
 
     if (data.applicantId) formData.append("applicantId", String(data.applicantId));
     if (data.applicantHiredDate) formData.append("applicantHiredDate", data.applicantHiredDate);
+    if (data.applicantStartDate) formData.append("applicantStartDate", data.applicantStartDate);
     if (data.applicantPhotoPath) formData.append("applicantPhotoPath", data.applicantPhotoPath);
 
     try {
@@ -639,8 +601,11 @@ export default function AdminRegister() {
 
       // 100% Verification - Check if email verification is required
       if (response.data?.data?.requiresVerification) {
-          toast.success("Registration Successful! Please check the email for the verification code.");
-          navigate("/verify-account", { state: { email: data.email } });
+          toast.success("Registration Successful! Please verify the email.");
+          const newId = response.data?.data?.id;
+          if (newId) setCreatedEmployeeDbId(Number(newId)); // Ensure numeric ID
+          setVerificationEmail(data.email);
+          setIsVerifyModalOpen(true);
           return;
       }
 
@@ -1361,6 +1326,15 @@ export default function AdminRegister() {
         onConfirm={confirmDuplicateRegistration}
         onClose={() => setShowDuplicateModal(false)}
         variant="danger"
+      />
+
+      <EmailVerificationModal 
+        isOpen={isVerifyModalOpen}
+        email={verificationEmail}
+        employeeDbId={createdEmployeeDbId}
+        onSuccess={() => {
+          setIsVerifyModalOpen(false);
+        }}
       />
     </div>
   );

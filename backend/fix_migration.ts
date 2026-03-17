@@ -1,78 +1,62 @@
-import fs from 'fs';
-import mysql from 'mysql2/promise';
-import dotenv from 'dotenv';
-import path from 'path';
-import { fileURLToPath } from 'url';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-dotenv.config({ path: path.resolve(__dirname, '.env') });
+import { db } from './db/index.js';
+import { sql } from 'drizzle-orm';
 
-const migrationPath = path.join(__dirname, 'drizzle/0004_harsh_nighthawk.sql');
-
-async function fixMigration() {
-  const connection = await mysql.createConnection({
-    host: process.env.DB_HOST || 'localhost',
-    user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || '',
-    database: process.env.DB_NAME || 'chrmo_db',
-  });
-
-  try {
-    const rawSql = fs.readFileSync(migrationPath, 'utf8');
-    const statements = rawSql.split('--> statement-breakpoint').map(s => s.trim()).filter(Boolean);
+async function fixSchema() {
+    console.log('Adding missing PDS 2025 Revised Fields to authentication table...');
     
-    const newStatements = [];
-    
-    for (const stmt of statements) {
-      // Handle DROP INDEX
-      if (stmt.startsWith('DROP INDEX `idx_employee_violation` ON `policy_violations`;')) {
-         // Let's check if the index exists
-         const [rows] = await connection.execute(`SHOW INDEX FROM policy_violations WHERE Key_name = 'idx_employee_violation'`);
-         if ((rows as any[]).length === 0) {
-            console.log('Skipping DROP INDEX idx_employee_violation (not exists)');
-            continue;
-         }
-      }
+    try {
+        const columnsToAdd = [
+            { name: 'related_third_degree', type: "VARCHAR(10) DEFAULT 'No'" },
+            { name: 'related_third_details', type: "TEXT" },
+            { name: 'related_fourth_degree', type: "VARCHAR(10) DEFAULT 'No'" },
+            { name: 'related_fourth_details', type: "TEXT" },
+            { name: 'found_guilty_admin', type: "VARCHAR(10) DEFAULT 'No'" },
+            { name: 'found_guilty_details', type: "TEXT" },
+            { name: 'criminally_charged', type: "VARCHAR(10) DEFAULT 'No'" },
+            { name: 'date_filed', type: "DATE" },
+            { name: 'status_of_case', type: "TEXT" },
+            { name: 'convicted_crime', type: "VARCHAR(10) DEFAULT 'No'" },
+            { name: 'convicted_details', type: "TEXT" },
+            { name: 'separated_from_service', type: "VARCHAR(10) DEFAULT 'No'" },
+            { name: 'separated_details', type: "TEXT" },
+            { name: 'election_candidate', type: "VARCHAR(10) DEFAULT 'No'" },
+            { name: 'election_details', type: "TEXT" },
+            { name: 'resigned_to_promote', type: "VARCHAR(10) DEFAULT 'No'" },
+            { name: 'resigned_details', type: "TEXT" },
+            { name: 'immigrant_status', type: "VARCHAR(10) DEFAULT 'No'" },
+            { name: 'immigrant_details', type: "TEXT" },
+            { name: 'indigenous_member', type: "VARCHAR(10) DEFAULT 'No'" },
+            { name: 'indigenous_details', type: "TEXT" },
+            { name: 'person_with_disability', type: "VARCHAR(10) DEFAULT 'No'" },
+            { name: 'disability_id_no', type: "VARCHAR(100)" },
+            { name: 'solo_parent', type: "VARCHAR(10) DEFAULT 'No'" },
+            { name: 'solo_parent_id_no', type: "VARCHAR(100)" },
+            { name: 'dual_country', type: "VARCHAR(100)" },
+            { name: 'govt_id_type', type: "VARCHAR(100)" },
+            { name: 'govt_id_no', type: "VARCHAR(100)" },
+            { name: 'govt_id_issuance', type: "VARCHAR(255)" }
+        ];
 
-      // Handle DROP COLUMN
-      const dropMatch = stmt.match(/ALTER TABLE `([^`]+)` DROP COLUMN `([^`]+)`/);
-      if (dropMatch) {
-        const table = dropMatch[1];
-        const col = dropMatch[2];
-        const [rows] = await connection.execute(`SHOW COLUMNS FROM ${table} LIKE '${col}'`);
-        if ((rows as any[]).length === 0) {
-          console.log(`Skipping DROP COLUMN ${table}.${col} (not exists)`);
-          continue;
+        for (const col of columnsToAdd) {
+            try {
+                console.log(`Adding column: ${col.name}`);
+                await db.execute(sql.raw(`ALTER TABLE authentication ADD COLUMN ${col.name} ${col.type}`));
+            } catch (err: any) {
+                if (err.message.includes('Duplicate column name')) {
+                    console.log(`Column ${col.name} already exists, skipping.`);
+                } else {
+                    console.error(`Error adding column ${col.name}:`, err.message);
+                }
+            }
         }
-      }
-
-      // Handle MODIFY COLUMN
-      const modifyMatch = stmt.match(/ALTER TABLE `([^`]+)` MODIFY COLUMN `([^`]+)` (.*)/);
-      if (modifyMatch) {
-        const table = modifyMatch[1];
-        const col = modifyMatch[2];
-        const [rows] = await connection.execute(`SHOW COLUMNS FROM ${table} LIKE '${col}'`);
-        if ((rows as any[]).length === 0) {
-          console.log(`Changing MODIFY to ADD for ${table}.${col} (not exists)`);
-          const addStmt = stmt.replace('MODIFY COLUMN', 'ADD');
-          newStatements.push(addStmt);
-          continue;
-        }
-      }
-
-      newStatements.push(stmt);
+        
+        console.log('Fix completed successfully.');
+    } catch (error) {
+        console.error('Fix failed:', error);
+    } finally {
+        process.exit(0);
     }
-
-    const newSql = newStatements.join('--> statement-breakpoint\n');
-    fs.writeFileSync(migrationPath, newSql);
-    console.log('Migration fixed!');
-
-  } catch (error) {
-    console.error('Failed to fix migration:', error);
-  } finally {
-    await connection.end();
-  }
 }
 
-fixMigration().catch(console.error);
+fixSchema();

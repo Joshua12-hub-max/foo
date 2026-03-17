@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 
 import { db } from '../db/index.js';
-import { dailyTimeRecords, authentication, dtrCorrections, departments, schedules, bioEnrolledUsers } from '../db/schema.js';
+import { dailyTimeRecords, authentication, dtrCorrections, departments, schedules, bioEnrolledUsers, attendanceLogs, bioAttendanceLogs } from '../db/schema.js';
 import { eq, and, desc, gte, lte, count, sql } from 'drizzle-orm';
 import { GetDTRSchema, UpdateDTRSchema, RequestCorrectionSchema } from '../schemas/dtrSchema.js';
 import { AuthenticatedRequest } from '../types/index.js';
@@ -334,7 +334,66 @@ export const updateRecord = async (req: Request, res: Response): Promise<void> =
       })
       .where(eq(dailyTimeRecords.id, Number(id)));
 
-    // 4. Update Summary to reflect this manual change
+    // 4. SYNC TO BIOMETRIC LOGS (100% Source of Truth Requirement)
+    try {
+        const dateStr = new Date(existing.date).toISOString().split('T')[0];
+        
+        // 1. Update attendance_logs (Node.js side)
+        await db.delete(attendanceLogs).where(and(
+            eq(attendanceLogs.employeeId, existing.employeeId),
+            eq(sql`DATE(${attendanceLogs.scanTime})`, dateStr)
+        ));
+
+        // 2. Update bio_attendance_logs (C# side)
+        await db.delete(bioAttendanceLogs).where(and(
+            eq(bioAttendanceLogs.employeeId, existing.employeeId),
+            eq(bioAttendanceLogs.logDate, dateStr)
+        ));
+
+        // 3. Insert Updated Logs
+        const getTimeOnly = (dt: string | null): string | null => {
+            if (!dt) return null;
+            if (dt.includes(' ')) return dt.split(' ')[1];
+            return dt; // Fallback if already only time
+        };
+
+        if (mysqlTimeIn) {
+            await db.insert(attendanceLogs).values({
+                employeeId: existing.employeeId,
+                scanTime: mysqlTimeIn,
+                type: 'IN',
+                source: 'MANUAL_EDIT'
+            });
+
+            await db.insert(bioAttendanceLogs).values({
+                employeeId: existing.employeeId,
+                cardType: 'IN',
+                logDate: dateStr,
+                logTime: getTimeOnly(mysqlTimeIn) || '00:00:00'
+            });
+        }
+
+        if (mysqlTimeOut) {
+            await db.insert(attendanceLogs).values({
+                employeeId: existing.employeeId,
+                scanTime: mysqlTimeOut,
+                type: 'OUT',
+                source: 'MANUAL_EDIT'
+            });
+
+            await db.insert(bioAttendanceLogs).values({
+                employeeId: existing.employeeId,
+                cardType: 'OUT',
+                logDate: dateStr,
+                logTime: getTimeOnly(mysqlTimeOut) || '00:00:00'
+            });
+        }
+        console.log(`[DTR-SYNC] Successfully sync'd manual update for ${existing.employeeId} on ${dateStr}`);
+    } catch (syncErr) {
+        console.error('[DTR-SYNC] Failed to sync manual update to biometrics:', syncErr);
+    }
+
+    // 5. Update Summary to reflect this manual change
     await updateTardinessSummary(existing.employeeId, existing.date);
 
     res.status(200).json({ success: true, message: 'Record updated successfully' });
@@ -639,6 +698,71 @@ export const updateCorrectionStatus = async (req: Request, res: Response): Promi
 
             // D. Update Summary
             await updateTardinessSummary(request.employeeId, request.dateTime);
+
+            // F. SYNC TO BIOMETRIC LOGS (100% Source of Truth Requirement)
+            // When a correction is approved, we also update the raw logs so they match the DTR.
+            try {
+                // Sanitize date to ensure matching bio_attendance_logs.logDate format
+                const syncDate = new Date(request.dateTime);
+                const dateStr = syncDate.toISOString().split('T')[0];
+                
+                // 1. Update attendance_logs (Node.js side)
+                await db.delete(attendanceLogs).where(and(
+                    eq(attendanceLogs.employeeId, request.employeeId),
+                    eq(sql`DATE(${attendanceLogs.scanTime})`, dateStr)
+                ));
+
+                // 2. Update bio_attendance_logs (C# side)
+                await db.delete(bioAttendanceLogs).where(and(
+                    eq(bioAttendanceLogs.employeeId, request.employeeId),
+                    eq(bioAttendanceLogs.logDate, dateStr)
+                ));
+
+                // 3. Insert Corrected Logs
+                const getCorrectedTime = (val: string | Date | null): string | null => {
+                    if (!val) return null;
+                    if (typeof val === 'string' && val.includes(' ')) return val.split(' ')[1];
+                    const dateObj = new Date(val);
+                    return isNaN(dateObj.getTime()) ? null : dateObj.toTimeString().split(' ')[0];
+                };
+
+                if (finalTimeIn) {
+                    const timeInVal = typeof finalTimeIn === 'string' ? finalTimeIn : formatToManilaDateTime(finalTimeIn);
+                    await db.insert(attendanceLogs).values({
+                        employeeId: request.employeeId,
+                        scanTime: timeInVal,
+                        type: 'IN',
+                        source: 'CORRECTION'
+                    });
+
+                    await db.insert(bioAttendanceLogs).values({
+                        employeeId: request.employeeId,
+                        cardType: 'IN',
+                        logDate: dateStr,
+                        logTime: getCorrectedTime(finalTimeIn) || '00:00:00'
+                    });
+                }
+
+                if (finalTimeOut) {
+                    const timeOutVal = typeof finalTimeOut === 'string' ? finalTimeOut : formatToManilaDateTime(finalTimeOut);
+                    await db.insert(attendanceLogs).values({
+                        employeeId: request.employeeId,
+                        scanTime: timeOutVal,
+                        type: 'OUT',
+                        source: 'CORRECTION'
+                    });
+
+                    await db.insert(bioAttendanceLogs).values({
+                        employeeId: request.employeeId,
+                        cardType: 'OUT',
+                        logDate: dateStr,
+                        logTime: getCorrectedTime(finalTimeOut) || '00:00:00'
+                    });
+                }
+                console.log(`[DTR-SYNC] Successfully sync'd correction for ${request.employeeId} on ${dateStr}`);
+            } catch (syncErr) {
+                console.error('[DTR-SYNC] Failed to sync correction to biometrics:', syncErr);
+            }
 
             // E. Update Request Status
             await db.update(dtrCorrections)

@@ -1,4 +1,5 @@
 import { eq } from 'drizzle-orm';
+import { SendMailOptions } from 'nodemailer';
 import { recruitmentEmailTemplates } from '../db/schema.js';
 import type { MySql2Database } from 'drizzle-orm/mysql2';
 import { sendEmail } from './emailUtils.js';
@@ -6,7 +7,7 @@ import { sendEmail } from './emailUtils.js';
 /**
  * Send an email notification using the secure shared transporter
  */
-export const sendEmailNotification = async (to: string, subject: string, html: string, attachments: unknown[] = []): Promise<void> => {
+export const sendEmailNotification = async (to: string, subject: string, html: string, attachments: SendMailOptions['attachments'] = []): Promise<void> => {
   try { 
     await sendEmail(to, subject, html, attachments);
   } catch (error: unknown) { 

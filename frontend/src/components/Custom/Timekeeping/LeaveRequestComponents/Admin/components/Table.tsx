@@ -109,19 +109,10 @@ const Table: React.FC<TableProps> = ({ data, onOpenApprove, onOpenReject }) => {
           </tbody>
         </table>
       </div>
-
       <LeaveDetailsModal 
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        leaveRequest={selectedLeave}
-        onApprove={() => {
-          setIsModalOpen(false);
-          if (selectedLeave) onOpenApprove(selectedLeave);
-        }}
-        onReject={() => {
-          setIsModalOpen(false);
-          if (selectedLeave) onOpenReject(selectedLeave);
-        }}
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        leave={selectedLeave} 
       />
     </div>
   );

@@ -8,5 +8,5 @@ export { useEmployeeMemos } from './Memos/useEmployeeMemos';
 export { useEmployeeDepartment } from './Department/useEmployeeDepartment';
 
 // Profile
-export { default as EmployeeProfileView } from './Profile/EmployeeProfileView';
+// export { default as EmployeeProfileView } from './Profile/EmployeeProfileView';
 export { useEmployeeProfile } from './Profile/useEmployeeProfile';

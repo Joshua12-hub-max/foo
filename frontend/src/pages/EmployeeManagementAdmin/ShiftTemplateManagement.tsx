@@ -46,8 +46,8 @@ const ShiftTemplateManagement: React.FC = () => {
     const fetchDepartments = async () => {
         try {
             const res = await departmentApi.getDepartments();
-            if (res.data.success) {
-                setDepartments(res.data.departments || []);
+            if (res.success) {
+                setDepartments(res.departments || []);
             }
         } catch (err) {
             console.error('Failed to load departments:', err);

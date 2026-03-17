@@ -95,7 +95,7 @@ export const Table: React.FC<TableProps> = ({ data, searchQuery, filters }) => {
       <LeaveDetailsModal 
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        leaveRequest={selectedLeave}
+        leave={selectedLeave}
       />
     </div>
   );

@@ -103,6 +103,9 @@ export const RegisterSchema = z.object({
   applicantId: z.union([z.number(), z.string().transform(v => parseInt(v, 10))]).optional(),
   applicantHiredDate: z.string().optional(),
   applicantPhotoPath: z.string().optional(),
+  dateAccomplished: z.string().optional().or(z.null()).or(z.literal("")),
+  pdsQuestions: z.any().optional(),
+  isOldEmployee: z.boolean().optional().default(false),
 });
 
 export const GoogleLoginSchema = z.object({
@@ -231,6 +234,42 @@ export const UpdateProfileSchema = z.object({
   dateHired: z.string().optional(),
   originalAppointmentDate: z.string().optional(),
   lastPromotionDate: z.string().optional(),
+
+  // Section IX: Declarations
+  relatedThirdDegree: z.string().optional(),
+  relatedThirdDetails: z.string().optional(),
+  relatedFourthDegree: z.string().optional(),
+  relatedFourthDetails: z.string().optional(),
+  foundGuiltyAdmin: z.string().optional(),
+  foundGuiltyDetails: z.string().optional(),
+  criminallyCharged: z.string().optional(),
+  dateFiled: z.string().optional(),
+  statusOfCase: z.string().optional(),
+  convictedCrime: z.string().optional(),
+  convictedDetails: z.string().optional(),
+  separatedFromService: z.string().optional(),
+  separatedDetails: z.string().optional(),
+  electionCandidate: z.string().optional(),
+  electionDetails: z.string().optional(),
+  resignedToPromote: z.string().optional(),
+  resignedDetails: z.string().optional(),
+  immigrantStatus: z.string().optional(),
+  immigrantDetails: z.string().optional(),
+  indigenousMember: z.string().optional(),
+  indigenousDetails: z.string().optional(),
+  personWithDisability: z.string().optional(),
+  disabilityIdNo: z.string().optional(),
+  soloParent: z.string().optional(),
+  soloParentIdNo: z.string().optional(),
+
+  // Other PDS 2025 Fields
+  dualCountry: z.string().optional(),
+  govtIdType: z.string().optional(),
+  govtIdNo: z.string().optional(),
+  govtIdIssuance: z.string().optional(),
+  isMeycauayan: z.union([z.boolean(), z.string().transform(v => v === 'true')]).optional(),
+  dateAccomplished: z.string().optional().or(z.null()).or(z.literal("")),
+  pdsQuestions: z.any().optional(),
 });
 
 export type UpdateProfileInput = z.infer<typeof UpdateProfileSchema>;

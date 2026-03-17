@@ -46,7 +46,7 @@ export const usePublicJobDetail = (id: string | undefined) => {
     });
 };
 
-export const useJobApplication = (onSuccess?: () => void, onError?: (error: Error) => void) => {
+export const useJobApplication = (onSuccess?: (response: { data: { success: boolean, requiresVerification?: boolean, email?: string, applicantId?: number } }) => void, onError?: (error: Error) => void) => {
     return useMutation({
         mutationFn: async ({ id, data }: { id: string; data: JobApplicationSchema }) => {
             const formData = new FormData();

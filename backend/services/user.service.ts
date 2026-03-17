@@ -1,5 +1,5 @@
 import { db } from '../db/index.js';
-import { authentication, employeeSkills, employeeEducation, employeeEmergencyContacts, employeeCustomFields, pdsFamily, pdsVoluntaryWork, pdsLearningDevelopment, pdsWorkExperience, pdsOtherInfo, pdsReferences, bioEnrolledUsers } from '../db/schema.js';
+import { authentication, employeeSkills, employeeEmergencyContacts, employeeCustomFields, pdsFamily, pdsVoluntaryWork, pdsLearningDevelopment, pdsWorkExperience, pdsOtherInfo, pdsReferences, bioEnrolledUsers, pdsEducation, pdsEligibility } from '../db/schema.js';
 import { eq, and, desc, SQL, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/mysql-core';
 
@@ -77,6 +77,14 @@ export class UserService {
       twitterHandle: auth.twitterHandle,
       firstDayOfService: auth.firstDayOfService,
       officeAddress: auth.officeAddress,
+      religion: auth.religion,
+      citizenship: auth.citizenship,
+      citizenshipType: auth.citizenshipType,
+      barangay: auth.barangay,
+      dutyType: auth.dutyType,
+      isMeycauayan: auth.isMeycauayan,
+      dateAccomplished: auth.dateAccomplished,
+      pdsQuestions: auth.pdsQuestions,
       duties: sql<string>`COALESCE((SELECT schedule_title FROM schedules WHERE schedules.employee_id = auth.employee_id ORDER BY schedules.updated_at DESC LIMIT 1), 'No Schedule')`,
       isBiometricEnrolled: sql<boolean>`CASE WHEN ${bioEnrolledUsers.employeeId} IS NOT NULL THEN true ELSE false END`
     })
@@ -111,16 +119,15 @@ export class UserService {
   }
 
   static async getRelatedData(id: number) {
-    const [skills, education, emergencyContacts, customFields, familyBackground, voluntaryWork, learningDevelopment, workExperience, otherInfo, references] = await Promise.all([
+    const [skills, education, emergencyContacts, customFields, familyBackground, voluntaryWork, learningDevelopment, workExperience, otherInfo, references, eligibilities] = await Promise.all([
       db.select()
         .from(employeeSkills)
         .where(eq(employeeSkills.employeeId, id))
         .orderBy(employeeSkills.skillName),
 
       db.select()
-        .from(employeeEducation)
-        .where(eq(employeeEducation.employeeId, id))
-        .orderBy(desc(employeeEducation.startDate)),
+        .from(pdsEducation)
+        .where(eq(pdsEducation.employeeId, id)),
 
       db.select()
         .from(employeeEmergencyContacts)
@@ -156,10 +163,14 @@ export class UserService {
 
       db.select()
         .from(pdsReferences)
-        .where(eq(pdsReferences.employeeId, id))
+        .where(eq(pdsReferences.employeeId, id)),
+
+      db.select()
+        .from(pdsEligibility)
+        .where(eq(pdsEligibility.employeeId, id))
     ]);
 
-    return { skills, education, emergencyContacts, customFields, familyBackground, voluntaryWork, learningDevelopment, workExperience, otherInfo, references };
+    return { skills, education, emergencyContacts, customFields, familyBackground, voluntaryWork, learningDevelopment, workExperience, otherInfo, references, eligibilities };
   }
 
   static async createEmployee(data: NewEmployee) {

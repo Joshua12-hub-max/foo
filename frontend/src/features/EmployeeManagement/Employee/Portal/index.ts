@@ -8,5 +8,6 @@ export { useEmployeeMemos } from './Memos/useEmployeeMemos';
 export { useEmployeeDepartment } from './Department/useEmployeeDepartment';
 
 // Profile
-export { default as EmployeeProfileView } from './Profile/EmployeeProfileView';
+export { default as PDSFormWizard } from './Profile/PDSFormWizard';
+export { default as ProfileHeader } from './Profile/ProfileHeader';
 export { useEmployeeProfile } from './Profile/useEmployeeProfile';

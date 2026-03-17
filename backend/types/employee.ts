@@ -81,17 +81,52 @@ export interface EmployeeMapperInput {
   resBarangay?: string | null;
   resCity?: string | null;
   resProvince?: string | null;
+  resRegion?: string | null;
   permHouseBlockLot?: string | null;
   permStreet?: string | null;
   permSubdivision?: string | null;
   permBarangay?: string | null;
   permCity?: string | null;
   permProvince?: string | null;
-  rightThumbmarkUrl?: string | null;
-  ctcNo?: string | null;
-  ctcIssuedAt?: string | null;
-  ctcIssuedDate?: string | null;
-  isBiometricEnrolled?: boolean;
+  permRegion?: string | null;
+  startTime?: string | null;
+  endTime?: string | null;
+  isBiometricEnrolled?: boolean | null;
+
+  relatedThirdDegree?: string | null;
+  relatedThirdDetails?: string | null;
+  relatedFourthDegree?: string | null;
+  relatedFourthDetails?: string | null;
+  foundGuiltyAdmin?: string | null;
+  foundGuiltyDetails?: string | null;
+  criminallyCharged?: string | null;
+  dateFiled?: string | null;
+  statusOfCase?: string | null;
+  convictedCrime?: string | null;
+  convictedDetails?: string | null;
+  separatedFromService?: string | null;
+  separatedDetails?: string | null;
+  electionCandidate?: string | null;
+  electionDetails?: string | null;
+  resignedToPromote?: string | null;
+  resignedDetails?: string | null;
+  immigrantStatus?: string | null;
+  immigrantDetails?: string | null;
+  indigenousMember?: string | null;
+  indigenousDetails?: string | null;
+  personWithDisability?: string | null;
+  disabilityIdNo?: string | null;
+  soloParent?: string | null;
+  soloParentIdNo?: string | null;
+
+  // Other PDS 2025 Fields
+  dualCountry?: string | null;
+  govtIdType?: string | null;
+  govtIdNo?: string | null;
+  govtIdIssuance?: string | null;
+  isMeycauayan?: boolean | null;
+  dateAccomplished?: string | null;
+  pdsQuestions?: any | null;
 }
 
 /**
@@ -192,11 +227,45 @@ export interface EmployeeApiResponse {
   permBarangay: string | null;
   permCity: string | null;
   permProvince: string | null;
-  rightThumbmarkUrl: string | null;
-  ctcNo: string | null;
-  ctcIssuedAt: string | null;
-  ctcIssuedDate: string | null;
   isBiometricEnrolled: boolean;
+  startTime: string | null;
+  endTime: string | null;
+
+  // Section IX: Declarations
+  relatedThirdDegree: string | null;
+  relatedThirdDetails: string | null;
+  relatedFourthDegree: string | null;
+  relatedFourthDetails: string | null;
+  foundGuiltyAdmin: string | null;
+  foundGuiltyDetails: string | null;
+  criminallyCharged: string | null;
+  dateFiled: string | null;
+  statusOfCase: string | null;
+  convictedCrime: string | null;
+  convictedDetails: string | null;
+  separatedFromService: string | null;
+  separatedDetails: string | null;
+  electionCandidate: string | null;
+  electionDetails: string | null;
+  resignedToPromote: string | null;
+  resignedDetails: string | null;
+  immigrantStatus: string | null;
+  immigrantDetails: string | null;
+  indigenousMember: string | null;
+  indigenousDetails: string | null;
+  personWithDisability: string | null;
+  disabilityIdNo: string | null;
+  soloParent: string | null;
+  soloParentIdNo: string | null;
+
+  // Other PDS 2025 Fields
+  dualCountry: string | null;
+  govtIdType: string | null;
+  govtIdNo: string | null;
+  govtIdIssuance: string | null;
+  isMeycauayan: boolean;
+  dateAccomplished: string | null;
+  pdsQuestions: any | null;
 }
 
 /**
@@ -218,6 +287,10 @@ export interface EmployeeEducationResponse {
   startDate: string | null;
   endDate: string | null;
   isCurrent: boolean;
+  level?: string | null;
+  yearGraduated?: string | null;
+  honors?: string | null;
+  unitsEarned?: string | null;
 }
 
 export interface EmployeeEmergencyContactResponse {
@@ -296,6 +369,16 @@ export interface PdsReferenceResponse {
   telNo: string | null;
 }
 
+export interface EmployeeEligibilityResponse {
+  id: number;
+  eligibilityType: string;
+  rating: string | null;
+  examDate: string | null;
+  examPlace: string | null;
+  eligibilityNumber: string | null;
+  validityDate?: string | null;
+}
+
 /**
  * Consolidated Employee Detailed Response
  */
@@ -310,4 +393,5 @@ export interface EmployeeDetailedApiResponse extends EmployeeApiResponse {
   workExperience: WorkplaceExperienceResponse[];
   otherInfo: PdsOtherInfoResponse[];
   references: PdsReferenceResponse[];
+  eligibilities: EmployeeEligibilityResponse[];
 }

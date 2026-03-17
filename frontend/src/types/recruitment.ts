@@ -29,6 +29,7 @@ export interface Applicant {
   emailSubject?: string;
   emailReceivedAt?: string;
   createdAt: string;
+  updatedAt?: string;
   birthDate?: string;
   birthPlace?: string;
   sex?: 'Male' | 'Female';

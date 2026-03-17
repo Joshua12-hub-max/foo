@@ -12,6 +12,7 @@ import { checkSystemWideUniqueness } from '../services/validationService.js';
 import { generateGoogleMeetLink } from '../services/meetingService.js';
 import { currentManilaDateTime } from '../utils/dateUtils.js';
 import { sanitizeInput, isDisposableEmail } from '../utils/spamUtils.js';
+import { generateOTP, sendOTPEmail } from '../utils/emailUtils.js';
 import type { JobStatus, ApplicantStage, ApplicantStatus } from '../types/index.js';
 
 import {
@@ -33,7 +34,7 @@ import {
   checkDuplicateApplication, 
   sendApplicationNotifications 
 } from '../services/recruitmentService.js';
-import { createNotification, notifyAdmins } from './notificationController.js';
+import { notifyAdmins } from './notificationController.js';
 import type { AuthenticatedHandler } from '../types/index.js';
 
 function isApplicantStage(val: string): val is ApplicantStage {
@@ -254,10 +255,13 @@ export const applyJob = async (req: Request, res: Response): Promise<void> => {
         return;
     }
 
-    const isPermanent = jobConfig.employmentType === 'Permanent';
-    const requireIds = isPermanent || jobConfig.requireGovernmentIds === true;
-    const requireCsc = isPermanent || jobConfig.requireCivilService === true;
-    const requireEdu = isPermanent || jobConfig.requireEducationExperience === true;
+    const isStandard = jobConfig.dutyType === 'Standard';
+    // "Obligado" Logic:
+    // If duty is Standard -> Automatically Required.
+    // If duty is Irregular -> Only required if the Job Posting explicitly mandated it.
+    const requireIds = isStandard || jobConfig.requireGovernmentIds === true;
+    const requireCsc = isStandard || jobConfig.requireCivilService === true;
+    const requireEdu = isStandard || jobConfig.requireEducationExperience === true;
 
     const dynamicSchema = createStrictApplyJobSchema(Boolean(requireIds), Boolean(requireCsc), Boolean(requireEdu));
     const parseResult = dynamicSchema.safeParse(req.body);
@@ -355,6 +359,7 @@ export const applyJob = async (req: Request, res: Response): Promise<void> => {
     }
 
     // Duplicate & Identity Fraud Check
+    // 1. Check against AUTHENTICATION (Existing Employees)
     const uniqueErrors = await checkSystemWideUniqueness({
         email,
         umidNumber,
@@ -366,8 +371,55 @@ export const applyJob = async (req: Request, res: Response): Promise<void> => {
     });
 
     if (uniqueErrors.length > 0) {
-        res.status(409).json({ success: false, message: 'Identity verification failed. Information already in use.', errors: uniqueErrors });
+        res.status(409).json({ 
+            success: false, 
+            message: 'Identity verification failed. Information already in use by an existing employee.', 
+            errors: uniqueErrors 
+        });
         return;
+    }
+
+    // 2. Check against RECRUITMENT_APPLICANTS (Pending/Recent Applications)
+    const duplicateConditions = [
+        eq(recruitmentApplicants.email, email)
+    ];
+
+    if (gsisNumber) duplicateConditions.push(eq(recruitmentApplicants.gsisNumber, gsisNumber));
+    if (pagibigNumber) duplicateConditions.push(eq(recruitmentApplicants.pagibigNumber, pagibigNumber));
+    if (philhealthNumber) duplicateConditions.push(eq(recruitmentApplicants.philhealthNumber, philhealthNumber));
+    if (umidNumber) duplicateConditions.push(eq(recruitmentApplicants.umidNumber, umidNumber));
+    if (philsysId) duplicateConditions.push(eq(recruitmentApplicants.philsysId, philsysId));
+    if (tinNumber) duplicateConditions.push(eq(recruitmentApplicants.tinNumber, tinNumber));
+    if (licenseNo) duplicateConditions.push(eq(recruitmentApplicants.licenseNo, licenseNo));
+
+    const existingApplicantRecords = await db.query.recruitmentApplicants.findMany({
+        where: or(...duplicateConditions)
+    });
+
+    if (existingApplicantRecords.length > 0) {
+        const errors: { field: string; message: string }[] = [];
+        
+        existingApplicantRecords.forEach(rec => {
+            if (rec.email === email) errors.push({ field: 'email', message: 'Email already exists in a recent application' });
+            if (gsisNumber && rec.gsisNumber === gsisNumber) errors.push({ field: 'gsisNumber', message: 'GSIS Number already exists' });
+            if (pagibigNumber && rec.pagibigNumber === pagibigNumber) errors.push({ field: 'pagibigNumber', message: 'Pag-IBIG Number already exists' });
+            if (philhealthNumber && rec.philhealthNumber === philhealthNumber) errors.push({ field: 'philhealthNumber', message: 'PhilHealth Number already exists' });
+            if (umidNumber && rec.umidNumber === umidNumber) errors.push({ field: 'umidNumber', message: 'UMID Number already exists' });
+            if (philsysId && rec.philsysId === philsysId) errors.push({ field: 'philsysId', message: 'PhilSys ID already exists' });
+            if (tinNumber && rec.tinNumber === tinNumber) errors.push({ field: 'tinNumber', message: 'TIN Number already exists' });
+            if (licenseNo && rec.licenseNo === licenseNo) errors.push({ field: 'licenseNo', message: 'License Number already exists' });
+        });
+
+        if (errors.length > 0) {
+            // Deduplicate errors by field
+            const uniqueFieldErrors = Array.from(new Map(errors.map(err => [err.field, err])).values());
+            res.status(409).json({ 
+                success: false, 
+                message: 'Duplicate application detected. Some information is already registered in our recruitment system.', 
+                errors: uniqueFieldErrors 
+            });
+            return;
+        }
     }
 
     const existingApplication = await checkDuplicateApplication({
@@ -451,10 +503,29 @@ export const applyJob = async (req: Request, res: Response): Promise<void> => {
         permHouseBlockLot: permHouseBlockLot || null,
         permSubdivision: permSubdivision || null,
         permStreet: permStreet || null,
+        verificationToken: generateOTP(),
+        isEmailVerified: false,
         createdAt: currentManilaDateTime()
     }).$returningId();
 
-    const applicantId = (insertedApplicant as unknown as { insertId: number }).insertId;
+    interface MySqlInsertResult { insertId: number; }
+    const result = insertedApplicant as unknown as MySqlInsertResult;
+    const applicantId = result.insertId;
+
+    // Fetch the inserted applicant to get the verificationToken
+    const freshApplicant = await db.query.recruitmentApplicants.findFirst({
+        where: eq(recruitmentApplicants.id, applicantId)
+    });
+
+    if (freshApplicant?.verificationToken) {
+        await sendOTPEmail(
+            email,
+            firstName,
+            freshApplicant.verificationToken,
+            'Job Application Verification',
+            'Thank you for your interest in joining the City Government of Meycauayan. Please verify your email to complete your application:'
+        );
+    }
 
     // --- AUTO-GENERATE AND SAVE PHYSICAL PDF COPY ---
     try {
@@ -535,7 +606,13 @@ export const applyJob = async (req: Request, res: Response): Promise<void> => {
       console.error('Failed to send internal application notifications:', notifErr);
     }
 
-    res.status(201).json({ success: true, message: 'Application submitted successfully' });
+    res.status(201).json({ 
+        success: true, 
+        message: 'Application submitted! Please check your email for the verification code.',
+        requiresVerification: true,
+        email: email,
+        applicantId: applicantId
+    });
   } catch (error) {
     res.status(500).json({ 
       success: false, 
@@ -1648,5 +1725,49 @@ export const deleteApplicant = async (req: Request, res: Response): Promise<void
     } catch (_error) {
 
         res.status(500).json({ success: false, message: 'Failed to delete applicant' });
+    }
+};
+
+/**
+ * Verify Applicant Email via OTP
+ */
+export const verifyApplicantOTP = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { applicantId, otp } = req.body as { applicantId: number; otp: string };
+
+        if (!applicantId || !otp) {
+            res.status(400).json({ success: false, message: 'Missing applicantId or OTP' });
+            return;
+        }
+
+        const [applicant] = await db.select()
+            .from(recruitmentApplicants)
+            .where(eq(recruitmentApplicants.id, applicantId))
+            .limit(1);
+
+        if (!applicant) {
+            res.status(404).json({ success: false, message: 'Applicant not found' });
+            return;
+        }
+
+        if (applicant.verificationToken !== otp) {
+            res.status(400).json({ success: false, message: 'Invalid verification code' });
+            return;
+        }
+
+        await db.update(recruitmentApplicants)
+            .set({ 
+                isEmailVerified: true, 
+                verificationToken: null 
+            })
+            .where(eq(recruitmentApplicants.id, applicantId));
+
+        res.status(200).json({ 
+            success: true, 
+            message: 'Email verified successfully! Your application is now being processed.' 
+        });
+    } catch (error) {
+        console.error('[RecruitmentController] verifyApplicantOTP failed:', error);
+        res.status(500).json({ success: false, message: 'Verification failed' });
     }
 };

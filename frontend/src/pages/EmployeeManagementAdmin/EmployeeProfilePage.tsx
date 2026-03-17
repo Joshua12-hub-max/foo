@@ -7,8 +7,9 @@ import { fetchEmployeeProfile, revertEmployeeStatus } from '@/api/employeeApi';
 import { useToastStore } from '@/stores';
 import { EmployeeDetailed } from '@/types';
 
-// Editable profile view component
-import EditableProfileView from '@features/EmployeeManagement/Employee/Portal/Profile/EditableProfileView';
+// Profile Components
+import ProfileHeader from '@features/EmployeeManagement/Employee/Portal/Profile/ProfileHeader';
+import PDSFormWizard from '@features/EmployeeManagement/Employee/Portal/Profile/PDSFormWizard';
 
 // Profile loading skeleton
 import ProfileSkeleton from '@features/EmployeeManagement/Employee/Portal/Profile/ProfileSkeleton';
@@ -30,12 +31,7 @@ const EmployeeProfile: React.FC = () => {
       if (!id) return;
       const profileRes = await fetchEmployeeProfile(id);
       if (profileRes.success && profileRes.profile) {
-        // Sanitize profile to ensure it matches EmployeeDetailed
-        const rawProfile = profileRes.profile;
-        
-        // Ensure all nullable fields are handled if needed, 
-        // but cast should be safe if API matches schema
-        setProfile(rawProfile as EmployeeDetailed);
+        setProfile(profileRes.profile as EmployeeDetailed);
       } else {
         showNotification(profileRes.message || 'Failed to load profile', 'error');
       }
@@ -66,8 +62,8 @@ const EmployeeProfile: React.FC = () => {
   };
 
   if (loading) return (
-    <div className={`min-h-screen flex flex-col bg-white rounded-xl shadow-sm border border-gray-200 p-6 w-full overflow-hidden text-gray-800 transition-all duration-300 ${sidebarOpen ? 'max-w-[1400px] xl:max-w-[77vw]' : 'max-w-[1600px] xl:max-w-[88vw]'}`}>
-      <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-100">
+    <div className={`min-h-screen flex flex-col bg-white rounded-xl shadow-sm border border-gray-200 p-0 w-full overflow-hidden text-gray-800 transition-all duration-300`}>
+      <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-100 px-6 pt-6">
         <button 
           onClick={() => navigate('/admin-dashboard/employees')}
           className="flex items-center gap-2 text-gray-500 hover:text-gray-800 transition-colors"
@@ -96,10 +92,10 @@ const EmployeeProfile: React.FC = () => {
   );
 
   return (
-    <div className={`min-h-screen flex flex-col bg-white rounded-xl shadow-sm border border-gray-200 p-6 w-full overflow-hidden text-gray-800 transition-all duration-300 ${sidebarOpen ? 'max-w-[1400px] xl:max-w-[77vw]' : 'max-w-[1600px] xl:max-w-[88vw]'}`}>
+    <div className={`min-h-screen flex flex-col bg-gray-50 p-0 w-full overflow-hidden text-gray-800 transition-all duration-300`}>
 
-      {/* Navigation Header - Only back button, no Edit Profile button */}
-      <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-100">
+      {/* Navigation Header */}
+      <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-200 bg-white px-6 pt-6 sticky top-0 z-10">
         <button 
           onClick={() => navigate('/admin-dashboard/employees')}
           className="flex items-center gap-2 text-gray-500 hover:text-gray-800 transition-colors"
@@ -109,16 +105,24 @@ const EmployeeProfile: React.FC = () => {
         </button>
       </div>
 
-      {/* Master Profile View with Inline Editing */}
-      <div className="mb-0">
-        <EditableProfileView 
+      {/* Profile Header with HR Details */}
+      <div className="mb-6 px-6">
+        <ProfileHeader 
             profile={profile}
-            loading={loading}
-            error={null}
-            onRefresh={loadData}
             isAdmin={true}
-            onStatusChange={handleStatusChange}
+            onStatusToggle={() => {
+              const newStatus = profile.employmentStatus === 'Active' ? 'Suspended' : 'Active';
+              handleStatusChange(profile.id, newStatus);
+            }}
+            statusLoading={false}
         />
+      </div>
+
+      {/* Primary Content: PDS Form Wizard */}
+      <div className="px-6 pb-8">
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+          <PDSFormWizard employeeId={Number(id)} />
+        </div>
       </div>
     </div>
   );

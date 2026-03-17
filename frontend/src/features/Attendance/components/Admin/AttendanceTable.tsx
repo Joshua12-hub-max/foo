@@ -1,5 +1,5 @@
 import React, { memo } from 'react';
-import { formatDate, getStatusColor, formatTime } from './utils/attendanceUtils';
+import { formatDate, getStatusColor } from './utils/attendanceUtils';
 import { STATUS_STYLES } from './constants/attendanceConstants';
 import { formatDuration } from '@/utils/formatters';
 

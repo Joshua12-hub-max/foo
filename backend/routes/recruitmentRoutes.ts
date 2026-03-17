@@ -44,6 +44,7 @@ router.post('/apply',
   handleMulterError,
   recruitmentController.applyJob as RequestHandler
 );
+router.post('/verify-otp', recruitmentController.verifyApplicantOTP as RequestHandler);
 
 // Admin Routes
 router.post('/jobs', verifyAdmin, uploadGeneral.single('file'), handleMulterError, namingMiddleware, recruitmentController.createJob as RequestHandler);

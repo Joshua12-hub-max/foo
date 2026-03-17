@@ -4,6 +4,7 @@ import { MapPin, Fingerprint, Upload, CheckCircle2, AlertCircle, Loader2, Mail, 
 import AuthLayout from "@components/Custom/Auth/AuthLayout";
 import Combobox from "@/components/Custom/Combobox";
 import ConfirmationModal from '../components/CustomUI/ConfirmationModal';
+import EmailVerificationModal from './EmailVerificationModal';
 import { PhilippineAddressSelector } from '@components/Custom/Shared/PhilippineAddressSelector';
 import type { Region, Province, CityMunicipality } from '@/types/ph-address';
 import { useBiometricDevice } from "@/hooks/useBiometricDevice";
@@ -128,6 +129,7 @@ export default function Register() {
       setValue("lastName", user.lastName || "");
       setValue("middleName", user.middleName || "");
       setValue("suffix", user.suffix || "");
+      setValue("email", user.email || ""); // Ensure email is filled if available
       setValue("department", user.department || "");
       setValue("employeeId", user.employeeId || "");
       setValue("dutyType", user.dutyType || "Standard");
@@ -141,6 +143,8 @@ export default function Register() {
   }, [isFinalizingSetup, user, setValue]);
 
   const [isResetModalOpen, setResetModalOpen] = useState(false);
+  const [isVerifyModalOpen, setIsVerifyModalOpen] = useState(false);
+  const [verificationEmail, setVerificationEmail] = useState("");
   const [enrollStep, setEnrollStep] = useState(0);
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
   const [showPreFillModal, setShowPreFillModal] = useState(false);
@@ -471,8 +475,10 @@ export default function Register() {
       // Use the requiresVerification flag from backend to determine next step
       // This ensures all employees must verify, even in finalize-setup mode (Initial profile)
       if (response.data.data.requiresVerification) {
-          toast.success("Registration Successful! Please check your email for the verification code.");
-          navigate("/verify-account", { state: { email: data.email } });
+          toast.success("Registration Successful! Please verify your email.");
+          setVerificationEmail(data.email);
+          setIsVerifyModalOpen(true);
+          // navigate("/verify-account", { state: { email: data.email } }); // Replaced by Modal
       } else {
           toast.success("Profile permanently saved! Redirecting to your dashboard...");
           // Sync auth state to get full permissions (for Admin/HR who might skip verification in finalize mode)
@@ -624,13 +630,18 @@ export default function Register() {
 
            <div className="pt-2 grid grid-cols-2 md:grid-cols-3 gap-4">
               <div className="space-y-1">
-                 <label className="text-xs font-semibold text-gray-600 ml-1">Birth Date</label>
+                 <label className={`text-xs font-semibold ml-1 ${errors.birthDate ? 'text-red-500' : 'text-gray-600'}`}>Birth Date</label>
                  <div className="relative">
-                    <input type="date" {...register("birthDate")} className={`${inputClass} !pl-3`} />
+                    <input 
+                       type="date" 
+                       {...register("birthDate")} 
+                       className={`${inputClass} !pl-3 ${errors.birthDate ? 'border-red-500 ring-1 ring-red-500/20 shadow-sm shadow-red-50' : ''}`} 
+                    />
                  </div>
+                 {errors.birthDate && <p className="text-[10px] text-red-500 font-bold mt-1 ml-1 animate-pulse">{errors.birthDate.message}</p>}
               </div>
               
-              <div className="space-y-1 col-span-2 md:col-span-2">
+              <div className="space-y-1 col-span-2 md:col-span-1">
                  <label className="text-xs font-semibold text-gray-600 ml-1">Place of Birth</label>
                  <div className="relative">
                     <input {...register("placeOfBirth")} className={`${inputClass} !pl-3`} placeholder="" />
@@ -638,17 +649,24 @@ export default function Register() {
               </div>
 
               <div className="space-y-1">
-                 <label className="text-xs font-semibold text-gray-600 ml-1">Gender</label>
-                 <select {...register("gender")} className={`${inputClass} !pl-3`}>
+                 <label className={`text-xs font-semibold ml-1 ${errors.gender ? 'text-red-500' : 'text-gray-600'}`}>Gender</label>
+                 <select 
+                   {...register("gender")} 
+                   className={`${inputClass} !pl-3 ${errors.gender ? 'border-red-500 ring-1 ring-red-500/20 shadow-sm shadow-red-50' : ''}`}
+                 >
                     <option value="">Select...</option>
                     <option value="Male">Male</option>
                     <option value="Female">Female</option>
                  </select>
+                 {errors.gender && <p className="text-[10px] text-red-500 font-bold mt-1 ml-1 animate-pulse">{errors.gender.message}</p>}
               </div>
 
               <div className="space-y-1">
-                 <label className="text-xs font-semibold text-gray-600 ml-1">Civil Status</label>
-                 <select {...register("civilStatus")} className={`${inputClass} !pl-3`}>
+                 <label className={`text-xs font-semibold ml-1 ${errors.civilStatus ? 'text-red-500' : 'text-gray-600'}`}>Civil Status</label>
+                 <select 
+                   {...register("civilStatus")} 
+                   className={`${inputClass} !pl-3 ${errors.civilStatus ? 'border-red-500 ring-1 ring-red-500/20 shadow-sm shadow-red-50' : ''}`}
+                 >
                     <option value="">Select...</option>
                     <option value="Single">Single</option>
                     <option value="Married">Married</option>
@@ -656,6 +674,7 @@ export default function Register() {
                     <option value="Separated">Separated</option>
                     <option value="Annulled">Annulled</option>
                  </select>
+                 {errors.civilStatus && <p className="text-[10px] text-red-500 font-bold mt-1 ml-1 animate-pulse">{errors.civilStatus.message}</p>}
               </div>
 
               <div className="space-y-1">
@@ -804,59 +823,107 @@ export default function Register() {
            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-3 bg-red-50/30 rounded-[10px] border border-red-50">
               <div className="space-y-1">
                  <label className="text-xs font-semibold text-red-500 ml-1 flex items-center gap-1">Emergency Contact Person</label>
-                 <input {...register("emergencyContact")} className={`${inputClass} !pl-3`} placeholder="Full Name" />
+                 <input 
+                    {...register("emergencyContact")} 
+                    className={`${inputClass} !pl-3 ${errors.emergencyContact ? 'border-red-500 ring-1 ring-red-500/20 shadow-sm shadow-red-50' : ''}`} 
+                    placeholder="Full Name" 
+                  />
+                  {errors.emergencyContact && <p className="text-[10px] text-red-500 font-bold mt-1 ml-1 animate-pulse">{errors.emergencyContact.message}</p>}
               </div>
               <div className="space-y-1">
                  <label className="text-xs font-semibold text-red-500 ml-1">Emergency Phone Number</label>
-                 <input {...register("emergencyContactNumber")} className={`${inputClass} !pl-3`} placeholder="09XX XXX XXXX" />
+                 <input 
+                    {...register("emergencyContactNumber")} 
+                    className={`${inputClass} !pl-3 ${errors.emergencyContactNumber ? 'border-red-500 ring-1 ring-red-500/20 shadow-sm shadow-red-50' : ''}`} 
+                    placeholder="09XX XXX XXXX" 
+                  />
+                  {errors.emergencyContactNumber && <p className="text-[10px] text-red-500 font-bold mt-1 ml-1 animate-pulse">{errors.emergencyContactNumber.message}</p>}
               </div>
            </div>
         </div>
 
-        {/* Government Identification */}
-        <div className={cardClass}>
-           <h4 className={cardHeaderClass}>Government Identification</h4>
-           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              <div className="space-y-1">
-                 <label className="text-xs font-semibold text-gray-600 ml-1">GSIS ID No.</label>
-                 <input {...register("gsisNumber")} className={`${inputClass} !pl-3`} placeholder="" />
-              </div>
-              <div className="space-y-1">
-                 <label className="text-xs font-semibold text-gray-600 ml-1">PAG-IBIG No.</label>
-                 <input {...register("pagibigNumber")} className={`${inputClass} !pl-3`} placeholder="" />
-              </div>
-              <div className="space-y-1">
-                 <label className="text-xs font-semibold text-gray-600 ml-1">PhilHealth No.</label>
-                 <input {...register("philhealthNumber")} className={`${inputClass} !pl-3`} placeholder="" />
-              </div>
-              <div className="space-y-1">
-                 <label className="text-xs font-semibold text-gray-600 ml-1">UMID Number</label>
-                 <input {...register("umidNumber")} className={`${inputClass} !pl-3`} placeholder="" />
-              </div>
-              <div className="space-y-1">
-                 <label className="text-xs font-semibold text-gray-600 ml-1">PHILSYS ID</label>
-                 <input {...register("philsysId")} className={`${inputClass} !pl-3`} placeholder="" />
-              </div>
-              <div className="space-y-1">
-                 <label className="text-xs font-semibold text-gray-600 ml-1">TIN No.</label>
-                 <input {...register("tinNumber")} className={`${inputClass} !pl-3`} placeholder="" />
-              </div>
-              <div className="space-y-1">
-                 <label className="text-xs font-semibold text-gray-600 ml-1">Agency Employee No.</label>
-                 <input {...register("agencyEmployeeNo")} className={`${inputClass} !pl-3`} placeholder="" />
-              </div>
-           </div>
-        </div>
+         {/* Government Identification */}
+         <div className={cardClass}>
+            <h4 className={cardHeaderClass}>Government Identification</h4>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+               <div className="space-y-1">
+                  <label className={`text-xs font-semibold ml-1 ${watch("dutyType") === "Standard" ? 'text-red-500' : 'text-gray-600'}`}>
+                    GSIS ID No. {watch("dutyType") === "Standard" && "*"}
+                  </label>
+                  <input 
+                    {...register("gsisNumber")} 
+                    className={`${inputClass} !pl-3 ${errors.gsisNumber ? 'border-red-500 ring-1 ring-red-500/20 shadow-sm shadow-red-50' : ''}`} 
+                    placeholder="" 
+                  />
+                  {errors.gsisNumber && <p className="text-[10px] text-red-500 font-bold mt-1 ml-1 animate-pulse">{errors.gsisNumber.message}</p>}
+               </div>
+               <div className="space-y-1">
+                  <label className={`text-xs font-semibold ml-1 ${watch("dutyType") === "Standard" ? 'text-red-500' : 'text-gray-600'}`}>
+                    PAG-IBIG No. {watch("dutyType") === "Standard" && "*"}
+                  </label>
+                  <input 
+                    {...register("pagibigNumber")} 
+                    className={`${inputClass} !pl-3 ${errors.pagibigNumber ? 'border-red-500 ring-1 ring-red-500/20 shadow-sm shadow-red-50' : ''}`} 
+                    placeholder="" 
+                  />
+                  {errors.pagibigNumber && <p className="text-[10px] text-red-500 font-bold mt-1 ml-1 animate-pulse">{errors.pagibigNumber.message}</p>}
+               </div>
+               <div className="space-y-1">
+                  <label className={`text-xs font-semibold ml-1 ${watch("dutyType") === "Standard" ? 'text-red-500' : 'text-gray-600'}`}>
+                    PhilHealth No. {watch("dutyType") === "Standard" && "*"}
+                  </label>
+                  <input 
+                    {...register("philhealthNumber")} 
+                    className={`${inputClass} !pl-3 ${errors.philhealthNumber ? 'border-red-500 ring-1 ring-red-500/20 shadow-sm shadow-red-50' : ''}`} 
+                    placeholder="" 
+                  />
+                  {errors.philhealthNumber && <p className="text-[10px] text-red-500 font-bold mt-1 ml-1 animate-pulse">{errors.philhealthNumber.message}</p>}
+               </div>
+               <div className="space-y-1">
+                  <label className="text-xs font-semibold text-gray-600 ml-1">UMID Number</label>
+                  <input 
+                    {...register("umidNumber")} 
+                    className={`${inputClass} !pl-3 ${errors.umidNumber ? 'border-red-500 ring-1 ring-red-500/20' : ''}`} 
+                    placeholder="" 
+                  />
+                  {errors.umidNumber && <p className="text-[10px] text-red-500 font-bold mt-1 ml-1 animate-pulse">{errors.umidNumber.message}</p>}
+               </div>
+               <div className="space-y-1">
+                  <label className="text-xs font-semibold text-gray-600 ml-1">PHILSYS ID</label>
+                  <input 
+                    {...register("philsysId")} 
+                    className={`${inputClass} !pl-3 ${errors.philsysId ? 'border-red-500 ring-1 ring-red-500/20' : ''}`} 
+                    placeholder="" 
+                  />
+                  {errors.philsysId && <p className="text-[10px] text-red-500 font-bold mt-1 ml-1 animate-pulse">{errors.philsysId.message}</p>}
+               </div>
+               <div className="space-y-1">
+                  <label className={`text-xs font-semibold ml-1 ${watch("dutyType") === "Standard" ? 'text-red-500' : 'text-gray-600'}`}>
+                    TIN No. {watch("dutyType") === "Standard" && "*"}
+                  </label>
+                  <input 
+                    {...register("tinNumber")} 
+                    className={`${inputClass} !pl-3 ${errors.tinNumber ? 'border-red-500 ring-1 ring-red-500/20 shadow-sm shadow-red-50' : ''}`} 
+                    placeholder="" 
+                  />
+                  {errors.tinNumber && <p className="text-[10px] text-red-500 font-bold mt-1 ml-1 animate-pulse">{errors.tinNumber.message}</p>}
+               </div>
+               <div className="space-y-1">
+                  <label className="text-xs font-semibold text-gray-600 ml-1">Agency Employee No.</label>
+                  <input {...register("agencyEmployeeNo")} className={`${inputClass} !pl-3`} placeholder="" />
+               </div>
+            </div>
+         </div>
 
         {/* Educational Background */}
         <div className={cardClass}>
            <h4 className={cardHeaderClass}>Educational Background</h4>
            <div className="space-y-4">
               <div className="space-y-1">
-                 <label className="text-xs font-semibold text-gray-600 ml-1">Highest Degree/Level Attained</label>
+                 <label className={`text-xs font-semibold ml-1 ${errors.educationalBackground ? 'text-red-500' : 'text-gray-600'}`}>Highest Degree/Level Attained</label>
                  <select 
                     {...register("educationalBackground")} 
-                    className={`${inputClass} !pl-3`}
+                    className={`${inputClass} !pl-3 ${errors.educationalBackground ? 'border-red-500 ring-1 ring-red-500/20 shadow-sm shadow-red-50' : ''}`}
                  >
                     <option value="">Select highest education attained</option>
                     {EDUCATION_LEVELS.map((level) => (
@@ -864,18 +931,28 @@ export default function Register() {
                     ))}
                  </select>
                  {errors.educationalBackground && (
-                    <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.educationalBackground.message}</p>
+                    <p className="text-red-500 text-[10px] font-bold mt-1 ml-1 animate-pulse">{errors.educationalBackground.message}</p>
                  )}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-gray-600 ml-1">School / University Name</label>
-                    <input {...register("schoolName")} className={`${inputClass} !pl-3`} placeholder="e.g. Bulacan State University" />
+                    <label className={`text-xs font-semibold ml-1 ${errors.schoolName ? 'text-red-500' : 'text-gray-600'}`}>School / University Name</label>
+                    <input 
+                      {...register("schoolName")} 
+                      className={`${inputClass} !pl-3 ${errors.schoolName ? 'border-red-500 ring-1 ring-red-500/20 shadow-sm shadow-red-50' : ''}`} 
+                      placeholder="e.g. Bulacan State University" 
+                    />
+                    {errors.schoolName && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1 animate-pulse">{errors.schoolName.message}</p>}
                  </div>
                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-gray-600 ml-1">Year Graduated</label>
-                    <input {...register("yearGraduated")} className={`${inputClass} !pl-3`} placeholder="e.g. 2020" />
+                    <label className={`text-xs font-semibold ml-1 ${errors.yearGraduated ? 'text-red-500' : 'text-gray-600'}`}>Year Graduated</label>
+                    <input 
+                      {...register("yearGraduated")} 
+                      className={`${inputClass} !pl-3 ${errors.yearGraduated ? 'border-red-500 ring-1 ring-red-500/20 shadow-sm shadow-red-50' : ''}`} 
+                      placeholder="e.g. 2020" 
+                    />
+                    {errors.yearGraduated && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1 animate-pulse">{errors.yearGraduated.message}</p>}
                  </div>
               </div>
 
@@ -904,32 +981,50 @@ export default function Register() {
            </div>
         </div>
 
-        {/* Eligibility */}
-        <div className={cardClass}>
-           <h4 className={cardHeaderClass}>Eligibility / Civil Service</h4>
-           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-1">
-                 <label className="text-xs font-semibold text-gray-600 ml-1">Eligibility Type</label>
-                 <select {...register("eligibilityType")} className={`${inputClass} !pl-3`}>
-                    <option value="">Select eligibility...</option>
-                    <option value="csc_prof">CSC Professional</option>
-                    <option value="csc_sub">CSC Sub-Professional</option>
-                    <option value="ra_1080">RA 1080 (Board/Bar)</option>
-                    <option value="special_laws">Special Laws</option>
-                    <option value="drivers_license">Driver's License</option>
-                    <option value="tesda">TESDA NC II/III</option>
-                    <option value="none">None / N/A</option>
-                    <option value="others">Others</option>
-                 </select>
-              </div>
-              <div className="space-y-1">
-                 <label className="text-xs font-semibold text-gray-600 ml-1">License/ID Number</label>
-                 <input {...register("eligibilityNumber")} className={`${inputClass} !pl-3`} placeholder="e.g. 1234567" />
-              </div>
-              <div className="space-y-1">
-                 <label className="text-xs font-semibold text-gray-600 ml-1">Date of Validity</label>
-                 <input type="date" {...register("eligibilityDate")} className={`${inputClass} !pl-3`} />
-              </div>
+         {/* Eligibility */}
+         <div className={cardClass}>
+            <h4 className={cardHeaderClass}>Eligibility / Civil Service</h4>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+               <div className="space-y-1">
+                  <label className={`text-xs font-semibold ml-1 ${watch("dutyType") === "Standard" ? 'text-red-500' : 'text-gray-600'}`}>
+                    Eligibility Type {watch("dutyType") === "Standard" && "*"}
+                  </label>
+                  <select 
+                    {...register("eligibilityType")} 
+                    className={`${inputClass} !pl-3 ${errors.eligibilityType ? 'border-red-500 ring-1 ring-red-500/20 shadow-sm shadow-red-50' : ''}`}
+                  >
+                     <option value="">Select eligibility...</option>
+                     <option value="csc_prof">CSC Professional</option>
+                     <option value="csc_sub">CSC Sub-Professional</option>
+                     <option value="ra_1080">RA 1080 (Board/Bar)</option>
+                     <option value="special_laws">Special Laws</option>
+                     <option value="drivers_license">Driver's License</option>
+                     <option value="tesda">TESDA NC II/III</option>
+                     <option value="none">None / N/A</option>
+                     <option value="others">Others</option>
+                  </select>
+                  {errors.eligibilityType && <p className="text-[10px] text-red-500 font-bold mt-1 ml-1 animate-pulse">{errors.eligibilityType.message}</p>}
+               </div>
+               <div className="space-y-1">
+                  <label className={`text-xs font-semibold ml-1 ${watch("dutyType") === "Standard" ? 'text-red-500' : 'text-gray-600'}`}>
+                    License/ID Number {watch("dutyType") === "Standard" && "*"}
+                  </label>
+                  <input 
+                    {...register("eligibilityNumber")} 
+                    className={`${inputClass} !pl-3 ${errors.eligibilityNumber ? 'border-red-500 ring-1 ring-red-500/20 shadow-sm shadow-red-50' : ''}`} 
+                    placeholder="e.g. 1234567" 
+                  />
+                  {errors.eligibilityNumber && <p className="text-[10px] text-red-500 font-bold mt-1 ml-1 animate-pulse">{errors.eligibilityNumber.message}</p>}
+               </div>
+               <div className="space-y-1">
+                  <label className="text-xs font-semibold text-gray-600 ml-1">Date of Validity</label>
+                  <input 
+                    type="date" 
+                    {...register("eligibilityDate")} 
+                    className={`${inputClass} !pl-3 ${errors.eligibilityDate ? 'border-red-500 ring-1 ring-red-500/20' : ''}`} 
+                  />
+                  {errors.eligibilityDate && <p className="text-[10px] text-red-500 font-bold mt-1 ml-1 animate-pulse">{errors.eligibilityDate.message}</p>}
+               </div>
            </div>
         </div>
 
@@ -938,30 +1033,36 @@ export default function Register() {
            <h4 className={cardHeaderClass}>Employment Details</h4>
            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                <div>
-                   <label className="text-xs font-semibold text-gray-600 ml-1 mb-1 block">Department / Office</label>
+                   <label className={`text-xs font-semibold ml-1 mb-1 block ${errors.department ? 'text-red-500' : 'text-gray-600'}`}>
+                       Department / Office {setupData && <span className="text-[10px] text-gray-400 font-normal ml-1">(Locked)</span>}
+                   </label>
                    <Combobox
                        options={departments.map((d) => ({ value: d.name, label: d.name }))}
                        value={watch("department") || ""}
                        onChange={(val) => setValue("department", val)}
-                       placeholder=""
+                       placeholder="Select department..."
                        error={!!errors.department}
-                       buttonClassName={`pl-3 ${setupData ? 'bg-gray-100 cursor-not-allowed opacity-80' : ''}`}
+                       buttonClassName={`pl-3 ${setupData ? 'bg-gray-100 cursor-not-allowed opacity-80' : ''} ${errors.department ? 'border-red-500 ring-1 ring-red-500/20' : ''}`}
                        disabled={!!setupData}
                    />
+                   {errors.department && <p className="text-[10px] text-red-500 font-bold mt-1 ml-1 animate-pulse">{errors.department.message}</p>}
                </div>
                <div>
-                   <label className="text-xs font-semibold text-gray-600 ml-1 mb-1 block">Plantilla Position</label>
+                   <label className={`text-xs font-semibold ml-1 mb-1 block ${errors.position ? 'text-red-500' : 'text-gray-600'}`}>
+                       Plantilla Position {setupData && <span className="text-[10px] text-gray-400 font-normal ml-1">(Locked)</span>}
+                   </label>
                    <Combobox
                        options={positions
                            .filter((p) => !watch("department") || p.department === watch("department"))
                            .map((p) => ({ value: `${p.positionTitle} (${p.itemNumber})`, label: `${p.positionTitle} (${p.itemNumber})` }))}
                        value={watch("position") || ""}
                        onChange={(val) => setValue("position", val)}
-                       placeholder=""
+                       placeholder="Select position..."
                        error={!!errors.position}
-                       buttonClassName={`pl-3 ${setupData ? 'bg-gray-100 cursor-not-allowed opacity-80' : ''}`}
+                       buttonClassName={`pl-3 ${setupData ? 'bg-gray-100 cursor-not-allowed opacity-80' : ''} ${errors.position ? 'border-red-500 ring-1 ring-red-500/20' : ''}`}
                        disabled={!!setupData}
                    />
+                   {errors.position && <p className="text-[10px] text-red-500 font-bold mt-1 ml-1 animate-pulse">{errors.position.message}</p>}
                </div>
                <div>
                    <label className="text-xs font-semibold text-gray-600 ml-1 mb-1 block">Type of Duties</label>
@@ -1146,6 +1247,11 @@ export default function Register() {
         .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #e5e7eb; border-radius: 20px; }
         .custom-scrollbar:hover::-webkit-scrollbar-thumb { background-color: #d1d5db; }
       `}</style>
+
+      <EmailVerificationModal
+        isOpen={isVerifyModalOpen}
+        email={verificationEmail}
+      />
 
       <ConfirmationModal
         isOpen={showPreFillModal}

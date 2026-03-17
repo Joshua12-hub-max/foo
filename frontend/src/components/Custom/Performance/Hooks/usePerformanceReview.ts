@@ -232,7 +232,7 @@ export const usePerformanceReview = () => {
           
           const params = new URLSearchParams(window.location.search);
           const empId = params.get('employeeId');
-          if (empId && isMounted) setFormData(prev => ({ ...prev, employeeId: Number(empId) }));
+          if (empId && isMounted) setFormData(prev => ({ ...prev, employeeId: String(empId) }));
         }
       } catch (err) {
         if (isMounted) {
@@ -271,7 +271,7 @@ export const usePerformanceReview = () => {
     fetchMetrics();
   }, [formData.employeeId, isNew]);
 
-  const selectedEmployee = useMemo(() => employees.find(e => e.id == formData.employeeId), [employees, formData.employeeId]);
+  const selectedEmployee = useMemo(() => employees.find(e => String(e.id) === formData.employeeId), [employees, formData.employeeId]);
   const selectedCycle = useMemo(() => cycles.find(c => c.id == formData.reviewCycleId), [cycles, formData.reviewCycleId]);
   
   const permissions = useMemo(() => {
@@ -442,7 +442,7 @@ export const usePerformanceReview = () => {
       });
       
       const payload: Partial<InternalReview> = {
-        employeeId: Number(formData.employeeId),
+        employeeId: String(formData.employeeId),
         reviewerId: Number(user?.id || formData.reviewerId),
         reviewCycleId: Number(formData.reviewCycleId),
         overallFeedback,

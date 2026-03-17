@@ -51,7 +51,7 @@ export type AnnouncementFormData = {
 
 export type CalendarItemType = 'event' | 'announcement' | 'holiday' | 'schedule';
 
-export type CalendarItem = CalendarEvent | Announcement;
+export type CalendarItem = CalendarEvent | Announcement | Schedule;
 
 /** Holiday data from API (month/day based, rendered per year) */
 export interface Holiday {
@@ -67,6 +67,7 @@ export interface Holiday {
 /** Employee schedule entry from API */
 export interface ScheduleEntry {
   id: number | string;
+  title?: string;
   duties?: string;
   scheduleName?: string;
   startDate?: string;
@@ -74,6 +75,11 @@ export interface ScheduleEntry {
   startTime?: string;
   endTime?: string;
   days?: string;
+}
+
+export interface Schedule extends ScheduleEntry {
+  employeeName?: string;
+  employeeId?: string;
 }
 
 /** Unified display item for the calendar grid */

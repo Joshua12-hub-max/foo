@@ -119,7 +119,7 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
         lastName: employee.lastName || '',
         email: employee.email || '',
         department: employee.department || '',
-        role: employee.role || 'Employee',
+        role: (employee.role as "Administrator" | "Human Resource" | "Employee") || 'Employee',
         employmentStatus: employee.employmentStatus || 'Active',
         itemNumber: employee.itemNumber || '',
         positionTitle: employee.positionTitle || employee.jobTitle || '',

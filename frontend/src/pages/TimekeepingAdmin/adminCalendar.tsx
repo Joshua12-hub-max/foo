@@ -408,7 +408,7 @@ export default function AdminCalendar() {
         {/* Edit Event Modal */}
         <EditScheduleModal
           show={modals.editEvent}
-          schedule={selectedItem as unknown as Schedule}
+          schedule={selectedType === 'schedule' ? (selectedItem as Schedule) : null}
           onClose={() => {
             setModal('editEvent', false);
             setSelectedItem(null, null);

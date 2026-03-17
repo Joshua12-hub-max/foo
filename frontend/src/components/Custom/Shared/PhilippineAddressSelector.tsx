@@ -117,13 +117,27 @@ export const PhilippineAddressSelector = <T extends FieldValues>({
   // Helper to format names to Normal/Title Case
   const formatName = (name: string) => {
     if (!name) return '';
-    // Special case for NCR
-    if (name.toUpperCase() === 'NATIONAL CAPITAL REGION [NCR]') return 'National Capital Region (NCR)';
-    if (name.toUpperCase() === 'NCR') return 'NCR';
+    const upper = name.toUpperCase();
     
-    return name.toLowerCase().split(' ').map(word => {
-        if (word === 'of') return 'of'; // Keep 'of' lowercase in middle of name
-        return word.charAt(0).toUpperCase() + word.slice(1);
+    // Special handling for common abbreviations that should stay uppercase
+    const specifics = ['NCR', 'CAR', 'BARMM', 'IV-A', 'IV-B', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII'];
+    
+    return upper.split(' ').map(word => {
+      if (!word) return '';
+      
+      // Clean word for comparison (removing surrounding parentheses)
+      const cleanWord = word.replace(/^\(|\)$/g, '');
+      
+      if (specifics.includes(cleanWord)) return word; // Keep the whole word (including parens) as is
+      
+      const lowerWord = word.toLowerCase();
+      if (lowerWord === 'of' || lowerWord === 'de' || lowerWord === 'del') return lowerWord;
+      
+      // Handle Title Case for normal words, potentially with leading paren
+      if (word.startsWith('(')) {
+        return '(' + word.charAt(1).toUpperCase() + word.slice(2).toLowerCase();
+      }
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
     }).join(' ');
   };
 

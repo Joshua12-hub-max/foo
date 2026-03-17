@@ -4,7 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import { db } from '../db/index.js';
 import { authentication, bioEnrolledUsers, schedules, recruitmentApplicants, departments, plantillaPositions, recruitmentJobs } from '../db/schema.js';
-import { eq, or, and, sql, gt, getTableColumns, desc } from 'drizzle-orm';
+import { eq, or, and, sql, gt, getTableColumns, desc, InferSelectModel } from 'drizzle-orm';
 import { AuthService } from '../services/auth.service.js';
 import { checkSystemWideUniqueness } from '../services/validationService.js';
 import bcrypt from 'bcryptjs';
@@ -41,7 +41,7 @@ const transporter = nodemailer.createTransport({
   }
 });
 
-import { InferSelectModel } from 'drizzle-orm';
+import { sendEmail, generateOTP, sendOTPEmail, maskEmail } from '../utils/emailUtils.js';
 
 // Define the shape of the user object with relations as returned by findFirst/select
 type UserWithRelations = InferSelectModel<typeof authentication> & {
@@ -118,7 +118,43 @@ const mapToAuthUser = (user: UserWithRelations) => {
     umidNumber: user.umidNumber,
     philsysId: user.philsysId,
     tinNumber: user.tinNumber,
-    agencyEmployeeNo: user.agencyEmployeeNo
+    agencyEmployeeNo: user.agencyEmployeeNo,
+
+    // Section IX: Declarations
+    relatedThirdDegree: user.relatedThirdDegree,
+    relatedThirdDetails: user.relatedThirdDetails,
+    relatedFourthDegree: user.relatedFourthDegree,
+    relatedFourthDetails: user.relatedFourthDetails,
+    foundGuiltyAdmin: user.foundGuiltyAdmin,
+    foundGuiltyDetails: user.foundGuiltyDetails,
+    criminallyCharged: user.criminallyCharged,
+    dateFiled: user.dateFiled,
+    statusOfCase: user.statusOfCase,
+    convictedCrime: user.convictedCrime,
+    convictedDetails: user.convictedDetails,
+    separatedFromService: user.separatedFromService,
+    separatedDetails: user.separatedDetails,
+    electionCandidate: user.electionCandidate,
+    electionDetails: user.electionDetails,
+    resignedToPromote: user.resignedToPromote,
+    resignedDetails: user.resignedDetails,
+    immigrantStatus: user.immigrantStatus,
+    immigrantDetails: user.immigrantDetails,
+    indigenousMember: user.indigenousMember,
+    indigenousDetails: user.indigenousDetails,
+    personWithDisability: user.personWithDisability,
+    disabilityIdNo: user.disabilityIdNo,
+    soloParent: user.soloParent,
+    soloParentIdNo: user.soloParentIdNo,
+
+    // Other PDS 2025 Fields
+    dualCountry: user.dualCountry,
+    govtIdType: user.govtIdType,
+    govtIdNo: user.govtIdNo,
+    govtIdIssuance: user.govtIdIssuance,
+    isMeycauayan: !!user.isMeycauayan,
+    dateAccomplished: user.dateAccomplished,
+    pdsQuestions: user.pdsQuestions,
   };
 };
 
@@ -127,52 +163,7 @@ const mapToAuthUser = (user: UserWithRelations) => {
 // Helper Functions
 // ============================================================================
 
-/**
- * Mask email for display (e.g., jo***@email.com)
- */
-const maskEmail = (email: string): string => {
-  return email.replace(/(.{2})(.*)(?=@)/, (_: string, g1: string, g2: string) => g1 + '*'.repeat(g2.length));
-};
-
-/**
- * Generate a 6-digit OTP
- */
-const generateOTP = (): string => {
-  return crypto.randomInt(100000, 999999).toString();
-};
-
-import { sendEmail } from '../utils/emailUtils.js';
-
-/**
- * Send OTP email using the secure shared transporter
- */
-const sendOTPEmail = async (
-  to: string,
-  firstName: string,
-  otp: string,
-  subject: string,
-  purpose: string
-): Promise<void> => {
-  const html = `
-    <div style="font-family: sans-serif; padding: 20px; color: #333;">
-      <h1 style="color: #111;">${subject}</h1>
-      <p>Hi ${firstName},</p>
-      <p>${purpose}</p>
-      <div style="background: #f4f4f4; padding: 15px; border-radius: 8px; text-align: center; margin: 20px 0;">
-        <h2 style="font-size: 32px; font-weight: bold; letter-spacing: 10px; margin: 0; color: #000;">${otp}</h2>
-      </div>
-      <p style="font-size: 12px; color: #666;">This code expires in 10 minutes.</p>
-    </div>
-  `;
-  
-  try {
-    await sendEmail(to, subject, html);
-  } catch (error: unknown) {
-    // Log error but don't crash the request
-    const msg = error instanceof Error ? error.message : String(error);
-    console.error(`[AUTH EMAIL] Failed to send OTP to ${to}:`, msg);
-  }
-};
+// Redundant functions removed — now using shared utils/emailUtils.js
 
 // ============================================================================
 // Auth Controllers
@@ -436,7 +427,8 @@ export const register = async (req: Request & { file?: Express.Multer.File }, re
         philhealthNumber: validatedData.philhealthNumber,
         pagibigNumber: validatedData.pagibigNumber,
         tinNumber: validatedData.tinNumber,
-        gsisNumber: validatedData.gsisNumber
+        gsisNumber: validatedData.gsisNumber,
+        eligibilityNumber: validatedData.eligibilityNumber
     });
 
     if (uniqueErrors.length > 0) {
@@ -653,6 +645,10 @@ export const register = async (req: Request & { file?: Express.Multer.File }, re
       appointmentType: (validatedData.appointmentType || 'Permanent') as 'Permanent' | 'Contractual' | 'Casual' | 'Job Order' | 'Coterminous' | 'Temporary' | 'Contract of Service' | 'JO' | 'COS',
       profileStatus: 'Complete' as const,
       employmentStatus: 'Active' as const, 
+      isOldEmployee: validatedData.isOldEmployee || false,
+      isMeycauayan: !!validatedData.isMeycauayan,
+      dateAccomplished: validatedData.dateAccomplished ? String(validatedData.dateAccomplished) : undefined,
+      pdsQuestions: validatedData.pdsQuestions || undefined,
     };
 
     let newUserId: number;
@@ -750,6 +746,7 @@ export const register = async (req: Request & { file?: Express.Multer.File }, re
         : 'Registration successful! Please check your email for the verification code.',
       data: { 
         email, 
+        id: newUserId,
         employeeId: actualEmployeeId, 
         fullName: `${firstName} ${lastName}`, 
         department,
@@ -800,41 +797,10 @@ export const verifyRegistrationOTP = async (req: Request, res: Response): Promis
       .set({ isVerified: true, verificationToken: null })
       .where(eq(authentication.id, user.id));
 
-    // AUTO LOGIN AFTER VERIFICATION
-    const jwtSecret = process.env.JWT_SECRET;
-    if (!jwtSecret) {
-      throw new Error('JWT_SECRET is not configured');
-    }
-
-    const token = jwt.sign(
-      { 
-        id: Number(user.id), 
-        employeeId: String(user.employeeId),
-        role: String(user.role)
-      },
-      jwtSecret,
-      { expiresIn: '1d' }
-    );
-
-    res.cookie('accessToken', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 24 * 60 * 60 * 1000
-    });
-
-    const [userSchedule] = await db.select({
-      duties: sql<string>`COALESCE((SELECT schedule_title FROM schedules WHERE employee_id = ${user.employeeId} ORDER BY updated_at DESC LIMIT 1), 'No Schedule')`
-    }).from(authentication).where(eq(authentication.id, user.id));
-
     res.status(200).json({ 
       success: true, 
-      message: 'Email verified successfully. Logging you in...',
-      data: mapToAuthUser({
-        ...user,
-        isVerified: true,
-        duties: userSchedule?.duties || 'No Schedule'
-      })
+      message: 'Email verified successfully. You can now login.',
+      data: null
     });
   } catch (_err) {
 
@@ -892,33 +858,33 @@ export const forgotPassword = async (req: Request, res: Response): Promise<void>
     const resetExpires = new Date(Date.now() + 3600000); // 1 hour
 
     await db.update(authentication)
-      .set({ resetPasswordToken: resetToken, resetPasswordExpires: resetExpires.toISOString() })
+      .set({ 
+        resetPasswordToken: resetToken, 
+        resetPasswordExpires: resetExpires.toISOString() 
+      })
       .where(eq(authentication.id, user.id));
 
-    const resetLink = `${process.env.CLIENT_URL}/reset-password?token=${resetToken}`;
+    const frontendUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:3000';
+    const resetLink = `${frontendUrl}/reset-password?token=${resetToken}`;
 
-    const mailOptions = {
-      from: process.env.EMAIL_USER,
-      to: email,
-      subject: 'Password Reset Request - NEBR',
-      html: `
-        <h1>Password Reset</h1>
+    const htmlContent = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+        <h1 style="color: #333; text-align: center;">Password Reset Request</h1>
         <p>Hi ${user.firstName},</p>
-        <p>You requested a password reset. Please click the link below to reset your password:</p>
-        <a href="${resetLink}">Reset Password</a>
-        <p>This link will expire in 1 hour.</p>
-        <p>If you didn't request this, please ignore this email.</p>
-      `
-    };
+        <p>You requested a password reset for your NEBR account. Please click the button below to reset your password:</p>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${resetLink}" style="background-color: #000; color: #fff; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">Reset Password</a>
+        </div>
+        <p>This link will expire in 1 hour. If you did not request this, please ignore this email.</p>
+        <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+        <p style="font-size: 12px; color: #888;">NEBR - Integrated Management System</p>
+      </div>
+    `;
 
-    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-      throw new Error('Email credentials are not configured.');
-    }
-
-    await transporter.sendMail(mailOptions);
+    await sendEmail(email, 'Password Reset Request - NEBR', htmlContent);
     res.status(200).json({ success: true, message: 'Password reset email sent.' });
-  } catch (_error) {
-
+  } catch (err: unknown) {
+    console.error('[FORGOT PASSWORD ERROR]', err);
     res.status(500).json({ success: false, message: 'Failed to send password reset email.' });
   }
 };
@@ -929,7 +895,7 @@ export const resetPassword = async (req: Request, res: Response): Promise<void> 
     const user = await db.query.authentication.findFirst({
       where: and(
         eq(authentication.resetPasswordToken, token),
-        gt(authentication.resetPasswordExpires, sql`NOW()`)
+        gt(authentication.resetPasswordExpires, new Date().toISOString())
       )
     });
 
@@ -949,8 +915,8 @@ export const resetPassword = async (req: Request, res: Response): Promise<void> 
       .where(eq(authentication.id, user.id));
 
     res.status(200).json({ success: true, message: 'Password reset successfully. You can now login.' });
-  } catch (_error) {
-
+  } catch (err: unknown) {
+    console.error('[RESET PASSWORD ERROR]', err);
     res.status(500).json({ success: false, message: 'Failed to reset password.' });
   }
 };
@@ -992,9 +958,19 @@ export const getMe = async (req: Request, res: Response): Promise<void> => {
 export const login = async (req: Request, res: Response): Promise<void> => {
   try {
     const { identifier, password } = LoginSchema.parse(req.body);
-    console.warn(`[LOGIN DEBUG] Attempt for: ${identifier}`);
-
-    const user = await AuthService.findUserByIdentifier(identifier);
+    console.log(`[LOGIN DEBUG] Attempt for: "${identifier}"`);
+    console.log(`[LOGIN DEBUG] Normalized Lower: "${identifier.toLowerCase()}"`);
+    
+    let user;
+    try {
+        user = await AuthService.findUserByIdentifier(identifier);
+        console.log(`[LOGIN DEBUG] User found: ${!!user}${user ? ` (ID: ${user.id}, Role: ${user.role})` : ''}`);
+    } catch (dbErr: any) {
+        console.error(`[LOGIN ERROR] AuthService.findUserByIdentifier failed!`);
+        console.error(`[LOGIN ERROR] Message: ${dbErr.message}`);
+        if (dbErr.sql) console.error(`[LOGIN ERROR] SQL: ${dbErr.sql}`);
+        throw dbErr; // Rethrow to be caught by the main catch block
+    }
     
     if (!user) {
 
@@ -1589,6 +1565,45 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
     if (updates.dateHired !== undefined) mappedUpdates.dateHired = String(updates.dateHired);
     if (updates.originalAppointmentDate !== undefined) mappedUpdates.originalAppointmentDate = String(updates.originalAppointmentDate);
     if (updates.lastPromotionDate !== undefined) mappedUpdates.lastPromotionDate = String(updates.lastPromotionDate);
+
+    // Section IX: Declarations
+    if (updates.relatedThirdDegree !== undefined) mappedUpdates.relatedThirdDegree = String(updates.relatedThirdDegree);
+    if (updates.relatedThirdDetails !== undefined) mappedUpdates.relatedThirdDetails = String(updates.relatedThirdDetails);
+    if (updates.relatedFourthDegree !== undefined) mappedUpdates.relatedFourthDegree = String(updates.relatedFourthDegree);
+    if (updates.relatedFourthDetails !== undefined) mappedUpdates.relatedFourthDetails = String(updates.relatedFourthDetails);
+    if (updates.foundGuiltyAdmin !== undefined) mappedUpdates.foundGuiltyAdmin = String(updates.foundGuiltyAdmin);
+    if (updates.foundGuiltyDetails !== undefined) mappedUpdates.foundGuiltyDetails = String(updates.foundGuiltyDetails);
+    if (updates.criminallyCharged !== undefined) mappedUpdates.criminallyCharged = String(updates.criminallyCharged);
+    if (updates.dateFiled !== undefined) mappedUpdates.dateFiled = String(updates.dateFiled);
+    if (updates.statusOfCase !== undefined) mappedUpdates.statusOfCase = String(updates.statusOfCase);
+    if (updates.convictedCrime !== undefined) mappedUpdates.convictedCrime = String(updates.convictedCrime);
+    if (updates.convictedDetails !== undefined) mappedUpdates.convictedDetails = String(updates.convictedDetails);
+    if (updates.separatedFromService !== undefined) mappedUpdates.separatedFromService = String(updates.separatedFromService);
+    if (updates.separatedDetails !== undefined) mappedUpdates.separatedDetails = String(updates.separatedDetails);
+    if (updates.electionCandidate !== undefined) mappedUpdates.electionCandidate = String(updates.electionCandidate);
+    if (updates.electionDetails !== undefined) mappedUpdates.electionDetails = String(updates.electionDetails);
+    if (updates.resignedToPromote !== undefined) mappedUpdates.resignedToPromote = String(updates.resignedToPromote);
+    if (updates.resignedDetails !== undefined) mappedUpdates.resignedDetails = String(updates.resignedDetails);
+    if (updates.immigrantStatus !== undefined) mappedUpdates.immigrantStatus = String(updates.immigrantStatus);
+    if (updates.immigrantDetails !== undefined) mappedUpdates.immigrantDetails = String(updates.immigrantDetails);
+    if (updates.indigenousMember !== undefined) mappedUpdates.indigenousMember = String(updates.indigenousMember);
+    if (updates.indigenousDetails !== undefined) mappedUpdates.indigenousDetails = String(updates.indigenousDetails);
+    if (updates.personWithDisability !== undefined) mappedUpdates.personWithDisability = String(updates.personWithDisability);
+    if (updates.disabilityIdNo !== undefined) mappedUpdates.disabilityIdNo = String(updates.disabilityIdNo);
+    if (updates.soloParent !== undefined) mappedUpdates.soloParent = String(updates.soloParent);
+    if (updates.soloParentIdNo !== undefined) mappedUpdates.soloParentIdNo = String(updates.soloParentIdNo);
+
+    // Other PDS 2025 Fields
+    if (updates.dualCountry !== undefined) mappedUpdates.dualCountry = String(updates.dualCountry);
+    if (updates.govtIdType !== undefined) mappedUpdates.govtIdType = String(updates.govtIdType);
+    if (updates.govtIdNo !== undefined) mappedUpdates.govtIdNo = String(updates.govtIdNo);
+    if (updates.govtIdIssuance !== undefined) mappedUpdates.govtIdIssuance = String(updates.govtIdIssuance);
+    
+    // NEW PDS 2025 FIELDS
+    if (updates.isMeycauayan !== undefined) mappedUpdates.isMeycauayan = !!updates.isMeycauayan;
+    if (updates.dateAccomplished !== undefined) mappedUpdates.dateAccomplished = updates.dateAccomplished ? String(updates.dateAccomplished) : null;
+    if (updates.pdsQuestions !== undefined) mappedUpdates.pdsQuestions = updates.pdsQuestions || null;
+
     if (avatarUrl) mappedUpdates.avatarUrl = avatarUrl;
 
     if (Object.keys(mappedUpdates).length === 0) {

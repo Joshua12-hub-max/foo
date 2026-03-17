@@ -15,13 +15,13 @@ import {
     ApiResponse 
 } from '../types';
 
-interface EmployeeResponse {
+interface EmployeeResponse<T = Employee> {
   success: boolean;
-  employees?: Employee[];
-  profile?: Employee;
+  employees?: T[];
+  profile?: T;
   message?: string;
   id?: string | number;
-  data?: Employee; // Profile data returned from auth endpoint
+  data?: T; 
   previousStatus?: string;
   newStatus?: string;
   skills?: Skill[];
@@ -63,11 +63,13 @@ export const fetchEmployees = async (deptParams: { department?: string | null, d
   }
 };
 
-export const fetchEmployeeProfile = async (id: string | number): Promise<EmployeeResponse> => {
+import { EmployeeDetailed } from '../types/employee';
+
+export const fetchEmployeeProfile = async (id: string | number): Promise<EmployeeResponse<EmployeeDetailed>> => {
   try {
     const response = await axios.get(`/employees/${id}`);
     const employee = response.data.employee;
-    return { success: true, profile: employee as Employee };
+    return { success: true, profile: employee as EmployeeDetailed };
   } catch (error: unknown) {
     return { success: false, profile: undefined };
   }

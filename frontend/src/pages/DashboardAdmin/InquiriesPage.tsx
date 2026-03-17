@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { inquiryApi, Inquiry } from '@/api/inquiryApi';
 import { 
   Mail, MessageSquare, Clock, Filter, CheckCircle2, 
-  Trash2, Archive, Reply, Loader2, Search, AlertCircle, X, CheckCircle2
+  Trash2, Archive, Reply, Loader2, Search, AlertCircle, X
 } from 'lucide-react';
 import { useToastStore } from '@/stores';
 

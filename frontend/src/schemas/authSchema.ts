@@ -69,13 +69,13 @@ export const RegisterSchema = z.object({
   emergencyContactNumber: z.string().optional(),
 
   // Government Identification
-  gsisNumber: createIdValidator(ID_REGEX.GSIS, "GSIS Number"),
-  pagibigNumber: createIdValidator(ID_REGEX.PAGIBIG, "Pag-IBIG Number"),
-  philhealthNumber: createIdValidator(ID_REGEX.PHILHEALTH, "PhilHealth Number"),
-  umidNumber: createIdValidator(ID_REGEX.UMID, "UMID Number"),
-  philsysId: createIdValidator(ID_REGEX.PHILSYS, "PhilSys ID"),
-  tinNumber: createIdValidator(ID_REGEX.TIN, "TIN"),
-  agencyEmployeeNo: z.string().optional(),
+  gsisNumber: createIdValidator(ID_REGEX.GSIS, "GSIS Number").optional().nullable().or(z.literal('')),
+  pagibigNumber: createIdValidator(ID_REGEX.PAGIBIG, "Pag-IBIG Number").optional().nullable().or(z.literal('')),
+  philhealthNumber: createIdValidator(ID_REGEX.PHILHEALTH, "PhilHealth Number").optional().nullable().or(z.literal('')),
+  umidNumber: createIdValidator(ID_REGEX.UMID, "UMID Number").optional().nullable().or(z.literal('')),
+  philsysId: createIdValidator(ID_REGEX.PHILSYS, "PhilSys ID").optional().nullable().or(z.literal('')),
+  tinNumber: createIdValidator(ID_REGEX.TIN, "TIN").optional().nullable().or(z.literal('')),
+  agencyEmployeeNo: z.string().optional().nullable().or(z.literal('')),
 
   // Educational Background
   educationalBackground: z.enum(EDUCATION_LEVELS).or(z.literal('')).optional(),
@@ -92,15 +92,18 @@ export const RegisterSchema = z.object({
   eligibilityDate: z.string().optional(),
 
   // Social & Others
-  facebookUrl: z.string().optional(),
-  linkedinUrl: z.string().optional(),
-  twitterHandle: z.string().optional(),
+  facebookUrl: z.string().optional().nullable().or(z.literal('')),
+  linkedinUrl: z.string().optional().nullable().or(z.literal('')),
+  twitterHandle: z.string().optional().nullable().or(z.literal('')),
   ignoreDuplicateWarning: z.boolean().optional(),
 
   // Applicant data linking (auto-populated when pre-filling from hired applicant)
   applicantId: z.number().optional(),
   applicantHiredDate: z.string().optional(),
+  applicantStartDate: z.string().optional(),
   applicantPhotoPath: z.string().optional(),
+  dateAccomplished: z.string().optional(),
+  pdsQuestions: z.any().optional(),
 }).superRefine((data, ctx) => {
   if (data.isMeycauayan === "true") {
     if (!data.barangay || data.barangay.length === 0) {
@@ -116,6 +119,35 @@ export const RegisterSchema = z.object({
         code: z.ZodIssueCode.custom,
         message: "Address is required",
         path: ["address"],
+      });
+    }
+  }
+
+  // Duty Type Conditional Validation
+  if (data.dutyType === "Standard") {
+    const requiredGovIds = [
+      { key: "gsisNumber", name: "GSIS" },
+      { key: "pagibigNumber", name: "Pag-IBIG" },
+      { key: "philhealthNumber", name: "PhilHealth" },
+      { key: "tinNumber", name: "TIN" }
+    ];
+
+    requiredGovIds.forEach(({ key, name }) => {
+      const val = data[key as keyof typeof data];
+      if (!val || val === "" || (typeof val === "string" && val.trim() === "")) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `${name} Number is required for Standard employees`,
+          path: [key],
+        });
+      }
+    });
+
+    if (!data.eligibilityType || data.eligibilityType === "none" || data.eligibilityType === "") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Eligibility is required for Standard employees",
+        path: ["eligibilityType"],
       });
     }
   }
@@ -160,6 +192,7 @@ export type ForgotPasswordInput = z.infer<typeof ForgotPasswordSchema>;
 export type ResetPasswordInput = z.infer<typeof ResetPasswordSchema>;
 
 export interface RegisterData {
+  id: number;
   email: string;
   employeeId: string;
   fullName: string;

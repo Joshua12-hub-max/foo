@@ -9,6 +9,8 @@ import EmployeeMemos, { AdminMemoPageRef } from '@/pages/EmployeeManagementAdmin
 import InternalPoliciesPage from '@/pages/InternalPolicies/InternalPoliciesPage';
 import ShiftTemplateManagement from '@/pages/EmployeeManagementAdmin/ShiftTemplateManagement';
 
+import EmployeeList, { EmployeeListRef } from '@/pages/EmployeeManagementAdmin/EmployeeDirectoryPage';
+
 interface OutletContext {
   sidebarOpen?: boolean;
 }
@@ -24,19 +26,20 @@ const EmployeeManagementHub: React.FC = () => {
     const sidebarOpen = useUIStore((state) => state.sidebarOpen);
 
     // Refs for calling child functions
+    const employeeRef = useRef<EmployeeListRef>(null);
     const departmentRef = useRef<DepartmentListRef>(null);
     const plantillaRef = useRef<PlantillaManagementRef>(null);
     const memoRef = useRef<AdminMemoPageRef>(null);
 
-    // Get active tab from URL hash or default to 'departments'
+    // Get active tab from URL hash or default to 'employees'
     const [activeTab, setActiveTab] = useState<string>(() => {
         const hash = location.hash.replace('#', '');
-        return ['departments', 'plantilla', 'memos', 'policies'].includes(hash) ? hash : 'departments';
+        return ['employees', 'departments', 'plantilla', 'memos', 'policies'].includes(hash) ? hash : 'employees';
     });
 
     useEffect(() => {
         const hash = location.hash.replace('#', '');
-        if (['departments', 'plantilla', 'memos', 'policies'].includes(hash)) {
+        if (['employees', 'departments', 'plantilla', 'memos', 'policies'].includes(hash)) {
             setActiveTab(hash);
         }
     }, [location.hash]);
@@ -47,7 +50,9 @@ const EmployeeManagementHub: React.FC = () => {
     };
 
     const handleAddClick = (): void => {
-        if (activeTab === 'departments' && departmentRef.current) {
+        if (activeTab === 'employees' && employeeRef.current) {
+            employeeRef.current.openAddModal();
+        } else if (activeTab === 'departments' && departmentRef.current) {
             departmentRef.current.openAddModal();
         } else if (activeTab === 'plantilla' && plantillaRef.current) {
             plantillaRef.current.openAddModal();
@@ -57,6 +62,7 @@ const EmployeeManagementHub: React.FC = () => {
     };
 
     const tabs: Tab[] = [
+        { id: 'employees', label: 'Employees' },
         { id: 'departments', label: 'Departments' },
         { id: 'plantilla', label: 'Plantilla' },
         { id: 'memos', label: 'Memos' },
@@ -66,6 +72,7 @@ const EmployeeManagementHub: React.FC = () => {
 
     const getAddButtonLabel = (): string => {
         switch (activeTab) {
+            case 'employees': return 'Onboard Member';
             case 'departments': return 'Add Department';
             case 'plantilla': return 'New Position';
             case 'memos': return 'New Memo';
@@ -115,6 +122,7 @@ const EmployeeManagementHub: React.FC = () => {
 
             {/* Content Area */}
             <div className="w-full">
+                {activeTab === 'employees' && <EmployeeList ref={employeeRef} hideHeader={true} />}
                 {activeTab === 'departments' && <DepartmentList ref={departmentRef} hideHeader={true} />}
                 {activeTab === 'plantilla' && <PlantillaManagement ref={plantillaRef} hideHeader={true} />}
                 {activeTab === 'memos' && <EmployeeMemos ref={memoRef} hideHeader={true} />}

@@ -1,26 +1,27 @@
-import { UserRole, EmploymentStatus, Gender, CivilStatus, AppointmentType } from './enums';
+export type { UserRole, EmploymentStatus, Gender, CivilStatus, AppointmentType, CitizenshipType } from './enums';
 
 export interface Employee {
   id: number;
   firstName: string;
   lastName: string;
   middleName: string | null;
+  suffix: string | null;
   email: string;
-  role: UserRole;
+  role: string;
   department?: string | null;
   departmentId?: number | null;
   employeeId: string;
   jobTitle?: string | null;
   positionTitle?: string | null;
-  employmentStatus: EmploymentStatus | null;
+  employmentStatus: string | null;
   employmentType: string | null;
   dateHired: string | null;
   contractEndDate: string | null;
   regularizationDate: string | null;
   isRegular: boolean;
   birthDate: string | null;
-  gender: Gender | null;
-  civilStatus: CivilStatus | null;
+  gender: string | null;
+  civilStatus: string | null;
   nationality: string | null;
   phoneNumber: string | null;
   address: string | null;
@@ -43,7 +44,7 @@ export interface Employee {
   coreCompetencies: string | null;
   salaryGrade: string | null;
   stepIncrement: number;
-  appointmentType: AppointmentType | null;
+  appointmentType: string | null;
   station: string | null;
   itemNumber: string | null;
   positionId: number | null;
@@ -51,8 +52,8 @@ export interface Employee {
   experience: string | null;
 
   // PDS / Extended Fields
-  heightM: string | null;
-  weightKg: string | null;
+  heightM: string | number | null;
+  weightKg: string | number | null;
   bloodType: string | null;
   placeOfBirth: string | null;
   residentialAddress: string | null;
@@ -69,16 +70,14 @@ export interface Employee {
   resBarangay: string | null;
   resCity: string | null;
   resProvince: string | null;
+  resRegion: string | null;
   permHouseBlockLot: string | null;
   permStreet: string | null;
   permSubdivision: string | null;
   permBarangay: string | null;
   permCity: string | null;
   permProvince: string | null;
-  rightThumbmarkUrl: string | null;
-  ctcNo: string | null;
-  ctcIssuedAt: string | null;
-  ctcIssuedDate: string | null;
+  permRegion: string | null;
   
   facebookUrl: string | null;
   linkedinUrl: string | null;
@@ -96,7 +95,103 @@ export interface Employee {
   originalAppointmentDate: string | null;
   lastPromotionDate: string | null;
   isBiometricEnrolled: boolean;
+
+  // Section IX: Declarations
+  relatedThirdDegree: string | null;
+  relatedThirdDetails: string | null;
+  relatedFourthDegree: string | null;
+  relatedFourthDetails: string | null;
+  foundGuiltyAdmin: string | null;
+  foundGuiltyDetails: string | null;
+  criminallyCharged: string | null;
+  dateFiled: string | null;
+  statusOfCase: string | null;
+  convictedCrime: string | null;
+  convictedDetails: string | null;
+  separatedFromService: string | null;
+  separatedDetails: string | null;
+  electionCandidate: string | null;
+  electionDetails: string | null;
+  resignedToPromote: string | null;
+  resignedDetails: string | null;
+  immigrantStatus: string | null;
+  immigrantDetails: string | null;
+  indigenousMember: string | null;
+  indigenousDetails: string | null;
+  personWithDisability: string | null;
+  disabilityIdNo: string | null;
+  soloParent: string | null;
+  soloParentIdNo: string | null;
+
+  // Other PDS 2025 Fields
+  dualCountry: string | null;
+  govtIdType: string | null;
+  govtIdNo: string | null;
+  govtIdIssuance: string | null;
+  startTime: string | null;
+  endTime: string | null;
+  dutyType: string | null;
+  isMeycauayan: boolean | string | null;
+  dateAccomplished: string | null;
+  pdsQuestions: any;
 }
+
+// ─── PDS Sub-Interfaces (Strict for Wizard) ──────────────────────────────────
+
+export interface Child {
+  id?: string | number;
+  fullName: string;
+  dob: string;
+}
+
+export interface Eligibility {
+  id?: string | number;
+  name: string;
+  rating: string;
+  examDate: string;
+  examPlace: string;
+  licenseNo: string;
+  licenseValidUntil: string;
+}
+
+export interface WorkExperience {
+    id?: string | number;
+    positionTitle: string;
+    department: string;
+    from: string;
+    to: string;
+    monthlySalary: string;
+    salaryGrade: string;
+    appointmentStatus: string;
+    govtService: string;
+}
+
+export interface Training {
+    id?: string | number;
+    title: string;
+    from: string;
+    to: string;
+    hours: string;
+    ldType: string;
+    conductedBy: string;
+}
+
+export interface VoluntaryWork {
+    id?: string | number;
+    organization: string;
+    from: string;
+    to: string;
+    hours: string;
+    positionNature: string;
+}
+
+export interface Reference {
+    name: string;
+    address: string;
+    contact: string;
+}
+
+// ─── Database-aligned Interfaces ──────────────────────────────────────────────
 
 export interface Skill {
   id: number;
@@ -108,12 +203,16 @@ export interface Skill {
 
 export interface Education {
   id: number;
+  level: 'Elementary' | 'Secondary' | 'Vocational' | 'College' | 'Graduate Studies' | string;
   institution: string;
   degree: string | null;
   fieldOfStudy: string | null;
-  startDate: string | null;
-  endDate: string | null;
-  isCurrent: number;
+  startDate: string | number | null;
+  endDate: string | number | null;
+  yearGraduated: number | string | null;
+  unitsEarned: string | null;
+  isCurrent: boolean | number;
+  honors: string | null;
   type?: string | null;
 }
 
@@ -124,27 +223,27 @@ export interface EmergencyContact {
   phoneNumber: string;
   email: string | null;
   address: string | null;
-  isPrimary: number;
+  isPrimary: boolean | number;
 }
 
-export interface VoluntaryWork {
+export interface VoluntaryWork_DB {
   id: number;
   organizationName: string;
-  address?: string;
-  dateFrom?: string;
-  dateTo?: string;
-  hoursNumber?: number;
-  position?: string;
+  address: string | null;
+  dateFrom: string | null;
+  dateTo: string | null;
+  hoursNumber: number | null;
+  position: string | null;
 }
 
 export interface LearningDevelopment {
   id: number;
   title: string;
-  dateFrom?: string;
-  dateTo?: string;
-  hoursNumber?: number;
-  typeOfLd?: string;
-  conductedBy?: string;
+  dateFrom: string | null;
+  dateTo: string | null;
+  hoursNumber: number | null;
+  typeOfLd: string | null;
+  conductedBy: string | null;
 }
 
 export interface WorkplaceExperience {
@@ -193,14 +292,13 @@ export interface PdsReference {
   telNo: string | null;
 }
 
-
 export interface EmployeeDetailed extends Employee {
   skills: Skill[];
   education: Education[];
   emergencyContacts: EmergencyContact[];
   customFields: CustomField[];
   familyBackground: FamilyMember[];
-  voluntaryWork: VoluntaryWork[];
+  voluntaryWork: VoluntaryWork_DB[];
   learningDevelopment: LearningDevelopment[];
   workExperience: WorkplaceExperience[];
   otherInfo: PdsOtherInfo[];
