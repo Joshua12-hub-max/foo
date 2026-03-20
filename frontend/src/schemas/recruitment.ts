@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { createIdValidator, ID_REGEX } from './idValidation';
+import { createIdValidator, createStrictIdValidator, ID_REGEX } from './idValidation';
 
 export const EDUCATION_LEVELS = [
   "Elementary School Graduate",
@@ -132,12 +132,12 @@ export const createDynamicJobApplicationSchema = (
   const minEligibilityRank = getEligibilityRank(eligibilityReq);
 
   return jobApplicationSchema.extend({
-    gsisNumber: needIds ? z.string().min(1, 'GSIS Number is required') : z.string().optional(),
-    pagibigNumber: needIds ? z.string().min(1, 'Pag-IBIG is required') : z.string().optional(),
-    philhealthNumber: needIds ? z.string().min(1, 'PhilHealth is required') : z.string().optional(),
-    umidNumber: needIds ? z.string().min(1, 'UMID is required') : z.string().optional(),
-    philsysId: needIds ? z.string().min(1, 'PhilSys ID is required') : z.string().optional(),
-    tinNumber: needIds ? z.string().min(1, 'TIN is required') : z.string().optional(),
+    gsisNumber: needIds ? createStrictIdValidator(ID_REGEX.GSIS, "GSIS Number") : createIdValidator(ID_REGEX.GSIS, "GSIS Number"),
+    pagibigNumber: needIds ? createStrictIdValidator(ID_REGEX.PAGIBIG, "Pag-IBIG Number") : createIdValidator(ID_REGEX.PAGIBIG, "Pag-IBIG Number"),
+    philhealthNumber: needIds ? createStrictIdValidator(ID_REGEX.PHILHEALTH, "PhilHealth Number") : createIdValidator(ID_REGEX.PHILHEALTH, "PhilHealth Number"),
+    umidNumber: needIds ? createStrictIdValidator(ID_REGEX.UMID, "UMID Number") : createIdValidator(ID_REGEX.UMID, "UMID Number"),
+    philsysId: needIds ? createStrictIdValidator(ID_REGEX.PHILSYS, "PhilSys ID") : createIdValidator(ID_REGEX.PHILSYS, "PhilSys ID"),
+    tinNumber: needIds ? createStrictIdValidator(ID_REGEX.TIN, "TIN") : createIdValidator(ID_REGEX.TIN, "TIN"),
     
     eligibilityType: needCsc ? z.enum(['csc_prof', 'csc_sub', 'ra_1080', 'special_laws', 'drivers_license', 'tesda', 'others'], { message: 'Eligibility is required' }) : jobApplicationSchema.shape.eligibilityType,
     

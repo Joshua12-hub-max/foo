@@ -13,6 +13,8 @@ export interface DTRApiResponse {
   employeeName?: string;
   department?: string;
   duties?: string;
+  shift?: string;
+  dutyType?: string;
   correctionId?: number | null;
   correctionStatus?: string | null;
   correctionReason?: string | null;
@@ -31,6 +33,8 @@ export interface AttendanceLogApiResponse {
   department?: string;
   duties?: string;
   dtrStatus?: string;
+  dutyType?: string;
+  shift?: string;
 }
 
 export interface TardinessSummaryApiResponse {

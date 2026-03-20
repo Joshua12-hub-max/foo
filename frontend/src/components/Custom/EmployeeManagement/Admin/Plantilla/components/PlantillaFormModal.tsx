@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { useForm, SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@/lib/zodResolver';
 import { X, Loader } from 'lucide-react';
+import Combobox from '@/components/Custom/Combobox';
 // @ts-ignore
 import { plantillaApi } from '@api/plantillaApi';
 import { plantillaSchema, PlantillaSchema } from '@/schemas/plantilla';
@@ -119,12 +120,15 @@ const PlantillaFormModal: React.FC<PlantillaFormModalProps> = ({
                 />
                 {errors.itemNumber && <p className="text-xs text-red-500 mt-1">{errors.itemNumber.message}</p>}
               </div>
-              <div>
+              <div className="z-30 relative">
                 <label className="block text-xs font-bold text-gray-700 mb-1">Salary Grade (1-33)*</label>
-                <input 
-                  type="number" min={1} max={33}
-                  {...register('salaryGrade')}
-                  className={`w-full px-3 py-2 bg-gray-50 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-100 transition-all ${errors.salaryGrade ? 'border-red-500' : 'border-gray-200'}`}
+                <Combobox
+                  options={Array.from({ length: 33 }, (_, i) => ({ value: String(i + 1), label: `SG ${i + 1}` }))}
+                  value={String(watch('salaryGrade') || '')}
+                  onChange={(val) => setValue('salaryGrade', Number(val), { shouldValidate: true })}
+                  placeholder="Select SG"
+                  error={!!errors.salaryGrade}
+                  buttonClassName="w-full px-3 py-2 bg-gray-50 border rounded-lg text-sm"
                 />
                  {errors.salaryGrade && <p className="text-xs text-red-500 mt-1">{errors.salaryGrade.message}</p>}
               </div>
@@ -142,35 +146,36 @@ const PlantillaFormModal: React.FC<PlantillaFormModalProps> = ({
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <div>
+              <div className="z-20 relative">
                 <label className="block text-xs font-bold text-gray-700 mb-1">Step Increment</label>
-                <input 
-                  type="number" min={1} max={8}
-                  {...register('stepIncrement')}
-                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-100 transition-all"
+                <Combobox
+                  options={Array.from({ length: 8 }, (_, i) => ({ value: String(i + 1), label: `Step ${i + 1}` }))}
+                  value={String(watch('stepIncrement') || 1)}
+                  onChange={(val) => setValue('stepIncrement', Number(val))}
+                  placeholder="Select Step"
+                  buttonClassName="w-full px-3 py-2 bg-gray-50 border rounded-lg text-sm"
                 />
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">Monthly Salary</label>
                 <input 
                   type="number" step="0.01"
-                  {...register('monthlySalary')}
+                  {...register('monthlySalary', { valueAsNumber: true })}
                   className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-100 transition-all"
                 />
               </div>
             </div>
 
-            <div>
+            <div className="z-10 relative">
               <label className="block text-xs font-bold text-gray-700 mb-1">Department*</label>
-              <select 
-                {...register('department')}
-                className={`w-full px-3 py-2 bg-gray-50 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-100 transition-all ${errors.department ? 'border-red-500' : 'border-gray-200'}`}
-              >
-                <option value="">Select Department</option>
-                {departments.map(dept => (
-                  <option key={dept} value={dept}>{dept}</option>
-                ))}
-              </select>
+              <Combobox
+                options={departments.map(dept => ({ value: dept, label: dept }))}
+                value={watch('department')}
+                onChange={(val) => setValue('department', val, { shouldValidate: true })}
+                placeholder="Select Department"
+                error={!!errors.department}
+                buttonClassName="w-full px-3 py-2 bg-gray-50 border rounded-lg text-sm"
+              />
                {errors.department && <p className="text-xs text-red-500 mt-1">{errors.department.message}</p>}
             </div>
           </div>

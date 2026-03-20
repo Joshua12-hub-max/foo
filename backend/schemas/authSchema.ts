@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { createIdValidator, ID_REGEX } from './idValidation.js';
+import { PdsQuestionsSchema } from './pdsSchema.js';
 
 export const LoginSchema = z.object({
   identifier: z.string().min(1, "Email or Employee ID is required"),
@@ -15,7 +16,7 @@ export const RegisterSchema = z.object({
   
   // Address
   address: z.string().optional(), // Optional because it might be auto-generated from barangay
-  isMeycauayan: z.string().optional().default('false').transform((val) => val === 'true'), 
+  isMeycauayan: z.union([z.boolean(), z.string()]).optional().default('false').transform((val) => val === true || val === 'true'), 
   barangay: z.string().optional(),
 
   email: z.string().email("Invalid email format"),
@@ -33,8 +34,8 @@ export const RegisterSchema = z.object({
   // Personal Info
   birthDate: z.string().optional().or(z.null()).or(z.literal("")),
   placeOfBirth: z.string().optional().or(z.null()).or(z.literal("")),
-  gender: z.enum(["Male", "Female", ""]).optional().or(z.null()),
-  civilStatus: z.enum(["Single", "Married", "Widowed", "Separated", "Annulled", ""]).optional().or(z.null()),
+  gender: z.enum(["Male", "Female"]).optional().or(z.null()),
+  civilStatus: z.enum(["Single", "Married", "Widowed", "Separated", "Annulled"]).optional().or(z.null()),
   nationality: z.string().optional().or(z.null()).or(z.literal("")),
   bloodType: z.string().optional().or(z.null()).or(z.literal("")),
   heightM: z.string().optional().or(z.null()).or(z.literal("")),
@@ -104,7 +105,7 @@ export const RegisterSchema = z.object({
   applicantHiredDate: z.string().optional(),
   applicantPhotoPath: z.string().optional(),
   dateAccomplished: z.string().optional().or(z.null()).or(z.literal("")),
-  pdsQuestions: z.any().optional(),
+  pdsQuestions: PdsQuestionsSchema.optional().nullable(),
   isOldEmployee: z.boolean().optional().default(false),
 });
 
@@ -227,7 +228,7 @@ export const UpdateProfileSchema = z.object({
   itemNumber: z.string().optional(),
   salaryGrade: z.string().optional(),
   stepIncrement: z.string().or(z.number()).optional(),
-  appointmentType: z.enum(['Permanent', 'Contractual', 'Casual', 'Job Order', 'Coterminous', 'Temporary']).optional(),
+  appointmentType: z.enum(['Permanent', 'Contractual', 'Casual', 'Job Order', 'Coterminous', 'Temporary', 'Contract of Service', 'JO', 'COS']).optional(),
   employmentStatus: z.enum(['Active', 'Probationary', 'Terminated', 'Resigned', 'On Leave', 'Suspended', 'Verbal Warning', 'Written Warning', 'Show Cause']).optional(),
   station: z.string().optional(),
   officeAddress: z.string().optional(),
@@ -269,7 +270,7 @@ export const UpdateProfileSchema = z.object({
   govtIdIssuance: z.string().optional(),
   isMeycauayan: z.union([z.boolean(), z.string().transform(v => v === 'true')]).optional(),
   dateAccomplished: z.string().optional().or(z.null()).or(z.literal("")),
-  pdsQuestions: z.any().optional(),
+  pdsQuestions: PdsQuestionsSchema.optional().nullable(),
 });
 
 export type UpdateProfileInput = z.infer<typeof UpdateProfileSchema>;

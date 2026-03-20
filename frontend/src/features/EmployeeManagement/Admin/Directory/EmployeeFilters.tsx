@@ -1,5 +1,6 @@
 import React from 'react';
 import { Search } from 'lucide-react';
+import Combobox from '@/components/Custom/Combobox';
 
 interface EmployeeFiltersProps {
   searchTerm: string;
@@ -35,17 +36,18 @@ const EmployeeFilters: React.FC<EmployeeFiltersProps> = ({
 
         {/* Right Side: Filter + Count */}
         <div className="flex items-center gap-4">
-          <select 
-            className="bg-white border border-gray-300 rounded-xl shadow-sm px-4 py-2 text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-            value={filterDepartment}
-            onChange={(e) => onFilterChange(e.target.value)}
-          >
-            {filterOptions.map(dept => (
-              <option key={dept} value={dept}>
-                {dept === 'All' ? 'All Departments' : dept}
-              </option>
-            ))}
-          </select>
+          <div className="relative z-[50] w-64">
+            <Combobox
+              options={filterOptions.map(dept => ({
+                value: dept,
+                label: dept === 'All' ? 'All Departments' : dept
+              }))}
+              value={filterDepartment}
+              onChange={(val) => onFilterChange(val)}
+              placeholder="All Departments"
+              buttonClassName="w-full bg-white border border-gray-300 rounded-xl shadow-sm px-4 py-2 text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-bold h-[42px]"
+            />
+          </div>
 
           {totalRecords !== undefined && (
             <span className="text-sm text-gray-500 font-medium whitespace-nowrap">

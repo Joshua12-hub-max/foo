@@ -81,6 +81,7 @@ export const uploadAvatar: Multer = createUploader('avatars');
 export const uploadLeave: Multer = createUploader('leaves');
 export const uploadUndertime: Multer = createUploader('undertime');
 export const uploadResume: Multer = createUploader('resumes');
+export const uploadPDS: Multer = createUploader('pds');
 export const uploadGeneral: Multer = createUploader('general');
 
 // Default export for backward compatibility (maps to 'general')

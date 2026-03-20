@@ -3,7 +3,7 @@ import { z } from 'zod';
 import fs from 'fs';
 import path from 'path';
 import { db } from '../db/index.js';
-import { authentication, bioEnrolledUsers, schedules, recruitmentApplicants, departments, plantillaPositions, recruitmentJobs } from '../db/schema.js';
+import { authentication, bioEnrolledUsers, schedules, recruitmentApplicants, departments, plantillaPositions, recruitmentJobs, shiftTemplates } from '../db/schema.js';
 import { eq, or, and, sql, gt, getTableColumns, desc, InferSelectModel } from 'drizzle-orm';
 import { AuthService } from '../services/auth.service.js';
 import { checkSystemWideUniqueness } from '../services/validationService.js';
@@ -49,6 +49,7 @@ type UserWithRelations = InferSelectModel<typeof authentication> & {
   plantillaPosition?: { positionTitle: string | null } | null;
   pdsEducations?: { schoolName: string | null }[] | null;
   duties?: string;
+  shift?: string;
 };
 
 /**
@@ -94,7 +95,8 @@ const mapToAuthUser = (user: UserWithRelations) => {
     emergencyContact: user.emergencyContact,
     emergencyContactNumber: user.emergencyContactNumber,
     educationalBackground: user.pdsEducations?.[0]?.schoolName || user.educationalBackground || null,
-    duties: user.duties || 'No Schedule',
+    duties: user.duties || 'Standard Shift',
+    shift: user.shift || '08:00 AM - 05:00 PM',
     dutyType: (user.dutyType as string) || 'Standard',
     appointmentType: (user.appointmentType as string) || 'Permanent',
     isVerified: user.isVerified ?? false,
@@ -431,8 +433,12 @@ export const register = async (req: Request & { file?: Express.Multer.File }, re
         eligibilityNumber: validatedData.eligibilityNumber
     });
 
-    if (uniqueErrors.length > 0) {
-        res.status(409).json({ success: false, message: 'Uniqueness validation failed.', errors: uniqueErrors });
+    if (Object.keys(uniqueErrors).length > 0) {
+        res.status(409).json({ 
+            success: false, 
+            message: 'Uniqueness validation failed.', 
+            errors: Object.values(uniqueErrors) 
+        });
         return;
     }
 
@@ -574,32 +580,32 @@ export const register = async (req: Request & { file?: Express.Multer.File }, re
       departmentId,            
       employeeId: actualEmployeeId,
       passwordHash: hashedPassword,
-      isVerified: (effectiveFinalizingSetup && (assignedRole === 'Administrator' || assignedRole === 'Human Resource')) ? (existingUser?.isVerified ?? false) : false,
-      verificationToken: (effectiveFinalizingSetup && (assignedRole === 'Administrator' || assignedRole === 'Human Resource') && existingUser?.isVerified) ? null : (verificationOTP || null),
+      isVerified: false, 
+      verificationToken: verificationOTP,
       avatarUrl,
       jobTitle: positionTitle,
       positionTitle: positionTitle,
       itemNumber: itemNumber,
       dateHired: validatedData.applicantHiredDate || new Date().toISOString().split('T')[0],
-      birthDate: (validatedData.birthDate && validatedData.birthDate !== "" ? validatedData.birthDate : null),
-      placeOfBirth: (validatedData.placeOfBirth && validatedData.placeOfBirth !== "" ? validatedData.placeOfBirth : null),
-      gender: (validatedData.gender && (validatedData.gender as string) !== "" ? validatedData.gender : null) as 'Male' | 'Female' | null,
-      civilStatus: (validatedData.civilStatus && (validatedData.civilStatus as string) !== "" ? validatedData.civilStatus : null) as 'Single' | 'Married' | 'Widowed' | 'Separated' | 'Annulled' | null,
-      nationality: validatedData.nationality || 'Filipino',
-      bloodType: (validatedData.bloodType && (validatedData.bloodType as string) !== "" ? validatedData.bloodType : null),
       heightM: (() => {
-        if (!validatedData.heightM || validatedData.heightM === "") return null;
-        let h = parseFloat(validatedData.heightM as string);
+        if (!validatedData.heightM) return null;
+        let h = parseFloat(validatedData.heightM);
         if (isNaN(h)) return null;
         if (h > 10) h = h / 100; // e.g. 150cm becomes 1.50m
         return h.toFixed(2);
       })(),
       weightKg: (() => {
-        if (!validatedData.weightKg || validatedData.weightKg === "") return null;
-        const w = parseFloat(validatedData.weightKg as string);
-        if (isNaN(w)) return null;
-        return w.toFixed(2);
+        if (!validatedData.weightKg) return null;
+        const w = parseFloat(validatedData.weightKg);
+        return isNaN(w) ? null : w.toFixed(2);
       })(),
+      birthDate: (validatedData.birthDate || null),
+      placeOfBirth: (validatedData.placeOfBirth || null),
+      gender: (validatedData.gender ?? null),
+      civilStatus: (validatedData.civilStatus ?? null),
+      nationality: validatedData.nationality || 'Filipino',
+      bloodType: (validatedData.bloodType ?? null),
+      pdsQuestions: validatedData.pdsQuestions || null,
       address: validatedData.address || validatedData.residentialAddress || undefined,
       residentialAddress: validatedData.residentialAddress || validatedData.address || undefined,
       residentialZipCode: validatedData.residentialZipCode || undefined,
@@ -646,9 +652,8 @@ export const register = async (req: Request & { file?: Express.Multer.File }, re
       profileStatus: 'Complete' as const,
       employmentStatus: 'Active' as const, 
       isOldEmployee: validatedData.isOldEmployee || false,
-      isMeycauayan: !!validatedData.isMeycauayan,
-      dateAccomplished: validatedData.dateAccomplished ? String(validatedData.dateAccomplished) : undefined,
-      pdsQuestions: validatedData.pdsQuestions || undefined,
+      isMeycauayan: (validatedData.isMeycauayan === true),
+      dateAccomplished: (validatedData.dateAccomplished || null),
     };
 
     let newUserId: number;
@@ -660,38 +665,6 @@ export const register = async (req: Request & { file?: Express.Multer.File }, re
 
         // Allocate default credits and schedules for the finalized admin
         await allocateDefaultCredits(actualEmployeeId);
-        
-        const workDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-        const scheduleValues = workDays.map(day => ({
-          employeeId: actualEmployeeId,
-          scheduleTitle: 'Standard Office Hours',
-          dayOfWeek: day,
-          startTime: '08:00:00',
-          endTime: '17:00:00',
-          repeatPattern: 'Weekly',
-          isRestDay: false
-        }));
-        
-        scheduleValues.push({
-          employeeId: actualEmployeeId,
-          scheduleTitle: 'Standard Office Hours',
-          dayOfWeek: 'Saturday',
-          startTime: '08:00:00',
-          endTime: '17:00:00',
-          repeatPattern: 'Weekly',
-          isRestDay: true
-        });
-        scheduleValues.push({
-          employeeId: actualEmployeeId,
-          scheduleTitle: 'Standard Office Hours',
-          dayOfWeek: 'Sunday',
-          startTime: '08:00:00',
-          endTime: '17:00:00',
-          repeatPattern: 'Weekly',
-          isRestDay: true
-        });
-
-        await db.insert(schedules).values(scheduleValues);
     } else {
         // INSERT NEW USER
         const [insertResult] = await db.insert(authentication).values(userDataValues);
@@ -699,6 +672,44 @@ export const register = async (req: Request & { file?: Express.Multer.File }, re
         
         // Initial leave allocation for brand new users
         await allocateDefaultCredits(actualEmployeeId);
+    }
+
+    // Allocate Standard Schedule for all newly registered or finalized users
+    const startDate = userDataValues.dateHired || new Date().toISOString().split('T')[0];
+    
+    // FETCH THE SYSTEM DEFAULT SHIFT TEMPLATE (Dynamic Solution)
+    const [defaultShift] = await db.select()
+      .from(shiftTemplates)
+      .where(eq(shiftTemplates.isDefault, true))
+      .limit(1);
+
+    let workDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+    let startTime = '08:00:00';
+    let endTime = '17:00:00';
+    let scheduleTitle = 'Standard Shift';
+
+    if (defaultShift) {
+      startTime = defaultShift.startTime;
+      endTime = defaultShift.endTime;
+      scheduleTitle = defaultShift.name;
+      if (defaultShift.workingDays) {
+        workDays = defaultShift.workingDays.split(',').map(d => d.trim());
+      }
+    }
+
+    const scheduleValues = workDays.map(day => ({
+      employeeId: actualEmployeeId,
+      scheduleTitle: scheduleTitle,
+      dayOfWeek: day,
+      startTime: startTime,
+      endTime: endTime,
+      startDate: startDate,
+      repeatPattern: 'Weekly',
+      isRestDay: false
+    }));
+
+    if (scheduleValues.length > 0) {
+      await db.insert(schedules).values(scheduleValues);
     }
 
     // Update position status if linked
@@ -750,7 +761,8 @@ export const register = async (req: Request & { file?: Express.Multer.File }, re
         employeeId: actualEmployeeId, 
         fullName: `${firstName} ${lastName}`, 
         department,
-        requiresVerification: !(effectiveFinalizingSetup && (assignedRole === 'Administrator' || assignedRole === 'Human Resource'))
+        requiresVerification: true,
+        message: 'Registration successful! Please check your email for the 6-digit verification code.'
       }
     });
   } catch (err: unknown) {
@@ -799,8 +811,13 @@ export const verifyRegistrationOTP = async (req: Request, res: Response): Promis
 
     res.status(200).json({ 
       success: true, 
-      message: 'Email verified successfully. You can now login.',
-      data: null
+      message: 'Email verified successfully. You can now access your portal.',
+      data: {
+        id: user.id,
+        employeeId: user.employeeId,
+        firstName: user.firstName,
+        lastName: user.lastName
+      }
     });
   } catch (_err) {
 
@@ -933,7 +950,18 @@ export const getMe = async (req: Request, res: Response): Promise<void> => {
 
     const [user] = await db.select({
       ...getTableColumns(authentication),
-      duties: sql<string>`COALESCE((SELECT schedule_title FROM schedules WHERE employee_id = ${authentication.employeeId} ORDER BY updated_at DESC LIMIT 1), 'No Schedule')`
+      duties: sql<string>`COALESCE(
+        (SELECT schedule_title FROM schedules WHERE employee_id = ${authentication.employeeId} AND (start_date IS NULL OR start_date <= CURDATE()) AND (end_date IS NULL OR end_date >= CURDATE()) ORDER BY updated_at DESC LIMIT 1),
+        (SELECT schedule_title FROM schedules WHERE employee_id = ${authentication.employeeId} AND (start_date IS NULL OR start_date <= CURDATE()) ORDER BY start_date DESC LIMIT 1),
+        (SELECT name FROM shift_templates WHERE is_default = 1 LIMIT 1),
+        'Standard Shift'
+      )`,
+      shift: sql<string>`COALESCE(
+        (SELECT CONCAT(TIME_FORMAT(start_time, '%h:%i %p'), ' - ', TIME_FORMAT(end_time, '%h:%i %p')) FROM schedules WHERE employee_id = ${authentication.employeeId} AND (start_date IS NULL OR start_date <= CURDATE()) AND (end_date IS NULL OR end_date >= CURDATE()) ORDER BY updated_at DESC LIMIT 1),
+        (SELECT CONCAT(TIME_FORMAT(start_time, '%h:%i %p'), ' - ', TIME_FORMAT(end_time, '%h:%i %p')) FROM schedules WHERE employee_id = ${authentication.employeeId} AND (start_date IS NULL OR start_date <= CURDATE()) ORDER BY start_date DESC LIMIT 1),
+        (SELECT CONCAT(TIME_FORMAT(start_time, '%h:%i %p'), ' - ', TIME_FORMAT(end_time, '%h:%i %p')) FROM shift_templates WHERE is_default = 1 LIMIT 1),
+        '08:00 AM - 05:00 PM'
+      )`
     })
     .from(authentication)
     .where(eq(authentication.id, userId as number));
@@ -1149,12 +1177,25 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     });
 
     // Fetch schedule for the logged in user to include in response
-    let duties = 'No Schedule';
+    let duties = 'Standard Shift';
+    let shift = '08:00 AM - 05:00 PM';
     try {
       const [userSchedule] = await db.select({
-        duties: sql<string>`COALESCE((SELECT schedule_title FROM schedules WHERE employee_id = ${authentication.employeeId} ORDER BY updated_at DESC LIMIT 1), 'No Schedule')`
+        duties: sql<string>`COALESCE(
+          (SELECT schedule_title FROM schedules WHERE employee_id = ${authentication.employeeId} AND (start_date IS NULL OR start_date <= CURDATE()) AND (end_date IS NULL OR end_date >= CURDATE()) ORDER BY updated_at DESC LIMIT 1),
+          (SELECT schedule_title FROM schedules WHERE employee_id = ${authentication.employeeId} AND (start_date IS NULL OR start_date <= CURDATE()) ORDER BY start_date DESC LIMIT 1),
+          (SELECT name FROM shift_templates WHERE is_default = 1 LIMIT 1),
+          'Standard Shift'
+        )`,
+        shift: sql<string>`COALESCE(
+          (SELECT CONCAT(TIME_FORMAT(start_time, '%h:%i %p'), ' - ', TIME_FORMAT(end_time, '%h:%i %p')) FROM schedules WHERE employee_id = ${authentication.employeeId} AND (start_date IS NULL OR start_date <= CURDATE()) AND (end_date IS NULL OR end_date >= CURDATE()) ORDER BY updated_at DESC LIMIT 1),
+          (SELECT CONCAT(TIME_FORMAT(start_time, '%h:%i %p'), ' - ', TIME_FORMAT(end_time, '%h:%i %p')) FROM schedules WHERE employee_id = ${authentication.employeeId} AND (start_date IS NULL OR start_date <= CURDATE()) ORDER BY start_date DESC LIMIT 1),
+          (SELECT CONCAT(TIME_FORMAT(start_time, '%h:%i %p'), ' - ', TIME_FORMAT(end_time, '%h:%i %p')) FROM shift_templates WHERE is_default = 1 LIMIT 1),
+          '08:00 AM - 05:00 PM'
+        )`
       }).from(authentication).where(eq(authentication.id, user.id));
-      duties = userSchedule?.duties || 'No Schedule';
+      duties = userSchedule?.duties || 'Standard Shift';
+      shift = userSchedule?.shift || '08:00 AM - 05:00 PM';
     } catch (schedErr: unknown) {
       const msg = schedErr instanceof Error ? schedErr.message : String(schedErr);
       console.error('[LOGIN] Schedule fetch failed:', msg);
@@ -1166,7 +1207,8 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       data: {
         user: mapToAuthUser({
           ...user,
-          duties
+          duties,
+          shift
         })
       }
     });
@@ -1328,7 +1370,18 @@ export const getUsers = async (_req: Request, res: Response): Promise<void> => {
       role: authentication.role,
       avatarUrl: authentication.avatarUrl,
       twoFactorEnabled: authentication.twoFactorEnabled,
-      duties: sql<string>`COALESCE((SELECT schedule_title FROM schedules WHERE employee_id = ${authentication.employeeId} ORDER BY updated_at DESC LIMIT 1), 'No Schedule')`
+      duties: sql<string>`COALESCE(
+        (SELECT schedule_title FROM schedules WHERE employee_id = ${authentication.employeeId} AND (start_date IS NULL OR start_date <= CURDATE()) AND (end_date IS NULL OR end_date >= CURDATE()) ORDER BY updated_at DESC LIMIT 1),
+        (SELECT schedule_title FROM schedules WHERE employee_id = ${authentication.employeeId} AND (start_date IS NULL OR start_date <= CURDATE()) ORDER BY start_date DESC LIMIT 1),
+        (SELECT name FROM shift_templates WHERE is_default = 1 LIMIT 1),
+        'Standard Shift'
+      )`,
+      shift: sql<string>`COALESCE(
+        (SELECT CONCAT(TIME_FORMAT(start_time, '%h:%i %p'), ' - ', TIME_FORMAT(end_time, '%h:%i %p')) FROM schedules WHERE employee_id = ${authentication.employeeId} AND (start_date IS NULL OR start_date <= CURDATE()) AND (end_date IS NULL OR end_date >= CURDATE()) ORDER BY updated_at DESC LIMIT 1),
+        (SELECT CONCAT(TIME_FORMAT(start_time, '%h:%i %p'), ' - ', TIME_FORMAT(end_time, '%h:%i %p')) FROM schedules WHERE employee_id = ${authentication.employeeId} AND (start_date IS NULL OR start_date <= CURDATE()) ORDER BY start_date DESC LIMIT 1),
+        (SELECT CONCAT(TIME_FORMAT(start_time, '%h:%i %p'), ' - ', TIME_FORMAT(end_time, '%h:%i %p')) FROM shift_templates WHERE is_default = 1 LIMIT 1),
+        '08:00 AM - 05:00 PM'
+      )`
     }).from(authentication).orderBy(authentication.lastName);
 
     res.status(200).json({
@@ -1352,7 +1405,18 @@ export const getUserById = async (req: Request, res: Response): Promise<void> =>
   try {
     const [user] = await db.select({
       ...getTableColumns(authentication),
-      duties: sql<string>`COALESCE((SELECT schedule_title FROM schedules WHERE employee_id = ${authentication.employeeId} ORDER BY updated_at DESC LIMIT 1), 'No Schedule')`
+      duties: sql<string>`COALESCE(
+        (SELECT schedule_title FROM schedules WHERE employee_id = ${authentication.employeeId} AND (start_date IS NULL OR start_date <= CURDATE()) AND (end_date IS NULL OR end_date >= CURDATE()) ORDER BY updated_at DESC LIMIT 1),
+        (SELECT schedule_title FROM schedules WHERE employee_id = ${authentication.employeeId} AND (start_date IS NULL OR start_date <= CURDATE()) ORDER BY start_date DESC LIMIT 1),
+        (SELECT name FROM shift_templates WHERE is_default = 1 LIMIT 1),
+        'Standard Shift'
+      )`,
+      shift: sql<string>`COALESCE(
+        (SELECT CONCAT(TIME_FORMAT(start_time, '%h:%i %p'), ' - ', TIME_FORMAT(end_time, '%h:%i %p')) FROM schedules WHERE employee_id = ${authentication.employeeId} AND (start_date IS NULL OR start_date <= CURDATE()) AND (end_date IS NULL OR end_date >= CURDATE()) ORDER BY updated_at DESC LIMIT 1),
+        (SELECT CONCAT(TIME_FORMAT(start_time, '%h:%i %p'), ' - ', TIME_FORMAT(end_time, '%h:%i %p')) FROM schedules WHERE employee_id = ${authentication.employeeId} AND (start_date IS NULL OR start_date <= CURDATE()) ORDER BY start_date DESC LIMIT 1),
+        (SELECT CONCAT(TIME_FORMAT(start_time, '%h:%i %p'), ' - ', TIME_FORMAT(end_time, '%h:%i %p')) FROM shift_templates WHERE is_default = 1 LIMIT 1),
+        '08:00 AM - 05:00 PM'
+      )`
     })
     .from(authentication)
     .where(eq(authentication.id, Number(id)));
@@ -1434,7 +1498,7 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
         excludeAuthId: userId
     });
 
-    if (uniqueErrors.length > 0) {
+    if (Object.keys(uniqueErrors).length > 0) {
         res.status(409).json({ success: false, message: 'Uniqueness validation failed.', errors: uniqueErrors });
         return;
     }
@@ -1611,7 +1675,18 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
       // but fetch the current user to return their data
       const [user] = await db.select({
         ...getTableColumns(authentication),
-        duties: sql<string>`COALESCE((SELECT schedule_title FROM schedules WHERE employee_id = ${authentication.employeeId} ORDER BY updated_at DESC LIMIT 1), 'No Schedule')`
+        duties: sql<string>`COALESCE(
+          (SELECT schedule_title FROM schedules WHERE employee_id = ${authentication.employeeId} AND (start_date IS NULL OR start_date <= CURDATE()) AND (end_date IS NULL OR end_date >= CURDATE()) ORDER BY updated_at DESC LIMIT 1),
+          (SELECT schedule_title FROM schedules WHERE employee_id = ${authentication.employeeId} AND (start_date IS NULL OR start_date <= CURDATE()) ORDER BY start_date DESC LIMIT 1),
+          (SELECT name FROM shift_templates WHERE is_default = 1 LIMIT 1),
+          'Standard Shift'
+        )`,
+        shift: sql<string>`COALESCE(
+          (SELECT CONCAT(TIME_FORMAT(start_time, '%h:%i %p'), ' - ', TIME_FORMAT(end_time, '%h:%i %p')) FROM schedules WHERE employee_id = ${authentication.employeeId} AND (start_date IS NULL OR start_date <= CURDATE()) AND (end_date IS NULL OR end_date >= CURDATE()) ORDER BY updated_at DESC LIMIT 1),
+          (SELECT CONCAT(TIME_FORMAT(start_time, '%h:%i %p'), ' - ', TIME_FORMAT(end_time, '%h:%i %p')) FROM schedules WHERE employee_id = ${authentication.employeeId} AND (start_date IS NULL OR start_date <= CURDATE()) ORDER BY start_date DESC LIMIT 1),
+          (SELECT CONCAT(TIME_FORMAT(start_time, '%h:%i %p'), ' - ', TIME_FORMAT(end_time, '%h:%i %p')) FROM shift_templates WHERE is_default = 1 LIMIT 1),
+          '08:00 AM - 05:00 PM'
+        )`
       })
       .from(authentication)
       .where(eq(authentication.id, userId));
@@ -1631,7 +1706,18 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
     // Fetch updated user with duties
     const [updatedUser] = await db.select({
       ...getTableColumns(authentication),
-      duties: sql<string>`COALESCE((SELECT schedule_title FROM schedules WHERE employee_id = ${authentication.employeeId} ORDER BY updated_at DESC LIMIT 1), 'No Schedule')`
+      duties: sql<string>`COALESCE(
+        (SELECT schedule_title FROM schedules WHERE employee_id = ${authentication.employeeId} AND (start_date IS NULL OR start_date <= CURDATE()) AND (end_date IS NULL OR end_date >= CURDATE()) ORDER BY updated_at DESC LIMIT 1),
+        (SELECT schedule_title FROM schedules WHERE employee_id = ${authentication.employeeId} AND (start_date IS NULL OR start_date <= CURDATE()) ORDER BY start_date DESC LIMIT 1),
+        (SELECT name FROM shift_templates WHERE is_default = 1 LIMIT 1),
+        'Standard Shift'
+      )`,
+      shift: sql<string>`COALESCE(
+        (SELECT CONCAT(TIME_FORMAT(start_time, '%h:%i %p'), ' - ', TIME_FORMAT(end_time, '%h:%i %p')) FROM schedules WHERE employee_id = ${authentication.employeeId} AND (start_date IS NULL OR start_date <= CURDATE()) AND (end_date IS NULL OR end_date >= CURDATE()) ORDER BY updated_at DESC LIMIT 1),
+        (SELECT CONCAT(TIME_FORMAT(start_time, '%h:%i %p'), ' - ', TIME_FORMAT(end_time, '%h:%i %p')) FROM schedules WHERE employee_id = ${authentication.employeeId} AND (start_date IS NULL OR start_date <= CURDATE()) ORDER BY start_date DESC LIMIT 1),
+        (SELECT CONCAT(TIME_FORMAT(start_time, '%h:%i %p'), ' - ', TIME_FORMAT(end_time, '%h:%i %p')) FROM shift_templates WHERE is_default = 1 LIMIT 1),
+        '08:00 AM - 05:00 PM'
+      )`
     })
     .from(authentication)
     .where(eq(authentication.id, userId));
@@ -1767,6 +1853,31 @@ export const findHiredApplicant = async (req: Request, res: Response): Promise<v
   }
 };
 
+export const checkEmailUniqueness = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { email } = z.object({ email: z.string().email() }).parse(req.query);
+    
+    const errors = await checkSystemWideUniqueness({ email });
+    
+    if (errors.email) {
+      res.status(409).json({ 
+        success: false, 
+        message: errors.email,
+        isUnique: false 
+      });
+      return;
+    }
+
+    res.status(200).json({ 
+      success: true, 
+      message: 'Email is available.',
+      isUnique: true 
+    });
+  } catch (_error) {
+    res.status(400).json({ success: false, message: 'Invalid email address.' });
+  }
+};
+
 export const logout = (_req: Request, res: Response): void => {
   res.clearCookie('accessToken', {
     httpOnly: true,
@@ -1899,8 +2010,8 @@ export const setupPortal = async (req: Request, res: Response): Promise<void> =>
       appointmentType: appointmentType as 'Permanent' | 'Contractual' | 'Casual' | 'Job Order' | 'Coterminous' | 'Temporary' | 'Contract of Service' | 'JO' | 'COS',
       employmentStatus: 'Active',
       profileStatus: 'Initial',
-      isVerified: false, // User MUST verify email first
-      verificationToken: verificationOTP,
+      isVerified: true, // System initiators (Admin/HR) from Setup Portal are pre-verified
+      verificationToken: null,
       firstDayOfService: new Date().toISOString().split('T')[0]
     });
 
@@ -1930,5 +2041,54 @@ export const setupPortal = async (req: Request, res: Response): Promise<void> =>
     });
   } catch (_error) {
     res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+export const checkGovtIdUniqueness = async (req: Request, res: Response) => {
+  try {
+    const { 
+      umidNumber, 
+      philsysId, 
+      philhealthNumber, 
+      pagibigNumber, 
+      tinNumber, 
+      gsisNumber,
+      eligibilityNumber,
+      excludeAuthId,
+      excludeApplicantId
+    } = req.query;
+
+    const errors = await checkSystemWideUniqueness({
+      umidNumber: umidNumber as string,
+      philsysId: philsysId as string,
+      philhealthNumber: philhealthNumber as string,
+      pagibigNumber: pagibigNumber as string,
+      tinNumber: tinNumber as string,
+      gsisNumber: gsisNumber as string,
+      eligibilityNumber: eligibilityNumber as string,
+      excludeAuthId: excludeAuthId ? Number(excludeAuthId) : undefined,
+      excludeApplicantId: excludeApplicantId ? Number(excludeApplicantId) : undefined
+    });
+
+    if (Object.keys(errors).length > 0) {
+      return res.status(409).json({
+        success: false,
+        isUnique: false,
+        message: Object.values(errors)[0],
+        conflicts: errors,
+        errors: Object.values(errors)
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      isUnique: true,
+      message: 'Government ID is unique and available.'
+    });
+  } catch (error) {
+    console.error('Check Govt ID error:', error);
+    return res.status(500).json({ 
+      success: false, 
+      message: 'Internal server error during ID check' 
+    });
   }
 };

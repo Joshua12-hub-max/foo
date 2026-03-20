@@ -1,5 +1,6 @@
 import React, { memo, ChangeEvent } from 'react';
 import { Plus, Search } from 'lucide-react';
+import Combobox from '@/components/Custom/Combobox';
 
 interface PlantillaHeaderProps {
   sidebarOpen?: boolean;
@@ -68,16 +69,18 @@ const PlantillaHeader: React.FC<PlantillaHeaderProps> = ({
                     onChange={(e: ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
                 />
                 </div>
-                <select 
-                className="bg-white border border-gray-200 rounded-lg shadow-sm px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200 cursor-pointer"
-                value={selectedDept}
-                onChange={(e: ChangeEvent<HTMLSelectElement>) => setSelectedDept(e.target.value)}
-                >
-                <option value="All">All Departments</option>
-                {departments.map(dept => (
-                    <option key={dept} value={dept}>{dept}</option>
-                ))}
-                </select>
+                <div className="relative z-[50]">
+                    <Combobox 
+                        options={[
+                            { value: 'All', label: 'All Departments' },
+                            ...departments.map(dept => ({ value: dept, label: dept }))
+                        ]}
+                        value={selectedDept}
+                        onChange={(val) => setSelectedDept(val)}
+                        placeholder="All Departments"
+                        buttonClassName="bg-white border border-gray-200 rounded-lg shadow-sm px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200 cursor-pointer font-bold h-[38px] min-w-[150px]"
+                    />
+                </div>
             </div>
         </>
     );

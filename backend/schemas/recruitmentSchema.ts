@@ -87,7 +87,7 @@ export const createJobSchema = z.object({
   jobDescription: z.string().min(10, 'Job description must be at least 10 characters'),
   requirements: z.string().optional(),
   location: z.string().min(1, 'Location is required'),
-  employmentType: z.enum(['Full-time', 'Part-time', 'Contractual', 'Job Order', 'Coterminous', 'Temporary', 'Probationary', 'Casual', 'Permanent']).default('Full-time'),
+  employmentType: z.enum(['Full-time', 'Part-time', 'Contractual', 'Job Order', 'Coterminous', 'Temporary', 'Probationary', 'Casual', 'Permanent', 'Contract of Service', 'JO', 'COS']).default('Full-time'),
   dutyType: z.enum(['Standard', 'Irregular']).default('Standard'),
   applicationEmail: z.string().email('Invalid email address'),
   status: z.enum(['Open', 'Closed', 'On Hold']).default('Open'),
@@ -169,12 +169,22 @@ export const applyJobSchema = z.object({
   hToken: z.string().min(1),
 });
 
+// Verify OTP Schema
+export const verifyOTPSchema = z.object({
+  applicantId: z.coerce.number().min(1, "Applicant ID is required"),
+  otp: z.string().length(6, "OTP must be exactly 6 digits")
+});
+
+export type VerifyOTPInput = z.infer<typeof verifyOTPSchema>;
+
 // Confirm Hired Schema
 export const confirmHiredSchema = z.object({
   startDate: z.string().min(1, 'Start date is required').refine((val) => {
     const date = new Date(val);
     return !isNaN(date.getTime());
   }, 'Invalid start date format'),
+  selectedDocs: z.array(z.string()).optional(),
+  customNotes: z.string().optional()
 });
 
 // Type exports

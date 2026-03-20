@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { eventApi } from '../../../api/eventApi';
-// @ts-ignore
-import { holidays } from '../../../utils/holidays';
+import { leaveApi } from '../../../api/leaveApi';
 import EventsList from '../../CustomUI/EventsList';
 
 export default function EventsAndHolidays() {
@@ -16,10 +15,13 @@ export default function EventsAndHolidays() {
 
         // Get current year holidays
         const currentYear = new Date().getFullYear();
+        const holidayResponse = await leaveApi.getHolidays(currentYear);
+        const holidays = holidayResponse.data?.holidays || [];
+
         const holidayEvents = holidays.map((h: any) => ({
             id: `holiday-${h.id}-${currentYear}`,
-            title: h.title,
-            date: new Date(currentYear, h.month, h.day).toISOString().split('T')[0],
+            title: h.name || h.title,
+            date: h.date ? h.date.split('T')[0] : new Date(currentYear, h.month, h.day).toISOString().split('T')[0],
             type: h.type,
             priority: 'medium',
             isHoliday: true

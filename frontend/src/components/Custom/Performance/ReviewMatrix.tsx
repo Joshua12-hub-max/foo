@@ -4,33 +4,37 @@ import EditCriteriaModal from './Admin/Modals/EditCriteriaModal';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PerformanceItem } from './types';
 import { QETField } from '@/types/performance';
+import Combobox from '@/components/Custom/Combobox';
 
 // --- Sub-components for better organization ---
 
 interface CustomSelectProps {
   value: number | string | null | undefined;
-  onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+  onChange: (value: string) => void;
   label: string;
   disabled?: boolean;
 }
 
+const ratingOptions = [
+  { value: '5', label: '5' },
+  { value: '4', label: '4' },
+  { value: '3', label: '3' },
+  { value: '2', label: '2' },
+  { value: '1', label: '1' },
+  { value: '0', label: '-' }
+];
+
 const CustomSelect: React.FC<CustomSelectProps> = ({ value, onChange, label, disabled }) => (
   <div className="flex flex-col gap-1 flex-1 p-1 rounded border border-transparent hover:border-gray-200 transition-colors">
-    <label className="text-[10px] font-medium text-gray-500 text-center">{label}</label>
-    <div className="relative">
-        <select
-        value={value || 0}
-        onChange={onChange}
-        disabled={disabled}
-        className={`w-full py-0.5 text-center font-bold text-xs bg-transparent border-b border-gray-200 focus:border-gray-800 outline-none transition-all cursor-pointer appearance-none ${disabled ? 'text-gray-300 cursor-not-allowed' : 'text-gray-900 hover:bg-gray-50'}`}
-        style={{ textAlignLast: 'center' }}
-        >
-        <option value="0">-</option>
-        {[5, 4, 3, 2, 1].map(num => (
-            <option key={num} value={num}>{num}</option>
-        ))}
-        </select>
-    </div>
+    <label className="text-[8px] font-bold text-gray-400 text-center uppercase tracking-tighter">{label}</label>
+    <Combobox 
+       options={ratingOptions}
+       value={String(value || 0)}
+       onChange={onChange}
+       disabled={disabled}
+       placeholder="-"
+       buttonClassName="py-0.5 px-0 text-center font-bold text-xs bg-transparent border-none shadow-none"
+    />
   </div>
 );
 
@@ -166,15 +170,21 @@ const ReviewItem: React.FC<ReviewItemProps> = ({ item, onScoreChange, onCommentC
                         {isSelfRatingMode && <span className="text-[10px] font-bold text-white bg-gray-900 px-1 py-px rounded-[2px]">REQ</span>}
                     </div>
                     {isSelfRatingMode ? (
-                        <div className="relative">
-                           <select 
-                             value={item.selfScore || 0}
-                             onChange={(e) => onSelfScoreChange?.(id, parseInt(e.target.value))}
-                             className="w-full py-1 pl-2 font-bold text-gray-700 bg-gray-50 border border-gray-200 rounded focus:border-gray-400 outline-none appearance-none cursor-pointer text-xs"
-                           >
-                              <option value="0">Rate...</option>
-                              {[5,4,3,2,1].map(n => <option key={n} value={n}>{n} - {n===5?'Outstanding':n===4?'Very Sat':n===3?'Satisfactory':n===2?'Unsatisfactory':'Poor'}</option>)}
-                           </select>
+                        <div className="relative z-20 mt-1">
+                           <Combobox 
+                             options={[
+                               { value: '0', label: 'Rate...' },
+                               { value: '5', label: '5 - Outstanding' },
+                               { value: '4', label: '4 - Very Satisfactory' },
+                               { value: '3', label: '3 - Satisfactory' },
+                               { value: '2', label: '2 - Unsatisfactory' },
+                               { value: '1', label: '1 - Poor' }
+                             ]}
+                             value={String(item.selfScore || 0)}
+                             onChange={(val) => onSelfScoreChange?.(id, parseInt(val))}
+                             placeholder="Rate..."
+                             buttonClassName="w-full py-1 pl-2 font-bold text-gray-700 bg-gray-50 border-gray-200 text-xs"
+                           />
                         </div>
                       ) : (
                          <div className="text-[10px] text-gray-400 italic">Rated:</div>
@@ -192,13 +202,13 @@ const ReviewItem: React.FC<ReviewItemProps> = ({ item, onScoreChange, onCommentC
                </div>
                
                {(!readOnly && !isSelfRatingMode) ? (
-                  <div className="flex gap-1.5 mb-3">
-                     <CustomSelect label="Q" value={item.qScore} onChange={(e) => onQETChange?.(id, 'qScore', parseInt(e.target.value))} />
-                     <CustomSelect label="E" value={item.eScore} onChange={(e) => onQETChange?.(id, 'eScore', parseInt(e.target.value))} />
+                   <div className="flex gap-1.5 mb-3 z-10 relative">
+                     <CustomSelect label="Q" value={item.qScore} onChange={(val) => onQETChange?.(id, 'qScore', parseInt(val))} />
+                     <CustomSelect label="E" value={item.eScore} onChange={(val) => onQETChange?.(id, 'eScore', parseInt(val))} />
                      <CustomSelect 
                         label="T" 
                         value={item.tScore} 
-                        onChange={(e) => onQETChange?.(id, 'tScore', parseInt(e.target.value))} 
+                        onChange={(val) => onQETChange?.(id, 'tScore', parseInt(val))} 
                         disabled={(item.criteriaTitle || item.title || '').toLowerCase().includes('attendance') || (item.criteriaTitle || item.title || '').toLowerCase().includes('punctuality')}
                      />
                   </div>

@@ -1,43 +1,6 @@
 import { z } from 'zod';
-import { 
-  VL_ADVANCE_FILING_DAYS
-} from '../types/leave.types.js';
 
-// ============================================================================
-// Enum Values (inline for Zod compatibility)
-// ============================================================================
-
-const LEAVE_TYPE_VALUES = [
-  'Vacation Leave',
-  'Sick Leave',
-  'Special Privilege Leave',
-  'Forced Leave',
-  'Maternity Leave',
-  'Paternity Leave',
-  'Solo Parent Leave',
-  'Study Leave',
-  'Special Emergency Leave',
-  'VAWC Leave',
-  'Rehabilitation Leave',
-  'Special Leave Benefits for Women',
-  'Wellness Leave',
-  'Adoption Leave',
-  'Other',
-] as const;
-
-const CREDIT_TYPE_VALUES = [
-  'Vacation Leave',
-  'Sick Leave',
-  'Special Privilege Leave',
-  'Forced Leave',
-  'Maternity Leave',
-  'Paternity Leave',
-  'Solo Parent Leave',
-  'Study Leave',
-  'Adoption Leave',
-] as const;
-
-const MONETIZATION_PURPOSE_VALUES = ['Health', 'Medical', 'Financial Emergency'] as const;
+// Leave and Credit type validations are now handled dynamically against the internal policies.
 
 // ============================================================================
 // Leave Application Schemas
@@ -48,7 +11,7 @@ const MONETIZATION_PURPOSE_VALUES = ['Health', 'Medical', 'Financial Emergency']
  * Includes CSC filing rules validation
  */
 export const applyLeaveSchema = z.object({
-  leaveType: z.enum(LEAVE_TYPE_VALUES),
+  leaveType: z.string().min(1, 'Leave type is required'),
   startDate: z.string().refine((date) => !isNaN(Date.parse(date)), {
     message: 'Invalid start date format',
   }),
@@ -101,7 +64,7 @@ export type ProcessLeaveInput = z.infer<typeof processLeaveSchema>;
  * Schema for updating employee credit balance
  */
 export const creditUpdateSchema = z.object({
-  creditType: z.enum(CREDIT_TYPE_VALUES),
+  creditType: z.string().min(1, 'Credit type is required'),
   balance: z.number()
     .nonnegative('Balance cannot be negative')
     .multipleOf(0.001, 'Balance must have at most 3 decimal places'),
@@ -115,7 +78,7 @@ export type CreditUpdateInput = z.infer<typeof creditUpdateSchema>;
  */
 export const creditAdjustmentSchema = z.object({
   employeeId: z.string().min(1, 'Employee ID is required'),
-  creditType: z.enum(CREDIT_TYPE_VALUES),
+  creditType: z.string().min(1, 'Credit type is required'),
   amount: z.number()
     .multipleOf(0.001, 'Amount must have at most 3 decimal places'),
   remarks: z.string()
@@ -145,11 +108,11 @@ export type AccrueCreditsInput = z.infer<typeof accrueCreditsSchema>;
  * CSC: Must leave at least 5 days VL after monetization
  */
 export const monetizationRequestSchema = z.object({
-  creditType: z.enum(['Vacation Leave', 'Sick Leave'] as const),
+  creditType: z.string().min(1, 'Credit type is required'),
   requestedDays: z.number()
     .positive('Requested days must be positive')
     .multipleOf(0.001, 'Days must have at most 3 decimal places'),
-  purpose: z.enum(MONETIZATION_PURPOSE_VALUES),
+  purpose: z.string().min(1, 'Purpose is required'),
 });
 
 export type MonetizationRequestInput = z.infer<typeof monetizationRequestSchema>;
@@ -178,7 +141,7 @@ export const addHolidaySchema = z.object({
   date: z.string().refine((date) => !isNaN(Date.parse(date)), {
     message: 'Invalid date format',
   }),
-  type: z.enum(['Regular', 'Special Non-Working', 'Special Working'] as const),
+  type: z.string().min(1, 'Holiday type is required'),
 });
 
 export type AddHolidayInput = z.infer<typeof addHolidaySchema>;
@@ -217,24 +180,6 @@ export const ledgerQuerySchema = z.object({
 export type LedgerQuery = z.infer<typeof ledgerQuerySchema>;
 
 // ============================================================================
-// Validation Helpers
-// ============================================================================
-
-/**
- * Validate VL advance filing requirement (5 days before)
- */
-export const validateVLAdvanceFiling = (startDate: string): boolean => {
-  const start = new Date(startDate);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  
-  const diffTime = start.getTime() - today.getTime();
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  
-  return diffDays >= VL_ADVANCE_FILING_DAYS;
-};
-
-// ============================================================================
 // Internal Policy Schemas (Replacing Type Erasure)
 // ============================================================================
 
@@ -269,6 +214,22 @@ export const leavePolicySchema = z.object({
     days: z.number(),
     description: z.string(),
     reference: z.string(),
+  }),
+  sickLeaveType: z.string().default('Sick Leave'),
+  initialAllocations: z.record(z.string(), z.number()).default({
+    'Vacation Leave': 15.000,
+    'Sick Leave': 15.000,
+    'Special Privilege Leave': 3.000
+  }),
+  workingDaysPerMonth: z.number().default(22),
+  monthlyAccrual: z.object({
+    accruingTypes: z.array(z.string()),
+    accrualRuleType: z.string().default('CSC_STANDARD'),
+    accrualCreditTypes: z.array(z.string()).default(['Vacation Leave', 'Sick Leave']),
+  }).optional().default({
+    accruingTypes: ['Permanent', 'Contractual'],
+    accrualRuleType: 'CSC_STANDARD',
+    accrualCreditTypes: ['Vacation Leave', 'Sick Leave'],
   }),
 });
 

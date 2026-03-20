@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { announcementSchema, AnnouncementSchema } from '@/schemas/calendar';
 import { useEffect } from 'react';
+import Combobox from '@/components/Custom/Combobox';
 
 interface CreateAnnouncementModalProps {
   show: boolean;
@@ -16,6 +17,8 @@ export default function CreateAnnouncementModal({ show, onClose, onCreate, hours
         register,
         handleSubmit,
         reset,
+        watch,
+        setValue,
         formState: { errors, isSubmitting }
     } = useForm<AnnouncementSchema>({
         resolver: zodResolver(announcementSchema),
@@ -70,13 +73,19 @@ export default function CreateAnnouncementModal({ show, onClose, onCreate, hours
                 {errors.title && <p className="text-red-500 text-xs mt-1">{errors.title.message as string}</p>}
                 </div>
 
-                <div>
+                <div className="z-[30] relative">
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Priority</label>
-                <select {...register('priority')} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100 transition-all text-sm bg-white">
-                    <option value="normal">Normal</option>
-                    <option value="high">High Priority</option>
-                    <option value="urgent">Urgent</option>
-                </select>
+                <Combobox
+                  options={[
+                    { value: 'normal', label: 'Normal' },
+                    { value: 'high', label: 'High Priority' },
+                    { value: 'urgent', label: 'Urgent' }
+                  ]}
+                  value={watch('priority')}
+                  onChange={(val) => setValue('priority', val as any)}
+                  placeholder="Select Priority"
+                  buttonClassName="w-full px-4 py-2 border border-gray-200 rounded-lg bg-white"
+                />
                 </div>
 
                 {/* Dates */}
@@ -93,21 +102,29 @@ export default function CreateAnnouncementModal({ show, onClose, onCreate, hours
 
                 {/* Times with Dropdown */}
                 <div className="grid grid-cols-2 gap-4">
-                <div>
+                <div className="z-[20] relative">
                     <label className="block text-sm font-semibold text-gray-700 mb-1 flex items-center gap-1">
                         <Clock className="w-3 h-3" /> Start Time
                     </label>
-                    <select {...register('startTime')} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100 transition-all text-sm bg-white">
-                        {hours.map((hour) => <option key={hour} value={hour}>{hour}</option>)}
-                    </select>
+                    <Combobox
+                      options={hours.map(h => ({ value: h, label: h }))}
+                      value={watch('startTime')}
+                      onChange={(val) => setValue('startTime', val)}
+                      placeholder="Select Start Time"
+                      buttonClassName="w-full px-4 py-2 border border-gray-200 rounded-lg bg-white text-sm"
+                    />
                 </div>
-                <div>
+                <div className="z-[20] relative">
                     <label className="block text-sm font-semibold text-gray-700 mb-1 flex items-center gap-1">
                         <Clock className="w-3 h-3" /> End Time
                     </label>
-                    <select {...register('endTime')} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100 transition-all text-sm bg-white">
-                        {hours.map((hour) => <option key={hour} value={hour}>{hour}</option>)}
-                    </select>
+                    <Combobox
+                      options={hours.map(h => ({ value: h, label: h }))}
+                      value={watch('endTime')}
+                      onChange={(val) => setValue('endTime', val)}
+                      placeholder="Select End Time"
+                      buttonClassName="w-full px-4 py-2 border border-gray-200 rounded-lg bg-white text-sm"
+                    />
                 </div>
                 </div>
 

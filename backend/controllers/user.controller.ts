@@ -3,9 +3,10 @@ import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 import path from 'path';
 import { db } from '../db/index.js';
-import { eq, and, sql, desc, ne, InferSelectModel, SQL } from 'drizzle-orm';
+import { eq, and, sql, desc, ne, InferSelectModel, SQL, or, lte, gte, inArray } from 'drizzle-orm';
 import type { AuthenticatedRequest, EmploymentStatus, Gender, CivilStatus, AppointmentType, UserRole } from '../types/index.js';
 import { UserService } from '../services/user.service.js';
+import { convertTo24Hour } from '../utils/dateUtils.js';
 import { 
   authentication, 
   departments, 
@@ -25,7 +26,8 @@ import {
   pdsEducation,
   pdsEligibility,
   recruitmentApplicants,
-  employeeDocuments
+  employeeDocuments,
+  shiftTemplates
 } from '../db/schema.js';
 import { 
   EmployeeApiResponse, 
@@ -58,6 +60,7 @@ import {
 } from '../schemas/employeeSchema.js';
 import { formatFullName } from '../utils/nameUtils.js';
 import { checkSystemWideUniqueness } from '../services/validationService.js';
+import { PdsQuestions } from '../schemas/pdsSchema.js';
 
 
 // Standardized role type from global types
@@ -128,8 +131,8 @@ interface UpdateFields {
   endTime?: string | null;
   isMeycauayan?: boolean;
   dateAccomplished?: string | null;
-  pdsQuestions?: any;
-  [key: string]: string | number | boolean | null | undefined;
+  pdsQuestions?: PdsQuestions | null;
+  [key: string]: string | number | boolean | null | undefined | PdsQuestions;
 }
 
 // ============================================================================
@@ -179,6 +182,7 @@ export const mapToEmployeeApi = (emp: EmployeeMapperInput): EmployeeApiResponse 
     itemNumber: emp.itemNumber || null,
     positionId: emp.positionId || null,
     duties: emp.duties || 'No Schedule',
+    shift: emp.shift || null,
     
     heightM: emp.heightM || null,
     weightKg: emp.weightKg || null,
@@ -263,6 +267,7 @@ export const mapToEmployeeApi = (emp: EmployeeMapperInput): EmployeeApiResponse 
     yearGraduated: String(emp.yearGraduated || ''),
     coreCompetencies: emp.skillsText || null,
     isMeycauayan: !!emp.isMeycauayan,
+    dutyType: emp.dutyType || 'Standard',
     dateAccomplished: emp.dateAccomplished || null,
     pdsQuestions: emp.pdsQuestions || null,
   };
@@ -525,7 +530,7 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
         gsisNumber: validatedData.gsisNumber
     });
 
-    if (uniqueErrors.length > 0) {
+    if (Object.keys(uniqueErrors).length > 0) {
         res.status(409).json({ success: false, message: 'Uniqueness validation failed.', errors: uniqueErrors });
         return;
     }
@@ -601,15 +606,15 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
       department: finalDeptName,
       departmentId: finalDeptId,
       jobTitle: jobTitle || 'N/A',
-      role: role as UserRole,
-      employmentStatus: (employmentStatus || 'Active') as EmploymentStatus,
-      employmentType: (sanitizedData.employmentType || 'Probationary') as string,
+      role: role,
+      employmentStatus: employmentStatus || 'Active',
+      employmentType: (sanitizedData.employmentType || 'Probationary'),
       employeeId: finalEmployeeId,
       passwordHash: hashedPassword,
       isVerified: true,
       birthDate: birthDate ? String(birthDate) : null,
-      gender: gender as Gender,
-      civilStatus: civilStatus as CivilStatus,
+      gender: gender,
+      civilStatus: civilStatus,
       nationality: nationality || 'Filipino',
       phoneNumber: phoneNumber || null,
       address: address || null,
@@ -622,7 +627,7 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
       educationalBackground: educationalBackground || null,
       salaryGrade: salaryGrade ? String(salaryGrade) : null,
       stepIncrement: stepIncrement || 1,
-      appointmentType: appointmentType as AppointmentType,
+      appointmentType: appointmentType,
       station: station || null,
       positionTitle: positionTitle || null,
       itemNumber: finalItemNumber,
@@ -862,7 +867,7 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
         excludeAuthId: parseInt(id)
     });
 
-    if (uniqueErrors.length > 0) {
+    if (Object.keys(uniqueErrors).length > 0) {
         res.status(409).json({ success: false, message: 'Uniqueness validation failed.', errors: uniqueErrors });
         return;
     }
@@ -915,6 +920,7 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
       dateHired: 'dateHired',
       avatarUrl: 'avatarUrl',
       isMeycauayan: 'isMeycauayan',
+      dutyType: 'dutyType',
       contractEndDate: 'contractEndDate',
       regularizationDate: 'regularizationDate',
       isRegular: 'isRegular',
@@ -1041,6 +1047,7 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
              employmentStatus: ['Active','Probationary','Terminated','Resigned','On Leave','Suspended','Verbal Warning','Written Warning','Show Cause'],
              gender: ['Male','Female'],
              civilStatus: ['Single','Married','Widowed','Separated','Annulled'],
+             dutyType: ['Standard', 'Irregular'],
        
            };
             if (enumValidation[drizzleKey] && processedVal !== null) {
@@ -1055,47 +1062,105 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
                // Special handling for duties - do not add to authentication updateFields
                // We will handle this separately below
             } else {
-                updateFields[drizzleKey] = processedVal as string | number | boolean | null | undefined;
+                updateFields[drizzleKey] = processedVal as any;
             }
         }
       }
     }
 
 
-    // Handle duties update (Schedule Title)
-    if (sanitizedUpdates.duties !== undefined && currentEmployee.employeeId) {
-      const newDuties = String(sanitizedUpdates.duties);
+    // Handle duties and schedule time updates (Schedule Title, Start/End Times)
+    if ((sanitizedUpdates.duties !== undefined || sanitizedUpdates.startTime !== undefined || sanitizedUpdates.endTime !== undefined) && currentEmployee.employeeId) {
       const empId = currentEmployee.employeeId;
-
-      // Check if schedule exists for current employee
-      const existingSchedule = await db.query.schedules.findFirst({
-        where: eq(schedules.employeeId, empId)
+      const today = new Date().toISOString().split('T')[0];
+      const newDuties = sanitizedUpdates.duties !== undefined ? String(sanitizedUpdates.duties) : null;
+      
+      // Check for ALL currently active schedule records (multi-day)
+      const currentActiveSchedules = await db.query.schedules.findMany({
+        where: and(
+            eq(schedules.employeeId, empId),
+            or(sql`${schedules.startDate} IS NULL`, lte(schedules.startDate, today)),
+            or(sql`${schedules.endDate} IS NULL`, gte(schedules.endDate, today))
+        )
       });
 
-      if (existingSchedule) {
-        // Update existing
-        await db.update(schedules)
-          .set({ scheduleTitle: newDuties })
-          .where(eq(schedules.employeeId, empId));
-      } else {
-        // Auto-create default schedule (Regular 8-5)
+      if (currentActiveSchedules.length > 0) {
+          // If duties is being updated, we check if it's a future transition
+          const targetStartDate = sanitizedUpdates.startDate ? String(sanitizedUpdates.startDate) : today;
+          
+          if (targetStartDate > today && newDuties !== null) {
+              // FUTURE TRANSITION: Prepare next schedule set
+              // 1. Close current schedules
+              const endDateOneDayBefore = new Date(targetStartDate);
+              endDateOneDayBefore.setDate(endDateOneDayBefore.getDate() - 1);
+              const endDateStr = endDateOneDayBefore.toISOString().split('T')[0];
 
-        // Use a default range far into the future or current year
-        const today = new Date().toISOString().split('T')[0];
+              await db.update(schedules)
+                .set({ endDate: endDateStr })
+                .where(and(
+                    eq(schedules.employeeId, empId),
+                    inArray(schedules.id, currentActiveSchedules.map(s => s.id))
+                ));
+
+              // 2. Insert new schedules for each day the employee had (maintaining their pattern)
+              for (const oldSched of currentActiveSchedules) {
+                  await db.insert(schedules).values({
+                      employeeId: empId,
+                      scheduleTitle: newDuties,
+                      startTime: sanitizedUpdates.startTime ? convertTo24Hour(String(sanitizedUpdates.startTime)) : oldSched.startTime,
+                      endTime: sanitizedUpdates.endTime ? convertTo24Hour(String(sanitizedUpdates.endTime)) : oldSched.endTime,
+                      dayOfWeek: oldSched.dayOfWeek,
+                      startDate: targetStartDate,
+                      repeatPattern: oldSched.repeatPattern || 'Weekly'
+                  });
+              }
+          } else {
+              // IMMEDIATE UPDATE or TIME-ONLY UPDATE
+              const updateSchedFields: Partial<typeof schedules.$inferInsert> = {};
+              if (newDuties !== null) updateSchedFields.scheduleTitle = newDuties;
+              if (sanitizedUpdates.startTime !== undefined) updateSchedFields.startTime = convertTo24Hour(String(sanitizedUpdates.startTime));
+              if (sanitizedUpdates.endTime !== undefined) updateSchedFields.endTime = convertTo24Hour(String(sanitizedUpdates.endTime));
+
+              if (Object.keys(updateSchedFields).length > 0) {
+                  await db.update(schedules)
+                    .set(updateSchedFields)
+                    .where(and(
+                        eq(schedules.employeeId, empId),
+                        inArray(schedules.id, currentActiveSchedules.map(s => s.id))
+                    ));
+              }
+          }
+      } else if (newDuties !== null) {
+        // No current schedules found - create default Mon-Fri set (Standard 8-5 or provided times)
         const nextYear = new Date();
         nextYear.setFullYear(nextYear.getFullYear() + 1);
         const endDate = nextYear.toISOString().split('T')[0];
+        const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
-        await db.insert(schedules).values({
-            employeeId: empId,
-            scheduleTitle: newDuties,
-            startTime: '08:00:00',
-            endTime: '17:00:00',
-            dayOfWeek: 'Mon-Fri',
-            startDate: today,
-            endDate: endDate,
-            repeatPattern: 'Weekly'
-        });
+        // Get System Default Shift for fallback
+        const [defaultShift] = await db.select({
+          startTime: shiftTemplates.startTime,
+          endTime: shiftTemplates.endTime
+        })
+        .from(shiftTemplates)
+        .where(eq(shiftTemplates.isDefault, true))
+        .limit(1);
+
+        const fallbackStart = defaultShift?.startTime || '08:00:00';
+        const fallbackEnd = defaultShift?.endTime || '17:00:00';
+
+        for (const day of days) {
+          await db.insert(schedules).values({
+              employeeId: empId,
+              scheduleTitle: newDuties,
+              startTime: sanitizedUpdates.startTime ? convertTo24Hour(String(sanitizedUpdates.startTime)) : fallbackStart,
+              endTime: sanitizedUpdates.endTime ? convertTo24Hour(String(sanitizedUpdates.endTime)) : fallbackEnd,
+              dayOfWeek: day,
+              startDate: today,
+              endDate: endDate,
+              repeatPattern: 'Weekly'
+          });
+        }
       }
     }
 

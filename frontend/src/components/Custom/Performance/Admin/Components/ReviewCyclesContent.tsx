@@ -249,7 +249,7 @@ const ReviewCyclesContent: React.FC = () => {
                         type="text"
                         {...register('title')}
                         className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none transition-all placeholder:text-gray-400"
-                        placeholder="e.g. Annual Review 2025"
+                        placeholder={`e.g. Annual Review ${new Date().getFullYear()}`}
                         />
                         {errors.title && <p className="text-red-500 text-xs mt-1">{errors.title.message}</p>}
                     </div>

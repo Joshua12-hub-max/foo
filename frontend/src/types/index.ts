@@ -69,12 +69,14 @@ export interface User {
   educationalBackground?: string | null;
   isVerified: boolean;
   duties: string;
+  shift?: string | null;
 }
 
 export interface ApiResponse<T = unknown> {
   success: boolean;
   data: T;
   message?: string;
+  avatar?: string | null;
 }
 
 // Shared Outlet Context for React Router
@@ -130,6 +132,8 @@ export interface BiometricsLog {
   name?: string;
   department?: string;
   duties?: string;
+  shift?: string;
+  dutyType?: string;
   status?: string;
   scanDate?: Date; // Frontend helper for sorting/filtering
 }
@@ -147,6 +151,8 @@ export interface MonitorLogData {
   name: string;
   department: string;
   duties?: string;
+  shift?: string;
+  dutyType?: string;
 }
 
 // Attendance Record (General)
@@ -163,6 +169,8 @@ export interface AttendanceRecord {
   status?: string;
   department?: string;
   duties?: string;
+  shift?: string;
+  dutyType?: string;
 }
 
 // New Event for Calendar

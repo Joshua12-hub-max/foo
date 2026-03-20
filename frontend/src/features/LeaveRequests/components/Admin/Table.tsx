@@ -1,3 +1,4 @@
+// Optimized Administration Table Component
 import React, { useCallback } from 'react';
 import { AdminLeaveRequest } from '../../types';
 import { CheckCircle, Trash2, Info } from 'lucide-react';
@@ -27,8 +28,8 @@ const Table: React.FC<TableProps> = ({ data, onOpenApprove, onOpenReject, onOpen
         <table className="w-full min-w-[1500px]">
           <thead className="bg-gray-200 shadow-md text-gray-700">
             <tr>
-              {['Employee Id', 'Employee Name', 'Department', 'Leave Type', 'Payment', 'From Date', 'Status', 'To Date', 'Credits', 'Actions'].map((header) => (
-                <th key={header} className="px-6 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap">
+              {['Employee ID', 'Employee Name', 'Department', 'Leave Type', 'Payment', 'From Date', 'Status', 'To Date', 'Credits', 'Actions'].map((header) => (
+                <th key={header} className="px-6 py-4 text-left text-sm font-semibold tracking-wide whitespace-nowrap">
                   {header}
                 </th>
               ))}
@@ -60,7 +61,7 @@ const Table: React.FC<TableProps> = ({ data, onOpenApprove, onOpenReject, onOpen
                   <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">{new Date(item.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span
-                      className={`${getStatusBadge(item.status)} px-2 py-0.5 rounded-md text-[10px] font-bold shadow-sm inline-block`}
+                      className={`${getStatusBadge(item.status)} px-2 py-0.5 rounded-md text-[10px] font-semibold shadow-sm inline-block`}
                     >
                       {item.status}
                     </span>
@@ -73,7 +74,7 @@ const Table: React.FC<TableProps> = ({ data, onOpenApprove, onOpenReject, onOpen
                           {Number(item.workingDays || 0).toFixed(1)}
                         </span>
                       </div>
-                      <span className="text-[10px] text-gray-400 font-medium uppercase tracking-tighter">Days</span>
+                      <span className="text-[10px] text-gray-400 font-medium tracking-tighter">Days</span>
                     </div>
                   </td>
                   <td className="px-6 py-4">
@@ -82,27 +83,28 @@ const Table: React.FC<TableProps> = ({ data, onOpenApprove, onOpenReject, onOpen
                         <>
                           <button
                             onClick={() => onOpenApprove(item)}
-                            title="Approve Request"
-                            className="p-2 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-full transition-colors"
+                            title="Approve"
+                            className="px-3 py-1 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors flex items-center gap-1.5 text-xs font-semibold border border-gray-200"
                           >
-                            <CheckCircle size={16} />
+                            <CheckCircle className="w-3.5 h-3.5" />
+                            Approve
                           </button>
                           <button
                             onClick={() => onOpenReject(item)}
-                            title="Reject Request"
-                            className="p-2 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-full transition-colors"
+                            title="Reject"
+                            className="px-3 py-1 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors flex items-center gap-1.5 text-xs font-semibold border border-gray-200"
                           >
-                            <Trash2 size={16} />
+                            <Trash2 className="w-3.5 h-3.5" />
+                            Reject
                           </button>
                         </>
                       )}
                       
-                      {(item.status === 'Approved' || item.status === 'Rejected') && !onOpenProcess && (
-                         <div className="flex items-center gap-1 text-gray-400 bg-gray-50 px-2 py-1 rounded border border-gray-100">
-                            <Info size={12} />
-                            <span className="text-[10px] font-normal uppercase">Locked</span>
-                         </div>
-                      )}
+                       {(item.status === 'Approved' || item.status === 'Rejected') && !onOpenProcess && (
+                          <div className="flex items-center gap-1 text-gray-400 bg-gray-50 px-3 py-1 rounded border border-gray-100">
+                             <span className="text-[10px] font-semibold">Locked</span>
+                          </div>
+                       )}
                     </div>
                   </td>
                 </tr>
@@ -111,8 +113,7 @@ const Table: React.FC<TableProps> = ({ data, onOpenApprove, onOpenReject, onOpen
               <tr>
                 <td colSpan={10} className="px-6 py-12 text-center text-gray-500">
                   <div className="flex flex-col items-center gap-2 opacity-60">
-                    <Info size={40} strokeWidth={1.5} />
-                    <p className="font-medium tracking-tight">No leave applications found matching current filters.</p>
+                    <p className="font-semibold tracking-tight">No leave applications found matching current filters.</p>
                   </div>
                 </td>
               </tr>

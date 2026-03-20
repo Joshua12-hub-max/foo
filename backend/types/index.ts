@@ -12,6 +12,7 @@ export interface JwtPayload {
   id: number;
   employeeId: string;
   role: UserRole;
+  departmentId?: number;
   iat?: number;
   exp?: number;
 }

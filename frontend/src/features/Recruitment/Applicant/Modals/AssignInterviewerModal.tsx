@@ -1,5 +1,6 @@
  import React from 'react';
 import { X } from 'lucide-react';
+import Combobox from '@/components/Custom/Combobox';
 import { Applicant, Interviewer } from '@/types';
 
 interface AssignInterviewerModalProps {
@@ -40,18 +41,21 @@ const AssignInterviewerModal: React.FC<AssignInterviewerModalProps> = ({
             Authorize an employee to interview <strong className="text-gray-900">{selectedApplicant?.firstName} {selectedApplicant?.lastName}</strong>.
           </p>
           
-          <div className="mb-6">
+          <div className="mb-6 relative z-[60]">
               <label className="block text-sm font-semibold text-gray-700 mb-2">Select Interviewer</label>
-              <select 
-                  className="w-full p-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all bg-gray-50 text-sm"
-                  value={selectedInterviewer}
-                  onChange={(e) => setSelectedInterviewer(e.target.value)}
-              >
-                  <option value="">-- Select Employee --</option>
-                  {interviewers.map(int => (
-                      <option key={int.id} value={String(int.id)}>{int.firstName} {int.lastName} ({int.jobTitle})</option>
-                  ))}
-              </select>
+              <Combobox
+                options={[
+                  { value: '', label: '-- Select Employee --' },
+                  ...interviewers.map(int => ({
+                    value: String(int.id),
+                    label: `${int.firstName} ${int.lastName} (${int.jobTitle})`
+                  }))
+                ]}
+                value={selectedInterviewer}
+                onChange={(val) => setSelectedInterviewer(val)}
+                placeholder="Search Employee..."
+                buttonClassName="w-full p-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all bg-gray-50 text-sm font-bold h-[42px]"
+              />
           </div>
 
           <div className="flex justify-end gap-3 pt-2">

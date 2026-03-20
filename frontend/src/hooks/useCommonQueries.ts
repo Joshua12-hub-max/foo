@@ -110,6 +110,83 @@ export const useNextEmployeeIdQuery = () => {
     staleTime: 0, // Always fetch fresh
   });
 };
+
+export const useEmailUniquenessQuery = (email: string, enabled: boolean) => {
+  return useQuery({
+    queryKey: ['email-uniqueness', email],
+    queryFn: async (): Promise<{ isUnique: boolean; message: string }> => {
+      try {
+        const response = await axios.get(`http://localhost:5000/api/auth/check-email`, {
+          params: { email }
+        });
+        return { isUnique: true, message: response.data.message };
+      } catch (error) {
+        if (error instanceof AxiosError && error.response?.status === 409) {
+          return { isUnique: false, message: 'Email already exists.' };
+        }
+        return { isUnique: true, message: '' };
+      }
+    },
+    enabled: enabled && !!email && email.includes('@'),
+    retry: false,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+};
+
+export interface GovtIdUniquenessParams {
+  umidNumber?: string;
+  tinNumber?: string;
+  philhealthNumber?: string;
+  pagibigNumber?: string;
+  gsisNumber?: string;
+  philsysId?: string;
+  agencyEmployeeNo?: string;
+  eligibilityNumber?: string;
+  licenseNo?: string;
+  govtIdNo?: string;
+  excludeAuthId?: number;
+  excludeApplicantId?: number;
+}
+
+export const useGovtIdUniquenessQuery = (params: GovtIdUniquenessParams, enabled: boolean) => {
+  // Use a stable query key based on provided parameters
+  const queryKey = ['govt-id-uniqueness', ...Object.values(params).filter(Boolean)];
+
+  return useQuery({
+    queryKey,
+    queryFn: async (): Promise<{ 
+      isUnique: boolean; 
+      message: string; 
+      conflicts?: Record<string, string>;
+      errors?: string[];
+    }> => {
+      try {
+        const hasValues = Object.values(params).some(v => v && String(v).length > 2);
+        if (!hasValues) return { isUnique: true, message: '' };
+
+        const response = await axios.get(`http://localhost:5000/api/auth/check-govt-id`, {
+          params
+        });
+        return { isUnique: true, message: response.data.message };
+      } catch (error) {
+        if (error instanceof AxiosError && error.response?.status === 409) {
+          return { 
+            isUnique: false, 
+            message: error.response.data.message || 'ID already exists.',
+            conflicts: error.response.data.conflicts,
+            errors: error.response.data.errors
+          };
+        }
+        return { isUnique: true, message: '' };
+      }
+    },
+    enabled: enabled && Object.values(params).some(v => v && String(v).length > 2),
+    retry: false,
+    staleTime: 1000 * 60 * 5,
+  });
+};
+
+
 import { HiredApplicant } from '../types/recruitment_applicant';
 
 export const useHiredApplicantSearch = (firstName: string, lastName: string, enabled: boolean) => {
@@ -142,7 +219,19 @@ export const useEmploymentMetadataQuery = () => {
     queryFn: async () => {
       try {
         const response = await axios.get('http://localhost:5000/api/common/employment-metadata');
-        return response.data.data as { appointmentTypes: string[], dutyTypes: string[], roles: string[] };
+        return response.data.data as { 
+          appointmentTypes: string[], 
+          dutyTypes: string[], 
+          roles: string[],
+          pdsCivilStatus: string[],
+          pdsBloodTypes: string[],
+          pdsCitizenship: string[],
+          pdsAppointmentStatus: string[],
+          pdsLdTypes: string[],
+          pdsGovtIdTypes: string[],
+          employmentStatus: string[],
+          pdsEligibilityTypes: { value: string, label: string }[]
+        };
       } catch (error) {
         if (error instanceof AxiosError) {
           throw new Error(error.response?.data?.message || 'Failed to fetch employment metadata');

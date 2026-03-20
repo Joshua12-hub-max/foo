@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import RatingLegend from '../RatingLegend';
 import { CSC_RATING_SCALE } from '../constants/performanceConstants';
+import Combobox from '@/components/Custom/Combobox';
 
 import { PerformanceItem, PerformanceReview } from '../types';
 
@@ -31,6 +32,11 @@ const SelfRatingModal: React.FC<SelfRatingModalProps> = ({
   onSelfRemarksChange,
   onSubmit
 }) => {
+  const ratingOptions = CSC_RATING_SCALE.map(r => ({
+    value: String(r.value),
+    label: `${r.value} - ${r.label}`
+  }));
+
   if (!isOpen || !selectedReview) return null;
 
   return (
@@ -76,18 +82,13 @@ const SelfRatingModal: React.FC<SelfRatingModalProps> = ({
                       <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5 ml-1">
                         Your Rating
                       </label>
-                      <select
-                        value={item.selfScore || 0}
-                        onChange={(e) => onUpdateScore(idx, e.target.value)}
-                        className="w-full px-4 py-2.5 border border-gray-200 rounded-lg font-semibold text-gray-900 bg-gray-50 focus:ring-4 focus:ring-gray-100 focus:border-gray-300 outline-none transition-all cursor-pointer hover:bg-gray-100"
-                      >
-                        <option value="0" disabled>Select Rating</option>
-                        {CSC_RATING_SCALE.map(rating => (
-                          <option key={rating.value} value={rating.value}>
-                            {rating.value} - {rating.label}
-                          </option>
-                        ))}
-                      </select>
+                      <Combobox
+                        options={ratingOptions}
+                        value={String(item.selfScore || 0)}
+                        onChange={(val) => onUpdateScore(idx, val)}
+                        placeholder="Select Rating"
+                        buttonClassName="px-4 py-2.5 font-semibold text-gray-900 bg-gray-50 border-gray-200"
+                      />
                     </div>
                   </div>
                   <div>

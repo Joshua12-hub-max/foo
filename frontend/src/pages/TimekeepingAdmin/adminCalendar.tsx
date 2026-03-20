@@ -26,8 +26,6 @@ import {
   EditEventModal,
   CreateAnnouncementModal,
   EditAnnouncementModal,
-  ScheduleModal,
-  EditScheduleModal,
 } from '@components/Custom/CalendarComponents/admin/Modals';
 import { 
   CalendarEvent, 
@@ -46,7 +44,7 @@ import {
   useCalendarStore,
   useToastStore
 } from '@/stores';
-import { holidays } from '@utils';
+import { useHolidays } from '@/hooks/useLeave';
 
 export default function AdminCalendar() {
   const queryClient = useQueryClient();
@@ -100,6 +98,18 @@ export default function AdminCalendar() {
       })) || [];
     }
   });
+
+  const { data: schedules = [] } = useQuery({
+    queryKey: ['schedules-list'],
+    queryFn: async () => {
+        const response = await scheduleApi.getSchedules();
+        return (response.schedules || []) as unknown as Schedule[];
+    }
+  });
+
+  // Holidays query
+  const { data: holidaysData } = useHolidays(currentDate.getFullYear());
+  const holidays = holidaysData?.holidays || [];
 
   // Fetch employees (if needed for filtering/display, kept consistent with original)
   useQuery({
@@ -295,7 +305,7 @@ export default function AdminCalendar() {
   }, [updateEventMutation]);
 
   // Calendar data processing
-  const calendarData = useCalendarData({ currentDate, events, showHolidays, holidays: holidays.map(h => ({ ...h, name: h.title })) as unknown as Holiday[], announcements });
+  const calendarData = useCalendarData({ currentDate, events, showHolidays, holidays: holidays.map(h => ({ ...h, name: (h as any).name || (h as any).title || '' })) as unknown as Holiday[], announcements, schedules });
   const { month, day, year, dayName, displayedEvents } = calendarData;
   
   const isDeleting = deleteEventMutation.isPending || deleteAnnouncementMutation.isPending;
@@ -333,7 +343,7 @@ export default function AdminCalendar() {
                 today={today}
                 onDateClick={navigation.handleDateClick}
                 showHolidays={showHolidays}
-                holidays={holidays as unknown as GridItem[]}
+                holidays={(holidays as any) as unknown as GridItem[]}
                 announcements={announcements}
                 events={events}
                 displayedEvents={displayedEvents}
@@ -344,6 +354,7 @@ export default function AdminCalendar() {
               <AdminAgendaView
                 events={events}
                 announcements={announcements}
+                schedules={schedules}
                 onAddEvent={() => handleAddEventClick('09:00')}
                 onEditEvent={handleEditEvent}
                 onDeleteEvent={handleDeleteClick}
@@ -370,7 +381,7 @@ export default function AdminCalendar() {
           hours={HOURS_12}
           onEventClick={(e) => setShowEventDetails(e as unknown as CalendarDisplayItem)}
           showHolidays={showHolidays}
-          holidays={holidays.map(h => ({ ...h, name: h.title })) as unknown as Holiday[]}
+          holidays={holidays.map(h => ({ ...h, name: (h as any).name || (h as any).title || '' })) as unknown as Holiday[]}
           announcements={announcements}
         />
 
@@ -389,31 +400,11 @@ export default function AdminCalendar() {
           />
         )}
 
-        {/* Add Event Modal */}
-        <ScheduleModal
-          show={modals.addEvent}
-          onClose={() => setModal('addEvent', false)}
-          onCreate={(data) => handleAddEvent(data as unknown as EventFormData)}
-          hours={HOURS_LIST}
-        />
-
         {/* Announcement Modal */}
         <CreateAnnouncementModal
           show={modals.createAnnouncement}
           onClose={() => setModal('createAnnouncement', false)}
           onCreate={handleCreateAnnouncement}
-          hours={HOURS_LIST}
-        />
-
-        {/* Edit Event Modal */}
-        <EditScheduleModal
-          show={modals.editEvent}
-          schedule={selectedType === 'schedule' ? (selectedItem as Schedule) : null}
-          onClose={() => {
-            setModal('editEvent', false);
-            setSelectedItem(null, null);
-          }}
-          onUpdate={(id, data) => handleUpdateEvent(data as unknown as CalendarEvent)}
           hours={HOURS_LIST}
         />
 

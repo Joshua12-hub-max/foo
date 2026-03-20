@@ -49,6 +49,7 @@ export interface EmployeeMapperInput {
   itemNumber?: string | null;
   positionId?: number | null;
   duties?: string | null;
+  shift?: string | null;
   heightM?: string | null;
   weightKg?: string | null;
   bloodType?: string | null;
@@ -92,6 +93,7 @@ export interface EmployeeMapperInput {
   startTime?: string | null;
   endTime?: string | null;
   isBiometricEnrolled?: boolean | null;
+  dutyType?: string | null;
 
   relatedThirdDegree?: string | null;
   relatedThirdDetails?: string | null;
@@ -178,6 +180,7 @@ export interface EmployeeApiResponse {
   itemNumber: string | null;
   positionId: number | null;
   duties: string; // From COALESCE in SQL
+  shift: string | null;
   
   // PDS / Extended Fields
   heightM: string | null;
@@ -264,6 +267,7 @@ export interface EmployeeApiResponse {
   govtIdNo: string | null;
   govtIdIssuance: string | null;
   isMeycauayan: boolean;
+  dutyType: string | null;
   dateAccomplished: string | null;
   pdsQuestions: any | null;
 }

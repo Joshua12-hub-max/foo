@@ -1,12 +1,14 @@
-import { useState, useEffect } from 'react';
-import { Search, Plus, SquarePen, Trash2, Megaphone, CalendarDays, Building2, Clock, User, Loader2 } from 'lucide-react';
+import { Loader2, SquarePen, Trash2, Search, Plus } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 
-import { CalendarEvent, Announcement } from '@/types/calendar';
+import { CalendarEvent, Announcement, Schedule } from '@/types/calendar';
 import { scheduleApi } from '@/api/scheduleApi';
+import { useState } from 'react';
 
 interface AdminAgendaViewProps {
   events?: CalendarEvent[];
   announcements?: Announcement[];
+  schedules?: Schedule[];
   onAddEvent?: () => void;
   onEditEvent?: (event: CalendarEvent) => void;
   onDeleteEvent?: (event: CalendarEvent) => void;
@@ -24,31 +26,58 @@ interface DeptSchedule {
     endTime: string;
 }
 
-const AdminAgendaView = ({ events = [], announcements = [], onAddEvent, onEditEvent, onDeleteEvent, onAddAnnouncement, onEditAnnouncement, onDeleteAnnouncement }: AdminAgendaViewProps) => {
-  const [activeTab, setActiveTab] = useState('announcements');
+interface NextCutOffSchedule {
+    id: number;
+    employeeId: string;
+    employeeName: string;
+    departmentName: string;
+    scheduleTitle: string;
+    startDate: string;
+    endDate: string;
+    startTime: string;
+    endTime: string;
+    dayOfWeek: string;
+}
+
+const AdminAgendaView = ({ 
+  events = [], 
+  announcements = [], 
+  schedules = [],
+  onAddEvent, 
+  onEditEvent, 
+  onDeleteEvent, 
+  onAddAnnouncement, 
+  onEditAnnouncement, 
+  onDeleteAnnouncement 
+}: AdminAgendaViewProps) => {
+  const [activeTab, setActiveTab] = useState('schedules');
   const [searchQuery, setSearchQuery] = useState('');
-  const [deptSchedules, setDeptSchedules] = useState<DeptSchedule[]>([]);
-  const [loadingDept, setLoadingDept] = useState(false);
 
-  useEffect(() => {
-      if (activeTab === 'dept-schedules') {
-          fetchDeptSchedules();
-      }
-  }, [activeTab]);
 
-  const fetchDeptSchedules = async () => {
-      setLoadingDept(true);
-      try {
-          const res = await scheduleApi.getDepartmentSchedules();
-          if (res.success) {
-              setDeptSchedules(res.schedules || []);
-          }
-      } catch (err) {
-          console.error('Failed to fetch dept schedules:', err);
-      } finally {
-          setLoadingDept(false);
-      }
-  };
+  const { data: summaryData, isLoading: loadingSummary } = useQuery({
+      queryKey: ['department-schedules-summary'],
+      queryFn: async () => {
+          const res = await scheduleApi.getDepartmentSchedulesSummary();
+          return res.data || [];
+      },
+      enabled: activeTab === 'schedules'
+  });
+
+  const { data: nextCutOffData, isLoading: loadingNext } = useQuery({
+      queryKey: ['next-cutoff-schedules'],
+      queryFn: async () => {
+          const res = await scheduleApi.getNextCutOffSchedules();
+          return {
+              schedules: res.schedules || [],
+              period: res.period || null
+          };
+      },
+      enabled: activeTab === 'next-cutoff'
+  });
+
+  const deptSummary = summaryData || [];
+  const nextCutOffSchedules = nextCutOffData?.schedules || [];
+  const cutOffPeriod = nextCutOffData?.period || null;
 
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return 'N/A';
@@ -71,27 +100,53 @@ const AdminAgendaView = ({ events = [], announcements = [], onAddEvent, onEditEv
     return `${displayHour}:00 ${period}`;
   };
 
-  // Filter items based on search query
-  const filterItems = <T extends Record<string, any>>(items: T[], fields: (keyof T)[]) => {
+  // Filter items based on search query (Zero Type Erasure compliant)
+  const filterItems = <T extends Record<string, unknown>>(items: T[], fields: (keyof T)[]) => {
     if (!searchQuery) return items;
     const query = searchQuery.toLowerCase();
     return items.filter(item => 
       fields.some(field => {
         const value = item[field];
-        return value && value.toString().toLowerCase().includes(query);
+        return value !== null && typeof value !== 'undefined' && value.toString().toLowerCase().includes(query);
       })
     );
   };
 
-  const filteredAnnouncements = filterItems(announcements, ['title', 'content']);
-  const filteredEvents = filterItems(events, ['title', 'description']);
-  const filteredDeptSchedules = filterItems(deptSchedules, ['departmentName', 'employeeName', 'employeeId']);
+  const filteredAnnouncements = filterItems(announcements as unknown as Record<string, unknown>[], ['title', 'content']) as unknown as Announcement[];
+  const filteredEvents = filterItems(events as unknown as Record<string, unknown>[], ['title', 'description']) as unknown as CalendarEvent[];
+  const filteredSchedules = filterItems(schedules as unknown as Record<string, unknown>[], ['employeeName', 'employeeId', 'scheduleTitle', 'department']) as unknown as Schedule[];
+  const filteredNextCutOffSchedules = filterItems(nextCutOffSchedules as unknown as Record<string, unknown>[], ['departmentName', 'employeeName', 'scheduleTitle']) as unknown as NextCutOffSchedule[];
+  const filteredDeptSummary = filterItems(deptSummary as unknown as Record<string, unknown>[], ['departmentName']) as any[];
+
+  // Grouped data for better organization (Nested: Dept -> Shift -> Items)
+  const groupedSchedules = filteredSchedules.reduce((acc, item) => {
+    const dept = item.department || 'Unassigned';
+    const shift = `${formatTime(item.startTime ?? null)} - ${formatTime(item.endTime ?? null)}`;
+    if (!acc[dept]) acc[dept] = {};
+    if (!acc[dept][shift]) acc[dept][shift] = [];
+    acc[dept][shift].push(item);
+    return acc;
+  }, {} as Record<string, Record<string, Schedule[]>>);
+
+  const groupedNextCutOff = filteredNextCutOffSchedules.reduce((acc, item) => {
+    const dept = item.departmentName || 'Unassigned';
+    const shift = `${formatTime(item.startTime)} - ${formatTime(item.endTime)}`;
+    if (!acc[dept]) acc[dept] = {};
+    if (!acc[dept][shift]) acc[dept][shift] = [];
+    acc[dept][shift].push(item);
+    return acc;
+  }, {} as Record<string, Record<string, NextCutOffSchedule[]>>);
+
+  // Count unique employees for Next Cut-off badge (not inflated row count)
+  const uniqueNextCutOffEmployees = new Set(filteredNextCutOffSchedules.map(s => s.employeeId)).size;
 
   const tabs = [
-    { id: 'announcements', label: 'Announcements', icon: Megaphone, count: filteredAnnouncements.length },
-    { id: 'events', label: 'Events', icon: CalendarDays, count: filteredEvents.length },
-    { id: 'dept-schedules', label: 'Dept Schedules', icon: Building2, count: filteredDeptSchedules.length }
+    { id: 'schedules', label: 'Current Shift', count: filteredDeptSummary.length },
+    { id: 'announcements', label: 'Announcements', count: filteredAnnouncements.length },
+    { id: 'events', label: 'Events', count: filteredEvents.length },
+    { id: 'next-cutoff', label: 'Next Cut-off Table', count: uniqueNextCutOffEmployees }
   ];
+
 
   const getAddHandler = () => {
     switch (activeTab) {
@@ -105,7 +160,7 @@ const AdminAgendaView = ({ events = [], announcements = [], onAddEvent, onEditEv
     switch (activeTab) {
       case 'announcements': return 'New Announcement';
       case 'events': return 'New Event';
-      default: return 'Add New';
+      default: return undefined;
     }
   };
 
@@ -113,8 +168,7 @@ const AdminAgendaView = ({ events = [], announcements = [], onAddEvent, onEditEv
   const EmptyState = ({ message }: { message: string }) => (
     <tr>
       <td colSpan={100} className="px-6 py-12 text-center text-gray-500">
-        <Search className="w-10 h-10 mx-auto mb-3 opacity-40" />
-        <p className="text-lg">{message}</p>
+        <p className="text-lg font-semibold">{message}</p>
       </td>
     </tr>
   );
@@ -123,23 +177,22 @@ const AdminAgendaView = ({ events = [], announcements = [], onAddEvent, onEditEv
     <div className="flex flex-col h-full bg-white">
       {/* Header with Tabs */}
       <div className="bg-[#F8F9FA] border-b border-gray-200 py-4">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div className="flex flex-col gap-4">
           {/* Tabs */}
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex gap-2 overflow-x-auto px-4 scrollbar-hide flex-nowrap min-w-0">
             {tabs.map(tab => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center rounded-lg gap-2 px-4 py-2 font-medium text-sm transition-all ${
+                className={`flex items-center rounded-lg gap-2 px-4 py-2 font-semibold text-sm transition-all flex-shrink-0 ${
                   activeTab === tab.id
-                    ? 'bg-blue-100 text-blue-700 shadow-sm border border-blue-200'
+                    ? 'bg-gray-200 text-gray-900 shadow-sm border border-gray-300'
                     : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
                 }`}
               >
-                <tab.icon className="w-4 h-4" />
                 {tab.label}
                 <span className={`px-2 py-0.5 rounded-lg text-xs ${
-                  activeTab === tab.id ? 'bg-blue-200 text-blue-800' : 'bg-gray-100 text-gray-500'
+                  activeTab === tab.id ? 'bg-gray-300 text-gray-900' : 'bg-gray-100 text-gray-500'
                 }`}>
                   {tab.count}
                 </span>
@@ -147,52 +200,121 @@ const AdminAgendaView = ({ events = [], announcements = [], onAddEvent, onEditEv
             ))}
           </div>
 
-          {/* Search and Add */}
-          <div className="flex gap-3">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search..."
-                className="pl-10 pr-4 py-2 bg-white border border-gray-300 rounded-lg shadow-sm w-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all disabled:opacity-50"
-              />
-            </div>
-            {activeTab !== 'dept-schedules' && (
+            {/* Search and Add */}
+            <div className="flex flex-row items-center justify-between gap-4 px-4">
+              <div className="relative w-full sm:w-72">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search assignments..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/5 font-semibold text-gray-700 shadow-sm focus:border-gray-300 transition-all"
+                />
+              </div>
+              
+              {getAddHandler() && (
                 <button
-                onClick={getAddHandler()}
-                className="flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors text-sm font-medium shadow-md active:scale-95"
+                  onClick={getAddHandler()}
+                  className="px-6 py-2.5 bg-gray-900 text-white rounded-xl hover:bg-gray-800 transition-all flex items-center justify-center gap-2.5 text-sm font-bold shadow-lg shadow-gray-200 active:scale-95 whitespace-nowrap"
                 >
-                <Plus className="w-4 h-4" />
-                {getAddLabel()}
+                  <Plus className="w-4 h-4 stroke-[3px]" />
+                  {getAddLabel()}
                 </button>
-            )}
-          </div>
+              )}
+            </div>
         </div>
       </div>
 
       {/* Table Content */}
       <div className="flex-1 overflow-auto">
         <div className="overflow-hidden">
+          {/* Active Schedules - Department Level Summary Table */}
+          {activeTab === 'schedules' && (
+            <div className="p-4">
+              <div className="overflow-x-auto bg-gray-50 rounded-lg shadow-sm border border-gray-100">
+                <table className="w-full text-left border-collapse">
+                  <thead className="bg-gray-200 shadow-md text-gray-700">
+                    <tr>
+                      <th className="px-6 py-4 text-sm font-semibold tracking-wide whitespace-nowrap">Department Unit</th>
+                      <th className="px-6 py-4 text-sm font-semibold tracking-wide whitespace-nowrap text-center">Duty Window</th>
+                      <th className="px-6 py-4 text-sm font-semibold tracking-wide whitespace-nowrap text-right">Total Strength</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 bg-white">
+                    {loadingSummary ? (
+                       <tr>
+                         <td colSpan={3} className="py-20 text-center">
+                            <Loader2 className="w-8 h-8 animate-spin mx-auto text-gray-400" />
+                            <p className="mt-2 text-sm text-gray-500 font-medium">Loading Department Summary...</p>
+                         </td>
+                       </tr>
+                    ) : filteredDeptSummary.length > 0 ? (
+                       filteredDeptSummary.map((item: any) => (
+                        <tr key={item.id} className="hover:bg-[#F8F9FA] hover:shadow-xl transition-colors">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center gap-3">
+                              <span className="text-sm font-semibold text-gray-900 uppercase tracking-tight">{item.departmentName}</span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex flex-wrap gap-3 justify-center">
+                              {item.shifts.map((shift: any, idx: number) => (
+                                <div 
+                                  key={`${item.id}-${idx}`} 
+                                  className={`flex flex-col items-center px-4 py-2 rounded-lg border shadow-sm transition-all ${
+                                    shift.isStandard 
+                                      ? 'bg-emerald-50 border-emerald-100 text-emerald-900 ring-2 ring-emerald-500/20' 
+                                      : 'bg-blue-50/50 border-blue-100/50 text-blue-900'
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-1.5 mb-0.5">
+                                    <span className={`text-[10px] font-black uppercase tracking-tight ${shift.isStandard ? 'text-emerald-700' : 'text-blue-600'}`}>
+                                      {formatTime(shift.startTime)} - {formatTime(shift.endTime)}
+                                    </span>
+                                    {shift.isStandard && (
+                                      <span className="bg-emerald-600 text-white text-[8px] font-black px-1.5 py-0.5 rounded uppercase leading-none">Standard</span>
+                                    )}
+                                  </div>
+                                  <span className="text-[11px] font-bold">{shift.personnelCount} Personnel</span>
+                                </div>
+                              ))}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-right whitespace-nowrap">
+                            <span className="text-sm font-semibold text-gray-900">
+                              {item.totalStrength} Total Active
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <EmptyState message="No departments found" />
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
           {/* Announcements Table */}
           {activeTab === 'announcements' && (
             <table className="w-full">
-              <thead className="bg-gray-50 text-gray-700 border-b border-gray-200">
+              <thead className="bg-gray-200 shadow-md text-gray-700">
                 <tr>
-                  <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">Title</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">Content</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">Start Date</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">End Date</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">Created</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">Actions</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold tracking-wide whitespace-nowrap">Title</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold tracking-wide whitespace-nowrap">Content</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold tracking-wide whitespace-nowrap">Start Date</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold tracking-wide whitespace-nowrap">End Date</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold tracking-wide whitespace-nowrap">Created</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold tracking-wide whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 bg-white">
                 {filteredAnnouncements.length > 0 ? (
                   filteredAnnouncements.map((item) => (
-                    <tr key={item.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4 text-sm font-medium text-gray-900">{item.title}</td>
+                    <tr key={item.id} className="hover:bg-gray-50/50 transition-colors">
+                      <td className="px-6 py-4 text-sm font-semibold text-gray-900">{item.title}</td>
                       <td className="px-6 py-4 text-sm text-gray-600 max-w-xs truncate" title={item.content}>
                         {item.content}
                       </td>
@@ -205,17 +327,19 @@ const AdminAgendaView = ({ events = [], announcements = [], onAddEvent, onEditEv
                             onClick={() => {
                               onEditAnnouncement?.(item);
                             }}
-                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                            title="Edit Announcement"
+                            className="p-1 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors flex items-center gap-1.5 text-xs font-semibold border border-gray-200"
+                            title="Edit"
                           >
-                            <SquarePen className="w-4 h-4" />
+                            <SquarePen className="w-3.5 h-3.5" />
+                            Edit
                           </button>
                           <button
                             onClick={() => onDeleteAnnouncement && onDeleteAnnouncement(item)}
-                            className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            className="p-1 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors flex items-center gap-1.5 text-xs font-semibold border border-gray-200"
                             title="Delete"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-3.5 h-3.5" />
+                            Delete
                           </button>
                         </div>
                       </td>
@@ -231,30 +355,30 @@ const AdminAgendaView = ({ events = [], announcements = [], onAddEvent, onEditEv
           {/* Events Table */}
           {activeTab === 'events' && (
             <table className="w-full">
-              <thead className="bg-gray-50 text-gray-700 border-b border-gray-200">
+              <thead className="bg-gray-200 shadow-md text-gray-700">
                 <tr>
-                  <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">Title</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">Description</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">Date</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">Time</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">Recurring</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">Actions</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold tracking-wide whitespace-nowrap">Title</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold tracking-wide whitespace-nowrap">Description</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold tracking-wide whitespace-nowrap">Date</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold tracking-wide whitespace-nowrap">Time</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold tracking-wide whitespace-nowrap">Recurring</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold tracking-wide whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 bg-white">
                 {filteredEvents.length > 0 ? (
                   filteredEvents.map((item) => (
-                    <tr key={item.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4 text-sm font-medium text-gray-900">{item.title}</td>
+                    <tr key={item.id} className="hover:bg-gray-50/50 transition-colors">
+                      <td className="px-6 py-4 text-sm font-semibold text-gray-900">{item.title}</td>
                       <td className="px-6 py-4 text-sm text-gray-600 max-w-xs truncate" title={item.description || undefined}>
                         {item.description || '-'}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-600">{formatDate(item.date)}</td>
                       <td className="px-6 py-4 text-sm text-gray-600">{formatTime(item.time)}</td>
                       <td className="px-6 py-4">
-                        <span className={`px-2 py-1 text-[10px] font-bold uppercase rounded ${
+                        <span className={`px-2 py-1 text-[10px] font-semibold uppercase rounded ${
                           item.recurringPattern && item.recurringPattern !== 'none'
-                            ? 'bg-purple-100 text-purple-700'
+                            ? 'bg-blue-100 text-blue-700'
                             : 'bg-gray-100 text-gray-600'
                         }`}>
                           {item.recurringPattern && item.recurringPattern !== 'none' 
@@ -266,17 +390,19 @@ const AdminAgendaView = ({ events = [], announcements = [], onAddEvent, onEditEv
                         <div className="flex gap-2">
                           <button
                             onClick={() => onEditEvent && onEditEvent(item)}
-                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            className="p-1 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors flex items-center gap-1.5 text-xs font-semibold border border-gray-200"
                             title="Edit"
                           >
-                            <SquarePen className="w-4 h-4" />
+                            <SquarePen className="w-3.5 h-3.5" />
+                            Edit
                           </button>
                           <button
                             onClick={() => onDeleteEvent && onDeleteEvent(item)}
-                            className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            className="p-1 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors flex items-center gap-1.5 text-xs font-semibold border border-gray-200"
                             title="Delete"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-3.5 h-3.5" />
+                            Delete
                           </button>
                         </div>
                       </td>
@@ -288,61 +414,80 @@ const AdminAgendaView = ({ events = [], announcements = [], onAddEvent, onEditEv
               </tbody>
             </table>
           )}
-
-          {/* Department Schedules Table */}
-          {activeTab === 'dept-schedules' && (
-            <div className="relative">
-                {loadingDept && (
-                    <div className="absolute inset-0 bg-white/60 flex items-center justify-center z-10">
-                        <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+           {/* Incoming Schedules - Department Level Planning Table */}
+          {activeTab === 'next-cutoff' && (
+            <div className="flex flex-col p-4 space-y-6 relative">
+                {loadingNext && (
+                    <div className="absolute inset-0 bg-white/60 flex items-center justify-center z-50 rounded-2xl">
+                        <Loader2 className="w-8 h-8 text-gray-400 animate-spin" />
                     </div>
                 )}
-                <table className="w-full">
-                <thead className="bg-blue-50 text-blue-900 border-b border-blue-100">
-                    <tr>
-                    <th className="px-6 py-4 text-left text-xs font-black uppercase tracking-wider">Department</th>
-                    <th className="px-6 py-4 text-left text-xs font-black uppercase tracking-wider">Employee</th>
-                    <th className="px-6 py-4 text-left text-xs font-black uppercase tracking-wider">Default Shift</th>
-                    <th className="px-6 py-4 text-left text-xs font-black uppercase tracking-wider">Status</th>
-                    </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100 bg-white">
-                    {filteredDeptSchedules.length > 0 ? (
-                    filteredDeptSchedules.map((item, idx) => (
-                        <tr key={idx} className="hover:bg-blue-50/30 transition-colors group">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex items-center gap-2">
-                                <Building2 size={14} className="text-blue-400" />
-                                <span className="text-sm font-bold text-gray-900">{item.departmentName}</span>
+                
+                {cutOffPeriod && (
+                    <div className="bg-gradient-to-r from-slate-800 to-slate-700 rounded-xl p-5 text-white shadow-lg shadow-gray-200/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 rounded-lg bg-white/20 flex items-center justify-center backdrop-blur-md">
+                              <SquarePen className="w-5 h-5 text-white" />
                             </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex flex-col">
-                                <span className="text-sm font-semibold text-gray-800">{item.employeeName}</span>
-                                <span className="text-[10px] text-gray-400 font-mono">{item.employeeId}</span>
+                              <span className="text-[10px] font-bold text-slate-100 uppercase tracking-widest mb-0.5">Incoming Cycle</span>
+                              <h3 className="text-lg font-black">{formatDate(cutOffPeriod.start)} — {formatDate(cutOffPeriod.end)}</h3>
                             </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100 w-fit group-hover:border-blue-200 transition-colors">
-                                <Clock size={14} className="text-blue-500" />
-                                <span className="text-sm font-mono font-bold text-blue-700">
-                                    {formatTime(item.startTime)} — {formatTime(item.endTime)}
-                                </span>
-                            </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-700">
-                                <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                                Active Shift
-                            </span>
-                        </td>
-                        </tr>
-                    ))
-                    ) : (
-                    <EmptyState message={loadingDept ? "Fetching schedules..." : "No department schedules found"} />
-                    )}
-                </tbody>
-                </table>
+                        </div>
+                        <div className="bg-white/10 px-4 py-2 rounded-lg border border-white/20 backdrop-blur-sm shadow-inner transition-all hover:bg-white/20">
+                           <span className="text-[10px] font-bold text-slate-100/80 uppercase tracking-widest block mb-0.5 opacity-80">Planning Cycle Status</span>
+                           <span className="text-sm font-black uppercase tracking-tight drop-shadow-sm">Next Cut-off Assignments</span>
+                        </div>
+                    </div>
+                )}
+
+                <div className="overflow-x-auto bg-gray-50 rounded-lg shadow-sm border border-gray-100">
+                   <table className="w-full text-left border-collapse">
+                    <thead className="bg-gray-200 shadow-md text-gray-700">
+                      <tr>
+                        <th className="px-6 py-4 text-sm font-semibold tracking-wide whitespace-nowrap">Department Unit</th>
+                        <th className="px-6 py-4 text-sm font-semibold tracking-wide whitespace-nowrap text-center">New Shift Assignments</th>
+                        <th className="px-6 py-4 text-sm font-semibold tracking-wide whitespace-nowrap text-right">Incoming Strength</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 bg-white">
+                      {Object.keys(groupedNextCutOff).length > 0 ? (
+                        Object.entries(groupedNextCutOff).sort(([a], [b]) => a.localeCompare(b)).map(([dept, shifts]) => (
+                          <tr key={dept} className="hover:bg-[#F8F9FA] hover:shadow-xl transition-colors">
+                             <td className="px-6 py-4 whitespace-nowrap">
+                              <span className="text-sm font-semibold text-gray-900 uppercase tracking-tight">{dept}</span>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="flex flex-wrap gap-3 justify-center">
+                                {Object.entries(shifts).map(([shiftTime, items]) => {
+                                  const uniqueCount = new Set(items.map((i: NextCutOffSchedule) => i.employeeId)).size;
+                                  return (
+                                  <div 
+                                    key={shiftTime} 
+                                    className="flex flex-col items-center px-4 py-2 rounded-lg border shadow-sm transition-all bg-blue-50/50 border-blue-100/50 text-blue-900"
+                                  >
+                                    <span className="text-[10px] font-black uppercase tracking-tight text-blue-600">
+                                      {shiftTime}
+                                    </span>
+                                    <span className="text-[11px] font-bold">{uniqueCount} Personnel</span>
+                                  </div>
+                                  );
+                                })}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 text-right whitespace-nowrap">
+                               <span className="text-sm font-semibold text-gray-900">
+                                  {new Set(Object.values(shifts).flat().map((i: NextCutOffSchedule) => i.employeeId)).size} Total New
+                               </span>
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <EmptyState message={loadingNext ? "Loading incoming cycles..." : "No incoming schedules found"} />
+                      )}
+                    </tbody>
+                   </table>
+                </div>
             </div>
           )}
 
@@ -354,3 +499,4 @@ const AdminAgendaView = ({ events = [], announcements = [], onAddEvent, onEditEv
 };
 
 export default AdminAgendaView;
+

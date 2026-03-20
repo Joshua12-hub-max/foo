@@ -1,11 +1,12 @@
-import { useState, useEffect, useRef } from 'react';
-import { X, ChevronDown } from 'lucide-react';
+import { useEffect } from 'react';
+import { X } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { eventSchema } from '@/schemas/calendar';
 import { CalendarEvent, EventFormData } from '@/types/calendar';
 import { Department } from '@/types/org';
 import { formatHour12, convertTo24Hour } from '../../shared/utils/eventUtils';
+import Combobox from '@/components/Custom/Combobox';
 
 interface EditEventModalProps {
   show: boolean;
@@ -21,8 +22,6 @@ interface EditEventModalProps {
  * Modal for editing existing events with start/end date and department support
  */
 const EditEventModal = ({ show, event, onClose, onUpdate, hours = [], departments = [] }: EditEventModalProps) => {
-  const [isDeptOpen, setIsDeptOpen] = useState(false);
-  const deptDropdownRef = useRef<HTMLDivElement>(null);
 
   const {
       register,
@@ -65,17 +64,6 @@ const EditEventModal = ({ show, event, onClose, onUpdate, hours = [], department
       });
     }
   }, [event, reset]);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (deptDropdownRef.current && !deptDropdownRef.current.contains(event.target as Node)) {
-        setIsDeptOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
   const onSubmit = (data: EventFormData) => {
     if (!event) return;
@@ -146,68 +134,36 @@ const EditEventModal = ({ show, event, onClose, onUpdate, hours = [], department
 
             {/* Time and Department - Grid Layout */}
             <div className="grid grid-cols-2 gap-4">
-              <div>
+              <div className="z-[30] relative">
                 <label className="block text-sm font-semibold text-gray-700 mb-1">
                   Time
                 </label>
-                <select
-                  {...register('time')}
-                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100 transition-all text-sm bg-white"
-                >
-                  {hours.map((hour) => (
-                    <option key={hour} value={hour}>
-                      {hour}
-                    </option>
-                  ))}
-                </select>
+                <Combobox
+                  options={hours.map(h => ({ value: h, label: h }))}
+                  value={watch('time')}
+                  onChange={(val) => setValue('time', val)}
+                  placeholder="Select time"
+                  buttonClassName="w-full px-4 py-2 border border-gray-200 rounded-lg bg-white text-sm"
+                />
               </div>
 
-              <div ref={deptDropdownRef} className="relative">
+              <div className="z-[30] relative">
                 <label className="block text-sm font-semibold text-gray-700 mb-1">
                   Department
                 </label>
-                <button
-                  type="button"
-                  onClick={() => setIsDeptOpen(!isDeptOpen)}
-                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none bg-white text-left flex items-center justify-between text-sm hover:bg-gray-50 transition-colors"
-                >
-                  <span className={`block truncate ${watchedDepartment ? 'text-gray-900' : 'text-gray-400'}`}>
-                    {watchedDepartment || 'All Departments'}
-                  </span>
-                  <ChevronDown className={`w-4 h-4 text-gray-400 shrink-0 transition-transform ${isDeptOpen ? 'rotate-180' : ''}`} />
-                </button>
-
-                {isDeptOpen && (
-                  <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-48 overflow-y-auto custom-scrollbar left-0">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setValue('department', '');
-                        setIsDeptOpen(false);
-                      }}
-                      className={`w-full px-4 py-2 text-left hover:bg-gray-50 transition-colors text-sm ${
-                        !watchedDepartment ? 'bg-gray-50 text-gray-900 font-medium' : 'text-gray-600'
-                      }`}
-                    >
-                      All Departments
-                    </button>
-                    {departments.map((dept, index) => (
-                      <button
-                        key={index}
-                        type="button"
-                        onClick={() => {
-                          setValue('department', typeof dept === 'string' ? dept : (dept as Department).name || '');
-                          setIsDeptOpen(false);
-                        }}
-                        className={`w-full px-4 py-2 text-left hover:bg-gray-50 transition-colors text-sm ${
-                          watchedDepartment === (typeof dept === 'string' ? dept : (dept as Department).name) ? 'bg-gray-50 text-gray-900 font-medium' : 'text-gray-600'
-                        }`}
-                      >
-                        {typeof dept === 'string' ? dept : (dept as Department).name}
-                      </button>
-                    ))}
-                  </div>
-                )}
+                <Combobox
+                  options={[
+                    { value: '', label: 'All Departments' },
+                    ...departments.map(dept => {
+                      const name = typeof dept === 'string' ? dept : (dept as Department).name || '';
+                      return { value: name, label: name };
+                    })
+                  ]}
+                  value={watchedDepartment || ''}
+                  onChange={(val) => setValue('department', val || '')}
+                  placeholder="All Departments"
+                  buttonClassName="w-full px-4 py-2 border border-gray-200 rounded-lg bg-white text-sm"
+                />
               </div>
             </div>
 

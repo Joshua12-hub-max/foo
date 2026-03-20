@@ -1,5 +1,5 @@
-import React from 'react';
 import { LeaveFilters } from '../types';
+import Combobox from '@/components/Custom/Combobox';
 
 interface FiltersProps {
   filters: LeaveFilters;
@@ -21,35 +21,31 @@ const Filters: React.FC<FiltersProps> = ({
   return (
     <div className="grid grid-cols-1 md:grid-cols-6 gap-4 mb-6 items-start bg-[#F8F9FA] p-4 rounded-lg shadow-md">
         {/* Department Filter */}
-        <div className="md:col-span-1">
-          <select
+        <div className="md:col-span-1 relative z-[50]">
+          <Combobox
+            options={[
+              { value: '', label: 'Department' },
+              ...departments.map((dept) => ({ value: dept, label: dept }))
+            ]}
             value={filters.department}
-            onChange={(e) => onFilterChange('department', e.target.value)}
-            className="w-full bg-[#F8F9FA] border border-gray-300 rounded-lg shadow-md px-3 py-2 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-200 transition-all"
-          >
-            <option value="">Department</option>
-            {departments.map((dept) => (
-              <option key={dept} value={dept}>
-                {dept}
-              </option>
-            ))}
-          </select>
+            onChange={(val) => onFilterChange('department', val)}
+            placeholder="Department"
+            buttonClassName="w-full bg-[#F8F9FA] border border-gray-300 rounded-lg shadow-md px-3 py-2 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-200 transition-all font-bold h-[38px]"
+          />
         </div>
 
         {/* Employee Filter */}
-        <div className="md:col-span-1">
-          <select
+        <div className="md:col-span-1 relative z-[50]">
+          <Combobox
+            options={[
+              { value: '', label: 'Employee' },
+              ...uniqueEmployees.map((emp) => ({ value: emp, label: emp }))
+            ]}
             value={filters.employee}
-            onChange={(e) => onFilterChange('employee', e.target.value)}
-            className="w-full bg-[#F8F9FA] border border-gray-200 rounded-lg shadow-sm px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200 focus:border-gray-200 hover:border-gray-200 transition-all appearance-none cursor-pointer"
-          >
-            <option value="">Employee</option>
-            {uniqueEmployees.map((emp) => (
-              <option key={emp} value={emp}>
-                {emp}
-              </option>
-            ))}
-          </select>
+            onChange={(val) => onFilterChange('employee', val)}
+            placeholder="Employee"
+            buttonClassName="w-full bg-[#F8F9FA] border border-gray-200 rounded-lg shadow-sm px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200 focus:border-gray-200 hover:border-gray-200 transition-all font-bold h-[38px]"
+          />
         </div>
 
         {/* From Date Filter */}

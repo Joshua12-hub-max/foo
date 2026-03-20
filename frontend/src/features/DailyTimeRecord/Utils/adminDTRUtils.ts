@@ -18,6 +18,8 @@ export interface DTRRecord {
   status: string;
   remarks: string;
   duties?: string;
+  shift?: string;
+  dutyType?: string;
   createdAt?: string;
   correctionId?: number | null;
   correctionStatus?: string | null;
@@ -60,15 +62,17 @@ export const mapDTRData = (apiData: {
   status?: string;
   remarks?: string;
   duties?: string;
+  shift?: string;
+  dutyType?: string;
   createdAt?: string;
   correctionId?: number | null;
   correctionStatus?: string | null;
-  correction_reason?: string | null;
-  correction_time_in?: string | null;
-  correction_time_out?: string | null;
+  correctionReason?: string | null;
+  correctionTimeIn?: string | null;
+  correctionTimeOut?: string | null;
 }[]): DTRRecord[] => {
   return apiData.map(item => ({
-    id: item.employeeId || item.id || '',
+    id: item.id || '',
     employeeId: item.employeeId || '',
     name: item.employeeName || 'N/A',
     department: item.department || 'N/A',
@@ -80,13 +84,15 @@ export const mapDTRData = (apiData: {
     undertimeMinutes: item.undertimeMinutes || 0,
     status: item.status || 'Unknown',
     remarks: item.remarks || '-',
-    duties: item.duties || 'N/A',
+    duties: item.dutyType || item.duties || 'Standard',
+    shift: item.shift || 'No Schedule',
+    dutyType: item.dutyType || 'Standard',
     createdAt: item.createdAt,
     correctionId: item.correctionId,
     correctionStatus: item.correctionStatus,
-    correctionReason: item.correction_reason,
-    correctionTimeIn: item.correction_time_in,
-    correctionTimeOut: item.correction_time_out
+    correctionReason: item.correctionReason,
+    correctionTimeIn: item.correctionTimeIn,
+    correctionTimeOut: item.correctionTimeOut
   }));
 };
 

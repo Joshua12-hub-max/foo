@@ -14,6 +14,7 @@ export interface EmployeeDTRRecord {
   status: string;
   remarks: string;
   duties?: string;
+  shift?: string;
   createdAt?: string;
   firstName?: string;
   lastName?: string;
@@ -51,6 +52,7 @@ export const mapDTRData = (apiData: {
   status?: string;
   remarks?: string;
   duties?: string;
+  shift?: string;
   createdAt?: string;
   firstName?: string;
   lastName?: string;
@@ -68,6 +70,7 @@ export const mapDTRData = (apiData: {
     status: item.status || 'Unknown',
     remarks: item.remarks || '-',
     duties: item.duties || 'N/A',
+    shift: item.shift || 'N/A',
     createdAt: item.createdAt,
     firstName: item.firstName,
     lastName: item.lastName,

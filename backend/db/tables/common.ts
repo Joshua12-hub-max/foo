@@ -1,4 +1,5 @@
-import { mysqlTable, varchar, int, date, timestamp, text, mysqlEnum, datetime, primaryKey, mysqlView, unique, time } from 'drizzle-orm/mysql-core';
+import { mysqlTable, varchar, int, date, timestamp, text, mysqlEnum, datetime, primaryKey, mysqlView, unique, time, index } from 'drizzle-orm/mysql-core';
+import { authentication } from './auth.js';
 import { sql } from 'drizzle-orm';
 
 export const announcements = mysqlTable("announcements", {
@@ -123,3 +124,20 @@ export const addressRefBarangays = mysqlTable("address_ref_barangays", {
 ]);
 
 
+
+export const audit_logs = mysqlTable("audit_logs", {
+	id: int("id").autoincrement().notNull(),
+	userId: int("user_id").references(() => authentication.id, { onDelete: "set null" } ),
+	module: varchar("module", { length: 50 }).notNull(),
+	action: varchar("action", { length: 50 }).notNull(),
+	details: text("details"),
+	ipAddress: varchar("ip_address", { length: 45 }),
+	userAgent: text("user_agent"),
+	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+},
+(table) => [
+	index("idx_user_id").on(table.userId),
+	index("idx_module").on(table.module),
+	index("idx_created_at").on(table.createdAt),
+	primaryKey({ columns: [table.id], name: "audit_logs_id"}),
+]);

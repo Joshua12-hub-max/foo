@@ -104,7 +104,9 @@ export const useAdminDTR = () => {
               lateMinutes: item.lateMinutes || 0,
               undertimeMinutes: item.undertimeMinutes || 0,
               status: item.status || 'Absent',
-              duties: item.duties || 'No Schedule',
+              duties: item.dutyType || 'Standard',
+              shift: item.shift || 'No Schedule',
+              dutyType: item.dutyType || 'Standard',
               remarks: '-',
               // Correction fields
               correctionId: item.correctionId ?? null,

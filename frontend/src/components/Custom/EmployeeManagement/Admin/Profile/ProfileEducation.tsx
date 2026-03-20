@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import Combobox from '@/components/Custom/Combobox';
 import { AddEducationSchema, AddEducationInput } from '@/schemas/employeeSchema';
 // @ts-ignore
 import { addEmployeeEducation, deleteEmployeeEducation } from '@api/employeeApi';
@@ -35,6 +36,7 @@ const ProfileEducation: React.FC<ProfileEducationProps> = ({ profile, onUpdate }
     handleSubmit,
     reset,
     watch,
+    control,
     formState: { errors },
   } = useForm<AddEducationInput>({
     resolver: zodResolver(AddEducationSchema),
@@ -144,16 +146,25 @@ const ProfileEducation: React.FC<ProfileEducationProps> = ({ profile, onUpdate }
                 />
                 <span className="text-xs font-bold text-gray-700 uppercase">Currently studying here</span>
               </label>
-              <div className="flex-grow">
+              <div className="flex-grow relative z-[50]">
                 <label className="block text-[10px] font-black text-gray-400 uppercase mb-1">Type</label>
-                <select
-                  {...register('type')}
-                  className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-gray-500 outline-none bg-white font-bold"
-                >
-                  <option value="Education">Education</option>
-                  <option value="Certification">Certification</option>
-                  <option value="Training">Training</option>
-                </select>
+                <Controller
+                  name="type"
+                  control={control}
+                  render={({ field }) => (
+                    <Combobox
+                      options={[
+                        { value: 'Education', label: 'Education' },
+                        { value: 'Certification', label: 'Certification' },
+                        { value: 'Training', label: 'Training' }
+                      ]}
+                      value={field.value}
+                      onChange={field.onChange}
+                      placeholder="Select Type"
+                      buttonClassName="w-full px-3 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-gray-500 outline-none bg-white font-bold h-[34px]"
+                    />
+                  )}
+                />
               </div>
             </div>
           </div>

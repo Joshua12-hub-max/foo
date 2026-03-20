@@ -5,6 +5,7 @@
 
 import React, { memo, FormEvent } from 'react';
 import { X } from 'lucide-react';
+import Combobox from '@/components/Custom/Combobox';
 // @ts-ignore
 import { MEMO_TYPES, MEMO_PRIORITIES, MEMO_STATUSES } from '../Constants/memoConstants';
 import { formatFullName } from '@/utils/nameUtils';
@@ -73,48 +74,43 @@ const MemoFormModal: React.FC<MemoFormModalProps> = memo(({
         {/* Form Content */}
         <div className="p-6 overflow-y-auto">
           <form onSubmit={onSubmit} className="space-y-4">
-            <div>
+            <div className="relative z-[60]">
               <label className="block text-xs font-bold text-gray-700 mb-1">Employee</label>
-              <select
-                required
+              <Combobox
+                options={[
+                  { value: '', label: 'Select Employee' },
+                  ...employees.map(emp => ({
+                    value: String(emp.id),
+                    label: formatFullName(emp.lastName, emp.firstName)
+                  }))
+                ]}
                 value={formData.employeeId}
-                onChange={(e) => onFormChange('employeeId', e.target.value)}
-                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-100 transition-all"
-              >
-                <option value="">Select Employee</option>
-                {employees.map(emp => (
-                  <option key={emp.id} value={emp.id}>
-                    {formatFullName(emp.lastName, emp.firstName)}
-                  </option>
-                ))}
-              </select>
+                onChange={(val) => onFormChange('employeeId', val)}
+                placeholder="Select Employee"
+                buttonClassName="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-100 transition-all font-bold h-[38px]"
+              />
             </div>
             
             <div className="grid grid-cols-2 gap-4">
-              <div>
+              <div className="relative z-[55]">
                 <label className="block text-xs font-bold text-gray-700 mb-1">Type</label>
-                <select
-                  required
+                <Combobox
+                  options={MEMO_TYPES}
                   value={formData.memoType}
-                  onChange={(e) => onFormChange('memoType', e.target.value)}
-                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-100 transition-all"
-                >
-                  {MEMO_TYPES.map((t: { value: string; label: string }) => (
-                    <option key={t.value} value={t.value}>{t.label}</option>
-                  ))}
-                </select>
+                  onChange={(val) => onFormChange('memoType', val)}
+                  placeholder="Select Type"
+                  buttonClassName="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-100 transition-all font-bold h-[38px]"
+                />
               </div>
-              <div>
+              <div className="relative z-[55]">
                 <label className="block text-xs font-bold text-gray-700 mb-1">Priority</label>
-                <select
+                <Combobox
+                  options={MEMO_PRIORITIES}
                   value={formData.priority}
-                  onChange={(e) => onFormChange('priority', e.target.value)}
-                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-100 transition-all"
-                >
-                  {MEMO_PRIORITIES.map((p: { value: string; label: string }) => (
-                    <option key={p.value} value={p.value}>{p.label}</option>
-                  ))}
-                </select>
+                  onChange={(val) => onFormChange('priority', val)}
+                  placeholder="Select Priority"
+                  buttonClassName="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-100 transition-all font-bold h-[38px]"
+                />
               </div>
             </div>
 
@@ -152,17 +148,15 @@ const MemoFormModal: React.FC<MemoFormModalProps> = memo(({
                   className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-100 transition-all"
                 />
               </div>
-              <div>
+              <div className="relative z-[50]">
                 <label className="block text-xs font-bold text-gray-700 mb-1">Status</label>
-                <select
+                <Combobox
+                  options={MEMO_STATUSES}
                   value={formData.status}
-                  onChange={(e) => onFormChange('status', e.target.value)}
-                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-100 transition-all"
-                >
-                  {MEMO_STATUSES.map((s: { value: string; label: string }) => (
-                    <option key={s.value} value={s.value}>{s.label}</option>
-                  ))}
-                </select>
+                  onChange={(val) => onFormChange('status', val)}
+                  placeholder="Select Status"
+                  buttonClassName="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-100 transition-all font-bold h-[38px]"
+                />
               </div>
             </div>
 

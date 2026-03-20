@@ -463,5 +463,23 @@ export const employeeApi = {
             }
             return { success: false, data: null, message };
         }
+    },
+
+    // PDS Parsing
+    parsePDS: async (file: File): Promise<ApiResponse<any>> => {
+        try {
+            const formData = new FormData();
+            formData.append('pds', file);
+            const response = await axios.post('/pds/parse', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            return { success: true, data: response.data.data, avatar: response.data.avatar, message: response.data.message };
+        } catch (error: unknown) {
+            let message = 'Failed to parse PDS';
+            if (isApiError(error)) {
+                message = error.response?.data?.message || error.message || message;
+            }
+            return { success: false, data: null, message };
+        }
     }
 };

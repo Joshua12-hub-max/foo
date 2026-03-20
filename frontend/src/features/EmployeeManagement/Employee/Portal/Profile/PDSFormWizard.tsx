@@ -1,16 +1,18 @@
 import { useState, useCallback, useEffect } from "react";
 import { 
-  ChevronLeft, ChevronRight, FileText, Loader2, Landmark, 
-  Save, Heart, Link as LinkIcon, ScanLine, Briefcase, 
-  Building, Phone, User as UserIcon, ShieldCheck, FileCheck, Paperclip
+  Loader2, 
+  Save, Link as LinkIcon, 
+  Phone, User as UserIcon, Paperclip, AlertCircle
 } from "lucide-react";
 import { fetchEmployeeProfile, employeeApi, fetchEmployeeDocuments, getNextStepIncrement } from "@/api/employeeApi";
-import { EmployeeDetailed, EmployeeDocument } from "@/types";
+import { EmployeeDocument } from "@/types";
 import Combobox from "@/components/Custom/Combobox";
 import ph from 'phil-reg-prov-mun-brgy';
 import { getZipByMunCode } from '@/data/ph-zipcodes';
 import { Region, Province, CityMunicipality, Barangay } from '@/types/ph-address';
 import { useToastStore } from '@/stores';
+import { useEmploymentMetadataQuery, useGovtIdUniquenessQuery } from "@/hooks/useCommonQueries";
+import { useDebounce } from "@/hooks/useDebounce";import { ID_REGEX } from "@/schemas/idValidation";
 import DocumentGallery from "@features/Settings/Profile/components/DocumentGallery";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -73,7 +75,7 @@ export interface PDSFormData {
   surname: string; firstName: string; middleName: string; nameExtension: string;
   dob: string; pob: string; sex: string; civilStatus: string;
   height: string; weight: string; bloodType: string; citizenship: string; dualCountry: string;
-  umidId: string; pagibigId: string; philhealthNo: string; philsysNo: string; tinNo: string; agencyEmployeeNo: string;
+  umidId: string; pagibigId: string; philhealthNo: string; philsysNo: string; tinNo: string; gsisId: string; agencyEmployeeNo: string;
   resHouseStreet: string; resSubdivision: string; resBarangay: string; resCityMunicipality: string; resProvince: string; resZip: string;
   resRegion: string; resHouseBlockLot: string; resStreet: string;
   sameAddress: boolean;
@@ -313,7 +315,7 @@ const PDSAddressSelector = ({ prefix, data, set, isMeycauayanOnly = false }: { p
 const initialData: PDSFormData = {
   surname: "", firstName: "", middleName: "", nameExtension: "", dob: "", pob: "",
   sex: "", civilStatus: "", height: "", weight: "", bloodType: "", citizenship: "", dualCountry: "",
-  umidId: "", pagibigId: "", philhealthNo: "", philsysNo: "", tinNo: "", agencyEmployeeNo: "",
+  umidId: "", pagibigId: "", philhealthNo: "", philsysNo: "", tinNo: "", gsisId: "", agencyEmployeeNo: "",
   resHouseStreet: "", resSubdivision: "", resBarangay: "", resCityMunicipality: "", resProvince: "", resZip: "",
   resRegion: "", resHouseBlockLot: "", resStreet: "",
   sameAddress: false,
@@ -362,12 +364,22 @@ const Field = ({ label, children, span = 1 }: { label: string; children: React.R
   </div>
 );
 
-const Input = (props: React.InputHTMLAttributes<HTMLInputElement> & { icon?: any }) => {
-  const { icon: Icon, ...rest } = props;
+const Input = (props: React.InputHTMLAttributes<HTMLInputElement> & { icon?: any; isError?: boolean; errorMessage?: string }) => {
+  const { icon: Icon, isError, errorMessage, ...rest } = props;
   return (
-    <div className="relative">
-      {Icon && <Icon size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />}
-      <input {...rest} className={`w-full bg-white border border-gray-200 rounded-lg ${Icon ? 'pl-11' : 'px-4'} py-3 text-sm font-semibold text-gray-700 outline-none transition-all focus:ring-4 focus:ring-gray-100/50 focus:border-gray-400 placeholder:text-gray-400 ${props.className || ""}`} />
+    <div className="flex flex-col gap-1.1 w-full">
+      <div className="relative">
+        {Icon && <Icon size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />}
+        <input 
+          {...rest} 
+          className={`w-full bg-white border rounded-lg ${Icon ? 'pl-11' : 'px-4'} py-3 text-sm font-semibold text-gray-700 outline-none transition-all focus:ring-4 placeholder:text-gray-400 ${isError ? 'border-red-500 bg-red-50 focus:ring-red-100 focus:border-red-500' : 'border-gray-200 focus:ring-gray-100/50 focus:border-gray-400'} ${props.className || ""}`} 
+        />
+      </div>
+      {isError && errorMessage && (
+        <span className="text-[9px] font-bold text-red-500 ml-1 mt-0.5 animate-pulse flex items-center gap-1">
+          <AlertCircle size={10} /> {errorMessage}
+        </span>
+      )}
     </div>
   );
 };
@@ -431,7 +443,7 @@ const EduRow = ({ data, onChange }: { data: any; onChange: (k: string, v: string
 
 // ─── Step Components ──────────────────────────────────────────────────────────
 
-const StepPersonal = ({ data, set }: { data: PDSFormData; set: PDSSetter }) => (
+const StepPersonal = ({ data, set, metadata, isIdTakenMap }: { data: PDSFormData; set: PDSSetter; metadata: any; isIdTakenMap: Record<string, string> }) => (
   <SectionCard title="Personal Information" roman="I">
     <Grid cols={3}>
       <Field label="1. Surname"><Input value={data.surname} onChange={e => set("surname", e.target.value)} placeholder="e.g. DELA CRUZ" /></Field>
@@ -451,23 +463,73 @@ const StepPersonal = ({ data, set }: { data: PDSFormData; set: PDSSetter }) => (
           ))}
         </div>
       </Field>
-      <Field label="6. Civil Status"><Combobox options={["Single", "Married", "Widowed", "Separated", "Annulled"].map(s => ({ value: s, label: s }))} value={data.civilStatus} onChange={v => set("civilStatus", v)} placeholder="Select Civil Status" buttonClassName="rounded-xl bg-gray-50/50 border-gray-200 font-bold text-gray-700 h-11 transition-all hover:bg-white hover:border-gray-400 focus:bg-white focus:ring-4 focus:ring-gray-100/50 focus:border-gray-400" /></Field>
+      <Field label="6. Civil Status"><Combobox options={(metadata?.pdsCivilStatus || ["Single", "Married", "Widowed", "Separated", "Annulled"]).map((s: string) => ({ value: s, label: s }))} value={data.civilStatus} onChange={v => set("civilStatus", v)} placeholder="Select Civil Status" buttonClassName="rounded-xl bg-gray-50/50 border-gray-200 font-bold text-gray-700 h-11 transition-all hover:bg-white hover:border-gray-400 focus:bg-white focus:ring-4 focus:ring-gray-100/50 focus:border-gray-400" /></Field>
       <Field label="7. Height (m)"><Input type="number" step="0.01" value={data.height} onChange={e => set("height", e.target.value)} placeholder="e.g. 1.65" /></Field>
       <Field label="8. Weight (kg)"><Input type="number" step="0.1" value={data.weight} onChange={e => set("weight", e.target.value)} placeholder="e.g. 60" /></Field>
     </Grid>
     <Grid cols={3} className="mt-5">
-      <Field label="9. Blood Type"><Combobox options={["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map(b => ({ value: b, label: b }))} value={data.bloodType} onChange={v => set("bloodType", v)} placeholder="Select Type" buttonClassName="rounded-xl bg-gray-50/50 border-gray-200 font-bold text-gray-700 h-11 transition-all hover:bg-white hover:border-gray-400 focus:bg-white focus:ring-4 focus:ring-gray-100/50 focus:border-gray-400" /></Field>
-      <Field label="16. Citizenship"><Combobox options={[{ value: "Filipino", label: "Filipino" }, { value: "Dual Citizenship", label: "Dual Citizenship" }]} value={data.citizenship} onChange={v => set("citizenship", v)} placeholder="Select Citizenship" buttonClassName="rounded-xl bg-gray-50/50 border-gray-200 font-bold text-gray-700 h-11 transition-all hover:bg-white hover:border-gray-400 focus:bg-white focus:ring-4 focus:ring-gray-100/50 focus:border-gray-400" /></Field>
+      <Field label="9. Blood Type"><Combobox options={(metadata?.pdsBloodTypes || ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]).map((b: string) => ({ value: b, label: b }))} value={data.bloodType} onChange={v => set("bloodType", v)} placeholder="Select Type" buttonClassName="rounded-xl bg-gray-50/50 border-gray-200 font-bold text-gray-700 h-11 transition-all hover:bg-white hover:border-gray-400 focus:bg-white focus:ring-4 focus:ring-gray-100/50 focus:border-gray-400" /></Field>
+      <Field label="16. Citizenship"><Combobox options={(metadata?.pdsCitizenship || ["Filipino", "Dual Citizenship"]).map((s: string) => ({ value: s, label: s }))} value={data.citizenship} onChange={v => set("citizenship", v)} placeholder="Select Citizenship" buttonClassName="rounded-xl bg-gray-50/50 border-gray-200 font-bold text-gray-700 h-11 transition-all hover:bg-white hover:border-gray-400 focus:bg-white focus:ring-4 focus:ring-gray-100/50 focus:border-gray-400" /></Field>
       {data.citizenship === "Dual Citizenship" && <Field label="Indicate Country (Dual)"><Input value={data.dualCountry} onChange={e => set("dualCountry", e.target.value)} placeholder="Country" /></Field>}
     </Grid>
     <Divider label="Standard IDs" />
     <Grid cols={3}>
-      <Field label="10. UMID NO."><Input value={data.umidId} onChange={e => set("umidId", e.target.value)} /></Field>
-      <Field label="11. PAG-IBIG NO."><Input value={data.pagibigId} onChange={e => set("pagibigId", e.target.value)} /></Field>
-      <Field label="12. PHILHEALTH NO."><Input value={data.philhealthNo} onChange={e => set("philhealthNo", e.target.value)} /></Field>
-      <Field label="13. PHILSYS NO."><Input value={data.philsysNo} onChange={e => set("philsysNo", e.target.value)} /></Field>
-      <Field label="14. TIN NO."><Input value={data.tinNo} onChange={e => set("tinNo", e.target.value)} /></Field>
-      <Field label="15. AGENCY NO."><Input value={data.agencyEmployeeNo} onChange={e => set("agencyEmployeeNo", e.target.value)} /></Field>
+      <Field label="10. UMID NO.">
+        <Input 
+          value={data.umidId} 
+          onChange={e => set("umidId", e.target.value)} 
+          isError={!!isIdTakenMap.umidNumber || (!!data.umidId && !ID_REGEX.UMID.test(data.umidId.replace(/\s+/g, '')))} 
+          errorMessage={isIdTakenMap.umidNumber || "Invalid UMID format"} 
+        />
+      </Field>
+      <Field label="11. PAG-IBIG NO.">
+        <Input 
+          value={data.pagibigId} 
+          onChange={e => set("pagibigId", e.target.value)} 
+          isError={!!isIdTakenMap.pagibigNumber || (!!data.pagibigId && !ID_REGEX.PAGIBIG.test(data.pagibigId.replace(/\s+/g, '')))} 
+          errorMessage={isIdTakenMap.pagibigNumber || "Invalid Pag-IBIG format"} 
+        />
+      </Field>
+      <Field label="12. PHILHEALTH NO.">
+        <Input 
+          value={data.philhealthNo} 
+          onChange={e => set("philhealthNo", e.target.value)} 
+          isError={!!isIdTakenMap.philhealthNumber || (!!data.philhealthNo && !ID_REGEX.PHILHEALTH.test(data.philhealthNo.replace(/\s+/g, '')))} 
+          errorMessage={isIdTakenMap.philhealthNumber || "Invalid PhilHealth format"} 
+        />
+      </Field>
+      <Field label="13. PHILSYS NO.">
+        <Input 
+          value={data.philsysNo} 
+          onChange={e => set("philsysNo", e.target.value)} 
+          isError={!!isIdTakenMap.philsysId || (!!data.philsysNo && !ID_REGEX.PHILSYS.test(data.philsysNo.replace(/\s+/g, '')))} 
+          errorMessage={isIdTakenMap.philsysId || "Invalid PhilSys ID format"} 
+        />
+      </Field>
+      <Field label="14. TIN NO.">
+        <Input 
+          value={data.tinNo} 
+          onChange={e => set("tinNo", e.target.value)} 
+          isError={!!isIdTakenMap.tinNumber || (!!data.tinNo && !ID_REGEX.TIN.test(data.tinNo.replace(/\s+/g, '')))} 
+          errorMessage={isIdTakenMap.tinNumber || "Invalid TIN format"} 
+        />
+      </Field>
+      <Field label="10. GSIS ID NO.">
+        <Input 
+          value={data.gsisId} 
+          onChange={e => set("gsisId", e.target.value)} 
+          isError={!!isIdTakenMap.gsisNumber || (!!data.gsisId && !ID_REGEX.GSIS.test(data.gsisId.replace(/\s+/g, '')))} 
+          errorMessage={isIdTakenMap.gsisNumber || "Invalid GSIS format"} 
+        />
+      </Field>
+      <Field label="15. AGENCY NO.">
+        <Input 
+          value={data.agencyEmployeeNo} 
+          onChange={e => set("agencyEmployeeNo", e.target.value)} 
+          isError={!!isIdTakenMap.agencyEmployeeNo} 
+          errorMessage={isIdTakenMap.agencyEmployeeNo} 
+        />
+      </Field>
     </Grid>
     <Divider label="17. Residential Address" /><PDSAddressSelector prefix="res" data={data} set={set} />
     <Divider label="18. Permanent Address" />
@@ -566,7 +628,7 @@ const StepEligibility = ({ data, set }: { data: PDSFormData; set: PDSSetter }) =
   </SectionCard>
 );
 
-const StepWork = ({ data, set }: { data: PDSFormData; set: PDSSetter }) => (
+const StepWork = ({ data, set, metadata }: { data: PDSFormData; set: PDSSetter; metadata: any }) => (
   <SectionCard title="Work Experience" roman="V">
     {data.workExperiences.map((work, i) => (
       <div key={work.id || i} className="bg-gray-50/50 border border-gray-100 rounded-lg p-5 mb-4 group relative last:mb-0 transition-all hover:bg-white hover:border-gray-200">
@@ -577,7 +639,7 @@ const StepWork = ({ data, set }: { data: PDSFormData; set: PDSSetter }) => (
           <Field label="To"><Input type="date" value={work.to} onChange={e => { const updated = [...data.workExperiences]; updated[i] = { ...work, to: e.target.value }; set("workExperiences", updated); }} /></Field>
           <Field label="Monthly Salary"><Input value={work.monthlySalary} onChange={e => { const updated = [...data.workExperiences]; updated[i] = { ...work, monthlySalary: e.target.value }; set("workExperiences", updated); }} /></Field>
           <Field label="Salary Grade"><Input value={work.salaryGrade} onChange={e => { const updated = [...data.workExperiences]; updated[i] = { ...work, salaryGrade: e.target.value }; set("workExperiences", updated); }} /></Field>
-          <Field label="Status of Appointment"><Combobox options={["Permanent", "Temporary", "Coterminous", "Contractual", "Casual"].map(s => ({ value: s, label: s }))} value={data.civilStatus} onChange={v => { const updated = [...data.workExperiences]; updated[i] = { ...work, appointmentStatus: v }; set("workExperiences", updated); }} placeholder="Select Status" buttonClassName="rounded-lg bg-white border-gray-200 font-bold text-gray-700 h-11 transition-all hover:border-gray-400 focus:ring-4 focus:ring-gray-100/50 focus:border-gray-400" /></Field>
+          <Field label="Status of Appointment"><Combobox options={(metadata?.pdsAppointmentStatus || ["Permanent", "Temporary", "Coterminous", "Contractual", "Casual"]).map((s: string) => ({ value: s, label: s }))} value={work.appointmentStatus} onChange={v => { const updated = [...data.workExperiences]; updated[i] = { ...work, appointmentStatus: v }; set("workExperiences", updated); }} placeholder="Select Status" buttonClassName="rounded-lg bg-white border-gray-200 font-bold text-gray-700 h-11 transition-all hover:border-gray-400 focus:ring-4 focus:ring-gray-100/50 focus:border-gray-400" /></Field>
           <Field label="Gov't Service"><Combobox options={[{ value: "Y", label: "Yes" }, { value: "N", label: "No" }]} value={work.govtService} onChange={v => { const updated = [...data.workExperiences]; updated[i] = { ...work, govtService: v }; set("workExperiences", updated); }} placeholder="Y/N" buttonClassName="rounded-lg bg-white border-gray-200 font-bold text-gray-700 h-11 transition-all hover:border-gray-400 focus:ring-4 focus:ring-gray-100/50 focus:border-gray-400" /></Field>
         </Grid>
         <button onClick={() => set("workExperiences", data.workExperiences.filter((_, j) => i !== j))} className="absolute top-4 right-4 text-[10px] font-bold text-rose-500 bg-rose-50 px-2 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-rose-100">Remove</button>
@@ -605,7 +667,7 @@ const StepVoluntary = ({ data, set }: { data: PDSFormData; set: PDSSetter }) => 
   </SectionCard>
 );
 
-const StepTraining = ({ data, set }: { data: PDSFormData; set: PDSSetter }) => (
+const StepTraining = ({ data, set, metadata }: { data: PDSFormData; set: PDSSetter; metadata: any }) => (
   <SectionCard title="Training Programs" roman="VII">
     {data.trainings.map((train, i) => (
       <div key={train.id || i} className="bg-gray-50/50 border border-gray-100 rounded-lg p-6 mb-8 relative group transition-all hover:bg-white hover:border-gray-200">
@@ -614,7 +676,7 @@ const StepTraining = ({ data, set }: { data: PDSFormData; set: PDSSetter }) => (
           <Field label="From"><Input type="date" value={train.from} onChange={e => { const updated = [...data.trainings]; updated[i] = { ...train, from: e.target.value }; set("trainings", updated); }} /></Field>
           <Field label="To"><Input type="date" value={train.to} onChange={e => { const updated = [...data.trainings]; updated[i] = { ...train, to: e.target.value }; set("trainings", updated); }} /></Field>
           <Field label="Number of Hours"><Input value={train.hours} onChange={e => { const updated = [...data.trainings]; updated[i] = { ...train, hours: e.target.value }; set("trainings", updated); }} /></Field>
-          <Field label="Type of LD"><Combobox options={["Managerial", "Supervisory", "Technical", "Other"].map(s => ({ value: s, label: s }))} value={train.ldType} onChange={v => { const updated = [...data.trainings]; updated[i] = { ...train, ldType: v }; set("trainings", updated); }} placeholder="Select Type" buttonClassName="rounded-lg bg-white border-gray-200 font-bold text-gray-700 h-11 transition-all hover:border-gray-400 focus:ring-4 focus:ring-gray-100/50 focus:border-gray-400" /></Field>
+          <Field label="Type of LD"><Combobox options={(metadata?.pdsLdTypes || ["Managerial", "Supervisory", "Technical", "Other"]).map((s: string) => ({ value: s, label: s }))} value={train.ldType} onChange={v => { const updated = [...data.trainings]; updated[i] = { ...train, ldType: v }; set("trainings", updated); }} placeholder="Select Type" buttonClassName="rounded-lg bg-white border-gray-200 font-bold text-gray-700 h-11 transition-all hover:border-gray-400 focus:ring-4 focus:ring-gray-100/50 focus:border-gray-400" /></Field>
           <Field label="Conducted By" span={2}><Input value={train.conductedBy} onChange={e => { const updated = [...data.trainings]; updated[i] = { ...train, conductedBy: e.target.value }; set("trainings", updated); }} /></Field>
         </Grid>
         <button onClick={() => set("trainings", data.trainings.filter((_, j) => i !== j))} className="absolute top-4 right-4 text-[10px] font-bold text-rose-500 bg-rose-50 px-2 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-rose-100">Remove</button>
@@ -651,7 +713,7 @@ const StepOtherInfo = ({ data, set, employeeId }: { data: PDSFormData; set: PDSS
   );
 };
 
-const StepDeclarations = ({ data, set }: { data: PDSFormData; set: PDSSetter }) => (
+const StepDeclarations = ({ data, set, metadata }: { data: PDSFormData; set: PDSSetter; metadata: any }) => (
   <div className="space-y-8">
     <SectionCard title="Declarations" roman="IX">
       <Grid cols={1}>
@@ -695,7 +757,7 @@ const StepDeclarations = ({ data, set }: { data: PDSFormData; set: PDSSetter }) 
     </SectionCard>
     <SectionCard title="Government Issued ID & Certification" roman="42">
       <Grid cols={2}>
-        <Field label="Government Issued ID (Type)"><Combobox options={["UMID", "Driver's License", "Passport", "PRC ID", "Postal ID", "Others"].map(s => ({ value: s, label: s }))} value={data.govtIdType} onChange={v => set("govtIdType", v)} placeholder="Select ID Type" buttonClassName="rounded-xl bg-gray-50/50 border-gray-200 font-bold text-gray-700 h-11 transition-all hover:bg-white hover:border-gray-400 focus:bg-white focus:ring-4 focus:ring-gray-100/50 focus:border-gray-400" /></Field>
+        <Field label="Government Issued ID (Type)"><Combobox options={(metadata?.pdsGovtIdTypes || ["UMID", "Driver's License", "Passport", "PRC ID", "Postal ID", "Others"]).map((s: string) => ({ value: s, label: s }))} value={data.govtIdType} onChange={v => set("govtIdType", v)} placeholder="Select ID Type" buttonClassName="rounded-xl bg-gray-50/50 border-gray-200 font-bold text-gray-700 h-11 transition-all hover:bg-white hover:border-gray-400 focus:bg-white focus:ring-4 focus:ring-gray-100/50 focus:border-gray-400" /></Field>
         <Field label="ID / License / Passport No."><Input value={data.govtIdNo} onChange={e => set("govtIdNo", e.target.value)} placeholder="Enter ID Number" className="h-11" /></Field>
         <Field label="Date / Place of Issuance"><Input value={data.govtIdIssuance} onChange={e => set("govtIdIssuance", e.target.value)} placeholder="e.g. 01/01/2020, Manila" className="h-11" /></Field>
         <Field label="Date Accomplished"><Input type="date" value={data.dateAccomplished} onChange={e => set("dateAccomplished", e.target.value)} className="h-11" /></Field>
@@ -719,18 +781,54 @@ const StepDeclarations = ({ data, set }: { data: PDSFormData; set: PDSSetter }) 
   </div>
 );
 
-const StepHRDetails = ({ data, set }: { data: PDSFormData; set: PDSSetter }) => (
-  <SectionCard title="HR Internal Details" roman="HR">
+const StepHRDetails = ({ data, set, metadata }: { data: PDSFormData; set: PDSSetter; metadata: any }) => (
+  <SectionCard title="Human Resource Internal Details" roman="HR">
     <Grid cols={2}>
       <Field label="Department"><Input value={data.department} readOnly className="bg-gray-50 cursor-not-allowed" /></Field>
       <Field label="Position Title"><Input value={data.jobTitle} onChange={e => set("jobTitle", e.target.value)} /></Field>
       <Field label="Item Number"><Input value={data.itemNumber} onChange={e => set("itemNumber", e.target.value)} /></Field>
-      <Field label="Salary Grade"><Input type="number" value={data.salaryGrade} onChange={e => set("salaryGrade", e.target.value)} /></Field>
-      <Field label="Step Increment"><Input type="number" value={data.stepIncrement} onChange={e => set("stepIncrement", e.target.value)} /></Field>
-      <Field label="Appointment Type"><Combobox options={['Permanent','Contractual','Casual','Job Order','Coterminous','Temporary'].map(v => ({value:v, label:v}))} value={data.appointmentType} onChange={v => set("appointmentType", v)} placeholder="Select Type" buttonClassName="rounded-xl bg-gray-50/50 border-gray-200 font-bold text-gray-700 h-11 transition-all hover:bg-white hover:border-gray-400 focus:bg-white focus:ring-4 focus:ring-gray-100/50 focus:border-gray-400" /></Field>
-      <Field label="Employment Status"><Combobox options={['Active','Probationary','Terminated','Resigned','On Leave','Suspended','Verbal Warning','Written Warning','Show Cause'].map(v => ({value:v, label:v}))} value={data.employmentStatus} onChange={v => set("employmentStatus", v)} placeholder="Select Status" buttonClassName="rounded-xl bg-gray-50/50 border-gray-200 font-bold text-gray-700 h-11 transition-all hover:bg-white hover:border-gray-400 focus:bg-white focus:ring-4 focus:ring-gray-100/50 focus:border-gray-400" /></Field>
+      <Field label="Salary Grade">
+        <Combobox
+          options={Array.from({ length: 33 }, (_, i) => ({ value: (i + 1).toString(), label: (i + 1).toString() }))}
+          value={data.salaryGrade}
+          onChange={v => set("salaryGrade", v)}
+          placeholder="Select SG"
+          buttonClassName="rounded-xl bg-gray-50/50 border-gray-200 font-bold text-gray-700 h-11 transition-all hover:bg-white hover:border-gray-400 focus:bg-white focus:ring-4 focus:ring-gray-100/50 focus:border-gray-400"
+        />
+      </Field>
+      <Field label="Step Increment">
+        <Combobox
+          options={Array.from({ length: 8 }, (_, i) => ({ value: (i + 1).toString(), label: (i + 1).toString() }))}
+          value={data.stepIncrement}
+          onChange={v => set("stepIncrement", v)}
+          placeholder="Select Step"
+          buttonClassName="rounded-xl bg-gray-50/50 border-gray-200 font-bold text-gray-700 h-11 transition-all hover:bg-white hover:border-gray-400 focus:bg-white focus:ring-4 focus:ring-gray-100/50 focus:border-gray-400"
+        />
+      </Field>
+      
+      <Field label="Appointment Type / Schedule">
+        <Combobox 
+          options={(metadata?.appointmentTypes || ['Permanent','Contractual','Casual','Job Order','Coterminous','Temporary']).map((v: string) => ({value:v, label:v}))} 
+          value={data.appointmentType} 
+          onChange={v => set("appointmentType", v)} 
+          placeholder="Select Type" 
+          buttonClassName="rounded-xl bg-gray-50/50 border-gray-200 font-bold text-gray-700 h-11 transition-all hover:bg-white hover:border-gray-400 focus:bg-white focus:ring-4 focus:ring-gray-100/50 focus:border-gray-400" 
+        />
+      </Field>
+
+      <Field label="Employment Status"><Combobox options={(metadata?.employmentStatus || ['Active','Probationary','Terminated','Resigned','On Leave','Suspended','Verbal Warning','Written Warning','Show Cause']).map((v: string) => ({value:v, label:v}))} value={data.employmentStatus} onChange={v => set("employmentStatus", v)} placeholder="Select Status" buttonClassName="rounded-xl bg-gray-50/50 border-gray-200 font-bold text-gray-700 h-11 transition-all hover:bg-white hover:border-gray-400 focus:bg-white focus:ring-4 focus:ring-gray-100/50 focus:border-gray-400" /></Field>
       <Field label="Station"><Input value={data.station} onChange={e => set("station", e.target.value)} /></Field>
-      <Field label="Duty Type"><Combobox options={['Standard', 'Irregular'].map(v => ({ value: v, label: v }))} value={data.dutyType} onChange={v => set("dutyType", v)} placeholder="Standard / Irregular" buttonClassName="rounded-xl bg-gray-50/50 border-gray-200 font-bold text-gray-700 h-11 transition-all hover:bg-white hover:border-gray-400 focus:bg-white focus:ring-4 focus:ring-gray-100/50 focus:border-gray-400" /></Field>
+      
+      <Field label="Type of Duties">
+        <Combobox 
+          options={(metadata?.dutyTypes || ['Standard', 'Irregular']).map((v: string) => ({ value: v, label: v }))} 
+          value={data.dutyType} 
+          onChange={v => set("dutyType", v)} 
+          placeholder="Standard / Irregular" 
+          buttonClassName="rounded-xl bg-gray-50/50 border-gray-200 font-bold text-gray-700 h-11 transition-all hover:bg-white hover:border-gray-400 focus:bg-white focus:ring-4 focus:ring-gray-100/50 focus:border-gray-400" 
+        />
+      </Field>
+
       <Field label="Meycauayan Resident?"><Combobox options={[{ value: 'true', label: 'Yes' }, { value: 'false', label: 'No' }]} value={data.isMeycauayan} onChange={v => set("isMeycauayan", v)} placeholder="Yes / No" buttonClassName="rounded-xl bg-gray-50/50 border-gray-200 font-bold text-gray-700 h-11 transition-all hover:bg-white hover:border-gray-400 focus:bg-white focus:ring-4 focus:ring-gray-100/50 focus:border-gray-400" /></Field>
       <Field label="Office Address" span={2}><Textarea value={data.officeAddress} onChange={e => set("officeAddress", e.target.value)} /></Field>
       <Field label="Date Hired"><Input type="date" value={data.dateHired} onChange={e => set("dateHired", e.target.value)} /></Field>
@@ -751,9 +849,38 @@ interface PDSFormWizardProps {
 const PDSFormWizard: React.FC<PDSFormWizardProps> = ({ employeeId }) => {
   const [data, setData] = useState<PDSFormData>(initialData);
   const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Debounced ID numbers for real-time validation
+  const debouncedUmid = useDebounce(data.umidId, 500);
+  const debouncedTin = useDebounce(data.tinNo, 500);
+  const debouncedPhilhealth = useDebounce(data.philhealthNo, 500);
+  const debouncedPagibig = useDebounce(data.pagibigId, 500);
+  const debouncedGsis = useDebounce(data.gsisId, 500);
+  const debouncedAgencyNo = useDebounce(data.agencyEmployeeNo, 500);
+
+  // Consolidated Uniqueness query
+  const { data: idConflicts } = useGovtIdUniquenessQuery({
+    umidNumber: debouncedUmid,
+    tinNumber: debouncedTin,
+    philhealthNumber: debouncedPhilhealth,
+    pagibigNumber: debouncedPagibig,
+    gsisNumber: debouncedGsis,
+    agencyEmployeeNo: debouncedAgencyNo
+  }, (
+    (debouncedUmid?.length || 0) > 2 ||
+    (debouncedTin?.length || 0) > 2 ||
+    (debouncedPhilhealth?.length || 0) > 2 ||
+    (debouncedPagibig?.length || 0) > 2 ||
+    (debouncedGsis?.length || 0) > 2 ||
+    (debouncedAgencyNo?.length || 0) > 2
+  ) && !isSubmitting);
+
+  const isIdTakenMap: Record<string, string> = idConflicts?.conflicts || {};
+  const isAnyIdTaken = Object.keys(isIdTakenMap).length > 0;
   const [activeSection, setActiveSection] = useState(0);
   const showToast = useToastStore((state) => state.showToast);
+  const { data: metadata } = useEmploymentMetadataQuery();
 
   const STEPS = [
     { id: 0, label: "Personal Information", roman: "I" },
@@ -765,18 +892,24 @@ const PDSFormWizard: React.FC<PDSFormWizardProps> = ({ employeeId }) => {
     { id: 6, label: "Learning & Development", roman: "VII" },
     { id: 7, label: "Other Info & Docs", roman: "VIII" },
     { id: 8, label: "Legal Declarations", roman: "IX" },
-    { id: 9, label: "HR Internal Details", roman: "HR" },
+    { id: 9, label: "Human Resource Internal Details", roman: "HR" },
   ];
 
   const handleSave = async () => {
-    setSaving(true);
+    // Check if any ID is taken before saving
+    if (isAnyIdTaken) {
+      showToast("Cannot save: One or more ID numbers are already in use", "error");
+      return;
+    }
+    
+    setIsSubmitting(true);
     try {
       // 1. Update Core Employee Data
       await employeeApi.updateEmployee(employeeId, {
         lastName: data.surname, firstName: data.firstName, middleName: data.middleName, suffix: data.nameExtension,
         birthDate: data.dob, placeOfBirth: data.pob, gender: data.sex as any, civilStatus: data.civilStatus as any,
         heightM: data.height ? Number(data.height) : undefined, weightKg: data.weight ? Number(data.weight) : undefined, bloodType: data.bloodType, citizenship: data.citizenship,
-        umidNumber: data.umidId, pagibigNumber: data.pagibigId, philhealthNumber: data.philhealthNo, philsysId: data.philsysNo, tinNumber: data.tinNo, agencyEmployeeNo: data.agencyEmployeeNo,
+        umidNumber: data.umidId, pagibigNumber: data.pagibigId, philhealthNumber: data.philhealthNo, philsysId: data.philsysNo, tinNumber: data.tinNo, gsisNumber: data.gsisId, agencyEmployeeNo: data.agencyEmployeeNo,
         telephoneNo: data.telephone, mobileNo: data.mobile, email: data.email,
         resRegion: data.resRegion, resProvince: data.resProvince, resCity: data.resCityMunicipality, resBarangay: data.resBarangay, resZip: data.resZip, resHouseBlockLot: data.resHouseBlockLot, resStreet: data.resStreet, resSubdivision: data.resSubdivision,
         permRegion: data.permRegion, permProvince: data.permProvince, permCity: data.permCityMunicipality, permBarangay: data.permBarangay, permZip: data.permZip, permHouseBlockLot: data.permHouseBlockLot, permStreet: data.permStreet, permSubdivision: data.permSubdivision,
@@ -825,7 +958,7 @@ const PDSFormWizard: React.FC<PDSFormWizardProps> = ({ employeeId }) => {
     } catch (err) {
       showToast("Synchronization Failed", "error");
     } finally {
-      setSaving(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -849,7 +982,7 @@ const PDSFormWizard: React.FC<PDSFormWizardProps> = ({ employeeId }) => {
   useEffect(() => {
     if (!employeeId) return;
     const loadData = async () => {
-      setLoading(true);
+      setIsSubmitting(true);
       try {
         const [profileRes, stepRes] = await Promise.all([fetchEmployeeProfile(employeeId), getNextStepIncrement(employeeId)]);
         if (profileRes.success && profileRes.profile) {
@@ -859,7 +992,7 @@ const PDSFormWizard: React.FC<PDSFormWizardProps> = ({ employeeId }) => {
             surname: p.lastName || "", firstName: p.firstName || "", middleName: p.middleName || "", nameExtension: p.suffix || "",
             dob: p.birthDate ? new Date(p.birthDate).toISOString().split('T')[0] : "", pob: p.placeOfBirth || "",
             sex: p.gender || "", civilStatus: p.civilStatus || "", height: p.heightM?.toString() || "", weight: p.weightKg?.toString() || "", bloodType: p.bloodType || "", citizenship: p.citizenship || "", dualCountry: p.dualCountry || "",
-            umidId: p.umidNumber || "", pagibigId: p.pagibigNumber || "", philhealthNo: p.philhealthNumber || "", philsysNo: p.philsysId || "", tinNo: p.tinNumber || "", agencyEmployeeNo: p.agencyEmployeeNo || "",
+            umidId: p.umidNumber || "", pagibigId: p.pagibigNumber || "", philhealthNo: p.philhealthNumber || "", philsysId: p.philsysId || "", tinNo: p.tinNumber || "", gsisId: p.gsisNumber || "", agencyEmployeeNo: p.agencyEmployeeNo || "",
             resHouseStreet: p.resHouseBlockLot || "", resSubdivision: p.resSubdivision || "", resBarangay: p.resBarangay || "", resCityMunicipality: p.resCity || "", resProvince: p.resProvince || "", resZip: p.residentialZipCode || "", resRegion: p.resRegion || "", resHouseBlockLot: p.resHouseBlockLot || "", resStreet: p.resStreet || "",
             permHouseStreet: p.permHouseBlockLot || "", permSubdivision: p.permSubdivision || "", permBarangay: p.permBarangay || "", permCityMunicipality: p.permCity || "", permProvince: p.permProvince || "", permZip: p.permanentZipCode || "", permRegion: p.permRegion || "", permHouseBlockLot: p.permHouseBlockLot || "", permStreet: p.permStreet || "",
             telephone: p.telephoneNo || "", mobile: p.mobileNo || "", email: p.email || "",
@@ -889,14 +1022,14 @@ const PDSFormWizard: React.FC<PDSFormWizardProps> = ({ employeeId }) => {
             nextStepDate: stepRes.nextStepDate ? new Date(stepRes.nextStepDate).toLocaleDateString() : "N/A", totalLwopDays: stepRes.totalLwopDays || 0,
           }));
         }
-      } catch (err) { console.error("Failed to load employee PDS:", err); } finally { setLoading(false); }
+      } catch (err) { console.error("Failed to load employee PDS:", err); } finally { setIsSubmitting(false); }
     };
     loadData();
   }, [employeeId]);
 
   const set = useCallback(<K extends keyof PDSFormData>(key: K, value: PDSFormData[K]) => { setData((prev: PDSFormData) => ({ ...prev, [key]: value })); }, []);
 
-  if (loading) return <div className="w-full min-h-[400px] flex flex-col items-center justify-center gap-4 bg-white rounded-3xl border border-gray-100 shadow-sm"><div className="w-12 h-12 border-4 border-gray-100 border-t-gray-900 rounded-full animate-spin" /><p className="text-xs font-bold text-gray-400">Synchronizing PDS Registry...</p></div>;
+  if (isSubmitting) return <div className="w-full min-h-[400px] flex flex-col items-center justify-center gap-4 bg-white rounded-3xl border border-gray-100 shadow-sm"><div className="w-12 h-12 border-4 border-gray-100 border-t-gray-900 rounded-full animate-spin" /><p className="text-xs font-bold text-gray-400">Loading PDS Data...</p></div>;
 
   return (
     <div className="w-full bg-gray-50 min-h-screen font-sans p-6 pb-24">
@@ -904,8 +1037,8 @@ const PDSFormWizard: React.FC<PDSFormWizardProps> = ({ employeeId }) => {
         <div className="flex items-center justify-between mb-8 px-2">
           <div><h1 className="text-xl font-black text-gray-800 tracking-tight">Personal Data Sheet</h1><p className="text-[10px] text-gray-400 font-bold mt-1">CS Form 212 (Revised 2025)</p></div>
           <div className="flex items-center gap-3">
-            <button onClick={handleSave} disabled={saving} className="px-6 py-2.5 bg-gray-900 text-white rounded-xl font-bold text-xs flex items-center gap-2 hover:bg-black transition-all disabled:opacity-50">
-              {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} {saving ? "Synchronizing..." : "Save Changes"}
+            <button onClick={handleSave} disabled={isSubmitting} className="px-6 py-2.5 bg-gray-900 text-white rounded-xl font-bold text-xs flex items-center gap-2 hover:bg-black transition-all disabled:opacity-50">
+              {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} {isSubmitting ? "Synchronizing..." : "Save Changes"}
             </button>
           </div>
         </div>
@@ -915,16 +1048,16 @@ const PDSFormWizard: React.FC<PDSFormWizardProps> = ({ employeeId }) => {
           ))}
         </div></div>
         <div className="w-full"><div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          {activeSection === 0 && <StepPersonal data={data} set={set} />}
+          {activeSection === 0 && <StepPersonal data={data} set={set} metadata={metadata} isIdTakenMap={isIdTakenMap} />}
           {activeSection === 1 && <StepFamily data={data} set={set} />}
           {activeSection === 2 && <StepEducation data={data} set={set} />}
           {activeSection === 3 && <StepEligibility data={data} set={set} />}
-          {activeSection === 4 && <StepWork data={data} set={set} />}
+          {activeSection === 4 && <StepWork data={data} set={set} metadata={metadata} />}
           {activeSection === 5 && <StepVoluntary data={data} set={set} />}
-          {activeSection === 6 && <StepTraining data={data} set={set} />}
+          {activeSection === 6 && <StepTraining data={data} set={set} metadata={metadata} />}
           {activeSection === 7 && <StepOtherInfo data={data} set={set} employeeId={employeeId} />}
-          {activeSection === 8 && <StepDeclarations data={data} set={set} />}
-          {activeSection === 9 && <StepHRDetails data={data} set={set} />}
+          {activeSection === 8 && <StepDeclarations data={data} set={set} metadata={metadata} />}
+          {activeSection === 9 && <StepHRDetails data={data} set={set} metadata={metadata} />}
         </div></div>
       </div>
     </div>

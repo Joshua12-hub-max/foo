@@ -2,6 +2,7 @@ import React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { X, Calendar, CheckCircle, AlertCircle } from 'lucide-react';
+import axios from 'axios';
 import { confirmHiredSchema, type ConfirmHiredData } from '@/schemas/recruitmentSchema';
 import type { Applicant } from '@/types/recruitment';
 
@@ -20,18 +21,39 @@ const ConfirmHiredModal: React.FC<ConfirmHiredModalProps> = ({
 }) => {
   const [selectedDocs, setSelectedDocs] = React.useState<string[]>([]);
   const [customNotes, setCustomNotes] = React.useState<string>('');
+  const [defaultShift, setDefaultShift] = React.useState<{ startTime: string } | null>(null);
+  
+  React.useEffect(() => {
+    const fetchDefaultShift = async () => {
+      try {
+        const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/schedules/shift-templates/default`, { withCredentials: true });
+        if (response.data.success) setDefaultShift(response.data.data);
+      } catch (err) {
+        console.error('Failed to fetch default shift:', err);
+      }
+    };
+    fetchDefaultShift();
+  }, []);
 
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-    reset
+    reset,
+    setValue
   } = useForm<ConfirmHiredData>({
     resolver: zodResolver(confirmHiredSchema),
     defaultValues: {
       startDate: new Date().toISOString().split('T')[0] + 'T08:00'
     }
   });
+
+  React.useEffect(() => {
+    if (defaultShift) {
+      const timePart = defaultShift.startTime.substring(0, 5);
+      setValue('startDate', new Date().toISOString().split('T')[0] + 'T' + timePart);
+    }
+  }, [defaultShift, setValue]);
 
   if (!isOpen || !applicant) return null;
 

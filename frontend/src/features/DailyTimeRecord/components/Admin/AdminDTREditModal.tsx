@@ -1,7 +1,8 @@
 import React, { useEffect } from 'react';
 import { X, Clock, AlertCircle } from 'lucide-react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import Combobox from '@/components/Custom/Combobox';
 import { dtrEditSchema, DtrEditSchema } from '@/schemas/dtr';
 import { DTRRecord } from '../../Utils/adminDTRUtils';
 
@@ -26,7 +27,7 @@ export const AdminDTREditModal: React.FC<AdminDTREditModalProps> = ({
   onSave, 
   record 
 }) => {
-  const { register, handleSubmit, reset, watch, formState: { errors, isSubmitting } } = useForm<DtrEditSchema>({
+  const { register, handleSubmit, reset, watch, control, formState: { errors, isSubmitting } } = useForm<DtrEditSchema>({
     resolver: zodResolver(dtrEditSchema),
     defaultValues: {
       timeIn: '',
@@ -176,20 +177,29 @@ export const AdminDTREditModal: React.FC<AdminDTREditModalProps> = ({
               </div>
             </div>
 
-            <div>
+            <div className="relative z-[60]">
               <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Status</label>
-              <select
-                {...register('status')}
-                className={`w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-400 appearance-none cursor-pointer font-semibold ${getStatusColor(watch('status'))}`}
-              >
-                <option value="Present" className="bg-white text-gray-800">Present</option>
-                <option value="Absent" className="bg-white text-gray-800">Absent</option>
-                <option value="Late" className="bg-white text-gray-800">Late</option>
-                <option value="Leave" className="bg-white text-gray-800">Leave</option>
-                <option value="Undertime" className="bg-white text-gray-800">Undertime</option>
-                <option value="Half Day" className="bg-white text-gray-800">Half Day</option>
-                <option value="Duty" className="bg-white text-gray-800">Duty</option>
-              </select>
+              <Controller
+                name="status"
+                control={control}
+                render={({ field }) => (
+                  <Combobox
+                    options={[
+                      { value: 'Present', label: 'Present' },
+                      { value: 'Absent', label: 'Absent' },
+                      { value: 'Late', label: 'Late' },
+                      { value: 'Leave', label: 'Leave' },
+                      { value: 'Undertime', label: 'Undertime' },
+                      { value: 'Half Day', label: 'Half Day' },
+                      { value: 'Duty', label: 'Duty' }
+                    ]}
+                    value={field.value}
+                    onChange={field.onChange}
+                    placeholder="Select Status"
+                    buttonClassName={`w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-400 font-bold h-[42px] ${getStatusColor(field.value)}`}
+                  />
+                )}
+              />
               {errors.status && <p className="text-red-500 text-xs mt-1">{errors.status.message}</p>}
             </div>
 

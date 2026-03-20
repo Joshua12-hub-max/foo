@@ -38,7 +38,8 @@ const AdminAttendance = () => {
     undertimeMinutes: Number(item.undertimeMinutes ?? 0),
     overtimeMinutes: Number(item.overtimeMinutes ?? 0),
     status: item.status || 'Absent',
-    duties: item.duties || 'No Schedule',
+    duties: item.duties || 'Standard',
+    shift: item.shift || 'No Schedule',
   })), [rawLogs]);
 
   // Fetch Filter Options using Centralized Hook

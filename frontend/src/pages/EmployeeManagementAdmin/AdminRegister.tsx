@@ -23,8 +23,8 @@ import EmailVerificationModal from '@/Authentication/EmailVerificationModal';
 import { PhilippineAddressSelector } from '@/components/Custom/Shared/PhilippineAddressSelector';
 import HiredApplicantsListModal from '@/components/Custom/EmployeeManagement/Admin/Modals/HiredApplicantsListModal';
 import ph from 'phil-reg-prov-mun-brgy';
-
-import { EDUCATION_LEVELS } from '@/schemas/recruitment';
+import { EDUCATION_LEVELS } from "@/schemas/recruitment";
+import { GENDER_OPTIONS, CIVIL_STATUS_OPTIONS, BLOOD_TYPE_OPTIONS, EDUCATION_LEVEL_OPTIONS, ELIGIBILITY_RECRUITMENT_OPTIONS } from "@/constants/referenceData";
 
 type EducationLevel = typeof EDUCATION_LEVELS[number] | "";
 
@@ -810,7 +810,7 @@ export default function AdminRegister() {
                 </div>
              </div>
 
-             <div className="pt-2 grid grid-cols-2 md:grid-cols-3 gap-4">
+             <div className="pt-2 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                 <div className="space-y-1">
                    <label className="text-xs font-semibold text-gray-600 ml-1">Birth Date</label>
                    <div className="relative">
@@ -832,23 +832,26 @@ export default function AdminRegister() {
 
                 <div className="space-y-1">
                    <label className="text-xs font-semibold text-gray-600 ml-1">Gender <span className="text-red-500">*</span></label>
-                   <select {...register("gender")} className={`${inputClass} ${errors.gender ? errorClass : ''}`}>
-                      <option value="">Select...</option>
-                      <option value="Male">Male</option>
-                      <option value="Female">Female</option>
-                   </select>
+                   <Combobox
+                      options={GENDER_OPTIONS}
+                      value={watch("gender") || ""}
+                      onChange={(val) => setValue("gender", val as "Male" | "Female" | "", { shouldValidate: true })}
+                      placeholder="Select..."
+                      error={!!errors.gender}
+                      buttonClassName={errors.gender ? errorClass : ''}
+                   />
                 </div>
 
                 <div className="space-y-1">
                    <label className="text-xs font-semibold text-gray-600 ml-1">Civil Status <span className="text-red-500">*</span></label>
-                   <select {...register("civilStatus")} className={`${inputClass} ${errors.civilStatus ? errorClass : ''}`}>
-                      <option value="">Select...</option>
-                      <option value="Single">Single</option>
-                      <option value="Married">Married</option>
-                      <option value="Widowed">Widowed</option>
-                      <option value="Separated">Separated</option>
-                      <option value="Annulled">Annulled</option>
-                   </select>
+                   <Combobox
+                      options={CIVIL_STATUS_OPTIONS}
+                      value={watch("civilStatus") || ""}
+                      onChange={(val) => setValue("civilStatus", val as "Single" | "Married" | "Widowed" | "Separated" | "Annulled" | "", { shouldValidate: true })}
+                      placeholder="Select..."
+                      error={!!errors.civilStatus}
+                      buttonClassName={errors.civilStatus ? errorClass : ''}
+                   />
                 </div>
 
                 <div className="space-y-1">
@@ -858,17 +861,14 @@ export default function AdminRegister() {
 
                 <div className="space-y-1">
                    <label className="text-xs font-semibold text-gray-600 ml-1">Blood Type</label>
-                   <select {...register("bloodType")} className={`${inputClass} ${errors.bloodType ? errorClass : ''}`}>
-                      <option value="">Select...</option>
-                      <option value="A+">A+</option>
-                      <option value="A-">A-</option>
-                      <option value="B+">B+</option>
-                      <option value="B-">B-</option>
-                      <option value="O+">O+</option>
-                      <option value="O-">O-</option>
-                      <option value="AB+">AB+</option>
-                      <option value="AB-">AB-</option>
-                   </select>
+                   <Combobox
+                      options={BLOOD_TYPE_OPTIONS}
+                      value={watch("bloodType") || ""}
+                      onChange={(val) => setValue("bloodType", val, { shouldValidate: true })}
+                      placeholder="Select..."
+                      error={!!errors.bloodType}
+                      buttonClassName={errors.bloodType ? errorClass : ''}
+                   />
                 </div>
 
                 <div className="space-y-1">
@@ -1022,15 +1022,12 @@ export default function AdminRegister() {
              <div className="space-y-4">
                 <div className="space-y-1">
                    <label className="text-xs font-semibold text-gray-600 ml-1">Highest Degree/Level Attained</label>
-                   <select 
-                       {...register("educationalBackground")} 
-                       className={`${inputClass}`}
-                   >
-                       <option value="">Select highest education attained</option>
-                       {EDUCATION_LEVELS.map((level) => (
-                           <option key={level} value={level}>{level}</option>
-                       ))}
-                   </select>
+                   <Combobox
+                       options={EDUCATION_LEVEL_OPTIONS}
+                       value={watch("educationalBackground") || ""}
+                       onChange={(val) => setValue("educationalBackground", val as EducationLevel, { shouldValidate: true })}
+                       placeholder="Select highest education attained"
+                   />
                    {errors.educationalBackground && (
                        <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.educationalBackground.message}</p>
                    )}
@@ -1085,43 +1082,34 @@ export default function AdminRegister() {
                  </div>
                  <div className="md:col-span-1">
                       <label className="text-xs font-semibold text-gray-600 ml-1 mb-1 block">Type of Duties</label>
-                       <select 
-                        {...register("dutyType")} 
-                        className={`${inputClass} bg-gray-50 font-bold`}
-                      >
-                        {empMetadata?.dutyTypes.map((dt) => (
-                            <option key={dt} value={dt}>{dt}</option>
-                        ))}
-                        {!empMetadata && (
-                            <>
-                                <option value="Standard">Standard</option>
-                                <option value="Irregular">Irregular</option>
-                            </>
-                        )}
-                      </select>
+                       <Combobox
+                           options={empMetadata?.dutyTypes.map((dt) => ({ value: dt, label: dt })) || [
+                               { value: "Standard", label: "Standard" },
+                               { value: "Irregular", label: "Irregular" }
+                           ]}
+                           value={watch("dutyType") || ""}
+                           onChange={(val) => setValue("dutyType", val as "Standard" | "Irregular", { shouldValidate: true })}
+                           placeholder="Select..."
+                           buttonClassName="bg-gray-50 font-bold !pl-3"
+                       />
                  </div>
                   <div className="md:col-span-1">
                       <label className="text-xs font-semibold text-gray-600 ml-1 mb-1 block">Appointment Type / Schedule</label>
-                       <select 
-                        {...register("appointmentType")} 
-                        className={`${inputClass} bg-gray-50 font-bold`}
-                      >
-                        <option value="">Select type...</option>
-                        {empMetadata?.appointmentTypes.map((at) => (
-                            <option key={at} value={at}>{at}</option>
-                        ))}
-                        {!empMetadata && (
-                            <>
-                                <option value="Permanent">Permanent</option>
-                                <option value="Job Order">Job Order</option>
-                                <option value="Casual">Casual</option>
-                                <option value="Contract of Service">Contract of Service</option>
-                                <option value="Contractual">Contractual</option>
-                                <option value="Coterminous">Coterminous</option>
-                                <option value="Temporary">Temporary</option>
-                            </>
-                        )}
-                      </select>
+                       <Combobox
+                           options={empMetadata?.appointmentTypes.map((at) => ({ value: at, label: at })) || [
+                               { value: "Permanent", label: "Permanent" },
+                               { value: "Job Order", label: "Job Order" },
+                               { value: "Casual", label: "Casual" },
+                               { value: "Contract of Service", label: "Contract of Service" },
+                               { value: "Contractual", label: "Contractual" },
+                               { value: "Coterminous", label: "Coterminous" },
+                               { value: "Temporary", label: "Temporary" }
+                           ]}
+                           value={watch("appointmentType") || ""}
+                           onChange={(val) => setValue("appointmentType", val as RegisterFormValues["appointmentType"], { shouldValidate: true })}
+                           placeholder="Select type..."
+                           buttonClassName="bg-gray-50 font-bold !pl-3"
+                       />
                   </div>
               </div>
               
@@ -1160,16 +1148,13 @@ export default function AdminRegister() {
              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1">
                    <label className="text-xs font-semibold text-gray-600 ml-1">CSC Eligibility Type</label>
-                   <select {...register("eligibilityType")} className={`${inputClass}`}>
-                      <option value="none">None / Not Applicable</option>
-                      <option value="csc_prof">CSC Professional</option>
-                      <option value="csc_sub">CSC Subprofessional</option>
-                      <option value="ra_1080">RA 1080 (Board/Bar)</option>
-                      <option value="special_laws">Special Laws</option>
-                      <option value="drivers_license">Driver's License</option>
-                      <option value="tesda">TESDA NC II/III</option>
-                      <option value="others">Others</option>
-                   </select>
+                   <Combobox
+                       options={ELIGIBILITY_RECRUITMENT_OPTIONS}
+                       value={watch("eligibilityType") || ""}
+                       onChange={(val) => setValue("eligibilityType", val, { shouldValidate: true })}
+                       placeholder="Select..."
+                       buttonClassName={`pl-3`}
+                   />
                 </div>
                 <div className="space-y-1">
                    <label className="text-xs font-semibold text-gray-600 ml-1">Eligibility Number / License No.</label>

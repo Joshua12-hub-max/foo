@@ -49,6 +49,7 @@ export interface Employee {
   itemNumber: string | null;
   positionId: number | null;
   duties: string;
+  shift?: string;
   experience: string | null;
 
   // PDS / Extended Fields

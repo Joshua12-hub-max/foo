@@ -1,6 +1,7 @@
 import React from 'react';
 import { Search } from 'lucide-react';
 import { SourceFilter } from '../Hooks/useApplicantFilters';
+import Combobox from '@/components/Custom/Combobox';
 
 interface ApplicantFiltersProps {
   searchTerm: string;
@@ -27,16 +28,18 @@ const ApplicantFilters: React.FC<ApplicantFiltersProps> = ({
           onChange={(e) => setSearchTerm(e.target.value)}
         />
       </div>
-      <div className="relative w-40">
-          <select 
-            className="w-full appearance-none bg-gray-200 border border-gray-200 text-gray-700 py-2 pl-4 pr-10 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-200 focus:border-gray-300 cursor-pointer"
-            value={sourceFilter}
-            onChange={(e) => setSourceFilter(e.target.value as SourceFilter)}
-          >
-            <option value="All">All Sources</option>
-            <option value="Web">Website</option>
-            <option value="Email">Email</option>
-          </select>
+      <div className="relative w-44 z-[50]">
+        <Combobox
+          options={[
+            { value: 'All', label: 'All Sources' },
+            { value: 'Web', label: 'Website' },
+            { value: 'Email', label: 'Email' }
+          ]}
+          value={sourceFilter}
+          onChange={(val) => setSourceFilter(val as SourceFilter)}
+          placeholder="All Sources"
+          buttonClassName="w-full bg-white border border-gray-200 text-gray-700 py-2 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-200 focus:border-gray-200 cursor-pointer font-bold h-[42px]"
+        />
       </div>
     </div>
   );

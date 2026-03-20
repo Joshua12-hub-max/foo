@@ -1,6 +1,7 @@
 // Imports updated
 import React, { memo, ChangeEvent, useState } from 'react';
 import { X, Loader } from 'lucide-react';
+import Combobox from '@/components/Custom/Combobox';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { assignEmployee, vacatePosition, Position } from '@/api/plantillaApi';
 import { useToastStore } from '@/stores';
@@ -77,20 +78,21 @@ export const AssignModal: React.FC<AssignModalProps> = memo(({ isOpen, onClose, 
               <p className="text-sm text-gray-600 mb-4">
                 Assign an employee to: <strong>{currentPosition?.positionTitle}</strong>
               </p>
-              <div className="mb-4">
+              <div className="mb-4 relative z-[60]">
                 <label className="block text-xs font-semibold text-gray-700 mb-1">Select Employee</label>
-                <select 
-                  className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-md shadow-md text-sm focus:outline-none focus:border-gray-200"
+                <Combobox
+                  options={[
+                    { value: '', label: '-- Select Employee --' },
+                    ...availableEmployees.map(emp => ({
+                      value: String(emp.id),
+                      label: `${emp.firstName} ${emp.lastName} (${emp.employeeId})`
+                    }))
+                  ]}
                   value={selectedEmployee}
-                  onChange={(e: ChangeEvent<HTMLSelectElement>) => setSelectedEmployee(e.target.value)}
-                >
-                  <option value="">-- Select Employee --</option>
-                  {availableEmployees.map(emp => (
-                    <option key={emp.id} value={emp.id}>
-                      {emp.firstName} {emp.lastName} ({emp.employeeId})
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => setSelectedEmployee(val)}
+                  placeholder="Search Employee..."
+                  buttonClassName="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-md shadow-md text-sm focus:outline-none focus:border-gray-200 font-bold h-[40px]"
+                />
               </div>
               <div className="flex gap-3">
                 <button 

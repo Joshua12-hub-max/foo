@@ -4,6 +4,7 @@ import {
   Calendar, Users, Building, AlertCircle,
   FileSearch
 } from 'lucide-react';
+import Combobox from '@/components/Custom/Combobox';
 import { useQuery } from '@tanstack/react-query';
 import { complianceApi } from '@/api/complianceApi';
 import type { Form9Row, PSIPOPRow, Form33Data } from '@/api/complianceApi';
@@ -100,16 +101,18 @@ const ComplianceReportsDashboard: React.FC<ReportsDashboardProps> = memo(({ depa
       {/* Filter Bar */}
       <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex flex-wrap items-center gap-4">
         {activeReport === 'form9' && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 relative z-[20]">
                 <Building size={16} className="text-gray-400" />
-                <select 
+                <Combobox
+                    options={[
+                        { value: 'All', label: 'All Departments' },
+                        ...departments.map(d => ({ value: d, label: d }))
+                    ]}
                     value={filters.department}
-                    onChange={(e) => setFilters({...filters, department: e.target.value})}
-                    className="bg-gray-50 border border-gray-100 rounded-lg px-3 py-1.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500/20 outline-none"
-                >
-                    <option value="All">All Departments</option>
-                    {departments.map(d => <option key={d} value={d}>{d}</option>)}
-                </select>
+                    onChange={(val) => setFilters({...filters, department: val})}
+                    placeholder="All Departments"
+                    buttonClassName="bg-gray-50 border border-gray-100 rounded-lg px-3 py-1.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500/20 outline-none w-[200px]"
+                />
             </div>
         )}
 

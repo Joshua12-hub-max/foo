@@ -20,8 +20,24 @@ const ShiftTemplateManagement: React.FC = () => {
         startTime: '08:00',
         endTime: '17:00',
         departmentId: null as number | null,
-        description: ''
+        description: '',
+        isDefault: false,
+        workingDays: 'Monday,Tuesday,Wednesday,Thursday,Friday'
     });
+
+    const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+    const toggleDay = (day: string) => {
+        const currentDays = formData.workingDays ? formData.workingDays.split(',').map(d => d.trim()).filter(d => d) : [];
+        let newDays;
+        if (currentDays.includes(day)) {
+            newDays = currentDays.filter(d => d !== day);
+        } else {
+            // Keep order
+            newDays = daysOfWeek.filter(d => currentDays.includes(d) || d === day);
+        }
+        setFormData({ ...formData, workingDays: newDays.join(',') });
+    };
 
     useEffect(() => {
         fetchTemplates();
@@ -62,7 +78,9 @@ const ShiftTemplateManagement: React.FC = () => {
                 startTime: template.startTime.substring(0, 5),
                 endTime: template.endTime.substring(0, 5),
                 departmentId: template.departmentId || null,
-                description: template.description || ''
+                description: template.description || '',
+                isDefault: !!template.isDefault,
+                workingDays: template.workingDays || 'Monday,Tuesday,Wednesday,Thursday,Friday'
             });
         } else {
             setEditingTemplate(null);
@@ -71,7 +89,9 @@ const ShiftTemplateManagement: React.FC = () => {
                 startTime: '08:00',
                 endTime: '17:00',
                 departmentId: null,
-                description: ''
+                description: '',
+                isDefault: false,
+                workingDays: 'Monday,Tuesday,Wednesday,Thursday,Friday'
             });
         }
         setIsModalOpen(true);
@@ -150,10 +170,17 @@ const ShiftTemplateManagement: React.FC = () => {
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {templates.map(temp => (
-                        <div key={temp.id} className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-all group border-l-4 border-l-blue-500">
+                        <div key={temp.id} className={`bg-white border rounded-xl p-5 shadow-sm hover:shadow-md transition-all group border-l-4 ${temp.isDefault ? 'border-amber-500 bg-amber-50/10' : 'border-blue-500'}`}>
                             <div className="flex justify-between items-start mb-4">
-                                <div>
-                                    <h3 className="font-bold text-gray-800 group-hover:text-blue-600 transition-colors">{temp.name}</h3>
+                                <div className="min-w-0">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <h3 className="font-bold text-gray-800 group-hover:text-blue-600 transition-colors truncate">{temp.name}</h3>
+                                        {temp.isDefault && (
+                                            <span className="bg-amber-100 text-amber-700 text-[8px] font-black px-1.5 py-0.5 rounded uppercase flex items-center gap-0.5 shrink-0">
+                                                <Check size={8} strokeWidth={4} /> Default
+                                            </span>
+                                        )}
+                                    </div>
                                     {temp.departmentName ? (
                                         <span className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded mt-1">
                                             <Building2 size={10} />
@@ -165,7 +192,7 @@ const ShiftTemplateManagement: React.FC = () => {
                                         </span>
                                     )}
                                 </div>
-                                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-2">
                                     <button onClick={() => handleOpenModal(temp)} className="p-1.5 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all border border-gray-100"><Edit size={14} /></button>
                                     <button onClick={() => handleDelete(temp.id!)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all border border-gray-100"><Trash2 size={14} /></button>
                                 </div>
@@ -175,6 +202,15 @@ const ShiftTemplateManagement: React.FC = () => {
                                     <Clock size={14} className="text-blue-500" />
                                     <span>{temp.startTime.substring(0,5)} — {temp.endTime.substring(0,5)}</span>
                                 </div>
+                                
+                                {temp.workingDays && (
+                                    <div className="flex flex-wrap gap-1">
+                                        {temp.workingDays.split(',').map(day => (
+                                            <span key={day} className="text-[9px] font-bold bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded uppercase">{day.substring(0,3)}</span>
+                                        ))}
+                                    </div>
+                                )}
+
                                 {temp.description && (
                                     <p className="text-xs text-gray-500 italic leading-relaxed line-clamp-2">"{temp.description}"</p>
                                 )}
@@ -188,12 +224,28 @@ const ShiftTemplateManagement: React.FC = () => {
             {isModalOpen && (
                 <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-gray-900/40" onClick={() => setIsModalOpen(false)} />
-                    <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
+                    <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200">
                         <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
                             <h2 className="text-lg font-bold text-gray-800">{editingTemplate ? 'Edit Shift Template' : 'New Shift Template'}</h2>
                             <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600 transition-colors"><X size={20} /></button>
                         </div>
-                        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                        <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[85vh] overflow-y-auto custom-scrollbar">
+                            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between bg-blue-50/30 p-3 rounded-xl border border-blue-100/50">
+                                <div className="space-y-0.5">
+                                    <p className="text-sm font-bold text-gray-800">System Default Shift</p>
+                                    <p className="text-[10px] text-gray-500 font-medium">Auto-assigned to every new employee upon registration</p>
+                                </div>
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input 
+                                        type="checkbox" 
+                                        className="sr-only peer" 
+                                        checked={formData.isDefault}
+                                        onChange={e => setFormData({...formData, isDefault: e.target.checked})}
+                                    />
+                                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+                                </label>
+                            </div>
+
                             <div className="space-y-1">
                                 <label className="text-[10px] font-black uppercase text-gray-400 block ml-1">Template Name</label>
                                 <input 
@@ -216,6 +268,29 @@ const ShiftTemplateManagement: React.FC = () => {
                                     buttonClassName="bg-white border-gray-200"
                                 />
                                 <p className="text-[9px] text-gray-400 italic ml-1">Templates assigned to a department only show up for that department's scheduling.</p>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black uppercase text-gray-400 block ml-1">Work Days Selection</label>
+                                <div className="flex flex-wrap gap-2">
+                                    {daysOfWeek.map(day => {
+                                        const isSelected = formData.workingDays?.split(',').map(d => d.trim()).includes(day);
+                                        return (
+                                            <button
+                                                key={day}
+                                                type="button"
+                                                onClick={() => toggleDay(day)}
+                                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${
+                                                    isSelected 
+                                                        ? 'bg-blue-600 text-white border-blue-600 shadow-sm' 
+                                                        : 'bg-white text-gray-400 border-gray-200 hover:border-gray-300'
+                                                }`}
+                                            >
+                                                {day.substring(0, 3)}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
@@ -249,7 +324,7 @@ const ShiftTemplateManagement: React.FC = () => {
                                     className="w-full px-4 py-2.5 border border-gray-200 rounded-lg outline-none text-sm resize-none"
                                 />
                             </div>
-                            <div className="pt-2 flex gap-3">
+                            <div className="pt-2 flex gap-3 sticky bottom-0 bg-white pb-2">
                                 <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 px-4 py-2.5 border-2 border-gray-100 rounded-lg text-sm font-bold text-gray-500 hover:bg-gray-50 transition-all">Cancel</button>
                                 <button type="submit" disabled={submitting} className="flex-1 px-4 py-2.5 bg-gray-900 text-white rounded-lg text-sm font-bold hover:bg-gray-800 transition-all shadow-lg flex justify-center items-center gap-2">
                                     {submitting ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}

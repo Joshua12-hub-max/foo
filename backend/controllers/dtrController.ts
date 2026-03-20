@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 
 import { db } from '../db/index.js';
-import { dailyTimeRecords, authentication, dtrCorrections, departments, schedules, bioEnrolledUsers, attendanceLogs, bioAttendanceLogs } from '../db/schema.js';
+import { dailyTimeRecords, authentication, dtrCorrections, departments, schedules, bioEnrolledUsers, attendanceLogs, bioAttendanceLogs, shiftTemplates } from '../db/schema.js';
 import { eq, and, desc, gte, lte, count, sql } from 'drizzle-orm';
 import { GetDTRSchema, UpdateDTRSchema, RequestCorrectionSchema } from '../schemas/dtrSchema.js';
 import { AuthenticatedRequest } from '../types/index.js';
@@ -30,7 +30,9 @@ interface DTRRecordRow {
   middleName: string | null;
   suffix: string | null;
   department: string;
+  dutyType: string;
   duties: string;
+  shift: string;
   correctionId: number | null;
   correctionStatus: string | null;
   correctionReason: string | null;
@@ -52,7 +54,7 @@ const toMySQLDatetime = (isoStr: string | null | undefined): string | null => {
 
 const toTitleCase = (str: string) => str.replace(/\w\S*/g, txt => txt.charAt(0).toUpperCase() + txt.substring(1).toLowerCase());
 
-const mapToDtrApi = (record: DTRRecordRow): DTRApiResponse => {
+const mapToDtrApi = (record: DTRRecordRow & { dutyType?: string; shift?: string }): DTRApiResponse => {
     return {
         id: record.id,
         employeeId: record.employeeId,
@@ -71,7 +73,9 @@ const mapToDtrApi = (record: DTRRecordRow): DTRApiResponse => {
         middleName: record.middleName || null,
         suffix: record.suffix || null,
         department: record.department || 'N/A',
-        duties: record.duties || 'No Schedule',
+        duties: record.duties || 'System Default',
+        shift: record.shift || 'No Schedule',
+        dutyType: record.dutyType || 'Standard',
         correctionId: record.correctionId,
         correctionStatus: record.correctionStatus,
         correctionReason: record.correctionReason,
@@ -142,7 +146,19 @@ export const getAllRecords = async (req: Request, res: Response): Promise<void> 
             middleName: authentication.middleName,
             suffix: authentication.suffix,
             department: sql<string>`COALESCE(${departments.name}, ${bioEnrolledUsers.department}, 'N/A')`,
-            duties: sql<string>`COALESCE((SELECT schedule_title FROM schedules WHERE employee_id = ${dailyTimeRecords.employeeId} ORDER BY updated_at DESC LIMIT 1), 'No Schedule')`,
+            dutyType: sql<string>`COALESCE(${authentication.dutyType}, 'Standard')`,
+            duties: sql<string>`COALESCE(
+                (SELECT schedule_title FROM schedules WHERE employee_id = ${dailyTimeRecords.employeeId} AND (start_date IS NULL OR start_date <= ${dailyTimeRecords.date}) AND (end_date IS NULL OR end_date >= ${dailyTimeRecords.date}) ORDER BY updated_at DESC LIMIT 1),
+                (SELECT schedule_title FROM schedules WHERE employee_id = ${dailyTimeRecords.employeeId} AND (start_date IS NULL OR start_date <= ${dailyTimeRecords.date}) ORDER BY start_date DESC LIMIT 1),
+                (SELECT name FROM shift_templates WHERE is_default = 1 LIMIT 1),
+                'Standard Shift'
+            )`,
+            shift: sql<string>`COALESCE(
+                (SELECT CONCAT(TIME_FORMAT(start_time, '%h:%i %p'), ' - ', TIME_FORMAT(end_time, '%h:%i %p')) FROM schedules WHERE employee_id = ${dailyTimeRecords.employeeId} AND (start_date IS NULL OR start_date <= ${dailyTimeRecords.date}) AND (end_date IS NULL OR end_date >= ${dailyTimeRecords.date}) ORDER BY updated_at DESC LIMIT 1),
+                (SELECT CONCAT(TIME_FORMAT(start_time, '%h:%i %p'), ' - ', TIME_FORMAT(end_time, '%h:%i %p')) FROM schedules WHERE employee_id = ${dailyTimeRecords.employeeId} AND (start_date IS NULL OR start_date <= ${dailyTimeRecords.date}) ORDER BY start_date DESC LIMIT 1),
+                (SELECT CONCAT(TIME_FORMAT(start_time, '%h:%i %p'), ' - ', TIME_FORMAT(end_time, '%h:%i %p')) FROM shift_templates WHERE is_default = 1 LIMIT 1),
+                '08:00 AM - 05:00 PM'
+            )`,
             // Correction info via LEFT JOIN
             correctionId: dtrCorrections.id,
             correctionStatus: dtrCorrections.status,
@@ -174,7 +190,7 @@ export const getAllRecords = async (req: Request, res: Response): Promise<void> 
             
         const total = countResult.total;
 
-        const formattedRecords = (records as DTRRecordRow[]).map(mapToDtrApi);
+        const formattedRecords = records.map((r) => mapToDtrApi(r as DTRRecordRow & { dutyType?: string; shift?: string }));
 
         res.status(200).json({
             success: true,
@@ -238,9 +254,17 @@ export const updateRecord = async (req: Request, res: Response): Promise<void> =
         ))
         .limit(1);
 
-    // Default to 8-5 if no schedule
-    const startStr = schedule ? schedule.startTime : '08:00:00';
-    const endStr = schedule ? schedule.endTime : '17:00:00';
+    // Fetch System Default Shift as fallback
+    const [defaultShift] = await db.select({
+        startTime: shiftTemplates.startTime,
+        endTime: shiftTemplates.endTime
+    })
+    .from(shiftTemplates)
+    .where(eq(shiftTemplates.isDefault, true))
+    .limit(1);
+
+    const startStr = schedule ? schedule.startTime : (defaultShift?.startTime || '08:00:00');
+    const endStr = schedule ? schedule.endTime : (defaultShift?.endTime || '17:00:00');
 
     // Helper to format input to MySQL DateTime
     const processInputTime = (inputTime: string | null | undefined, dateStr: string): string | null => {
@@ -623,8 +647,17 @@ export const updateCorrectionStatus = async (req: Request, res: Response): Promi
                 eq(schedules.dayOfWeek, dayName)
             )).limit(1);
 
-            const startStr = schedule ? schedule.startTime : '08:00:00';
-            const endStr = schedule ? schedule.endTime : '17:00:00';
+            // Fetch System Default Shift as fallback
+            const [defaultShift] = await db.select({
+                startTime: shiftTemplates.startTime,
+                endTime: shiftTemplates.endTime
+            })
+            .from(shiftTemplates)
+            .where(eq(shiftTemplates.isDefault, true))
+            .limit(1);
+
+            const startStr = schedule ? schedule.startTime : (defaultShift?.startTime || '08:00:00');
+            const endStr = schedule ? schedule.endTime : (defaultShift?.endTime || '17:00:00');
             
             const getTimePart = (d: string | Date | null): string | null => {
                 if (!d) return null;

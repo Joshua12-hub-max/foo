@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { type InternalPolicy } from '@/api/policyApi';
 import { Loader2, ChevronDown } from 'lucide-react';
+import axios from 'axios';
 
 interface InternalPoliciesPageProps {
   hideHeader?: boolean;
@@ -35,22 +36,36 @@ const ToggleSection: React.FC<{ title: string; defaultOpen?: boolean; children: 
 const InternalPoliciesPage: React.FC<InternalPoliciesPageProps> = ({ hideHeader = false }) => {
     const [policies] = useState<InternalPolicy[]>([]);
     const [loading, setLoading] = useState(false);
+    const [defaultShift, setDefaultShift] = useState<{ startTime: string; endTime: string; name: string } | null>(null);
 
+    const formatTime = (timeStr: string) => {
+        if (!timeStr) return '';
+        const [h, m] = timeStr.split(':').map(Number);
+        const period = h < 12 ? 'am' : 'pm';
+        const hours = h % 12 || 12;
+        return `${hours}:${m.toString().padStart(2, '0')} ${period}`;
+    };
 
+    const getLunchStart = (startTime: string) => {
+        const [h, m] = startTime.split(':').map(Number);
+        return formatTime(`${(h + 4).toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`);
+    };
+
+    const getAfternoonStart = (startTime: string) => {
+        const [h, m] = startTime.split(':').map(Number);
+        return formatTime(`${(h + 5).toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`);
+    };
 
     useEffect(() => {
-        const fetchPolicies = async () => {
-            setLoading(true);
+        const fetchShift = async () => {
             try {
-                // To fetch all content for an accordion, we simulate fetching all tabs or just use static data
-                // In this implementation plan we will just use static data as replacing tabs means we display all
+                const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/schedules/shift-templates/default`);
+                if (response.data.success) setDefaultShift(response.data.data);
             } catch (error) {
-                console.error('Failed to fetch policies:', error);
-            } finally {
-                setLoading(false);
+                console.error('Failed to fetch default shift:', error);
             }
         };
-        fetchPolicies();
+        fetchShift();
     }, []);
 
 
@@ -66,7 +81,7 @@ const InternalPoliciesPage: React.FC<InternalPoliciesPageProps> = ({ hideHeader 
                 </div>
                 <div className="flex items-center gap-3">
                     <span className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-[10px] font-bold border border-gray-200">
-                        {policies.length > 0 && policies[0].versionLabel ? policies[0].versionLabel : 'Office Order 164-2025'}
+                        {policies.length > 0 && policies[0].versionLabel ? policies[0].versionLabel : `Office Order 164-${new Date().getFullYear()}`}
                     </span>
                 </div>
             </div>
@@ -134,11 +149,15 @@ const InternalPoliciesPage: React.FC<InternalPoliciesPageProps> = ({ hideHeader 
                                                 <div className="space-y-3 flex-1 border-t border-slate-100/50 pt-4">
                                                     <div className="flex items-center gap-3">
                                                         <div className="w-1.5 h-1.5 rounded-full bg-slate-500 shrink-0" />
-                                                        <p className="text-sm font-bold text-gray-700">08:00 am — 12:00 nn</p>
+                                                        <p className="text-sm font-bold text-gray-700">
+                                                            {defaultShift ? formatTime(defaultShift.startTime) : '08:00 am'} — {defaultShift ? getLunchStart(defaultShift.startTime) : '12:00 nn'}
+                                                        </p>
                                                     </div>
                                                     <div className="flex items-center gap-3">
                                                         <div className="w-1.5 h-1.5 rounded-full bg-slate-500 shrink-0" />
-                                                        <p className="text-sm font-bold text-gray-700">01:00 pm — 05:00 pm</p>
+                                                        <p className="text-sm font-bold text-gray-700">
+                                                            {defaultShift ? getAfternoonStart(defaultShift.startTime) : '01:00 pm'} — {defaultShift ? formatTime(defaultShift.endTime) : '05:00 pm'}
+                                                        </p>
                                                     </div>
                                                 </div>
                                                 <div className="mt-4 p-3 bg-white rounded-xl border border-slate-100/30">
@@ -206,7 +225,7 @@ const InternalPoliciesPage: React.FC<InternalPoliciesPageProps> = ({ hideHeader 
                                                 <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
                                                     <p className="text-xs text-gray-800 font-bold mb-2">Reporting after prescribed time of arrival</p>
                                                     <p className="text-[11px] text-gray-600 leading-relaxed">
-                                                        An employee is considered <strong>tardy/late</strong> when they report for work after the prescribed time of arrival (8:00 am for Standard Duty). Late minutes are counted from <strong>minute 1</strong>.
+                                                        An employee is considered <strong>tardy/late</strong> when they report for work after the prescribed time of arrival ({defaultShift ? formatTime(defaultShift.startTime) : '8:00 am'} for {defaultShift?.name || 'Standard'} Duty). Late minutes are counted from <strong>minute 1</strong>.
                                                     </p>
                                                 </div>
                                             </div>
@@ -215,7 +234,7 @@ const InternalPoliciesPage: React.FC<InternalPoliciesPageProps> = ({ hideHeader 
                                                 <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
                                                     <p className="text-xs text-gray-800 font-bold mb-2">Leaving before prescribed end of office hours</p>
                                                     <p className="text-[11px] text-gray-600 leading-relaxed">
-                                                        An employee is on <strong>undertime</strong> when they leave the office before the prescribed end of office hours (5:00 pm for Standard Duty). A single day can be <strong>both Late and Undertime</strong>.
+                                                        An employee is on <strong>undertime</strong> when they leave the office before the prescribed end of office hours ({defaultShift ? formatTime(defaultShift.endTime) : '5:00 pm'} for {defaultShift?.name || 'Standard'} Duty). A single day can be <strong>both Late and Undertime</strong>.
                                                     </p>
                                                 </div>
                                             </div>
@@ -587,7 +606,7 @@ const InternalPoliciesPage: React.FC<InternalPoliciesPageProps> = ({ hideHeader 
                                         <h3 className="text-sm font-bold text-gray-800 mb-4 border-l-4 border-rose-500 pl-3">Key Policy Notes</h3>
                                         <div className="space-y-3">
                                             {[
-                                                'Standard duty = Regular Mon-Fri 8am-5pm schedule',
+                                                `Standard duty = Regular Mon-Fri ${defaultShift ? `${formatTime(defaultShift.startTime).replace(' am', '')}-${formatTime(defaultShift.endTime).replace(' pm', '')}pm` : '8am-5pm'} schedule`,
                                                 'Irregular duty = Schedule assigned by department head, may include weekends',
                                                 'jo/cos do not earn leave credits under csc rules',
                                                 'Penalty track for JO/COS is shorter (Warning → Termination)',

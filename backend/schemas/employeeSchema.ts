@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { createIdValidator, ID_REGEX } from './idValidation.js';
+import { PdsQuestionsSchema } from './pdsSchema.js';
 
 export const BaseEmployeeSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
@@ -12,9 +13,11 @@ export const BaseEmployeeSchema = z.object({
   departmentId: z.number().optional().nullable(),
   jobTitle: z.string().optional().nullable(),
   duties: z.string().optional().nullable(),
+  startDate: z.string().optional().nullable(),
+  endDate: z.string().optional().nullable(),
   role: z.string(),
   employmentStatus: z.enum(['Active','Probationary','Terminated','Resigned','On Leave','Suspended','Verbal Warning','Written Warning','Show Cause']),
-  employmentType: z.enum(['Full-time', 'Part-time', 'Contractual', 'Job Order', 'Coterminous', 'Temporary', 'Probationary', 'Casual', 'Permanent']),
+  employmentType: z.enum(['Full-time', 'Part-time', 'Contractual', 'Job Order', 'Coterminous', 'Temporary', 'Probationary', 'Casual', 'Permanent', 'Contract of Service', 'JO', 'COS']),
   contractEndDate: z.string().optional().nullable(), // Required if Job Order
   regularizationDate: z.string().optional().nullable(), // Auto-calc or manual
   isRegular: z.boolean(),
@@ -24,8 +27,8 @@ export const BaseEmployeeSchema = z.object({
   
   // Personal Info
   birthDate: z.string().optional().nullable(),
-  gender: z.string().optional().nullable(),
-  civilStatus: z.string().optional().nullable(),
+  gender: z.enum(['Male', 'Female']).optional().nullable(),
+  civilStatus: z.enum(['Single', 'Married', 'Widowed', 'Separated', 'Annulled']).optional().nullable(),
   nationality: z.string().optional().nullable(),
   phoneNumber: z.string().optional().nullable(),
   address: z.string().optional().nullable(),
@@ -81,7 +84,7 @@ export const BaseEmployeeSchema = z.object({
   // Employment Details
   salaryGrade: z.coerce.string().optional().nullable(),
   stepIncrement: z.number().optional().nullable(),
-  appointmentType: z.string().optional().nullable(),
+  appointmentType: z.enum(['Permanent', 'Contractual', 'Casual', 'Job Order', 'Coterminous', 'Temporary', 'Contract of Service', 'JO', 'COS']).optional().nullable(),
   originalAppointmentDate: z.string().optional().nullable(),
   lastPromotionDate: z.string().optional().nullable(),
   station: z.string().optional().nullable(),
@@ -104,6 +107,7 @@ export const BaseEmployeeSchema = z.object({
   applicantId: z.number().optional().nullable(),
   startTime: z.string().optional().nullable(),
   endTime: z.string().optional().nullable(),
+  dutyType: z.enum(['Standard', 'Irregular']).optional().nullable(),
 
   // Section IX: Declarations
   relatedThirdDegree: z.string().optional().nullable(),
@@ -139,7 +143,7 @@ export const BaseEmployeeSchema = z.object({
   govtIdIssuance: z.string().optional().nullable(),
   isMeycauayan: z.boolean().optional().default(false),
   dateAccomplished: z.string().optional().nullable(),
-  pdsQuestions: z.any().optional().nullable(),
+  pdsQuestions: PdsQuestionsSchema.optional().nullable(),
 
   // Section II: Family Background (Children)
   children: z.array(z.object({

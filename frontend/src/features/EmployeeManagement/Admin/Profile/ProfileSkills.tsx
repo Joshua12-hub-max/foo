@@ -1,5 +1,6 @@
 import React, { useState, FormEvent, ChangeEvent } from 'react';
 import { Plus, Trash2, Award } from 'lucide-react';
+import Combobox from '@/components/Custom/Combobox';
 // @ts-ignore
 import { addEmployeeSkill, deleteEmployeeSkill } from '@api/employeeApi';
 import { SkillData } from '@/types';
@@ -118,31 +119,35 @@ const ProfileSkills: React.FC<ProfileSkillsProps> = ({ profile, onUpdate }) => {
                 placeholder="e.g. React.js"
               />
             </div>
-            <div>
+            <div className="relative z-[50]">
               <label className="block text-[10px] font-black text-gray-400 uppercase mb-1">Category</label>
-              <select
+              <Combobox
+                options={[
+                  { value: 'Technical', label: 'Technical' },
+                  { value: 'Soft Skill', label: 'Soft Skill' },
+                  { value: 'Language', label: 'Language' },
+                  { value: 'Leadership', label: 'Leadership' }
+                ]}
                 value={newSkill.category}
-                onChange={(e: ChangeEvent<HTMLSelectElement>) => setNewSkill({...newSkill, category: e.target.value})}
-                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-gray-500 outline-none bg-white font-bold"
-              >
-                <option value="Technical">Technical</option>
-                <option value="Soft Skill">Soft Skill</option>
-                <option value="Language">Language</option>
-                <option value="Leadership">Leadership</option>
-              </select>
+                onChange={(val) => setNewSkill({...newSkill, category: val})}
+                placeholder="Select Category"
+                buttonClassName="w-full px-3 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-gray-500 outline-none bg-white font-bold h-[34px]"
+              />
             </div>
-            <div>
+            <div className="relative z-[50]">
               <label className="block text-[10px] font-black text-gray-400 uppercase mb-1">Proficiency</label>
-              <select
+              <Combobox
+                options={[
+                  { value: 'Beginner', label: 'Beginner' },
+                  { value: 'Intermediate', label: 'Intermediate' },
+                  { value: 'Advanced', label: 'Advanced' },
+                  { value: 'Expert', label: 'Expert' }
+                ]}
                 value={newSkill.proficiencyLevel}
-                onChange={(e: ChangeEvent<HTMLSelectElement>) => setNewSkill({...newSkill, proficiencyLevel: e.target.value})}
-                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-gray-500 outline-none bg-white font-bold"
-              >
-                <option value="Beginner">Beginner</option>
-                <option value="Intermediate">Intermediate</option>
-                <option value="Advanced">Advanced</option>
-                <option value="Expert">Expert</option>
-              </select>
+                onChange={(val) => setNewSkill({...newSkill, proficiencyLevel: val})}
+                placeholder="Select Proficiency"
+                buttonClassName="w-full px-3 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-gray-500 outline-none bg-white font-bold h-[34px]"
+              />
             </div>
           </div>
           <div className="flex justify-end gap-2 mt-4">

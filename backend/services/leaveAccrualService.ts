@@ -4,34 +4,27 @@ import {
   leaveBalances, 
   leaveLedger, 
   leaveApplications,
-  tardinessSummary
+  tardinessSummary,
+  internalPolicies,
+  accrualRules
 } from '../db/schema.js';
-import { eq, and, ne, sql, inArray } from 'drizzle-orm';
+import { eq, and, ne, sql, inArray, desc } from 'drizzle-orm';
 import { 
-  CSC_CREDIT_EARNINGS_TABLE, 
   type CreditType,
 } from '../types/leave.types.js';
+import { leavePolicySchema } from '../schemas/leaveSchema.js';
 
 /**
  * Calculate earned credits based on Days Present (CSC Rule XVI)
  * Formula: Days Present = 30 - Days Absent/LWOP
  */
-export const calculateEarnedCredits = (daysPresent: number): number => {
-  // Find the exact match or the next lower bracket
-  // The table is sorted descending (30 down to 0)
-  // We find the first entry where table.daysPresent <= daysPresent
-  // But wait, the table has 30.00, 29.50...
-  // If daysPresent is 29.8, it should probably round down to 29.5 or just take the lower bucket?
-  // CSC rules usually say "1-29 days".
-  // Let's find the closest match rounding down to nearest 0.5?
-  // Or just find the first entry where T.daysPresent <= input?
-  // Since table is descending:
-  // Input 30 -> matches 30 -> 1.250
-  // Input 29.8 -> matches 29.50 -> 1.229
-  // Input 0 -> matches 0 -> 0
-  
-  const match = CSC_CREDIT_EARNINGS_TABLE.find(row => row.daysPresent <= daysPresent);
-  return match ? match.earned : 0.000;
+export const calculateEarnedCreditsFromRules = (
+  daysPresent: number, 
+  rules: { daysPresent: string | number; earnedCredits: string | number }[]
+): number => {
+  // rules is expected to be sorted descending by daysPresent
+  const match = rules.find(row => Number(row.daysPresent) <= daysPresent);
+  return match ? Number(match.earnedCredits) : 0.000;
 };
 
 /**
@@ -99,17 +92,38 @@ export const getLWOPDays = async (employeeId: string, month: number, year: numbe
  */
 export const accrueCreditsForMonth = async (month: number, year: number, specificEmployeeIds: string[] = []) => {
   try {
-    // 1. Get eligible employees (Regular, Co-Terminous?)
-    // Filtering by NOT 'Job Order' / 'Contractual' if they don't get leave?
-    // Usually only Permanent/Regular/Casual get leave.
-    // Let's assume anyone NOT 'Administrator' and validation handled by employment_type if needed.
-    // For now, getting all non-Administrator.
+    // 1. Fetch Leave Policy for accrual rules and eligible types
+    const policyRecord = await db.query.internalPolicies.findFirst({
+        where: eq(internalPolicies.category, 'leave')
+    });
+    
+    if (!policyRecord) {
+        throw new Error('Leave policy not found in configuration.');
+    }
 
-    const accruingTypes = ['Permanent', 'Contractual', 'Casual', 'Temporary', 'Coterminous'] as const;
+    const rawContent = typeof policyRecord.content === 'string' 
+        ? JSON.parse(policyRecord.content) 
+        : policyRecord.content;
+    const policy = leavePolicySchema.parse(rawContent);
 
+    const accruingTypes = policy.monthlyAccrual.accruingTypes;
+    const accrualRuleType = policy.monthlyAccrual.accrualRuleType;
+
+    if (accruingTypes.length === 0) {
+        console.warn('[WARN] No employment types defined for leave accrual.');
+        return { success: false, message: 'No eligible employment types defined.' };
+    }
+
+    // 2. Fetch Accrual Rules (CSC Table) from DB
+    const rules = await db.select()
+        .from(accrualRules)
+        .where(eq(accrualRules.ruleType, accrualRuleType))
+        .orderBy(desc(accrualRules.daysPresent));
+
+    // 3. Get eligible employees
     const conditions = [
       ne(authentication.role, 'Administrator'),
-      inArray(authentication.appointmentType, accruingTypes as ['Permanent', 'Contractual', 'Casual', 'Temporary', 'Coterminous'])
+      inArray(authentication.appointmentType, accruingTypes as ("Permanent" | "Contractual" | "Casual" | "Job Order" | "Coterminous" | "Temporary" | "Contract of Service" | "JO" | "COS")[])
     ];
     
     if (specificEmployeeIds.length > 0) {
@@ -131,33 +145,25 @@ export const accrueCreditsForMonth = async (month: number, year: number, specifi
     for (const employee of employees) {
       const { employeeId } = employee;
 
-      // 2. Calculate LWOP
+      // 4. Calculate LWOP
       const lwopDays = await getLWOPDays(employeeId || '', month, year);
       
-      // 3. Calculate Days Present (Service)
-      // Standard 30 days - LWOP
+      // 5. Calculate Days Present (Service)
       const daysPresent = Math.max(0, 30 - lwopDays);
       
-      // 4. Lookup Earned Credits
-      const earnedCredits = calculateEarnedCredits(daysPresent);
+      // 6. Lookup Earned Credits from DB rules
+      const earnedCredits = calculateEarnedCreditsFromRules(daysPresent, rules);
 
-      // 5. Update VL Balance
+      // 7. Update Balances for each accruing credit type from policy
       if (earnedCredits > 0) {
-           // Update VL
-           await updateBalanceInternal(
-               employeeId || '',
-               'Vacation Leave',
-               earnedCredits,
-               remarks
-           );
-
-           // Update SL
-            await updateBalanceInternal(
-               employeeId || '',
-               'Sick Leave',
-               earnedCredits,
-               remarks
-           );
+        for (const creditType of policy.monthlyAccrual.accrualCreditTypes) {
+          await updateBalanceInternal(
+            employeeId || '',
+            creditType as CreditType,
+            earnedCredits,
+            remarks
+          );
+        }
       }
       
       processedCount++;

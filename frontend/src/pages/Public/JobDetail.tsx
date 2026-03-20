@@ -12,8 +12,19 @@ import PublicLayout from '@components/Public/PublicLayout';
 import { jobApplicationSchema, JobApplicationSchema, PublicJob, createDynamicJobApplicationSchema, EDUCATION_LEVELS } from '@/schemas/recruitment';
 import { usePublicJobDetail, useJobApplication } from '@/features/Recruitment/hooks/usePublicJobs';
 import { PhilippineAddressSelector } from '@/components/Custom/Shared/PhilippineAddressSelector';
+import Combobox from '@/components/Custom/Combobox';
+import { 
+  GENDER_OPTIONS, 
+  CIVIL_STATUS_OPTIONS, 
+  BLOOD_TYPE_OPTIONS, 
+  EDUCATION_LEVEL_OPTIONS, 
+  ELIGIBILITY_RECRUITMENT_OPTIONS 
+} from '@/constants/referenceData';
 import ph from 'phil-reg-prov-mun-brgy';
 import { Region, Province, CityMunicipality } from '@/types/ph-address';
+import { useEmailUniquenessQuery, useGovtIdUniquenessQuery } from '@/hooks/useCommonQueries';
+import { useDebounce } from '@/hooks/useDebounce';
+import { ID_REGEX } from "@/schemas/idValidation";
 
 const SlideToApply = ({ onVerify, isVerified }: { onVerify: () => void, isVerified: boolean }) => (
     <div className="relative w-full">
@@ -160,6 +171,54 @@ const JobDetail = () => {
     const permSubd = watch('permSubdivision');
     const permStreet = watch('permStreet');
     const permanentZip = watch('permanentZipCode');
+    const emailVal = watch('email');
+    const licenseNoVal = watch('licenseNo');
+
+    // Real-time email uniqueness check
+    const debouncedEmail = useDebounce(emailVal, 500);
+    const { data: emailUniqueness } = useEmailUniquenessQuery(
+        debouncedEmail, 
+        debouncedEmail?.length > 5 && !isSubmitting
+    );
+    const isEmailTaken = emailUniqueness?.isUnique === false;
+
+    const gsisVal = watch('gsisNumber');
+    const pagibigVal = watch('pagibigNumber');
+    const philhealthVal = watch('philhealthNumber');
+    const umidVal = watch('umidNumber');
+    const philsysVal = watch('philsysId');
+    const tinVal = watch('tinNumber');
+    const licenseVal = watch('licenseNo');
+
+    // Real-time Government ID uniqueness check
+    const debouncedGsis = useDebounce(gsisVal, 500);
+    const debouncedPagibig = useDebounce(pagibigVal, 500);
+    const debouncedPhilhealth = useDebounce(philhealthVal, 500);
+    const debouncedUmid = useDebounce(umidVal, 500);
+    const debouncedPhilsys = useDebounce(philsysVal, 500);
+    const debouncedTin = useDebounce(tinVal, 500);
+    const debouncedLicense = useDebounce(licenseVal, 500);
+
+    const { data: idConflicts } = useGovtIdUniquenessQuery({
+        gsisNumber: debouncedGsis || undefined,
+        pagibigNumber: debouncedPagibig || undefined,
+        philhealthNumber: debouncedPhilhealth || undefined,
+        umidNumber: debouncedUmid || undefined,
+        philsysId: debouncedPhilsys || undefined,
+        tinNumber: debouncedTin || undefined,
+        agencyEmployeeNo: debouncedLicense || undefined
+    }, (
+        (debouncedGsis?.length || 0) > 2 || 
+        (debouncedPagibig?.length || 0) > 2 || 
+        (debouncedPhilhealth?.length || 0) > 2 || 
+        (debouncedUmid?.length || 0) > 2 || 
+        (debouncedPhilsys?.length || 0) > 2 || 
+        (debouncedTin?.length || 0) > 2 || 
+        (debouncedLicense?.length || 0) > 2
+    ) && !isSubmitting);
+
+    const isIdTakenMap: Record<string, string> = idConflicts?.conflicts || {};
+    const isIdTaken = Object.keys(isIdTakenMap).length > 0;
 
     // Helper to format names to Normal/Title Case
     const formatName = (name: string) => {
@@ -610,22 +669,23 @@ const JobDetail = () => {
 
                             <div className="grid grid-cols-2 lg:grid-cols-6 gap-y-4 gap-x-6">
                                 <div className="space-y-2">
-                                    <label className={`text-[11px] font-bold ${errors.sex ? 'text-red-500' : 'text-slate-500'} tracking-tight ml-0.5`}>Gender <span className="text-red-500">*</span></label>
-                                    <select {...register('sex')} className={`w-full px-3 py-2 bg-white border ${errors.sex ? 'border-red-500 bg-red-50/30' : 'border-gray-300'} rounded-md outline-none font-medium text-sm text-slate-700 transition-all`}>
-                                        <option value="Male">Male</option>
-                                        <option value="Female">Female</option>
-                                    </select>
+                                    <Combobox 
+                                        options={GENDER_OPTIONS}
+                                        value={watch('sex')}
+                                        onChange={(val) => setValue('sex', val as any)}
+                                        placeholder="Select sex..."
+                                        error={!!errors.sex}
+                                    />
                                     {errors.sex && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.sex.message}</p>}
                                 </div>
                                 <div className="space-y-2">
-                                    <label className={`text-[11px] font-bold ${errors.civilStatus ? 'text-red-500' : 'text-slate-500'} tracking-tight ml-0.5`}>Civil status <span className="text-red-500">*</span></label>
-                                    <select {...register('civilStatus')} className={`w-full px-3 py-2 bg-white border ${errors.civilStatus ? 'border-red-500 bg-red-50/30' : 'border-gray-300'} rounded-md outline-none font-medium text-sm text-slate-700 transition-all`}>
-                                        <option value="Single">Single</option>
-                                        <option value="Married">Married</option>
-                                        <option value="Widowed">Widowed</option>
-                                        <option value="Separated">Separated</option>
-                                        <option value="Annulled">Annulled</option>
-                                    </select>
+                                    <Combobox 
+                                        options={CIVIL_STATUS_OPTIONS}
+                                        value={watch('civilStatus')}
+                                        onChange={(val) => setValue('civilStatus', val as any)}
+                                        placeholder="Select status..."
+                                        error={!!errors.civilStatus}
+                                    />
                                     {errors.civilStatus && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.civilStatus.message}</p>}
                                 </div>
                                 
@@ -685,17 +745,12 @@ const JobDetail = () => {
 
                                 <div className="space-y-2">
                                     <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Blood type</label>
-                                    <select {...register('bloodType')} className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md outline-none font-medium text-sm text-slate-700">
-                                        <option value="none">Select Type</option>
-                                        <option value="A+">A+</option>
-                                        <option value="A-">A-</option>
-                                        <option value="B+">B+</option>
-                                        <option value="B-">B-</option>
-                                        <option value="AB+">AB+</option>
-                                        <option value="AB-">AB-</option>
-                                        <option value="O+">O+</option>
-                                        <option value="O-">O-</option>
-                                    </select>
+                                    <Combobox 
+                                        options={BLOOD_TYPE_OPTIONS}
+                                        value={watch('bloodType')}
+                                        onChange={(val) => setValue('bloodType', val as any)}
+                                        placeholder="Select Type"
+                                    />
                                 </div>
 
                                 <div className="space-y-2">
@@ -774,10 +829,18 @@ const JobDetail = () => {
                             </div>
                             
                              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
-                                <div className="space-y-2">
-                                    <label className={`text-[11px] font-bold ${errors.email ? 'text-red-500' : 'text-slate-500'} tracking-tight ml-0.5`}>Email address <span className="text-red-500">*</span></label>
-                                    <input type="email" {...register('email')} className={`w-full px-3 py-2 bg-white border ${errors.email ? 'border-red-500 bg-red-50/30' : 'border-gray-300'} rounded-md outline-none font-medium text-sm text-slate-700 transition-all`} placeholder="email@address.com" />
+                                 <div className="space-y-2">
+                                    <label className={`text-[11px] font-bold ${errors.email || isEmailTaken ? 'text-red-500' : 'text-slate-500'} tracking-tight ml-0.5`}>
+                                        Email address <span className="text-red-500">*</span>
+                                    </label>
+                                    <input 
+                                        type="email" 
+                                        {...register('email')} 
+                                        className={`w-full px-3 py-2 bg-white border ${(errors.email || isEmailTaken) ? 'border-red-500 bg-red-50/30' : 'border-gray-300'} rounded-md outline-none font-medium text-sm text-slate-700 transition-all`} 
+                                        placeholder="email@address.com" 
+                                    />
                                     {errors.email && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.email.message}</p>}
+                                    {!errors.email && isEmailTaken && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">This email is already in our system. Please use another.</p>}
                                 </div>
                                 <div className="space-y-2">
                                     <label className={`text-[11px] font-bold ${errors.phoneNumber ? 'text-red-500' : 'text-slate-500'} tracking-tight ml-0.5`}>Contact number <span className="text-red-500">*</span></label>
@@ -807,34 +870,76 @@ const JobDetail = () => {
                         >
                              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                  <div className="space-y-2">
-                                    <label className={`text-[11px] font-bold ${errors.gsisNumber ? 'text-red-500' : 'text-slate-500'} tracking-tight ml-0.5`}>GSIS Number {requireIds && <span className="text-red-500 ml-1">*</span>}</label>
-                                    <input type="text" {...register('gsisNumber')} className={`w-full px-3 py-2 bg-white border ${errors.gsisNumber ? 'border-red-500 bg-red-50/30' : 'border-gray-300'} rounded-md outline-none font-medium text-sm text-slate-700 transition-all`} placeholder={requireIds ? "Required" : "Optional"} />
+                                    <label className={`text-[11px] font-bold ${errors.gsisNumber || isIdTakenMap.gsisNumber || (!!watch('gsisNumber') && !ID_REGEX.GSIS.test((watch('gsisNumber') || '').replace(/\s+/g, ''))) ? 'text-red-500' : 'text-slate-500'} tracking-tight ml-0.5`}>GSIS Number {requireIds && <span className="text-red-500 ml-1">*</span>}</label>
+                                    <input 
+                                        type="text" 
+                                        {...register('gsisNumber')} 
+                                        className={`w-full px-3 py-2 bg-white border ${errors.gsisNumber || isIdTakenMap.gsisNumber || (!!watch('gsisNumber') && !ID_REGEX.GSIS.test((watch('gsisNumber') || '').replace(/\s+/g, ''))) ? 'border-red-500 bg-red-50 focus:ring-red-100 focus:border-red-500' : 'border-gray-300'} rounded-md outline-none font-medium text-sm text-slate-700 transition-all`} 
+                                        placeholder={requireIds ? "Required" : "Optional"} 
+                                    />
                                     {errors.gsisNumber && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.gsisNumber.message}</p>}
+                                    {!errors.gsisNumber && isIdTakenMap.gsisNumber && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1 animate-pulse">{isIdTakenMap.gsisNumber}</p>}
+                                    {!errors.gsisNumber && !isIdTakenMap.gsisNumber && !!watch('gsisNumber') && !ID_REGEX.GSIS.test((watch('gsisNumber') || '').replace(/\s+/g, '')) && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">Invalid GSIS format</p>}
                                 </div>
                                 <div className="space-y-2">
-                                    <label className={`text-[11px] font-bold ${errors.pagibigNumber ? 'text-red-500' : 'text-slate-500'} tracking-tight ml-0.5`}>Pag-IBIG Number {requireIds && <span className="text-red-500 ml-1">*</span>}</label>
-                                    <input type="text" {...register('pagibigNumber')} className={`w-full px-3 py-2 bg-white border ${errors.pagibigNumber ? 'border-red-500 bg-red-50/30' : 'border-gray-300'} rounded-md outline-none font-medium text-sm text-slate-700 transition-all`} placeholder={requireIds ? "Required" : "Optional"} />
+                                    <label className={`text-[11px] font-bold ${errors.pagibigNumber || isIdTakenMap.pagibigNumber || (!!watch('pagibigNumber') && !ID_REGEX.PAGIBIG.test((watch('pagibigNumber') || '').replace(/\s+/g, ''))) ? 'text-red-500' : 'text-slate-500'} tracking-tight ml-0.5`}>Pag-IBIG Number {requireIds && <span className="text-red-500 ml-1">*</span>}</label>
+                                    <input 
+                                        type="text" 
+                                        {...register('pagibigNumber')} 
+                                        className={`w-full px-3 py-2 bg-white border ${errors.pagibigNumber || isIdTakenMap.pagibigNumber || (!!watch('pagibigNumber') && !ID_REGEX.PAGIBIG.test((watch('pagibigNumber') || '').replace(/\s+/g, ''))) ? 'border-red-500 bg-red-50 focus:ring-red-100 focus:border-red-500' : 'border-gray-300'} rounded-md outline-none font-medium text-sm text-slate-700 transition-all`} 
+                                        placeholder={requireIds ? "Required" : "Optional"} 
+                                    />
                                     {errors.pagibigNumber && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.pagibigNumber.message}</p>}
+                                    {!errors.pagibigNumber && isIdTakenMap.pagibigNumber && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1 animate-pulse">{isIdTakenMap.pagibigNumber}</p>}
+                                    {!errors.pagibigNumber && !isIdTakenMap.pagibigNumber && !!watch('pagibigNumber') && !ID_REGEX.PAGIBIG.test((watch('pagibigNumber') || '').replace(/\s+/g, '')) && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">Invalid Pag-IBIG format</p>}
                                 </div>
                                 <div className="space-y-2">
-                                    <label className={`text-[11px] font-bold ${errors.philhealthNumber ? 'text-red-500' : 'text-slate-500'} tracking-tight ml-0.5`}>PhilHealth Number {requireIds && <span className="text-red-500 ml-1">*</span>}</label>
-                                    <input type="text" {...register('philhealthNumber')} className={`w-full px-3 py-2 bg-white border ${errors.philhealthNumber ? 'border-red-500 bg-red-50/30' : 'border-gray-300'} rounded-md outline-none font-medium text-sm text-slate-700 transition-all`} placeholder={requireIds ? "Required" : "Optional"} />
+                                    <label className={`text-[11px] font-bold ${errors.philhealthNumber || isIdTakenMap.philhealthNumber || (!!watch('philhealthNumber') && !ID_REGEX.PHILHEALTH.test((watch('philhealthNumber') || '').replace(/\s+/g, ''))) ? 'text-red-500' : 'text-slate-500'} tracking-tight ml-0.5`}>PhilHealth Number {requireIds && <span className="text-red-500 ml-1">*</span>}</label>
+                                    <input 
+                                        type="text" 
+                                        {...register('philhealthNumber')} 
+                                        className={`w-full px-3 py-2 bg-white border ${errors.philhealthNumber || isIdTakenMap.philhealthNumber || (!!watch('philhealthNumber') && !ID_REGEX.PHILHEALTH.test((watch('philhealthNumber') || '').replace(/\s+/g, ''))) ? 'border-red-500 bg-red-50 focus:ring-red-100 focus:border-red-500' : 'border-gray-300'} rounded-md outline-none font-medium text-sm text-slate-700 transition-all`} 
+                                        placeholder={requireIds ? "Required" : "Optional"} 
+                                    />
                                     {errors.philhealthNumber && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.philhealthNumber.message}</p>}
+                                    {!errors.philhealthNumber && isIdTakenMap.philhealthNumber && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1 animate-pulse">{isIdTakenMap.philhealthNumber}</p>}
+                                    {!errors.philhealthNumber && !isIdTakenMap.philhealthNumber && !!watch('philhealthNumber') && !ID_REGEX.PHILHEALTH.test((watch('philhealthNumber') || '').replace(/\s+/g, '')) && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">Invalid PhilHealth format</p>}
                                 </div>
                                 <div className="space-y-2">
-                                    <label className={`text-[11px] font-bold ${errors.umidNumber ? 'text-red-500' : 'text-slate-500'} tracking-tight ml-0.5`}>UMID Number {requireIds && <span className="text-red-500 ml-1">*</span>}</label>
-                                    <input type="text" {...register('umidNumber')} className={`w-full px-3 py-2 bg-white border ${errors.umidNumber ? 'border-red-500 bg-red-50/30' : 'border-gray-300'} rounded-md outline-none font-medium text-sm text-slate-700 transition-all`} placeholder={requireIds ? "Required" : "Optional"} />
+                                    <label className={`text-[11px] font-bold ${errors.umidNumber || isIdTakenMap.umidNumber || (!!watch('umidNumber') && !ID_REGEX.UMID.test((watch('umidNumber') || '').replace(/\s+/g, ''))) ? 'text-red-500' : 'text-slate-500'} tracking-tight ml-0.5`}>UMID Number {requireIds && <span className="text-red-500 ml-1">*</span>}</label>
+                                    <input 
+                                        type="text" 
+                                        {...register('umidNumber')} 
+                                        className={`w-full px-3 py-2 bg-white border ${errors.umidNumber || isIdTakenMap.umidNumber || (!!watch('umidNumber') && !ID_REGEX.UMID.test((watch('umidNumber') || '').replace(/\s+/g, ''))) ? 'border-red-500 bg-red-50 focus:ring-red-100 focus:border-red-500' : 'border-gray-300'} rounded-md outline-none font-medium text-sm text-slate-700 transition-all`} 
+                                        placeholder={requireIds ? "Required" : "Optional"} 
+                                    />
                                     {errors.umidNumber && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.umidNumber.message}</p>}
+                                    {!errors.umidNumber && isIdTakenMap.umidNumber && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1 animate-pulse">{isIdTakenMap.umidNumber}</p>}
+                                    {!errors.umidNumber && !isIdTakenMap.umidNumber && !!watch('umidNumber') && !ID_REGEX.UMID.test((watch('umidNumber') || '').replace(/\s+/g, '')) && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">Invalid UMID format</p>}
                                 </div>
                                 <div className="space-y-2">
-                                    <label className={`text-[11px] font-bold ${errors.philsysId ? 'text-red-500' : 'text-slate-500'} tracking-tight ml-0.5`}>PhilSys ID (National ID) {requireIds && <span className="text-red-500 ml-1">*</span>}</label>
-                                    <input type="text" {...register('philsysId')} className={`w-full px-3 py-2 bg-white border ${errors.philsysId ? 'border-red-500 bg-red-50/30' : 'border-gray-300'} rounded-md outline-none font-medium text-sm text-slate-700 transition-all`} placeholder={requireIds ? "Required" : "Optional"} />
+                                    <label className={`text-[11px] font-bold ${errors.philsysId || isIdTakenMap.philsysId || (!!watch('philsysId') && !ID_REGEX.PHILSYS.test((watch('philsysId') || '').replace(/\s+/g, ''))) ? 'text-red-500' : 'text-slate-500'} tracking-tight ml-0.5`}>PhilSys ID (National ID) {requireIds && <span className="text-red-500 ml-1">*</span>}</label>
+                                    <input 
+                                        type="text" 
+                                        {...register('philsysId')} 
+                                        className={`w-full px-3 py-2 bg-white border ${errors.philsysId || isIdTakenMap.philsysId || (!!watch('philsysId') && !ID_REGEX.PHILSYS.test((watch('philsysId') || '').replace(/\s+/g, ''))) ? 'border-red-500 bg-red-50 focus:ring-red-100 focus:border-red-500' : 'border-gray-300'} rounded-md outline-none font-medium text-sm text-slate-700 transition-all`} 
+                                        placeholder={requireIds ? "Required" : "Optional"} 
+                                    />
                                     {errors.philsysId && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.philsysId.message}</p>}
+                                    {!errors.philsysId && isIdTakenMap.philsysId && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1 animate-pulse">{isIdTakenMap.philsysId}</p>}
+                                    {!errors.philsysId && !isIdTakenMap.philsysId && !!watch('philsysId') && !ID_REGEX.PHILSYS.test((watch('philsysId') || '').replace(/\s+/g, '')) && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">Invalid PhilSys ID format</p>}
                                 </div>
                                 <div className="space-y-2">
-                                    <label className={`text-[11px] font-bold ${errors.tinNumber ? 'text-red-500' : 'text-slate-500'} tracking-tight ml-0.5`}>TIN Number {requireIds && <span className="text-red-500 ml-1">*</span>}</label>
-                                    <input type="text" {...register('tinNumber')} className={`w-full px-3 py-2 bg-white border ${errors.tinNumber ? 'border-red-500 bg-red-50/30' : 'border-gray-300'} rounded-md outline-none font-medium text-sm text-slate-700 transition-all`} placeholder={requireIds ? "Required" : "Optional"} />
+                                    <label className={`text-[11px] font-bold ${errors.tinNumber || isIdTakenMap.tinNumber || (!!watch('tinNumber') && !ID_REGEX.TIN.test((watch('tinNumber') || '').replace(/\s+/g, ''))) ? 'text-red-500' : 'text-slate-500'} tracking-tight ml-0.5`}>TIN Number {requireIds && <span className="text-red-500 ml-1">*</span>}</label>
+                                    <input 
+                                        type="text" 
+                                        {...register('tinNumber')} 
+                                        className={`w-full px-3 py-2 bg-white border ${errors.tinNumber || isIdTakenMap.tinNumber || (!!watch('tinNumber') && !ID_REGEX.TIN.test((watch('tinNumber') || '').replace(/\s+/g, ''))) ? 'border-red-500 bg-red-50 focus:ring-red-100 focus:border-red-500' : 'border-gray-300'} rounded-md outline-none font-medium text-sm text-slate-700 transition-all`} 
+                                        placeholder={requireIds ? "Required" : "Optional"} 
+                                    />
                                     {errors.tinNumber && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.tinNumber.message}</p>}
+                                    {!errors.tinNumber && isIdTakenMap.tinNumber && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1 animate-pulse">{isIdTakenMap.tinNumber}</p>}
+                                    {!errors.tinNumber && !isIdTakenMap.tinNumber && !!watch('tinNumber') && !ID_REGEX.TIN.test((watch('tinNumber') || '').replace(/\s+/g, '')) && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">Invalid TIN format</p>}
                                 </div>
                             </div>
                         </FormSection>
@@ -847,15 +952,13 @@ const JobDetail = () => {
                             <div className="space-y-4">
                                 <div className="space-y-2">
                                     <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Highest Degree/Level Attained {requireEdu && <span className="text-red-500">*</span>}</label>
-                                    <select 
-                                        {...register('educationalBackground')} 
-                                        className={`w-full px-3 py-2 bg-white border border-gray-300 ${errors.educationalBackground ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`}
-                                    >
-                                        <option value="">Select highest education attained</option>
-                                        {EDUCATION_LEVELS.map((level) => (
-                                            <option key={level} value={level}>{level}</option>
-                                        ))}
-                                    </select>
+                                    <Combobox 
+                                        options={EDUCATION_LEVEL_OPTIONS}
+                                        value={watch('educationalBackground')}
+                                        onChange={(val) => setValue('educationalBackground', val)}
+                                        placeholder="Select highest education attained"
+                                        error={!!errors.educationalBackground}
+                                    />
                                     {errors.educationalBackground && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.educationalBackground.message}</p>}
                                 </div>
 
@@ -909,21 +1012,13 @@ const JobDetail = () => {
                                         </div>
                                         <div className="space-y-2">
                                             <label className="text-[11px] font-bold text-slate-500 tracking-tight">Eligibility Category {requireCsc && <span className="text-red-500 ml-1">*</span>}</label>
-                                            <select {...register('eligibilityType')} className="w-full px-3 py-2 bg-white border border-gray-300 border-gray-200 rounded-lg focus:border-green-600 outline-none text-sm font-medium text-slate-700 shadow-sm">
-                                                <option value="none">Not Applicable / None</option>
-                                                <optgroup label="Government (CSC/RA)">
-                                                    <option value="csc_prof">Career Service (Professional)</option>
-                                                    <option value="csc_sub">Career Service (Sub-Professional)</option>
-                                                    <option value="ra_1080">Board / Bar (RA 1080)</option>
-                                                    <option value="special_laws">Special Laws (CES/CSEE)</option>
-                                                </optgroup>
-                                                <optgroup label="Licenses & Clearances">
-                                                    <option value="drivers_license">Driver's License</option>
-                                                    <option value="tesda">Skill / TESDA Certificate</option>
-                                                    <option value="nbi_clearance">NBI Clearance</option>
-                                                    <option value="others">Other Eligibility / Certification</option>
-                                                </optgroup>
-                                            </select>
+                                            <Combobox 
+                                                options={ELIGIBILITY_RECRUITMENT_OPTIONS}
+                                                value={watch('eligibilityType')}
+                                                onChange={(val) => setValue('eligibilityType', val as any)}
+                                                placeholder="Select Category"
+                                                error={!!errors.eligibilityType}
+                                            />
                                         </div>
                                         <div className="space-y-2">
                                             <label className="text-[11px] font-bold text-slate-500 tracking-tight">Rating (If Applicable)</label>
@@ -939,10 +1034,17 @@ const JobDetail = () => {
                                             <label className="text-[11px] font-bold text-slate-500 tracking-tight">Place of Examination / Issue {requireCsc && <span className="text-red-500 ml-1">*</span>}</label>
                                             <input type="text" {...register('eligibilityPlace')} className="w-full px-3 py-2 bg-white border border-gray-300 border-gray-200 rounded-lg focus:border-green-600 outline-none text-sm font-medium text-slate-700 placeholder:text-slate-300 shadow-sm" placeholder="City or Region" />
                                         </div>
-                                        <div className="space-y-2">
-                                            <label className="text-[11px] font-bold text-slate-500 tracking-tight">License / ID Number {requireCsc && <span className="text-red-500 ml-1">*</span>}</label>
-                                            <input type="text" {...register('licenseNo')} className="w-full px-3 py-2 bg-white border border-gray-300 border-gray-200 rounded-lg focus:border-green-600 outline-none text-sm font-medium text-slate-700 placeholder:text-slate-300 shadow-sm" placeholder="ID or License Number" />
-                                        </div>
+                                         <div className="space-y-2">
+                                             <label className={`text-[11px] font-bold ${errors.licenseNo || isIdTakenMap.agencyEmployeeNo ? 'text-red-500' : 'text-slate-500'} tracking-tight`}>License / ID Number {requireCsc && <span className="text-red-500 ml-1">*</span>}</label>
+                                             <input 
+                                                 type="text" 
+                                                 {...register('licenseNo')} 
+                                                 className={`w-full px-3 py-2 bg-white border ${errors.licenseNo || isIdTakenMap.agencyEmployeeNo ? 'border-red-500 ring-1 ring-red-500/20' : 'border-gray-200'} rounded-lg focus:border-green-600 outline-none text-sm font-medium text-slate-700 placeholder:text-slate-300 shadow-sm`} 
+                                                 placeholder="ID or License Number" 
+                                             />
+                                             {errors.licenseNo && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.licenseNo.message}</p>}
+                                             {!errors.licenseNo && isIdTakenMap.agencyEmployeeNo && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1 animate-pulse">{isIdTakenMap.agencyEmployeeNo}</p>}
+                                         </div>
                                     </div>
                                 </div>
 

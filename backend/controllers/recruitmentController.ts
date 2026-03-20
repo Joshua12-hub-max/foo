@@ -23,7 +23,9 @@ import {
   saveInterviewNotesSchema,
   generateOfferLetterSchema,
   assignInterviewerSchema,
-  createStrictApplyJobSchema
+  createStrictApplyJobSchema,
+  verifyOTPSchema,
+  confirmHiredSchema
 } from '../schemas/recruitmentSchema.js';
 import { 
   verifyFileHeader, 
@@ -64,8 +66,8 @@ export const getHiredByDuty: AuthenticatedHandler = async (req, res) => {
         eq(recruitmentApplicants.isConfirmed, true),
         eq(recruitmentApplicants.stage, 'Hired'),
         or(
-          inArray(recruitmentJobs.employmentType, targetTypes as ("Full-time" | "Part-time" | "Contractual" | "Job Order" | "Coterminous" | "Temporary" | "Probationary" | "Casual" | "Permanent" | "Contract of Service" | "JO" | "COS")[]),
-          eq(recruitmentJobs.dutyType, normalizedDuty as 'Standard' | 'Irregular')
+          inArray(recruitmentJobs.employmentType, targetTypes),
+          eq(recruitmentJobs.dutyType, normalizedDuty)
         )
     ];
 
@@ -173,10 +175,10 @@ export const createJob: AuthenticatedHandler = async (req, res) => {
       jobDescription: jobDescription,
       requirements: requirements || null,
       location,
-      employmentType: employmentType as "Full-time" | "Part-time" | "Contractual" | "Job Order" | "Coterminous" | "Temporary" | "Probationary" | "Casual" | "Permanent",
-      dutyType: dutyType as "Standard" | "Irregular",
+      employmentType: employmentType,
+      dutyType: dutyType,
       applicationEmail: applicationEmail,
-      status: jobStatus as "Open" | "Closed" | "On Hold",
+      status: jobStatus,
       attachmentPath: attachmentPath,
       requireCivilService: requireCivilService,
       requireGovernmentIds: requireGovernmentIds,
@@ -243,7 +245,7 @@ export const getJob = async (req: Request, res: Response): Promise<void> => {
 
 export const applyJob = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { jobId: reqJobId } = req.body as { jobId?: unknown };
+    const { jobId: reqJobId } = req.body as { jobId: string | number };
     if (!reqJobId) {
         res.status(400).json({ success: false, message: 'jobId is required' });
         return;
@@ -370,7 +372,7 @@ export const applyJob = async (req: Request, res: Response): Promise<void> => {
         gsisNumber
     });
 
-    if (uniqueErrors.length > 0) {
+    if (Object.keys(uniqueErrors).length > 0) {
         res.status(409).json({ 
             success: false, 
             message: 'Identity verification failed. Information already in use by an existing employee.', 
@@ -460,8 +462,8 @@ export const applyJob = async (req: Request, res: Response): Promise<void> => {
         isMeycauayanResident: isMeycauayanResident ? true : false,
         birthDate: birthDate,
         birthPlace: sanitizeInput(birthPlace),
-        sex: sex as "Male" | "Female",
-        civilStatus: civilStatus as "Single" | "Married" | "Widowed" | "Separated" | "Annulled",
+        sex: sex,
+        civilStatus: civilStatus,
         height,
         weight,
         bloodType: bloodType,
@@ -508,9 +510,7 @@ export const applyJob = async (req: Request, res: Response): Promise<void> => {
         createdAt: currentManilaDateTime()
     }).$returningId();
 
-    interface MySqlInsertResult { insertId: number; }
-    const result = insertedApplicant as unknown as MySqlInsertResult;
-    const applicantId = result.insertId;
+    const applicantId = (insertedApplicant as { id: number }).id;
 
     // Fetch the inserted applicant to get the verificationToken
     const freshApplicant = await db.query.recruitmentApplicants.findFirst({
@@ -548,7 +548,7 @@ export const applyJob = async (req: Request, res: Response): Promise<void> => {
             d.moveDown(0.8); const y = d.y; d.rect(40, y, d.page.width - 80, 20).fill(colors.primary); 
             d.fillColor(colors.white).fontSize(10).font('Helvetica-Bold').text(t.toUpperCase(), 50, y + 6); d.moveDown(0.5); 
         };
-        const fld = (d: PDFKit.PDFDocument, l: string, v: unknown, x: number, y: number, w: number) => {
+        const fld = (d: PDFKit.PDFDocument, l: string, v: string | number | null | undefined, x: number, y: number, w: number) => {
             d.fontSize(7).font('Helvetica-Bold').fillColor(colors.muted).text(l.toUpperCase(), x, y);
             d.fontSize(10).font('Helvetica').fillColor(colors.text).text(v != null ? String(v) : '---', x, y + 10, { width: w - 10, lineBreak: false });
             d.moveTo(x, y + 24).lineTo(x + w - 10, y + 24).lineWidth(0.1).strokeColor(colors.border).stroke();
@@ -676,7 +676,7 @@ export const getApplicants = async (req: Request, res: Response): Promise<void> 
     }
 
     if (stage && typeof stage === 'string') {
-      const stageStr = stage;
+      const stageStr = typeof stage === 'string' ? stage : '';
       if (stageStr === 'Pending') {
         conditions.push(or(eq(recruitmentApplicants.stage, 'Applied'), isNull(recruitmentApplicants.stage)));
       } else if (stageStr === 'Reviewed') {
@@ -684,6 +684,7 @@ export const getApplicants = async (req: Request, res: Response): Promise<void> 
       } else if (stageStr === 'Interview') {
         conditions.push(inArray(recruitmentApplicants.stage, ['Initial Interview', 'Final Interview']));
       } else if (isApplicantStage(stageStr)) {
+        // stageStr is now narrowed to ApplicantStage
         conditions.push(eq(recruitmentApplicants.stage, stageStr));
       }
     }
@@ -932,7 +933,7 @@ export const updateJob = async (req: Request, res: Response): Promise<void> => {
       location, 
       status, 
       employmentType: employmentType, 
-      dutyType: dutyType as "Standard" | "Irregular",
+      dutyType: dutyType,
       applicationEmail: applicationEmail,
       requireCivilService: typeof requireCivilService !== 'undefined' ? (requireCivilService ? true : false) : undefined,
       requireGovernmentIds: typeof requireGovernmentIds !== 'undefined' ? (requireGovernmentIds ? true : false) : undefined,
@@ -1496,11 +1497,12 @@ export const generateApplicationPDF = async (req: Request, res: Response): Promi
     export const confirmHiredApplicant: AuthenticatedHandler = async (req, res) => {
     try {
     const { id } = req.params;
-    const { startDate, selectedDocs, customNotes } = req.body as { 
-        startDate: string; 
-        selectedDocs?: string[]; 
-        customNotes?: string 
-    };
+    const parseResult = confirmHiredSchema.safeParse(req.body);
+    if (!parseResult.success) {
+      res.status(400).json({ success: false, message: 'Invalid request body', errors: parseResult.error.flatten().fieldErrors });
+      return;
+    }
+    const { startDate, selectedDocs, customNotes } = parseResult.data;
 
     if (!startDate) {
     res.status(400).json({ success: false, message: 'Start date is required' });
@@ -1733,12 +1735,7 @@ export const deleteApplicant = async (req: Request, res: Response): Promise<void
  */
 export const verifyApplicantOTP = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { applicantId, otp } = req.body as { applicantId: number; otp: string };
-
-        if (!applicantId || !otp) {
-            res.status(400).json({ success: false, message: 'Missing applicantId or OTP' });
-            return;
-        }
+        const { applicantId, otp } = verifyOTPSchema.parse(req.body);
 
         const [applicant] = await db.select()
             .from(recruitmentApplicants)

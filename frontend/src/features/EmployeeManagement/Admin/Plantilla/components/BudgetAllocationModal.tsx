@@ -1,7 +1,8 @@
 import React, { useEffect, memo } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { X, Save, AlertCircle } from 'lucide-react';
+import Combobox from '@/components/Custom/Combobox';
 import { budgetAllocationSchema, type BudgetAllocationFormData } from '@/schemas/compliance';
 import type { BudgetAllocation } from '@/api/complianceApi';
 
@@ -24,6 +25,7 @@ const BudgetAllocationModal: React.FC<BudgetAllocationModalProps> = memo(({
 }) => {
   const {
     register,
+    control,
     handleSubmit,
     reset,
     formState: { errors, isSubmitting }
@@ -94,22 +96,24 @@ const BudgetAllocationModal: React.FC<BudgetAllocationModalProps> = memo(({
           </div>
 
           {/* Department Selection */}
-          <div>
+          <div className="relative z-[60]">
             <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
               Department
             </label>
-            <select
-              {...register('department')}
-              disabled={!!initialData}
-              className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg text-gray-700 font-medium focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all disabled:opacity-60"
-            >
-              <option value="">Select Department</option>
-              {departments.map((dept) => (
-                <option key={dept} value={dept}>
-                  {dept}
-                </option>
-              ))}
-            </select>
+            <Controller
+              name="department"
+              control={control}
+              render={({ field }) => (
+                <Combobox
+                  options={departments.map((dept) => ({ value: dept, label: dept }))}
+                  value={field.value}
+                  onChange={field.onChange}
+                  disabled={!!initialData}
+                  placeholder="Select Department"
+                  buttonClassName="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg text-gray-700 font-medium focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all disabled:opacity-60 h-[46px]"
+                />
+              )}
+            />
             {errors.department && (
               <p className="mt-1 text-xs text-red-500 flex items-center gap-1">
                 <AlertCircle size={12} /> {errors.department.message}

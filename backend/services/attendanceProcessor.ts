@@ -1,6 +1,6 @@
 import { db } from '../db/index.js';
-import { attendanceLogs, schedules, dailyTimeRecords, internalPolicies, authentication, leaveApplications } from '../db/schema.js';
-import { eq, and, asc, sql } from 'drizzle-orm';
+import { attendanceLogs, schedules, dailyTimeRecords, internalPolicies, authentication, leaveApplications, shiftTemplates } from '../db/schema.js';
+import { eq, and, asc, sql, or } from 'drizzle-orm';
 import { updateTardinessSummary } from '../utils/tardinessUtils.js';
 import { formatToManilaDateTime } from '../utils/dateUtils.js';
 import { checkPolicyViolations } from './violationService.js';
@@ -48,6 +48,18 @@ export const processDailyAttendance = async (
     .where(compareIds(authentication.employeeId, employeeId))
     .limit(1);
 
+    // 2a. Fetch System Default Shift
+    const [systemDefaultShift] = await db.select({
+      startTime: shiftTemplates.startTime,
+      endTime: shiftTemplates.endTime
+    })
+    .from(shiftTemplates)
+    .where(eq(shiftTemplates.isDefault, true))
+    .limit(1);
+
+    const defaultStart = systemDefaultShift?.startTime || '08:00:00';
+    const defaultEnd = systemDefaultShift?.endTime || '17:00:00';
+
     // 2b. Check for Approved Leave
     const approvedLeaves = await db.select({
       leaveType: leaveApplications.leaveType
@@ -66,8 +78,8 @@ export const processDailyAttendance = async (
 
     const dutyType = employees[0]?.dutyType || 'Standard';
     const dailyTargetHours = Number(employees[0]?.dailyTargetHours) || 8;
-    const empDefaultStart = employees[0]?.startTime || '08:00:00';
-    const empDefaultEnd = employees[0]?.endTime || '17:00:00';
+    const empDefaultStart = employees[0]?.startTime || defaultStart;
+    const empDefaultEnd = employees[0]?.endTime || defaultEnd;
     const dailyTargetMinutes = dailyTargetHours * 60;
     const LUNCH_BREAK_MINUTES = 60; // 1 hour lunch deduction for rendered time calc
 
@@ -83,7 +95,9 @@ export const processDailyAttendance = async (
     .from(schedules)
     .where(and(
       compareIds(schedules.employeeId, employeeId),
-      eq(schedules.dayOfWeek, dayName)
+      eq(schedules.dayOfWeek, dayName),
+      or(sql`${schedules.startDate} IS NULL`, sql`${schedules.startDate} <= ${dateStr}`),
+      or(sql`${schedules.endDate} IS NULL`, sql`${schedules.endDate} >= ${dateStr}`)
     ))
     .orderBy(asc(schedules.startTime));
 

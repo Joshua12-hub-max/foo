@@ -29,6 +29,8 @@ interface RawDTRRecord {
   middleName?: string | null;
   suffix?: string | null;
   employeeName?: string | null;
+  duties?: string | null;
+  shift?: string | null;
 }
 
 export const useEmployeeDTR = () => {
@@ -112,7 +114,9 @@ export const useEmployeeDTR = () => {
               firstName: item.firstName || '',
               lastName: item.lastName || '',
               middleName: item.middleName || null,
-              suffix: item.suffix || null
+              suffix: item.suffix || null,
+              duties: item.duties || '-',
+              shift: item.shift || '-'
             };
         });
     },

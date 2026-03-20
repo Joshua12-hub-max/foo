@@ -30,6 +30,13 @@ export const verifyEnrollment = async (employeeId: string) => {
   return response.data;
 };
 
+export const checkEmailUniqueness = async (email: string) => {
+  const response = await api.get(`/auth/check-email`, {
+    params: { email }
+  });
+  return response.data;
+};
+
 export const register = (data: RegisterInput | FormData, mode?: string): Promise<AxiosResponse<RegisterResponse>> => 
   api.post<RegisterResponse>(`/auth/register${mode ? `?mode=${mode}` : ""}`, data);
 

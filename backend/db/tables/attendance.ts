@@ -111,15 +111,15 @@ export const shiftTemplates = mysqlTable("shift_templates", {
 	name: varchar("name", { length: 100 }).notNull(),
 	startTime: time("start_time").notNull(),
 	endTime: time("end_time").notNull(),
-	departmentId: int("department_id"),
-	employeeId: varchar("employee_id", { length: 50 }),
 	description: text("description"),
+	departmentId: int("department_id"),
+	isDefault: boolean("is_default").default(false),
+	workingDays: text("working_days"), // Comma-separated: "Monday,Tuesday,Wednesday,Thursday,Friday"
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
 	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow(),
 },
 (table) => [
 	primaryKey({ columns: [table.id], name: "shift_templates_id"}),
-	unique("name").on(table.name),
 ]);
 
 // =============================================================================

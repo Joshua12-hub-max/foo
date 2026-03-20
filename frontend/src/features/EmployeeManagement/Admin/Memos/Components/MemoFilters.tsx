@@ -1,6 +1,7 @@
 import React, { memo, KeyboardEvent } from 'react';
 // @ts-ignore
 import { MEMO_TYPES, MEMO_PRIORITIES, MEMO_STATUSES } from '../Constants/memoConstants';
+import Combobox from '@/components/Custom/Combobox';
 
 interface Filters {
   search: string;
@@ -38,34 +39,30 @@ const MemoFilters: React.FC<MemoFiltersProps> = memo(({ filters, onFilterChange,
           />
         </div>
 
-        {/* Type Filter */}
-        <div className="md:col-span-1">
-          <select
+        <div className="md:col-span-1 relative z-[50]">
+          <Combobox
+            options={[
+              { value: '', label: 'All Types' },
+              ...MEMO_TYPES.map((t: { value: string; label: string }) => ({ value: t.value, label: t.label }))
+            ]}
             value={filters.memoType}
-            onChange={(e) => onFilterChange('memoType', e.target.value)}
-            className="w-full bg-white border border-gray-200 rounded-lg shadow-sm px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200 focus:border-gray-200 hover:border-gray-200 transition-all appearance-none cursor-pointer"
-            aria-label="Filter by type"
-          >
-            <option value="">All Types</option>
-            {MEMO_TYPES.map((t: { value: string; label: string }) => (
-              <option key={t.value} value={t.value}>{t.label}</option>
-            ))}
-          </select>
+            onChange={(val) => onFilterChange('memoType', val || '')}
+            placeholder="All Types"
+            buttonClassName="w-full bg-white border border-gray-200 rounded-lg shadow-sm px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200 focus:border-gray-200 hover:border-gray-200 transition-all cursor-pointer font-bold h-[38px]"
+          />
         </div>
 
-        {/* Status Filter */}
-        <div className="md:col-span-1">
-          <select
+        <div className="md:col-span-1 relative z-[50]">
+          <Combobox
+            options={[
+              { value: '', label: 'All Status' },
+              ...MEMO_STATUSES.map((s: { value: string; label: string }) => ({ value: s.value, label: s.label }))
+            ]}
             value={filters.status}
-            onChange={(e) => onFilterChange('status', e.target.value)}
-            className="w-full bg-white border border-gray-200 rounded-lg shadow-sm px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200 focus:border-gray-200 hover:border-gray-200 transition-all appearance-none cursor-pointer"
-            aria-label="Filter by status"
-          >
-            <option value="">All Status</option>
-            {MEMO_STATUSES.map((s: { value: string; label: string }) => (
-              <option key={s.value} value={s.value}>{s.label}</option>
-            ))}
-          </select>
+            onChange={(val) => onFilterChange('status', val || '')}
+            placeholder="All Status"
+            buttonClassName="w-full bg-white border border-gray-200 rounded-lg shadow-sm px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200 focus:border-gray-200 hover:border-gray-200 transition-all cursor-pointer font-bold h-[38px]"
+          />
         </div>
 
         {/* Action Buttons */}

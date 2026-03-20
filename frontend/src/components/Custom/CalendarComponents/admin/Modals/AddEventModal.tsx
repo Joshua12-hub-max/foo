@@ -1,10 +1,11 @@
-import { useRef, useEffect, useState } from 'react';
-import { X, ChevronDown } from 'lucide-react';
+import { useEffect } from 'react';
+import { X } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { eventSchema } from '@/schemas/calendar';
-import { CalendarEvent, EventFormData } from '@/types/calendar';
+import { EventFormData } from '@/types/calendar';
 import { Department } from '@/types/org';
+import Combobox from '@/components/Custom/Combobox';
 
 interface AddEventModalProps {
   show: boolean;
@@ -15,10 +16,6 @@ interface AddEventModalProps {
 }
 
 export default function AddEventModal({ show, onClose, onAdd, hours = [], departments = [] }: AddEventModalProps) {
-  const [isTimeOpen, setIsTimeOpen] = useState(false);
-  const [isDeptOpen, setIsDeptOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-  const deptDropdownRef = useRef<HTMLDivElement>(null);
 
   const {
     register,
@@ -67,20 +64,6 @@ export default function AddEventModal({ show, onClose, onAdd, hours = [], depart
         });
     }
   }, [show, reset]);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsTimeOpen(false);
-      }
-      if (deptDropdownRef.current && !deptDropdownRef.current.contains(event.target as Node)) {
-        setIsDeptOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
   const onSubmit = (data: EventFormData) => {
     onAdd(data);
@@ -150,88 +133,36 @@ export default function AddEventModal({ show, onClose, onAdd, hours = [], depart
 
                 {/* Time and Department - Grid Layout */}
                 <div className="grid grid-cols-2 gap-4">
-                  <div ref={dropdownRef} className="relative">
+                  <div className="z-[30] relative">
                     <label className="block text-sm font-semibold text-gray-700 mb-1">
                       Time
                     </label>
-                    <button
-                      type="button"
-                      onClick={() => setIsTimeOpen(!isTimeOpen)}
-                      className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none bg-white text-left flex items-center justify-between text-sm hover:bg-gray-50 transition-colors"
-                    >
-                      <span className={watchedTime ? 'text-gray-900' : 'text-gray-400'}>
-                        {watchedTime || 'Select time'}
-                      </span>
-                      <ChevronDown className={`w-4 h-4 text-gray-400 shrink-0 transition-transform ${isTimeOpen ? 'rotate-180' : ''}`} />
-                    </button>
-
-                    {isTimeOpen && (
-                      <div className="absolute z-20 w-full mt-1 bg-white border border-gray-100 rounded-lg shadow-xl max-h-48 overflow-y-auto custom-scrollbar left-0">
-                        {hours.map((hour, index) => (
-                          <button
-                            key={index}
-                            type="button"
-                            onClick={() => {
-                              setValue('time', hour);
-                              setIsTimeOpen(false);
-                            }}
-                            className={`w-full px-4 py-2 text-left hover:bg-gray-50 transition-colors text-sm ${
-                              watchedTime === hour ? 'bg-gray-50 text-gray-900 font-medium' : 'text-gray-600'
-                            }`}
-                          >
-                            {hour}
-                          </button>
-                        ))}
-                      </div>
-                    )}
+                    <Combobox
+                      options={hours.map(h => ({ value: h, label: h }))}
+                      value={watchedTime}
+                      onChange={(val) => setValue('time', val)}
+                      placeholder="Select time"
+                      buttonClassName="w-full px-4 py-2 border border-gray-200 rounded-lg bg-white text-sm"
+                    />
                   </div>
 
-                  <div ref={deptDropdownRef} className="relative">
+                  <div className="z-[30] relative">
                     <label className="block text-sm font-semibold text-gray-700 mb-1">
                       Department
                     </label>
-                    <button
-                      type="button"
-                      onClick={() => setIsDeptOpen(!isDeptOpen)}
-                      className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none bg-white text-left flex items-center justify-between text-sm hover:bg-gray-50 transition-colors"
-                    >
-                      <span className={`block truncate ${watchedDepartment ? 'text-gray-900' : 'text-gray-400'}`}>
-                        {watchedDepartment || 'All Departments'}
-                      </span>
-                      <ChevronDown className={`w-4 h-4 text-gray-400 shrink-0 transition-transform ${isDeptOpen ? 'rotate-180' : ''}`} />
-                    </button>
-
-                    {isDeptOpen && (
-                      <div className="absolute z-20 w-full mt-1 bg-white border border-gray-100 rounded-lg shadow-xl max-h-48 overflow-y-auto custom-scrollbar left-0">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setValue('department', null);
-                            setIsDeptOpen(false);
-                          }}
-                          className={`w-full px-4 py-2 text-left hover:bg-gray-50 transition-colors text-sm ${
-                            !watchedDepartment ? 'bg-gray-50 text-gray-900 font-medium' : 'text-gray-600'
-                          }`}
-                        >
-                          All Departments
-                        </button>
-                        {departments.map((dept, index) => (
-                          <button
-                            key={index}
-                            type="button"
-                            onClick={() => {
-                              setValue('department', typeof dept === 'string' ? dept : (dept as Department).name || '');
-                              setIsDeptOpen(false);
-                            }}
-                            className={`w-full px-4 py-2 text-left hover:bg-gray-50 transition-colors text-sm ${
-                              watchedDepartment === (typeof dept === 'string' ? dept : (dept as Department).name) ? 'bg-gray-50 text-gray-900 font-medium' : 'text-gray-600'
-                            }`}
-                          >
-                            {typeof dept === 'string' ? dept : (dept as Department).name}
-                          </button>
-                        ))}
-                      </div>
-                    )}
+                    <Combobox
+                      options={[
+                        { value: '', label: 'All Departments' },
+                        ...departments.map(dept => {
+                          const name = typeof dept === 'string' ? dept : (dept as Department).name || '';
+                          return { value: name, label: name };
+                        })
+                      ]}
+                      value={watchedDepartment || ''}
+                      onChange={(val) => setValue('department', val || null)}
+                      placeholder="All Departments"
+                      buttonClassName="w-full px-4 py-2 border border-gray-200 rounded-lg bg-white text-sm"
+                    />
                   </div>
                 </div>
 

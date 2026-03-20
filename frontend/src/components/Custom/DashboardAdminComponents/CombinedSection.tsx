@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo, memo, useEffect } from 'react';
 import { BarChart3, Bell, LayoutDashboard, LucideIcon } from 'lucide-react';
 import { PerformancePieChart, AnnouncementsList, EventsList, HolidaysList } from "../../CustomUI";
-import { holidays, Holiday as HolidayData } from "../../../utils/holidays";
+import { attendanceApi } from '../../../api/attendanceApi';
 import { announcementApi } from '../../../api/announcementApi';
 import { eventApi } from '../../../api/eventApi';
 import { fetchRatingDistribution } from '../../../api/performanceApi';
@@ -102,6 +102,8 @@ export default function CombinedSection() {
 
     const fetchData = async () => {
       try {
+        const currentYear = new Date().getFullYear();
+
         // Fetch Announcements
         const annResponse = await announcementApi.getAnnouncements();
         if (annResponse.data && annResponse.data.success) {
@@ -118,16 +120,18 @@ export default function CombinedSection() {
             setAnnouncements(formattedAnnouncements);
         }
 
-        // Fetch Events (API events only, not holidays)
+        // Fetch API Events
         const eventResponse = await eventApi.getEvents();
         const apiEvents = (eventResponse.data && eventResponse.data.success) ? (eventResponse.data.events as Event[]) : [];
         
-        // Get current year holidays separately
-        const currentYear = new Date().getFullYear();
-        const holidayEvents = holidays.map((h: HolidayData) => ({
-            id: `holiday-${h.id}-${currentYear}`,
-            title: h.title,
-            date: new Date(currentYear, h.month, h.day).toISOString().split('T')[0],
+        // Fetch Holidays from DB
+        const holidayResponse = await attendanceApi.getHolidays(currentYear);
+        const dbHolidays = (holidayResponse.data && holidayResponse.data.success) ? holidayResponse.data.data : [];
+        
+        const holidayEvents = dbHolidays.map((h: any) => ({
+            id: `holiday-${h.id}`,
+            title: h.name,
+            date: h.date,
             type: h.type,
             isHoliday: true
         }));
@@ -138,17 +142,17 @@ export default function CombinedSection() {
         
         // Filter and set events (only API events)
         const upcomingApiEvents = apiEvents
-          .filter((e) => {
+          .filter((e: Event) => {
              const d = parseSafeDate(e.date || e.startDate);
              return d >= today;
           })
-          .sort((a, b) => parseSafeDate(a.date || a.startDate).getTime() - parseSafeDate(b.date || b.startDate).getTime());
+          .sort((a: Event, b: Event) => parseSafeDate(a.date || a.startDate).getTime() - parseSafeDate(b.date || b.startDate).getTime());
         setEvents(upcomingApiEvents.slice(0, 10));
 
         // Filter and set holidays
         const upcomingHolidayList = holidayEvents
-          .filter(h => new Date(h.date) >= today)
-          .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+          .filter((h: any) => new Date(h.date) >= today)
+          .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
         setUpcomingHolidays(upcomingHolidayList.slice(0, 10));
 
       } catch (error) {

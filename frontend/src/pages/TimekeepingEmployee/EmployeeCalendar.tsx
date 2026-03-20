@@ -16,9 +16,9 @@ import {
 } from '@components/Custom/CalendarComponents/shared';
 
 import { EmployeeCalendarActions } from '@components/Custom/CalendarComponents/employee/components';
-import { holidays } from '@utils';
-import { announcementApi, eventApi } from '@api';
-import { CalendarEvent, Holiday } from '@/types/calendar';
+import { useHolidays } from '@/hooks/useLeave';
+import { announcementApi, eventApi, scheduleApi } from '@api';
+import { CalendarEvent, Holiday, ScheduleEntry } from '@/types/calendar';
 
 export default function EmployeeCalendar() {
   // Calendar state management
@@ -59,13 +59,27 @@ export default function EmployeeCalendar() {
     }
   });
 
+  // Schedules query
+  const { data: schedules = [] } = useQuery<ScheduleEntry[]>({
+    queryKey: ['schedules-list'],
+    queryFn: async () => {
+        const response = await scheduleApi.getSchedules();
+        return (response.schedules || []) as unknown as ScheduleEntry[];
+    }
+  });
+
+  // Holidays query
+  const { data: holidaysData } = useHolidays(currentDate.getFullYear());
+  const holidays = holidaysData?.holidays || [];
+
   // Calendar data processing
   const calendarData = useCalendarData({
     currentDate,
     events,
     showHolidays,
-    holidays: holidays.map(h => ({ ...h, name: h.title })) as unknown as Holiday[],
-    announcements
+    holidays: holidays.map(h => ({ ...h, name: (h as any).name || (h as any).title || '' })) as unknown as Holiday[],
+    announcements,
+    schedules
   });
   const { month, day, year, dayName, displayedEvents } = calendarData;
 
@@ -96,7 +110,7 @@ export default function EmployeeCalendar() {
               today={today}
               onDateClick={navigation.handleDateClick}
               showHolidays={showHolidays}
-              holidays={holidays as unknown as import('@components/Custom/CalendarComponents/shared/components/CalendarGrid').GridItem[]}
+               holidays={(holidays as any) as unknown as import('@components/Custom/CalendarComponents/shared/components/CalendarGrid').GridItem[]}
               announcements={announcements}
               displayedEvents={displayedEvents}
             />
@@ -118,7 +132,7 @@ export default function EmployeeCalendar() {
           hours={HOURS_12}
           onEventClick={(e) => setShowEventDetails(e as unknown as typeof showEventDetails)}
           showHolidays={showHolidays}
-          holidays={holidays.map(h => ({ ...h, name: h.title })) as unknown as Holiday[]}
+          holidays={holidays.map(h => ({ ...h, name: (h as any).name || (h as any).title || '' })) as unknown as Holiday[]}
           announcements={announcements}
         />
 

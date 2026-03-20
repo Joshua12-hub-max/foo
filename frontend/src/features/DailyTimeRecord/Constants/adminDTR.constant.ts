@@ -3,7 +3,7 @@ export const ITEMS_PER_PAGE = 10;
 // Type-safe column configuration for DTR table
 export interface TableColumn {
   header: string;
-  key: 'status' | 'employeeId' | 'name' | 'duties' | 'date' | 'timeIn' | 'timeOut' | 'lateMinutes' | 'undertimeMinutes' | 'hoursWorked' | 'remarks';
+  key: 'status' | 'employeeId' | 'name' | 'duties' | 'shift' | 'date' | 'timeIn' | 'timeOut' | 'lateMinutes' | 'undertimeMinutes' | 'hoursWorked' | 'remarks';
   align?: 'left' | 'center' | 'right';
 }
 
@@ -12,6 +12,7 @@ export const TABLE_COLUMNS: readonly TableColumn[] = [
   { header: 'Employee ID', key: 'employeeId', align: 'left' },
   { header: 'Employee Name', key: 'name', align: 'left' },
   { header: 'Duties', key: 'duties', align: 'center' },
+  { header: 'Shift', key: 'shift', align: 'center' },
   { header: 'Date', key: 'date', align: 'center' },
   { header: 'Time In', key: 'timeIn', align: 'center' },
   { header: 'Time Out', key: 'timeOut', align: 'center' },

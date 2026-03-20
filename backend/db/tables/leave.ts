@@ -4,7 +4,7 @@ import { mysqlTable, varchar, int, date, timestamp, decimal, text, mysqlEnum, bo
 export const leaveApplications = mysqlTable("leave_applications", {
 	id: int("id").autoincrement().notNull(),
 	employeeId: varchar("employee_id", { length: 50 }).notNull(),
-	leaveType: mysqlEnum("leave_type", ['Vacation Leave','Sick Leave','Special Privilege Leave','Forced Leave','Maternity Leave','Paternity Leave','Solo Parent Leave','Study Leave','Special Emergency Leave','VAWC Leave','Rehabilitation Leave','Special Leave Benefits for Women','Wellness Leave','Adoption Leave','Other']).notNull(),
+	leaveType: varchar("leave_type", { length: 100 }).notNull(),
 	startDate: date("start_date", { mode: 'string' }).notNull(),
 	endDate: date("end_date", { mode: 'string' }).notNull(),
 	workingDays: decimal("working_days", { precision: 10, scale: 3 }).notNull(),
@@ -34,7 +34,7 @@ export const leaveApplications = mysqlTable("leave_applications", {
 export const leaveBalances = mysqlTable("leave_balances", {
 	id: int("id").autoincrement().notNull(),
 	employeeId: varchar("employee_id", { length: 50 }).notNull(),
-	creditType: mysqlEnum("credit_type", ['Vacation Leave','Sick Leave','Special Privilege Leave','Forced Leave','Maternity Leave','Paternity Leave','Solo Parent Leave','Study Leave','Adoption Leave']).notNull(),
+	creditType: varchar("credit_type", { length: 100 }).notNull(),
 	balance: decimal("balance", { precision: 10, scale: 3 }).default('0.000').notNull(),
 	year: int("year").notNull(),
 	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow(),
@@ -60,7 +60,7 @@ export const leaveCredits = mysqlTable("leave_credits", {
 export const leaveLedger = mysqlTable("leave_ledger", {
 	id: int("id").autoincrement().notNull(),
 	employeeId: varchar("employee_id", { length: 50 }).notNull(),
-	creditType: mysqlEnum("credit_type", ['Vacation Leave','Sick Leave','Special Privilege Leave','Forced Leave','Maternity Leave','Paternity Leave','Solo Parent Leave','Study Leave','Adoption Leave']).notNull(),
+	creditType: varchar("credit_type", { length: 100 }).notNull(),
 	transactionType: mysqlEnum("transaction_type", ['ACCRUAL','DEDUCTION','ADJUSTMENT','MONETIZATION','FORFEITURE','UNDERTIME_DEDUCTION','TARDINESS_DEDUCTION']).notNull(),
 	amount: decimal("amount", { precision: 10, scale: 3 }).notNull(),
 	balanceAfter: decimal("balance_after", { precision: 10, scale: 3 }).notNull(),
@@ -77,10 +77,21 @@ export const leaveLedger = mysqlTable("leave_ledger", {
 	primaryKey({ columns: [table.id], name: "leave_ledger_id"}),
 ]);
 
+export const accrualRules = mysqlTable("accrual_rules", {
+	id: int("id").autoincrement().notNull(),
+	daysPresent: decimal("days_present", { precision: 10, scale: 3 }).notNull(),
+	earnedCredits: decimal("earned_credits", { precision: 10, scale: 3 }).notNull(),
+	ruleType: varchar("rule_type", { length: 50 }).default('CSC_STANDARD'),
+},
+(table) => [
+	primaryKey({ columns: [table.id], name: "accrual_rules_id"}),
+	unique("unique_rule").on(table.daysPresent, table.ruleType),
+]);
+
 export const leaveMonetizationRequests = mysqlTable("leave_monetization_requests", {
 	id: int("id").autoincrement().notNull(),
 	employeeId: varchar("employee_id", { length: 50 }).notNull(),
-	creditType: mysqlEnum("credit_type", ['Vacation Leave','Sick Leave']).notNull(),
+	creditType: varchar("credit_type", { length: 100 }).notNull(),
 	requestedDays: decimal("requested_days", { precision: 10, scale: 3 }).notNull(),
 	dailyRate: decimal("daily_rate", { precision: 12, scale: 2 }).notNull(),
 	totalAmount: decimal("total_amount", { precision: 12, scale: 2 }).notNull(),

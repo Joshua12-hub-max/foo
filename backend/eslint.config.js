@@ -18,6 +18,19 @@ export default ts.config(
     ],
     ignores: ['db/schema.js'],
     languageOptions: {
+      globals: {
+        process: 'readonly',
+        console: 'readonly',
+        module: 'readonly',
+        __dirname: 'readonly',
+        Buffer: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+        setInterval: 'readonly',
+        clearInterval: 'readonly',
+        require: 'readonly',
+        exports: 'readonly',
+      },
       parserOptions: {
         project: ['./tsconfig.json'],
         tsconfigRootDir: import.meta.dirname,
@@ -81,6 +94,19 @@ export default ts.config(
       'index.ts'
     ],
     languageOptions: {
+      globals: {
+        process: 'readonly',
+        console: 'readonly',
+        module: 'readonly',
+        __dirname: 'readonly',
+        Buffer: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+        setInterval: 'readonly',
+        clearInterval: 'readonly',
+        require: 'readonly',
+        exports: 'readonly',
+      },
       parserOptions: {
         project: ['./tsconfig.json'],
         tsconfigRootDir: import.meta.dirname,

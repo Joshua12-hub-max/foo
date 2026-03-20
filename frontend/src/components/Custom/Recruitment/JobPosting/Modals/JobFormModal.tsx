@@ -1,5 +1,6 @@
 import React from 'react';
 import { X } from 'lucide-react';
+import Combobox from '@/components/Custom/Combobox';
 import { JobFormData } from '@/types';
 
 const EMPLOYMENT_TYPES = ['Full-time', 'Part-time', 'Contractual', 'Job Order'];
@@ -82,29 +83,25 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
 
           {/* Employment Type & Status */}
           <div className="grid grid-cols-2 gap-4">
-            <div>
+            <div className="relative z-[60]">
               <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Employment Type</label>
-              <select 
-                className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-400 focus:outline-none transition-all bg-gray-50 cursor-pointer"
+              <Combobox
+                options={EMPLOYMENT_TYPES.map(type => ({ value: type, label: type }))}
                 value={formData.employmentType || 'Full-time'}
-                onChange={e => handleFormChange('employmentType', e.target.value)}
-              >
-                {EMPLOYMENT_TYPES.map(type => (
-                  <option key={type} value={type}>{type}</option>
-                ))}
-              </select>
+                onChange={(val) => handleFormChange('employmentType', val)}
+                placeholder="Select Type"
+                buttonClassName="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-400 focus:outline-none transition-all bg-gray-50 font-bold h-[42px]"
+              />
             </div>
-            <div>
+            <div className="relative z-[60]">
               <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Status</label>
-              <select 
-                className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-400 focus:outline-none transition-all bg-gray-50 cursor-pointer"
+              <Combobox
+                options={JOB_STATUSES.map(status => ({ value: status, label: status }))}
                 value={formData.status || 'Open'}
-                onChange={e => handleFormChange('status', e.target.value)}
-              >
-                {JOB_STATUSES.map(status => (
-                  <option key={status} value={status}>{status}</option>
-                ))}
-              </select>
+                onChange={(val) => handleFormChange('status', val)}
+                placeholder="Select Status"
+                buttonClassName="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-400 focus:outline-none transition-all bg-gray-50 font-bold h-[42px]"
+              />
             </div>
           </div>
 

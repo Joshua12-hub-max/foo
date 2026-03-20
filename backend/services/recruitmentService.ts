@@ -16,7 +16,7 @@ interface CheckDuplicateParams {
 }
 
 export const checkDuplicateApplication = async (params: CheckDuplicateParams) => {
-    const conditions: SQL<unknown>[] = [
+    const conditions: SQL[] = [
         eq(recruitmentApplicants.email, params.email)
     ];
 

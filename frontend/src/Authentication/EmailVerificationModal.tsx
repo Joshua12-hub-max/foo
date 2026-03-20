@@ -9,10 +9,11 @@ interface EmailVerificationModalProps {
   isOpen: boolean;
   email: string;
   employeeDbId?: number;
+  redirectToLogin?: boolean;
   onSuccess?: () => void;
 }
 
-export default function EmailVerificationModal({ isOpen, email, employeeDbId, onSuccess }: EmailVerificationModalProps) {
+export default function EmailVerificationModal({ isOpen, email, employeeDbId, redirectToLogin, onSuccess }: EmailVerificationModalProps) {
   const navigate = useNavigate();
   const [otp, setOtp] = useState("");
   const [error, setError] = useState("");
@@ -110,7 +111,15 @@ export default function EmailVerificationModal({ isOpen, email, employeeDbId, on
             </div>
 
             <div className="space-y-4 pt-4">
-              {employeeDbId ? (
+              {redirectToLogin ? (
+                <button
+                  onClick={() => navigate("/login")}
+                  className="w-full bg-gray-900 text-white py-4 rounded-xl font-black text-sm tracking-tight hover:bg-gray-800 transition shadow-lg shadow-gray-200 flex justify-center items-center gap-3 active:scale-95 group"
+                >
+                  Go to Login
+                  <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                </button>
+              ) : employeeDbId ? (
                 <button
                   onClick={() => navigate(`/admin-dashboard/employees/profile/${employeeDbId}`)}
                   className="w-full bg-blue-600 text-white py-4 rounded-xl font-black text-sm tracking-tight hover:bg-blue-700 transition shadow-lg shadow-blue-200 flex justify-center items-center gap-3 active:scale-95 group"
@@ -128,7 +137,11 @@ export default function EmailVerificationModal({ isOpen, email, employeeDbId, on
                 </button>
               )}
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                {employeeDbId ? "Redirection available for Administrator" : "Admin will grant access to your portal soon"}
+                {redirectToLogin 
+                  ? "Access your Administrator / HR portal"
+                  : employeeDbId 
+                  ? "Redirection available for Administrator" 
+                  : "Admin will grant access to your portal soon"}
               </p>
             </div>
           </div>

@@ -105,6 +105,39 @@ export const notifyAllUsers = async ({
   }
 };
 
+/**
+ * Notify all users in a specific department
+ */
+export const notifyDepartment = async ({
+  departmentId,
+  senderId,
+  title,
+  message,
+  type,
+  referenceId
+}: Omit<CreateNotificationParams, 'recipientId'> & { departmentId: number }): Promise<void> => {
+  try {
+    const users = await db.select({ employeeId: authentication.employeeId })
+      .from(authentication)
+      .where(eq(authentication.departmentId, departmentId));
+
+    const notificationPromises = users.map((user) =>
+      createNotification({
+        recipientId: user.employeeId || '',
+        senderId,
+        title,
+        message,
+        type,
+        referenceId
+      })
+    );
+
+    await Promise.all(notificationPromises);
+  } catch (_error) {
+    /* empty */
+  }
+};
+
 // ============================================================================
 // API Controllers
 // ============================================================================

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@/lib/zodResolver';
 import { X, ChevronUp, ChevronDown, FileText, Loader } from 'lucide-react';
+import Combobox from '@/components/Custom/Combobox';
 import { plantillaApi } from '@/api/plantillaApi';
 import { employeeApi } from '@/api/employeeApi';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -81,7 +82,7 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
   const queryClient = useQueryClient();
   const showToast = useToastStore((state) => state.showToast);
 
-  const { register, handleSubmit, formState: { errors }, reset, setValue } = useForm<UpdateEmployeeInput>({
+  const { register, handleSubmit, formState: { errors }, reset, setValue, watch } = useForm<UpdateEmployeeInput>({
     resolver: zodResolver(UpdateEmployeeSchema),
     defaultValues: {}
   });
@@ -243,87 +244,99 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
             </div>
 
             <div className="grid grid-cols-2 gap-2">
-              <div>
+              <div className="z-50">
                  <label className="text-xs font-semibold text-gray-700 mb-1 block">Department <span className="text-red-400">*</span></label>
-                 <select 
-                    {...register('department')}
-                    className={`w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 ${errors.department ? 'border-red-500' : ''}`}
-                 >
-                    <option value="">Select...</option>
-                    {departments.map(d => (<option key={d.id} value={d.name}>{d.name}</option>))}
-                 </select>
+                 <Combobox 
+                    options={departments.map(d => ({ value: d.name, label: d.name }))}
+                    value={watch('department')}
+                    onChange={(val) => setValue('department', val, { shouldValidate: true })}
+                    placeholder="Select..."
+                    error={!!errors.department}
+                    buttonClassName="px-2.5 py-1.5 text-sm"
+                 />
                  {errors.department && <p className="text-[10px] text-red-500">{errors.department.message}</p>}
               </div>
-              <div>
+              <div className="z-50">
                 <label className="text-xs font-semibold text-gray-700 mb-1 block">System Role <span className="text-red-400">*</span></label>
-                <select 
-                   {...register('role')}
-                   className={`w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200 ${errors.role ? 'border-red-500' : ''}`}
-                >
-                    {ROLE_OPTIONS.map(opt => (<option key={opt.value} value={opt.value}>{opt.label}</option>))}
-                </select>
+                <Combobox 
+                   options={ROLE_OPTIONS}
+                   value={watch('role')}
+                   onChange={(val) => setValue('role', val as UpdateEmployeeInput['role'], { shouldValidate: true })}
+                   placeholder="Select role"
+                   error={!!errors.role}
+                   buttonClassName="px-2.5 py-1.5 text-sm"
+                />
                 {errors.role && <p className="text-[10px] text-red-500">{errors.role.message}</p>}
               </div>
             </div>
 
-            <div>
+            <div className="z-40">
                  <label className="text-xs font-semibold text-gray-700 mb-1 block">Employment Status</label>
-                 <select 
-                    {...register('employmentStatus')}
-                    className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200"
-                 >
-                    {EMPLOYMENT_STATUS_OPTIONS.map(opt => (<option key={opt.value} value={opt.value}>{opt.label}</option>))}
-                 </select>
+                 <Combobox 
+                    options={EMPLOYMENT_STATUS_OPTIONS}
+                    value={watch('employmentStatus')}
+                    onChange={(val) => setValue('employmentStatus', val)}
+                    placeholder="Select status"
+                    buttonClassName="px-2.5 py-1.5 text-sm"
+                 />
             </div>
           </div>
 
           {/* Employment Details - Collapsible */}
            <CollapsibleSection title="Employment Details" isOpen={openSections.employment} onToggle={() => toggleSection('employment')}>
-             <div className="bg-gray-50 p-2 rounded-lg border border-gray-200 mb-2">
+             <div className="bg-gray-50 p-2 rounded-lg border border-gray-200 mb-2 z-30 relative">
                <label className="text-xs font-semibold text-gray-800 mb-1 block flex items-center gap-1">
                  <FileText size={12} className="text-gray-500" /> Plantilla Item
                </label>
-               <select 
-                 className="w-full px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-100 bg-white" 
-                 {...register('itemNumber')}
-                 onChange={handlePlantillaChange}
-               >
-                 <option value="">Select position...</option>
-                 {vacantPositions.map(pos => (
-                   <option key={pos.id} value={pos.itemNumber}>
-                     {pos.itemNumber} - {pos.positionTitle} (SG-{pos.salaryGrade})
-                   </option>
-                 ))}
-               </select>
+               <Combobox 
+                 options={vacantPositions.map(pos => ({ 
+                   value: pos.itemNumber, 
+                   label: `${pos.itemNumber} - ${pos.positionTitle} (SG-${pos.salaryGrade})` 
+                 }))}
+                 value={watch('itemNumber')}
+                 onChange={(val) => handlePlantillaChange({ target: { value: val } } as any)}
+                 placeholder="Select position..."
+                 buttonClassName="px-2.5 py-1.5 text-sm bg-white"
+               />
              </div>
              <div className="grid grid-cols-2 gap-2">
                <div>
                   <label className="text-xs font-semibold text-gray-700 mb-1 block">Position Title</label>
                   <input {...register('positionTitle')} className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200" />
                </div>
-               <div>
+               <div className="z-20">
                  <label className="text-xs font-semibold text-gray-700 mb-1 block">Appointment Type</label>
-                 <select {...register('appointmentType')} className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200">
-                    <option value="">Select...</option>
-                    {APPOINTMENT_TYPE_OPTIONS.map(opt => (<option key={opt.value} value={opt.value}>{opt.label}</option>))}
-                 </select>
+                 <Combobox 
+                    options={APPOINTMENT_TYPE_OPTIONS}
+                    value={watch('appointmentType')}
+                    onChange={(val) => setValue('appointmentType', val)}
+                    placeholder="Select..."
+                    buttonClassName="px-2.5 py-1.5 text-sm"
+                 />
                </div>
              </div>
              <div className="grid grid-cols-2 gap-2">
-               <div>
-                 <label className="text-xs font-semibold text-gray-700 mb-1 block">Salary Grade</label>
-                 <select {...register('salaryGrade')} className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200">
-                    <option value="">Select...</option>
-                    {SALARY_GRADE_OPTIONS.map(opt => (<option key={opt.value} value={Number(opt.value)}>{opt.label}</option>))}
-                 </select>
-               </div>
-               <div>
-                 <label className="text-xs font-semibold text-gray-700 mb-1 block">Step Increment</label>
-                 <select {...register('stepIncrement')} className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200">
-                    {[1, 2, 3, 4, 5, 6, 7, 8].map(s => (<option key={s} value={s}>Step {s}</option>))}
-                 </select>
-               </div>
-             </div>
+                <div className="z-10">
+                  <label className="text-xs font-semibold text-gray-700 mb-1 block">Salary Grade</label>
+                  <Combobox 
+                    options={SALARY_GRADE_OPTIONS.map(opt => ({ value: String(opt.value), label: opt.label }))}
+                    value={String(watch('salaryGrade') || '')}
+                    onChange={(val) => setValue('salaryGrade', Number(val))}
+                    placeholder="Select..."
+                    buttonClassName="px-2.5 py-1.5 text-sm"
+                  />
+                </div>
+                <div className="z-10">
+                  <label className="text-xs font-semibold text-gray-700 mb-1 block">Step Increment</label>
+                  <Combobox 
+                    options={[1, 2, 3, 4, 5, 6, 7, 8].map(s => ({ value: String(s), label: `Step ${s}` }))}
+                    value={String(watch('stepIncrement') || 1)}
+                    onChange={(val) => setValue('stepIncrement', Number(val))}
+                    placeholder="Select..."
+                    buttonClassName="px-2.5 py-1.5 text-sm"
+                  />
+                </div>
+              </div>
              <div>
                 <label className="text-xs font-semibold text-gray-700 mb-1 block">Station</label>
                 <input {...register('station')} className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200" />
@@ -337,22 +350,28 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
                   <label className="text-xs font-semibold text-gray-700 mb-1 block">Birth Date</label>
                   <input type="date" {...register('birthDate')} className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200" />
                </div>
-               <div>
-                 <label className="text-xs font-semibold text-gray-700 mb-1 block">Gender</label>
-                 <select {...register('gender')} className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200">
-                    <option value="">Select...</option>
-                    {GENDER_OPTIONS.map(opt => (<option key={opt.value} value={opt.value}>{opt.label}</option>))}
-                 </select>
-               </div>
+                <div className="z-10">
+                  <label className="text-xs font-semibold text-gray-700 mb-1 block">Gender</label>
+                  <Combobox 
+                    options={GENDER_OPTIONS}
+                    value={watch('gender')}
+                    onChange={(val) => setValue('gender', val)}
+                    placeholder="Select..."
+                    buttonClassName="px-2.5 py-1.5 text-sm"
+                  />
+                </div>
              </div>
              <div className="grid grid-cols-2 gap-2">
-               <div>
-                  <label className="text-xs font-semibold text-gray-700 mb-1 block">Civil Status</label>
-                  <select {...register('civilStatus')} className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200">
-                     <option value="">Select...</option>
-                     {CIVIL_STATUS_OPTIONS.map(opt => (<option key={opt.value} value={opt.value}>{opt.label}</option>))}
-                  </select>
-               </div>
+                <div className="z-10">
+                   <label className="text-xs font-semibold text-gray-700 mb-1 block">Civil Status</label>
+                   <Combobox 
+                     options={CIVIL_STATUS_OPTIONS}
+                     value={watch('civilStatus')}
+                     onChange={(val) => setValue('civilStatus', val)}
+                     placeholder="Select..."
+                     buttonClassName="px-2.5 py-1.5 text-sm"
+                   />
+                </div>
                <div>
                   <label className="text-xs font-semibold text-gray-700 mb-1 block">Nationality</label>
                   <input type="text" {...register('nationality')} list="nationality-options" className="w-full px-2.5 py-1.5 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200" />
@@ -398,13 +417,16 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
            {/* Eligibility & Qualifications - Collapsible (Plantilla Required) */}
            <CollapsibleSection title="Eligibility & Qualifications (Plantilla Required)" isOpen={openSections.eligibility} onToggle={() => toggleSection('eligibility')}>
              <div className="grid grid-cols-2 gap-2">
-               <div>
-                  <label className="text-xs font-semibold text-gray-700 mb-1 block">Eligibility Type</label>
-                  <select {...register('eligibilityType')} className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200">
-                     <option value="">Select...</option>
-                     {ELIGIBILITY_TYPE_OPTIONS.map(opt => (<option key={opt.value} value={opt.value}>{opt.label}</option>))}
-                  </select>
-               </div>
+                <div className="z-10">
+                   <label className="text-xs font-semibold text-gray-700 mb-1 block">Eligibility Type</label>
+                   <Combobox 
+                     options={ELIGIBILITY_TYPE_OPTIONS}
+                     value={watch('eligibilityType')}
+                     onChange={(val) => setValue('eligibilityType', val)}
+                     placeholder="Select..."
+                     buttonClassName="px-2.5 py-1.5 text-sm"
+                   />
+                </div>
                <div>
                   <label className="text-xs font-semibold text-gray-700 mb-1 block">Eligibility Number</label>
                   <input type="text" {...register('eligibilityNumber')} placeholder="License/Eligibility No." className="w-full px-2.5 py-1.5 text-sm bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-200" />

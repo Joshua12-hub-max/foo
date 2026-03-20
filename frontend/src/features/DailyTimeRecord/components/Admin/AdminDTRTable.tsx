@@ -154,7 +154,7 @@ export const AdminDTRTable: React.FC<AdminDTRTableProps> = ({
                 {/* Summary Row */}
                 {totals && (
                   <tr className="bg-gray-100 font-bold border-t-2 border-gray-300">
-                    <td colSpan={7} className="px-6 py-4 text-right text-gray-700 text-sm">
+                    <td colSpan={8} className="px-6 py-4 text-right text-gray-700 text-sm">
                       Totals:
                     </td>
                     <td className="px-6 py-4 text-center text-red-700 text-sm">{formatDuration(totals.lateMinutes)}</td>

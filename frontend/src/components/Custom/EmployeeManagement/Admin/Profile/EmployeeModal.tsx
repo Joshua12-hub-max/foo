@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, User, Mail, Briefcase, Calendar, Shield, Building } from 'lucide-react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import Combobox from '@/components/Custom/Combobox';
 import { EmployeeModalSchema, EmployeeModalInput } from '@/schemas/employeeSchema';
 // @ts-ignore
 import { fetchDepartments } from '@api/departmentApi';
@@ -37,6 +38,7 @@ const EmployeeModal: React.FC<EmployeeModalProps> = ({ isOpen, onClose, onSubmit
     register,
     handleSubmit,
     reset,
+    control,
     formState: { errors },
   } = useForm<EmployeeModalInput>({
     resolver: zodResolver(EmployeeModalSchema),
@@ -180,17 +182,24 @@ const EmployeeModal: React.FC<EmployeeModalProps> = ({ isOpen, onClose, onSubmit
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
-                  <div className="relative">
-                    <Building className="absolute left-3 top-2.5 text-gray-400" size={18} />
-                    <select
-                      {...register('department')}
-                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent outline-none appearance-none bg-white"
-                    >
-                      <option value="">Select Department</option>
-                      {departments.map(dept => (
-                        <option key={dept.id} value={dept.name}>{dept.name}</option>
-                      ))}
-                    </select>
+                  <div className="relative z-[60]">
+                    <Building className="absolute left-3 top-2.5 text-gray-400 z-10" size={18} />
+                    <Controller
+                      name="department"
+                      control={control}
+                      render={({ field }) => (
+                        <Combobox
+                          options={[
+                            { value: '', label: 'Select Department' },
+                            ...departments.map(dept => ({ value: dept.name, label: dept.name }))
+                          ]}
+                          value={field.value}
+                          onChange={field.onChange}
+                          placeholder="Select Department"
+                          buttonClassName="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent outline-none h-[42px] font-bold"
+                        />
+                      )}
+                    />
                   </div>
                 </div>
                 <div>
@@ -209,30 +218,48 @@ const EmployeeModal: React.FC<EmployeeModalProps> = ({ isOpen, onClose, onSubmit
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
-                  <div className="relative">
-                    <Shield className="absolute left-3 top-2.5 text-gray-400" size={18} />
-                    <select
-                      {...register('role')}
-                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent outline-none appearance-none bg-white"
-                    >
-                      <option value="Employee">Employee</option>
-                      <option value="Human Resource">Human Resource</option>
-                      <option value="Administrator">Administrator</option>
-                    </select>
+                  <div className="relative z-[60]">
+                    <Shield className="absolute left-3 top-2.5 text-gray-400 z-10" size={18} />
+                    <Controller
+                      name="role"
+                      control={control}
+                      render={({ field }) => (
+                        <Combobox
+                          options={[
+                            { value: 'Employee', label: 'Employee' },
+                            { value: 'Human Resource', label: 'Human Resource' },
+                            { value: 'Administrator', label: 'Administrator' }
+                          ]}
+                          value={field.value}
+                          onChange={field.onChange}
+                          placeholder="Select Role"
+                          buttonClassName="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent outline-none h-[42px] font-bold"
+                        />
+                      )}
+                    />
                   </div>
                   {errors.role && <p className="text-red-500 text-xs mt-1">{errors.role.message}</p>}
                 </div>
-                <div>
+                <div className="relative z-[60]">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                  <select
-                    {...register('employmentStatus')}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent outline-none bg-white"
-                  >
-                    <option value="Active">Active</option>
-                    <option value="Inactive">Inactive</option>
-                    <option value="Terminated">Terminated</option>
-                    <option value="Resigned">Resigned</option>
-                  </select>
+                  <Controller
+                    name="employmentStatus"
+                    control={control}
+                    render={({ field }) => (
+                      <Combobox
+                        options={[
+                          { value: 'Active', label: 'Active' },
+                          { value: 'Inactive', label: 'Inactive' },
+                          { value: 'Terminated', label: 'Terminated' },
+                          { value: 'Resigned', label: 'Resigned' }
+                        ]}
+                        value={field.value}
+                        onChange={field.onChange}
+                        placeholder="Select Status"
+                        buttonClassName="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent outline-none bg-white font-bold h-[42px]"
+                      />
+                    )}
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Date Hired</label>

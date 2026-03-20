@@ -4,6 +4,7 @@ import { X, Save, Building, User, DollarSign, MapPin, FileText, FolderTree } fro
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { DepartmentModalSchema, DepartmentModalInput } from '@/schemas/departmentSchema';
+import Combobox from '@/components/Custom/Combobox';
 
 interface Department {
   id: number;
@@ -27,6 +28,8 @@ const DepartmentModal: React.FC<DepartmentModalProps> = ({ isOpen, onClose, onSu
     register,
     handleSubmit,
     reset,
+    watch,
+    setValue,
     formState: { errors },
   } = useForm<DepartmentModalInput>({
     resolver: zodResolver(DepartmentModalSchema),
@@ -120,20 +123,19 @@ const DepartmentModal: React.FC<DepartmentModalProps> = ({ isOpen, onClose, onSu
               {/* Parent Department */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Parent Department</label>
-                <div className="relative">
-                  <FolderTree className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                  <select
-                    {...register('parentDepartmentId')}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none bg-white appearance-none"
-                  >
-                    <option value="">None (Top Level)</option>
-                    {departments
-                      .filter(d => d.id !== initialData?.id)
-                      .map(dept => (
-                        <option key={dept.id} value={dept.id}>{dept.name}</option>
-                      ))
-                    }
-                  </select>
+                <div className="z-10 relative">
+                  <Combobox
+                    options={[
+                      { value: '', label: 'None (Top Level)' },
+                      ...departments
+                        .filter(d => d.id !== initialData?.id)
+                        .map(dept => ({ value: String(dept.id), label: dept.name }))
+                    ]}
+                    value={String(watch('parentDepartmentId') || '')}
+                    onChange={(val) => setValue('parentDepartmentId', val)}
+                    placeholder="None (Top Level)"
+                    buttonClassName="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg bg-white"
+                  />
                 </div>
               </div>
 

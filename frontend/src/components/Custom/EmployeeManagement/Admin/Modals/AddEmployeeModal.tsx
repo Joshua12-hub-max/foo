@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@/lib/zodResolver';
 import { X, User, Briefcase, Mail, Phone, Calendar, Shield, CreditCard, MapPin, Building, FileText, Loader } from 'lucide-react';
+import Combobox from '@/components/Custom/Combobox';
 import { plantillaApi } from '@/api/plantillaApi';
 import { employeeApi } from '@/api/employeeApi';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -46,7 +47,7 @@ const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
   const queryClient = useQueryClient();
   const showToast = useToastStore((state) => state.showToast);
 
-  const { register, handleSubmit, formState: { errors }, setValue, reset } = useForm<CreateEmployeeInput>({
+  const { register, handleSubmit, formState: { errors }, setValue, reset, watch } = useForm<CreateEmployeeInput>({
     resolver: zodResolver(CreateEmployeeSchema),
     defaultValues: {
       firstName: '',
@@ -200,31 +201,30 @@ const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div>
+                <div className="z-50">
                   <label className="text-sm text-gray-600 mb-1 block flex items-center gap-1">
                     <Building size={14} className="text-gray-400" /> Department *
                   </label>
-                  <select 
-                     {...register('department')}
-                    className={`w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm ${errors.department ? 'border-red-500' : ''}`}
-                  >
-                    <option value="">Select...</option>
-                    {departments.map(d => (<option key={d.id} value={d.name}>{d.name}</option>))}
-                  </select>
+                  <Combobox 
+                    options={departments.map(d => ({ value: d.name, label: d.name }))}
+                    value={watch('department')}
+                    onChange={(val) => setValue('department', val, { shouldValidate: true })}
+                    placeholder="Select..."
+                    error={!!errors.department}
+                  />
                    {errors.department && <p className="text-red-500 text-xs mt-1">{errors.department.message}</p>}
                 </div>
-                <div>
+                <div className="z-50">
                   <label className="text-sm text-gray-600 mb-1 block flex items-center gap-1">
                     <Shield size={14} className="text-gray-400" /> System Role *
                   </label>
-                  <select 
-                     {...register('role')}
-                    className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm" 
-                  >
-                    {ROLE_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>{option.label}</option>
-                    ))}
-                  </select>
+                  <Combobox 
+                    options={ROLE_OPTIONS}
+                    value={watch('role')}
+                    onChange={(val) => setValue('role', val as CreateEmployeeInput['role'], { shouldValidate: true })}
+                    placeholder="Select role"
+                    error={!!errors.role}
+                  />
                    {errors.role && <p className="text-red-500 text-xs mt-1">{errors.role.message}</p>}
                 </div>
               </div>
@@ -235,7 +235,7 @@ const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
           {activeTab === 'personal' && (
             <>
               <div className="grid grid-cols-2 gap-4">
-                <div>
+                <div className="z-40">
                   <label className="text-sm text-gray-600 mb-1 block flex items-center gap-1">
                     <Calendar size={14} className="text-gray-400" /> Birth Date
                   </label>
@@ -245,32 +245,26 @@ const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
                     className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm" 
                   />
                 </div>
-                <div>
+                <div className="z-40">
                   <label className="text-sm text-gray-600 mb-1 block">Gender</label>
-                  <select 
-                    {...register('gender')}
-                    className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm" 
-                  >
-                    <option value="">Select...</option>
-                    {GENDER_OPTIONS.map((option: { value: string; label: string }) => (
-                      <option key={option.value} value={option.value}>{option.label}</option>
-                    ))}
-                  </select>
+                  <Combobox 
+                    options={GENDER_OPTIONS}
+                    value={watch('gender')}
+                    onChange={(val) => setValue('gender', val)}
+                    placeholder="Select..."
+                  />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div>
+                <div className="z-30">
                   <label className="text-sm text-gray-600 mb-1 block">Civil Status</label>
-                  <select 
-                    {...register('civilStatus')}
-                    className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm" 
-                  >
-                    <option value="">Select...</option>
-                    {CIVIL_STATUS_OPTIONS.map((option: { value: string; label: string }) => (
-                      <option key={option.value} value={option.value}>{option.label}</option>
-                    ))}
-                  </select>
+                  <Combobox 
+                    options={CIVIL_STATUS_OPTIONS}
+                    value={watch('civilStatus')}
+                    onChange={(val) => setValue('civilStatus', val)}
+                    placeholder="Select..."
+                  />
                 </div>
                 <div>
                   <label className="text-sm text-gray-600 mb-1 block">Nationality</label>
@@ -362,23 +356,21 @@ const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
           {activeTab === 'employment' && (
             <>
               {/* Plantilla Selection */}
-              <div className="bg-gray-50 p-3 rounded-lg border border-gray-200 mb-4">
-                <label className="text-sm font-semibold text-gray-800 mb-1 block flex items-center gap-1">
+              <div className="bg-gray-50 p-3 rounded-lg border border-gray-200 mb-4 z-40 relative">
+                <label className="text-sm font-semibold text-gray-800 mb-1.5 block flex items-center gap-1">
                   <FileText size={14} className="text-gray-500" /> Select Plantilla Item (Optional)
                 </label>
-                <select 
-                  className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-gray-400 text-sm" 
-                   {...register('itemNumber')}
-                   onChange={handlePlantillaChange}
-                >
-                  <option value="">Select available position...</option>
-                  {vacantPositions.map(pos => (
-                    <option key={pos.id} value={pos.itemNumber}>
-                      {pos.itemNumber} - {pos.positionTitle} (SG-{pos.salaryGrade})
-                    </option>
-                  ))}
-                </select>
-                <p className="text-xs text-gray-500 mt-1">
+                <Combobox 
+                  options={vacantPositions.map(pos => ({ 
+                    value: pos.itemNumber, 
+                    label: `${pos.itemNumber} - ${pos.positionTitle} (SG-${pos.salaryGrade})` 
+                  }))}
+                  value={watch('itemNumber')}
+                  onChange={(val) => handlePlantillaChange({ target: { value: val } } as any)}
+                  placeholder="Select available position..."
+                  className="w-full"
+                />
+                <p className="text-xs text-gray-500 mt-1.5">
                   Selecting a position will auto-fill Title, Salary Grade, and Department.
                 </p>
               </div>
@@ -395,43 +387,35 @@ const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
                     placeholder="e.g. Administrative Officer III"
                   />
                 </div>
-                <div>
+                <div className="z-30">
                   <label className="text-sm text-gray-600 mb-1 block">Appointment Type</label>
-                  <select 
-                     {...register('appointmentType')}
-                    className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm" 
-                  >
-                    <option value="">Select...</option>
-                    {APPOINTMENT_TYPE_OPTIONS.map((option: { value: string; label: string }) => (
-                      <option key={option.value} value={option.value}>{option.label}</option>
-                    ))}
-                  </select>
+                  <Combobox 
+                    options={APPOINTMENT_TYPE_OPTIONS}
+                    value={watch('appointmentType')}
+                    onChange={(val) => setValue('appointmentType', val as any)}
+                    placeholder="Select..."
+                  />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div>
+                <div className="z-20">
                   <label className="text-sm text-gray-600 mb-1 block">Salary Grade</label>
-                  <select 
-                     {...register('salaryGrade')}
-                    className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm" 
-                  >
-                    <option value="">Select...</option>
-                    {SALARY_GRADE_OPTIONS.map((option: { value: string; label: string }) => (
-                      <option key={option.value} value={Number(option.value.replace('SG-', ''))}>{option.label}</option>
-                    ))}
-                  </select>
+                  <Combobox 
+                    options={SALARY_GRADE_OPTIONS.map(opt => ({ value: String(opt.value.replace('SG-', '')), label: opt.label }))}
+                    value={String(watch('salaryGrade') || '')}
+                    onChange={(val) => setValue('salaryGrade', Number(val))}
+                    placeholder="Select..."
+                  />
                 </div>
-                <div>
+                <div className="z-20">
                   <label className="text-sm text-gray-600 mb-1 block">Step Increment</label>
-                  <select 
-                     {...register('stepIncrement')}
-                    className="w-full px-3 py-2 bg-[#F8F9FA] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 text-sm" 
-                  >
-                    {[1, 2, 3, 4, 5, 6, 7, 8].map(step => (
-                      <option key={step} value={step}>Step {step}</option>
-                    ))}
-                  </select>
+                  <Combobox 
+                    options={[1, 2, 3, 4, 5, 6, 7, 8].map(step => ({ value: String(step), label: `Step ${step}` }))}
+                    value={String(watch('stepIncrement') || 1)}
+                    onChange={(val) => setValue('stepIncrement', Number(val))}
+                    placeholder="Select..."
+                  />
                 </div>
               </div>
 

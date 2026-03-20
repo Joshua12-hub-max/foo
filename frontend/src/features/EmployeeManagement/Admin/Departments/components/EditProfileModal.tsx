@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Camera } from 'lucide-react';
+import Combobox from '@/components/Custom/Combobox';
 // @ts-ignore
 import { updateProfile } from '@/Service/Auth';
 
@@ -279,24 +280,36 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, cu
                 <label className={labelClass}>Item Number</label>
                 <input type="text" name="itemNumber" value={formData.itemNumber} onChange={handleChange} className={inputClass} />
               </div>
-              <div>
+              <div className="relative z-[60]">
                 <label className={labelClass}>Status</label>
-                <select name="employmentStatus" value={formData.employmentStatus} onChange={handleChange} className={selectClass}>
-                  <option value="">—</option>
-                  <option value="Active">Active</option>
-                  <option value="Inactive">Inactive</option>
-                  <option value="On Leave">On Leave</option>
-                </select>
+                <Combobox
+                  options={[
+                    { value: '', label: '—' },
+                    { value: 'Active', label: 'Active' },
+                    { value: 'Inactive', label: 'Inactive' },
+                    { value: 'On Leave', label: 'On Leave' }
+                  ]}
+                  value={formData.employmentStatus}
+                  onChange={(val) => setFormData(prev => ({ ...prev, employmentStatus: val }))}
+                  placeholder="—"
+                  buttonClassName={selectClass + " h-[38px] font-bold"}
+                />
               </div>
-              <div>
+              <div className="relative z-[60]">
                 <label className={labelClass}>Appointment</label>
-                <select name="appointmentType" value={formData.appointmentType} onChange={handleChange} className={selectClass}>
-                  <option value="">—</option>
-                  <option value="Permanent">Permanent</option>
-                  <option value="Casual">Casual</option>
-                  <option value="Job Order">Job Order</option>
-                  <option value="Contract of Service">Contract of Service</option>
-                </select>
+                <Combobox
+                  options={[
+                    { value: '', label: '—' },
+                    { value: 'Permanent', label: 'Permanent' },
+                    { value: 'Casual', label: 'Casual' },
+                    { value: 'Job Order', label: 'Job Order' },
+                    { value: 'Contract of Service', label: 'Contract of Service' }
+                  ]}
+                  value={formData.appointmentType}
+                  onChange={(val) => setFormData(prev => ({ ...prev, appointmentType: val }))}
+                  placeholder="—"
+                  buttonClassName={selectClass + " h-[38px] font-bold"}
+                />
               </div>
             </div>
           </div>
@@ -315,37 +328,55 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, cu
                   className={inputClass} 
                 />
               </div>
-              <div>
+              <div className="relative z-[55]">
                 <label className={labelClass}>Gender</label>
-                <select name="gender" value={formData.gender} onChange={handleChange} className={selectClass}>
-                  <option value="">—</option>
-                  <option value="Male">Male</option>
-                  <option value="Female">Female</option>
-                </select>
+                <Combobox
+                  options={[
+                    { value: '', label: '—' },
+                    { value: 'Male', label: 'Male' },
+                    { value: 'Female', label: 'Female' }
+                  ]}
+                  value={formData.gender}
+                  onChange={(val) => setFormData(prev => ({ ...prev, gender: val }))}
+                  placeholder="—"
+                  buttonClassName={selectClass + " h-[38px] font-bold"}
+                />
               </div>
-              <div>
+              <div className="relative z-[55]">
                 <label className={labelClass}>Civil Status</label>
-                <select name="civilStatus" value={formData.civilStatus} onChange={handleChange} className={selectClass}>
-                  <option value="">—</option>
-                  <option value="Single">Single</option>
-                  <option value="Married">Married</option>
-                  <option value="Widowed">Widowed</option>
-                  <option value="Separated">Separated</option>
-                </select>
+                <Combobox
+                  options={[
+                    { value: '', label: '—' },
+                    { value: 'Single', label: 'Single' },
+                    { value: 'Married', label: 'Married' },
+                    { value: 'Widowed', label: 'Widowed' },
+                    { value: 'Separated', label: 'Separated' }
+                  ]}
+                  value={formData.civilStatus}
+                  onChange={(val) => setFormData(prev => ({ ...prev, civilStatus: val }))}
+                  placeholder="—"
+                  buttonClassName={selectClass + " h-[38px] font-bold"}
+                />
               </div>
               <div>
                 <label className={labelClass}>Nationality</label>
                 <input type="text" name="nationality" value={formData.nationality} onChange={handleChange} className={inputClass} />
               </div>
-              <div>
+              <div className="relative z-[50]">
                 <label className={labelClass}>Blood Type</label>
-                <select name="bloodType" value={formData.bloodType} onChange={handleChange} className={selectClass}>
-                  <option value="">—</option>
-                  <option value="A+">A+</option><option value="A-">A-</option>
-                  <option value="B+">B+</option><option value="B-">B-</option>
-                  <option value="AB+">AB+</option><option value="AB-">AB-</option>
-                  <option value="O+">O+</option><option value="O-">O-</option>
-                </select>
+                <Combobox
+                  options={[
+                    { value: '', label: '—' },
+                    { value: 'A+', label: 'A+' }, { value: 'A-', label: 'A-' },
+                    { value: 'B+', label: 'B+' }, { value: 'B-', label: 'B-' },
+                    { value: 'AB+', label: 'AB+' }, { value: 'AB-', label: 'AB-' },
+                    { value: 'O+', label: 'O+' }, { value: 'O-', label: 'O-' }
+                  ]}
+                  value={formData.bloodType}
+                  onChange={(val) => setFormData(prev => ({ ...prev, bloodType: val }))}
+                  placeholder="—"
+                  buttonClassName={selectClass + " h-[38px] font-bold"}
+                />
               </div>
               <div>
                 <label className={labelClass}>Height / Weight</label>

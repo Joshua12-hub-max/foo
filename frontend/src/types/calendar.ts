@@ -67,6 +67,7 @@ export interface Holiday {
 /** Employee schedule entry from API */
 export interface ScheduleEntry {
   id: number | string;
+  scheduleTitle?: string;
   title?: string;
   duties?: string;
   scheduleName?: string;
@@ -74,12 +75,14 @@ export interface ScheduleEntry {
   endDate?: string;
   startTime?: string;
   endTime?: string;
+  dayOfWeek?: string;
   days?: string;
 }
 
 export interface Schedule extends ScheduleEntry {
   employeeName?: string;
   employeeId?: string;
+  department?: string;
 }
 
 /** Unified display item for the calendar grid */

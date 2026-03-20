@@ -1,6 +1,7 @@
 import React from 'react';
 import { Plus } from 'lucide-react';
 import { EmployeeLeaveFilters } from '@/components/Custom/Timekeeping/LeaveRequestComponents/Employee/types';
+import Combobox from '@/components/Custom/Combobox';
 
 interface FiltersProps {
   filters: EmployeeLeaveFilters;
@@ -20,47 +21,45 @@ export const Filters: React.FC<FiltersProps> = ({
   onNewRequest, 
   isLoading 
 }) => {
+  const statusOptions = [
+    { value: '', label: 'All Status' },
+    { value: 'Pending', label: 'Pending' },
+    { value: 'Approved', label: 'Approved' },
+    { value: 'Rejected', label: 'Rejected' }
+  ];
+
+  const typeOptions = [
+    { value: '', label: 'All Types' },
+    { value: 'Vacation Leave', label: 'Vacation Leave' },
+    { value: 'Sick Leave', label: 'Sick Leave' },
+    { value: 'Emergency Leave', label: 'Emergency Leave' },
+    { value: 'Maternity Leave', label: 'Maternity Leave' },
+    { value: 'Paternity Leave', label: 'Paternity Leave' }
+  ];
+
   return (
     <div className="bg-[#F8F9FA] p-4 rounded-lg shadow-md mb-6">
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-center">
         {/* Status Filter */}
-        <div className="relative w-full">
-          <select
+        <div className="z-30">
+          <Combobox
+            options={statusOptions}
             value={filters.status}
-            onChange={(e) => onFilterChange('status', e.target.value)}
-            className="w-full bg-white border border-gray-200 rounded-lg shadow-sm px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200 focus:border-gray-200 hover:border-gray-200 transition-all appearance-none cursor-pointer"
-          >
-            <option value="">All Status</option>
-            <option value="Pending">Pending</option>
-            <option value="Approved">Approved</option>
-            <option value="Rejected">Rejected</option>
-          </select>
-          <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-          </div>
+            onChange={(val) => onFilterChange('status', val)}
+            placeholder="All Status"
+            buttonClassName="bg-white border-gray-200"
+          />
         </div>
 
         {/* Type Filter */}
-        <div className="relative w-full">
-          <select
+        <div className="z-20">
+          <Combobox
+            options={typeOptions}
             value={filters.type}
-            onChange={(e) => onFilterChange('type', e.target.value)}
-            className="w-full bg-white border border-gray-200 rounded-lg shadow-sm px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200 focus:border-gray-200 hover:border-gray-200 transition-all appearance-none cursor-pointer"
-          >
-            <option value="">All Types</option>
-            <option value="Vacation Leave">Vacation Leave</option>
-            <option value="Sick Leave">Sick Leave</option>
-            <option value="Emergency Leave">Emergency Leave</option>
-            <option value="Maternity Leave">Maternity Leave</option>
-            <option value="Paternity Leave">Paternity Leave</option>
-          </select>
-           <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-          </div>
+            onChange={(val) => onFilterChange('type', val)}
+            placeholder="All Types"
+            buttonClassName="bg-white border-gray-200"
+          />
         </div>
 
         {/* Date Filter */}

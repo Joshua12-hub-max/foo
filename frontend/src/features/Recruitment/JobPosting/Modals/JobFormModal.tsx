@@ -290,8 +290,7 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
                 )}
             </div>
 
-            {/* Department */}
-            <div className="relative group z-20">
+            <div className="relative group z-50">
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Department <span className="text-red-500">*</span></label>
                 <Combobox
                     options={departmentOptions}
@@ -332,14 +331,14 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
 
             {/* Duty Type, Employment Type & Status */}
             <div className="grid grid-cols-1 gap-4">
-              <div>
+              <div className="z-40">
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Duty Type</label>
                 <Combobox
                     options={DUTY_TYPE_OPTIONS}
                     value={currentDutyType}
                     onChange={(val) => setValue('dutyType', val as 'Standard' | 'Irregular', { shouldValidate: true })}
                     placeholder="Select Duty Type"
-                    className="w-full z-10"
+                    className="w-full"
                     buttonClassName="px-4 text-sm"
                     error={!!errors.dutyType}
                 />
@@ -348,27 +347,27 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <div>
+              <div className="z-30">
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Employment Type</label>
                 <Combobox
                     options={EMPLOYMENT_TYPE_OPTIONS}
                     value={currentEmploymentType}
                     onChange={(val) => setValue('employmentType', val as EmploymentType, { shouldValidate: true })}
                     placeholder="Select Employment Type"
-                    className="w-full z-10"
+                    className="w-full"
                     buttonClassName="px-4 text-sm"
                     error={!!errors.employmentType}
                 />
                  {errors.employmentType && <p className="text-red-500 text-xs mt-1 ml-1">{errors.employmentType.message}</p>}
               </div>
-              <div>
+              <div className="z-30">
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Status</label>
                 <Combobox
                     options={JOB_STATUS_OPTIONS}
                     value={currentStatus}
                     onChange={(val) => setValue('status', val as JobStatus, { shouldValidate: true })}
                     placeholder="Select Status"
-                    className="w-full z-10"
+                    className="w-full"
                     buttonClassName="px-4 text-sm"
                     error={!!errors.status}
                 />
@@ -463,7 +462,7 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
             <div className="space-y-4 pt-4 border-t border-gray-100">
               <h3 className="block text-sm font-bold text-gray-800 uppercase tracking-wider mb-2">Qualifications & Requirements</h3>
               
-              <div>
+              <div className="z-20">
                  <label className="block text-xs font-bold text-gray-500 tracking-wider mb-1.5 ml-1">Education</label>
                  <Combobox
                     options={EDUCATION_OPTIONS}
@@ -477,7 +476,7 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
                  {errors.education && <p className="text-red-500 text-xs mt-1 ml-1">{errors.education.message}</p>}
               </div>
 
-              <div>
+              <div className="z-20">
                  <label className="block text-xs font-bold text-gray-500 tracking-wider mb-1.5 ml-1">Experience</label>
                  <Combobox
                     options={EXPERIENCE_OPTIONS}
@@ -491,7 +490,7 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
                  {errors.experience && <p className="text-red-500 text-xs mt-1 ml-1">{errors.experience.message}</p>}
               </div>
 
-              <div>
+              <div className="z-10">
                  <label className="block text-xs font-bold text-gray-500 tracking-wider mb-1.5 ml-1">Training</label>
                  <Combobox
                     options={TRAINING_OPTIONS}
@@ -505,7 +504,7 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
                  {errors.training && <p className="text-red-500 text-xs mt-1 ml-1">{errors.training.message}</p>}
               </div>
 
-              <div>
+              <div className="z-10">
                  <label className="block text-xs font-bold text-gray-500 tracking-wider mb-1.5 ml-1">Eligibility</label>
                  <Combobox
                     options={ELIGIBILITY_OPTIONS}

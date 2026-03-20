@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { X, Clock, Calendar, Check, Loader2, Info } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Calendar, Check, Loader2, Info, Sparkles } from 'lucide-react';
+import Combobox from '@/components/Custom/Combobox';
 import { scheduleApi, ShiftTemplateData } from '@/api/scheduleApi';
 import { Department } from '@/types/org';
-import Combobox from '@/components/Custom/Combobox';
+import axios from 'axios';
 
 interface DepartmentScheduleModalProps {
   isOpen: boolean;
@@ -10,26 +11,33 @@ interface DepartmentScheduleModalProps {
   department: Department | null;
 }
 
-const RECURRENCE_OPTIONS = [
-  { value: 'daily', label: 'Daily (Monday - Friday)' },
-  { value: 'none', label: 'Specific Dates Only' }
-];
-
 const DepartmentScheduleModal: React.FC<DepartmentScheduleModalProps> = ({ isOpen, onClose, department }) => {
   const [loading, setLoading] = useState(false);
-  const [templates, setTemplates] = useState<ShiftTemplateData[]>([]);
-  const [loadingTemplates, setLoadingTemplates] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [templates, setTemplates] = useState<ShiftTemplateData[]>([]);
+  const [loadingTemplates, setLoadingTemplates] = useState(false);
 
   const [formData, setFormData] = useState({
     scheduleTitle: '',
     startDate: '',
     endDate: '',
     startTime: '',
-    endTime: '',
-    repeat: 'daily' as 'daily' | 'none'
+    endTime: ''
   });
+  const [defaultShift, setDefaultShift] = useState<{ startTime: string; endTime: string; name: string } | null>(null);
+
+  useEffect(() => {
+     const fetchDefaultShift = async () => {
+         try {
+             const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/schedules/shift-templates/default`);
+             if (res.data.success) setDefaultShift(res.data.data);
+         } catch (err) {
+             console.error('Failed to fetch default shift:', err);
+         }
+     };
+     fetchDefaultShift();
+  }, []);
 
   useEffect(() => {
     if (isOpen) {
@@ -38,44 +46,53 @@ const DepartmentScheduleModal: React.FC<DepartmentScheduleModalProps> = ({ isOpe
         setFormData(prev => ({ 
             ...prev, 
             scheduleTitle: `${department.name} Schedule`,
-            startDate: new Date().toISOString().split('T')[0]
+            startDate: new Date().toISOString().split('T')[0],
+            // Default to system default or fallback to 8-5
+            startTime: defaultShift?.startTime.substring(0, 5) || '08:00',
+            endTime: defaultShift?.endTime.substring(0, 5) || '17:00'
         }));
       }
       setSuccess(false);
       setError(null);
     }
-  }, [isOpen, department]);
+  }, [isOpen, department, defaultShift]);
 
   const fetchTemplates = async () => {
     setLoadingTemplates(true);
     try {
-      const response = await scheduleApi.getShiftTemplates();
-      if (response && response.success) {
-        setTemplates(response.templates || []);
+      const res = await scheduleApi.getShiftTemplates();
+      if (res.success) {
+        const filtered = (res.templates || []).filter(t => 
+            t.departmentId === null || (department && t.departmentId === department.id)
+        );
+        setTemplates(filtered);
       }
     } catch (err) {
-      console.error('Failed to fetch shift templates:', err);
+      console.error('Failed to fetch templates:', err);
     } finally {
       setLoadingTemplates(false);
     }
   };
 
-  const templateOptions = useMemo(() => {
-    return templates.map(t => ({
-      value: t.id?.toString() || t.name,
-      label: `${t.name} (${t.startTime.substring(0,5)} - ${t.endTime.substring(0,5)})`
-    }));
-  }, [templates]);
-
-  const handleSelectTemplate = (value: string) => {
-    const template = templates.find(t => t.id?.toString() === value || t.name === value);
+  const handleSelectTemplate = (templateId: string) => {
+    const template = templates.find(t => String(t.id) === templateId);
     if (template) {
       setFormData(prev => ({
         ...prev,
-        startTime: template.startTime,
-        endTime: template.endTime
+        startTime: template.startTime.substring(0, 5),
+        endTime: template.endTime.substring(0, 5),
+        scheduleTitle: template.name
       }));
     }
+  };
+
+  const handleSetStandard = () => {
+    setFormData(prev => ({
+        ...prev,
+        startTime: defaultShift?.startTime.substring(0, 5) || '08:00',
+        endTime: defaultShift?.endTime.substring(0, 5) || '17:00',
+        scheduleTitle: department ? `${department.name} ${defaultShift?.name || 'Standard'} Shift` : (defaultShift?.name || 'Standard Shift')
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -88,7 +105,8 @@ const DepartmentScheduleModal: React.FC<DepartmentScheduleModalProps> = ({ isOpe
     try {
       const response = await scheduleApi.createDepartmentSchedule({
         departmentId: department.id,
-        ...formData
+        ...formData,
+        repeat: 'daily'
       });
 
       if (response.success) {
@@ -99,8 +117,9 @@ const DepartmentScheduleModal: React.FC<DepartmentScheduleModalProps> = ({ isOpe
       } else {
         setError(response.message || 'Failed to save schedule');
       }
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'An error occurred while saving the schedule');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'An error occurred while saving the schedule';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -110,13 +129,8 @@ const DepartmentScheduleModal: React.FC<DepartmentScheduleModalProps> = ({ isOpe
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      {/* Static Backdrop (No Blur) */}
       <div className="absolute inset-0 bg-gray-900/40 transition-opacity" onClick={onClose} />
-      
-      {/* Modal Container */}
       <div className="relative bg-white rounded-xl shadow-xl w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col animate-in fade-in zoom-in duration-200">
-        
-        {/* Header */}
         <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-white z-10">
           <div>
             <h2 className="text-xl font-bold text-gray-800">Set Dept. Schedule</h2>
@@ -146,21 +160,40 @@ const DepartmentScheduleModal: React.FC<DepartmentScheduleModalProps> = ({ isOpe
                   </div>
                 )}
 
-                {/* Templates Combobox */}
-                <div className="space-y-2">
-                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Shift Template</label>
-                  <Combobox
-                    options={templateOptions}
-                    value={null} // Keep null so it acts as a selector
-                    onChange={handleSelectTemplate}
-                    placeholder={loadingTemplates ? "Loading templates..." : "Search or Select Shift Template..."}
-                    className="w-full"
-                    buttonClassName="bg-gray-50 border-gray-200"
-                    disabled={loadingTemplates}
-                  />
+                <div className="flex items-center justify-between">
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Quick Actions</label>
+                    <button 
+                        type="button"
+                        onClick={handleSetStandard}
+                        className="text-[10px] font-black uppercase px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded hover:bg-emerald-100 transition-all"
+                    >
+                        Set to {defaultShift?.name || 'Standard'} ({defaultShift ? `${defaultShift.startTime.substring(0, 5)}-${defaultShift.endTime.substring(0, 5)}` : '8-5'})
+                    </button>
                 </div>
 
-                {/* Schedule Title */}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 mb-1.5 ml-1">
+                    <Sparkles size={14} className="text-blue-500" />
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider">Use Shift Template</label>
+                  </div>
+                  <div className="relative z-[60]">
+                    <Combobox
+                      options={[
+                        { value: '', label: loadingTemplates ? 'Loading templates...' : 'Select a shift from library...' },
+                        ...templates.map(t => ({
+                          value: String(t.id),
+                          label: `${t.name} (${t.startTime.substring(0, 5)} - ${t.endTime.substring(0, 5)})`
+                        }))
+                      ]}
+                      value=""
+                      onChange={(val) => handleSelectTemplate(val)}
+                      placeholder="Select a shift from library..."
+                      buttonClassName="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm font-semibold text-gray-800 transition-all bg-blue-50/30 border-blue-100/50 outline-none focus:ring-2 focus:ring-blue-500/20 h-[42px]"
+                    />
+                  </div>
+                  <p className="text-[9px] text-gray-400 italic ml-1 leading-tight">Selecting a template auto-fills the fields below.</p>
+                </div>
+
                 <div className="space-y-2">
                   <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Schedule Title</label>
                   <input
@@ -169,39 +202,33 @@ const DepartmentScheduleModal: React.FC<DepartmentScheduleModalProps> = ({ isOpe
                     value={formData.scheduleTitle}
                     onChange={(e) => setFormData({ ...formData, scheduleTitle: e.target.value })}
                     placeholder="e.g. Next Cut-off Adjustment"
-                    className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-400 focus:outline-none transition-all bg-gray-50 font-medium text-gray-800"
+                    className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm font-semibold text-gray-800 transition-all bg-gray-50 border-gray-200"
                   />
                 </div>
 
-                {/* Date Range */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Start Date</label>
-                    <div className="relative">
-                      <input
-                        type="date"
-                        required
-                        value={formData.startDate}
-                        onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                        className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-400 focus:outline-none transition-all bg-gray-50 font-medium text-gray-800"
-                      />
-                    </div>
+                    <input
+                      type="date"
+                      required
+                      value={formData.startDate}
+                      onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                      className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm font-semibold text-gray-800 transition-all bg-gray-50 border-gray-200"
+                    />
                   </div>
                   <div className="space-y-2">
                     <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">End Date</label>
-                    <div className="relative">
-                      <input
-                        type="date"
-                        required
-                        value={formData.endDate}
-                        onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-                        className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-400 focus:outline-none transition-all bg-gray-50 font-medium text-gray-800"
-                      />
-                    </div>
+                    <input
+                      type="date"
+                      required
+                      value={formData.endDate}
+                      onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+                      className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm font-semibold text-gray-800 transition-all bg-gray-50 border-gray-200"
+                    />
                   </div>
                 </div>
 
-                {/* Time Range */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Start Time</label>
@@ -210,7 +237,7 @@ const DepartmentScheduleModal: React.FC<DepartmentScheduleModalProps> = ({ isOpe
                       required
                       value={formData.startTime}
                       onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
-                      className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-400 focus:outline-none transition-all bg-gray-50 font-medium text-gray-800 font-mono"
+                      className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm font-semibold text-gray-800 transition-all bg-gray-50 border-gray-200 font-mono"
                     />
                   </div>
                   <div className="space-y-2">
@@ -220,27 +247,15 @@ const DepartmentScheduleModal: React.FC<DepartmentScheduleModalProps> = ({ isOpe
                       required
                       value={formData.endTime}
                       onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
-                      className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-400 focus:outline-none transition-all bg-gray-50 font-medium text-gray-800 font-mono"
+                      className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm font-semibold text-gray-800 transition-all bg-gray-50 border-gray-200 font-mono"
                     />
                   </div>
                 </div>
 
-                {/* Recurrence Combobox */}
-                <div className="space-y-2">
-                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Recurrence</label>
-                  <Combobox
-                    options={RECURRENCE_OPTIONS}
-                    value={formData.repeat}
-                    onChange={(val) => setFormData({ ...formData, repeat: val as 'daily' | 'none' })}
-                    placeholder="Select Recurrence..."
-                    className="w-full"
-                    buttonClassName="bg-gray-50 border-gray-200"
-                  />
-                </div>
+
               </div>
             </form>
 
-            {/* Footer */}
             <div className="bg-gray-50 px-6 py-4 border-t border-gray-100 flex justify-end gap-3 z-10">
               <button
                 type="button"

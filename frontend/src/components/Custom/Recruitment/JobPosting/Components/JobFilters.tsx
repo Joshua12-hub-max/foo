@@ -1,5 +1,6 @@
 import React from 'react';
 import { Search } from 'lucide-react';
+import Combobox from '@/components/Custom/Combobox';
 import { JobStatusFilter } from '@/types';
 
 const JOB_STATUSES: JobStatusFilter[] = ['Open', 'Closed', 'On Hold'];
@@ -29,16 +30,18 @@ const JobFilters: React.FC<JobFiltersProps> = ({
           onChange={(e) => setSearchTerm(e.target.value)}
         />
       </div>
-      <select 
-        className="bg-white border border-gray-200 rounded-lg shadow-sm px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200 focus:border-gray-400 transition-all cursor-pointer min-w-[120px]"
-        value={statusFilter}
-        onChange={(e) => setStatusFilter(e.target.value as JobStatusFilter)}
-      >
-        <option value="All">All Status</option>
-        {JOB_STATUSES.map(status => (
-          <option key={status} value={status}>{status}</option>
-        ))}
-      </select>
+      <div className="relative z-[50]">
+        <Combobox
+          options={[
+            { value: 'All', label: 'All Status' },
+            ...JOB_STATUSES.map(status => ({ value: status, label: status }))
+          ]}
+          value={statusFilter}
+          onChange={(val) => setStatusFilter(val as JobStatusFilter)}
+          placeholder="All Status"
+          buttonClassName="bg-white border border-gray-200 rounded-lg shadow-sm px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200 focus:border-gray-400 transition-all font-bold h-[38px] min-w-[120px]"
+        />
+      </div>
     </div>
   );
 };

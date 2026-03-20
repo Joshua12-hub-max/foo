@@ -15,6 +15,7 @@ interface AttendanceRow {
   undertimeMinutes: number;
   overtimeMinutes?: number;
   duties?: string;
+  shift?: string;
   id?: string | number;
 }
 
@@ -69,7 +70,7 @@ const AttendanceTable: React.FC<AttendanceTableProps> = memo(({ data, headers, i
           <thead className="bg-gray-200 shadow-md text-gray-700">
             <tr>
               {headers.map((header, index) => (
-                <th key={index} className="px-6 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap">
+                <th key={index} className="px-6 py-4 text-left text-sm font-semibold tracking-wide whitespace-nowrap">
                   {header}
                 </th>
               ))}
@@ -101,9 +102,14 @@ const AttendanceTable: React.FC<AttendanceTableProps> = memo(({ data, headers, i
 
                 {/* Duties */}
                 <td className="px-6 py-4">
-                  <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded border border-blue-100 whitespace-nowrap">
-                    {row.duties || 'No Schedule'}
+                  <span className={`px-2 py-1 text-xs font-semibold rounded-full ${row.duties?.toLowerCase().includes('irregular') ? 'bg-purple-100 text-purple-800' : 'bg-blue-50 text-blue-700'} whitespace-nowrap`}>
+                    {row.duties || '-'}
                   </span>
+                </td>
+
+                {/* Shift */}
+                <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">
+                  {row.shift || 'No Schedule'}
                 </td>
 
                 {/* Date */}

@@ -76,7 +76,9 @@ interface AttendanceLog {
   firstName: string | null;
   lastName: string | null;
   department: string | null;
+  dutyType: string | null;
   duties: string | null;
+  shift: string | null;
   dtrStatus: string | null;
 }
 
@@ -94,7 +96,9 @@ const mapToAttendanceLogApi = (log: AttendanceLog): AttendanceLogApiResponse => 
     firstName: log.firstName || null,
     lastName: log.lastName || null,
     department: log.department || 'N/A',
-    duties: log.duties || 'N/A',
+    duties: log.duties || 'Standard Shift',
+    shift: log.shift || '08:00 AM - 05:00 PM',
+    dutyType: log.dutyType || 'Standard',
     dtrStatus: log.dtrStatus || 'N/A'
   };
 };
@@ -185,7 +189,19 @@ export const getLogs = async (req: Request, res: Response): Promise<void> => {
       suffix: authentication.suffix,
       bioFullName: bioEnrolledUsers.fullName,
       department: sql<string>`COALESCE(${departments.name}, ${authentication.department}, ${bioEnrolledUsers.department}, 'N/A')`,
-      duties: sql<string>`(SELECT schedule_title FROM schedules WHERE employee_id = ${dailyTimeRecords.employeeId} ORDER BY updated_at DESC LIMIT 1)`,
+      dutyType: sql<string>`COALESCE(${authentication.dutyType}, 'Standard')`,
+      duties: sql<string>`COALESCE(
+        (SELECT schedule_title FROM schedules WHERE employee_id = ${dailyTimeRecords.employeeId} AND (start_date IS NULL OR start_date <= ${dailyTimeRecords.date}) AND (end_date IS NULL OR end_date >= ${dailyTimeRecords.date}) ORDER BY updated_at DESC LIMIT 1),
+        (SELECT schedule_title FROM schedules WHERE employee_id = ${dailyTimeRecords.employeeId} AND (start_date IS NULL OR start_date <= ${dailyTimeRecords.date}) ORDER BY start_date DESC LIMIT 1),
+        (SELECT name FROM shift_templates WHERE is_default = 1 LIMIT 1),
+        'Standard Shift'
+      )`,
+      shift: sql<string>`COALESCE(
+        (SELECT CONCAT(TIME_FORMAT(start_time, '%h:%i %p'), ' - ', TIME_FORMAT(end_time, '%h:%i %p')) FROM schedules WHERE employee_id = ${dailyTimeRecords.employeeId} AND (start_date IS NULL OR start_date <= ${dailyTimeRecords.date}) AND (end_date IS NULL OR end_date >= ${dailyTimeRecords.date}) ORDER BY updated_at DESC LIMIT 1),
+        (SELECT CONCAT(TIME_FORMAT(start_time, '%h:%i %p'), ' - ', TIME_FORMAT(end_time, '%h:%i %p')) FROM schedules WHERE employee_id = ${dailyTimeRecords.employeeId} AND (start_date IS NULL OR start_date <= ${dailyTimeRecords.date}) ORDER BY start_date DESC LIMIT 1),
+        (SELECT CONCAT(TIME_FORMAT(start_time, '%h:%i %p'), ' - ', TIME_FORMAT(end_time, '%h:%i %p')) FROM shift_templates WHERE is_default = 1 LIMIT 1),
+        '08:00 AM - 05:00 PM'
+      )`,
       correctionId: dtrCorrections.id,
       correctionStatus: dtrCorrections.status,
       correctionReason: dtrCorrections.reason,
@@ -273,7 +289,9 @@ export const getLogs = async (req: Request, res: Response): Promise<void> => {
         middleName: log.middleName || null,
         suffix: log.suffix || null,
         department: log.department || "N/A",
-        duties: log.duties || 'No Schedule',
+        duties: log.dutyType || 'Standard',
+        shift: log.shift || 'No Schedule',
+        dutyType: log.dutyType || 'Standard',
         correctionId: log.correctionId ?? null,
         correctionStatus: log.correctionStatus ?? null,
         correctionReason: log.correctionReason ?? null,
@@ -351,7 +369,9 @@ export const getRecentActivity = async (_req: Request, res: Response): Promise<v
         middleName: log.middleName || null,
         suffix: log.suffix || null,
         department: log.department || "N/A",
-        duties: 'No Schedule' 
+        duties: 'No Schedule',
+        shift: 'No Schedule',
+        dutyType: 'Standard',
       };
     });
 
@@ -470,7 +490,19 @@ export const getRawLogs = async (req: Request, res: Response): Promise<void> => 
         END
       )`,
       department: sql<string>`COALESCE(${authentication.department}, ${bioEnrolledUsers.department}, 'N/A')`,
-      duties: sql<string>`COALESCE((SELECT schedule_title FROM schedules WHERE employee_id = ${attendanceLogs.employeeId} ORDER BY updated_at DESC LIMIT 1), 'No Schedule')`,
+      dutyType: sql<string>`COALESCE(${authentication.dutyType}, 'Standard')`,
+      duties: sql<string>`COALESCE(
+        (SELECT schedule_title FROM schedules WHERE employee_id = ${attendanceLogs.employeeId} AND (start_date IS NULL OR start_date <= DATE(${attendanceLogs.scanTime})) AND (end_date IS NULL OR end_date >= DATE(${attendanceLogs.scanTime})) ORDER BY updated_at DESC LIMIT 1),
+        (SELECT schedule_title FROM schedules WHERE employee_id = ${attendanceLogs.employeeId} AND (start_date IS NULL OR start_date <= DATE(${attendanceLogs.scanTime})) ORDER BY start_date DESC LIMIT 1),
+        (SELECT name FROM shift_templates WHERE is_default = 1 LIMIT 1),
+        'Standard Shift'
+      )`,
+      shift: sql<string>`COALESCE(
+        (SELECT CONCAT(TIME_FORMAT(start_time, '%h:%i %p'), ' - ', TIME_FORMAT(end_time, '%h:%i %p')) FROM schedules WHERE employee_id = ${attendanceLogs.employeeId} AND (start_date IS NULL OR start_date <= DATE(${attendanceLogs.scanTime})) AND (end_date IS NULL OR end_date >= DATE(${attendanceLogs.scanTime})) ORDER BY updated_at DESC LIMIT 1),
+        (SELECT CONCAT(TIME_FORMAT(start_time, '%h:%i %p'), ' - ', TIME_FORMAT(end_time, '%h:%i %p')) FROM schedules WHERE employee_id = ${attendanceLogs.employeeId} AND (start_date IS NULL OR start_date <= DATE(${attendanceLogs.scanTime})) ORDER BY start_date DESC LIMIT 1),
+        (SELECT CONCAT(TIME_FORMAT(start_time, '%h:%i %p'), ' - ', TIME_FORMAT(end_time, '%h:%i %p')) FROM shift_templates WHERE is_default = 1 LIMIT 1),
+        '08:00 AM - 05:00 PM'
+      )`,
       dtrStatus: sql<string>`COALESCE((SELECT status FROM daily_time_records WHERE employee_id = ${attendanceLogs.employeeId} AND date = DATE(${attendanceLogs.scanTime}) LIMIT 1), 'Pending')`
     })
     .from(attendanceLogs)

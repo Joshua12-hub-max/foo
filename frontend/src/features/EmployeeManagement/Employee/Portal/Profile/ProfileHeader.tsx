@@ -78,7 +78,11 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
               <Mail size={12} /> {profile.email}
             </span>
             <span className="flex items-center gap-1.5 bg-blue-500/20 text-blue-200 px-2 py-1 rounded border border-blue-500/30">
-              <Clock size={12} /> Duties: {profile.duties || 'No Schedule'}
+              <Clock size={12} /> {profile.dutyType || 'Standard'} | {profile.appointmentType || 'No Schedule'}
+            </span>
+            <span className="inline-flex items-center gap-1.5 bg-gray-800/80 px-2.5 py-1 rounded border border-gray-700 text-xs font-medium text-blue-200 shadow-sm">
+              <Clock size={12} className="text-blue-400" />
+              {profile.shift || profile.duties || '-'}
             </span>
           </div>
         </div>
@@ -86,7 +90,7 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
         <div className="hidden md:flex flex-col items-end gap-3">
           <div className="text-right">
             <p className="text-[10px] text-gray-400 font-medium mb-1">Department</p>
-            <p className="text-lg font-bold text-white">{profile.department}</p>
+            <p className="text-lg font-bold text-white max-w-[300px] leading-tight mb-1.5">{profile.department}</p>
           </div>
           
           {isAdmin && isNegativeStatus && (

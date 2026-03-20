@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { DTRFilterSchema, DTRFilterValues } from "@/schemas/dtrSchema";
 import { useDTRStore } from "@/stores/dtrStore";
 import { Calendar } from "lucide-react";
+import Combobox from "@/components/Custom/Combobox";
 
 interface AdminDTRFiltersProps {
   uniqueDepartments?: string[];
@@ -18,7 +19,7 @@ export const AdminDTRFilters: React.FC<AdminDTRFiltersProps> = ({
 }) => {
   const { setFilters, resetFilters } = useDTRStore();
 
-  const { register, handleSubmit, reset } = useForm<DTRFilterValues>({
+  const { register, handleSubmit, reset, watch, setValue } = useForm<DTRFilterValues>({
     resolver: zodResolver(DTRFilterSchema),
     defaultValues: {
       department: '',
@@ -43,31 +44,27 @@ export const AdminDTRFilters: React.FC<AdminDTRFiltersProps> = ({
         <div className="grid grid-cols-1 gap-4 items-center md:grid-cols-2 lg:grid-cols-5">
 
           {/* Department Filter */}
-          <div className="w-full">
-            <select
-              {...register("department")}
+          <div className="w-full z-20">
+            <Combobox
+              options={[{ value: '', label: 'All Departments' }, ...uniqueDepartments.map(d => ({ value: d, label: d }))]}
+              value={watch("department")}
+              onChange={(val) => setValue("department", val)}
               disabled={isLoading}
-              className="w-full bg-white border border-gray-300 rounded-lg shadow-sm px-3 py-2 text-sm focus:ring-2 focus:ring-[#274b46] focus:border-transparent outline-none transition-all"
-            >
-              <option value="">All Departments</option>
-              {uniqueDepartments.map((dept) => (
-                <option key={dept} value={dept}>{dept}</option>
-              ))}
-            </select>
+              placeholder="All Departments"
+              buttonClassName="w-full bg-white border border-gray-300 rounded-lg shadow-sm px-3 py-2 text-sm"
+            />
           </div>
 
           {/* Employee Filter */}
-          <div className="w-full">
-            <select
-              {...register("employeeId")}
+          <div className="w-full z-10">
+            <Combobox
+              options={[{ value: '', label: 'All Employees' }, ...uniqueEmployees.map(emp => ({ value: emp.id, label: emp.name }))]}
+              value={watch("employeeId")}
+              onChange={(val) => setValue("employeeId", val)}
               disabled={isLoading}
-              className="w-full bg-white border border-gray-300 rounded-lg shadow-sm px-3 py-2 text-sm focus:ring-2 focus:ring-[#274b46] focus:border-transparent outline-none transition-all"
-            >
-              <option value="">All Employees</option>
-              {uniqueEmployees.map((emp) => (
-                <option key={emp.id} value={emp.id}>{emp.name}</option>
-              ))}
-            </select>
+              placeholder="All Employees"
+              buttonClassName="w-full bg-white border border-gray-300 rounded-lg shadow-sm px-3 py-2 text-sm"
+            />
           </div>
 
           {/* From Date */}

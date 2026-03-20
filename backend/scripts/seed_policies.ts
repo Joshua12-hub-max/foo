@@ -305,6 +305,8 @@ async function seedPolicies() {
           vacationLeave: 1.25,
           sickLeave: 1.25,
           total: 2.5,
+          accrualRuleType: 'CSC_STANDARD',
+          accruingTypes: ['Permanent', 'Contractual', 'Casual', 'Temporary', 'Coterminous'],
           description: 'Regular employees earn 1.25 days VL and 1.25 days SL per month (15 days each per year).',
           reference: 'EO No. 292 (Administrative Code of 1987)'
         }

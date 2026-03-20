@@ -9,7 +9,7 @@ interface Option<T extends string> {
 }
 
 interface ComboboxProps<T extends string> {
-  options: Option<T>[];
+  options: readonly Option<T>[];
   value: T | undefined | null;
   onChange: (value: T) => void;
   placeholder?: string;

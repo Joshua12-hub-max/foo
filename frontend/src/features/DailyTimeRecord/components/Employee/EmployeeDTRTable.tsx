@@ -53,6 +53,12 @@ export const EmployeeDTRTable: React.FC<EmployeeDTRTableProps> = ({
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-800 font-medium whitespace-nowrap">{employeeInfo?.id || '-'}</td>
                     <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">{employeeInfo?.department || '-'}</td>
+                    <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">
+                      <span className="px-2 py-1 text-xs font-semibold rounded-full bg-blue-50 text-blue-700">
+                        {item.duties || '-'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-800 font-medium whitespace-nowrap">{item.shift || '-'}</td>
                     <td className="px-6 py-4 text-sm text-gray-800 font-medium whitespace-nowrap">{item.date}</td>
                     <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">{item.timeIn}</td>
                     <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">{item.timeOut}</td>
@@ -76,7 +82,7 @@ export const EmployeeDTRTable: React.FC<EmployeeDTRTableProps> = ({
                 {/* Summary Row */}
                 {totals && (
                   <tr className="bg-gray-100 font-bold border-t-2 border-gray-300">
-                    <td colSpan={6} className="px-6 py-4 text-right text-gray-700 text-sm">
+                    <td colSpan={8} className="px-6 py-4 text-right text-gray-700 text-sm">
                       Totals:
                     </td>
                     <td className="px-6 py-4 text-center text-red-700 text-sm">{formatDuration(totals.lateMinutes)}</td>

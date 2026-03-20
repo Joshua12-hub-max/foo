@@ -7,6 +7,9 @@ import api from "@/api/axios";
 import { useAuthStore } from "@/stores";
 import { ApiError } from "@/types";
 import axios, { AxiosError } from "axios";
+import { useEmailUniquenessQuery } from "@/hooks/useCommonQueries";
+import { useDebounce } from "@/hooks/useDebounce"; // Ensure this hook exists or use primitive
+import Combobox from "@/components/Custom/Combobox";
 
 interface SetupPosition {
   id: number;
@@ -51,6 +54,14 @@ export default function SetupPortal() {
   
   const [loading, setLoading] = useState(false);
   const [verifying, setVerifying] = useState(true);
+
+  // Email Uniqueness Check
+  const debouncedEmail = useDebounce(formData.email, 500);
+  const { data: emailUniqueness } = useEmailUniquenessQuery(
+    debouncedEmail, 
+    debouncedEmail.length > 5 && !loading
+  );
+  const isEmailTaken = emailUniqueness?.isUnique === false;
 
   useEffect(() => {
     const fetchHRDepartmentAndPositions = async () => {
@@ -154,7 +165,7 @@ export default function SetupPortal() {
   const inputContainerClass = "relative flex items-center bg-white border border-gray-300 rounded-lg focus-within:ring-2 focus-within:ring-blue-500/10 focus-within:border-blue-500 transition-all overflow-hidden shadow-sm";
   const iconClass = "absolute left-3.5 text-gray-400";
   const inputClass = "w-full bg-transparent pl-11 pr-4 py-2.5 text-sm text-gray-900 outline-none placeholder:text-gray-400";
-  const selectClass = "w-full bg-transparent pl-11 pr-10 py-2.5 text-sm text-gray-900 outline-none appearance-none cursor-pointer";
+  const selectClass = "w-full bg-transparent pl-1 text-sm text-gray-900 outline-none appearance-none cursor-pointer";
 
   return (
     <AuthLayout 
@@ -178,39 +189,30 @@ export default function SetupPortal() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className={labelClass}>Administrative Role</label>
-            <div className={inputContainerClass}>
-              <ShieldAlert className={iconClass} size={16} />
-              <select
-                name="role"
+            <div className="z-50">
+              <Combobox
+                options={roles.map(r => ({ value: r, label: r }))}
                 value={formData.role}
-                onChange={handleChange}
-                className={selectClass}
-                required
-              >
-                {roles.map((r) => (
-                  <option key={r} value={r}>{r}</option>
-                ))}
-              </select>
-              <ChevronDown className="absolute right-3.5 text-gray-400 pointer-events-none" size={14} />
+                onChange={(val) => setFormData({ ...formData, role: val })}
+                placeholder="Select role"
+                buttonClassName="pl-11 py-2.5"
+                className="w-full"
+              />
+              <ShieldAlert className={iconClass} size={16} />
             </div>
           </div>
           <div>
             <label className={labelClass}>Official Position</label>
-            <div className={inputContainerClass}>
-              <Briefcase className={iconClass} size={16} />
-              <select
-                name="positionId"
+            <div className="z-50">
+              <Combobox
+                options={positions.map(pos => ({ value: String(pos.id), label: pos.positionTitle }))}
                 value={formData.positionId}
-                onChange={handleChange}
-                className={selectClass}
-                required
-              >
-                <option value="">Select position</option>
-                {positions.map((pos) => (
-                  <option key={pos.id} value={pos.id}>{pos.positionTitle}</option>
-                ))}
-              </select>
-              <ChevronDown className="absolute right-3.5 text-gray-400 pointer-events-none" size={14} />
+                onChange={(val) => setFormData({ ...formData, positionId: val })}
+                placeholder="Select position"
+                buttonClassName="pl-11 py-2.5"
+                className="w-full"
+              />
+              <Briefcase className={iconClass} size={16} />
             </div>
           </div>
         </div>
@@ -219,38 +221,30 @@ export default function SetupPortal() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className={labelClass}>Duty Status</label>
-            <div className={inputContainerClass}>
-              <Clock className={iconClass} size={16} />
-              <select
-                name="dutyType"
+            <div className="z-40">
+              <Combobox
+                options={dutyTypes.map(d => ({ value: d, label: d }))}
                 value={formData.dutyType}
-                onChange={handleChange}
-                className={selectClass}
-                required
-              >
-                {dutyTypes.map((d) => (
-                  <option key={d} value={d}>{d}</option>
-                ))}
-              </select>
-              <ChevronDown className="absolute right-3.5 text-gray-400 pointer-events-none" size={14} />
+                onChange={(val) => setFormData({ ...formData, dutyType: val })}
+                placeholder="Select duty"
+                buttonClassName="pl-11 py-2.5"
+                className="w-full"
+              />
+              <Clock className={iconClass} size={16} />
             </div>
           </div>
           <div>
             <label className={labelClass}>Appointment Type</label>
-            <div className={inputContainerClass}>
-              <Calendar className={iconClass} size={16} />
-              <select
-                name="appointmentType"
+            <div className="z-40">
+              <Combobox
+                options={appointmentTypes.map(a => ({ value: a, label: a }))}
                 value={formData.appointmentType}
-                onChange={handleChange}
-                className={selectClass}
-                required
-              >
-                {appointmentTypes.map((a) => (
-                  <option key={a} value={a}>{a}</option>
-                ))}
-              </select>
-              <ChevronDown className="absolute right-3.5 text-gray-400 pointer-events-none" size={14} />
+                onChange={(val) => setFormData({ ...formData, appointmentType: val })}
+                placeholder="Select appointment"
+                buttonClassName="pl-11 py-2.5"
+                className="w-full"
+              />
+              <Calendar className={iconClass} size={16} />
             </div>
           </div>
         </div>
@@ -295,9 +289,11 @@ export default function SetupPortal() {
         {/* Row 4: Credentials */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className={labelClass}>Official Email</label>
-            <div className={inputContainerClass}>
-              <Mail className={iconClass} size={16} />
+            <label className={`${labelClass} ${isEmailTaken ? 'text-red-500' : ''}`}>
+              Official Email {isEmailTaken && <span className="ml-1">(Already exists)</span>}
+            </label>
+            <div className={`${inputContainerClass} ${isEmailTaken ? 'border-red-500 ring-2 ring-red-500/10' : ''}`}>
+              <Mail className={`${iconClass} ${isEmailTaken ? 'text-red-500' : ''}`} size={16} />
               <input name="email" type="email" placeholder="name@gov.ph" value={formData.email} onChange={handleChange} className={inputClass} required />
             </div>
           </div>

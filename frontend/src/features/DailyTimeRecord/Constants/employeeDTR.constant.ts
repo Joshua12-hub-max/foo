@@ -4,6 +4,8 @@ export const TABLE_HEADERS = [
   'Status',
   'Employee ID',
   'Department',
+  'Duties',
+  'Shift',
   'Date',
   'Time In',
   'Time Out',

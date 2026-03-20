@@ -81,11 +81,11 @@ export const combineCalendarItems = (events: CalendarDisplayItem[], holidays: Ho
     schedules.forEach(schedule => {
       const startDateStr = schedule.startDate || schedule.startDate;
       const endDateStr = schedule.endDate || schedule.endDate;
-      const daysString = schedule.days || '';
+      const daysString = schedule.days || schedule.dayOfWeek || '';
       // @ts-ignore
       const scheduleDays = daysString ? daysString.split(',').map(d => d.trim()) : [];
       
-      console.log(`📅 Duty: ${schedule.duties || schedule.scheduleName}`, { startDateStr, endDateStr, scheduleDays });
+      console.log(`Duty: ${schedule.duties || schedule.scheduleName}`, { startDateStr, endDateStr, scheduleDays });
       
       // Check if we have valid date strings (not 'Recurring' or empty)
       const hasValidDates = startDateStr && endDateStr && 
@@ -103,7 +103,7 @@ export const combineCalendarItems = (events: CalendarDisplayItem[], holidays: Ho
         const end = parseLocalDate(endDateStr);
         const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
         
-        console.log(`📅 Iterating from ${start.toDateString()} to ${end.toDateString()}`);
+        console.log(`Iterating from ${start.toDateString()} to ${end.toDateString()}`);
         
         // Iterate through each day in the schedule range for the current month view
         for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
@@ -158,7 +158,7 @@ export const combineCalendarItems = (events: CalendarDisplayItem[], holidays: Ho
       }
     });
     
-    console.log(`📅 Generated ${scheduleItems.length} schedule items for display`);
+    console.log(`Generated ${scheduleItems.length} schedule items for display`);
     allItems = [...allItems, ...scheduleItems];
   }
   

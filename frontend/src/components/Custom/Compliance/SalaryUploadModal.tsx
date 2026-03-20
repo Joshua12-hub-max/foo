@@ -121,10 +121,17 @@ export const SalaryUploadModal: React.FC<SalaryUploadModalProps> = ({
 
             if (!grade || isNaN(grade)) return; 
 
-            for (let step = 1; step <= 8; step++) {
+            // Dynamically parse all steps present in the row
+            // Column 1 is Grade, Step 1 starts at Column 2
+            let step = 1;
+            while (true) {
                 const salaryVal = row.getCell(step + 1).value;
-                let salary = 0;
+                if (salaryVal === null || salaryVal === undefined || salaryVal === '') {
+                    // Stop if no more salary data in this row
+                    break;
+                }
 
+                let salary = 0;
                 if (typeof salaryVal === 'number') {
                     salary = salaryVal;
                 } else if (typeof salaryVal === 'string') {
@@ -141,6 +148,9 @@ export const SalaryUploadModal: React.FC<SalaryUploadModalProps> = ({
                         monthlySalary: salary
                     });
                 }
+                
+                step++;
+                if (step > 32) break; // Sanity limit for steps
             }
         });
 
@@ -260,7 +270,7 @@ export const SalaryUploadModal: React.FC<SalaryUploadModalProps> = ({
                                             <label className="text-[10px] text-gray-500 font-bold block mb-1">Circular / Legal Basis</label>
                                             <input 
                                                 type="text" 
-                                                placeholder="e.g. EO No. 99, s. 2025"
+                                                placeholder={`e.g. EO No. 99, s. ${new Date().getFullYear()}`}
                                                 value={newCircular}
                                                 onChange={e => setNewCircular(e.target.value)}
                                                 className="w-full text-xs border-gray-300 rounded px-2 py-1"
@@ -279,22 +289,19 @@ export const SalaryUploadModal: React.FC<SalaryUploadModalProps> = ({
                                 
                                 worksheet.columns = [
                                     { header: 'Grade', key: 'grade', width: 10 },
-                                    { header: 'Step 1', key: 'step1', width: 15 },
-                                    { header: 'Step 2', key: 'step2', width: 15 },
-                                    { header: 'Step 3', key: 'step3', width: 15 },
-                                    { header: 'Step 4', key: 'step4', width: 15 },
-                                    { header: 'Step 5', key: 'step5', width: 15 },
-                                    { header: 'Step 6', key: 'step6', width: 15 },
-                                    { header: 'Step 7', key: 'step7', width: 15 },
-                                    { header: 'Step 8', key: 'step8', width: 15 },
+                                    ...Array.from({ length: 8 }, (_, i) => ({ 
+                                        header: `Step ${i + 1}`, 
+                                        key: `step${i + 1}`, 
+                                        width: 15 
+                                    }))
                                 ];
 
                                 // Sample Row
-                                worksheet.addRow({
-                                    grade: 1,
-                                    step1: 13000, step2: 13100, step3: 13200, step4: 13300,
-                                    step5: 13400, step6: 13500, step7: 13600, step8: 13700
-                                });
+                                const sampleRow: any = { grade: 1 };
+                                for (let i = 1; i <= 8; i++) {
+                                    sampleRow[`step${i}`] = 13000 + (i * 100);
+                                }
+                                worksheet.addRow(sampleRow);
 
                                 const buffer = await workbook.xlsx.writeBuffer();
                                 const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
@@ -418,7 +425,7 @@ export const SalaryUploadModal: React.FC<SalaryUploadModalProps> = ({
                                 <HelpCircle className="text-blue-600 shrink-0 mt-0.5" size={14} />
                                 <div className="text-xs text-blue-900">
                                     <p className="font-semibold">Format Guide</p>
-                                    <p className="opacity-80 mt-1">Excel (.xlsx) with columns: <span className="font-mono bg-blue-100 px-1 rounded">Grade</span> then <span className="font-mono bg-blue-100 px-1 rounded">Step 1</span> to <span className="font-mono bg-blue-100 px-1 rounded">Step 8</span>.</p>
+                                    <p className="opacity-80 mt-1">Excel (.xlsx) with columns: <span className="font-mono bg-blue-100 px-1 rounded">Grade</span> then <span className="font-mono bg-blue-100 px-1 rounded">Step 1</span> to <span className="font-mono bg-blue-100 px-1 rounded">Step N</span>.</p>
                                 </div>
                             </div>
                         </div>

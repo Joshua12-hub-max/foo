@@ -26,7 +26,9 @@ export interface DTRApiResponse {
   middleName: string | null;
   suffix: string | null;
   department: string;
-  duties: string;
+  duties: string; // Shows "Standard" or "Irregular"
+  shift: string;  // Shows the actual shift (e.g. "8:00 AM - 5:00 PM")
+  dutyType: string;
   correctionId?: number | null;
   correctionStatus?: string | null;
   correctionReason?: string | null;
@@ -43,7 +45,9 @@ export interface AttendanceLogApiResponse {
   firstName: string | null;
   lastName: string | null;
   department: string;
-  duties: string;
+  duties: string; // Shows "Standard" or "Irregular"
+  shift: string;  // Shows the actual shift
+  dutyType: string;
   dtrStatus: string;
 }
 

@@ -10,6 +10,7 @@ import PerformanceLayout from '@components/Custom/Performance/PerformanceLayout'
 import { formatFullName } from '../../utils/nameUtils';
 
 import { useToastStore } from '@/stores';
+import Combobox from '@/components/Custom/Combobox';
 
 const ITEMS_PER_PAGE = 12;
 
@@ -200,19 +201,18 @@ const EvaluationHistory = () => {
             />
           </div>
           
-          <div className="flex items-center gap-2 min-w-[240px]">
+          <div className="flex items-center gap-2 min-w-[240px] z-[30] relative">
             <Filter size={18} className="text-gray-400" />
-            <select
+            <Combobox
+              options={[
+                { value: 'All', label: 'All Departments' },
+                ...departments.map(dept => ({ value: dept, label: dept }))
+              ]}
               value={selectedDepartment}
-              onChange={(e) => setSelectedDepartment(e.target.value)}
-              className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-gray-200 outline-none text-sm transition-all appearance-none"
-            >
-              <option value="All">All Departments</option>
-              {departments.map(dept => (
-                <option key={dept} value={dept}>{dept}</option>
-              ))}
-
-            </select>
+              onChange={(val) => setSelectedDepartment(val || 'All')}
+              placeholder="All Departments"
+              buttonClassName="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg outline-none text-sm"
+            />
           </div>
 
           <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 border border-blue-100 rounded-lg text-blue-800">

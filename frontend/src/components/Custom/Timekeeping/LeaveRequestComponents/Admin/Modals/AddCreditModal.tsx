@@ -1,6 +1,7 @@
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { X, Loader2 } from 'lucide-react';
+import Combobox from '@/components/Custom/Combobox';
 import { addCreditSchema, AddCreditInput, CREDIT_TYPES } from '@/schemas/creditsSchema';
 import { formatFullName } from '@/utils/nameUtils';
 
@@ -18,6 +19,7 @@ const AddCreditModal = ({ isOpen, onClose, onSubmit, employees, isLoadingEmploye
     register,
     handleSubmit,
     reset,
+    control,
     formState: { errors }
   } = useForm<AddCreditInput>({
     resolver: zodResolver(addCreditSchema),
@@ -69,30 +71,39 @@ const AddCreditModal = ({ isOpen, onClose, onSubmit, employees, isLoadingEmploye
             <label className="block text-sm font-semibold text-gray-700 mb-1.5">
               Employee <span className="text-red-500"></span>
             </label>
-            {isLoadingEmployees ? (
-              <div className="flex items-center gap-2 text-gray-400 text-sm py-2">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Loading employees...
-              </div>
-            ) : (
-              <select
-                {...register('employeeId')}
-                className={`w-full border ${errors.employeeId ? 'border-red-300' : 'border-gray-200'} rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-600/20 focus:border-gray-600 outline-none transition-all`}
-              >
-                <option value="">Select an employee...</option>
-                {employees.map(emp => {
-                  const empId = emp.employeeId || emp.employeeId || emp.id;
-                  const firstName = emp.firstName || emp.firstName || '';
-                  const lastName = emp.lastName || emp.lastName || '';
-                  return (
-                    <option key={empId} value={empId}>
-                      {formatFullName(lastName, firstName)} ({empId})
-                    </option>
-                  );
-                })}
-
-              </select>
-            )}
+            <div className="relative z-[60]">
+              {isLoadingEmployees ? (
+                <div className="flex items-center gap-2 text-gray-400 text-sm py-2">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Loading employees...
+                </div>
+              ) : (
+                <Controller
+                  name="employeeId"
+                  control={control}
+                  render={({ field }) => (
+                    <Combobox
+                      options={[
+                        { value: '', label: 'Select an employee...' },
+                        ...employees.map(emp => {
+                          const empId = emp.employeeId || emp.employeeId || emp.id;
+                          const firstName = emp.firstName || '';
+                          const lastName = emp.lastName || '';
+                          return {
+                            value: String(empId),
+                            label: `${formatFullName(lastName, firstName)} (${empId})`
+                          };
+                        })
+                      ]}
+                      value={String(field.value || '')}
+                      onChange={field.onChange}
+                      placeholder="Select an employee..."
+                      buttonClassName={`w-full border ${errors.employeeId ? 'border-red-300' : 'border-gray-200'} rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-600/20 focus:border-gray-600 outline-none transition-all font-bold h-[42px]`}
+                    />
+                  )}
+                />
+              )}
+            </div>
             {errors.employeeId && (
               <p className="mt-1 text-xs text-red-500 font-medium">{errors.employeeId.message}</p>
             )}
@@ -103,15 +114,24 @@ const AddCreditModal = ({ isOpen, onClose, onSubmit, employees, isLoadingEmploye
             <label className="block text-sm font-semibold text-gray-700 mb-1.5">
               Credit Type <span className="text-red-500"></span>
             </label>
-            <select
-              {...register('creditType')}
-              className={`w-full border ${errors.creditType ? 'border-red-300' : 'border-gray-200'} rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-600/20 focus:border-gray-600 outline-none transition-all`}
-            >
-              <option value="">Select credit type...</option>
-              {CREDIT_TYPES.map(type => (
-                <option key={type} value={type}>{type}</option>
-              ))}
-            </select>
+            <div className="relative z-[55]">
+              <Controller
+                name="creditType"
+                control={control}
+                render={({ field }) => (
+                  <Combobox
+                    options={[
+                      { value: '', label: 'Select credit type...' },
+                      ...CREDIT_TYPES.map(type => ({ value: type, label: type }))
+                    ]}
+                    value={field.value}
+                    onChange={field.onChange}
+                    placeholder="Select credit type..."
+                    buttonClassName={`w-full border ${errors.creditType ? 'border-red-300' : 'border-gray-200'} rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-600/20 focus:border-gray-600 outline-none transition-all font-bold h-[42px]`}
+                  />
+                )}
+              />
+            </div>
             {errors.creditType && (
               <p className="mt-1 text-xs text-red-500 font-medium">{errors.creditType.message}</p>
             )}

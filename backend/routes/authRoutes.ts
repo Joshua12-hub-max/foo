@@ -20,7 +20,9 @@ import {
   getNextId,
   findHiredApplicant,
   getSetupPositions,
-  setupPortal
+  setupPortal,
+  checkEmailUniqueness,
+  checkGovtIdUniqueness
 } from '../controllers/auth.controller.js';
 import { verifyToken, verifyAdmin, restrictSuspended } from '../middleware/authMiddleware.js';
 import { uploadAvatar } from '../middleware/uploadMiddleware.js';
@@ -30,6 +32,8 @@ const router: Router = Router();
 
 // Public routes
 router.get('/next-id', authLimiter, getNextId);
+router.get('/check-email', authLimiter, checkEmailUniqueness);
+router.get('/check-govt-id', authLimiter, checkGovtIdUniqueness);
 router.get('/hired-applicant-search', authLimiter, findHiredApplicant);
 router.get('/setup-positions', authLimiter, getSetupPositions);
 router.post('/setup-portal', strictAuthLimiter, setupPortal);

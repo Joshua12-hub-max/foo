@@ -316,7 +316,15 @@ export const checkPolicyViolations = async (
           const [yyyy, mm] = lastMonth.split('-').map(Number);
           const lastDay = new Date(yyyy, mm, 0).getDate();
           const effectiveDateStr = `${yyyy}-${String(mm).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
-          const createdAtStr = `${effectiveDateStr} 17:00:00`;
+          
+          // Fetch System Default Shift for logout time reference
+          const [defaultShift] = await tx.select({ endTime: authentication.endTime })
+            .from(authentication)
+            .where(eq(authentication.role, 'Human Resource | Administrator'))
+            .limit(1);
+            
+          const endTimeStr = defaultShift?.endTime || '17:00:00';
+          const createdAtStr = `${effectiveDateStr} ${endTimeStr}`;
 
           const [memo] = await tx.insert(employeeMemos).values({
             memoNumber,

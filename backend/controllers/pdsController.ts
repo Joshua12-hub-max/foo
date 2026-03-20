@@ -3,6 +3,8 @@ import { db } from '../db/index.js';
 import { sql } from 'drizzle-orm';
 import { MySqlTable } from 'drizzle-orm/mysql-core';
 import { AuthenticatedRequest } from '../types/index.js';
+import { PDSParserService } from '../services/PDSParserService.js';
+import fs from 'fs';
 import { 
   pdsFamily, 
   pdsEducation, 
@@ -132,6 +134,51 @@ export const updatePDSSection = async (req: Request, res: Response): Promise<voi
   } catch (_error) {
 
     res.status(500).json({ success: false, message: 'Failed to update PDS data' });
+  }
+};
+
+/**
+ * Handle PDS File Upload and Parsing
+ */
+export const parsePDSUpload = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const file = req.file;
+    if (!file) {
+      res.status(400).json({ success: false, message: 'No file uploaded' });
+      return;
+    }
+
+    const buffer = await fs.promises.readFile(file.path);
+    const extension = file.originalname.split('.').pop()?.toLowerCase();
+
+    let extractedData: any = {};
+    let avatar: string | null = null;
+
+    if (extension === 'xlsx' || extension === 'xls') {
+      extractedData = await PDSParserService.parseExcel(buffer);
+      avatar = await PDSParserService.extractImageFromExcel(buffer);
+    } else if (extension === 'pdf') {
+      extractedData = await PDSParserService.parsePDF(buffer);
+    } else {
+      res.status(400).json({ success: false, message: 'Unsupported file format' });
+      return;
+    }
+
+    // Clean up uploaded file
+    await fs.promises.unlink(file.path);
+
+    res.json({
+      success: true,
+      data: extractedData,
+      avatar,
+      message: 'PDS parsed successfully'
+    });
+  } catch (error: any) {
+    console.error('PDS Parsing Error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to parse PDS file: ' + error.message
+    });
   }
 };
 

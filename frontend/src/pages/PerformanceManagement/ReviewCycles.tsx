@@ -245,7 +245,7 @@ const ReviewCycles = () => {
                       value={formData.title}
                       onChange={(e) => setFormData({...formData, title: e.target.value})}
                       className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-gray-100 focus:border-gray-300 outline-none transition-all text-gray-900 font-medium placeholder-gray-400"
-                      placeholder="e.g. 2nd Semester 2025"
+                      placeholder={`e.g. 2nd Semester ${new Date().getFullYear()}`}
                     />
                   </div>
                   <div>
@@ -255,7 +255,7 @@ const ReviewCycles = () => {
                       value={formData.description}
                       onChange={(e) => setFormData({...formData, description: e.target.value})}
                       className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-gray-100 focus:border-gray-300 outline-none resize-none transition-all text-gray-900 font-medium placeholder-gray-400"
-                      placeholder="Evaluation period for July to December 2025"
+                      placeholder={`Evaluation period for July to December ${new Date().getFullYear()}`}
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-4">

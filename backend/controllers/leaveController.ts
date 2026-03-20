@@ -5,9 +5,10 @@ import { eq, and, between, ne, or, sql, desc, lt, lte, gte } from 'drizzle-orm';
 import { createNotification, notifyAdmins } from './notificationController.js';
 import { accrueCreditsForMonth } from '../services/leaveAccrualService.js';
 import type { AuthenticatedRequest } from '../types/index.js';
-import { type CreditType, type LeaveType, type PaymentStatus, type TransactionType, CREDIT_TYPES, SPECIAL_LEAVES_NO_DEDUCTION, LEAVE_TO_CREDIT_MAP, WORKING_DAYS_PER_MONTH,} from '../types/leave.types.js';
-import { applyLeaveSchema, rejectLeaveSchema, creditUpdateSchema, accrueCreditsSchema, leavePolicySchema, type LeavePolicyContentStrict,} from '../schemas/leaveSchema.js';
+import { type CreditType, type LeaveType, type PaymentStatus, type TransactionType } from '../types/leave.types.js';
+import { applyLeaveSchema, rejectLeaveSchema, creditUpdateSchema, accrueCreditsSchema, leavePolicySchema, type LeavePolicyContentStrict } from '../schemas/leaveSchema.js';
 import { formatFullName } from '../utils/nameUtils.js';
+// removed unused import
 
 // T1 FIX: Typed interface for multer request (replaces `req as any`)
 interface MulterRequest extends Request {
@@ -229,46 +230,27 @@ const processDeemedApprovedLeaves = async (): Promise<void> => {
  * Get dynamic leave policy from database
  */
 const getLeavePolicy = async (): Promise<LeavePolicyContentStrict> => {
-  const fallbackPolicy: LeavePolicyContentStrict = {
-    types: ['Vacation Leave', 'Sick Leave', 'Special Privilege Leave', 'Forced Leave', 'Maternity Leave', 'Paternity Leave', 'Study Leave', 'Solo Parent Leave', 'Rehabilitation Leave', 'Special Leave Benefits for Women', 'Special Emergency Leave', 'Calamity Leave'],
-    annualLimits: {
-      'Vacation Leave': 15,
-      'Sick Leave': 15,
-      'Special Privilege Leave': 3,
-      'Forced Leave': 5,
-      'Solo Parent Leave': 7,
-    },
-    advanceFilingDays: { days: 5, appliesTo: ['Vacation Leave', 'Forced Leave'], description: 'Must be filed 5 working days in advance' },
-    sickLeaveWindow: { maxDaysAfterReturn: 5, description: 'Must be filed within 5 working days upon return' },
-    crossChargeMap: { 'Sick Leave': 'Vacation Leave', 'Forced Leave': 'Vacation Leave' },
-    leaveToCreditMap: { 'Vacation Leave': 'Vacation Leave', 'Sick Leave': 'Sick Leave', 'Special Privilege Leave': 'Special Privilege Leave', 'Forced Leave': 'Vacation Leave', 'Solo Parent Leave': 'Solo Parent Leave' },
-    specialLeavesNoDeduction: ['Study Leave', 'Maternity Leave', 'Paternity Leave', 'Rehabilitation Leave', 'Special Leave Benefits for Women', 'Special Emergency Leave', 'Calamity Leave'],
-    requiredAttachments: {}, 
-    forcedLeaveRule: { minimumVLRequired: 10, description: 'Forced leave is mandatory if VL balance is 10 or more.' },
-    deemedApprovalGracePeriod: 5,
-    deemedApproval: { days: 5, description: 'CSC Rule: Pending for 5+ days is deemed approved.', reference: 'CSC Omnibus Rules on Leave' }
-  };
+    try {
+        const results = await db.select()
+        .from(internalPolicies)
+        .where(eq(internalPolicies.category, 'leave'))
+        .limit(1);
 
-  try {
-    const results = await db.select()
-      .from(internalPolicies)
-      .where(eq(internalPolicies.category, 'leave'))
-      .limit(1);
+        const policy = results[0];
 
-    const policy = results[0];
+        if (!policy) {
+            throw new Error('Leave policy not found in database. Please run seeders or configure internal policies.');
+        }
 
-    if (policy) {
         const rawJson = typeof policy.content === 'string' 
-          ? JSON.parse(policy.content) 
-          : policy.content;
-          
+            ? JSON.parse(policy.content) 
+            : policy.content;
+            
         return leavePolicySchema.parse(rawJson);
+    } catch (error) {
+        console.error('getLeavePolicy error:', error);
+        throw error;
     }
-
-    return fallbackPolicy;
-  } catch (_error) {
-    return fallbackPolicy;
-  }
 };
 
 /**
@@ -543,6 +525,13 @@ export const applyLeave = async (req: Request, res: Response): Promise<void> => 
       return;
     }
 
+    // Fetch policy FIRST for dynamic validation
+    const policy = await getLeavePolicy();
+    if (!policy) {
+      res.status(500).json({ message: 'Internal Error: Leave policy not configured.' });
+      return;
+    }
+
     // Validate input
     const validation = applyLeaveSchema.safeParse(req.body);
     if (!validation.success) {
@@ -555,18 +544,20 @@ export const applyLeave = async (req: Request, res: Response): Promise<void> => 
 
     const { leaveType, startDate, endDate, reason, isWithPay } = validation.data;
 
+    // S1 FIX: Dynamic validation of leave type against policy
+    if (!policy.types.includes(leaveType)) {
+      res.status(400).json({
+        message: `Invalid leave type: ${leaveType}. Please choose from: ${policy.types.join(', ')}`,
+      });
+      return;
+    }
+
     // Calculate working days
     const workingDays = await calculateWorkingDays(startDate, endDate);
     if (workingDays === 0) {
       res.status(400).json({
         message: 'Leave duration is 0 working days. Please check your dates (weekends and holidays are excluded).',
       });
-      return;
-    }
-
-    const policy = await getLeavePolicy();
-    if (!policy) {
-      res.status(500).json({ message: 'Internal Error: Leave policy not configured.' });
       return;
     }
 
@@ -585,7 +576,7 @@ export const applyLeave = async (req: Request, res: Response): Promise<void> => 
     }
 
     // Validate Sick Leave window (filed upon return, meaning after endDate)
-    if (leaveType === 'Sick Leave') {
+    if (leaveType === (policy.sickLeaveType || 'Sick Leave')) {
       const workingDaysPassed = await calculateWorkingDays(endDate, todayStr);
       const window = policy.sickLeaveWindow.maxDaysAfterReturn;
       if (workingDaysPassed > window + 1) { // +1 because the range calculation usually includes both start and end dates
@@ -634,7 +625,7 @@ export const applyLeave = async (req: Request, res: Response): Promise<void> => 
     if (isWithPay && !isSpecialLeave) {
       // Get credit type to deduct from
       const mappedCreditType = policy.leaveToCreditMap[leaveType as keyof typeof policy.leaveToCreditMap];
-      const primaryCreditType = mappedCreditType || (CREDIT_TYPES.find(ct => ct === leaveType) || null);
+      const primaryCreditType = mappedCreditType;
       
       if (!primaryCreditType) {
         res.status(400).json({ message: `Leave type ${leaveType} does not have a linked credit type for deduction.` });
@@ -1056,12 +1047,11 @@ export const approveLeave = async (req: Request, res: Response): Promise<void> =
     }
 
     const policy = await getLeavePolicy();
-    const isSpecialLeave = policy?.specialLeavesNoDeduction.includes(application.leaveType) ?? SPECIAL_LEAVES_NO_DEDUCTION.includes(application.leaveType);
+    const isSpecialLeave = policy?.specialLeavesNoDeduction.includes(application.leaveType) ?? false;
 
     // Deduct credits if WITH_PAY and not special leave
     if ((application.actualPaymentStatus === 'WITH_PAY' || application.actualPaymentStatus === 'PARTIAL') && !isSpecialLeave) {
       const primaryCreditType = (policy?.leaveToCreditMap[application.leaveType as keyof typeof policy.leaveToCreditMap] as CreditType) 
-        || (LEAVE_TO_CREDIT_MAP[application.leaveType] as CreditType) 
         || 'Vacation Leave';
       
       if (application.crossChargedFrom) {
@@ -1469,7 +1459,7 @@ export const deleteEmployeeCredit = async (req: Request, res: Response): Promise
     await db.delete(leaveBalances)
       .where(and(
         eq(leaveBalances.employeeId, employeeId),
-        eq(leaveBalances.creditType, creditType as 'Vacation Leave' | 'Sick Leave' | 'Special Privilege Leave' | 'Forced Leave' | 'Maternity Leave' | 'Paternity Leave'),
+        eq(leaveBalances.creditType, creditType as CreditType),
         eq(leaveBalances.year, year)
       ));
 
@@ -1522,15 +1512,15 @@ export const accrueMonthlyCredits = async (req: Request, res: Response): Promise
  */
 export const allocateDefaultCredits = async (employeeId: string): Promise<void> => {
   try {
-    const year = getCurrentYear();
-    const defaults = [
-      { type: 'Vacation Leave' as CreditType, balance: 15.000 },
-      { type: 'Sick Leave' as CreditType, balance: 15.000 },
-      { type: 'Special Privilege Leave' as CreditType, balance: 3.000 },
-    ];
+    const policy = await getLeavePolicy();
+    const defaults = Object.entries(policy.initialAllocations || {}).map(([type, balance]) => ({
+      type: type as CreditType,
+      balance
+    }));
 
     for (const credit of defaults) {
       // Check if exists
+      const year = getCurrentYear();
       const existing = await getEmployeeBalance(employeeId, credit.type, year);
       if (existing === 0) {
         await updateBalance(
@@ -1740,10 +1730,12 @@ export const getLWOPSummary = async (req: Request, res: Response): Promise<void>
 
 /**
  * Calculate LWOP deduction for payroll
- * Formula: (Monthly Salary / 22) × LWOP Days
+ * Formula: (Monthly Salary / workingDaysPerMonth) × LWOP Days
  */
-export const calculateLWOPDeduction = (monthlySalary: number, lwopDays: number): number => {
-  const dailyRate = monthlySalary / WORKING_DAYS_PER_MONTH;
+export const calculateLWOPDeduction = async (monthlySalary: number, lwopDays: number): Promise<number> => {
+  const policy = await getLeavePolicy();
+  const workingDaysPerMonth = policy.workingDaysPerMonth || 22;
+  const dailyRate = monthlySalary / workingDaysPerMonth;
   return Number((dailyRate * lwopDays).toFixed(2));
 };
 

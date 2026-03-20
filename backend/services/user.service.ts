@@ -85,7 +85,18 @@ export class UserService {
       isMeycauayan: auth.isMeycauayan,
       dateAccomplished: auth.dateAccomplished,
       pdsQuestions: auth.pdsQuestions,
-      duties: sql<string>`COALESCE((SELECT schedule_title FROM schedules WHERE schedules.employee_id = auth.employee_id ORDER BY schedules.updated_at DESC LIMIT 1), 'No Schedule')`,
+      duties: sql<string>`COALESCE(
+        (SELECT schedule_title FROM schedules WHERE schedules.employee_id = auth.employee_id AND (start_date IS NULL OR start_date <= CURDATE()) AND (end_date IS NULL OR end_date >= CURDATE()) ORDER BY updated_at DESC LIMIT 1),
+        (SELECT schedule_title FROM schedules WHERE schedules.employee_id = auth.employee_id AND (start_date IS NULL OR start_date <= CURDATE()) ORDER BY start_date DESC LIMIT 1),
+        (SELECT name FROM shift_templates WHERE is_default = 1 LIMIT 1),
+        'Standard Shift'
+      )`,
+      shift: sql<string>`COALESCE(
+        (SELECT CONCAT(TIME_FORMAT(start_time, '%h:%i %p'), ' - ', TIME_FORMAT(end_time, '%h:%i %p')) FROM schedules WHERE schedules.employee_id = auth.employee_id AND (start_date IS NULL OR start_date <= CURDATE()) AND (end_date IS NULL OR end_date >= CURDATE()) ORDER BY updated_at DESC LIMIT 1),
+        (SELECT CONCAT(TIME_FORMAT(start_time, '%h:%i %p'), ' - ', TIME_FORMAT(end_time, '%h:%i %p')) FROM schedules WHERE schedules.employee_id = auth.employee_id AND (start_date IS NULL OR start_date <= CURDATE()) ORDER BY start_date DESC LIMIT 1),
+        (SELECT CONCAT(TIME_FORMAT(start_time, '%h:%i %p'), ' - ', TIME_FORMAT(end_time, '%h:%i %p')) FROM shift_templates WHERE is_default = 1 LIMIT 1),
+        '08:00 AM - 05:00 PM'
+      )`,
       isBiometricEnrolled: sql<boolean>`CASE WHEN ${bioEnrolledUsers.employeeId} IS NOT NULL THEN true ELSE false END`
     })
     .from(auth)
@@ -102,7 +113,18 @@ export class UserService {
     const auth = alias(authentication, 'auth');
     const results = await db.select({
       authentication: auth,
-      duties: sql<string>`COALESCE((SELECT schedule_title FROM schedules WHERE schedules.employee_id = auth.employee_id ORDER BY schedules.updated_at DESC LIMIT 1), 'No Schedule')`,
+      duties: sql<string>`COALESCE(
+        (SELECT schedule_title FROM schedules WHERE schedules.employee_id = auth.employee_id AND (start_date IS NULL OR start_date <= CURDATE()) AND (end_date IS NULL OR end_date >= CURDATE()) ORDER BY updated_at DESC LIMIT 1),
+        (SELECT schedule_title FROM schedules WHERE schedules.employee_id = auth.employee_id AND (start_date IS NULL OR start_date <= CURDATE()) ORDER BY start_date DESC LIMIT 1),
+        (SELECT name FROM shift_templates WHERE is_default = 1 LIMIT 1),
+        'Standard Shift'
+      )`,
+      shift: sql<string>`COALESCE(
+        (SELECT CONCAT(TIME_FORMAT(start_time, '%h:%i %p'), ' - ', TIME_FORMAT(end_time, '%h:%i %p')) FROM schedules WHERE schedules.employee_id = auth.employee_id AND (start_date IS NULL OR start_date <= CURDATE()) AND (end_date IS NULL OR end_date >= CURDATE()) ORDER BY updated_at DESC LIMIT 1),
+        (SELECT CONCAT(TIME_FORMAT(start_time, '%h:%i %p'), ' - ', TIME_FORMAT(end_time, '%h:%i %p')) FROM schedules WHERE schedules.employee_id = auth.employee_id AND (start_date IS NULL OR start_date <= CURDATE()) ORDER BY start_date DESC LIMIT 1),
+        (SELECT CONCAT(TIME_FORMAT(start_time, '%h:%i %p'), ' - ', TIME_FORMAT(end_time, '%h:%i %p')) FROM shift_templates WHERE is_default = 1 LIMIT 1),
+        '08:00 AM - 05:00 PM'
+      )`,
       isBiometricEnrolled: sql<boolean>`CASE WHEN ${bioEnrolledUsers.employeeId} IS NOT NULL THEN true ELSE false END`
     })
     .from(auth)
@@ -114,6 +136,7 @@ export class UserService {
     return {
       ...results[0].authentication,
       duties: results[0].duties,
+      shift: results[0].shift,
       isBiometricEnrolled: results[0].isBiometricEnrolled
     };
   }

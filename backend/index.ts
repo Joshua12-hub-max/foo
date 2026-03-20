@@ -22,6 +22,7 @@ import performanceRoutes from './routes/performanceRoutes.js';
 import departmentRoutes from './routes/departmentRoutes.js';
 import employeeRoutes from './routes/employeeRoutes.js';
 import memoRoutes from './routes/memoRoutes.js';
+import holidayRoutes from './routes/holidayRoutes.js';
 
 import plantillaRoutes from './routes/plantillaRoutes.js';
 import recruitmentRoutes from './routes/recruitmentRoutes.js';
@@ -173,6 +174,7 @@ app.use('/api/schedules', scheduleRoutes);
 app.use('/api/performance', performanceRoutes);
 app.use('/api/departments', departmentRoutes);
 app.use('/api/memos', memoRoutes);
+app.use('/api/holidays', holidayRoutes);
 
 app.use('/api/plantilla', plantillaRoutes);
 app.use('/api/recruitment', recruitmentRoutes);
