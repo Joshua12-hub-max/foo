@@ -8,7 +8,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { leaveActionSchema, LeaveActionSchema } from '@/schemas/leave';
-import type { LeaveBalance, LeaveType } from '@/types/leave.types';
+// Re-export all types from central location
+export * from '@/types/leave.types';
+import { LeaveType, ApplicationStatus, LeaveBalance } from '@/types/leave.types';
 
 interface ApproveModalProps {
   isOpen: boolean;
@@ -95,11 +97,11 @@ const ApproveModal: React.FC<ApproveModalProps> = ({
     }
 
     // Determine credit type
-    const leaveType = request.leaveType as LeaveType;
-    const primaryType = ((LEAVE_TO_CREDIT_MAP as any)[leaveType] || leaveType) as string;
+    const leaveType = request.leaveType;
+    const primaryType = LEAVE_TO_CREDIT_MAP[leaveType] || leaveType;
     
     // Helper to get balance
-    const getBalance = (type: string | null) => {
+    const getBalance = (type: string | null | undefined) => {
       if (!type) return 0;
       const credit = credits.find((c: LeaveBalance) => c.creditType === type);
       return credit ? parseFloat(String(credit.balance)) : 0;
@@ -122,7 +124,7 @@ const ApproveModal: React.FC<ApproveModalProps> = ({
 
     // Cross-charging check
     if (remaining > 0) {
-      const crossChargeType = (CROSS_CHARGE_MAP as any)[leaveType] as string; // cast as string to fix indexing
+      const crossChargeType = CROSS_CHARGE_MAP[leaveType]; 
       if (crossChargeType) {
         fallbackType = crossChargeType;
         const fallbackBalance = getBalance(crossChargeType);

@@ -4,6 +4,7 @@ import { leaveApi } from "@/api/leaveApi";
 import { useToastStore } from '@/stores';
 import { AdminLeaveRequest } from "@/components/Custom/Timekeeping/LeaveRequestComponents/Admin/types";
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import axios from 'axios';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { rejectionSchema, RejectionSchema } from '@/schemas/leave';
@@ -42,9 +43,12 @@ const RejectModal: React.FC<RejectModalProps> = ({
         reset();
         onConfirm();
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
         console.error("Rejection failed", error);
-        showNotification("Failed to reject request", "error");
+        const errorMessage = axios.isAxiosError(error) 
+          ? error.response?.data?.message || error.message 
+          : "Failed to reject request";
+        showNotification(errorMessage, "error");
     }
   });
 

@@ -32,7 +32,7 @@ const PublicHeader = () => {
   };
 
   return (
-    <>
+    <header>
       <nav 
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
           isScrolled 
@@ -43,6 +43,7 @@ const PublicHeader = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-12 flex justify-between items-center relative">
           {/* Logo Section */}
           <div 
+              id="header-logo"
               className="flex items-center gap-3.5 cursor-pointer group" 
               onClick={() => navigate('/careers')}
           >
@@ -69,6 +70,7 @@ const PublicHeader = () => {
               <div className="flex items-center gap-8">
                 {navLinks.map((link) => (
                     <button
+                        id={`nav-link-${link.name.toLowerCase().replace(/\s+/g, '-')}`}
                         key={link.path}
                         onClick={() => navigate(link.path)}
                         className={`relative py-1 text-[15px] font-semibold tracking-tight transition-all duration-300 ${
@@ -92,6 +94,7 @@ const PublicHeader = () => {
           {/* Mobile Menu Button */}
           <div className="md:hidden">
             <button 
+              id="mobile-menu-toggle"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="p-2.5 rounded-xl transition-all bg-white/10 text-white border border-white/5"
             >
@@ -113,6 +116,7 @@ const PublicHeader = () => {
                 <div className="flex flex-col gap-1.5 relative z-10">
                   {navLinks.map((link) => (
                       <button
+                      id={`mobile-nav-link-${link.name.toLowerCase().replace(/\s+/g, '-')}`}
                       key={link.path}
                       onClick={() => {
                           navigate(link.path);
@@ -136,7 +140,7 @@ const PublicHeader = () => {
       
       {/* Dynamic Spacer */}
       <div className="h-24 md:h-28"></div>
-    </>
+    </header>
   );
 };
 

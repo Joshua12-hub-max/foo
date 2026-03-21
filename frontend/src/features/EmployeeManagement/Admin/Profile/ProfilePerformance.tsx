@@ -59,7 +59,17 @@ const ProfilePerformance: React.FC<ProfilePerformanceProps> = ({ profile }) => {
         ]);
 
         if (goalsData && goalsData.success) {
-          const apiGoals = goalsData.goals as (any)[];
+          interface ApiGoal {
+            id: string | number;
+            title?: string;
+            description?: string;
+            status?: string;
+            progress?: string | number;
+            dueDate?: string;
+            due_date?: string;
+            weight?: string | number;
+          }
+          const apiGoals = (goalsData.goals || []) as ApiGoal[];
           const mappedGoals: Goal[] = apiGoals.map(g => ({
              id: Number(g.id),
              title: String(g.title || 'Untitled Goal'),
@@ -73,10 +83,28 @@ const ProfilePerformance: React.FC<ProfilePerformanceProps> = ({ profile }) => {
         }
         
         if (reviewsData.success && 'reviews' in reviewsData) {
-          const employeeReviews = (reviewsData.reviews as any[]).filter((r: any) => 
+          interface ApiReview {
+            id: string | number;
+            cycleTitle?: string;
+            reviewCycleId?: string | number;
+            review_cycle_id?: string | number;
+            reviewPeriodStart?: string;
+            reviewPeriodEnd?: string;
+            createdAt?: string;
+            totalScore?: string | number;
+            total_score?: string | number;
+            status: string;
+            employeeFirstName?: string;
+            employee_first?: string;
+            employee_first_name?: string;
+            employeeLastName?: string;
+            employee_last?: string;
+            employee_last_name?: string;
+          }
+          const employeeReviews = (reviewsData.reviews as ApiReview[]).filter((r) => 
             (r.employeeFirstName === profile.firstName || r.employee_first === profile.firstName || r.employee_first_name === profile.firstName) && 
             (r.employeeLastName === profile.lastName || r.employee_last === profile.lastName || r.employee_last_name === profile.lastName)
-          ).map((r: any) => ({
+          ).map((r) => ({
              id: Number(r.id),
              cycleTitle: r.cycleTitle || `Cycle ${r.reviewCycleId || r.review_cycle_id || 'Performance Review'}`,
              reviewPeriodStart: String(r.reviewPeriodStart || r.createdAt || ''),

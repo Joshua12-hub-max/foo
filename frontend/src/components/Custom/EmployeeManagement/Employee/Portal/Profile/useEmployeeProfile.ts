@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
-import axios from '@/api/axios';
+import axiosInstance from '@/api/axios';
+import axios from 'axios';
 
 export interface Profile {
   id?: number;
@@ -46,14 +47,14 @@ export const useEmployeeProfile = (): UseEmployeeProfileReturn => {
       setError(null);
       
       // 1. Get basic identity to know WHO we are
-      const authRes = await axios.get('/auth/me');
+      const authRes = await axiosInstance.get('/auth/me');
       if (!authRes.data.success) throw new Error('Failed to authenticate');
       
       const userId = authRes.data.data.id;
 
       // 2. Fetch FULL detailed record (Skills, Education, Contacts) using Employee API
       // The backend allows this if req.user.id === params.id
-      const fullProfileRes = await axios.get(`/employees/${userId}`);
+      const fullProfileRes = await axiosInstance.get(`/employees/${userId}`);
       
       if (fullProfileRes.data.success) {
         setProfile(fullProfileRes.data.employee);
@@ -62,9 +63,10 @@ export const useEmployeeProfile = (): UseEmployeeProfileReturn => {
         setProfile(authRes.data.data);
       }
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      setError(err.response?.data?.message || 'Failed to load profile');
+      const message = import.meta.env.DEV ? (err instanceof Error ? err.message : 'Unknown error') : 'Failed to load profile';
+      setError(axios.isAxiosError(err) ? err.response?.data?.message || message : message);
     } finally {
       setLoading(false);
     }
@@ -79,7 +81,7 @@ export const useEmployeeProfile = (): UseEmployeeProfileReturn => {
       
       // Since we mainly update personal info here, auth/profile is still valid
       // or we could use /employees/:id update. using auth/profile for now as it handles avatar well.
-      const res = await axios.put('/auth/profile', formData, {
+      const res = await axiosInstance.put('/auth/profile', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
@@ -91,10 +93,10 @@ export const useEmployeeProfile = (): UseEmployeeProfileReturn => {
         return { success: true };
       }
       return { success: false, message: res.data.message };
-    } catch (err: any) {
+    } catch (err: unknown) {
       return { 
         success: false, 
-        message: err.response?.data?.message || 'Update failed' 
+        message: axios.isAxiosError(err) ? err.response?.data?.message || 'Update failed' : 'Update failed' 
       };
     } finally {
       setUpdating(false);

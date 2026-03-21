@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { EDUCATION_LEVELS } from './recruitment';
 import { createIdValidator, ID_REGEX } from './idValidation';
+import { PdsQuestionsSchema } from './pdsSchema';
 
 export const LoginSchema = z.object({
   identifier: z.string().min(1, "Email or Employee ID is required"),
@@ -103,7 +104,8 @@ export const RegisterSchema = z.object({
   applicantStartDate: z.string().optional(),
   applicantPhotoPath: z.string().optional(),
   dateAccomplished: z.string().optional(),
-  pdsQuestions: z.any().optional(),
+  pdsQuestions: PdsQuestionsSchema,
+  isOldEmployee: z.boolean().optional().default(false),
 }).superRefine((data, ctx) => {
   if (data.isMeycauayan === "true") {
     if (!data.barangay || data.barangay.length === 0) {

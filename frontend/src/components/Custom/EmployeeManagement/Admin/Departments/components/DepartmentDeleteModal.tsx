@@ -1,8 +1,8 @@
 import React, { memo } from 'react';
 import { X, Loader } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-// @ts-ignore
-import { deleteDepartment } from '@api/departmentApi';
+import { deleteDepartment } from '@/api/departmentApi';
+import axios from 'axios';
 import { useToastStore } from '@/stores';
 
 interface Department {
@@ -31,9 +31,12 @@ const DepartmentDeleteModal: React.FC<DepartmentDeleteModalProps> = memo(({ isOp
         onClose();
         if (onSuccess) onSuccess();
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
         console.error('Failed to delete department', error);
-        showToast(error.response?.data?.message || 'Failed to delete department', 'error');
+        const errorMessage = axios.isAxiosError(error) 
+            ? error.response?.data?.message || error.message 
+            : 'Failed to delete department';
+        showToast(errorMessage, 'error');
     }
   });
 

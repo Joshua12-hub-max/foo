@@ -1,6 +1,6 @@
-# NEBR - New Era Biometrics & Recruitment
-
-This is the central documentation for the NEBR project. It details the architecture, active modules, and strict development rules for the system.
+# CHRMO Mey - City Human Resource Management Office
+Official Recruitment & Employee Management Portal
+ documentation for the NEBR project. It details the architecture, active modules, and strict development rules for the system.
 
 ## 1. Project Overview
 NEBR is a City Performance Management and Government Resource planning system for the City Government of Meycauayan.

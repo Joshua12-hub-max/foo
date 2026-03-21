@@ -1,27 +1,37 @@
 import { useState, useEffect } from 'react';
 import { eventApi } from '../../../api/eventApi';
-import { leaveApi } from '../../../api/leaveApi';
-import EventsList from '../../CustomUI/EventsList';
+import { leaveApi } from '@/api/leaveApi';
+import EventsList from '@/components/CustomUI/EventsList';
+import { Holiday } from '@/types/leave.types';
+
+interface DashboardEvent {
+  id: string | number;
+  title: string;
+  date: string;
+  type: string;
+  priority?: string;
+  isHoliday?: boolean;
+}
 
 export default function EventsAndHolidays() {
-  const [events, setEvents] = useState<any[]>([]);
+  const [events, setEvents] = useState<DashboardEvent[]>([]);
 
   useEffect(() => {
     const fetchEvents = async () => {
       try {
         // Fetch Events from API
         const eventResponse = await eventApi.getEvents();
-        const apiEvents = (eventResponse.data && eventResponse.data.events) ? eventResponse.data.events : [];
+        const apiEvents: DashboardEvent[] = (eventResponse.data && eventResponse.data.events) ? eventResponse.data.events : [];
 
         // Get current year holidays
         const currentYear = new Date().getFullYear();
         const holidayResponse = await leaveApi.getHolidays(currentYear);
         const holidays = holidayResponse.data?.holidays || [];
 
-        const holidayEvents = holidays.map((h: any) => ({
+        const holidayEvents: DashboardEvent[] = holidays.map((h: Holiday) => ({
             id: `holiday-${h.id}-${currentYear}`,
-            title: h.name || h.title,
-            date: h.date ? h.date.split('T')[0] : new Date(currentYear, h.month, h.day).toISOString().split('T')[0],
+            title: h.name,
+            date: h.date?.split('T')[0] || new Date(currentYear, 0, 1).toISOString().split('T')[0],
             type: h.type,
             priority: 'medium',
             isHoliday: true

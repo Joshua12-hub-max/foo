@@ -1,16 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { lazy, Suspense, useEffect } from "react";
 import ErrorBoundary from "@components/ErrorBoundary"; 
-
-//lazy load authentication
-const Login = lazy(() => import("./Authentication/Login"));
-const Register = lazy(() => import("./Authentication/Register"));
-const SetupPortal = lazy(() => import("./Authentication/SetupPortal"));
-const VerifyAccount = lazy(() => import("./Authentication/VerifyAccount"));
-const ForgotPassword = lazy(() => import("./Authentication/ForgotPassword"));
-const ResetPassword = lazy(() => import("./Authentication/ResetPassword"));
-const VerifyApplicant = lazy(() => import("./Authentication/VerifyApplicant"));
-const TestBio = lazy(() => import("./pages/TestBio"));
+import SEO from "@/components/Global/SEO";
 
 // Static imports for core shell and priority pages to improve LCP
 const AdminDashboard = lazy(() => import("./pages/DashboardAdmin/AdminDashboard"));
@@ -81,16 +72,17 @@ const InternalPolicies = lazy(() => import("./pages/InternalPolicies/InternalPol
 
 
 // ang page loader na ito ay when the component is display loading message on the screen
-const PageLoader = () => (
-  <div className="flex items-center justify-center h-64">
-    <div className="text-gray-500">Loading...</div>
-  </div>
-);
-
 import { useAuthStore } from '@/stores';
 import { useAuth } from "@hooks/useAuth";
-import ToastContainer from "@/components/Global/ToastContainer";
-import { Toaster } from "react-hot-toast";
+
+//lazy load authentication
+const Login = lazy(() => import("./Authentication/Login"));
+const SetupPortal = lazy(() => import("./Authentication/SetupPortal"));
+const VerifyAccount = lazy(() => import("./Authentication/VerifyAccount"));
+const ForgotPassword = lazy(() => import("./Authentication/ForgotPassword"));
+const ResetPassword = lazy(() => import("./Authentication/ResetPassword"));
+const VerifyApplicant = lazy(() => import("./Authentication/VerifyApplicant"));
+const TestBio = lazy(() => import("./pages/TestBio"));
 
 /** ProtectedRoute — restricts access to allowed roles */
 /** ProtectedRoute — restricts access to allowed roles */
@@ -148,20 +140,11 @@ const PublicRoute = ({ children }: PublicRouteProps) => {
   return children;
 };
 
-import { DndProvider } from 'react-dnd';
-import { HTML5Backend } from 'react-dnd-html5-backend';
-
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 1000 * 60 * 5, // 5 minutes
-      retry: 1,
-    },
-  },
-});
+const PageLoader = () => (
+  <div className="flex items-center justify-center h-64">
+    <div className="text-gray-500">Loading...</div>
+  </div>
+);
 
 /** SetupRoute — specifically for the initialization portal */
 const SetupRoute = ({ children }: { children: React.ReactNode }) => {
@@ -212,6 +195,7 @@ export default function App() {
         path="/" 
         element={
           <PublicRoute>
+            <SEO title="Login" />
             <Suspense fallback={<PageLoader />}>
               <Login />
             </Suspense>
@@ -226,6 +210,7 @@ export default function App() {
           path="/careers"
           element={
             <Suspense fallback={<PageLoader />}>
+              <SEO title="Home | Careers" />
               <Home />
             </Suspense>
           }
@@ -234,6 +219,7 @@ export default function App() {
           path="/careers/jobs"
           element={
             <Suspense fallback={<PageLoader />}>
+              <SEO title="Job Openings" />
               <Careers />
             </Suspense>
           }
@@ -299,6 +285,7 @@ export default function App() {
           element={
             <PublicRoute>
               <Suspense fallback={<PageLoader />}>
+                <SEO title="Verify Applicant" />
                 <VerifyApplicant />
               </Suspense>
             </PublicRoute>
@@ -330,6 +317,7 @@ export default function App() {
           path="/admin-dashboard"
           element={
               <ProtectedRoute allowedRoles={["administrator", "human resource"]}>
+                <SEO title="Admin Dashboard" />
                 <ErrorBoundary>
                   <Suspense fallback={<PageLoader />}>
                     <AdminDashboard />
@@ -592,6 +580,7 @@ export default function App() {
           path="/employee-dashboard"
           element={
             <ProtectedRoute allowedRoles={["employee", "administrator", "human resource"]}>
+              <SEO title="Employee Dashboard" />
               <Suspense fallback={<PageLoader />}>
                 <EmployeeDashboard />
               </Suspense>

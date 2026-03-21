@@ -48,7 +48,7 @@ export interface DashboardEmployee extends EmployeeStats {
   position?: string;
   jobTitle?: string;
   dateHired?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface EmployeeLists {

@@ -12,7 +12,12 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import nodemailer from 'nodemailer';
 import { OAuth2Client } from 'google-auth-library';
-import type { AuthenticatedRequest } from '../types/index.js';
+import type { 
+  AsyncHandler, 
+  AuthenticatedHandler,
+  AuthenticatedRequest,
+  UserRole
+} from '../types/index.js';
 import { allocateDefaultCredits } from './leaveController.js';
 import { 
   LoginSchema, 
@@ -26,7 +31,6 @@ import {
   UpdateProfileSchema,
   SetupPortalSchema
 } from '../schemas/authSchema.js';
-import { UserRole, EmploymentStatus } from '../types/index.js';
 import { sanitizeInput } from '../utils/spamUtils.js';
 
 // Google OAuth Client
@@ -44,12 +48,14 @@ const transporter = nodemailer.createTransport({
 import { sendEmail, generateOTP, sendOTPEmail, maskEmail } from '../utils/emailUtils.js';
 
 // Define the shape of the user object with relations as returned by findFirst/select
-type UserWithRelations = InferSelectModel<typeof authentication> & {
+type UserWithRelations = Omit<InferSelectModel<typeof authentication>, 'department'> & {
   department?: { id: number; name: string } | string | null;
   plantillaPosition?: { positionTitle: string | null } | null;
   pdsEducations?: { schoolName: string | null }[] | null;
-  duties?: string;
-  shift?: string;
+  duties?: string | null;
+  shift?: string | null;
+  dutyType?: "Standard" | "Irregular" | null;
+  appointmentType?: string | null;
 };
 
 /**
@@ -67,9 +73,8 @@ const mapToAuthUser = (user: UserWithRelations) => {
   let departmentName: string | null = null;
   if (typeof user.department === 'string') {
     departmentName = user.department;
-  } else if (user.department && typeof user.department === 'object') {
-    const deptObj = user.department as { id: number; name: string };
-    departmentName = deptObj.name;
+  } else if (user.department && typeof user.department === 'object' && 'name' in user.department) {
+    departmentName = user.department.name;
   }
 
   return {
@@ -80,13 +85,13 @@ const mapToAuthUser = (user: UserWithRelations) => {
     middleName: user.middleName,
     suffix: user.suffix,
     name: parts.join(' ').trim(),
-    role: user.role as UserRole,
+    role: user.role,
     department: departmentName,
     departmentId: user.departmentId,
     employeeId: user.employeeId,
     avatarUrl: user.avatarUrl,
     jobTitle: user.plantillaPosition?.positionTitle || user.jobTitle || null,
-    employmentStatus: user.employmentStatus as EmploymentStatus,
+    employmentStatus: user.employmentStatus,
     twoFactorEnabled: !!user.twoFactorEnabled,
     dateHired: user.dateHired,
     address: user.address,
@@ -97,8 +102,8 @@ const mapToAuthUser = (user: UserWithRelations) => {
     educationalBackground: user.pdsEducations?.[0]?.schoolName || user.educationalBackground || null,
     duties: user.duties || 'Standard Shift',
     shift: user.shift || '08:00 AM - 05:00 PM',
-    dutyType: (user.dutyType as string) || 'Standard',
-    appointmentType: (user.appointmentType as string) || 'Permanent',
+    dutyType: user.dutyType || 'Standard',
+    appointmentType: user.appointmentType || 'Permanent',
     isVerified: user.isVerified ?? false,
     profileStatus: user.profileStatus || 'Initial',
     
@@ -171,7 +176,7 @@ const mapToAuthUser = (user: UserWithRelations) => {
 // Auth Controllers
 // ============================================================================
 
-export const googleLogin = async (req: Request, res: Response): Promise<void> => {
+export const googleLogin: AsyncHandler = async (req, res) => {
   try {
     const { credential } = GoogleLoginSchema.parse(req.body);
     // Verify Google Token
@@ -199,7 +204,7 @@ export const googleLogin = async (req: Request, res: Response): Promise<void> =>
           orderBy: [desc(schedules.updatedAt)],
           columns: { scheduleTitle: true }
         }
-      } as const 
+      }
     });
 
 
@@ -215,7 +220,7 @@ export const googleLogin = async (req: Request, res: Response): Promise<void> =>
     if (!user.isVerified) {
       res.status(403).json({
         success: false,
-        message: 'Email not verified. Please verify your email first.',
+        message: "Please verify your email to access CHRMO Mey.",
         data: null
       });
       return;
@@ -309,9 +314,9 @@ export const googleLogin = async (req: Request, res: Response): Promise<void> =>
  * PUBLIC endpoint — checks if employee is enrolled in biometrics.
  * Returns name + department from bio_enrolled_users.
  */
-export const verifyEnrollment = async (req: Request, res: Response): Promise<void> => {
+export const verifyEnrollment: AsyncHandler = async (req, res) => {
   try {
-    const { employeeId } = req.params as { employeeId: string };
+    const employeeId = String(req.params.employeeId);
     
     // Parse the input — accept "1", "001", or "EMP-001" / "Emp-001"
     let bioNumericId: number;
@@ -373,11 +378,16 @@ export const verifyEnrollment = async (req: Request, res: Response): Promise<voi
   }
 };
 
-export const register = async (req: Request & { file?: Express.Multer.File }, res: Response): Promise<void> => {
+interface RegisterRequestWithFile extends Request {
+  file?: Express.Multer.File;
+}
+
+export const register: AsyncHandler = async (req, res) => {
+  const multerReq = req as unknown as RegisterRequestWithFile;
   try {
     const validatedData = RegisterSchema.parse(req.body);
     const { employeeId, email, password } = validatedData;
-    const file = req.file;
+    const file = multerReq.file;
     const isFinalizingSetup = req.query.mode === 'finalize-setup';
 
     // 1. Parse bio ID from input
@@ -647,8 +657,8 @@ export const register = async (req: Request & { file?: Express.Multer.File }, re
       facebookUrl: validatedData.facebookUrl || undefined,
       linkedinUrl: validatedData.linkedinUrl || undefined,
       twitterHandle: validatedData.twitterHandle || undefined,
-      dutyType: (validatedData.dutyType || 'Standard') as "Standard" | "Irregular",
-      appointmentType: (validatedData.appointmentType || 'Permanent') as 'Permanent' | 'Contractual' | 'Casual' | 'Job Order' | 'Coterminous' | 'Temporary' | 'Contract of Service' | 'JO' | 'COS',
+      dutyType: (validatedData.dutyType === 'Irregular' ? 'Irregular' : 'Standard'),
+      appointmentType: (validatedData.appointmentType || 'Permanent'),
       profileStatus: 'Complete' as const,
       employmentStatus: 'Active' as const, 
       isOldEmployee: validatedData.isOldEmployee || false,
@@ -819,13 +829,13 @@ export const verifyRegistrationOTP = async (req: Request, res: Response): Promis
         lastName: user.lastName
       }
     });
-  } catch (_err) {
+  } catch (_err: unknown) {
 
     res.status(500).json({ success: false, message: 'Server Error' });
   }
 };
 
-export const resendVerificationEmail = async (req: Request, res: Response): Promise<void> => {
+export const resendVerificationEmail: AsyncHandler = async (req, res) => {
   try {
     const { email } = ForgotPasswordSchema.parse(req.body); // Reuse simple email schema
     const user = await db.query.authentication.findFirst({
@@ -854,13 +864,13 @@ export const resendVerificationEmail = async (req: Request, res: Response): Prom
     await sendOTPEmail(email, user.firstName, verificationOTP, 'Resend: Verify Your Email', 'You requested a new verification code.');
 
     res.status(200).json({ success: true, message: 'Verification code resent successfully.' });
-  } catch (_error) {
+  } catch (_error: unknown) {
 
     res.status(500).json({ success: false, message: 'Failed to resend verification code.' });
   }
 };
 
-export const forgotPassword = async (req: Request, res: Response): Promise<void> => {
+export const forgotPassword: AsyncHandler = async (req, res) => {
   try {
     const { email } = ForgotPasswordSchema.parse(req.body);
     const user = await db.query.authentication.findFirst({
@@ -906,7 +916,7 @@ export const forgotPassword = async (req: Request, res: Response): Promise<void>
   }
 };
 
-export const resetPassword = async (req: Request, res: Response): Promise<void> => {
+export const resetPassword: AsyncHandler = async (req, res) => {
   try {
     const { token, newPassword } = ResetPasswordSchema.parse(req.body);
     const user = await db.query.authentication.findFirst({
@@ -938,15 +948,9 @@ export const resetPassword = async (req: Request, res: Response): Promise<void> 
   }
 };
 
-export const getMe = async (req: Request, res: Response): Promise<void> => {
+export const getMe: AuthenticatedHandler = async (req, res) => {
   try {
-    const authReq = req as AuthenticatedRequest;
-    const userId = authReq.user?.id;
-
-    if (!userId) {
-      res.status(401).json({ success: false, message: 'Not authenticated' });
-      return;
-    }
+    const userId = req.user.id;
 
     const [user] = await db.select({
       ...getTableColumns(authentication),
@@ -964,7 +968,7 @@ export const getMe = async (req: Request, res: Response): Promise<void> => {
       )`
     })
     .from(authentication)
-    .where(eq(authentication.id, userId as number));
+    .where(eq(authentication.id, userId));
 
     if (!user) {
       res.status(404).json({ success: false, message: 'User not found' });
@@ -977,26 +981,25 @@ export const getMe = async (req: Request, res: Response): Promise<void> => {
         user: mapToAuthUser(user)
       }
     });
-  } catch (_error) {
+  } catch (_error: unknown) {
 
     res.status(500).json({ success: false, message: 'Server Error' });
   }
 };
 
-export const login = async (req: Request, res: Response): Promise<void> => {
+export const login: AsyncHandler = async (req, res) => {
   try {
     const { identifier, password } = LoginSchema.parse(req.body);
-    console.log(`[LOGIN DEBUG] Attempt for: "${identifier}"`);
-    console.log(`[LOGIN DEBUG] Normalized Lower: "${identifier.toLowerCase()}"`);
     
     let user;
     try {
         user = await AuthService.findUserByIdentifier(identifier);
-        console.log(`[LOGIN DEBUG] User found: ${!!user}${user ? ` (ID: ${user.id}, Role: ${user.role})` : ''}`);
-    } catch (dbErr: any) {
+    } catch (dbErr: unknown) {
         console.error(`[LOGIN ERROR] AuthService.findUserByIdentifier failed!`);
-        console.error(`[LOGIN ERROR] Message: ${dbErr.message}`);
-        if (dbErr.sql) console.error(`[LOGIN ERROR] SQL: ${dbErr.sql}`);
+        if (dbErr instanceof Error) {
+            console.error(`[LOGIN ERROR] Message: ${dbErr.message}`);
+        }
+        // if (dbErr.sql) console.error(`[LOGIN ERROR] SQL: ${dbErr.sql}`); // Cannot easily access .sql on unknown
         throw dbErr; // Rethrow to be caught by the main catch block
     }
     
@@ -1223,7 +1226,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-export const verifyTwoFactorOTP = async (req: Request, res: Response): Promise<void> => {
+export const verifyTwoFactorOTP: AsyncHandler = async (req, res) => {
   try {
     const { identifier, otp } = VerifyOTPSchema.parse(req.body);
     const user = await db.query.authentication.findFirst({
@@ -1295,8 +1298,8 @@ export const verifyTwoFactorOTP = async (req: Request, res: Response): Promise<v
   }
 };
 
-export const enableTwoFactor = async (req: Request, res: Response): Promise<void> => {
-  const authReq = req as AuthenticatedRequest;
+export const enableTwoFactor: AuthenticatedHandler = async (req, res) => {
+  const authReq = req;
   const userId = authReq.user.id;
 
   try {
@@ -1310,8 +1313,8 @@ export const enableTwoFactor = async (req: Request, res: Response): Promise<void
   }
 };
 
-export const disableTwoFactor = async (req: Request, res: Response): Promise<void> => {
-  const authReq = req as AuthenticatedRequest;
+export const disableTwoFactor: AuthenticatedHandler = async (req, res) => {
+  const authReq = req;
   const userId = authReq.user.id;
 
   try {
@@ -1325,7 +1328,7 @@ export const disableTwoFactor = async (req: Request, res: Response): Promise<voi
   }
 };
 
-export const resendTwoFactorOTP = async (req: Request, res: Response): Promise<void> => {
+export const resendTwoFactorOTP: AsyncHandler = async (req, res) => {
   try {
     const { identifier } = ResendOTPSchema.parse(req.body);
     const user = await db.query.authentication.findFirst({
@@ -1355,7 +1358,7 @@ export const resendTwoFactorOTP = async (req: Request, res: Response): Promise<v
   }
 };
 
-export const getUsers = async (_req: Request, res: Response): Promise<void> => {
+export const getUsers: AsyncHandler = async (_req, res) => {
   try {
     const users = await db.select({
       id: authentication.id,
@@ -1399,7 +1402,7 @@ export const getUsers = async (_req: Request, res: Response): Promise<void> => {
   }
 };
 
-export const getUserById = async (req: Request, res: Response): Promise<void> => {
+export const getUserById: AsyncHandler = async (req, res) => {
   const { id } = req.params;
 
   try {
@@ -1451,16 +1454,23 @@ export const getUserById = async (req: Request, res: Response): Promise<void> =>
   }
 };
 
-export const updateProfile = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const authReq = req as AuthenticatedRequest;
-    const userId = authReq.user ? authReq.user.id : null;
+interface UpdateProfileRequest extends AuthenticatedRequest {
+  file?: Express.Multer.File;
+}
 
-    if (!userId) {
-      res.status(401).json({ success: false, message: 'Unauthorized' });
+export const updateProfile: AuthenticatedHandler = async (req, res) => {
+  const profileReq = req as unknown as UpdateProfileRequest;
+  try {
+    const userId = req.user.id;
+    const userRole = req.user.role;
+
+    const targetUserId = Number(req.params.id) || userId;
+
+    if (targetUserId !== userId && userRole !== 'Administrator' && userRole !== 'Human Resource') {
+      res.status(403).json({ success: false, message: 'Forbidden: You cannot update another user\'s profile.' });
       return;
     }
-
+    
     // Safe Parse Body
     const parsed = UpdateProfileSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -1468,34 +1478,34 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
       return;
     }
     const updates = parsed.data;
-    const file = (req as Request & { file?: Express.Multer.File }).file;
+    const file = profileReq.file;
 
     let avatarUrl: string | undefined;
     if (file) {
       avatarUrl = `${process.env.BACKEND_URL || 'http://localhost:5000'}/uploads/avatars/${file.filename}`;
     }
 
-    // Fetch current user to compare email
-    const currentUser = await db.query.authentication.findFirst({
-      where: eq(authentication.id, userId),
-      columns: { email: true, id: true }
+    // Fetch target user to compare email
+    const targetUser = await db.query.authentication.findFirst({
+      where: eq(authentication.id, targetUserId),
+      columns: { email: true, id: true, role: true, firstName: true }
     });
 
-    if (!currentUser) {
+    if (!targetUser) {
       res.status(404).json({ success: false, message: 'User not found' });
       return;
     }
 
     // Check System-Wide Uniqueness
     const uniqueErrors = await checkSystemWideUniqueness({
-        email: updates.email && updates.email !== currentUser.email ? updates.email : undefined,
+        email: updates.email && updates.email !== targetUser.email ? updates.email : undefined,
         umidNumber: updates.umidNumber,
         philsysId: updates.philsysId,
         philhealthNumber: updates.philhealthNumber,
         pagibigNumber: updates.pagibigNumber,
         tinNumber: updates.tinNumber,
         gsisNumber: updates.gsisNumber,
-        excludeAuthId: userId
+        excludeAuthId: targetUserId
     });
 
     if (Object.keys(uniqueErrors).length > 0) {
@@ -1510,51 +1520,27 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
     if (updates.suffix !== undefined) mappedUpdates.suffix = String(updates.suffix);
     
     // Only reset verification if email CHANGED
-    if (updates.email && updates.email !== currentUser.email) {
+    if (updates.email && updates.email !== targetUser.email) {
       mappedUpdates.email = String(updates.email);
       
-      // Determine if verification is required (Admins/HR might be exempt depending on policy, 
-      // but for employees it MUST be mandatory as per requirements)
-      const userToUpdate = await db.query.authentication.findFirst({
-          where: eq(authentication.id, userId),
-          columns: { role: true, firstName: true }
-      });
+      const isEmployee = targetUser.role !== 'Administrator' && targetUser.role !== 'Human Resource';
       
-      const isEmployee = userToUpdate?.role !== 'Administrator' && userToUpdate?.role !== 'Human Resource';
+      const verificationOTP = generateOTP();
+      mappedUpdates.isVerified = false;
+      mappedUpdates.verificationToken = verificationOTP;
       
-      if (isEmployee) {
-          const verificationOTP = generateOTP();
-          mappedUpdates.isVerified = false;
-          mappedUpdates.verificationToken = verificationOTP;
-          
-          // Send verification email
-          try {
-              await sendOTPEmail(
-                  String(updates.email), 
-                  userToUpdate?.firstName || 'User', 
-                  verificationOTP, 
-                  'Email Change Verification', 
-                  'You have updated your email address. Please use the code below to verify your new email:'
-              );
-          } catch (_e) {
-              console.error('[UPDATE PROFILE] Failed to send verification email');
-          }
-      } else {
-          // Admins/HR still get reset for security, but might not be forced if we want to be lenient
-          // However, consistency is better. Let's force it for everyone for 100% integrity.
-          const verificationOTP = generateOTP();
-          mappedUpdates.isVerified = false;
-          mappedUpdates.verificationToken = verificationOTP;
-          
-          try {
-              await sendOTPEmail(
-                  String(updates.email), 
-                  userToUpdate?.firstName || 'User', 
-                  verificationOTP, 
-                  'Email Change Verification', 
-                  'Security Alert: Your email address has been changed. Please verify to maintain access:'
-              );
-          } catch (_e) { /* empty */ }
+      try {
+          await sendOTPEmail(
+              String(updates.email), 
+              targetUser.firstName || 'User', 
+              verificationOTP, 
+              isEmployee ? 'Email Change Verification' : 'Security Alert: Your email address has been changed', 
+              isEmployee 
+                ? 'You have updated your email address. Please use the code below to verify your new email:'
+                : 'Security Alert: Your email address has been changed. Please verify to maintain access:'
+          );
+      } catch (_e) {
+          /* empty */
       }
     }
 
@@ -1565,8 +1551,8 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
         mappedUpdates.birthDate = String(updates.birthDate);
     }
     if (updates.placeOfBirth !== undefined) mappedUpdates.placeOfBirth = String(updates.placeOfBirth);
-    if (updates.gender !== undefined) mappedUpdates.gender = updates.gender as "Male" | "Female";
-    if (updates.civilStatus !== undefined) mappedUpdates.civilStatus = updates.civilStatus as "Single" | "Married" | "Widowed" | "Separated" | "Annulled";
+    if (updates.gender !== undefined) mappedUpdates.gender = updates.gender;
+    if (updates.civilStatus !== undefined) mappedUpdates.civilStatus = updates.civilStatus;
     if (updates.nationality !== undefined) mappedUpdates.nationality = String(updates.nationality);
     
     if (updates.address !== undefined) mappedUpdates.address = String(updates.address);
@@ -1622,8 +1608,8 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
     if (updates.itemNumber !== undefined) mappedUpdates.itemNumber = String(updates.itemNumber);
     if (updates.salaryGrade !== undefined) mappedUpdates.salaryGrade = String(updates.salaryGrade);
     if (updates.stepIncrement !== undefined) mappedUpdates.stepIncrement = Number(updates.stepIncrement);
-    if (updates.appointmentType !== undefined) mappedUpdates.appointmentType = updates.appointmentType as 'Permanent' | 'Contractual' | 'Casual' | 'Job Order' | 'Coterminous' | 'Temporary';
-    if (updates.employmentStatus !== undefined) mappedUpdates.employmentStatus = updates.employmentStatus as 'Active' | 'Probationary' | 'Terminated' | 'Resigned' | 'On Leave' | 'Suspended' | 'Verbal Warning' | 'Written Warning' | 'Show Cause';
+    if (updates.appointmentType !== undefined) mappedUpdates.appointmentType = updates.appointmentType;
+    if (updates.employmentStatus !== undefined) mappedUpdates.employmentStatus = updates.employmentStatus;
     if (updates.station !== undefined) mappedUpdates.station = String(updates.station);
     if (updates.officeAddress !== undefined) mappedUpdates.officeAddress = String(updates.officeAddress);
     if (updates.dateHired !== undefined) mappedUpdates.dateHired = String(updates.dateHired);
@@ -1672,7 +1658,7 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
 
     if (Object.keys(mappedUpdates).length === 0) {
       // If no changes, still return success to avoid frontend error states
-      // but fetch the current user to return their data
+      // but fetch the target user to return their data
       const [user] = await db.select({
         ...getTableColumns(authentication),
         duties: sql<string>`COALESCE(
@@ -1689,19 +1675,19 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
         )`
       })
       .from(authentication)
-      .where(eq(authentication.id, userId));
+      .where(eq(authentication.id, targetUserId));
 
       res.json({
         success: true,
         message: 'No changes detected',
-        data: mapToAuthUser(user as UserWithRelations)
+        data: mapToAuthUser(user)
       });
       return;
     }
 
     await db.update(authentication)
       .set(mappedUpdates)
-      .where(eq(authentication.id, userId));
+      .where(eq(authentication.id, targetUserId));
 
     // Fetch updated user with duties
     const [updatedUser] = await db.select({
@@ -1720,33 +1706,28 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
       )`
     })
     .from(authentication)
-    .where(eq(authentication.id, userId));
+    .where(eq(authentication.id, targetUserId));
 
     res.json({
       success: true,
       message: 'Profile updated successfully',
-      data: mapToAuthUser(updatedUser as UserWithRelations)
+      data: mapToAuthUser(updatedUser)
     });
-  } catch (_error) {
+  } catch (_error: unknown) {
 
     res.status(500).json({ success: false, message: 'Failed to update profile' });
   }
 };
 
-export const getNextId = async (_req: Request, res: Response): Promise<void> => {
+export const getNextId: AsyncHandler = async (_req, res) => {
   try {
-    const result = await db.execute(sql`
-      SELECT MAX(CAST(SUBSTRING(employee_id, 5) AS UNSIGNED)) as maxId
-      FROM authentication
-      WHERE employee_id LIKE 'Emp-%'
-    `);
+    const [result] = await db.select({
+      maxId: sql<number | null>`MAX(CAST(SUBSTRING(${authentication.employeeId}, 5) AS UNSIGNED))`
+    })
+    .from(authentication)
+    .where(sql`${authentication.employeeId} LIKE 'Emp-%'`);
 
-    interface MaxIdResult {
-      maxId: number | string | null;
-    }
-
-    const rows = (result[0] as unknown) as MaxIdResult[];
-    const maxId = Number(rows[0]?.maxId || 0);
+    const maxId = result?.maxId || 0;
     const nextId = maxId + 1;
     const formattedNextId = `Emp-${String(nextId).padStart(3, '0')}`;
 
@@ -1754,15 +1735,18 @@ export const getNextId = async (_req: Request, res: Response): Promise<void> => 
       success: true,
       data: formattedNextId
     });
-  } catch (_error) {
-
+  } catch (_error: unknown) {
     res.status(500).json({ success: false, message: 'Failed to fetch next ID' });
   }
 };
 
-export const findHiredApplicant = async (req: Request, res: Response): Promise<void> => {
+export const findHiredApplicant: AsyncHandler = async (req, res) => {
   try {
-    const { firstName, lastName } = req.query;
+    const firstNameParam = req.query.firstName;
+    const lastNameParam = req.query.lastName;
+    const firstName = typeof firstNameParam === 'string' ? firstNameParam : '';
+    const lastName = typeof lastNameParam === 'string' ? lastNameParam : '';
+
 
     if (!firstName || !lastName) {
       res.status(400).json({ success: false, message: 'First name and last name are required' });
@@ -1847,13 +1831,13 @@ export const findHiredApplicant = async (req: Request, res: Response): Promise<v
         photoUrl: photoUrl
       }
     });
-  } catch (_error) {
+  } catch (_error: unknown) {
 
     res.status(500).json({ success: false, message: 'Failed to search for applicant' });
   }
 };
 
-export const checkEmailUniqueness = async (req: Request, res: Response): Promise<void> => {
+export const checkEmailUniqueness: AsyncHandler = async (req, res) => {
   try {
     const { email } = z.object({ email: z.string().email() }).parse(req.query);
     
@@ -1873,7 +1857,7 @@ export const checkEmailUniqueness = async (req: Request, res: Response): Promise
       message: 'Email is available.',
       isUnique: true 
     });
-  } catch (_error) {
+  } catch (_error: unknown) {
     res.status(400).json({ success: false, message: 'Invalid email address.' });
   }
 };
@@ -1888,7 +1872,7 @@ export const logout = (_req: Request, res: Response): void => {
   res.status(200).json({ success: true, message: 'Logged out successfully.' });
 };
 
-export const getSetupPositions = async (_req: Request, res: Response): Promise<void> => {
+export const getSetupPositions: AsyncHandler = async (_req, res) => {
   try {
     // 1. Ensure HR Department exists with official name
     const hrDept = await db.query.departments.findFirst({
@@ -1933,12 +1917,12 @@ export const getSetupPositions = async (_req: Request, res: Response): Promise<v
       dutyTypes,
       roles
     });
-  } catch (_error) {
+  } catch (_error: unknown) {
     res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
 
-export const setupPortal = async (req: Request, res: Response): Promise<void> => {
+export const setupPortal: AsyncHandler = async (req, res) => {
   try {
     const validatedData = SetupPortalSchema.parse(req.body);
     const { 
@@ -1987,7 +1971,6 @@ export const setupPortal = async (req: Request, res: Response): Promise<void> =>
 
     // The Setup Portal should strictly NOT assign an Employee ID yet.
     // That happens later during biometric registration.
-    const newEmployeeId = null;
 
     const [authResult] = await db.insert(authentication).values({
       firstName: safeFirstName,
@@ -1995,9 +1978,8 @@ export const setupPortal = async (req: Request, res: Response): Promise<void> =>
       lastName: safeLastName,
       suffix: safeSuffix,
       email,
-      employeeId: newEmployeeId,
       passwordHash,
-      role: role as UserRole,
+      role: role,
       department: hrDept.name,
       departmentId: hrDept.id,
       positionId: selectedPosition.id,
@@ -2006,8 +1988,8 @@ export const setupPortal = async (req: Request, res: Response): Promise<void> =>
         : selectedPosition.positionTitle,
       salaryGrade: String(selectedPosition.salaryGrade),
       stepIncrement: selectedPosition.stepIncrement ?? 1,
-      dutyType: dutyType as "Standard" | "Irregular",
-      appointmentType: appointmentType as 'Permanent' | 'Contractual' | 'Casual' | 'Job Order' | 'Coterminous' | 'Temporary' | 'Contract of Service' | 'JO' | 'COS',
+      dutyType,
+      appointmentType,
       employmentStatus: 'Active',
       profileStatus: 'Initial',
       isVerified: true, // System initiators (Admin/HR) from Setup Portal are pre-verified
@@ -2029,7 +2011,7 @@ export const setupPortal = async (req: Request, res: Response): Promise<void> =>
     // Send Verification Email
     try {
       await sendOTPEmail(email, safeFirstName, verificationOTP, 'System Initialization: Verify Your Email', 'Welcome to the system. Please use the code below to verify your administrative access:');
-    } catch (_emailErr) {
+    } catch (_emailErr: unknown) {
       /* empty */
 
     }
@@ -2039,11 +2021,11 @@ export const setupPortal = async (req: Request, res: Response): Promise<void> =>
       message: `${role} account created. Please verify your email.`,
       data: { email, role: role }
     });
-  } catch (_error) {
+  } catch (_error: unknown) {
     res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
-export const checkGovtIdUniqueness = async (req: Request, res: Response) => {
+export const checkGovtIdUniqueness: AsyncHandler = async (req, res) => {
   try {
     const { 
       umidNumber, 
@@ -2058,37 +2040,41 @@ export const checkGovtIdUniqueness = async (req: Request, res: Response) => {
     } = req.query;
 
     const errors = await checkSystemWideUniqueness({
-      umidNumber: umidNumber as string,
-      philsysId: philsysId as string,
-      philhealthNumber: philhealthNumber as string,
-      pagibigNumber: pagibigNumber as string,
-      tinNumber: tinNumber as string,
-      gsisNumber: gsisNumber as string,
-      eligibilityNumber: eligibilityNumber as string,
+      umidNumber: String(umidNumber || ''),
+      philsysId: String(philsysId || ''),
+      philhealthNumber: String(philhealthNumber || ''),
+      pagibigNumber: String(pagibigNumber || ''),
+      tinNumber: String(tinNumber || ''),
+      gsisNumber: String(gsisNumber || ''),
+      eligibilityNumber: String(eligibilityNumber || ''),
       excludeAuthId: excludeAuthId ? Number(excludeAuthId) : undefined,
       excludeApplicantId: excludeApplicantId ? Number(excludeApplicantId) : undefined
     });
 
     if (Object.keys(errors).length > 0) {
-      return res.status(409).json({
+      res.status(409).json({
         success: false,
         isUnique: false,
         message: Object.values(errors)[0],
         conflicts: errors,
         errors: Object.values(errors)
       });
+      return;
     }
 
-    return res.status(200).json({
+    res.status(200).json({
       success: true,
       isUnique: true,
       message: 'Government ID is unique and available.'
     });
-  } catch (error) {
+    return;
+  } catch (error: unknown) {
     console.error('Check Govt ID error:', error);
-    return res.status(500).json({ 
+    res.status(500).json({ 
       success: false, 
-      message: 'Internal server error during ID check' 
+      message: 'Internal server error during uniqueness check.',
+      error: error instanceof Error ? error.message : String(error)
     });
+    return;
   }
 };

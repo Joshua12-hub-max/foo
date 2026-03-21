@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 // @ts-ignore
 import { fetchDepartments, addDepartment, updateDepartment, deleteDepartment } from '@api/departmentApi';
+import axios from 'axios';
 
 import { DepartmentSchema } from '@/schemas/department';
 
@@ -62,9 +63,9 @@ export const useDepartmentManagement = (): UseDepartmentManagementReturn => {
       } else {
         setError('Failed to fetch departments');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Failed to load departments", err);
-      setError(err.message || "An error occurred");
+      setError(axios.isAxiosError(err) ? err.response?.data?.message || "An error occurred" : (err instanceof Error ? err.message : "An error occurred"));
     } finally {
       setLoading(false);
     }
@@ -110,9 +111,9 @@ export const useDepartmentManagement = (): UseDepartmentManagementReturn => {
       setDepartments(prev => prev.filter(d => d.id !== departmentToDelete.id));
       setDeleteModalOpen(false);
       setDepartmentToDelete(null);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Failed to delete department", err);
-      setError(err.message || "Failed to delete department");
+      setError(axios.isAxiosError(err) ? err.response?.data?.message || "Failed to delete department" : (err instanceof Error ? err.message : "Failed to delete department"));
     } finally {
       setIsDeleting(false);
     }
@@ -133,9 +134,9 @@ export const useDepartmentManagement = (): UseDepartmentManagementReturn => {
       }
       setIsModalOpen(false);
       return { success: true };
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Failed to save department", err);
-      return { success: false, error: err.message };
+      return { success: false, error: axios.isAxiosError(err) ? err.response?.data?.message || "Failed to save department" : (err instanceof Error ? err.message : "Failed to save department") };
     }
   }, [editingDepartment, loadDepartments]);
 

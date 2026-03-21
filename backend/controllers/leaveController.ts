@@ -1,35 +1,36 @@
-import { Request, Response } from 'express';
 import { db } from '../db/index.js';
 import { holidays, leaveBalances, leaveLedger, lwopSummary, serviceRecords, tardinessSummary, leaveApplications, dailyTimeRecords, authentication, internalPolicies } from '../db/schema.js';
-import { eq, and, between, ne, or, sql, desc, lt, lte, gte } from 'drizzle-orm';
-import { createNotification, notifyAdmins } from './notificationController.js';
+import { eq, and, between, ne, or, sql, desc, lt, lte, gte, getTableColumns } from 'drizzle-orm';
+import { createNotification, notifyAdmins, updateNotificationsByReference } from './notificationController.js';
 import { accrueCreditsForMonth } from '../services/leaveAccrualService.js';
-import type { AuthenticatedRequest } from '../types/index.js';
-import { type CreditType, type LeaveType, type PaymentStatus, type TransactionType } from '../types/leave.types.js';
+import type { AuthenticatedHandler, AuthenticatedRequest } from '../types/index.js';
+import { type PaymentStatus, type TransactionType, type ApplicationStatus, APPLICATION_STATUS } from '../types/leave.types.js';
 import { applyLeaveSchema, rejectLeaveSchema, creditUpdateSchema, accrueCreditsSchema, leavePolicySchema, type LeavePolicyContentStrict } from '../schemas/leaveSchema.js';
 import { formatFullName } from '../utils/nameUtils.js';
-// removed unused import
+import { z } from 'zod';
 
-// T1 FIX: Typed interface for multer request (replaces `req as any`)
-interface MulterRequest extends Request {
+// T1 FIX: Typed interface for multer request
+interface MulterRequest extends AuthenticatedRequest {
   file?: Express.Multer.File;
 }
 
-// T1 FIX: Typed record for leave update data (replaces `any`)
-// Uses Record to stay compatible with Drizzle's .set() which expects partial column types
+// T1 FIX: Typed record for leave update data
 type LeaveUpdateData = Partial<{
   status: 'Pending' | 'Approved' | 'Rejected' | 'Cancelled' | 'Processing' | 'Finalizing';
   updatedAt: ReturnType<typeof sql>;
-  adminFormPath: string;
-  finalAttachmentPath: string;
+  adminFormPath: string | null;
+  finalAttachmentPath: string | null;
+  rejectedBy: string | null;
+  rejectedAt: ReturnType<typeof sql> | null;
+  rejectionReason: string | null;
+  approvedBy: string | null;
+  approvedAt: ReturnType<typeof sql> | null;
 }>;
 
-// ============================================================================
-// Types & Interfaces
-// ============================================================================
-
-// Removed manually typed LeavePolicyContent in favor of Zod inference LeavePolicyContentStrict
-
+// Type guard for application status
+function isApplicationStatus(status: string): status is ApplicationStatus {
+  return APPLICATION_STATUS.some(s => s === status);
+}
 
 const getHolidaysInRange = async (startDate: string, endDate: string): Promise<string[]> => {
   try {
@@ -42,16 +43,11 @@ const getHolidaysInRange = async (startDate: string, endDate: string): Promise<s
     ));
     
     return rows.map(r => r.date);
-  } catch (_error) {
-
+  } catch (_error: unknown) {
     return [];
   }
 };
 
-/**
- * Calculate working days between two dates
- * Excludes weekends (Sat/Sun) and holidays
- */
 const calculateWorkingDays = async (startDate: string, endDate: string): Promise<number> => {
   const holidaysList = await getHolidaysInRange(startDate, endDate);
   const holidaySet = new Set(holidaysList);
@@ -64,7 +60,6 @@ const calculateWorkingDays = async (startDate: string, endDate: string): Promise
     const dayOfWeek = curDate.getDay();
     const dateStr = curDate.toISOString().split('T')[0];
 
-    // Exclude weekends (0 = Sunday, 6 = Saturday) and holidays
     if (dayOfWeek !== 0 && dayOfWeek !== 6 && !holidaySet.has(dateStr)) {
       count++;
     }
@@ -74,15 +69,8 @@ const calculateWorkingDays = async (startDate: string, endDate: string): Promise
   return count;
 };
 
-/**
- * Get current year
- */
 const getCurrentYear = (): number => new Date().getFullYear();
 
-/**
- * Process any pending leave applications that are "Deemed Approved" per CSC rules.
- * Rule: Pending action for >= 5 working days.
- */
 const processDeemedApprovedLeaves = async (): Promise<void> => {
     try {
         const policy = await getLeavePolicy();
@@ -92,17 +80,15 @@ const processDeemedApprovedLeaves = async (): Promise<void> => {
         const today = new Date();
         const todayStr = today.toISOString().split('T')[0];
 
-        // 1. Fetch ALL pending leaves
         const pendingLeaves = await db.query.leaveApplications.findMany({
             where: eq(leaveApplications.status, 'Pending'),
         });
 
         if (pendingLeaves.length === 0) return;
 
-        // 2. Identify date range for holidays
         let oldestDate = today;
         for (const app of pendingLeaves) {
-            const createdDate = new Date(app.createdAt!);
+            const createdDate = new Date(app.createdAt || today);
             if (createdDate < oldestDate) oldestDate = createdDate;
         }
         
@@ -110,7 +96,6 @@ const processDeemedApprovedLeaves = async (): Promise<void> => {
         const holidaysInRange = await getHolidaysInRange(startDateStr, todayStr);
         const holidaySet = new Set(holidaysInRange);
 
-        // 3. Helper for working days within this context
         const countWorkingDaysFast = (start: string, end: string): number => {
             let count = 0;
             const cur = new Date(start);
@@ -129,31 +114,25 @@ const processDeemedApprovedLeaves = async (): Promise<void> => {
         const approvedBy = 'SYSTEM (Deemed Approved)';
 
         for (const application of pendingLeaves) {
-            const createdDate = new Date(application.createdAt!);
+            const createdDate = new Date(application.createdAt || today);
             const createdStr = createdDate.toISOString().split('T')[0];
             
             const workingDaysPassed = countWorkingDaysFast(createdStr, todayStr);
 
             if (workingDaysPassed >= gracePeriod) {
-
                 const isSpecialLeave = policy.specialLeavesNoDeduction.includes(application.leaveType);
-
-                // S1 FIX: Re-check balance before deduction (may have changed since application was filed)
-                // Credit Deduction
                 let finalSafeDeduction = 0;
-                // S1 FIX: Re-check balance before deduction (may have changed since application was filed)
-                // Credit Deduction
+
                 if ((application.actualPaymentStatus === 'WITH_PAY' || application.actualPaymentStatus === 'PARTIAL') && !isSpecialLeave) {
-                    const primaryCreditType = policy.leaveToCreditMap[application.leaveType] as CreditType || 'Vacation Leave';
-                    const deductionAmount = Number(application.workingDays); // Calculate absolute required deduction based on total working days requested
+                    const primaryCreditType = policy.leaveToCreditMap[application.leaveType] || 'Vacation Leave';
+                    const deductionAmount = Number(application.workingDays);
                     
                     if (application.crossChargedFrom) {
-                        const currentBalance = await getEmployeeBalance(application.employeeId, application.crossChargedFrom as CreditType);
+                        const currentBalance = await getEmployeeBalance(application.employeeId, application.crossChargedFrom);
                         finalSafeDeduction = Math.min(deductionAmount, currentBalance);
                         if (finalSafeDeduction > 0) {
-                            await updateBalance(application.employeeId, application.crossChargedFrom as CreditType, -finalSafeDeduction, 'DEDUCTION', application.id, 'leave_application', `${application.leaveType} cross-charged (Deemed Approved)`, approvedBy);
+                            await updateBalance(application.employeeId, application.crossChargedFrom, -finalSafeDeduction, 'DEDUCTION', application.id, 'leave_application', `${application.leaveType} cross-charged (Deemed Approved)`, approvedBy);
                         }
-                        // Remainder becomes LWOP
                         const remainder = deductionAmount - finalSafeDeduction;
                         if (remainder > 0) {
                             await updateLWOPSummary(application.employeeId, remainder);
@@ -170,10 +149,9 @@ const processDeemedApprovedLeaves = async (): Promise<void> => {
                         }
                     }
                 } else if (isSpecialLeave) {
-                    finalSafeDeduction = Number(application.workingDays); // Special leaves are always fully paid without deduction
+                    finalSafeDeduction = Number(application.workingDays);
                 }
 
-                // Recalculate and update final daysWithPay and daysWithoutPay to ensure historical accuracy based on live exact deductions
                 let finalPaymentStatus = application.actualPaymentStatus;
                 if (!isSpecialLeave && application.actualPaymentStatus !== 'WITHOUT_PAY') {
                     if (finalSafeDeduction === Number(application.workingDays)) finalPaymentStatus = 'WITH_PAY';
@@ -183,12 +161,10 @@ const processDeemedApprovedLeaves = async (): Promise<void> => {
 
                 const finalWithoutPay = Number(application.workingDays) - finalSafeDeduction;
 
-                // LWOP Tracking (for explicit WITHOUT_PAY or purely zero balance leaves calculated above)
                 if (application.actualPaymentStatus === 'WITHOUT_PAY') {
                     await updateLWOPSummary(application.employeeId, Number(application.workingDays));
                 }
 
-                // Status Update
                 await db.update(leaveApplications)
                     .set({ 
                         status: 'Approved', 
@@ -201,7 +177,6 @@ const processDeemedApprovedLeaves = async (): Promise<void> => {
                     })
                     .where(eq(leaveApplications.id, application.id));
 
-                // DTR Update
                 const dtrStart = new Date(application.startDate);
                 const dtrEnd = new Date(application.endDate);
                 const dtrCur = new Date(dtrStart);
@@ -215,20 +190,27 @@ const processDeemedApprovedLeaves = async (): Promise<void> => {
                     dtrCur.setDate(dtrCur.getDate() + 1);
                 }
 
-                // Service Record
-                const eventType = Number(application.daysWithoutPay) > 0 ? 'LWOP' : 'Leave';
-                await logToServiceRecord(application.employeeId, eventType as 'LWOP' | 'Leave', String(application.startDate).split('T')[0], String(application.endDate).split('T')[0], application.leaveType, Number(application.workingDays), application.actualPaymentStatus !== 'WITHOUT_PAY', `${application.leaveType} - Deemed Approved`, application.id, 'leave_application', approvedBy);
+                const eventType: 'LWOP' | 'Leave' = Number(finalWithoutPay) > 0 ? 'LWOP' : 'Leave';
+                await logToServiceRecord(
+                  application.employeeId, 
+                  eventType, 
+                  String(application.startDate).split('T')[0], 
+                  String(application.endDate).split('T')[0], 
+                  application.leaveType, 
+                  Number(application.workingDays), 
+                  application.actualPaymentStatus !== 'WITHOUT_PAY', 
+                  `${application.leaveType} - Deemed Approved`, 
+                  application.id, 
+                  'leave_application', 
+                  approvedBy
+                );
             }
         }
     } catch (error) {
-      // S2 FIX: Log errors instead of silently swallowing
       console.error('[LEAVE] Error processing deemed approved leaves:', error);
     }
 };
 
-/**
- * Get dynamic leave policy from database
- */
 const getLeavePolicy = async (): Promise<LeavePolicyContentStrict> => {
     try {
         const results = await db.select()
@@ -237,12 +219,11 @@ const getLeavePolicy = async (): Promise<LeavePolicyContentStrict> => {
         .limit(1);
 
         const policy = results[0];
-
         if (!policy) {
-            throw new Error('Leave policy not found in database. Please run seeders or configure internal policies.');
+            throw new Error('Leave policy not found in database.');
         }
 
-        const rawJson = typeof policy.content === 'string' 
+        const rawJson: unknown = typeof policy.content === 'string' 
             ? JSON.parse(policy.content) 
             : policy.content;
             
@@ -253,12 +234,9 @@ const getLeavePolicy = async (): Promise<LeavePolicyContentStrict> => {
     }
 };
 
-/**
- * Get employee's current credit balance
- */
 const getEmployeeBalance = async (
   employeeId: string,
-  creditType: CreditType,
+  creditType: string,
   year?: number
 ): Promise<number> => {
   try {
@@ -272,17 +250,13 @@ const getEmployeeBalance = async (
     });
     return row ? Number(row.balance) : 0;
   } catch (_error) {
-
     return 0;
   }
 };
 
-/**
- * Update employee balance and create ledger entry
- */
 const updateBalance = async (
   employeeId: string,
-  creditType: CreditType,
+  creditType: string,
   amount: number,
   transactionType: TransactionType,
   referenceId?: number,
@@ -293,51 +267,44 @@ const updateBalance = async (
   const year = getCurrentYear();
 
   try {
-    // Get current balance
     const currentBalance = await getEmployeeBalance(employeeId, creditType, year);
-    const newBalance = Number((currentBalance + amount).toFixed(3)).toString();
+    const newBalanceValue = Number((currentBalance + amount).toFixed(3));
+    const newBalanceStr = newBalanceValue.toString();
 
-    // Update or insert balance
     await db.insert(leaveBalances).values({
       employeeId,
       creditType,
-      balance: newBalance,
+      balance: newBalanceStr,
       year
     }).onDuplicateKeyUpdate({
       set: {
-        balance: newBalance,
+        balance: newBalanceStr,
         updatedAt: sql`CURRENT_TIMESTAMP`
       }
     });
 
-    // Create ledger entry
     await db.insert(leaveLedger).values({
       employeeId,
       creditType,
       transactionType,
       amount: amount.toString(),
-      balanceAfter: newBalance,
+      balanceAfter: newBalanceStr,
       referenceId,
       referenceType,
       remarks,
-      createdBy
+      createdBy: createdBy || 'System'
     });
 
-    return { success: true, newBalance: Number(newBalance) };
+    return { success: true, newBalance: newBalanceValue };
   } catch (_error) {
-
     return { success: false, newBalance: 0 };
   }
 };
 
-/**
- * Update LWOP summary for service record tracking
- */
 const updateLWOPSummary = async (employeeId: string, lwopDays: number): Promise<void> => {
   const year = getCurrentYear();
 
   try {
-    // Get cumulative from previous years
     const prevRow = await db.query.lwopSummary.findFirst({
       where: and(
         eq(lwopSummary.employeeId, employeeId),
@@ -347,31 +314,26 @@ const updateLWOPSummary = async (employeeId: string, lwopDays: number): Promise<
     });
 
     const prevCumulative = prevRow ? Number(prevRow.cumulativeLwopDays) : 0;
-    const totalDays = lwopDays.toString();
-    const cumulativeDays = (prevCumulative + lwopDays).toString();
+    const totalDaysStr = lwopDays.toString();
+    const cumulativeDaysStr = (prevCumulative + lwopDays).toString();
 
     await db.insert(lwopSummary).values({
       employeeId,
       year,
-      totalLwopDays: totalDays,
-      cumulativeLwopDays: cumulativeDays
+      totalLwopDays: totalDaysStr,
+      cumulativeLwopDays: cumulativeDaysStr
     }).onDuplicateKeyUpdate({
       set: {
-        totalLwopDays: sql`total_lwop_days + ${totalDays}`,
-        cumulativeLwopDays: sql`cumulative_lwop_days + ${totalDays}`,
+        totalLwopDays: sql`total_lwop_days + ${totalDaysStr}`,
+        cumulativeLwopDays: sql`cumulative_lwop_days + ${totalDaysStr}`,
         updatedAt: sql`CURRENT_TIMESTAMP`
       }
     });
   } catch (_error) {
       /* empty */
-
   }
 };
 
-/**
- * Log event to Service Record (career history tracking)
- * Used for: Approved leaves, LWOP, promotions, etc.
- */
 const logToServiceRecord = async (
   employeeId: string,
   eventType: 'Appointment' | 'Promotion' | 'Leave' | 'LWOP' | 'Return from Leave' | 'Transfer' | 'Suspension' | 'Resignation' | 'Retirement' | 'Other',
@@ -393,31 +355,23 @@ const logToServiceRecord = async (
       endDate,
       leaveType,
       daysCount: daysCount.toString(),
-      isWithPay: isWithPay ? true : false,
+      isWithPay: !!isWithPay,
       remarks,
       referenceId,
       referenceType,
       processedBy
     });
-
   } catch (_error) {
       /* empty */
-
   }
 };
 
-/**
- * Calculate tardiness and convert to VL deduction or LWOP
- * Formula: (Total Minutes Late/Undertime) / 480 = Decimal Days
- * 480 minutes = 8 hours = 1 working day
- */
 const calculateTardinessDeduction = async (
   employeeId: string,
   year: number,
   month: number
 ): Promise<{ daysEquivalent: number; deductedFromVL: number; chargedAsLWOP: number }> => {
   try {
-    // Get tardiness summary for the month
     const tardiness = await db.query.tardinessSummary.findFirst({
       where: and(
         eq(tardinessSummary.employeeId, employeeId),
@@ -430,7 +384,6 @@ const calculateTardinessDeduction = async (
       return { daysEquivalent: 0, deductedFromVL: 0, chargedAsLWOP: 0 };
     }
 
-    // Fetch employee's dailyTargetHours for accurate deduction
     const empRecord = await db.select({ dailyTargetHours: authentication.dailyTargetHours })
       .from(authentication)
       .where(eq(authentication.employeeId, employeeId))
@@ -438,20 +391,18 @@ const calculateTardinessDeduction = async (
     const dailyTargetMinutes = (Number(empRecord[0]?.dailyTargetHours) || 8) * 60;
 
     const totalMinutes = (tardiness.totalLateMinutes || 0) + (tardiness.totalUndertimeMinutes || 0);
-    const daysEquivalent = totalMinutes / dailyTargetMinutes; // Dynamic: based on employee's actual target hours
+    const daysEquivalent = totalMinutes / dailyTargetMinutes;
 
     if (daysEquivalent <= 0) {
       return { daysEquivalent: 0, deductedFromVL: 0, chargedAsLWOP: 0 };
     }
 
-    // Get VL balance
     const vlBalance = await getEmployeeBalance(employeeId, 'Vacation Leave', year);
     
     let deductedFromVL = 0;
     let chargedAsLWOP = 0;
 
     if (vlBalance >= daysEquivalent) {
-      // Enough VL - deduct fully
       deductedFromVL = daysEquivalent;
       await updateBalance(
         employeeId,
@@ -464,10 +415,8 @@ const calculateTardinessDeduction = async (
         'SYSTEM'
       );
     } else if (vlBalance > 0) {
-      // Partial VL, rest is LWOP
       deductedFromVL = vlBalance;
       chargedAsLWOP = daysEquivalent - vlBalance;
-      
       await updateBalance(
         employeeId,
         'Vacation Leave',
@@ -478,16 +427,12 @@ const calculateTardinessDeduction = async (
         `Tardiness/Undertime deduction for ${month}/${year} (partial)`,
         'SYSTEM'
       );
-      
-      // Record LWOP
       await updateLWOPSummary(employeeId, chargedAsLWOP);
     } else {
-      // No VL - all LWOP
       chargedAsLWOP = daysEquivalent;
       await updateLWOPSummary(employeeId, chargedAsLWOP);
     }
 
-    // Update tardiness_summary with results
     await db.update(tardinessSummary)
       .set({ 
         deductedFromVl: deductedFromVL.toString(), 
@@ -503,151 +448,106 @@ const calculateTardinessDeduction = async (
 
     return { daysEquivalent, deductedFromVL, chargedAsLWOP };
   } catch (_error) {
-
     return { daysEquivalent: 0, deductedFromVL: 0, chargedAsLWOP: 0 };
   }
 };
 
-// ============================================================================
-// Leave Application Functions
-// ============================================================================
-
-/**
- * Apply for leave
- */
-export const applyLeave = async (req: Request, res: Response): Promise<void> => {
+export const applyLeave: AuthenticatedHandler = async (req, res) => {
+  const multerReq = req as unknown as MulterRequest;
   try {
-    const authReq = req as AuthenticatedRequest;
-    const employeeId = authReq.user.employeeId || authReq.user.id;
-
+    const employeeId = req.user.employeeId || String(req.user.id);
     if (!employeeId) {
       res.status(400).json({ message: 'User not identified.' });
       return;
     }
 
-    // Fetch policy FIRST for dynamic validation
     const policy = await getLeavePolicy();
     if (!policy) {
       res.status(500).json({ message: 'Internal Error: Leave policy not configured.' });
       return;
     }
 
-    // Validate input
     const validation = applyLeaveSchema.safeParse(req.body);
     if (!validation.success) {
-      res.status(400).json({
-        message: 'Validation Error',
-        errors: validation.error.format(),
-      });
+      res.status(400).json({ message: 'Validation Error', errors: validation.error.format() });
       return;
     }
 
     const { leaveType, startDate, endDate, reason, isWithPay } = validation.data;
 
-    // S1 FIX: Dynamic validation of leave type against policy
     if (!policy.types.includes(leaveType)) {
-      res.status(400).json({
-        message: `Invalid leave type: ${leaveType}. Please choose from: ${policy.types.join(', ')}`,
-      });
+      res.status(400).json({ message: `Invalid leave type: ${leaveType}.` });
       return;
     }
 
-    // Calculate working days
     const workingDays = await calculateWorkingDays(startDate, endDate);
     if (workingDays === 0) {
-      res.status(400).json({
-        message: 'Leave duration is 0 working days. Please check your dates (weekends and holidays are excluded).',
-      });
+      res.status(400).json({ message: 'Leave duration is 0 working days.' });
       return;
     }
 
     const todayStr = new Date().toISOString().split('T')[0];
-
-    // Validate advance filing using calculateWorkingDays instead of calendar days
     const advanceFiling = policy.advanceFilingDays;
     if (advanceFiling.appliesTo.includes(leaveType)) {
       const workingDaysAdvance = await calculateWorkingDays(todayStr, startDate);
       if (workingDaysAdvance <= advanceFiling.days) {
-        res.status(400).json({
-          message: `${leaveType} must be filed at least ${advanceFiling.days} working days in advance per policy.`,
-        });
+        res.status(400).json({ message: `${leaveType} must be filed at least ${advanceFiling.days} working days in advance.` });
         return;
       }
     }
 
-    // Validate Sick Leave window (filed upon return, meaning after endDate)
     if (leaveType === (policy.sickLeaveType || 'Sick Leave')) {
       const workingDaysPassed = await calculateWorkingDays(endDate, todayStr);
       const window = policy.sickLeaveWindow.maxDaysAfterReturn;
-      if (workingDaysPassed > window + 1) { // +1 because the range calculation usually includes both start and end dates
-        res.status(400).json({
-          message: `Sick Leave must be filed within ${window} working days upon returning to work.`,
-        });
+      if (workingDaysPassed > window + 1) {
+        res.status(400).json({ message: `Sick Leave must be filed within ${window} working days upon returning.` });
         return;
       }
     }
 
-    // Check annual limits from policy
     const annualLimit = policy.annualLimits[leaveType];
     if (annualLimit !== undefined) {
       const year = new Date(startDate).getFullYear();
-      
-      const usageResult = await db.select({ 
-        totalDays: sql<string>`sum(${leaveApplications.workingDays})` 
-      })
+      const usageResult = await db.select({ totalDays: sql<string>`sum(${leaveApplications.workingDays})` })
       .from(leaveApplications)
       .where(and(
-        eq(leaveApplications.employeeId, String(employeeId)),
-        eq(leaveApplications.leaveType, leaveType as LeaveType),
+        eq(leaveApplications.employeeId, employeeId),
+        eq(leaveApplications.leaveType, leaveType),
         sql`YEAR(${leaveApplications.startDate}) = ${year}`,
         ne(leaveApplications.status, 'Rejected'),
         ne(leaveApplications.status, 'Cancelled')
       ));
       
       const usedDays = Number(usageResult[0]?.totalDays || 0);
-      const newTotal = usedDays + workingDays;
-
-      if (newTotal > annualLimit) {
-        res.status(400).json({
-          message: `You have reached the annual limit of ${annualLimit} days for ${leaveType}. (Used: ${usedDays}, Requested: ${workingDays})`,
-        });
+      if (usedDays + workingDays > annualLimit) {
+        res.status(400).json({ message: `Annual limit of ${annualLimit} days for ${leaveType} exceeded.` });
         return;
       }
     }
 
-    // Determine payment status
     const isSpecialLeave = policy.specialLeavesNoDeduction.includes(leaveType);
     let actualPaymentStatus: PaymentStatus = 'WITH_PAY';
     let daysWithPay = 0;
     let daysWithoutPay = 0;
-    let crossChargedFrom: CreditType | null = null;
+    let crossChargedFrom: string | null = null;
 
     if (isWithPay && !isSpecialLeave) {
-      // Get credit type to deduct from
-      const mappedCreditType = policy.leaveToCreditMap[leaveType as keyof typeof policy.leaveToCreditMap];
-      const primaryCreditType = mappedCreditType;
-      
+      const primaryCreditType = policy.leaveToCreditMap[leaveType];
       if (!primaryCreditType) {
-        res.status(400).json({ message: `Leave type ${leaveType} does not have a linked credit type for deduction.` });
+        res.status(400).json({ message: `Leave type ${leaveType} not linked to any credit type.` });
         return;
       }
 
-      const primaryBalance = await getEmployeeBalance(String(employeeId), primaryCreditType as CreditType);
-
+      const primaryBalance = await getEmployeeBalance(employeeId, primaryCreditType);
       if (primaryBalance >= workingDays) {
-        // Sufficient primary credits
         daysWithPay = workingDays;
         actualPaymentStatus = 'WITH_PAY';
-      } else if (primaryBalance > 0) {
-        // Partial credits available
+      } else {
         daysWithPay = primaryBalance;
-
-        // Check cross-charging for remaining
-        const crossChargeType = policy.crossChargeMap[leaveType as keyof typeof policy.crossChargeMap] as CreditType | undefined;
+        const crossChargeType = policy.crossChargeMap[leaveType];
         if (crossChargeType) {
-          const crossBalance = await getEmployeeBalance(String(employeeId), crossChargeType);
+          const crossBalance = await getEmployeeBalance(employeeId, crossChargeType);
           const remaining = workingDays - primaryBalance;
-
           if (crossBalance >= remaining) {
             daysWithPay = workingDays;
             crossChargedFrom = crossChargeType;
@@ -662,107 +562,73 @@ export const applyLeave = async (req: Request, res: Response): Promise<void> => 
           daysWithoutPay = workingDays - primaryBalance;
           actualPaymentStatus = 'PARTIAL';
         }
-      } else {
-        // No primary credits, check cross-charging
-        const crossChargeType = policy.crossChargeMap[leaveType as keyof typeof policy.crossChargeMap] as CreditType | undefined;
-        if (crossChargeType) {
-          const crossBalance = await getEmployeeBalance(String(employeeId), crossChargeType);
-          if (crossBalance >= workingDays) {
-            daysWithPay = workingDays;
-            crossChargedFrom = crossChargeType;
-            actualPaymentStatus = 'WITH_PAY';
-          } else if (crossBalance > 0) {
-            daysWithPay = crossBalance;
-            daysWithoutPay = workingDays - crossBalance;
-            crossChargedFrom = crossChargeType;
-            actualPaymentStatus = 'PARTIAL';
-          } else {
-            daysWithoutPay = workingDays;
-            actualPaymentStatus = 'WITHOUT_PAY';
-          }
-        } else {
-          daysWithoutPay = workingDays;
-          actualPaymentStatus = 'WITHOUT_PAY';
-        }
       }
     } else if (!isWithPay) {
-      // Employee explicitly requested LWOP
       daysWithoutPay = workingDays;
       actualPaymentStatus = 'WITHOUT_PAY';
     } else if (isSpecialLeave) {
-      // Special leaves don't deduct from VL/SL
       daysWithPay = workingDays;
       actualPaymentStatus = 'WITH_PAY';
     }
 
-    // Insert application
     const [result] = await db.insert(leaveApplications).values({
-      employeeId: String(employeeId),
-      leaveType: leaveType as LeaveType,
+      employeeId: employeeId,
+      leaveType,
       startDate,
       endDate,
       workingDays: workingDays.toString(),
-      isWithPay: isWithPay ? true : false,
+      isWithPay: !!isWithPay,
       actualPaymentStatus,
       daysWithPay: daysWithPay.toString(),
       daysWithoutPay: daysWithoutPay.toString(),
       crossChargedFrom,
       reason,
-      attachmentPath: (req as MulterRequest).file?.filename || null,
+      attachmentPath: multerReq.file?.filename || null,
       status: 'Pending'
     });
 
-    // Create notifications
     try {
-      await createNotification({
-        recipientId: String(employeeId),
-        senderId: null,
-        title: 'Leave Request Submitted',
-        message: `Your ${leaveType} request from ${startDate} to ${endDate} (${workingDays} working days) has been submitted.`,
-        type: 'leave_request_pending',
-        referenceId: result.insertId,
-      });
+      const userRole = req.user.role;
+      const isAdminOrHR = userRole === 'Administrator' || userRole === 'Human Resource';
 
       await notifyAdmins({
-        senderId: String(employeeId),
+        senderId: employeeId,
         title: 'New Leave Request',
-        message: `Employee ${employeeId} requested ${leaveType} from ${startDate} to ${endDate}.`,
+        message: `Employee ${employeeId} requested ${leaveType}.`,
+        type: 'leave_request',
+        referenceId: result.insertId,
+        excludeId: employeeId
+      });
+
+      await createNotification({
+        recipientId: employeeId,
+        senderId: isAdminOrHR ? employeeId : null,
+        title: 'Leave Request Submitted',
+        message: `Your ${leaveType} request has been submitted.`,
         type: 'leave_request',
         referenceId: result.insertId,
       });
-    } catch (_notifyError) {
-      /* empty */
-
-    }
+    } catch (_notifyError) { /* empty */ }
 
     res.status(201).json({
       message: 'Leave application submitted successfully',
       id: result.insertId,
       workingDays,
-      actualPaymentStatus,
-      daysWithPay,
-      daysWithoutPay,
-      crossChargedFrom,
+      actualPaymentStatus
     });
-  } catch (err) {
-    const error = err as Error;
-
+  } catch (err: unknown) {
+    const error = err instanceof Error ? err : new Error('Unknown error');
     res.status(500).json({ message: error.message || 'Something went wrong!' });
   }
 };
 
-/**
- * Get employee's own leave applications
- */
-export const getMyLeaves = async (req: Request, res: Response): Promise<void> => {
+export const getMyLeaves: AuthenticatedHandler = async (req, res) => {
   try {
-    const authReq = req as AuthenticatedRequest;
-    const employeeId = String(authReq.user.employeeId || authReq.user.id);
-
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 10;
-    const search = (req.query.search as string) || '';
-    const status = (req.query.status as string) || '';
+    const employeeId = req.user.employeeId || String(req.user.id);
+    const page = parseInt(String(req.query.page || '1'), 10) || 1;
+    const limit = parseInt(String(req.query.limit || '10'), 10) || 10;
+    const search = String(req.query.search || '');
+    const statusParam = req.query.status;
     const offset = (page - 1) * limit;
 
     const conditions = [eq(leaveApplications.employeeId, employeeId)];
@@ -772,36 +638,21 @@ export const getMyLeaves = async (req: Request, res: Response): Promise<void> =>
         sql`${leaveApplications.reason} LIKE ${`%${search}%`}`
       )!);
     }
-    if (status) {
-      conditions.push(eq(leaveApplications.status, status as 'Pending' | 'Approved' | 'Rejected' | 'Cancelled'));
+    if (typeof statusParam === 'string' && isApplicationStatus(statusParam)) {
+      conditions.push(eq(leaveApplications.status, statusParam));
     }
 
     const where = and(...conditions);
+    const [countResult] = await db.select({ total: sql<number>`count(*)` }).from(leaveApplications).where(where);
+    const totalItems = Number(countResult?.total || 0);
 
-    // Count total
-    const [countResult] = await db.select({ total: sql<number>`count(*)` })
-      .from(leaveApplications)
-      .where(where);
-    const totalItems = Number(countResult.total);
-    const totalPages = Math.ceil(totalItems / limit);
-
-    // Fetch applications
     const leaves = await db.select({
-      id: leaveApplications.id,
-      employeeId: leaveApplications.employeeId,
-      leaveType: leaveApplications.leaveType,
-      startDate: leaveApplications.startDate,
-      endDate: leaveApplications.endDate,
-      workingDays: leaveApplications.workingDays,
-      status: leaveApplications.status,
-      reason: leaveApplications.reason,
-      createdAt: leaveApplications.createdAt,
+      ...getTableColumns(leaveApplications),
       firstName: authentication.firstName,
       lastName: authentication.lastName,
       middleName: authentication.middleName,
       suffix: authentication.suffix,
-      department: authentication.department,
-      withPay: leaveApplications.isWithPay
+      department: authentication.department
     })
     .from(leaveApplications)
     .leftJoin(authentication, eq(leaveApplications.employeeId, authentication.employeeId))
@@ -817,31 +668,23 @@ export const getMyLeaves = async (req: Request, res: Response): Promise<void> =>
 
     res.status(200).json({
       leaves: formattedLeaves,
-      applications: formattedLeaves, // Align with frontend hook useLeaveData
-      pagination: { page, limit, totalItems, totalPages },
+      pagination: { page, limit, totalItems, totalPages: Math.ceil(totalItems / limit) },
     });
-  } catch (_err) {
-
+  } catch (_err: unknown) {
     res.status(500).json({ message: 'Something went wrong!' });
   }
 };
 
-/**
- * Get all leave applications (Admin)
- */
-export const getAllLeaves = async (req: Request, res: Response): Promise<void> => {
+export const getAllLeaves: AuthenticatedHandler = async (req, res) => {
   try {
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 10;
-    const search = (req.query.search as string) || '';
-    const department = (req.query.department as string) || '';
-    const status = (req.query.status as string) || '';
+    const page = parseInt(String(req.query.page || '1'), 10) || 1;
+    const limit = parseInt(String(req.query.limit || '10'), 10) || 10;
+    const search = String(req.query.search || '');
+    const department = String(req.query.department || '');
+    const statusParam = req.query.status;
     const offset = (page - 1) * limit;
 
-    // --- DEEMED APPROVED AUTO-BYPASS (CSC Rule) ---
-    // Any leave pending for >= 5 working days is automatically approved.
     await processDeemedApprovedLeaves();
-    // --- END DEEMED APPROVED AUTO-BYPASS ---
 
     const conditions = [];
     if (search) {
@@ -851,31 +694,19 @@ export const getAllLeaves = async (req: Request, res: Response): Promise<void> =
         sql`${authentication.lastName} LIKE ${`%${search}%`}`
       )!);
     }
-    if (department) {
-      conditions.push(eq(authentication.department, department));
-    }
-    if (status) {
-      conditions.push(eq(leaveApplications.status, status as 'Pending' | 'Approved' | 'Rejected' | 'Cancelled'));
+    if (department) conditions.push(eq(authentication.department, department));
+    if (typeof statusParam === 'string' && isApplicationStatus(statusParam)) {
+      conditions.push(eq(leaveApplications.status, statusParam));
     }
     
-    // New Filters
-    const startDate = (req.query.startDate as string) || '';
-    const endDate = (req.query.endDate as string) || '';
-    const employeeId = (req.query.employeeId as string) || ''; // Can be name or ID
+    const startDate = String(req.query.startDate || '');
+    const endDate = String(req.query.endDate || '');
+    const employeeId = String(req.query.employeeId || '');
 
     if (startDate && endDate) {
-      // Overlap logic: application starts before report ends AND ends after report starts
-      conditions.push(and(
-        lte(leaveApplications.startDate, endDate),
-        gte(leaveApplications.endDate, startDate)
-      )); 
-    } else if (startDate) {
-      conditions.push(gte(leaveApplications.endDate, startDate));
-    } else if (endDate) {
-      conditions.push(lte(leaveApplications.startDate, endDate));
+      conditions.push(and(lte(leaveApplications.startDate, endDate), gte(leaveApplications.endDate, startDate))); 
     }
     if (employeeId) {
-       // Check if it matches ID or Name (since frontend sends Name often)
        conditions.push(or(
          eq(leaveApplications.employeeId, employeeId),
          sql`${authentication.firstName} LIKE ${`%${employeeId}%`}`,
@@ -884,26 +715,14 @@ export const getAllLeaves = async (req: Request, res: Response): Promise<void> =
     }
 
     const where = conditions.length > 0 ? and(...conditions) : undefined;
-
-    // Count total
     const [countResult] = await db.select({ total: sql<number>`count(*)` })
       .from(leaveApplications)
       .leftJoin(authentication, eq(leaveApplications.employeeId, authentication.employeeId))
       .where(where);
-    const totalItems = Number(countResult.total);
-    const totalPages = Math.ceil(totalItems / limit);
+    const totalItems = Number(countResult?.total || 0);
 
-    // Fetch applications
     const leaves = await db.select({
-      id: leaveApplications.id,
-      employeeId: leaveApplications.employeeId,
-      leaveType: leaveApplications.leaveType,
-      startDate: leaveApplications.startDate,
-      endDate: leaveApplications.endDate,
-      workingDays: leaveApplications.workingDays,
-      status: leaveApplications.status,
-      createdAt: leaveApplications.createdAt,
-      withPay: leaveApplications.isWithPay, 
+      ...getTableColumns(leaveApplications),
       firstName: sql<string>`COALESCE(${authentication.firstName}, '')`,
       lastName: sql<string>`COALESCE(${authentication.lastName}, '')`,
       middleName: authentication.middleName,
@@ -916,7 +735,6 @@ export const getAllLeaves = async (req: Request, res: Response): Promise<void> =
     .leftJoin(leaveBalances, and(
       eq(leaveBalances.employeeId, leaveApplications.employeeId),
       eq(leaveBalances.creditType, leaveApplications.leaveType),
-      // Match year of application start date
       eq(leaveBalances.year, sql`YEAR(${leaveApplications.startDate})`)
     ))
     .where(where)
@@ -931,300 +749,230 @@ export const getAllLeaves = async (req: Request, res: Response): Promise<void> =
 
     res.status(200).json({
       leaves: formattedLeaves,
-      applications: formattedLeaves, // Keep for backward compatibility if any other part uses it
-      pagination: { page, limit, totalItems, totalPages },
+      pagination: { page, limit, totalItems, totalPages: Math.ceil(totalItems / limit) },
     });
-  } catch (_err) {
-
+  } catch (_err: unknown) {
     res.status(500).json({ message: 'Something went wrong!' });
   }
 };
 
-/**
- * Process leave (admin uploads form)
- */
-export const processLeave = async (req: Request, res: Response): Promise<void> => {
+export const processLeave: AuthenticatedHandler = async (req, res) => {
+  const multerReq = req as unknown as MulterRequest;
   try {
-    const { id } = req.params as { id: string };
-    const authReq = req as AuthenticatedRequest;
-    const adminId = authReq.user ? String(authReq.user.employeeId || authReq.user.id) : 'Administrator';
-    const file = (req as MulterRequest).file;
-
-    const updateData: LeaveUpdateData = { 
-      status: 'Processing', 
-      updatedAt: sql`CURRENT_TIMESTAMP` 
-    };
-
-    if (file) {
-      updateData.adminFormPath = file.filename;
+    const idParam = typeof req.params.id === 'string' ? req.params.id : '';
+    if (!idParam) {
+      res.status(400).json({ message: 'Missing application ID' });
+      return;
     }
+    const id = parseInt(idParam, 10);
+    const file = multerReq.file;
+    const updateData: LeaveUpdateData = { status: 'Processing', updatedAt: sql`CURRENT_TIMESTAMP` };
+    if (file) updateData.adminFormPath = file.filename;
 
-    await db.update(leaveApplications)
-      .set(updateData)
-      .where(eq(leaveApplications.id, parseInt(id)));
-
-    // Notify employee
-    const application = await db.query.leaveApplications.findFirst({
-      where: eq(leaveApplications.id, parseInt(id)),
-      columns: { employeeId: true }
-    });
-
-    if (application) {
-      await createNotification({
-        recipientId: application.employeeId,
-        senderId: adminId,
+    await db.update(leaveApplications).set(updateData).where(eq(leaveApplications.id, id));
+    await updateNotificationsByReference({
+        type: 'leave_request',
+        referenceId: id,
         title: 'Leave Request Processing',
         message: 'Your leave request is being processed.',
-        type: 'leave_process',
-        referenceId: parseInt(id),
-      });
-    }
-
-    res.status(200).json({ message: 'Leave processed' });
-  } catch (_err) {
-
-    res.status(500).json({ message: 'Something went wrong!' });
-  }
-};
-
-/**
- * Finalize leave (employee uploads signed form)
- */
-export const finalizeLeave = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { id } = req.params as { id: string };
-    const authReq = req as AuthenticatedRequest;
-    const employeeId = authReq.user ? String(authReq.user.employeeId || authReq.user.id) : null;
-    const file = (req as MulterRequest).file;
-
-    const updateData: LeaveUpdateData = { 
-      status: 'Finalizing', 
-      updatedAt: sql`CURRENT_TIMESTAMP` 
-    };
-
-    if (file) {
-      updateData.finalAttachmentPath = file.filename;
-    }
-
-    await db.update(leaveApplications)
-      .set(updateData)
-      .where(eq(leaveApplications.id, parseInt(id)));
-
-    if (employeeId) {
-      await notifyAdmins({
-        senderId: employeeId,
-        title: 'Leave Request Finalized',
-        message: `Employee ${employeeId} has finalized the leave request.`,
-        type: 'leave_finalize',
-        referenceId: parseInt(id),
-      });
-    }
-
-    res.status(200).json({ message: 'Final form submitted' });
-  } catch (_err) {
-
-    res.status(500).json({ message: 'Something went wrong!' });
-  }
-};
-
-/**
- * Approve leave application
- */
-export const approveLeave = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { id } = req.params as { id: string };
-    const authReq = req as AuthenticatedRequest;
-    const approvedBy = authReq.user ? String(authReq.user.employeeId || authReq.user.id) : 'Administrator';
-
-    // Get application details
-    const application = await db.query.leaveApplications.findFirst({
-      where: eq(leaveApplications.id, parseInt(id))
+        newType: 'leave_process',
     });
+    res.status(200).json({ message: 'Leave processed' });
+  } catch (_err: unknown) {
+    res.status(500).json({ message: 'Something went wrong!' });
+  }
+};
 
+export const finalizeLeave: AuthenticatedHandler = async (req, res) => {
+  const multerReq = req as unknown as MulterRequest;
+  try {
+    const idParam = typeof req.params.id === 'string' ? req.params.id : '';
+    if (!idParam) {
+      res.status(400).json({ message: 'Missing application ID' });
+      return;
+    }
+    const id = parseInt(idParam, 10);
+    const file = multerReq.file;
+    const updateData: LeaveUpdateData = { status: 'Finalizing', updatedAt: sql`CURRENT_TIMESTAMP` };
+    if (file) updateData.finalAttachmentPath = file.filename;
+
+    await db.update(leaveApplications).set(updateData).where(eq(leaveApplications.id, id));
+    await updateNotificationsByReference({
+        type: ['leave_request', 'leave_process'],
+        referenceId: id,
+        title: 'Leave Request Finalizing',
+        message: 'Your leave request is in the final stage of approval.',
+        newType: 'leave_finalize',
+    });
+    res.status(200).json({ message: 'Leave finalized' });
+  } catch (_err: unknown) {
+    res.status(500).json({ message: 'Something went wrong!' });
+  }
+};
+
+export const approveLeave: AuthenticatedHandler = async (req, res) => {
+  try {
+    const idParam = typeof req.params.id === 'string' ? req.params.id : '';
+    if (!idParam) {
+      res.status(400).json({ message: 'Missing application ID' });
+      return;
+    }
+    const appId = parseInt(idParam, 10);
+    const adminId = String(req.user.employeeId || req.user.id);
+
+    const application = await db.query.leaveApplications.findFirst({ where: eq(leaveApplications.id, appId) });
     if (!application) {
-      res.status(404).json({ message: 'Application not found' });
+      res.status(404).json({ message: 'Leave application not found.' });
       return;
     }
 
-    const policy = await getLeavePolicy();
-    const isSpecialLeave = policy?.specialLeavesNoDeduction.includes(application.leaveType) ?? false;
+    if (application.actualPaymentStatus === 'WITH_PAY' || application.actualPaymentStatus === 'PARTIAL') {
+      const policy = await getLeavePolicy();
+      const year = new Date(application.startDate).getFullYear();
+      const daysWithPayVal = Number(application.daysWithPay);
+      const primaryCreditType = policy.leaveToCreditMap[application.leaveType];
 
-    // Deduct credits if WITH_PAY and not special leave
-    if ((application.actualPaymentStatus === 'WITH_PAY' || application.actualPaymentStatus === 'PARTIAL') && !isSpecialLeave) {
-      const primaryCreditType = (policy?.leaveToCreditMap[application.leaveType as keyof typeof policy.leaveToCreditMap] as CreditType) 
-        || 'Vacation Leave';
-      
-      if (application.crossChargedFrom) {
-        // Cross-charging: deduct from fallback credit type
-        await updateBalance(
-          application.employeeId,
-          application.crossChargedFrom as CreditType,
-          -Number(application.daysWithPay),
-          'DEDUCTION',
-          parseInt(id),
-          'leave_application',
-          `${application.leaveType} cross-charged from ${application.crossChargedFrom}`,
-          approvedBy
-        );
-      } else {
-        // Normal deduction
-        await updateBalance(
-          application.employeeId,
-          primaryCreditType,
-          -Number(application.daysWithPay),
-          'DEDUCTION',
-          parseInt(id),
-          'leave_application',
-          `${application.leaveType} approved`,
-          approvedBy
-        );
+      if (primaryCreditType && daysWithPayVal > 0) {
+        const primaryBalance = await getEmployeeBalance(application.employeeId, primaryCreditType, year);
+        const deductionAmount = Math.min(daysWithPayVal, primaryBalance);
+        if (deductionAmount > 0) {
+          await updateBalance(application.employeeId, primaryCreditType, -deductionAmount, 'DEDUCTION', appId, 'leave_application', `Approved ${application.leaveType}`, adminId);
+        }
+        if (application.crossChargedFrom && daysWithPayVal > deductionAmount) {
+          const crossDeduction = Math.min(daysWithPayVal - deductionAmount, await getEmployeeBalance(application.employeeId, application.crossChargedFrom, year));
+          if (crossDeduction > 0) {
+            await updateBalance(application.employeeId, application.crossChargedFrom, -crossDeduction, 'DEDUCTION', appId, 'leave_application', `Approved ${application.leaveType} (cross-charged)`, adminId);
+          }
+        }
       }
     }
 
-    // Track LWOP for service record
+    await db.update(leaveApplications).set({ status: 'Approved', approvedBy: adminId, approvedAt: sql`CURRENT_TIMESTAMP`, updatedAt: sql`CURRENT_TIMESTAMP` }).where(eq(leaveApplications.id, appId));
+    const eventType: 'LWOP' | 'Leave' = application.leaveType.includes('Without Pay') ? 'LWOP' : 'Leave';
+    await logToServiceRecord(application.employeeId, eventType, application.startDate, application.endDate, application.leaveType, Number(application.workingDays), !!application.isWithPay, `Approved ${application.leaveType}`, appId, 'leave_application', adminId);
+
     if (Number(application.daysWithoutPay) > 0) {
       await updateLWOPSummary(application.employeeId, Number(application.daysWithoutPay));
     }
 
-    // Update application status
-    await db.update(leaveApplications)
-      .set({ 
-        status: 'Approved', 
-        approvedBy, 
-        approvedAt: sql`CURRENT_TIMESTAMP`, 
-        updatedAt: sql`CURRENT_TIMESTAMP` 
-      })
-      .where(eq(leaveApplications.id, parseInt(id)));
-
-    // Update DTR records
-    try {
-      const startDate = new Date(application.startDate);
-      const endDate = new Date(application.endDate);
-      const currentDate = new Date(startDate);
-
-      while (currentDate <= endDate) {
-        const dateStr = currentDate.toISOString().split('T')[0];
-        const dayOfWeek = currentDate.getDay();
-
-        if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-          await db.insert(dailyTimeRecords).values({
-            employeeId: application.employeeId,
-            date: dateStr,
-            status: 'Leave'
-          }).onDuplicateKeyUpdate({
-            set: {
-              status: 'Leave',
-              updatedAt: sql`CURRENT_TIMESTAMP`
-            }
-          });
-        }
-        currentDate.setDate(currentDate.getDate() + 1);
-      }
-    } catch (_dtrErr) {
-      /* empty */
-
-    }
-
-    // Log to Service Record (career history)
-    const eventType = Number(application.daysWithoutPay) > 0 ? 'LWOP' : 'Leave';
-    await logToServiceRecord(
-      application.employeeId,
-      eventType as 'LWOP' | 'Leave',
-      String(application.startDate).split('T')[0],
-      String(application.endDate).split('T')[0],
-      application.leaveType,
-      Number(application.workingDays),
-      application.actualPaymentStatus !== 'WITHOUT_PAY',
-      `${application.leaveType} - ${application.actualPaymentStatus}`,
-      parseInt(id),
-      'leave_application',
-      approvedBy
-    );
-
-    // Notify employee
-    await createNotification({
-      recipientId: application.employeeId,
-      senderId: approvedBy,
-      title: 'Leave Request Approved',
-      message: `Your ${application.leaveType} request from ${application.startDate} to ${application.endDate} has been approved.`,
-      type: 'leave_request_approved',
-      referenceId: parseInt(id),
+    await updateNotificationsByReference({
+        type: ['leave_request', 'leave_process', 'leave_finalize'],
+        referenceId: appId,
+        title: 'Leave Request Approved',
+        message: 'Your leave request has been approved.',
+        newType: 'leave_approval'
     });
-
-    res.status(200).json({ message: 'Leave approved successfully' });
-  } catch (err) {
-    const error = err as Error;
-
-    res.status(500).json({ message: error.message || 'Something went wrong!' });
+    res.status(200).json({ message: 'Leave approved' });
+  } catch (_err: unknown) {
+    res.status(500).json({ message: 'Something went wrong!' });
   }
 };
 
-/**
- * Reject leave application
- */
-export const rejectLeave = async (req: Request, res: Response): Promise<void> => {
+export const rejectLeave: AuthenticatedHandler = async (req, res) => {
   try {
-    const { id } = req.params as { id: string };
-    const authReq = req as AuthenticatedRequest;
-    const approvedBy = authReq.user ? String(authReq.user.employeeId || authReq.user.id) : 'Administrator';
-
-    // Validate input
-    const validation = rejectLeaveSchema.safeParse(req.body);
-    if (!validation.success) {
-      res.status(400).json({
-        message: 'Validation Error',
-        errors: validation.error.format(),
-      });
+    const idParam = typeof req.params.id === 'string' ? req.params.id : '';
+    if (!idParam) {
+      res.status(400).json({ message: 'Missing application ID' });
       return;
     }
+    const appId = parseInt(idParam, 10);
+    const adminId = String(req.user.employeeId || req.user.id);
 
+    const validation = rejectLeaveSchema.safeParse(req.body);
+    if (!validation.success) {
+      res.status(400).json({ message: 'Validation Error', errors: validation.error.format() });
+      return;
+    }
     const { reason } = validation.data;
 
-    await db.update(leaveApplications)
-      .set({ 
-        status: 'Rejected', 
-        rejectionReason: reason, 
-        approvedBy, 
-        updatedAt: sql`CURRENT_TIMESTAMP` 
-      })
-      .where(eq(leaveApplications.id, parseInt(id)));
+    await db.update(leaveApplications).set({ 
+      status: 'Rejected', 
+      rejectedBy: adminId, 
+      rejectedAt: sql`CURRENT_TIMESTAMP`, 
+      rejectionReason: reason, 
+      updatedAt: sql`CURRENT_TIMESTAMP` 
+    }).where(eq(leaveApplications.id, appId));
 
-    // Notify employee
-    const application = await db.query.leaveApplications.findFirst({
-      where: eq(leaveApplications.id, parseInt(id)),
-      columns: { employeeId: true, startDate: true, endDate: true }
-    });
-
-    if (application) {
-      await createNotification({
-        recipientId: application.employeeId,
-        senderId: approvedBy,
+    await updateNotificationsByReference({
+        type: ['leave_request', 'leave_process', 'leave_finalize'],
+        referenceId: appId,
         title: 'Leave Request Rejected',
-        message: `Your leave request for ${application.startDate} to ${application.endDate} has been rejected. Reason: ${reason}`,
-        type: 'leave_request_rejected',
-        referenceId: parseInt(id),
-      });
-    }
-
+        message: `Rejected. Reason: ${reason}`,
+        newType: 'leave_rejection'
+    });
     res.status(200).json({ message: 'Leave rejected' });
-  } catch (_err) {
-
+  } catch (_err: unknown) {
     res.status(500).json({ message: 'Something went wrong!' });
   }
 };
 
-// ============================================================================
-// Credit Management Functions
-// ============================================================================
-
-/**
- * Get employee's credit balances
- */
-export const getMyCredits = async (req: Request, res: Response): Promise<void> => {
+export const getHolidays: AuthenticatedHandler = async (req, res) => {
   try {
-    const authReq = req as AuthenticatedRequest;
-    const employeeId = String(authReq.user.employeeId || authReq.user.id);
-    const year = parseInt(req.query.year as string) || getCurrentYear();
+    const year = parseInt(String(req.query.year || ''), 10) || getCurrentYear();
+    const rows = await db.select().from(holidays).where(eq(sql`YEAR(${holidays.date})`, year));
+    res.status(200).json({ holidays: rows, year });
+  } catch (_err) {
+    res.status(500).json({ message: 'Something went wrong!' });
+  }
+};
+
+export const addHoliday: AuthenticatedHandler = async (req, res) => {
+  try {
+    const { name, date, type } = req.body;
+    const year = new Date(date).getFullYear();
+    await db.insert(holidays).values({ name, date, type, year });
+    res.status(201).json({ message: 'Holiday added' });
+  } catch (_err) {
+    res.status(500).json({ message: 'Something went wrong!' });
+  }
+};
+
+export const deleteHoliday: AuthenticatedHandler = async (req, res) => {
+  try {
+    const idParam = typeof req.params.id === 'string' ? req.params.id : '';
+    if (!idParam) {
+      res.status(400).json({ message: 'Missing holiday ID' });
+      return;
+    }
+    await db.delete(holidays).where(eq(holidays.id, parseInt(idParam, 10)));
+    res.status(200).json({ message: 'Holiday deleted' });
+  } catch (_err) {
+    res.status(500).json({ message: 'Something went wrong!' });
+  }
+};
+
+export const getLWOPSummary: AuthenticatedHandler = async (req, res) => {
+  try {
+    const employeeId = typeof req.params.employeeId === 'string' ? req.params.employeeId : '';
+    if (!employeeId) {
+      res.status(400).json({ message: 'Missing employee ID' });
+      return;
+    }
+    const rows = await db.select().from(lwopSummary).where(eq(lwopSummary.employeeId, employeeId));
+    res.status(200).json(rows);
+  } catch (_err) {
+    res.status(500).json({ message: 'Something went wrong!' });
+  }
+};
+
+export const deleteEmployeeCredit: AuthenticatedHandler = async (req, res) => {
+  try {
+    const idParam = typeof req.params.id === 'string' ? req.params.id : '';
+    if (!idParam) {
+      res.status(400).json({ message: 'Missing credit ID' });
+      return;
+    }
+    await db.delete(leaveBalances).where(eq(leaveBalances.id, parseInt(idParam, 10)));
+    res.status(200).json({ message: 'Credit deleted' });
+  } catch (_err) {
+    res.status(500).json({ message: 'Something went wrong!' });
+  }
+};
+
+export const getMyCredits: AuthenticatedHandler = async (req, res) => {
+  try {
+    const employeeId = req.user.employeeId || String(req.user.id);
+    const year = parseInt(String(req.query.year || ''), 10) || getCurrentYear();
 
     const credits = await db.select({
       id: leaveBalances.id,
@@ -1241,31 +989,25 @@ export const getMyCredits = async (req: Request, res: Response): Promise<void> =
     })
     .from(leaveBalances)
     .leftJoin(authentication, eq(leaveBalances.employeeId, authentication.employeeId))
-    .where(and(
-      eq(leaveBalances.employeeId, employeeId),
-      eq(leaveBalances.year, year)
-    ));
+    .where(and(eq(leaveBalances.employeeId, employeeId), eq(leaveBalances.year, year)));
 
-    const formattedCredits = credits.map(c => ({
-        ...c,
-        employeeName: formatFullName(c.lastName, c.firstName, c.middleName, c.suffix)
-    }));
-
-    res.status(200).json({ credits: formattedCredits, year });
-
+    res.status(200).json({ 
+      credits: credits.map(c => ({ ...c, employeeName: formatFullName(c.lastName, c.firstName, c.middleName, c.suffix) })), 
+      year 
+    });
   } catch (_err) {
-
     res.status(500).json({ message: 'Something went wrong!' });
   }
 };
 
-/**
- * Get specific employee's credits (Admin)
- */
-export const getEmployeeCredits = async (req: Request, res: Response): Promise<void> => {
+export const getEmployeeCredits: AuthenticatedHandler = async (req, res) => {
   try {
-    const { employeeId } = req.params as { employeeId: string };
-    const year = parseInt(req.query.year as string) || getCurrentYear();
+    const employeeId = typeof req.params.employeeId === 'string' ? req.params.employeeId : '';
+    if (!employeeId) {
+      res.status(400).json({ message: 'Missing employee ID' });
+      return;
+    }
+    const year = parseInt(String(req.query.year || ''), 10) || getCurrentYear();
 
     const credits = await db.select({
       id: leaveBalances.id,
@@ -1282,33 +1024,23 @@ export const getEmployeeCredits = async (req: Request, res: Response): Promise<v
     })
     .from(leaveBalances)
     .leftJoin(authentication, eq(leaveBalances.employeeId, authentication.employeeId))
-    .where(and(
-      eq(leaveBalances.employeeId, employeeId),
-      eq(leaveBalances.year, year)
-    ));
+    .where(and(eq(leaveBalances.employeeId, employeeId), eq(leaveBalances.year, year)));
 
-    const formattedCredits = credits.map(c => ({
-        ...c,
-        employeeName: formatFullName(c.lastName, c.firstName, c.middleName, c.suffix)
-    }));
-
-    res.status(200).json({ credits: formattedCredits, year });
-
+    res.status(200).json({ 
+      credits: credits.map(c => ({ ...c, employeeName: formatFullName(c.lastName, c.firstName, c.middleName, c.suffix) })), 
+      year 
+    });
   } catch (_err) {
-
     res.status(500).json({ message: 'Something went wrong!' });
   }
 };
 
-/**
- * Get all employee credits (Admin)
- */
-export const getAllEmployeeCredits = async (req: Request, res: Response): Promise<void> => {
+export const getAllEmployeeCredits: AuthenticatedHandler = async (req, res) => {
   try {
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 10;
-    const search = (req.query.search as string) || '';
-    const year = parseInt(req.query.year as string) || getCurrentYear();
+    const page = parseInt(String(req.query.page || '1'), 10) || 1;
+    const limit = parseInt(String(req.query.limit || '10'), 10) || 10;
+    const search = String(req.query.search || '');
+    const year = parseInt(String(req.query.year || ''), 10) || getCurrentYear();
     const offset = (page - 1) * limit;
 
     const conditions = [eq(leaveBalances.year, year)];
@@ -1316,26 +1048,17 @@ export const getAllEmployeeCredits = async (req: Request, res: Response): Promis
       conditions.push(or(
         sql`COALESCE(${authentication.firstName}, '') LIKE ${`%${search}%`}`,
         sql`COALESCE(${authentication.lastName}, '') LIKE ${`%${search}%`}`,
-        sql`TRIM(CONCAT(${authentication.lastName}, ', ', ${authentication.firstName}, IF(${authentication.middleName} IS NOT NULL && ${authentication.middleName} != '', CONCAT(' ', SUBSTRING(${authentication.middleName}, 1, 1), '.'), ''), IF(${authentication.suffix} IS NOT NULL && ${authentication.suffix} != '', CONCAT(' ', ${authentication.suffix}), ''))) LIKE ${`%${search}%`}`,
         sql`COALESCE(${leaveBalances.employeeId}, '') LIKE ${`%${search}%`}`
       )!);
     }
 
     const where = and(...conditions);
-
-    // Count total
     const [countResult] = await db.select({ total: sql<number>`count(*)` })
       .from(leaveBalances)
       .leftJoin(authentication, eq(leaveBalances.employeeId, authentication.employeeId))
       .where(where);
-    const totalItems = Number(countResult.total);
-    const totalPages = Math.ceil(totalItems / limit);
+    const totalItems = Number(countResult?.total || 0);
 
-    // Subquery for Usage (Deductions from Ledger)
-    // We assume deductions are negative values in the ledger
-    // usage = ABS(SUM(amount)) where transactionType = 'DEDUCTION' AND year matches
-    
-    // Fetch credits with usage calculation
     const credits = await db.select({
       id: leaveBalances.id,
       employeeId: leaveBalances.employeeId,
@@ -1349,160 +1072,71 @@ export const getAllEmployeeCredits = async (req: Request, res: Response): Promis
       suffix: authentication.suffix,
       department: sql<string>`COALESCE(${authentication.department}, 'N/A')`,
       daysUsedWithPay: sql<number>`(
-        SELECT COALESCE(ABS(SUM(ll.amount)), 0)
-        FROM ${leaveLedger} ll
-        WHERE ll.employee_id = ${leaveBalances.employeeId}
-          AND ll.credit_type = ${leaveBalances.creditType}
-          AND ll.transaction_type = 'DEDUCTION'
-          AND YEAR(ll.created_at) = ${year}
+        SELECT COALESCE(ABS(SUM(ll.amount)), 0) FROM ${leaveLedger} ll 
+        WHERE ll.employee_id = ${leaveBalances.employeeId} AND ll.credit_type = ${leaveBalances.creditType} AND ll.transaction_type = 'DEDUCTION' AND YEAR(ll.created_at) = ${year}
       )`,
       daysUsedWithoutPay: sql<number>`(
-        SELECT COALESCE(SUM(la.days_without_pay), 0)
-        FROM ${leaveApplications} la
-        WHERE la.employee_id = ${leaveBalances.employeeId}
-          AND la.leave_type = ${leaveBalances.creditType}
-          AND la.status = 'Approved'
-          AND YEAR(la.start_date) = ${year}
+        SELECT COALESCE(SUM(la.days_without_pay), 0) FROM ${leaveApplications} la 
+        WHERE la.employee_id = ${leaveBalances.employeeId} AND la.leave_type = ${leaveBalances.creditType} AND la.status = 'Approved' AND YEAR(la.start_date) = ${year}
       )`
     })
     .from(leaveBalances)
     .leftJoin(authentication, eq(leaveBalances.employeeId, authentication.employeeId))
     .where(where)
-    .orderBy(authentication.lastName, authentication.firstName, leaveBalances.creditType)
+    .orderBy(authentication.lastName, authentication.firstName)
     .limit(limit)
     .offset(offset);
 
-    const formattedCredits = credits.map(c => ({
-        ...c,
-        employeeName: formatFullName(c.lastName, c.firstName, c.middleName, c.suffix)
-    }));
-
     res.status(200).json({
-      credits: formattedCredits,
+      credits: credits.map(c => ({ ...c, employeeName: formatFullName(c.lastName, c.firstName, c.middleName, c.suffix) })),
       year,
-      pagination: { page, limit, totalItems, totalPages },
+      pagination: { page, limit, totalItems, totalPages: Math.ceil(totalItems / limit) },
     });
-
-  } catch (_err) {
-
+  } catch (_err: unknown) {
     res.status(500).json({ message: 'Something went wrong!' });
   }
 };
 
-/**
- * Update employee credit (Admin)
- */
-export const updateEmployeeCredit = async (req: Request, res: Response): Promise<void> => {
+export const updateEmployeeCredit: AuthenticatedHandler = async (req, res) => {
   try {
-    const { employeeId } = req.params as { employeeId: string };
-    const authReq = req as AuthenticatedRequest;
-    const adminId = authReq.user ? String(authReq.user.employeeId || authReq.user.id) : 'Administrator';
-
-    // Validate input
+    const employeeId = typeof req.params.employeeId === 'string' ? req.params.employeeId : '';
+    if (!employeeId) {
+      res.status(400).json({ message: 'Missing employee ID' });
+      return;
+    }
+    const adminId = String(req.user.employeeId || req.user.id);
     const validation = creditUpdateSchema.safeParse(req.body);
     if (!validation.success) {
-      res.status(400).json({
-        message: 'Validation Error',
-        errors: validation.error.format(),
-      });
+      res.status(400).json({ message: 'Validation Error', errors: validation.error.format() });
       return;
     }
 
     const { creditType, balance, remarks } = validation.data;
     const year = getCurrentYear();
-
-    // Get current balance
     const currentBalance = await getEmployeeBalance(employeeId, creditType, year);
-    const adjustment = balance - currentBalance;
-
-    // Update balance
-    const result = await updateBalance(
-      employeeId,
-      creditType,
-      adjustment,
-      'ADJUSTMENT',
-      undefined,
-      'manual',
-      remarks || `Admin adjustment: ${currentBalance} → ${balance}`,
-      adminId
-    );
+    const result = await updateBalance(employeeId, creditType, balance - currentBalance, 'ADJUSTMENT', undefined, 'manual', remarks || 'Admin adjustment', adminId);
 
     if (result.success) {
-      res.status(200).json({
-        message: 'Credit updated successfully',
-        previousBalance: currentBalance,
-        newBalance: result.newBalance,
-      });
+      res.status(200).json({ message: 'Credit updated', previousBalance: currentBalance, newBalance: result.newBalance });
     } else {
       res.status(500).json({ message: 'Failed to update credit' });
     }
-  } catch (_err) {
-
+  } catch (_err: unknown) {
     res.status(500).json({ message: 'Something went wrong!' });
   }
 };
 
-/**
- * Delete employee credit record (Admin)
- */
-export const deleteEmployeeCredit = async (req: Request, res: Response): Promise<void> => {
+export const accrueMonthlyCredits: AuthenticatedHandler = async (req, res) => {
   try {
-    const { employeeId } = req.params as { employeeId: string };
-    const creditType = req.query.creditType as string;
-    const year = parseInt(req.query.year as string) || getCurrentYear();
-
-    if (!creditType) {
-      res.status(400).json({ message: 'Credit type is required' });
-      return;
-    }
-
-    await db.delete(leaveBalances)
-      .where(and(
-        eq(leaveBalances.employeeId, employeeId),
-        eq(leaveBalances.creditType, creditType as CreditType),
-        eq(leaveBalances.year, year)
-      ));
-
-    res.status(200).json({ message: 'Credit record deleted' });
-  } catch (_err) {
-
-    res.status(500).json({ message: 'Something went wrong!' });
-  }
-};
-
-// ============================================================================
-// Monthly Accrual Functions
-// ============================================================================
-
-/**
- * Accrue monthly credits for all employees
- * CSC: 1.250 VL + 1.250 SL per month
- */
-export const accrueMonthlyCredits = async (req: Request, res: Response): Promise<void> => {
-  try {
-    // Validate input
     const validation = accrueCreditsSchema.safeParse(req.body);
     if (!validation.success) {
-      res.status(400).json({
-        message: 'Validation Error',
-        errors: validation.error.format(),
-      });
+      res.status(400).json({ message: 'Validation Error', errors: validation.error.format() });
       return;
     }
-
     const { month, year, employeeIds } = validation.data;
-
-    // Call service to accrue credits
     const result = await accrueCreditsForMonth(month, year, employeeIds);
-
-    res.status(200).json({
-      message: `Monthly credits accrued for ${result.processedCount} employees`,
-      month,
-      year,
-      details: result
-    });
-  } catch (_err) {
-
+    res.status(200).json({ message: `Accrued for ${result.processedCount} employees`, details: result });
+  } catch (_err: unknown) {
     res.status(500).json({ message: 'Something went wrong!' });
   }
 };
@@ -1514,12 +1148,11 @@ export const allocateDefaultCredits = async (employeeId: string): Promise<void> 
   try {
     const policy = await getLeavePolicy();
     const defaults = Object.entries(policy.initialAllocations || {}).map(([type, balance]) => ({
-      type: type as CreditType,
-      balance
+      type: type,
+      balance: Number(balance)
     }));
 
     for (const credit of defaults) {
-      // Check if exists
       const year = getCurrentYear();
       const existing = await getEmployeeBalance(employeeId, credit.type, year);
       if (existing === 0) {
@@ -1535,357 +1168,116 @@ export const allocateDefaultCredits = async (employeeId: string): Promise<void> 
         );
       }
     }
-
-  } catch (_error) {
+  } catch (_error: unknown) {
       /* empty */
-
   }
 };
 
-// ============================================================================
-// Ledger Functions
-// ============================================================================
-
-/**
- * Get employee's leave ledger (transaction history)
- */
-export const getMyLedger = async (req: Request, res: Response): Promise<void> => {
+export const getMyLedger: AuthenticatedHandler = async (req, res) => {
   try {
-    const authReq = req as AuthenticatedRequest;
-    const employeeId = String(authReq.user.employeeId || authReq.user.id);
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 20;
-    const creditType = (req.query.creditType as string) || '';
+    const employeeId = req.user.employeeId || String(req.user.id);
+    const page = parseInt(String(req.query.page || '1'), 10) || 1;
+    const limit = parseInt(String(req.query.limit || '20'), 10) || 20;
+    const creditType = String(req.query.creditType || '');
     const offset = (page - 1) * limit;
 
     const conditions = [eq(leaveLedger.employeeId, employeeId)];
-    if (creditType) {
-      conditions.push(eq(leaveLedger.creditType, creditType as 'Vacation Leave' | 'Sick Leave' | 'Special Privilege Leave' | 'Forced Leave' | 'Maternity Leave' | 'Paternity Leave'));
-    }
+    if (creditType) conditions.push(eq(leaveLedger.creditType, creditType));
 
     const where = and(...conditions);
+    const [countResult] = await db.select({ total: sql<number>`count(*)` }).from(leaveLedger).where(where);
+    const totalItems = Number(countResult?.total || 0);
 
-    // Count total
-    const [countResult] = await db.select({ total: sql<number>`count(*)` })
-      .from(leaveLedger)
-      .where(where);
-    const totalItems = Number(countResult.total);
-    const totalPages = Math.ceil(totalItems / limit);
-
-    // Fetch ledger entries
-    const entries = await db.select()
-      .from(leaveLedger)
-      .where(where)
-      .orderBy(desc(leaveLedger.createdAt))
-      .limit(limit)
-      .offset(offset);
-
-    res.status(200).json({
-      entries,
-      pagination: { page, limit, totalItems, totalPages },
-    });
-  } catch (_err) {
-
+    const entries = await db.select().from(leaveLedger).where(where).orderBy(desc(leaveLedger.createdAt)).limit(limit).offset(offset);
+    res.status(200).json({ entries, pagination: { page, limit, totalItems, totalPages: Math.ceil(totalItems / limit) } });
+  } catch (_err: unknown) {
     res.status(500).json({ message: 'Something went wrong!' });
   }
 };
 
-/**
- * Get specific employee's ledger (Admin)
- */
-export const getEmployeeLedger = async (req: Request, res: Response): Promise<void> => {
+export const getEmployeeLedger: AuthenticatedHandler = async (req, res) => {
   try {
-    const { employeeId } = req.params as { employeeId: string };
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 20;
-    const creditType = (req.query.creditType as string) || '';
-    const offset = (page - 1) * limit;
-
-    const conditions = [eq(leaveLedger.employeeId, employeeId)];
-    if (creditType) {
-      conditions.push(eq(leaveLedger.creditType, creditType as 'Vacation Leave' | 'Sick Leave' | 'Special Privilege Leave' | 'Forced Leave' | 'Maternity Leave' | 'Paternity Leave'));
-    }
-
-    const where = and(...conditions);
-
-    // Count total
-    const [countResult] = await db.select({ total: sql<number>`count(*)` })
-      .from(leaveLedger)
-      .where(where);
-    const totalItems = Number(countResult.total);
-    const totalPages = Math.ceil(totalItems / limit);
-
-    // Fetch ledger entries
-    const entries = await db.select()
-      .from(leaveLedger)
-      .where(where)
-      .orderBy(desc(leaveLedger.createdAt))
-      .limit(limit)
-      .offset(offset);
-
-    res.status(200).json({
-      entries,
-      pagination: { page, limit, totalItems, totalPages },
-    });
-  } catch (_err) {
-
-    res.status(500).json({ message: 'Something went wrong!' });
-  }
-};
-
-// ============================================================================
-// Holiday Management
-// ============================================================================
-
-/**
- * Get holidays for a year
- */
-export const getHolidays = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const year = parseInt(req.query.year as string) || getCurrentYear();
-
-    const result = await db.select()
-      .from(holidays)
-      .where(eq(holidays.year, year))
-      .orderBy(holidays.date);
-
-    res.status(200).json({ holidays: result, year });
-  } catch (_err) {
-
-    res.status(500).json({ message: 'Something went wrong!' });
-  }
-};
-
-/**
- * Add a holiday (Admin)
- */
-export const addHoliday = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { name, date, type } = req.body as { name: string; date: string; type: string };
-
-    if (!name || !date || !type) {
-      res.status(400).json({ message: 'Name, date, and type are required' });
+    const employeeId = typeof req.params.employeeId === 'string' ? req.params.employeeId : '';
+    if (!employeeId) {
+      res.status(400).json({ message: 'Missing employee ID' });
       return;
     }
+    const page = parseInt(String(req.query.page || '1'), 10) || 1;
+    const limit = parseInt(String(req.query.limit || '20'), 10) || 20;
+    const creditType = String(req.query.creditType || '');
+    const offset = (page - 1) * limit;
 
-    const year = new Date(date).getFullYear();
+    const conditions = [eq(leaveLedger.employeeId, employeeId)];
+    if (creditType) conditions.push(eq(leaveLedger.creditType, creditType));
 
-    await db.insert(holidays).values({
-      name,
-      date,
-      type: type as 'Regular' | 'Special Non-Working' | 'Special Working',
-      year
-    }).onDuplicateKeyUpdate({
-      set: {
-        name,
-        type: type as 'Regular' | 'Special Non-Working' | 'Special Working'
-      }
+    const where = and(...conditions);
+    const [countResult] = await db.select({ total: sql<number>`count(*)` }).from(leaveLedger).where(where);
+    const totalItems = Number(countResult?.total || 0);
+
+    const entries = await db.select().from(leaveLedger).where(where).orderBy(desc(leaveLedger.createdAt)).limit(limit).offset(offset);
+    res.status(200).json({ entries, pagination: { page, limit, totalItems, totalPages: Math.ceil(totalItems / limit) } });
+  } catch (_err: unknown) {
+    res.status(500).json({ message: 'Something went wrong!' });
+  }
+};
+
+export const processMonthlyTardiness: AuthenticatedHandler = async (req, res) => {
+  try {
+    const bodySchema = z.object({
+      month: z.number().optional(),
+      year: z.number().optional(),
+      employeeIds: z.array(z.string()).optional()
     });
+    
+    const { month, year, employeeIds } = bodySchema.parse(req.body);
+    const targetMonth = month ?? new Date().getMonth();
+    const targetYear = year ?? new Date().getFullYear();
 
-    res.status(201).json({ message: 'Holiday added successfully' });
-  } catch (_err) {
-
-    res.status(500).json({ message: 'Something went wrong!' });
-  }
-};
-
-/**
- * Delete a holiday (Admin)
- */
-export const deleteHoliday = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { id } = req.params as { id: string };
-
-    await db.delete(holidays).where(eq(holidays.id, parseInt(id)));
-
-    res.status(200).json({ message: 'Holiday deleted' });
-  } catch (_err) {
-
-    res.status(500).json({ message: 'Something went wrong!' });
-  }
-};
-
-// ============================================================================
-// LWOP Summary
-// ============================================================================
-
-/**
- * Get LWOP summary for employee
- */
-export const getLWOPSummary = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { employeeId } = req.params as { employeeId: string };
-
-    const summary = await db.select()
-      .from(lwopSummary)
-      .where(eq(lwopSummary.employeeId, employeeId))
-      .orderBy(desc(lwopSummary.year));
-
-    res.status(200).json({ summary });
-  } catch (_err) {
-
-    res.status(500).json({ message: 'Something went wrong!' });
-  }
-};
-
-/**
- * Calculate LWOP deduction for payroll
- * Formula: (Monthly Salary / workingDaysPerMonth) × LWOP Days
- */
-export const calculateLWOPDeduction = async (monthlySalary: number, lwopDays: number): Promise<number> => {
-  const policy = await getLeavePolicy();
-  const workingDaysPerMonth = policy.workingDaysPerMonth || 22;
-  const dailyRate = monthlySalary / workingDaysPerMonth;
-  return Number((dailyRate * lwopDays).toFixed(2));
-};
-
-// ============================================================================
-// Service Record & Tardiness Processing
-// ============================================================================
-
-/**
- * Get employee's service record (career history)
- */
-export const getServiceRecord = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { employeeId } = req.params as { employeeId: string };
-
-    const records = await db.select()
-      .from(serviceRecords)
-      .where(eq(serviceRecords.employeeId, employeeId))
-      .orderBy(desc(serviceRecords.eventDate));
-
-    // Calculate total LWOP days for retirement impact
-    const [lwopTotal] = await db.select({ 
-      totalLwopDays: sql<number>`SUM(${serviceRecords.daysCount})` 
-    })
-    .from(serviceRecords)
-    .where(and(
-      eq(serviceRecords.employeeId, employeeId),
-      eq(serviceRecords.eventType, 'LWOP')
-    ));
-
-    res.status(200).json({ 
-      records,
-      totalLWOPDays: lwopTotal?.totalLwopDays || 0
-    });
-  } catch (_err) {
-
-    res.status(500).json({ message: 'Something went wrong!' });
-  }
-};
-
-/**
- * Process monthly tardiness → VL deduction or LWOP
- * Called at end of month to convert accumulated tardiness
- * Formula: Total Minutes / 480 = Decimal Days
- */
-export const processMonthlyTardiness = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { month, year, employeeIds } = req.body as { month?: number; year?: number; employeeIds?: string[] };
-    const authReq = req as AuthenticatedRequest;
-    const processedBy = authReq.user ? String(authReq.user.employeeId || authReq.user.id) : 'Administrator';
-
-    const targetMonth = month || new Date().getMonth(); // 0-indexed, so January=0
-    const targetYear = year || new Date().getFullYear();
-
-    // Get all employees with tardiness for the month
-    const conditions = [
-      eq(tardinessSummary.year, targetYear),
-      eq(tardinessSummary.month, targetMonth),
-      sql`processed_at IS NULL`
-    ];
+    const conditions = [eq(tardinessSummary.year, targetYear), eq(tardinessSummary.month, targetMonth), sql`processed_at IS NULL` ];
     if (employeeIds && employeeIds.length > 0) {
       conditions.push(sql`${tardinessSummary.employeeId} IN (${employeeIds})`);
     }
 
-    const employees = await db.select({
-      employeeId: tardinessSummary.employeeId
-    })
-    .from(tardinessSummary)
-    .where(and(...conditions));
-
-    const results: Array<{
-      employeeId: string;
-      daysEquivalent: number;
-      deductedFromVL: number;
-      chargedAsLWOP: number;
-    }> = [];
-
+    const employees = await db.select({ employeeId: tardinessSummary.employeeId }).from(tardinessSummary).where(and(...conditions));
+    const results = [];
     for (const emp of employees) {
       const result = await calculateTardinessDeduction(emp.employeeId, targetYear, targetMonth);
-      
-      if (result.daysEquivalent > 0) {
-        results.push({
-          employeeId: emp.employeeId,
-          ...result
-        });
-      }
+      if (result.daysEquivalent > 0) results.push({ employeeId: emp.employeeId, ...result });
     }
-
-    res.status(200).json({
-      message: `Processed tardiness for ${results.length} employees`,
-      month: targetMonth,
-      year: targetYear,
-      results,
-      processedBy
-    });
-  } catch (_err) {
-
+    res.status(200).json({ message: `Processed for ${results.length} employees`, results });
+  } catch (_err: unknown) {
     res.status(500).json({ message: 'Something went wrong!' });
   }
 };
 
-/**
- * Get total LWOP for retirement calculation
- * CSC Rule: LWOP days are not counted as years of service
- */
-export const getTotalLWOPForRetirement = async (req: Request, res: Response): Promise<void> => {
+export const getServiceRecord: AuthenticatedHandler = async (req, res) => {
   try {
-    const { employeeId } = req.params as { employeeId: string };
-
-    // From LWOP Summary table
-    const [lwopTotalSum] = await db.select({
-      totalLwopDays: sql<number>`SUM(${lwopSummary.totalLwopDays})`,
-      maxCumulative: sql<number>`MAX(${lwopSummary.cumulativeLwopDays})`
-    })
-    .from(lwopSummary)
-    .where(eq(lwopSummary.employeeId, employeeId));
-
-    // From Service Records (LWOP events)
-    const [serviceRecordsTotal] = await db.select({
-      serviceRecordLwop: sql<number>`SUM(${serviceRecords.daysCount})`
-    })
-    .from(serviceRecords)
-    .where(and(
-      eq(serviceRecords.employeeId, employeeId),
-      eq(serviceRecords.eventType, 'LWOP')
-    ));
-
-    const totalDays = Math.max(
-      lwopTotalSum?.maxCumulative || 0,
-      serviceRecordsTotal?.serviceRecordLwop || 0
-    );
-
-    // Calculate impact: 365 LWOP days = 1 year extension before retirement
-    const yearsExtension = Math.floor(totalDays / 365);
-    const remainingDays = totalDays % 365;
-
-    res.status(200).json({
-      employeeId,
-      totalLWOPDays: totalDays,
-      retirementImpact: {
-        yearsExtension,
-        remainingDays,
-        message: yearsExtension > 0 
-          ? `Employee must extend service by ${yearsExtension} year(s) and ${remainingDays} day(s) before retirement`
-          : 'No retirement extension required'
-      }
-    });
-  } catch (_err) {
-
+    const employeeId = typeof req.params.employeeId === 'string' ? req.params.employeeId : '';
+    if (!employeeId) {
+      res.status(400).json({ message: 'Missing employee ID' });
+      return;
+    }
+    const records = await db.select().from(serviceRecords).where(eq(serviceRecords.employeeId, employeeId)).orderBy(desc(serviceRecords.eventDate));
+    const [lwopTotal] = await db.select({ totalLwopDays: sql<number>`SUM(${serviceRecords.daysCount})` }).from(serviceRecords).where(and(eq(serviceRecords.employeeId, employeeId), eq(serviceRecords.eventType, 'LWOP')));
+    res.status(200).json({ records, totalLWOPDays: Number(lwopTotal?.totalLwopDays || 0) });
+  } catch (_err: unknown) {
     res.status(500).json({ message: 'Something went wrong!' });
   }
 };
 
-
+export const getTotalLWOPForRetirement: AuthenticatedHandler = async (req, res) => {
+  try {
+    const employeeId = typeof req.params.employeeId === 'string' ? req.params.employeeId : '';
+    if (!employeeId) {
+      res.status(400).json({ message: 'Missing employee ID' });
+      return;
+    }
+    const [lwopTotalSum] = await db.select({ maxCumulative: sql<number>`MAX(${lwopSummary.cumulativeLwopDays})` }).from(lwopSummary).where(eq(lwopSummary.employeeId, employeeId));
+    const [serviceRecordsTotal] = await db.select({ serviceRecordLwop: sql<number>`SUM(${serviceRecords.daysCount})` }).from(serviceRecords).where(and(eq(serviceRecords.employeeId, employeeId), eq(serviceRecords.eventType, 'LWOP')));
+    const totalDays = Math.max(Number(lwopTotalSum?.maxCumulative || 0), Number(serviceRecordsTotal?.serviceRecordLwop || 0));
+    const yearsExtension = Math.floor(totalDays / 365);
+    res.status(200).json({ employeeId, totalLWOPDays: totalDays, retirementImpact: { yearsExtension, remainingDays: totalDays % 365 } });
+  } catch (_err: unknown) {
+    res.status(500).json({ message: 'Something went wrong!' });
+  }
+};

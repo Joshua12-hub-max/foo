@@ -1,6 +1,5 @@
 import { Router } from 'express';
 import {
-  // Leave Applications
   applyLeave,
   getMyLeaves,
   getAllLeaves,
@@ -8,91 +7,79 @@ import {
   finalizeLeave,
   approveLeave,
   rejectLeave,
-  // Credits
   getMyCredits,
   getEmployeeCredits,
   getAllEmployeeCredits,
   updateEmployeeCredit,
   deleteEmployeeCredit,
-  // Accrual
   accrueMonthlyCredits,
-  // Ledger
   getMyLedger,
   getEmployeeLedger,
-  // Holidays
   getHolidays,
   addHoliday,
   deleteHoliday,
-  // LWOP
   getLWOPSummary,
-  // Service Record & Tardiness
   getServiceRecord,
-  processMonthlyTardiness,
   getTotalLWOPForRetirement,
+  processMonthlyTardiness
 } from '../controllers/leaveController.js';
 import { verifyToken, verifyAdmin, restrictSuspended } from '../middleware/authMiddleware.js';
-import { uploadLeave as upload } from '../middleware/uploadMiddleware.js';
+import multer from 'multer';
+import path from 'path';
+
+const storage = multer.diskStorage({
+  destination: (_req, _file, cb) => {
+    cb(null, 'uploads/leaves/');
+  },
+  filename: (_req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({ storage });
 
 const router: Router = Router();
 
 // ============================================================================
-// Employee Routes (require token)
+// Public/Employee Routes (Token Required)
 // ============================================================================
 
-// Leave Applications
-router.post('/apply', verifyToken, restrictSuspended, upload.single('attachment'), applyLeave);
-router.get('/my-applications', verifyToken, getMyLeaves);
-router.put('/:id/finalize', verifyToken, restrictSuspended, upload.single('finalForm'), finalizeLeave);
-
-// Credits
-router.get('/my-credits', verifyToken, getMyCredits);
-
-// Ledger
-router.get('/my-ledger', verifyToken, getMyLedger);
+router.post('/apply', verifyToken, restrictSuspended, upload.single('attachment'), applyLeave as any);
+router.get('/my-leaves', verifyToken, getMyLeaves as any);
+router.get('/my-credits', verifyToken, getMyCredits as any);
+router.get('/my-ledger', verifyToken, getMyLedger as any);
 
 // ============================================================================
-// Admin Routes (require admin)
+// Admin Routes (Admin Token Required)
 // ============================================================================
 
-// Leave Applications - Admin
-router.get('/applications/all', verifyAdmin, getAllLeaves);
-router.put('/:id/process', verifyAdmin, upload.single('adminForm'), processLeave);
-router.put('/:id/approve', verifyAdmin, approveLeave);
-router.put('/:id/reject', verifyAdmin, rejectLeave);
+// Applications Management
+router.get('/all', verifyAdmin, getAllLeaves as any);
+router.put('/:id/process', verifyAdmin, upload.single('adminForm'), processLeave as any);
+router.put('/:id/finalize', verifyAdmin, upload.single('finalAttachment'), finalizeLeave as any);
+router.put('/:id/approve', verifyAdmin, approveLeave as any);
+router.put('/:id/reject', verifyAdmin, rejectLeave as any);
 
-// Credits - Admin
-router.get('/credits/all', verifyAdmin, getAllEmployeeCredits);
-router.get('/credits/:employeeId', verifyAdmin, getEmployeeCredits);
-router.put('/credits/:employeeId', verifyAdmin, updateEmployeeCredit);
-router.delete('/credits/:employeeId', verifyAdmin, deleteEmployeeCredit);
+// Credits Management
+router.get('/credits/all', verifyAdmin, getAllEmployeeCredits as any);
+router.get('/credits/:employeeId', verifyAdmin, getEmployeeCredits as any);
+router.put('/credits/:employeeId', verifyAdmin, updateEmployeeCredit as any);
+router.delete('/credits/:id', verifyAdmin, deleteEmployeeCredit as any);
+router.post('/accrue-monthly', verifyAdmin, accrueMonthlyCredits as any);
 
-// Accrual - Admin
-router.post('/accrue-monthly', verifyAdmin, accrueMonthlyCredits);
+// Ledger and History
+router.get('/ledger/:employeeId', verifyAdmin, getEmployeeLedger as any);
+router.get('/lwop/:employeeId', verifyAdmin, getLWOPSummary as any);
+router.get('/service-record/:employeeId', verifyAdmin, getServiceRecord as any);
+router.get('/service-record/:employeeId/lwop-total', verifyAdmin, getTotalLWOPForRetirement as any);
 
-// Ledger - Admin
-router.get('/ledger/:employeeId', verifyAdmin, getEmployeeLedger);
+// Holidays Management
+router.get('/holidays', verifyToken, getHolidays as any);
+router.post('/holidays', verifyAdmin, addHoliday as any);
+router.delete('/holidays/:id', verifyAdmin, deleteHoliday as any);
 
-// Holidays - Admin
-router.get('/holidays', verifyAdmin, getHolidays);
-router.post('/holidays', verifyAdmin, addHoliday);
-router.delete('/holidays/:id', verifyAdmin, deleteHoliday);
-
-// LWOP Summary - Admin
-router.get('/lwop-summary/:employeeId', verifyAdmin, getLWOPSummary);
-
-// Service Record - Admin (Career History)
-router.get('/service-record/:employeeId', verifyAdmin, getServiceRecord);
-router.get('/service-record/:employeeId/lwop-total', verifyAdmin, getTotalLWOPForRetirement);
-
-// Tardiness Processing - Admin
-router.post('/process-tardiness', verifyAdmin, processMonthlyTardiness);
-
-// ============================================================================
-// Legacy Route Aliases (for backward compatibility)
-// ============================================================================
-
-// Keep old routes working during transition
-router.get('/my-leaves', verifyToken, getMyLeaves);
-router.get('/all', verifyAdmin, getAllLeaves);
+// Automation/Jobs
+router.post('/process-tardiness', verifyAdmin, processMonthlyTardiness as any);
 
 export default router;

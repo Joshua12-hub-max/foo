@@ -1,6 +1,7 @@
 
 import React from 'react';
-import { Download, Printer, AlertCircle } from 'lucide-react';
+import { Download, Printer, AlertCircle, X } from 'lucide-react';
+import axios from 'axios';
 
 interface ReportType {
     id: string;
@@ -46,7 +47,6 @@ import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import toast from 'react-hot-toast';
 import { useState } from 'react';
-import { X } from 'lucide-react';
 import AppointmentFormModal from '@features/EmployeeManagement/Admin/Plantilla/components/AppointmentFormModal';
 import Form9Modal from '@features/EmployeeManagement/Admin/Plantilla/components/Form9Modal';
 import { useForm9 } from '@features/EmployeeManagement/Admin/Plantilla/hooks/useForm9';
@@ -81,7 +81,7 @@ const ComplianceReportsDashboard: React.FC = () => {
     // Form 9 Hook (Zustand + React Query)
     const { openForm9Modal } = useForm9();
 
-    const generatePDF = (reportId: string, data: any, meta: any) => {
+    const generatePDF = (reportId: string, data: unknown[], meta: Record<string, unknown>) => {
         // ... (PDF Generation Logic - Unchanged) ...
         const doc = new jsPDF();
         
@@ -95,17 +95,17 @@ const ComplianceReportsDashboard: React.FC = () => {
         
         doc.setFontSize(12);
         doc.setFont("helvetica", "normal");
-        doc.text(meta.formName || meta.form_name || "Official Report", 105, 40, { align: "center" });
+        doc.text((meta.formName as string) || (meta.form_name as string) || "Official Report", 105, 40, { align: "center" });
         doc.setFontSize(16);
         doc.setFont("helvetica", "bold");
-        doc.text(meta.title || "Report Document", 105, 48, { align: "center" });
+        doc.text((meta.title as string) || "Report Document", 105, 48, { align: "center" });
         
         doc.line(20, 55, 190, 55);
         
         // Content based on ID
         if (reportId === 'form9' || reportId === 'rai' || reportId === 'psipop') {
              const tableColumn = Object.keys(data[0] || {}).map(key => key.toUpperCase().replace(/_/g, " "));
-             const tableRows = data.map((row: any) => Object.values(row));
+             const tableRows = (data as Record<string, unknown>[]).map((row) => Object.values(row).map(v => String(v ?? '')));
              
              autoTable(doc, {
                 head: [tableColumn],
@@ -118,12 +118,12 @@ const ComplianceReportsDashboard: React.FC = () => {
         } else if (reportId === 'form33') {
              // Appointment Form (Key-Value)
              let y = 70;
-             Object.entries(data).forEach(([key, value]) => {
+             Object.entries(data as Record<string, unknown>).forEach(([key, value]) => {
                  doc.setFontSize(10);
                  doc.setFont("helvetica", "bold");
                  doc.text(`${key.replace(/_/g, " ").toUpperCase()}:`, 20, y);
                  doc.setFont("helvetica", "normal");
-                 doc.text(`${value || "N/A"}`, 80, y);
+                 doc.text(`${String(value || "N/A")}`, 80, y);
                  y += 10;
              });
         }
@@ -182,7 +182,7 @@ const ComplianceReportsDashboard: React.FC = () => {
         }
     };
 
-    const handleDownload = async (reportId: string, type: 'pdf' | 'excel', params: any = {}) => {
+    const handleDownload = async (reportId: string, type: 'pdf' | 'excel', params: Record<string, unknown> = {}) => {
         try {
             toast.loading("Generating report...");
             
@@ -197,7 +197,7 @@ const ComplianceReportsDashboard: React.FC = () => {
                 }
                 
                 // Transform API data to Form9Position format
-                const positionsData: Form9Position[] = response.data.map((pos: any, idx: number) => ({
+                const positionsData: Form9Position[] = response.data.map((pos: Record<string, unknown>, idx: number) => ({
                     no: idx + 1,
                     positionTitle: pos.positionTitle || pos.positionTitle || '',
                     plantillaItemNo: pos.itemNumber || pos.itemNumber || '',
@@ -282,10 +282,12 @@ const ComplianceReportsDashboard: React.FC = () => {
             } else {
                 throw new Error(response.message || "No data returned");
             }
-        } catch (error: any) {
+        } catch (error: unknown) {
             toast.dismiss();
             console.error("Failed to generate report:", error);
-            const msg = error.response?.data?.message || error.message || "Failed to generate";
+            const msg = axios.isAxiosError(error) 
+                ? error.response?.data?.message || error.message 
+                : (error instanceof Error ? error.message : "Failed to generate");
             toast.error(msg);
         }
     };

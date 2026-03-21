@@ -76,7 +76,7 @@ export const startConversation = async (req: Request, res: Response): Promise<vo
       success: true, 
       conversation: { id: (result as ResultSetHeader).insertId, applicantName: sanitizedName, applicantEmail: email } 
     });
-  } catch (_error) {
+  } catch (_error: unknown) {
     res.status(500).json({ success: false, message: 'Failed to start chat' });
   }
 };
@@ -206,7 +206,7 @@ export const getMessages = async (req: Request, res: Response): Promise<void> =>
     });
 
     res.json({ success: true, messages: filteredMessages });
-  } catch (_error) {res.status(500).json({ success: false, message: 'Failed to fetch messages' });
+  } catch (_error: unknown) {res.status(500).json({ success: false, message: 'Failed to fetch messages' });
   }
 };
 
@@ -278,7 +278,7 @@ export const editMessage = async (req: Request, res: Response): Promise<void> =>
         .where(eq(chatMessages.id, Number(id)));
 
     res.json({ success: true, message: 'Message updated' });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('[Server] editMessage error:', error);
     res.status(500).json({ success: false, message: 'Failed to edit message' });
   }
@@ -337,7 +337,7 @@ export const deleteMessage = async (req: Request, res: Response): Promise<void> 
         }
 
         res.json({ success: true, message: 'Message deleted' });
-    } catch (error) {
+    } catch (error: unknown) {
         console.error('[Server] deleteMessage error:', error);
         res.status(500).json({ success: false, message: 'Failed to delete message' });
     }
@@ -366,7 +366,7 @@ export const getActiveConversations = async (_req: Request, res: Response): Prom
     .orderBy(desc(chatConversations.updatedAt));
 
     res.json({ success: true, conversations });
-  } catch (_error) {res.status(500).json({ success: false, message: 'Failed to fetch conversations' });
+  } catch (_error: unknown) {res.status(500).json({ success: false, message: 'Failed to fetch conversations' });
   }
 };
 

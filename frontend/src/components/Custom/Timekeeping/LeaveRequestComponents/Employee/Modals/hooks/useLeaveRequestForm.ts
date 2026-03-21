@@ -50,9 +50,9 @@ export const useLeaveRequestForm = () => {
 
   const duration = calculateDuration(formData.startDate, formData.endDate);
 
-  const handleChange = useCallback((field: keyof LeaveRequestFormData | 'submit', value: any) => {
+  const handleChange = useCallback((field: keyof LeaveRequestFormData | 'submit', value: string | boolean | File | null) => {
     if (field === 'submit') {
-        setErrors(prev => ({ ...prev, submit: value }));
+        setErrors(prev => ({ ...prev, submit: typeof value === 'string' ? value : undefined }));
         return;
     }
     setFormData(prev => ({ ...prev, [field]: value }));

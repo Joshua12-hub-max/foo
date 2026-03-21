@@ -20,6 +20,30 @@ const logDebug = (msg: string) => {
 // Type Definitions
 // ============================================================================
 
+import { rateLimit } from 'express-rate-limit';
+
+/**
+ * General authentication rate limiter
+ */
+export const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: { message: 'Too many requests, please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+/**
+ * Strict rate limiter for sensitive endpoints (login, password reset)
+ */
+export const strictAuthLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 10, // limit each IP to 10 requests per hour
+  message: { message: 'Too many login attempts, please try again in an hour.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 /**
  * Middleware function type for Express
  */

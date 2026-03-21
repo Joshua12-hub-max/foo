@@ -78,7 +78,7 @@ export const performanceReviews = mysqlTable("performance_reviews", {
 
 export const performanceAuditLog = mysqlTable("performance_audit_log", {
 	id: int("id").autoincrement().notNull(),
-	reviewId: int("review_id").notNull().references(() => performanceReviews.id, { onDelete: "cascade" } ),
+	reviewId: int("review_id").references(() => performanceReviews.id, { onDelete: "cascade" } ),
 	action: varchar("action", { length: 50 }).notNull(),
 	actorId: int("actor_id").notNull().references(() => authentication.id, { onDelete: "cascade" } ),
 	details: text("details"),

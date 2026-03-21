@@ -143,7 +143,7 @@ const BudgetTrackingDashboard: React.FC<BudgetDashboardProps> = ({ selectedDeptN
         setIsModalOpen(true);
     };
 
-    const handleFormSubmit = async (data: any) => {
+    const handleFormSubmit = async (data: Record<string, unknown>) => {
         setIsProcessing(true);
         try {
             if (modalMode === 'create') {
@@ -275,7 +275,7 @@ const BudgetTrackingDashboard: React.FC<BudgetDashboardProps> = ({ selectedDeptN
                                     ))}
                                 </Pie>
                                 <Tooltip 
-                                    formatter={(value: any) => [`₱${Number(value || 0).toLocaleString()}`, 'Amount']}
+                                    formatter={(value: unknown) => [`₱${Number(value || 0).toLocaleString()}`, 'Amount']}
                                     contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                                 />
                             </PieChart>

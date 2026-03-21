@@ -9,7 +9,13 @@ import { DTRRecord } from '../Utils/adminDTRUtils';
 interface AdminDTREditModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (id: string | number, data: any) => Promise<void>;
+  onSave: (id: string | number, data: {
+    timeIn: string | null;
+    timeOut: string | null;
+    status: string;
+    lateMinutes: number;
+    undertimeMinutes: number;
+  }) => Promise<void>;
   record: DTRRecord | null;
 }
 
@@ -67,8 +73,8 @@ export const AdminDTREditModal: React.FC<AdminDTREditModalProps> = ({
         timeIn: data.timeIn || null,
         timeOut: data.timeOut || null,
         status: data.status,
-        lateMinutes: data.late,
-        undertimeMinutes: data.undertime
+        lateMinutes: data.late || 0,
+        undertimeMinutes: data.undertime || 0
       });
       onClose();
     } catch (error) {

@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { useToastStore } from '@/stores';
 import PublicLayout from '@components/Public/PublicLayout';
+import SEO from "@/components/Global/SEO";
 import { jobApplicationSchema, JobApplicationSchema, PublicJob, createDynamicJobApplicationSchema, EDUCATION_LEVELS } from '@/schemas/recruitment';
 import { usePublicJobDetail, useJobApplication } from '@/features/Recruitment/hooks/usePublicJobs';
 import { PhilippineAddressSelector } from '@/components/Custom/Shared/PhilippineAddressSelector';
@@ -421,6 +422,12 @@ const JobDetail = () => {
 
   return (
     <PublicLayout>
+      {job && (
+        <SEO 
+          title={`${job.title} - Job Opening`}
+          description={`Join the City Government of Meycauayan as a ${job.title} in the ${job.department} department. Apply now!`}
+        />
+      )}
       <div className="min-h-screen bg-[#131314] font-sans text-white pb-12 pt-8 md:pt-12">
 
         <div className="max-w-6xl mx-auto px-6">
@@ -636,33 +643,68 @@ const JobDetail = () => {
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-2">
                                     <div className="space-y-2">
                                         <label className={`text-[11px] font-bold ${errors.lastName ? 'text-red-500' : 'text-slate-500'} tracking-tight ml-0.5`}>Last name <span className="text-red-500">*</span></label>
-                                        <input type="text" {...register('lastName')} className={`w-full px-3 py-2 bg-white border ${errors.lastName ? 'border-red-500 bg-red-50/30' : 'border-gray-300'} rounded-md outline-none font-medium text-sm text-slate-700 transition-all`} placeholder="Last name" />
+                                        <input 
+                                            id="app-last-name"
+                                            type="text" 
+                                            {...register('lastName')} 
+                                            className={`w-full px-3 py-2 bg-white border ${errors.lastName ? 'border-red-500 bg-red-50/30' : 'border-gray-300'} rounded-md outline-none font-medium text-sm text-slate-700 transition-all`} 
+                                            placeholder="Last name" 
+                                        />
                                         {errors.lastName && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.lastName.message}</p>}
                                     </div>
                                     <div className="space-y-2">
                                         <label className={`text-[11px] font-bold ${errors.firstName ? 'text-red-500' : 'text-slate-500'} tracking-tight ml-0.5`}>First name <span className="text-red-500">*</span></label>
-                                        <input type="text" {...register('firstName')} className={`w-full px-3 py-2 bg-white border ${errors.firstName ? 'border-red-500 bg-red-50/30' : 'border-gray-300'} rounded-md outline-none font-medium text-sm text-slate-700 transition-all`} placeholder="First name" />
+                                        <input 
+                                            id="app-first-name"
+                                            type="text" 
+                                            {...register('firstName')} 
+                                            className={`w-full px-3 py-2 bg-white border ${errors.firstName ? 'border-red-500 bg-red-50/30' : 'border-gray-300'} rounded-md outline-none font-medium text-sm text-slate-700 transition-all`} 
+                                            placeholder="First name" 
+                                        />
                                         {errors.firstName && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.firstName.message}</p>}
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Middle name</label>
-                                        <input type="text" {...register('middleName')} className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md outline-none font-medium text-sm text-slate-700" placeholder="Middle name" />
+                                        <input 
+                                            id="app-middle-name"
+                                            type="text" 
+                                            {...register('middleName')} 
+                                            className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md outline-none font-medium text-sm text-slate-700" 
+                                            placeholder="Middle name" 
+                                        />
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Suffix</label>
-                                        <input type="text" {...register('suffix')} className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md outline-none font-medium text-sm text-slate-700" placeholder="e.g. Jr., III" />
+                                        <input 
+                                            id="app-suffix"
+                                            type="text" 
+                                            {...register('suffix')} 
+                                            className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md outline-none font-medium text-sm text-slate-700" 
+                                            placeholder="e.g. Jr., III" 
+                                        />
                                     </div>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-y-3 gap-x-6">
                                 <div className="space-y-2">
                                     <label className={`text-[11px] font-bold ${errors.birthDate ? 'text-red-500' : 'text-slate-500'} tracking-tight ml-0.5`}>Birth date <span className="text-red-500">*</span></label>
-                                    <input type="date" {...register('birthDate')} className={`w-full px-3 py-2 bg-white border ${errors.birthDate ? 'border-red-500 bg-red-50/30' : 'border-gray-300'} rounded-md outline-none font-medium text-sm text-slate-700 transition-all`} />
+                                    <input 
+                                        id="app-birth-date"
+                                        type="date" 
+                                        {...register('birthDate')} 
+                                        className={`w-full px-3 py-2 bg-white border ${errors.birthDate ? 'border-red-500 bg-red-50/30' : 'border-gray-300'} rounded-md outline-none font-medium text-sm text-slate-700 transition-all`} 
+                                    />
                                     {errors.birthDate && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.birthDate.message}</p>}
                                 </div>
                                 <div className="md:col-span-2 space-y-2">
                                     <label className={`text-[11px] font-bold ${errors.birthPlace ? 'text-red-500' : 'text-slate-500'} tracking-tight ml-0.5`}>Place of birth <span className="text-red-500">*</span></label>
-                                    <input type="text" {...register('birthPlace')} className={`w-full px-3 py-2 bg-white border ${errors.birthPlace ? 'border-red-500 bg-red-50/30' : 'border-gray-300'} rounded-md outline-none font-medium text-sm text-slate-700 transition-all`} placeholder="City/municipality, province" />
+                                    <input 
+                                        id="app-birth-place"
+                                        type="text" 
+                                        {...register('birthPlace')} 
+                                        className={`w-full px-3 py-2 bg-white border ${errors.birthPlace ? 'border-red-500 bg-red-50/30' : 'border-gray-300'} rounded-md outline-none font-medium text-sm text-slate-700 transition-all`} 
+                                        placeholder="City/municipality, province" 
+                                    />
                                     {errors.birthPlace && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.birthPlace.message}</p>}
                                 </div>
                             </div>
@@ -828,23 +870,30 @@ const JobDetail = () => {
                                 </div>
                             </div>
                             
-                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
-                                 <div className="space-y-2">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
+                                <div className="space-y-2">
                                     <label className={`text-[11px] font-bold ${errors.email || isEmailTaken ? 'text-red-500' : 'text-slate-500'} tracking-tight ml-0.5`}>
                                         Email address <span className="text-red-500">*</span>
                                     </label>
                                     <input 
+                                        id="app-email"
                                         type="email" 
                                         {...register('email')} 
-                                        className={`w-full px-3 py-2 bg-white border ${(errors.email || isEmailTaken) ? 'border-red-500 bg-red-50/30' : 'border-gray-300'} rounded-md outline-none font-medium text-sm text-slate-700 transition-all`} 
-                                        placeholder="email@address.com" 
+                                        className={`w-full px-3 py-2 bg-white border ${errors.email || isEmailTaken ? 'border-red-500 bg-red-50/30' : 'border-gray-300'} rounded-md outline-none font-medium text-sm text-slate-700 transition-all`} 
+                                        placeholder="your@email.com" 
                                     />
                                     {errors.email && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.email.message}</p>}
-                                    {!errors.email && isEmailTaken && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">This email is already in our system. Please use another.</p>}
+                                    {!errors.email && isEmailTaken && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1 animate-pulse">This email has already submitted an application.</p>}
                                 </div>
                                 <div className="space-y-2">
-                                    <label className={`text-[11px] font-bold ${errors.phoneNumber ? 'text-red-500' : 'text-slate-500'} tracking-tight ml-0.5`}>Contact number <span className="text-red-500">*</span></label>
-                                    <input type="text" {...register('phoneNumber')} className={`w-full px-3 py-2 bg-white border ${errors.phoneNumber ? 'border-red-500 bg-red-50/30' : 'border-gray-300'} rounded-md outline-none font-medium text-sm text-slate-700 transition-all`} placeholder="+63 9XX XXX XXXX" />
+                                    <label className={`text-[11px] font-bold ${errors.phoneNumber ? 'text-red-500' : 'text-slate-500'} tracking-tight ml-0.5`}>Phone number <span className="text-red-500">*</span></label>
+                                    <input 
+                                        id="app-phone"
+                                        type="tel" 
+                                        {...register('phoneNumber')} 
+                                        className={`w-full px-3 py-2 bg-white border ${errors.phoneNumber ? 'border-red-500 bg-red-50/30' : 'border-gray-300'} rounded-md outline-none font-medium text-sm text-slate-700 transition-all`} 
+                                        placeholder="0912 345 6789" 
+                                    />
                                     {errors.phoneNumber && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.phoneNumber.message}</p>}
                                 </div>
                             </div>

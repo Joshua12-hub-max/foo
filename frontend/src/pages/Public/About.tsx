@@ -3,10 +3,15 @@ import { Target, Eye, Users, Shield, TrendingUp, Award, CheckCircle } from 'luci
 import { motion } from 'framer-motion';
 import missionImg from '@/assets/about-mission.png';
 import visionImg from '@/assets/about-vision.png';
+import SEO from '@/components/Global/SEO';
 
 const About = () => {
   return (
     <PublicLayout>
+      <SEO 
+        title="About Us"
+        description="Learn about our mission, vision, and core values at the City Government of Meycauayan HR office."
+      />
       <div className="flex-1 w-full bg-[#131314] relative overflow-hidden">
         {/* Background Decorative Elements */}
         <div className="absolute top-0 left-0 right-0 h-[500px] -z-10 overflow-hidden pointer-events-none">
@@ -38,8 +43,9 @@ const About = () => {
             </motion.div>
          
             {/* Bento Grid layout for Mission/Vision - Master Balance */}
-            <div className="grid md:grid-cols-2 gap-6 mb-16">
+            <div id="section-mission-vision" className="grid md:grid-cols-2 gap-6 mb-16">
                 <motion.div 
+                    id="card-mission"
                     initial={{ opacity: 0, y: 20 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
@@ -67,6 +73,7 @@ const About = () => {
                 </motion.div>
 
                 <motion.div 
+                     id="card-vision"
                      initial={{ opacity: 0, y: 20 }}
                      whileInView={{ opacity: 1, y: 0 }}
                      viewport={{ once: true }}
@@ -96,7 +103,7 @@ const About = () => {
             </div>
 
             {/* Why Work With Us - Premium Grid */}
-            <div className="space-y-10">
+            <div id="section-why-us" className="space-y-10">
                 <div className="flex items-center gap-6">
                     <div className="h-px flex-1 bg-white/5"></div>
                         <span className="text-[10px] font-bold text-green-500 tracking-tight">About Meycauayan</span>

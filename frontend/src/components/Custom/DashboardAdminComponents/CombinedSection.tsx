@@ -82,6 +82,13 @@ interface Event {
   description?: string | null;
 }
 
+interface Holiday {
+  id: number;
+  name: string;
+  date: string;
+  type: string;
+}
+
 export default function CombinedSection() {
   const [activeTab, setActiveTab] = useState('charts');
   const [isLoading, setIsLoading] = useState(false);
@@ -126,9 +133,9 @@ export default function CombinedSection() {
         
         // Fetch Holidays from DB
         const holidayResponse = await attendanceApi.getHolidays(currentYear);
-        const dbHolidays = (holidayResponse.data && holidayResponse.data.success) ? holidayResponse.data.data : [];
+        const dbHolidays = (holidayResponse.data && holidayResponse.data.success) ? (holidayResponse.data.data as Holiday[]) : [];
         
-        const holidayEvents = dbHolidays.map((h: any) => ({
+        const holidayEvents = dbHolidays.map((h) => ({
             id: `holiday-${h.id}`,
             title: h.name,
             date: h.date,
@@ -151,8 +158,8 @@ export default function CombinedSection() {
 
         // Filter and set holidays
         const upcomingHolidayList = holidayEvents
-          .filter((h: any) => new Date(h.date) >= today)
-          .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
+          .filter((h) => new Date(h.date) >= today)
+          .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
         setUpcomingHolidays(upcomingHolidayList.slice(0, 10));
 
       } catch (error) {

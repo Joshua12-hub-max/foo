@@ -5,7 +5,7 @@ import { eq, and, sql, desc, or, inArray, isNull, getTableColumns } from 'drizzl
 /* eslint-disable-next-line @typescript-eslint/naming-convention */
 import PDFDocument from 'pdfkit';
 import path from 'path';
-import fs from 'fs';
+import * as fs from 'fs';
 import * as ics from 'ics';
 import { getTemplateForStage, replaceVariables, sendEmailNotification } from '../utils/emailHelpers.js';
 import { checkSystemWideUniqueness } from '../services/validationService.js';
@@ -13,7 +13,7 @@ import { generateGoogleMeetLink } from '../services/meetingService.js';
 import { currentManilaDateTime } from '../utils/dateUtils.js';
 import { sanitizeInput, isDisposableEmail } from '../utils/spamUtils.js';
 import { generateOTP, sendOTPEmail } from '../utils/emailUtils.js';
-import type { JobStatus, ApplicantStage, ApplicantStatus } from '../types/index.js';
+import type { JobStatus, ApplicantStage, ApplicantStatus, AuthenticatedRequest } from '../types/index.js';
 
 import {
   createJobSchema,
@@ -45,7 +45,8 @@ function isApplicantStage(val: string): val is ApplicantStage {
 
 export const getHiredByDuty: AuthenticatedHandler = async (req, res) => {
   try {
-    const { duty, department } = req.query; // 'Standard' | 'Irregular Duties', 'Department Name'
+    const duty = req.query.duty as string | undefined;
+    const department = req.query.department as string | undefined;
 
     // Normalize duty input
     const normalizedDuty = (duty === 'Irregular Duties' || duty === 'Irregular') ? 'Irregular' : duty;
@@ -138,14 +139,14 @@ export const getHiredByDuty: AuthenticatedHandler = async (req, res) => {
       }));
 
     res.status(200).json({ success: true, applicants: filteredApplicants });
-  } catch (error) {
-
+  } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     res.status(500).json({ success: false, message: 'Failed to fetch hired applicants', error: errorMessage });
   }
 };
 
 export const createJob: AuthenticatedHandler = async (req, res) => {
+  const authReq = req as AuthenticatedRequest;
   try {
     const parseResult = createJobSchema.safeParse(req.body);
 
@@ -188,13 +189,13 @@ export const createJob: AuthenticatedHandler = async (req, res) => {
       training: training || null,
       eligibility: eligibility || null,
       otherQualifications: otherQualifications || null,
-      postedBy: req.user.id,
+      postedBy: authReq.user.id,
       postedAt: postedAt,
       createdAt: currentManilaDateTime()
     });
 
     res.status(201).json({ success: true, message: 'Job posted successfully' });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('[RecruitmentController] createJob failed:', error);
     res.status(500).json({ success: false, message: 'Failed to create job' });
   }
@@ -218,7 +219,7 @@ export const getJobs = async (req: Request, res: Response): Promise<void> => {
       .orderBy(desc(recruitmentJobs.createdAt));
 
     res.json({ success: true, jobs });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('[RecruitmentController] getJobs failed:', error);
     const err = error instanceof Error ? error : new Error('Unknown database error');
 
@@ -238,14 +239,16 @@ export const getJob = async (req: Request, res: Response): Promise<void> => {
       return;
     }
     res.json({ success: true, job });
-  } catch (_error) {
+  } catch (_error: unknown) {
     res.status(500).json({ success: false, message: 'Failed to fetch job' });
   }
 };
 
 export const applyJob = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { jobId: reqJobId } = req.body as { jobId: string | number };
+    const body = req.body as { jobId?: string | number };
+    const reqJobId = body.jobId;
+    
     if (!reqJobId) {
         res.status(400).json({ success: false, message: 'jobId is required' });
         return;
@@ -287,7 +290,7 @@ export const applyJob = async (req: Request, res: Response): Promise<void> => {
     const { hpField, websiteUrl, hToken } = req.body as { hpField?: string; websiteUrl?: string; hToken?: string };
 
     // File Integrity Audit
-    const files = req.files as { [fieldname: string]: Express.Multer.File[] } | undefined;
+    const files = req.files as Record<string, Express.Multer.File[]> | undefined;
     const resume = files?.['resume']?.[0];
     const eligibilityCert = files?.['eligibilityCert']?.[0];
     const photo = files?.['photo']?.[0];
@@ -625,7 +628,9 @@ export const applyJob = async (req: Request, res: Response): Promise<void> => {
 
 export const getApplicants = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { jobId, stage, source } = req.query;
+    const jobId = req.query.jobId as string | undefined;
+    const stage = req.query.stage as string | undefined;
+    const source = req.query.source as string | undefined;
 
     // --- 100% AUDIT & SELF-HEALING: DATA INTEGRITY BLOCK ---
     try {
@@ -1031,7 +1036,11 @@ export const getApplicantStats = async (_req: Request, res: Response): Promise<v
 
 export const generateOfferLetter = async (req: Request, res: Response): Promise<void> => {
   try { 
-    const { applicantId } = req.params as { applicantId: string };
+    const applicantId = req.params.applicantId;
+    if (!applicantId) {
+      res.status(400).json({ success: false, message: 'Applicant ID is required' });
+      return;
+    }
     const bodyResult = generateOfferLetterSchema.safeParse(req.body);
 
     if (!bodyResult.success) {
@@ -1109,7 +1118,11 @@ export const generateOfferLetter = async (req: Request, res: Response): Promise<
 
 export const assignInterviewer = async (req: Request, res: Response): Promise<void> => { 
   try {
-    const { applicantId } = req.params as { applicantId: string }; 
+    const applicantId = req.params.applicantId;
+    if (!applicantId) {
+      res.status(400).json({ success: false, message: 'Applicant ID is required' });
+      return;
+    }
     const bodyResult = assignInterviewerSchema.safeParse(req.body);
     
     if (!bodyResult.success) {
@@ -1128,6 +1141,7 @@ export const assignInterviewer = async (req: Request, res: Response): Promise<vo
 };
 
 export const generateMeetingLink: AuthenticatedHandler = async (req, res) => {
+  const authReq = req;
   try {
     const parseResult = generateMeetingLinkSchema.safeParse(req.body);
     
@@ -1161,7 +1175,7 @@ export const generateMeetingLink: AuthenticatedHandler = async (req, res) => {
     const interviewDate = new Date(date);
 
     const result = await generateGoogleMeetLink({
-      userId: req.user.id,
+      userId: authReq.user.id,
       title: `Interview: ${jobTitle || 'Position'} - ${applicant.firstName} ${applicant.lastName}`,
       startTime: interviewDate,
       duration: duration,
@@ -1214,6 +1228,7 @@ export const generateApplicationPDF = async (req: Request, res: Response): Promi
         bufferPages: true,
         /* eslint-disable @typescript-eslint/naming-convention */
         info: {
+            Subject: `Application Update - CHRMO Mey Portal`,
             Title: `Application - ${applicant.lastName}, ${applicant.firstName}`,
             Author: 'City of Meycauayan HRMO'
         }

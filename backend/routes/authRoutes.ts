@@ -12,51 +12,75 @@ import {
   resendVerificationEmail,
   forgotPassword,
   resetPassword,
-  updateProfile,
   enableTwoFactor,
   disableTwoFactor,
   verifyTwoFactorOTP,
   resendTwoFactorOTP,
-  getNextId,
-  findHiredApplicant,
   getSetupPositions,
   setupPortal,
+  findHiredApplicant,
   checkEmailUniqueness,
+  updateProfile,
+  getNextId,
   checkGovtIdUniqueness
 } from '../controllers/auth.controller.js';
-import { verifyToken, verifyAdmin, restrictSuspended } from '../middleware/authMiddleware.js';
-import { uploadAvatar } from '../middleware/uploadMiddleware.js';
-import { authLimiter, strictAuthLimiter } from '../middleware/rateLimitMiddleware.js';
+import { verifyToken, authLimiter, strictAuthLimiter } from '../middleware/authMiddleware.js';
+import multer from 'multer';
+import path from 'path';
+
+const storage = multer.diskStorage({
+  destination: (_req, _file, cb) => {
+    cb(null, 'uploads/avatars/');
+  },
+  filename: (_req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({ storage });
 
 const router: Router = Router();
 
-// Public routes
-router.get('/next-id', authLimiter, getNextId);
-router.get('/check-email', authLimiter, checkEmailUniqueness);
-router.get('/check-govt-id', authLimiter, checkGovtIdUniqueness);
-router.get('/hired-applicant-search', authLimiter, findHiredApplicant);
-router.get('/setup-positions', authLimiter, getSetupPositions);
-router.post('/setup-portal', strictAuthLimiter, setupPortal);
-router.get('/verify-enrollment/:employeeId', authLimiter, verifyEnrollment);
-router.post('/register', uploadAvatar.single('avatar'), strictAuthLimiter, register);
-router.post('/login', strictAuthLimiter, login);
-router.post('/logout', logout);
-router.post('/google', strictAuthLimiter, googleLogin);
+// ============================================================================
+// Public Routes
+// ============================================================================
 
-// Protected routes
-router.get('/users', verifyToken, verifyAdmin, getUsers);
-router.get('/users/:id', verifyToken, getUserById);
-router.post('/verify-registration', strictAuthLimiter, verifyRegistrationOTP);
-router.get('/me', verifyToken, getMe);
-router.post('/profile', verifyToken, restrictSuspended, uploadAvatar.single('avatar'), updateProfile);
-router.post('/resend-verification', authLimiter, resendVerificationEmail);
-router.post('/forgot-password', strictAuthLimiter, forgotPassword);
-router.post('/reset-password', strictAuthLimiter, resetPassword);
+router.post('/login', authLimiter, login as any);
+router.post('/register', upload.single('avatar'), register as any);
+router.get('/verify-enrollment/:employeeId', verifyEnrollment as any);
+router.post('/verify-otp', verifyRegistrationOTP as any);
+router.post('/resend-verification', resendVerificationEmail as any);
+router.post('/google-login', googleLogin as any);
+router.post('/forgot-password', authLimiter, forgotPassword as any);
+router.post('/reset-password', authLimiter, resetPassword as any);
 
-// 2FA Routes
-router.post('/2fa/enable', verifyToken, enableTwoFactor);
-router.post('/2fa/disable', verifyToken, disableTwoFactor);
-router.post('/2fa/verify', strictAuthLimiter, verifyTwoFactorOTP);
-router.post('/2fa/resend', authLimiter, resendTwoFactorOTP);
+// Initial Setup
+router.get('/setup-positions', getSetupPositions as any);
+router.post('/setup-portal', setupPortal as any);
+
+// Registration Helpers
+router.get('/find-hired-applicant', findHiredApplicant as any);
+router.get('/check-email', checkEmailUniqueness as any);
+router.get('/check-govt-id', checkGovtIdUniqueness as any);
+router.get('/next-id', getNextId as any);
+
+// ============================================================================
+// Protected Routes (Token Required)
+// ============================================================================
+
+router.get('/me', verifyToken, getMe as any);
+router.put('/profile/:id', verifyToken, upload.single('avatar'), updateProfile as any);
+router.post('/logout', verifyToken, logout as any);
+
+// User Management (Basic)
+router.get('/users', verifyToken, getUsers as any);
+router.get('/users/:id', verifyToken, getUserById as any);
+
+// Two-Factor Authentication
+router.post('/2fa/enable', verifyToken, enableTwoFactor as any);
+router.post('/2fa/disable', verifyToken, disableTwoFactor as any);
+router.post('/2fa/verify', strictAuthLimiter, verifyTwoFactorOTP as any);
+router.post('/2fa/resend', authLimiter, resendTwoFactorOTP as any);
 
 export default router;

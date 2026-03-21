@@ -1,17 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { leaveApi } from '../../../../api/leaveApi';
+import { LeaveBalance } from '@/types/leave.types';
 
 interface EmployeeLeaveTableProps {
   onClose: () => void;
 }
 
-interface LeaveCredit {
-  creditType: string;
-  balance: string | number;
-}
-
 const EmployeeLeaveTable: React.FC<EmployeeLeaveTableProps> = ({ onClose }) => {
-  const [credits, setCredits] = useState<LeaveCredit[]>([]);
+  const [credits, setCredits] = useState<LeaveBalance[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -19,7 +15,6 @@ const EmployeeLeaveTable: React.FC<EmployeeLeaveTableProps> = ({ onClose }) => {
     const fetchCredits = async () => {
       try {
         const res = await leaveApi.getMyCredits();
-        // @ts-ignore
         setCredits(res.data?.credits || []);
       } catch (err) {
         console.error("Failed to fetch leave credits:", err);

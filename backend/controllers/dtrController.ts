@@ -6,7 +6,7 @@ import { eq, and, desc, gte, lte, count, sql } from 'drizzle-orm';
 import { GetDTRSchema, UpdateDTRSchema, RequestCorrectionSchema } from '../schemas/dtrSchema.js';
 import { AuthenticatedRequest } from '../types/index.js';
 import { updateTardinessSummary } from '../utils/tardinessUtils.js';
-import { createNotification, notifyAdmins } from './notificationController.js';
+import { createNotification, notifyAdmins, updateNotificationsByReference } from './notificationController.js';
 import { DTRApiResponse } from '../types/attendance.js';
 import { formatToManilaDateTime } from "../utils/dateUtils.js";
 import { compareIds } from "../utils/idUtils.js";
@@ -498,7 +498,7 @@ const parseTimeInput = (timeStr: string | null | undefined, dateStr: string): st
     const dbCorrectedIn = parseTimeInput(correctedTimeIn, date);
     const dbCorrectedOut = parseTimeInput(correctedTimeOut, date);
 
-    await db.insert(dtrCorrections).values({
+    const [result] = await db.insert(dtrCorrections).values({
       employeeId,
       dateTime: date, // Map 'date' from request to 'dateTime' column
       originalTimeIn: dbOriginalIn,
@@ -509,14 +509,41 @@ const parseTimeInput = (timeStr: string | null | undefined, dateStr: string): st
       status: 'Pending'
     });
 
+    const correctionId = result.insertId;
+
     // Notify Admins
     try {
+      // Determine notification strategy:
+      // Admins get the 'New Request' notification (Action-oriented)
+      // Regular employees get the 'Submitted' notification (Confirmation-oriented)
+      // If a user is both, we give them the 'New Request' notification so they can act on it if needed,
+      // and skip the redundant 'Submitted' one to keep it 'ISA LANG'.
+      
+      const userRole = authReq.user?.role;
+      const isAdminOrHR = userRole === 'Administrator' || userRole === 'Human Resource';
+
+      // 1. Notify OTHER Admins/HR
       await notifyAdmins({
         senderId: employeeId,
         title: 'New DTR Correction Request',
-        message: `Employee ${employeeId} has requested a DTR correction for ${date}.`,
-        type: 'dtr_correction',
-        referenceId: null
+        message: `Employee ${employeeId} has requested a DTR correction for ${date}. Status: Pending`,
+        type: 'dtr_request',
+        referenceId: correctionId,
+        excludeId: employeeId 
+      });
+
+      // 2. Notify the requester
+      // If the requester is an Admin/HR, we send them the 'New Request' version for consistency with their portal view,
+      // But only one notification total.
+      await createNotification({
+        recipientId: employeeId,
+        senderId: isAdminOrHR ? employeeId : null,
+        title: isAdminOrHR ? 'New DTR Correction Request' : 'DTR Correction Request Submitted',
+        message: isAdminOrHR 
+          ? `You have submitted a DTR correction for ${date}. Status: Pending` 
+          : `Your DTR correction request for ${date} has been submitted. Status: Pending`,
+        type: 'dtr_request',
+        referenceId: correctionId
       });
     } catch (notifErr) {
       console.error('Failed to notify admins:', notifErr);
@@ -618,17 +645,16 @@ export const updateCorrectionStatus = async (req: Request, res: Response): Promi
                   })
                   .where(eq(dtrCorrections.id, id));
 
-              // Notify Employee
+              // Update existing notifications (Admin and Employee)
               try {
-                await createNotification({
-                  recipientId: request.employeeId,
-                  senderId: adminId,
+                await updateNotificationsByReference({
+                  type: 'dtr_request',
+                  referenceId: id,
                   title: 'DTR Correction Rejected',
-                  message: `Your DTR correction request for ${request.dateTime} has been rejected. Reason: ${rejectionReason || 'No reason provided.'}`,
-                  type: 'dtr_correction_result',
-                  referenceId: id
+                  message: `DTR correction request for ${request.employeeId} on ${request.dateTime} has been rejected. Reason: ${rejectionReason || 'No reason provided.'}`,
+                  newType: 'dtr_rejection'
                 });
-              } catch (nErr) { console.error(nErr); }
+              } catch (nErr) { console.error('Notification Update Error:', nErr); }
 
           } else if (status === 'Approved') {
               // APPROVED LOGIC
@@ -793,7 +819,7 @@ export const updateCorrectionStatus = async (req: Request, res: Response): Promi
                     });
                 }
                 console.log(`[DTR-SYNC] Successfully sync'd correction for ${request.employeeId} on ${dateStr}`);
-            } catch (syncErr) {
+            } catch (syncErr: unknown) {
                 console.error('[DTR-SYNC] Failed to sync correction to biometrics:', syncErr);
             }
 
@@ -806,17 +832,16 @@ export const updateCorrectionStatus = async (req: Request, res: Response): Promi
                 })
                 .where(eq(dtrCorrections.id, id));
 
-            // Notify Employee
+            // Update existing notifications (Admin and Employee)
             try {
-              await createNotification({
-                recipientId: request.employeeId,
-                senderId: adminId,
+              await updateNotificationsByReference({
+                type: 'dtr_request',
+                referenceId: id,
                 title: 'DTR Correction Approved',
-                message: `Your DTR correction request for ${request.dateTime} has been approved.`,
-                type: 'dtr_correction_result',
-                referenceId: id
+                message: `DTR correction request for ${request.employeeId} on ${request.dateTime} has been approved.`,
+                newType: 'dtr_approval'
               });
-            } catch (nErr) { console.error(nErr); }
+            } catch (nErr: unknown) { console.error('Notification Update Error:', nErr); }
         }
     }
 

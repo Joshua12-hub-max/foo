@@ -152,7 +152,7 @@ const ScheduleInterviewModal: React.FC<ScheduleInterviewModalProps> = ({
         throw new Error('Please select date and time first');
       }
       const response = await zoomApi.createMeeting({
-        topic: 'Interview',
+        topic: `Interview Invitation - CHRMO Mey Portal`,
         startTime: `${date}T${time}:00`,
         duration: 60,
         applicantName: `${selectedApplicant.firstName} ${selectedApplicant.lastName}`,

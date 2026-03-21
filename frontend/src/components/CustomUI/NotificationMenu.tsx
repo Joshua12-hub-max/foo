@@ -11,21 +11,17 @@ interface NotificationStyle {
 // Get icon and color based on notification type
 const getNotificationStyle = (type: string): NotificationStyle => {
   const styles: Record<string, NotificationStyle> = {
-    leaveRequest: { icon: Calendar, color: 'text-amber-600', bg: 'bg-amber-50' },
-    leaveApproval: { icon: Check, color: 'text-green-600', bg: 'bg-green-50' },
-    leaveRejection: { icon: X, color: 'text-red-600', bg: 'bg-red-50' },
-    leaveProcess: { icon: FileText, color: 'text-blue-600', bg: 'bg-blue-50' },
-    leaveFinalize: { icon: Check, color: 'text-green-600', bg: 'bg-green-50' },
-    dtrCorrection: { icon: Clock, color: 'text-purple-600', bg: 'bg-purple-50' },
-    dtrApproval: { icon: Check, color: 'text-green-600', bg: 'bg-green-50' },
-    dtrRejection: { icon: X, color: 'text-red-600', bg: 'bg-red-50' },
-    undertimeRequest: { icon: Clock, color: 'text-orange-600', bg: 'bg-orange-50' },
-    undertimeApproval: { icon: Check, color: 'text-green-600', bg: 'bg-green-50' },
-    undertimeRejection: { icon: X, color: 'text-red-600', bg: 'bg-red-50' },
-    scheduleAssigned: { icon: Calendar, color: 'text-blue-600', bg: 'bg-blue-50' },
-    // Memo notifications
-    memoReceived: { icon: FileText, color: 'text-red-600', bg: 'bg-red-50' },
-    memoAcknowledged: { icon: Check, color: 'text-green-600', bg: 'bg-green-50' },
+    leave_request: { icon: Calendar, color: 'text-amber-600', bg: 'bg-amber-50' },
+    leave_process: { icon: RefreshCw, color: 'text-blue-600', bg: 'bg-blue-50' },
+    leave_finalize: { icon: Check, color: 'text-cyan-600', bg: 'bg-cyan-50' },
+    leave_approval: { icon: Check, color: 'text-green-600', bg: 'bg-green-50' },
+    leave_rejection: { icon: X, color: 'text-red-600', bg: 'bg-red-50' },
+    dtr_request: { icon: Clock, color: 'text-purple-600', bg: 'bg-purple-50' },
+    dtr_approval: { icon: Check, color: 'text-green-600', bg: 'bg-green-50' },
+    dtr_rejection: { icon: X, color: 'text-red-600', bg: 'bg-red-50' },
+    memo_request: { icon: FileText, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+    memo_acknowledged: { icon: Check, color: 'text-green-600', bg: 'bg-green-50' },
+    event_created: { icon: Calendar, color: 'text-pink-600', bg: 'bg-pink-50' },
   };
   return styles[type] || { icon: Bell, color: 'text-gray-600', bg: 'bg-gray-50' };
 };
@@ -260,23 +256,38 @@ export default function NotificationMenu() {
 
                       {/* Content */}
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className={`text-sm truncate ${isUnread ? 'font-semibold text-gray-900' : 'font-medium text-gray-700'}`}>
-                            {notification.title || 'Notification'}
-                          </p>
-                          {isUnread && (
-                            <span className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" />
-                          )}
-                          {/* Status Badge */}
-                          {notification.type?.includes('request') && !notification.type?.includes('approved') && !notification.type?.includes('rejected') && (
-                            <span className="px-1.5 py-0.5 text-[10px] font-medium bg-amber-100 text-amber-700 rounded">Pending</span>
-                          )}
-                          {(notification.type?.includes('approved') || notification.type?.includes('approval')) && (
-                            <span className="px-1.5 py-0.5 text-[10px] font-medium bg-green-100 text-green-700 rounded">Approved</span>
-                          )}
-                          {(notification.type?.includes('rejected') || notification.type?.includes('rejection')) && (
-                            <span className="px-1.5 py-0.5 text-[10px] font-medium bg-red-100 text-red-700 rounded">Rejected</span>
-                          )}
+                        <div className="flex items-center justify-between gap-2 overflow-hidden">
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                            <p className={`text-sm truncate ${isUnread ? 'font-semibold text-gray-900' : 'font-medium text-gray-700'}`}>
+                              {notification.title || 'Notification'}
+                            </p>
+                            {isUnread && (
+                              <span className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" />
+                            )}
+                          </div>
+                          
+                          {/* Status Badge - Moved to a stable position with shrink-0 */}
+                          <div className="flex-shrink-0 flex items-center">
+                            {(notification.type?.toLowerCase().includes('request') || 
+                              notification.type?.toLowerCase().includes('pending') ||
+                              notification.type?.toLowerCase().includes('process') ||
+                              notification.type?.toLowerCase().includes('finalize')) && 
+                             !notification.type?.toLowerCase().includes('approved') && 
+                             !notification.type?.toLowerCase().includes('rejected') && 
+                             !notification.type?.toLowerCase().includes('approval') && 
+                             !notification.type?.toLowerCase().includes('rejection') && 
+                             !notification.type?.toLowerCase().includes('acknowledged') && (
+                              <span className="px-1.5 py-0.5 text-[10px] font-medium bg-amber-100 text-amber-700 rounded whitespace-nowrap">Pending</span>
+                            )}
+                            {(notification.type?.toLowerCase().includes('approved') || 
+                              notification.type?.toLowerCase().includes('approval') ||
+                              notification.type?.toLowerCase().includes('acknowledged')) && (
+                              <span className="px-1.5 py-0.5 text-[10px] font-medium bg-green-100 text-green-700 rounded whitespace-nowrap">Completed</span>
+                            )}
+                            {(notification.type?.toLowerCase().includes('rejected') || notification.type?.toLowerCase().includes('rejection')) && (
+                              <span className="px-1.5 py-0.5 text-[10px] font-medium bg-red-100 text-red-700 rounded whitespace-nowrap">Rejected</span>
+                            )}
+                          </div>
                         </div>
                         {notification.senderId && (
                           <p className="text-xs text-gray-600 truncate mt-0.5">

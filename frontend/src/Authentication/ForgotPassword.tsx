@@ -4,6 +4,7 @@ import { Mail, ArrowLeft, Loader2, CheckCircle } from "lucide-react";
 import AuthLayout from "@components/Custom/Auth/AuthLayout";
 import { forgotPassword } from "@/Service/Auth";
 import axios from "axios";
+import SEO from "@/components/Global/SEO";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
@@ -31,6 +32,10 @@ export default function ForgotPassword() {
 
   return (
     <AuthLayout title="Reset Password">
+      <SEO 
+        title="Forgot Password"
+        description="Reset your NEBR account password. Follow the instructions sent to your email."
+      />
       <div className="space-y-6">
         <div className="text-center">
           <p className="text-gray-500 mt-2">
@@ -40,6 +45,14 @@ export default function ForgotPassword() {
 
         {isSent ? (
           <div className="text-center space-y-4 animate-in fade-in zoom-in duration-300">
+            <div className="flex items-center space-x-2 justify-center">
+              <div className="w-10 h-10 bg-green-600 rounded-xl flex items-center justify-center transform group-hover:rotate-12 transition-transform duration-300 shadow-lg shadow-green-200">
+                <span className="text-white font-black text-xl italic tracking-tighter">CM</span>
+              </div>
+              <span className="text-2xl font-black text-gray-900 tracking-tight group-hover:text-green-600 transition-colors">
+                CHRMO <span className="text-green-600 font-extrabold">Mey</span>
+              </span>
+            </div>
             <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
               <CheckCircle className="h-8 w-8 text-green-600" />
             </div>

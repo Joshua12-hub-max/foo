@@ -176,8 +176,8 @@ const Login: React.FC = () => {
               setOtpValue(val);
               if (val.length === 6) {
                 verify2FAMutation.mutate({ identifier: loginIdentifier, otp: val }, {
-                  onSuccess: (response) => {
-                    const payload = response.data as AuthPayload;
+                  onSuccess: (response: unknown) => {
+                    const payload = response as AuthPayload;
                     const userData = payload.data.user;
                     if (userData) {
                         handle2FASuccess(userData);
@@ -186,7 +186,8 @@ const Login: React.FC = () => {
                   onError: (err: unknown) => {
                     let message = "Invalid verification code";
                     if (axios.isAxiosError(err)) {
-                        message = err.response?.data?.message || message;
+                        const axiosError = err as AxiosError<{ message?: string }>;
+                        message = axiosError.response?.data?.message || message;
                     }
                     showToast(message, "error");
                   }
@@ -198,8 +199,8 @@ const Login: React.FC = () => {
           <div className="flex flex-col gap-4">
             <button
               onClick={() => verify2FAMutation.mutate({ identifier: loginIdentifier, otp: otpValue }, {
-                onSuccess: (response) => {
-                  const payload = response.data as AuthPayload;
+                onSuccess: (response: unknown) => {
+                  const payload = response as AuthPayload;
                   const userData = payload.data.user;
                   if (userData) {
                       handle2FASuccess(userData);

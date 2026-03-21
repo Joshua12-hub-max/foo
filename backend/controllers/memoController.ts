@@ -3,7 +3,7 @@ import { db } from '../db/index.js';
 import { employeeMemos, authentication, memoSequences, plantillaPositions, departments } from '../db/schema.js';
 import { eq, and, sql, desc, or, like, count } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/mysql-core';
-import { createNotification } from './notificationController.js';
+import { createNotification, updateNotificationsByReference } from './notificationController.js';
 import type { AuthenticatedRequest, MemoType, MemoStatus, MemoPriority, EmploymentStatus } from '../types/index.js';
 import { formatFullName } from '../utils/nameUtils.js';
 
@@ -76,7 +76,7 @@ const notifyEmployeeOfMemo = async (employeeId: number, authorId: number, memoTy
         senderId: authorData.employeeId, 
         title: `New ${memoType}`, 
         message: `You have received a ${memoType}: ${subject}`, 
-        type: 'memo_received', 
+        type: 'memo_request', // Standardized for lifecycle tracking
         referenceId: memoId 
       });
     }
@@ -99,6 +99,17 @@ const notifyAuthorOfAcknowledgment = async (employeeId: number, authorId: number
 
     if (empData && authorData) {
       const empName = formatFullName(empData.lastName, empData.firstName, empData.middleName, empData.suffix);
+      
+      // 1. Update the Employee's (the one who acknowledged) notification in-place
+      await updateNotificationsByReference({
+        type: 'memo_request',
+        referenceId: memoId,
+        title: 'Memo Acknowledged',
+        message: `You have acknowledged the ${memoType}: ${memoSubject}`,
+        newType: 'memo_acknowledged'
+      });
+
+      // 2. Notify the Author of the Acknowledgment (New notification for Author)
       await createNotification({ 
         recipientId: authorData.employeeId || '', 
         senderId: empData.employeeId, 

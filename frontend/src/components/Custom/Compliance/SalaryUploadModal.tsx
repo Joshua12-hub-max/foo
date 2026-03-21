@@ -136,8 +136,7 @@ export const SalaryUploadModal: React.FC<SalaryUploadModalProps> = ({
                     salary = salaryVal;
                 } else if (typeof salaryVal === 'string') {
                     salary = Number(salaryVal.replace(/[^0-9.]/g, ''));
-                } else if (typeof salaryVal === 'object' && salaryVal !== null) {
-                    // @ts-ignore
+                } else if (typeof salaryVal === 'object' && salaryVal !== null && 'result' in salaryVal) {
                     salary = Number(salaryVal.result || 0);
                 }
 
@@ -297,7 +296,7 @@ export const SalaryUploadModal: React.FC<SalaryUploadModalProps> = ({
                                 ];
 
                                 // Sample Row
-                                const sampleRow: any = { grade: 1 };
+                                const sampleRow: Record<string, number> = { grade: 1 };
                                 for (let i = 1; i <= 8; i++) {
                                     sampleRow[`step${i}`] = 13000 + (i * 100);
                                 }

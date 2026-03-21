@@ -17,13 +17,18 @@ interface AdminAgendaViewProps {
   onDeleteAnnouncement?: (announcement: Announcement) => void;
 }
 
+interface Shift {
+    startTime: string | null;
+    endTime: string | null;
+    isStandard: boolean;
+    personnelCount: number;
+}
+
 interface DeptSchedule {
     id: number;
     departmentName: string;
-    employeeId: string;
-    employeeName: string;
-    startTime: string;
-    endTime: string;
+    shifts: Shift[];
+    totalStrength: number;
 }
 
 interface NextCutOffSchedule {
@@ -89,7 +94,7 @@ const AdminAgendaView = ({
     if (typeof time === 'string' && time.includes(':')) {
         // Handle HH:mm:ss format
         const [h, m] = time.split(':');
-        let hour = parseInt(h);
+        const hour = parseInt(h);
         const period = hour >= 12 ? 'PM' : 'AM';
         const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
         return `${displayHour}:${m} ${period}`;
@@ -101,44 +106,46 @@ const AdminAgendaView = ({
   };
 
   // Filter items based on search query (Zero Type Erasure compliant)
-  const filterItems = <T extends Record<string, unknown>>(items: T[], fields: (keyof T)[]) => {
+  const filterItems = <T,>(items: T[], fields: (keyof T)[]) => {
     if (!searchQuery) return items;
     const query = searchQuery.toLowerCase();
     return items.filter(item => 
       fields.some(field => {
-        const value = item[field];
-        return value !== null && typeof value !== 'undefined' && value.toString().toLowerCase().includes(query);
+        const value = (item as Record<string, unknown>)[field as string];
+        return value !== null && typeof value !== 'undefined' && String(value).toLowerCase().includes(query);
       })
     );
   };
 
-  const filteredAnnouncements = filterItems(announcements as unknown as Record<string, unknown>[], ['title', 'content']) as unknown as Announcement[];
-  const filteredEvents = filterItems(events as unknown as Record<string, unknown>[], ['title', 'description']) as unknown as CalendarEvent[];
-  const filteredSchedules = filterItems(schedules as unknown as Record<string, unknown>[], ['employeeName', 'employeeId', 'scheduleTitle', 'department']) as unknown as Schedule[];
-  const filteredNextCutOffSchedules = filterItems(nextCutOffSchedules as unknown as Record<string, unknown>[], ['departmentName', 'employeeName', 'scheduleTitle']) as unknown as NextCutOffSchedule[];
-  const filteredDeptSummary = filterItems(deptSummary as unknown as Record<string, unknown>[], ['departmentName']) as any[];
+  const filteredAnnouncements = filterItems(announcements, ['title', 'content']);
+  const filteredEvents = filterItems(events, ['title', 'description']);
+  const filteredSchedules = filterItems(schedules, ['employeeName', 'employeeId', 'scheduleTitle', 'department']);
+  const filteredNextCutOffSchedules = filterItems(nextCutOffSchedules, ['departmentName', 'employeeName', 'scheduleTitle']);
+  const filteredDeptSummary = filterItems(deptSummary as DeptSchedule[], ['departmentName']);
 
   // Grouped data for better organization (Nested: Dept -> Shift -> Items)
-  const groupedSchedules = filteredSchedules.reduce((acc, item) => {
+  const groupedSchedules = (filteredSchedules as Schedule[]).reduce((acc: Record<string, Record<string, Schedule[]>>, item) => {
     const dept = item.department || 'Unassigned';
-    const shift = `${formatTime(item.startTime ?? null)} - ${formatTime(item.endTime ?? null)}`;
+    const startTime = (item as any).startTime ?? null;
+    const endTime = (item as any).endTime ?? null;
+    const shift = `${formatTime(startTime)} - ${formatTime(endTime)}`;
     if (!acc[dept]) acc[dept] = {};
     if (!acc[dept][shift]) acc[dept][shift] = [];
     acc[dept][shift].push(item);
     return acc;
-  }, {} as Record<string, Record<string, Schedule[]>>);
+  }, {});
 
-  const groupedNextCutOff = filteredNextCutOffSchedules.reduce((acc, item) => {
+  const groupedNextCutOff = (filteredNextCutOffSchedules as NextCutOffSchedule[]).reduce((acc: Record<string, Record<string, NextCutOffSchedule[]>>, item) => {
     const dept = item.departmentName || 'Unassigned';
     const shift = `${formatTime(item.startTime)} - ${formatTime(item.endTime)}`;
     if (!acc[dept]) acc[dept] = {};
     if (!acc[dept][shift]) acc[dept][shift] = [];
     acc[dept][shift].push(item);
     return acc;
-  }, {} as Record<string, Record<string, NextCutOffSchedule[]>>);
+  }, {});
 
   // Count unique employees for Next Cut-off badge (not inflated row count)
-  const uniqueNextCutOffEmployees = new Set(filteredNextCutOffSchedules.map(s => s.employeeId)).size;
+  const uniqueNextCutOffEmployees = new Set((filteredNextCutOffSchedules as NextCutOffSchedule[]).map(s => s.employeeId)).size;
 
   const tabs = [
     { id: 'schedules', label: 'Current Shift', count: filteredDeptSummary.length },
@@ -250,7 +257,7 @@ const AdminAgendaView = ({
                          </td>
                        </tr>
                     ) : filteredDeptSummary.length > 0 ? (
-                       filteredDeptSummary.map((item: any) => (
+                       filteredDeptSummary.map((item) => (
                         <tr key={item.id} className="hover:bg-[#F8F9FA] hover:shadow-xl transition-colors">
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center gap-3">
@@ -259,7 +266,7 @@ const AdminAgendaView = ({
                           </td>
                           <td className="px-6 py-4">
                             <div className="flex flex-wrap gap-3 justify-center">
-                              {item.shifts.map((shift: any, idx: number) => (
+                              {item.shifts.map((shift, idx) => (
                                 <div 
                                   key={`${item.id}-${idx}`} 
                                   className={`flex flex-col items-center px-4 py-2 rounded-lg border shadow-sm transition-all ${

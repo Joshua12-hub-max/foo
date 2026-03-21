@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { db } from '../db/index.js';
 import { notifications, authentication } from '../db/schema.js';
-import { eq, and, desc, sql, inArray } from 'drizzle-orm';
+import { eq, and, desc, sql, inArray, ne } from 'drizzle-orm';
 import type { AuthenticatedRequest } from '../types/index.js';
 
 interface CreateNotificationParams {
@@ -41,6 +41,47 @@ export const createNotification = async ({
 };
 
 /**
+ * Update notifications by type and reference ID (internal helper)
+ */
+export const updateNotificationsByReference = async ({
+  type,
+  referenceId,
+  title,
+  message,
+  newType
+}: {
+  type: string | string[];
+  referenceId: number;
+  title: string;
+  message: string;
+  newType?: string;
+}): Promise<void> => {
+  const types = Array.isArray(type) ? type : [type];
+  const updateData: Partial<typeof notifications.$inferInsert> = {
+    title,
+    message,
+    status: 'unread'
+  };
+  
+  if (newType) {
+    updateData.type = newType;
+  }
+
+  const [result] = await db.update(notifications)
+    .set(updateData)
+    .where(and(
+      inArray(notifications.type, types),
+      eq(notifications.referenceId, referenceId)
+    ));
+
+  if (result.affectedRows === 0) {
+    console.warn(`[NOTIF] No notifications found to update for referenceId: ${referenceId}, types: ${JSON.stringify(types)}`);
+  } else {
+    console.log(`[NOTIF] Updated ${result.affectedRows} notifications for referenceId: ${referenceId}`);
+  }
+};
+
+/**
  * Notify all admins/hr
  */
 export const notifyAdmins = async ({
@@ -48,12 +89,16 @@ export const notifyAdmins = async ({
   title,
   message,
   type,
-  referenceId
-}: Omit<CreateNotificationParams, 'recipientId'>): Promise<void> => {
+  referenceId,
+  excludeId
+}: Omit<CreateNotificationParams, 'recipientId'> & { excludeId?: string }): Promise<void> => {
   try {
     const admins = await db.select({ employeeId: authentication.employeeId })
       .from(authentication)
-      .where(inArray(authentication.role, ['Administrator', 'Human Resource']));
+      .where(and(
+        inArray(authentication.role, ['Administrator', 'Human Resource']),
+        excludeId ? ne(authentication.employeeId, excludeId) : undefined
+      ));
 
     const notificationPromises = admins.map((admin) =>
       createNotification({
@@ -81,11 +126,13 @@ export const notifyAllUsers = async ({
   title,
   message,
   type,
-  referenceId
-}: Omit<CreateNotificationParams, 'recipientId'>): Promise<void> => {
+  referenceId,
+  excludeId
+}: Omit<CreateNotificationParams, 'recipientId'> & { excludeId?: string }): Promise<void> => {
   try {
     const users = await db.select({ employeeId: authentication.employeeId })
-      .from(authentication);
+      .from(authentication)
+      .where(excludeId ? ne(authentication.employeeId, excludeId) : undefined);
 
     const notificationPromises = users.map((user) =>
       createNotification({
@@ -114,12 +161,16 @@ export const notifyDepartment = async ({
   title,
   message,
   type,
-  referenceId
-}: Omit<CreateNotificationParams, 'recipientId'> & { departmentId: number }): Promise<void> => {
+  referenceId,
+  excludeId
+}: Omit<CreateNotificationParams, 'recipientId'> & { departmentId: number; excludeId?: string }): Promise<void> => {
   try {
     const users = await db.select({ employeeId: authentication.employeeId })
       .from(authentication)
-      .where(eq(authentication.departmentId, departmentId));
+      .where(and(
+        eq(authentication.departmentId, departmentId),
+        excludeId ? ne(authentication.employeeId, excludeId) : undefined
+      ));
 
     const notificationPromises = users.map((user) =>
       createNotification({

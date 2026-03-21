@@ -103,7 +103,7 @@ export default function AdminCalendar() {
     queryKey: ['schedules-list'],
     queryFn: async () => {
         const response = await scheduleApi.getSchedules();
-        return (response.schedules || []) as unknown as Schedule[];
+        return (response.schedules || []) as Schedule[];
     }
   });
 
@@ -305,7 +305,7 @@ export default function AdminCalendar() {
   }, [updateEventMutation]);
 
   // Calendar data processing
-  const calendarData = useCalendarData({ currentDate, events, showHolidays, holidays: holidays.map(h => ({ ...h, name: (h as any).name || (h as any).title || '' })) as unknown as Holiday[], announcements, schedules });
+  const calendarData = useCalendarData({ currentDate, events, showHolidays, holidays: (holidays as unknown as Holiday[]).map(h => ({ ...h, name: h.name || h.title || '' })), announcements, schedules });
   const { month, day, year, dayName, displayedEvents } = calendarData;
   
   const isDeleting = deleteEventMutation.isPending || deleteAnnouncementMutation.isPending;
@@ -343,7 +343,7 @@ export default function AdminCalendar() {
                 today={today}
                 onDateClick={navigation.handleDateClick}
                 showHolidays={showHolidays}
-                holidays={(holidays as any) as unknown as GridItem[]}
+                holidays={holidays as unknown as GridItem[]}
                 announcements={announcements}
                 events={events}
                 displayedEvents={displayedEvents}
@@ -379,9 +379,9 @@ export default function AdminCalendar() {
           onNextMonth={navigation.handleNextMonth}
           displayedEvents={displayedEvents}
           hours={HOURS_12}
-          onEventClick={(e) => setShowEventDetails(e as unknown as CalendarDisplayItem)}
+          onEventClick={(e) => setShowEventDetails(e as CalendarDisplayItem)}
           showHolidays={showHolidays}
-          holidays={holidays.map(h => ({ ...h, name: (h as any).name || (h as any).title || '' })) as unknown as Holiday[]}
+          holidays={(holidays as unknown as Holiday[]).map(h => ({ ...h, name: h.name || h.title || '' }))}
           announcements={announcements}
         />
 

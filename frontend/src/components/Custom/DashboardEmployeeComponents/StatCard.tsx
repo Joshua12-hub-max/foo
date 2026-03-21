@@ -2,9 +2,9 @@ import { useMemo, useCallback } from 'react';
 
 interface StatCardProps {
   title: string;
-  data?: any;
+  data?: unknown;
   value?: string | number;
-  onClick?: (data: { title: string, data: any }) => void;
+  onClick?: (data: { title: string, data: unknown }) => void;
 }
 
 export default function StatCard({ title, data, value, onClick }: StatCardProps) {
@@ -21,16 +21,8 @@ export default function StatCard({ title, data, value, onClick }: StatCardProps)
     onClick?.({ title, data });
   }, [onClick, title, data]);
 
-  const Container = onClick ? 'button' : 'div';
-
-  return (
-    // @ts-ignore
-    <Container
-      onClick={onClick ? handleClick : undefined}
-      className={`bg-white p-4 rounded-lg border border-gray-200 shadow-sm transition-all duration-200 ${
-        onClick ? 'hover:shadow-md hover:border-gray-300 cursor-pointer text-left w-full' : ''
-      }`}
-    >
+  const cardContent = (
+    <>
       <div className="flex items-center justify-between mb-2">
         <div className={`w-8 h-8 ${colorMap[title] || 'bg-gray-700'} rounded-lg flex items-center justify-center`}>
         </div>
@@ -39,9 +31,27 @@ export default function StatCard({ title, data, value, onClick }: StatCardProps)
         )}
       </div>
       <p className="text-2xl font-bold text-gray-900">
-        {value !== undefined ? value : data?.length || 0}
+        {value !== undefined ? value : (Array.isArray(data) ? data.length : 0)}
       </p>
       <h3 className="text-xs font-semibold text-gray-500 mt-1">{title}</h3>
-    </Container>
+    </>
+  );
+
+  const className = `bg-white p-4 rounded-lg border border-gray-200 shadow-sm transition-all duration-200 ${
+    onClick ? 'hover:shadow-md hover:border-gray-300 cursor-pointer text-left w-full' : ''
+  }`;
+
+  if (onClick) {
+    return (
+      <button onClick={handleClick} className={className}>
+        {cardContent}
+      </button>
+    );
+  }
+
+  return (
+    <div className={className}>
+      {cardContent}
+    </div>
   );
 }

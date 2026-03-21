@@ -151,7 +151,7 @@ export const parsePDSUpload = async (req: Request, res: Response): Promise<void>
     const buffer = await fs.promises.readFile(file.path);
     const extension = file.originalname.split('.').pop()?.toLowerCase();
 
-    let extractedData: any = {};
+    let extractedData: Record<string, unknown> = {};
     let avatar: string | null = null;
 
     if (extension === 'xlsx' || extension === 'xls') {
@@ -173,7 +173,8 @@ export const parsePDSUpload = async (req: Request, res: Response): Promise<void>
       avatar,
       message: 'PDS parsed successfully'
     });
-  } catch (error: any) {
+  } catch (err: unknown) {
+    const error = err instanceof Error ? err : new Error('Unknown error');
     console.error('PDS Parsing Error:', error);
     res.status(500).json({
       success: false,

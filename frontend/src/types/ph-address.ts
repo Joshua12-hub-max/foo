@@ -21,11 +21,14 @@ export interface Barangay {
   mun_code: string;
 }
 
-export interface PhilAddressLibrary {
+export interface PhilAddressData {
   regions: Region[];
   provinces: Province[];
   city_mun: CityMunicipality[];
   barangays: Barangay[];
+}
+
+export interface PhilAddressLibrary extends PhilAddressData {
   getProvincesByRegion: (regionCode: string) => Province[];
   getCityMunByProvince: (provinceCode: string) => CityMunicipality[];
   getBarangayByMun: (munCode: string) => Barangay[];

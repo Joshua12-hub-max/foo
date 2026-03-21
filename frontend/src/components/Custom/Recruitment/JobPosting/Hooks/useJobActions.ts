@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { recruitmentApi } from '@/api/recruitmentApi';
+import axios from 'axios';
 import { JobFormData } from '@/types';
 
 const useJobActions = (
@@ -24,9 +25,13 @@ const useJobActions = (
       }
       onSuccess();
       loadJobs();
-    } catch (err: any) {
+    } catch (err: unknown) { // Changed from 'any' to 'unknown'
       console.error('Failed to save job:', err);
-      showNotification(err.response?.data?.message || 'Failed to save job posting', 'error');
+      let errorMessage = 'Failed to save job posting';
+      if (axios.isAxiosError(err)) {
+        errorMessage = err.response?.data?.message || errorMessage;
+      }
+      showNotification(errorMessage, 'error');
     } finally {
       setSaving(false);
     }

@@ -1062,7 +1062,8 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
                // Special handling for duties - do not add to authentication updateFields
                // We will handle this separately below
             } else {
-                updateFields[drizzleKey] = processedVal as any;
+                const key = drizzleKey as keyof UpdateFields;
+                updateFields[key] = processedVal as UpdateFields[keyof UpdateFields];
             }
         }
       }
@@ -1624,7 +1625,7 @@ export const updateEmployeeCustomField = async (req: Request, res: Response): Pr
       ));
 
     res.json({ success: true, message: 'Custom field updated' });
-  } catch (_error) {
+  } catch (_error: unknown) {
 
     res.status(500).json({ success: false, message: 'Failed to update custom field' });
   }
@@ -1639,10 +1640,8 @@ export const deleteEmployeeCustomField = async (req: Request, res: Response): Pr
         eq(employeeCustomFields.employeeId, parseInt(id))
       ));
     res.json({ success: true, message: 'Custom field deleted' });
-  } catch (_error) {
+  } catch (_error: unknown) {
 
     res.status(500).json({ success: false, message: 'Failed to delete custom field' });
   }
 };
-
-

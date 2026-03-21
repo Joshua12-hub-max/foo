@@ -16,6 +16,8 @@ export const leaveApplications = mysqlTable("leave_applications", {
 	reason: text("reason").notNull(),
 	status: mysqlEnum("status", ['Pending','Processing','Finalizing','Approved','Rejected','Cancelled']).default('Pending'),
 	rejectionReason: text("rejection_reason"),
+    rejectedBy: varchar("rejected_by", { length: 50 }),
+    rejectedAt: timestamp("rejected_at", { mode: 'string' }),
 	approvedBy: varchar("approved_by", { length: 50 }),
 	approvedAt: timestamp("approved_at", { mode: 'string' }),
 	adminFormPath: varchar("admin_form_path", { length: 500 }),

@@ -3,6 +3,8 @@
  * Re-exports from centralized types with additional UI-specific types
  */
 
+import { LeaveType, ApplicationStatus } from '@/types/leave.types';
+
 // Re-export all types from central location
 export * from '@/types/leave.types';
 
@@ -26,11 +28,11 @@ export interface AdminLeaveRequest {
   firstName: string;
   lastName: string;
   department: string;
-  leaveType: string;
+  leaveType: LeaveType;
   startDate: string;
   endDate: string;
   reason: string;
-  status: string;
+  status: ApplicationStatus;
   isWithPay: boolean;
   attachmentPath?: string | null;
   adminFormPath?: string | null;
@@ -56,11 +58,11 @@ export interface EmployeeLeaveRequest {
   firstName: string;
   lastName: string;
   department: string;
-  leaveType: string;
+  leaveType: LeaveType;
   startDate: string;
   endDate: string;
   reason: string;
-  status: string;
+  status: ApplicationStatus;
   isWithPay: boolean | number;
   attachmentPath: string | null;
   adminFormPath?: string | null;

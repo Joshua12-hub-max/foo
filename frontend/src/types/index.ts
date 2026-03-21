@@ -74,7 +74,7 @@ export interface User {
 
 export interface ApiResponse<T = unknown> {
   success: boolean;
-  data: T;
+  data: T | null;
   message?: string;
   avatar?: string | null;
 }

@@ -30,8 +30,8 @@ export interface AuthenticatedRequest extends Request {
 export type AsyncHandler = (
   req: Request,
   res: Response,
-  next?: NextFunction
-) => Promise<void>;
+  next: NextFunction
+) => Promise<void> | void;
 
 /**
  * Express handler type for authenticated routes
@@ -39,8 +39,8 @@ export type AsyncHandler = (
 export type AuthenticatedHandler = (
   req: AuthenticatedRequest,
   res: Response,
-  next?: NextFunction
-) => Promise<void>;
+  next: NextFunction
+) => Promise<void> | void;
 
 // ============================================================================
 // API Response Types
@@ -202,12 +202,7 @@ export type CivilStatus =
   | 'Annulled';
 
 export type AppointmentType = 
-  | 'Permanent'
-  | 'Contractual'
-  | 'Casual'
-  | 'Job Order'
-  | 'Coterminous'
-  | 'Temporary';
+  | 'Permanent' | 'Contractual' | 'Casual' | 'Job Order' | 'Coterminous' | 'Temporary' | 'Contract of Service' | 'JO' | 'COS';
 
 
 
@@ -241,12 +236,7 @@ export type ApplicantStage =
   | 'Rejected';
 
 export type ApplicantStatus = 
-  | 'Applied'
-  | 'Screening'
-  | 'Interview'
-  | 'Offer'
-  | 'Hired'
-  | 'Rejected';
+  | 'Applied' | 'Screening' | 'Interview' | 'Offer' | 'Hired' | 'Rejected';
 
 export type ApplicantSource = 'web' | 'email';
 
@@ -265,11 +255,7 @@ export type RatingPeriod =
 
 export type ReviewStatus = 
   | 'Draft'
-  | 'Self-Rated'
-  | 'Submitted'
-  | 'Acknowledged'
-  | 'Approved'
-  | 'Finalized';
+  | 'Self-Rated' | 'Submitted' | 'Acknowledged' | 'Approved' | 'Finalized';
 
 export type SelfRatingStatus = 
   | 'pending'

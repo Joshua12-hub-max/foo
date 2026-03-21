@@ -3,6 +3,7 @@ import { attendanceApi } from '../../../../api/attendanceApi';
 import { useAuth } from '../../../../hooks/useAuth';
 import { format } from 'date-fns';
 import { formatDuration } from '@/utils/formatters';
+import { DTRApiResponse } from '@/types/attendance';
 
 interface EmployeeLateTableProps {
   onClose: () => void;
@@ -10,7 +11,7 @@ interface EmployeeLateTableProps {
 
 const EmployeeLateTable: React.FC<EmployeeLateTableProps> = ({ onClose }) => {
   const { user } = useAuth();
-  const [records, setRecords] = useState<any[]>([]);
+  const [records, setRecords] = useState<DTRApiResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,7 +30,7 @@ const EmployeeLateTable: React.FC<EmployeeLateTableProps> = ({ onClose }) => {
           limit: 100
         });
 
-        const lateLogs = (res.data?.data || []).filter((l: any) => l.status === 'Late');
+        const lateLogs = (res.data?.data || []).filter((l) => l.status === 'Late');
         setRecords(lateLogs);
       } catch (err) {
         console.error("Failed to fetch late records:", err);

@@ -14,6 +14,18 @@ import { useToastStore } from '@/stores';
 import { useEmploymentMetadataQuery, useGovtIdUniquenessQuery } from "@/hooks/useCommonQueries";
 import { useDebounce } from "@/hooks/useDebounce";import { ID_REGEX } from "@/schemas/idValidation";
 import DocumentGallery from "@features/Settings/Profile/components/DocumentGallery";
+import { LucideIcon } from "lucide-react";
+
+// ─── Metadata Types ──────────────────────────────────────────────────────────
+
+export interface PDSMetadata {
+  pdsCivilStatus?: string[];
+  pdsBloodTypes?: string[];
+  pdsCitizenship?: string[];
+  pdsAppointmentStatus?: string[];
+  pdsLdTypes?: string[];
+  pdsGovtIdTypes?: string[];
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -201,18 +213,23 @@ const formatName = (name: string) => {
 };
 
 const formatAddr = (reg: string, prov: string, city: string, brgy: string, house: string, subd: string, street: string) => {
-  const lib = ph as any;
-  const rName = formatName(lib.regions.find((x: any) => x.reg_code === reg)?.name || '');
-  const pName = formatName(lib.provinces.find((x: any) => x.prov_code === prov)?.name || '');
-  const cName = formatName(lib.city_mun.find((x: any) => x.mun_code === city)?.name || '');
+  const lib = ph as { 
+    regions: Region[]; 
+    provinces: Province[]; 
+    city_mun: CityMunicipality[]; 
+    barangays: Barangay[]; 
+  };
+  const rName = formatName(lib.regions.find((x: Region) => x.reg_code === reg)?.name || '');
+  const pName = formatName(lib.provinces.find((x: Province) => x.prov_code === prov)?.name || '');
+  const cName = formatName(lib.city_mun.find((x: CityMunicipality) => x.mun_code === city)?.name || '');
   const bName = formatName(brgy);
   return [house, subd, street, bName, cName, pName, rName].filter(Boolean).join(', ');
 };
 
 const PDSAddressSelector = ({ prefix, data, set, isMeycauayanOnly = false }: { prefix: 'res' | 'perm'; data: PDSFormData; set: PDSSetter; isMeycauayanOnly?: boolean }) => {
-  const watchRegion = (data as any)[`${prefix}Region`];
-  const watchProvince = (data as any)[`${prefix}Province`];
-  const watchCity = (data as any)[`${prefix}CityMunicipality`];
+  const watchRegion = data[`${prefix}Region` as keyof PDSFormData] as string;
+  const watchProvince = data[`${prefix}Province` as keyof PDSFormData] as string;
+  const watchCity = data[`${prefix}CityMunicipality` as keyof PDSFormData] as string;
   const [regions, setRegions] = useState<Region[]>([]);
   const [provinces, setProvinces] = useState<Province[]>([]);
   const [cities, setCities] = useState<CityMunicipality[]>([]);
@@ -293,20 +310,20 @@ const PDSAddressSelector = ({ prefix, data, set, isMeycauayanOnly = false }: { p
         <Field label="Barangay">
           <Combobox 
             options={barangays.map((b: Barangay) => ({ value: b.name, label: formatName(b.name) }))}
-            value={(data as any)[`${prefix}Barangay`] || ''}
-            onChange={(val: string) => set(`${prefix}Barangay` as any, val)}
+            value={(data[`${prefix}Barangay` as keyof PDSFormData] as string) || ''}
+            onChange={(val: string) => set(`${prefix}Barangay` as keyof PDSFormData, val as any)}
             placeholder="Select Barangay" disabled={!watchCity}
             buttonClassName="rounded-lg bg-white border-gray-200 font-bold text-gray-700 h-11 transition-all hover:border-gray-400 focus:ring-4 focus:ring-gray-100/50 focus:border-gray-400"
           />
         </Field>
       </Grid>
       <Grid cols={3}>
-        <Field label="House / Block / Lot No."><Input value={(data as any)[`${prefix}HouseBlockLot`]} onChange={e => set(`${prefix}HouseBlockLot` as any, e.target.value)} placeholder="e.g. Lot 1 Block 2" /></Field>
-        <Field label="Subdivision / Village"><Input value={(data as any)[`${prefix}Subdivision`]} onChange={e => set(`${prefix}Subdivision` as any, e.target.value)} placeholder="e.g. Green Village" /></Field>
-        <Field label="Street"><Input value={(data as any)[`${prefix}Street`]} onChange={e => set(`${prefix}Street` as any, e.target.value)} placeholder="e.g. Rizal Street" /></Field>
+        <Field label="House / Block / Lot No."><Input value={data[`${prefix}HouseBlockLot` as keyof PDSFormData] as string} onChange={e => set(`${prefix}HouseBlockLot` as keyof PDSFormData, e.target.value as any)} placeholder="e.g. Lot 1 Block 2" /></Field>
+        <Field label="Subdivision / Village"><Input value={data[`${prefix}Subdivision` as keyof PDSFormData] as string} onChange={e => set(`${prefix}Subdivision` as keyof PDSFormData, e.target.value as any)} placeholder="e.g. Green Village" /></Field>
+        <Field label="Street"><Input value={data[`${prefix}Street` as keyof PDSFormData] as string} onChange={e => set(`${prefix}Street` as keyof PDSFormData, e.target.value as any)} placeholder="e.g. Rizal Street" /></Field>
       </Grid>
       <Grid cols={3}>
-        <Field label="Zip Code"><Input value={(data as any)[`${prefix}Zip`]} readOnly className="bg-gray-50 cursor-not-allowed" placeholder="Auto-populated" /></Field>
+        <Field label="Zip Code"><Input value={data[`${prefix}Zip` as keyof PDSFormData] as string} readOnly className="bg-gray-50 cursor-not-allowed" placeholder="Auto-populated" /></Field>
       </Grid>
     </div>
   );
@@ -364,7 +381,7 @@ const Field = ({ label, children, span = 1 }: { label: string; children: React.R
   </div>
 );
 
-const Input = (props: React.InputHTMLAttributes<HTMLInputElement> & { icon?: any; isError?: boolean; errorMessage?: string }) => {
+const Input = (props: React.InputHTMLAttributes<HTMLInputElement> & { icon?: LucideIcon; isError?: boolean; errorMessage?: string }) => {
   const { icon: Icon, isError, errorMessage, ...rest } = props;
   return (
     <div className="flex flex-col gap-1.1 w-full">
@@ -421,7 +438,7 @@ const AddButton = ({ onClick, label }: { onClick: () => void; label: string }) =
   <button onClick={onClick} className="w-full py-3 border-2 border-dashed border-gray-100 rounded-lg text-[10px] font-bold text-gray-400 hover:border-gray-300 hover:text-gray-600 hover:bg-gray-50 transition-all active:scale-[0.98] mt-4">+ {label}</button>
 );
 
-const EduRow = ({ data, onChange }: { data: any; onChange: (k: string, v: string) => void }) => (
+const EduRow = ({ data, onChange }: { data: PDSFormData["education"]["Elementary"]; onChange: (k: string, v: string) => void }) => (
   <div className="bg-gray-50/50 border border-gray-100 rounded-xl p-5 mb-4 last:mb-0">
     <Grid cols={1}>
       <Field label="School Name"><Input value={data.school} onChange={e => onChange("school", e.target.value)} placeholder="Full name of school" /></Field>
@@ -443,7 +460,7 @@ const EduRow = ({ data, onChange }: { data: any; onChange: (k: string, v: string
 
 // ─── Step Components ──────────────────────────────────────────────────────────
 
-const StepPersonal = ({ data, set, metadata, isIdTakenMap }: { data: PDSFormData; set: PDSSetter; metadata: any; isIdTakenMap: Record<string, string> }) => (
+const StepPersonal = ({ data, set, metadata, isIdTakenMap }: { data: PDSFormData; set: PDSSetter; metadata: PDSMetadata; isIdTakenMap: Record<string, string> }) => (
   <SectionCard title="Personal Information" roman="I">
     <Grid cols={3}>
       <Field label="1. Surname"><Input value={data.surname} onChange={e => set("surname", e.target.value)} placeholder="e.g. DELA CRUZ" /></Field>
@@ -603,7 +620,12 @@ const StepEducation = ({ data, set }: { data: PDSFormData; set: PDSSetter }) => 
     {[ { key: "Elementary", label: "Elementary" }, { key: "Secondary", label: "Secondary" }, { key: "Vocational", label: "Vocational/Trade" }, { key: "College", label: "College" }, { key: "Graduate", label: "Graduate Studies" } ].map(level => (
       <div key={level.key} className="mb-4 last:mb-0">
         <div className="text-[10px] font-bold text-gray-400 mb-3 ml-1">{level.label} Level</div>
-        <EduRow data={data.education[level.key as keyof PDSFormData["education"]]} onChange={(k, v) => { const updated = { ...data.education }; (updated as any)[level.key][k] = v; set("education", updated); }} />
+        <EduRow data={data.education[level.key as keyof PDSFormData["education"]]} onChange={(k, v) => { 
+          const updated = { ...data.education }; 
+          const key = level.key as keyof PDSFormData["education"];
+          (updated[key] as Record<string, string>)[k] = v; 
+          set("education", updated); 
+        }} />
       </div>
     ))}
   </SectionCard>
@@ -628,7 +650,7 @@ const StepEligibility = ({ data, set }: { data: PDSFormData; set: PDSSetter }) =
   </SectionCard>
 );
 
-const StepWork = ({ data, set, metadata }: { data: PDSFormData; set: PDSSetter; metadata: any }) => (
+const StepWork = ({ data, set, metadata }: { data: PDSFormData; set: PDSSetter; metadata: PDSMetadata }) => (
   <SectionCard title="Work Experience" roman="V">
     {data.workExperiences.map((work, i) => (
       <div key={work.id || i} className="bg-gray-50/50 border border-gray-100 rounded-lg p-5 mb-4 group relative last:mb-0 transition-all hover:bg-white hover:border-gray-200">
@@ -667,7 +689,7 @@ const StepVoluntary = ({ data, set }: { data: PDSFormData; set: PDSSetter }) => 
   </SectionCard>
 );
 
-const StepTraining = ({ data, set, metadata }: { data: PDSFormData; set: PDSSetter; metadata: any }) => (
+const StepTraining = ({ data, set, metadata }: { data: PDSFormData; set: PDSSetter; metadata: PDSMetadata }) => (
   <SectionCard title="Training Programs" roman="VII">
     {data.trainings.map((train, i) => (
       <div key={train.id || i} className="bg-gray-50/50 border border-gray-100 rounded-lg p-6 mb-8 relative group transition-all hover:bg-white hover:border-gray-200">
@@ -713,7 +735,7 @@ const StepOtherInfo = ({ data, set, employeeId }: { data: PDSFormData; set: PDSS
   );
 };
 
-const StepDeclarations = ({ data, set, metadata }: { data: PDSFormData; set: PDSSetter; metadata: any }) => (
+const StepDeclarations = ({ data, set, metadata }: { data: PDSFormData; set: PDSSetter; metadata: PDSMetadata }) => (
   <div className="space-y-8">
     <SectionCard title="Declarations" roman="IX">
       <Grid cols={1}>
@@ -781,7 +803,7 @@ const StepDeclarations = ({ data, set, metadata }: { data: PDSFormData; set: PDS
   </div>
 );
 
-const StepHRDetails = ({ data, set, metadata }: { data: PDSFormData; set: PDSSetter; metadata: any }) => (
+const StepHRDetails = ({ data, set, metadata }: { data: PDSFormData; set: PDSSetter; metadata: PDSMetadata }) => (
   <SectionCard title="Human Resource Internal Details" roman="HR">
     <Grid cols={2}>
       <Field label="Department"><Input value={data.department} readOnly className="bg-gray-50 cursor-not-allowed" /></Field>

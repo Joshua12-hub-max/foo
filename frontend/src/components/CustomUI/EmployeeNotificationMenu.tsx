@@ -11,16 +11,17 @@ interface NotificationStyle {
 // Get icon and color based on notification type
 const getNotificationStyle = (type: string): NotificationStyle => {
   const styles: Record<string, NotificationStyle> = {
-    leaveApproved: { icon: Check, color: 'text-green-600', bg: 'bg-green-50' },
-    leaveRejected: { icon: X, color: 'text-red-600', bg: 'bg-red-50' },
-    leaveProcessed: { icon: FileText, color: 'text-blue-600', bg: 'bg-blue-50' },
-    dtrCorrectionApproved: { icon: Check, color: 'text-green-600', bg: 'bg-green-50' },
-    dtrCorrectionRejected: { icon: X, color: 'text-red-600', bg: 'bg-red-50' },
-    adminDtrCorrection: { icon: Clock, color: 'text-purple-600', bg: 'bg-purple-50' },
-    undertimeApproved: { icon: Check, color: 'text-green-600', bg: 'bg-green-50' },
-    undertimeRejected: { icon: X, color: 'text-red-600', bg: 'bg-red-50' },
-    scheduleAssigned: { icon: Calendar, color: 'text-blue-600', bg: 'bg-blue-50' },
-    eventCreated: { icon: Calendar, color: 'text-purple-600', bg: 'bg-purple-50' },
+    leave_request: { icon: Calendar, color: 'text-amber-600', bg: 'bg-amber-50' },
+    leave_process: { icon: RefreshCw, color: 'text-blue-600', bg: 'bg-blue-50' },
+    leave_finalize: { icon: Check, color: 'text-cyan-600', bg: 'bg-cyan-50' },
+    leave_approval: { icon: Check, color: 'text-green-600', bg: 'bg-green-50' },
+    leave_rejection: { icon: X, color: 'text-red-600', bg: 'bg-red-50' },
+    dtr_request: { icon: Clock, color: 'text-purple-600', bg: 'bg-purple-50' },
+    dtr_approval: { icon: Check, color: 'text-green-600', bg: 'bg-green-50' },
+    dtr_rejection: { icon: X, color: 'text-red-600', bg: 'bg-red-50' },
+    memo_request: { icon: FileText, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+    memo_acknowledged: { icon: Check, color: 'text-green-600', bg: 'bg-green-50' },
+    event_created: { icon: Calendar, color: 'text-pink-600', bg: 'bg-pink-50' },
     announcement: { icon: Bell, color: 'text-amber-600', bg: 'bg-amber-50' },
   };
   return styles[type] || { icon: Bell, color: 'text-gray-600', bg: 'bg-gray-50' };
@@ -267,14 +268,25 @@ export default function EmployeeNotificationMenu() {
                             <span className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" />
                           )}
                           {/* Status Badge */}
-                          {notification.type?.includes('request') && !notification.type?.includes('approved') && !notification.type?.includes('rejected') && (
-                            <span className="px-1.5 py-0.5 text-[10px] font-medium bg-amber-100 text-amber-700 rounded">Pending</span>
+                          {(notification.type?.toLowerCase().includes('request') || 
+                            notification.type?.toLowerCase().includes('pending') ||
+                            notification.type?.toLowerCase().includes('process') ||
+                            notification.type?.toLowerCase().includes('finalize')) && 
+                           !notification.type?.toLowerCase().includes('approved') && 
+                           !notification.type?.toLowerCase().includes('rejected') && 
+                           !notification.type?.toLowerCase().includes('approval') && 
+                           !notification.type?.toLowerCase().includes('rejection') && 
+                           !notification.type?.toLowerCase().includes('acknowledged') && (
+                            <span className="px-1.5 py-0.5 text-[10px] font-medium bg-amber-100 text-amber-700 rounded whitespace-nowrap">Pending</span>
                           )}
-                          {(notification.type?.includes('approved') || notification.type?.includes('approval')) && (
-                            <span className="px-1.5 py-0.5 text-[10px] font-medium bg-green-100 text-green-700 rounded">Approved</span>
+                          {(notification.type?.toLowerCase().includes('approved') || 
+                            notification.type?.toLowerCase().includes('approval') ||
+                            notification.type?.toLowerCase().includes('acknowledged')) && (
+                            <span className="px-1.5 py-0.5 text-[10px] font-medium bg-green-100 text-green-700 rounded whitespace-nowrap">Completed</span>
                           )}
-                          {(notification.type?.includes('rejected') || notification.type?.includes('rejection')) && (
-                            <span className="px-1.5 py-0.5 text-[10px] font-medium bg-red-100 text-red-700 rounded">Rejected</span>
+                          {(notification.type?.toLowerCase().includes('rejected') || 
+                            notification.type?.toLowerCase().includes('rejection')) && (
+                            <span className="px-1.5 py-0.5 text-[10px] font-medium bg-red-100 text-red-700 rounded whitespace-nowrap">Rejected</span>
                           )}
                         </div>
                         {notification.senderName?.trim() && (

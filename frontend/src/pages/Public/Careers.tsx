@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Search, MapPin, Clock, ChevronRight } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import PublicLayout from '@components/Public/PublicLayout';
+import SEO from '@/components/Global/SEO';
 import { motion } from 'framer-motion';
 import { usePublicJobs } from '@/features/Recruitment/hooks/usePublicJobs';
 import heroVisual from '@/assets/career-hero.png';
@@ -13,6 +14,10 @@ const Jobs = () => {
 
   return (
     <PublicLayout>
+      <SEO 
+        title="Job Openings" 
+        description="Explore career opportunities at the City of Meycauayan. Join our dedicated team of public servants."
+      />
       <div className="bg-[#131314] text-white pt-10 sm:pt-16 pb-12 sm:pb-20 px-4 sm:px-6 relative overflow-hidden">
           {/* Conceptual Visual Background - Master Balance */}
           <div className="absolute right-0 top-0 bottom-0 w-1/2 hidden lg:block opacity-20 pointer-events-none">
@@ -49,6 +54,7 @@ const Jobs = () => {
                         <Search size={20} />
                     </div>
                     <input 
+                        id="job-search-input"
                         type="text" 
                         placeholder="Search roles or departments..." 
                         className="w-full pl-14 pr-7 py-4 bg-white/5 border border-white/10 rounded-2xl text-white placeholder:text-white/20 focus:outline-none focus:bg-white/10 focus:border-green-500/30 transition-all shadow-2xl font-semibold text-base"
@@ -90,11 +96,15 @@ const Jobs = () => {
                     ))}
                  </div>
             ) : filteredJobs.length === 0 ? (
-              <div className="py-16 text-center bg-[#1e1e1f] rounded-2xl border border-[#444746] shadow-premium">
+              <div 
+                id="no-jobs-found"
+                className="py-16 text-center bg-[#1e1e1f] rounded-2xl border border-[#444746] shadow-premium"
+              >
                 <h3 className="text-2xl font-black text-white mb-2 tracking-tight">Zero Matches</h3>
                 <p className="text-slate-500 text-sm font-semibold">No open positions matching your search parameters.</p>
                 {searchTerm && (
                     <button 
+                        id="reset-filters-button"
                         onClick={() => setSearchTerm('')}
                         className="mt-6 px-6 py-2.5 bg-[#131314] text-white rounded-xl font-bold text-[11px] tracking-tight hover:bg-[#1e1e1f] transition-all active:scale-95 border border-[#444746]"
                     >
@@ -106,6 +116,7 @@ const Jobs = () => {
               <div className="grid gap-3.5">
                 {filteredJobs.map((job) => (
                    <Link 
+                    id={`job-link-${job.id}`}
                     key={job.id} 
                     to={`/careers/job/${job.id}`}
                     className="group bg-[#1e1e1f] border border-[#444746] p-5 sm:px-8 sm:py-6 rounded-2xl shadow-premium hover:shadow-premium-hover hover:border-green-800/50 transition-all duration-500 relative overflow-hidden block"

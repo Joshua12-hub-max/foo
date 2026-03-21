@@ -4,6 +4,7 @@ import { Lock, ArrowLeft, Loader2, CheckCircle } from "lucide-react";
 import AuthLayout from "@components/Custom/Auth/AuthLayout";
 import { resetPassword } from "@/Service/Auth";
 import axios from "axios";
+import SEO from "@/components/Global/SEO";
 
 export default function ResetPassword() {
   const [searchParams] = useSearchParams();
@@ -60,6 +61,10 @@ export default function ResetPassword() {
 
   return (
     <AuthLayout title="Set New Password">
+      <SEO 
+        title="Reset Password"
+        description="Set a new password for your NEBR account to regain access."
+      />
       <div className="space-y-6">
         <div className="text-center">
           <p className="text-gray-500 mt-2">
@@ -73,6 +78,14 @@ export default function ResetPassword() {
               <CheckCircle className="h-8 w-8 text-green-600" />
             </div>
             <h3 className="text-lg font-medium text-gray-900">Password Reset Successful!</h3>
+            <div className="flex items-center space-x-2 justify-center">
+                  <div className="w-10 h-10 bg-green-600 rounded-xl flex items-center justify-center transform group-hover:rotate-12 transition-transform duration-300 shadow-lg shadow-green-200">
+                    <span className="text-white font-black text-xl italic tracking-tighter">CM</span>
+                  </div>
+                  <span className="text-2xl font-black text-gray-900 tracking-tight group-hover:text-green-600 transition-colors">
+                    CHRMO <span className="text-green-600 font-extrabold">Mey</span>
+                  </span>
+                </div>
             <p className="text-gray-500 text-sm">
               You can now log in with your new password. Redirecting...
             </p>

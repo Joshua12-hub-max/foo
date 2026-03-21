@@ -77,7 +77,7 @@ export default function EmployeeCalendar() {
     currentDate,
     events,
     showHolidays,
-    holidays: holidays.map(h => ({ ...h, name: (h as any).name || (h as any).title || '' })) as unknown as Holiday[],
+    holidays: (holidays as unknown as Holiday[]).map(h => ({ ...h, name: h.name || h.title || '' })),
     announcements,
     schedules
   });
@@ -110,7 +110,7 @@ export default function EmployeeCalendar() {
               today={today}
               onDateClick={navigation.handleDateClick}
               showHolidays={showHolidays}
-               holidays={(holidays as any) as unknown as import('@components/Custom/CalendarComponents/shared/components/CalendarGrid').GridItem[]}
+              holidays={holidays as unknown as import('@components/Custom/CalendarComponents/shared/components/CalendarGrid').GridItem[]}
               announcements={announcements}
               displayedEvents={displayedEvents}
             />
@@ -132,7 +132,7 @@ export default function EmployeeCalendar() {
           hours={HOURS_12}
           onEventClick={(e) => setShowEventDetails(e as unknown as typeof showEventDetails)}
           showHolidays={showHolidays}
-          holidays={holidays.map(h => ({ ...h, name: (h as any).name || (h as any).title || '' })) as unknown as Holiday[]}
+          holidays={(holidays as unknown as Holiday[]).map(h => ({ ...h, name: h.name || h.title || '' }))}
           announcements={announcements}
         />
 

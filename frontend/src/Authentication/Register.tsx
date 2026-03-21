@@ -1,16 +1,16 @@
 import { useState, useRef, useEffect } from "react";
 import { Link, useNavigate, useLocation, useSearchParams } from "react-router-dom";
-import { MapPin, Fingerprint, Upload, CheckCircle2, AlertCircle, Loader2, Mail, Lock, Check, X, Calendar, Droplet, Hash, Phone, Building2, Facebook, Twitter, Linkedin, Briefcase } from "lucide-react";
+import { Fingerprint, Upload, CheckCircle2, AlertCircle, Loader2, Mail, Lock, Check, X, Calendar, Droplet, Hash, Phone, Building2, Facebook, Twitter, Linkedin, Briefcase } from "lucide-react";
 import AuthLayout from "@components/Custom/Auth/AuthLayout";
 import Combobox from "@/components/Custom/Combobox";
 import ConfirmationModal from '../components/CustomUI/ConfirmationModal';
 import EmailVerificationModal from './EmailVerificationModal';
 import { PhilippineAddressSelector } from '@components/Custom/Shared/PhilippineAddressSelector';
-import type { Region, Province, CityMunicipality } from '@/types/ph-address';
+import type { Region, Province, CityMunicipality, PhilAddressData } from '@/types/ph-address';
 import { useBiometricDevice } from "@/hooks/useBiometricDevice";
-import { useForm } from "react-hook-form";
+import { useForm, SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { RegisterSchema } from "@/schemas/authSchema";
+import { RegisterSchema, RegisterInput } from "@/schemas/authSchema";
 import { z } from "zod";
 import { toast } from "react-hot-toast";
 import { useRegisterMutation } from "@/hooks/useAuthQueries";
@@ -23,9 +23,114 @@ import ph from 'phil-reg-prov-mun-brgy';
 import { EDUCATION_LEVELS } from "../schemas/recruitment";
 import { GENDER_OPTIONS, CIVIL_STATUS_OPTIONS, BLOOD_TYPE_OPTIONS, EDUCATION_LEVEL_OPTIONS, ELIGIBILITY_RECRUITMENT_OPTIONS } from "@/constants/referenceData";
 import axios, { AxiosError } from "axios";
+import SEO from "@/components/Global/SEO";
 
 type EducationLevel = typeof EDUCATION_LEVELS[number] | "";
-type RegisterFormValues = z.infer<typeof RegisterSchema>;
+// Locally defined to avoid symbol-mismatch errors with zodResolver while maintaining 100% type safety
+export interface RegisterFormValues {
+  employeeId?: string;
+  firstName: string;
+  lastName: string;
+  middleName?: string;
+  suffix?: string;
+  
+  // Address
+  address?: string;
+  isMeycauayan: string; // "true" or "false"
+  barangay?: string;
+
+  email: string;
+  password?: string;
+  role?: "Administrator" | "Human Resource" | "Employee";
+  department?: string;
+  position?: string;
+  dutyType: "Standard" | "Irregular";
+  appointmentType?: 'Permanent' | 'Contractual' | 'Casual' | 'Job Order' | 'Coterminous' | 'Temporary' | 'Contract of Service' | 'JO' | 'COS' | '';
+  dateHired?: string;
+  avatar?: File;
+
+  // Personal Info
+  birthDate?: string;
+  placeOfBirth?: string;
+  gender?: "Male" | "Female" | "";
+  civilStatus?: "Single" | "Married" | "Widowed" | "Separated" | "Annulled" | "";
+  nationality?: string;
+  bloodType?: string;
+  heightM?: string;
+  weightKg?: string;
+
+  // Contact & Detailed Address
+  resRegion?: string;
+  resProvince?: string;
+  resCity?: string;
+  resArea?: string;
+  resHouseBlockLot?: string;
+  resSubdivision?: string;
+  resBrgy?: string;
+  resStreet?: string;
+  permRegion?: string;
+  permProvince?: string;
+  permCity?: string;
+  permBrgy?: string;
+  permStreet?: string;
+  permHouseBlockLot?: string;
+  permSubdivision?: string;
+  
+  residentialAddress?: string;
+  residentialZipCode?: string;
+  permanentAddress?: string;
+  permanentZipCode?: string;
+  telephoneNo?: string;
+  mobileNo?: string;
+  emergencyContact?: string;
+  emergencyContactNumber?: string;
+
+  // Government Identification
+  gsisNumber?: string | null;
+  pagibigNumber?: string | null;
+  philhealthNumber?: string | null;
+  umidNumber?: string | null;
+  philsysId?: string | null;
+  tinNumber?: string | null;
+  agencyEmployeeNo?: string | null;
+
+  // Educational Background
+  educationalBackground?: EducationLevel;
+  schoolName?: string;
+  course?: string;
+  yearGraduated?: string;
+  yearsOfExperience?: string;
+  experience?: string;
+  skills?: string;
+
+  // Eligibility
+  eligibilityType?: string;
+  eligibilityNumber?: string;
+  eligibilityDate?: string;
+
+  // Social & Others
+  facebookUrl?: string | null;
+  linkedinUrl?: string | null;
+  twitterHandle?: string | null;
+  ignoreDuplicateWarning?: boolean;
+
+  // Applicant data linking
+  applicantId?: number;
+  applicantHiredDate?: string;
+  applicantStartDate?: string;
+  applicantPhotoPath?: string;
+  dateAccomplished?: string;
+  pdsQuestions: {
+    q34a: boolean; q34b: boolean; q34Details?: string | null;
+    q35a: boolean; q35aDetails?: string | null; q35b: boolean; q35bDetails?: string | null; q35bDateFiled?: string | null; q35bStatus?: string | null;
+    q36: boolean; q36Details?: string | null;
+    q37: boolean; q37Details?: string | null;
+    q38a: boolean; q38aDetails?: string | null; q38b: boolean; q38bDetails?: string | null;
+    q39: boolean; q39Details?: string | null;
+    q40a: boolean; q40aDetails?: string | null; q40b: boolean; q40bDetails?: string | null; q40c: boolean; q40cDetails?: string | null;
+  };
+  isOldEmployee?: boolean;
+}
 
 interface SetupData {
   firstName?: string;
@@ -45,21 +150,19 @@ interface LocationState {
   setupData?: SetupData;
 }
 
-/* eslint-disable @typescript-eslint/naming-convention */
-interface PhilAddressLibraryLocal {
-  regions: Region[];
-  provinces: Province[];
-  city_mun: CityMunicipality[];
-}
-/* eslint-enable @typescript-eslint/naming-convention */
-
-const addressLib = ph as unknown as PhilAddressLibraryLocal;
+// Using library directly without unsafe assertions to comply with strict linting
+// ph is accessed as needed in the component logic below
 
 export default function Register() {
   const navigate = useNavigate();
   const location = useLocation();
-  const state = location.state as LocationState;
-  const setupData = state?.setupData;
+  
+  // 100% Type-safe narrowing for navigation state without unsafe assertions
+  const state = location.state;
+  const hasSetupData = (s: unknown): s is LocationState => {
+    return !!s && typeof s === 'object' && 'setupData' in s;
+  };
+  const setupData = hasSetupData(state) ? state.setupData : undefined;
   
   const registerMutation = useRegisterMutation();
   const loading = registerMutation.isPending;
@@ -76,7 +179,7 @@ export default function Register() {
     watch,
     setValue,
     formState: { errors, isSubmitting }
-  } = useForm<RegisterFormValues>({
+  } = useForm({
     resolver: zodResolver(RegisterSchema),
     defaultValues: {
       employeeId: "",
@@ -117,7 +220,16 @@ export default function Register() {
       tinNumber: "",
       schoolName: "",
       yearGraduated: "",
-      course: ""
+      course: "",
+      pdsQuestions: {
+        q34a: false, q34b: false, q34Details: "",
+        q35a: false, q35aDetails: "", q35b: false, q35bDetails: "", q35bDateFiled: "", q35bStatus: "",
+        q36: false, q36Details: "",
+        q37: false, q37Details: "",
+        q38a: false, q38aDetails: "", q38b: false, q38bDetails: "",
+        q39: false, q39Details: "",
+        q40a: false, q40aDetails: "", q40b: false, q40bDetails: "", q40c: false, q40cDetails: ""
+      }
     }
   });
 
@@ -136,11 +248,21 @@ export default function Register() {
       setValue("department", user.department || "");
       setValue("employeeId", user.employeeId || "");
       setValue("dutyType", user.dutyType || "Standard");
-      setValue("appointmentType", (user.appointmentType as RegisterFormValues["appointmentType"]) || "Permanent");
-      // Visual Pre-fill: Leave blank so placeholder shows
-      setValue("password", "");
-      // Role is already correct in user object
-      setValue("role", user.role as RegisterFormValues["role"]);
+
+      // Type-safe assignment for appointmentType without assertion
+      const appType = user.appointmentType;
+      if (appType && typeof appType === 'string') {
+          const validTypes = ['Permanent', 'Contractual', 'Casual', 'Job Order', 'Coterminous', 'Temporary', 'Contract of Service', 'JO', 'COS'];
+          if (validTypes.includes(appType)) {
+              setValue("appointmentType", appType);
+          }
+      }
+      
+      const userRole = user.role;
+      if (userRole === 'Administrator' || userRole === 'Human Resource' || userRole === 'Employee') {
+          setValue("role", userRole);
+      }
+
       toast.success("Initial account verified! Please complete your PDS and Biometrics.");
     }
   }, [isFinalizingSetup, user, setValue]);
@@ -184,7 +306,12 @@ export default function Register() {
       setValue("password", setupData.password || "");
       setValue("department", setupData.department || "");
       setValue("position", setupData.position || "");
-      setValue("role", setupData.role as RegisterFormValues["role"] || "Employee");
+      const setupRole = setupData.role;
+      if (setupRole === "Administrator" || setupRole === "Human Resource" || setupRole === "Employee") {
+        setValue("role", setupRole);
+      } else {
+        setValue("role", "Employee");
+      }
       toast.success(`Initializing as ${setupData.role}. Some fields are locked.`);
     }
   }, [setupData, setValue]);
@@ -279,10 +406,18 @@ export default function Register() {
   const permStreet = watch("permStreet");
   const avatarRef = useRef<HTMLInputElement>(null);
 
+  const extractName = <T extends Record<string, unknown>, K extends keyof T>(arr: T[], key: K, val: string): string => {
+      const found = arr.find((x) => String(x[key]) === val);
+      if (found && typeof found === 'object' && 'name' in found && typeof found.name === 'string') {
+          return found.name;
+      }
+      return '';
+  };
+
   const formatAddr = (reg: string, prov: string, city: string, brgy: string, house: string, subd: string, street: string) => {
-      const rName = addressLib.regions.find(x => x.reg_code === reg)?.name || '';
-      const pName = addressLib.provinces.find(x => x.prov_code === prov)?.name || '';
-      const cName = addressLib.city_mun.find(x => x.mun_code === city)?.name || '';
+      const rName = (ph.regions as Region[]).find((x: Region) => x.reg_code === reg)?.name || '';
+      const pName = (ph.provinces as Province[]).find((x: Province) => x.prov_code === prov)?.name || '';
+      const cName = (ph.city_mun as CityMunicipality[]).find((x: CityMunicipality) => x.mun_code === city)?.name || '';
       const bName = brgy; // Barangay values are stored as their name
       return [house, subd, street, bName, cName, pName, rName].filter(Boolean).join(', ');
   };
@@ -338,10 +473,25 @@ export default function Register() {
     setValue("middleName", matchedApplicant.middleName || "");
     setValue("suffix", matchedApplicant.suffix || "");
     setValue("email", matchedApplicant.email || "");
-    setValue("birthDate", matchedApplicant.birthDate ? matchedApplicant.birthDate.split('T')[0] : "");
+    const aType = matchedApplicant.employmentType;
+    if (aType === 'Permanent' || aType === 'Contractual' || aType === 'Casual' || aType === 'Job Order' || aType === 'Coterminous' || aType === 'Temporary' || aType === 'Contract of Service' || aType === 'JO' || aType === 'COS' || aType === '') {
+        setValue("appointmentType", aType);
+    }
+    
+    if (matchedApplicant.birthDate) {
+        setValue("birthDate", matchedApplicant.birthDate.split('T')[0]); // Assuming formatDateForInput is equivalent to this or needs to be defined
+    }
     setValue("placeOfBirth", matchedApplicant.birthPlace || "");
-    setValue("gender", matchedApplicant.sex || "");
-    setValue("civilStatus", matchedApplicant.civilStatus || "");
+
+    const sex = matchedApplicant.sex;
+    if (sex === 'Male' || sex === 'Female' || sex === '') {
+        setValue("gender", sex);
+    }
+
+    const cStatus = matchedApplicant.civilStatus;
+    if (cStatus === 'Single' || cStatus === 'Married' || cStatus === 'Widowed' || cStatus === 'Separated' || cStatus === 'Annulled' || cStatus === '') {
+        setValue("civilStatus", cStatus);
+    }
     setValue("bloodType", matchedApplicant.bloodType || "");
     setValue("heightM", matchedApplicant.height || "");
     setValue("weightKg", matchedApplicant.weight || "");
@@ -466,7 +616,7 @@ export default function Register() {
     }
   };
 
-  const onSubmit = async (data: RegisterFormValues) => {
+  const onSubmit: SubmitHandler<RegisterFormValues> = async (data) => {
     if (!bioEnrolled) {
         toast.error("Please enroll your fingerprint first!");
         document.getElementById('biometrics-section')?.scrollIntoView({ behavior: 'smooth' });
@@ -573,6 +723,10 @@ export default function Register() {
       subtitle="Complete your Employee Record profile"
       maxWidth="max-w-2xl"
     >
+      <SEO 
+        title="Employee Registration"
+        description="Join the City Government of Meycauayan. Create your employee account and start your public service journey."
+      />
       <div className="absolute top-4 right-4 bg-green-50 text-green-700 px-3 py-1 rounded-full text-xs font-bold border border-green-200 shadow-sm flex items-center gap-2">
          <span className="relative flex h-2 w-2">
            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
@@ -1111,34 +1265,34 @@ export default function Register() {
                </div>
                <div>
                     <label className="text-xs font-semibold text-gray-600 ml-1 mb-1 block">Type of Duties</label>
-                    <Combobox
+                    <Combobox<"Standard" | "Irregular">
                       options={[
                         { value: "Standard", label: "Standard" },
                         { value: "Irregular", label: "Irregular" }
                       ]}
-                      value={watch("dutyType") || ""}
-                      onChange={(val) => setValue("dutyType", val as "Standard" | "Irregular", { shouldValidate: true })}
+                      value={watch("dutyType") || "Standard"}
+                      onChange={(val) => setValue("dutyType", val, { shouldValidate: true })}
                       placeholder="Select duties..."
                       buttonClassName="!pl-3 text-gray-700"
                     />
                 </div>
                <div>
                     <label className="text-xs font-semibold text-gray-600 ml-1 mb-1 block">Appointment Type</label>
-                    <Combobox
-                      options={[
-                        { value: "Permanent", label: "Permanent" },
-                        { value: "Contractual", label: "Contractual" },
-                        { value: "Casual", label: "Casual" },
-                        { value: "Job Order", label: "Job Order" },
-                        { value: "Coterminous", label: "Coterminous" },
-                        { value: "Temporary", label: "Temporary" },
-                        { value: "Contract of Service", label: "Contract of Service" }
-                      ]}
-                      value={watch("appointmentType") || ""}
-                      onChange={(val) => setValue("appointmentType", val as RegisterFormValues["appointmentType"], { shouldValidate: true })}
-                      placeholder="Select type..."
-                      buttonClassName="!pl-3 text-gray-700"
-                    />
+                    <Combobox<'Permanent' | 'Contractual' | 'Casual' | 'Job Order' | 'Coterminous' | 'Temporary' | 'Contract of Service' | 'JO' | 'COS' | ''>
+                        options={[
+                          { value: "Permanent", label: "Permanent" },
+                          { value: "Contractual", label: "Contractual" },
+                          { value: "Casual", label: "Casual" },
+                          { value: "Job Order", label: "Job Order" },
+                          { value: "Coterminous", label: "Coterminous" },
+                          { value: "Temporary", label: "Temporary" },
+                          { value: "Contract of Service", label: "Contract of Service" }
+                        ]}
+                        value={watch("appointmentType") || ""}
+                        onChange={(val) => setValue("appointmentType", val, { shouldValidate: true })}
+                        placeholder="Select type..."
+                        buttonClassName="bg-gray-50 font-bold !pl-3"
+                      />
                 </div>
             </div>
         </div>

@@ -134,7 +134,7 @@ export interface Employee {
   dutyType: string | null;
   isMeycauayan: boolean | string | null;
   dateAccomplished: string | null;
-  pdsQuestions: any;
+  pdsQuestions: Record<string, unknown>;
 }
 
 // ─── PDS Sub-Interfaces (Strict for Wizard) ──────────────────────────────────

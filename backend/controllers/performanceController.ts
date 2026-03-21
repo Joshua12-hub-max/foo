@@ -74,7 +74,7 @@ const getStats = async () => {
   };
 };
 
-const logAudit = async (reviewId: number, action: string, actorId: number, details: object | null = null): Promise<void> => {
+const logAudit = async (reviewId: number | null, action: string, actorId: number, details: object | null = null): Promise<void> => {
   try {
     await db.insert(performanceAuditLog).values({
       reviewId,
@@ -922,15 +922,25 @@ export const getCriteria = async (req: Request, res: Response): Promise<void> =>
 };
 
 export const addCriteria = async (req: Request, res: Response): Promise<void> => {
+  const authReq = req as AuthenticatedRequest;
   const { title, description, weight, maxScore, category } = req.body as { title: string; description: string; weight?: number; maxScore?: number; category?: string };
   try {
-    await db.insert(performanceCriteria).values({
+    const [result] = await db.insert(performanceCriteria).values({
       title,
       description,
       weight: String(weight || 1),
       maxScore: maxScore || 5,
       category: category || 'General'
     });
+    
+    await logAudit(null, 'criteria_created', authReq.user.id, { 
+      criteriaId: result.insertId,
+      title, 
+      category, 
+      weight, 
+      maxScore 
+    });
+    
     res.status(201).json({ success: true, message: 'Criteria added' });
   } catch (_error) {
     res.status(500).json({ success: false, message: 'Failed to add criteria' });
@@ -939,11 +949,24 @@ export const addCriteria = async (req: Request, res: Response): Promise<void> =>
 
 export const updateCriteria = async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params as { id: string };
+  const authReq = req as AuthenticatedRequest;
   const { title, description, weight, maxScore, category } = req.body as { title?: string; description?: string; weight?: number; maxScore?: number; category?: string };
   try {
+    // 100% Audit Precision: Fetch old values first for delta comparison
+    const oldCriteria = await db.query.performanceCriteria.findFirst({
+        where: eq(performanceCriteria.id, Number(id))
+    });
+
     await db.update(performanceCriteria)
       .set({ title, description, weight: weight !== undefined ? String(weight) : undefined, maxScore, category })
       .where(eq(performanceCriteria.id, Number(id)));
+
+    await logAudit(null, 'criteria_updated', authReq.user.id, { 
+      criteriaId: Number(id),
+      previous: oldCriteria,
+      updated: { title, description, weight, maxScore, category }
+    });
+
     res.json({ success: true, message: 'Criteria updated' });
   } catch (_error) {
     res.status(500).json({ success: false, message: 'Failed to update criteria' });
@@ -952,8 +975,19 @@ export const updateCriteria = async (req: Request, res: Response): Promise<void>
 
 export const deleteCriteria = async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params as { id: string };
+  const authReq = req as AuthenticatedRequest;
   try {
+    const oldCriteria = await db.query.performanceCriteria.findFirst({
+        where: eq(performanceCriteria.id, Number(id))
+    });
+
     await db.delete(performanceCriteria).where(eq(performanceCriteria.id, Number(id)));
+    
+    await logAudit(null, 'criteria_deleted', authReq.user.id, { 
+      criteriaId: Number(id),
+      deletedCriteria: oldCriteria 
+    });
+
     res.json({ success: true, message: 'Criteria deleted' });
   } catch (_error) {
     res.status(500).json({ success: false, message: 'Failed to delete criteria' });
@@ -972,12 +1006,22 @@ export const createReviewCycle = async (req: Request, res: Response): Promise<vo
       return;
     }
     
-    await db.insert(performanceReviewCycles).values({
+    const [result] = await db.insert(performanceReviewCycles).values({
       title,
       description,
       startDate: start,
       endDate: end
     });
+    const insertId = result.insertId;
+    
+    const authReq = req as AuthenticatedRequest;
+    await logAudit(null, 'cycle_created', authReq.user.id, { 
+      cycleId: insertId,
+      title, 
+      startDate: start, 
+      endDate: end 
+    });
+    
     res.status(201).json({ success: true, message: 'Review cycle created' });
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -995,9 +1039,21 @@ export const updateReviewCycle = async (req: Request, res: Response): Promise<vo
   const end = endDate;
 
   try {
+    const oldCycle = await db.query.performanceReviewCycles.findFirst({
+        where: eq(performanceReviewCycles.id, Number(id))
+    });
+
     await db.update(performanceReviewCycles)
       .set({ title, description, startDate: start, endDate: end })
       .where(eq(performanceReviewCycles.id, Number(id)));
+
+    const authReq = req as AuthenticatedRequest;
+    await logAudit(null, 'cycle_updated', authReq.user.id, { 
+      cycleId: Number(id),
+      previous: oldCycle,
+      updated: { title, description, startDate: start, endDate: end }
+    });
+
     res.json({ success: true, message: 'Review cycle updated' });
   } catch (_error) {
     res.status(500).json({ success: false, message: 'Failed to update review cycle' });
@@ -1007,7 +1063,18 @@ export const updateReviewCycle = async (req: Request, res: Response): Promise<vo
 export const deleteReviewCycle = async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params as { id: string };
   try {
+    const oldCycle = await db.query.performanceReviewCycles.findFirst({
+        where: eq(performanceReviewCycles.id, Number(id))
+    });
+
     await db.delete(performanceReviewCycles).where(eq(performanceReviewCycles.id, Number(id)));
+    
+    const authReq = req as AuthenticatedRequest;
+    await logAudit(null, 'cycle_deleted', authReq.user.id, { 
+      cycleId: Number(id),
+      deletedCycle: oldCycle 
+    });
+
     res.json({ success: true, message: 'Review cycle deleted' });
   } catch (_error) {
     res.status(500).json({ success: false, message: 'Failed to delete review cycle' });

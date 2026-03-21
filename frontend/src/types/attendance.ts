@@ -20,6 +20,7 @@ export interface DTRApiResponse {
   correctionReason?: string | null;
   correctionTimeIn?: string | null;
   correctionTimeOut?: string | null;
+  remarks?: string | null;
 }
 
 export interface AttendanceLogApiResponse {

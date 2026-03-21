@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { attendanceApi } from '../../../../api/attendanceApi';
 import { useAuth } from '../../../../hooks/useAuth';
 import { format } from 'date-fns';
+import { DTRApiResponse } from '@/types/attendance';
 
 interface EmployeePresentTableProps {
   onClose: () => void;
@@ -9,7 +10,7 @@ interface EmployeePresentTableProps {
 
 const EmployeePresentTable: React.FC<EmployeePresentTableProps> = ({ onClose }) => {
   const { user } = useAuth();
-  const [records, setRecords] = useState<any[]>([]);
+  const [records, setRecords] = useState<DTRApiResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -28,7 +29,7 @@ const EmployeePresentTable: React.FC<EmployeePresentTableProps> = ({ onClose }) 
           limit: 100
         });
 
-        const presentLogs = (res.data?.data || []).filter((l: any) => l.status === 'Present');
+        const presentLogs = (res.data?.data || []).filter((l) => l.status === 'Present');
         setRecords(presentLogs);
       } catch (err) {
         console.error("Failed to fetch present records:", err);

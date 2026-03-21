@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState, KeyboardEvent, ClipboardEvent, RefObject } from 'react';
+import { useRef, useEffect, useState, KeyboardEvent, ClipboardEvent } from 'react';
 
 interface OTPInputProps {
   length?: number;
@@ -24,9 +24,7 @@ export default function OTPInput({ length = 6, value, onChange }: OTPInputProps)
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
-    if (inputRefs.current[0]) {
-      inputRefs.current[0]?.focus();
-    }
+    inputRefs.current[0]?.focus();
   }, []);
 
   const handleChange = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
@@ -40,13 +38,13 @@ export default function OTPInput({ length = 6, value, onChange }: OTPInputProps)
     onChange(newOtp.join(""));
 
     // Move to next input if value is entered
-    if (val && index < length - 1 && inputRefs.current[index + 1]) {
+    if (val && index < length - 1) {
       inputRefs.current[index + 1]?.focus();
     }
   };
 
   const handleKeyDown = (index: number, e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Backspace" && !otp[index] && index > 0 && inputRefs.current[index - 1]) {
+    if (e.key === "Backspace" && !otp[index] && index > 0) {
       // Move to previous input on backspace if current is empty
       inputRefs.current[index - 1]?.focus();
     }
@@ -65,9 +63,7 @@ export default function OTPInput({ length = 6, value, onChange }: OTPInputProps)
       onChange(newOtp.join(""));
       
       const nextIndex = Math.min(pastedData.length, length - 1);
-      if(inputRefs.current[nextIndex]) {
-          inputRefs.current[nextIndex]?.focus();
-      }
+      inputRefs.current[nextIndex]?.focus();
   };
 
   return (

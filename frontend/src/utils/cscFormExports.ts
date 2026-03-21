@@ -563,6 +563,14 @@ export const exportForm9ToPDF = (header: Form9Header, positions: Form9Position[]
       tableData.push(['', 'No vacant positions found', '', '', '', '', '', '', '', '', '']);
     }
 
+    doc.setDocumentProperties({
+      title: "CSC Form exported via CHRMO Mey",
+      subject: "CSC Form",
+      author: "CHRMO Mey Portal",
+      keywords: "CSC, HR, Meycauayan",
+      creator: "CHRMO Mey Portal"
+    });
+    
     autoTable(doc, {
       head: tableHeaders,
       body: tableData,

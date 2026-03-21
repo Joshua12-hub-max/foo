@@ -2,12 +2,18 @@ import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { LogOut, ChevronDown, ChevronRight, LucideIcon } from 'lucide-react';
 
+export interface NavChild {
+  name: string;
+  action: string;
+  path?: string;
+}
+
 export interface NavItem {
   name: string;
   icon: LucideIcon;
   path?: string;
   action?: string;
-  children?: { name: string; action: string; path?: string }[]; 
+  children?: NavChild[]; 
 }
 
 interface SidebarProps {
@@ -57,9 +63,8 @@ export default function Sidebar({
       className={`bg-slate-950 text-gray-100 p-4 shadow-xl mb-6 flex flex-col justify-between transition-all duration-300 z-40 min-h-screen sticky top-0 overflow-y-auto border-r border-gray-800 ${sidebarOpen ? 'w-72' : 'w-20'}`}
       style={{
         scrollbarWidth: 'none',
-        // @ts-ignore
         msOverflowStyle: 'none'
-      }}
+      } as React.CSSProperties}
     >
       <div className="flex flex-col"> 
         <div className={`border-b border-gray-800 flex flex-col items-center justify-center flex-shrink-0 py-8 transition-all duration-300 ${
@@ -87,29 +92,43 @@ export default function Sidebar({
               }
             };
 
-            const MainComponent = item.path ? Link : 'button';
-
             return (
               <div key={item.name} className="w-full">
-                {/* @ts-ignore */}
-                <MainComponent
-                  to={item.path as string}
-                  onClick={mainOnClick}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200 group relative ${
-                    active && !hasChildren 
-                    ? 'bg-slate-800/50 text-white font-semibold shadow-sm ring-1 ring-white/10' 
-                    : 'text-gray-400 hover:bg-slate-800/50 hover:text-white'
-                  }`}
-                >
-                  <Icon className={`w-5 h-5 flex-shrink-0 transition-colors duration-200 ${active && !hasChildren ? 'text-white' : 'text-gray-500 group-hover:text-white'}`} />
-                  {sidebarOpen && <span className="flex-1 text-left tracking-tight">{item.name}</span>}
-                  {sidebarOpen && hasChildren && (
-                    isOpen ? <ChevronDown className="w-4 h-4 opacity-50" /> : <ChevronRight className="w-4 h-4 opacity-50" />
-                  )}
-                </MainComponent>
+                {item.path ? (
+                  <Link
+                    to={item.path}
+                    onClick={mainOnClick}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200 group relative ${
+                      active && !hasChildren 
+                      ? 'bg-slate-800/50 text-white font-semibold shadow-sm ring-1 ring-white/10' 
+                      : 'text-gray-400 hover:bg-slate-800/50 hover:text-white'
+                    }`}
+                  >
+                    <Icon className={`w-5 h-5 flex-shrink-0 transition-colors duration-200 ${active && !hasChildren ? 'text-white' : 'text-gray-500 group-hover:text-white'}`} />
+                    {sidebarOpen && <span className="flex-1 text-left tracking-tight">{item.name}</span>}
+                    {sidebarOpen && hasChildren && (
+                      isOpen ? <ChevronDown className="w-4 h-4 opacity-50" /> : <ChevronRight className="w-4 h-4 opacity-50" />
+                    )}
+                  </Link>
+                ) : (
+                  <button
+                    onClick={mainOnClick}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200 group relative ${
+                      active && !hasChildren 
+                      ? 'bg-slate-800/50 text-white font-semibold shadow-sm ring-1 ring-white/10' 
+                      : 'text-gray-400 hover:bg-slate-800/50 hover:text-white'
+                    }`}
+                  >
+                    <Icon className={`w-5 h-5 flex-shrink-0 transition-colors duration-200 ${active && !hasChildren ? 'text-white' : 'text-gray-500 group-hover:text-white'}`} />
+                    {sidebarOpen && <span className="flex-1 text-left tracking-tight">{item.name}</span>}
+                    {sidebarOpen && hasChildren && (
+                      isOpen ? <ChevronDown className="w-4 h-4 opacity-50" /> : <ChevronRight className="w-4 h-4 opacity-50" />
+                    )}
+                  </button>
+                )}
                 {hasChildren && isOpen && sidebarOpen && (
                   <div className="ml-4 pl-3 mt-1 space-y-0.5 border-l border-gray-800">
-                    {item.children?.map((child: any) => {
+                    {item.children?.map((child: NavChild) => {
                       const childActive = isActive(child.action, child.path);
 
                       const childOnClick = () => {
@@ -118,10 +137,8 @@ export default function Sidebar({
                         }
                       };
 
-                      const ChildComponent = child.path ? Link : 'button';
-
-                      return (
-                        <ChildComponent
+                      return child.path ? (
+                        <Link
                           key={child.name}
                           to={child.path}
                           onClick={childOnClick}
@@ -133,7 +150,20 @@ export default function Sidebar({
                         >
                           <span className="w-1.5 h-1.5 rounded-full bg-current opacity-40"></span>
                           <span>{child.name}</span>
-                        </ChildComponent>
+                        </Link>
+                      ) : (
+                        <button
+                          key={child.name}
+                          onClick={childOnClick}
+                          className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-all duration-200 ${
+                            childActive 
+                                ? 'bg-slate-800 text-white font-medium shadow-sm' 
+                                : 'text-gray-400 hover:bg-slate-800/30 hover:text-white'
+                            }`}
+                        >
+                          <span className="w-1.5 h-1.5 rounded-full bg-current opacity-40"></span>
+                          <span>{child.name}</span>
+                        </button>
                       );
                     })}
                   </div>

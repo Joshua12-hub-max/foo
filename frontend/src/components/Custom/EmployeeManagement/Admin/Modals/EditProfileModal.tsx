@@ -3,8 +3,8 @@ import { X, User, Mail, Camera, Save } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-// @ts-ignore
-import { updateMyProfile } from '@api/employeeApi';
+import { Employee } from '@/types/employee';
+import { updateMyProfile } from '@/api/employeeApi';
 
 // Local schema for this modal
 const EditProfileFormSchema = z.object({
@@ -16,10 +16,7 @@ const EditProfileFormSchema = z.object({
 });
 
 type EditProfileFormInput = z.infer<typeof EditProfileFormSchema>;
-
-interface Profile {
-  [key: string]: any;
-}
+type Profile = Partial<Employee> & Record<string, unknown>;
 
 interface EditProfileModalProps {
   isOpen: boolean;
@@ -102,7 +99,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
       } else {
         setError(result.message || 'Failed to update profile');
       }
-    } catch (err) {
+    } catch (err: unknown) {
       setError('An error occurred while updating profile');
     } finally {
       setLoading(false);

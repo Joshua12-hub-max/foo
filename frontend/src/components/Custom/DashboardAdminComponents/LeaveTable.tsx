@@ -34,8 +34,18 @@ export default function LeaveTable({ onClose }: LeaveTableProps) {
         setLoading(true);
         setError(null);
         const response = await leaveApi.getAllLeaves();
-        // Rely on axios toCamelCase interceptor for property naming
-        const data = response.data as unknown as { success: boolean; applications?: any[]; leaves?: any[] };
+        interface ApiLeaveRequest {
+          id: number;
+          employeeId?: string;
+          firstName?: string;
+          lastName?: string;
+          department?: string;
+          leaveType?: string;
+          startDate: string;
+          endDate: string;
+          status: string;
+        }
+        const data = response.data as unknown as { success: boolean; applications?: ApiLeaveRequest[]; leaves?: ApiLeaveRequest[] };
         const leavesData = data.applications || data.leaves || [];
         
         if (leavesData.length > 0) {
@@ -43,24 +53,24 @@ export default function LeaveTable({ onClose }: LeaveTableProps) {
           today.setHours(0, 0, 0, 0);
           
           const approvedLeaves: LeaveRequest[] = leavesData
-            .filter((leave: any) => {
+            .filter((leave) => {
               if (leave.status !== 'Approved') return false;
-              const startDate = new Date(leave.startDate || leave.startDate);
-              const endDate = new Date(leave.endDate || leave.endDate);
+              const startDate = new Date(leave.startDate);
+              const endDate = new Date(leave.endDate);
               startDate.setHours(0, 0, 0, 0);
               endDate.setHours(23, 59, 59, 999);
               return today >= startDate && today <= endDate;
             })
-            .map((leave: any) => ({
+            .map((leave) => ({
               id: leave.id,
-              employeeId: leave.employeeId || leave.employeeId,
-              name: `${leave.firstName || leave.firstName || ''} ${leave.lastName || leave.lastName || ''}`.trim() || 'Unknown',
+              employeeId: leave.employeeId || 'N/A',
+              name: `${leave.firstName || ''} ${leave.lastName || ''}`.trim() || 'Unknown',
               department: leave.department || 'N/A',
-              leaveType: leave.leaveType || leave.leaveType,
-              startDate: new Date(leave.startDate || leave.startDate).toLocaleDateString(),
-              endDate: new Date(leave.endDate || leave.endDate).toLocaleDateString(),
-              startDateRaw: leave.startDate || leave.startDate,
-              endDateRaw: leave.endDate || leave.endDate,
+              leaveType: leave.leaveType || 'General',
+              startDate: new Date(leave.startDate).toLocaleDateString(),
+              endDate: new Date(leave.endDate).toLocaleDateString(),
+              startDateRaw: leave.startDate,
+              endDateRaw: leave.endDate,
               status: leave.status
             }));
           setLeaveRequests(approvedLeaves);

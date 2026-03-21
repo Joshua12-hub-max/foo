@@ -25,3 +25,5 @@ This project follows the strict standards defined in `.agents/workflows/deepthin
 
 ## 5. "Deep Thinking" Reasoning
 - All technical responses must be grounded in detailed reasoning, precise calculations, and total assurance of logic.
+
+## 6. "DONT PRODUCE MALFORMED CODE AND INSTEAD PRODUCE ACCURATE AND EFFICIENT CODE AT ALL COST 100%"

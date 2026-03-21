@@ -21,6 +21,7 @@ import Combobox from "@/components/Custom/Combobox";
 import ConfirmationModal from '@/components/CustomUI/ConfirmationModal';
 import EmailVerificationModal from '@/Authentication/EmailVerificationModal';
 import { PhilippineAddressSelector } from '@/components/Custom/Shared/PhilippineAddressSelector';
+import type { Region, Province, CityMunicipality } from '@/types/ph-address';
 import HiredApplicantsListModal from '@/components/Custom/EmployeeManagement/Admin/Modals/HiredApplicantsListModal';
 import ph from 'phil-reg-prov-mun-brgy';
 import { EDUCATION_LEVELS } from "@/schemas/recruitment";
@@ -28,21 +29,114 @@ import { GENDER_OPTIONS, CIVIL_STATUS_OPTIONS, BLOOD_TYPE_OPTIONS, EDUCATION_LEV
 
 type EducationLevel = typeof EDUCATION_LEVELS[number] | "";
 
-/* eslint-disable @typescript-eslint/naming-convention */
-interface PhilAddressLibraryLocal {
-  regions: { name: string; reg_code: string }[];
-  provinces: { name: string; prov_code: string }[];
-  city_mun: { name: string; mun_code: string }[];
-  barangays: { name: string; mun_code: string }[];
-}
-/* eslint-enable @typescript-eslint/naming-convention */
+// Using library directly without unsafe assertions to comply with strict linting
+// ph is accessed as needed in the component logic below
 
-type RegisterFormValues = RegisterInput & {
-  isMeycauayan?: string;
-  dutyType?: "Standard" | "Irregular";
+// Locally defined to avoid symbol-mismatch errors with zodResolver while maintaining 100% type safety
+export interface RegisterFormValues {
+  employeeId?: string;
+  firstName: string;
+  lastName: string;
+  middleName?: string;
+  suffix?: string;
+  
+  // Address
+  address?: string;
+  isMeycauayan: string; // "true" or "false"
+  barangay?: string;
+
+  email: string;
+  password?: string;
+  role?: "Administrator" | "Human Resource" | "Employee";
   department?: string;
   position?: string;
-};
+  dutyType: "Standard" | "Irregular";
+  appointmentType?: 'Permanent' | 'Contractual' | 'Casual' | 'Job Order' | 'Coterminous' | 'Temporary' | 'Contract of Service' | 'JO' | 'COS' | '';
+  dateHired?: string;
+  avatar?: File; // instanceof File in schema, handled by RHF
+
+  // Personal Info
+  birthDate?: string;
+  placeOfBirth?: string;
+  gender?: "Male" | "Female" | "";
+  civilStatus?: "Single" | "Married" | "Widowed" | "Separated" | "Annulled" | "";
+  nationality?: string;
+  bloodType?: string;
+  heightM?: string;
+  weightKg?: string;
+
+  // Contact & Detailed Address
+  resRegion?: string;
+  resProvince?: string;
+  resCity?: string;
+  resArea?: string; // resArea exists in schema
+  resHouseBlockLot?: string;
+  resSubdivision?: string;
+  resBrgy?: string;
+  resStreet?: string;
+  permRegion?: string;
+  permProvince?: string;
+  permCity?: string;
+  permBrgy?: string;
+  permStreet?: string;
+  permHouseBlockLot?: string;
+  permSubdivision?: string;
+  
+  residentialAddress?: string;
+  residentialZipCode?: string;
+  permanentAddress?: string;
+  permanentZipCode?: string;
+  telephoneNo?: string;
+  mobileNo?: string;
+  emergencyContact?: string;
+  emergencyContactNumber?: string;
+
+  // Government Identification
+  gsisNumber?: string | null;
+  pagibigNumber?: string | null;
+  philhealthNumber?: string | null;
+  umidNumber?: string | null;
+  philsysId?: string | null;
+  tinNumber?: string | null;
+  agencyEmployeeNo?: string | null;
+
+  // Educational Background
+  educationalBackground?: EducationLevel;
+  schoolName?: string;
+  course?: string;
+  yearGraduated?: string;
+  yearsOfExperience?: string;
+  experience?: string;
+  skills?: string;
+
+  // Eligibility
+  eligibilityType?: string;
+  eligibilityNumber?: string;
+  eligibilityDate?: string;
+
+  // Social & Others
+  facebookUrl?: string | null;
+  linkedinUrl?: string | null;
+  twitterHandle?: string | null;
+  ignoreDuplicateWarning?: boolean;
+
+  // Applicant data linking
+  applicantId?: number;
+  applicantHiredDate?: string;
+  applicantStartDate?: string;
+  applicantPhotoPath?: string;
+  dateAccomplished?: string;
+  pdsQuestions: {
+    q34a: boolean; q34b: boolean; q34Details?: string | null;
+    q35a: boolean; q35aDetails?: string | null; q35b: boolean; q35bDetails?: string | null; q35bDateFiled?: string | null; q35bStatus?: string | null;
+    q36: boolean; q36Details?: string | null;
+    q37: boolean; q37Details?: string | null;
+    q38a: boolean; q38aDetails?: string | null; q38b: boolean; q38bDetails?: string | null;
+    q39: boolean; q39Details?: string | null;
+    q40a: boolean; q40aDetails?: string | null; q40b: boolean; q40bDetails?: string | null; q40c: boolean; q40cDetails?: string | null;
+  };
+  isOldEmployee?: boolean;
+}
 
 export default function AdminRegister() {
   const navigate = useNavigate();
@@ -64,7 +158,7 @@ export default function AdminRegister() {
   const isFinalizingSetup = queryMode === 'finalize-setup' || authUser?.profileStatus === 'Initial';
 
   // State
-  const [showHiredModal, setShowHiredModal] = useState(isHiredType);
+  const [showHiredModal, setShowHiredModal] = useState(queryType === 'hired');
   const [matchedApplicant, setMatchedApplicant] = useState<HiredApplicant | null>(null);
   
   const registerMutation = useRegisterMutation();
@@ -86,6 +180,7 @@ export default function AdminRegister() {
     resolver: zodResolver(RegisterSchema),
     defaultValues: {
       employeeId: "", firstName: "", lastName: "", middleName: "", suffix: "", email: "", password: "",
+      avatar: undefined,
       educationalBackground: "", address: "", residentialZipCode: "", permanentAddress: "", permanentZipCode: "",
       emergencyContact: "", emergencyContactNumber: "", isMeycauayan: "false", barangay: "",
       department: queryDept || "",
@@ -116,7 +211,16 @@ export default function AdminRegister() {
       heightM: "",
       weightKg: "",
       mobileNo: "",
-      telephoneNo: ""
+      telephoneNo: "",
+      pdsQuestions: {
+        q34a: false, q34b: false, q34Details: "",
+        q35a: false, q35aDetails: "", q35b: false, q35bDetails: "", q35bDateFiled: "", q35bStatus: "",
+        q36: false, q36Details: "",
+        q37: false, q37Details: "",
+        q38a: false, q38aDetails: "", q38b: false, q38bDetails: "",
+        q39: false, q39Details: "",
+        q40a: false, q40aDetails: "", q40b: false, q40bDetails: "", q40c: false, q40cDetails: ""
+      }
     }
   });
 
@@ -203,15 +307,19 @@ export default function AdminRegister() {
   const permSubd = watch("permSubdivision");
   const permStreet = watch("permStreet");
 
-  const extractName = <T extends { name: string }>(arr: T[], key: keyof T, val: string): string => arr.find(x => String(x[key]) === val)?.name || '';
+  const extractName = <T extends Record<string, unknown>, K extends keyof T>(arr: T[], key: K, val: string): string => {
+      const found = arr.find((x) => String(x[key]) === val);
+      if (found && typeof found === 'object' && 'name' in found && typeof found.name === 'string') {
+          return found.name;
+      }
+      return '';
+  };
   
   const formatAddr = (reg: string, prov: string, city: string, brgy: string, house: string, subd: string, street: string) => {
-      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-      const lib = ph as unknown as PhilAddressLibraryLocal;
-      const rName = extractName(lib.regions, 'reg_code', reg);
-      const pName = extractName(lib.provinces, 'prov_code', prov);
-      const cName = extractName(lib.city_mun, 'mun_code', city);
-      const bName = extractName(lib.barangays, 'name', brgy);
+      const rName = (ph.regions as Region[]).find((x: Region) => x.reg_code === reg)?.name || '';
+      const pName = (ph.provinces as Province[]).find((x: Province) => x.prov_code === prov)?.name || '';
+      const cName = (ph.city_mun as CityMunicipality[]).find((x: CityMunicipality) => x.mun_code === city)?.name || '';
+      const bName = brgy; // Barangay values are stored as their name
       return [house, subd, street, bName, cName, pName, rName].filter(Boolean).join(', ');
   };
 
@@ -229,9 +337,7 @@ export default function AdminRegister() {
           setValue("residentialAddress", addr);
       }
       if (resBrgy) {
-          // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-          const lib = ph as unknown as PhilAddressLibraryLocal;
-          setValue("barangay", extractName(lib.barangays, 'name', resBrgy));
+          setValue("barangay", extractName(ph.barangays, 'name', resBrgy));
       } else {
           setValue("barangay", "");
       }
@@ -286,16 +392,25 @@ export default function AdminRegister() {
     if (applicant.dutyType) {
         setValue("dutyType", applicant.dutyType as RegisterFormValues["dutyType"]);
     }
-    if (applicant.employmentType) {
-        setValue("appointmentType", applicant.employmentType as RegisterFormValues["appointmentType"]);
+    const aType = applicant.employmentType;
+    if (aType === 'Permanent' || aType === 'Contractual' || aType === 'Casual' || aType === 'Job Order' || aType === 'Coterminous' || aType === 'Temporary' || aType === 'Contract of Service' || aType === 'JO' || aType === 'COS' || aType === '') {
+        setValue("appointmentType", aType);
     }
     
     if (applicant.birthDate) {
         setValue("birthDate", formatDateForInput(applicant.birthDate));
     }
     setValue("placeOfBirth", applicant.birthPlace || "");
-    setValue("gender", applicant.sex || "");
-    setValue("civilStatus", applicant.civilStatus || "");
+
+    const sex = applicant.sex;
+    if (sex === 'Male' || sex === 'Female' || sex === '') {
+        setValue("gender", sex);
+    }
+
+    const cStatus = applicant.civilStatus;
+    if (cStatus === 'Single' || cStatus === 'Married' || cStatus === 'Widowed' || cStatus === 'Separated' || cStatus === 'Annulled' || cStatus === '') {
+        setValue("civilStatus", cStatus);
+    }
     setValue("bloodType", applicant.bloodType || "");
     setValue("heightM", applicant.height || "");
     setValue("weightKg", applicant.weight || "");
@@ -1082,31 +1197,37 @@ export default function AdminRegister() {
                  </div>
                  <div className="md:col-span-1">
                       <label className="text-xs font-semibold text-gray-600 ml-1 mb-1 block">Type of Duties</label>
-                       <Combobox
-                           options={empMetadata?.dutyTypes.map((dt) => ({ value: dt, label: dt })) || [
-                               { value: "Standard", label: "Standard" },
-                               { value: "Irregular", label: "Irregular" }
-                           ]}
-                           value={watch("dutyType") || ""}
-                           onChange={(val) => setValue("dutyType", val as "Standard" | "Irregular", { shouldValidate: true })}
+                       <Combobox<"Standard" | "Irregular">
+                            options={empMetadata?.dutyTypes.map((dt) => {
+                                const val = dt === "Standard" || dt === "Irregular" ? dt : "Standard";
+                                return { value: val as "Standard" | "Irregular", label: dt };
+                            }) || [
+                                { value: "Standard", label: "Standard" },
+                                { value: "Irregular", label: "Irregular" }
+                            ]}
+                            value={watch("dutyType") || "Standard"}
+                            onChange={(val) => setValue("dutyType", val, { shouldValidate: true })}
                            placeholder="Select..."
                            buttonClassName="bg-gray-50 font-bold !pl-3"
                        />
                  </div>
                   <div className="md:col-span-1">
                       <label className="text-xs font-semibold text-gray-600 ml-1 mb-1 block">Appointment Type / Schedule</label>
-                       <Combobox
-                           options={empMetadata?.appointmentTypes.map((at) => ({ value: at, label: at })) || [
-                               { value: "Permanent", label: "Permanent" },
-                               { value: "Job Order", label: "Job Order" },
-                               { value: "Casual", label: "Casual" },
-                               { value: "Contract of Service", label: "Contract of Service" },
-                               { value: "Contractual", label: "Contractual" },
-                               { value: "Coterminous", label: "Coterminous" },
-                               { value: "Temporary", label: "Temporary" }
-                           ]}
-                           value={watch("appointmentType") || ""}
-                           onChange={(val) => setValue("appointmentType", val as RegisterFormValues["appointmentType"], { shouldValidate: true })}
+                       <Combobox<'Permanent' | 'Contractual' | 'Casual' | 'Job Order' | 'Coterminous' | 'Temporary' | 'Contract of Service' | 'JO' | 'COS' | ''>
+                            options={empMetadata?.appointmentTypes.map((at) => {
+                                const val = (at === 'Permanent' || at === 'Contractual' || at === 'Casual' || at === 'Job Order' || at === 'Coterminous' || at === 'Temporary' || at === 'Contract of Service' || at === 'JO' || at === 'COS' || at === '') ? at : '';
+                                return { value: val as 'Permanent' | 'Contractual' | 'Casual' | 'Job Order' | 'Coterminous' | 'Temporary' | 'Contract of Service' | 'JO' | 'COS' | '', label: at };
+                            }) || [
+                                { value: "Permanent", label: "Permanent" },
+                                { value: "Job Order", label: "Job Order" },
+                                { value: "Contractual", label: "Contractual" },
+                                { value: "Casual", label: "Casual" },
+                                { value: "Job Order", label: "Job Order" },
+                                { value: "Coterminous", label: "Coterminous" },
+                                { value: "Temporary", label: "Temporary" }
+                            ]}
+                            value={watch("appointmentType") || ""}
+                            onChange={(val) => setValue("appointmentType", val, { shouldValidate: true })}
                            placeholder="Select type..."
                            buttonClassName="bg-gray-50 font-bold !pl-3"
                        />

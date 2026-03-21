@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { X, Search, UserPlus, Check, Loader } from 'lucide-react';
-// @ts-ignore
 import { fetchAvailableEmployees, assignEmployeeToDepartment } from '@/api/departmentApi';
+import axios from 'axios';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToastStore } from '@/stores';
 
@@ -61,9 +61,12 @@ const AddEmployeeToDepartment: React.FC<AddEmployeeToDepartmentProps> = ({ isOpe
         queryClient.invalidateQueries({ queryKey: ['available-employees', department?.id] });
         if (onSuccess) onSuccess();
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
         console.error('Failed to assign employee', error);
-        showToast(error.response?.data?.message || 'Failed to assign employee', 'error');
+        const errorMessage = axios.isAxiosError(error) 
+            ? error.response?.data?.message || error.message 
+            : 'Failed to assign employee';
+        showToast(errorMessage, 'error');
     }
   });
 

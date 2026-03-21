@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { employeeApi } from '@/api/employeeApi';
+import axios from 'axios';
 import { departmentApi } from '@/api/departmentApi';
 
 import { Employee } from '@/types';
@@ -70,8 +71,8 @@ export const useEmployees = (
         onError?.(data.message || 'Failed to add employee');
       }
     },
-    onError: (error: any) => {
-        onError?.(error.message || 'An unexpected error occurred');
+    onError: (error: unknown) => {
+        onError?.(axios.isAxiosError(error) ? error.response?.data?.message || 'An unexpected error occurred' : (error instanceof Error ? error.message : 'An unexpected error occurred'));
     }
   });
 
@@ -85,8 +86,8 @@ export const useEmployees = (
         onError?.(data.message || 'Failed to delete employee');
       }
     },
-    onError: (error: any) => {
-        onError?.(error.message || 'An unexpected error occurred');
+    onError: (error: unknown) => {
+        onError?.(axios.isAxiosError(error) ? error.response?.data?.message || 'An unexpected error occurred' : (error instanceof Error ? error.message : 'An unexpected error occurred'));
     }
   });
 

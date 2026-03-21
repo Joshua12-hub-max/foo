@@ -83,7 +83,8 @@ export const generatePSIPOPExcel = async (positions: Position[], config: PSIPOPC
     const departmentName = config.departmentGocc || 'All Departments';
   try {
     const workbook = new ExcelJS.Workbook();
-    workbook.creator = 'NEBR System';
+    workbook.creator = "CHRMO Mey Portal";
+    workbook.lastModifiedBy = "CHRMO Mey Portal";
     workbook.created = new Date();
 
     const ws = workbook.addWorksheet('Plantilla of Personnel', {

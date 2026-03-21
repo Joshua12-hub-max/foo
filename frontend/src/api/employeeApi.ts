@@ -466,7 +466,7 @@ export const employeeApi = {
     },
 
     // PDS Parsing
-    parsePDS: async (file: File): Promise<ApiResponse<any>> => {
+    parsePDS: async (file: File): Promise<ApiResponse<Record<string, unknown>>> => {
         try {
             const formData = new FormData();
             formData.append('pds', file);

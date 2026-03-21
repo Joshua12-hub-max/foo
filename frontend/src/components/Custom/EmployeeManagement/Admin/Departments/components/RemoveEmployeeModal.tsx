@@ -1,8 +1,8 @@
 import React, { memo } from 'react';
 import { AlertTriangle, X, Loader } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-// @ts-ignore
 import { removeEmployeeFromDepartment } from '@/api/departmentApi';
+import axios from 'axios';
 import { useToastStore } from '@/stores';
 
 interface Employee {
@@ -39,9 +39,12 @@ const RemoveEmployeeModal: React.FC<RemoveEmployeeModalProps> = memo(({
         onClose();
         if (onSuccess) onSuccess();
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
         console.error('Failed to remove employee', error);
-        showToast(error.response?.data?.message || 'Failed to remove employee', 'error');
+        const errorMessage = axios.isAxiosError(error) 
+            ? error.response?.data?.message || error.message 
+            : 'Failed to remove employee';
+        showToast(errorMessage, 'error');
     }
   });
 

@@ -8,12 +8,17 @@ import deptImg from '../../assets/home-dept.png';
 import registryImg from '../../assets/home-registry.png';
 import submissionImg from '../../assets/home-submission.png';
 import Marquee from '@components/Public/Marquee';
+import SEO from '@/components/Global/SEO';
 
 const Home = () => {
   const navigate = useNavigate();
 
   return (
     <PublicLayout>
+      <SEO 
+        title="Official Portal"
+        description="Welcome to the CHRMO Mey Portal - City Government of Meycauayan. Empowering our citizens through innovative public service."
+      />
         {/* Background Decorative Elements - Refined for Balance */}
         <div className="absolute top-0 left-0 right-0 h-[800px] -z-10 overflow-hidden pointer-events-none bg-[#131314]">
             <div className="absolute inset-0 opacity-10 mix-blend-overlay">
@@ -80,9 +85,9 @@ const Home = () => {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.5 }}
-                        className="mt-5 text-lg text-slate-400 max-w-md leading-relaxed font-semibold"
+                        className="mt-5 text-lg text-slate-400 max-w-lg leading-relaxed font-semibold mb-10"
                     >
-                      Forge your professional legacy with the City Government of Meycauayan. Integrity, transparency, and innovation.
+                      CHRMO Mey is the official recruitment portal of the City Government of Meycauayan. Start your journey in public service with us today.
                     </motion.p>
                     
                     <motion.div 
@@ -92,6 +97,7 @@ const Home = () => {
                         className="flex flex-col sm:flex-row items-center gap-4 pt-6"
                     >
                         <button 
+                            id="home-explore-vacancies"
                             onClick={() => navigate('/careers/jobs')}
                         className="w-full sm:w-auto bg-[#1e1e1f] text-white px-7 py-3 rounded-xl font-bold text-[13px] tracking-tight transition-all shadow-xl shadow-slate-950/10 flex items-center justify-center gap-2.5 active:scale-95 border border-[#444746] hover:bg-[#131314] hover:shadow-green-500/5"
                         >
@@ -99,6 +105,7 @@ const Home = () => {
                             <ArrowRight size={16} />
                         </button>
                          <button 
+                            id="home-about-chrmo"
                             onClick={() => navigate('/careers/about')}
                             className="w-full sm:w-auto px-7 py-3 rounded-xl font-bold text-[13px] tracking-tight text-white transition-all bg-white/5 border border-white/10 hover:border-green-500/50 shadow-sm active:scale-95"
                         >
@@ -125,7 +132,7 @@ const Home = () => {
                         />
                         <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-[#131314]/80 to-transparent opacity-60"></div>
                         <div className="absolute bottom-5 left-5">
-                            <motion.div 
+                             <motion.div 
                                 initial={{ opacity: 0, y: 10 }}
                                 whileInView={{ opacity: 1, y: 0 }}
                                 transition={{ delay: 0.8 }}

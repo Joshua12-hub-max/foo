@@ -7,6 +7,7 @@ import { inquiryApi, InquirySubmission } from '@/api/inquiryApi';
 import { toast } from 'react-hot-toast';
 import mapVisual from '@/assets/meycauayan-map.png';
 import contactHero from '@/assets/contact-hero.png';
+import SEO from '@/components/Global/SEO';
 
 const Contact = () => {
   const openChat = useChatStore((state) => state.openChat);
@@ -44,6 +45,10 @@ const Contact = () => {
 
   return (
     <PublicLayout>
+      <SEO 
+        title="Contact Us"
+        description="Get in touch with the City of Meycauayan HR team. We are here to assist with your inquiries."
+      />
         {/* Background Decorative Elements - Master Balance */}
         <div className="absolute top-0 left-0 right-0 h-[600px] -z-10 overflow-hidden pointer-events-none">
             <div className="absolute top-[-5%] left-[-5%] w-[400px] h-[400px] bg-green-500/5 rounded-full blur-[100px] mix-blend-screen opacity-10"></div>
@@ -170,6 +175,7 @@ const Contact = () => {
                             <div className="relative">
                                 <User size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
                                 <input 
+                                    id="contact-first-name"
                                     required
                                     type="text" 
                                     name="firstName"
@@ -185,6 +191,7 @@ const Contact = () => {
                             <div className="relative">
                                 <User size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
                                 <input 
+                                    id="contact-last-name"
                                     required
                                     type="text" 
                                     name="lastName"
@@ -202,6 +209,7 @@ const Contact = () => {
                         <div className="relative">
                             <Mail size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
                             <input 
+                                id="contact-email"
                                 required
                                 type="email" 
                                 name="email"
@@ -216,6 +224,7 @@ const Contact = () => {
                     <div className="space-y-1.5">
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Message</label>
                         <textarea 
+                            id="contact-message"
                             required
                             name="message"
                             value={formData.message}
@@ -227,6 +236,7 @@ const Contact = () => {
                     </div>
 
                     <button 
+                        id="contact-submit-button"
                         type="submit"
                         disabled={loading}
                         className="w-full bg-green-600 hover:bg-green-700 text-white py-4 rounded-xl font-black text-sm tracking-tight transition-all shadow-xl shadow-green-900/10 flex items-center justify-center gap-3 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"

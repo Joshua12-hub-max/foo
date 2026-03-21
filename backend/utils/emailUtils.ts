@@ -94,7 +94,7 @@ export const sendOTPEmail = async (
 ): Promise<void> => {
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
-      <h2 style="color: #333; text-align: center;">NEBR System Verification</h2>
+      <h2 style="color: #333; text-align: center;">CHRMO Mey Portal Verification</h2>
       <p>Hello <strong>${firstName}</strong>,</p>
       <p>${bodyPrefix}</p>
       <div style="background-color: #f4f4f4; padding: 20px; text-align: center; border-radius: 5px; margin: 25px 0;">
@@ -102,7 +102,7 @@ export const sendOTPEmail = async (
       </div>
       <p style="font-size: 14px; color: #666;">This code will expire in 10 minutes. If you did not request this, please ignore this email.</p>
       <div style="border-top: 1px solid #eee; padding-top: 20px; font-size: 12px; color: #999; text-align: center;">
-        &copy; ${new Date().getFullYear()} Local Government of Meycauayan - HRMS
+        &copy; ${new Date().getFullYear()} Local Government of Meycauayan - CHRMO Mey Portal
       </div>
     </div>
   `;

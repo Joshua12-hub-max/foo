@@ -8,6 +8,7 @@ import {
   BiometricsTable,
   useBiometricsLogs 
 } from "@settings/Biometrics/Logs";
+import { BiometricsLog } from '@/types';
 import Pagination from '@/components/CustomUI/Pagination';
 import StatCard from '@components/Custom/DashboardAdminComponents/StatCard';
 
@@ -40,8 +41,8 @@ const BiometricsLogsUI = () => {
 
   // Stats from Monitor (computed from filtered data)
   const stats = useMemo(() => ({
-    onTime: filteredData.filter((l: any) => l.status === 'Present').length,
-    late: filteredData.filter((l: any) => l.status === 'Late').length,
+    onTime: filteredData.filter((l: BiometricsLog) => l.status === 'Present').length,
+    late: filteredData.filter((l: BiometricsLog) => l.status === 'Late').length,
     total: filteredData.length,
   }), [filteredData]);
 

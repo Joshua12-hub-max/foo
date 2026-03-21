@@ -1,6 +1,7 @@
 import React from 'react';
 import { X, Loader } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import axios from 'axios';
 import { employeeApi } from '@/api/employeeApi';
 import { useToastStore } from '@/stores';
 
@@ -37,9 +38,12 @@ const DeleteEmployeeModal: React.FC<DeleteEmployeeModalProps> = ({
       onClose();
       if (onSuccess) onSuccess();
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       console.error('Failed to delete employee:', error);
-      showToast(error.message || 'Failed to delete employee', 'error');
+      const errorMessage = axios.isAxiosError(error) 
+        ? error.response?.data?.message || error.message 
+        : 'Failed to delete employee';
+      showToast(errorMessage, 'error');
     }
   });
 

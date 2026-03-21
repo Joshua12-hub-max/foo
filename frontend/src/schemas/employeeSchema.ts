@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { createIdValidator, ID_REGEX } from './idValidation';
+import { PdsQuestionsSchema } from './pdsSchema';
 
 export const CreateEmployeeSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
@@ -132,7 +133,7 @@ export const CreateEmployeeSchema = z.object({
   disabilityIdNo: z.string().optional().nullable(),
   soloParent: z.string().optional().nullable(),
   soloParentIdNo: z.string().optional().nullable(),
-  pdsQuestions: z.any().optional(),
+  pdsQuestions: PdsQuestionsSchema.optional(),
 });
 
 export const UpdateEmployeeSchema = CreateEmployeeSchema.partial();

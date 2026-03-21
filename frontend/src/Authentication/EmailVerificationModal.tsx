@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ShieldCheck, Loader2, ArrowRight, CheckCircle2 } from "lucide-react";
+import { ShieldCheck, Loader2, ArrowRight } from "lucide-react";
 import OTPInput from "./OTPInput";
 import { verifyRegistrationOTP, resendVerification } from "@/Service/Auth";
 import axios from "axios";
@@ -61,7 +61,7 @@ export default function EmailVerificationModal({ isOpen, email, employeeDbId, re
         }
     } catch (err: unknown) {
         console.error("Verification error:", err);
-        const msg = axios.isAxiosError(err) ? err.response?.data?.message : undefined;
+        const msg = axios.isAxiosError(err) ? (err.response?.data as { message?: string })?.message : undefined;
         setError(msg || "Verification failed. Please try again.");
     } finally {
         setLoading(false);
@@ -76,7 +76,8 @@ export default function EmailVerificationModal({ isOpen, email, employeeDbId, re
           setResendTimer(60);
           setSuccess("Verification code sent to your email.");
           setError("");
-      } catch (err) {
+      } catch (err: unknown) {
+          console.error("Resend error:", err);
           setError("Failed to resend code. Please try again.");
       }
   };

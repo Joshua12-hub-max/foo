@@ -1,27 +1,22 @@
 import { Request, Response } from 'express';
 import { db } from '../db/index.js';
-import { events, authentication } from '../db/schema.js';
+import { events, authentication, departments } from '../db/schema.js';
 import { eq, or, and, sql, asc, gte, isNull } from 'drizzle-orm';
-import { createNotification, notifyAllUsers } from './notificationController.js';
+import { notifyAllUsers, notifyDepartment } from './notificationController.js';
 import type { AuthenticatedRequest } from '../types/index.js';
 import { eventSchema } from '../schemas/eventSchema.js';
 
-const notifyDepartmentEmployees = async (params: { senderId: string; title: string; message: string; type: string; referenceId: number; department: string }): Promise<void> => {
+const notifyDepartmentEmployees = async (params: { senderId: string; title: string; message: string; type: string; referenceId: number; departmentId: number; excludeId?: string }): Promise<void> => {
   try {
-    const employees = await db.select({ employeeId: authentication.employeeId })
-      .from(authentication)
-      .where(eq(authentication.department, params.department));
-
-    for (const employee of employees) {
-      await createNotification({ 
-        recipientId: employee.employeeId || '', 
-        senderId: params.senderId, 
-        title: params.title, 
-        message: params.message, 
-        type: params.type, 
-        referenceId: params.referenceId 
-      });
-    }
+    await notifyDepartment({
+      departmentId: params.departmentId,
+      senderId: params.senderId,
+      title: params.title,
+      message: params.message,
+      type: params.type,
+      referenceId: params.referenceId,
+      excludeId: params.excludeId
+    });
   } catch (err) { console.error('Failed to notify department employees:', err); }
 };
 
@@ -99,22 +94,31 @@ export const createEvent = async (req: Request, res: Response): Promise<void> =>
       const adminId = String(authReq.user?.employeeId || authReq.user?.id || 'System');
       const dateRange = eventStartDate === eventEndDate ? eventStartDate : `${eventStartDate} to ${eventEndDate}`;
 
-      if (department) {
-        await notifyDepartmentEmployees({ 
-          senderId: adminId, 
-          title: 'New Event', 
-          message: `A new event "${title}" has been scheduled for ${department} department on ${dateRange}.`, 
-          type: 'event_created', 
-          referenceId: result.insertId, 
-          department 
+      if (department && department !== 'All Departments') {
+        const deptRecord = await db.query.departments.findFirst({
+          where: eq(departments.name, department),
+          columns: { id: true }
         });
+
+        if (deptRecord) {
+          await notifyDepartmentEmployees({ 
+            senderId: adminId, 
+            title: 'New Event', 
+            message: `A new event "${title}" has been scheduled for ${department} department on ${dateRange}.`, 
+            type: 'event_created', 
+            referenceId: result.insertId, 
+            departmentId: deptRecord.id,
+            excludeId: adminId
+          });
+        }
       } else {
         await notifyAllUsers({ 
           senderId: adminId, 
           title: 'New Event', 
           message: `A new event "${title}" has been scheduled on ${dateRange}.`, 
           type: 'event_created', 
-          referenceId: result.insertId 
+          referenceId: result.insertId,
+          excludeId: adminId
         });
       }
     } catch (notificationError) { console.error('Failed to send event notifications:', notificationError); }

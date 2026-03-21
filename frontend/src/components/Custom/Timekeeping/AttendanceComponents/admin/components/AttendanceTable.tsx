@@ -13,7 +13,8 @@ interface AttendanceRow {
   lateMinutes: number;
   undertimeMinutes: number;
   notes?: string;
-  [key: string]: any;
+  id?: string | number;
+  [key: string]: unknown;
 }
 
 interface AttendanceTableProps {
