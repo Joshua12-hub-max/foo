@@ -6,7 +6,8 @@ import {
   leaveApplications,
   tardinessSummary,
   internalPolicies,
-  accrualRules
+  accrualRules,
+  pdsHrDetails
 } from '../db/schema.js';
 import { eq, and, ne, sql, inArray, desc } from 'drizzle-orm';
 import { 
@@ -123,7 +124,7 @@ export const accrueCreditsForMonth = async (month: number, year: number, specifi
     // 3. Get eligible employees
     const conditions = [
       ne(authentication.role, 'Administrator'),
-      inArray(authentication.appointmentType, accruingTypes as ("Permanent" | "Contractual" | "Casual" | "Job Order" | "Coterminous" | "Temporary" | "Contract of Service" | "JO" | "COS")[])
+      inArray(pdsHrDetails.appointmentType, accruingTypes as ("Permanent" | "Contractual" | "Casual" | "Job Order" | "Coterminous" | "Temporary" | "Contract of Service" | "JO" | "COS")[])
     ];
     
     if (specificEmployeeIds.length > 0) {
@@ -134,9 +135,10 @@ export const accrueCreditsForMonth = async (month: number, year: number, specifi
       employeeId: authentication.employeeId,
       firstName: authentication.firstName,
       lastName: authentication.lastName,
-      appointmentType: authentication.appointmentType
+      appointmentType: pdsHrDetails.appointmentType
     })
     .from(authentication)
+    .leftJoin(pdsHrDetails, eq(authentication.id, pdsHrDetails.employeeId))
     .where(and(...conditions));
 
     let processedCount = 0;

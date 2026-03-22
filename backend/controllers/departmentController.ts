@@ -13,6 +13,7 @@ import {
   AssignEmployeeSchema, 
   DepartmentIdParams 
 } from '../schemas/departmentSchema.js';
+import { pdsHrDetails } from '../db/schema.js';
 
 /** Input type for the department mapper — DB model with optional computed fields */
 type DepartmentMapperInput = Partial<DepartmentDbModel> & { id: number; name: string; employeeCount?: number | string };
@@ -63,11 +64,12 @@ export const getDepartments = async (_req: Request, res: Response): Promise<void
       employeeCount: sql<number>`CAST(COUNT(${authentication.id}) AS UNSIGNED)`
     })
     .from(departments)
-    .leftJoin(authentication, and(
-        eq(authentication.departmentId, departments.id),
+    .leftJoin(pdsHrDetails, eq(pdsHrDetails.departmentId, departments.id))
+    .leftJoin(authentication, eq(authentication.id, pdsHrDetails.employeeId))
+    .where(and(
         or(
-            eq(authentication.employmentStatus, 'Active'),
-            eq(authentication.employmentStatus, 'Probationary')
+            eq(pdsHrDetails.employmentStatus, 'Active'),
+            eq(pdsHrDetails.employmentStatus, 'Probationary')
         )
     ))
     .groupBy(departments.id)
@@ -105,13 +107,12 @@ export const getDepartmentById = async (req: Request, res: Response): Promise<vo
       firstName: auth.firstName,
       lastName: auth.lastName,
       email: auth.email,
-      positionTitle: auth.positionTitle,
-      jobTitle: auth.jobTitle,
-      phoneNumber: auth.phoneNumber,
+      positionTitle: pdsHrDetails.positionTitle,
+      jobTitle: pdsHrDetails.jobTitle,
       avatarUrl: auth.avatarUrl,
-      employmentStatus: auth.employmentStatus,
-      dateHired: auth.dateHired,
-      department: auth.department,
+      employmentStatus: pdsHrDetails.employmentStatus,
+      dateHired: pdsHrDetails.dateHired,
+      department: departments.name,
       duties: sql<string>`COALESCE(
         (SELECT schedule_title FROM schedules WHERE schedules.employee_id = auth.employee_id AND (start_date IS NULL OR start_date <= CURDATE()) AND (end_date IS NULL OR end_date >= CURDATE()) ORDER BY updated_at DESC LIMIT 1),
         (SELECT schedule_title FROM schedules WHERE schedules.employee_id = auth.employee_id AND (start_date IS NULL OR start_date <= CURDATE()) ORDER BY start_date DESC LIMIT 1),
@@ -127,8 +128,10 @@ export const getDepartmentById = async (req: Request, res: Response): Promise<vo
       isBiometricEnrolled: sql<boolean>`CASE WHEN ${bioEnrolledUsers.employeeId} IS NOT NULL THEN true ELSE false END`
     })
     .from(auth)
+    .leftJoin(pdsHrDetails, eq(auth.id, pdsHrDetails.employeeId))
+    .leftJoin(departments, eq(pdsHrDetails.departmentId, departments.id))
     .leftJoin(bioEnrolledUsers, eq(auth.employeeId, bioEnrolledUsers.employeeId))
-    .where(eq(auth.departmentId, Number(id)));
+    .where(eq(pdsHrDetails.departmentId, Number(id)));
 
     const mappedEmployees: EmployeeApiResponse[] = employees.map(mapToEmployeeApi);
 
@@ -165,7 +168,7 @@ export const getAvailableEmployees = async (req: Request, res: Response): Promis
     }
 
     const whereClause = and(
-      or(isNull(authentication.departmentId), ne(authentication.departmentId, Number(id))),
+      or(isNull(pdsHrDetails.departmentId), ne(pdsHrDetails.departmentId, Number(id))),
       search ? or(
         like(authentication.firstName, `%${search}%`),
         like(authentication.lastName, `%${search}%`),
@@ -180,11 +183,13 @@ export const getAvailableEmployees = async (req: Request, res: Response): Promis
       firstName: authentication.firstName,
       lastName: authentication.lastName,
       email: authentication.email,
-      jobTitle: authentication.jobTitle,
-      department: authentication.department,
+      jobTitle: pdsHrDetails.jobTitle,
+      department: departments.name,
       avatarUrl: authentication.avatarUrl
     })
     .from(authentication)
+    .leftJoin(pdsHrDetails, eq(authentication.id, pdsHrDetails.employeeId))
+    .leftJoin(departments, eq(pdsHrDetails.departmentId, departments.id))
     .where(whereClause)
     .orderBy(asc(authentication.lastName))
     .limit(20);
@@ -214,9 +219,9 @@ export const assignEmployeeToDepartment = async (req: Request, res: Response): P
 
     if (!dept) { res.status(404).json({ success: false, message: 'Department not found' }); return; }
 
-    await db.update(authentication)
-      .set({ department: dept.name, departmentId: Number(id) })
-      .where(eq(authentication.id, employeeId));
+    await db.update(pdsHrDetails)
+      .set({ departmentId: Number(id) })
+      .where(eq(pdsHrDetails.employeeId, employeeId));
 
     res.status(200).json({ success: true, message: 'Employee assigned to department successfully' });
   } catch (_error) {
@@ -228,9 +233,9 @@ export const assignEmployeeToDepartment = async (req: Request, res: Response): P
 export const removeEmployeeFromDepartment = async (req: Request, res: Response): Promise<void> => {
   const { employeeId } = req.params;
   try {
-    await db.update(authentication)
-      .set({ department: null, departmentId: null })
-      .where(eq(authentication.id, Number(employeeId)));
+    await db.update(pdsHrDetails)
+      .set({ departmentId: null })
+      .where(eq(pdsHrDetails.employeeId, Number(employeeId)));
 
     res.status(200).json({ success: true, message: 'Employee removed from department' });
   } catch (_error) {
@@ -307,9 +312,8 @@ export const updateDepartment = async (req: Request, res: Response): Promise<voi
       }
 
       if (name && name !== oldName) {
-        await tx.update(authentication)
-          .set({ department: name })
-          .where(eq(authentication.department, oldName));
+        // No need to update authentication string 'department' as it's removed.
+        // If there were other tables referencing department name, we'd update them here.
       }
     });
 
@@ -350,14 +354,9 @@ export const deleteDepartment = async (req: Request, res: Response): Promise<voi
 
     await db.transaction(async (tx) => {
       // 1. Remove department references from employees
-      await tx.update(authentication)
-        .set({ department: 'Unassigned', departmentId: null })
-        .where(eq(authentication.departmentId, deptId));
-
-      // 1b. Also clear by string name just in case of inconsistency
-      await tx.update(authentication)
-        .set({ department: 'Unassigned', departmentId: null })
-        .where(eq(authentication.department, deptToDelete.name));
+      await tx.update(pdsHrDetails)
+        .set({ departmentId: null })
+        .where(eq(pdsHrDetails.departmentId, deptId));
 
       // 2. Remove department references from plantilla positions
       await tx.update(plantillaPositions)

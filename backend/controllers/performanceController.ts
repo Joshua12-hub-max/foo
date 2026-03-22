@@ -7,7 +7,9 @@ import { performanceReviews,
   performanceCriteria, 
   performanceAuditLog,
   policyViolations,
-  leaveApplications
+  leaveApplications,
+  pdsHrDetails,
+  departments
 } from '../db/schema.js';
 import { eq, and, sql, desc, or, max, count, inArray, isNull, like, gte, lte, ne } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/mysql-core';
@@ -21,6 +23,7 @@ import {
   submitReviewerRatingSchema,
   createReviewCycleSchema,
 } from '../schemas/performanceSchema.js';
+import { pdsPersonalInformation } from '../db/tables/pds.js';
 import { z } from 'zod';
 
 const formatDateForMySQL = (date: Date | string) => {
@@ -206,9 +209,9 @@ export const getEvaluationSummary = async (_req: Request, res: Response): Promis
       lastName: authentication.lastName,
       middleName: authentication.middleName,
       suffix: authentication.suffix,
-      department: authentication.department,
-      jobTitle: authentication.jobTitle,
-      positionTitle: authentication.positionTitle,
+      department: departments.name,
+      jobTitle: pdsHrDetails.jobTitle,
+      positionTitle: pdsHrDetails.positionTitle,
       avatarUrl: authentication.avatarUrl,
       employeeId: authentication.employeeId,
       reviewId: performanceReviews.id,
@@ -230,13 +233,16 @@ export const getEvaluationSummary = async (_req: Request, res: Response): Promis
         (SELECT CONCAT(TIME_FORMAT(start_time, '%h:%i %p'), ' - ', TIME_FORMAT(end_time, '%h:%i %p')) FROM shift_templates WHERE is_default = 1 LIMIT 1),
         '08:00 AM - 05:00 PM'
       )`,
-      birthDate: authentication.birthDate
+      birthDate: pdsPersonalInformation.birthDate
     })
     .from(authentication)
+    .leftJoin(pdsHrDetails, eq(authentication.id, pdsHrDetails.employeeId))
+    .leftJoin(departments, eq(pdsHrDetails.departmentId, departments.id))
     .leftJoin(performanceReviews, and(
       eq(authentication.id, performanceReviews.employeeId),
       eq(performanceReviews.id, maxReviewIdSubquery)
     ))
+    .leftJoin(pdsPersonalInformation, eq(authentication.id, pdsPersonalInformation.employeeId))
     .where(sql`${authentication.role} != 'Administrator'`)
     .orderBy(authentication.lastName);
 
@@ -354,7 +360,7 @@ export const getReviews = async (req: Request, res: Response): Promise<void> => 
     if (employeeId) conditions.push(eq(performanceReviews.employeeId, Number(employeeId)));
     if (cycleId) conditions.push(eq(performanceReviews.reviewCycleId, Number(cycleId)));
     if (status) conditions.push(eq(performanceReviews.status, status as ReviewStatus));
-    if (department && department !== 'All') conditions.push(eq(authentication.department, department as string));
+    if (department && department !== 'All') conditions.push(eq(departments.name, department as string));
 
     const reviewer = alias(authentication, 'reviewer');
 
@@ -374,11 +380,13 @@ export const getReviews = async (req: Request, res: Response): Promise<void> => 
       reviewerLastName: reviewer.lastName,
       employeeFirstName: authentication.firstName,
       employeeLastName: authentication.lastName,
-      department: authentication.department,
+      department: departments.name,
       cycleTitle: performanceReviewCycles.title
     })
     .from(performanceReviews)
     .leftJoin(authentication, eq(performanceReviews.employeeId, authentication.id))
+    .leftJoin(pdsHrDetails, eq(authentication.id, pdsHrDetails.employeeId))
+    .leftJoin(departments, eq(pdsHrDetails.departmentId, departments.id))
     .leftJoin(reviewer, eq(performanceReviews.reviewerId, reviewer.id))
     .leftJoin(performanceReviewCycles, eq(performanceReviews.reviewCycleId, performanceReviewCycles.id))
     .where(and(...conditions))
@@ -399,7 +407,15 @@ export const getReview = async (req: Request, res: Response): Promise<void> => {
     const review = await db.query.performanceReviews.findFirst({
       where: eq(performanceReviews.id, Number(id)),
       with: {
-        authenticationEmployeeId: true,
+        authenticationEmployeeId: {
+          with: {
+            hrDetails: {
+              with: {
+                department: true
+              }
+            }
+          }
+        },
         authenticationReviewerId: true
       }
     });
@@ -482,7 +498,7 @@ export const getReview = async (req: Request, res: Response): Promise<void> => {
     );
 
     // 3. Fetch Violation Count (Consistent with calculation logic: period-based, non-cancelled)
-    const empIdStr = review.authenticationEmployeeId.employeeId || review.employeeId.toString();
+    const empIdStr = (review.authenticationEmployeeId as any).employeeId || review.employeeId.toString();
     const violations = await db.select({ count: count() })
       .from(policyViolations)
       .where(and(
@@ -493,15 +509,17 @@ export const getReview = async (req: Request, res: Response): Promise<void> => {
       ));
 
     // 4. Resolve flattened structure
+    const empAuth = review.authenticationEmployeeId as any;
+    const revAuth = review.authenticationReviewerId as any;
     const flatReview = {
         ...review,
-        employeeFirstName: review.authenticationEmployeeId.firstName,
-        employeeLastName: review.authenticationEmployeeId.lastName,
-        employeeDepartment: review.authenticationEmployeeId.department,
-        employeeJobTitle: review.authenticationEmployeeId.jobTitle,
-        reviewerFirstName: review.authenticationReviewerId.firstName,
-        reviewerLastName: review.authenticationReviewerId.lastName,
-        employeePositionTitle: review.authenticationEmployeeId.positionTitle,
+        employeeFirstName: empAuth.firstName,
+        employeeLastName: empAuth.lastName,
+        employeeDepartment: empAuth.hrDetails?.department?.name,
+        employeeJobTitle: empAuth.hrDetails?.jobTitle,
+        reviewerFirstName: revAuth.firstName,
+        reviewerLastName: revAuth.lastName,
+        employeePositionTitle: empAuth.hrDetails?.positionTitle,
         attendanceDetails: attendanceDetails,
         violationCount: violations[0].count,
         items
@@ -650,12 +668,14 @@ export const createReview = async (req: Request, res: Response): Promise<void> =
 
     // Auto-Senior Logic
     let evaluationMode: 'CSC' | 'IPCR' | 'Senior' = 'CSC';
-    const employee = await db.query.authentication.findFirst({
-      where: eq(authentication.id, employeeId)
+    
+    const pdsInfo = await db.query.pdsPersonalInformation.findFirst({
+        where: eq(pdsPersonalInformation.employeeId, employeeId),
+        columns: { birthDate: true }
     });
 
-    if (employee?.birthDate) {
-      const birthDate = new Date(employee.birthDate);
+    if (pdsInfo?.birthDate) {
+      const birthDate = new Date(pdsInfo.birthDate);
       const today = new Date();
       let age = today.getFullYear() - birthDate.getFullYear();
       const m = today.getMonth() - birthDate.getMonth();

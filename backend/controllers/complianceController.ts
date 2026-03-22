@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { db } from '../db/index.js';
-import { authentication, tardinessSummary, policyViolations } from '../db/schema.js';
+import { authentication, tardinessSummary, policyViolations, pdsHrDetails } from '../db/schema.js';
 import { employeeMemos } from '../db/tables/pds.js';
 import { eq, and, desc, sql } from 'drizzle-orm';
 
@@ -28,12 +28,13 @@ export const getEmployeeMetrics = async (req: Request, res: Response): Promise<v
             id: authentication.id,
             firstName: authentication.firstName,
             lastName: authentication.lastName,
-            dutyType: authentication.dutyType,
-            dailyTargetHours: authentication.dailyTargetHours,
-            salaryBasis: authentication.salaryBasis,
+            dutyType: pdsHrDetails.dutyType,
+            dailyTargetHours: pdsHrDetails.dailyTargetHours,
+            salaryBasis: pdsHrDetails.salaryBasis,
             employeeId: authentication.employeeId // internal string ID
         })
         .from(authentication)
+        .leftJoin(pdsHrDetails, eq(authentication.id, pdsHrDetails.employeeId))
         .where(eq(authentication.id, Number(employeeId)))
         .limit(1);
     }
@@ -43,12 +44,13 @@ export const getEmployeeMetrics = async (req: Request, res: Response): Promise<v
             id: authentication.id,
             firstName: authentication.firstName,
             lastName: authentication.lastName,
-            dutyType: authentication.dutyType,
-            dailyTargetHours: authentication.dailyTargetHours,
-            salaryBasis: authentication.salaryBasis,
+            dutyType: pdsHrDetails.dutyType,
+            dailyTargetHours: pdsHrDetails.dailyTargetHours,
+            salaryBasis: pdsHrDetails.salaryBasis,
             employeeId: authentication.employeeId
         })
         .from(authentication)
+        .leftJoin(pdsHrDetails, eq(authentication.id, pdsHrDetails.employeeId))
         .where(eq(authentication.employeeId, employeeId))
         .limit(1);
     }

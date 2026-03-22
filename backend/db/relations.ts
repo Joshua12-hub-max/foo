@@ -3,26 +3,16 @@ import { authentication, googleCalendarTokens, socialConnections } from "./table
 import { departments, nepotismRelationships } from "./tables/hr.js";
 import { plantillaPositions, qualificationStandards, positionPublications } from "./tables/plantilla.js";
 import { chatConversations, chatMessages, recruitmentApplicants, recruitmentJobs } from "./tables/recruitment.js";
-import { pdsEducation, pdsEligibility, pdsFamily, pdsLearningDevelopment, pdsOtherInfo, pdsReferences, pdsVoluntaryWork, pdsWorkExperience, employeeCustomFields, employeeDocuments, employeeEducation, employeeEmergencyContacts, employeeEmploymentHistory, employeeMemos, employeeNotes, employeeSkills } from "./tables/pds.js";
+import { pdsEducation, pdsEligibility, pdsFamily, pdsLearningDevelopment, pdsOtherInfo, pdsReferences, pdsVoluntaryWork, pdsWorkExperience, employeeCustomFields, employeeDocuments, employeeEducation, employeeEmergencyContacts, employeeEmploymentHistory, employeeMemos, employeeNotes, employeeSkills, pdsHrDetails } from "./tables/pds.js";
 import { performanceReviews, performanceAuditLog, performanceGoals, performanceReviewCycles, performanceImprovementPlans, performanceCriteria, performanceReviewItems } from "./tables/performance.js";
 import { stepIncrementTracker } from "./tables/payroll.js";
 import { events, syncedEvents } from "./tables/common.js";
 import { schedules, bioEnrolledUsers, bioAttendanceLogs } from "./tables/attendance.js";
 
 export const authenticationRelations = relations(authentication, ({one, many}) => ({
-	department: one(departments, {
-		fields: [authentication.departmentId],
-		references: [departments.id]
-	}),
-	plantillaPosition: one(plantillaPositions, {
-		fields: [authentication.positionId],
-		references: [plantillaPositions.id],
-		relationName: "authentication_positionId_plantillaPositions_id"
-	}),
-	authentication: one(authentication, {
-		fields: [authentication.managerId],
-		references: [authentication.id],
-		relationName: "authentication_managerId_authentication_id"
+	hrDetails: one(pdsHrDetails, {
+		fields: [authentication.id],
+		references: [pdsHrDetails.employeeId]
 	}),
 	authentications: many(authentication, {
 		relationName: "authentication_managerId_authentication_id"
@@ -448,4 +438,22 @@ export const bioAttendanceLogsRelations = relations(bioAttendanceLogs, ({one}) =
 		fields: [bioAttendanceLogs.employeeId],
 		references: [bioEnrolledUsers.employeeId]
 	}),
+}));
+export const pdsHrDetailsRelations = relations(pdsHrDetails, ({one}) => ({
+	employee: one(authentication, {
+		fields: [pdsHrDetails.employeeId],
+		references: [authentication.id]
+	}),
+	department: one(departments, {
+		fields: [pdsHrDetails.departmentId],
+		references: [departments.id]
+	}),
+	position: one(plantillaPositions, {
+		fields: [pdsHrDetails.positionId],
+		references: [plantillaPositions.id]
+	}),
+	manager: one(authentication, {
+		fields: [pdsHrDetails.managerId],
+		references: [authentication.id]
+	})
 }));

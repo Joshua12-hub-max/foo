@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { db } from '../db/index.js';
-import { notifications, authentication } from '../db/schema.js';
+import { notifications, authentication, pdsHrDetails } from '../db/schema.js';
 import { eq, and, desc, sql, inArray, ne } from 'drizzle-orm';
 import type { AuthenticatedRequest } from '../types/index.js';
 
@@ -167,8 +167,9 @@ export const notifyDepartment = async ({
   try {
     const users = await db.select({ employeeId: authentication.employeeId })
       .from(authentication)
+      .leftJoin(pdsHrDetails, eq(authentication.id, pdsHrDetails.employeeId))
       .where(and(
-        eq(authentication.departmentId, departmentId),
+        eq(pdsHrDetails.departmentId, departmentId),
         excludeId ? ne(authentication.employeeId, excludeId) : undefined
       ));
 

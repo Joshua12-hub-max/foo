@@ -3,7 +3,7 @@ import { z } from 'zod';
 import fs from 'fs';
 import path from 'path';
 import { db } from '../db/index.js';
-import { authentication, bioEnrolledUsers, schedules, recruitmentApplicants, departments, plantillaPositions, recruitmentJobs, shiftTemplates } from '../db/schema.js';
+import { authentication, bioEnrolledUsers, schedules, recruitmentApplicants, departments, plantillaPositions, recruitmentJobs, shiftTemplates, pdsHrDetails } from '../db/schema.js';
 import { eq, or, and, sql, gt, getTableColumns, desc, InferSelectModel } from 'drizzle-orm';
 import { AuthService } from '../services/auth.service.js';
 import { checkSystemWideUniqueness } from '../services/validationService.js';
@@ -48,14 +48,23 @@ const transporter = nodemailer.createTransport({
 import { sendEmail, generateOTP, sendOTPEmail, maskEmail } from '../utils/emailUtils.js';
 
 // Define the shape of the user object with relations as returned by findFirst/select
-type UserWithRelations = Omit<InferSelectModel<typeof authentication>, 'department'> & {
-  department?: { id: number; name: string } | string | null;
-  plantillaPosition?: { positionTitle: string | null } | null;
+// Define the shape of the user object with relations as returned by findFirst/select
+type UserWithRelations = InferSelectModel<typeof authentication> & {
+  hrDetails?: {
+    id: number;
+    department?: { id: number; name: string } | null;
+    position?: { positionTitle: string | null } | null;
+    jobTitle: string | null;
+    employmentStatus: string | null;
+    appointmentType: string | null;
+    dateHired: string | null;
+    dutyType: string | null;
+    profileStatus: string | null;
+    isMeycauayan?: boolean | null;
+  } | null;
   pdsEducations?: { schoolName: string | null }[] | null;
   duties?: string | null;
   shift?: string | null;
-  dutyType?: "Standard" | "Irregular" | null;
-  appointmentType?: string | null;
 };
 
 /**
@@ -69,13 +78,9 @@ const mapToAuthUser = (user: UserWithRelations) => {
   if (user.middleName && user.middleName.length > 0) parts.push(`${user.middleName.charAt(0)}.`);
   if (user.suffix) parts.push(user.suffix);
 
-  // Handle department as either a string (from table column) or object (from relation)
-  let departmentName: string | null = null;
-  if (typeof user.department === 'string') {
-    departmentName = user.department;
-  } else if (user.department && typeof user.department === 'object' && 'name' in user.department) {
-    departmentName = user.department.name;
-  }
+  const hr = user.hrDetails;
+  const departmentName = hr?.department?.name || null;
+  const jobTitle = hr?.position?.positionTitle || hr?.jobTitle || null;
 
   return {
     id: user.id,
@@ -87,81 +92,22 @@ const mapToAuthUser = (user: UserWithRelations) => {
     name: parts.join(' ').trim(),
     role: user.role,
     department: departmentName,
-    departmentId: user.departmentId,
+    departmentId: hr?.department?.id || null,
     employeeId: user.employeeId,
     avatarUrl: user.avatarUrl,
-    jobTitle: user.plantillaPosition?.positionTitle || user.jobTitle || null,
-    employmentStatus: user.employmentStatus,
+    jobTitle: jobTitle,
+    employmentStatus: hr?.employmentStatus || 'Active',
     twoFactorEnabled: !!user.twoFactorEnabled,
-    dateHired: user.dateHired,
-    address: user.address,
-    residentialAddress: user.residentialAddress,
-    permanentAddress: user.permanentAddress,
-    emergencyContact: user.emergencyContact,
-    emergencyContactNumber: user.emergencyContactNumber,
-    educationalBackground: user.pdsEducations?.[0]?.schoolName || user.educationalBackground || null,
+    dateHired: hr?.dateHired || null,
     duties: user.duties || 'Standard Shift',
     shift: user.shift || '08:00 AM - 05:00 PM',
-    dutyType: user.dutyType || 'Standard',
-    appointmentType: user.appointmentType || 'Permanent',
+    dutyType: hr?.dutyType || 'Standard',
+    appointmentType: hr?.appointmentType || 'Permanent',
     isVerified: user.isVerified ?? false,
-    profileStatus: user.profileStatus || 'Initial',
+    profileStatus: hr?.profileStatus || 'Initial',
     
-    // Personal Details
-    birthDate: user.birthDate,
-    gender: user.gender,
-    civilStatus: user.civilStatus,
-    nationality: user.nationality,
-    bloodType: user.bloodType,
-    heightM: user.heightM,
-    weightKg: user.weightKg,
-    mobileNo: user.mobileNo,
-    telephoneNo: user.telephoneNo,
-
-    // Government IDs
-    gsisNumber: user.gsisNumber,
-    pagibigNumber: user.pagibigNumber,
-    philhealthNumber: user.philhealthNumber,
-    umidNumber: user.umidNumber,
-    philsysId: user.philsysId,
-    tinNumber: user.tinNumber,
-    agencyEmployeeNo: user.agencyEmployeeNo,
-
-    // Section IX: Declarations
-    relatedThirdDegree: user.relatedThirdDegree,
-    relatedThirdDetails: user.relatedThirdDetails,
-    relatedFourthDegree: user.relatedFourthDegree,
-    relatedFourthDetails: user.relatedFourthDetails,
-    foundGuiltyAdmin: user.foundGuiltyAdmin,
-    foundGuiltyDetails: user.foundGuiltyDetails,
-    criminallyCharged: user.criminallyCharged,
-    dateFiled: user.dateFiled,
-    statusOfCase: user.statusOfCase,
-    convictedCrime: user.convictedCrime,
-    convictedDetails: user.convictedDetails,
-    separatedFromService: user.separatedFromService,
-    separatedDetails: user.separatedDetails,
-    electionCandidate: user.electionCandidate,
-    electionDetails: user.electionDetails,
-    resignedToPromote: user.resignedToPromote,
-    resignedDetails: user.resignedDetails,
-    immigrantStatus: user.immigrantStatus,
-    immigrantDetails: user.immigrantDetails,
-    indigenousMember: user.indigenousMember,
-    indigenousDetails: user.indigenousDetails,
-    personWithDisability: user.personWithDisability,
-    disabilityIdNo: user.disabilityIdNo,
-    soloParent: user.soloParent,
-    soloParentIdNo: user.soloParentIdNo,
-
-    // Other PDS 2025 Fields
-    dualCountry: user.dualCountry,
-    govtIdType: user.govtIdType,
-    govtIdNo: user.govtIdNo,
-    govtIdIssuance: user.govtIdIssuance,
-    isMeycauayan: !!user.isMeycauayan,
-    dateAccomplished: user.dateAccomplished,
-    pdsQuestions: user.pdsQuestions,
+    // Social Media / Other
+    isMeycauayan: !!hr?.isMeycauayan,
   };
 };
 
@@ -199,6 +145,11 @@ export const googleLogin: AsyncHandler = async (req, res) => {
     const user = await db.query.authentication.findFirst({
       where: eq(authentication.email, email),
       with: {
+        hrDetails: {
+          with: {
+            department: true
+          }
+        },
         schedules: {
           limit: 1,
           orderBy: [desc(schedules.updatedAt)],
@@ -206,7 +157,6 @@ export const googleLogin: AsyncHandler = async (req, res) => {
         }
       }
     });
-
 
     if (!user) {
       res.status(403).json({
@@ -227,7 +177,7 @@ export const googleLogin: AsyncHandler = async (req, res) => {
     }
 
     // CHECK TERMINATION STATUS
-    if (user.employmentStatus === 'Terminated') {
+    if (user.hrDetails?.employmentStatus === 'Terminated') {
       res.status(403).json({
         success: false,
         message: 'Access Denied: Your account has been terminated. Please contact Human Resource.',
@@ -237,8 +187,7 @@ export const googleLogin: AsyncHandler = async (req, res) => {
     }
 
     // BIOMETRIC ENFORCEMENT: Check bio_enrolled_users (C# biometric data)
-    // BIOMETRIC ENFORCEMENT: Check bio_enrolled_users (C# biometric data)
-    const deptName = user.department || '';
+    const deptName = user.hrDetails?.department?.name || '';
       
     const isCHRMO = typeof deptName === 'string' && (
       deptName.toUpperCase().includes('CHRMO') || 
@@ -439,8 +388,7 @@ export const register: AsyncHandler = async (req, res) => {
         philhealthNumber: validatedData.philhealthNumber,
         pagibigNumber: validatedData.pagibigNumber,
         tinNumber: validatedData.tinNumber,
-        gsisNumber: validatedData.gsisNumber,
-        eligibilityNumber: validatedData.eligibilityNumber
+        gsisNumber: validatedData.gsisNumber
     });
 
     if (Object.keys(uniqueErrors).length > 0) {
@@ -456,12 +404,15 @@ export const register: AsyncHandler = async (req, res) => {
       where: or(
         eq(authentication.employeeId, actualEmployeeId),
         eq(authentication.email, email)
-      )
+      ),
+      with: {
+        hrDetails: true
+      }
     });
 
     // Auto-detect finalize mode if the matched user is still in 'Initial' setup state
     // This makes the system resilient if the frontend loses the ?mode=finalize-setup query param
-    const effectiveFinalizingSetup = isFinalizingSetup || (existingUser?.profileStatus === 'Initial');
+    const effectiveFinalizingSetup = isFinalizingSetup || (existingUser?.hrDetails?.profileStatus === 'Initial');
 
     if (existingUser) {
       if (!effectiveFinalizingSetup) {
@@ -575,166 +526,143 @@ export const register: AsyncHandler = async (req, res) => {
     }
 
     // Fallback for departmentId preservation in finalize-setup
-    if (effectiveFinalizingSetup && !departmentId && existingUser?.departmentId) {
-        departmentId = existingUser.departmentId;
+    if (effectiveFinalizingSetup && !departmentId && existingUser?.hrDetails?.departmentId) {
+        departmentId = existingUser.hrDetails.departmentId;
     }
 
-    const userDataValues: typeof authentication.$inferInsert = {
+    const authDataValues: typeof authentication.$inferInsert = {
       firstName,
       lastName,
       middleName: validatedData.middleName ? sanitizeInput(validatedData.middleName) : undefined,
       suffix: validatedData.suffix ? sanitizeInput(validatedData.suffix) : undefined,
       email,
       role: assignedRole,
-      department: department, 
-      departmentId,            
       employeeId: actualEmployeeId,
       passwordHash: hashedPassword,
       isVerified: false, 
       verificationToken: verificationOTP,
       avatarUrl,
-      jobTitle: positionTitle,
-      positionTitle: positionTitle,
-      itemNumber: itemNumber,
-      dateHired: validatedData.applicantHiredDate || new Date().toISOString().split('T')[0],
-      heightM: (() => {
-        if (!validatedData.heightM) return null;
-        let h = parseFloat(validatedData.heightM);
-        if (isNaN(h)) return null;
-        if (h > 10) h = h / 100; // e.g. 150cm becomes 1.50m
-        return h.toFixed(2);
-      })(),
-      weightKg: (() => {
-        if (!validatedData.weightKg) return null;
-        const w = parseFloat(validatedData.weightKg);
-        return isNaN(w) ? null : w.toFixed(2);
-      })(),
-      birthDate: (validatedData.birthDate || null),
-      placeOfBirth: (validatedData.placeOfBirth || null),
-      gender: (validatedData.gender ?? null),
-      civilStatus: (validatedData.civilStatus ?? null),
-      nationality: validatedData.nationality || 'Filipino',
-      bloodType: (validatedData.bloodType ?? null),
-      pdsQuestions: validatedData.pdsQuestions || null,
-      address: validatedData.address || validatedData.residentialAddress || undefined,
-      residentialAddress: validatedData.residentialAddress || validatedData.address || undefined,
-      residentialZipCode: validatedData.residentialZipCode || undefined,
-      permanentAddress: validatedData.permanentAddress || undefined,
-      permanentZipCode: validatedData.permanentZipCode || undefined,
-      resHouseBlockLot: validatedData.resHouseBlockLot || undefined,
-      resStreet: validatedData.resStreet || undefined,
-      resSubdivision: validatedData.resSubdivision || undefined,
-      resBarangay: validatedData.resBrgy || validatedData.resBarangay || undefined,
-      resCity: validatedData.resCity || undefined,
-      resProvince: validatedData.resProvince || undefined,
-      permHouseBlockLot: validatedData.permHouseBlockLot || undefined,
-      permStreet: validatedData.permStreet || undefined,
-      permSubdivision: validatedData.permSubdivision || undefined,
-      permBarangay: validatedData.permBrgy || validatedData.permBarangay || undefined,
-      permCity: validatedData.permCity || undefined,
-      permProvince: validatedData.permProvince || undefined,
-      mobileNo: validatedData.mobileNo || undefined,
-      telephoneNo: validatedData.telephoneNo || undefined,
-      emergencyContact: validatedData.emergencyContact || undefined,
-      emergencyContactNumber: validatedData.emergencyContactNumber || undefined,
-      umidNumber: validatedData.umidNumber || undefined,
-      philsysId: validatedData.philsysId || undefined,
-      gsisNumber: validatedData.gsisNumber || undefined,
-      pagibigNumber: validatedData.pagibigNumber || undefined,
-      philhealthNumber: validatedData.philhealthNumber || undefined,
-      tinNumber: validatedData.tinNumber || undefined,
-      agencyEmployeeNo: validatedData.agencyEmployeeNo || undefined,
-      educationalBackground: validatedData.educationalBackground || undefined,
-      schoolName: validatedData.schoolName || undefined,
-      course: validatedData.course || undefined,
-      yearGraduated: validatedData.yearGraduated || undefined,
-      yearsOfExperience: validatedData.yearsOfExperience || undefined,
-      experience: validatedData.experience || undefined,
-      skills: validatedData.skills || undefined,
-      eligibilityType: validatedData.eligibilityType || undefined,
-      eligibilityNumber: validatedData.eligibilityNumber || undefined,
-      eligibilityDate: validatedData.eligibilityDate || undefined,
-      facebookUrl: validatedData.facebookUrl || undefined,
-      linkedinUrl: validatedData.linkedinUrl || undefined,
-      twitterHandle: validatedData.twitterHandle || undefined,
-      dutyType: (validatedData.dutyType === 'Irregular' ? 'Irregular' : 'Standard'),
-      appointmentType: (validatedData.appointmentType || 'Permanent'),
-      profileStatus: 'Complete' as const,
-      employmentStatus: 'Active' as const, 
-      isOldEmployee: validatedData.isOldEmployee || false,
-      isMeycauayan: (validatedData.isMeycauayan === true),
-      dateAccomplished: (validatedData.dateAccomplished || null),
     };
 
-    let newUserId: number;
+    let newUserId: number = 0;
 
-    if (effectiveFinalizingSetup && existingUser) {
+    await db.transaction(async (tx) => {
+      if (effectiveFinalizingSetup && existingUser) {
         // UPDATE EXISTING ADMIN/HR
-        await db.update(authentication).set(userDataValues).where(eq(authentication.id, existingUser.id));
+        await tx.update(authentication).set(authDataValues).where(eq(authentication.id, existingUser.id));
         newUserId = existingUser.id;
+
+        // Upsert HR Details
+        const hrValues = {
+          employeeId: newUserId,
+          jobTitle: positionTitle,
+          positionTitle: positionTitle,
+          itemNumber: itemNumber,
+          departmentId: departmentId || existingUser.hrDetails?.departmentId || null,
+          dateHired: validatedData.applicantHiredDate || existingUser.hrDetails?.dateHired || new Date().toISOString().split('T')[0],
+          dutyType: (validatedData.dutyType === 'Irregular' ? 'Irregular' : 'Standard') as 'Standard' | 'Irregular',
+          appointmentType: (validatedData.appointmentType || existingUser.hrDetails?.appointmentType || 'Permanent') as 'Permanent' | 'Contractual' | 'Casual' | 'Job Order' | 'Coterminous' | 'Temporary' | 'Contract of Service' | 'JO' | 'COS',
+          profileStatus: 'Complete' as const,
+          employmentStatus: 'Active' as const,
+          isOldEmployee: validatedData.isOldEmployee || existingUser.hrDetails?.isOldEmployee || false,
+          isMeycauayan: (validatedData.isMeycauayan === true),
+          facebookUrl: validatedData.facebookUrl || existingUser.hrDetails?.facebookUrl || undefined,
+          linkedinUrl: validatedData.linkedinUrl || existingUser.hrDetails?.linkedinUrl || undefined,
+          twitterHandle: validatedData.twitterHandle || existingUser.hrDetails?.twitterHandle || undefined,
+        };
+
+        const existingHr = await tx.query.pdsHrDetails.findFirst({
+          where: eq(pdsHrDetails.employeeId, newUserId)
+        });
+
+        if (existingHr) {
+          await tx.update(pdsHrDetails).set(hrValues).where(eq(pdsHrDetails.employeeId, newUserId));
+        } else {
+          await tx.insert(pdsHrDetails).values(hrValues);
+        }
 
         // Allocate default credits and schedules for the finalized admin
         await allocateDefaultCredits(actualEmployeeId);
-    } else {
+      } else {
         // INSERT NEW USER
-        const [insertResult] = await db.insert(authentication).values(userDataValues);
+        const [insertResult] = await tx.insert(authentication).values(authDataValues);
         newUserId = insertResult.insertId;
+
+        // Insert HR Details
+        await tx.insert(pdsHrDetails).values({
+          employeeId: newUserId,
+          jobTitle: positionTitle,
+          positionTitle: positionTitle,
+          itemNumber: itemNumber,
+          departmentId,
+          dateHired: validatedData.applicantHiredDate || new Date().toISOString().split('T')[0],
+          dutyType: (validatedData.dutyType === 'Irregular' ? 'Irregular' : 'Standard') as 'Standard' | 'Irregular',
+          appointmentType: (validatedData.appointmentType || 'Permanent') as 'Permanent' | 'Contractual' | 'Casual' | 'Job Order' | 'Coterminous' | 'Temporary' | 'Contract of Service' | 'JO' | 'COS',
+          profileStatus: 'Complete' as const,
+          employmentStatus: 'Active' as const,
+          isOldEmployee: validatedData.isOldEmployee || false,
+          isMeycauayan: (validatedData.isMeycauayan === true),
+          facebookUrl: validatedData.facebookUrl || undefined,
+          linkedinUrl: validatedData.linkedinUrl || undefined,
+          twitterHandle: validatedData.twitterHandle || undefined,
+        });
         
         // Initial leave allocation for brand new users
         await allocateDefaultCredits(actualEmployeeId);
-    }
-
-    // Allocate Standard Schedule for all newly registered or finalized users
-    const startDate = userDataValues.dateHired || new Date().toISOString().split('T')[0];
-    
-    // FETCH THE SYSTEM DEFAULT SHIFT TEMPLATE (Dynamic Solution)
-    const [defaultShift] = await db.select()
-      .from(shiftTemplates)
-      .where(eq(shiftTemplates.isDefault, true))
-      .limit(1);
-
-    let workDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-    let startTime = '08:00:00';
-    let endTime = '17:00:00';
-    let scheduleTitle = 'Standard Shift';
-
-    if (defaultShift) {
-      startTime = defaultShift.startTime;
-      endTime = defaultShift.endTime;
-      scheduleTitle = defaultShift.name;
-      if (defaultShift.workingDays) {
-        workDays = defaultShift.workingDays.split(',').map(d => d.trim());
       }
-    }
 
-    const scheduleValues = workDays.map(day => ({
-      employeeId: actualEmployeeId,
-      scheduleTitle: scheduleTitle,
-      dayOfWeek: day,
-      startTime: startTime,
-      endTime: endTime,
-      startDate: startDate,
-      repeatPattern: 'Weekly',
-      isRestDay: false
-    }));
+      // Allocate Standard Schedule for all newly registered or finalized users
+      const startDate = validatedData.applicantHiredDate || new Date().toISOString().split('T')[0];
+      
+      // FETCH THE SYSTEM DEFAULT SHIFT TEMPLATE (Dynamic Solution)
+      const [defaultShift] = await tx.select()
+        .from(shiftTemplates)
+        .where(eq(shiftTemplates.isDefault, true))
+        .limit(1);
 
-    if (scheduleValues.length > 0) {
-      await db.insert(schedules).values(scheduleValues);
-    }
+      let workDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+      let startTime = '08:00:00';
+      let endTime = '17:00:00';
+      let scheduleTitle = 'Standard Shift';
 
-    // Update position status if linked
-    if (positionId) {
-      await db.update(plantillaPositions)
-        .set({ 
-          isVacant: false, 
-          incumbentId: newUserId,
-          filledDate: new Date().toISOString().split('T')[0]
-        })
-        .where(eq(plantillaPositions.id, positionId));
-    }
+      if (defaultShift) {
+        startTime = defaultShift.startTime;
+        endTime = defaultShift.endTime;
+        scheduleTitle = defaultShift.name;
+        if (defaultShift.workingDays) {
+          workDays = defaultShift.workingDays.split(',').map(d => d.trim());
+        }
+      }
+
+      const scheduleValues = workDays.map(day => ({
+        employeeId: actualEmployeeId,
+        scheduleTitle: scheduleTitle,
+        dayOfWeek: day,
+        startTime: startTime,
+        endTime: endTime,
+        startDate: startDate,
+        repeatPattern: 'Weekly',
+        isRestDay: false
+      }));
+
+      if (scheduleValues.length > 0) {
+        await tx.insert(schedules).values(scheduleValues);
+      }
+
+      // Update position status if linked
+      if (positionId) {
+        await tx.update(plantillaPositions)
+          .set({ 
+            isVacant: false, 
+            incumbentId: newUserId,
+            filledDate: new Date().toISOString().split('T')[0]
+          })
+          .where(eq(plantillaPositions.id, positionId));
+      }
+    });
 
     // 11. Send Verification Email (SKIP IF ALREADY VERIFIED, e.g. Admin/HR who verified after setup-portal)
-    if (!userDataValues.isVerified) {
+    if (!authDataValues.isVerified) {
         try {
           if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
             throw new Error('Email credentials are not configured.');
@@ -952,7 +880,7 @@ export const getMe: AuthenticatedHandler = async (req, res) => {
   try {
     const userId = req.user.id;
 
-    const [user] = await db.select({
+    const [userData] = await db.select({
       ...getTableColumns(authentication),
       duties: sql<string>`COALESCE(
         (SELECT schedule_title FROM schedules WHERE employee_id = ${authentication.employeeId} AND (start_date IS NULL OR start_date <= CURDATE()) AND (end_date IS NULL OR end_date >= CURDATE()) ORDER BY updated_at DESC LIMIT 1),
@@ -970,15 +898,30 @@ export const getMe: AuthenticatedHandler = async (req, res) => {
     .from(authentication)
     .where(eq(authentication.id, userId));
 
-    if (!user) {
+    if (!userData) {
       res.status(404).json({ success: false, message: 'User not found' });
       return;
     }
 
+    const userWithHr = await db.query.authentication.findFirst({
+        where: eq(authentication.id, userId),
+        with: {
+            hrDetails: {
+                with: {
+                    department: true,
+                    position: true
+                }
+            }
+        }
+    });
+
     res.status(200).json({
       success: true,
       data: {
-        user: mapToAuthUser(user)
+        user: mapToAuthUser({
+            ...userData,
+            hrDetails: userWithHr?.hrDetails
+        } as UserWithRelations)
       }
     });
   } catch (_error: unknown) {
@@ -1035,7 +978,7 @@ export const login: AsyncHandler = async (req, res) => {
     }
 
     // CHECK TERMINATION STATUS
-    if (user.employmentStatus === 'Terminated') {
+    if (user.hrDetails?.employmentStatus === 'Terminated') {
 
       res.status(403).json({
         success: false,
@@ -1046,7 +989,7 @@ export const login: AsyncHandler = async (req, res) => {
     }
 
     // BIOMETRIC ENFORCEMENT: Check bio_enrolled_users (C# biometric data)
-    const deptName = user.department || '';
+    const deptName = user.hrDetails?.department?.name || '';
       
     const isCHRMO = typeof deptName === 'string' && (
       deptName.toUpperCase().includes('CHRMO') || 
@@ -1288,7 +1231,7 @@ export const verifyTwoFactorOTP: AsyncHandler = async (req, res) => {
         name: `${user.firstName} ${user.lastName}`,
         email: user.email,
         role: user.role,
-        department: user.department,
+        department: (user as any).hrDetails?.department?.name || null,
         employeeId: user.employeeId
       }
     });
@@ -1366,10 +1309,10 @@ export const getUsers: AsyncHandler = async (_req, res) => {
       firstName: authentication.firstName,
       lastName: authentication.lastName,
       email: authentication.email,
-      department: authentication.department,
-      positionTitle: authentication.positionTitle,
-      jobTitle: authentication.jobTitle,
-      employmentStatus: authentication.employmentStatus,
+      department: departments.name,
+      positionTitle: pdsHrDetails.positionTitle,
+      jobTitle: pdsHrDetails.jobTitle,
+      employmentStatus: pdsHrDetails.employmentStatus,
       role: authentication.role,
       avatarUrl: authentication.avatarUrl,
       twoFactorEnabled: authentication.twoFactorEnabled,
@@ -1385,7 +1328,11 @@ export const getUsers: AsyncHandler = async (_req, res) => {
         (SELECT CONCAT(TIME_FORMAT(start_time, '%h:%i %p'), ' - ', TIME_FORMAT(end_time, '%h:%i %p')) FROM shift_templates WHERE is_default = 1 LIMIT 1),
         '08:00 AM - 05:00 PM'
       )`
-    }).from(authentication).orderBy(authentication.lastName);
+    })
+    .from(authentication)
+    .leftJoin(pdsHrDetails, eq(authentication.id, pdsHrDetails.employeeId))
+    .leftJoin(departments, eq(pdsHrDetails.departmentId, departments.id))
+    .orderBy(authentication.lastName);
 
     res.status(200).json({
       success: true,
@@ -1408,6 +1355,20 @@ export const getUserById: AsyncHandler = async (req, res) => {
   try {
     const [user] = await db.select({
       ...getTableColumns(authentication),
+      department: departments.name,
+      positionTitle: pdsHrDetails.positionTitle,
+      jobTitle: pdsHrDetails.jobTitle,
+      employmentStatus: pdsHrDetails.employmentStatus,
+      itemNumber: pdsHrDetails.itemNumber,
+      salaryGrade: pdsHrDetails.salaryGrade,
+      stepIncrement: pdsHrDetails.stepIncrement,
+      appointmentType: pdsHrDetails.appointmentType,
+      station: pdsHrDetails.station,
+      officeAddress: pdsHrDetails.officeAddress,
+      dateHired: pdsHrDetails.dateHired,
+      originalAppointmentDate: pdsHrDetails.originalAppointmentDate,
+      lastPromotionDate: pdsHrDetails.lastPromotionDate,
+      managerId: pdsHrDetails.managerId,
       duties: sql<string>`COALESCE(
         (SELECT schedule_title FROM schedules WHERE employee_id = ${authentication.employeeId} AND (start_date IS NULL OR start_date <= CURDATE()) AND (end_date IS NULL OR end_date >= CURDATE()) ORDER BY updated_at DESC LIMIT 1),
         (SELECT schedule_title FROM schedules WHERE employee_id = ${authentication.employeeId} AND (start_date IS NULL OR start_date <= CURDATE()) ORDER BY start_date DESC LIMIT 1),
@@ -1422,6 +1383,8 @@ export const getUserById: AsyncHandler = async (req, res) => {
       )`
     })
     .from(authentication)
+    .leftJoin(pdsHrDetails, eq(authentication.id, pdsHrDetails.employeeId))
+    .leftJoin(departments, eq(pdsHrDetails.departmentId, departments.id))
     .where(eq(authentication.id, Number(id)));
 
     if (!user) {
@@ -1513,21 +1476,23 @@ export const updateProfile: AuthenticatedHandler = async (req, res) => {
         return;
     }
 
-    const mappedUpdates: Partial<typeof authentication.$inferInsert> = {};
-    if (updates.firstName) mappedUpdates.firstName = String(updates.firstName);
-    if (updates.lastName) mappedUpdates.lastName = String(updates.lastName);
-    if (updates.middleName) mappedUpdates.middleName = String(updates.middleName);
-    if (updates.suffix !== undefined) mappedUpdates.suffix = String(updates.suffix);
+    const mappedAuthUpdates: Partial<typeof authentication.$inferInsert> = {};
+    const mappedHrUpdates: Partial<typeof pdsHrDetails.$inferInsert> = {};
+
+    if (updates.firstName) mappedAuthUpdates.firstName = String(updates.firstName);
+    if (updates.lastName) mappedAuthUpdates.lastName = String(updates.lastName);
+    if (updates.middleName) mappedAuthUpdates.middleName = String(updates.middleName);
+    if (updates.suffix !== undefined) mappedAuthUpdates.suffix = String(updates.suffix);
     
     // Only reset verification if email CHANGED
     if (updates.email && updates.email !== targetUser.email) {
-      mappedUpdates.email = String(updates.email);
+      mappedAuthUpdates.email = String(updates.email);
       
       const isEmployee = targetUser.role !== 'Administrator' && targetUser.role !== 'Human Resource';
       
       const verificationOTP = generateOTP();
-      mappedUpdates.isVerified = false;
-      mappedUpdates.verificationToken = verificationOTP;
+      mappedAuthUpdates.isVerified = false;
+      mappedAuthUpdates.verificationToken = verificationOTP;
       
       try {
           await sendOTPEmail(
@@ -1544,123 +1509,37 @@ export const updateProfile: AuthenticatedHandler = async (req, res) => {
       }
     }
 
-    if (updates.phoneNumber !== undefined) mappedUpdates.mobileNo = String(updates.phoneNumber);
-    if (updates.mobileNo !== undefined) mappedUpdates.mobileNo = String(updates.mobileNo);
-    if (updates.telephoneNo !== undefined) mappedUpdates.telephoneNo = String(updates.telephoneNo);
-    if (updates.birthDate !== undefined) {
-        mappedUpdates.birthDate = String(updates.birthDate);
+    if (updates.facebookUrl !== undefined) mappedHrUpdates.facebookUrl = String(updates.facebookUrl);
+    if (updates.linkedinUrl !== undefined) mappedHrUpdates.linkedinUrl = String(updates.linkedinUrl);
+    if (updates.twitterHandle !== undefined) mappedHrUpdates.twitterHandle = String(updates.twitterHandle);
+    if (updates.isMeycauayan !== undefined) mappedHrUpdates.isMeycauayan = !!updates.isMeycauayan;
+    
+    if (updates.positionTitle !== undefined) {
+        mappedHrUpdates.positionTitle = String(updates.positionTitle);
+        mappedHrUpdates.jobTitle = String(updates.positionTitle);
     }
-    if (updates.placeOfBirth !== undefined) mappedUpdates.placeOfBirth = String(updates.placeOfBirth);
-    if (updates.gender !== undefined) mappedUpdates.gender = updates.gender;
-    if (updates.civilStatus !== undefined) mappedUpdates.civilStatus = updates.civilStatus;
-    if (updates.nationality !== undefined) mappedUpdates.nationality = String(updates.nationality);
-    
-    if (updates.address !== undefined) mappedUpdates.address = String(updates.address);
-    if (updates.residentialAddress !== undefined) mappedUpdates.residentialAddress = String(updates.residentialAddress);
-    if (updates.residentialZipCode !== undefined) mappedUpdates.residentialZipCode = String(updates.residentialZipCode);
-    if (updates.permanentAddress !== undefined) mappedUpdates.permanentAddress = String(updates.permanentAddress);
-    if (updates.permanentZipCode !== undefined) mappedUpdates.permanentZipCode = String(updates.permanentZipCode);
+    if (updates.itemNumber !== undefined) mappedHrUpdates.itemNumber = String(updates.itemNumber);
+    if (updates.salaryGrade !== undefined) mappedHrUpdates.salaryGrade = String(updates.salaryGrade);
+    if (updates.stepIncrement !== undefined) mappedHrUpdates.stepIncrement = Number(updates.stepIncrement);
+    if (updates.appointmentType !== undefined) mappedHrUpdates.appointmentType = updates.appointmentType;
+    if (updates.employmentStatus !== undefined) mappedHrUpdates.employmentStatus = updates.employmentStatus;
+    if (updates.station !== undefined) mappedHrUpdates.station = String(updates.station);
+    if (updates.officeAddress !== undefined) mappedHrUpdates.officeAddress = String(updates.officeAddress);
+    if (updates.dateHired !== undefined) mappedHrUpdates.dateHired = String(updates.dateHired);
+    if (updates.originalAppointmentDate !== undefined) mappedHrUpdates.originalAppointmentDate = String(updates.originalAppointmentDate);
+    if (updates.lastPromotionDate !== undefined) mappedHrUpdates.lastPromotionDate = String(updates.lastPromotionDate);
 
-    // Atomic Address Fields
-    if (updates.resHouseBlockLot !== undefined) mappedUpdates.resHouseBlockLot = String(updates.resHouseBlockLot);
-    if (updates.resStreet !== undefined) mappedUpdates.resStreet = String(updates.resStreet);
-    if (updates.resSubdivision !== undefined) mappedUpdates.resSubdivision = String(updates.resSubdivision);
-    if (updates.resBarangay !== undefined) mappedUpdates.resBarangay = String(updates.resBarangay);
-    if (updates.resCity !== undefined) mappedUpdates.resCity = String(updates.resCity);
-    if (updates.resProvince !== undefined) mappedUpdates.resProvince = String(updates.resProvince);
-    
-    if (updates.permHouseBlockLot !== undefined) mappedUpdates.permHouseBlockLot = String(updates.permHouseBlockLot);
-    if (updates.permStreet !== undefined) mappedUpdates.permStreet = String(updates.permStreet);
-    if (updates.permSubdivision !== undefined) mappedUpdates.permSubdivision = String(updates.permSubdivision);
-    if (updates.permBarangay !== undefined) mappedUpdates.permBarangay = String(updates.permBarangay);
-    if (updates.permCity !== undefined) mappedUpdates.permCity = String(updates.permCity);
-    if (updates.permProvince !== undefined) mappedUpdates.permProvince = String(updates.permProvince);
-    
-    if (updates.emergencyContact !== undefined) mappedUpdates.emergencyContact = String(updates.emergencyContact);
-    if (updates.emergencyContactNumber !== undefined) mappedUpdates.emergencyContactNumber = String(updates.emergencyContactNumber);
+    if (avatarUrl) mappedAuthUpdates.avatarUrl = avatarUrl;
 
-    if (updates.umidNumber !== undefined) mappedUpdates.umidNumber = String(updates.umidNumber);
-    if (updates.philsysId !== undefined) mappedUpdates.philsysId = String(updates.philsysId);
-    if (updates.gsisNumber !== undefined) mappedUpdates.gsisNumber = String(updates.gsisNumber);
-    if (updates.philhealthNumber !== undefined) mappedUpdates.philhealthNumber = String(updates.philhealthNumber);
-    if (updates.pagibigNumber !== undefined) mappedUpdates.pagibigNumber = String(updates.pagibigNumber);
-    if (updates.tinNumber !== undefined) mappedUpdates.tinNumber = String(updates.tinNumber);
-    if (updates.agencyEmployeeNo !== undefined) mappedUpdates.agencyEmployeeNo = String(updates.agencyEmployeeNo);
-    
-    if (updates.educationalBackground !== undefined) mappedUpdates.educationalBackground = String(updates.educationalBackground);
-    if (updates.schoolName !== undefined) mappedUpdates.schoolName = String(updates.schoolName);
-    if (updates.course !== undefined) mappedUpdates.course = String(updates.course);
-    if (updates.yearGraduated !== undefined) mappedUpdates.yearGraduated = String(updates.yearGraduated);
-    if (updates.eligibilityType !== undefined) mappedUpdates.eligibilityType = String(updates.eligibilityType);
-    if (updates.eligibilityNumber !== undefined) mappedUpdates.eligibilityNumber = String(updates.eligibilityNumber);
-    if (updates.eligibilityDate !== undefined) mappedUpdates.eligibilityDate = String(updates.eligibilityDate);
-    if (updates.yearsOfExperience !== undefined) mappedUpdates.yearsOfExperience = String(updates.yearsOfExperience);
-    
-    if (updates.bloodType !== undefined) mappedUpdates.bloodType = String(updates.bloodType);
-    if (updates.heightM !== undefined) mappedUpdates.heightM = String(updates.heightM);
-    if (updates.weightKg !== undefined) mappedUpdates.weightKg = String(updates.weightKg);
-    
-    if (updates.facebookUrl !== undefined) mappedUpdates.facebookUrl = String(updates.facebookUrl);
-    if (updates.linkedinUrl !== undefined) mappedUpdates.linkedinUrl = String(updates.linkedinUrl);
-    if (updates.twitterHandle !== undefined) mappedUpdates.twitterHandle = String(updates.twitterHandle);
-    
-    if (updates.positionTitle !== undefined) mappedUpdates.positionTitle = String(updates.positionTitle);
-    if (updates.itemNumber !== undefined) mappedUpdates.itemNumber = String(updates.itemNumber);
-    if (updates.salaryGrade !== undefined) mappedUpdates.salaryGrade = String(updates.salaryGrade);
-    if (updates.stepIncrement !== undefined) mappedUpdates.stepIncrement = Number(updates.stepIncrement);
-    if (updates.appointmentType !== undefined) mappedUpdates.appointmentType = updates.appointmentType;
-    if (updates.employmentStatus !== undefined) mappedUpdates.employmentStatus = updates.employmentStatus;
-    if (updates.station !== undefined) mappedUpdates.station = String(updates.station);
-    if (updates.officeAddress !== undefined) mappedUpdates.officeAddress = String(updates.officeAddress);
-    if (updates.dateHired !== undefined) mappedUpdates.dateHired = String(updates.dateHired);
-    if (updates.originalAppointmentDate !== undefined) mappedUpdates.originalAppointmentDate = String(updates.originalAppointmentDate);
-    if (updates.lastPromotionDate !== undefined) mappedUpdates.lastPromotionDate = String(updates.lastPromotionDate);
-
-    // Section IX: Declarations
-    if (updates.relatedThirdDegree !== undefined) mappedUpdates.relatedThirdDegree = String(updates.relatedThirdDegree);
-    if (updates.relatedThirdDetails !== undefined) mappedUpdates.relatedThirdDetails = String(updates.relatedThirdDetails);
-    if (updates.relatedFourthDegree !== undefined) mappedUpdates.relatedFourthDegree = String(updates.relatedFourthDegree);
-    if (updates.relatedFourthDetails !== undefined) mappedUpdates.relatedFourthDetails = String(updates.relatedFourthDetails);
-    if (updates.foundGuiltyAdmin !== undefined) mappedUpdates.foundGuiltyAdmin = String(updates.foundGuiltyAdmin);
-    if (updates.foundGuiltyDetails !== undefined) mappedUpdates.foundGuiltyDetails = String(updates.foundGuiltyDetails);
-    if (updates.criminallyCharged !== undefined) mappedUpdates.criminallyCharged = String(updates.criminallyCharged);
-    if (updates.dateFiled !== undefined) mappedUpdates.dateFiled = String(updates.dateFiled);
-    if (updates.statusOfCase !== undefined) mappedUpdates.statusOfCase = String(updates.statusOfCase);
-    if (updates.convictedCrime !== undefined) mappedUpdates.convictedCrime = String(updates.convictedCrime);
-    if (updates.convictedDetails !== undefined) mappedUpdates.convictedDetails = String(updates.convictedDetails);
-    if (updates.separatedFromService !== undefined) mappedUpdates.separatedFromService = String(updates.separatedFromService);
-    if (updates.separatedDetails !== undefined) mappedUpdates.separatedDetails = String(updates.separatedDetails);
-    if (updates.electionCandidate !== undefined) mappedUpdates.electionCandidate = String(updates.electionCandidate);
-    if (updates.electionDetails !== undefined) mappedUpdates.electionDetails = String(updates.electionDetails);
-    if (updates.resignedToPromote !== undefined) mappedUpdates.resignedToPromote = String(updates.resignedToPromote);
-    if (updates.resignedDetails !== undefined) mappedUpdates.resignedDetails = String(updates.resignedDetails);
-    if (updates.immigrantStatus !== undefined) mappedUpdates.immigrantStatus = String(updates.immigrantStatus);
-    if (updates.immigrantDetails !== undefined) mappedUpdates.immigrantDetails = String(updates.immigrantDetails);
-    if (updates.indigenousMember !== undefined) mappedUpdates.indigenousMember = String(updates.indigenousMember);
-    if (updates.indigenousDetails !== undefined) mappedUpdates.indigenousDetails = String(updates.indigenousDetails);
-    if (updates.personWithDisability !== undefined) mappedUpdates.personWithDisability = String(updates.personWithDisability);
-    if (updates.disabilityIdNo !== undefined) mappedUpdates.disabilityIdNo = String(updates.disabilityIdNo);
-    if (updates.soloParent !== undefined) mappedUpdates.soloParent = String(updates.soloParent);
-    if (updates.soloParentIdNo !== undefined) mappedUpdates.soloParentIdNo = String(updates.soloParentIdNo);
-
-    // Other PDS 2025 Fields
-    if (updates.dualCountry !== undefined) mappedUpdates.dualCountry = String(updates.dualCountry);
-    if (updates.govtIdType !== undefined) mappedUpdates.govtIdType = String(updates.govtIdType);
-    if (updates.govtIdNo !== undefined) mappedUpdates.govtIdNo = String(updates.govtIdNo);
-    if (updates.govtIdIssuance !== undefined) mappedUpdates.govtIdIssuance = String(updates.govtIdIssuance);
-    
-    // NEW PDS 2025 FIELDS
-    if (updates.isMeycauayan !== undefined) mappedUpdates.isMeycauayan = !!updates.isMeycauayan;
-    if (updates.dateAccomplished !== undefined) mappedUpdates.dateAccomplished = updates.dateAccomplished ? String(updates.dateAccomplished) : null;
-    if (updates.pdsQuestions !== undefined) mappedUpdates.pdsQuestions = updates.pdsQuestions || null;
-
-    if (avatarUrl) mappedUpdates.avatarUrl = avatarUrl;
-
-    if (Object.keys(mappedUpdates).length === 0) {
+    if (Object.keys(mappedAuthUpdates).length === 0 && Object.keys(mappedHrUpdates).length === 0) {
       // If no changes, still return success to avoid frontend error states
       // but fetch the target user to return their data
       const [user] = await db.select({
         ...getTableColumns(authentication),
+        department: departments.name,
+        positionTitle: pdsHrDetails.positionTitle,
+        jobTitle: pdsHrDetails.jobTitle,
+        employmentStatus: pdsHrDetails.employmentStatus,
         duties: sql<string>`COALESCE(
           (SELECT schedule_title FROM schedules WHERE employee_id = ${authentication.employeeId} AND (start_date IS NULL OR start_date <= CURDATE()) AND (end_date IS NULL OR end_date >= CURDATE()) ORDER BY updated_at DESC LIMIT 1),
           (SELECT schedule_title FROM schedules WHERE employee_id = ${authentication.employeeId} AND (start_date IS NULL OR start_date <= CURDATE()) ORDER BY start_date DESC LIMIT 1),
@@ -1675,19 +1554,40 @@ export const updateProfile: AuthenticatedHandler = async (req, res) => {
         )`
       })
       .from(authentication)
+      .leftJoin(pdsHrDetails, eq(authentication.id, pdsHrDetails.employeeId))
+      .leftJoin(departments, eq(pdsHrDetails.departmentId, departments.id))
       .where(eq(authentication.id, targetUserId));
 
       res.json({
         success: true,
         message: 'No changes detected',
-        data: mapToAuthUser(user)
+        data: mapToAuthUser(user as UserWithRelations)
       });
       return;
     }
 
-    await db.update(authentication)
-      .set(mappedUpdates)
-      .where(eq(authentication.id, targetUserId));
+    await db.transaction(async (tx) => {
+        if (Object.keys(mappedAuthUpdates).length > 0) {
+            await tx.update(authentication)
+                .set(mappedAuthUpdates)
+                .where(eq(authentication.id, targetUserId));
+        }
+
+        if (Object.keys(mappedHrUpdates).length > 0) {
+            const existingHr = await tx.query.pdsHrDetails.findFirst({
+                where: eq(pdsHrDetails.employeeId, targetUserId)
+            });
+
+            if (existingHr) {
+                await tx.update(pdsHrDetails)
+                    .set(mappedHrUpdates)
+                    .where(eq(pdsHrDetails.employeeId, targetUserId));
+            } else {
+                await tx.insert(pdsHrDetails)
+                    .values({ ...mappedHrUpdates, employeeId: targetUserId });
+            }
+        }
+    });
 
     // Fetch updated user with duties
     const [updatedUser] = await db.select({
@@ -1708,10 +1608,25 @@ export const updateProfile: AuthenticatedHandler = async (req, res) => {
     .from(authentication)
     .where(eq(authentication.id, targetUserId));
 
+    const userWithHr = await db.query.authentication.findFirst({
+        where: eq(authentication.id, targetUserId),
+        with: {
+            hrDetails: {
+                with: {
+                    department: true,
+                    position: true
+                }
+            }
+        }
+    });
+
     res.json({
       success: true,
       message: 'Profile updated successfully',
-      data: mapToAuthUser(updatedUser)
+      data: mapToAuthUser({
+        ...updatedUser,
+        hrDetails: userWithHr?.hrDetails
+      } as UserWithRelations)
     });
   } catch (_error: unknown) {
 
@@ -1972,41 +1887,48 @@ export const setupPortal: AsyncHandler = async (req, res) => {
     // The Setup Portal should strictly NOT assign an Employee ID yet.
     // That happens later during biometric registration.
 
-    const [authResult] = await db.insert(authentication).values({
-      firstName: safeFirstName,
-      middleName: safeMiddleName,
-      lastName: safeLastName,
-      suffix: safeSuffix,
-      email,
-      passwordHash,
-      role: role,
-      department: hrDept.name,
-      departmentId: hrDept.id,
-      positionId: selectedPosition.id,
-      jobTitle: selectedPosition.itemNumber 
-        ? `${selectedPosition.positionTitle} (${selectedPosition.itemNumber})`
-        : selectedPosition.positionTitle,
-      salaryGrade: String(selectedPosition.salaryGrade),
-      stepIncrement: selectedPosition.stepIncrement ?? 1,
-      dutyType,
-      appointmentType,
-      employmentStatus: 'Active',
-      profileStatus: 'Initial',
-      isVerified: true, // System initiators (Admin/HR) from Setup Portal are pre-verified
-      verificationToken: null,
-      firstDayOfService: new Date().toISOString().split('T')[0]
+    await db.transaction(async (tx) => {
+      const [authResult] = await tx.insert(authentication).values({
+        firstName: safeFirstName,
+        middleName: safeMiddleName,
+        lastName: safeLastName,
+        suffix: safeSuffix,
+        email,
+        passwordHash,
+        role: role,
+        isVerified: true, // System initiators (Admin/HR) from Setup Portal are pre-verified
+        verificationToken: null,
+      });
+
+      const newUserId = authResult.insertId;
+
+      // Insert HR Details
+      await tx.insert(pdsHrDetails).values({
+        employeeId: newUserId,
+        departmentId: hrDept.id,
+        positionId: selectedPosition.id,
+        jobTitle: selectedPosition.itemNumber 
+          ? `${selectedPosition.positionTitle} (${selectedPosition.itemNumber})`
+          : selectedPosition.positionTitle,
+        positionTitle: selectedPosition.positionTitle,
+        salaryGrade: String(selectedPosition.salaryGrade),
+        stepIncrement: selectedPosition.stepIncrement ?? 1,
+        dutyType,
+        appointmentType,
+        employmentStatus: 'Active',
+        profileStatus: 'Initial',
+        firstDayOfService: new Date().toISOString().split('T')[0]
+      });
+
+      // Update position status
+      await tx.update(plantillaPositions)
+        .set({ 
+          isVacant: false, 
+          incumbentId: newUserId,
+          filledDate: new Date().toISOString().split('T')[0]
+        })
+        .where(eq(plantillaPositions.id, selectedPosition.id));
     });
-
-    const newUserId = authResult.insertId;
-
-    // Update position status
-    await db.update(plantillaPositions)
-      .set({ 
-        isVacant: false, 
-        incumbentId: newUserId,
-        filledDate: new Date().toISOString().split('T')[0]
-      })
-      .where(eq(plantillaPositions.id, selectedPosition.id));
 
     // Send Verification Email
     try {
@@ -2034,7 +1956,6 @@ export const checkGovtIdUniqueness: AsyncHandler = async (req, res) => {
       pagibigNumber, 
       tinNumber, 
       gsisNumber,
-      eligibilityNumber,
       excludeAuthId,
       excludeApplicantId
     } = req.query;
@@ -2046,7 +1967,6 @@ export const checkGovtIdUniqueness: AsyncHandler = async (req, res) => {
       pagibigNumber: String(pagibigNumber || ''),
       tinNumber: String(tinNumber || ''),
       gsisNumber: String(gsisNumber || ''),
-      eligibilityNumber: String(eligibilityNumber || ''),
       excludeAuthId: excludeAuthId ? Number(excludeAuthId) : undefined,
       excludeApplicantId: excludeApplicantId ? Number(excludeApplicantId) : undefined
     });

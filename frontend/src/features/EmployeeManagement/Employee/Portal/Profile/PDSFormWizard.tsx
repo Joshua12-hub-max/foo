@@ -5,6 +5,7 @@ import {
   Phone, User as UserIcon, Paperclip, AlertCircle
 } from "lucide-react";
 import { fetchEmployeeProfile, employeeApi, fetchEmployeeDocuments, getNextStepIncrement } from "@/api/employeeApi";
+import { pdsApi } from "@/api/pdsApi";
 import { EmployeeDocument } from "@/types";
 import Combobox from "@/components/Custom/Combobox";
 import ph from 'phil-reg-prov-mun-brgy';
@@ -19,12 +20,17 @@ import { LucideIcon } from "lucide-react";
 // ─── Metadata Types ──────────────────────────────────────────────────────────
 
 export interface PDSMetadata {
+  appointmentTypes?: string[];
+  dutyTypes?: string[];
+  roles?: string[];
   pdsCivilStatus?: string[];
   pdsBloodTypes?: string[];
   pdsCitizenship?: string[];
   pdsAppointmentStatus?: string[];
   pdsLdTypes?: string[];
   pdsGovtIdTypes?: string[];
+  employmentStatus?: string[];
+  pdsEligibilityTypes?: Record<string, unknown>[];
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -929,17 +935,28 @@ const PDSFormWizard: React.FC<PDSFormWizardProps> = ({ employeeId }) => {
       // 1. Update Core Employee Data
       await employeeApi.updateEmployee(employeeId, {
         lastName: data.surname, firstName: data.firstName, middleName: data.middleName, suffix: data.nameExtension,
-        birthDate: data.dob, placeOfBirth: data.pob, gender: data.sex as any, civilStatus: data.civilStatus as any,
-        heightM: data.height ? Number(data.height) : undefined, weightKg: data.weight ? Number(data.weight) : undefined, bloodType: data.bloodType, citizenship: data.citizenship,
-        umidNumber: data.umidId, pagibigNumber: data.pagibigId, philhealthNumber: data.philhealthNo, philsysId: data.philsysNo, tinNumber: data.tinNo, gsisNumber: data.gsisId, agencyEmployeeNo: data.agencyEmployeeNo,
-        telephoneNo: data.telephone, mobileNo: data.mobile, email: data.email,
-        resRegion: data.resRegion, resProvince: data.resProvince, resCity: data.resCityMunicipality, resBarangay: data.resBarangay, resZip: data.resZip, resHouseBlockLot: data.resHouseBlockLot, resStreet: data.resStreet, resSubdivision: data.resSubdivision,
-        permRegion: data.permRegion, permProvince: data.permProvince, permCity: data.permCityMunicipality, permBarangay: data.permBarangay, permZip: data.permZip, permHouseBlockLot: data.permHouseBlockLot, permStreet: data.permStreet, permSubdivision: data.permSubdivision,
+        email: data.email,
         jobTitle: data.jobTitle, itemNumber: data.itemNumber, salaryGrade: data.salaryGrade ? Number(data.salaryGrade) : undefined, stepIncrement: data.stepIncrement ? Number(data.stepIncrement) : undefined, appointmentType: data.appointmentType as any, employmentStatus: data.employmentStatus as any, station: data.station, officeAddress: data.officeAddress, dateHired: data.dateHired,
         dutyType: data.dutyType as any, isMeycauayan: data.isMeycauayan === 'true', firstDayOfService: data.firstDayOfService,
-        facebookUrl: data.facebookUrl, linkedinUrl: data.linkedinUrl, twitterHandle: data.twitterHandle,
-        emergencyContact: data.emergencyContactPerson, emergencyContactNumber: data.emergencyContactPhone,
-        govtIdType: data.govtIdType, govtIdNo: data.govtIdNo, govtIdIssuance: data.govtIdIssuance, dateAccomplished: data.dateAccomplished,
+        facebookUrl: data.facebookUrl, linkedinUrl: data.linkedinUrl, twitterHandle: data.twitterHandle
+      });
+
+      // 2. Update PDS Personal Information
+      await pdsApi.updatePdsPersonalInformation({
+        employeeId: employeeId,
+        birthDate: data.dob, placeOfBirth: data.pob, gender: data.sex, civilStatus: data.civilStatus,
+        heightM: data.height, weightKg: data.weight, bloodType: data.bloodType, citizenship: data.citizenship,
+        dualCountry: data.dualCountry,
+        umidNumber: data.umidId, pagibigNumber: data.pagibigId, philhealthNumber: data.philhealthNo, philsysId: data.philsysNo, tinNumber: data.tinNo, gsisNumber: data.gsisId, agencyEmployeeNo: data.agencyEmployeeNo,
+        telephoneNo: data.telephone, mobileNo: data.mobile, email: data.email,
+        resRegion: data.resRegion, resProvince: data.resProvince, resCity: data.resCityMunicipality, resBarangay: data.resBarangay, residentialZipCode: data.resZip, resHouseBlockLot: data.resHouseBlockLot, resStreet: data.resStreet, resSubdivision: data.resSubdivision,
+        permRegion: data.permRegion, permProvince: data.permProvince, permCity: data.permCityMunicipality, permBarangay: data.permBarangay, permanentZipCode: data.permZip, permHouseBlockLot: data.permHouseBlockLot, permStreet: data.permStreet, permSubdivision: data.permSubdivision,
+      });
+
+      // 3. Update PDS Declarations (Questions 34-40)
+      await pdsApi.updatePdsQuestions({
+        employeeId: employeeId,
+        govtIdType: data.govtIdType, govtIdNo: data.govtIdNo, govtIdIssuance: data.govtIdIssuance,
         relatedThirdDegree: data.relatedThirdDegree, relatedThirdDetails: data.relatedThirdDetails,
         relatedFourthDegree: data.relatedFourthDegree, relatedFourthDetails: data.relatedFourthDetails,
         foundGuiltyAdmin: data.foundGuiltyAdmin, foundGuiltyDetails: data.foundGuiltyDetails,
@@ -951,11 +968,10 @@ const PDSFormWizard: React.FC<PDSFormWizardProps> = ({ employeeId }) => {
         immigrantStatus: data.immigrantStatus, immigrantDetails: data.immigrantDetails,
         indigenousMember: data.indigenousMember, indigenousDetails: data.indigenousDetails,
         personWithDisability: data.personWithDisability, disabilityIdNo: data.disabilityIdNo,
-        soloParent: data.soloParent, soloParentIdNo: data.soloParentIdNo,
-        dualCountry: data.dualCountry
+        soloParent: data.soloParent, soloParentIdNo: data.soloParentIdNo
       });
 
-      // 2. Update PDS Sections (Bulk replace)
+      // 4. Update PDS Sections (Bulk replace)
       await Promise.all([
         employeeApi.updatePdsSection(employeeId, 'family', [
           ...data.children.map(c => ({ firstName: c.fullName.split(' ')[0], lastName: c.fullName.split(' ').slice(1).join(' '), dateOfBirth: c.dob, relationType: 'Child' })),
@@ -1006,22 +1022,83 @@ const PDSFormWizard: React.FC<PDSFormWizardProps> = ({ employeeId }) => {
     const loadData = async () => {
       setIsSubmitting(true);
       try {
-        const [profileRes, stepRes] = await Promise.all([fetchEmployeeProfile(employeeId), getNextStepIncrement(employeeId)]);
+        const [profileRes, stepRes, pdsPersonalRes, pdsQuestionsRes] = await Promise.all([
+          fetchEmployeeProfile(employeeId), 
+          getNextStepIncrement(employeeId),
+          pdsApi.getPdsPersonalInformation(employeeId),
+          pdsApi.getPdsQuestions(employeeId)
+        ]);
+        
         if (profileRes.success && profileRes.profile) {
           const p = profileRes.profile;
+          const personal = pdsPersonalRes.data.data;
+          const questions = pdsQuestionsRes.data.data;
+
           setData((prev: PDSFormData) => ({
             ...prev,
-            surname: p.lastName || "", firstName: p.firstName || "", middleName: p.middleName || "", nameExtension: p.suffix || "",
-            dob: p.birthDate ? new Date(p.birthDate).toISOString().split('T')[0] : "", pob: p.placeOfBirth || "",
-            sex: p.gender || "", civilStatus: p.civilStatus || "", height: p.heightM?.toString() || "", weight: p.weightKg?.toString() || "", bloodType: p.bloodType || "", citizenship: p.citizenship || "", dualCountry: p.dualCountry || "",
-            umidId: p.umidNumber || "", pagibigId: p.pagibigNumber || "", philhealthNo: p.philhealthNumber || "", philsysId: p.philsysId || "", tinNo: p.tinNumber || "", gsisId: p.gsisNumber || "", agencyEmployeeNo: p.agencyEmployeeNo || "",
-            resHouseStreet: p.resHouseBlockLot || "", resSubdivision: p.resSubdivision || "", resBarangay: p.resBarangay || "", resCityMunicipality: p.resCity || "", resProvince: p.resProvince || "", resZip: p.residentialZipCode || "", resRegion: p.resRegion || "", resHouseBlockLot: p.resHouseBlockLot || "", resStreet: p.resStreet || "",
-            permHouseStreet: p.permHouseBlockLot || "", permSubdivision: p.permSubdivision || "", permBarangay: p.permBarangay || "", permCityMunicipality: p.permCity || "", permProvince: p.permProvince || "", permZip: p.permanentZipCode || "", permRegion: p.permRegion || "", permHouseBlockLot: p.permHouseBlockLot || "", permStreet: p.permStreet || "",
-            telephone: p.telephoneNo || "", mobile: p.mobileNo || "", email: p.email || "",
-            spouseSurname: p.familyBackground?.find(f => f.relationType === 'Spouse')?.lastName || "", spouseFirstName: p.familyBackground?.find(f => f.relationType === 'Spouse')?.firstName || "", spouseMiddleName: p.familyBackground?.find(f => f.relationType === 'Spouse')?.middleName || "", spouseExtension: p.familyBackground?.find(f => f.relationType === 'Spouse')?.nameExtension || "", spouseOccupation: p.familyBackground?.find(f => f.relationType === 'Spouse')?.occupation || "", spouseEmployer: p.familyBackground?.find(f => f.relationType === 'Spouse')?.employer || "", spouseBusinessAddress: p.familyBackground?.find(f => f.relationType === 'Spouse')?.businessAddress || "", spouseTelephone: p.familyBackground?.find(f => f.relationType === 'Spouse')?.telephoneNo || "",
+            // Core Auth Data (Remains in Auth Profile)
+            surname: p.lastName || "", 
+            firstName: p.firstName || "", 
+            middleName: p.middleName || "", 
+            nameExtension: p.suffix || "",
+            email: p.email || "",
+            
+            // PDS Personal Information (From new table)
+            dob: personal?.birthDate ? new Date(personal.birthDate).toISOString().split('T')[0] : "", 
+            pob: personal?.placeOfBirth || "",
+            sex: personal?.gender || "", 
+            civilStatus: personal?.civilStatus || "", 
+            height: personal?.heightM?.toString() || "", 
+            weight: personal?.weightKg?.toString() || "", 
+            bloodType: personal?.bloodType || "", 
+            citizenship: personal?.citizenship || "", 
+            dualCountry: personal?.dualCountry || "",
+            umidId: personal?.umidNumber || "", 
+            pagibigId: personal?.pagibigNumber || "", 
+            philhealthNo: personal?.philhealthNumber || "", 
+            philsysId: personal?.philsysId || "", 
+            tinNo: personal?.tinNumber || "", 
+            gsisId: personal?.gsisNumber || "", 
+            agencyEmployeeNo: personal?.agencyEmployeeNo || "",
+            
+            resHouseBlockLot: personal?.resHouseBlockLot || "", 
+            resStreet: personal?.resStreet || "",
+            resSubdivision: personal?.resSubdivision || "", 
+            resBarangay: personal?.resBarangay || "", 
+            resCityMunicipality: personal?.resCity || "", 
+            resProvince: personal?.resProvince || "", 
+            resZip: personal?.residentialZipCode || "", 
+            resRegion: personal?.resRegion || "", 
+            
+            permHouseBlockLot: personal?.permHouseBlockLot || "", 
+            permStreet: personal?.permStreet || "",
+            permSubdivision: personal?.permSubdivision || "", 
+            permBarangay: personal?.permBarangay || "", 
+            permCityMunicipality: personal?.permCity || "", 
+            permProvince: personal?.permProvince || "", 
+            permZip: personal?.permanentZipCode || "", 
+            permRegion: personal?.permRegion || "", 
+            
+            telephone: personal?.telephoneNo || "", 
+            mobile: personal?.mobileNo || "",
+
+            // Other PDS Sections (Stay as they were, they didn't live in Auth table to begin with)
+            spouseSurname: p.familyBackground?.find(f => f.relationType === 'Spouse')?.lastName || "", 
+            spouseFirstName: p.familyBackground?.find(f => f.relationType === 'Spouse')?.firstName || "", 
+            spouseMiddleName: p.familyBackground?.find(f => f.relationType === 'Spouse')?.middleName || "", 
+            spouseExtension: p.familyBackground?.find(f => f.relationType === 'Spouse')?.nameExtension || "", 
+            spouseOccupation: p.familyBackground?.find(f => f.relationType === 'Spouse')?.occupation || "", 
+            spouseEmployer: p.familyBackground?.find(f => f.relationType === 'Spouse')?.employer || "", 
+            spouseBusinessAddress: p.familyBackground?.find(f => f.relationType === 'Spouse')?.businessAddress || "", 
+            spouseTelephone: p.familyBackground?.find(f => f.relationType === 'Spouse')?.telephoneNo || "",
             children: p.familyBackground?.filter(f => f.relationType === 'Child').map(c => ({ id: c.id?.toString() || uid(), fullName: `${c.firstName} ${c.lastName}`, dob: c.dateOfBirth || "" })) || [],
-            fatherSurname: p.familyBackground?.find(f => f.relationType === 'Father')?.lastName || "", fatherFirstName: p.familyBackground?.find(f => f.relationType === 'Father')?.firstName || "", fatherMiddleName: p.familyBackground?.find(f => f.relationType === 'Father')?.middleName || "", fatherExtension: p.familyBackground?.find(f => f.relationType === 'Father')?.nameExtension || "",
-            motherSurname: p.familyBackground?.find(f => f.relationType === 'Mother')?.lastName || "", motherFirstName: p.familyBackground?.find(f => f.relationType === 'Mother')?.firstName || "", motherMiddleName: p.familyBackground?.find(f => f.relationType === 'Mother')?.middleName || "",
+            fatherSurname: p.familyBackground?.find(f => f.relationType === 'Father')?.lastName || "", 
+            fatherFirstName: p.familyBackground?.find(f => f.relationType === 'Father')?.firstName || "", 
+            fatherMiddleName: p.familyBackground?.find(f => f.relationType === 'Father')?.middleName || "", 
+            fatherExtension: p.familyBackground?.find(f => f.relationType === 'Father')?.nameExtension || "",
+            motherSurname: p.familyBackground?.find(f => f.relationType === 'Mother')?.lastName || "", 
+            motherFirstName: p.familyBackground?.find(f => f.relationType === 'Mother')?.firstName || "", 
+            motherMiddleName: p.familyBackground?.find(f => f.relationType === 'Mother')?.middleName || "",
             education: {
               Elementary: { school: p.education?.find(e => e.level === 'Elementary')?.institution || "", course: p.education?.find(e => e.level === 'Elementary')?.degree || "", from: p.education?.find(e => e.level === 'Elementary')?.startDate?.toString() || "", to: p.education?.find(e => e.level === 'Elementary')?.endDate?.toString() || "", units: p.education?.find(e => e.level === 'Elementary')?.unitsEarned || "", yearGrad: p.education?.find(e => e.level === 'Elementary')?.yearGraduated?.toString() || "", honors: p.education?.find(e => e.level === 'Elementary')?.honors || "" },
               Secondary: { school: p.education?.find(e => e.level === 'Secondary')?.institution || "", course: p.education?.find(e => e.level === 'Secondary')?.degree || "", from: p.education?.find(e => e.level === 'Secondary')?.startDate?.toString() || "", to: p.education?.find(e => e.level === 'Secondary')?.endDate?.toString() || "", units: p.education?.find(e => e.level === 'Secondary')?.unitsEarned || "", yearGrad: p.education?.find(e => e.level === 'Secondary')?.yearGraduated?.toString() || "", honors: p.education?.find(e => e.level === 'Secondary')?.honors || "" },
@@ -1029,19 +1106,77 @@ const PDSFormWizard: React.FC<PDSFormWizardProps> = ({ employeeId }) => {
               College: { school: p.education?.find(e => e.level === 'College')?.institution || "", course: p.education?.find(e => e.level === 'College')?.degree || "", from: p.education?.find(e => e.level === 'College')?.startDate?.toString() || "", to: p.education?.find(e => e.level === 'College')?.endDate?.toString() || "", units: p.education?.find(e => e.level === 'College')?.unitsEarned || "", yearGrad: p.education?.find(e => e.level === 'College')?.yearGraduated?.toString() || "", honors: p.education?.find(e => e.level === 'College')?.honors || "" },
               Graduate: { school: p.education?.find(e => e.level === 'Graduate Studies')?.institution || "", course: p.education?.find(e => e.level === 'Graduate Studies')?.degree || "", from: p.education?.find(e => e.level === 'Graduate Studies')?.startDate?.toString() || "", to: p.education?.find(e => e.level === 'Graduate Studies')?.endDate?.toString() || "", units: p.education?.find(e => e.level === 'Graduate Studies')?.unitsEarned || "", yearGrad: p.education?.find(e => e.level === 'Graduate Studies')?.yearGraduated?.toString() || "", honors: p.education?.find(e => e.level === 'Graduate Studies')?.honors || "" }
             },
-            eligibilities: p.eligibilityNumber ? [{ id: uid(), name: p.eligibilityType || "", rating: "", examDate: p.eligibilityDate || "", examPlace: "", licenseNo: p.eligibilityNumber || "", licenseValidUntil: "" }] : [emptyEligibility()],
+            eligibilities: (p.eligibilities && p.eligibilities.length > 0) 
+              ? p.eligibilities.map(e => ({ 
+                  id: e.id?.toString() || uid(), 
+                  name: e.eligibilityType || "", 
+                  rating: e.rating?.toString() || "", 
+                  examDate: e.examDate || "", 
+                  examPlace: e.examPlace || "", 
+                  licenseNo: e.eligibilityNumber || "", 
+                  licenseValidUntil: e.validityDate || "" 
+                })) 
+              : [emptyEligibility()],
             workExperiences: (p.workExperience && p.workExperience.length > 0) ? p.workExperience.map(w => ({ id: w.id?.toString() || uid(), positionTitle: w.positionTitle, department: w.companyName, from: w.dateFrom, to: w.dateTo || "", monthlySalary: w.monthlySalary || "", salaryGrade: w.salaryGrade || "", appointmentStatus: w.appointmentStatus || "", govtService: w.isGovernment ? "Y" : "N" })) : [emptyWork()],
             voluntaryWorks: (p.voluntaryWork && p.voluntaryWork.length > 0) ? p.voluntaryWork.map(v => ({ id: v.id?.toString() || uid(), organization: v.organizationName, from: v.dateFrom || "", to: v.dateTo || "", hours: v.hoursNumber?.toString() || "", positionNature: v.position || "" })) : [emptyVoluntary()],
             trainings: (p.learningDevelopment && p.learningDevelopment.length > 0) ? p.learningDevelopment.map(t => ({ id: t.id?.toString() || uid(), title: t.title, from: t.dateFrom || "", to: t.dateTo || "", hours: t.hoursNumber?.toString() || "", ldType: t.typeOfLd || "", conductedBy: t.conductedBy || "" })) : [emptyTraining()],
-            specialSkills: p.otherInfo?.filter(o => o.type === 'Skill').map(o => o.description).join(", ") || "", nonAcademicDistinctions: p.otherInfo?.filter(o => o.type === 'Recognition').map(o => o.description).join(", ") || "", memberships: p.otherInfo?.filter(o => o.type === 'Membership').map(o => o.description).join(", ") || "",
-            relatedThirdDegree: p.relatedThirdDegree || "No", relatedThirdDetails: p.relatedThirdDetails || "", relatedFourthDegree: p.relatedFourthDegree || "No", relatedFourthDetails: p.relatedFourthDetails || "", foundGuiltyAdmin: p.foundGuiltyAdmin || "No", foundGuiltyDetails: p.foundGuiltyDetails || "", criminallyCharged: p.criminallyCharged || "No", dateFiled: p.dateFiled || "", statusOfCase: p.statusOfCase || "", convictedCrime: p.convictedCrime || "No", convictedDetails: p.convictedDetails || "", separatedFromService: p.separatedFromService || "No", separatedDetails: p.separatedDetails || "", electionCandidate: p.electionCandidate || "No", electionDetails: p.electionDetails || "", resignedToPromote: p.resignedToPromote || "No", resignedDetails: p.resignedDetails || "", immigrantStatus: p.immigrantStatus || "No", immigrantDetails: p.immigrantDetails || "", indigenousMember: p.indigenousMember || "No", indigenousDetails: p.indigenousDetails || "", personWithDisability: p.personWithDisability || "No", disabilityIdNo: p.disabilityIdNo || "", soloParent: p.soloParent || "No", soloParentIdNo: p.soloParentIdNo || "",
+            specialSkills: p.otherInfo?.filter(o => o.type === 'Skill').map(o => o.description).join(", ") || "", 
+            nonAcademicDistinctions: p.otherInfo?.filter(o => o.type === 'Recognition').map(o => o.description).join(", ") || "", 
+            memberships: p.otherInfo?.filter(o => o.type === 'Membership').map(o => o.description).join(", ") || "",
+            
+            // PDS Declarations (From new table)
+            relatedThirdDegree: questions?.relatedThirdDegree || "No", 
+            relatedThirdDetails: questions?.relatedThirdDetails || "", 
+            relatedFourthDegree: questions?.relatedFourthDegree || "No", 
+            relatedFourthDetails: questions?.relatedFourthDetails || "", 
+            foundGuiltyAdmin: questions?.foundGuiltyAdmin || "No", 
+            foundGuiltyDetails: questions?.foundGuiltyDetails || "", 
+            criminallyCharged: questions?.criminallyCharged || "No", 
+            dateFiled: questions?.dateFiled || "", 
+            statusOfCase: questions?.statusOfCase || "", 
+            convictedCrime: questions?.convictedCrime || "No", 
+            convictedDetails: questions?.convictedDetails || "", 
+            separatedFromService: questions?.separatedFromService || "No", 
+            separatedDetails: questions?.separatedDetails || "", 
+            electionCandidate: questions?.electionCandidate || "No", 
+            electionDetails: questions?.electionDetails || "", 
+            resignedToPromote: questions?.resignedToPromote || "No", 
+            resignedDetails: questions?.resignedDetails || "", 
+            immigrantStatus: questions?.immigrantStatus || "No", 
+            immigrantDetails: questions?.immigrantDetails || "", 
+            indigenousMember: questions?.indigenousMember || "No", 
+            indigenousDetails: questions?.indigenousDetails || "", 
+            personWithDisability: questions?.personWithDisability || "No", 
+            disabilityIdNo: questions?.disabilityIdNo || "", 
+            soloParent: questions?.soloParent || "No", 
+            soloParentIdNo: questions?.soloParentIdNo || "",
+            govtIdType: questions?.govtIdType || "", 
+            govtIdNo: questions?.govtIdNo || "", 
+            govtIdIssuance: questions?.govtIdIssuance || "",
+
             references: (p.references && p.references.length > 0) ? p.references.map(r => ({ name: r.name, address: r.address || "", contact: r.telNo || "" })) : [{ name: "", address: "", contact: "" }, { name: "", address: "", contact: "" }, { name: "", address: "", contact: "" }],
-            govtIdType: p.govtIdType || "", govtIdNo: p.govtIdNo || "", govtIdIssuance: p.govtIdIssuance || "",
-            department: p.department || "", jobTitle: p.positionTitle || p.jobTitle || "", itemNumber: p.itemNumber || "", salaryGrade: p.salaryGrade || "", stepIncrement: p.stepIncrement?.toString() || "", appointmentType: p.appointmentType || "", employmentStatus: p.employmentStatus || "", station: p.station || "", officeAddress: p.officeAddress || "", dateHired: p.dateHired ? new Date(p.dateHired).toISOString().split('T')[0] : "", firstDayOfService: p.firstDayOfService ? new Date(p.firstDayOfService).toISOString().split('T')[0] : "",
-            dutyType: p.dutyType || "Standard", isMeycauayan: String(p.isMeycauayan || "false"),
-            facebookUrl: p.facebookUrl || "", linkedinUrl: p.linkedinUrl || "", twitterHandle: p.twitterHandle || "",
-            emergencyContactPerson: p.emergencyContact || "", emergencyContactPhone: p.emergencyContactNumber || "",
-            nextStepDate: stepRes.nextStepDate ? new Date(stepRes.nextStepDate).toLocaleDateString() : "N/A", totalLwopDays: stepRes.totalLwopDays || 0,
+            
+            // Core HR Fields (Remain in Auth Profile)
+            department: p.department || "", 
+            jobTitle: p.positionTitle || p.jobTitle || "", 
+            itemNumber: p.itemNumber || "", 
+            salaryGrade: p.salaryGrade || "", 
+            stepIncrement: p.stepIncrement?.toString() || "", 
+            appointmentType: p.appointmentType || "", 
+            employmentStatus: p.employmentStatus || "", 
+            station: p.station || "", 
+            officeAddress: p.officeAddress || "", 
+            dateHired: p.dateHired ? new Date(p.dateHired).toISOString().split('T')[0] : "", 
+            firstDayOfService: p.firstDayOfService ? new Date(p.firstDayOfService).toISOString().split('T')[0] : "",
+            dutyType: p.dutyType || "Standard", 
+            isMeycauayan: String(p.isMeycauayan || "false"),
+            facebookUrl: p.facebookUrl || "", 
+            linkedinUrl: p.linkedinUrl || "", 
+            twitterHandle: p.twitterHandle || "",
+            emergencyContactPerson: p.emergencyContact || "", 
+            emergencyContactPhone: p.emergencyContactNumber || "",
+            nextStepDate: stepRes.nextStepDate ? new Date(stepRes.nextStepDate).toLocaleDateString() : "N/A", 
+            totalLwopDays: stepRes.totalLwopDays || 0,
           }));
         }
       } catch (err) { console.error("Failed to load employee PDS:", err); } finally { setIsSubmitting(false); }
@@ -1070,16 +1205,16 @@ const PDSFormWizard: React.FC<PDSFormWizardProps> = ({ employeeId }) => {
           ))}
         </div></div>
         <div className="w-full"><div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          {activeSection === 0 && <StepPersonal data={data} set={set} metadata={metadata} isIdTakenMap={isIdTakenMap} />}
+          {activeSection === 0 && <StepPersonal data={data} set={set} metadata={metadata as PDSMetadata} isIdTakenMap={isIdTakenMap} />}
           {activeSection === 1 && <StepFamily data={data} set={set} />}
           {activeSection === 2 && <StepEducation data={data} set={set} />}
           {activeSection === 3 && <StepEligibility data={data} set={set} />}
-          {activeSection === 4 && <StepWork data={data} set={set} metadata={metadata} />}
+          {activeSection === 4 && <StepWork data={data} set={set} metadata={metadata as PDSMetadata} />}
           {activeSection === 5 && <StepVoluntary data={data} set={set} />}
-          {activeSection === 6 && <StepTraining data={data} set={set} metadata={metadata} />}
+          {activeSection === 6 && <StepTraining data={data} set={set} metadata={metadata as PDSMetadata} />}
           {activeSection === 7 && <StepOtherInfo data={data} set={set} employeeId={employeeId} />}
-          {activeSection === 8 && <StepDeclarations data={data} set={set} metadata={metadata} />}
-          {activeSection === 9 && <StepHRDetails data={data} set={set} metadata={metadata} />}
+          {activeSection === 8 && <StepDeclarations data={data} set={set} metadata={metadata as PDSMetadata} />}
+          {activeSection === 9 && <StepHRDetails data={data} set={set} metadata={metadata as PDSMetadata} />}
         </div></div>
       </div>
     </div>

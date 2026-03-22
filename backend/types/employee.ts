@@ -1,6 +1,6 @@
 import { authentication } from '../db/schema.js';
 import { InferSelectModel } from 'drizzle-orm';
-import { UserRole, EmploymentStatus, Gender, CivilStatus, AppointmentType } from './index.js';
+import { UserRole, EmploymentStatus, AppointmentType } from './index.js';
 
 export type EmployeeDbModel = InferSelectModel<typeof authentication>;
 
@@ -23,49 +23,6 @@ export interface EmployeeMapperInput {
   contractEndDate?: string | null;
   regularizationDate?: string | null;
   isRegular?: boolean | null;
-  birthDate?: string | null;
-  gender?: string | null;
-  civilStatus?: string | null;
-  nationality?: string | null;
-  phoneNumber?: string | null;
-  address?: string | null;
-  permanentAddress?: string | null;
-  avatarUrl?: string | null;
-  umidNumber?: string | null;
-  philsysId?: string | null;
-  philhealthNumber?: string | null;
-  pagibigNumber?: string | null;
-  tinNumber?: string | null;
-  gsisNumber?: string | null;
-  educationalBackground?: string | null;
-  schoolName?: string | null;
-  course?: string | null;
-  yearGraduated?: string | null;
-  skillsText?: string | null;
-  salaryGrade?: string | null;
-  stepIncrement?: number | null;
-  appointmentType?: string | null;
-  station?: string | null;
-  itemNumber?: string | null;
-  positionId?: number | null;
-  duties?: string | null;
-  shift?: string | null;
-  heightM?: string | null;
-  weightKg?: string | null;
-  bloodType?: string | null;
-  placeOfBirth?: string | null;
-  residentialAddress?: string | null;
-  residentialZipCode?: string | null;
-  permanentZipCode?: string | null;
-  telephoneNo?: string | null;
-  mobileNo?: string | null;
-  agencyEmployeeNo?: string | null;
-  emergencyContact?: string | null;
-  emergencyContactNumber?: string | null;
-  eligibilityType?: string | null;
-  eligibilityNumber?: string | null;
-  eligibilityDate?: string | null;
-  yearsOfExperience?: string | null;
   facebookUrl?: string | null;
   linkedinUrl?: string | null;
   twitterHandle?: string | null;
@@ -74,61 +31,22 @@ export interface EmployeeMapperInput {
   originalAppointmentDate?: string | null;
   lastPromotionDate?: string | null;
   religion?: string | null;
-  citizenship?: string | null;
-  citizenshipType?: string | null;
-  resHouseBlockLot?: string | null;
-  resStreet?: string | null;
-  resSubdivision?: string | null;
-  resBarangay?: string | null;
-  resCity?: string | null;
-  resProvince?: string | null;
-  resRegion?: string | null;
-  permHouseBlockLot?: string | null;
-  permStreet?: string | null;
-  permSubdivision?: string | null;
-  permBarangay?: string | null;
-  permCity?: string | null;
-  permProvince?: string | null;
-  permRegion?: string | null;
+  barangay?: string | null;
   startTime?: string | null;
   endTime?: string | null;
   isBiometricEnrolled?: boolean | null;
   dutyType?: string | null;
-
-  relatedThirdDegree?: string | null;
-  relatedThirdDetails?: string | null;
-  relatedFourthDegree?: string | null;
-  relatedFourthDetails?: string | null;
-  foundGuiltyAdmin?: string | null;
-  foundGuiltyDetails?: string | null;
-  criminallyCharged?: string | null;
-  dateFiled?: string | null;
-  statusOfCase?: string | null;
-  convictedCrime?: string | null;
-  convictedDetails?: string | null;
-  separatedFromService?: string | null;
-  separatedDetails?: string | null;
-  electionCandidate?: string | null;
-  electionDetails?: string | null;
-  resignedToPromote?: string | null;
-  resignedDetails?: string | null;
-  immigrantStatus?: string | null;
-  immigrantDetails?: string | null;
-  indigenousMember?: string | null;
-  indigenousDetails?: string | null;
-  personWithDisability?: string | null;
-  disabilityIdNo?: string | null;
-  soloParent?: string | null;
-  soloParentIdNo?: string | null;
-
-  // Other PDS 2025 Fields
-  dualCountry?: string | null;
-  govtIdType?: string | null;
-  govtIdNo?: string | null;
-  govtIdIssuance?: string | null;
   isMeycauayan?: boolean | null;
-  dateAccomplished?: string | null;
-  pdsQuestions?: any | null;
+  avatarUrl?: string | null;
+  salaryGrade?: string | null;
+  stepIncrement?: number | null;
+  appointmentType?: string | null;
+  station?: string | null;
+  positionId?: number | null;
+  itemNumber?: string | null;
+  duties?: string | null;
+  shift?: string | null;
+  resBarangay?: string | null;
 }
 
 /**
@@ -154,122 +72,29 @@ export interface EmployeeApiResponse {
   contractEndDate: string | null;
   regularizationDate: string | null;
   isRegular: boolean;
-  birthDate: string | null;
-  gender: Gender | null;
-  civilStatus: CivilStatus | null;
-  nationality: string | null;
-  phoneNumber: string | null;
-  address: string | null;
-  permanentAddress: string | null;
   avatarUrl: string | null;
-  umidNumber: string | null;
-  philsysId: string | null;
-  philhealthNumber: string | null;
-  pagibigNumber: string | null;
-  tinNumber: string | null;
-  gsisNumber: string | null;
-  educationalBackground: string | null;
-  schoolName: string | null;
-  course: string | null;
-  yearGraduated: string | null;
-  coreCompetencies: string | null;
   salaryGrade: string | null;
   stepIncrement: number;
   appointmentType: AppointmentType | null;
   station: string | null;
   itemNumber: string | null;
   positionId: number | null;
-  duties: string; // From COALESCE in SQL
+  duties: string; 
   shift: string | null;
-  
-  // PDS / Extended Fields
-  heightM: string | null;
-  weightKg: string | null;
-  bloodType: string | null;
-  placeOfBirth: string | null;
-  residentialAddress: string | null;
-  residentialZipCode: string | null;
-  permanentZipCode: string | null;
-  telephoneNo: string | null;
-  mobileNo: string | null;
-  agencyEmployeeNo: string | null;
-  emergencyContact: string | null;
-  emergencyContactNumber: string | null;
-  
-  // Eligibility
-  eligibilityType: string | null;
-  eligibilityNumber: string | null;
-  eligibilityDate: string | null;
-  yearsOfExperience: number;
-
-  // Social Media
   facebookUrl: string | null;
   linkedinUrl: string | null;
   twitterHandle: string | null;
-
-  // Additional
   firstDayOfService: string | null;
   officeAddress: string | null;
   originalAppointmentDate: string | null;
   lastPromotionDate: string | null;
-  
-  // New Precision Fields
   barangay: string | null;
   religion: string | null;
-  citizenship: string | null;
-  citizenshipType: string | null;
-  resHouseBlockLot: string | null;
-  resStreet: string | null;
-  resSubdivision: string | null;
-  resBarangay: string | null;
-  resCity: string | null;
-  resProvince: string | null;
-  permHouseBlockLot: string | null;
-  permStreet: string | null;
-  permSubdivision: string | null;
-  permBarangay: string | null;
-  permCity: string | null;
-  permProvince: string | null;
   isBiometricEnrolled: boolean;
   startTime: string | null;
   endTime: string | null;
-
-  // Section IX: Declarations
-  relatedThirdDegree: string | null;
-  relatedThirdDetails: string | null;
-  relatedFourthDegree: string | null;
-  relatedFourthDetails: string | null;
-  foundGuiltyAdmin: string | null;
-  foundGuiltyDetails: string | null;
-  criminallyCharged: string | null;
-  dateFiled: string | null;
-  statusOfCase: string | null;
-  convictedCrime: string | null;
-  convictedDetails: string | null;
-  separatedFromService: string | null;
-  separatedDetails: string | null;
-  electionCandidate: string | null;
-  electionDetails: string | null;
-  resignedToPromote: string | null;
-  resignedDetails: string | null;
-  immigrantStatus: string | null;
-  immigrantDetails: string | null;
-  indigenousMember: string | null;
-  indigenousDetails: string | null;
-  personWithDisability: string | null;
-  disabilityIdNo: string | null;
-  soloParent: string | null;
-  soloParentIdNo: string | null;
-
-  // Other PDS 2025 Fields
-  dualCountry: string | null;
-  govtIdType: string | null;
-  govtIdNo: string | null;
-  govtIdIssuance: string | null;
   isMeycauayan: boolean;
   dutyType: string | null;
-  dateAccomplished: string | null;
-  pdsQuestions: any | null;
 }
 
 /**

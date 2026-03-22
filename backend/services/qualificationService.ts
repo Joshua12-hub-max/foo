@@ -1,6 +1,6 @@
 
 import { db } from '../db/index.js';
-import { qualificationStandards, authentication, plantillaPositions } from '../db/schema.js';
+import { qualificationStandards, authentication, plantillaPositions, pdsEducation, pdsWorkExperience, pdsEligibility } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
 
 export interface ValidationResult {
@@ -33,15 +33,12 @@ export class QualificationService {
    * Validate an employee against a position's Qualification Standards
    */
   static async validate(employeeId: number, positionId: number): Promise<ValidationResult> {
-    // 1. Get Employee Details
+    // 1. Get Employee Details from Auth
     const [employee] = await db.select({
         id: authentication.id,
         firstName: authentication.firstName,
         lastName: authentication.lastName,
-        employeeId: authentication.employeeId,
-        eligibilityType: authentication.eligibilityType,
-        highestEducation: authentication.educationalBackground,
-        yearsOfExperience: authentication.yearsOfExperience
+        employeeId: authentication.employeeId
     })
     .from(authentication)
     .where(eq(authentication.id, employeeId))
@@ -51,7 +48,27 @@ export class QualificationService {
         throw new Error('Employee not found');
     }
 
-    // 2. Get Position & QS
+    // 2. Calculate PDS Data
+    const educations = await db.select().from(pdsEducation).where(eq(pdsEducation.employeeId, employeeId));    // Extract highest education
+    let highestEducation = educations.length > 0 ? educations[0].degreeCourse || 
+                                            educations[0].level : null;
+
+    const experiences = await db.select().from(pdsWorkExperience).where(eq(pdsWorkExperience.employeeId, employeeId));
+    let totalExperienceYears = 0;
+    for (const exp of experiences) {
+        if (exp.dateFrom) {
+            const start = new Date(exp.dateFrom);
+            const end = exp.dateTo ? new Date(exp.dateTo) : new Date();
+            const years = (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24 * 365);
+            totalExperienceYears += years;
+        }
+    }
+    const empExp = Math.floor(totalExperienceYears); // Round down to complete years
+
+    const eligibilities = await db.select().from(pdsEligibility).where(eq(pdsEligibility.employeeId, employeeId));
+    const eligibilityType = eligibilities.length > 0 ? eligibilities.map(e => e.eligibilityName).join(', ') : null;
+
+    // 3. Get Position & QS
     const [position] = await db.select({
         id: plantillaPositions.id,
         positionTitle: plantillaPositions.positionTitle,
@@ -75,9 +92,9 @@ export class QualificationService {
                 id: employee.id,
                 name: `${employee.firstName} ${employee.lastName}`,
                 employeeId: employee.employeeId || '',
-                education: employee.highestEducation,
-                experienceYears: Number(employee.yearsOfExperience) || 0,
-                eligibility: employee.eligibilityType
+                education: highestEducation,
+                experienceYears: empExp,
+                eligibility: eligibilityType
             },
             positionDetails: {
                 id: position.id,
@@ -102,20 +119,19 @@ export class QualificationService {
         throw new Error('Qualification Standard not found');
     }
 
-    // 3. Validation Logic
+    // 4. Validation Logic
     const missingRequirements: string[] = [];
     let score = 0;
     const maxScore = 4; // Education, Experience, Training, Eligibility
 
     // Education (25%)
-    if (employee.highestEducation) {
+    if (highestEducation) {
         score += 1;
     } else {
         missingRequirements.push(`Education: ${qs.educationRequirement}`);
     }
 
     // Experience (25%)
-    const empExp = Number(employee.yearsOfExperience) || 0;
     const requiredExp = qs.experienceYears || 0;
     if (empExp >= requiredExp) {
         score += 1;
@@ -132,8 +148,8 @@ export class QualificationService {
     }
 
     // Eligibility (25%)
-    if (employee.eligibilityType) {
-        const employeeElig = employee.eligibilityType.toLowerCase();
+    if (eligibilityType) {
+        const employeeElig = eligibilityType.toLowerCase();
         const requiredElig = (qs.eligibilityRequired || '').toLowerCase();
 
         if (
@@ -148,7 +164,7 @@ export class QualificationService {
         ) {
             score += 1;
         } else {
-            missingRequirements.push(`Eligibility: ${qs.eligibilityRequired} (has ${employee.eligibilityType})`);
+            missingRequirements.push(`Eligibility: ${qs.eligibilityRequired} (has ${eligibilityType})`);
         }
     } else {
         missingRequirements.push(`Eligibility: ${qs.eligibilityRequired}`);
@@ -165,9 +181,9 @@ export class QualificationService {
             id: employee.id,
             name: `${employee.firstName} ${employee.lastName}`,
             employeeId: employee.employeeId || '',
-            education: employee.highestEducation,
+            education: highestEducation,
             experienceYears: empExp,
-            eligibility: employee.eligibilityType
+            eligibility: eligibilityType
         },
         positionDetails: {
             id: position.id,

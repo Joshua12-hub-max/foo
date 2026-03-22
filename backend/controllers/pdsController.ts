@@ -13,7 +13,9 @@ import {
   pdsVoluntaryWork, 
   pdsLearningDevelopment, 
   pdsOtherInfo, 
-  pdsReferences 
+  pdsReferences,
+  pdsPersonalInformation,
+  pdsDeclarations
 } from '../db/schema.js';
 import { PDSUpdateSchema } from '../schemas/employeeSchema.js';
 
@@ -182,7 +184,122 @@ export const parsePDSUpload = async (req: Request, res: Response): Promise<void>
     });
   }
 };
+/**
+ * Get PDS Personal Information
+ */
+export const getPdsPersonal = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const authReq = req as AuthenticatedRequest;
+    const requesterId = authReq.user?.id;
+    const targetEmployeeId = req.query.employeeId as string;
 
+    if (!requesterId) {
+      res.status(401).json({ success: false, message: 'Not authenticated' });
+      return;
+    }
 
+    let userId = requesterId;
+    if (targetEmployeeId && targetEmployeeId !== requesterId.toString()) {
+      userId = parseInt(targetEmployeeId);
+    }
 
+    const rows = await db.select().from(pdsPersonalInformation).where(sql`employee_id = ${userId}`);
+    res.json({ success: true, data: rows[0] || null });
+  } catch (_error) {
+    res.status(500).json({ success: false, message: 'Failed to fetch personal information' });
+  }
+};
 
+/**
+ * Update PDS Personal Information
+ */
+export const updatePdsPersonal = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const authReq = req as AuthenticatedRequest;
+    const requesterId = authReq.user?.id;
+    const data = req.body;
+    const targetEmployeeId = data.employeeId;
+
+    if (!requesterId) {
+      res.status(401).json({ success: false, message: 'Not authenticated' });
+      return;
+    }
+
+    let userId = requesterId;
+    if (targetEmployeeId && targetEmployeeId !== requesterId.toString()) {
+      userId = parseInt(targetEmployeeId);
+    }
+
+    const filteredData = { ...data, employeeId: userId };
+    delete filteredData.id;
+
+    await db.transaction(async (tx) => {
+      await tx.delete(pdsPersonalInformation).where(sql`employee_id = ${userId}`);
+      await tx.insert(pdsPersonalInformation).values([filteredData]);
+    });
+
+    res.json({ success: true, message: 'Personal information updated successfully' });
+  } catch (_error) {
+    res.status(500).json({ success: false, message: 'Failed to update personal information' });
+  }
+};
+
+/**
+ * Get PDS Declarations (Questions 34-40)
+ */
+export const getPdsQuestions = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const authReq = req as AuthenticatedRequest;
+    const requesterId = authReq.user?.id;
+    const targetEmployeeId = req.query.employeeId as string;
+
+    if (!requesterId) {
+      res.status(401).json({ success: false, message: 'Not authenticated' });
+      return;
+    }
+
+    let userId = requesterId;
+    if (targetEmployeeId && targetEmployeeId !== requesterId.toString()) {
+      userId = parseInt(targetEmployeeId);
+    }
+
+    const rows = await db.select().from(pdsDeclarations).where(sql`employee_id = ${userId}`);
+    res.json({ success: true, data: rows[0] || null });
+  } catch (_error) {
+    res.status(500).json({ success: false, message: 'Failed to fetch PDS questions' });
+  }
+};
+
+/**
+ * Update PDS Declarations
+ */
+export const updatePdsQuestions = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const authReq = req as AuthenticatedRequest;
+    const requesterId = authReq.user?.id;
+    const data = req.body;
+    const targetEmployeeId = data.employeeId;
+
+    if (!requesterId) {
+      res.status(401).json({ success: false, message: 'Not authenticated' });
+      return;
+    }
+
+    let userId = requesterId;
+    if (targetEmployeeId && targetEmployeeId !== requesterId.toString()) {
+      userId = parseInt(targetEmployeeId);
+    }
+
+    const filteredData = { ...data, employeeId: userId };
+    delete filteredData.id;
+
+    await db.transaction(async (tx) => {
+      await tx.delete(pdsDeclarations).where(sql`employee_id = ${userId}`);
+      await tx.insert(pdsDeclarations).values([filteredData]);
+    });
+
+    res.json({ success: true, message: 'Questions updated successfully' });
+  } catch (_error) {
+    res.status(500).json({ success: false, message: 'Failed to update PDS questions' });
+  }
+};

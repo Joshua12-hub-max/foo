@@ -147,12 +147,12 @@ export interface Child {
 
 export interface Eligibility {
   id?: string | number;
-  name: string;
-  rating: string;
-  examDate: string;
-  examPlace: string;
-  licenseNo: string;
-  licenseValidUntil: string;
+  eligibilityType: string;
+  rating: string | number | null;
+  examDate: string | null;
+  examPlace: string | null;
+  eligibilityNumber: string | null;
+  validityDate: string | null;
 }
 
 export interface WorkExperience {
@@ -304,6 +304,7 @@ export interface EmployeeDetailed extends Employee {
   workExperience: WorkplaceExperience[];
   otherInfo: PdsOtherInfo[];
   references: PdsReference[];
+  eligibilities: Eligibility[];
 }
 
 export interface EmployeeDocument {

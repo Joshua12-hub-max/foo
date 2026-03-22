@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { db } from '../db/index.js';
-import { nepotismRelationships, authentication, plantillaPositions } from '../db/schema.js';
+import { nepotismRelationships, authentication, plantillaPositions, pdsHrDetails } from '../db/schema.js';
 import { eq, or, and, desc, asc, sql, like } from 'drizzle-orm';
 import type { AuthenticatedRequest } from '../types/index.js';
 import {
@@ -235,10 +235,20 @@ export const checkNepotism = async (req: Request, res: Response): Promise<void> 
     const { employeeId, positionId, appointingAuthorityId } = validatedData;
 
     // Get employee details
-    const employee = await db.query.authentication.findFirst({
-      where: eq(authentication.id, employeeId),
-      columns: { id: true, firstName: true, lastName: true, middleName: true, suffix: true, employeeId: true, department: true }
-    });
+    const employee = await db.select({
+        id: authentication.id,
+        firstName: authentication.firstName,
+        lastName: authentication.lastName,
+        middleName: authentication.middleName,
+        suffix: authentication.suffix,
+        employeeId: authentication.employeeId,
+        department: pdsHrDetails.departmentId // Use departmentId as canonical department reference
+    })
+    .from(authentication)
+    .leftJoin(pdsHrDetails, eq(authentication.id, pdsHrDetails.employeeId))
+    .where(eq(authentication.id, employeeId))
+    .limit(1)
+    .then(rows => rows[0]);
 
     if (!employee) {
       res.status(404).json({
@@ -251,7 +261,7 @@ export const checkNepotism = async (req: Request, res: Response): Promise<void> 
     // Get position details
     const position = await db.query.plantillaPositions.findFirst({
       where: eq(plantillaPositions.id, positionId),
-      columns: { id: true, positionTitle: true, department: true }
+      columns: { id: true, positionTitle: true, departmentId: true, department: true }
     });
 
     if (!position) {
@@ -296,12 +306,13 @@ export const checkNepotism = async (req: Request, res: Response): Promise<void> 
 
     // Find department head for the position's department
     let departmentHeadId: number | null = null;
-    if (position.department) {
+    if (position.departmentId) {
       const deptHeads = await db.select({ id: authentication.id })
         .from(authentication)
+        .leftJoin(pdsHrDetails, eq(authentication.id, pdsHrDetails.employeeId))
         .leftJoin(plantillaPositions, eq(authentication.id, plantillaPositions.incumbentId))
         .where(and(
-          eq(authentication.department, position.department),
+          eq(pdsHrDetails.departmentId, position.departmentId),
           or(
             eq(authentication.role, 'Administrator'),
             like(plantillaPositions.positionTitle, '%Head%'),
@@ -345,12 +356,13 @@ export const checkNepotism = async (req: Request, res: Response): Promise<void> 
       }
 
       // Check if related person works in the same department (warning only)
-      const relatedEmployee = await db.query.authentication.findFirst({
-        where: eq(authentication.id, relatedPersonId),
-        columns: { department: true }
-      });
+      const relatedEmployee = await db.select({ departmentId: pdsHrDetails.departmentId })
+        .from(pdsHrDetails)
+        .where(eq(pdsHrDetails.employeeId, relatedPersonId))
+        .limit(1)
+        .then(rows => rows[0]);
 
-      if (relatedEmployee && relatedEmployee.department === position.department) {
+      if (relatedEmployee && relatedEmployee.departmentId === position.departmentId) {
         violations.push({
           type: 'Same Department',
           relationship: rel.relationshipType,
@@ -378,10 +390,10 @@ export const checkNepotism = async (req: Request, res: Response): Promise<void> 
         department: position.department
       },
       warningMessage: hasViolation
-        ? '⚠️ NEPOTISM VIOLATION DETECTED: This appointment violates CSC nepotism rules. The employee has a 3rd degree or closer relationship with the appointing authority or department head.'
+        ? 'NEPOTISM VIOLATION DETECTED: This appointment violates CSC nepotism rules. The employee has a 3rd degree or closer relationship with the appointing authority or department head.'
         : violations.length > 0
-        ? '⚠️ WARNING: Employee has relatives in the same department. Please review carefully.'
-        : '✅ No nepotism violations detected.'
+        ? 'WARNING: Employee has relatives in the same department. Please review carefully.'
+        : 'No nepotism violations detected.'
     });
   } catch (error) {
 

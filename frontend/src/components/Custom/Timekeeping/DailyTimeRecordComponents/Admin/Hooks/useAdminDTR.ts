@@ -50,7 +50,7 @@ export const useAdminDTR = () => {
         const response = await attendanceApi.getLogs({});
         const data = response.data.data || [];
         
-        return data.map((item: AdminDTRApiResponse): DTRRecord => {
+        return (data as AdminDTRApiResponse[]).map((item: AdminDTRApiResponse): DTRRecord => {
             let hoursWorked = '0';
             if (item.timeIn && item.timeOut) {
               const start = new Date(String(item.timeIn)).getTime();

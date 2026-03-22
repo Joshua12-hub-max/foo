@@ -1,5 +1,5 @@
 import { db } from '../db/index.js';
-import { tardinessSummary, policyViolations, employeeMemos, memoSequences, authentication } from '../db/schema.js';
+import { tardinessSummary, policyViolations, employeeMemos, memoSequences, authentication, pdsHrDetails, shiftTemplates } from '../db/schema.js';
 import { eq, asc } from 'drizzle-orm';
 import crypto from 'crypto';
 
@@ -272,7 +272,16 @@ export const checkPolicyViolations = async (
     if (offenses.length === 0) return;
 
     // Get Employee Type and details
-    const empRecord = await db.select({ id: authentication.id, dutyType: authentication.dutyType, appointmentType: authentication.appointmentType }).from(authentication).where(eq(authentication.employeeId, employeeId)).limit(1);
+    const empRecord = await db.select({ 
+        id: authentication.id, 
+        dutyType: pdsHrDetails.dutyType, 
+        appointmentType: pdsHrDetails.appointmentType 
+    })
+    .from(authentication)
+    .leftJoin(pdsHrDetails, eq(authentication.id, pdsHrDetails.employeeId))
+    .where(eq(authentication.employeeId, employeeId))
+    .limit(1);
+
     const adminRecord = await db.select({ id: authentication.id }).from(authentication).where(eq(authentication.role, 'Administrator')).limit(1);
     
     if (empRecord.length === 0) return;
@@ -318,9 +327,9 @@ export const checkPolicyViolations = async (
           const effectiveDateStr = `${yyyy}-${String(mm).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
           
           // Fetch System Default Shift for logout time reference
-          const [defaultShift] = await tx.select({ endTime: authentication.endTime })
-            .from(authentication)
-            .where(eq(authentication.role, 'Human Resource | Administrator'))
+          const [defaultShift] = await tx.select({ endTime: shiftTemplates.endTime })
+            .from(shiftTemplates)
+            .where(eq(shiftTemplates.isDefault, true))
             .limit(1);
             
           const endTimeStr = defaultShift?.endTime || '17:00:00';

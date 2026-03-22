@@ -51,7 +51,7 @@ export const useEmployeeDTR = () => {
         const data = response.data.data || [];
         
         // Map data
-        return data.map((item: DTRApiResponse): EmployeeDTRRecord => {
+        return (data as any[]).map((item: DTRApiResponse): EmployeeDTRRecord => {
             let hoursWorked = '0';
             if (item.timeIn && item.timeOut) {
               const start = new Date(String(item.timeIn)).getTime();

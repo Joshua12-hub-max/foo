@@ -94,7 +94,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
       const result = await updateMyProfile(formData);
       
       if (result.success && result.data) {
-        onSave(result.data);
+        onSave(result.data as Profile);
         onClose();
       } else {
         setError(result.message || 'Failed to update profile');

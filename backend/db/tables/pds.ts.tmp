@@ -1,0 +1,6 @@
+import { mysqlTable, varchar, int, date, timestamp, decimal, mysqlEnum, boolean, primaryKey, index, unique, text, datetime } from 'drizzle-orm/mysql-core';
+import { authentication } from './auth.js';
+import { departments } from './hr.js';
+import { plantillaPositions } from './plantilla.js';
+
+// ... (previous tables like pdsEducation, etc.)

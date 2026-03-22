@@ -118,7 +118,7 @@ const ComplianceReportsDashboard: React.FC = () => {
         } else if (reportId === 'form33') {
              // Appointment Form (Key-Value)
              let y = 70;
-             Object.entries(data as Record<string, unknown>).forEach(([key, value]) => {
+             Object.entries(data as unknown as Record<string, unknown>).forEach(([key, value]) => {
                  doc.setFontSize(10);
                  doc.setFont("helvetica", "bold");
                  doc.text(`${key.replace(/_/g, " ").toUpperCase()}:`, 20, y);

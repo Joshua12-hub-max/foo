@@ -7,7 +7,8 @@ import {
   plantillaPositionHistory, 
   salarySchedule,
   leaveApplications,
-  lwopSummary
+  lwopSummary,
+  pdsHrDetails
 } from '../db/schema.js';
 import { eq, and, asc, desc, sql, lt, gte } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/mysql-core';
@@ -109,21 +110,21 @@ export const getEligibleEmployees = async (_req: Request, res: Response): Promis
       positionId: plantillaPositions.id,
       positionTitle: plantillaPositions.positionTitle,
       salaryGrade: plantillaPositions.salaryGrade,
-      currentStep: authentication.stepIncrement,
-      dateHired: authentication.dateHired,
-      historyStartDate: plantillaPositionHistory.startDate,
-      contactNumber: authentication.mobileNo
+      currentStep: pdsHrDetails.stepIncrement,
+      dateHired: pdsHrDetails.dateHired,
+      historyStartDate: plantillaPositionHistory.startDate
     })
     .from(authentication)
     .innerJoin(plantillaPositions, eq(authentication.id, plantillaPositions.incumbentId))
+    .leftJoin(pdsHrDetails, eq(authentication.id, pdsHrDetails.employeeId))
     .leftJoin(plantillaPositionHistory, and(
       eq(plantillaPositions.id, plantillaPositionHistory.positionId),
       eq(authentication.id, plantillaPositionHistory.employeeId),
       sql`${plantillaPositionHistory.endDate} IS NULL`
     ))
     .where(and(
-      eq(authentication.employmentStatus, 'Active'),
-      lt(authentication.stepIncrement, 8) // Optimize: pre-filter steps < 8
+      eq(pdsHrDetails.employmentStatus, 'Active'),
+      lt(pdsHrDetails.stepIncrement, 8) // Optimize: pre-filter steps < 8
     ));
 
     const eligibleEmployees: {
@@ -244,7 +245,12 @@ export const createStepIncrement = async (req: Request, res: Response): Promise<
     // Verify employee exists
     const employee = await db.query.authentication.findFirst({
       where: eq(authentication.id, validatedData.employeeId),
-      columns: { id: true, stepIncrement: true }
+      columns: { id: true },
+      with: {
+        hrDetails: {
+          columns: { stepIncrement: true }
+        }
+      } as any // Workaround for query builder with joins if needed, or use db.select
     });
 
     if (!employee) {
@@ -336,10 +342,10 @@ export const processStepIncrement = async (req: Request, res: Response): Promise
     if (status === 'Approved') {
       const newStep = increment.currentStep + 1;
 
-      // Update employee step
-      await db.update(authentication)
+      // Update employee step in pdsHrDetails
+      await db.update(pdsHrDetails)
         .set({ stepIncrement: newStep })
-        .where(eq(authentication.id, increment.employeeId));
+        .where(eq(pdsHrDetails.employeeId, increment.employeeId));
 
       // Update position step
       await db.update(plantillaPositions)
@@ -409,12 +415,13 @@ export const getNextStepIncrement = async (req: Request, res: Response): Promise
     // 1. Get Employee Position & Start Date
     const employee = await db.select({
       employeeId: authentication.id,
-      dateHired: authentication.dateHired,
+      dateHired: pdsHrDetails.dateHired,
       historyStartDate: plantillaPositionHistory.startDate,
       lastPromotionDate: plantillaPositions.lastPromotionDate,
-      currentStep: authentication.stepIncrement,
+      currentStep: pdsHrDetails.stepIncrement,
     })
     .from(authentication)
+    .leftJoin(pdsHrDetails, eq(authentication.id, pdsHrDetails.employeeId))
     .leftJoin(plantillaPositions, eq(authentication.id, plantillaPositions.incumbentId))
     .leftJoin(plantillaPositionHistory, and(
       eq(plantillaPositions.id, plantillaPositionHistory.positionId),

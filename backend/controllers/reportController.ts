@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { db } from '../db/index.js';
-import { plantillaPositions, qualificationStandards, authentication } from '../db/schema.js';
+import { plantillaPositions, qualificationStandards, authentication, pdsHrDetails } from '../db/schema.js';
 import { eq, and, desc, asc, sql } from 'drizzle-orm';
 import { formatFullName } from '../utils/nameUtils.js';
 
@@ -95,14 +95,15 @@ export const getForm33Data = async (req: Request, res: Response): Promise<void> 
       employeeId: authentication.employeeId,
       dateOfSigning: plantillaPositions.filledDate,
       // Dynamic Status from Employee Record
-      status: authentication.appointmentType, 
+      status: pdsHrDetails.appointmentType, 
       // Infer Nature of Appointment
-      originalAppointmentDate: authentication.originalAppointmentDate,
+      originalAppointmentDate: pdsHrDetails.originalAppointmentDate,
       lastPromotionDate: plantillaPositions.lastPromotionDate,
       filledDate: plantillaPositions.filledDate
     })
     .from(plantillaPositions)
     .innerJoin(authentication, eq(plantillaPositions.incumbentId, authentication.id))
+    .leftJoin(pdsHrDetails, eq(authentication.id, pdsHrDetails.employeeId))
     .where(eq(plantillaPositions.id, Number(positionId)));
     
     if (rows.length === 0) {

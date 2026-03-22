@@ -9,7 +9,8 @@ import {
   recruitmentJobs,
   bioEnrolledUsers,
   dtrCorrections,
-  departments
+  departments,
+  pdsHrDetails
 } from "../db/schema.js";
 import { eq, and, sql, desc, between, or, like } from "drizzle-orm";
 import type { AuthenticatedRequest } from "../types/index.js";
@@ -154,10 +155,7 @@ export const getLogs = async (req: Request, res: Response): Promise<void> => {
       whereConditions.push(between(dailyTimeRecords.date, startDate, endDate));
     }
     if (department && department !== 'all') {
-      whereConditions.push(or(
-        eq(departments.name, department),
-        eq(authentication.department, department)
-      ));
+      whereConditions.push(eq(departments.name, department));
     }
     if (search) {
       const searchStr = `%${search}%`;
@@ -188,8 +186,8 @@ export const getLogs = async (req: Request, res: Response): Promise<void> => {
       middleName: authentication.middleName,
       suffix: authentication.suffix,
       bioFullName: bioEnrolledUsers.fullName,
-      department: sql<string>`COALESCE(${departments.name}, ${authentication.department}, ${bioEnrolledUsers.department}, 'N/A')`,
-      dutyType: sql<string>`COALESCE(${authentication.dutyType}, 'Standard')`,
+      department: sql<string>`COALESCE(${departments.name}, ${bioEnrolledUsers.department}, 'N/A')`,
+      dutyType: sql<string>`COALESCE(${pdsHrDetails.dutyType}, 'Standard')`,
       duties: sql<string>`COALESCE(
         (SELECT schedule_title FROM schedules WHERE employee_id = ${dailyTimeRecords.employeeId} AND (start_date IS NULL OR start_date <= ${dailyTimeRecords.date}) AND (end_date IS NULL OR end_date >= ${dailyTimeRecords.date}) ORDER BY updated_at DESC LIMIT 1),
         (SELECT schedule_title FROM schedules WHERE employee_id = ${dailyTimeRecords.employeeId} AND (start_date IS NULL OR start_date <= ${dailyTimeRecords.date}) ORDER BY start_date DESC LIMIT 1),
@@ -210,7 +208,8 @@ export const getLogs = async (req: Request, res: Response): Promise<void> => {
     })
     .from(dailyTimeRecords)
     .leftJoin(authentication, compareIds(dailyTimeRecords.employeeId, authentication.employeeId))
-    .leftJoin(departments, eq(authentication.departmentId, departments.id))
+    .leftJoin(pdsHrDetails, eq(authentication.id, pdsHrDetails.employeeId))
+    .leftJoin(departments, eq(pdsHrDetails.departmentId, departments.id))
     .leftJoin(bioEnrolledUsers, compareIds(bioEnrolledUsers.employeeId, dailyTimeRecords.employeeId))
     .leftJoin(
       dtrCorrections,
@@ -242,7 +241,8 @@ export const getLogs = async (req: Request, res: Response): Promise<void> => {
     })
     .from(dailyTimeRecords)
     .leftJoin(authentication, compareIds(dailyTimeRecords.employeeId, authentication.employeeId))
-    .leftJoin(departments, eq(authentication.departmentId, departments.id))
+    .leftJoin(pdsHrDetails, eq(authentication.id, pdsHrDetails.employeeId))
+    .leftJoin(departments, eq(pdsHrDetails.departmentId, departments.id))
     .where(whereClause);
 
     const [countResult] = await db.select({
@@ -250,7 +250,8 @@ export const getLogs = async (req: Request, res: Response): Promise<void> => {
     })
     .from(dailyTimeRecords)
     .leftJoin(authentication, compareIds(dailyTimeRecords.employeeId, authentication.employeeId))
-    .leftJoin(departments, eq(authentication.departmentId, departments.id))
+    .leftJoin(pdsHrDetails, eq(authentication.id, pdsHrDetails.employeeId))
+    .leftJoin(departments, eq(pdsHrDetails.departmentId, departments.id))
     .where(whereClause);
 
     const total = Number(countResult.total || 0);
@@ -330,11 +331,13 @@ export const getRecentActivity = async (_req: Request, res: Response): Promise<v
       lastName: authentication.lastName,
       middleName: authentication.middleName,
       suffix: authentication.suffix,
-      department: authentication.department,
+      department: departments.name,
       bioFullName: bioEnrolledUsers.fullName
     })
     .from(dailyTimeRecords)
     .leftJoin(authentication, compareIds(dailyTimeRecords.employeeId, authentication.employeeId))
+    .leftJoin(pdsHrDetails, eq(authentication.id, pdsHrDetails.employeeId))
+    .leftJoin(departments, eq(pdsHrDetails.departmentId, departments.id))
     .leftJoin(bioEnrolledUsers, compareIds(bioEnrolledUsers.employeeId, dailyTimeRecords.employeeId))
     .orderBy(desc(dailyTimeRecords.updatedAt))
     .limit(20);
@@ -456,7 +459,7 @@ export const getRawLogs = async (req: Request, res: Response): Promise<void> => 
 
     if (department && department !== 'All Departments') {
        whereConditions.push(
-         sql`COALESCE(${authentication.department}, ${bioEnrolledUsers.department}) = ${String(department)}`
+         sql`COALESCE(${departments.name}, ${bioEnrolledUsers.department}) = ${String(department)}`
        );
     }
 
@@ -489,8 +492,8 @@ export const getRawLogs = async (req: Request, res: Response): Promise<void> => 
           ELSE ''
         END
       )`,
-      department: sql<string>`COALESCE(${authentication.department}, ${bioEnrolledUsers.department}, 'N/A')`,
-      dutyType: sql<string>`COALESCE(${authentication.dutyType}, 'Standard')`,
+      department: sql<string>`COALESCE(${departments.name}, ${bioEnrolledUsers.department}, 'N/A')`,
+      dutyType: sql<string>`COALESCE(${pdsHrDetails.dutyType}, 'Standard')`,
       duties: sql<string>`COALESCE(
         (SELECT schedule_title FROM schedules WHERE employee_id = ${attendanceLogs.employeeId} AND (start_date IS NULL OR start_date <= DATE(${attendanceLogs.scanTime})) AND (end_date IS NULL OR end_date >= DATE(${attendanceLogs.scanTime})) ORDER BY updated_at DESC LIMIT 1),
         (SELECT schedule_title FROM schedules WHERE employee_id = ${attendanceLogs.employeeId} AND (start_date IS NULL OR start_date <= DATE(${attendanceLogs.scanTime})) ORDER BY start_date DESC LIMIT 1),
@@ -507,6 +510,8 @@ export const getRawLogs = async (req: Request, res: Response): Promise<void> => 
     })
     .from(attendanceLogs)
     .leftJoin(authentication, compareIds(attendanceLogs.employeeId, authentication.employeeId))
+    .leftJoin(pdsHrDetails, eq(authentication.id, pdsHrDetails.employeeId))
+    .leftJoin(departments, eq(pdsHrDetails.departmentId, departments.id))
     .leftJoin(bioEnrolledUsers, compareIds(bioEnrolledUsers.employeeId, attendanceLogs.employeeId))
     .where(whereClause)
     .orderBy(desc(attendanceLogs.scanTime))
@@ -555,12 +560,14 @@ export const getDashboardStats = async (_req: Request, res: Response): Promise<v
       lateMinutes: dailyTimeRecords.lateMinutes,
       firstName: authentication.firstName,
       lastName: authentication.lastName,
-      department: authentication.department,
+      department: departments.name,
       bioFullName: bioEnrolledUsers.fullName,
       bioDepartment: bioEnrolledUsers.department
     })
     .from(dailyTimeRecords)
     .leftJoin(authentication, compareIds(dailyTimeRecords.employeeId, authentication.employeeId))
+    .leftJoin(pdsHrDetails, eq(authentication.id, pdsHrDetails.employeeId))
+    .leftJoin(departments, eq(pdsHrDetails.departmentId, departments.id))
     .leftJoin(bioEnrolledUsers, compareIds(bioEnrolledUsers.employeeId, dailyTimeRecords.employeeId))
     .where(eq(dailyTimeRecords.date, todayStr));
 
@@ -568,13 +575,15 @@ export const getDashboardStats = async (_req: Request, res: Response): Promise<v
       employeeId: leaveApplications.employeeId,
       firstName: authentication.firstName,
       lastName: authentication.lastName,
-      department: authentication.department,
+      department: departments.name,
       leaveType: leaveApplications.leaveType,
       startDate: leaveApplications.startDate,
       endDate: leaveApplications.endDate
     })
     .from(leaveApplications)
     .innerJoin(authentication, compareIds(leaveApplications.employeeId, authentication.employeeId))
+    .leftJoin(pdsHrDetails, eq(authentication.id, pdsHrDetails.employeeId))
+    .leftJoin(departments, eq(pdsHrDetails.departmentId, departments.id))
     .where(and(
       eq(leaveApplications.status, 'Approved'),
       sql`DATE(${todayStr}) >= DATE(${leaveApplications.startDate})`,

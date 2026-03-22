@@ -27,7 +27,10 @@ import {
   pdsEligibility,
   recruitmentApplicants,
   employeeDocuments,
-  shiftTemplates
+  shiftTemplates,
+  pdsPersonalInformation,
+  pdsDeclarations,
+  pdsHrDetails
 } from '../db/schema.js';
 import { 
   EmployeeApiResponse, 
@@ -160,21 +163,7 @@ export const mapToEmployeeApi = (emp: EmployeeMapperInput): EmployeeApiResponse 
     contractEndDate: emp.contractEndDate || null,
     regularizationDate: emp.regularizationDate || null,
     isRegular: !!emp.isRegular,
-    birthDate: emp.birthDate || null,
-    gender: emp.gender as Gender || null,
-    civilStatus: emp.civilStatus as CivilStatus || null,
-    nationality: emp.nationality || null,
-    phoneNumber: emp.phoneNumber || null,
-    address: emp.address || null,
-    permanentAddress: emp.permanentAddress || null,
     avatarUrl: emp.avatarUrl || null,
-    umidNumber: emp.umidNumber || null,
-    philsysId: emp.philsysId || null,
-    philhealthNumber: emp.philhealthNumber || null,
-    pagibigNumber: emp.pagibigNumber || null,
-    tinNumber: emp.tinNumber || null,
-    gsisNumber: emp.gsisNumber || null,
-    educationalBackground: emp.educationalBackground || null,
     salaryGrade: emp.salaryGrade || null,
     stepIncrement: emp.stepIncrement || 1,
     appointmentType: emp.appointmentType as AppointmentType || null,
@@ -184,24 +173,6 @@ export const mapToEmployeeApi = (emp: EmployeeMapperInput): EmployeeApiResponse 
     duties: emp.duties || 'No Schedule',
     shift: emp.shift || null,
     
-    heightM: emp.heightM || null,
-    weightKg: emp.weightKg || null,
-    bloodType: emp.bloodType || null,
-    placeOfBirth: emp.placeOfBirth || null,
-    residentialAddress: emp.residentialAddress || null,
-    residentialZipCode: emp.residentialZipCode || null,
-    permanentZipCode: emp.permanentZipCode || null,
-    telephoneNo: emp.telephoneNo || null,
-    mobileNo: emp.mobileNo || null,
-    agencyEmployeeNo: emp.agencyEmployeeNo || null,
-    emergencyContact: emp.emergencyContact || null,
-    emergencyContactNumber: emp.emergencyContactNumber || null,
-    
-    eligibilityType: emp.eligibilityType || null,
-    eligibilityNumber: emp.eligibilityNumber || null,
-    eligibilityDate: emp.eligibilityDate || null,
-    yearsOfExperience: parseInt(String(emp.yearsOfExperience || '0')),
-
     facebookUrl: emp.facebookUrl || null,
     linkedinUrl: emp.linkedinUrl || null,
     twitterHandle: emp.twitterHandle || null,
@@ -213,63 +184,11 @@ export const mapToEmployeeApi = (emp: EmployeeMapperInput): EmployeeApiResponse 
 
     barangay: emp.resBarangay || null,
     religion: emp.religion || null,
-    citizenship: emp.citizenship || null,
-    citizenshipType: emp.citizenshipType || null,
-    resHouseBlockLot: emp.resHouseBlockLot || null,
-    resStreet: emp.resStreet || null,
-    resSubdivision: emp.resSubdivision || null,
-    resBarangay: emp.resBarangay || null,
-    resCity: emp.resCity || null,
-    resProvince: emp.resProvince || null,
-    permHouseBlockLot: emp.permHouseBlockLot || null,
-    permStreet: emp.permStreet || null,
-    permSubdivision: emp.permSubdivision || null,
-    permBarangay: emp.permBarangay || null,
-    permCity: emp.permCity || null,
-    permProvince: emp.permProvince || null,
     isBiometricEnrolled: !!emp.isBiometricEnrolled,
     startTime: emp.startTime || null,
     endTime: emp.endTime || null,
-
-    relatedThirdDegree: emp.relatedThirdDegree || null,
-    relatedThirdDetails: emp.relatedThirdDetails || null,
-    relatedFourthDegree: emp.relatedFourthDegree || null,
-    relatedFourthDetails: emp.relatedFourthDetails || null,
-    foundGuiltyAdmin: emp.foundGuiltyAdmin || null,
-    foundGuiltyDetails: emp.foundGuiltyDetails || null,
-    criminallyCharged: emp.criminallyCharged || null,
-    dateFiled: emp.dateFiled || null,
-    statusOfCase: emp.statusOfCase || null,
-    convictedCrime: emp.convictedCrime || null,
-    convictedDetails: emp.convictedDetails || null,
-    separatedFromService: emp.separatedFromService || null,
-    separatedDetails: emp.separatedDetails || null,
-    electionCandidate: emp.electionCandidate || null,
-    electionDetails: emp.electionDetails || null,
-    resignedToPromote: emp.resignedToPromote || null,
-    resignedDetails: emp.resignedDetails || null,
-    immigrantStatus: emp.immigrantStatus || null,
-    immigrantDetails: emp.immigrantDetails || null,
-    indigenousMember: emp.indigenousMember || null,
-    indigenousDetails: emp.indigenousDetails || null,
-    personWithDisability: emp.personWithDisability || null,
-    disabilityIdNo: emp.disabilityIdNo || null,
-    soloParent: emp.soloParent || null,
-    soloParentIdNo: emp.soloParentIdNo || null,
-
-    dualCountry: emp.dualCountry || null,
-    govtIdType: emp.govtIdType || null,
-    govtIdNo: emp.govtIdNo || null,
-    govtIdIssuance: emp.govtIdIssuance || null,
-
-    schoolName: emp.schoolName || null,
-    course: emp.course || null,
-    yearGraduated: String(emp.yearGraduated || ''),
-    coreCompetencies: emp.skillsText || null,
-    isMeycauayan: !!emp.isMeycauayan,
-    dutyType: emp.dutyType || 'Standard',
-    dateAccomplished: emp.dateAccomplished || null,
-    pdsQuestions: emp.pdsQuestions || null,
+    isMeycauayan: emp.isMeycauayan === true,
+    dutyType: emp.dutyType || null,
   };
 };
 
@@ -409,11 +328,11 @@ export const getAllEmployees = async (req: Request, res: Response): Promise<void
   try {
     const { department, departmentId } = req.query;
     
-    const conditions = [];
+    const conditions: SQL[] = [];
     if (departmentId) {
-      conditions.push(eq(authentication.departmentId, Number(departmentId)));
+      conditions.push(eq(pdsHrDetails.departmentId, Number(departmentId)));
     } else if (department && department !== 'All Departments' && department !== 'All') {
-      conditions.push(eq(authentication.department, department as string));
+      conditions.push(eq(departments.name, department as string));
     }
 
     const employees = await UserService.getAllEmployees(conditions.filter((c): c is SQL => !!c));
@@ -492,7 +411,7 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
       phoneNumber, address, permanentAddress,
       philhealthNumber, pagibigNumber, tinNumber, gsisNumber, umidNumber,
       salaryGrade, stepIncrement, appointmentType, station, positionTitle,
-      itemNumber, positionId, educationalBackground, isMeycauayan, dateAccomplished, pdsQuestions
+      itemNumber, positionId, dateAccomplished, pdsQuestions
     } = validatedData;
 
     // Validate department
@@ -603,74 +522,111 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
       firstName,
       lastName,
       email,
-      department: finalDeptName,
-      departmentId: finalDeptId,
-      jobTitle: jobTitle || 'N/A',
       role: role,
-      employmentStatus: employmentStatus || 'Active',
-      employmentType: (sanitizedData.employmentType || 'Probationary'),
       employeeId: finalEmployeeId,
       passwordHash: hashedPassword,
       isVerified: true,
-      birthDate: birthDate ? String(birthDate) : null,
-      gender: gender,
-      civilStatus: civilStatus,
-      nationality: nationality || 'Filipino',
-      phoneNumber: phoneNumber || null,
-      address: address || null,
-      permanentAddress: permanentAddress || null,
-      philhealthNumber: philhealthNumber || null,
-      pagibigNumber: pagibigNumber || null,
-      tinNumber: tinNumber || null,
-      gsisNumber: gsisNumber || null,
-      umidNumber: umidNumber || null,
-      educationalBackground: educationalBackground || null,
-      salaryGrade: salaryGrade ? String(salaryGrade) : null,
-      stepIncrement: stepIncrement || 1,
-      appointmentType: appointmentType,
-      station: station || null,
-      positionTitle: positionTitle || null,
-      itemNumber: finalItemNumber,
-      positionId: finalPosId,
-      contractEndDate: sanitizedData.contractEndDate ? String(sanitizedData.contractEndDate) : null,
-      regularizationDate: finalRegularizationDate ? finalRegularizationDate.toISOString().split('T')[0] : null,
-      isRegular: !!sanitizedData.isRegular,
-      heightCm: sanitizedData.heightM ? String(sanitizedData.heightM) : null,
-      heightM: sanitizedData.heightM ? String(sanitizedData.heightM) : null,
-      weightKg: sanitizedData.weightKg ? String(sanitizedData.weightKg) : null,
-      bloodType: sanitizedData.bloodType || null,
-      placeOfBirth: sanitizedData.placeOfBirth || null,
-      residentialAddress: sanitizedData.residentialAddress || null,
-      residentialZipCode: sanitizedData.residentialZipCode || null,
-      permanentZipCode: sanitizedData.permanentZipCode || null,
-      telephoneNo: sanitizedData.telephoneNo || null,
-      mobileNo: sanitizedData.mobileNo || null,
-      agencyEmployeeNo: sanitizedData.agencyEmployeeNo || null,
-      emergencyContact: sanitizedData.emergencyContact || null,
-      emergencyContactNumber: sanitizedData.emergencyContactNumber || null,
-      eligibilityType: sanitizedData.eligibilityType || null,
-      eligibilityNumber: sanitizedData.eligibilityNumber || null,
-      eligibilityDate: sanitizedData.eligibilityDate ? String(sanitizedData.eligibilityDate) : null,
-      yearsOfExperience: sanitizedData.yearsOfExperience ? String(sanitizedData.yearsOfExperience) : '0',
-      resHouseBlockLot: sanitizedData.resHouseBlockLot || null,
-      resStreet: sanitizedData.resStreet || null,
-      resSubdivision: sanitizedData.resSubdivision || null,
-      resBarangay: sanitizedData.resBarangay || null,
-      resCity: sanitizedData.resCity || null,
-      resProvince: sanitizedData.resProvince || null,
-      permHouseBlockLot: sanitizedData.permHouseBlockLot || null,
-      permStreet: sanitizedData.permStreet || null,
-      permSubdivision: sanitizedData.permSubdivision || null,
-      permBarangay: sanitizedData.permBarangay || null,
-      permCity: sanitizedData.permCity || null,
-      permProvince: sanitizedData.permProvince || null,
-      permRegion: sanitizedData.permRegion || null,
-      isMeycauayan: isMeycauayan === true,
-      dateAccomplished: dateAccomplished ? String(dateAccomplished) : null,
-      pdsQuestions: pdsQuestions || null
     });
 
     const newEmployeeIdNum = result.insertId;
+
+    if (newEmployeeIdNum) {
+      // 3. Insert HR Details
+      await db.insert(pdsHrDetails).values({
+        employeeId: newEmployeeIdNum,
+        employmentStatus: employmentStatus || 'Active',
+        employmentType: (sanitizedData.employmentType || 'Probationary'),
+        jobTitle: jobTitle || 'N/A',
+        positionTitle: positionTitle || null,
+        departmentId: finalDeptId,
+        salaryGrade: salaryGrade ? String(salaryGrade) : null,
+        stepIncrement: stepIncrement || 1,
+        appointmentType: appointmentType,
+        station: station || null,
+        itemNumber: finalItemNumber,
+        positionId: finalPosId,
+        dateHired: String(validatedData.dateHired || new Date().toISOString().split('T')[0]),
+        contractEndDate: sanitizedData.contractEndDate ? String(sanitizedData.contractEndDate) : null,
+        regularizationDate: finalRegularizationDate ? finalRegularizationDate.toISOString().split('T')[0] : null,
+        isRegular: !!sanitizedData.isRegular,
+        isMeycauayan: sanitizedData.isMeycauayan === true
+      });
+      await db.insert(pdsPersonalInformation).values({
+        employeeId: newEmployeeIdNum,
+        birthDate: birthDate ? String(birthDate) : null,
+        placeOfBirth: sanitizedData.placeOfBirth || null,
+        gender: gender || null,
+        civilStatus: civilStatus || null,
+        heightM: sanitizedData.heightM ? String(sanitizedData.heightM) : null,
+        weightKg: sanitizedData.weightKg ? String(sanitizedData.weightKg) : null,
+        bloodType: sanitizedData.bloodType || null,
+        citizenship: nationality || 'Filipino',
+        citizenshipType: sanitizedData.citizenshipType || null,
+        dualCountry: sanitizedData.dualCountry || null,
+        residentialAddress: address || sanitizedData.residentialAddress || null,
+        residentialZipCode: sanitizedData.residentialZipCode || null,
+        permanentAddress: permanentAddress || null,
+        permanentZipCode: sanitizedData.permanentZipCode || null,
+        telephoneNo: sanitizedData.telephoneNo || null,
+        mobileNo: phoneNumber || sanitizedData.mobileNo || null,
+        email: email,
+        umidNumber: umidNumber || null,
+        philsysId: sanitizedData.philsysId || null,
+        philhealthNumber: philhealthNumber || null,
+        pagibigNumber: pagibigNumber || null,
+        tinNumber: tinNumber || null,
+        gsisNumber: gsisNumber || null,
+        agencyEmployeeNo: sanitizedData.agencyEmployeeNo || null,
+        resHouseBlockLot: sanitizedData.resHouseBlockLot || null,
+        resStreet: sanitizedData.resStreet || null,
+        resSubdivision: sanitizedData.resSubdivision || null,
+        resBarangay: sanitizedData.resBarangay || null,
+        resCity: sanitizedData.resCity || null,
+        resProvince: sanitizedData.resProvince || null,
+        resRegion: sanitizedData.resRegion || null,
+        permHouseBlockLot: sanitizedData.permHouseBlockLot || null,
+        permStreet: sanitizedData.permStreet || null,
+        permSubdivision: sanitizedData.permSubdivision || null,
+        permBarangay: sanitizedData.permBarangay || null,
+        permCity: sanitizedData.permCity || null,
+        permProvince: sanitizedData.permProvince || null,
+        permRegion: sanitizedData.permRegion || null,
+      });
+
+      const q = (pdsQuestions || {}) as Partial<typeof pdsDeclarations.$inferInsert>;
+      await db.insert(pdsDeclarations).values({
+        employeeId: newEmployeeIdNum,
+        relatedThirdDegree: q.relatedThirdDegree || sanitizedData.relatedThirdDegree || null,
+        relatedThirdDetails: q.relatedThirdDetails || sanitizedData.relatedThirdDetails || null,
+        relatedFourthDegree: q.relatedFourthDegree || sanitizedData.relatedFourthDegree || null,
+        relatedFourthDetails: q.relatedFourthDetails || sanitizedData.relatedFourthDetails || null,
+        foundGuiltyAdmin: q.foundGuiltyAdmin || sanitizedData.foundGuiltyAdmin || null,
+        foundGuiltyDetails: q.foundGuiltyDetails || sanitizedData.foundGuiltyDetails || null,
+        criminallyCharged: q.criminallyCharged || sanitizedData.criminallyCharged || null,
+        dateFiled: q.dateFiled || (sanitizedData.dateFiled ? String(sanitizedData.dateFiled) : null),
+        statusOfCase: q.statusOfCase || sanitizedData.statusOfCase || null,
+        convictedCrime: q.convictedCrime || sanitizedData.convictedCrime || null,
+        convictedDetails: q.convictedDetails || sanitizedData.convictedDetails || null,
+        separatedFromService: q.separatedFromService || sanitizedData.separatedFromService || null,
+        separatedDetails: q.separatedDetails || sanitizedData.separatedDetails || null,
+        electionCandidate: q.electionCandidate || sanitizedData.electionCandidate || null,
+        electionDetails: q.electionDetails || sanitizedData.electionDetails || null,
+        resignedToPromote: q.resignedToPromote || sanitizedData.resignedToPromote || null,
+        resignedDetails: q.resignedDetails || sanitizedData.resignedDetails || null,
+        immigrantStatus: q.immigrantStatus || sanitizedData.immigrantStatus || null,
+        immigrantDetails: q.immigrantDetails || sanitizedData.immigrantDetails || null,
+        indigenousMember: q.indigenousMember || sanitizedData.indigenousMember || null,
+        indigenousDetails: q.indigenousDetails || sanitizedData.indigenousDetails || null,
+        personWithDisability: q.personWithDisability || sanitizedData.personWithDisability || null,
+        disabilityIdNo: q.disabilityIdNo || sanitizedData.disabilityIdNo || null,
+        soloParent: q.soloParent || sanitizedData.soloParent || null,
+        soloParentIdNo: q.soloParentIdNo || sanitizedData.soloParentIdNo || null,
+        govtIdType: sanitizedData.govtIdType || null,
+        govtIdNo: sanitizedData.govtIdNo || null,
+        govtIdIssuance: sanitizedData.govtIdIssuance || null,
+        dateAccomplished: dateAccomplished ? String(dateAccomplished) : null,
+      });
+    }
 
     // --- AUTOMATIC DOCUMENT SYNC FROM RECRUITMENT ---
     if (newEmployeeIdNum && validatedData.applicantId) {
@@ -816,21 +772,23 @@ export const deleteEmployee = async (req: Request, res: Response): Promise<void>
 
     const emp = await db.query.authentication.findFirst({
       where: eq(authentication.id, parseInt(id)),
-      columns: { itemNumber: true, positionId: true }
+      with: {
+        hrDetails: true
+      }
     });
 
     await db.delete(authentication).where(eq(authentication.id, parseInt(id)));
 
     // Free up plantilla item
-    if (emp) {
-      if (emp.positionId) {
+    if (emp?.hrDetails) {
+      if (emp.hrDetails.positionId) {
         await db.update(plantillaPositions)
           .set({ isVacant: true, incumbentId: null })
-          .where(eq(plantillaPositions.id, emp.positionId));
-      } else if (emp.itemNumber && emp.itemNumber !== 'N/A') {
+          .where(eq(plantillaPositions.id, emp.hrDetails.positionId));
+      } else if (emp.hrDetails.itemNumber && emp.hrDetails.itemNumber !== 'N/A') {
         await db.update(plantillaPositions)
           .set({ isVacant: true, incumbentId: null })
-          .where(eq(plantillaPositions.itemNumber, emp.itemNumber));
+          .where(eq(plantillaPositions.itemNumber, emp.hrDetails.itemNumber));
       }
     }
 
@@ -847,7 +805,10 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
     const updates = UpdateEmployeeSchema.parse(req.body);
 
     const currentEmployee = await db.query.authentication.findFirst({
-      where: eq(authentication.id, parseInt(id))
+      where: eq(authentication.id, parseInt(id)),
+      with: {
+        hrDetails: true
+      }
     });
 
     if (!currentEmployee) {
@@ -896,20 +857,6 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
       role: 'role',
       employmentStatus: 'employmentStatus',
       employeeId: 'employeeId',
-      birthDate: 'birthDate',
-      gender: 'gender',
-      civilStatus: 'civilStatus',
-      nationality: 'nationality',
-      phoneNumber: 'phoneNumber',
-      address: 'address',
-      permanentAddress: 'permanentAddress',
-      umidNumber: 'umidNumber',
-      philsysId: 'philsysId',
-      philhealthNumber: 'philhealthNumber',
-      pagibigNumber: 'pagibigNumber',
-      tinNumber: 'tinNumber',
-      gsisNumber: 'gsisNumber',
-      educationalBackground: 'educationalBackground',
       salaryGrade: 'salaryGrade',
       stepIncrement: 'stepIncrement',
       appointmentType: 'appointmentType',
@@ -925,40 +872,6 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
       regularizationDate: 'regularizationDate',
       isRegular: 'isRegular',
       employmentType: 'employmentType',
-      heightM: 'heightM', // Corrected to map to heightM (decimal 4,2)
-      weightKg: 'weightKg',
-      bloodType: 'bloodType',
-      placeOfBirth: 'placeOfBirth',
-      residentialAddress: 'residentialAddress',
-      residentialZipCode: 'residentialZipCode',
-      permanentZipCode: 'permanentZipCode',
-      resHouseBlockLot: 'resHouseBlockLot',
-      resStreet: 'resStreet',
-      resSubdivision: 'resSubdivision',
-      resBarangay: 'resBarangay',
-      resCity: 'resCity',
-      resProvince: 'resProvince',
-      resRegion: 'resRegion',
-      permHouseBlockLot: 'permHouseBlockLot',
-      permStreet: 'permStreet',
-      permSubdivision: 'permSubdivision',
-      permBarangay: 'permBarangay',
-      permCity: 'permCity',
-      permProvince: 'permProvince',
-      permRegion: 'permRegion',
-      telephoneNo: 'telephoneNo',
-      mobileNo: 'mobileNo',
-      agencyEmployeeNo: 'agencyEmployeeNo',
-      emergencyContact: 'emergencyContact',
-      emergencyContactNumber: 'emergencyContactNumber',
-      eligibilityType: 'eligibilityType',
-      eligibilityNumber: 'eligibilityNumber',
-      eligibilityDate: 'eligibilityDate',
-      schoolName: 'schoolName',
-      course: 'course',
-      yearGraduated: 'yearGraduated',
-      skills: 'skills', // Map to skills column in DB
-      yearsOfExperience: 'yearsOfExperience',
       facebookUrl: 'facebookUrl',
       linkedinUrl: 'linkedinUrl',
       twitterHandle: 'twitterHandle',
@@ -969,45 +882,9 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
       lastPromotionDate: 'lastPromotionDate',
       barangay: 'barangay',
       religion: 'religion',
-      citizenship: 'citizenship',
-      citizenshipType: 'citizenshipType',
       startTime: 'startTime',
       endTime: 'endTime',
       duties: 'duties',
-      motherMaidenName: 'motherMaidenName',
-      spouseName: 'spouseName',
-      fatherName: 'fatherName',
-      dualCountry: 'dualCountry',
-      govtIdType: 'govtIdType',
-      govtIdNo: 'govtIdNo',
-      govtIdIssuance: 'govtIdIssuance',
-      dateAccomplished: 'dateAccomplished',
-      relatedThirdDegree: 'relatedThirdDegree',
-      relatedThirdDetails: 'relatedThirdDetails',
-      relatedFourthDegree: 'relatedFourthDegree',
-      relatedFourthDetails: 'relatedFourthDetails',
-      foundGuiltyAdmin: 'foundGuiltyAdmin',
-      foundGuiltyDetails: 'foundGuiltyDetails',
-      criminallyCharged: 'criminallyCharged',
-      dateFiled: 'dateFiled',
-      statusOfCase: 'statusOfCase',
-      convictedCrime: 'convictedCrime',
-      convictedDetails: 'convictedDetails',
-      separatedFromService: 'separatedFromService',
-      separatedDetails: 'separatedDetails',
-      electionCandidate: 'electionCandidate',
-      electionDetails: 'electionDetails',
-      resignedToPromote: 'resignedToPromote',
-      resignedDetails: 'resignedDetails',
-      immigrantStatus: 'immigrantStatus',
-      immigrantDetails: 'immigrantDetails',
-      indigenousMember: 'indigenousMember',
-      indigenousDetails: 'indigenousDetails',
-      personWithDisability: 'personWithDisability',
-      disabilityIdNo: 'disabilityIdNo',
-      soloParent: 'soloParent',
-      soloParentIdNo: 'soloParentIdNo',
-      pdsQuestions: 'pdsQuestions'
     };
 
     for (const [jsonKey, value] of Object.entries(sanitizedUpdates)) {
@@ -1167,7 +1044,7 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
 
 
     // Handle department sync if department_id changed
-    if (updates.departmentId && updates.departmentId !== currentEmployee.departmentId) {
+    if (updates.departmentId && updates.departmentId !== currentEmployee.hrDetails?.departmentId) {
        const dept = await db.query.departments.findFirst({
          where: eq(departments.id, updates.departmentId)
        });
@@ -1178,7 +1055,7 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
 
     // Handle plantilla changes
     const newPosId = updates.positionId;
-    const oldPosId = currentEmployee.positionId;
+    const oldPosId = currentEmployee.hrDetails?.positionId;
 
     if (newPosId !== undefined && newPosId !== oldPosId) {
       if (oldPosId) {
@@ -1210,20 +1087,33 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
     }
 
     if (Object.keys(updateFields).length === 0) {
-      // Check if duties was updated (since it's not in updateFields)
-      if (sanitizedUpdates.duties !== undefined) {
-          res.json({ success: true, message: 'Employee duties updated successfully' });
-          return;
-      }
+      // We will perform the DB update below if there are fields, 
+      // but we need to check if there are ANY fields including HR ones.
+    }
 
-      if (skippedEnumFields.length > 0) {
-        const details = skippedEnumFields.map(f => 
-          `"${f.field}" value "${f.value}" is invalid. Valid options: ${f.validValues.join(', ')}`
-        ).join('; ');
-        res.status(400).json({ success: false, message: `Invalid field value: ${details}` });
-        return;
+    // Separate updates for decoupled schema
+    const authFields = ['firstName', 'lastName', 'email', 'role', 'employeeId', 'avatarUrl', 'middleName', 'suffix'];
+    const hrFields = [
+      'employmentStatus', 'employmentType', 'jobTitle', 'departmentId', 'positionId',
+      'salaryGrade', 'stepIncrement', 'dateHired', 'contractEndDate', 'regularizationDate',
+      'isRegular', 'positionTitle', 'station', 'appointmentType', 'itemNumber',
+      'firstDayOfService', 'officeAddress', 'religion', 'barangay', 'dutyType',
+      'isMeycauayan', 'facebookUrl', 'linkedinUrl', 'twitterHandle'
+    ];
+
+    const authUpdates: any = {};
+    const hrUpdates: any = {};
+
+    Object.entries(updateFields).forEach(([key, value]) => {
+      if (authFields.includes(key)) {
+        authUpdates[key] = value;
+      } else if (hrFields.includes(key)) {
+        hrUpdates[key] = value;
       }
-      res.status(400).json({ success: false, message: 'No valid fields to update' });
+    });
+
+    if (Object.keys(authUpdates).length === 0 && Object.keys(hrUpdates).length === 0) {
+      res.json({ success: true, message: 'No changes detected' });
       return;
     }
 
@@ -1249,9 +1139,24 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
       }
     }
 
-    await db.update(authentication)
-      .set(updateFields)
-      .where(eq(authentication.id, parseInt(id)));
+    await db.transaction(async (tx) => {
+      if (Object.keys(authUpdates).length > 0) {
+        await tx.update(authentication)
+          .set(authUpdates)
+          .where(eq(authentication.id, parseInt(id)));
+      }
+
+      if (Object.keys(hrUpdates).length > 0) {
+        const [existingHr] = await tx.select().from(pdsHrDetails).where(eq(pdsHrDetails.employeeId, parseInt(id)));
+        if (existingHr) {
+          await tx.update(pdsHrDetails)
+            .set(hrUpdates)
+            .where(eq(pdsHrDetails.employeeId, parseInt(id)));
+        } else {
+          await tx.insert(pdsHrDetails).values({ ...hrUpdates, employeeId: parseInt(id) });
+        }
+      }
+    });
 
     res.json({ success: true, message: 'Employee updated successfully' });
   } catch (error) {
@@ -1272,7 +1177,10 @@ export const revertEmployeeStatus = async (req: Request, res: Response): Promise
     const { newStatus, reason: _reason } = RevertStatusSchema.parse(req.body);
 
     const existing = await db.query.authentication.findFirst({
-      where: eq(authentication.id, parseInt(id))
+      where: eq(authentication.id, parseInt(id)),
+      with: {
+        hrDetails: true
+      }
     });
 
     if (!existing) {
@@ -1280,11 +1188,11 @@ export const revertEmployeeStatus = async (req: Request, res: Response): Promise
       return;
     }
 
-    const oldStatus = existing.employmentStatus;
+    const oldStatus = existing.hrDetails?.employmentStatus;
 
-    await db.update(authentication)
+    await db.update(pdsHrDetails)
       .set({ employmentStatus: newStatus as EmploymentStatus })
-      .where(eq(authentication.id, parseInt(id)));
+      .where(eq(pdsHrDetails.employeeId, parseInt(id)));
 
     res.json({
       success: true,

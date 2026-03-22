@@ -33,8 +33,12 @@ export class AuthService {
     return await db.query.authentication.findFirst({
       where: or(...conditions),
       with: {
-        department: true,
-        plantillaPosition: true,
+        hrDetails: {
+          with: {
+            department: true,
+            position: true,
+          }
+        },
         pdsEducations: {
           limit: 1,
           orderBy: (edu, { desc }) => [desc(edu.createdAt)]
@@ -47,8 +51,12 @@ export class AuthService {
     return await db.query.authentication.findFirst({
       where: eq(authentication.id, id),
       with: {
-        department: true,
-        plantillaPosition: true,
+        hrDetails: {
+          with: {
+            department: true,
+            position: true,
+          }
+        },
         pdsEducations: {
           limit: 1,
           orderBy: (edu, { desc }) => [desc(edu.createdAt)]
@@ -61,8 +69,12 @@ export class AuthService {
     return await db.query.authentication.findFirst({
       where: eq(authentication.email, email),
       with: {
-        department: true,
-        plantillaPosition: true,
+        hrDetails: {
+          with: {
+            department: true,
+            position: true,
+          }
+        },
         pdsEducations: {
           limit: 1,
           orderBy: (edu, { desc }) => [desc(edu.createdAt)]

@@ -1,5 +1,7 @@
 import { mysqlTable, varchar, int, date, timestamp, decimal, mysqlEnum, boolean, primaryKey, index, unique, text, datetime } from 'drizzle-orm/mysql-core';
 import { authentication } from './auth.js';
+import { departments } from './hr.js';
+import { plantillaPositions } from './plantilla.js';
 
 export const pdsEducation = mysqlTable("pds_education", {
 	id: int("id").autoincrement().notNull(),
@@ -290,6 +292,162 @@ export const serviceRecords = mysqlTable("service_records", {
 	index("idx_event_type").on(table.eventType),
 	index("idx_event_date").on(table.eventDate),
 	primaryKey({ columns: [table.id], name: "service_records_id"}),
+]);
+
+export const pdsPersonalInformation = mysqlTable("pds_personal_information", {
+	id: int("id").autoincrement().notNull(),
+	employeeId: int("employee_id").notNull().references(() => authentication.id, { onDelete: "cascade" } ),
+	birthDate: date("birth_date", { mode: 'string' }),
+	placeOfBirth: varchar("place_of_birth", { length: 255 }),
+	gender: mysqlEnum("gender", ['Male','Female']),
+	civilStatus: mysqlEnum("civil_status", ['Single','Married','Widowed','Separated','Annulled']),
+	heightM: decimal("height_m", { precision: 4, scale: 2 }),
+	weightKg: decimal("weight_kg", { precision: 5, scale: 2 }),
+	bloodType: varchar("blood_type", { length: 5 }),
+	citizenship: varchar("citizenship", { length: 50 }).default('Filipino'),
+	citizenshipType: varchar("citizenship_type", { length: 50 }),
+	dualCountry: varchar("dual_country", { length: 100 }),
+	residentialAddress: text("residential_address"),
+	residentialZipCode: varchar("residential_zip_code", { length: 50 }),
+	permanentAddress: text("permanent_address"),
+	permanentZipCode: varchar("permanent_zip_code", { length: 50 }),
+	telephoneNo: varchar("telephone_no", { length: 50 }),
+	mobileNo: varchar("mobile_no", { length: 50 }),
+	email: varchar("email", { length: 255 }),
+	umidNumber: varchar("umid_no", { length: 50 }),
+	philsysId: varchar("philsys_id", { length: 50 }),
+	philhealthNumber: varchar("philhealth_number", { length: 50 }),
+	pagibigNumber: varchar("pagibig_number", { length: 50 }),
+	tinNumber: varchar("tin_number", { length: 50 }),
+	gsisNumber: varchar("gsis_number", { length: 50 }),
+	agencyEmployeeNo: varchar("agency_employee_no", { length: 50 }),
+	
+	resHouseBlockLot: varchar("res_house_block_lot", { length: 150 }),
+	resStreet: varchar("res_street", { length: 150 }),
+	resSubdivision: varchar("res_subdivision", { length: 150 }),
+	resBarangay: varchar("res_barangay", { length: 150 }),
+	resCity: varchar("res_city", { length: 150 }),
+	resProvince: varchar("res_province", { length: 150 }),
+	resRegion: varchar("res_region", { length: 150 }),
+	permHouseBlockLot: varchar("perm_house_block_lot", { length: 150 }),
+	permStreet: varchar("perm_street", { length: 150 }),
+	permSubdivision: varchar("perm_subdivision", { length: 150 }),
+	permBarangay: varchar("perm_barangay", { length: 150 }),
+	permCity: varchar("perm_city", { length: 150 }),
+	permProvince: varchar("perm_province", { length: 150 }),
+	permRegion: varchar("perm_region", { length: 150 }),
+
+	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow(),
+},
+(table) => [
+	index("employee_id").on(table.employeeId),
+	primaryKey({ columns: [table.id], name: "pds_personal_information_id"}),
+	unique("umid_no_unique").on(table.umidNumber),
+	unique("philsys_id_unique").on(table.philsysId),
+	unique("philhealth_no_unique").on(table.philhealthNumber),
+	unique("pagibig_no_unique").on(table.pagibigNumber),
+	unique("tin_no_unique").on(table.tinNumber),
+	unique("gsis_no_unique").on(table.gsisNumber),
+]);
+
+export const pdsDeclarations = mysqlTable("pds_declarations", {
+	id: int("id").autoincrement().notNull(),
+	employeeId: int("employee_id").notNull().references(() => authentication.id, { onDelete: "cascade" } ),
+	relatedThirdDegree: varchar("related_third_degree", { length: 10 }),
+	relatedThirdDetails: text("related_third_details"),
+	relatedFourthDegree: varchar("related_fourth_degree", { length: 10 }),
+	relatedFourthDetails: text("related_fourth_details"),
+	foundGuiltyAdmin: varchar("found_guilty_admin", { length: 10 }),
+	foundGuiltyDetails: text("found_guilty_details"),
+	criminallyCharged: varchar("criminally_charged", { length: 10 }),
+	dateFiled: date("date_filed", { mode: 'string' }),
+	statusOfCase: varchar("status_of_case", { length: 255 }),
+	convictedCrime: varchar("convicted_crime", { length: 10 }),
+	convictedDetails: text("convicted_details"),
+	separatedFromService: varchar("separated_from_service", { length: 10 }),
+	separatedDetails: text("separated_details"),
+	electionCandidate: varchar("election_candidate", { length: 10 }),
+	electionDetails: text("election_details"),
+	resignedToPromote: varchar("resigned_to_promote", { length: 10 }),
+	resignedDetails: text("resigned_details"),
+	immigrantStatus: varchar("immigrant_status", { length: 10 }),
+	immigrantDetails: text("immigrant_details"),
+	indigenousMember: varchar("indigenous_member", { length: 10 }),
+	indigenousDetails: text("indigenous_details"),
+	personWithDisability: varchar("person_with_disability", { length: 10 }),
+	disabilityIdNo: varchar("disability_id_no", { length: 100 }),
+	soloParent: varchar("solo_parent", { length: 10 }),
+	soloParentIdNo: varchar("solo_parent_id_no", { length: 100 }),
+	govtIdType: varchar("govt_id_type", { length: 100 }),
+	govtIdNo: varchar("govt_id_no", { length: 100 }),
+	govtIdIssuance: varchar("govt_id_issuance", { length: 255 }),
+	dateAccomplished: date("date_accomplished", { mode: 'string' }),
+	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow(),
+},
+(table) => [
+	index("employee_id").on(table.employeeId),
+	primaryKey({ columns: [table.id], name: "pds_declarations_id"}),
+]);
+
+export const pdsHrDetails = mysqlTable("pds_hr_details", {
+	id: int("id").autoincrement().notNull(),
+	employeeId: int("employee_id").notNull().references(() => authentication.id, { onDelete: "cascade" } ),
+	
+	// Employment Status & Type
+	employmentStatus: mysqlEnum("employment_status", ['Active','Probationary','Terminated','Resigned','On Leave','Suspended','Verbal Warning','Written Warning','Show Cause']).default('Active'),
+	employmentType: varchar("employment_type", { length: 50 }).default('Probationary'),
+	appointmentType: mysqlEnum("appointment_type", ['Permanent','Contractual','Casual','Job Order','Coterminous','Temporary','Contract of Service','JO','COS']),
+	
+	// Job Details
+	jobTitle: varchar("job_title", { length: 100 }),
+	positionTitle: varchar("position_title", { length: 100 }),
+	itemNumber: varchar("item_number", { length: 50 }),
+	station: varchar("station", { length: 100 }),
+	officeAddress: text("office_address"),
+	departmentId: int("department_id").references(() => departments.id, { onDelete: "set null" } ),
+	positionId: int("position_id").references(() => plantillaPositions.id, { onDelete: "set null" } ),
+	managerId: int("manager_id"),
+	
+	// Rank & Salary
+	salaryGrade: varchar("salary_grade", { length: 10 }),
+	stepIncrement: int("step_increment").default(1),
+	salaryBasis: mysqlEnum("salary_basis", ['Daily','Hourly']).default('Daily'),
+	
+	// Dates
+	dateHired: date("date_hired", { mode: 'string' }),
+	contractEndDate: date("contract_end_date", { mode: 'string' }),
+	regularizationDate: date("regularization_date", { mode: 'string' }),
+	firstDayOfService: date("first_day_of_service", { mode: 'string' }),
+	originalAppointmentDate: date("original_appointment_date", { mode: 'string' }),
+	lastPromotionDate: date("last_promotion_date", { mode: 'string' }),
+	
+	// Shift & Routine
+	dutyType: mysqlEnum("duty_type", ['Standard', 'Irregular']).default('Standard'),
+	dailyTargetHours: decimal("daily_target_hours", { precision: 4, scale: 2 }).default('8.00'),
+	startTime: varchar("start_time", { length: 50 }),
+	endTime: varchar("end_time", { length: 50 }),
+	
+	// Profile Metadata
+	isRegular: boolean("is_regular").default(false),
+	isOldEmployee: boolean("is_old_employee").default(false),
+	isMeycauayan: boolean("is_meycauayan").default(false),
+	profileStatus: mysqlEnum("profile_status", ['Initial', 'Complete']).default('Initial'),
+	
+	// Personal/Social Info
+	religion: varchar("religion", { length: 100 }),
+	barangay: varchar("barangay", { length: 100 }), // Current assignment/residential area
+	facebookUrl: varchar("facebook_url", { length: 255 }),
+	linkedinUrl: varchar("linkedin_url", { length: 255 }),
+	twitterHandle: varchar("twitter_handle", { length: 100 }),
+
+	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow(),
+},
+(table) => [
+	index("idx_hr_employee_id").on(table.employeeId),
+	primaryKey({ columns: [table.id], name: "pds_hr_details_id"}),
 ]);
 
 

@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 
 import { db } from '../db/index.js';
-import { dailyTimeRecords, authentication, dtrCorrections, departments, schedules, bioEnrolledUsers, attendanceLogs, bioAttendanceLogs, shiftTemplates } from '../db/schema.js';
+import { dailyTimeRecords, authentication, dtrCorrections, departments, schedules, bioEnrolledUsers, attendanceLogs, bioAttendanceLogs, shiftTemplates, pdsHrDetails } from '../db/schema.js';
 import { eq, and, desc, gte, lte, count, sql } from 'drizzle-orm';
 import { GetDTRSchema, UpdateDTRSchema, RequestCorrectionSchema } from '../schemas/dtrSchema.js';
 import { AuthenticatedRequest } from '../types/index.js';
@@ -146,7 +146,7 @@ export const getAllRecords = async (req: Request, res: Response): Promise<void> 
             middleName: authentication.middleName,
             suffix: authentication.suffix,
             department: sql<string>`COALESCE(${departments.name}, ${bioEnrolledUsers.department}, 'N/A')`,
-            dutyType: sql<string>`COALESCE(${authentication.dutyType}, 'Standard')`,
+            dutyType: sql<string>`COALESCE(${pdsHrDetails.dutyType}, 'Standard')`,
             duties: sql<string>`COALESCE(
                 (SELECT schedule_title FROM schedules WHERE employee_id = ${dailyTimeRecords.employeeId} AND (start_date IS NULL OR start_date <= ${dailyTimeRecords.date}) AND (end_date IS NULL OR end_date >= ${dailyTimeRecords.date}) ORDER BY updated_at DESC LIMIT 1),
                 (SELECT schedule_title FROM schedules WHERE employee_id = ${dailyTimeRecords.employeeId} AND (start_date IS NULL OR start_date <= ${dailyTimeRecords.date}) ORDER BY start_date DESC LIMIT 1),
@@ -168,7 +168,8 @@ export const getAllRecords = async (req: Request, res: Response): Promise<void> 
         })
         .from(dailyTimeRecords)
         .leftJoin(authentication, compareIds(dailyTimeRecords.employeeId, authentication.employeeId))
-        .leftJoin(departments, eq(authentication.departmentId, departments.id))
+        .leftJoin(pdsHrDetails, eq(authentication.id, pdsHrDetails.employeeId))
+        .leftJoin(departments, eq(pdsHrDetails.departmentId, departments.id))
         .leftJoin(bioEnrolledUsers, compareIds(bioEnrolledUsers.employeeId, dailyTimeRecords.employeeId))
         .leftJoin(
             dtrCorrections,

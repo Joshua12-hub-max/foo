@@ -7,7 +7,9 @@ import {
   performanceReviewCycles, 
   performanceReviews,
   performanceCriteria,
-  performanceReviewItems
+  performanceReviewItems,
+  pdsHrDetails,
+  departments
 } from '../db/schema.js';
 import { eq, like, and, or, between } from 'drizzle-orm';
 import { calculateAttendanceScore } from '../services/attendanceRatingService.js';
@@ -57,7 +59,17 @@ async function seedActivity() {
   console.log('Seeding CHRMO Activity (Corrected 8-5)...');
 
   // 1. Get CHRMO Employees
-  const employees = await db.select().from(authentication).where(like(authentication.department, CHRMO_DEPT_STRING));
+  const employees = await db.select({
+      id: authentication.id,
+      employeeId: authentication.employeeId,
+      firstName: authentication.firstName,
+      lastName: authentication.lastName,
+      email: authentication.email,
+  })
+  .from(authentication)
+  .leftJoin(pdsHrDetails, eq(authentication.id, pdsHrDetails.employeeId))
+  .leftJoin(departments, eq(pdsHrDetails.departmentId, departments.id))
+  .where(like(departments.name, CHRMO_DEPT_STRING));
   console.log(`Found ${employees.length} CHRMO employees.`);
 
   if (employees.length === 0) {

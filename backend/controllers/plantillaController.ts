@@ -7,7 +7,8 @@ import {
   plantillaAuditLog, 
   plantillaPositionHistory, 
   salarySchedule,
-  salaryTranches
+  salaryTranches,
+  pdsHrDetails
 } from '../db/schema.js';
 import { eq, and, sql, asc, desc, isNull, ne } from 'drizzle-orm';
 import type { AuthenticatedRequest } from '../types/index.js';
@@ -213,16 +214,14 @@ export const getPlantilla = async (req: Request, res: Response): Promise<void> =
       incumbentLastName: authentication.lastName,
       incumbentMiddleName: authentication.middleName,
       incumbentEmployeeId: authentication.employeeId,
-      birthDate: authentication.birthDate,
-      dateHired: authentication.dateHired,
-      gender: authentication.gender,
-      eligibility: authentication.eligibilityType,
-      originalAppointmentDate: authentication.originalAppointmentDate,
-      empLastPromotionDate: authentication.lastPromotionDate
+      dateHired: pdsHrDetails.dateHired,
+      originalAppointmentDate: pdsHrDetails.originalAppointmentDate,
+      empLastPromotionDate: pdsHrDetails.lastPromotionDate
     })
     .from(plantillaPositions)
     .leftJoin(departments, eq(plantillaPositions.departmentId, departments.id))
     .leftJoin(authentication, eq(plantillaPositions.incumbentId, authentication.id))
+    .leftJoin(pdsHrDetails, eq(authentication.id, pdsHrDetails.employeeId))
     .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
     .orderBy(asc(plantillaPositions.itemNumber));
 
@@ -434,7 +433,10 @@ export const assignEmployee = async (req: Request, res: Response): Promise<void>
 
     // 2. Get Employee and their Current Salary
     const employee = await db.query.authentication.findFirst({
-      where: eq(authentication.id, Number(employeeId))
+      where: eq(authentication.id, Number(employeeId)),
+      with: {
+        hrDetails: true
+      }
     });
 
     if (!employee) { 
@@ -443,9 +445,9 @@ export const assignEmployee = async (req: Request, res: Response): Promise<void>
     }
     
     let currentSalary = 0;
-    if (employee.positionId) {
+    if (employee?.hrDetails?.positionId) {
        const currentPos = await db.query.plantillaPositions.findFirst({
-         where: eq(plantillaPositions.id, employee.positionId),
+         where: eq(plantillaPositions.id, employee.hrDetails.positionId),
          columns: { monthlySalary: true }
        });
        if (currentPos) {
@@ -518,18 +520,17 @@ export const assignEmployee = async (req: Request, res: Response): Promise<void>
         .where(eq(plantillaPositions.id, Number(id)));
 
       // 5. Update Employee Profile
-      await tx.update(authentication)
+      await tx.update(pdsHrDetails)
         .set({ 
           jobTitle: position.positionTitle, 
           positionTitle: position.positionTitle, 
           itemNumber: position.itemNumber, 
           positionId: Number(id), 
           departmentId: position.departmentId, 
-          department: position.department, 
           salaryGrade: String(position.salaryGrade), 
           stepIncrement: targetStep 
         })
-        .where(eq(authentication.id, Number(employeeId)));
+        .where(eq(pdsHrDetails.employeeId, Number(employeeId)));
 
       // 6. Record History
       await tx.insert(plantillaPositionHistory).values({
@@ -587,9 +588,9 @@ export const vacatePosition = async (req: Request, res: Response): Promise<void>
         .set({ incumbentId: null, isVacant: true, vacatedDate: vacateDate })
         .where(eq(plantillaPositions.id, Number(id)));
 
-      await tx.update(authentication)
+      await tx.update(pdsHrDetails)
         .set({ jobTitle: 'Unassigned', positionTitle: null, itemNumber: null, positionId: null })
-        .where(eq(authentication.id, position.incumbentId!));
+        .where(eq(pdsHrDetails.employeeId, position.incumbentId!));
 
       await logAudit(Number(id), 'vacated', authReq.user.id, 
         { isVacant: false, incumbentId: position.incumbentId }, 
@@ -662,9 +663,11 @@ export const getAvailableEmployees = async (_req: Request, res: Response): Promi
       firstName: authentication.firstName,
       lastName: authentication.lastName,
       employeeId: authentication.employeeId,
-      department: authentication.department
+      department: departments.name
     })
     .from(authentication)
+    .leftJoin(pdsHrDetails, eq(authentication.id, pdsHrDetails.employeeId))
+    .leftJoin(departments, eq(pdsHrDetails.departmentId, departments.id))
     .leftJoin(plantillaPositions, eq(authentication.id, plantillaPositions.incumbentId))
     .where(and(
       ne(authentication.role, 'Administrator'),

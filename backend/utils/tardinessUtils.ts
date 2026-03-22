@@ -1,5 +1,5 @@
 import { db } from '../db/index.js';
-import { tardinessSummary, dailyTimeRecords, authentication } from '../db/schema.js';
+import { tardinessSummary, dailyTimeRecords, authentication, pdsHrDetails } from '../db/schema.js';
 import { eq, and, sql } from 'drizzle-orm';
 import { currentManilaDateTime } from './dateUtils.js';
 
@@ -12,9 +12,10 @@ export const updateTardinessSummary = async (
     const year = date.getFullYear();
     const month = date.getMonth() + 1;
 
-    // C3 FIX: Fetch employee's dailyTargetHours for accurate daysEquivalent calculation
-    const employeeRows = await db.select({ dailyTargetHours: authentication.dailyTargetHours })
-      .from(authentication)
+    // C3 FIX: Fetch employee's dailyTargetHours from pdsHrDetails for accurate daysEquivalent calculation
+    const employeeRows = await db.select({ dailyTargetHours: pdsHrDetails.dailyTargetHours })
+      .from(pdsHrDetails)
+      .innerJoin(authentication, eq(pdsHrDetails.employeeId, authentication.id))
       .where(eq(authentication.employeeId, employeeId))
       .limit(1);
     const dailyTargetHours = Number(employeeRows[0]?.dailyTargetHours) || 8;

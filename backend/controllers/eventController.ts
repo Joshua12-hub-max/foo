@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { db } from '../db/index.js';
-import { events, authentication, departments } from '../db/schema.js';
+import { events, authentication, departments, pdsHrDetails } from '../db/schema.js';
 import { eq, or, and, sql, asc, gte, isNull } from 'drizzle-orm';
 import { notifyAllUsers, notifyDepartment } from './notificationController.js';
 import type { AuthenticatedRequest } from '../types/index.js';
@@ -33,12 +33,16 @@ export const getEvents = async (req: Request, res: Response): Promise<void> => {
     const conditions = [baseCondition];
 
     if (!isAdminOrHr) {
-      const userRecord = await db.query.authentication.findFirst({
-        where: eq(authentication.id, authReq.user.id),
-        columns: { department: true }
-      });
+      const userRecord = await db.select({
+        departmentName: departments.name
+      })
+      .from(authentication)
+      .leftJoin(pdsHrDetails, eq(authentication.id, pdsHrDetails.employeeId))
+      .leftJoin(departments, eq(pdsHrDetails.departmentId, departments.id))
+      .where(eq(authentication.id, authReq.user.id))
+      .limit(1);
       
-      const userDept = userRecord?.department;
+      const userDept = userRecord[0]?.departmentName;
       
       const deptCondition = or(
         isNull(events.department),

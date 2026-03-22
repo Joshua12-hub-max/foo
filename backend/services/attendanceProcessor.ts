@@ -1,5 +1,5 @@
 import { db } from '../db/index.js';
-import { attendanceLogs, schedules, dailyTimeRecords, internalPolicies, authentication, leaveApplications, shiftTemplates } from '../db/schema.js';
+import { attendanceLogs, schedules, dailyTimeRecords, internalPolicies, authentication, leaveApplications, shiftTemplates, pdsHrDetails } from '../db/schema.js';
 import { eq, and, asc, sql, or } from 'drizzle-orm';
 import { updateTardinessSummary } from '../utils/tardinessUtils.js';
 import { formatToManilaDateTime } from '../utils/dateUtils.js';
@@ -39,12 +39,13 @@ export const processDailyAttendance = async (
 
     // 2. Get Employee Duty Info
     const employees = await db.select({
-      dutyType: authentication.dutyType,
-      dailyTargetHours: authentication.dailyTargetHours,
-      startTime: authentication.startTime,
-      endTime: authentication.endTime
+      dutyType: pdsHrDetails.dutyType,
+      dailyTargetHours: pdsHrDetails.dailyTargetHours,
+      startTime: pdsHrDetails.startTime,
+      endTime: pdsHrDetails.endTime
     })
     .from(authentication)
+    .leftJoin(pdsHrDetails, eq(authentication.id, pdsHrDetails.employeeId))
     .where(compareIds(authentication.employeeId, employeeId))
     .limit(1);
 

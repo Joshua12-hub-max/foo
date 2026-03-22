@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { db } from '../db/index.js';
-import { recruitmentJobs, recruitmentApplicants, authentication, recruitmentSecurityLogs } from '../db/schema.js';
+import { recruitmentJobs, recruitmentApplicants, authentication, recruitmentSecurityLogs, pdsHrDetails } from '../db/schema.js';
 import { eq, and, sql, desc, or, inArray, isNull, getTableColumns } from 'drizzle-orm';
 /* eslint-disable-next-line @typescript-eslint/naming-convention */
 import PDFDocument from 'pdfkit';
@@ -1006,9 +1006,10 @@ export const getPotentialInterviewers = async (_req: Request, res: Response): Pr
     lastName: authentication.lastName,
     email: authentication.email,
     role: authentication.role,
-    jobTitle: authentication.jobTitle
+    jobTitle: pdsHrDetails.jobTitle
   })
   .from(authentication)
+  .leftJoin(pdsHrDetails, eq(authentication.id, pdsHrDetails.employeeId))
   .where(inArray(authentication.role, ['Administrator', 'Employee']))
   .orderBy(authentication.firstName);
   

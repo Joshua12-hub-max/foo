@@ -1,5 +1,5 @@
 import { db } from '../db/index.js';
-import { holidays, leaveBalances, leaveLedger, lwopSummary, serviceRecords, tardinessSummary, leaveApplications, dailyTimeRecords, authentication, internalPolicies } from '../db/schema.js';
+import { holidays, leaveBalances, leaveLedger, lwopSummary, serviceRecords, tardinessSummary, leaveApplications, dailyTimeRecords, authentication, internalPolicies, pdsHrDetails, departments } from '../db/schema.js';
 import { eq, and, between, ne, or, sql, desc, lt, lte, gte, getTableColumns } from 'drizzle-orm';
 import { createNotification, notifyAdmins, updateNotificationsByReference } from './notificationController.js';
 import { accrueCreditsForMonth } from '../services/leaveAccrualService.js';
@@ -384,8 +384,9 @@ const calculateTardinessDeduction = async (
       return { daysEquivalent: 0, deductedFromVL: 0, chargedAsLWOP: 0 };
     }
 
-    const empRecord = await db.select({ dailyTargetHours: authentication.dailyTargetHours })
-      .from(authentication)
+    const empRecord = await db.select({ dailyTargetHours: pdsHrDetails.dailyTargetHours })
+      .from(pdsHrDetails)
+      .innerJoin(authentication, eq(pdsHrDetails.employeeId, authentication.id))
       .where(eq(authentication.employeeId, employeeId))
       .limit(1);
     const dailyTargetMinutes = (Number(empRecord[0]?.dailyTargetHours) || 8) * 60;
@@ -652,10 +653,12 @@ export const getMyLeaves: AuthenticatedHandler = async (req, res) => {
       lastName: authentication.lastName,
       middleName: authentication.middleName,
       suffix: authentication.suffix,
-      department: authentication.department
+      department: departments.name
     })
     .from(leaveApplications)
     .leftJoin(authentication, eq(leaveApplications.employeeId, authentication.employeeId))
+    .leftJoin(pdsHrDetails, eq(authentication.id, pdsHrDetails.employeeId))
+    .leftJoin(departments, eq(pdsHrDetails.departmentId, departments.id))
     .where(where)
     .orderBy(desc(leaveApplications.createdAt))
     .limit(limit)
@@ -694,7 +697,7 @@ export const getAllLeaves: AuthenticatedHandler = async (req, res) => {
         sql`${authentication.lastName} LIKE ${`%${search}%`}`
       )!);
     }
-    if (department) conditions.push(eq(authentication.department, department));
+    if (department) conditions.push(eq(departments.name, department));
     if (typeof statusParam === 'string' && isApplicationStatus(statusParam)) {
       conditions.push(eq(leaveApplications.status, statusParam));
     }
@@ -727,11 +730,13 @@ export const getAllLeaves: AuthenticatedHandler = async (req, res) => {
       lastName: sql<string>`COALESCE(${authentication.lastName}, '')`,
       middleName: authentication.middleName,
       suffix: authentication.suffix,
-      department: sql<string>`COALESCE(${authentication.department}, 'N/A')`,
+      department: sql<string>`COALESCE(${departments.name}, 'N/A')`,
       currentBalance: sql<number>`COALESCE(${leaveBalances.balance}, 0)`
     })
     .from(leaveApplications)
     .leftJoin(authentication, eq(leaveApplications.employeeId, authentication.employeeId))
+    .leftJoin(pdsHrDetails, eq(authentication.id, pdsHrDetails.employeeId))
+    .leftJoin(departments, eq(pdsHrDetails.departmentId, departments.id))
     .leftJoin(leaveBalances, and(
       eq(leaveBalances.employeeId, leaveApplications.employeeId),
       eq(leaveBalances.creditType, leaveApplications.leaveType),
@@ -985,10 +990,12 @@ export const getMyCredits: AuthenticatedHandler = async (req, res) => {
       lastName: authentication.lastName,
       middleName: authentication.middleName,
       suffix: authentication.suffix,
-      department: authentication.department
+      department: departments.name
     })
     .from(leaveBalances)
     .leftJoin(authentication, eq(leaveBalances.employeeId, authentication.employeeId))
+    .leftJoin(pdsHrDetails, eq(authentication.id, pdsHrDetails.employeeId))
+    .leftJoin(departments, eq(pdsHrDetails.departmentId, departments.id))
     .where(and(eq(leaveBalances.employeeId, employeeId), eq(leaveBalances.year, year)));
 
     res.status(200).json({ 
@@ -1020,10 +1027,12 @@ export const getEmployeeCredits: AuthenticatedHandler = async (req, res) => {
       lastName: authentication.lastName,
       middleName: authentication.middleName,
       suffix: authentication.suffix,
-      department: authentication.department
+      department: departments.name
     })
     .from(leaveBalances)
     .leftJoin(authentication, eq(leaveBalances.employeeId, authentication.employeeId))
+    .leftJoin(pdsHrDetails, eq(authentication.id, pdsHrDetails.employeeId))
+    .leftJoin(departments, eq(pdsHrDetails.departmentId, departments.id))
     .where(and(eq(leaveBalances.employeeId, employeeId), eq(leaveBalances.year, year)));
 
     res.status(200).json({ 
@@ -1070,7 +1079,7 @@ export const getAllEmployeeCredits: AuthenticatedHandler = async (req, res) => {
       lastName: sql<string>`COALESCE(${authentication.lastName}, '')`,
       middleName: authentication.middleName,
       suffix: authentication.suffix,
-      department: sql<string>`COALESCE(${authentication.department}, 'N/A')`,
+      department: sql<string>`COALESCE(${departments.name}, 'N/A')`,
       daysUsedWithPay: sql<number>`(
         SELECT COALESCE(ABS(SUM(ll.amount)), 0) FROM ${leaveLedger} ll 
         WHERE ll.employee_id = ${leaveBalances.employeeId} AND ll.credit_type = ${leaveBalances.creditType} AND ll.transaction_type = 'DEDUCTION' AND YEAR(ll.created_at) = ${year}
@@ -1082,6 +1091,8 @@ export const getAllEmployeeCredits: AuthenticatedHandler = async (req, res) => {
     })
     .from(leaveBalances)
     .leftJoin(authentication, eq(leaveBalances.employeeId, authentication.employeeId))
+    .leftJoin(pdsHrDetails, eq(authentication.id, pdsHrDetails.employeeId))
+    .leftJoin(departments, eq(pdsHrDetails.departmentId, departments.id))
     .where(where)
     .orderBy(authentication.lastName, authentication.firstName)
     .limit(limit)

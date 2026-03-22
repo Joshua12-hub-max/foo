@@ -5,7 +5,8 @@ import {
     authentication, 
     departments, 
     audit_logs,
-    shiftTemplates
+    shiftTemplates,
+    pdsHrDetails
 } from '../db/schema.js';
 import { eq, and, sql, asc, desc, inArray, lte, gte } from 'drizzle-orm';
 import { departmentScheduleSchema, shiftTemplateSchema } from '../schemas/scheduleSchema.js';
@@ -38,16 +39,18 @@ export const getSchedules = async (req: Request, res: Response): Promise<void> =
       lastName: authentication.lastName,
       middleName: authentication.middleName,
       suffix: authentication.suffix,
-      department: authentication.department,
-      departmentId: authentication.departmentId
+      department: departments.name,
+      departmentId: pdsHrDetails.departmentId
     })
     .from(schedules)
-    .leftJoin(authentication, eq(schedules.employeeId, authentication.employeeId));
+    .leftJoin(authentication, eq(schedules.employeeId, authentication.employeeId))
+    .leftJoin(pdsHrDetails, eq(authentication.id, pdsHrDetails.employeeId))
+    .leftJoin(departments, eq(pdsHrDetails.departmentId, departments.id));
 
     // If not Admin/HR, filter by user's department to show "department schedules"
     if (userRole !== 'Administrator' && userRole !== 'Human Resource' && userDeptId) {
         // @ts-expect-error - drizzle-orm type matching
-        query = query.where(eq(authentication.departmentId, userDeptId));
+        query = query.where(eq(pdsHrDetails.departmentId, userDeptId));
     }
 
     const result = await query;
@@ -85,7 +88,8 @@ export const getNextCutOffSchedules = async (_req: Request, res: Response): Prom
         })
         .from(schedules)
         .leftJoin(authentication, eq(schedules.employeeId, authentication.employeeId))
-        .leftJoin(departments, eq(authentication.departmentId, departments.id))
+        .leftJoin(pdsHrDetails, eq(authentication.id, pdsHrDetails.employeeId))
+        .leftJoin(departments, eq(pdsHrDetails.departmentId, departments.id))
         .where(and(
             gte(schedules.startDate, startDateStr),
             lte(schedules.startDate, endDateStr)
@@ -138,12 +142,13 @@ export const getDepartmentSchedulesSummary = async (_req: Request, res: Response
 
         // 2. Count ACTIVE employees per department (from authentication table directly)
         const employeeCounts = await db.select({
-            departmentId: authentication.departmentId,
+            departmentId: pdsHrDetails.departmentId,
             activeCount: sql<number>`count(${authentication.id})`
         })
         .from(authentication)
-        .where(inArray(authentication.employmentStatus, [...ACTIVE_STATUSES]))
-        .groupBy(authentication.departmentId);
+        .leftJoin(pdsHrDetails, eq(authentication.id, pdsHrDetails.employeeId))
+        .where(inArray(pdsHrDetails.employmentStatus, [...ACTIVE_STATUSES]))
+        .groupBy(pdsHrDetails.departmentId);
 
         // 3. Get active schedules for today (for shift display only)
         const activeSchedules = await db.select({
@@ -155,7 +160,8 @@ export const getDepartmentSchedulesSummary = async (_req: Request, res: Response
         })
         .from(schedules)
         .innerJoin(authentication, eq(schedules.employeeId, authentication.employeeId))
-        .innerJoin(departments, eq(authentication.departmentId, departments.id))
+        .innerJoin(pdsHrDetails, eq(authentication.id, pdsHrDetails.employeeId))
+        .innerJoin(departments, eq(pdsHrDetails.departmentId, departments.id))
         .where(and(
             lte(schedules.startDate, todayStr),
             gte(schedules.endDate, todayStr)
@@ -357,7 +363,8 @@ export const createDepartmentSchedule = async (req: Request, res: Response): Pro
             employeeId: authentication.employeeId
         })
         .from(authentication)
-        .where(eq(authentication.departmentId, Number(departmentId)));
+        .leftJoin(pdsHrDetails, eq(authentication.id, pdsHrDetails.employeeId))
+        .where(eq(pdsHrDetails.departmentId, Number(departmentId)));
 
         if (employees.length === 0) {
             res.status(404).json({ success: false, message: 'No employees found in this department' });
