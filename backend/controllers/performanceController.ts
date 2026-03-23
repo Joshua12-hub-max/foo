@@ -498,7 +498,7 @@ export const getReview = async (req: Request, res: Response): Promise<void> => {
     );
 
     // 3. Fetch Violation Count (Consistent with calculation logic: period-based, non-cancelled)
-    const empIdStr = (review.authenticationEmployeeId as any).employeeId || review.employeeId.toString();
+    const empIdStr = (review.authenticationEmployeeId as never).employeeId || review.employeeId.toString();
     const violations = await db.select({ count: count() })
       .from(policyViolations)
       .where(and(
@@ -509,8 +509,8 @@ export const getReview = async (req: Request, res: Response): Promise<void> => {
       ));
 
     // 4. Resolve flattened structure
-    const empAuth = review.authenticationEmployeeId as any;
-    const revAuth = review.authenticationReviewerId as any;
+    const empAuth = review.authenticationEmployeeId as never;
+    const revAuth = review.authenticationReviewerId as never;
     const flatReview = {
         ...review,
         employeeFirstName: empAuth.firstName,

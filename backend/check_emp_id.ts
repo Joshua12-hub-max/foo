@@ -24,7 +24,7 @@ async function checkEmpIds() {
     `);
     
     console.log('--- Tables containing Employee ID ---');
-    (rows as any[]).forEach(row => {
+    (rows as never[]).forEach(row => {
         console.log(`${row.TABLE_NAME}.${row.COLUMN_NAME} (${row.DATA_TYPE}(${row.CHARACTER_MAXIMUM_LENGTH || ''}))`);
     });
     

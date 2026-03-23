@@ -88,7 +88,7 @@ export const useAuthStore = create<AuthStore>()(
              try {
                  const user = await getCurrentUser();
                  // Ensure we extract the user if it's wrapped (defensive)
-                 const actualUser = user?.user || user;
+                 const actualUser = ("user" in user ? (user as unknown as Record<string, User>).user : undefined) || user;
                  get().setUser(actualUser);
              } catch (error: unknown) {
                  console.error("Failed to fetch user:", error);

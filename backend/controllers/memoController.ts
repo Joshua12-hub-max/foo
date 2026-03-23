@@ -41,20 +41,21 @@ const generateMemoNumber = async (): Promise<string> => {
 const getStatusFromMemoType = (memoType: MemoType): EmploymentStatus | undefined => MEMO_TYPE_TO_STATUS[memoType];
 
 const updateEmployeeStatus = async (employeeId: number, newStatus: string): Promise<void> => {
-  await db.update(authentication)
+  await db.update(pdsHrDetails)
     .set({ employmentStatus: newStatus as EmploymentStatus })
-    .where(eq(authentication.id, employeeId));
+    .where(eq(pdsHrDetails.employeeId, employeeId));
 
   if (newStatus === 'Terminated') {
-    const emp = await db.query.authentication.findFirst({
-      where: eq(authentication.id, employeeId),
-      columns: { itemNumber: true }
+    // Fetch item number from HR details
+    const hrDetails = await db.query.pdsHrDetails.findFirst({
+        where: eq(pdsHrDetails.employeeId, employeeId),
+        columns: { itemNumber: true }
     });
-    
-    if (emp && emp.itemNumber && emp.itemNumber !== 'N/A') {
+
+    if (hrDetails?.itemNumber && hrDetails.itemNumber !== 'N/A') {
       await db.update(plantillaPositions)
         .set({ isVacant: true })
-        .where(eq(plantillaPositions.itemNumber, emp.itemNumber));
+        .where(eq(plantillaPositions.itemNumber, hrDetails.itemNumber));
     }
   }
 };

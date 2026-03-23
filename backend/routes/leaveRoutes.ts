@@ -45,41 +45,41 @@ const router: Router = Router();
 // Public/Employee Routes (Token Required)
 // ============================================================================
 
-router.post('/apply', verifyToken, restrictSuspended, upload.single('attachment'), applyLeave as any);
-router.get('/my-leaves', verifyToken, getMyLeaves as any);
-router.get('/my-credits', verifyToken, getMyCredits as any);
-router.get('/my-ledger', verifyToken, getMyLedger as any);
+router.post('/apply', verifyToken, restrictSuspended, upload.single('attachment'), applyLeave as never);
+router.get('/my-leaves', verifyToken, getMyLeaves as never);
+router.get('/my-credits', verifyToken, getMyCredits as never);
+router.get('/my-ledger', verifyToken, getMyLedger as never);
 
 // ============================================================================
 // Admin Routes (Admin Token Required)
 // ============================================================================
 
 // Applications Management
-router.get('/all', verifyAdmin, getAllLeaves as any);
-router.put('/:id/process', verifyAdmin, upload.single('adminForm'), processLeave as any);
-router.put('/:id/finalize', verifyAdmin, upload.single('finalAttachment'), finalizeLeave as any);
-router.put('/:id/approve', verifyAdmin, approveLeave as any);
-router.put('/:id/reject', verifyAdmin, rejectLeave as any);
+router.get('/all', verifyAdmin, getAllLeaves as never);
+router.put('/:id/process', verifyAdmin, upload.single('adminForm'), processLeave as never);
+router.put('/:id/finalize', verifyAdmin, upload.single('finalAttachment'), finalizeLeave as never);
+router.put('/:id/approve', verifyAdmin, approveLeave as never);
+router.put('/:id/reject', verifyAdmin, rejectLeave as never);
 
 // Credits Management
-router.get('/credits/all', verifyAdmin, getAllEmployeeCredits as any);
-router.get('/credits/:employeeId', verifyAdmin, getEmployeeCredits as any);
-router.put('/credits/:employeeId', verifyAdmin, updateEmployeeCredit as any);
-router.delete('/credits/:id', verifyAdmin, deleteEmployeeCredit as any);
-router.post('/accrue-monthly', verifyAdmin, accrueMonthlyCredits as any);
+router.get('/credits/all', verifyAdmin, getAllEmployeeCredits as never);
+router.get('/credits/:employeeId', verifyAdmin, getEmployeeCredits as never);
+router.put('/credits/:employeeId', verifyAdmin, updateEmployeeCredit as never);
+router.delete('/credits/:id', verifyAdmin, deleteEmployeeCredit as never);
+router.post('/accrue-monthly', verifyAdmin, accrueMonthlyCredits as never);
 
 // Ledger and History
-router.get('/ledger/:employeeId', verifyAdmin, getEmployeeLedger as any);
-router.get('/lwop/:employeeId', verifyAdmin, getLWOPSummary as any);
-router.get('/service-record/:employeeId', verifyAdmin, getServiceRecord as any);
-router.get('/service-record/:employeeId/lwop-total', verifyAdmin, getTotalLWOPForRetirement as any);
+router.get('/ledger/:employeeId', verifyAdmin, getEmployeeLedger as never);
+router.get('/lwop/:employeeId', verifyAdmin, getLWOPSummary as never);
+router.get('/service-record/:employeeId', verifyAdmin, getServiceRecord as never);
+router.get('/service-record/:employeeId/lwop-total', verifyAdmin, getTotalLWOPForRetirement as never);
 
 // Holidays Management
-router.get('/holidays', verifyToken, getHolidays as any);
-router.post('/holidays', verifyAdmin, addHoliday as any);
-router.delete('/holidays/:id', verifyAdmin, deleteHoliday as any);
+router.get('/holidays', verifyToken, getHolidays as never);
+router.post('/holidays', verifyAdmin, addHoliday as never);
+router.delete('/holidays/:id', verifyAdmin, deleteHoliday as never);
 
 // Automation/Jobs
-router.post('/process-tardiness', verifyAdmin, processMonthlyTardiness as any);
+router.post('/process-tardiness', verifyAdmin, processMonthlyTardiness as never);
 
 export default router;

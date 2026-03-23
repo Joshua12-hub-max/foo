@@ -141,6 +141,16 @@ export const PhilippineAddressSelector = <T extends FieldValues>({
     }).join(' ');
   };
 
+  const FieldError = ({ name }: { name: string }) => {
+      const error = errors[name];
+      if (!error) return null;
+      return <p className="text-red-500 text-[10px] font-bold mt-1 ml-1 animate-in fade-in slide-in-from-top-1">{error.message as string}</p>;
+  };
+
+  const getErrorClass = (name: string) => {
+      return errors[name] ? "!border-red-500 ring-2 ring-red-100 bg-red-50/10" : "";
+  };
+
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -158,7 +168,10 @@ export const PhilippineAddressSelector = <T extends FieldValues>({
              }}
              placeholder="Select region"
              className={isMeycauayanOnly ? 'opacity-60 pointer-events-none' : ''}
+             error={!!errors[`${prefix}Region`]}
+             buttonClassName={errors[`${prefix}Region`] ? "!border-red-500 ring-2 ring-red-100" : ""}
           />
+          <FieldError name={`${prefix}Region`} />
         </div>
 
         {/* Province */}
@@ -174,7 +187,10 @@ export const PhilippineAddressSelector = <T extends FieldValues>({
              }}
              placeholder="Select province"
              className={isMeycauayanOnly || (!watchRegion && watchRegion !== '13') ? 'opacity-60 pointer-events-none' : ''}
+             error={!!errors[`${prefix}Province`]}
+             buttonClassName={errors[`${prefix}Province`] ? "!border-red-500 ring-2 ring-red-100" : ""}
           />
+          <FieldError name={`${prefix}Province`} />
         </div>
 
         {/* City/Municipality */}
@@ -190,7 +206,9 @@ export const PhilippineAddressSelector = <T extends FieldValues>({
              placeholder="Select city"
              className={isMeycauayanOnly || (!watchProvince && watchRegion !== '13') ? 'opacity-60 pointer-events-none' : ''}
              error={!!errors[`${prefix}City`] as boolean}
+             buttonClassName={errors[`${prefix}City`] ? "!border-red-500 ring-2 ring-red-100" : ""}
           />
+          <FieldError name={`${prefix}City`} />
         </div>
 
         {/* Barangay */}
@@ -203,7 +221,9 @@ export const PhilippineAddressSelector = <T extends FieldValues>({
              placeholder="Select barangay"
              className={!watchCity ? 'opacity-60 pointer-events-none' : ''}
              error={!!errors[`${prefix}Brgy`] as boolean}
+             buttonClassName={errors[`${prefix}Brgy`] ? "!border-red-500 ring-2 ring-red-100" : ""}
           />
+          <FieldError name={`${prefix}Brgy`} />
         </div>
       </div>
 
@@ -213,17 +233,19 @@ export const PhilippineAddressSelector = <T extends FieldValues>({
           <label className="text-xs font-semibold text-gray-600 ml-1">House/Block/Lot No.</label>
           <input 
              {...register(`${prefix}HouseBlockLot` as Path<T>)} 
-             className={`${inputClass} !pl-3`} 
+             className={`${inputClass} ${getErrorClass(`${prefix}HouseBlockLot`)} !pl-3`} 
              placeholder="e.g. Lot 1 Block 2" 
           />
+          <FieldError name={`${prefix}HouseBlockLot`} />
         </div>
         <div className="space-y-1">
           <label className="text-xs font-semibold text-gray-600 ml-1">Subdivision/Village</label>
           <input 
              {...register(`${prefix}Subdivision` as Path<T>)} 
-             className={`${inputClass} !pl-3`} 
+             className={`${inputClass} ${getErrorClass(`${prefix}Subdivision`)} !pl-3`} 
              placeholder="e.g. Green Village" 
           />
+          <FieldError name={`${prefix}Subdivision`} />
         </div>
       </div>
 
@@ -233,9 +255,10 @@ export const PhilippineAddressSelector = <T extends FieldValues>({
           <label className="text-xs font-semibold text-gray-600 ml-1">Street</label>
           <input 
              {...register(`${prefix}Street` as Path<T>)} 
-             className={`${inputClass} !pl-3`} 
+             className={`${inputClass} ${getErrorClass(`${prefix}Street`)} !pl-3`} 
              placeholder="e.g. Rizal Street" 
           />
+          <FieldError name={`${prefix}Street`} />
         </div>
         <div className="space-y-1">
           <label className="text-xs font-semibold text-gray-600 ml-1">Zip code</label>

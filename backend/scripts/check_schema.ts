@@ -4,11 +4,11 @@ async function checkSchema() {
   try {
     const [authCols] = await pool.query('DESCRIBE authentication');
     console.log('--- Authentication Columns ---');
-    (authCols as any[]).forEach(col => console.log(col.Field));
+    (authCols as never[]).forEach(col => console.log(col.Field));
 
     const [applicantCols] = await pool.query('DESCRIBE recruitment_applicants');
     console.log('\n--- Recruitment Applicants Columns ---');
-    (applicantCols as any[]).forEach(col => console.log(col.Field));
+    (applicantCols as never[]).forEach(col => console.log(col.Field));
   } catch (err) {
     console.error(err);
   } finally {

@@ -1,4 +1,5 @@
 import React from 'react';
+import { Fingerprint } from 'lucide-react';
 
 interface HistoryJob {
   jobTitle: string;
@@ -33,6 +34,13 @@ interface Profile {
   emergencyContact?: string;
   emergencyContactNumber?: string;
   educationalBackground?: string;
+  isBiometricEnrolled?: boolean;
+  umidNumber?: string;
+  philsysId?: string;
+  philhealthNumber?: string;
+  pagibigNumber?: string;
+  tinNumber?: string;
+  gsisNumber?: string;
   history?: HistoryJob[];
   contacts?: Contact[];
 }
@@ -150,6 +158,42 @@ const ProfileOverview: React.FC<ProfileOverviewProps> = ({ profile }) => {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Biometric & Government ID status */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                <div className="bg-gray-100 px-6 py-3 border-b border-gray-200 flex justify-between items-center">
+                    <h2 className="text-sm font-black text-gray-700 uppercase tracking-wider">Biometrics</h2>
+                    <Fingerprint size={16} className={profile.isBiometricEnrolled ? "text-green-500" : "text-amber-500"} />
+                </div>
+                <div className="p-6 flex flex-col items-center justify-center gap-2">
+                    <div className={`px-4 py-2 rounded-lg font-black text-[10px] tracking-widest ${profile.isBiometricEnrolled ? 'bg-green-50 text-green-700 border border-green-100' : 'bg-amber-50 text-amber-700 border border-amber-100 animate-pulse'}`}>
+                        {profile.isBiometricEnrolled ? 'BIO ENROLLED' : 'NOT ENROLLED'}
+                    </div>
+                    <p className="text-[9px] font-bold text-gray-400 uppercase">Fingerprint Status</p>
+                </div>
+            </div>
+
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                <div className="bg-gray-100 px-6 py-3 border-b border-gray-200">
+                    <h2 className="text-sm font-black text-gray-700 uppercase tracking-wider">Gov't Identifiers</h2>
+                </div>
+                <div className="p-4 space-y-3">
+                    <div className="flex justify-between items-center text-[10px]">
+                        <span className="font-black text-gray-400 uppercase">UMID</span>
+                        <span className="font-bold text-gray-700">{profile.umidNumber || '---'}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-[10px]">
+                        <span className="font-black text-gray-400 uppercase">TIN</span>
+                        <span className="font-bold text-gray-700">{profile.tinNumber || '---'}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-[10px]">
+                        <span className="font-black text-gray-400 uppercase">PhilSys</span>
+                        <span className="font-bold text-gray-700">{profile.philsysId || '---'}</span>
+                    </div>
+                </div>
+            </div>
         </div>
 
         {/* Employment History */}

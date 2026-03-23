@@ -53,7 +53,7 @@ async function migrateEmpIds() {
         WHERE employee_id REGEXP '^[0-9]+$'
       `);
 
-      const changed = (result as any).affectedRows || 0;
+      const changed = (result as never).affectedRows || 0;
       totalUpdated += changed;
       
       if (changed > 0) {

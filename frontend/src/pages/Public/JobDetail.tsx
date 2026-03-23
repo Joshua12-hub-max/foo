@@ -121,6 +121,7 @@ const JobDetail = () => {
     // Form
     const { register, handleSubmit, formState: { errors, isSubmitting }, setValue, watch } = useForm<JobApplicationSchema>({
         resolver: zodResolver(dynamicSchema) as Resolver<JobApplicationSchema>,
+        mode: 'onBlur',
         defaultValues: {
             hpField: '',
             websiteUrl: '',
@@ -269,6 +270,19 @@ const JobDetail = () => {
       if (addr) setValue('permanentAddress', addr);
       if (permanentZip) setValue('permanentZipCode', permanentZip);
     }, [permRegion, permProvince, permCity, permBrgy, permHouse, permSubd, permStreet, permanentZip, setValue]);
+
+    const inputClass = "w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-4 focus:ring-blue-50 focus:border-blue-500 transition-all outline-none text-gray-700 font-medium bg-white";
+    const errorClass = "!border-red-500 ring-4 ring-red-50 ring-opacity-50 bg-red-50/10";
+
+    const getInputClass = (fieldName: keyof JobApplicationSchema) => {
+        return `${inputClass} ${errors[fieldName] ? errorClass : ""}`;
+    };
+
+    const FieldError = ({ name }: { name: keyof JobApplicationSchema }) => {
+        const error = errors[name];
+        if (!error) return null;
+        return <p className="text-red-500 text-[10px] font-bold mt-1 ml-1 animate-in fade-in slide-in-from-top-1">{error.message as string}</p>;
+    };
 
   // Mutation using custom hook
   const mutation = useJobApplication(
@@ -647,10 +661,10 @@ const JobDetail = () => {
                                             id="app-last-name"
                                             type="text" 
                                             {...register('lastName')} 
-                                            className={`w-full px-3 py-2 bg-white border ${errors.lastName ? 'border-red-500 bg-red-50/30' : 'border-gray-300'} rounded-md outline-none font-medium text-sm text-slate-700 transition-all`} 
+                                            className={getInputClass('lastName')} 
                                             placeholder="Last name" 
                                         />
-                                        {errors.lastName && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.lastName.message}</p>}
+                                        <FieldError name="lastName" />
                                     </div>
                                     <div className="space-y-2">
                                         <label className={`text-[11px] font-bold ${errors.firstName ? 'text-red-500' : 'text-slate-500'} tracking-tight ml-0.5`}>First name <span className="text-red-500">*</span></label>
@@ -658,10 +672,10 @@ const JobDetail = () => {
                                             id="app-first-name"
                                             type="text" 
                                             {...register('firstName')} 
-                                            className={`w-full px-3 py-2 bg-white border ${errors.firstName ? 'border-red-500 bg-red-50/30' : 'border-gray-300'} rounded-md outline-none font-medium text-sm text-slate-700 transition-all`} 
+                                            className={getInputClass('firstName')} 
                                             placeholder="First name" 
                                         />
-                                        {errors.firstName && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.firstName.message}</p>}
+                                        <FieldError name="firstName" />
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Middle name</label>
@@ -669,9 +683,10 @@ const JobDetail = () => {
                                             id="app-middle-name"
                                             type="text" 
                                             {...register('middleName')} 
-                                            className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md outline-none font-medium text-sm text-slate-700" 
+                                            className={getInputClass('middleName')} 
                                             placeholder="Middle name" 
                                         />
+                                        <FieldError name="middleName" />
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Suffix</label>
@@ -679,61 +694,66 @@ const JobDetail = () => {
                                             id="app-suffix"
                                             type="text" 
                                             {...register('suffix')} 
-                                            className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md outline-none font-medium text-sm text-slate-700" 
+                                            className={getInputClass('suffix')} 
                                             placeholder="e.g. Jr., III" 
                                         />
+                                        <FieldError name="suffix" />
                                     </div>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-y-3 gap-x-6">
                                 <div className="space-y-2">
-                                    <label className={`text-[11px] font-bold ${errors.birthDate ? 'text-red-500' : 'text-slate-500'} tracking-tight ml-0.5`}>Birth date <span className="text-red-500">*</span></label>
+                                    <label className={`text-[11px] font-bold ${errors.birthDate ? 'text-red-500' : 'text-slate-500'} tracking-tight ml-0.5 uppercase tracking-widest`}>Birth date <span className="text-red-500">*</span></label>
                                     <input 
                                         id="app-birth-date"
                                         type="date" 
                                         {...register('birthDate')} 
-                                        className={`w-full px-3 py-2 bg-white border ${errors.birthDate ? 'border-red-500 bg-red-50/30' : 'border-gray-300'} rounded-md outline-none font-medium text-sm text-slate-700 transition-all`} 
+                                        className={getInputClass('birthDate')} 
                                     />
-                                    {errors.birthDate && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.birthDate.message}</p>}
+                                    <FieldError name="birthDate" />
                                 </div>
                                 <div className="md:col-span-2 space-y-2">
-                                    <label className={`text-[11px] font-bold ${errors.birthPlace ? 'text-red-500' : 'text-slate-500'} tracking-tight ml-0.5`}>Place of birth <span className="text-red-500">*</span></label>
+                                    <label className={`text-[11px] font-bold ${errors.birthPlace ? 'text-red-500' : 'text-slate-500'} tracking-tight ml-0.5 uppercase tracking-widest`}>Place of birth <span className="text-red-500">*</span></label>
                                     <input 
                                         id="app-birth-place"
                                         type="text" 
                                         {...register('birthPlace')} 
-                                        className={`w-full px-3 py-2 bg-white border ${errors.birthPlace ? 'border-red-500 bg-red-50/30' : 'border-gray-300'} rounded-md outline-none font-medium text-sm text-slate-700 transition-all`} 
+                                        className={getInputClass('birthPlace')} 
                                         placeholder="City/municipality, province" 
                                     />
-                                    {errors.birthPlace && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.birthPlace.message}</p>}
+                                    <FieldError name="birthPlace" />
                                 </div>
                             </div>
 
                             <div className="grid grid-cols-2 lg:grid-cols-6 gap-y-4 gap-x-6">
                                 <div className="space-y-2">
+                                    <label className={`text-[11px] font-bold ${errors.sex ? 'text-red-500' : 'text-slate-500'} tracking-tight ml-0.5 uppercase tracking-widest`}>Sex <span className="text-red-500">*</span></label>
                                     <Combobox 
                                         options={GENDER_OPTIONS}
                                         value={watch('sex')}
-                                        onChange={(val) => setValue('sex', val as any)}
+                                        onChange={(val) => setValue('sex', val as never)}
                                         placeholder="Select sex..."
                                         error={!!errors.sex}
+                                        buttonClassName={errors.sex ? "!border-red-500 ring-4 ring-red-50" : ""}
                                     />
-                                    {errors.sex && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.sex.message}</p>}
+                                    <FieldError name="sex" />
                                 </div>
                                 <div className="space-y-2">
+                                    <label className={`text-[11px] font-bold ${errors.civilStatus ? 'text-red-500' : 'text-slate-500'} tracking-tight ml-0.5 uppercase tracking-widest`}>Civil Status <span className="text-red-500">*</span></label>
                                     <Combobox 
                                         options={CIVIL_STATUS_OPTIONS}
                                         value={watch('civilStatus')}
-                                        onChange={(val) => setValue('civilStatus', val as any)}
+                                        onChange={(val) => setValue('civilStatus', val as never)}
                                         placeholder="Select status..."
                                         error={!!errors.civilStatus}
+                                        buttonClassName={errors.civilStatus ? "!border-red-500 ring-4 ring-red-50" : ""}
                                     />
-                                    {errors.civilStatus && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.civilStatus.message}</p>}
+                                    <FieldError name="civilStatus" />
                                 </div>
                                 
                                 {/* Adjustable Height */}
                                 <div className="space-y-2">
-                                    <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Height (m)</label>
+                                    <label className={`text-[11px] font-bold ${errors.height ? 'text-red-500' : 'text-slate-500'} tracking-tight ml-0.5 uppercase tracking-widest`}>Height (m) <span className="text-red-500">*</span></label>
                                     <div className="relative flex items-center group">
                                         <button 
                                             type="button"
@@ -745,7 +765,7 @@ const JobDetail = () => {
                                         <input 
                                             type="text" 
                                             {...register('height')} 
-                                            className="w-full px-8 py-2 bg-white border border-gray-300 rounded-md outline-none font-bold text-sm text-slate-700 text-center" 
+                                            className={getInputClass('height')} 
                                             placeholder="0.00"
                                         />
                                         <button 
@@ -756,11 +776,12 @@ const JobDetail = () => {
                                             <Plus size={14} />
                                         </button>
                                     </div>
+                                    <FieldError name="height" />
                                 </div>
 
                                 {/* Adjustable Weight */}
                                 <div className="space-y-2">
-                                    <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Weight (kg)</label>
+                                    <label className={`text-[11px] font-bold ${errors.weight ? 'text-red-500' : 'text-slate-500'} tracking-tight ml-0.5 uppercase tracking-widest`}>Weight (kg) <span className="text-red-500">*</span></label>
                                     <div className="relative flex items-center group">
                                         <button 
                                             type="button"
@@ -772,7 +793,7 @@ const JobDetail = () => {
                                         <input 
                                             type="text" 
                                             {...register('weight')} 
-                                            className="w-full px-8 py-2 bg-white border border-gray-300 rounded-md outline-none font-bold text-sm text-slate-700 text-center" 
+                                            className={getInputClass('weight')} 
                                             placeholder="0"
                                         />
                                         <button 
@@ -783,16 +804,20 @@ const JobDetail = () => {
                                             <Plus size={14} />
                                         </button>
                                     </div>
+                                    <FieldError name="weight" />
                                 </div>
 
                                 <div className="space-y-2">
-                                    <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Blood type</label>
+                                    <label className={`text-[11px] font-bold ${errors.bloodType ? 'text-red-500' : 'text-slate-500'} tracking-tight ml-0.5 uppercase tracking-widest`}>Blood type <span className="text-red-500">*</span></label>
                                     <Combobox 
                                         options={BLOOD_TYPE_OPTIONS}
                                         value={watch('bloodType')}
-                                        onChange={(val) => setValue('bloodType', val as any)}
+                                        onChange={(val) => setValue('bloodType', val as never)}
                                         placeholder="Select Type"
+                                        error={!!errors.bloodType}
+                                        buttonClassName={errors.bloodType ? "!border-red-500 ring-4 ring-red-50" : ""}
                                     />
+                                    <FieldError name="bloodType" />
                                 </div>
 
                                 <div className="space-y-2">
@@ -800,10 +825,10 @@ const JobDetail = () => {
                                     <input 
                                         type="text" 
                                         {...register('nationality')} 
-                                        className={`w-full px-3 py-2 bg-white border border-gray-300 ${errors.nationality ? 'border-red-500' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`} 
+                                        className={getInputClass('nationality')} 
                                         placeholder="Filipino" 
                                     />
-                                    {errors.nationality && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.nationality.message as string}</p>}
+                                    <FieldError name="nationality" />
                                 </div>
                             </div>
                         </FormSection>
@@ -853,7 +878,7 @@ const JobDetail = () => {
                                         setValue={setValue}
                                         errors={errors}
                                         isMeycauayanOnly={isMeycauayanResident}
-                                        inputClass="w-full px-3 py-2 bg-white border border-gray-300 border-gray-200 rounded-md outline-none font-medium text-sm text-slate-700"
+                                        inputClass={inputClass}
                                     />
                                 </div>
 
@@ -865,7 +890,7 @@ const JobDetail = () => {
                                         watch={watch}
                                         setValue={setValue}
                                         errors={errors}
-                                        inputClass="w-full px-3 py-2 bg-white border border-gray-300 border-gray-200 rounded-md outline-none font-medium text-sm text-slate-700"
+                                        inputClass={inputClass}
                                     />
                                 </div>
                             </div>
@@ -879,10 +904,10 @@ const JobDetail = () => {
                                         id="app-email"
                                         type="email" 
                                         {...register('email')} 
-                                        className={`w-full px-3 py-2 bg-white border ${errors.email || isEmailTaken ? 'border-red-500 bg-red-50/30' : 'border-gray-300'} rounded-md outline-none font-medium text-sm text-slate-700 transition-all`} 
+                                        className={getInputClass('email')} 
                                         placeholder="your@email.com" 
                                     />
-                                    {errors.email && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.email.message}</p>}
+                                    <FieldError name="email" />
                                     {!errors.email && isEmailTaken && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1 animate-pulse">This email has already submitted an application.</p>}
                                 </div>
                                 <div className="space-y-2">
@@ -891,23 +916,23 @@ const JobDetail = () => {
                                         id="app-phone"
                                         type="tel" 
                                         {...register('phoneNumber')} 
-                                        className={`w-full px-3 py-2 bg-white border ${errors.phoneNumber ? 'border-red-500 bg-red-50/30' : 'border-gray-300'} rounded-md outline-none font-medium text-sm text-slate-700 transition-all`} 
+                                        className={getInputClass('phoneNumber')} 
                                         placeholder="0912 345 6789" 
                                     />
-                                    {errors.phoneNumber && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.phoneNumber.message}</p>}
+                                    <FieldError name="phoneNumber" />
                                 </div>
                             </div>
 
                              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 mt-6 border-t border-gray-100">
                                 <div className="space-y-2">
                                     <label className={`text-[11px] font-bold ${errors.emergencyContact ? 'text-red-500' : 'text-green-700'} tracking-tight ml-0.5 uppercase tracking-widest`}>Emergency Contact Person <span className="text-red-500">*</span></label>
-                                    <input type="text" {...register('emergencyContact')} className={`w-full px-3 py-2 bg-white border ${errors.emergencyContact ? 'border-red-500 bg-red-50/30' : 'border-gray-300'} rounded-md outline-none font-medium text-sm text-slate-700 transition-all`} placeholder="Full Name" />
-                                    {errors.emergencyContact && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.emergencyContact.message}</p>}
+                                    <input type="text" {...register('emergencyContact')} className={getInputClass('emergencyContact')} placeholder="Full Name" />
+                                    <FieldError name="emergencyContact" />
                                 </div>
                                 <div className="space-y-2">
                                     <label className={`text-[11px] font-bold ${errors.emergencyContactNumber ? 'text-red-500' : 'text-green-700'} tracking-tight ml-0.5 uppercase tracking-widest`}>Emergency Contact No. <span className="text-red-500">*</span></label>
-                                    <input type="text" {...register('emergencyContactNumber')} className={`w-full px-3 py-2 bg-white border ${errors.emergencyContactNumber ? 'border-red-500 bg-red-50/30' : 'border-gray-300'} rounded-md outline-none font-medium text-sm text-slate-700 transition-all`} placeholder="+63 9XX XXX XXXX" />
-                                    {errors.emergencyContactNumber && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.emergencyContactNumber.message}</p>}
+                                    <input type="text" {...register('emergencyContactNumber')} className={getInputClass('emergencyContactNumber')} placeholder="+63 9XX XXX XXXX" />
+                                    <FieldError name="emergencyContactNumber" />
                                 </div>
                             </div>
                         </FormSection>
@@ -923,10 +948,10 @@ const JobDetail = () => {
                                     <input 
                                         type="text" 
                                         {...register('gsisNumber')} 
-                                        className={`w-full px-3 py-2 bg-white border ${errors.gsisNumber || isIdTakenMap.gsisNumber || (!!watch('gsisNumber') && !ID_REGEX.GSIS.test((watch('gsisNumber') || '').replace(/\s+/g, ''))) ? 'border-red-500 bg-red-50 focus:ring-red-100 focus:border-red-500' : 'border-gray-300'} rounded-md outline-none font-medium text-sm text-slate-700 transition-all`} 
+                                        className={getInputClass('gsisNumber')} 
                                         placeholder={requireIds ? "Required" : "Optional"} 
                                     />
-                                    {errors.gsisNumber && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.gsisNumber.message}</p>}
+                                    <FieldError name="gsisNumber" />
                                     {!errors.gsisNumber && isIdTakenMap.gsisNumber && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1 animate-pulse">{isIdTakenMap.gsisNumber}</p>}
                                     {!errors.gsisNumber && !isIdTakenMap.gsisNumber && !!watch('gsisNumber') && !ID_REGEX.GSIS.test((watch('gsisNumber') || '').replace(/\s+/g, '')) && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">Invalid GSIS format</p>}
                                 </div>
@@ -935,10 +960,10 @@ const JobDetail = () => {
                                     <input 
                                         type="text" 
                                         {...register('pagibigNumber')} 
-                                        className={`w-full px-3 py-2 bg-white border ${errors.pagibigNumber || isIdTakenMap.pagibigNumber || (!!watch('pagibigNumber') && !ID_REGEX.PAGIBIG.test((watch('pagibigNumber') || '').replace(/\s+/g, ''))) ? 'border-red-500 bg-red-50 focus:ring-red-100 focus:border-red-500' : 'border-gray-300'} rounded-md outline-none font-medium text-sm text-slate-700 transition-all`} 
+                                        className={getInputClass('pagibigNumber')} 
                                         placeholder={requireIds ? "Required" : "Optional"} 
                                     />
-                                    {errors.pagibigNumber && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.pagibigNumber.message}</p>}
+                                    <FieldError name="pagibigNumber" />
                                     {!errors.pagibigNumber && isIdTakenMap.pagibigNumber && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1 animate-pulse">{isIdTakenMap.pagibigNumber}</p>}
                                     {!errors.pagibigNumber && !isIdTakenMap.pagibigNumber && !!watch('pagibigNumber') && !ID_REGEX.PAGIBIG.test((watch('pagibigNumber') || '').replace(/\s+/g, '')) && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">Invalid Pag-IBIG format</p>}
                                 </div>
@@ -947,10 +972,10 @@ const JobDetail = () => {
                                     <input 
                                         type="text" 
                                         {...register('philhealthNumber')} 
-                                        className={`w-full px-3 py-2 bg-white border ${errors.philhealthNumber || isIdTakenMap.philhealthNumber || (!!watch('philhealthNumber') && !ID_REGEX.PHILHEALTH.test((watch('philhealthNumber') || '').replace(/\s+/g, ''))) ? 'border-red-500 bg-red-50 focus:ring-red-100 focus:border-red-500' : 'border-gray-300'} rounded-md outline-none font-medium text-sm text-slate-700 transition-all`} 
+                                        className={getInputClass('philhealthNumber')} 
                                         placeholder={requireIds ? "Required" : "Optional"} 
                                     />
-                                    {errors.philhealthNumber && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.philhealthNumber.message}</p>}
+                                    <FieldError name="philhealthNumber" />
                                     {!errors.philhealthNumber && isIdTakenMap.philhealthNumber && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1 animate-pulse">{isIdTakenMap.philhealthNumber}</p>}
                                     {!errors.philhealthNumber && !isIdTakenMap.philhealthNumber && !!watch('philhealthNumber') && !ID_REGEX.PHILHEALTH.test((watch('philhealthNumber') || '').replace(/\s+/g, '')) && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">Invalid PhilHealth format</p>}
                                 </div>
@@ -959,10 +984,10 @@ const JobDetail = () => {
                                     <input 
                                         type="text" 
                                         {...register('umidNumber')} 
-                                        className={`w-full px-3 py-2 bg-white border ${errors.umidNumber || isIdTakenMap.umidNumber || (!!watch('umidNumber') && !ID_REGEX.UMID.test((watch('umidNumber') || '').replace(/\s+/g, ''))) ? 'border-red-500 bg-red-50 focus:ring-red-100 focus:border-red-500' : 'border-gray-300'} rounded-md outline-none font-medium text-sm text-slate-700 transition-all`} 
+                                        className={getInputClass('umidNumber')} 
                                         placeholder={requireIds ? "Required" : "Optional"} 
                                     />
-                                    {errors.umidNumber && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.umidNumber.message}</p>}
+                                    <FieldError name="umidNumber" />
                                     {!errors.umidNumber && isIdTakenMap.umidNumber && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1 animate-pulse">{isIdTakenMap.umidNumber}</p>}
                                     {!errors.umidNumber && !isIdTakenMap.umidNumber && !!watch('umidNumber') && !ID_REGEX.UMID.test((watch('umidNumber') || '').replace(/\s+/g, '')) && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">Invalid UMID format</p>}
                                 </div>
@@ -971,10 +996,10 @@ const JobDetail = () => {
                                     <input 
                                         type="text" 
                                         {...register('philsysId')} 
-                                        className={`w-full px-3 py-2 bg-white border ${errors.philsysId || isIdTakenMap.philsysId || (!!watch('philsysId') && !ID_REGEX.PHILSYS.test((watch('philsysId') || '').replace(/\s+/g, ''))) ? 'border-red-500 bg-red-50 focus:ring-red-100 focus:border-red-500' : 'border-gray-300'} rounded-md outline-none font-medium text-sm text-slate-700 transition-all`} 
+                                        className={getInputClass('philsysId')} 
                                         placeholder={requireIds ? "Required" : "Optional"} 
                                     />
-                                    {errors.philsysId && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.philsysId.message}</p>}
+                                    <FieldError name="philsysId" />
                                     {!errors.philsysId && isIdTakenMap.philsysId && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1 animate-pulse">{isIdTakenMap.philsysId}</p>}
                                     {!errors.philsysId && !isIdTakenMap.philsysId && !!watch('philsysId') && !ID_REGEX.PHILSYS.test((watch('philsysId') || '').replace(/\s+/g, '')) && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">Invalid PhilSys ID format</p>}
                                 </div>
@@ -983,10 +1008,10 @@ const JobDetail = () => {
                                     <input 
                                         type="text" 
                                         {...register('tinNumber')} 
-                                        className={`w-full px-3 py-2 bg-white border ${errors.tinNumber || isIdTakenMap.tinNumber || (!!watch('tinNumber') && !ID_REGEX.TIN.test((watch('tinNumber') || '').replace(/\s+/g, ''))) ? 'border-red-500 bg-red-50 focus:ring-red-100 focus:border-red-500' : 'border-gray-300'} rounded-md outline-none font-medium text-sm text-slate-700 transition-all`} 
+                                        className={getInputClass('tinNumber')} 
                                         placeholder={requireIds ? "Required" : "Optional"} 
                                     />
-                                    {errors.tinNumber && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.tinNumber.message}</p>}
+                                    <FieldError name="tinNumber" />
                                     {!errors.tinNumber && isIdTakenMap.tinNumber && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1 animate-pulse">{isIdTakenMap.tinNumber}</p>}
                                     {!errors.tinNumber && !isIdTakenMap.tinNumber && !!watch('tinNumber') && !ID_REGEX.TIN.test((watch('tinNumber') || '').replace(/\s+/g, '')) && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">Invalid TIN format</p>}
                                 </div>
@@ -1007,8 +1032,9 @@ const JobDetail = () => {
                                         onChange={(val) => setValue('educationalBackground', val)}
                                         placeholder="Select highest education attained"
                                         error={!!errors.educationalBackground}
+                                        buttonClassName={errors.educationalBackground ? "!border-red-500 ring-4 ring-red-50" : ""}
                                     />
-                                    {errors.educationalBackground && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.educationalBackground.message}</p>}
+                                    <FieldError name="educationalBackground" />
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1016,17 +1042,19 @@ const JobDetail = () => {
                                         <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">School / University Name {requireEdu && <span className="text-red-500">*</span>}</label>
                                         <input 
                                             {...register('schoolName')} 
-                                            className={`w-full px-3 py-2 bg-white border border-gray-300 ${errors.schoolName ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`}
+                                            className={getInputClass('schoolName')}
                                             placeholder="e.g. Bulacan State University"
                                         />
+                                        <FieldError name="schoolName" />
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Year Graduated {requireEdu && <span className="text-red-500">*</span>}</label>
                                         <input 
                                             {...register('yearGraduated')} 
-                                            className={`w-full px-3 py-2 bg-white border border-gray-300 ${errors.yearGraduated ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`}
+                                            className={getInputClass('yearGraduated')}
                                             placeholder="e.g. 2020"
                                         />
+                                        <FieldError name="yearGraduated" />
                                     </div>
                                 </div>
 
@@ -1035,9 +1063,10 @@ const JobDetail = () => {
                                         <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Course / Degree {requireEdu && <span className="text-red-500">*</span>}</label>
                                         <input 
                                             {...register('course')} 
-                                            className={`w-full px-3 py-2 bg-white border border-gray-300 ${errors.course ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`}
+                                            className={getInputClass('course')}
                                             placeholder="e.g. BS in Information Technology"
                                         />
+                                        <FieldError name="course" />
                                     </div>
                                 )}
                             </div>
@@ -1057,41 +1086,47 @@ const JobDetail = () => {
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
                                         <div className="space-y-2">
                                             <label className="text-[11px] font-bold text-slate-500 tracking-tight">Eligibility Name / Title {requireCsc && <span className="text-red-500 ml-1">*</span>}</label>
-                                            <input type="text" {...register('eligibility')} className="w-full px-3 py-2 bg-white border border-gray-300 border-gray-200 rounded-lg focus:border-green-600 outline-none text-sm font-medium text-slate-700 placeholder:text-slate-300 shadow-sm" placeholder="e.g. CSR Prof, CPA, Driver's License" />
+                                            <input type="text" {...register('eligibility')} className={getInputClass('eligibility')} placeholder="e.g. CSR Prof, CPA, Driver's License" />
+                                            <FieldError name="eligibility" />
                                         </div>
                                         <div className="space-y-2">
                                             <label className="text-[11px] font-bold text-slate-500 tracking-tight">Eligibility Category {requireCsc && <span className="text-red-500 ml-1">*</span>}</label>
                                             <Combobox 
                                                 options={ELIGIBILITY_RECRUITMENT_OPTIONS}
                                                 value={watch('eligibilityType')}
-                                                onChange={(val) => setValue('eligibilityType', val as any)}
+                                                onChange={(val) => setValue('eligibilityType', val as never)}
                                                 placeholder="Select Category"
                                                 error={!!errors.eligibilityType}
+                                                buttonClassName={errors.eligibilityType ? "!border-red-500 ring-4 ring-red-50" : ""}
                                             />
+                                            <FieldError name="eligibilityType" />
                                         </div>
                                         <div className="space-y-2">
                                             <label className="text-[11px] font-bold text-slate-500 tracking-tight">Rating (If Applicable)</label>
-                                            <input type="text" {...register('eligibilityRating')} className="w-full px-3 py-2 bg-white border border-gray-300 border-gray-200 rounded-lg focus:border-green-600 outline-none text-sm font-medium text-slate-700 placeholder:text-slate-300 shadow-sm" placeholder="e.g. 85.50%" />
+                                            <input type="text" {...register('eligibilityRating')} className={getInputClass('eligibilityRating')} placeholder="e.g. 85.50%" />
+                                            <FieldError name="eligibilityRating" />
                                         </div>
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                         <div className="space-y-2">
                                             <label className="text-[11px] font-bold text-slate-500 tracking-tight">Date of Release / Validity {requireCsc && <span className="text-red-500 ml-1">*</span>}</label>
-                                            <input type="date" {...register('eligibilityDate')} className="w-full px-3 py-2 bg-white border border-gray-300 border-gray-200 rounded-lg focus:border-green-600 outline-none text-sm font-medium text-slate-700 shadow-sm" />
+                                            <input type="date" {...register('eligibilityDate')} className={getInputClass('eligibilityDate')} />
+                                            <FieldError name="eligibilityDate" />
                                         </div>
                                         <div className="space-y-2">
                                             <label className="text-[11px] font-bold text-slate-500 tracking-tight">Place of Examination / Issue {requireCsc && <span className="text-red-500 ml-1">*</span>}</label>
-                                            <input type="text" {...register('eligibilityPlace')} className="w-full px-3 py-2 bg-white border border-gray-300 border-gray-200 rounded-lg focus:border-green-600 outline-none text-sm font-medium text-slate-700 placeholder:text-slate-300 shadow-sm" placeholder="City or Region" />
+                                            <input type="text" {...register('eligibilityPlace')} className={getInputClass('eligibilityPlace')} placeholder="City or Region" />
+                                            <FieldError name="eligibilityPlace" />
                                         </div>
                                          <div className="space-y-2">
                                              <label className={`text-[11px] font-bold ${errors.licenseNo || isIdTakenMap.agencyEmployeeNo ? 'text-red-500' : 'text-slate-500'} tracking-tight`}>License / ID Number {requireCsc && <span className="text-red-500 ml-1">*</span>}</label>
                                              <input 
                                                  type="text" 
                                                  {...register('licenseNo')} 
-                                                 className={`w-full px-3 py-2 bg-white border ${errors.licenseNo || isIdTakenMap.agencyEmployeeNo ? 'border-red-500 ring-1 ring-red-500/20' : 'border-gray-200'} rounded-lg focus:border-green-600 outline-none text-sm font-medium text-slate-700 placeholder:text-slate-300 shadow-sm`} 
+                                                 className={getInputClass('licenseNo')} 
                                                  placeholder="ID or License Number" 
                                              />
-                                             {errors.licenseNo && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.licenseNo.message}</p>}
+                                             <FieldError name="licenseNo" />
                                              {!errors.licenseNo && isIdTakenMap.agencyEmployeeNo && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1 animate-pulse">{isIdTakenMap.agencyEmployeeNo}</p>}
                                          </div>
                                     </div>
@@ -1099,25 +1134,25 @@ const JobDetail = () => {
 
                                 <div className="space-y-2">
                                     <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Work Experience Log {requireExp && <span className="text-red-500">*</span>}</label>
-                                    <textarea {...register('experience')} rows={3} className={`w-full px-3 py-2 bg-white border border-gray-300 ${errors.experience ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`} placeholder={requireExp ? "List roles and responsibilities... (Required)" : "List roles and responsibilities..."} />
-                                    {errors.experience && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.experience.message}</p>}
+                                    <textarea {...register('experience')} rows={3} className={getInputClass('experience')} placeholder={requireExp ? "List roles and responsibilities... (Required)" : "List roles and responsibilities..."} />
+                                    <FieldError name="experience" />
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                     <div className="md:col-span-2 space-y-2">
                                         <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Core Competencies {requireExp && <span className="text-red-500">*</span>}</label>
-                                        <textarea {...register('skills')} rows={2} className={`w-full px-3 py-2 bg-white border border-gray-300 ${errors.skills ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`} placeholder={requireExp ? "List key skills... (Required)" : "List key skills..."} />
-                                        {errors.skills && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.skills.message}</p>}
+                                        <textarea {...register('skills')} rows={2} className={getInputClass('skills')} placeholder={requireExp ? "List key skills... (Required)" : "List key skills..."} />
+                                        <FieldError name="skills" />
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Total Exp. (Years) {requireExp && <span className="text-red-500">*</span>}</label>
-                                        <input type="number" step="0.1" min="0" {...register('totalExperienceYears')} className={`w-full px-3 py-2 bg-white border border-gray-300 ${errors.totalExperienceYears ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`} placeholder="Value" />
-                                        {errors.totalExperienceYears && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.totalExperienceYears.message}</p>}
+                                        <input type="number" step="0.1" min="0" {...register('totalExperienceYears')} className={getInputClass('totalExperienceYears')} placeholder="Value" />
+                                        <FieldError name="totalExperienceYears" />
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-[11px] font-bold text-slate-500 tracking-tight ml-0.5">Total Training (Hrs) {requireTraining && <span className="text-red-500">*</span>}</label>
-                                        <input type="number" step="1" min="0" {...register('totalTrainingHours')} className={`w-full px-3 py-2 bg-white border border-gray-300 ${errors.totalTrainingHours ? 'border-red-500 ring-2 ring-red-100' : 'border-gray-200'} rounded-md outline-none font-medium text-sm text-slate-700`} placeholder="Hours" />
-                                        {errors.totalTrainingHours && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.totalTrainingHours.message}</p>}
+                                        <input type="number" step="1" min="0" {...register('totalTrainingHours')} className={getInputClass('totalTrainingHours')} placeholder="Hours" />
+                                        <FieldError name="totalTrainingHours" />
                                     </div>
                                 </div>
                             </div>

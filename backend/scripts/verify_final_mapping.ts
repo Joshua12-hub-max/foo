@@ -36,7 +36,7 @@ async function verifyFinalMapping() {
     }
     
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorMessage = error instanceof Error ? (error as Error).message : String(error);
     console.error('Error during verification:', errorMessage);
     console.log('Ensure the backend server is running on http://localhost:5000');
   }

@@ -42,7 +42,7 @@ async function fixSchema() {
             try {
                 console.log(`Adding column: ${col.name}`);
                 await db.execute(sql.raw(`ALTER TABLE authentication ADD COLUMN ${col.name} ${col.type}`));
-            } catch (err: any) {
+            } catch (e) {
                 if (err.message.includes('Duplicate column name')) {
                     console.log(`Column ${col.name} already exists, skipping.`);
                 } else {

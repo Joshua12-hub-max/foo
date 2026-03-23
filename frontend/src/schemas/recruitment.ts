@@ -14,26 +14,39 @@ export const EDUCATION_LEVELS = [
   "Doctorate Degree Graduate"
 ] as const;
 
+const gibberishRegex = /^(.)\1{5,}|^[bcdfghjklmnpqrstvwxzBCDFGHJKLMNPQRSTVWXZ]{12,}$|qwertyuiop|asdfghjkl|zxcvbnm|qwqewrwff/;
+
+const validateGibberish = (val: string | undefined | null) => {
+  if (!val || val === "") return true;
+  // Check for repeated characters like "aaaaaaa"
+  if (/(.)\1{7,}/.test(val)) return false;
+  // Check for long strings of consonants
+  if (/[bcdfghjklmnpqrstvwxzBCDFGHJKLMNPQRSTVWXZ]{15,}/.test(val)) return false;
+  return !gibberishRegex.test(val.toLowerCase());
+};
+
+const gibberishMsg = "Please enter valid text, avoid random characters";
+
 export const jobApplicationSchema = z.object({
   jobId: z.string().or(z.number()).optional(),
-  firstName: z.string().min(1, 'First name is required'),
-  lastName: z.string().min(1, 'Last name is required'),
-  middleName: z.string().optional(),
-  suffix: z.string().optional(),
+  firstName: z.string().min(1, 'First name is required').refine(validateGibberish, gibberishMsg),
+  lastName: z.string().min(1, 'Last name is required').refine(validateGibberish, gibberishMsg),
+  middleName: z.string().optional().refine(validateGibberish, gibberishMsg),
+  suffix: z.string().optional().refine(validateGibberish, gibberishMsg),
   email: z.string().email('Invalid email address'),
   phoneNumber: z.string().min(1, 'Phone number is required'),
-  address: z.string().min(1, 'Address is required'),
+  address: z.string().min(1, 'Address is required').refine(validateGibberish, gibberishMsg),
   zipCode: z.string().min(1, 'Zip code is required'),
-  permanentAddress: z.string().optional(),
+  permanentAddress: z.string().optional().refine(validateGibberish, gibberishMsg),
   permanentZipCode: z.string().optional(),
   birthDate: z.string().min(1, 'Birth date is required'),
-  birthPlace: z.string().min(1, 'Birth place is required'),
+  birthPlace: z.string().min(1, 'Birth place is required').refine(validateGibberish, gibberishMsg),
   sex: z.enum(['Male', 'Female']),
   civilStatus: z.enum(['Single', 'Married', 'Widowed', 'Separated', 'Annulled']),
-  height: z.string().or(z.number()).optional(),
-  weight: z.string().or(z.number()).optional(),
-  bloodType: z.enum(['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'none']),
-  nationality: z.string().optional().default('Filipino'),
+  height: z.string().min(1, "Height is required").refine(validateGibberish, gibberishMsg),
+  weight: z.string().min(1, "Weight is required").refine(validateGibberish, gibberishMsg),
+  bloodType: z.enum(['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'none']).refine(val => val !== 'none', "Blood type is required"),
+  nationality: z.string().min(1, "Nationality is required").default('Filipino').refine(validateGibberish, gibberishMsg),
   
   // Residency Format matching Registration
   isMeycauayanResident: z.boolean(),
@@ -41,28 +54,28 @@ export const jobApplicationSchema = z.object({
   resProvince: z.string().optional(),
   resCity: z.string().min(1, 'City/Municipality is required'),
   resBrgy: z.string().min(1, 'Barangay is required'),
-  resHouseBlockLot: z.string().optional(),
-  resSubdivision: z.string().optional(),
-  resStreet: z.string().optional(),
-  residentialZipCode: z.string().optional(),
+  resHouseBlockLot: z.string().min(1, "House/Block/Lot is required").refine(validateGibberish, gibberishMsg),
+  resSubdivision: z.string().optional().refine(validateGibberish, gibberishMsg),
+  resStreet: z.string().min(1, "Street is required").refine(validateGibberish, gibberishMsg),
+  residentialZipCode: z.string().min(1, "Zip code is required"),
 
   permRegion: z.string().optional(),
   permProvince: z.string().optional(),
   permCity: z.string().optional(),
   permBrgy: z.string().optional(),
-  permHouseBlockLot: z.string().optional(),
-  permSubdivision: z.string().optional(),
-  permStreet: z.string().optional(),
+  permHouseBlockLot: z.string().optional().refine(validateGibberish, gibberishMsg),
+  permSubdivision: z.string().optional().refine(validateGibberish, gibberishMsg),
+  permStreet: z.string().optional().refine(validateGibberish, gibberishMsg),
   // Gov IDs with masking/format hints
-  gsisNumber: createIdValidator(ID_REGEX.GSIS, "GSIS Number"),
-  pagibigNumber: createIdValidator(ID_REGEX.PAGIBIG, "Pag-IBIG Number"),
-  philhealthNumber: createIdValidator(ID_REGEX.PHILHEALTH, "PhilHealth Number"),
-  umidNumber: createIdValidator(ID_REGEX.UMID, "UMID Number"),
-  philsysId: createIdValidator(ID_REGEX.PHILSYS, "PhilSys ID"),
-  tinNumber: createIdValidator(ID_REGEX.TIN, "TIN"),
+  gsisNumber: createIdValidator(ID_REGEX.GSIS, "GSIS Number").or(z.literal('')),
+  pagibigNumber: createIdValidator(ID_REGEX.PAGIBIG, "Pag-IBIG Number").or(z.literal('')),
+  philhealthNumber: createIdValidator(ID_REGEX.PHILHEALTH, "PhilHealth Number").or(z.literal('')),
+  umidNumber: createIdValidator(ID_REGEX.UMID, "UMID Number").or(z.literal('')),
+  philsysId: createIdValidator(ID_REGEX.PHILSYS, "PhilSys ID").or(z.literal('')),
+  tinNumber: createIdValidator(ID_REGEX.TIN, "TIN").or(z.literal('')),
 
   // Eligibility (Refined for CSC/JO)
-  eligibility: z.string().optional(),
+  eligibility: z.string().optional().refine(validateGibberish, gibberishMsg),
   eligibilityType: z.enum([
     'none', 
     'csc_prof', 
@@ -75,20 +88,20 @@ export const jobApplicationSchema = z.object({
     'others'
   ]),
   eligibilityDate: z.string().optional(),
-  eligibilityRating: z.string().optional(),
-  eligibilityPlace: z.string().optional(),
-  licenseNo: z.string().optional(),
+  eligibilityRating: z.string().optional().refine(validateGibberish, gibberishMsg),
+  eligibilityPlace: z.string().optional().refine(validateGibberish, gibberishMsg),
+  licenseNo: z.string().optional().refine(validateGibberish, gibberishMsg),
 
   // Background
-  totalExperienceYears: z.string().or(z.number()).optional(),
-  totalTrainingHours: z.string().or(z.number()).optional(),
-  educationalBackground: z.enum(EDUCATION_LEVELS).or(z.literal('')).optional(),
-  schoolName: z.string().optional(),
-  course: z.string().optional(),
-  yearGraduated: z.string().optional(),
-  experience: z.string().optional(),
-  skills: z.string().optional(),
-  emergencyContact: z.string().min(1, 'Emergency contact person is required'),
+  totalExperienceYears: z.string().min(1, "Experience years is required"),
+  totalTrainingHours: z.string().min(1, "Training hours is required"),
+  educationalBackground: z.enum(EDUCATION_LEVELS).or(z.literal('')).refine(val => val !== '', "Educational background is required"),
+  schoolName: z.string().min(1, "School name is required").refine(validateGibberish, gibberishMsg),
+  course: z.string().optional().refine(validateGibberish, gibberishMsg),
+  yearGraduated: z.string().min(1, "Year graduated is required"),
+  experience: z.string().min(1, "Experience summary is required").refine(validateGibberish, gibberishMsg),
+  skills: z.string().min(1, "Skills are required").refine(validateGibberish, gibberishMsg),
+  emergencyContact: z.string().min(1, 'Emergency contact person is required').refine(validateGibberish, gibberishMsg),
   emergencyContactNumber: z.string().min(1, 'Emergency contact number is required'),
 
   // Anti-Spam

@@ -294,7 +294,7 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
                    label: `${pos.itemNumber} - ${pos.positionTitle} (SG-${pos.salaryGrade})` 
                  }))}
                  value={watch('itemNumber')}
-                 onChange={(val) => handlePlantillaChange({ target: { value: val } } as any)}
+                 onChange={(val) => handlePlantillaChange({ target: { value: val } } as never)}
                  placeholder="Select position..."
                  buttonClassName="px-2.5 py-1.5 text-sm bg-white"
                />

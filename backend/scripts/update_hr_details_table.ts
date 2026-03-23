@@ -28,7 +28,7 @@ async function main() {
     try {
       await connection.execute(query);
       console.log(`Executed: ${query}`);
-    } catch (err: any) {
+    } catch (e) {
       console.warn(`Already exists or error: ${err.message}`);
     }
   }
@@ -43,7 +43,7 @@ async function main() {
     try {
       await connection.execute(query);
       console.log(`Executed: ${query}`);
-    } catch (err: any) {
+    } catch (e) {
       console.warn(`Already exists or error: ${err.message}`);
     }
   }

@@ -65,8 +65,8 @@ export const resetPassword = async (data: ResetPasswordInput) => {
   return response.data;
 };
 
-export const getCurrentUser = async () => {
-    const response = await api.get("/auth/me");
+export const getCurrentUser = async (): Promise<User> => {
+    const response = await api.get<{ success: boolean; data: { user: User } }>("/auth/me");
     return response.data.data.user;
 };
 
@@ -98,7 +98,7 @@ export const updateProfile = async (formData: FormData) => {
 };
 
 export const verifyRegistrationOTP = async (data: EmailVerifyInput): Promise<AxiosResponse<{ success: boolean; message: string; data: User }>> => {
-    const response = await api.post<{ success: boolean; message: string; data: User }>("/auth/verify-registration", data);
+    const response = await api.post<{ success: boolean; message: string; data: User }>("/auth/verify-otp", data);
     return response;
 };
 

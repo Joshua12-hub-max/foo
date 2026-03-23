@@ -103,7 +103,7 @@ export const attendanceApi = {
     getDashboardStats: async (): Promise<AxiosResponse<DashboardStatsResponse>> => {
         return await api.get<DashboardStatsResponse>('/attendance/dashboard-stats');
     },
-    getHolidays: async (year?: number): Promise<AxiosResponse<ApiResponse<any[]>>> => {
+    getHolidays: async (year?: number): Promise<AxiosResponse<ApiResponse<never[]>>> => {
         return await api.get('/holidays', { params: { year } });
     }
 };

@@ -46,7 +46,41 @@ export interface EmployeeMapperInput {
   itemNumber?: string | null;
   duties?: string | null;
   shift?: string | null;
+  
+  // PDS Fields
+  birthDate?: string | null;
+  placeOfBirth?: string | null;
+  gender?: string | null;
+  civilStatus?: string | null;
+  heightM?: string | number | null;
+  weightKg?: string | number | null;
+  bloodType?: string | null;
+  citizenship?: string | null;
+  residentialAddress?: string | null;
+  permanentAddress?: string | null;
+  mobileNo?: string | null;
+  telephoneNo?: string | null;
+  umidNumber?: string | null;
+  philsysId?: string | null;
+  philhealthNumber?: string | null;
+  pagibigNumber?: string | null;
+  tinNumber?: string | null;
+  gsisNumber?: string | null;
+  agencyEmployeeNo?: string | null;
+  resHouseBlockLot?: string | null;
+  resStreet?: string | null;
+  resSubdivision?: string | null;
   resBarangay?: string | null;
+  resCity?: string | null;
+  resProvince?: string | null;
+  resRegion?: string | null;
+  permHouseBlockLot?: string | null;
+  permStreet?: string | null;
+  permSubdivision?: string | null;
+  permBarangay?: string | null;
+  permCity?: string | null;
+  permProvince?: string | null;
+  permRegion?: string | null;
 }
 
 /**
@@ -95,6 +129,41 @@ export interface EmployeeApiResponse {
   endTime: string | null;
   isMeycauayan: boolean;
   dutyType: string | null;
+
+  // PDS Fields in Response
+  birthDate: string | null;
+  placeOfBirth: string | null;
+  gender: string | null;
+  civilStatus: string | null;
+  heightM: number | null;
+  weightKg: number | null;
+  bloodType: string | null;
+  citizenship: string | null;
+  residentialAddress: string | null;
+  permanentAddress: string | null;
+  mobileNo: string | null;
+  telephoneNo: string | null;
+  umidNumber: string | null;
+  philsysId: string | null;
+  philhealthNumber: string | null;
+  pagibigNumber: string | null;
+  tinNumber: string | null;
+  gsisNumber: string | null;
+  agencyEmployeeNo: string | null;
+  resHouseBlockLot: string | null;
+  resStreet: string | null;
+  resSubdivision: string | null;
+  resBarangay: string | null;
+  resCity: string | null;
+  resProvince: string | null;
+  resRegion: string | null;
+  permHouseBlockLot: string | null;
+  permStreet: string | null;
+  permSubdivision: string | null;
+  permBarangay: string | null;
+  permCity: string | null;
+  permProvince: string | null;
+  permRegion: string | null;
 }
 
 /**
@@ -198,6 +267,40 @@ export interface PdsReferenceResponse {
   telNo: string | null;
 }
 
+export interface PdsDeclarationsResponse {
+  id: number;
+  employeeId: number;
+  relatedThirdDegree?: string | null;
+  relatedThirdDetails?: string | null;
+  relatedFourthDegree?: string | null;
+  relatedFourthDetails?: string | null;
+  foundGuiltyAdmin?: string | null;
+  foundGuiltyDetails?: string | null;
+  criminallyCharged?: string | null;
+  dateFiled?: string | null;
+  statusOfCase?: string | null;
+  convictedCrime?: string | null;
+  convictedDetails?: string | null;
+  separatedFromService?: string | null;
+  separatedDetails?: string | null;
+  electionCandidate?: string | null;
+  electionDetails?: string | null;
+  resignedToPromote?: string | null;
+  resignedDetails?: string | null;
+  immigrantStatus?: string | null;
+  immigrantDetails?: string | null;
+  indigenousMember?: string | null;
+  indigenousDetails?: string | null;
+  personWithDisability?: string | null;
+  disabilityIdNo?: string | null;
+  soloParent?: string | null;
+  soloParentIdNo?: string | null;
+  govtIdType?: string | null;
+  govtIdNo?: string | null;
+  govtIdIssuance?: string | null;
+  dateAccomplished?: string | null;
+}
+
 export interface EmployeeEligibilityResponse {
   id: number;
   eligibilityType: string;
@@ -223,4 +326,5 @@ export interface EmployeeDetailedApiResponse extends EmployeeApiResponse {
   otherInfo: PdsOtherInfoResponse[];
   references: PdsReferenceResponse[];
   eligibilities: EmployeeEligibilityResponse[];
+  declarations: PdsDeclarationsResponse | null;
 }

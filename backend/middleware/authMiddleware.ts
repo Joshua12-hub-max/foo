@@ -422,13 +422,19 @@ export const restrictSuspended = async (
     const userId = authReq.user.id;
 
     // Check status from DB for real-time enforcement
-    const user = await db.query.authentication.findFirst({
+    const userWithHr = await db.query.authentication.findFirst({
       where: eq(authentication.id, userId),
-      columns: { employmentStatus: true }
+      with: {
+        hrDetails: {
+          columns: {
+            employmentStatus: true
+          }
+        }
+      }
     });
 
-    if (user) {
-      const status = user.employmentStatus;
+    if (userWithHr?.hrDetails) {
+      const status = userWithHr.hrDetails.employmentStatus;
       if (status === 'Suspended') {
          res.status(403).json({
           message: 'Action Restricted: Your account is currently under SUSPENSION. You cannot perform this action.',

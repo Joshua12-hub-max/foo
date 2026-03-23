@@ -134,7 +134,7 @@ export const generateGoogleMeetLink = async (options: MeetingOptions): Promise<M
     console.error('Error generating Google Meet link:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to generate meeting link'
+      error: error instanceof Error ? (error as Error).message : 'Failed to generate meeting link'
     };
   }
 };

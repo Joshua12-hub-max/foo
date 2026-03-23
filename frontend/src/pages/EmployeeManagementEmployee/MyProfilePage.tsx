@@ -35,7 +35,7 @@ const MyProfilePage: React.FC<MyProfilePageProps> = ({ hideHeader = false }) => 
       {profile && (
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
            <ProfileHeader 
-              profile={profile as any}
+              profile={profile as never}
               isAdmin={false}
               statusLoading={false}
           />

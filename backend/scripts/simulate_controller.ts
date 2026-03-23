@@ -29,8 +29,8 @@ async function testControllerLogic(duty: string) {
         eq(recruitmentApplicants.isConfirmed, true),
         eq(recruitmentApplicants.stage, 'Rejected'),
         or(
-          inArray(recruitmentJobs.employmentType, targetTypes as any),
-          eq(recruitmentJobs.dutyType, normalizedDuty as any)
+          inArray(recruitmentJobs.employmentType, targetTypes as never),
+          eq(recruitmentJobs.dutyType, normalizedDuty as never)
         )
       )
     );

@@ -450,7 +450,7 @@ export const manualCheckEmails = async (): Promise<EmailCheckResult> => {
     const result = await checkForNewApplications();
     return result;
   } catch (err) {
-    const errorMsg = err instanceof Error ? err.message : 'Unknown error';
+    const errorMsg = err instanceof Error ? (err as Error).message : 'Unknown error';
     console.error('Manual email check failed:', errorMsg);
     return {
       success: false,

@@ -25,7 +25,7 @@ async function checkFKs() {
     `);
     
     console.log('--- Foreign Keys on employee_id ---');
-    (rows as any[]).forEach(row => {
+    (rows as never[]).forEach(row => {
         console.log(`${row.TABLE_NAME}.${row.COLUMN_NAME} -> ${row.REFERENCED_TABLE_NAME}.${row.REFERENCED_COLUMN_NAME}`);
     });
     

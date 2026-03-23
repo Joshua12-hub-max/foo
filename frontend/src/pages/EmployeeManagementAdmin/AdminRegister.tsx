@@ -9,7 +9,7 @@ import {
   Facebook, Twitter, Linkedin 
 } from "lucide-react";
 
-import { RegisterSchema, RegisterInput } from "@/schemas/authSchema";
+import { RegisterSchema } from "@/schemas/authSchema";
 import { useBiometricDevice } from "@/hooks/useBiometricDevice";
 import { useRegisterMutation } from "@/hooks/useAuthQueries";
 import { useAuth } from "@hooks/useAuth";
@@ -178,6 +178,7 @@ export default function AdminRegister() {
 
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<RegisterFormValues>({
     resolver: zodResolver(RegisterSchema),
+    mode: "onBlur",
     defaultValues: {
       employeeId: "", firstName: "", lastName: "", middleName: "", suffix: "", email: "", password: "",
       avatar: undefined,
@@ -227,7 +228,30 @@ export default function AdminRegister() {
   useEffect(() => {
     register("department");
     register("position");
+    register("dutyType");
+    register("appointmentType");
   }, [register]);
+
+  useEffect(() => {
+    // Sync URL Parameters to Form State on Mount
+    if (queryDuties) {
+        setValue("dutyType", queryDuties as "Standard" | "Irregular", { shouldValidate: true });
+    }
+    
+    // Auto-map type=old/hired to Appointment Type if not already set
+    if (queryType === 'old' || queryType === 'hired') {
+        const currentApptType = watch("appointmentType");
+        if (!currentApptType) {
+            // Default to Permanent for Standard duties, Job Order for Irregular
+            const targetAppt = queryDuties === 'Irregular' ? 'Job Order' : 'Permanent';
+            setValue("appointmentType", targetAppt, { shouldValidate: true });
+        }
+    }
+    
+    if (queryDept) {
+        setValue("department", queryDept, { shouldValidate: true });
+    }
+  }, [queryDuties, queryType, queryDept, setValue, watch]);
 
   const { data: nextEmployeeId } = useNextEmployeeIdQuery();
   const actualEmployeeId = nextEmployeeId || "1";
@@ -422,6 +446,50 @@ export default function AdminRegister() {
     setValue("umidNumber", applicant.umidNumber || "");
     setValue("philsysId", applicant.philsysId || "");
     setValue("tinNumber", applicant.tinNumber || "");
+
+    // Address Pre-filling
+    if (applicant.address) {
+        setPrefilledAddress(applicant.address);
+        setValue("address", applicant.address);
+    }
+    if (applicant.permanentAddress) {
+        setPrefilledPermanentAddress(applicant.permanentAddress);
+        setValue("permanentAddress", applicant.permanentAddress);
+    }
+    if (applicant.zipCode) setValue("residentialZipCode", applicant.zipCode);
+    if (applicant.permanentZipCode) setValue("permanentZipCode", applicant.permanentZipCode);
+    if (applicant.isMeycauayanResident !== undefined) {
+        setValue("isMeycauayan", applicant.isMeycauayanResident ? "true" : "false");
+    }
+
+    // Detailed address fields if they exist in the HiredApplicant type
+    const anyApplicant = applicant as any;
+    if (anyApplicant.resBrgy) setValue("resBrgy", anyApplicant.resBrgy);
+    if (anyApplicant.resCity) setValue("resCity", anyApplicant.resCity);
+    if (anyApplicant.resProvince) setValue("resProvince", anyApplicant.resProvince);
+    if (anyApplicant.resRegion) setValue("resRegion", anyApplicant.resRegion);
+    if (anyApplicant.resHouseBlockLot) setValue("resHouseBlockLot", anyApplicant.resHouseBlockLot);
+    if (anyApplicant.resStreet) setValue("resStreet", anyApplicant.resStreet);
+    if (anyApplicant.resSubdivision) setValue("resSubdivision", anyApplicant.resSubdivision);
+
+    if (anyApplicant.permBrgy) setValue("permBrgy", anyApplicant.permBrgy);
+    if (anyApplicant.permCity) setValue("permCity", anyApplicant.permCity);
+    if (anyApplicant.permProvince) setValue("permProvince", anyApplicant.permProvince);
+    if (anyApplicant.permRegion) setValue("permRegion", anyApplicant.permRegion);
+    if (anyApplicant.permHouseBlockLot) setValue("permHouseBlockLot", anyApplicant.permHouseBlockLot);
+    if (anyApplicant.permStreet) setValue("permStreet", anyApplicant.permStreet);
+    if (anyApplicant.permSubdivision) setValue("permSubdivision", anyApplicant.permSubdivision);
+
+    // Education
+    if (anyApplicant.educationalBackground) setValue("educationalBackground", anyApplicant.educationalBackground);
+    if (anyApplicant.schoolName) setValue("schoolName", anyApplicant.schoolName);
+    if (anyApplicant.course) setValue("course", anyApplicant.course);
+    if (anyApplicant.yearGraduated) setValue("yearGraduated", anyApplicant.yearGraduated);
+
+    // Eligibility
+    if (anyApplicant.eligibilityType) setValue("eligibilityType", anyApplicant.eligibilityType);
+    if (anyApplicant.licenseNo) setValue("eligibilityNumber", anyApplicant.licenseNo);
+    if (anyApplicant.eligibilityDate) setValue("eligibilityDate", formatDateForInput(anyApplicant.eligibilityDate));
 
     setValue("emergencyContact", applicant.emergencyContact || "");
     setValue("emergencyContactNumber", applicant.emergencyContactNumber || "");
@@ -687,7 +755,11 @@ export default function AdminRegister() {
         const value = data[key];
         const keyStr: string = key;
         if (!ignoreKeys.includes(keyStr) && value !== undefined && value !== null) {
-            formData.append(keyStr, String(value));
+            if (typeof value === 'object' && !(value instanceof File)) {
+                formData.append(keyStr, JSON.stringify(value));
+            } else {
+                formData.append(keyStr, String(value));
+            }
         }
     });
     formData.append("employeeId", data.employeeId || actualEmployeeId);
@@ -746,8 +818,19 @@ export default function AdminRegister() {
               return;
           }
 
+          if ("message" in (resData || {})) {
+              msg = String((resData as Record<string, string>).message);
+          }
+
           if (resData?.errors && Array.isArray(resData.errors)) {
-              msg = resData.errors.map((err) => `${err.path.join('.')}: ${err.message}`).join(' | ');
+              msg = resData.errors.map((err) => {
+                  if (typeof err === 'string') return err;
+                  if (err && typeof err === 'object' && 'message' in err) {
+                      const pathStr = Array.isArray(err.path) ? err.path.join('.') + ': ' : '';
+                      return `${pathStr}${err.message}`;
+                  }
+                  return String(err);
+              }).join(' | ');
           }
       }
       
@@ -763,10 +846,20 @@ export default function AdminRegister() {
       handleSubmit(onSubmit)();
   };
 
-  const inputClass = "w-full px-3 py-2 bg-white border border-gray-300 rounded-md outline-none font-medium text-sm text-slate-700";
-  const errorClass = "!border-red-500 ring-2 ring-red-100";
+  const inputClass = "w-full px-3 py-2 bg-white border border-gray-300 rounded-md outline-none font-medium text-sm text-slate-700 transition-all";
+  const errorClass = "!border-red-500 ring-2 ring-red-100 bg-red-50/10";
   const cardClass = "bg-white rounded-2xl border border-gray-100 p-6 shadow-sm";
   const cardHeaderClass = "text-sm font-bold text-gray-800 uppercase tracking-wider mb-5 flex items-center gap-2 pb-3 border-b border-gray-100";
+
+  const getInputClass = (fieldName: keyof RegisterFormValues) => {
+      return `${inputClass} ${errors[fieldName] ? errorClass : ''}`;
+  };
+
+  const FieldError = ({ name }: { name: keyof RegisterFormValues }) => {
+      const error = errors[name];
+      if (!error) return null;
+      return <p className="text-red-500 text-[10px] font-bold mt-1 ml-1 animate-in fade-in slide-in-from-top-1">{error.message as string}</p>;
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-8 flex flex-col font-sans animate-in fade-in duration-300">
@@ -868,12 +961,12 @@ export default function AdminRegister() {
                       {...register("email")} 
                       type="email" 
                       autoComplete="email" 
-                      className={`${inputClass} ${errors.email ? errorClass : ''} ${isFinalizingSetup ? 'bg-gray-100 cursor-not-allowed opacity-80' : ''}`} 
+                      className={`${getInputClass("email")} ${isFinalizingSetup ? 'bg-gray-100 cursor-not-allowed opacity-80' : ''}`} 
                       placeholder="" 
                       readOnly={isFinalizingSetup}
                     />
                   </div>
-                  {errors.email && <p className="text-red-500 text-[11px] ml-1">{errors.email.message}</p>}
+                  <FieldError name="email" />
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs font-semibold text-gray-600 ml-1">Password <span className="text-red-500">*</span></label>
@@ -882,11 +975,11 @@ export default function AdminRegister() {
                       {...register("password")}
                       type="password"
                       autoComplete="new-password"
-                      className={`${inputClass} ${errors.password ? errorClass : ''}`}
+                      className={getInputClass("password")}
                       placeholder=""
                     />
                   </div>
-                  {errors.password && <p className="text-red-500 text-[11px] ml-1">{errors.password.message}</p>}
+                  <FieldError name="password" />
                 </div>
              </div>
           </div>
@@ -897,31 +990,33 @@ export default function AdminRegister() {
                 <div className="space-y-1">
                   <label className="text-xs font-semibold text-gray-600 ml-1">Last Name <span className="text-red-500">*</span></label>
                   <div className="relative">
-                      <input {...register("lastName")} autoComplete="family-name" className={`${inputClass} ${errors.lastName ? errorClass : ''}`} placeholder="" />
+                      <input {...register("lastName")} autoComplete="family-name" className={getInputClass("lastName")} placeholder="" />
                   </div>
-                  {errors.lastName && <p className="text-red-500 text-[11px] ml-1">{errors.lastName.message}</p>}
+                  <FieldError name="lastName" />
                 </div>
 
                 <div className="space-y-1">
                   <label className="text-xs font-semibold text-gray-600 ml-1">First Name <span className="text-red-500">*</span></label>
                   <div className="relative">
-                      <input {...register("firstName")} autoComplete="given-name" className={`${inputClass} ${errors.firstName ? errorClass : ''}`} placeholder="" />
+                      <input {...register("firstName")} autoComplete="given-name" className={getInputClass("firstName")} placeholder="" />
                   </div>
-                  {errors.firstName && <p className="text-red-500 text-[11px] ml-1">{errors.firstName.message}</p>}
+                  <FieldError name="firstName" />
                 </div>
 
                 <div className="space-y-1">
                    <label className="text-xs font-semibold text-gray-600 ml-1">Middle Name</label>
                    <div className="relative">
-                      <input {...register("middleName")} autoComplete="additional-name" className={`${inputClass}`} placeholder="" />
+                      <input {...register("middleName")} autoComplete="additional-name" className={getInputClass("middleName")} placeholder="" />
                    </div>
+                   <FieldError name="middleName" />
                 </div>
 
                 <div className="space-y-1">
                    <label className="text-xs font-semibold text-gray-600 ml-1">Suffix</label>
                    <div className="relative">
-                      <input {...register("suffix")} autoComplete="honorific-suffix" className={`${inputClass}`} placeholder="" />
+                      <input {...register("suffix")} autoComplete="honorific-suffix" className={getInputClass("suffix")} placeholder="" />
                    </div>
+                   <FieldError name="suffix" />
                 </div>
              </div>
 
@@ -933,67 +1028,75 @@ export default function AdminRegister() {
                         type="date" 
                         {...register("birthDate")} 
                         value={watch("birthDate") ? new Date(watch("birthDate")!).toISOString().split('T')[0] : ''}
-                        className={`${inputClass}`} 
+                        className={getInputClass("birthDate")} 
                       />
                    </div>
+                   <FieldError name="birthDate" />
                 </div>
                 
                 <div className="space-y-1 col-span-2 md:col-span-2">
                    <label className="text-xs font-semibold text-gray-600 ml-1">Place of Birth <span className="text-red-500">*</span></label>
                    <div className="relative">
-                      <input {...register("placeOfBirth")} className={`${inputClass} ${errors.placeOfBirth ? errorClass : ''}`} placeholder="" />
+                      <input {...register("placeOfBirth")} className={getInputClass("placeOfBirth")} placeholder="" />
                    </div>
+                   <FieldError name="placeOfBirth" />
                 </div>
 
                 <div className="space-y-1">
                    <label className="text-xs font-semibold text-gray-600 ml-1">Gender <span className="text-red-500">*</span></label>
                    <Combobox
-                      options={GENDER_OPTIONS}
+                      options={(empMetadata?.pdsGender || GENDER_OPTIONS.map(o => o.value)).map(s => ({ value: s, label: s }))}
                       value={watch("gender") || ""}
                       onChange={(val) => setValue("gender", val as "Male" | "Female" | "", { shouldValidate: true })}
                       placeholder="Select..."
                       error={!!errors.gender}
                       buttonClassName={errors.gender ? errorClass : ''}
                    />
+                   <FieldError name="gender" />
                 </div>
 
                 <div className="space-y-1">
                    <label className="text-xs font-semibold text-gray-600 ml-1">Civil Status <span className="text-red-500">*</span></label>
                    <Combobox
-                      options={CIVIL_STATUS_OPTIONS}
+                      options={(empMetadata?.pdsCivilStatus || CIVIL_STATUS_OPTIONS.map(o => o.value)).map(s => ({ value: s, label: s }))}
                       value={watch("civilStatus") || ""}
                       onChange={(val) => setValue("civilStatus", val as "Single" | "Married" | "Widowed" | "Separated" | "Annulled" | "", { shouldValidate: true })}
                       placeholder="Select..."
                       error={!!errors.civilStatus}
                       buttonClassName={errors.civilStatus ? errorClass : ''}
                    />
+                   <FieldError name="civilStatus" />
                 </div>
 
                 <div className="space-y-1">
                    <label className="text-xs font-semibold text-gray-600 ml-1">Nationality</label>
-                   <input {...register("nationality")} className={`${inputClass}`} placeholder="" />
+                   <input {...register("nationality")} className={getInputClass("nationality")} placeholder="" />
+                   <FieldError name="nationality" />
                 </div>
 
                 <div className="space-y-1">
                    <label className="text-xs font-semibold text-gray-600 ml-1">Blood Type</label>
                    <Combobox
-                      options={BLOOD_TYPE_OPTIONS}
+                      options={(empMetadata?.pdsBloodTypes || BLOOD_TYPE_OPTIONS.map(o => o.value)).map(s => ({ value: s, label: s }))}
                       value={watch("bloodType") || ""}
                       onChange={(val) => setValue("bloodType", val, { shouldValidate: true })}
                       placeholder="Select..."
                       error={!!errors.bloodType}
                       buttonClassName={errors.bloodType ? errorClass : ''}
                    />
+                   <FieldError name="bloodType" />
                 </div>
 
                 <div className="space-y-1">
                    <label className="text-xs font-semibold text-gray-600 ml-1">Height (m)</label>
-                   <input type="number" step="0.01" {...register("heightM")} className={`${inputClass}`} placeholder="" />
+                   <input type="number" step="0.01" {...register("heightM")} className={getInputClass("heightM")} placeholder="" />
+                   <FieldError name="heightM" />
                 </div>
 
                 <div className="space-y-1">
                    <label className="text-xs font-semibold text-gray-600 ml-1">Weight (kg)</label>
-                   <input type="number" step="0.1" {...register("weightKg")} className={`${inputClass}`} placeholder="" />
+                   <input type="number" step="0.1" {...register("weightKg")} className={getInputClass("weightKg")} placeholder="" />
+                   <FieldError name="weightKg" />
                 </div>
              </div>
           </div>
@@ -1075,25 +1178,29 @@ export default function AdminRegister() {
                 <div className="space-y-1">
                    <label className="text-xs font-semibold text-gray-600 ml-1">Mobile Number</label>
                    <div className="relative">
-                      <input {...register("mobileNo")} className={`${inputClass}`} placeholder="" />
+                      <input {...register("mobileNo")} className={getInputClass("mobileNo")} placeholder="" />
                    </div>
+                   <FieldError name="mobileNo" />
                 </div>
                 <div className="space-y-1">
                    <label className="text-xs font-semibold text-gray-600 ml-1">Telephone Number</label>
                    <div className="relative">
-                      <input {...register("telephoneNo")} className={`${inputClass}`} placeholder="" />
+                      <input {...register("telephoneNo")} className={getInputClass("telephoneNo")} placeholder="" />
                    </div>
+                   <FieldError name="telephoneNo" />
                 </div>
              </div>
 
              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 mt-2 bg-red-50/50 rounded-xl border border-red-100">
                 <div className="space-y-1">
                    <label className="text-xs font-semibold text-red-600 ml-1 flex items-center gap-1">Emergency Contact Person <span className="text-red-500">*</span></label>
-                   <input {...register("emergencyContact")} className={`${inputClass} !border-red-200 focus:!border-red-500 ${errors.emergencyContact ? errorClass : ''}`} placeholder="Full Name" />
+                   <input {...register("emergencyContact")} className={`${getInputClass("emergencyContact")} !border-red-200 focus:!border-red-500`} placeholder="Full Name" />
+                   <FieldError name="emergencyContact" />
                 </div>
                 <div className="space-y-1">
                    <label className="text-xs font-semibold text-red-600 ml-1">Emergency Phone Number <span className="text-red-500">*</span></label>
-                   <input {...register("emergencyContactNumber")} className={`${inputClass} !border-red-200 focus:!border-red-500 ${errors.emergencyContactNumber ? errorClass : ''}`} placeholder="09XX XXX XXXX" />
+                   <input {...register("emergencyContactNumber")} className={`${getInputClass("emergencyContactNumber")} !border-red-200 focus:!border-red-500`} placeholder="09XX XXX XXXX" />
+                   <FieldError name="emergencyContactNumber" />
                 </div>
              </div>
           </div>
@@ -1103,31 +1210,38 @@ export default function AdminRegister() {
              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 <div className="space-y-1">
                    <label className="text-xs font-semibold text-gray-600 ml-1">GSIS ID No.</label>
-                   <input {...register("gsisNumber")} className={`${inputClass}`} placeholder="" />
+                   <input {...register("gsisNumber")} className={getInputClass("gsisNumber")} placeholder="" />
+                   <FieldError name="gsisNumber" />
                 </div>
                 <div className="space-y-1">
                    <label className="text-xs font-semibold text-gray-600 ml-1">PAG-IBIG No.</label>
-                   <input {...register("pagibigNumber")} className={`${inputClass}`} placeholder="" />
+                   <input {...register("pagibigNumber")} className={getInputClass("pagibigNumber")} placeholder="" />
+                   <FieldError name="pagibigNumber" />
                 </div>
                 <div className="space-y-1">
                    <label className="text-xs font-semibold text-gray-600 ml-1">PhilHealth No.</label>
-                   <input {...register("philhealthNumber")} className={`${inputClass}`} placeholder="" />
+                   <input {...register("philhealthNumber")} className={getInputClass("philhealthNumber")} placeholder="" />
+                   <FieldError name="philhealthNumber" />
                 </div>
                 <div className="space-y-1">
                    <label className="text-xs font-semibold text-gray-600 ml-1">UMID ID</label>
-                   <input {...register("umidNumber")} className={`${inputClass}`} placeholder="" />
+                   <input {...register("umidNumber")} className={getInputClass("umidNumber")} placeholder="" />
+                   <FieldError name="umidNumber" />
                 </div>
                 <div className="space-y-1">
                    <label className="text-xs font-semibold text-gray-600 ml-1">PHILSYS ID</label>
-                   <input {...register("philsysId")} className={`${inputClass}`} placeholder="" />
+                   <input {...register("philsysId")} className={getInputClass("philsysId")} placeholder="" />
+                   <FieldError name="philsysId" />
                 </div>
                 <div className="space-y-1">
                    <label className="text-xs font-semibold text-gray-600 ml-1">TIN No.</label>
-                   <input {...register("tinNumber")} className={`${inputClass}`} placeholder="" />
+                   <input {...register("tinNumber")} className={getInputClass("tinNumber")} placeholder="" />
+                   <FieldError name="tinNumber" />
                 </div>
                 <div className="space-y-1">
                    <label className="text-xs font-semibold text-gray-600 ml-1">Agency Employee No.</label>
-                   <input {...register("agencyEmployeeNo")} className={`${inputClass}`} placeholder="" />
+                   <input {...register("agencyEmployeeNo")} className={getInputClass("agencyEmployeeNo")} placeholder="" />
+                   <FieldError name="agencyEmployeeNo" />
                 </div>
              </div>
           </div>
@@ -1142,27 +1256,30 @@ export default function AdminRegister() {
                        value={watch("educationalBackground") || ""}
                        onChange={(val) => setValue("educationalBackground", val as EducationLevel, { shouldValidate: true })}
                        placeholder="Select highest education attained"
+                       error={!!errors.educationalBackground}
+                       buttonClassName={errors.educationalBackground ? errorClass : ''}
                    />
-                   {errors.educationalBackground && (
-                       <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.educationalBackground.message}</p>
-                   )}
+                   <FieldError name="educationalBackground" />
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                    <div className="space-y-1">
                       <label className="text-xs font-semibold text-gray-600 ml-1">School / University Name</label>
-                      <input {...register("schoolName")} className={`${inputClass}`} placeholder="e.g. Bulacan State University" />
+                      <input {...register("schoolName")} className={getInputClass("schoolName")} placeholder="e.g. Bulacan State University" />
+                      <FieldError name="schoolName" />
                    </div>
                    <div className="space-y-1">
                       <label className="text-xs font-semibold text-gray-600 ml-1">Year Graduated</label>
-                      <input {...register("yearGraduated")} className={`${inputClass}`} placeholder="e.g. 2020" />
+                      <input {...register("yearGraduated")} className={getInputClass("yearGraduated")} placeholder="e.g. 2020" />
+                      <FieldError name="yearGraduated" />
                    </div>
                 </div>
 
                 {watch("educationalBackground") && !["Elementary School Graduate", "High School Graduate", "Senior High School Graduate"].includes(watch("educationalBackground") || "") && (
                     <div className="space-y-1">
                        <label className="text-xs font-semibold text-gray-600 ml-1">Course / Degree</label>
-                       <input {...register("course")} className={`${inputClass}`} placeholder="e.g. BS in Information Technology" />
+                       <input {...register("course")} className={getInputClass("course")} placeholder="e.g. BS in Information Technology" />
+                       <FieldError name="course" />
                     </div>
                 )}
              </div>
@@ -1179,8 +1296,9 @@ export default function AdminRegister() {
                          onChange={(val) => setValue("department", val)}
                          placeholder=""
                          error={!!errors.department}
-                         buttonClassName="pl-3"
+                         buttonClassName={errors.department ? `${errorClass} pl-3` : "pl-3"}
                      />
+                     <FieldError name="department" />
                  </div>
                  <div>
                      <label className="text-xs font-semibold text-gray-600 ml-1 mb-1 block">Plantilla Position</label>
@@ -1192,49 +1310,41 @@ export default function AdminRegister() {
                          onChange={(val) => setValue("position", val)}
                          placeholder=""
                          error={!!errors.position}
-                         buttonClassName="pl-3"
+                         buttonClassName={errors.position ? `${errorClass} pl-3` : "pl-3"}
                      />
+                     <FieldError name="position" />
                  </div>
                  <div className="md:col-span-1">
                       <label className="text-xs font-semibold text-gray-600 ml-1 mb-1 block">Type of Duties</label>
                        <Combobox<"Standard" | "Irregular">
-                            options={empMetadata?.dutyTypes.map((dt) => {
-                                const val = dt === "Standard" || dt === "Irregular" ? dt : "Standard";
+                            options={(empMetadata?.dutyTypes || ['Standard', 'Irregular']).map((dt) => {
+                                const val = (dt === "Standard" || dt === "Irregular") ? dt : "Standard";
                                 return { value: val as "Standard" | "Irregular", label: dt };
-                            }) || [
-                                { value: "Standard", label: "Standard" },
-                                { value: "Irregular", label: "Irregular" }
-                            ]}
+                            })}
                             value={watch("dutyType") || "Standard"}
                             onChange={(val) => setValue("dutyType", val, { shouldValidate: true })}
                            placeholder="Select..."
-                           buttonClassName="bg-gray-50 font-bold !pl-3"
+                           error={!!errors.dutyType}
+                           buttonClassName={`bg-gray-50 font-bold !pl-3 ${errors.dutyType ? errorClass : ''}`}
                        />
+                       <FieldError name="dutyType" />
                  </div>
                   <div className="md:col-span-1">
                       <label className="text-xs font-semibold text-gray-600 ml-1 mb-1 block">Appointment Type / Schedule</label>
                        <Combobox<'Permanent' | 'Contractual' | 'Casual' | 'Job Order' | 'Coterminous' | 'Temporary' | 'Contract of Service' | 'JO' | 'COS' | ''>
-                            options={empMetadata?.appointmentTypes.map((at) => {
+                            options={(empMetadata?.appointmentTypes || ['Permanent', 'Contractual', 'Casual', 'Job Order', 'Coterminous', 'Temporary', 'Contract of Service']).map((at) => {
                                 const val = (at === 'Permanent' || at === 'Contractual' || at === 'Casual' || at === 'Job Order' || at === 'Coterminous' || at === 'Temporary' || at === 'Contract of Service' || at === 'JO' || at === 'COS' || at === '') ? at : '';
                                 return { value: val as 'Permanent' | 'Contractual' | 'Casual' | 'Job Order' | 'Coterminous' | 'Temporary' | 'Contract of Service' | 'JO' | 'COS' | '', label: at };
-                            }) || [
-                                { value: "Permanent", label: "Permanent" },
-                                { value: "Job Order", label: "Job Order" },
-                                { value: "Contractual", label: "Contractual" },
-                                { value: "Casual", label: "Casual" },
-                                { value: "Job Order", label: "Job Order" },
-                                { value: "Coterminous", label: "Coterminous" },
-                                { value: "Temporary", label: "Temporary" }
-                            ]}
+                            })}
                             value={watch("appointmentType") || ""}
                             onChange={(val) => setValue("appointmentType", val, { shouldValidate: true })}
                            placeholder="Select type..."
-                           buttonClassName="bg-gray-50 font-bold !pl-3"
+                           error={!!errors.appointmentType}
+                           buttonClassName={`bg-gray-50 font-bold !pl-3 ${errors.appointmentType ? errorClass : ''}`}
                        />
+                       <FieldError name="appointmentType" />
                   </div>
               </div>
-              
-              {/* Portal Login Details removed as Email & Password are in Account Details section */}
           </div>
 
           <div className={cardClass}>
@@ -1244,22 +1354,25 @@ export default function AdminRegister() {
                    <label className="text-xs font-semibold text-gray-600 ml-1">Facebook</label>
                    <div className="relative">
                       <Facebook className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#1877F2]" size={15} />
-                      <input {...register("facebookUrl")} className={inputClass} placeholder="" />
+                      <input {...register("facebookUrl")} className={`${getInputClass("facebookUrl")} pl-9`} placeholder="" />
                    </div>
+                   <FieldError name="facebookUrl" />
                 </div>
                 <div className="space-y-1">
                    <label className="text-xs font-semibold text-gray-600 ml-1">LinkedIn</label>
                    <div className="relative">
                       <Linkedin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#0A66C2]" size={15} />
-                      <input {...register("linkedinUrl")} className={inputClass} placeholder="" />
+                      <input {...register("linkedinUrl")} className={`${getInputClass("linkedinUrl")} pl-9`} placeholder="" />
                    </div>
+                   <FieldError name="linkedinUrl" />
                 </div>
                 <div className="space-y-1">
                    <label className="text-xs font-semibold text-gray-600 ml-1">Twitter (X)</label>
                    <div className="relative">
                       <Twitter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-800" size={15} />
-                      <input {...register("twitterHandle")} className={inputClass} placeholder="" />
+                      <input {...register("twitterHandle")} className={`${getInputClass("twitterHandle")} pl-9`} placeholder="" />
                    </div>
+                   <FieldError name="twitterHandle" />
                 </div>
              </div>
           </div>
@@ -1270,32 +1383,39 @@ export default function AdminRegister() {
                 <div className="space-y-1">
                    <label className="text-xs font-semibold text-gray-600 ml-1">CSC Eligibility Type</label>
                    <Combobox
-                       options={ELIGIBILITY_RECRUITMENT_OPTIONS}
+                       options={empMetadata?.pdsEligibilityTypes || ELIGIBILITY_RECRUITMENT_OPTIONS}
                        value={watch("eligibilityType") || ""}
                        onChange={(val) => setValue("eligibilityType", val, { shouldValidate: true })}
                        placeholder="Select..."
-                       buttonClassName={`pl-3`}
+                       error={!!errors.eligibilityType}
+                       buttonClassName={`pl-3 ${errors.eligibilityType ? errorClass : ''}`}
                    />
+                   <FieldError name="eligibilityType" />
                 </div>
                 <div className="space-y-1">
                    <label className="text-xs font-semibold text-gray-600 ml-1">Eligibility Number / License No.</label>
-                   <input {...register("eligibilityNumber")} className={`${inputClass}`} placeholder="e.g. 123456" />
+                   <input {...register("eligibilityNumber")} className={getInputClass("eligibilityNumber")} placeholder="e.g. 123456" />
+                   <FieldError name="eligibilityNumber" />
                 </div>
                 <div className="space-y-1">
                    <label className="text-xs font-semibold text-gray-600 ml-1">Date of Examination / Conferment</label>
-                   <input type="date" {...register("eligibilityDate")} className={`${inputClass}`} />
+                   <input type="date" {...register("eligibilityDate")} className={getInputClass("eligibilityDate")} />
+                   <FieldError name="eligibilityDate" />
                 </div>
                 <div className="space-y-1">
                    <label className="text-xs font-semibold text-gray-600 ml-1">Cumulative Years of Experience</label>
-                   <input type="number" step="0.5" {...register("yearsOfExperience")} className={`${inputClass}`} placeholder="e.g. 3.5" />
+                   <input type="number" step="0.5" {...register("yearsOfExperience")} className={getInputClass("yearsOfExperience")} placeholder="e.g. 3.5" />
+                   <FieldError name="yearsOfExperience" />
                 </div>
                 <div className="space-y-1 md:col-span-2">
                    <label className="text-xs font-semibold text-gray-600 ml-1">Work Experience Log</label>
-                   <textarea {...register("experience")} rows={3} className={`${inputClass}`} placeholder="List roles and responsibilities..." />
+                   <textarea {...register("experience")} rows={3} className={getInputClass("experience")} placeholder="List roles and responsibilities..." />
+                   <FieldError name="experience" />
                 </div>
                 <div className="space-y-1 md:col-span-2">
                    <label className="text-xs font-semibold text-gray-600 ml-1">Core Competencies / Skills</label>
-                   <textarea {...register("skills")} rows={2} className={`${inputClass}`} placeholder="List key skills..." />
+                   <textarea {...register("skills")} rows={2} className={getInputClass("skills")} placeholder="List key skills..." />
+                   <FieldError name="skills" />
                 </div>
              </div>
           </div>

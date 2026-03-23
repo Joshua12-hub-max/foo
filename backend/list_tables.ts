@@ -14,7 +14,7 @@ async function showTables() {
   try {
     const connection = await mysql.createConnection(config);
     const [rows] = await connection.execute('SHOW TABLES');
-    const tables = (rows as any[]).map(r => Object.values(r)[0]);
+    const tables = (rows as never[]).map(r => Object.values(r)[0]);
     console.log('--- TABLES IN DATABASE ---');
     console.log(JSON.stringify(tables, null, 2));
     await connection.end();

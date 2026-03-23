@@ -7,12 +7,18 @@ import { processDailyAttendance } from './attendanceProcessor.js';
 let lastSyncedBioId = 0;
 let isPolling = false;
 
+/**
+ * Normalizes an employee ID by removing common prefixes like 'EMP-' or 'CHRMO-'
+ * and any other non-digit characters.
+ */
 const convertBioIdToEmployeeId = (bioId: string): string => {
-  return bioId; // Already formatted as Emp-XXX in the database
+  // Robust normalization: extract only digits
+  const numericId = bioId.replace(/\D/g, '');
+  return numericId || bioId; // Fallback to original if no digits found (edge case)
 };
 
 
-async function pollBiometricLogs() {
+async function pollBiometricLogs(): Promise<void> {
   if (isPolling) return;
   isPolling = true;
 
@@ -38,15 +44,8 @@ async function pollBiometricLogs() {
 
     for (const bioLog of newBioLogs) {
       try {
-        // 2. Map bio employee_id (int) → system employeeId (string)
+        // 2. Map bio employee_id (string, potentially formatted) → system employeeId (string, numeric)
         const systemEmployeeId = convertBioIdToEmployeeId(bioLog.employeeId);
-
-        // 4. Map card_type → type (both use 'IN'/'OUT' so direct mapping)
-
-        // --- REMOVED DB INSERTION INTO attendanceLogs ---
-        // The C# middleware (Form1.cs) already inserts this record directly real-time.
-        // Doing it again here creates duplicates or race conditions.
-        // We solely use this loop to trigger processDailyAttendance.
 
         // 7. Queue DTR processing for this employee+date
         const dateStr = bioLog.logDate;
@@ -82,7 +81,7 @@ async function pollBiometricLogs() {
  * Initialize lastSyncedBioId by checking the max ID already synced.
  * This prevents re-syncing old logs on server restart.
  */
-async function initializeLastSyncedId() {
+async function initializeLastSyncedId(): Promise<void> {
   try {
     // 1. Get the current max ID in bio_attendance_logs
     const [bioMax] = await db.select({
@@ -102,8 +101,6 @@ async function initializeLastSyncedId() {
     // 3. Robust Sync Strategy:
     // If syncedCount is less than maxBioId logs we've seen (roughly), 
     // it's safer to start from a lower ID or 0 to ensure no data loss.
-    // Since we use onDuplicateKeyUpdate or existing logic in C#, 
-    // re-polling is safe but triggering DTR is essential.
     
     if (syncedCount === 0 || syncedCount < maxBioId) {
         lastSyncedBioId = 0;
@@ -122,7 +119,7 @@ async function initializeLastSyncedId() {
 /**
  * Get the current sync status (used by the API).
  */
-export const getSyncInfo = () => ({
+export const getSyncInfo = (): { lastSyncedBioId: number; isPolling: boolean } => ({
   lastSyncedBioId,
   isPolling,
 });
@@ -131,7 +128,7 @@ export const getSyncInfo = () => ({
  * Starts the background biometric polling service.
  * @param intervalMs Polling interval in milliseconds (default: 5000ms)
  */
-export const startPollingService = async (intervalMs: number = 5000) => {
+export const startPollingService = async (intervalMs: number = 5000): Promise<void> => {
   try {
     console.warn(`[BIO-SYNC] Starting biometric sync service... Interval: ${intervalMs}ms`);
 

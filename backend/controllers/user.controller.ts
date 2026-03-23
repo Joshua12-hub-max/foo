@@ -30,7 +30,8 @@ import {
   shiftTemplates,
   pdsPersonalInformation,
   pdsDeclarations,
-  pdsHrDetails
+  pdsHrDetails,
+  bioEnrolledUsers
 } from '../db/schema.js';
 import { 
   EmployeeApiResponse, 
@@ -64,6 +65,7 @@ import {
 import { formatFullName } from '../utils/nameUtils.js';
 import { checkSystemWideUniqueness } from '../services/validationService.js';
 import { PdsQuestions } from '../schemas/pdsSchema.js';
+import { normalizeIdSql } from '../utils/idUtils.js';
 
 
 // Standardized role type from global types
@@ -189,6 +191,41 @@ export const mapToEmployeeApi = (emp: EmployeeMapperInput): EmployeeApiResponse 
     endTime: emp.endTime || null,
     isMeycauayan: emp.isMeycauayan === true,
     dutyType: emp.dutyType || null,
+
+    // PDS Personal Info Fields
+    birthDate: emp.birthDate ? String(emp.birthDate) : null,
+    placeOfBirth: String(emp.placeOfBirth || ''),
+    gender: String(emp.gender || ''),
+    civilStatus: String(emp.civilStatus || ''),
+    heightM: emp.heightM ? Number(emp.heightM) : null,
+    weightKg: emp.weightKg ? Number(emp.weightKg) : null,
+    bloodType: String(emp.bloodType || ''),
+    citizenship: String(emp.citizenship || ''),
+    residentialAddress: String(emp.residentialAddress || ''),
+    permanentAddress: String(emp.permanentAddress || ''),
+    mobileNo: String(emp.mobileNo || ''),
+    telephoneNo: String(emp.telephoneNo || ''),
+    umidNumber: emp.umidNumber || null,
+    philsysId: emp.philsysId || null,
+    philhealthNumber: emp.philhealthNumber || null,
+    pagibigNumber: emp.pagibigNumber || null,
+    tinNumber: emp.tinNumber || null,
+    gsisNumber: emp.gsisNumber || null,
+    agencyEmployeeNo: emp.agencyEmployeeNo || null,
+    resHouseBlockLot: emp.resHouseBlockLot || null,
+    resStreet: emp.resStreet || null,
+    resSubdivision: emp.resSubdivision || null,
+    resBarangay: emp.resBarangay || null,
+    resCity: emp.resCity || null,
+    resProvince: emp.resProvince || null,
+    resRegion: emp.resRegion || null,
+    permHouseBlockLot: emp.permHouseBlockLot || null,
+    permStreet: emp.permStreet || null,
+    permSubdivision: emp.permSubdivision || null,
+    permBarangay: emp.permBarangay || null,
+    permCity: emp.permCity || null,
+    permProvince: emp.permProvince || null,
+    permRegion: emp.permRegion || null,
   };
 };
 
@@ -348,16 +385,20 @@ export const getAllEmployees = async (req: Request, res: Response): Promise<void
 export const getEmployeeById = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params as { id: string };
+    console.warn(`[DEBUG] Fetching employee profile for ID: ${id}`);
+    
     const [employeeData, relatedData] = await Promise.all([
       UserService.getEmployeeById(parseInt(id)),
       UserService.getRelatedData(parseInt(id))
     ]);
 
     if (!employeeData) {
+      console.warn(`[DEBUG] Employee not found for ID: ${id}`);
       res.status(404).json({ success: false, message: 'Employee not found' });
       return;
     }
 
+    console.warn(`[DEBUG] Found employee data for: ${employeeData.firstName} ${employeeData.lastName}`);
 
     // Security: PII Filtering
     const authReq = req as AuthenticatedRequest;
@@ -371,14 +412,17 @@ export const getEmployeeById = async (req: Request, res: Response): Promise<void
       return;
     }
 
+    console.warn(`[DEBUG] Mapping employee profile data...`);
     // Map everything to the strict API response format
     const mappedEmployee = mapToEmployeeApi(employeeData);
-    const { skills, education, emergencyContacts, customFields, familyBackground, voluntaryWork, learningDevelopment, workExperience, otherInfo, references, eligibilities } = relatedData;
+    const { skills, education, emergencyContacts, customFields, familyBackground, voluntaryWork, learningDevelopment, workExperience, otherInfo, references, eligibilities, declarations } = relatedData;
+
+    console.warn(`[DEBUG] Related data counts: Skills=${skills.length}, Edu=${education.length}, Eligibilities=${eligibilities.length}`);
 
     // Filter contacts for non-admins
     const finalContacts = !isSelf && !isAdmin ? [] : emergencyContacts;
 
-    res.json({
+    const response = {
       success: true,
       employee: {
         ...mappedEmployee,
@@ -392,12 +436,20 @@ export const getEmployeeById = async (req: Request, res: Response): Promise<void
         workExperience: workExperience.map(mapToWorkExperienceApi),
         otherInfo: otherInfo.map(mapToOtherInfoApi),
         references: references.map(mapToReferencesApi),
-        eligibilities: eligibilities.map(mapToEligibilityApi)
+        eligibilities: eligibilities.map(mapToEligibilityApi),
+        declarations: declarations
       }
-    });
-  } catch (_error) {
+    };
 
-    res.status(500).json({ success: false, message: 'Failed to fetch employee' });
+    console.warn(`[DEBUG] Successfully built response for employee ID: ${id}`);
+    res.json(response);
+  } catch (error) {
+    console.error('[ERROR] Failed to fetch employee profile:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to fetch employee',
+      error: error instanceof Error ? error.message : String(error)
+    });
   }
 };
 
@@ -457,15 +509,15 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
     // Generate Sequential Numeric ID if not provided
     let finalEmployeeId = employeeId;
     if (!finalEmployeeId) {
-       // Find last ID to increment (interpreted as number)
+       // Find last numeric ID to increment (interpreted as number even with prefix)
        const lastIdResult = await db.select({
-         maxId: sql<number>`MAX(CAST(employee_id AS UNSIGNED))`
+         maxId: sql<number>`MAX(CAST(REGEXP_REPLACE(employee_id, '[^0-9]', '') AS UNSIGNED))`
        })
-       .from(authentication)
-       .where(sql`employee_id REGEXP '^[0-9]+$'`);
+       .from(authentication);
 
        const nextSeq = (lastIdResult[0]?.maxId || 0) + 1;
-       finalEmployeeId = String(nextSeq);
+       // Format back to Emp-XXX as requested by user
+       finalEmployeeId = `Emp-${String(nextSeq).padStart(3, '0')}`;
     }
 
     // Hash password
@@ -596,28 +648,29 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
       const q = (pdsQuestions || {}) as Partial<typeof pdsDeclarations.$inferInsert>;
       await db.insert(pdsDeclarations).values({
         employeeId: newEmployeeIdNum,
-        relatedThirdDegree: q.relatedThirdDegree || sanitizedData.relatedThirdDegree || null,
+        relatedThirdDegree: (q.relatedThirdDegree as 'Yes' | 'No') || sanitizedData.relatedThirdDegree || null,
         relatedThirdDetails: q.relatedThirdDetails || sanitizedData.relatedThirdDetails || null,
-        relatedFourthDegree: q.relatedFourthDegree || sanitizedData.relatedFourthDegree || null,
+        relatedFourthDegree: (q.relatedFourthDegree as 'Yes' | 'No') || sanitizedData.relatedFourthDegree || null,
         relatedFourthDetails: q.relatedFourthDetails || sanitizedData.relatedFourthDetails || null,
-        foundGuiltyAdmin: q.foundGuiltyAdmin || sanitizedData.foundGuiltyAdmin || null,
+        foundGuiltyAdmin: (q.foundGuiltyAdmin as 'Yes' | 'No') || sanitizedData.foundGuiltyAdmin || null,
         foundGuiltyDetails: q.foundGuiltyDetails || sanitizedData.foundGuiltyDetails || null,
-        criminallyCharged: q.criminallyCharged || sanitizedData.criminallyCharged || null,
+        criminallyCharged: (q.criminallyCharged as 'Yes' | 'No') || sanitizedData.criminallyCharged || null,
         dateFiled: q.dateFiled || (sanitizedData.dateFiled ? String(sanitizedData.dateFiled) : null),
         statusOfCase: q.statusOfCase || sanitizedData.statusOfCase || null,
-        convictedCrime: q.convictedCrime || sanitizedData.convictedCrime || null,
+        convictedCrime: (q.convictedCrime as 'Yes' | 'No') || sanitizedData.convictedCrime || null,
         convictedDetails: q.convictedDetails || sanitizedData.convictedDetails || null,
-        separatedFromService: q.separatedFromService || sanitizedData.separatedFromService || null,
+        separatedFromService: (q.separatedFromService as 'Yes' | 'No') || sanitizedData.separatedFromService || null,
         separatedDetails: q.separatedDetails || sanitizedData.separatedDetails || null,
-        electionCandidate: q.electionCandidate || sanitizedData.electionCandidate || null,
+        electionCandidate: (q.electionCandidate as 'Yes' | 'No') || sanitizedData.electionCandidate || null,
         electionDetails: q.electionDetails || sanitizedData.electionDetails || null,
-        resignedToPromote: q.resignedToPromote || sanitizedData.resignedToPromote || null,
+        resignedToPromote: (q.resignedToPromote as 'Yes' | 'No') || sanitizedData.resignedToPromote || null,
         resignedDetails: q.resignedDetails || sanitizedData.resignedDetails || null,
-        immigrantStatus: q.immigrantStatus || sanitizedData.immigrantStatus || null,
+        immigrantStatus: (q.immigrantStatus as 'Yes' | 'No') || sanitizedData.immigrantStatus || null,
         immigrantDetails: q.immigrantDetails || sanitizedData.immigrantDetails || null,
-        indigenousMember: q.indigenousMember || sanitizedData.indigenousMember || null,
+        indigenousMember: (q.indigenousMember as 'Yes' | 'No') || sanitizedData.indigenousMember || null,
         indigenousDetails: q.indigenousDetails || sanitizedData.indigenousDetails || null,
-        personWithDisability: q.personWithDisability || sanitizedData.personWithDisability || null,
+        personWithDisability: (q.personWithDisability as 'Yes' | 'No') || sanitizedData.personWithDisability || null,
+
         disabilityIdNo: q.disabilityIdNo || sanitizedData.disabilityIdNo || null,
         soloParent: q.soloParent || sanitizedData.soloParent || null,
         soloParentIdNo: q.soloParentIdNo || sanitizedData.soloParentIdNo || null,
@@ -683,6 +736,28 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
          positionTitle: plantillaPositionTitle,
          startDate: today
        });
+    }
+
+    // 100% SUCCESS GUARANTEE: Ensure biometric record exists in our system
+    // The C# middleware normally does this, but we do it here as well for absolute reliability
+    const [existingBio] = await db.select().from(bioEnrolledUsers).where(
+      sql`${normalizeIdSql(bioEnrolledUsers.employeeId)} = ${normalizeIdSql(finalEmployeeId)}`
+    ).limit(1);
+
+    if (existingBio) {
+      await db.update(bioEnrolledUsers).set({
+        fullName: formatFullName(lastName, firstName, validatedData.middleName, validatedData.suffix),
+        department: finalDeptName || 'Unassigned',
+        userStatus: 'active',
+        updatedAt: sql`CURRENT_TIMESTAMP`
+      }).where(sql`${normalizeIdSql(bioEnrolledUsers.employeeId)} = ${normalizeIdSql(finalEmployeeId)}`);
+    } else {
+      await db.insert(bioEnrolledUsers).values({
+        employeeId: finalEmployeeId,
+        fullName: formatFullName(lastName, firstName, validatedData.middleName, validatedData.suffix),
+        department: finalDeptName || 'Unassigned',
+        userStatus: 'active'
+      });
     }
 
     res.status(201).json({ success: true, message: 'Employee created successfully', employeeId: finalEmployeeId });
@@ -1100,19 +1175,29 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
       'firstDayOfService', 'officeAddress', 'religion', 'barangay', 'dutyType',
       'isMeycauayan', 'facebookUrl', 'linkedinUrl', 'twitterHandle'
     ];
+    const personalFields = [
+      'birthDate', 'placeOfBirth', 'gender', 'civilStatus', 'heightM', 'weightKg',
+      'bloodType', 'citizenship', 'residentialAddress', 'permanentAddress',
+      'mobileNo', 'telephoneNo', 'nationality', 'phoneNumber'
+    ];
 
-    const authUpdates: any = {};
-    const hrUpdates: any = {};
+    const authUpdates: Partial<typeof authentication.$inferInsert> = {};
+    const hrUpdates: Partial<typeof pdsHrDetails.$inferInsert> = {};
+    const personalUpdates: Record<string, unknown> = {};
 
-    Object.entries(updateFields).forEach(([key, value]) => {
+    Object.entries(sanitizedUpdates).forEach(([key, value]) => {
       if (authFields.includes(key)) {
-        authUpdates[key] = value;
+        (authUpdates as Record<string, unknown>)[key] = value;
       } else if (hrFields.includes(key)) {
-        hrUpdates[key] = value;
+        (hrUpdates as Record<string, unknown>)[key] = value;
+      } else if (personalFields.includes(key)) {
+        if (key === 'nationality') personalUpdates['citizenship'] = value;
+        else if (key === 'phoneNumber') personalUpdates['mobileNo'] = value;
+        else personalUpdates[key] = value;
       }
     });
 
-    if (Object.keys(authUpdates).length === 0 && Object.keys(hrUpdates).length === 0) {
+    if (Object.keys(authUpdates).length === 0 && Object.keys(hrUpdates).length === 0 && Object.keys(personalUpdates).length === 0) {
       res.json({ success: true, message: 'No changes detected' });
       return;
     }
@@ -1156,7 +1241,19 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
           await tx.insert(pdsHrDetails).values({ ...hrUpdates, employeeId: parseInt(id) });
         }
       }
+
+      if (Object.keys(personalUpdates).length > 0) {
+        const [existingPersonal] = await tx.select().from(pdsPersonalInformation).where(eq(pdsPersonalInformation.employeeId, parseInt(id)));
+        if (existingPersonal) {
+          await tx.update(pdsPersonalInformation)
+            .set(personalUpdates)
+            .where(eq(pdsPersonalInformation.employeeId, parseInt(id)));
+        } else {
+          await tx.insert(pdsPersonalInformation).values({ ...personalUpdates, employeeId: parseInt(id) });
+        }
+      }
     });
+
 
     res.json({ success: true, message: 'Employee updated successfully' });
   } catch (error) {

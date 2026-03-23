@@ -6,6 +6,7 @@ export const BaseEmployeeSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
   middleName: z.string().optional().nullable(),
+  suffix: z.string().optional().nullable(),
   email: z.string().email("Invalid email format"),
   
   // Job Order & Regularization Fields

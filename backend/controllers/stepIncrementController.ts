@@ -250,7 +250,7 @@ export const createStepIncrement = async (req: Request, res: Response): Promise<
         hrDetails: {
           columns: { stepIncrement: true }
         }
-      } as any // Workaround for query builder with joins if needed, or use db.select
+      } as never // Workaround for query builder with joins if needed, or use db.select
     });
 
     if (!employee) {

@@ -6,11 +6,11 @@ dotenv.config();
 async function check() {
   const connection = await mysql.createConnection(process.env.DATABASE_URL!);
   try {
-    const [columns]: any = await connection.query('DESCRIBE authentication');
-    console.log('Columns in authentication:', columns.map((c: any) => c.Field).join(', '));
+    const [columns]: Record<string, never> = await connection.query('DESCRIBE authentication');
+    console.log('Columns in authentication:', columns.map((c: Record<string, never>) => c.Field).join(', '));
     
-    const [tables]: any = await connection.query('SHOW TABLES');
-    console.log('Tables:', tables.map((t: any) => Object.values(t)[0]).join(', '));
+    const [tables]: Record<string, never> = await connection.query('SHOW TABLES');
+    console.log('Tables:', tables.map((t: Record<string, never>) => Object.values(t)[0]).join(', '));
   } finally {
     await connection.end();
   }

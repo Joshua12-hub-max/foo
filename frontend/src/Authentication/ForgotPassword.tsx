@@ -12,12 +12,23 @@ export default function ForgotPassword() {
   const [isSent, setIsSent] = useState(false);
   const [error, setError] = useState("");
 
+  const [emailError, setEmailError] = useState(false);
+  const gibberishRegex = /^(.)\1{4,}|^[bcdfghjklmnpqrstvwxz]{10,}$|qwerty|asdfgh|zxcvbn|qwqewrwff/i;
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!email) return;
 
-    setIsSubmitting(true);
+    setEmailError(false);
     setError("");
+
+    if (gibberishRegex.test(email)) {
+        setEmailError(true);
+        setError("Please enter a valid email address, avoid random characters");
+        return;
+    }
+
+    setIsSubmitting(true);
 
     try {
       await forgotPassword({ email });
@@ -87,8 +98,15 @@ export default function ForgotPassword() {
                 <input
                   type="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-xl bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                  onChange={(e) => {
+                      setEmail(e.target.value);
+                      if (emailError) setEmailError(false);
+                  }}
+                  className={`block w-full pl-10 pr-3 py-2.5 border rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none transition-all ${
+                      emailError 
+                        ? "border-red-500 ring-2 ring-red-100 bg-red-50/10" 
+                        : "border-gray-300 bg-gray-50 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                  }`}
                   placeholder="Enter your email"
                   required
                 />

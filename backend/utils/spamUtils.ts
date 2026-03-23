@@ -1,7 +1,7 @@
 /**
  * Shared Anti-Spam Utilities
  * Reusable across all public-facing endpoints (Chat, Inquiry, Recruitment)
- * 100% Type-Safe — No `any`, `as any`, or `unknown` usage.
+ * 100% Type-Safe — No `any`, `as never`, or `unknown` usage.
  */
 
 // Known disposable email domains

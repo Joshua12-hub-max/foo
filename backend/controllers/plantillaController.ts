@@ -242,7 +242,8 @@ export const getPublicPositions = async (_req: Request, res: Response): Promise<
         id: plantillaPositions.id, 
         positionTitle: plantillaPositions.positionTitle,
         itemNumber: plantillaPositions.itemNumber,
-        department: plantillaPositions.department
+        department: plantillaPositions.department,
+        departmentId: plantillaPositions.departmentId
       })
       .from(plantillaPositions)
       .orderBy(asc(plantillaPositions.positionTitle));

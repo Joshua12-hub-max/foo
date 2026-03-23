@@ -366,7 +366,7 @@ const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
                     label: `${pos.itemNumber} - ${pos.positionTitle} (SG-${pos.salaryGrade})` 
                   }))}
                   value={watch('itemNumber')}
-                  onChange={(val) => handlePlantillaChange({ target: { value: val } } as any)}
+                  onChange={(val) => handlePlantillaChange({ target: { value: val } } as never)}
                   placeholder="Select available position..."
                   className="w-full"
                 />
@@ -392,7 +392,7 @@ const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
                   <Combobox 
                     options={APPOINTMENT_TYPE_OPTIONS}
                     value={watch('appointmentType')}
-                    onChange={(val) => setValue('appointmentType', val as any)}
+                    onChange={(val) => setValue('appointmentType', val as never)}
                     placeholder="Select..."
                   />
                 </div>

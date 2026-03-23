@@ -18,7 +18,7 @@ async function checkSchema() {
     const dbCols: string[] = cols.map((c: ColumnInfo) => c.Field).sort();
     
     const schemaCols = getTableColumns(recruitmentApplicants);
-    const schemaDbNames: string[] = Object.values(schemaCols).map((c) => (c as any).name as string).sort();
+    const schemaDbNames: string[] = Object.values(schemaCols).map((c) => (c as never).name as string).sort();
     
     console.log('--- DB Columns ---');
     console.log(dbCols.join(', '));

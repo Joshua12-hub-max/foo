@@ -61,8 +61,14 @@ export default function EmailVerificationModal({ isOpen, email, employeeDbId, re
         }
     } catch (err: unknown) {
         console.error("Verification error:", err);
-        const msg = axios.isAxiosError(err) ? (err.response?.data as { message?: string })?.message : undefined;
-        setError(msg || "Verification failed. Please try again.");
+        let msg = "Verification failed. Please try again.";
+        if (axios.isAxiosError<{ message?: string }>(err)) {
+            const responseData = err.response?.data;
+            if (responseData && typeof responseData === 'object' && responseData.message) {
+                msg = responseData.message;
+            }
+        }
+        setError(msg);
     } finally {
         setLoading(false);
     }
@@ -84,7 +90,7 @@ export default function EmailVerificationModal({ isOpen, email, employeeDbId, re
 
   if (verifiedData) {
     return (
-      <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 p-4">
         <div className="bg-white rounded-[24px] shadow-2xl max-w-md w-full p-8 animate-in zoom-in duration-300">
           <div className="space-y-8 text-center">
             <div className="mx-auto w-20 h-20 bg-green-100 rounded-full flex items-center justify-center shadow-inner">
@@ -152,7 +158,7 @@ export default function EmailVerificationModal({ isOpen, email, employeeDbId, re
   }
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 p-4">
       <div className="bg-white rounded-[24px] shadow-2xl max-w-md w-full p-8 animate-in zoom-in duration-300">
         <div className="space-y-6">
           <div className="text-center space-y-3">

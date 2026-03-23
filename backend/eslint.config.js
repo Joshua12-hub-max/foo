@@ -45,7 +45,7 @@ export default ts.config(
       '@typescript-eslint/consistent-type-assertions': [
         'error',
         {
-          assertionStyle: 'never',
+          assertionStyle: 'as',
         },
       ],
       'no-console': ['warn', { allow: ['warn', 'error'] }],
@@ -126,7 +126,7 @@ export default ts.config(
       '@typescript-eslint/consistent-type-assertions': [
         'error',
         {
-          assertionStyle: 'never',
+          assertionStyle: 'as',
         },
       ],
       '@typescript-eslint/no-unused-vars': ['warn', { 'argsIgnorePattern': '^_', 'varsIgnorePattern': '^_', 'caughtErrorsIgnorePattern': '^_' }],

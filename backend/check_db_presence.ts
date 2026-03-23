@@ -34,12 +34,14 @@ async function checkDatabase() {
     for (const table of tablesToCheck) {
       try {
         const [rows] = await connection.execute(`SELECT COUNT(*) as count FROM ${table}`);
-        console.log(`${table.padEnd(25)}: ${(rows as any[])[0].count} rows`);
-      } catch (err: any) {
-        if (err.code === 'ER_NO_SUCH_TABLE') {
+        const count = (rows as Record<string, unknown>[])[0].count;
+        console.log(`${table.padEnd(25)}: ${count} rows`);
+      } catch (err: unknown) {
+        if (err && typeof err === 'object' && 'code' in err && err.code === 'ER_NO_SUCH_TABLE') {
           console.warn(`${table.padEnd(25)}: TABLE MISSING`);
         } else {
-          console.error(`${table.padEnd(25)}: Error - ${err.message}`);
+          const message = err instanceof Error ? err.message : String(err);
+          console.error(`${table.padEnd(25)}: Error - ${message}`);
         }
       }
     }

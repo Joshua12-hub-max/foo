@@ -96,7 +96,7 @@ export const sendMessage = async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
-    // Anti-Spam: Validate sender type strictly (no `as any`)
+    // Anti-Spam: Validate sender type strictly (no `as never`)
     if (typeof senderType !== 'string' || !isSenderType(senderType)) {
       res.status(400).json({ success: false, message: 'Invalid sender type. Must be "Applicant" or "Administrator".' });
       return;

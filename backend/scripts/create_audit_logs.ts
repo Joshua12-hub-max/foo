@@ -27,11 +27,12 @@ async function main() {
             ADD CONSTRAINT \`audit_logs_user_id_authentication_id_fk\` 
             FOREIGN KEY (\`user_id\`) REFERENCES \`authentication\`(\`id\`) ON DELETE set null;
         `);
-    } catch (fkError: any) {
-        if (fkError.message && fkError.message.includes('Duplicate check constraint')) {
+    } catch (e: unknown) {
+        const err = e as Error;
+        if (err.message && err.message.includes('Duplicate check constraint')) {
             console.log('FK already exists.');
         } else {
-            console.log('FK error (might already exist):', fkError.message);
+            console.log('FK error (might already exist):', err.message);
         }
     }
     
@@ -39,18 +40,18 @@ async function main() {
     try {
         console.log('Adding indexes...');
         await db.execute(sql`CREATE INDEX \`idx_user_id\` ON \`audit_logs\` (\`user_id\`);`);
-    } catch (e: any) { console.log('Index idx_user_id might exist:', e.message); }
+    } catch (e) { console.log('Index idx_user_id might exist:', (e as Error).message); }
     try {
         await db.execute(sql`CREATE INDEX \`idx_module\` ON \`audit_logs\` (\`module\`);`);
-    } catch (e: any) { console.log('Index idx_module might exist:', e.message); }
+    } catch (e: unknown) { console.log('Index idx_module might exist:', (e as Error).message); }
     try {
         await db.execute(sql`CREATE INDEX \`idx_created_at\` ON \`audit_logs\` (\`created_at\`);`);
-    } catch (e: any) { console.log('Index idx_created_at might exist:', e.message); }
+    } catch (e: unknown) { console.log('Index idx_created_at might exist:', (e as Error).message); }
 
     console.log('Successfully configured audit_logs table.');
     process.exit(0);
-  } catch (err) {
-    console.error('Core Error:', err);
+  } catch (err: unknown) {
+    console.error('Core Error:', err instanceof Error ? err.message : String(err));
     process.exit(1);
   }
 }

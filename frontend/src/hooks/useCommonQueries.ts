@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import axios, { AxiosError } from 'axios';
+import { AxiosError } from 'axios';
+import api from '@/api/axios';
 
 export interface Barangay {
   id: number;
@@ -17,6 +18,7 @@ export interface Position {
   positionTitle: string;
   itemNumber: string;
   department: string;
+  departmentId: number;
 }
 
 export interface BarangaysResponse {
@@ -44,7 +46,7 @@ export const useBarangaysQuery = () => {
     queryKey: ['barangays'],
     queryFn: async (): Promise<Barangay[]> => {
       try {
-        const response = await axios.get<BarangaysResponse>('http://localhost:5000/api/common/barangays');
+        const response = await api.get<BarangaysResponse>('/common/barangays');
         return response.data.data;
       } catch (error) {
         if (error instanceof AxiosError) {
@@ -62,7 +64,7 @@ export const useDepartmentsQuery = () => {
     queryKey: ['departments', 'public'],
     queryFn: async (): Promise<Department[]> => {
       try {
-        const response = await axios.get<DepartmentsResponse>('http://localhost:5000/api/departments/public');
+        const response = await api.get<DepartmentsResponse>('/departments/public');
         return response.data.departments;
       } catch (error) {
         if (error instanceof AxiosError) {
@@ -80,7 +82,7 @@ export const usePositionsQuery = () => {
     queryKey: ['positions', 'public'],
     queryFn: async (): Promise<Position[]> => {
       try {
-        const response = await axios.get<PositionsResponse>('http://localhost:5000/api/plantilla/public');
+        const response = await api.get<PositionsResponse>('/plantilla/public');
         return response.data.positions;
       } catch (error) {
         if (error instanceof AxiosError) {
@@ -98,7 +100,7 @@ export const useNextEmployeeIdQuery = () => {
     queryKey: ['nextEmployeeId'],
     queryFn: async (): Promise<string> => {
       try {
-        const response = await axios.get<NextIdResponse>('http://localhost:5000/api/auth/next-id');
+        const response = await api.get<NextIdResponse>('/auth/next-id');
         return response.data.data || "1";
       } catch (error) {
         if (error instanceof AxiosError) {
@@ -116,7 +118,7 @@ export const useEmailUniquenessQuery = (email: string, enabled: boolean) => {
     queryKey: ['email-uniqueness', email],
     queryFn: async (): Promise<{ isUnique: boolean; message: string }> => {
       try {
-        const response = await axios.get(`http://localhost:5000/api/auth/check-email`, {
+        const response = await api.get(`/auth/check-email`, {
           params: { email }
         });
         return { isUnique: true, message: response.data.message };
@@ -164,7 +166,7 @@ export const useGovtIdUniquenessQuery = (params: GovtIdUniquenessParams, enabled
         const hasValues = Object.values(params).some(v => v && String(v).length > 2);
         if (!hasValues) return { isUnique: true, message: '' };
 
-        const response = await axios.get(`http://localhost:5000/api/auth/check-govt-id`, {
+        const response = await api.get(`/auth/check-govt-id`, {
           params
         });
         return { isUnique: true, message: response.data.message };
@@ -194,7 +196,7 @@ export const useHiredApplicantSearch = (firstName: string, lastName: string, ena
     queryKey: ['hired-applicant', firstName, lastName],
     queryFn: async (): Promise<HiredApplicant | null> => {
       try {
-        const response = await axios.get(`http://localhost:5000/api/auth/hired-applicant-search`, {
+        const response = await api.get(`/auth/hired-applicant-search`, {
           params: { firstName, lastName }
         });
         return response.data.data;
@@ -218,7 +220,7 @@ export const useEmploymentMetadataQuery = () => {
     queryKey: ['employmentMetadata'],
     queryFn: async () => {
       try {
-        const response = await axios.get('http://localhost:5000/api/common/employment-metadata');
+        const response = await api.get('/common/employment-metadata');
         return response.data.data as { 
           appointmentTypes: string[], 
           dutyTypes: string[], 
@@ -230,7 +232,9 @@ export const useEmploymentMetadataQuery = () => {
           pdsLdTypes: string[],
           pdsGovtIdTypes: string[],
           employmentStatus: string[],
-          pdsEligibilityTypes: { value: string, label: string }[]
+          pdsEligibilityTypes: { value: string, label: string }[],
+          pdsGender: string[],
+          pdsRelationshipTypes: string[]
         };
       } catch (error) {
         if (error instanceof AxiosError) {

@@ -20,12 +20,12 @@ async function resetAdminSetup() {
         // 2. Clear all users associated with setup roles
         const setupRoles = ['Administrator', 'Human Resource'];
         const usersToDelete = await db.query.authentication.findMany({
-            where: inArray(authentication.role, setupRoles as any)
+            where: inArray(authentication.role, setupRoles as never)
         });
 
         if (usersToDelete.length > 0) {
             console.log(`Deleting ${usersToDelete.length} users: ${usersToDelete.map(u => u.email).join(', ')}`);
-            await db.delete(authentication).where(inArray(authentication.role, setupRoles as any));
+            await db.delete(authentication).where(inArray(authentication.role, setupRoles as never));
             console.log('Relevant accounts removed.');
         } else {
             console.log('No Administrator or Human Resource users found.');

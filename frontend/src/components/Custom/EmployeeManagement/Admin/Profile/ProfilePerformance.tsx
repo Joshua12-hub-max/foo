@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { InternalReview } from '@/types/performance';
 // @ts-ignore
 import { fetchReviews } from '@api/performanceApi';
 // @ts-ignore
@@ -62,17 +63,17 @@ const ProfilePerformance: React.FC<ProfilePerformanceProps> = ({ profile }) => {
         
         // Filter reviews for this employee
         if (reviewsData.success && reviewsData.reviews) {
-          const employeeReviews: Review[] = reviewsData.reviews
-            .filter((r: any) => (r.employeeFirstName === profile.firstName || r.employee_first === profile.firstName) && (r.employeeLastName === profile.lastName || r.employee_last === profile.lastName))
-            .map((r: any) => ({
-              id: r.id,
-              cycleTitle: r.cycleTitle || `Cycle ${r.reviewCycleId || r.review_cycle_id}`,
-              reviewPeriodStart: r.reviewPeriodStart || r.createdAt || '',
-              reviewPeriodEnd: r.reviewPeriodEnd || r.createdAt || '',
-              totalScore: r.totalScore || r.total_score,
-              status: r.status,
-              employeeFirstName: r.employeeFirstName || r.employee_first_name || r.employee_first,
-              employeeLastName: r.employeeLastName || r.employee_last_name || r.employee_last
+          const employeeReviews: Review[] = (reviewsData.reviews as unknown as InternalReview[])
+            .filter((r: InternalReview) => (String(r.employeeFirstName) === profile.firstName || String(r.employeeFirst) === profile.firstName) && (String(r.employeeLastName) === profile.lastName || String(r.employeeLast) === profile.lastName))
+            .map((r: InternalReview) => ({
+              id: Number(r.id),
+              cycleTitle: String(r.cycleTitle || '') || `Cycle ${r.reviewCycleId}`,
+              reviewPeriodStart: String(r.reviewPeriodStart || '') || r.createdAt || '',
+              reviewPeriodEnd: String(r.reviewPeriodEnd || '') || r.createdAt || '',
+              totalScore: Number(r.totalScore || 0),
+              status: String(r.status || ''),
+              employeeFirstName: r.employeeFirstName || String(r.employeeFirst || '') || '',
+              employeeLastName: String(r.employeeLastName || '') || String(r.employeeLast || '') || ''
             }));
           setReviews(employeeReviews);
         }

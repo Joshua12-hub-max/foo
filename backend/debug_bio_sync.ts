@@ -21,8 +21,8 @@ async function debugBiometricSync() {
     // 1. Check total logs
     const [bioLogsCountRows] = await connection.execute('SELECT COUNT(*) as count FROM bio_attendance_logs');
     const [attLogsCountRows] = await connection.execute('SELECT COUNT(*) as count FROM attendance_logs WHERE source = "BIOMETRIC"');
-    console.log(`Total Bio Logs: ${(bioLogsCountRows as any)[0].count}`);
-    console.log(`Total Synced Att Logs: ${(attLogsCountRows as any)[0].count}`);
+    console.log(`Total Bio Logs: ${(bioLogsCountRows as never)[0].count}`);
+    console.log(`Total Synced Att Logs: ${(attLogsCountRows as never)[0].count}`);
 
     // 2. Check for latest logs
     console.log('\nLatest 5 Bio Logs:');
@@ -41,7 +41,7 @@ async function debugBiometricSync() {
       LEFT JOIN authentication a ON b.employee_id = a.employee_id
       WHERE a.employee_id IS NULL
     `);
-    if ((orphans as any[]).length > 0) {
+    if ((orphans as never[]).length > 0) {
       console.warn('Found Biometric IDs that DO NOT exist in Authentication table:');
       console.table(orphans);
     } else {

@@ -126,8 +126,8 @@ const AdminAgendaView = ({
   // Grouped data for better organization (Nested: Dept -> Shift -> Items)
   const groupedSchedules = (filteredSchedules as Schedule[]).reduce((acc: Record<string, Record<string, Schedule[]>>, item) => {
     const dept = item.department || 'Unassigned';
-    const startTime = (item as any).startTime ?? null;
-    const endTime = (item as any).endTime ?? null;
+    const startTime = (item as unknown as Record<string, string>).startTime ?? null;
+    const endTime = (item as unknown as Record<string, string>).endTime ?? null;
     const shift = `${formatTime(startTime)} - ${formatTime(endTime)}`;
     if (!acc[dept]) acc[dept] = {};
     if (!acc[dept][shift]) acc[dept][shift] = [];

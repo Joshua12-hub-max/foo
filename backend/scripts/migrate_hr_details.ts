@@ -19,14 +19,14 @@ async function main() {
   console.log('Fetching HR data from authentication table...');
 
   // 1. Get all employees with their HR data
-  const [employees]: any = await connection.execute('SELECT * FROM authentication');
+  const [employees]: Record<string, never> = await connection.execute('SELECT * FROM authentication');
 
   console.log(`Found ${employees.length} records. Migrating...`);
 
   for (const emp of employees) {
     try {
       // Check if already exists in pds_hr_details
-      const [existing]: any = await connection.execute(
+      const [existing]: Record<string, never> = await connection.execute(
         'SELECT id FROM pds_hr_details WHERE employee_id = ?',
         [emp.id]
       );
@@ -86,7 +86,7 @@ async function main() {
       ]);
 
       console.log(`Migrated employee ${emp.id}: ${emp.first_name} ${emp.last_name}`);
-    } catch (err: any) {
+    } catch (e) {
       console.error(`Failed to migrate employee ${emp.id}:`, err.message);
     }
   }

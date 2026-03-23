@@ -82,7 +82,7 @@ export default function CreateAnnouncementModal({ show, onClose, onCreate, hours
                     { value: 'urgent', label: 'Urgent' }
                   ]}
                   value={watch('priority')}
-                  onChange={(val) => setValue('priority', val as any)}
+                  onChange={(val) => setValue('priority', val as never)}
                   placeholder="Select Priority"
                   buttonClassName="w-full px-4 py-2 border border-gray-200 rounded-lg bg-white"
                 />

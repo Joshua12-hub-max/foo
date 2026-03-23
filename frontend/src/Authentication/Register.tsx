@@ -46,6 +46,8 @@ export interface RegisterFormValues {
   position?: string;
   dutyType: "Standard" | "Irregular";
   appointmentType?: 'Permanent' | 'Contractual' | 'Casual' | 'Job Order' | 'Coterminous' | 'Temporary' | 'Contract of Service' | 'JO' | 'COS' | '';
+  startTime?: string;
+  endTime?: string;
   dateHired?: string;
   avatar?: File;
 
@@ -173,6 +175,24 @@ export default function Register() {
   // Robust Detection: Use both URL mode and user's profile status
   const isFinalizingSetup = searchParams.get('mode') === 'finalize-setup' || user?.profileStatus === 'Initial';
 
+  const isOldEmployee = watch("isOldEmployee");
+
+  useEffect(() => {
+    const dutiesParam = searchParams.get('duties');
+    const deptParam = searchParams.get('dept');
+    const typeParam = searchParams.get('type');
+    
+    if (dutiesParam === 'Standard' || dutiesParam === 'Irregular') {
+      setValue("dutyType", dutiesParam);
+    }
+    if (deptParam) {
+      setValue("department", deptParam);
+    }
+    if (typeParam === 'old') {
+      setValue("isOldEmployee", true);
+    }
+  }, [searchParams, setValue]);
+
   const { 
     register,
     handleSubmit,
@@ -181,6 +201,7 @@ export default function Register() {
     formState: { errors, isSubmitting }
   } = useForm({
     resolver: zodResolver(RegisterSchema),
+    mode: "onBlur",
     defaultValues: {
       employeeId: "",
       firstName: "",
@@ -212,6 +233,8 @@ export default function Register() {
       civilStatus: "",
       dutyType: "Standard",
       appointmentType: "Permanent",
+      startTime: "08:00",
+      endTime: "17:00",
       gsisNumber: "",
       pagibigNumber: "",
       philhealthNumber: "",
@@ -279,6 +302,9 @@ export default function Register() {
   
   const { data: departments = [] } = useDepartmentsQuery();
   const { data: positions = [] } = usePositionsQuery();
+
+  const selectedDeptName = watch("department");
+  const selectedDeptId = departments.find(d => d.name === selectedDeptName)?.id;
 
   // Track if address is pre-filled as a raw string from Applicant record
   const [isAddressPrefilled, setIsAddressPrefilled] = useState(false);
@@ -712,8 +738,30 @@ export default function Register() {
   };
 
   const inputClass = `w-full pl-9 pr-3 py-2 text-sm border-[1.5px] rounded-[10px] shadow-sm bg-gray-50/50 hover:bg-white focus:bg-white focus:ring-[3px] focus:ring-green-100 focus:border-green-600 focus:outline-none border-gray-200 transition-all`;
-  const errorClass = `border-red-500 focus:ring-red-100 focus:border-red-500 bg-red-50/30`;
+  const errorClass = `!border-red-500 ring-[3px] ring-red-100 bg-red-50/30`;
   
+  const getInputClass = (fieldName: string) => {
+      // Handle deep nested errors (e.g., pdsQuestions.q34a)
+      const fieldPath = fieldName.split('.');
+      let currentError: any = errors;
+      for (const part of fieldPath) {
+          currentError = currentError?.[part];
+      }
+      
+      return `${inputClass} ${currentError ? errorClass : ''}`;
+  };
+
+  const FieldError = ({ name }: { name: string }) => {
+      const fieldPath = name.split('.');
+      let currentError: any = errors;
+      for (const part of fieldPath) {
+          currentError = currentError?.[part];
+      }
+      
+      if (!currentError) return null;
+      return <p className="text-red-500 text-[10px] font-bold mt-1 ml-1 animate-in fade-in slide-in-from-top-1">{currentError.message as string}</p>;
+  };
+
   const cardClass = "bg-white p-5 rounded-[15px] border border-gray-100 shadow-sm space-y-4 mb-6 relative overflow-hidden";
   const cardHeaderClass = "text-sm font-bold text-gray-800 tracking-wide uppercase border-b border-gray-100 pb-2 mb-3 flex items-center gap-2";
 
@@ -763,12 +811,12 @@ export default function Register() {
               {...register("email")} 
               type="email" 
               autoComplete="email" 
-              className={`${inputClass} !pl-3 ${errors.email || isEmailTaken ? errorClass : ''} ${setupData ? 'bg-gray-100 cursor-not-allowed' : ''}`} 
+              className={`${getInputClass("email")} !pl-3 ${setupData ? 'bg-gray-100 cursor-not-allowed' : ''}`} 
               placeholder="" 
               readOnly={!!setupData}
               />
               </div>
-              {errors.email && <p className="text-red-500 text-[11px] ml-1">{errors.email.message}</p>}
+              <FieldError name="email" />
                 {!errors.email && isEmailTaken && <p className="text-red-500 text-[11px] font-bold ml-1 animate-pulse">This email already exists in the system</p>}
                </div>
 
@@ -779,11 +827,11 @@ export default function Register() {
                     {...register("password")} 
                     type="password" 
                     autoComplete="new-password" 
-                    className={`${inputClass} !pl-3 ${errors.password ? errorClass : ''} ${(setupData || isFinalizingSetup) ? 'bg-gray-100 cursor-not-allowed' : ''}`} 
+                    className={`${getInputClass("password")} !pl-3 ${(setupData || isFinalizingSetup) ? 'bg-gray-100 cursor-not-allowed' : ''}`} 
                     placeholder={isFinalizingSetup ? "••••••••" : ""} 
                     readOnly={!!setupData || isFinalizingSetup}
                   />                </div>
-                {errors.password && <p className="text-red-500 text-[11px] ml-1">{errors.password.message}</p>}
+                <FieldError name="password" />
               </div>
            </div>
         </div>
@@ -796,31 +844,33 @@ export default function Register() {
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-gray-600 ml-1">Last Name <span className="text-red-500">*</span></label>
                 <div className="relative">
-                    <input {...register("lastName")} autoComplete="family-name" className={`${inputClass} !pl-3 ${errors.lastName ? errorClass : ''}`} placeholder="" />
+                    <input {...register("lastName")} autoComplete="family-name" className={`${getInputClass("lastName")} !pl-3`} placeholder="" />
                 </div>
-                {errors.lastName && <p className="text-red-500 text-[11px] ml-1">{errors.lastName.message}</p>}
+                <FieldError name="lastName" />
               </div>
 
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-gray-600 ml-1">First Name <span className="text-red-500">*</span></label>
                 <div className="relative">
-                    <input {...register("firstName")} autoComplete="given-name" className={`${inputClass} !pl-3 ${errors.firstName ? errorClass : ''}`} placeholder="" />
+                    <input {...register("firstName")} autoComplete="given-name" className={`${getInputClass("firstName")} !pl-3`} placeholder="" />
                 </div>
-                {errors.firstName && <p className="text-red-500 text-[11px] ml-1">{errors.firstName.message}</p>}
+                <FieldError name="firstName" />
               </div>
 
               <div className="space-y-1">
                  <label className="text-xs font-semibold text-gray-600 ml-1">Middle Name</label>
                  <div className="relative">
-                    <input {...register("middleName")} autoComplete="additional-name" className={`${inputClass} !pl-3`} placeholder="" />
+                    <input {...register("middleName")} autoComplete="additional-name" className={`${getInputClass("middleName")} !pl-3`} placeholder="" />
                  </div>
+                 <FieldError name="middleName" />
               </div>
 
               <div className="space-y-1">
                  <label className="text-xs font-semibold text-gray-600 ml-1">Suffix</label>
                  <div className="relative">
-                    <input {...register("suffix")} autoComplete="honorific-suffix" className={`${inputClass} !pl-3`} placeholder="" />
+                    <input {...register("suffix")} autoComplete="honorific-suffix" className={`${getInputClass("suffix")} !pl-3`} placeholder="" />
                  </div>
+                 <FieldError name="suffix" />
               </div>
            </div>
 
@@ -831,17 +881,18 @@ export default function Register() {
                     <input 
                        type="date" 
                        {...register("birthDate")} 
-                       className={`${inputClass} !pl-3 ${errors.birthDate ? 'border-red-500 ring-1 ring-red-500/20 shadow-sm shadow-red-50' : ''}`} 
+                       className={getInputClass("birthDate")} 
                     />
                  </div>
-                 {errors.birthDate && <p className="text-[10px] text-red-500 font-bold mt-1 ml-1 animate-pulse">{errors.birthDate.message}</p>}
+                 <FieldError name="birthDate" />
               </div>
               
               <div className="space-y-1 col-span-2 md:col-span-1">
                  <label className="text-xs font-semibold text-gray-600 ml-1">Place of Birth</label>
                  <div className="relative">
-                    <input {...register("placeOfBirth")} className={`${inputClass} !pl-3`} placeholder="" />
+                    <input {...register("placeOfBirth")} className={`${getInputClass("placeOfBirth")} !pl-3`} placeholder="" />
                  </div>
+                 <FieldError name="placeOfBirth" />
               </div>
 
               <div className="space-y-1">
@@ -852,9 +903,9 @@ export default function Register() {
                    onChange={(val) => setValue("gender", val as "Male" | "Female" | "", { shouldValidate: true })}
                    placeholder="Select..."
                    error={!!errors.gender}
-                   buttonClassName={`pl-3 ${errors.gender ? 'border-red-500 ring-1 ring-red-500/20 shadow-sm shadow-red-50' : ''}`}
+                   buttonClassName={`pl-3 ${errors.gender ? '!border-red-500 ring-1 ring-red-500/20' : ''}`}
                  />
-                 {errors.gender && <p className="text-[10px] text-red-500 font-bold mt-1 ml-1 animate-pulse">{errors.gender.message}</p>}
+                 <FieldError name="gender" />
               </div>
 
               <div className="space-y-1">
@@ -865,35 +916,39 @@ export default function Register() {
                    onChange={(val) => setValue("civilStatus", val as "Single" | "Married" | "Widowed" | "Separated" | "Annulled" | "", { shouldValidate: true })}
                    placeholder="Select..."
                    error={!!errors.civilStatus}
-                   buttonClassName={`pl-3 ${errors.civilStatus ? 'border-red-500 ring-1 ring-red-500/20 shadow-sm shadow-red-50' : ''}`}
+                   buttonClassName={`pl-3 ${errors.civilStatus ? '!border-red-500 ring-1 ring-red-500/20' : ''}`}
                  />
-                 {errors.civilStatus && <p className="text-[10px] text-red-500 font-bold mt-1 ml-1 animate-pulse">{errors.civilStatus.message}</p>}
+                 <FieldError name="civilStatus" />
               </div>
 
               <div className="space-y-1">
-                 <label className="text-xs font-semibold text-gray-600 ml-1">Nationality</label>
-                 <input {...register("nationality")} className={`${inputClass} !pl-3`} placeholder="" />
+                 <label className={`text-xs font-semibold ml-1 ${errors.nationality ? 'text-red-500' : 'text-gray-600'}`}>Nationality</label>
+                 <input {...register("nationality")} className={`${getInputClass("nationality")} !pl-3`} placeholder="" />
+                 <FieldError name="nationality" />
               </div>
 
               <div className="space-y-1">
-                 <label className="text-xs font-semibold text-gray-600 ml-1">Blood Type</label>
+                 <label className={`text-xs font-semibold ml-1 ${errors.bloodType ? 'text-red-500' : 'text-gray-600'}`}>Blood Type</label>
                  <Combobox
                    options={BLOOD_TYPE_OPTIONS}
                    value={watch("bloodType") || ""}
                    onChange={(val) => setValue("bloodType", val, { shouldValidate: true })}
                    placeholder="Select..."
-                   buttonClassName={`pl-3`}
+                   buttonClassName={`pl-3 ${errors.bloodType ? '!border-red-500 ring-1 ring-red-500/20' : ''}`}
                  />
+                 <FieldError name="bloodType" />
               </div>
 
               <div className="space-y-1">
-                 <label className="text-xs font-semibold text-gray-600 ml-1">Height (m)</label>
-                 <input type="number" step="0.01" {...register("heightM")} className={`${inputClass} !pl-3`} placeholder="" />
+                 <label className={`text-xs font-semibold ml-1 ${errors.heightM ? 'text-red-500' : 'text-gray-600'}`}>Height (m)</label>
+                 <input type="number" step="0.01" {...register("heightM")} className={`${getInputClass("heightM")} !pl-3`} placeholder="" />
+                 <FieldError name="heightM" />
               </div>
 
               <div className="space-y-1">
-                 <label className="text-xs font-semibold text-gray-600 ml-1">Weight (kg)</label>
-                 <input type="number" step="0.1" {...register("weightKg")} className={`${inputClass} !pl-3`} placeholder="" />
+                 <label className={`text-xs font-semibold ml-1 ${errors.weightKg ? 'text-red-500' : 'text-gray-600'}`}>Weight (kg)</label>
+                 <input type="number" step="0.1" {...register("weightKg")} className={`${getInputClass("weightKg")} !pl-3`} placeholder="" />
+                 <FieldError name="weightKg" />
               </div>
            </div>
         </div>
@@ -998,14 +1053,16 @@ export default function Register() {
               <div className="space-y-1">
                  <label className="text-xs font-semibold text-gray-600 ml-1">Mobile Number</label>
                  <div className="relative">
-                    <input {...register("mobileNo")} className={`${inputClass} !pl-3`} placeholder="" />
+                    <input {...register("mobileNo")} className={`${getInputClass("mobileNo")} !pl-3`} placeholder="" />
                  </div>
+                 <FieldError name="mobileNo" />
               </div>
               <div className="space-y-1">
                  <label className="text-xs font-semibold text-gray-600 ml-1">Telephone Number</label>
                  <div className="relative">
-                    <input {...register("telephoneNo")} className={`${inputClass} !pl-3`} placeholder="" />
+                    <input {...register("telephoneNo")} className={`${getInputClass("telephoneNo")} !pl-3`} placeholder="" />
                  </div>
+                 <FieldError name="telephoneNo" />
               </div>
            </div>
 
@@ -1014,19 +1071,19 @@ export default function Register() {
                  <label className="text-xs font-semibold text-red-500 ml-1 flex items-center gap-1">Emergency Contact Person</label>
                  <input 
                     {...register("emergencyContact")} 
-                    className={`${inputClass} !pl-3 ${errors.emergencyContact ? 'border-red-500 ring-1 ring-red-500/20 shadow-sm shadow-red-50' : ''}`} 
+                    className={`${getInputClass("emergencyContact")} !pl-3`} 
                     placeholder="Full Name" 
                   />
-                  {errors.emergencyContact && <p className="text-[10px] text-red-500 font-bold mt-1 ml-1 animate-pulse">{errors.emergencyContact.message}</p>}
+                  <FieldError name="emergencyContact" />
               </div>
               <div className="space-y-1">
                  <label className="text-xs font-semibold text-red-500 ml-1">Emergency Phone Number</label>
                  <input 
                     {...register("emergencyContactNumber")} 
-                    className={`${inputClass} !pl-3 ${errors.emergencyContactNumber ? 'border-red-500 ring-1 ring-red-500/20 shadow-sm shadow-red-50' : ''}`} 
+                    className={`${getInputClass("emergencyContactNumber")} !pl-3`} 
                     placeholder="09XX XXX XXXX" 
                   />
-                  {errors.emergencyContactNumber && <p className="text-[10px] text-red-500 font-bold mt-1 ml-1 animate-pulse">{errors.emergencyContactNumber.message}</p>}
+                  <FieldError name="emergencyContactNumber" />
               </div>
            </div>
         </div>
@@ -1041,10 +1098,10 @@ export default function Register() {
          </label>
          <input 
          {...register("gsisNumber")} 
-         className={`${inputClass} !pl-3 ${errors.gsisNumber || isIdTakenMap.gsisNumber || (!!watch("gsisNumber") && !ID_REGEX.GSIS.test(watch("gsisNumber")!.replace(/\s+/g, ''))) ? 'border-red-500 ring-1 ring-red-500/20 shadow-sm shadow-red-50' : ''}`} 
+         className={`${getInputClass("gsisNumber")} !pl-3`} 
          placeholder="" 
          />
-         {errors.gsisNumber && <p className="text-[10px] text-red-500 font-bold mt-1 ml-1 animate-pulse">{errors.gsisNumber.message}</p>}
+         <FieldError name="gsisNumber" />
             {!errors.gsisNumber && isIdTakenMap.gsisNumber && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1 animate-pulse">This ID already exists in the system</p>}
             {!errors.gsisNumber && !isIdTakenMap.gsisNumber && !!watch("gsisNumber") && !ID_REGEX.GSIS.test(watch("gsisNumber")!.replace(/\s+/g, '')) && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">Invalid GSIS format</p>}
          </div>
@@ -1054,10 +1111,10 @@ export default function Register() {
          </label>
          <input 
          {...register("pagibigNumber")} 
-         className={`${inputClass} !pl-3 ${errors.pagibigNumber || isIdTakenMap.pagibigNumber || (!!watch("pagibigNumber") && !ID_REGEX.PAGIBIG.test(watch("pagibigNumber")!.replace(/\s+/g, ''))) ? 'border-red-500 ring-1 ring-red-500/20 shadow-sm shadow-red-50' : ''}`} 
+         className={`${getInputClass("pagibigNumber")} !pl-3`} 
            placeholder="" 
          />
-            {errors.pagibigNumber && <p className="text-[10px] text-red-500 font-bold mt-1 ml-1 animate-pulse">{errors.pagibigNumber.message}</p>}
+            <FieldError name="pagibigNumber" />
             {!errors.pagibigNumber && isIdTakenMap.pagibigNumber && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1 animate-pulse">This ID already exists in the system</p>}
             {!errors.pagibigNumber && !isIdTakenMap.pagibigNumber && !!watch("pagibigNumber") && !ID_REGEX.PAGIBIG.test(watch("pagibigNumber")!.replace(/\s+/g, '')) && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">Invalid Pag-IBIG format</p>}
          </div>
@@ -1067,10 +1124,10 @@ export default function Register() {
          </label>
          <input 
          {...register("philhealthNumber")} 
-           className={`${inputClass} !pl-3 ${errors.philhealthNumber || isIdTakenMap.philhealthNumber || (!!watch("philhealthNumber") && !ID_REGEX.PHILHEALTH.test(watch("philhealthNumber")!.replace(/\s+/g, ''))) ? 'border-red-500 ring-1 ring-red-500/20 shadow-sm shadow-red-50' : ''}`} 
+           className={`${getInputClass("philhealthNumber")} !pl-3`} 
            placeholder="" 
             />
-            {errors.philhealthNumber && <p className="text-[10px] text-red-500 font-bold mt-1 ml-1 animate-pulse">{errors.philhealthNumber.message}</p>}
+            <FieldError name="philhealthNumber" />
          {!errors.philhealthNumber && isIdTakenMap.philhealthNumber && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1 animate-pulse">This ID already exists in the system</p>}
          {!errors.philhealthNumber && !isIdTakenMap.philhealthNumber && !!watch("philhealthNumber") && !ID_REGEX.PHILHEALTH.test(watch("philhealthNumber")!.replace(/\s+/g, '')) && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">Invalid PhilHealth format</p>}
          </div>
@@ -1078,10 +1135,10 @@ export default function Register() {
          <label className={`text-xs font-semibold ml-1 ${errors.umidNumber || isIdTakenMap.umidNumber || (!!watch("umidNumber") && !ID_REGEX.UMID.test(watch("umidNumber")!.replace(/\s+/g, ''))) ? 'text-red-500' : 'text-gray-600'}`}>UMID Number</label>
          <input 
            {...register("umidNumber")} 
-           className={`${inputClass} !pl-3 ${errors.umidNumber || isIdTakenMap.umidNumber || (!!watch("umidNumber") && !ID_REGEX.UMID.test(watch("umidNumber")!.replace(/\s+/g, ''))) ? 'border-red-500 ring-1 ring-red-500/20 shadow-sm shadow-red-50' : ''}`} 
+           className={`${getInputClass("umidNumber")} !pl-3`} 
               placeholder="" 
             />
-         {errors.umidNumber && <p className="text-[10px] text-red-500 font-bold mt-1 ml-1 animate-pulse">{errors.umidNumber.message}</p>}
+         <FieldError name="umidNumber" />
          {!errors.umidNumber && isIdTakenMap.umidNumber && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1 animate-pulse">This ID already exists in the system</p>}
          {!errors.umidNumber && !isIdTakenMap.umidNumber && !!watch("umidNumber") && !ID_REGEX.UMID.test(watch("umidNumber")!.replace(/\s+/g, '')) && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">Invalid UMID format</p>}
          </div>
@@ -1089,10 +1146,10 @@ export default function Register() {
          <label className={`text-xs font-semibold ml-1 ${errors.philsysId || isIdTakenMap.philsysId || (!!watch("philsysId") && !ID_REGEX.PHILSYS.test(watch("philsysId")!.replace(/\s+/g, ''))) ? 'text-red-500' : 'text-gray-600'}`}>PHILSYS ID</label>
          <input 
            {...register("philsysId")} 
-              className={`${inputClass} !pl-3 ${errors.philsysId || isIdTakenMap.philsysId || (!!watch("philsysId") && !ID_REGEX.PHILSYS.test(watch("philsysId")!.replace(/\s+/g, ''))) ? 'border-red-500 ring-1 ring-red-500/20 shadow-sm shadow-red-50' : ''}`} 
+              className={`${getInputClass("philsysId")} !pl-3`} 
               placeholder="" 
          />
-         {errors.philsysId && <p className="text-[10px] text-red-500 font-bold mt-1 ml-1 animate-pulse">{errors.philsysId.message}</p>}
+         <FieldError name="philsysId" />
          {!errors.philsysId && isIdTakenMap.philsysId && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1 animate-pulse">This ID already exists in the system</p>}
          {!errors.philsysId && !isIdTakenMap.philsysId && !!watch("philsysId") && !ID_REGEX.PHILSYS.test(watch("philsysId")!.replace(/\s+/g, '')) && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">Invalid PhilSys ID format</p>}
          </div>
@@ -1102,10 +1159,10 @@ export default function Register() {
          </label>
          <input 
               {...register("tinNumber")} 
-              className={`${inputClass} !pl-3 ${errors.tinNumber || isIdTakenMap.tinNumber || (!!watch("tinNumber") && !ID_REGEX.TIN.test(watch("tinNumber")!.replace(/\s+/g, ''))) ? 'border-red-500 ring-1 ring-red-500/20 shadow-sm shadow-red-50' : ''}`} 
+              className={`${getInputClass("tinNumber")} !pl-3`} 
            placeholder="" 
          />
-            {errors.tinNumber && <p className="text-[10px] text-red-500 font-bold mt-1 ml-1 animate-pulse">{errors.tinNumber.message}</p>}
+            <FieldError name="tinNumber" />
                {!errors.tinNumber && isIdTakenMap.tinNumber && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1 animate-pulse">This ID already exists in the system</p>}
                {!errors.tinNumber && !isIdTakenMap.tinNumber && !!watch("tinNumber") && !ID_REGEX.TIN.test(watch("tinNumber")!.replace(/\s+/g, '')) && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">Invalid TIN format</p>}
                </div>
@@ -1113,9 +1170,10 @@ export default function Register() {
                    <label className={`text-xs font-semibold ml-1 ${errors.agencyEmployeeNo || isIdTakenMap.agencyEmployeeNo ? 'text-red-500' : 'text-gray-600'}`}>Agency Employee No.</label>
                    <input 
                      {...register("agencyEmployeeNo")} 
-                     className={`${inputClass} !pl-3 ${errors.agencyEmployeeNo || isIdTakenMap.agencyEmployeeNo ? 'border-red-500 ring-1 ring-red-500/20 shadow-sm shadow-red-50' : ''}`} 
+                     className={`${getInputClass("agencyEmployeeNo")} !pl-3`} 
                      placeholder="" 
                    />
+                   <FieldError name="agencyEmployeeNo" />
                    {!errors.agencyEmployeeNo && isIdTakenMap.agencyEmployeeNo && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1 animate-pulse">This ID already exists in the system</p>}
                 </div>
              </div>
@@ -1133,11 +1191,9 @@ export default function Register() {
                     onChange={(val) => setValue("educationalBackground", val as EducationLevel, { shouldValidate: true })}
                     placeholder="Select highest education attained"
                     error={!!errors.educationalBackground}
-                    buttonClassName={`pl-3 ${errors.educationalBackground ? 'border-red-500 ring-1 ring-red-500/20 shadow-sm shadow-red-50' : ''}`}
+                    buttonClassName={`pl-3 ${errors.educationalBackground ? '!border-red-500 ring-1 ring-red-500/20' : ''}`}
                  />
-                 {errors.educationalBackground && (
-                    <p className="text-red-500 text-[10px] font-bold mt-1 ml-1 animate-pulse">{errors.educationalBackground.message}</p>
-                 )}
+                 <FieldError name="educationalBackground" />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1145,43 +1201,47 @@ export default function Register() {
                     <label className={`text-xs font-semibold ml-1 ${errors.schoolName ? 'text-red-500' : 'text-gray-600'}`}>School / University Name</label>
                     <input 
                       {...register("schoolName")} 
-                      className={`${inputClass} !pl-3 ${errors.schoolName ? 'border-red-500 ring-1 ring-red-500/20 shadow-sm shadow-red-50' : ''}`} 
+                      className={`${getInputClass("schoolName")} !pl-3`} 
                       placeholder="e.g. Bulacan State University" 
                     />
-                    {errors.schoolName && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1 animate-pulse">{errors.schoolName.message}</p>}
+                    <FieldError name="schoolName" />
                  </div>
                  <div className="space-y-1">
                     <label className={`text-xs font-semibold ml-1 ${errors.yearGraduated ? 'text-red-500' : 'text-gray-600'}`}>Year Graduated</label>
                     <input 
                       {...register("yearGraduated")} 
-                      className={`${inputClass} !pl-3 ${errors.yearGraduated ? 'border-red-500 ring-1 ring-red-500/20 shadow-sm shadow-red-50' : ''}`} 
+                      className={`${getInputClass("yearGraduated")} !pl-3`} 
                       placeholder="e.g. 2020" 
                     />
-                    {errors.yearGraduated && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1 animate-pulse">{errors.yearGraduated.message}</p>}
+                    <FieldError name="yearGraduated" />
                  </div>
               </div>
 
               {watch("educationalBackground") && !["Elementary School Graduate", "High School Graduate", "Senior High School Graduate"].includes(watch("educationalBackground") || "") && (
                   <div className="space-y-1">
                      <label className="text-xs font-semibold text-gray-600 ml-1">Course / Degree</label>
-                     <input {...register("course")} className={`${inputClass} !pl-3`} placeholder="e.g. BS in Information Technology" />
+                     <input {...register("course")} className={`${getInputClass("course")} !pl-3`} placeholder="e.g. BS in Information Technology" />
+                     <FieldError name="course" />
                   </div>
               )}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                  <div className="space-y-1">
                     <label className="text-xs font-semibold text-gray-600 ml-1">Years of Experience</label>
-                    <input type="number" {...register("yearsOfExperience")} className={`${inputClass} !pl-3`} placeholder="e.g. 5" />
+                    <input type="number" {...register("yearsOfExperience")} className={`${getInputClass("yearsOfExperience")} !pl-3`} placeholder="e.g. 5" />
+                    <FieldError name="yearsOfExperience" />
                  </div>
                  <div className="space-y-1">
                     <label className="text-xs font-semibold text-gray-600 ml-1">Relevant Skills</label>
-                    <textarea {...register("skills")} className={`${inputClass} !pl-3 min-h-[40px] resize-y`} placeholder="e.g. JavaScript, Project Management" />
+                    <textarea {...register("skills")} className={`${getInputClass("skills")} !pl-3 min-h-[40px] resize-y`} placeholder="e.g. JavaScript, Project Management" />
+                    <FieldError name="skills" />
                  </div>
               </div>
 
               <div className="space-y-1">
                  <label className="text-xs font-semibold text-gray-600 ml-1">Work Experience Summary</label>
-                 <textarea {...register("experience")} className={`${inputClass} !pl-3 min-h-[80px] resize-y`} placeholder="Summarize your previous roles..." />
+                 <textarea {...register("experience")} className={`${getInputClass("experience")} !pl-3 min-h-[80px] resize-y`} placeholder="Summarize your previous roles..." />
+                 <FieldError name="experience" />
               </div>
            </div>
         </div>
@@ -1200,9 +1260,9 @@ export default function Register() {
                     onChange={(val) => setValue("eligibilityType", val, { shouldValidate: true })}
                     placeholder="Select eligibility..."
                     error={!!errors.eligibilityType}
-                    buttonClassName={`pl-3 ${errors.eligibilityType ? 'border-red-500 ring-1 ring-red-500/20 shadow-sm shadow-red-50' : ''}`}
+                    buttonClassName={`pl-3 ${errors.eligibilityType ? '!border-red-500 ring-1 ring-red-500/20' : ''}`}
                   />
-                  {errors.eligibilityType && <p className="text-[10px] text-red-500 font-bold mt-1 ml-1 animate-pulse">{errors.eligibilityType.message}</p>}
+                  <FieldError name="eligibilityType" />
                </div>
                <div className="space-y-1">
                   <label className={`text-xs font-semibold ml-1 ${watch("dutyType") === "Standard" ? 'text-red-500' : 'text-gray-600'}`}>
@@ -1210,19 +1270,19 @@ export default function Register() {
                   </label>
                   <input 
                     {...register("eligibilityNumber")} 
-                    className={`${inputClass} !pl-3 ${errors.eligibilityNumber ? 'border-red-500 ring-1 ring-red-500/20 shadow-sm shadow-red-50' : ''}`} 
+                    className={`${getInputClass("eligibilityNumber")} !pl-3`} 
                     placeholder="e.g. 1234567" 
                   />
-                  {errors.eligibilityNumber && <p className="text-[10px] text-red-500 font-bold mt-1 ml-1 animate-pulse">{errors.eligibilityNumber.message}</p>}
+                  <FieldError name="eligibilityNumber" />
                </div>
                <div className="space-y-1">
                   <label className="text-xs font-semibold text-gray-600 ml-1">Date of Validity</label>
                   <input 
                     type="date" 
                     {...register("eligibilityDate")} 
-                    className={`${inputClass} !pl-3 ${errors.eligibilityDate ? 'border-red-500 ring-1 ring-red-500/20' : ''}`} 
+                    className={`${getInputClass("eligibilityDate")} !pl-3`} 
                   />
-                  {errors.eligibilityDate && <p className="text-[10px] text-red-500 font-bold mt-1 ml-1 animate-pulse">{errors.eligibilityDate.message}</p>}
+                  <FieldError name="eligibilityDate" />
                </div>
            </div>
         </div>
@@ -1241,10 +1301,10 @@ export default function Register() {
                        onChange={(val) => setValue("department", val)}
                        placeholder="Select department..."
                        error={!!errors.department}
-                       buttonClassName={`pl-3 ${setupData ? 'bg-gray-100 cursor-not-allowed opacity-80' : ''} ${errors.department ? 'border-red-500 ring-1 ring-red-500/20' : ''}`}
-                       disabled={!!setupData}
+                       buttonClassName={`pl-3 ${setupData || isOldEmployee ? 'bg-gray-100 cursor-not-allowed opacity-80' : ''} ${errors.department ? '!border-red-500 ring-1 ring-red-500/20' : ''}`}
+                       disabled={!!setupData || isOldEmployee}
                    />
-                   {errors.department && <p className="text-[10px] text-red-500 font-bold mt-1 ml-1 animate-pulse">{errors.department.message}</p>}
+                   <FieldError name="department" />
                </div>
                <div>
                    <label className={`text-xs font-semibold ml-1 mb-1 block ${errors.position ? 'text-red-500' : 'text-gray-600'}`}>
@@ -1252,49 +1312,58 @@ export default function Register() {
                    </label>
                    <Combobox
                        options={positions
-                           .filter((p) => !watch("department") || p.department === watch("department"))
+                           .filter((p) => !selectedDeptId || p.departmentId === selectedDeptId)
                            .map((p) => ({ value: `${p.positionTitle} (${p.itemNumber})`, label: `${p.positionTitle} (${p.itemNumber})` }))}
                        value={watch("position") || ""}
                        onChange={(val) => setValue("position", val)}
                        placeholder="Select position..."
                        error={!!errors.position}
-                       buttonClassName={`pl-3 ${setupData ? 'bg-gray-100 cursor-not-allowed opacity-80' : ''} ${errors.position ? 'border-red-500 ring-1 ring-red-500/20' : ''}`}
+                       buttonClassName={`pl-3 ${setupData ? 'bg-gray-100 cursor-not-allowed opacity-80' : ''} ${errors.position ? '!border-red-500 ring-1 ring-red-500/20' : ''}`}
                        disabled={!!setupData}
                    />
-                   {errors.position && <p className="text-[10px] text-red-500 font-bold mt-1 ml-1 animate-pulse">{errors.position.message}</p>}
+                   <FieldError name="position" />
                </div>
-               <div>
-                    <label className="text-xs font-semibold text-gray-600 ml-1 mb-1 block">Type of Duties</label>
-                    <Combobox<"Standard" | "Irregular">
-                      options={[
-                        { value: "Standard", label: "Standard" },
-                        { value: "Irregular", label: "Irregular" }
-                      ]}
-                      value={watch("dutyType") || "Standard"}
-                      onChange={(val) => setValue("dutyType", val, { shouldValidate: true })}
-                      placeholder="Select duties..."
-                      buttonClassName="!pl-3 text-gray-700"
-                    />
-                </div>
-               <div>
-                    <label className="text-xs font-semibold text-gray-600 ml-1 mb-1 block">Appointment Type</label>
-                    <Combobox<'Permanent' | 'Contractual' | 'Casual' | 'Job Order' | 'Coterminous' | 'Temporary' | 'Contract of Service' | 'JO' | 'COS' | ''>
-                        options={[
-                          { value: "Permanent", label: "Permanent" },
-                          { value: "Contractual", label: "Contractual" },
-                          { value: "Casual", label: "Casual" },
-                          { value: "Job Order", label: "Job Order" },
-                          { value: "Coterminous", label: "Coterminous" },
-                          { value: "Temporary", label: "Temporary" },
-                          { value: "Contract of Service", label: "Contract of Service" }
-                        ]}
-                        value={watch("appointmentType") || ""}
-                        onChange={(val) => setValue("appointmentType", val, { shouldValidate: true })}
-                        placeholder="Select type..."
-                        buttonClassName="bg-gray-50 font-bold !pl-3"
-                      />
-                </div>
+               {!isOldEmployee && (
+                  <>
+                    <div>
+                        <label className="text-xs font-semibold text-gray-600 ml-1 mb-1 block">Type of Duties</label>
+                        <Combobox<"Standard" | "Irregular">
+                          options={[
+                            { value: "Standard", label: "Standard" },
+                            { value: "Irregular", label: "Irregular" }
+                          ]}
+                          value={watch("dutyType") || "Standard"}
+                          onChange={(val) => setValue("dutyType", val, { shouldValidate: true })}
+                          placeholder="Select duties..."
+                          buttonClassName="!pl-3 text-gray-700"
+                          disabled={isOldEmployee}
+                        />
+                        <FieldError name="dutyType" />
+                    </div>
+                   <div>
+                        <label className="text-xs font-semibold text-gray-600 ml-1 mb-1 block">Appointment Type</label>
+                        <Combobox<'Permanent' | 'Contractual' | 'Casual' | 'Job Order' | 'Coterminous' | 'Temporary' | 'Contract of Service' | 'JO' | 'COS' | ''>
+                            options={[
+                              { value: "Permanent", label: "Permanent" },
+                              { value: "Contractual", label: "Contractual" },
+                              { value: "Casual", label: "Casual" },
+                              { value: "Job Order", label: "Job Order" },
+                              { value: "Coterminous", label: "Coterminous" },
+                              { value: "Temporary", label: "Temporary" },
+                              { value: "Contract of Service", label: "Contract of Service" }
+                            ]}
+                            value={watch("appointmentType") || ""}
+                            onChange={(val) => setValue("appointmentType", val, { shouldValidate: true })}
+                            placeholder="Select type..."
+                            buttonClassName="bg-gray-50 font-bold !pl-3"
+                            disabled={isOldEmployee}
+                          />
+                        <FieldError name="appointmentType" />
+                    </div>
+                  </>
+               )}
             </div>
+            {isOldEmployee && <p className="text-xs text-center font-bold text-red-500 p-2 bg-red-50 rounded-lg mt-4">Employee is OLD</p>}
         </div>
 
         {/* Social Accounts */}
@@ -1305,22 +1374,25 @@ export default function Register() {
                  <label className="text-xs font-semibold text-gray-600 ml-1">Facebook</label>
                  <div className="relative">
                     <Facebook className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#1877F2]" size={15} />
-                    <input {...register("facebookUrl")} className={inputClass} placeholder="" />
+                    <input {...register("facebookUrl")} className={getInputClass("facebookUrl")} placeholder="" />
                  </div>
+                 <FieldError name="facebookUrl" />
               </div>
               <div className="space-y-1">
                  <label className="text-xs font-semibold text-gray-600 ml-1">LinkedIn</label>
                  <div className="relative">
                     <Linkedin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#0A66C2]" size={15} />
-                    <input {...register("linkedinUrl")} className={inputClass} placeholder="" />
+                    <input {...register("linkedinUrl")} className={getInputClass("linkedinUrl")} placeholder="" />
                  </div>
+                 <FieldError name="linkedinUrl" />
               </div>
               <div className="space-y-1">
                  <label className="text-xs font-semibold text-gray-600 ml-1">Twitter (X)</label>
                  <div className="relative">
                     <Twitter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-800" size={15} />
-                    <input {...register("twitterHandle")} className={inputClass} placeholder="" />
+                    <input {...register("twitterHandle")} className={getInputClass("twitterHandle")} placeholder="" />
                  </div>
+                 <FieldError name="twitterHandle" />
               </div>
            </div>
         </div>

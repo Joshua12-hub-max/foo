@@ -13,7 +13,7 @@ const testObj = {
 };
 
 console.log('Original:', JSON.stringify(testObj, null, 2));
-const camel = toCamelCase(testObj as any); // Test util only
+const camel = toCamelCase(testObj as never); // Test util only
 console.log('Camel:', JSON.stringify(camel, null, 2));
 
 const snake = toSnakeCase(camel);

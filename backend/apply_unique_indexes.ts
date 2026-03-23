@@ -9,9 +9,12 @@ async function applyUniqueIndexes() {
         try {
             await db.execute(sql.raw("CREATE UNIQUE INDEX " + col + "_unique ON authentication (" + col + ")"));
             console.log("Added unique index for " + col + " in authentication");
-        } catch (e: any) {
-            if (e.code === 'ER_DUP_KEYNAME') console.log("Index " + col + "_unique already exists");
-            else console.error("Warning on " + col + ": ", e.message);
+        } catch (e: unknown) {
+            if (e && typeof e === 'object' && 'code' in e && e.code === 'ER_DUP_KEYNAME') console.log("Index " + col + "_unique already exists");
+            else {
+                const message = e instanceof Error ? e.message : String(e);
+                console.error("Warning on " + col + ": ", message);
+            }
         }
     }
 
@@ -21,9 +24,12 @@ async function applyUniqueIndexes() {
         try {
             await db.execute(sql.raw("CREATE UNIQUE INDEX " + col + "_unique ON recruitment_applicants (" + col + ")"));
             console.log("Added unique index for " + col + " in recruitment_applicants");
-        } catch (e: any) {
-            if (e.code === 'ER_DUP_KEYNAME') console.log("Index " + col + "_unique already exists");
-            else console.error("Warning on " + col + ": ", e.message);
+        } catch (e: unknown) {
+            if (e && typeof e === 'object' && 'code' in e && e.code === 'ER_DUP_KEYNAME') console.log("Index " + col + "_unique already exists");
+            else {
+                const message = e instanceof Error ? e.message : String(e);
+                console.error("Warning on " + col + ": ", message);
+            }
         }
     }
 

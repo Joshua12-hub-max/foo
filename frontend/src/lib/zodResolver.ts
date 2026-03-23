@@ -3,7 +3,7 @@
  * 
  * @hookform/resolvers v5.2.2 ships with types for Zod v3, creating a type
  * mismatch with Zod v4 schemas. This helper centralises the cast so that
- * individual form files don't have to use `as any`.
+ * individual form files don't have to use `as never`.
  */
 import { zodResolver as baseZodResolver } from '@hookform/resolvers/zod';
 import type { Resolver, FieldValues } from 'react-hook-form';

@@ -14,7 +14,7 @@ async function listDatabases() {
     const connection = await mysql.createConnection(config);
     const [rows] = await connection.execute('SHOW DATABASES;');
     console.log('--- AVAILABLE DATABASES ---');
-    (rows as any[]).forEach(row => console.log(row.Database));
+    (rows as never[]).forEach(row => console.log(row.Database));
     await connection.end();
   } catch (error) {
     console.error('Failed to list databases:', error);

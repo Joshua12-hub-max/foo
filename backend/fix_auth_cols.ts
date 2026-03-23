@@ -4,8 +4,8 @@ import { sql } from 'drizzle-orm';
 async function run() {
   try {
     const res = await db.execute(sql`SHOW COLUMNS FROM authentication`);
-    const columns = res[0] as unknown as any[];
-    const colNames = columns.map((c: any) => c.Field);
+    const columns = res[0] as unknown as never[];
+    const colNames = columns.map((c: Record<string, never>) => c.Field);
     
     const targets = [
         { name: 'is_meycauayan', type: 'BOOLEAN DEFAULT FALSE' },

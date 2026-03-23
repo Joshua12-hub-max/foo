@@ -50,7 +50,7 @@ export class QualificationService {
 
     // 2. Calculate PDS Data
     const educations = await db.select().from(pdsEducation).where(eq(pdsEducation.employeeId, employeeId));    // Extract highest education
-    let highestEducation = educations.length > 0 ? educations[0].degreeCourse || 
+    const highestEducation = educations.length > 0 ? educations[0].degreeCourse || 
                                             educations[0].level : null;
 
     const experiences = await db.select().from(pdsWorkExperience).where(eq(pdsWorkExperience.employeeId, employeeId));

@@ -32,7 +32,9 @@ export const getEmploymentMetadata = async (_req: Request, res: Response): Promi
             'employment_appointment_types',
             'employment_duty_types',
             'employment_status',
-            'pds_eligibility_types'
+            'pds_eligibility_types',
+            'pds_gender',
+            'pds_relationship_types'
         ];
 
         const settings = await db.select()
@@ -40,7 +42,7 @@ export const getEmploymentMetadata = async (_req: Request, res: Response): Promi
             .where(inArray(systemSettings.settingKey, keys));
 
         // Create a map for easy access
-        const metadataMap: Record<string, any[]> = {};
+        const metadataMap: Record<string, never[]> = {};
         settings.forEach(s => {
             try {
                 metadataMap[s.settingKey] = JSON.parse(s.settingValue || '[]');
@@ -63,7 +65,9 @@ export const getEmploymentMetadata = async (_req: Request, res: Response): Promi
                 pdsLdTypes: metadataMap['pds_ld_types'] || [],
                 pdsGovtIdTypes: metadataMap['pds_govt_id_types'] || [],
                 employmentStatus: metadataMap['employment_status'] || [],
-                pdsEligibilityTypes: metadataMap['pds_eligibility_types'] || []
+                pdsEligibilityTypes: metadataMap['pds_eligibility_types'] || [],
+                pdsGender: metadataMap['pds_gender'] || [],
+                pdsRelationshipTypes: metadataMap['pds_relationship_types'] || []
             }
         });
     } catch (error) {

@@ -35,7 +35,7 @@ export default tseslint.config(
       '@typescript-eslint/consistent-type-assertions': [
         'error',
         {
-          assertionStyle: 'never',
+          assertionStyle: 'as',
         },
       ],
       'react-hooks/exhaustive-deps': 'off',

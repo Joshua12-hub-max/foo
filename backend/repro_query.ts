@@ -28,7 +28,7 @@ async function repro() {
     
     console.log('Query successful!');
     console.log('Result:', JSON.stringify(result, null, 2));
-  } catch (error: any) {
+  } catch (e) {
     console.error('Query failed!');
     console.error('Error message:', error.message);
     if (error.sqlMessage) console.error('SQL Message:', error.sqlMessage);

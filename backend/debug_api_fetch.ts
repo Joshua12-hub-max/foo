@@ -14,7 +14,7 @@ async function debugApiFetch() {
     const response = await axios.get(`${baseUrl}/schedules/shift-templates`);
     console.log('API Response Status:', response.status);
     console.log('API Response Data:', JSON.stringify(response.data, null, 2));
-  } catch (error: any) {
+  } catch (e) {
     console.error('API Fetch Error:', error.message);
     if (error.response) {
       console.error('Error Response Data:', error.response.data);

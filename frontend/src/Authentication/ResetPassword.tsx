@@ -17,12 +17,36 @@ export default function ResetPassword() {
   const [isSuccess, setIsSuccess] = useState(false);
   const [error, setError] = useState("");
 
+  const [passwordError, setPasswordError] = useState(false);
+  const [confirmPasswordError, setConfirmPasswordError] = useState(false);
+  const gibberishRegex = /^(.)\1{4,}|^[bcdfghjklmnpqrstvwxz]{10,}$|qwerty|asdfgh|zxcvbn|qwqewrwff/i;
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    setPasswordError(false);
+    setConfirmPasswordError(false);
+    setError("");
+
     if (!password || !confirmPassword) {
         setError("Please fill in all fields.");
         return;
     }
+
+    let hasGibberish = false;
+    if (gibberishRegex.test(password)) {
+        setPasswordError(true);
+        hasGibberish = true;
+    }
+    if (gibberishRegex.test(confirmPassword)) {
+        setConfirmPasswordError(true);
+        hasGibberish = true;
+    }
+
+    if (hasGibberish) {
+        setError("Please enter a valid password, avoid random characters");
+        return;
+    }
+
     if (password !== confirmPassword) {
         setError("Passwords do not match.");
         return;
@@ -115,8 +139,15 @@ export default function ResetPassword() {
                 <input
                   type="password"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-xl bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                  onChange={(e) => {
+                      setPassword(e.target.value);
+                      if (passwordError) setPasswordError(false);
+                  }}
+                  className={`block w-full pl-10 pr-3 py-2.5 border rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none transition-all ${
+                      passwordError 
+                        ? "border-red-500 ring-2 ring-red-100 bg-red-50/10" 
+                        : "border-gray-300 bg-gray-50 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                  }`}
                   placeholder="••••••••"
                   required
                 />
@@ -132,8 +163,15 @@ export default function ResetPassword() {
                 <input
                   type="password"
                   value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-xl bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                  onChange={(e) => {
+                      setConfirmPassword(e.target.value);
+                      if (confirmPasswordError) setConfirmPasswordError(false);
+                  }}
+                  className={`block w-full pl-10 pr-3 py-2.5 border rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none transition-all ${
+                      confirmPasswordError 
+                        ? "border-red-500 ring-2 ring-red-100 bg-red-50/10" 
+                        : "border-gray-300 bg-gray-50 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                  }`}
                   placeholder="••••••••"
                   required
                 />

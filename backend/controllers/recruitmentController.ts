@@ -620,7 +620,7 @@ export const applyJob = async (req: Request, res: Response): Promise<void> => {
     res.status(500).json({ 
       success: false, 
       message: 'Failed to submit application', 
-      error: error instanceof Error ? error.message : 'Internal Server Error' 
+      error: error instanceof Error ? (error as Error).message : 'Internal Server Error' 
     });
   }
 };
@@ -784,7 +784,7 @@ export const getApplicants = async (req: Request, res: Response): Promise<void> 
     res.json({ success: true, applicants });
   } catch (error) {
 
-    const message = error instanceof Error ? error.message : 'Unknown database error';
+    const message = error instanceof Error ? (error as Error).message : 'Unknown database error';
     res.status(500).json({ success: false, message: 'Failed to fetch applicants', error: message });
   }
 };
@@ -993,7 +993,7 @@ export const generateJobFeed = async (_req: Request, res: Response): Promise<voi
     res.header('Content-Type', 'application/xml'); 
     res.send(xml); 
   } catch (error) { 
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorMessage = error instanceof Error ? (error as Error).message : 'Unknown error';
 
     res.status(500).json({ success: false, message: `Failed to generate feed: ${errorMessage}` });
   }
@@ -1030,7 +1030,7 @@ export const getApplicantStats = async (_req: Request, res: Response): Promise<v
     res.json(stats); 
   } catch (error) {
 
-    const message = error instanceof Error ? error.message : 'Unknown database error';
+    const message = error instanceof Error ? (error as Error).message : 'Unknown database error';
     res.status(500).json({ success: false, message: 'Failed to fetch applicant stats', error: message });
   }
 };
@@ -1505,7 +1505,7 @@ export const generateApplicationPDF = async (req: Request, res: Response): Promi
 
     doc.end();
     } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorMessage = error instanceof Error ? (error as Error).message : 'Unknown error';
     res.status(500).json({ success: false, message: `Failed to generate PDF: ${errorMessage}` });
     }
     };
@@ -1679,7 +1679,7 @@ export const saveInterviewNotes = async (req: Request, res: Response): Promise<v
 
     res.json({ success: true, message: 'Interview notes saved successfully' });
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorMessage = error instanceof Error ? (error as Error).message : 'Unknown error';
 
     res.status(500).json({ success: false, message: `Failed to save notes: ${errorMessage}` });
   }

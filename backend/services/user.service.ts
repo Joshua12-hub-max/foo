@@ -1,10 +1,30 @@
 import { db } from '../db/index.js';
-import { authentication, employeeSkills, employeeEmergencyContacts, employeeCustomFields, pdsFamily, pdsVoluntaryWork, pdsLearningDevelopment, pdsWorkExperience, pdsOtherInfo, pdsReferences, bioEnrolledUsers, pdsEducation, pdsEligibility, pdsHrDetails, departments, shiftTemplates } from '../db/schema.js';
+import { 
+  authentication, 
+  employeeSkills, 
+  employeeEmergencyContacts, 
+  employeeCustomFields, 
+  pdsFamily, 
+  pdsVoluntaryWork, 
+  pdsLearningDevelopment, 
+  pdsWorkExperience, 
+  pdsOtherInfo, 
+  pdsReferences, 
+  bioEnrolledUsers, 
+  pdsEducation, 
+  pdsEligibility, 
+  pdsHrDetails, 
+  pdsPersonalInformation,
+  pdsDeclarations,
+  departments, 
+  shiftTemplates,
+  schedules
+} from '../db/schema.js';
 import { eq, and, desc, SQL, sql } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
+import { normalizeIdSql } from '../utils/idUtils.js';
 
 type NewEmployee = typeof authentication.$inferInsert;
-type UpdateEmployee = Partial<NewEmployee>;
 
 export class UserService {
   static async getAllEmployees(conditions: SQL[] = []) {
@@ -45,24 +65,60 @@ export class UserService {
       barangay: pdsHrDetails.barangay,
       dutyType: pdsHrDetails.dutyType,
       isMeycauayan: pdsHrDetails.isMeycauayan,
+      
+      // Personal Info Fields
+      birthDate: pdsPersonalInformation.birthDate,
+      placeOfBirth: pdsPersonalInformation.placeOfBirth,
+      gender: pdsPersonalInformation.gender,
+      civilStatus: pdsPersonalInformation.civilStatus,
+      heightM: pdsPersonalInformation.heightM,
+      weightKg: pdsPersonalInformation.weightKg,
+      bloodType: pdsPersonalInformation.bloodType,
+      citizenship: pdsPersonalInformation.citizenship,
+      residentialAddress: pdsPersonalInformation.residentialAddress,
+      permanentAddress: pdsPersonalInformation.permanentAddress,
+      mobileNo: pdsPersonalInformation.mobileNo,
+      telephoneNo: pdsPersonalInformation.telephoneNo,
+      umidNumber: pdsPersonalInformation.umidNumber,
+      philsysId: pdsPersonalInformation.philsysId,
+      philhealthNumber: pdsPersonalInformation.philhealthNumber,
+      pagibigNumber: pdsPersonalInformation.pagibigNumber,
+      tinNumber: pdsPersonalInformation.tinNumber,
+      gsisNumber: pdsPersonalInformation.gsisNumber,
+      agencyEmployeeNo: pdsPersonalInformation.agencyEmployeeNo,
+      resHouseBlockLot: pdsPersonalInformation.resHouseBlockLot,
+      resStreet: pdsPersonalInformation.resStreet,
+      resSubdivision: pdsPersonalInformation.resSubdivision,
+      resBarangay: pdsPersonalInformation.resBarangay,
+      resCity: pdsPersonalInformation.resCity,
+      resProvince: pdsPersonalInformation.resProvince,
+      resRegion: pdsPersonalInformation.resRegion,
+      permHouseBlockLot: pdsPersonalInformation.permHouseBlockLot,
+      permStreet: pdsPersonalInformation.permStreet,
+      permSubdivision: pdsPersonalInformation.permSubdivision,
+      permBarangay: pdsPersonalInformation.permBarangay,
+      permCity: pdsPersonalInformation.permCity,
+      permProvince: pdsPersonalInformation.permProvince,
+      permRegion: pdsPersonalInformation.permRegion,
+
       duties: sql<string>`COALESCE(
-        (SELECT schedule_title FROM schedules WHERE schedules.employee_id = ${authentication.employeeId} AND (start_date IS NULL OR start_date <= CURDATE()) AND (end_date IS NULL OR end_date >= CURDATE()) ORDER BY updated_at DESC LIMIT 1),
-        (SELECT schedule_title FROM schedules WHERE schedules.employee_id = ${authentication.employeeId} AND (start_date IS NULL OR start_date <= CURDATE()) ORDER BY start_date DESC LIMIT 1),
+        (SELECT schedule_title FROM schedules WHERE ${normalizeIdSql(schedules.employeeId)} = ${normalizeIdSql(authentication.employeeId)} AND (start_date IS NULL OR start_date <= CURDATE()) AND (end_date IS NULL OR end_date >= CURDATE()) ORDER BY updated_at DESC LIMIT 1),
+        (SELECT schedule_title FROM schedules WHERE ${normalizeIdSql(schedules.employeeId)} = ${normalizeIdSql(authentication.employeeId)} AND (start_date IS NULL OR start_date <= CURDATE()) ORDER BY start_date DESC LIMIT 1),
         (SELECT name FROM ${shiftTemplates} WHERE is_default = 1 LIMIT 1),
         'Standard Shift'
       )`,
       shift: sql<string>`COALESCE(
-        (SELECT CONCAT(TIME_FORMAT(start_time, '%h:%i %p'), ' - ', TIME_FORMAT(end_time, '%h:%i %p')) FROM schedules WHERE schedules.employee_id = ${authentication.employeeId} AND (start_date IS NULL OR start_date <= CURDATE()) AND (end_date IS NULL OR end_date >= CURDATE()) ORDER BY updated_at DESC LIMIT 1),
-        (SELECT CONCAT(TIME_FORMAT(start_time, '%h:%i %p'), ' - ', TIME_FORMAT(end_time, '%h:%i %p')) FROM schedules WHERE schedules.employee_id = ${authentication.employeeId} AND (start_date IS NULL OR start_date <= CURDATE()) ORDER BY start_date DESC LIMIT 1),
+        (SELECT CONCAT(TIME_FORMAT(start_time, '%h:%i %p'), ' - ', TIME_FORMAT(end_time, '%h:%i %p')) FROM schedules WHERE ${normalizeIdSql(schedules.employeeId)} = ${normalizeIdSql(authentication.employeeId)} AND (start_date IS NULL OR start_date <= CURDATE()) AND (end_date IS NULL OR end_date >= CURDATE()) ORDER BY updated_at DESC LIMIT 1),
+        (SELECT CONCAT(TIME_FORMAT(start_time, '%h:%i %p'), ' - ', TIME_FORMAT(end_time, '%h:%i %p')) FROM schedules WHERE ${normalizeIdSql(schedules.employeeId)} = ${normalizeIdSql(authentication.employeeId)} AND (start_date IS NULL OR start_date <= CURDATE()) ORDER BY start_date DESC LIMIT 1),
         (SELECT CONCAT(TIME_FORMAT(start_time, '%h:%i %p'), ' - ', TIME_FORMAT(end_time, '%h:%i %p')) FROM ${shiftTemplates} WHERE is_default = 1 LIMIT 1),
         '08:00 AM - 05:00 PM'
       )`,
-      isBiometricEnrolled: sql<boolean>`CASE WHEN ${bioEnrolledUsers.employeeId} IS NOT NULL THEN true ELSE false END`
+      isBiometricEnrolled: sql<boolean>`CASE WHEN (SELECT 1 FROM ${bioEnrolledUsers} WHERE ${normalizeIdSql(bioEnrolledUsers.employeeId)} = ${normalizeIdSql(authentication.employeeId)} LIMIT 1) IS NOT NULL THEN true ELSE false END`
     })
     .from(authentication)
     .leftJoin(pdsHrDetails, eq(authentication.id, pdsHrDetails.employeeId))
+    .leftJoin(pdsPersonalInformation, eq(authentication.id, pdsPersonalInformation.employeeId))
     .leftJoin(departments, eq(pdsHrDetails.departmentId, departments.id))
-    .leftJoin(bioEnrolledUsers, eq(authentication.employeeId, bioEnrolledUsers.employeeId))
     .where(where)
     .orderBy(authentication.lastName);
 
@@ -107,32 +163,69 @@ export class UserService {
       facebookUrl: pdsHrDetails.facebookUrl,
       linkedinUrl: pdsHrDetails.linkedinUrl,
       twitterHandle: pdsHrDetails.twitterHandle,
+      
+      // Personal Info Fields
+      birthDate: pdsPersonalInformation.birthDate,
+      placeOfBirth: pdsPersonalInformation.placeOfBirth,
+      gender: pdsPersonalInformation.gender,
+      civilStatus: pdsPersonalInformation.civilStatus,
+      heightM: pdsPersonalInformation.heightM,
+      weightKg: pdsPersonalInformation.weightKg,
+      bloodType: pdsPersonalInformation.bloodType,
+      citizenship: pdsPersonalInformation.citizenship,
+      residentialAddress: pdsPersonalInformation.residentialAddress,
+      permanentAddress: pdsPersonalInformation.permanentAddress,
+      mobileNo: pdsPersonalInformation.mobileNo,
+      telephoneNo: pdsPersonalInformation.telephoneNo,
+      umidNumber: pdsPersonalInformation.umidNumber,
+      philsysId: pdsPersonalInformation.philsysId,
+      philhealthNumber: pdsPersonalInformation.philhealthNumber,
+      pagibigNumber: pdsPersonalInformation.pagibigNumber,
+      tinNumber: pdsPersonalInformation.tinNumber,
+      gsisNumber: pdsPersonalInformation.gsisNumber,
+      agencyEmployeeNo: pdsPersonalInformation.agencyEmployeeNo,
+      resHouseBlockLot: pdsPersonalInformation.resHouseBlockLot,
+      resStreet: pdsPersonalInformation.resStreet,
+      resSubdivision: pdsPersonalInformation.resSubdivision,
+      resBarangay: pdsPersonalInformation.resBarangay,
+      resCity: pdsPersonalInformation.resCity,
+      resProvince: pdsPersonalInformation.resProvince,
+      resRegion: pdsPersonalInformation.resRegion,
+      permHouseBlockLot: pdsPersonalInformation.permHouseBlockLot,
+      permStreet: pdsPersonalInformation.permStreet,
+      permSubdivision: pdsPersonalInformation.permSubdivision,
+      permBarangay: pdsPersonalInformation.permBarangay,
+      permCity: pdsPersonalInformation.permCity,
+      permProvince: pdsPersonalInformation.permProvince,
+      permRegion: pdsPersonalInformation.permRegion,
+
       duties: sql<string>`COALESCE(
-        (SELECT schedule_title FROM schedules WHERE schedules.employee_id = ${authentication.employeeId} AND (start_date IS NULL OR start_date <= CURDATE()) AND (end_date IS NULL OR end_date >= CURDATE()) ORDER BY updated_at DESC LIMIT 1),
-        (SELECT schedule_title FROM schedules WHERE schedules.employee_id = ${authentication.employeeId} AND (start_date IS NULL OR start_date <= CURDATE()) ORDER BY start_date DESC LIMIT 1),
+        (SELECT schedule_title FROM schedules WHERE ${normalizeIdSql(schedules.employeeId)} = ${normalizeIdSql(authentication.employeeId)} AND (start_date IS NULL OR start_date <= CURDATE()) AND (end_date IS NULL OR end_date >= CURDATE()) ORDER BY updated_at DESC LIMIT 1),
+        (SELECT schedule_title FROM schedules WHERE ${normalizeIdSql(schedules.employeeId)} = ${normalizeIdSql(authentication.employeeId)} AND (start_date IS NULL OR start_date <= CURDATE()) ORDER BY start_date DESC LIMIT 1),
         (SELECT name FROM ${shiftTemplates} WHERE is_default = 1 LIMIT 1),
         'Standard Shift'
       )`,
       shift: sql<string>`COALESCE(
-        (SELECT CONCAT(TIME_FORMAT(start_time, '%h:%i %p'), ' - ', TIME_FORMAT(end_time, '%h:%i %p')) FROM schedules WHERE schedules.employee_id = ${authentication.employeeId} AND (start_date IS NULL OR start_date <= CURDATE()) AND (end_date IS NULL OR end_date >= CURDATE()) ORDER BY updated_at DESC LIMIT 1),
-        (SELECT CONCAT(TIME_FORMAT(start_time, '%h:%i %p'), ' - ', TIME_FORMAT(end_time, '%h:%i %p')) FROM schedules WHERE schedules.employee_id = ${authentication.employeeId} AND (start_date IS NULL OR start_date <= CURDATE()) ORDER BY start_date DESC LIMIT 1),
+        (SELECT CONCAT(TIME_FORMAT(start_time, '%h:%i %p'), ' - ', TIME_FORMAT(end_time, '%h:%i %p')) FROM schedules WHERE ${normalizeIdSql(schedules.employeeId)} = ${normalizeIdSql(authentication.employeeId)} AND (start_date IS NULL OR start_date <= CURDATE()) AND (end_date IS NULL OR end_date >= CURDATE()) ORDER BY updated_at DESC LIMIT 1),
+        (SELECT CONCAT(TIME_FORMAT(start_time, '%h:%i %p'), ' - ', TIME_FORMAT(end_time, '%h:%i %p')) FROM schedules WHERE ${normalizeIdSql(schedules.employeeId)} = ${normalizeIdSql(authentication.employeeId)} AND (start_date IS NULL OR start_date <= CURDATE()) ORDER BY start_date DESC LIMIT 1),
         (SELECT CONCAT(TIME_FORMAT(start_time, '%h:%i %p'), ' - ', TIME_FORMAT(end_time, '%h:%i %p')) FROM ${shiftTemplates} WHERE is_default = 1 LIMIT 1),
         '08:00 AM - 05:00 PM'
       )`,
-      isBiometricEnrolled: sql<boolean>`CASE WHEN ${bioEnrolledUsers.employeeId} IS NOT NULL THEN true ELSE false END`
+      isBiometricEnrolled: sql<boolean>`CASE WHEN (SELECT 1 FROM ${bioEnrolledUsers} WHERE ${normalizeIdSql(bioEnrolledUsers.employeeId)} = ${normalizeIdSql(authentication.employeeId)} LIMIT 1) IS NOT NULL THEN true ELSE false END`
     })
     .from(authentication)
     .leftJoin(pdsHrDetails, eq(authentication.id, pdsHrDetails.employeeId))
+    .leftJoin(pdsPersonalInformation, eq(authentication.id, pdsPersonalInformation.employeeId))
     .leftJoin(departments, eq(pdsHrDetails.departmentId, departments.id))
-    .leftJoin(bioEnrolledUsers, eq(authentication.employeeId, bioEnrolledUsers.employeeId))
     .where(eq(authentication.id, id))
     .limit(1);
 
     return results[0] || null;
   }
 
+
   static async getRelatedData(id: number) {
-    const [skills, education, emergencyContacts, customFields, familyBackground, voluntaryWork, learningDevelopment, workExperience, otherInfo, references, eligibilities] = await Promise.all([
+    const [skills, education, emergencyContacts, customFields, familyBackground, voluntaryWork, learningDevelopment, workExperience, otherInfo, references, eligibilities, declarations] = await Promise.all([
       db.select()
         .from(employeeSkills)
         .where(eq(employeeSkills.employeeId, id))
@@ -180,16 +273,26 @@ export class UserService {
 
       db.select()
         .from(pdsEligibility)
-        .where(eq(pdsEligibility.employeeId, id))
+        .where(eq(pdsEligibility.employeeId, id)),
+
+      db.select()
+        .from(pdsDeclarations)
+        .where(eq(pdsDeclarations.employeeId, id))
+        .limit(1)
     ]);
 
-    return { skills, education, emergencyContacts, customFields, familyBackground, voluntaryWork, learningDevelopment, workExperience, otherInfo, references, eligibilities };
+    return { 
+      skills, education, emergencyContacts, customFields, 
+      familyBackground, voluntaryWork, learningDevelopment, 
+      workExperience, otherInfo, references, eligibilities,
+      declarations: declarations[0] || null
+    };
   }
 
-  static async createEmployee(data: any) {
+  static async createEmployee(data: NewEmployee & { password?: string; employmentStatus?: string; employmentType?: string; departmentId?: number; positionId?: number; salaryGrade?: string | number; stepIncrement?: number; dateHired?: string; contractEndDate?: string; regularizationDate?: string; isRegular?: boolean; positionTitle?: string; station?: string; appointmentType?: string; itemNumber?: string; firstDayOfService?: string; officeAddress?: string; religion?: string; barangay?: string; dutyType?: string; isMeycauayan?: boolean; facebookUrl?: string; linkedinUrl?: string; twitterHandle?: string; birthDate?: string; placeOfBirth?: string; gender?: string; civilStatus?: string; heightM?: string | number; weightKg?: string | number; bloodType?: string; citizenship?: string; nationality?: string; residentialAddress?: string; address?: string; permanentAddress?: string; mobileNo?: string; phoneNumber?: string; telephoneNo?: string; jobTitle?: string }) {
     return await db.transaction(async (tx) => {
       // 1. Split data
-      const authData: any = {
+      const authData: NewEmployee = {
         firstName: data.firstName,
         lastName: data.lastName,
         middleName: data.middleName,
@@ -202,48 +305,67 @@ export class UserService {
       };
 
       const [authResult] = await tx.insert(authentication).values(authData);
-      const newId = (authResult as any).insertId;
+      const newId = Number((authResult as { insertId: number | string }).insertId);
 
       // 2. Prepare HR data
-      const hrData: any = {
+      const hrData: typeof pdsHrDetails.$inferInsert = {
         employeeId: newId,
-        employmentStatus: data.employmentStatus || 'Active',
+        employmentStatus: (data.employmentStatus as 'Active' | 'Probationary' | 'Terminated' | 'Resigned' | 'On Leave' | 'Suspended' | 'Verbal Warning' | 'Written Warning' | 'Show Cause') || 'Active',
         employmentType: data.employmentType || 'Probationary',
-        jobTitle: data.jobTitle,
-        departmentId: data.departmentId,
-        positionId: data.positionId,
-        salaryGrade: data.salaryGrade,
-        stepIncrement: data.stepIncrement,
-        dateHired: data.dateHired,
-        contractEndDate: data.contractEndDate,
-        regularizationDate: data.regularizationDate,
-        isRegular: data.isRegular ? 1 : 0,
-        positionTitle: data.positionTitle,
-        station: data.station,
-        appointmentType: data.appointmentType,
-        itemNumber: data.itemNumber,
-        firstDayOfService: data.firstDayOfService,
-        officeAddress: data.officeAddress,
-        religion: data.religion,
-        barangay: data.barangay,
-        dutyType: data.dutyType || 'Standard',
-        isMeycauayan: data.isMeycauayan ? 1 : 0,
-        facebookUrl: data.facebookUrl,
-        linkedinUrl: data.linkedinUrl,
-        twitterHandle: data.twitterHandle,
+        jobTitle: data.jobTitle || null,
+        departmentId: data.departmentId || null,
+        positionId: data.positionId || null,
+        salaryGrade: data.salaryGrade ? String(data.salaryGrade) : null,
+        stepIncrement: data.stepIncrement || 1,
+        dateHired: data.dateHired || null,
+        contractEndDate: data.contractEndDate || null,
+        regularizationDate: data.regularizationDate || null,
+        isRegular: !!data.isRegular,
+        positionTitle: data.positionTitle || null,
+        station: data.station || null,
+        appointmentType: (data.appointmentType as 'Permanent' | 'Contractual' | 'Casual' | 'Job Order' | 'Coterminous' | 'Temporary' | 'Contract of Service' | 'JO' | 'COS') || null,
+        itemNumber: data.itemNumber || null,
+        firstDayOfService: data.firstDayOfService || null,
+        officeAddress: data.officeAddress || null,
+        religion: data.religion || null,
+        barangay: data.barangay || null,
+        dutyType: (data.dutyType as 'Standard' | 'Irregular') || 'Standard',
+        isMeycauayan: !!data.isMeycauayan,
+        facebookUrl: data.facebookUrl || null,
+        linkedinUrl: data.linkedinUrl || null,
+        twitterHandle: data.twitterHandle || null,
       };
 
       await tx.insert(pdsHrDetails).values(hrData);
+
+      // 3. Prepare Personal Info data
+      const personalData: typeof pdsPersonalInformation.$inferInsert = {
+        employeeId: newId,
+        birthDate: data.birthDate || null,
+        placeOfBirth: data.placeOfBirth || null,
+        gender: (data.gender as 'Male' | 'Female') || null,
+        civilStatus: (data.civilStatus as 'Single' | 'Married' | 'Widowed' | 'Separated' | 'Annulled') || null,
+        heightM: data.heightM ? String(data.heightM) : null,
+        weightKg: data.weightKg ? String(data.weightKg) : null,
+        bloodType: data.bloodType || null,
+        citizenship: data.citizenship || data.nationality || 'Filipino',
+        residentialAddress: data.residentialAddress || data.address || null,
+        permanentAddress: data.permanentAddress || null,
+        mobileNo: data.mobileNo || data.phoneNumber || null,
+        telephoneNo: data.telephoneNo || null,
+      };
+
+      await tx.insert(pdsPersonalInformation).values(personalData);
 
       return authResult;
     });
   }
 
-  static async updateEmployee(id: number, data: any) {
+  static async updateEmployee(id: number, data: Partial<NewEmployee> & Record<string, unknown>) {
     return await db.transaction(async (tx) => {
       // 1. Auth fields
       const authFields = ['firstName', 'lastName', 'middleName', 'suffix', 'email', 'role', 'employeeId', 'avatarUrl', 'rfidCardUid'];
-      const authUpdate: any = {};
+      const authUpdate: Record<string, unknown> = {};
       authFields.forEach(f => { if (data[f] !== undefined) authUpdate[f] = data[f]; });
 
       if (Object.keys(authUpdate).length > 0) {
@@ -258,22 +380,45 @@ export class UserService {
         'firstDayOfService', 'officeAddress', 'religion', 'barangay', 'dutyType',
         'isMeycauayan', 'facebookUrl', 'linkedinUrl', 'twitterHandle', 'managerId'
       ];
-      const hrUpdate: any = {};
+      const hrUpdate: Record<string, unknown> = {};
       hrFields.forEach(f => { if (data[f] !== undefined) hrUpdate[f] = data[f]; });
 
       if (Object.keys(hrUpdate).length > 0) {
-        // Check if HR record exists
         const [existing] = await tx.select().from(pdsHrDetails).where(eq(pdsHrDetails.employeeId, id));
         if (existing) {
           await tx.update(pdsHrDetails).set(hrUpdate).where(eq(pdsHrDetails.employeeId, id));
         } else {
-          await tx.insert(pdsHrDetails).values({ ...hrUpdate, employeeId: id });
+          await tx.insert(pdsHrDetails).values({ ...hrUpdate, employeeId: id } as typeof pdsHrDetails.$inferInsert);
+        }
+      }
+
+      // 3. Personal Info fields
+      const personalFields = [
+        'birthDate', 'placeOfBirth', 'gender', 'civilStatus', 'heightM', 'weightKg',
+        'bloodType', 'citizenship', 'residentialAddress', 'permanentAddress',
+        'mobileNo', 'telephoneNo', 'nationality'
+      ];
+      const personalUpdate: Record<string, unknown> = {};
+      personalFields.forEach(f => { 
+        if (data[f] !== undefined) {
+          if (f === 'nationality') personalUpdate['citizenship'] = data[f];
+          else personalUpdate[f] = data[f];
+        }
+      });
+
+      if (Object.keys(personalUpdate).length > 0) {
+        const [existing] = await tx.select().from(pdsPersonalInformation).where(eq(pdsPersonalInformation.employeeId, id));
+        if (existing) {
+          await tx.update(pdsPersonalInformation).set(personalUpdate).where(eq(pdsPersonalInformation.employeeId, id));
+        } else {
+          await tx.insert(pdsPersonalInformation).values({ ...personalUpdate, employeeId: id } as typeof pdsPersonalInformation.$inferInsert);
         }
       }
 
       return { success: true };
     });
   }
+
 
   static async deleteEmployee(id: number) {
     return await db.transaction(async (tx) => {

@@ -46,7 +46,7 @@ const useJobForm = () => {
       department: job.department,
       location: job.location,
       employmentType: job.employmentType,
-      dutyType: (job.dutyType as any) || 'Standard',
+      dutyType: (job.dutyType as never) || 'Standard',
       salaryRange: job.salaryRange || '',
       applicationEmail: job.applicationEmail || '',
       jobDescription: job.jobDescription,

@@ -152,6 +152,7 @@ export interface PDSFormData {
   declarationAgreed: boolean;
   
   // HR Details
+  isBiometricEnrolled: boolean;
   itemNumber: string;
   salaryGrade: string;
   stepIncrement: string;
@@ -246,16 +247,16 @@ const PDSAddressSelector = ({ prefix, data, set, isMeycauayanOnly = false }: { p
     if (isMeycauayanOnly) {
       const reg3 = ph.regions.find((r: Region) => r.reg_code === '03');
       setRegions(reg3 ? [reg3] : []);
-      set(`${prefix}Region` as any, '03');
+      set(`${prefix}Region` as unknown as any, '03');
       const bulacan = ph.provinces.find((p: Province) => p.prov_code === '0314');
       setProvinces(bulacan ? [bulacan] : []);
-      set(`${prefix}Province` as any, '0314');
+      set(`${prefix}Province` as unknown as any, '0314');
       const meycauayan = ph.city_mun.find((c: CityMunicipality) => c.mun_code === '031412' || c.name.toUpperCase().includes('MEYCAUAYAN'));
       setCities(meycauayan ? [meycauayan] : []);
       const munCode = meycauayan?.mun_code || '031412';
-      set(`${prefix}CityMunicipality` as any, munCode);
+      set(`${prefix}CityMunicipality` as unknown as any, munCode);
       const zip = getZipByMunCode(munCode);
-      if (zip) set(zipField as any, zip);
+      if (zip) set(zipField as unknown as any, zip);
     } else {
       setRegions(ph.regions || []);
     }
@@ -279,7 +280,7 @@ const PDSAddressSelector = ({ prefix, data, set, isMeycauayanOnly = false }: { p
     if (watchCity) {
       setBarangays(ph.barangays.filter((b: Barangay) => b.mun_code === watchCity) || []);
       const zip = getZipByMunCode(String(watchCity));
-      if (zip) set(zipField as any, zip);
+      if (zip) set(zipField as unknown as any, zip);
     } else setBarangays([]);
   }, [watchCity, prefix]);
 
@@ -290,7 +291,7 @@ const PDSAddressSelector = ({ prefix, data, set, isMeycauayanOnly = false }: { p
           <Combobox 
             options={regions.map((r: Region) => ({ value: r.reg_code, label: formatName(r.name) }))}
             value={watchRegion || ''}
-            onChange={(val: string) => { set(`${prefix}Region` as any, val); set(`${prefix}Province` as any, ''); set(`${prefix}CityMunicipality` as any, ''); set(`${prefix}Barangay` as any, ''); }}
+            onChange={(val: string) => { set(`${prefix}Region` as unknown as any, val); set(`${prefix}Province` as unknown as any, ''); set(`${prefix}CityMunicipality` as unknown as any, ''); set(`${prefix}Barangay` as unknown as any, ''); }}
             placeholder="Select Region" disabled={isMeycauayanOnly}
             buttonClassName="rounded-lg bg-white border-gray-200 font-bold text-gray-700 h-11 transition-all hover:border-gray-400 focus:ring-4 focus:ring-gray-100/50 focus:border-gray-400"
           />
@@ -299,7 +300,7 @@ const PDSAddressSelector = ({ prefix, data, set, isMeycauayanOnly = false }: { p
           <Combobox 
             options={provinces.map((p: Province) => ({ value: p.prov_code, label: formatName(p.name) }))}
             value={watchProvince || ''}
-            onChange={(val: string) => { set(`${prefix}Province` as any, val); set(`${prefix}CityMunicipality` as any, ''); set(`${prefix}Barangay` as any, ''); }}
+            onChange={(val: string) => { set(`${prefix}Province` as unknown as any, val); set(`${prefix}CityMunicipality` as unknown as any, ''); set(`${prefix}Barangay` as unknown as any, ''); }}
             placeholder="Select Province" disabled={isMeycauayanOnly || (!watchRegion && watchRegion !== '13')}
             buttonClassName="rounded-lg bg-white border-gray-200 font-bold text-gray-700 h-11 transition-all hover:border-gray-400 focus:ring-4 focus:ring-gray-100/50 focus:border-gray-400"
           />
@@ -308,7 +309,7 @@ const PDSAddressSelector = ({ prefix, data, set, isMeycauayanOnly = false }: { p
           <Combobox 
             options={cities.map((c: CityMunicipality) => ({ value: c.mun_code, label: formatName(c.name) }))}
             value={watchCity || ''}
-            onChange={(val: string) => { set(`${prefix}CityMunicipality` as any, val); set(`${prefix}Barangay` as any, ''); }}
+            onChange={(val: string) => { set(`${prefix}CityMunicipality` as unknown as any, val); set(`${prefix}Barangay` as unknown as any, ''); }}
             placeholder="Select City" disabled={isMeycauayanOnly || (!watchProvince && watchRegion !== '13')}
             buttonClassName="rounded-lg bg-white border-gray-200 font-bold text-gray-700 h-11 transition-all hover:border-gray-400 focus:ring-4 focus:ring-gray-100/50 focus:border-gray-400"
           />
@@ -317,16 +318,16 @@ const PDSAddressSelector = ({ prefix, data, set, isMeycauayanOnly = false }: { p
           <Combobox 
             options={barangays.map((b: Barangay) => ({ value: b.name, label: formatName(b.name) }))}
             value={(data[`${prefix}Barangay` as keyof PDSFormData] as string) || ''}
-            onChange={(val: string) => set(`${prefix}Barangay` as keyof PDSFormData, val as any)}
+            onChange={(val: string) => set(`${prefix}Barangay` as keyof PDSFormData, val as unknown as any)}
             placeholder="Select Barangay" disabled={!watchCity}
             buttonClassName="rounded-lg bg-white border-gray-200 font-bold text-gray-700 h-11 transition-all hover:border-gray-400 focus:ring-4 focus:ring-gray-100/50 focus:border-gray-400"
           />
         </Field>
       </Grid>
       <Grid cols={3}>
-        <Field label="House / Block / Lot No."><Input value={data[`${prefix}HouseBlockLot` as keyof PDSFormData] as string} onChange={e => set(`${prefix}HouseBlockLot` as keyof PDSFormData, e.target.value as any)} placeholder="e.g. Lot 1 Block 2" /></Field>
-        <Field label="Subdivision / Village"><Input value={data[`${prefix}Subdivision` as keyof PDSFormData] as string} onChange={e => set(`${prefix}Subdivision` as keyof PDSFormData, e.target.value as any)} placeholder="e.g. Green Village" /></Field>
-        <Field label="Street"><Input value={data[`${prefix}Street` as keyof PDSFormData] as string} onChange={e => set(`${prefix}Street` as keyof PDSFormData, e.target.value as any)} placeholder="e.g. Rizal Street" /></Field>
+        <Field label="House / Block / Lot No."><Input value={data[`${prefix}HouseBlockLot` as keyof PDSFormData] as string} onChange={e => set(`${prefix}HouseBlockLot` as keyof PDSFormData, e.target.value as unknown as any)} placeholder="e.g. Lot 1 Block 2" /></Field>
+        <Field label="Subdivision / Village"><Input value={data[`${prefix}Subdivision` as keyof PDSFormData] as string} onChange={e => set(`${prefix}Subdivision` as keyof PDSFormData, e.target.value as unknown as any)} placeholder="e.g. Green Village" /></Field>
+        <Field label="Street"><Input value={data[`${prefix}Street` as keyof PDSFormData] as string} onChange={e => set(`${prefix}Street` as keyof PDSFormData, e.target.value as unknown as any)} placeholder="e.g. Rizal Street" /></Field>
       </Grid>
       <Grid cols={3}>
         <Field label="Zip Code"><Input value={data[`${prefix}Zip` as keyof PDSFormData] as string} readOnly className="bg-gray-50 cursor-not-allowed" placeholder="Auto-populated" /></Field>
@@ -864,6 +865,12 @@ const StepHRDetails = ({ data, set, metadata }: { data: PDSFormData; set: PDSSet
       <Divider label="Promotion Tracking" />
       <Field label="Next Step Increment"><Input value={data.nextStepDate} readOnly className="bg-gray-50 cursor-not-allowed font-black text-amber-600" /></Field>
       <Field label="Accumulated LWOP Days"><Input value={data.totalLwopDays} readOnly className="bg-gray-50 cursor-not-allowed" /></Field>
+      <Field label="Biometric Enrollment">
+        <div className={`flex items-center gap-2 h-11 px-4 rounded-xl border font-bold text-xs ${data.isBiometricEnrolled ? 'bg-green-50 border-green-200 text-green-700' : 'bg-amber-50 border-amber-200 text-amber-700'}`}>
+          <div className={`w-2 h-2 rounded-full ${data.isBiometricEnrolled ? 'bg-green-500' : 'bg-amber-500'} animate-pulse`} />
+          {data.isBiometricEnrolled ? 'BIO ENROLLED' : 'NOT ENROLLED'}
+        </div>
+      </Field>
     </Grid>
   </SectionCard>
 );
@@ -936,8 +943,8 @@ const PDSFormWizard: React.FC<PDSFormWizardProps> = ({ employeeId }) => {
       await employeeApi.updateEmployee(employeeId, {
         lastName: data.surname, firstName: data.firstName, middleName: data.middleName, suffix: data.nameExtension,
         email: data.email,
-        jobTitle: data.jobTitle, itemNumber: data.itemNumber, salaryGrade: data.salaryGrade ? Number(data.salaryGrade) : undefined, stepIncrement: data.stepIncrement ? Number(data.stepIncrement) : undefined, appointmentType: data.appointmentType as any, employmentStatus: data.employmentStatus as any, station: data.station, officeAddress: data.officeAddress, dateHired: data.dateHired,
-        dutyType: data.dutyType as any, isMeycauayan: data.isMeycauayan === 'true', firstDayOfService: data.firstDayOfService,
+        jobTitle: data.jobTitle, itemNumber: data.itemNumber, salaryGrade: data.salaryGrade ? Number(data.salaryGrade) : undefined, stepIncrement: data.stepIncrement ? Number(data.stepIncrement) : undefined, appointmentType: data.appointmentType as unknown as any, employmentStatus: data.employmentStatus as unknown as any, station: data.station, officeAddress: data.officeAddress, dateHired: data.dateHired,
+        dutyType: data.dutyType as unknown as any, isMeycauayan: data.isMeycauayan === 'true', firstDayOfService: data.firstDayOfService,
         facebookUrl: data.facebookUrl, linkedinUrl: data.linkedinUrl, twitterHandle: data.twitterHandle
       });
 
@@ -1177,6 +1184,7 @@ const PDSFormWizard: React.FC<PDSFormWizardProps> = ({ employeeId }) => {
             emergencyContactPhone: p.emergencyContactNumber || "",
             nextStepDate: stepRes.nextStepDate ? new Date(stepRes.nextStepDate).toLocaleDateString() : "N/A", 
             totalLwopDays: stepRes.totalLwopDays || 0,
+            isBiometricEnrolled: !!p.isBiometricEnrolled,
           }));
         }
       } catch (err) { console.error("Failed to load employee PDS:", err); } finally { setIsSubmitting(false); }

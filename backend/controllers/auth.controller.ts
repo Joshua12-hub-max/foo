@@ -3,14 +3,15 @@ import { z } from 'zod';
 import fs from 'fs';
 import path from 'path';
 import { db } from '../db/index.js';
-import { authentication, bioEnrolledUsers, schedules, recruitmentApplicants, departments, plantillaPositions, recruitmentJobs, shiftTemplates, pdsHrDetails } from '../db/schema.js';
+import { authentication, bioEnrolledUsers, schedules, recruitmentApplicants, departments, plantillaPositions, recruitmentJobs, shiftTemplates, pdsHrDetails, pdsPersonalInformation, pdsEducation, pdsEligibility, pdsFamily, pdsDeclarations } from '../db/schema.js';
 import { eq, or, and, sql, gt, getTableColumns, desc, InferSelectModel } from 'drizzle-orm';
 import { AuthService } from '../services/auth.service.js';
 import { checkSystemWideUniqueness } from '../services/validationService.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
-import nodemailer from 'nodemailer';
+import { normalizeIdSql } from '../utils/idUtils.js';
+
 import { OAuth2Client } from 'google-auth-library';
 import type { 
   AsyncHandler, 
@@ -36,16 +37,7 @@ import { sanitizeInput } from '../utils/spamUtils.js';
 // Google OAuth Client
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
-// Email Transporter Configuration
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS
-  }
-});
-
-import { sendEmail, generateOTP, sendOTPEmail, maskEmail } from '../utils/emailUtils.js';
+import transporter, { sendEmail, generateOTP, sendOTPEmail, maskEmail } from '../utils/emailUtils.js';
 
 // Define the shape of the user object with relations as returned by findFirst/select
 // Define the shape of the user object with relations as returned by findFirst/select
@@ -196,14 +188,11 @@ export const googleLogin: AsyncHandler = async (req, res) => {
 
 
     if (user.role !== 'Administrator' && user.role !== 'Human Resource') {
-      // Format to match new Emp-XXX biometric ID format
       const rawId = user.employeeId || '0';
-      const bioNumericId = parseInt(rawId.replace(/\D/g, ''), 10);
-      const formattedBioId = `Emp-${String(bioNumericId).padStart(3, '0')}`;
 
       const [enrolled] = await db.select().from(bioEnrolledUsers).where(
         and(
-          eq(bioEnrolledUsers.employeeId, formattedBioId),
+          sql`${normalizeIdSql(bioEnrolledUsers.employeeId)} = ${normalizeIdSql(rawId)}`,
           eq(bioEnrolledUsers.userStatus, 'active')
         )
       ).limit(1);
@@ -218,7 +207,6 @@ export const googleLogin: AsyncHandler = async (req, res) => {
       }
     } else if (isCHRMO) {
       /* empty */
-
     }
 
     // Link Google ID if missing
@@ -258,35 +246,14 @@ export const googleLogin: AsyncHandler = async (req, res) => {
   }
 };
 
-/**
- * GET /api/auth/verify-enrollment/:employeeId
- * PUBLIC endpoint — checks if employee is enrolled in biometrics.
- * Returns name + department from bio_enrolled_users.
- */
 export const verifyEnrollment: AsyncHandler = async (req, res) => {
   try {
     const employeeId = String(req.params.employeeId);
     
-    // Parse the input — accept "1", "001", or "EMP-001" / "Emp-001"
-    let bioNumericId: number;
-    const empMatch = employeeId.match(/Emp-(\d+)/i);
-    if (empMatch) {
-      bioNumericId = parseInt(empMatch[1], 10);
-    } else {
-      bioNumericId = parseInt(employeeId, 10);
-    }
-
-    if (isNaN(bioNumericId) || bioNumericId <= 0) {
-      res.status(400).json({ success: false, message: 'Invalid Employee ID format.' });
-      return;
-    }
-
-    const formattedBioId = `Emp-${String(bioNumericId).padStart(3, '0')}`;
-
     // Check bio_enrolled_users
     const [enrolled] = await db.select().from(bioEnrolledUsers).where(
       and(
-        eq(bioEnrolledUsers.employeeId, formattedBioId),
+        sql`${normalizeIdSql(bioEnrolledUsers.employeeId)} = ${normalizeIdSql(employeeId)}`,
         eq(bioEnrolledUsers.userStatus, 'active')
       )
     ).limit(1);
@@ -294,27 +261,24 @@ export const verifyEnrollment: AsyncHandler = async (req, res) => {
     if (!enrolled) {
       res.status(404).json({
         success: false,
-        message: 'Employee ID not found in biometric enrollment. Please contact Human Resource to enroll first.',
+        message: `Employee ID ${employeeId} not found in biometric enrollment. Please contact Human Resource to enroll first.`,
         code: 'NOT_ENROLLED'
       });
       return;
     }
 
-    // Convert to system ID format using the new Emp-XXX format
-    const systemEmployeeId = formattedBioId;
-
     // Check if already registered in the web system
     const [existingAccount] = await db.select({ employeeId: authentication.employeeId })
       .from(authentication)
-      .where(eq(authentication.employeeId, systemEmployeeId))
+      .where(sql`${normalizeIdSql(authentication.employeeId)} = ${normalizeIdSql(employeeId)}`)
       .limit(1);
 
     res.status(200).json({
       success: true,
       message: 'Employee is enrolled in biometrics.',
       data: {
-        bioEmployeeId: bioNumericId,
-        systemEmployeeId,
+        bioEmployeeId: enrolled.employeeId,
+        systemEmployeeId: enrolled.employeeId,
         fullName: enrolled.fullName,
         department: enrolled.department,
         enrolledAt: enrolled.enrolledAt,
@@ -322,7 +286,6 @@ export const verifyEnrollment: AsyncHandler = async (req, res) => {
       }
     });
   } catch (_error) {
-
     res.status(500).json({ success: false, message: 'Failed to verify enrollment.' });
   }
 };
@@ -331,74 +294,82 @@ interface RegisterRequestWithFile extends Request {
   file?: Express.Multer.File;
 }
 
+interface RegisterBody {
+  [key: string]: string | number | boolean | File | undefined | null | object;
+  pdsQuestions?: string | object;
+  educationalBackground?: string | object;
+  isOldEmployee?: string | boolean;
+  ignoreDuplicateWarning?: string | boolean;
+  appointmentType?: string;
+  gender?: string;
+  civilStatus?: string;
+}
+
 export const register: AsyncHandler = async (req, res) => {
   const multerReq = req as unknown as RegisterRequestWithFile;
   try {
-    const validatedData = RegisterSchema.parse(req.body);
+    const body = req.body as RegisterBody;
+    // 0. Pre-parse JSON strings and handle boolean/enum conversions from multipart/form-data
+    const objectFields: (keyof RegisterBody)[] = ['pdsQuestions', 'educationalBackground'];
+    objectFields.forEach(field => {
+      const value = body[field];
+      if (typeof value === 'string' && (value.startsWith('{') || value.startsWith('['))) {
+        try {
+          body[field] = JSON.parse(value);
+        } catch (__e) {
+          // Keep as string if parsing fails
+        }
+      }
+    });
+
+    // Handle boolean strings from FormData
+    const booleanFields: (keyof RegisterBody)[] = ['isOldEmployee', 'ignoreDuplicateWarning'];
+    booleanFields.forEach(field => {
+      const value = body[field];
+      if (typeof value === 'string') {
+        body[field] = value === 'true';
+      }
+    });
+
+    // Handle empty strings for optional enums/unions to prevent Zod errors
+    if (body.appointmentType === "") {
+        delete body.appointmentType;
+    }
+    if (body.gender === "") {
+        delete body.gender;
+    }
+    if (body.civilStatus === "") {
+        delete body.civilStatus;
+    }
+
+    const validatedData = RegisterSchema.parse(body);
     const { employeeId, email, password } = validatedData;
     const file = multerReq.file;
     const isFinalizingSetup = req.query.mode === 'finalize-setup';
 
     // 1. Parse bio ID from input
-    let bioNumericId: number;
-    if (typeof employeeId === 'number') {
-        bioNumericId = employeeId;
-    } else {
-        const empMatch = String(employeeId || '').match(/Emp-(\d+)/i);
-        bioNumericId = empMatch ? parseInt(empMatch[1], 10) : parseInt(String(employeeId || '0'), 10);
-    }
-
-    if (isNaN(bioNumericId) || bioNumericId <= 0) {
-      res.status(400).json({ success: false, message: 'Invalid Employee ID format.', data: null });
-      return;
-    }
-
-    const formattedBioId = `Emp-${String(bioNumericId).padStart(3, '0')}`;
+    const inputEmployeeId = String(employeeId || '');
 
     // 2. Verify biometric enrollment — MUST be enrolled to register
-    const enrolled = await db.query.bioEnrolledUsers.findFirst({
-      where: and(
-        eq(bioEnrolledUsers.employeeId, formattedBioId),
+    const [enrolled] = await db.select().from(bioEnrolledUsers).where(
+      and(
+        sql`${normalizeIdSql(bioEnrolledUsers.employeeId)} = ${normalizeIdSql(inputEmployeeId)}`,
         eq(bioEnrolledUsers.userStatus, 'active')
       )
-    });
+    ).limit(1);
 
     if (!enrolled) {
-      console.error(`[Register] Biometric record not found for ID: ${formattedBioId}`);
+      console.error(`[Register] Biometric record not found for ID: ${inputEmployeeId}`);
       res.status(403).json({
         success: false,
-        message: `Biometric record not found for ID ${formattedBioId}. Please scan your fingerprint again.`,
+        message: `Biometric record not found for ID ${inputEmployeeId}. Please scan your fingerprint again.`,
         code: 'NOT_ENROLLED'
       });
       return;
     }
 
-    // 3. Convert to system employee ID format
-    const actualEmployeeId = formattedBioId;
-
-    // 4. Use provided name if available, otherwise pull from bio_enrolled_users
-    const firstName = sanitizeInput(validatedData.firstName || enrolled.fullName.split(' ')[0]);
-    const lastName = sanitizeInput(validatedData.lastName || (enrolled.fullName.split(' ').length > 1 ? enrolled.fullName.split(' ').slice(1).join(' ') : ''));
-    
-    // 5. Check System-Wide Uniqueness
-    const uniqueErrors = await checkSystemWideUniqueness({
-        email,
-        umidNumber: validatedData.umidNumber,
-        philsysId: validatedData.philsysId,
-        philhealthNumber: validatedData.philhealthNumber,
-        pagibigNumber: validatedData.pagibigNumber,
-        tinNumber: validatedData.tinNumber,
-        gsisNumber: validatedData.gsisNumber
-    });
-
-    if (Object.keys(uniqueErrors).length > 0) {
-        res.status(409).json({ 
-            success: false, 
-            message: 'Uniqueness validation failed.', 
-            errors: Object.values(uniqueErrors) 
-        });
-        return;
-    }
+    // 3. Use the EXACT employee ID from the biometric record for system consistency
+    const actualEmployeeId = enrolled.employeeId;
 
     const existingUser = await db.query.authentication.findFirst({
       where: or(
@@ -413,6 +384,32 @@ export const register: AsyncHandler = async (req, res) => {
     // Auto-detect finalize mode if the matched user is still in 'Initial' setup state
     // This makes the system resilient if the frontend loses the ?mode=finalize-setup query param
     const effectiveFinalizingSetup = isFinalizingSetup || (existingUser?.hrDetails?.profileStatus === 'Initial');
+
+    // 4. Use provided name if available, otherwise pull from bio_enrolled_users
+    const firstName = sanitizeInput(validatedData.firstName || enrolled.fullName.split(' ')[0]);
+    const lastName = sanitizeInput(validatedData.lastName || (enrolled.fullName.split(' ').length > 1 ? enrolled.fullName.split(' ').slice(1).join(' ') : ''));
+    
+    // 5. Check System-Wide Uniqueness
+    const uniqueErrors = await checkSystemWideUniqueness({
+        email,
+        umidNumber: validatedData.umidNumber,
+        philsysId: validatedData.philsysId,
+        philhealthNumber: validatedData.philhealthNumber,
+        pagibigNumber: validatedData.pagibigNumber,
+        tinNumber: validatedData.tinNumber,
+        gsisNumber: validatedData.gsisNumber,
+        excludeApplicantId: validatedData.applicantId,
+        excludeAuthId: existingUser?.id
+    });
+
+    if (Object.keys(uniqueErrors).length > 0) {
+        res.status(409).json({ 
+            success: false, 
+            message: 'Uniqueness validation failed.', 
+            errors: Object.values(uniqueErrors) 
+        });
+        return;
+    }
 
     if (existingUser) {
       if (!effectiveFinalizingSetup) {
@@ -609,7 +606,191 @@ export const register: AsyncHandler = async (req, res) => {
         
         // Initial leave allocation for brand new users
         await allocateDefaultCredits(actualEmployeeId);
+
+        // 100% SUCCESS GUARANTEE: Ensure biometric record exists in our system
+        // The C# middleware normally does this, but we do it here as well for absolute reliability
+        const [existingBio] = await tx.select().from(bioEnrolledUsers).where(
+          sql`${normalizeIdSql(bioEnrolledUsers.employeeId)} = ${normalizeIdSql(actualEmployeeId)}`
+        ).limit(1);
+
+        if (existingBio) {
+          await tx.update(bioEnrolledUsers).set({
+            fullName: `${firstName} ${lastName}`.trim(),
+            department: department || 'Unassigned',
+            userStatus: 'active',
+            updatedAt: sql`CURRENT_TIMESTAMP`
+          }).where(sql`${normalizeIdSql(bioEnrolledUsers.employeeId)} = ${normalizeIdSql(actualEmployeeId)}`);
+        } else {
+          await tx.insert(bioEnrolledUsers).values({
+            employeeId: actualEmployeeId,
+            fullName: `${firstName} ${lastName}`.trim(),
+            department: department || 'Unassigned',
+            userStatus: 'active'
+          });
+        }
       }
+
+      // --- SAVE REGISTRATION DATA TO PDS TABLES ---
+      const pdsPersonalInfoValues = {
+          employeeId: newUserId,
+          birthDate: validatedData.birthDate || null,
+          placeOfBirth: validatedData.placeOfBirth || null,
+          gender: (validatedData.gender as 'Male' | 'Female') || null,
+          civilStatus: (validatedData.civilStatus as 'Single' | 'Married' | 'Widowed' | 'Separated' | 'Annulled') || null,
+          heightM: validatedData.heightM ? String(validatedData.heightM) : null,
+          weightKg: validatedData.weightKg ? String(validatedData.weightKg) : null,
+          bloodType: validatedData.bloodType || null,
+          citizenship: validatedData.nationality || 'Filipino',
+          residentialAddress: validatedData.residentialAddress || validatedData.address || null,
+          residentialZipCode: validatedData.residentialZipCode || null,
+          permanentAddress: validatedData.permanentAddress || null,
+          permanentZipCode: validatedData.permanentZipCode || null,
+          telephoneNo: validatedData.telephoneNo || null,
+          mobileNo: validatedData.mobileNo || null,
+          email: email,
+          umidNumber: validatedData.umidNumber || null,
+          philsysId: validatedData.philsysId || null,
+          philhealthNumber: validatedData.philhealthNumber || null,
+          pagibigNumber: validatedData.pagibigNumber || null,
+          tinNumber: validatedData.tinNumber || null,
+          gsisNumber: validatedData.gsisNumber || null,
+          agencyEmployeeNo: validatedData.agencyEmployeeNo || null,
+          
+          resRegion: validatedData.resRegion || null,
+          resProvince: validatedData.resProvince || null,
+          resCity: validatedData.resCity || null,
+          resBarangay: validatedData.resBrgy || validatedData.resBarangay || null,
+          resHouseBlockLot: validatedData.resHouseBlockLot || null,
+          resSubdivision: validatedData.resSubdivision || null,
+          resStreet: validatedData.resStreet || null,
+          
+          permRegion: validatedData.permRegion || null,
+          permProvince: validatedData.permProvince || null,
+          permCity: validatedData.permCity || null,
+          permBarangay: validatedData.permBrgy || validatedData.permBarangay || null,
+          permHouseBlockLot: validatedData.permHouseBlockLot || null,
+          permSubdivision: validatedData.permSubdivision || null,
+          permStreet: validatedData.permStreet || null,
+      };
+
+      const existingPdsPersonal = await tx.query.pdsPersonalInformation.findFirst({
+          where: eq(pdsPersonalInformation.employeeId, newUserId)
+      });
+
+      if (existingPdsPersonal) {
+          await tx.update(pdsPersonalInformation).set(pdsPersonalInfoValues).where(eq(pdsPersonalInformation.employeeId, newUserId));
+      } else {
+          await tx.insert(pdsPersonalInformation).values(pdsPersonalInfoValues);
+      }
+
+      if (validatedData.educationalBackground && validatedData.schoolName) {
+          // Check if this school already exists to avoid duplicates if re-submitting in finalize mode
+          const existingEdu = await tx.query.pdsEducation.findFirst({
+              where: and(
+                  eq(pdsEducation.employeeId, newUserId),
+                  eq(pdsEducation.schoolName, validatedData.schoolName)
+              )
+          });
+          if (!existingEdu) {
+              await tx.insert(pdsEducation).values({
+                  employeeId: newUserId,
+                  level: (validatedData.educationalBackground as 'Elementary'|'Secondary'|'Vocational'|'College'|'Graduate Studies') || 'College',
+                  schoolName: validatedData.schoolName || '',
+                  degreeCourse: validatedData.course || '',
+                  yearGraduated: validatedData.yearGraduated ? parseInt(validatedData.yearGraduated, 10) : null,
+              });
+          }
+      }
+
+      if (validatedData.eligibilityType) {
+          const existingElig = await tx.query.pdsEligibility.findFirst({
+              where: and(
+                  eq(pdsEligibility.employeeId, newUserId),
+                  eq(pdsEligibility.eligibilityName, validatedData.eligibilityType)
+              )
+          });
+          if (!existingElig) {
+              await tx.insert(pdsEligibility).values({
+                  employeeId: newUserId,
+                  eligibilityName: validatedData.eligibilityType,
+                  licenseNumber: validatedData.eligibilityNumber || null,
+                  examDate: validatedData.eligibilityDate || null,
+              });
+          }
+      }
+
+      if (validatedData.emergencyContact) {
+          // Store emergency contact in family table as it contains the contact fields
+          const existingFamily = await tx.query.pdsFamily.findFirst({
+              where: and(
+                  eq(pdsFamily.employeeId, newUserId),
+                  eq(pdsFamily.lastName, validatedData.emergencyContact)
+              )
+          });
+          if (!existingFamily) {
+              await tx.insert(pdsFamily).values({
+                  employeeId: newUserId,
+                  relationType: 'Spouse', // Default relation since we only get name, they can correct it in PDS
+                  lastName: validatedData.emergencyContact,
+                  firstName: '',
+                  telephoneNo: validatedData.emergencyContactNumber || null,
+              });
+          }
+      }
+
+      if (validatedData.pdsQuestions) {
+          const q = typeof validatedData.pdsQuestions === 'string' ? JSON.parse(validatedData.pdsQuestions) : validatedData.pdsQuestions;
+          
+          const existingQuestions = await tx.query.pdsDeclarations.findFirst({
+              where: eq(pdsDeclarations.employeeId, newUserId)
+          });
+
+          const declarationsValues = {
+              employeeId: newUserId,
+              relatedThirdDegree: q.q34a ? 'Yes' : 'No',
+              relatedThirdDetails: q.q34a ? q.q34Details : null,
+              relatedFourthDegree: q.q34b ? 'Yes' : 'No',
+              relatedFourthDetails: q.q34b ? q.q34Details : null,
+              
+              foundGuiltyAdmin: q.q35a ? 'Yes' : 'No',
+              foundGuiltyDetails: q.q35a ? q.q35aDetails : null,
+              
+              criminallyCharged: q.q35b ? 'Yes' : 'No',
+              dateFiled: q.q35b ? q.q35bDateFiled : null,
+              statusOfCase: q.q35b ? q.q35bStatus : null,
+              
+              convictedCrime: q.q36 ? 'Yes' : 'No',
+              convictedDetails: q.q36 ? q.q36Details : null,
+              
+              separatedFromService: q.q37 ? 'Yes' : 'No',
+              separatedDetails: q.q37 ? q.q37Details : null,
+              
+              electionCandidate: q.q38a ? 'Yes' : 'No',
+              electionDetails: q.q38a ? q.q38aDetails : null,
+              
+              resignedToPromote: q.q38b ? 'Yes' : 'No',
+              resignedDetails: q.q38b ? q.q38bDetails : null,
+              
+              immigrantStatus: q.q39 ? 'Yes' : 'No',
+              immigrantDetails: q.q39 ? q.q39Details : null,
+              
+              indigenousMember: q.q40a ? 'Yes' : 'No',
+              indigenousDetails: q.q40a ? q.q40aDetails : null,
+              
+              personWithDisability: q.q40b ? 'Yes' : 'No',
+              disabilityIdNo: q.q40b ? q.q40bDetails : null,
+              
+              soloParent: q.q40c ? 'Yes' : 'No',
+              soloParentIdNo: q.q40c ? q.q40cDetails : null,
+          };
+
+          if (existingQuestions) {
+              await tx.update(pdsDeclarations).set(declarationsValues).where(eq(pdsDeclarations.employeeId, newUserId));
+          } else {
+              await tx.insert(pdsDeclarations).values(declarationsValues);
+          }
+      }
+      // ----------------------------------------------
 
       // Allocate Standard Schedule for all newly registered or finalized users
       const startDate = validatedData.applicantHiredDate || new Date().toISOString().split('T')[0];
@@ -726,20 +907,34 @@ export const register: AsyncHandler = async (req, res) => {
 export const verifyRegistrationOTP = async (req: Request, res: Response): Promise<void> => {
   try {
     const { email, otp } = EmailVerifySchema.parse(req.body);
+    
+    // Find user by email ONLY first to handle already-verified cases
     const user = await db.query.authentication.findFirst({
-      where: and(
-        eq(authentication.email, email),
-        eq(authentication.verificationToken, otp)
-      )
+      where: eq(authentication.email, email)
     });
 
     if (!user) {
-      res.status(400).json({ success: false, message: 'Invalid OTP or Email.' });
+      res.status(400).json({ success: false, message: 'Invalid Email.' });
       return;
     }
 
     if (user.isVerified) {
-      res.status(400).json({ success: false, message: 'User is already verified.' });
+      res.status(200).json({ 
+        success: true, 
+        message: 'Email already verified.',
+        data: {
+          id: user.id,
+          employeeId: user.employeeId,
+          firstName: user.firstName,
+          lastName: user.lastName
+        }
+      });
+      return;
+    }
+
+    // Now check if the OTP matches for unverified users
+    if (user.verificationToken !== otp) {
+      res.status(400).json({ success: false, message: 'Invalid OTP.' });
       return;
     }
 
@@ -776,7 +971,7 @@ export const resendVerificationEmail: AsyncHandler = async (req, res) => {
     }
 
     if (user.isVerified) {
-      res.status(400).json({ success: false, message: 'Email is already verified.' });
+      res.status(200).json({ success: true, message: 'Email is already verified. You can proceed to login.' });
       return;
     }
 
@@ -811,13 +1006,13 @@ export const forgotPassword: AsyncHandler = async (req, res) => {
     }
     const resetToken = crypto.randomBytes(32).toString('hex');
     const resetExpires = new Date(Date.now() + 3600000); // 1 hour
+    const mysqlFormattedDate = resetExpires.toISOString().slice(0, 19).replace('T', ' ');
 
     await db.update(authentication)
-      .set({ 
-        resetPasswordToken: resetToken, 
-        resetPasswordExpires: resetExpires.toISOString() 
-      })
-      .where(eq(authentication.id, user.id));
+      .set({
+        resetPasswordToken: resetToken,
+        resetPasswordExpires: mysqlFormattedDate
+      })      .where(eq(authentication.id, user.id));
 
     const frontendUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:3000';
     const resetLink = `${frontendUrl}/reset-password?token=${resetToken}`;
@@ -847,10 +1042,12 @@ export const forgotPassword: AsyncHandler = async (req, res) => {
 export const resetPassword: AsyncHandler = async (req, res) => {
   try {
     const { token, newPassword } = ResetPasswordSchema.parse(req.body);
+    const nowFormatted = new Date().toISOString().slice(0, 19).replace('T', ' ');
+
     const user = await db.query.authentication.findFirst({
       where: and(
         eq(authentication.resetPasswordToken, token),
-        gt(authentication.resetPasswordExpires, new Date().toISOString())
+        gt(authentication.resetPasswordExpires, nowFormatted)
       )
     });
 
@@ -913,7 +1110,7 @@ export const getMe: AuthenticatedHandler = async (req, res) => {
                 }
             }
         }
-    });
+    }) as UserWithRelations | undefined;
 
     res.status(200).json({
       success: true,
@@ -997,33 +1194,26 @@ export const login: AsyncHandler = async (req, res) => {
     );
 
     if (user.role !== 'Administrator' && user.role !== 'Human Resource') {
-      // Format to match new Emp-XXX biometric ID format
       const rawId = user.employeeId || '0';
-      const bioNumericId = parseInt(rawId.replace(/\D/g, ''), 10);
-      const formattedBioId = `Emp-${String(bioNumericId).padStart(3, '0')}`;
 
       const [enrolled] = await db.select().from(bioEnrolledUsers).where(
         and(
-          eq(bioEnrolledUsers.employeeId, formattedBioId),
+          sql`${normalizeIdSql(bioEnrolledUsers.employeeId)} = ${normalizeIdSql(rawId)}`,
           eq(bioEnrolledUsers.userStatus, 'active')
         )
       ).limit(1);
 
       if (!enrolled) {
-
         res.status(403).json({
           success: false,
-          message: 'access denied: you are not yet registered in the biometric system. please contact your human resource administrator to complete your enrollment.',
+          message: 'Access Denied: You are not yet registered in the biometric system. Please contact your Human Resource administrator to complete your enrollment.',
           code: 'BIOMETRIC_NOT_ENROLLED',
           data: null
         });
         return;
       }
-
-    }
- else if (isCHRMO) {
+    } else if (isCHRMO) {
       /* empty */
-
     }
 
     const passwordMatch = await bcrypt.compare(password, user.passwordHash || '');
@@ -1231,7 +1421,7 @@ export const verifyTwoFactorOTP: AsyncHandler = async (req, res) => {
         name: `${user.firstName} ${user.lastName}`,
         email: user.email,
         role: user.role,
-        department: (user as any).hrDetails?.department?.name || null,
+        department: (user as UserWithRelations).hrDetails?.department?.name || null,
         employeeId: user.employeeId
       }
     });
@@ -1529,9 +1719,26 @@ export const updateProfile: AuthenticatedHandler = async (req, res) => {
     if (updates.originalAppointmentDate !== undefined) mappedHrUpdates.originalAppointmentDate = String(updates.originalAppointmentDate);
     if (updates.lastPromotionDate !== undefined) mappedHrUpdates.lastPromotionDate = String(updates.lastPromotionDate);
 
+    // PDS Personal Info Fields
+    const personalFields = [
+      'birthDate', 'placeOfBirth', 'gender', 'civilStatus', 'heightM', 'weightKg',
+      'bloodType', 'citizenship', 'residentialAddress', 'permanentAddress',
+      'mobileNo', 'telephoneNo', 'nationality', 'phoneNumber'
+    ];
+    const personalUpdates: Record<string, unknown> = {};
+    personalFields.forEach(f => {
+      const fieldName = f as keyof typeof updates;
+      if (updates[fieldName] !== undefined) {
+        if (f === 'nationality') personalUpdates['citizenship'] = updates[fieldName];
+        else if (f === 'phoneNumber') personalUpdates['mobileNo'] = updates[fieldName];
+        else personalUpdates[f] = updates[fieldName];
+      }
+    });
+
     if (avatarUrl) mappedAuthUpdates.avatarUrl = avatarUrl;
 
-    if (Object.keys(mappedAuthUpdates).length === 0 && Object.keys(mappedHrUpdates).length === 0) {
+    if (Object.keys(mappedAuthUpdates).length === 0 && Object.keys(mappedHrUpdates).length === 0 && Object.keys(personalUpdates).length === 0) {
+      // ... (existing code for no changes)
       // If no changes, still return success to avoid frontend error states
       // but fetch the target user to return their data
       const [user] = await db.select({
@@ -1587,6 +1794,21 @@ export const updateProfile: AuthenticatedHandler = async (req, res) => {
                     .values({ ...mappedHrUpdates, employeeId: targetUserId });
             }
         }
+
+        if (Object.keys(personalUpdates).length > 0) {
+            const existingPersonal = await tx.query.pdsPersonalInformation.findFirst({
+                where: eq(pdsPersonalInformation.employeeId, targetUserId)
+            });
+
+            if (existingPersonal) {
+                await tx.update(pdsPersonalInformation)
+                    .set(personalUpdates)
+                    .where(eq(pdsPersonalInformation.employeeId, targetUserId));
+            } else {
+                await tx.insert(pdsPersonalInformation)
+                    .values({ ...personalUpdates, employeeId: targetUserId });
+            }
+        }
     });
 
     // Fetch updated user with duties
@@ -1637,13 +1859,13 @@ export const updateProfile: AuthenticatedHandler = async (req, res) => {
 export const getNextId: AsyncHandler = async (_req, res) => {
   try {
     const [result] = await db.select({
-      maxId: sql<number | null>`MAX(CAST(SUBSTRING(${authentication.employeeId}, 5) AS UNSIGNED))`
+      maxId: sql<number | null>`MAX(CAST(REGEXP_REPLACE(employee_id, '[^0-9]', '') AS UNSIGNED))`
     })
-    .from(authentication)
-    .where(sql`${authentication.employeeId} LIKE 'Emp-%'`);
+    .from(authentication);
 
     const maxId = result?.maxId || 0;
     const nextId = maxId + 1;
+    // Format back to Emp-XXX as requested by user
     const formattedNextId = `Emp-${String(nextId).padStart(3, '0')}`;
 
     res.status(200).json({
@@ -1928,6 +2150,13 @@ export const setupPortal: AsyncHandler = async (req, res) => {
           filledDate: new Date().toISOString().split('T')[0]
         })
         .where(eq(plantillaPositions.id, selectedPosition.id));
+
+      // 3. Create placeholder PDS Personal Information
+      await tx.insert(pdsPersonalInformation).values({
+        employeeId: newUserId,
+        email: email,
+        citizenship: 'Filipino'
+      });
     });
 
     // Send Verification Email

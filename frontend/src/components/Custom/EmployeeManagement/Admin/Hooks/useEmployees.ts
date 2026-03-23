@@ -62,7 +62,7 @@ export const useEmployees = (
       queryClient.invalidateQueries({ queryKey: ['employees'] });
       onSuccess?.('Employee added successfully');
     },
-    onError: (error: any) => {
+    onError: (error: Record<string, never>) => {
       onError?.(error.message || 'Failed to add employee');
     }
   });
@@ -74,7 +74,7 @@ export const useEmployees = (
       queryClient.invalidateQueries({ queryKey: ['employees'] });
       onSuccess?.('Employee deleted successfully');
     },
-    onError: (error: any) => {
+    onError: (error: Record<string, never>) => {
       onError?.(error.message || 'Failed to delete employee');
     }
   });
