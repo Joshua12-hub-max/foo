@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/naming-convention */
 import Imap from 'imap';
 import { simpleParser, ParsedMail, AddressObject, Attachment } from 'mailparser';
 import fs from 'fs';
@@ -6,11 +7,12 @@ import { fileURLToPath } from 'url';
 import { db } from '../db/index.js';
 import { recruitmentJobs, recruitmentApplicants } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
-import { getTemplateForStage, replaceVariables, sendEmailNotification } from '../utils/emailHelpers.js';
+import { getTemplateForStage, replaceVariables, sendEmailNotification, prepareEmailVariables } from '../utils/emailHelpers.js';
 import { notifyAdmins } from '../controllers/notificationController.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+/* eslint-enable @typescript-eslint/naming-convention */
 
 interface EmailCheckResult {
   success: boolean;
@@ -184,7 +186,7 @@ const saveApplication = async (applicantData: ApplicantData): Promise<boolean> =
   try {
     const { jobId, firstName, lastName, email, resumePath, emailSubject } = applicantData;
 
-    await db.insert(recruitmentApplicants).values({
+    const [insertHeader] = await db.insert(recruitmentApplicants).values({
       jobId: jobId,
       firstName: firstName,
       lastName: lastName,
@@ -195,7 +197,14 @@ const saveApplication = async (applicantData: ApplicantData): Promise<boolean> =
       emailReceivedAt: new Date().toISOString().slice(0, 19).replace('T', ' ')
     });
 
-    console.warn(`Saved application from ${email} for job ${jobId || 'General'}`);
+    const applicantId = insertHeader.insertId;
+
+    if (!applicantId) {
+      console.error('Failed to get applicantId for email application');
+      return false;
+    }
+
+    console.warn(`Saved application from ${email} for job ${jobId || 'General'} (Applicant ID: ${applicantId})`);
 
     let jobTitle = 'General Application';
       
@@ -211,14 +220,17 @@ const saveApplication = async (applicantData: ApplicantData): Promise<boolean> =
     try {
       const template = await getTemplateForStage(db, 'Applied');
       if (template) {
-        const variables = {
+        const rawVariables = {
           applicantFirstName: firstName,
           applicantLastName: lastName,
+          applicantName: `${firstName} ${lastName}`,
           jobTitle: jobTitle,
           interviewDate: '',
           interviewLink: '',
           interviewPlatform: ''
         };
+
+        const variables = prepareEmailVariables(rawVariables);
 
         const subject = replaceVariables(template.subjectTemplate, variables);
         const body = replaceVariables(template.bodyTemplate, variables);
@@ -228,13 +240,16 @@ const saveApplication = async (applicantData: ApplicantData): Promise<boolean> =
       console.error('Failed to send application email:', emailError);
     }
 
-    // Notify admins about the new application via email
+    // Notify admins about the new application
     try {
       await notifyAdmins({
+        senderId: null,
         title: 'New Application (Email)',
         message: `${firstName} ${lastName} has applied via email for ${jobTitle}.`,
-        type: 'recruitment',
-        referenceId: jobId ? Number(jobId) : null
+        type: 'job_application_pending',
+        referenceId: applicantId,
+        link: `/recruitment?tab=Applicants&applicantId=${applicantId}`,
+        metadata: JSON.stringify({ applicantId, status: 'pending' })
       });
     } catch (notifError) {
       console.error('Failed to send admin notification for email application:', notifError);

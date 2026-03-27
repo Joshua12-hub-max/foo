@@ -43,6 +43,13 @@
       "when": 1773415617165,
       "tag": "0005_glamorous_risque",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1774318195899,
+      "tag": "0006_white_famine",
+      "breakpoints": true
     }
   ]
 }

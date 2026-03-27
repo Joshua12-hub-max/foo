@@ -1,7 +1,8 @@
+/* eslint-disable-next-line @typescript-eslint/naming-convention */
 import ExcelJS from 'exceljs';
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
-const pdf = require('pdf-parse');
+const pdf = require('pdf-parse') as (buffer: Buffer) => Promise<{ text: string }>;
 import { PDSFormData } from '../types/pds.js'; 
 
 /**

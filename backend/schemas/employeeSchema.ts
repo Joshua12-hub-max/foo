@@ -59,7 +59,6 @@ export const BaseEmployeeSchema = z.object({
   resCity: z.string().optional().nullable(),
   resProvince: z.string().optional().nullable(),
   resRegion: z.string().optional().nullable(),
-  resBrgy: z.string().optional().nullable(),
   permHouseBlockLot: z.string().optional().nullable(),
   permStreet: z.string().optional().nullable(),
   permSubdivision: z.string().optional().nullable(),
@@ -67,7 +66,6 @@ export const BaseEmployeeSchema = z.object({
   permCity: z.string().optional().nullable(),
   permProvince: z.string().optional().nullable(),
   permRegion: z.string().optional().nullable(),
-  permBrgy: z.string().optional().nullable(),
   
   // Government IDs
   umidNumber: createIdValidator(ID_REGEX.UMID, "UMID Number"),

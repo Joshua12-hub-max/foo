@@ -43,24 +43,31 @@ export const sendEmail = async (
   attachments: nodemailer.SendMailOptions['attachments'] = []
 ): Promise<void> => {
   try {
+    console.warn(`[EMAIL DEBUG] Initiating sendEmail to: ${to}, Subject: ${subject}`);
     if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+      console.error('[EMAIL ERROR] EMAIL_USER or EMAIL_PASS missing from environment variables!');
       throw new Error('Email configuration missing in .env');
     }
 
     const safeTo = sanitizeEmailHeader(to);
     const safeSubject = sanitizeEmailHeader(subject);
 
-    await transporter.sendMail({
+    console.warn(`[EMAIL DEBUG] Using Transporter: ${process.env.EMAIL_USER}`);
+
+    const result = await transporter.sendMail({
       from: `"NEBR System" <${process.env.EMAIL_USER}>`,
       to: safeTo,
       subject: safeSubject,
       html,
       attachments: attachments as nodemailer.SendMailOptions['attachments']
     });
+    
+    console.warn(`[EMAIL DEBUG] Email sent successfully to ${to}. MessageId: ${result.messageId}`);
   } catch (error: unknown) {
-    // Log only the error message, NOT sensitive transporter details
     const msg = error instanceof Error ? error.message : String(error);
-    console.error(`[EMAIL ERROR] Failed to send to ${to}:`, msg);
+    const stack = error instanceof Error ? error.stack : 'No stack trace';
+    console.error(`[EMAIL ERROR] CRITICAL FAILURE sending to ${to}:`, msg);
+    console.error(`[EMAIL ERROR] Stack Trace:`, stack);
     throw error;
   }
 };

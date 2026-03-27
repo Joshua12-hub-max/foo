@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import type { Applicant } from '@/types/recruitment';
 
-export type ActiveTab = 'All' | 'Pending' | 'Reviewed' | 'Interview' | 'Hired' | 'Archive';
+export type ActiveTab = 'All' | 'Pending' | 'Reviewed' | 'Initial Interview' | 'Final Interview' | 'Hired' | 'Archive';
 export type ArchiveSubTab = 'Rejected' | 'Hired';
 export type SourceFilter = 'All' | 'Web' | 'Email';
 
@@ -23,33 +23,30 @@ const useApplicantFilters = (applicants: Applicant[], itemsPerPage = 10) => {
       
       let matchesTab = true;
       if (activeTab === 'All') {
-        // Exclude Rejected and Confirmed Hired from the 'All' active dashboard
-        matchesTab = app.stage !== 'Rejected' && !(app.stage === 'Hired' && app.isConfirmed);
+        // Exclude Rejected from the 'All' active dashboard
+        matchesTab = app.stage !== 'Rejected';
       } else if (activeTab === 'Pending') {
         matchesTab = app.stage === 'Applied';
       } else if (activeTab === 'Reviewed') {
         matchesTab = app.stage === 'Screening';
-      } else if (activeTab === 'Interview') {
-        matchesTab = ['Initial Interview', 'Final Interview'].includes(app.stage);
+      } else if (activeTab === 'Initial Interview') {
+        matchesTab = app.stage === 'Initial Interview';
+      } else if (activeTab === 'Final Interview') {
+        matchesTab = app.stage === 'Final Interview';
       } else if (activeTab === 'Hired') {
-        // Only show Hired applicants who are NOT YET confirmed
-        matchesTab = app.stage === 'Hired' && !app.isConfirmed;
+        // 100% PRECISION: Show Hired applicants if NOT confirmed OR if confirmed but missing startDate (Auto-Archived Recovery)
+        matchesTab = app.stage === 'Hired' && (!app.isConfirmed || !app.startDate);
       } else if (activeTab === 'Archive') {
         // ARCHIVE AUDIT: Distinguish between truly Rejected and Archived Hired
-        const hasBeenHired = !!app.hiredDate; // Data truth: Did they ever get hired?
         const isCurrentlyRejected = app.stage === 'Rejected';
+        const isCurrentlyHired = app.stage === 'Hired';
 
-        // Only show in Archive if they are Rejected OR they are a Confirmed Hire
-        if (!isCurrentlyRejected && !(app.stage === 'Hired' && app.isConfirmed)) {
-            matchesTab = false;
-        } else {
-            if (archiveSubTab === 'Hired') {
-                // Archived Hired: Show if they have a hiredDate, even if stage was stuck
-                matchesTab = hasBeenHired;
-            } else {
-                // Rejected Applicants: ONLY show if they were NEVER hired
-                matchesTab = isCurrentlyRejected && !hasBeenHired;
-            }
+        if (archiveSubTab === 'Rejected') {
+            // Rejected Sub-tab: Show if currently Rejected OR if Hired but NOT confirmed (Legacy check)
+            matchesTab = isCurrentlyRejected;
+        } else if (archiveSubTab === 'Hired') {
+            // 100% PRECISION: Archived Hired only if they are Hired, Confirmed, AND have a startDate
+            matchesTab = isCurrentlyHired && !!app.isConfirmed && !!app.startDate;
         }
       }
   

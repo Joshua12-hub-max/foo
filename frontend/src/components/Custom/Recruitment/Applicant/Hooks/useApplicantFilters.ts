@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Applicant } from './useApplicantData';
 
-export type ActiveTab = 'All' | 'Pending' | 'Reviewed' | 'Interview' | 'Hired';
+export type ActiveTab = 'All' | 'Pending' | 'Reviewed' | 'Initial Interview' | 'Final Interview' | 'Hired' | 'Archive';
 export type SourceFilter = 'All' | string;
 
 const useApplicantFilters = (applicants: Applicant[], itemsPerPage = 10) => {
@@ -22,8 +22,12 @@ const useApplicantFilters = (applicants: Applicant[], itemsPerPage = 10) => {
       let matchesTab = true;
       if (activeTab === 'Pending') matchesTab = app.stage === 'Applied';
       else if (activeTab === 'Reviewed') matchesTab = app.stage === 'Screening';
-      else if (activeTab === 'Interview') matchesTab = ['Initial Interview', 'Final Interview'].includes(app.stage);
-      else if (activeTab === 'Hired') matchesTab = app.stage === 'Hired';
+      else if (activeTab === 'Initial Interview') {
+        matchesTab = app.stage === 'Initial Interview';
+      } else if (activeTab === 'Final Interview') {
+        matchesTab = app.stage === 'Final Interview';
+      } else if (activeTab === 'Hired') matchesTab = app.stage === 'Hired';
+      else if (activeTab === 'Archive') matchesTab = app.stage === 'Archived';
   
       return matchesSearch && matchesSource && matchesTab;
     });

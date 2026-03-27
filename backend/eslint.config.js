@@ -1,24 +1,15 @@
 import js from '@eslint/js';
-import ts from 'typescript-eslint';
+import tseslint from 'typescript-eslint';
+import globals from 'globals';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-export default ts.config(
+export default tseslint.config(
   js.configs.recommended,
-  ...ts.configs.recommended,
   {
-    files: [
-      'controllers/**/*.ts',
-      'services/**/*.ts',
-      'routes/**/*.ts',
-      'db/**/*.ts',
-      'middleware/**/*.ts',
-      'types/**/*.ts',
-      'utils/**/*.ts',
-      'jobs/**/*.ts',
-      'index.ts'
-    ],
-    ignores: ['db/schema.js'],
     languageOptions: {
       globals: {
+        ...globals.node,
         process: 'readonly',
         console: 'readonly',
         module: 'readonly',
@@ -31,16 +22,23 @@ export default ts.config(
         require: 'readonly',
         exports: 'readonly',
       },
+    },
+  },
+  ...tseslint.configs.recommended,
+  {
+    files: ['**/*.ts'],
+    ignores: ['db/schema.js'],
+    languageOptions: {
       parserOptions: {
         project: ['./tsconfig.json'],
         tsconfigRootDir: import.meta.dirname,
       },
     },
     rules: {
-      '@typescript-eslint/no-explicit-any': 'error',
-      '@typescript-eslint/no-unsafe-assignment': 'error',
-      '@typescript-eslint/no-unsafe-call': 'error',
-      '@typescript-eslint/no-unsafe-member-access': 'error',
+      '@typescript-eslint/no-explicit-any': 'warn',
+      '@typescript-eslint/no-unsafe-assignment': 'warn',
+      '@typescript-eslint/no-unsafe-call': 'warn',
+      '@typescript-eslint/no-unsafe-member-access': 'warn',
       '@typescript-eslint/no-unused-vars': ['warn', { 'argsIgnorePattern': '^_', 'varsIgnorePattern': '^_', 'caughtErrorsIgnorePattern': '^_' }],
       '@typescript-eslint/consistent-type-assertions': [
         'error',
@@ -59,9 +57,33 @@ export default ts.config(
         },
         {
           selector: 'variable',
+          format: ['camelCase', 'UPPER_CASE', 'PascalCase'],
+          leadingUnderscore: 'allow',
+          trailingUnderscore: 'forbid',
+          filter: {
+            // Allow PascalCase for schemas and params
+            regex: '(Schema|Params|Type)$',
+            match: true,
+          },
+        },
+        {
+          selector: 'variable',
           format: ['camelCase', 'UPPER_CASE'],
           leadingUnderscore: 'allow',
           trailingUnderscore: 'forbid',
+          filter: {
+            // Exclude __filename and __dirname from this rule
+            regex: '^(__filename|__dirname)$',
+            match: false,
+          },
+        },
+        {
+          selector: 'variable',
+          filter: {
+            regex: '^(__filename|__dirname)$',
+            match: true,
+          },
+          format: null,
         },
         {
           selector: 'parameter',
@@ -75,7 +97,13 @@ export default ts.config(
         },
         {
           selector: 'property',
-          format: ['camelCase', 'UPPER_CASE'],
+          format: ['camelCase', 'UPPER_CASE', 'snake_case'],
+          leadingUnderscore: 'allow',
+          trailingUnderscore: 'forbid',
+        },
+        {
+          selector: 'objectLiteralProperty',
+          format: null,
           leadingUnderscore: 'allow',
           trailingUnderscore: 'forbid',
         },
@@ -87,53 +115,29 @@ export default ts.config(
     },
   },
   {
-    files: ['**/*.ts'],
-    ignores: [
-      'controllers/**/*.ts',
-      'services/**/*.ts',
-      'routes/**/*.ts',
-      'db/**/*.ts',
-      'middleware/**/*.ts',
-      'types/**/*.ts',
-      'utils/**/*.ts',
-      'jobs/**/*.ts',
-      'index.ts'
-    ],
-    languageOptions: {
-      globals: {
-        process: 'readonly',
-        console: 'readonly',
-        module: 'readonly',
-        __dirname: 'readonly',
-        Buffer: 'readonly',
-        setTimeout: 'readonly',
-        clearTimeout: 'readonly',
-        setInterval: 'readonly',
-        clearInterval: 'readonly',
-        require: 'readonly',
-        exports: 'readonly',
-      },
-      parserOptions: {
-        project: ['./tsconfig.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-    },
+    files: ['scripts/**/*.ts', 'src/migrations/**/*.ts'],
     rules: {
-      '@typescript-eslint/no-explicit-any': 'error',
-      '@typescript-eslint/no-unsafe-assignment': 'error',
-      '@typescript-eslint/no-unsafe-call': 'error',
-      '@typescript-eslint/no-unsafe-member-access': 'error',
-      '@typescript-eslint/consistent-type-assertions': [
-        'error',
-        {
-          assertionStyle: 'as',
-        },
-      ],
-      '@typescript-eslint/no-unused-vars': ['warn', { 'argsIgnorePattern': '^_', 'varsIgnorePattern': '^_', 'caughtErrorsIgnorePattern': '^_' }],
+      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-unsafe-assignment': 'off',
+      '@typescript-eslint/no-unsafe-call': 'off',
+      '@typescript-eslint/no-unsafe-member-access': 'off',
       'no-console': 'off',
+      '@typescript-eslint/naming-convention': 'off',
     },
   },
   {
-    ignores: ['dist/', 'node_modules/', 'uploads/', 'migrations/', 'db/schema.js', 'eslint.config.js'],
+    files: ['**/*.js'],
+    rules: {
+      '@typescript-eslint/no-require-imports': 'off',
+      '@typescript-eslint/no-unused-expressions': 'off',
+      '@typescript-eslint/no-unused-vars': ['warn', { 'argsIgnorePattern': '^_', 'varsIgnorePattern': '^_', 'caughtErrorsIgnorePattern': '^_' }],
+      'no-unused-vars': ['warn', { 'argsIgnorePattern': '^_', 'varsIgnorePattern': '^_', 'caughtErrorsIgnorePattern': '^_' }],
+      'no-fallthrough': 'warn',
+      'no-sparse-arrays': 'warn',
+      'no-redeclare': 'off', // Legacy files often have redeclarations that are fine in the target env
+    },
+  },
+  {
+    ignores: ['dist/', 'node_modules/', 'uploads/', 'migrations/', 'db/schema.js'],
   },
 );

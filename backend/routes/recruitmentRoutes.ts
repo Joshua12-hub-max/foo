@@ -12,7 +12,7 @@ const router: Router = Router();
 // Anti-Spam: Rate Limit for public applications
 const applyRateLimit = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
-  max: 5, // 5 applications per hour per IP (Spam prevention)
+  max: process.env.NODE_ENV === 'development' ? 1000 : 5, // Relaxed for development, 5 for production
   message: { success: false, message: 'Too many applications from this IP. Please try again after an hour.' },
   standardHeaders: true,
   legacyHeaders: false,

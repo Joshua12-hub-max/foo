@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { User } from '@/types';
 import { getCurrentUser } from '@/Service/Auth';
+import axios, { AxiosError } from 'axios';
 
 interface AuthState {
   user: User | null;
@@ -15,11 +16,10 @@ interface AuthState {
 interface AuthActions {
   setUser: (user: User | null) => void;
   updateProfile: (updates: Partial<User>) => void;
-  // login: REMOVED - handled by React Query
-  // googleLogin: REMOVED - handled by React Query
-  logout: () => void; // Pure state clear
+  logout: () => void;
   checkAuth: () => Promise<void>;
   clearError: () => void;
+  nukeAllStores: () => void;
 }
 
 type AuthStore = AuthState & AuthActions;
@@ -57,15 +57,11 @@ export const useAuthStore = create<AuthStore>()(
         },
 
         logout: () => {
-             // 1. Wipe local browser storage
              localStorage.clear();
              sessionStorage.clear();
-             
-             // 2. Clear state
              set({ ...initialState, isLoading: false }); 
         },
 
-        // Action to completely wipe all persistence for security
         nukeAllStores: () => {
              localStorage.clear();
              sessionStorage.clear();
@@ -73,10 +69,8 @@ export const useAuthStore = create<AuthStore>()(
         },
 
         checkAuth: async () => {
-             // Logic mirrored from AuthContext
              const mightBeLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
              if (!mightBeLoggedIn) {
-                 // CRITICAL: Clear state if persistence says we're logged in but localStorage says we're not
                  if (get().isAuthenticated || get().user) {
                     set({ ...initialState, isLoading: false });
                  } else {
@@ -87,17 +81,18 @@ export const useAuthStore = create<AuthStore>()(
 
              try {
                  const user = await getCurrentUser();
-                 // Ensure we extract the user if it's wrapped (defensive)
-                 const actualUser = ("user" in user ? (user as unknown as Record<string, User>).user : undefined) || user;
+                 // getCurrentUser already returns User, but we handle potential wrapping just in case
+                 const response = user as User | { user: User };
+                 const actualUser = (response && 'user' in response) ? response.user : response;
                  get().setUser(actualUser);
-             } catch (error: unknown) {
+             } catch (error) {
+                 if (axios.isCancel(error) || (error as AxiosError).code === 'ERR_CANCELED') {
+                     return;
+                 }
+                 
                  console.error("Failed to fetch user:", error);
-                 // If 401, clear user
-                 if (error && typeof error === 'object' && 'response' in error) {
-                     const err = error as { response?: { status?: number } };
-                     if (err.response?.status === 401) {
-                         localStorage.removeItem('isLoggedIn');
-                     }
+                 if (axios.isAxiosError(error) && error.response?.status === 401) {
+                     localStorage.removeItem('isLoggedIn');
                  }
                  set({ ...initialState, isLoading: false });
              } finally {

@@ -3,7 +3,7 @@ import { z } from 'zod';
 export const PdsQuestionsSchema = z.object({
   q34a: z.boolean(),
   q34b: z.boolean(),
-  q34Details: z.string().optional().nullable(),
+  q34bDetails: z.string().optional().nullable(),
   
   q35a: z.boolean(),
   q35aDetails: z.string().optional().nullable(),

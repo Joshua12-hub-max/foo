@@ -19,8 +19,9 @@ import {
   GetTodayStatusSchema,
 } from "../schemas/attendanceSchema.js";
 import { AttendanceLogApiResponse, DTRApiResponse } from "../types/attendance.js";
-import { formatToManilaDateTime } from "../utils/dateUtils.js";
+import { formatToManilaDateTime, currentManilaDateTime } from "../utils/dateUtils.js";
 import { compareIds } from "../utils/idUtils.js";
+import { processDailyAttendance } from "../services/attendanceProcessor.js";
 
 
 const handleError = (res: Response, _error: Error, context: string): void => {
@@ -703,6 +704,106 @@ export const getDashboardStats = async (_req: Request, res: Response): Promise<v
     });
   } catch (err: unknown) {
     handleError(res, err as Error, "getDashboardStats");
+  }
+};
+
+export const clockIn = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const authReq = req as AuthenticatedRequest;
+    if (!authReq.user?.employeeId) {
+      res.status(401).json({ success: false, message: "Unauthorized: Missing employee ID" });
+      return;
+    }
+
+    const todayStr = getLocalDate();
+    const nowStr = currentManilaDateTime();
+
+    // Check if a time-in log already exists today to prevent cheating
+    const existingIn = await db.select()
+      .from(attendanceLogs)
+      .where(and(
+        compareIds(attendanceLogs.employeeId, authReq.user.employeeId),
+        eq(attendanceLogs.type, 'IN'),
+        sql`DATE(${attendanceLogs.scanTime}) = DATE(${todayStr})`
+      ))
+      .limit(1);
+
+    if (existingIn.length > 0) {
+      res.status(400).json({ success: false, message: "You have already clocked in today." });
+      return;
+    }
+
+    await db.insert(attendanceLogs).values({
+      employeeId: authReq.user.employeeId,
+      scanTime: nowStr,
+      type: 'IN',
+      source: 'Manual Widget',
+      createdAt: nowStr
+    });
+
+    // Automatically calculate Tardiness/Undertime & re-seed DTR
+    await processDailyAttendance(authReq.user.employeeId, todayStr);
+
+    res.status(200).json({ success: true, message: "Successfully clocked in." });
+  } catch (err: unknown) {
+    handleError(res, err as Error, "clockIn");
+  }
+};
+
+export const clockOut = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const authReq = req as AuthenticatedRequest;
+    if (!authReq.user?.employeeId) {
+      res.status(401).json({ success: false, message: "Unauthorized: Missing employee ID" });
+      return;
+    }
+
+    const todayStr = getLocalDate();
+    const nowStr = currentManilaDateTime();
+
+    // Check if clocked in first
+    const existingIn = await db.select()
+      .from(attendanceLogs)
+      .where(and(
+        compareIds(attendanceLogs.employeeId, authReq.user.employeeId),
+        eq(attendanceLogs.type, 'IN'),
+        sql`DATE(${attendanceLogs.scanTime}) = DATE(${todayStr})`
+      ))
+      .limit(1);
+
+    if (existingIn.length === 0) {
+      res.status(400).json({ success: false, message: "Cannot clock out. No clock in record found for today." });
+      return;
+    }
+
+    // Check if already clocked out
+    const existingOut = await db.select()
+      .from(attendanceLogs)
+      .where(and(
+        compareIds(attendanceLogs.employeeId, authReq.user.employeeId),
+        eq(attendanceLogs.type, 'OUT'),
+        sql`DATE(${attendanceLogs.scanTime}) = DATE(${todayStr})`
+      ))
+      .limit(1);
+
+    if (existingOut.length > 0) {
+      res.status(400).json({ success: false, message: "You have already clocked out today." });
+      return;
+    }
+
+    await db.insert(attendanceLogs).values({
+      employeeId: authReq.user.employeeId,
+      scanTime: nowStr,
+      type: 'OUT',
+      source: 'Manual Widget',
+      createdAt: nowStr
+    });
+
+    await processDailyAttendance(authReq.user.employeeId, todayStr);
+
+    res.status(200).json({ success: true, message: "Successfully clocked out." });
+  } catch (err: unknown) {
+    handleError(res, err as Error, "clockOut");
   }
 };
 

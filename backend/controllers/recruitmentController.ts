@@ -1,19 +1,36 @@
 import { Request, Response } from 'express';
 import { db } from '../db/index.js';
-import { recruitmentJobs, recruitmentApplicants, authentication, recruitmentSecurityLogs, pdsHrDetails } from '../db/schema.js';
-import { eq, and, sql, desc, or, inArray, isNull, getTableColumns } from 'drizzle-orm';
+import { recruitmentJobs, recruitmentApplicants, authentication, recruitmentSecurityLogs, pdsHrDetails, applicantEducation, applicantExperience, applicantTraining, applicantEligibility } from '../db/schema.js';
+import { eq, and, sql, desc, or, inArray, isNull, SQL, InferSelectModel } from 'drizzle-orm';
 /* eslint-disable-next-line @typescript-eslint/naming-convention */
 import PDFDocument from 'pdfkit';
 import path from 'path';
 import * as fs from 'fs';
-import * as ics from 'ics';
-import { getTemplateForStage, replaceVariables, sendEmailNotification } from '../utils/emailHelpers.js';
+import { getTemplateForStage, replaceVariables, sendEmailNotification, prepareEmailVariables } from '../utils/emailHelpers.js';
 import { checkSystemWideUniqueness } from '../services/validationService.js';
 import { generateGoogleMeetLink } from '../services/meetingService.js';
+import { generateInterviewICS } from '../services/calendar.service.js';
 import { currentManilaDateTime } from '../utils/dateUtils.js';
 import { sanitizeInput, isDisposableEmail } from '../utils/spamUtils.js';
-import { generateOTP, sendOTPEmail } from '../utils/emailUtils.js';
 import type { JobStatus, ApplicantStage, ApplicantStatus, AuthenticatedRequest } from '../types/index.js';
+import { AuditService } from '../services/audit.service.js';
+
+export type Applicant = InferSelectModel<typeof recruitmentApplicants>;
+export type Job = InferSelectModel<typeof recruitmentJobs>;
+export type Education = InferSelectModel<typeof applicantEducation>;
+export type Experience = InferSelectModel<typeof applicantExperience>;
+export type Training = InferSelectModel<typeof applicantTraining>;
+export type Eligibility = InferSelectModel<typeof applicantEligibility>;
+export type Interviewer = Pick<InferSelectModel<typeof authentication>, 'firstName' | 'lastName' | 'middleName' | 'suffix'>;
+
+export interface ApplicantWithRelations extends Applicant {
+    recruitmentJob?: Job | null;
+    educations?: Education[];
+    experiences?: Experience[];
+    trainings?: Training[];
+    eligibilities?: Eligibility[];
+    authentication?: Interviewer | null;
+}
 
 import {
   createJobSchema,
@@ -23,21 +40,60 @@ import {
   saveInterviewNotesSchema,
   generateOfferLetterSchema,
   assignInterviewerSchema,
-  createStrictApplyJobSchema,
+  confirmHiredSchema,
   verifyOTPSchema,
-  confirmHiredSchema
+  createStrictApplyJobSchema,
+  ApplyJobData
 } from '../schemas/recruitmentSchema.js';
+
+// ApplicantWithRelations already defined above using Drizzle types
+
 import { 
   verifyFileHeader, 
   verifyEmailDomain, 
   logSecurityViolation 
 } from '../utils/recruitmentUtils.js';
-import { 
-  checkDuplicateApplication, 
-  sendApplicationNotifications 
-} from '../services/recruitmentService.js';
+import { checkDuplicateApplication, sendApplicationNotifications } from '../services/recruitmentService.js';
 import { notifyAdmins } from './notificationController.js';
 import type { AuthenticatedHandler } from '../types/index.js';
+
+/**
+ * Manual EXIF stripper to prevent pdfkit/jpeg-exif BufferOutOfBounds crashes
+ * for problematic JPEG images.
+ */
+function stripExif(buffer: Buffer): Buffer {
+  if (buffer.length < 4 || buffer[0] !== 0xFF || buffer[1] !== 0xD8) return buffer;
+  
+  let offset = 2;
+  let result = buffer;
+  
+  while (offset < result.length - 4) {
+    if (result[offset] !== 0xFF) break;
+    const marker = result[offset + 1];
+    
+    // Some markers don't have a length (SOI, EOI, etc.)
+    if (marker === 0xD9) break; // End of Image
+    if (marker === 0x01 || (marker >= 0xD0 && marker <= 0xD7)) {
+        offset += 2;
+        continue;
+    }
+
+    const length = result.readUInt16BE(offset + 2);
+    
+    // 100% PRECISION: Strip ALL APPn segments (Except APP0/JFIF) to avoid parser crashes
+    if (marker >= 0xE1 && marker <= 0xEF) { 
+      result = Buffer.concat([
+        result.subarray(0, offset),
+        result.subarray(offset + 2 + length)
+      ]);
+      // Continue searching from the same offset
+      continue;
+    }
+    
+    offset += 2 + length;
+  }
+  return result;
+}
 
 function isApplicantStage(val: string): val is ApplicantStage {
   return ['Applied', 'Screening', 'Initial Interview', 'Final Interview', 'Offer', 'Hired', 'Rejected'].includes(val);
@@ -61,7 +117,7 @@ export const getHiredByDuty: AuthenticatedHandler = async (req, res) => {
     const irregularTypes = ['Job Order', 'Contractual', 'Casual', 'Coterminous', 'Part-time', 'Contract of Service', 'JO', 'COS'] as const;
 
     // Explicitly type targetTypes based on recruitmentJobs.employment_type enum
-    const targetTypes = (normalizedDuty === 'Standard' ? [...standardTypes] : [...irregularTypes]);
+    const targetTypes = (normalizedDuty === 'Standard' ? [...standardTypes] : [...irregularTypes]) as ('Full-time'|'Part-time'|'Contractual'|'Job Order'|'Coterminous'|'Temporary'|'Probationary'|'Casual'|'Permanent'|'Contract of Service'|'JO'|'COS')[];
 
     const andConditions = [
         eq(recruitmentApplicants.isConfirmed, true),
@@ -77,66 +133,45 @@ export const getHiredByDuty: AuthenticatedHandler = async (req, res) => {
     }
 
     // Fetch hired applicants whose job corresponds to the target employment types OR the duty type category
-    const results = await db.select({
-      applicant: recruitmentApplicants,
-      job: recruitmentJobs
-    })
-    .from(recruitmentApplicants)
-    .innerJoin(recruitmentJobs, eq(recruitmentApplicants.jobId, recruitmentJobs.id))
-    .where(and(...andConditions))
-    .orderBy(desc(recruitmentApplicants.hiredDate));
+    // 100% PRECISION: Use Relational Query to fetch nested Education/Experience/etc.
+    // Relational Query with 100% combined logic
+    const results = await db.query.recruitmentApplicants.findMany({
+      where: (applicants, { and, eq, isNull }) => and(
+        eq(applicants.isConfirmed, true),
+        eq(applicants.stage, 'Hired'),
+        isNull(applicants.registeredEmployeeId),
+        // RQB where can't join for filtering parent, we perform parent filtering in .map after .findMany
+      ),
+      with: {
+        recruitmentJob: true,
+        educations: true,
+        experiences: true,
+        trainings: true,
+        eligibilities: true,
+      },
+      orderBy: (applicants, { desc }) => [desc(applicants.hiredDate)]
+    });
 
-    // Refined filtering: Only hide if ALREADY LINKED to an employee ID.
-    // This allows test accounts with same email to show up as separate applicants.
-    const filteredApplicants = results
-      .filter(row => !row.applicant.registeredEmployeeId)
-      .map(row => ({
-        id: row.applicant.id,
-        firstName: row.applicant.firstName,
-        lastName: row.applicant.lastName,
-        middleName: row.applicant.middleName,
-        suffix: row.applicant.suffix,
-        email: row.applicant.email,
-        phoneNumber: row.applicant.phoneNumber,
-        photoPath: row.applicant.photoPath,
-        birthDate: row.applicant.birthDate,
-        birthPlace: row.applicant.birthPlace,
-        sex: row.applicant.sex,
-        civilStatus: row.applicant.civilStatus,
-        height: row.applicant.height,
-        weight: row.applicant.weight,
-        bloodType: row.applicant.bloodType,
-        gsisNumber: row.applicant.gsisNumber,
-        pagibigNumber: row.applicant.pagibigNumber,
-        philhealthNumber: row.applicant.philhealthNumber,
-        umidNumber: row.applicant.umidNumber,
-        philsysId: row.applicant.philsysId,
-        tinNumber: row.applicant.tinNumber,
-        eligibility: row.applicant.eligibility,
-        eligibilityType: row.applicant.eligibilityType,
-        eligibilityDate: row.applicant.eligibilityDate,
-        eligibilityRating: row.applicant.eligibilityRating,
-        eligibilityPlace: row.applicant.eligibilityPlace,
-        licenseNo: row.applicant.licenseNo,
-        address: row.applicant.address,
-        zipCode: row.applicant.zipCode,
-        permanentAddress: row.applicant.permanentAddress,
-        permanentZipCode: row.applicant.permanentZipCode,
-        isMeycauayanResident: row.applicant.isMeycauayanResident,
-        educationalBackground: row.applicant.educationalBackground,
-        schoolName: row.applicant.schoolName,
-        course: row.applicant.course,
-        yearGraduated: row.applicant.yearGraduated,
-        experience: row.applicant.experience,
-        skills: row.applicant.skills,
-        totalExperienceYears: row.applicant.totalExperienceYears,
-        hiredDate: row.applicant.hiredDate,
-        emergencyContact: row.applicant.emergencyContact,
-        emergencyContactNumber: row.applicant.emergencyContactNumber,
-        jobTitle: row.job.title,
-        employmentType: row.job.employmentType,
-        dutyType: row.job.dutyType
-      }));
+    // 100% DATA REFINEMENT: Filter and strictly type the results
+    const filteredApplicants = (results as ApplicantWithRelations[])
+      .filter(applicant => {
+        if (!applicant.recruitmentJob) return false;
+        const job = applicant.recruitmentJob;
+        return (targetTypes as string[]).includes(job.employmentType || '') || job.dutyType === normalizedDuty;
+      })
+      .filter(applicant => !department || applicant.recruitmentJob?.department === department)
+      .map(applicant => {
+        const job = applicant.recruitmentJob;
+        const photoFile = applicant.photo1x1Path || applicant.photoPath;
+        const apiBaseUrl = process.env.API_URL || 'http://localhost:5000';
+        return {
+          ...applicant,
+          photoUrl: photoFile ? `${apiBaseUrl}/uploads/resumes/${photoFile}` : null,
+          jobTitle: job?.title || "N/A",
+          employmentType: job?.employmentType || "N/A",
+          dutyType: job?.dutyType || "N/A",
+        };
+      });
 
     res.status(200).json({ success: true, applicants: filteredApplicants });
   } catch (error: unknown) {
@@ -195,6 +230,15 @@ export const createJob: AuthenticatedHandler = async (req, res) => {
     });
 
     res.status(201).json({ success: true, message: 'Job posted successfully' });
+
+    await AuditService.log({
+      userId: authReq.user.id,
+      module: 'RECRUITMENT',
+      action: 'CREATE',
+      details: { title, department, status: jobStatus },
+      req
+    });
+
   } catch (error: unknown) {
     console.error('[RecruitmentController] createJob failed:', error);
     res.status(500).json({ success: false, message: 'Failed to create job' });
@@ -221,9 +265,9 @@ export const getJobs = async (req: Request, res: Response): Promise<void> => {
     res.json({ success: true, jobs });
   } catch (error: unknown) {
     console.error('[RecruitmentController] getJobs failed:', error);
-    const err = error instanceof Error ? error : new Error('Unknown database error');
+    const err = error instanceof Error ? error.message : 'Unknown database error';
 
-    res.status(500).json({ success: false, message: 'Failed to fetch jobs', error: err.message });
+    res.status(500).json({ success: false, message: 'Failed to fetch jobs', error: err });
   }
 };
 
@@ -239,16 +283,29 @@ export const getJob = async (req: Request, res: Response): Promise<void> => {
       return;
     }
     res.json({ success: true, job });
-  } catch (_error: unknown) {
+  } catch (error: unknown) {
     res.status(500).json({ success: false, message: 'Failed to fetch job' });
   }
 };
 
 export const applyJob = async (req: Request, res: Response): Promise<void> => {
   try {
-    const body = req.body as { jobId?: string | number };
+    // 0. Pre-parse JSON strings from multipart/form-data (PDS Aligned)
+    const body = req.body as Record<string, string | number | boolean | object | null | undefined>;
+    const jsonFields = ['education', 'eligibilities', 'workExperiences', 'trainings'];
+    jsonFields.forEach(field => {
+      const value = body[field];
+      if (typeof value === 'string' && (value.startsWith('{') || value.startsWith('['))) {
+        try {
+          body[field] = JSON.parse(value) as Record<string, unknown>;
+        } catch (_e) {
+          // Keep as string if parsing fails — Zod will reject invalid shapes
+        }
+      }
+    });
+
     const reqJobId = body.jobId;
-    
+
     if (!reqJobId) {
         res.status(400).json({ success: false, message: 'jobId is required' });
         return;
@@ -278,19 +335,29 @@ export const applyJob = async (req: Request, res: Response): Promise<void> => {
 
     const {
       jobId, firstName, lastName, middleName, suffix, email, phoneNumber,
-      address, zipCode, permanentAddress, permanentZipCode, isMeycauayanResident,
+      isMeycauayanResident,
       birthDate, birthPlace, sex, civilStatus, height,
       weight, bloodType, gsisNumber, pagibigNumber, philhealthNumber, umidNumber, philsysId, tinNumber,
-      eligibility, eligibilityType, eligibilityDate, eligibilityRating, eligibilityPlace, licenseNo, totalExperienceYears,
-      educationalBackground, schoolName, yearGraduated, course, experience, skills, emergencyContact, emergencyContactNumber,
-      resRegion, resProvince, resCity, resBrgy, resHouseBlockLot, resSubdivision, resStreet,
-      permRegion, permProvince, permCity, permBrgy, permHouseBlockLot, permSubdivision, permStreet
+      education, totalExperienceYears,
+      skills, emergencyContact, emergencyContactNumber,
+      resRegion, resProvince, resCity, resBarangay, resHouseBlockLot, resSubdivision, resStreet, zipCode,
+      permRegion, permProvince, permCity, permBarangay, permHouseBlockLot, permSubdivision, permStreet, permanentZipCode,
+      trainings,
+      eligibilities,
+      workExperiences,
+      hpField, websiteUrl, hToken,
+      nationality, telephoneNumber, agencyEmployeeNo, facebookUrl, linkedinUrl, twitterHandle,
+      citizenshipType, dualCountry
     } = parseResult.data;
 
-    const { hpField, websiteUrl, hToken } = req.body as { hpField?: string; websiteUrl?: string; hToken?: string };
+    // Construct full address strings for persistence and searchability
+    const fullAddress = [resHouseBlockLot, resSubdivision, resStreet, resBarangay, resCity, resProvince, resRegion]
+        .filter(Boolean).join(', ');
+    const fullPermanentAddress = [permHouseBlockLot, permSubdivision, permStreet, permBarangay, permCity, permProvince, permRegion]
+        .filter(Boolean).join(', ');
 
     // File Integrity Audit
-    const files = req.files as Record<string, Express.Multer.File[]> | undefined;
+    const files = (req as { files?: Record<string, Express.Multer.File[]> }).files;
     const resume = files?.['resume']?.[0];
     const eligibilityCert = files?.['eligibilityCert']?.[0];
     const photo = files?.['photo']?.[0];
@@ -311,8 +378,8 @@ export const applyJob = async (req: Request, res: Response): Promise<void> => {
     // CSC Compliance Check
     const isCSCRequired = ['Permanent', 'Temporary', 'Probationary'].includes(jobConfig.employmentType || '');
     if (isCSCRequired) {
-        if (!eligibilityType || !eligibilityDate) {
-            res.status(400).json({ success: false, message: 'CSC/Permanent positions require precise Eligibility details (Type and Date).' });
+        if (!eligibilities || eligibilities.length === 0) {
+            res.status(400).json({ success: false, message: 'CSC/Permanent positions require at least one Eligibility detail.' });
             return;
         }
         if (!eligibilityCert) {
@@ -322,23 +389,39 @@ export const applyJob = async (req: Request, res: Response): Promise<void> => {
     }
 
     // Spam Guard: Honeypot & Human Token
-    if (hpField || websiteUrl) {
-        await logSecurityViolation({
-            jobId: Number(jobId), firstName: firstName, lastName: lastName, email,
-            violationType: 'Spam Bot', details: `Honeypot filled (${hpField ? 'Primary' : 'Secondary'})`,
-            ipAddress: req.ip || 'Unknown'
-        });
+    // 4. Anti-Spam: Validation Honeypot + hToken Verification
+    if ((hpField && hpField.length > 0) || (websiteUrl && websiteUrl.length > 0)) {
+        console.warn(`[RECRUITMENT] Bot attempt blocked: Honeypot fields populated (HP: ${hpField}, URL: ${websiteUrl})`);
         res.status(201).json({ success: true, message: 'Application submitted successfully' });
         return;
     }
 
     if (!hToken || !hToken.startsWith('v-')) {
-        await logSecurityViolation({
-            jobId: Number(jobId), firstName: firstName, lastName: lastName, email,
-            violationType: 'Automated Script', details: `Missing/invalid human token '${hToken}'`,
-            ipAddress: req.ip || 'Unknown'
+        console.warn(`[RECRUITMENT] Submission rejected: Missing or invalid hToken`);
+        res.status(400).json({ success: false, message: 'Invalid submission signature. Please refresh and try again.' });
+        return;
+    }
+
+    // 5. Duplicate & Identity Fraud Check (Pre-Parsing Verification)
+    try {
+        const uniquenessResults = await checkSystemWideUniqueness({
+            email,
+            gsisNumber,
+            pagibigNumber,
+            philhealthNumber,
+            umidNumber,
+            philsysId,
+            tinNumber
         });
-        res.status(400).json({ success: false, message: 'Security protocol failed. Please use a real browser.' });
+
+        if (Object.keys(uniquenessResults).length > 0) {
+          console.warn(`[RECRUITMENT] Duplicate detected for email: ${email}`, uniquenessResults);
+          res.status(409).json({ success: false, message: 'An account with these identifiers already exists. If this is you, please contact HR.', errors: uniquenessResults });
+          return;
+        }
+    } catch (err: unknown) {
+        console.error('[RECRUITMENT] Uniqueness check failed:', err instanceof Error ? err.message : 'Unknown error');
+        res.status(500).json({ success: false, message: 'Internal server error during verification' });
         return;
     }
 
@@ -367,12 +450,12 @@ export const applyJob = async (req: Request, res: Response): Promise<void> => {
     // 1. Check against AUTHENTICATION (Existing Employees)
     const uniqueErrors = await checkSystemWideUniqueness({
         email,
-        umidNumber,
-        philsysId,
-        philhealthNumber,
-        pagibigNumber,
-        tinNumber,
-        gsisNumber
+        umidNumber: umidNumber || null,
+        philsysId: philsysId || null,
+        philhealthNumber: philhealthNumber || null,
+        pagibigNumber: pagibigNumber || null,
+        tinNumber: tinNumber || null,
+        gsisNumber: gsisNumber || null
     });
 
     if (Object.keys(uniqueErrors).length > 0) {
@@ -385,21 +468,29 @@ export const applyJob = async (req: Request, res: Response): Promise<void> => {
     }
 
     // 2. Check against RECRUITMENT_APPLICANTS (Pending/Recent Applications)
+    const cleanValue = (val: string | null | undefined) => {
+        if (val === undefined || val === null || val === 'undefined') return null;
+        return val;
+    };
+
     const duplicateConditions = [
         eq(recruitmentApplicants.email, email)
     ];
 
-    if (gsisNumber) duplicateConditions.push(eq(recruitmentApplicants.gsisNumber, gsisNumber));
-    if (pagibigNumber) duplicateConditions.push(eq(recruitmentApplicants.pagibigNumber, pagibigNumber));
-    if (philhealthNumber) duplicateConditions.push(eq(recruitmentApplicants.philhealthNumber, philhealthNumber));
-    if (umidNumber) duplicateConditions.push(eq(recruitmentApplicants.umidNumber, umidNumber));
-    if (philsysId) duplicateConditions.push(eq(recruitmentApplicants.philsysId, philsysId));
-    if (tinNumber) duplicateConditions.push(eq(recruitmentApplicants.tinNumber, tinNumber));
-    if (licenseNo) duplicateConditions.push(eq(recruitmentApplicants.licenseNo, licenseNo));
+    if (cleanValue(gsisNumber)) duplicateConditions.push(eq(recruitmentApplicants.gsisNumber, cleanValue(gsisNumber)!));
+    if (cleanValue(pagibigNumber)) duplicateConditions.push(eq(recruitmentApplicants.pagibigNumber, cleanValue(pagibigNumber)!));
+    if (cleanValue(philhealthNumber)) duplicateConditions.push(eq(recruitmentApplicants.philhealthNumber, cleanValue(philhealthNumber)!));
+    if (cleanValue(umidNumber)) duplicateConditions.push(eq(recruitmentApplicants.umidNumber, cleanValue(umidNumber)!));
+    if (cleanValue(philsysId)) duplicateConditions.push(eq(recruitmentApplicants.philsysId, cleanValue(philsysId)!));
+    if (cleanValue(tinNumber)) duplicateConditions.push(eq(recruitmentApplicants.tinNumber, cleanValue(tinNumber)!));
 
-    const existingApplicantRecords = await db.query.recruitmentApplicants.findMany({
-        where: or(...duplicateConditions)
-    });
+    // Handle array-based eligibility check if needed (Legacy: licenseNo)
+    const primaryLicense = cleanValue(eligibilities?.[0]?.licenseNo);
+    if (primaryLicense) duplicateConditions.push(eq(recruitmentApplicants.licenseNo, primaryLicense));
+
+    const existingApplicantRecords = await db.select()
+        .from(recruitmentApplicants)
+        .where(or(...duplicateConditions));
 
     if (existingApplicantRecords.length > 0) {
         const errors: { field: string; message: string }[] = [];
@@ -412,7 +503,7 @@ export const applyJob = async (req: Request, res: Response): Promise<void> => {
             if (umidNumber && rec.umidNumber === umidNumber) errors.push({ field: 'umidNumber', message: 'UMID Number already exists' });
             if (philsysId && rec.philsysId === philsysId) errors.push({ field: 'philsysId', message: 'PhilSys ID already exists' });
             if (tinNumber && rec.tinNumber === tinNumber) errors.push({ field: 'tinNumber', message: 'TIN Number already exists' });
-            if (licenseNo && rec.licenseNo === licenseNo) errors.push({ field: 'licenseNo', message: 'License Number already exists' });
+            if (primaryLicense && rec.licenseNo === primaryLicense) errors.push({ field: 'licenseNo', message: 'License Number already exists' });
         });
 
         if (errors.length > 0) {
@@ -449,85 +540,168 @@ export const applyJob = async (req: Request, res: Response): Promise<void> => {
         return;
     }
 
-    // Process Application
-    const [insertedApplicant] = await db.insert(recruitmentApplicants).values({
-        jobId: Number(jobId),
-        firstName: sanitizeInput(firstName),
-        lastName: sanitizeInput(lastName),
-        middleName: middleName ? sanitizeInput(middleName) : null,
-        suffix: suffix ? sanitizeInput(suffix) : null,
-        email,
-        phoneNumber: phoneNumber,
-        address: sanitizeInput(address),
-        zipCode: zipCode,
-        permanentAddress: permanentAddress ? sanitizeInput(permanentAddress) : null,
-        permanentZipCode: permanentZipCode,
-        isMeycauayanResident: isMeycauayanResident ? true : false,
-        birthDate: birthDate,
-        birthPlace: sanitizeInput(birthPlace),
-        sex: sex,
-        civilStatus: civilStatus,
-        height,
-        weight,
-        bloodType: bloodType,
-        gsisNumber: gsisNumber,
-        pagibigNumber: pagibigNumber,
-        philhealthNumber: philhealthNumber,
-        umidNumber: umidNumber,
-        philsysId: philsysId,
-        tinNumber: tinNumber,
-        eligibility: eligibility ? sanitizeInput(eligibility) : null,
-        eligibilityType: eligibilityType as string,
-        eligibilityDate: eligibilityDate,
-        eligibilityRating: eligibilityRating,
-        eligibilityPlace: eligibilityPlace ? sanitizeInput(eligibilityPlace) : null,
-        licenseNo: licenseNo,
-        eligibilityPath: eligibilityCert?.filename || null,
-        totalExperienceYears: totalExperienceYears,
-        educationalBackground: educationalBackground ? sanitizeInput(educationalBackground) : null,
-        schoolName: schoolName ? sanitizeInput(schoolName) : null,
-        yearGraduated: yearGraduated || null,
-        course: course ? sanitizeInput(course) : null,
-        experience: experience ? sanitizeInput(experience) : null,
-        skills: skills ? sanitizeInput(skills) : null,
-        emergencyContact: emergencyContact ? sanitizeInput(emergencyContact) : null,
-        emergencyContactNumber: emergencyContactNumber || null,
-        resumePath: resume?.filename || null,
-        photoPath: photo?.filename || null,
-        resRegion: resRegion || null,
-        resProvince: resProvince || null,
-        resCity: resCity || null,
-        resBarangay: resBrgy || null,
-        resHouseBlockLot: resHouseBlockLot || null,
-        resSubdivision: resSubdivision || null,
-        resStreet: resStreet || null,
-        permRegion: permRegion || null,
-        permProvince: permProvince || null,
-        permCity: permCity || null,
-        permBarangay: permBrgy || null,
-        permHouseBlockLot: permHouseBlockLot || null,
-        permSubdivision: permSubdivision || null,
-        permStreet: permStreet || null,
-        verificationToken: generateOTP(),
-        isEmailVerified: false,
-        createdAt: currentManilaDateTime()
-    }).$returningId();
+    // Process Application 100% PRECISION: Use Transaction for Relational Consistency
+    const insertHeader = await db.transaction(async (tx) => {
+        const [header] = await tx.insert(recruitmentApplicants).values({
+            jobId: Number(jobId),
+            firstName: sanitizeInput(firstName),
+            lastName: sanitizeInput(lastName),
+            middleName: middleName ? sanitizeInput(middleName) : null,
+            suffix: suffix ? sanitizeInput(suffix) : null,
+            email,
+            phoneNumber: phoneNumber,
+            address: sanitizeInput(fullAddress),
+            zipCode: zipCode,
+            permanentAddress: fullPermanentAddress ? sanitizeInput(fullPermanentAddress) : null,
+            permanentZipCode: permanentZipCode,
+            isMeycauayanResident: isMeycauayanResident ? true : false,
+            birthDate: birthDate,
+            birthPlace: sanitizeInput(birthPlace),
+            sex: sex,
+            civilStatus: civilStatus,
+            height,
+            weight,
+            bloodType: bloodType,
+            gsisNumber: gsisNumber,
+            pagibigNumber: pagibigNumber,
+            philhealthNumber: philhealthNumber,
+            umidNumber: umidNumber,
+            philsysId: philsysId,
+            tinNumber: tinNumber,
+            
+            // Legacy JSON Persistence (Maintained temporarily for PDF/Existing reports)
+            eligibility: eligibilities ? JSON.stringify(eligibilities) : null,
+            eligibilityType: eligibilities?.[0]?.name || null,
+            eligibilityDate: eligibilities?.[0]?.examDate || null,
+            eligibilityRating: eligibilities?.[0]?.rating || null,
+            eligibilityPlace: eligibilities?.[0]?.examPlace || null,
+            licenseNo: eligibilities?.[0]?.licenseNo || null,
+            eligibilityPath: eligibilityCert?.filename || null,
+            
+            totalExperienceYears: totalExperienceYears,
+            educationalBackground: education ? JSON.stringify(education) : null,
+            experience: workExperiences ? JSON.stringify(workExperiences) : null,
+            training: trainings ? JSON.stringify(trainings) : null,
+            
+            // Header info from highest education level
+            schoolName: education?.College?.school ?? education?.Secondary?.school ?? null,
+            yearGraduated: education?.College?.yearGrad ?? education?.Secondary?.yearGrad ?? null,
+            course: education?.College?.course ?? null,
+            
+            skills: skills ? sanitizeInput(skills) : null,
+            emergencyContact: emergencyContact ? sanitizeInput(emergencyContact) : null,
+            emergencyContactNumber: emergencyContactNumber || null,
+            resumePath: resume?.filename || null,
+            photo1x1Path: photo?.filename || null,
+            resRegion: resRegion || null,
+            resProvince: resProvince || null,
+            resCity: resCity || null,
+            resBarangay: resBarangay || null,
+            resHouseBlockLot: resHouseBlockLot || null,
+            resSubdivision: resSubdivision || null,
+            resStreet: resStreet || null,
+            permRegion: permRegion || null,
+            permProvince: permProvince || null,
+            permCity: permCity || null,
+            permBarangay: permBarangay || null,
+            permHouseBlockLot: permHouseBlockLot || null,
+            permSubdivision: permSubdivision || null,
+            permStreet: permStreet || null,
+            nationality: nationality || 'Filipino',
+            telephoneNumber: telephoneNumber || null,
+            agencyEmployeeNo: agencyEmployeeNo || null,
+            facebookUrl: facebookUrl || null,
+            linkedinUrl: linkedinUrl || null,
+            twitterHandle: twitterHandle || null,
+            citizenshipType: citizenshipType || null,
+            dualCountry: dualCountry || null,
+            verificationToken: null,
+            isEmailVerified: true,
+            createdAt: currentManilaDateTime()
+        });
 
-    const applicantId = (insertedApplicant as { id: number }).id;
+        const applicantId = header.insertId;
 
-    // Fetch the inserted applicant to get the verificationToken
-    const freshApplicant = await db.query.recruitmentApplicants.findFirst({
-        where: eq(recruitmentApplicants.id, applicantId)
+        // 100% DATA PROPAGATION: Insert into Relational Tables
+        if (education) {
+            const eduEntriesRaw = Object.entries(education)
+                .filter(([_, data]) => {
+                    return data && (data.school || data.course);
+                });
+            
+            for (const [level, data] of eduEntriesRaw) {
+                // Type safety ensured by Object.entries on Zod-validated data
+                type ZodEduData = NonNullable<ApplyJobData['education']>[keyof NonNullable<ApplyJobData['education']>];
+                const eduData = data as ZodEduData;
+                const mappedLevel = (level === 'Graduate') ? 'Graduate Studies' : level as Education['level'];
+
+                await tx.insert(applicantEducation).values({
+                    applicantId: Number(applicantId),
+                    level: mappedLevel,
+                    schoolName: eduData?.school || "N/A",
+                    degreeCourse: eduData?.course || null,
+                    yearGraduated: String(eduData?.yearGrad || ""),
+                    unitsEarned: String(eduData?.units || ""),
+                    dateFrom: String(eduData?.from || ""),
+                    dateTo: String(eduData?.to || ""),
+                    honors: eduData?.honors || null
+                });
+            }
+        }
+
+        if (workExperiences && workExperiences.length > 0) {
+            for (const exp of workExperiences) {
+                await tx.insert(applicantExperience).values({
+                    applicantId: Number(applicantId),
+                    dateFrom: String(exp.dateFrom || ""),
+                    dateTo: String(exp.dateTo || ""),
+                    positionTitle: exp.positionTitle || "N/A",
+                    companyName: exp.companyName || "N/A",
+                    monthlySalary: exp.monthlySalary ? String(exp.monthlySalary) : null,
+                    salaryGrade: exp.salaryGrade || null,
+                    appointmentStatus: exp.appointmentStatus || null,
+                    isGovernment: exp.isGovernment === true
+                });
+            }
+        }
+
+        if (trainings && trainings.length > 0) {
+            for (const t of trainings) {
+                await tx.insert(applicantTraining).values({
+                    applicantId: Number(applicantId),
+                    title: t.title || "N/A",
+                    dateFrom: String(t.dateFrom || ""),
+                    dateTo: String(t.dateTo || ""),
+                    hoursNumber: t.hoursNumber ? Number(t.hoursNumber) : null,
+                    typeOfLd: t.typeOfLd || null,
+                    conductedBy: t.conductedBy || null
+                });
+            }
+        }
+
+        if (eligibilities && eligibilities.length > 0) {
+            for (const e of eligibilities) {
+                await tx.insert(applicantEligibility).values({
+                    applicantId: Number(applicantId),
+                    eligibilityName: e.name || "N/A",
+                    rating: e.rating ? String(e.rating) : null,
+                    examDate: String(e.examDate || ""),
+                    examPlace: e.examPlace || null,
+                    licenseNumber: e.licenseNo || null,
+                    validityDate: String(e.licenseValidUntil || "")
+                });
+            }
+        }
+
+        return header;
     });
 
-    if (freshApplicant?.verificationToken) {
-        await sendOTPEmail(
-            email,
-            firstName,
-            freshApplicant.verificationToken,
-            'Job Application Verification',
-            'Thank you for your interest in joining the City Government of Meycauayan. Please verify your email to complete your application:'
-        );
+    // Drizzle for MySQL returns [ResultSetHeader, fields]
+    // The insertId is the ID of the new record
+    const applicantId = insertHeader.insertId;
+    
+    if (!applicantId) {
+        throw new Error("Failed to retrieve applicant ID after insertion.");
     }
 
     // --- AUTO-GENERATE AND SAVE PHYSICAL PDF COPY ---
@@ -584,8 +758,9 @@ export const applyJob = async (req: Request, res: Response): Promise<void> => {
         fld(saveDoc, 'Suffix', suffix, 460, r1, 60);
 
         saveDoc.end();
-    } catch (_pdfErr) {
+    } catch (error) {
         // Continue application even if PDF save fails, but log it
+        console.error('[RecruitmentController] Application PDF generation failed:', error);
     }
 
     // Trigger Notifications
@@ -598,29 +773,40 @@ export const applyJob = async (req: Request, res: Response): Promise<void> => {
         senderId: null,
         title: 'New Job Application',
         message: `${firstName} ${lastName} has applied for ${jobConfig.title}.`,
-        type: 'job_application',
-        referenceId: applicantId
+        type: 'job_application_pending',
+        referenceId: applicantId,
+        link: `/admin-dashboard/recruitment/applicants?id=${applicantId}`,
+        metadata: JSON.stringify({ applicantId, status: 'pending' })
       });
 
       // 2. Notify Applicant (Internal placeholder if they have an account, though applicants usually don't yet)
       // Since applicants don't have accounts yet, we primarily rely on the email sent by sendApplicationNotifications.
       // But we log it for the system audit.
-    } catch (notifErr) {
-      console.error('Failed to send internal application notifications:', notifErr);
+    } catch (error) {
+      console.error('Failed to send internal application notifications:', error);
     }
 
     res.status(201).json({ 
         success: true, 
-        message: 'Application submitted! Please check your email for the verification code.',
-        requiresVerification: true,
+        message: 'Application submitted successfully! HR will review your credentials and contact you via email for the next steps.',
+        requiresVerification: false,
         email: email,
         applicantId: applicantId
     });
-  } catch (error) {
+
+    await AuditService.log({
+      userId: null, // Public applicant
+      module: 'RECRUITMENT',
+      action: 'APPLY',
+      details: { applicantId, jobId, email },
+      req
+    });
+
+  } catch (error: unknown) {
     res.status(500).json({ 
       success: false, 
       message: 'Failed to submit application', 
-      error: error instanceof Error ? (error as Error).message : 'Internal Server Error' 
+      error: error instanceof Error ? error.message : 'Internal Server Error' 
     });
   }
 };
@@ -632,50 +818,9 @@ export const getApplicants = async (req: Request, res: Response): Promise<void> 
     const stage = req.query.stage as string | undefined;
     const source = req.query.source as string | undefined;
 
-    // --- 100% AUDIT & SELF-HEALING: DATA INTEGRITY BLOCK ---
-    try {
-        // Fix legacy applicants who have a hiredDate but were incorrectly marked as 'Rejected'
-        // This restores their semantic integrity to 'Hired' while keeping them Archived via isConfirmed
-        await db.update(recruitmentApplicants)
-            .set({ 
-                stage: 'Hired', 
-                status: 'Hired',
-                isConfirmed: true 
-            })
-            .where(
-                and(
-                    eq(recruitmentApplicants.stage, 'Rejected'),
-                    sql`${recruitmentApplicants.hiredDate} IS NOT NULL`
-                )
-            );
-    } catch (healError) {
-        console.error('[RecruitmentController] Self-healing failed:', healError);
-    }
+    // 100% PRECISION: Removed Auto-archive logic to ensure manual confirmation as requested.
 
-    // --- AUTO-ARCHIVE HIRED APPLICANTS AFTER 3 DAYS ---
-    try {
-        const threeDaysAgo = new Date();
-        threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
-        const threeDaysAgoStr = threeDaysAgo.toISOString().slice(0, 19).replace('T', ' ');
-
-        // Update applicants who were hired more than 3 days ago to be Confirmed/Archived, keeping stage 'Hired'
-        await db.update(recruitmentApplicants)
-            .set({ 
-                isConfirmed: true
-            })
-            .where(
-                and(
-                    eq(recruitmentApplicants.stage, 'Hired'),
-                    eq(recruitmentApplicants.isConfirmed, false),
-                    sql`${recruitmentApplicants.hiredDate} <= ${threeDaysAgoStr}`
-                )
-            );
-    } catch (archiveError) {
-        console.error('[RecruitmentController] Auto-archive failed:', archiveError);
-        // Continue even if archiving fails
-    }
-
-    const conditions = [];
+    const conditions: SQL[] = [];
     if (jobId && typeof jobId === 'string' && !isNaN(Number(jobId))) {
       conditions.push(eq(recruitmentApplicants.jobId, Number(jobId)));
     }
@@ -683,7 +828,8 @@ export const getApplicants = async (req: Request, res: Response): Promise<void> 
     if (stage && typeof stage === 'string') {
       const stageStr = typeof stage === 'string' ? stage : '';
       if (stageStr === 'Pending') {
-        conditions.push(or(eq(recruitmentApplicants.stage, 'Applied'), isNull(recruitmentApplicants.stage)));
+        const orCondition = or(eq(recruitmentApplicants.stage, 'Applied'), isNull(recruitmentApplicants.stage));
+        if (orCondition) conditions.push(orCondition);
       } else if (stageStr === 'Reviewed') {
         conditions.push(eq(recruitmentApplicants.stage, 'Screening'));
       } else if (stageStr === 'Interview') {
@@ -701,90 +847,48 @@ export const getApplicants = async (req: Request, res: Response): Promise<void> 
       }
     }
 
-    const applicants = await db.select({
-      id: recruitmentApplicants.id,
-      jobId: recruitmentApplicants.jobId,
-      firstName: recruitmentApplicants.firstName,
-      lastName: recruitmentApplicants.lastName,
-      middleName: recruitmentApplicants.middleName,
-      suffix: recruitmentApplicants.suffix,
-      email: recruitmentApplicants.email,
-      phoneNumber: recruitmentApplicants.phoneNumber,
-      resumePath: recruitmentApplicants.resumePath,
-      photoPath: recruitmentApplicants.photoPath,
-      stage: recruitmentApplicants.stage,
-      status: recruitmentApplicants.status,
-      address: recruitmentApplicants.address,
-      permanentAddress: recruitmentApplicants.permanentAddress,
-      zipCode: recruitmentApplicants.zipCode,
-      permanentZipCode: recruitmentApplicants.permanentZipCode,
-      resHouseBlockLot: recruitmentApplicants.resHouseBlockLot,
-      resStreet: recruitmentApplicants.resStreet,
-      resSubdivision: recruitmentApplicants.resSubdivision,
-      resBarangay: recruitmentApplicants.resBarangay,
-      resCity: recruitmentApplicants.resCity,
-      resProvince: recruitmentApplicants.resProvince,
-      resRegion: recruitmentApplicants.resRegion,
-      permHouseBlockLot: recruitmentApplicants.permHouseBlockLot,
-      permStreet: recruitmentApplicants.permStreet,
-      permSubdivision: recruitmentApplicants.permSubdivision,
-      permBarangay: recruitmentApplicants.permBarangay,
-      permCity: recruitmentApplicants.permCity,
-      permProvince: recruitmentApplicants.permProvince,
-      permRegion: recruitmentApplicants.permRegion,
-      isMeycauayanResident: recruitmentApplicants.isMeycauayanResident,
-      birthDate: recruitmentApplicants.birthDate,
-      birthPlace: recruitmentApplicants.birthPlace,
-      sex: recruitmentApplicants.sex,
-      civilStatus: recruitmentApplicants.civilStatus,
-      height: recruitmentApplicants.height,
-      weight: recruitmentApplicants.weight,
-      bloodType: recruitmentApplicants.bloodType,
-      gsisNumber: recruitmentApplicants.gsisNumber,
-      pagibigNumber: recruitmentApplicants.pagibigNumber,
-      philhealthNumber: recruitmentApplicants.philhealthNumber,
-      umidNumber: recruitmentApplicants.umidNumber,
-      philsysId: recruitmentApplicants.philsysId,
-      tinNumber: recruitmentApplicants.tinNumber,
-      eligibility: recruitmentApplicants.eligibility,
-      eligibilityType: recruitmentApplicants.eligibilityType,
-      eligibilityDate: recruitmentApplicants.eligibilityDate,
-      eligibilityRating: recruitmentApplicants.eligibilityRating,
-      eligibilityPlace: recruitmentApplicants.eligibilityPlace,
-      licenseNo: recruitmentApplicants.licenseNo,
-      eligibilityPath: recruitmentApplicants.eligibilityPath,
-      educationalBackground: recruitmentApplicants.educationalBackground,
-      experience: recruitmentApplicants.experience,
-      skills: recruitmentApplicants.skills,
-      emergencyContact: recruitmentApplicants.emergencyContact,
-      emergencyContactNumber: recruitmentApplicants.emergencyContactNumber,
-      interviewDate: recruitmentApplicants.interviewDate,
-      interviewLink: recruitmentApplicants.interviewLink,
-      interviewPlatform: recruitmentApplicants.interviewPlatform,
-      interviewNotes: recruitmentApplicants.interviewNotes,
-      source: recruitmentApplicants.source,
-      createdAt: recruitmentApplicants.createdAt,
-      hiredDate: recruitmentApplicants.hiredDate,
-      startDate: recruitmentApplicants.startDate,
-      isConfirmed: recruitmentApplicants.isConfirmed,
-      jobTitle: sql`COALESCE(${recruitmentJobs.title}, 'General Application')`,
-      jobRequirements: sql`COALESCE(${recruitmentJobs.requirements}, '')`,
-      jobDepartment: sql`COALESCE(${recruitmentJobs.department}, 'HR')`,
-      jobStatus: sql`COALESCE(${recruitmentJobs.status}, 'Open')`,
-      jobEmploymentType: sql`COALESCE(${recruitmentJobs.employmentType}, 'Full-time')`,
-      jobDutyType: sql`COALESCE(${recruitmentJobs.dutyType}, 'Standard')`,
-      interviewerName: sql`TRIM(CONCAT(${authentication.lastName}, ', ', ${authentication.firstName}, IF(${authentication.middleName} IS NOT NULL && ${authentication.middleName} != '', CONCAT(' ', SUBSTRING(${authentication.middleName}, 1, 1), '.'), ''), IF(${authentication.suffix} IS NOT NULL && ${authentication.suffix} != '', CONCAT(' ', ${authentication.suffix}), '')))`
-    })
-    .from(recruitmentApplicants)
-    .leftJoin(recruitmentJobs, eq(recruitmentApplicants.jobId, recruitmentJobs.id))
-    .leftJoin(authentication, eq(recruitmentApplicants.interviewerId, authentication.id))
-    .where(conditions.length > 0 ? and(...conditions) : undefined)
-    .orderBy(desc(recruitmentApplicants.createdAt));
+    const results = await db.query.recruitmentApplicants.findMany({
+      where: (_applicants, { and }) => conditions.length > 0 ? and(...conditions) : undefined,
+      with: {
+        recruitmentJob: true,
+        educations: true,
+        experiences: true,
+        trainings: true,
+        eligibilities: true,
+        authentication: {
+          columns: {
+            firstName: true,
+            lastName: true,
+            middleName: true,
+            suffix: true
+          }
+        }
+      },
+      orderBy: (applicants, { desc }) => [desc(applicants.createdAt)]
+    });
+
+    // 100% PRECISION: Maintain flat response structure while including relational arrays
+    const applicants = (results as ApplicantWithRelations[]).map(applicant => {
+      const interviewer = applicant.authentication;
+      const interviewerName = interviewer 
+        ? `${interviewer.lastName}, ${interviewer.firstName}${interviewer.middleName ? ' ' + interviewer.middleName.charAt(0) + '.' : ''}${interviewer.suffix ? ' ' + interviewer.suffix : ''}`.trim()
+        : null;
+
+      return {
+        ...applicant,
+        jobTitle: applicant.recruitmentJob?.title || 'General Application',
+        jobRequirements: applicant.recruitmentJob?.requirements || '',
+        jobDepartment: applicant.recruitmentJob?.department || 'HR',
+        jobStatus: applicant.recruitmentJob?.status || 'Open',
+        jobEmploymentType: applicant.recruitmentJob?.employmentType || 'Full-time',
+        jobDutyType: applicant.recruitmentJob?.dutyType || 'Standard',
+        interviewerName
+      };
+    });
 
     res.json({ success: true, applicants });
-  } catch (error) {
-
-    const message = error instanceof Error ? (error as Error).message : 'Unknown database error';
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown database error';
     res.status(500).json({ success: false, message: 'Failed to fetch applicants', error: message });
   }
 };
@@ -792,7 +896,6 @@ export const getApplicants = async (req: Request, res: Response): Promise<void> 
 export const updateApplicantStage = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-
     const parseResult = updateApplicantStageSchema.safeParse(req.body);
 
     if (!parseResult.success) {
@@ -807,7 +910,6 @@ export const updateApplicantStage = async (req: Request, res: Response): Promise
     const { stage, interviewDate, interviewLink, notes, interviewPlatform } = parseResult.data;
 
     // Map stage to status column using a strict map
-    /* eslint-disable @typescript-eslint/naming-convention */
     const statusMap: Record<ApplicantStage, ApplicantStatus> = {
       'Applied': 'Applied',
       'Screening': 'Screening',
@@ -817,7 +919,6 @@ export const updateApplicantStage = async (req: Request, res: Response): Promise
       'Hired': 'Hired',
       'Rejected': 'Rejected'
     };
-    /* eslint-enable @typescript-eslint/naming-convention */
 
     const applicantStatus = statusMap[stage];
 
@@ -834,71 +935,126 @@ export const updateApplicantStage = async (req: Request, res: Response): Promise
     await db.update(recruitmentApplicants)
       .set(updateValues)
       .where(eq(recruitmentApplicants.id, Number(id)));
-    
+
+    type ApplicantWithJob = typeof recruitmentApplicants.$inferSelect & {
+        recruitmentJob: { title: string } | null;
+    };
+
     const applicant = await db.query.recruitmentApplicants.findFirst({
       where: eq(recruitmentApplicants.id, Number(id)),
       with: {
         recruitmentJob: { columns: { title: true } }
       }
-    });
-    
-    if (applicant) {
+    }) as ApplicantWithJob | undefined;
 
-      try {
+    if (!applicant) {
+      res.status(404).json({ success: false, message: 'Applicant not found' });
+      return;
+    }
+
+    // --- NOTIFICATION SYNC: Update existing notifications to reflect the new stage ---
+    try {
+      const { updateNotificationsByReference } = await import('./notificationController.js');
+      
+      let notifType = 'job_application_pending';
+      let notifTitle = 'Application Update';
+      let notifMessage = `Applicant ${applicant.firstName} ${applicant.lastName} stage updated to ${stage}`;
+
+      if (stage === 'Screening') {
+        notifType = 'job_application_screening';
+        notifTitle = 'Application Under Review';
+        notifMessage = `Applicant ${applicant.firstName} ${applicant.lastName} is now Under Review.`;
+      } else if (stage === 'Hired') {
+        notifType = 'job_application_hired';
+        notifTitle = 'Applicant Hired';
+        notifMessage = `Congratulations! ${applicant.firstName} ${applicant.lastName} has been Hired.`;
+      } else if (stage === 'Rejected') {
+        notifType = 'job_application_rejected';
+        notifTitle = 'Application Rejected';
+        notifMessage = `${applicant.firstName} ${applicant.lastName} has been Rejected.`;
+      } else if (stage === 'Initial Interview' || stage === 'Final Interview') {
+        notifType = 'job_application_interview';
+        notifTitle = 'Interview Scheduled';
+        notifMessage = `Interview scheduled for ${applicant.firstName} ${applicant.lastName} (${stage})`;
+      }
+
+      const affected = await updateNotificationsByReference({
+        type: ['job_application', 'job_application_pending', 'job_application_screening', 'job_application_interview', 'job_application_hired', 'job_application_rejected'],
+        referenceId: Number(id),
+        title: notifTitle,
+        message: notifMessage,
+        newType: notifType,
+        link: `/admin-dashboard/recruitment/applicants?id=${id}`,
+        metadata: JSON.stringify({ applicantId: Number(id), status: stage.toLowerCase() })
+      });
+
+      if (affected === 0) {
+        await notifyAdmins({
+          type: notifType,
+          title: notifTitle,
+          message: notifMessage,
+          referenceId: Number(id),
+          link: `/admin-dashboard/recruitment/applicants?id=${id}`,
+          metadata: JSON.stringify({ applicantId: Number(id), status: stage.toLowerCase() })
+        });
+      }
+    } catch (notifError) {
+      console.error('[RecruitmentController] Failed to sync notifications:', notifError);
+    }
+    try {
+      const isInterviewStage = stage === 'Initial Interview' || stage === 'Final Interview';
+      if (isInterviewStage && !interviewDate) {
+        console.warn(`[RecruitmentController] Skipping email for ${stage} as no interviewDate was provided in this request (likely a Kanban drag).`);
+      } else {
         const template = await getTemplateForStage(db, stage);
-        
         if (template) {
-          const variables = {
+          const rawVariables = {
             applicantFirstName: applicant.firstName,
             applicantLastName: applicant.lastName,
+            applicantName: `${applicant.firstName} ${applicant.lastName}`,
             jobTitle: applicant.recruitmentJob?.title || 'the position',
-            interviewDate: interviewDate ? new Date(interviewDate).toLocaleString() : 'TBD',
-            interviewLink: interviewLink || '#',
-            interviewPlatform: interviewPlatform || 'Online',
-            interviewNotes: notes || ''
+            interviewDate: applicant.interviewDate ? new Date(applicant.interviewDate).toLocaleString() : 'TBD',
+            interviewLink: applicant.interviewLink || '#',
+            interviewPlatform: applicant.interviewPlatform || 'Online',
+            interviewNotes: applicant.interviewNotes || ''
           };
           
+          const variables = prepareEmailVariables(rawVariables);
           const subject = replaceVariables(template.subjectTemplate, variables);
           const body = replaceVariables(template.bodyTemplate, variables);
-          
           const attachments: { filename: string; content: string; contentType: string }[] = [];
-          
-          if ((stage === 'Initial Interview' || stage === 'Final Interview') && interviewDate) {
-            try {
-              const dateObj = new Date(interviewDate);
-              const event: ics.EventAttributes = {
-                start: [dateObj.getFullYear(), dateObj.getMonth() + 1, dateObj.getDate(), dateObj.getHours(), dateObj.getMinutes()],
-                duration: { minutes: 60 },
-                title: `Interview: ${applicant.recruitmentJob?.title} - ${applicant.firstName}`,
-                description: `Interview for ${applicant.recruitmentJob?.title}. Platform: ${interviewPlatform}. Link: ${interviewLink}`,
-                location: interviewPlatform ? interviewLink : 'Office',
-                url: interviewLink,
-                status: 'CONFIRMED',
-                busyStatus: 'BUSY',
-                organizer: { name: 'Office of the City Human Resource Management Officer', email: process.env.EMAIL_USER || '' },
-                attendees: [{ name: `${applicant.firstName} ${applicant.lastName}`, email: applicant.email, rsvp: true }]
-              };
-              const { error, value } = ics.createEvent(event);
-              if (!error && value) {
-                attachments.push({ filename: 'invite.ics', content: value, contentType: 'text/calendar' });
-              }
-            } catch (_icsErr) {
-      /* empty */
 
+          if (isInterviewStage && applicant.interviewDate) {
+            try {
+              const icsFile = await generateInterviewICS(applicant, stage, interviewDate || applicant.interviewDate || '');
+              if (icsFile) {
+                attachments.push({ filename: 'interview-schedule.ics', content: icsFile, contentType: 'text/calendar' });
+              }
+            } catch (error) {
+              console.error('[RecruitmentController] Failed to generate ICS:', error);
             }
           }
-          
+
           await sendEmailNotification(applicant.email, subject, body, attachments);
+        } else {
+          console.warn(`[RecruitmentController] No email template found for stage: ${stage}`);
         }
-      } catch (_emailErr) {
-      /* empty */
-
       }
+    } catch (err: unknown) {
+      console.error(`[RecruitmentController] Unexpected error in email notification:`, err instanceof Error ? err.message : 'Unknown error');
     }
-    
-    res.json({ success: true, message: 'Applicant stage updated' });
-  } catch (_error) {
 
+    res.json({ success: true, message: 'Applicant stage updated' });
+
+    await AuditService.log({
+      userId: (req as AuthenticatedRequest).user?.id || null,
+      module: 'RECRUITMENT',
+      action: stage === 'Hired' ? 'HIRE' : 'UPDATE',
+      details: { applicantId: id, newStage: stage },
+      req
+    });
+
+  } catch (error: unknown) {
     res.status(500).json({ success: false, message: 'Failed to update stage' });
   }
 };
@@ -908,7 +1064,16 @@ export const deleteJob = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params; 
     await db.delete(recruitmentJobs).where(eq(recruitmentJobs.id, Number(id))); 
     res.json({ success: true, message: 'Job deleted' }); 
-  } catch (_error) { 
+
+    await AuditService.log({
+      userId: (req as AuthenticatedRequest).user?.id || null,
+      module: 'RECRUITMENT',
+      action: 'DELETE',
+      details: { jobId: id },
+      req
+    });
+
+  } catch (error: unknown) { 
     res.status(500).json({ success: false, message: 'Failed to delete job' }); 
   } 
 };
@@ -968,8 +1133,16 @@ export const updateJob = async (req: Request, res: Response): Promise<void> => {
       .where(eq(recruitmentJobs.id, Number(id)));
       
     res.json({ success: true, message: 'Job updated successfully' }); 
-  } catch (_error) { 
 
+    await AuditService.log({
+      userId: (req as AuthenticatedRequest).user?.id || null,
+      module: 'RECRUITMENT',
+      action: 'UPDATE',
+      details: { jobId: id, updates: Object.keys(updateValues) },
+      req
+    });
+
+  } catch (error: unknown) { 
     res.status(500).json({ success: false, message: 'Failed to update job' }); 
   }
 };
@@ -992,8 +1165,8 @@ export const generateJobFeed = async (_req: Request, res: Response): Promise<voi
     xml += '</source>';   
     res.header('Content-Type', 'application/xml'); 
     res.send(xml); 
-  } catch (error) { 
-    const errorMessage = error instanceof Error ? (error as Error).message : 'Unknown error';
+  } catch (error: unknown) { 
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
     res.status(500).json({ success: false, message: `Failed to generate feed: ${errorMessage}` });
   }
@@ -1029,8 +1202,7 @@ export const getApplicantStats = async (_req: Request, res: Response): Promise<v
     
     res.json(stats); 
   } catch (error) {
-
-    const message = error instanceof Error ? (error as Error).message : 'Unknown database error';
+    const message = error instanceof Error ? error.message : 'Unknown database error';
     res.status(500).json({ success: false, message: 'Failed to fetch applicant stats', error: message });
   }
 };
@@ -1051,7 +1223,7 @@ export const generateOfferLetter = async (req: Request, res: Response): Promise<
 
     const { position, salary, startDate, benefits, additionalTerms } = bodyResult.data;
     
-    const applicant = await db.query.recruitmentApplicants.findFirst({
+    const applicantResult = await db.query.recruitmentApplicants.findFirst({
       where: eq(recruitmentApplicants.id, Number(applicantId)),
       with: {
         recruitmentJob: {
@@ -1060,11 +1232,12 @@ export const generateOfferLetter = async (req: Request, res: Response): Promise<
       }
     });
 
-    if (!applicant) { 
+    if (!applicantResult) { 
       res.status(404).json({ success: false, message: 'Applicant not found' }); 
       return; 
     } 
     
+    const applicant = applicantResult as ApplicantWithRelations;
     const jobTitle = applicant.recruitmentJob?.title;
 
     const doc = new PDFDocument({ margin: 50 }); 
@@ -1111,8 +1284,7 @@ export const generateOfferLetter = async (req: Request, res: Response): Promise<
     doc.text('__________________________'); 
     doc.text('Employee Signature'); 
     doc.end(); 
-  } catch (_error) { 
-
+  } catch (error: unknown) { 
     res.status(500).json({ success: false, message: 'Failed to generate offer letter' }); 
   }
 };
@@ -1133,10 +1305,10 @@ export const assignInterviewer = async (req: Request, res: Response): Promise<vo
 
     const { interviewerId } = bodyResult.data;
     await db.update(recruitmentApplicants)
-      .set({ interviewerId: interviewerId, stage: 'Screening' })
+      .set({ interviewerId: interviewerId })
       .where(eq(recruitmentApplicants.id, Number(applicantId))); 
     res.json({ message: 'Assigned' }); 
-  } catch (_error) {
+  } catch (error: unknown) {
     res.status(500).json({ success: false, message: 'Assignment failed' });
   }
 };
@@ -1195,8 +1367,7 @@ export const generateMeetingLink: AuthenticatedHandler = async (req, res) => {
       meetingLink: result.meetingLink,
       meetingId: result.meetingId
     });
-  } catch (_error) {
-
+  } catch (error: unknown) {
     res.status(500).json({ success: false, message: 'Failed to generate meeting link' });
   }
 };
@@ -1205,35 +1376,42 @@ export const generateApplicationPDF = async (req: Request, res: Response): Promi
   try {
     const { id } = req.params;
     
-    const [applicantData] = await db.select({
-        ...getTableColumns(recruitmentApplicants),
-        jobTitle: sql<string>`COALESCE(${recruitmentJobs.title}, 'General Application')`,
-        jobDepartment: sql<string>`COALESCE(${recruitmentJobs.department}, 'HR')`
-    })
-    .from(recruitmentApplicants)
-    .leftJoin(recruitmentJobs, eq(recruitmentApplicants.jobId, recruitmentJobs.id))
-    .where(eq(recruitmentApplicants.id, Number(id)))
-    .limit(1);
+    const applicantResult = await db.query.recruitmentApplicants.findFirst({
+        where: eq(recruitmentApplicants.id, Number(id)),
+        with: {
+            recruitmentJob: {
+                columns: {
+                    title: true,
+                    department: true
+                }
+            },
+            educations: true,
+            experiences: true,
+            trainings: true,
+            eligibilities: true
+        }
+    });
 
-    if (!applicantData) {
+    if (!applicantResult) {
       res.status(404).json({ success: false, message: 'Applicant not found' });
       return;
     }
 
-    const applicant = applicantData;
+    const applicant = applicantResult as ApplicantWithRelations;
+
+    const jobTitle = applicant.recruitmentJob?.title || 'General Application';
+    const jobDepartment = applicant.recruitmentJob?.department || 'HR';
 
     // CRITICAL: bufferPages: true is REQUIRED for switchToPage() and bufferedPageRange()
     const doc = new PDFDocument({ 
         margin: 30, 
         size: 'LEGAL',
         bufferPages: true,
-        /* eslint-disable @typescript-eslint/naming-convention */
         info: {
             Subject: `Application Update - CHRMO Mey Portal`,
             Title: `Application - ${applicant.lastName}, ${applicant.firstName}`,
             Author: 'City of Meycauayan HRMO'
         }
-        /* eslint-enable @typescript-eslint/naming-convention */
     });
 
     const chunks: Buffer[] = [];
@@ -1317,28 +1495,36 @@ export const generateApplicationPDF = async (req: Request, res: Response): Promi
     const infoWidth = pageWidth - photoSize;
     
     drawBox(30, currentY, infoWidth / 2, 40, 'Employer', 'CITY GOVERNMENT OF MEYCAUAYAN');
-    drawBox(30 + infoWidth / 2, currentY, infoWidth / 2, 40, 'Position applying for', applicant.jobTitle);
+    drawBox(30 + infoWidth / 2, currentY, infoWidth / 2, 40, 'Position applying for', jobTitle);
     
     // Photo box (spans exactly 90 points height to match the 3 rows on the left)
     const photoX = 30 + infoWidth;
     doc.rect(photoX, currentY, photoSize, 90).lineWidth(0.5).strokeColor(colors.black).stroke();
     doc.fontSize(6).font('Helvetica').fillColor(colors.black).text('2x2 PHOTO', photoX, currentY + 40, { align: 'center', width: photoSize });
     
-    if (applicant.photoPath) {
-        const photoFullPath = path.join(process.cwd(), 'uploads/resumes', applicant.photoPath);
+    if (applicant.photo1x1Path) {
+        // 100% PRECISION: Photos are stored in uploads/resumes/ based on find-by-name result
+        const photoFullPath = path.join(process.cwd(), 'uploads/resumes', applicant.photo1x1Path);
         if (fs.existsSync(photoFullPath)) {
             try {
-                doc.image(photoFullPath, photoX + 1, currentY + 1, { width: photoSize - 2, height: 88 });
-            } catch {
-                /* ignore image error */
+                const photoBufferRaw = fs.readFileSync(photoFullPath);
+                if (photoBufferRaw.length > 0) {
+                   const photoBuffer = stripExif(photoBufferRaw);
+                   // 100% PRECISION: Use Buffer for pdfkit doc.image compatibility
+                   doc.image(photoBuffer, photoX + 2, currentY + 2, { width: photoSize - 4, height: 86 });
+                }
+            } catch (err) { 
+                console.error('Error rendering applicant photo in PDF:', err);
             }
+        } else {
+            console.warn('[DEBUG] Photo file NOT found at:', photoFullPath);
         }
     }
 
     currentY += 40;
     
     // Continue info boxes next to photo
-    drawBox(30, currentY, infoWidth, 25, 'Department / Category', applicant.jobDepartment);
+    drawBox(30, currentY, infoWidth, 25, 'Department / Category', jobDepartment);
     currentY += 25;
     
     const submittedDate = applicant.createdAt ? new Date(applicant.createdAt).toLocaleDateString() : '';
@@ -1391,6 +1577,43 @@ export const generateApplicationPDF = async (req: Request, res: Response): Promi
     drawBox(30 + pageWidth * 0.75, currentY, pageWidth / 4, 25, 'Nationality', 'Filipino');
     currentY += 25;
 
+    // --- VII. TRAINING PROGRAMS (PDS VII) ---
+    const trainings = applicant.trainings || [];
+    if (trainings.length > 0) {
+        currentY = drawSectionHeader(currentY, 'VII. LEARNING & DEVELOPMENT (TRAINING PROGRAMS)');
+        const tColW = pageWidth / 6;
+        
+        // Header Row for Table
+        doc.rect(30, currentY, pageWidth, 12).fillAndStroke(colors.grey, colors.black);
+        doc.fontSize(6).font('Helvetica-Bold').fillColor(colors.black);
+        doc.text('TITLE OF TRAINING PROGRAM', 35, currentY + 3, { width: tColW * 2 });
+        doc.text('INCLUSIVE DATES (FROM-TO)', 25 + tColW * 2, currentY + 3, { width: tColW * 1.5, align: 'center' });
+        doc.text('HOURS', 25 + tColW * 3.5, currentY + 3, { width: tColW * 0.5, align: 'center' });
+        doc.text('TYPE', 25 + tColW * 4, currentY + 3, { width: tColW * 0.5, align: 'center' });
+        doc.text('CONDUCTED BY', 25 + tColW * 4.5, currentY + 3, { width: tColW * 1.5 });
+        currentY += 12;
+
+        trainings.forEach((t) => {
+            if (currentY + 25 > doc.page.height - 40) {
+                doc.addPage();
+                currentY = 40;
+            }
+            const dates = `${t.dateFrom || ''} - ${t.dateTo || ''}`;
+            doc.rect(30, currentY, pageWidth, 20).stroke();
+            doc.fontSize(7).font('Helvetica').text(t.title || '', 35, currentY + 6, { width: tColW * 2 - 10, height: 12, ellipsis: true });
+            doc.text(dates, 25 + tColW * 2, currentY + 6, { width: tColW * 1.5, align: 'center' });
+            
+            // Structured HOURS, TYPE, and CONDUCTOR rows
+            const hours = t.hoursNumber?.toString() || '---';
+            const type = t.typeOfLd || '---';
+            doc.text(hours, 25 + tColW * 3.5, currentY + 6, { width: tColW * 0.5, align: 'center' });
+            doc.text(type, 25 + tColW * 4, currentY + 6, { width: tColW * 0.5, align: 'center' });
+            doc.text(t.conductedBy || '', 25 + tColW * 4.5, currentY + 6, { width: tColW * 1.5 - 5, ellipsis: true });
+            currentY += 20;
+        });
+    }
+    currentY += 25;
+
     // Emergency Row
     drawBox(30, currentY, pageWidth * 0.6, 25, 'Emergency Contact Person', applicant.emergencyContact);
     drawBox(30 + pageWidth * 0.6, currentY, pageWidth * 0.4, 25, 'Emergency Contact Number', applicant.emergencyContactNumber);
@@ -1418,55 +1641,120 @@ export const generateApplicationPDF = async (req: Request, res: Response): Promi
     drawBox(30 + pageWidth * 0.85, currentY, pageWidth * 0.15, 14, 'Year Graduated', '', colors.grey);
     currentY += 14;
 
-    // Education Data (Single Row based on DB)
-    drawBox(30, currentY, pageWidth * 0.25, 20, '', applicant.educationalBackground);
-    drawBox(30 + pageWidth * 0.25, currentY, pageWidth * 0.35, 20, '', applicant.schoolName);
-    drawBox(30 + pageWidth * 0.60, currentY, pageWidth * 0.25, 20, '', applicant.course);
-    drawBox(30 + pageWidth * 0.85, currentY, pageWidth * 0.15, 20, '', applicant.yearGraduated);
-    currentY += 20;
+    // Education Data (Dynamic Rows)
+    try {
+        const eduLevels = ['Graduate Studies', 'College', 'Vocational', 'Secondary', 'Elementary'];
+        let hasEdu = false;
+
+        eduLevels.forEach(lvl => {
+            const data = applicant.educations?.find(e => e.level === lvl);
+            if (data?.schoolName) {
+                hasEdu = true;
+                drawBox(30, currentY, pageWidth * 0.25, 20, '', lvl);
+                drawBox(30 + pageWidth * 0.25, currentY, pageWidth * 0.35, 20, '', data.schoolName);
+                drawBox(30 + pageWidth * 0.60, currentY, pageWidth * 0.25, 20, '', data.degreeCourse);
+                drawBox(30 + pageWidth * 0.85, currentY, pageWidth * 0.15, 20, '', data.yearGraduated);
+                currentY += 20;
+            }
+        });
+
+        if (!hasEdu) {
+            drawBox(30, currentY, pageWidth, 20, '', 'No educational background provided');
+            currentY += 20;
+        }
+    } catch (err) {
+        console.error('PDF Education Error:', err);
+        drawBox(30, currentY, pageWidth, 20, '', 'Error loading educational background');
+        currentY += 20;
+    }
 
     // Eligibility Header
     drawBox(30, currentY, pageWidth * 0.3, 14, 'Eligibility / License Name', '', colors.grey);
-    drawBox(30 + pageWidth * 0.3, currentY, pageWidth * 0.25, 14, 'Category / Type', '', colors.grey);
-    drawBox(30 + pageWidth * 0.55, currentY, pageWidth * 0.1, 14, 'Rating', '', colors.grey);
-    drawBox(30 + pageWidth * 0.65, currentY, pageWidth * 0.2, 14, 'Place of Examination', '', colors.grey);
-    drawBox(30 + pageWidth * 0.85, currentY, pageWidth * 0.15, 14, 'Date Released', '', colors.grey);
+    drawBox(30 + pageWidth * 0.3, currentY, pageWidth * 0.25, 14, 'Rating', '', colors.grey);
+    drawBox(30 + pageWidth * 0.55, currentY, pageWidth * 0.15, 14, 'Exam Date', '', colors.grey);
+    drawBox(30 + pageWidth * 0.70, currentY, pageWidth * 0.30, 14, 'License No / Validity', '', colors.grey);
     currentY += 14;
 
-    // Eligibility Data
-    const eligDate = applicant.eligibilityDate ? new Date(applicant.eligibilityDate).toLocaleDateString() : '';
-    const eligType = applicant.eligibilityType?.replace(/_/g, ' ').toUpperCase();
-    drawBox(30, currentY, pageWidth * 0.3, 20, '', applicant.eligibility);
-    drawBox(30 + pageWidth * 0.3, currentY, pageWidth * 0.25, 20, '', eligType);
-    drawBox(30 + pageWidth * 0.55, currentY, pageWidth * 0.1, 20, '', applicant.eligibilityRating);
-    drawBox(30 + pageWidth * 0.65, currentY, pageWidth * 0.2, 20, '', applicant.eligibilityPlace);
-    drawBox(30 + pageWidth * 0.85, currentY, pageWidth * 0.15, 20, '', eligDate);
-    currentY += 20;
-
-    // License Detail
-    drawBox(30, currentY, pageWidth, 20, 'License / ID Number (if applicable)', applicant.licenseNo);
-    currentY += 20;
+    // Eligibility Data (Dynamic Rows)
+    try {
+        const eligs = applicant.eligibilities || [];
+        if (eligs.length > 0) {
+            eligs.forEach(el => {
+                drawBox(30, currentY, pageWidth * 0.3, 20, '', el.eligibilityName);
+                drawBox(30 + pageWidth * 0.3, currentY, pageWidth * 0.25, 20, '', el.rating ? el.rating.toString() : '');
+                drawBox(30 + pageWidth * 0.55, currentY, pageWidth * 0.15, 20, '', el.examDate);
+                const license = el.licenseNumber ? `${el.licenseNumber}${el.validityDate ? ' / ' + el.validityDate : ''}` : '';
+                drawBox(30 + pageWidth * 0.70, currentY, pageWidth * 0.30, 20, '', license);
+                currentY += 20;
+            });
+        } else {
+             drawBox(30, currentY, pageWidth, 20, '', 'No eligibility records provided');
+             currentY += 20;
+        }
+    } catch (err) {
+        console.error('PDF Eligibility Error:', err);
+        drawBox(30, currentY, pageWidth, 20, '', 'Error loading eligibility records');
+        currentY += 20;
+    }
 
     // --- EXPERIENCE & SKILLS ---
-    let remainingSpace = doc.page.height - currentY - 60; // Calculate remaining space on first page
-    
-    // Check if we need a new page for experience block
+    let remainingSpace = doc.page.height - currentY - 60;
     if (remainingSpace < 200) {
         doc.addPage();
-        currentY = 30; // reset to top margin
+        currentY = 30;
     }
 
     currentY = drawSectionHeader(currentY, 'PROFESSIONAL EXPERIENCE & SPECIAL SKILLS');
     
     // Totals
+    const totalTrainingHours = trainings.reduce((sum, t) => sum + (t.hoursNumber || 0), 0);
     drawBox(30, currentY, pageWidth / 2, 25, 'Total Years of Experience', applicant.totalExperienceYears);
-    drawBox(30 + pageWidth / 2, currentY, pageWidth / 2, 25, 'Total Training Hours', 'N/A');
+    drawBox(30 + pageWidth / 2, currentY, pageWidth / 2, 25, 'Total Training Hours', totalTrainingHours > 0 ? totalTrainingHours.toString() : '---');
     currentY += 25;
 
-    // Extensive text areas
-    drawLongBox(30, currentY, pageWidth, 120, 'Work Experience Log (List roles and responsibilities)', applicant.experience);
-    currentY += 120;
+    // Work Experience (Dynamic Rows)
+    drawBox(30, currentY, pageWidth * 0.3, 14, 'Position / Company', '', colors.grey);
+    drawBox(30 + pageWidth * 0.3, currentY, pageWidth * 0.2, 14, 'Inclusive Dates', '', colors.grey);
+    drawBox(30 + pageWidth * 0.5, currentY, pageWidth * 0.2, 14, 'Monthly Salary / SG', '', colors.grey);
+    drawBox(30 + pageWidth * 0.7, currentY, pageWidth * 0.3, 14, 'Status / Gov?', '', colors.grey);
+    currentY += 14;
+
+    try {
+        const exps = applicant.experiences || [];
+        if (exps.length > 0) {
+            exps.forEach(exp => {
+                const posComp = `${exp.positionTitle}\n${exp.companyName}`;
+                const dates = `${exp.dateFrom} - ${exp.dateTo || 'Present'}`;
+                const mSalary = exp.monthlySalary;
+                const monthlySal = mSalary ? String(mSalary) : '---';
+                const salSg = `${monthlySal}${exp.salaryGrade ? ' / ' + exp.salaryGrade : ''}`;
+                const statusGov = `${exp.appointmentStatus || '---'}${exp.isGovernment ? ' (GOV)' : ''}`;
+
+                if (currentY + 40 > doc.page.height - 60) {
+                     doc.addPage();
+                     currentY = 30;
+                }
+
+                drawBox(30, currentY, pageWidth * 0.3, 40, '', posComp);
+                drawBox(30 + pageWidth * 0.3, currentY, pageWidth * 0.2, 40, '', dates);
+                drawBox(30 + pageWidth * 0.5, currentY, pageWidth * 0.2, 40, '', salSg);
+                drawBox(30 + pageWidth * 0.7, currentY, pageWidth * 0.3, 40, '', statusGov);
+                currentY += 40;
+            });
+        } else {
+            drawBox(30, currentY, pageWidth, 20, '', 'No work experience records provided');
+            currentY += 20;
+        }
+    } catch (err) {
+        console.error('PDF Experience Error:', err);
+        drawBox(30, currentY, pageWidth, 20, '', 'Error loading work experience records');
+        currentY += 20;
+    }
     
+    if (currentY + 80 > doc.page.height - 60) {
+        doc.addPage();
+        currentY = 30;
+    }
     drawLongBox(30, currentY, pageWidth, 80, 'Core Competencies & Skills (List any special skills or experience)', applicant.skills);
     currentY += 80;
 
@@ -1504,8 +1792,8 @@ export const generateApplicationPDF = async (req: Request, res: Response): Promi
     }
 
     doc.end();
-    } catch (error) {
-    const errorMessage = error instanceof Error ? (error as Error).message : 'Unknown error';
+    } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     res.status(500).json({ success: false, message: `Failed to generate PDF: ${errorMessage}` });
     }
     };
@@ -1560,13 +1848,15 @@ export const generateApplicationPDF = async (req: Request, res: Response): Promi
         hour: '2-digit', minute: '2-digit', hour12: true 
     });
 
-    const variables = {
+    const rawVariables = {
         applicantFirstName: applicant.firstName,
         applicantLastName: applicant.lastName,
         jobTitle: job?.title || 'the position',
         startDate: formattedStart,
         department: job?.department || 'HR'
     };
+
+    const variables = prepareEmailVariables(rawVariables);
 
     let subject = `Start of Duty Notification - ${variables.jobTitle}`;
     let body = `Dear ${applicant.firstName},\n\nCongratulations! We are pleased to inform you that your official start date is ${variables.startDate}. Please proceed to Office of the City Human Resource Management Officer to register your initial data from your application form.`;
@@ -1597,29 +1887,41 @@ export const generateApplicationPDF = async (req: Request, res: Response): Promi
     }
 
     await sendEmailNotification(applicant.email, subject, body, attachments);
-    } catch (emailErr) {
+    } catch (emailErr: unknown) { // Harden catch block
     console.error('[RecruitmentController] Confirm email failed:', emailErr);
     }
 
     res.status(200).json({ success: true, message: 'Applicant confirmed and notification sent.' });
-    } catch (_error) {
-    console.error('[RecruitmentController] confirmHiredApplicant failed:', _error);
+
+    await AuditService.log({
+      userId: (req as AuthenticatedRequest).user?.id || null,
+      module: 'RECRUITMENT',
+      action: 'HIRE',
+      details: { applicantId: id, startDate },
+      req
+    });
+
+  } catch (error: unknown) { // Harden catch block
+    console.error('[RecruitmentController] confirmHiredApplicant failed:', error);
     res.status(500).json({ success: false, message: 'Failed to confirm applicant' });
-    }
-    };
+  }
+};
+
 export const generatePhotoPDF = async (req: Request, res: Response): Promise<void> => {
     try {
         const { id } = req.params;
-        const applicant = await db.query.recruitmentApplicants.findFirst({
+        const applicantResult = await db.query.recruitmentApplicants.findFirst({
             where: eq(recruitmentApplicants.id, Number(id))
         });
 
-        if (!applicant || !applicant.photoPath) {
+        if (!applicantResult || !applicantResult.photo1x1Path) {
             res.status(404).json({ success: false, message: '2x2 Photo not found' });
             return;
         }
 
-        const photoFullPath = path.join(process.cwd(), 'uploads/resumes', applicant.photoPath);
+        const applicant = applicantResult as ApplicantWithRelations;
+
+        const photoFullPath = path.join(process.cwd(), 'uploads/resumes', applicant.photo1x1Path || '');
         if (!fs.existsSync(photoFullPath)) {
             res.status(404).json({ success: false, message: 'Physical photo file missing' });
             return;
@@ -1652,7 +1954,7 @@ export const generatePhotoPDF = async (req: Request, res: Response): Promise<voi
         }
 
         doc.end();
-    } catch (error) {
+    } catch (error: unknown) {
         res.status(500).json({ success: false, message: 'Failed to generate photo PDF' });
     }
 };
@@ -1678,8 +1980,8 @@ export const saveInterviewNotes = async (req: Request, res: Response): Promise<v
       .where(eq(recruitmentApplicants.id, Number(applicantId)));
 
     res.json({ success: true, message: 'Interview notes saved successfully' });
-  } catch (error) {
-    const errorMessage = error instanceof Error ? (error as Error).message : 'Unknown error';
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
     res.status(500).json({ success: false, message: `Failed to save notes: ${errorMessage}` });
   }
@@ -1705,8 +2007,7 @@ export const getSecurityLogs = async (_req: Request, res: Response): Promise<voi
         .limit(100);
 
         res.status(200).json({ success: true, logs });
-    } catch (_error) {
-
+    } catch (error: unknown) {
         res.status(500).json({ success: false, message: 'Failed to fetch security logs' });
     }
 };
@@ -1740,8 +2041,7 @@ export const deleteApplicant = async (req: Request, res: Response): Promise<void
         await db.delete(recruitmentApplicants).where(eq(recruitmentApplicants.id, applicantId));
         
         res.status(200).json({ success: true, message: 'Applicant permanently deleted' });
-    } catch (_error) {
-
+    } catch (error: unknown) {
         res.status(500).json({ success: false, message: 'Failed to delete applicant' });
     }
 };
@@ -1779,7 +2079,7 @@ export const verifyApplicantOTP = async (req: Request, res: Response): Promise<v
             success: true, 
             message: 'Email verified successfully! Your application is now being processed.' 
         });
-    } catch (error) {
+    } catch (error: unknown) {
         console.error('[RecruitmentController] verifyApplicantOTP failed:', error);
         res.status(500).json({ success: false, message: 'Verification failed' });
     }

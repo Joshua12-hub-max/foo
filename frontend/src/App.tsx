@@ -80,7 +80,6 @@ const Login = lazy(() => import("./Authentication/Login"));
 const SetupPortal = lazy(() => import("./Authentication/SetupPortal"));
 const VerifyAccount = lazy(() => import("./Authentication/VerifyAccount"));
 const ForgotPassword = lazy(() => import("./Authentication/ForgotPassword"));
-const ResetPassword = lazy(() => import("./Authentication/ResetPassword"));
 const VerifyApplicant = lazy(() => import("./Authentication/VerifyApplicant"));
 const TestBio = lazy(() => import("./pages/TestBio"));
 
@@ -303,13 +302,7 @@ export default function App() {
         />
         <Route
           path="/reset-password"
-          element={
-            <PublicRoute>
-              <Suspense fallback={<PageLoader />}>
-                <ResetPassword />
-              </Suspense>
-            </PublicRoute>
-          }
+          element={<Navigate to="/forgot-password" replace />}
         />
 
         {/* Protected routes - Admin/HR Dashboard with nested routes */}

@@ -11,6 +11,8 @@ interface CreateNotificationParams {
   message: string;
   type: string;
   referenceId?: number | null;
+  link?: string | null;
+  metadata?: string | null;
 }
 
 // ============================================================================
@@ -26,8 +28,11 @@ export const createNotification = async ({
   title,
   message,
   type,
-  referenceId
+  referenceId,
+  link,
+  metadata
 }: CreateNotificationParams): Promise<number> => {
+  console.log(`[NOTIF] Creating notification for recipient: ${recipientId}, type: ${type}`);
   const [result] = await db.insert(notifications).values({
     recipientId,
     senderId: senderId || null,
@@ -35,7 +40,9 @@ export const createNotification = async ({
     message,
     type,
     referenceId: referenceId || null,
-    status: 'unread'
+    status: 'unread',
+    link: link || null,
+    metadata: metadata || null
   });
   return result.insertId;
 };
@@ -48,14 +55,18 @@ export const updateNotificationsByReference = async ({
   referenceId,
   title,
   message,
-  newType
+  newType,
+  link,
+  metadata
 }: {
   type: string | string[];
   referenceId: number;
   title: string;
   message: string;
   newType?: string;
-}): Promise<void> => {
+  link?: string | null;
+  metadata?: string | null;
+}): Promise<number> => {
   const types = Array.isArray(type) ? type : [type];
   const updateData: Partial<typeof notifications.$inferInsert> = {
     title,
@@ -66,7 +77,14 @@ export const updateNotificationsByReference = async ({
   if (newType) {
     updateData.type = newType;
   }
+  if (link !== undefined) {
+    updateData.link = link;
+  }
+  if (metadata !== undefined) {
+    updateData.metadata = metadata;
+  }
 
+  console.log(`[NOTIF] Updating notifications for referenceId: ${referenceId}, types: ${JSON.stringify(types)}`);
   const [result] = await db.update(notifications)
     .set(updateData)
     .where(and(
@@ -79,26 +97,31 @@ export const updateNotificationsByReference = async ({
   } else {
     console.log(`[NOTIF] Updated ${result.affectedRows} notifications for referenceId: ${referenceId}`);
   }
+  return result.affectedRows;
 };
 
 /**
  * Notify all admins/hr
  */
 export const notifyAdmins = async ({
-  senderId,
   title,
   message,
   type,
   referenceId,
+  link,
+  metadata,
+  senderId,
   excludeId
 }: Omit<CreateNotificationParams, 'recipientId'> & { excludeId?: string }): Promise<void> => {
   try {
     const admins = await db.select({ employeeId: authentication.employeeId })
       .from(authentication)
       .where(and(
-        inArray(authentication.role, ['Administrator', 'Human Resource']),
+        inArray(authentication.role, ['administrator', 'human resource', 'Administrator', 'Human Resource']),
         excludeId ? ne(authentication.employeeId, excludeId) : undefined
       ));
+
+    console.log(`[NOTIF] Found ${admins.length} admins to notify: ${JSON.stringify(admins)}`);
 
     const notificationPromises = admins.map((admin) =>
       createNotification({
@@ -107,14 +130,15 @@ export const notifyAdmins = async ({
         title,
         message,
         type,
-        referenceId
+        referenceId,
+        link,
+        metadata
       })
     );
 
     await Promise.all(notificationPromises);
-  } catch (_error) {
-      /* empty */
-
+  } catch (error) {
+    console.error('[NOTIF ERROR] notifyAdmins failed:', error instanceof Error ? error.message : String(error));
   }
 };
 
@@ -127,6 +151,8 @@ export const notifyAllUsers = async ({
   message,
   type,
   referenceId,
+  link,
+  metadata,
   excludeId
 }: Omit<CreateNotificationParams, 'recipientId'> & { excludeId?: string }): Promise<void> => {
   try {
@@ -141,14 +167,15 @@ export const notifyAllUsers = async ({
         title,
         message,
         type,
-        referenceId
+        referenceId,
+        link,
+        metadata
       })
     );
 
     await Promise.all(notificationPromises);
-  } catch (_error) {
-      /* empty */
-
+  } catch (error) {
+    console.error('[NOTIF ERROR] notifyAllUsers failed:', error instanceof Error ? error.message : String(error));
   }
 };
 
@@ -162,6 +189,8 @@ export const notifyDepartment = async ({
   message,
   type,
   referenceId,
+  link,
+  metadata,
   excludeId
 }: Omit<CreateNotificationParams, 'recipientId'> & { departmentId: number; excludeId?: string }): Promise<void> => {
   try {
@@ -180,13 +209,15 @@ export const notifyDepartment = async ({
         title,
         message,
         type,
-        referenceId
+        referenceId,
+        link,
+        metadata
       })
     );
 
     await Promise.all(notificationPromises);
-  } catch (_error) {
-    /* empty */
+  } catch (error) {
+    console.error('[NOTIF ERROR] notifyDepartment failed:', error instanceof Error ? error.message : String(error));
   }
 };
 
@@ -199,11 +230,17 @@ export const getNotifications = async (req: Request, res: Response): Promise<voi
     const authReq = req as AuthenticatedRequest;
     const employeeId = authReq.user.employeeId || authReq.user.id;
 
+    const limit = Number(req.query.limit) || 50;
+    const offset = Number(req.query.offset) || 0;
+
+    console.log(`[NOTIF] Fetching for employeeId: ${employeeId} (Type: ${typeof employeeId})`);
+
     const notifs = await db.select()
       .from(notifications)
       .where(eq(notifications.recipientId, String(employeeId)))
       .orderBy(desc(notifications.createdAt))
-      .limit(50);
+      .limit(limit)
+      .offset(offset);
 
     const [countResult] = await db.select({ count: sql<number>`count(*)` })
       .from(notifications)
@@ -215,16 +252,15 @@ export const getNotifications = async (req: Request, res: Response): Promise<voi
     res.status(200).json({
       success: true,
       notifications: notifs,
-      unreadCount: countResult.count
+      unreadCount: countResult?.count || 0
     });
-    } catch (_error) {
-
+  } catch (error) {
     res.status(500).json({ success: false, message: 'Failed to fetch notifications' });
-    }
-    };
+  }
+};
 
-    export const getUnreadCount = async (req: Request, res: Response): Promise<void> => {
-    try {
+export const getUnreadCount = async (req: Request, res: Response): Promise<void> => {
+  try {
     const authReq = req as AuthenticatedRequest;
     const employeeId = authReq.user.employeeId || authReq.user.id;
 
@@ -236,9 +272,7 @@ export const getNotifications = async (req: Request, res: Response): Promise<voi
       ));
 
     res.status(200).json({ success: true, unreadCount: result.count });
-
   } catch (_error) {
-
     res.status(500).json({ success: false, message: 'Failed to fetch unread count' });
   }
 };
@@ -251,7 +285,6 @@ export const markAsRead = async (req: Request, res: Response): Promise<void> => 
       .where(eq(notifications.notificationId, Number(id)));
     res.status(200).json({ message: 'Notification marked as read' });
   } catch (_error) {
-
     res.status(500).json({ message: 'Failed to mark notification as read' });
   }
 };
@@ -262,9 +295,6 @@ export const deleteNotification = async (req: Request, res: Response): Promise<v
     await db.delete(notifications).where(eq(notifications.notificationId, Number(id)));
     res.status(200).json({ message: 'Notification deleted' });
   } catch (_error) {
-
     res.status(500).json({ message: 'Failed to delete notification' });
   }
 };
-
-

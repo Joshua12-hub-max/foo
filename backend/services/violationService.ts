@@ -213,6 +213,7 @@ const penaltyMatrix: Record<string, { regular: Penalty[]; joCos: Penalty[] }> = 
       ]
     },
     // C2+E1 FIX: Key must match camelCase violationType enum (was snake_case → crash)
+    /* eslint-disable @typescript-eslint/naming-convention */
     'habitualUndertime-Simple Misconduct': {
       regular: [
         { penalty: 'Reprimand (Stern Warning)', memoType: 'Reprimand', severity: 'minor' },
@@ -237,6 +238,7 @@ const penaltyMatrix: Record<string, { regular: Penalty[]; joCos: Penalty[] }> = 
         { penalty: 'Termination of Contract', memoType: 'Termination Notice', severity: 'terminal' }
       ]
     }
+    /* eslint-enable @typescript-eslint/naming-convention */
 };
 
 const generateMemoContent = (offense: ViolationOffense, penalty: Penalty, employeeTypeStr: string, employeeIdStr: string): string => {

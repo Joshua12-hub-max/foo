@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
+import { JsonValue } from '@/types';
 
 export interface WizardStep {
   id: string; // unique identifier for the step (e.g., 'personal-info', 'review')
@@ -12,17 +13,17 @@ export interface WizardStep {
 interface FormWizardState {
   currentStepIndex: number;
   steps: WizardStep[];
-  formData: Record<string, any>;
+  formData: Record<string, JsonValue>;
   isSubmitting: boolean;
   errors: Record<string, string>;
 }
 
 interface FormWizardActions {
-  initWizard: (steps: WizardStep[], initialData?: Record<string, any>) => void;
+  initWizard: (steps: WizardStep[], initialData?: Record<string, JsonValue>) => void;
   nextStep: () => boolean; // Returns success
   prevStep: () => boolean; // Returns success
   goToStep: (index: number) => void;
-  updateFormData: (data: Record<string, any>) => void;
+  updateFormData: (data: Record<string, JsonValue>) => void;
   setStepValidity: (stepIndex: number, isValid: boolean) => void;
   setStepCompletion: (stepIndex: number, isComplete: boolean) => void;
   setSubmitting: (isSubmitting: boolean) => void;

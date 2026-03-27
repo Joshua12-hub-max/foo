@@ -15,6 +15,11 @@ const INITIAL_FORM_DATA: JobFormData = {
   requireCivilService: false,
   requireGovernmentIds: false,
   requireEducationExperience: false,
+  education: '',
+  experience: '',
+  training: '',
+  eligibility: '',
+  otherQualifications: '',
 };
 
 const useJobForm = () => {
@@ -48,11 +53,16 @@ const useJobForm = () => {
       requireCivilService: job.requireCivilService,
       requireGovernmentIds: job.requireGovernmentIds,
       requireEducationExperience: job.requireEducationExperience,
+      education: job.education || '',
+      experience: job.experience || '',
+      training: job.training || '',
+      eligibility: job.eligibility || '',
+      otherQualifications: job.otherQualifications || '',
     });
     setIsFormOpen(true);
   }, []);
 
-  const handleFormChange = useCallback((field: keyof JobFormData, value: string) => {
+  const handleFormChange = useCallback((field: keyof JobFormData, value: string | boolean | File | null) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   }, []);
 

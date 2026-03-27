@@ -77,7 +77,7 @@ export const updateTardinessSummary = async (
       }
     });
 
-    console.log(`[TARDINESS] Updated summary for ${employeeId} ${month}/${year}. TargetHours=${dailyTargetHours}, DaysEq=${daysEquivalent}`);
+    console.warn(`[TARDINESS] Updated summary for ${employeeId} ${month}/${year}. TargetHours=${dailyTargetHours}, DaysEq=${daysEquivalent}`);
   } catch (error: unknown) {
     console.error('[TARDINESS] Error updating summary:', error);
   }

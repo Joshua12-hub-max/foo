@@ -1,6 +1,8 @@
 import type { Request, Response, NextFunction } from 'express';
 import type { RowDataPacket, ResultSetHeader } from 'mysql2/promise';
 
+export type JsonValue = string | number | boolean | null | undefined | { [key: string]: JsonValue } | JsonValue[];
+
 // ============================================================================
 // Express Extensions
 // ============================================================================
@@ -49,7 +51,7 @@ export type AuthenticatedHandler = (
 /**
  * Standard API response wrapper
  */
-export interface ApiResponse<T = unknown> {
+export interface ApiResponse<T = Record<string, string | number | boolean | null> | null> {
   success: boolean;
   message: string;
   data?: T;
@@ -210,7 +212,7 @@ export type AppointmentType =
 
 export type PerformanceRatingScale = 1 | 2 | 3 | 4 | 5;
 
-export type EmploymentType = 
+export type EmploymentType =
   | 'Full-time'
   | 'Part-time'
   | 'Contractual'
@@ -219,8 +221,10 @@ export type EmploymentType =
   | 'Temporary'
   | 'Probationary'
   | 'Casual'
-  | 'Permanent';
-
+  | 'Permanent'
+  | 'Contract of Service'
+  | 'JO'
+  | 'COS';
 export type JobStatus = 
   | 'Open'
   | 'Closed'

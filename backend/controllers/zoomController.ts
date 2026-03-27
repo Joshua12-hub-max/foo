@@ -127,8 +127,10 @@ const getZoomAccessToken = async (): Promise<string> => {
           /* eslint-enable @typescript-eslint/naming-convention */
         },
         headers: {
+          /* eslint-disable @typescript-eslint/naming-convention */
           'Authorization': `Basic ${credentials}`,
           'Content-Type': 'application/x-www-form-urlencoded',
+          /* eslint-enable @typescript-eslint/naming-convention */
         },
       }
     );
@@ -140,7 +142,7 @@ const getZoomAccessToken = async (): Promise<string> => {
     };
 
     return response.data.access_token;
-  } catch (error) {
+  } catch (_error) {
     // const _err = error as Error;
 
     throw new Error('Failed to authenticate with Zoom. Please check your credentials.');
@@ -180,7 +182,7 @@ export const getZoomStatus = async (_req: Request, res: Response): Promise<void>
         message: 'Zoom credentials are invalid: ' + getErrorMessage(err) 
       });
     }
-  } catch (error) {
+  } catch (_error) {
     // const _err = error as Error;
 
     res.status(500).json({ message: 'Failed to check Zoom status' });
@@ -327,7 +329,7 @@ export const generateZoomSignature = async (req: Request, res: Response): Promis
       signature: jwtSignature,
       sdkKey,
     });
-  } catch (error) {
+  } catch (_error) {
     // const _err = error as Error;
 
     res.status(500).json({ message: 'Failed to generate Zoom signature' });

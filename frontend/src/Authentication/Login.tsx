@@ -87,36 +87,13 @@ const Login: React.FC = () => {
     navigate("/setup-portal");
   };
 
-  const [identifierError, setIdentifierError] = useState(false);
-  const [passwordError, setPasswordError] = useState(false);
 
-  const gibberishRegex = /^(.)\1{4,}|^[bcdfghjklmnpqrstvwxz]{10,}$|qwerty|asdfgh|zxcvbn|qwqewrwff/i;
 
   const handleLogin = async (e: FormEvent) => {
     e.preventDefault();
     
-    // Reset errors
-    setIdentifierError(false);
-    setPasswordError(false);
-    setError(null);
-
     // Validate
-    let hasError = false;
-    if (gibberishRegex.test(identifier)) {
-        setIdentifierError(true);
-        hasError = true;
-    }
-    if (gibberishRegex.test(password)) {
-        setPasswordError(true);
-        hasError = true;
-    }
-
-    if (hasError) {
-        const msg = "Please enter valid credentials, avoid random characters";
-        setError(msg);
-        showToast(msg, "error");
-        return;
-    }
+    setError(null);
 
     setLoading(true);
 
@@ -280,14 +257,13 @@ const Login: React.FC = () => {
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
             <label className={labelClass}>Email or Employee ID</label>
-            <div className={`${inputContainerClass} ${identifierError ? "!border-red-500 ring-2 ring-red-100 bg-red-50/10" : ""}`}>
+            <div className={inputContainerClass}>
               <Mail className={iconClass} size={16} />
               <input
                 type="text"
                 value={identifier}
                 onChange={(e) => {
                     setIdentifier(e.target.value);
-                    if (identifierError) setIdentifierError(false);
                 }}
                 className={inputClass}
                 placeholder="name@agency.gov.ph"
@@ -303,14 +279,13 @@ const Login: React.FC = () => {
                 Forgot?
               </Link>
             </div>
-            <div className={`${inputContainerClass} ${passwordError ? "!border-red-500 ring-2 ring-red-100 bg-red-50/10" : ""}`}>
+            <div className={inputContainerClass}>
               <Lock className={iconClass} size={16} />
               <input
                 type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => {
                     setPassword(e.target.value);
-                    if (passwordError) setPasswordError(false);
                 }}
                 className={inputClass}
                 placeholder="••••••••"

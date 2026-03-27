@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { JsonValue } from '@/types';
 
 interface CalendarState {
   modals: {
@@ -11,14 +12,14 @@ interface CalendarState {
     deleteConfirm: boolean;
     eventDetails: boolean;
   };
-  selectedItem: unknown | null;
+  selectedItem: JsonValue | null;
   selectedType: 'event' | 'announcement' | 'schedule' | null;
   currentView: string;
 }
 
 interface CalendarActions {
   setModal: (modalName: keyof CalendarState['modals'], isOpen: boolean) => void;
-  setSelectedItem: (item: unknown, type: CalendarState['selectedType']) => void;
+  setSelectedItem: (item: JsonValue, type: CalendarState['selectedType']) => void;
   setCurrentView: (view: string) => void;
   closeAllModals: () => void;
 }

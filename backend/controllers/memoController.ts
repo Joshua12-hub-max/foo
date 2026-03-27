@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { db } from '../db/index.js';
-import { employeeMemos, authentication, memoSequences, plantillaPositions, departments } from '../db/schema.js';
+import { employeeMemos, authentication, memoSequences, plantillaPositions, departments, pdsHrDetails } from '../db/schema.js';
 import { eq, and, sql, desc, or, like, count } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/mysql-core';
 import { createNotification, updateNotificationsByReference } from './notificationController.js';
@@ -193,7 +193,8 @@ export const getAllMemos = async (req: Request, res: Response): Promise<void> =>
     })
     .from(employeeMemos)
     .leftJoin(employee, eq(employeeMemos.employeeId, employee.id))
-    .leftJoin(department, eq(employee.departmentId, department.id))
+    .leftJoin(pdsHrDetails, eq(employee.id, pdsHrDetails.employeeId))
+    .leftJoin(department, eq(pdsHrDetails.departmentId, department.id))
     .leftJoin(author, eq(employeeMemos.authorId, author.id))
     .where(where)
     .orderBy(desc(employeeMemos.createdAt))
@@ -294,7 +295,8 @@ export const getMemoById = async (req: Request, res: Response): Promise<void> =>
     })
     .from(employeeMemos)
     .innerJoin(employee, eq(employeeMemos.employeeId, employee.id))
-    .leftJoin(department, eq(employee.departmentId, department.id))
+    .leftJoin(pdsHrDetails, eq(employee.id, pdsHrDetails.employeeId))
+    .leftJoin(department, eq(pdsHrDetails.departmentId, department.id))
     .innerJoin(author, eq(employeeMemos.authorId, author.id))
     .where(eq(employeeMemos.id, Number(id)));
 

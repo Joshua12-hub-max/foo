@@ -65,19 +65,19 @@ export default function VerifyApplicant() {
     return (
       <AuthLayout title="Application Verified">
         <div className="space-y-8 text-center animate-in zoom-in duration-300">
-          <div className="mx-auto w-20 h-20 bg-green-100 rounded-full flex items-center justify-center">
+          <div className="mx-auto w-20 h-20 bg-green-50 rounded-full flex items-center justify-center border border-green-100 shadow-sm">
             <UserCheck className="h-10 w-10 text-green-600" />
           </div>
           
           <div className="space-y-2">
-            <h3 className="text-xl font-black text-gray-900">Verification Complete!</h3>
-            <p className="text-sm text-gray-500 font-medium">
+            <h3 className="text-xl font-black text-slate-900">Verification Complete!</h3>
+            <p className="text-sm text-slate-500 font-medium leading-relaxed">
                 Thank you for verifying your email. Your job application has been successfully submitted and is now under review by our HR team.
             </p>
           </div>
 
-          <div className="bg-blue-50 rounded-2xl p-6 border border-blue-100 space-y-4 text-left">
-            <p className="text-xs text-blue-700 font-medium leading-relaxed">
+          <div className="bg-green-50 rounded-2xl p-6 border border-green-100 space-y-4 text-left">
+            <p className="text-xs text-green-700 font-medium leading-relaxed">
                 <strong>Next Steps:</strong> We will notify you via email regarding the status of your application. Please keep an eye on your inbox for interview invitations or further instructions.
             </p>
           </div>
@@ -100,12 +100,12 @@ export default function VerifyApplicant() {
     <AuthLayout title="Verify Your Application">
       <div className="space-y-6">
         <div className="text-center space-y-2">
-            <div className="mx-auto w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                <ShieldCheck className="h-6 w-6 text-blue-600" />
+            <div className="mx-auto w-12 h-12 bg-green-50 rounded-full flex items-center justify-center border border-green-100">
+                <ShieldCheck className="h-6 w-6 text-green-600" />
             </div>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-slate-500">
                 To complete your application, please enter the 6-digit verification code we sent to: <br/>
-                <span className="font-bold text-gray-900">{email}</span>
+                <span className="font-bold text-slate-900">{email}</span>
             </p>
         </div>
 
@@ -138,7 +138,7 @@ export default function VerifyApplicant() {
         </form>
 
         <div className="text-center pt-4">
-             <Link to="/careers" className="text-xs font-bold text-gray-400 uppercase tracking-widest hover:text-gray-600 transition">
+             <Link to="/careers" className="text-xs font-bold text-slate-400 uppercase tracking-widest hover:text-green-600 transition">
                 Cancel Application
              </Link>
         </div>

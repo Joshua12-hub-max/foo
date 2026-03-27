@@ -4,6 +4,7 @@ import { X, Loader2 } from 'lucide-react';
 import { useLeavePolicy } from '@/hooks/useLeavePolicy';
 import { addCreditSchema, AddCreditInput } from '@/schemas/creditsSchema';
 import Combobox from '@/components/Custom/Combobox';
+import { LEAVE_TYPES } from '@/types/leave.types';
 
 interface EmployeeOption {
   employeeId: string;
@@ -21,8 +22,8 @@ interface AddCreditModalProps {
 }
 
 const AddCreditModal = ({ isOpen, onClose, onSubmit, employees, isLoadingEmployees, isSubmitting }: AddCreditModalProps) => {
-  const { data: policy, isLoading: isLoadingPolicy } = useLeavePolicy();
-  const creditTypes = policy ? Array.from(new Set(Object.values(policy.leaveToCreditMap))) : [];
+  const { isLoading: isLoadingPolicy } = useLeavePolicy();
+  const creditTypes = LEAVE_TYPES;
 
   const {
     register,

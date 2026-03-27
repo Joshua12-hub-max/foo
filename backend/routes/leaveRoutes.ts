@@ -47,6 +47,7 @@ const router: Router = Router();
 
 router.post('/apply', verifyToken, restrictSuspended, upload.single('attachment'), applyLeave as never);
 router.get('/my-leaves', verifyToken, getMyLeaves as never);
+router.get('/my-applications', verifyToken, getMyLeaves as never); // Alias for frontend compatibility
 router.get('/my-credits', verifyToken, getMyCredits as never);
 router.get('/my-ledger', verifyToken, getMyLedger as never);
 
@@ -56,6 +57,7 @@ router.get('/my-ledger', verifyToken, getMyLedger as never);
 
 // Applications Management
 router.get('/all', verifyAdmin, getAllLeaves as never);
+router.get('/applications/all', verifyAdmin, getAllLeaves as never); // Alias for frontend compatibility
 router.put('/:id/process', verifyAdmin, upload.single('adminForm'), processLeave as never);
 router.put('/:id/finalize', verifyAdmin, upload.single('finalAttachment'), finalizeLeave as never);
 router.put('/:id/approve', verifyAdmin, approveLeave as never);
@@ -65,12 +67,14 @@ router.put('/:id/reject', verifyAdmin, rejectLeave as never);
 router.get('/credits/all', verifyAdmin, getAllEmployeeCredits as never);
 router.get('/credits/:employeeId', verifyAdmin, getEmployeeCredits as never);
 router.put('/credits/:employeeId', verifyAdmin, updateEmployeeCredit as never);
+router.delete('/credits/:employeeId', verifyAdmin, deleteEmployeeCredit as never); // Alias for employeeId deletion
 router.delete('/credits/:id', verifyAdmin, deleteEmployeeCredit as never);
 router.post('/accrue-monthly', verifyAdmin, accrueMonthlyCredits as never);
 
 // Ledger and History
 router.get('/ledger/:employeeId', verifyAdmin, getEmployeeLedger as never);
 router.get('/lwop/:employeeId', verifyAdmin, getLWOPSummary as never);
+router.get('/lwop-summary/:employeeId', verifyAdmin, getLWOPSummary as never); // Alias for frontend compatibility
 router.get('/service-record/:employeeId', verifyAdmin, getServiceRecord as never);
 router.get('/service-record/:employeeId/lwop-total', verifyAdmin, getTotalLWOPForRetirement as never);
 

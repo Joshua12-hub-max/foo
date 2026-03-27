@@ -6,6 +6,7 @@ export interface NavChild {
   name: string;
   action: string;
   path?: string;
+  count?: number;
 }
 
 export interface NavItem {
@@ -13,6 +14,7 @@ export interface NavItem {
   icon: LucideIcon;
   path?: string;
   action?: string;
+  count?: number;
   children?: NavChild[]; 
 }
 
@@ -106,6 +108,11 @@ export default function Sidebar({
                   >
                     <Icon className={`w-5 h-5 flex-shrink-0 transition-colors duration-200 ${active && !hasChildren ? 'text-white' : 'text-gray-500 group-hover:text-white'}`} />
                     {sidebarOpen && <span className="flex-1 text-left tracking-tight">{item.name}</span>}
+                    {sidebarOpen && item.count !== undefined && item.count > 0 && (
+                      <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                        {item.count > 99 ? '99+' : item.count}
+                      </span>
+                    )}
                     {sidebarOpen && hasChildren && (
                       isOpen ? <ChevronDown className="w-4 h-4 opacity-50" /> : <ChevronRight className="w-4 h-4 opacity-50" />
                     )}
@@ -121,6 +128,11 @@ export default function Sidebar({
                   >
                     <Icon className={`w-5 h-5 flex-shrink-0 transition-colors duration-200 ${active && !hasChildren ? 'text-white' : 'text-gray-500 group-hover:text-white'}`} />
                     {sidebarOpen && <span className="flex-1 text-left tracking-tight">{item.name}</span>}
+                    {sidebarOpen && item.count !== undefined && item.count > 0 && (
+                      <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                        {item.count > 99 ? '99+' : item.count}
+                      </span>
+                    )}
                     {sidebarOpen && hasChildren && (
                       isOpen ? <ChevronDown className="w-4 h-4 opacity-50" /> : <ChevronRight className="w-4 h-4 opacity-50" />
                     )}
@@ -149,7 +161,12 @@ export default function Sidebar({
                             }`}
                         >
                           <span className="w-1.5 h-1.5 rounded-full bg-current opacity-40"></span>
-                          <span>{child.name}</span>
+                          <span className="flex-1">{child.name}</span>
+                           {child.count !== undefined && child.count > 0 && (
+                            <span className="bg-red-500/20 text-red-400 text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+                              {child.count}
+                            </span>
+                          )}
                         </Link>
                       ) : (
                         <button
@@ -162,7 +179,12 @@ export default function Sidebar({
                             }`}
                         >
                           <span className="w-1.5 h-1.5 rounded-full bg-current opacity-40"></span>
-                          <span>{child.name}</span>
+                          <span className="flex-1">{child.name}</span>
+                          {child.count !== undefined && child.count > 0 && (
+                            <span className="bg-red-500/20 text-red-400 text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+                              {child.count}
+                            </span>
+                          )}
                         </button>
                       );
                     })}

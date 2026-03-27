@@ -1,8 +1,7 @@
 /**
  * Utility functions for recursive case conversion
  */
-
-type JsonValue = string | number | boolean | null | undefined | { [key: string]: JsonValue } | JsonValue[];
+import { JsonValue } from '../types/index.js';
 
 /**
  * Convert string from snake_case to camelCase

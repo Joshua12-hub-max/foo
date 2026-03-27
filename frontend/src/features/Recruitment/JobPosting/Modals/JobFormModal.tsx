@@ -17,7 +17,10 @@ const EMPLOYMENT_TYPES = [
   'Temporary', 
   'Probationary', 
   'Casual', 
-  'Permanent'
+  'Permanent',
+  'Contract of Service',
+  'JO',
+  'COS'
 ];
 const JOB_STATUSES = ['Open', 'Closed', 'On Hold'];
 

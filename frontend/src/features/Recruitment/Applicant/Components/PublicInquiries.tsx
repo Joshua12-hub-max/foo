@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { inquiryApi, Inquiry } from '@/api/inquiryApi';
 import { useToastStore } from '@/stores';
-import { CheckCircle, Clock, Trash2, Search } from 'lucide-react';
+import { CheckCircle, Clock, Trash2, Search, Send, X, Loader2 } from 'lucide-react';
 import ConfirmDialog from '@/components/Custom/Shared/ConfirmDialog';
 
 const PublicInquiries: React.FC = () => {
@@ -16,6 +16,17 @@ const PublicInquiries: React.FC = () => {
         isOpen: false,
         idToDelete: 0
     });
+
+    // Reply Modal State
+    const [replyModal, setReplyModal] = useState({
+        isOpen: false,
+        inquiryId: 0,
+        email: '',
+        name: '',
+        message: '',
+        replyText: ''
+    });
+    const [replying, setReplying] = useState(false);
 
     const fetchInquiries = async () => {
         try {
@@ -50,6 +61,38 @@ const PublicInquiries: React.FC = () => {
 
     const handleDelete = async (id: number) => {
         setConfirmModal({ isOpen: true, idToDelete: id });
+    };
+
+    const handleReply = async (inq: Inquiry) => {
+        setReplyModal({
+            isOpen: true,
+            inquiryId: inq.id,
+            email: inq.email,
+            name: `${inq.firstName} ${inq.lastName}`,
+            message: inq.message,
+            replyText: ''
+        });
+    };
+
+    const confirmReply = async () => {
+        if (!replyModal.replyText.trim()) {
+            showToast('Please enter a reply message', 'error');
+            return;
+        }
+
+        try {
+            setReplying(true);
+            const response = await inquiryApi.reply(replyModal.inquiryId, replyModal.replyText);
+            if (response.data.success) {
+                showToast('Reply sent successfully', 'success');
+                fetchInquiries();
+                setReplyModal(prev => ({ ...prev, isOpen: false }));
+            }
+        } catch (error) {
+            showToast('Failed to send reply', 'error');
+        } finally {
+            setReplying(false);
+        }
     };
 
     const confirmDelete = async () => {
@@ -140,9 +183,16 @@ const PublicInquiries: React.FC = () => {
                                         </div>
                                     </td>
                                     <td className="px-6 py-4">
-                                        <p className="text-xs text-slate-600 max-w-[300px] truncate" title={inq.message}>
-                                            {inq.message}
-                                        </p>
+                                        <div className="space-y-2">
+                                            <p className="text-xs text-slate-600 max-w-[400px]" title={inq.message}>
+                                                {inq.message}
+                                            </p>
+                                            {inq.adminNotes && (
+                                                <div className="mt-2 p-2 bg-slate-50 border-l-2 border-slate-300 rounded text-[10px] text-slate-500 italic whitespace-pre-wrap">
+                                                    {inq.adminNotes}
+                                                </div>
+                                            )}
+                                        </div>
                                     </td>
                                     <td className="px-6 py-4">
                                         <span className="inline-flex items-center px-2.5 py-1 rounded text-[11px] font-medium bg-slate-100 text-slate-600 border border-slate-200">
@@ -169,11 +219,11 @@ const PublicInquiries: React.FC = () => {
                                             )}
                                             {inq.status !== 'Replied' && (
                                                 <button 
-                                                    onClick={() => handleUpdateStatus(inq.id, 'Replied')}
-                                                    className="px-2.5 py-1.5 text-xs font-medium text-slate-600 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 transition-all flex items-center gap-1"
+                                                    onClick={() => handleReply(inq)}
+                                                    className="px-2.5 py-1.5 text-xs font-medium text-white bg-slate-800 border border-slate-700 rounded-lg hover:bg-slate-900 transition-all flex items-center gap-1 shadow-sm"
                                                 >
-                                                    <CheckCircle size={12} />
-                                                    Replied
+                                                    <Send size={12} />
+                                                    Reply
                                                 </button>
                                             )}
                                             <button 
@@ -200,6 +250,56 @@ const PublicInquiries: React.FC = () => {
                 onClose={() => setConfirmModal({ isOpen: false, idToDelete: 0 })}
                 onConfirm={confirmDelete}
             />
+
+            {/* Reply Modal */}
+            {replyModal.isOpen && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 animate-in fade-in duration-200">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                            <h3 className="font-bold text-slate-800">Reply to Inquiry</h3>
+                            <button onClick={() => setReplyModal(prev => ({ ...prev, isOpen: false }))} className="text-slate-400 hover:text-slate-600 transition-colors">
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                                <div className="flex justify-between items-start mb-2">
+                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Original Message</p>
+                                    <p className="text-[10px] text-slate-400 font-medium">{replyModal.name} • {replyModal.email}</p>
+                                </div>
+                                <p className="text-sm text-slate-600 italic">"{replyModal.message}"</p>
+                            </div>
+                            
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">Your Response</label>
+                                <textarea
+                                    autoFocus
+                                    placeholder="Type your reply here..."
+                                    className="w-full min-h-[150px] p-4 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-slate-100 focus:border-slate-400 outline-none text-sm transition-all resize-none shadow-inner"
+                                    value={replyModal.replyText}
+                                    onChange={(e) => setReplyModal(prev => ({ ...prev, replyText: e.target.value }))}
+                                />
+                            </div>
+                        </div>
+                        <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
+                            <button 
+                                onClick={() => setReplyModal(prev => ({ ...prev, isOpen: false }))}
+                                className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button 
+                                disabled={replying || !replyModal.replyText.trim()}
+                                onClick={confirmReply}
+                                className="px-6 py-2 bg-slate-800 text-white text-sm font-bold rounded-xl hover:bg-slate-900 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md flex items-center gap-2"
+                            >
+                                {replying && <Loader2 size={16} className="animate-spin" />}
+                                {replying ? 'Sending...' : 'Send Reply'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

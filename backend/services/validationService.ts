@@ -2,7 +2,7 @@ import { db } from '../db/index.js';
 import { authentication } from '../db/tables/auth.js';
 import { pdsPersonalInformation } from '../db/tables/pds.js';
 import { recruitmentApplicants } from '../db/tables/recruitment.js';
-import { eq, or } from 'drizzle-orm';
+import { eq, or, sql } from 'drizzle-orm';
 
 export interface CheckUniquenessParams {
   email?: string | null;
@@ -12,6 +12,8 @@ export interface CheckUniquenessParams {
   pagibigNumber?: string | null;
   tinNumber?: string | null;
   gsisNumber?: string | null;
+  employeeId?: string | null;
+  agencyEmployeeNo?: string | null;
   excludeAuthId?: number; // Don't flag the user's own record when updating
   excludeApplicantId?: number; // Don't flag the applicant's own record
 }
@@ -29,14 +31,27 @@ export async function checkSystemWideUniqueness(params: CheckUniquenessParams): 
   }
 
   // Check Authentication Table (Email)
-  if (params.email) {
+  if (params.email && params.email.trim() !== '') {
+    const trimmedEmail = params.email.trim().toLowerCase();
     const existingAuths = await db.query.authentication.findMany({
-      where: eq(authentication.email, params.email)
+      where: sql`LOWER(${authentication.email}) = ${trimmedEmail}`
     });
     for (const auth of existingAuths) {
       if (params.excludeAuthId && auth.id === params.excludeAuthId) continue;
-      if (auth.email === params.email) errors.email = `Email '${params.email}' is already registered to an employee.`;
+      errors.email = `Email '${params.email}' is already registered to an employee.`;
     }
+  }
+
+  // Check Authentication Table (Employee ID)
+  if (params.employeeId && params.employeeId.trim() !== '') {
+      const trimmedId = params.employeeId.trim();
+      const existingAuths = await db.query.authentication.findMany({
+          where: sql`LOWER(${authentication.employeeId}) = LOWER(${trimmedId})`
+      });
+      for (const auth of existingAuths) {
+          if (params.excludeAuthId && auth.id === params.excludeAuthId) continue;
+          errors.employeeId = `Employee ID '${params.employeeId}' is already in use.`;
+      }
   }
 
   // Check PDS Personal Information Table (Govt IDs)
@@ -47,6 +62,7 @@ export async function checkSystemWideUniqueness(params: CheckUniquenessParams): 
   if (params.pagibigNumber) pdsConditions.push(eq(pdsPersonalInformation.pagibigNumber, params.pagibigNumber));
   if (params.tinNumber) pdsConditions.push(eq(pdsPersonalInformation.tinNumber, params.tinNumber));
   if (params.gsisNumber) pdsConditions.push(eq(pdsPersonalInformation.gsisNumber, params.gsisNumber));
+  if (params.agencyEmployeeNo) pdsConditions.push(eq(pdsPersonalInformation.agencyEmployeeNo, params.agencyEmployeeNo));
 
   if (pdsConditions.length > 0) {
     const existingPdsRecords = await db.query.pdsPersonalInformation.findMany({
@@ -56,12 +72,16 @@ export async function checkSystemWideUniqueness(params: CheckUniquenessParams): 
     for (const record of existingPdsRecords) {
       if (params.excludeAuthId && record.employeeId === params.excludeAuthId) continue;
       
-      if (params.umidNumber && record.umidNumber === params.umidNumber) errors.umidNumber = `UMID '${params.umidNumber}' is already registered to an employee.`;
-      if (params.philsysId && record.philsysId === params.philsysId) errors.philsysId = `PhilSys ID '${params.philsysId}' is already registered to an employee.`;
-      if (params.philhealthNumber && record.philhealthNumber === params.philhealthNumber) errors.philhealthNumber = `PhilHealth Number '${params.philhealthNumber}' is already registered to an employee.`;
-      if (params.pagibigNumber && record.pagibigNumber === params.pagibigNumber) errors.pagibigNumber = `Pag-IBIG Number '${params.pagibigNumber}' is already registered to an employee.`;
-      if (params.tinNumber && record.tinNumber === params.tinNumber) errors.tinNumber = `TIN '${params.tinNumber}' is already registered to an employee.`;
-      if (params.gsisNumber && record.gsisNumber === params.gsisNumber) errors.gsisNumber = `GSIS Number '${params.gsisNumber}' is already registered to an employee.`;
+      const checkMatch = (val: string | null | undefined, target: string | null | undefined) => 
+        target && target.trim() !== '' && val === target.trim();
+
+      if (checkMatch(record.umidNumber, params.umidNumber)) errors.umidNumber = `UMID '${params.umidNumber}' is already registered to an employee.`;
+      if (checkMatch(record.philsysId, params.philsysId)) errors.philsysId = `PhilSys ID '${params.philsysId}' is already registered to an employee.`;
+      if (checkMatch(record.philhealthNumber, params.philhealthNumber)) errors.philhealthNumber = `PhilHealth Number '${params.philhealthNumber}' is already registered to an employee.`;
+      if (checkMatch(record.pagibigNumber, params.pagibigNumber)) errors.pagibigNumber = `Pag-IBIG Number '${params.pagibigNumber}' is already registered to an employee.`;
+      if (checkMatch(record.tinNumber, params.tinNumber)) errors.tinNumber = `TIN '${params.tinNumber}' is already registered to an employee.`;
+      if (checkMatch(record.gsisNumber, params.gsisNumber)) errors.gsisNumber = `GSIS Number '${params.gsisNumber}' is already registered to an employee.`;
+      if (checkMatch(record.agencyEmployeeNo, params.agencyEmployeeNo)) errors.agencyEmployeeNo = `Agency No. '${params.agencyEmployeeNo}' is already registered.`;
     }
   }
 
@@ -76,23 +96,45 @@ export async function checkSystemWideUniqueness(params: CheckUniquenessParams): 
   if (params.gsisNumber) appConditions.push(eq(recruitmentApplicants.gsisNumber, params.gsisNumber));
 
   if (appConditions.length > 0) {
-    const existingApps = await db.query.recruitmentApplicants.findMany({
-      where: or(...appConditions)
-    });
+    const existingApps = await db.select({
+      id: recruitmentApplicants.id,
+      email: recruitmentApplicants.email,
+      umidNumber: recruitmentApplicants.umidNumber,
+      philsysId: recruitmentApplicants.philsysId,
+      philhealthNumber: recruitmentApplicants.philhealthNumber,
+      pagibigNumber: recruitmentApplicants.pagibigNumber,
+      tinNumber: recruitmentApplicants.tinNumber,
+      gsisNumber: recruitmentApplicants.gsisNumber
+    })
+    .from(recruitmentApplicants)
+    .where(or(...appConditions));
 
     for (const app of existingApps) {
-      if (params.excludeApplicantId && app.id === params.excludeApplicantId) continue;
+      const appId = Number(app.id);
+      const excludeAppId = params.excludeApplicantId ? Number(params.excludeApplicantId) : null;
       
-      if (params.email && app.email === params.email) errors.email = `Email '${params.email}' is already used by an applicant.`;
-      if (params.umidNumber && app.umidNumber === params.umidNumber) errors.umidNumber = `UMID '${params.umidNumber}' is already used by an applicant.`;
-      if (params.philsysId && app.philsysId === params.philsysId) errors.philsysId = `PhilSys ID '${params.philsysId}' is already used by an applicant.`;
-      if (params.philhealthNumber && app.philhealthNumber === params.philhealthNumber) errors.philhealthNumber = `PhilHealth Number '${params.philhealthNumber}' is already used by an applicant.`;
-      if (params.pagibigNumber && app.pagibigNumber === params.pagibigNumber) errors.pagibigNumber = `Pag-IBIG Number '${params.pagibigNumber}' is already used by an applicant.`;
-      if (params.tinNumber && app.tinNumber === params.tinNumber) errors.tinNumber = `TIN '${params.tinNumber}' is already used by an applicant.`;
-      if (params.gsisNumber && app.gsisNumber === params.gsisNumber) errors.gsisNumber = `GSIS Number '${params.gsisNumber}' is already used by an applicant.`;
+      console.log(`[DEBUG] Duplicate check - ID: ${appId}, Exclude: ${excludeAppId}, Match: ${appId === excludeAppId}`);
+      
+      if (excludeAppId && appId === excludeAppId) {
+        console.log(`[DEBUG] Successfully excluded applicant ${appId}`);
+        continue;
+      }
+      
+      const checkMatch = (val: string | null | undefined, target: string | null | undefined) => 
+        target && target.trim() !== '' && val === target.trim();
+      
+      const checkEmailMatch = (val: string | null | undefined, target: string | null | undefined) =>
+        target && target.trim() !== '' && val?.toLowerCase() === target.trim().toLowerCase();
+
+      if (checkEmailMatch(app.email, params.email)) errors.email = `Email '${params.email}' is already used by an applicant.`;
+      if (checkMatch(app.umidNumber, params.umidNumber)) errors.umidNumber = `UMID '${params.umidNumber}' is already used by an applicant.`;
+      if (checkMatch(app.philsysId, params.philsysId)) errors.philsysId = `PhilSys ID '${params.philsysId}' is already used by an applicant.`;
+      if (checkMatch(app.philhealthNumber, params.philhealthNumber)) errors.philhealthNumber = `PhilHealth Number '${params.philhealthNumber}' is already used by an applicant.`;
+      if (checkMatch(app.pagibigNumber, params.pagibigNumber)) errors.pagibigNumber = `Pag-IBIG Number '${params.pagibigNumber}' is already used by an applicant.`;
+      if (checkMatch(app.tinNumber, params.tinNumber)) errors.tinNumber = `TIN '${params.tinNumber}' is already used by an applicant.`;
+      if (checkMatch(app.gsisNumber, params.gsisNumber)) errors.gsisNumber = `GSIS Number '${params.gsisNumber}' is already used by an applicant.`;
     }
   }
 
   return errors;
 }
-

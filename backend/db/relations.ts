@@ -2,8 +2,8 @@ import { relations } from "drizzle-orm";
 import { authentication, googleCalendarTokens, socialConnections } from "./tables/auth.js";
 import { departments, nepotismRelationships } from "./tables/hr.js";
 import { plantillaPositions, qualificationStandards, positionPublications } from "./tables/plantilla.js";
-import { chatConversations, chatMessages, recruitmentApplicants, recruitmentJobs } from "./tables/recruitment.js";
-import { pdsEducation, pdsEligibility, pdsFamily, pdsLearningDevelopment, pdsOtherInfo, pdsReferences, pdsVoluntaryWork, pdsWorkExperience, employeeCustomFields, employeeDocuments, employeeEducation, employeeEmergencyContacts, employeeEmploymentHistory, employeeMemos, employeeNotes, employeeSkills, pdsHrDetails } from "./tables/pds.js";
+import { chatConversations, chatMessages, recruitmentApplicants, recruitmentJobs, applicantEducation, applicantExperience, applicantTraining, applicantEligibility } from "./tables/recruitment.js";
+import { pdsEducation, pdsEligibility, pdsFamily, pdsLearningDevelopment, pdsOtherInfo, pdsReferences, pdsVoluntaryWork, pdsWorkExperience, employeeCustomFields, employeeDocuments, employeeEducation, employeeEmergencyContacts, employeeEmploymentHistory, employeeMemos, employeeNotes, employeeSkills, pdsHrDetails, pdsPersonalInformation, pdsDeclarations } from "./tables/pds.js";
 import { performanceReviews, performanceAuditLog, performanceGoals, performanceReviewCycles, performanceImprovementPlans, performanceCriteria, performanceReviewItems } from "./tables/performance.js";
 import { stepIncrementTracker } from "./tables/payroll.js";
 import { events, syncedEvents } from "./tables/common.js";
@@ -13,6 +13,14 @@ export const authenticationRelations = relations(authentication, ({one, many}) =
 	hrDetails: one(pdsHrDetails, {
 		fields: [authentication.id],
 		references: [pdsHrDetails.employeeId]
+	}),
+	personalInformation: one(pdsPersonalInformation, {
+		fields: [authentication.id],
+		references: [pdsPersonalInformation.employeeId]
+	}),
+	declarations: one(pdsDeclarations, {
+		fields: [authentication.id],
+		references: [pdsDeclarations.employeeId]
 	}),
 	authentications: many(authentication, {
 		relationName: "authentication_managerId_authentication_id"
@@ -375,7 +383,7 @@ export const positionPublicationsRelations = relations(positionPublications, ({o
 	}),
 }));
 
-export const recruitmentApplicantsRelations = relations(recruitmentApplicants, ({one}) => ({
+export const recruitmentApplicantsRelations = relations(recruitmentApplicants, ({one, many}) => ({
 	authentication: one(authentication, {
 		fields: [recruitmentApplicants.interviewerId],
 		references: [authentication.id]
@@ -383,6 +391,38 @@ export const recruitmentApplicantsRelations = relations(recruitmentApplicants, (
 	recruitmentJob: one(recruitmentJobs, {
 		fields: [recruitmentApplicants.jobId],
 		references: [recruitmentJobs.id]
+	}),
+	educations: many(applicantEducation),
+	experiences: many(applicantExperience),
+	trainings: many(applicantTraining),
+	eligibilities: many(applicantEligibility),
+}));
+
+export const applicantEducationRelations = relations(applicantEducation, ({one}) => ({
+	applicant: one(recruitmentApplicants, {
+		fields: [applicantEducation.applicantId],
+		references: [recruitmentApplicants.id]
+	}),
+}));
+
+export const applicantExperienceRelations = relations(applicantExperience, ({one}) => ({
+	applicant: one(recruitmentApplicants, {
+		fields: [applicantExperience.applicantId],
+		references: [recruitmentApplicants.id]
+	}),
+}));
+
+export const applicantTrainingRelations = relations(applicantTraining, ({one}) => ({
+	applicant: one(recruitmentApplicants, {
+		fields: [applicantTraining.applicantId],
+		references: [recruitmentApplicants.id]
+	}),
+}));
+
+export const applicantEligibilityRelations = relations(applicantEligibility, ({one}) => ({
+	applicant: one(recruitmentApplicants, {
+		fields: [applicantEligibility.applicantId],
+		references: [recruitmentApplicants.id]
 	}),
 }));
 
@@ -439,6 +479,7 @@ export const bioAttendanceLogsRelations = relations(bioAttendanceLogs, ({one}) =
 		references: [bioEnrolledUsers.employeeId]
 	}),
 }));
+
 export const pdsHrDetailsRelations = relations(pdsHrDetails, ({one}) => ({
 	employee: one(authentication, {
 		fields: [pdsHrDetails.employeeId],

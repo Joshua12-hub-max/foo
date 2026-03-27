@@ -233,6 +233,7 @@ void tickEnroll() {
       break;
     case EnrollState::DONE:
       showTempLCD(F("ENROLL SUCCESS!"), "ID Saved", 3000);
+      waitForFingerRemoval(); // Ensure finger is removed before ending enrollment session
       g_enrollState = EnrollState::IDLE;
       break;
   }

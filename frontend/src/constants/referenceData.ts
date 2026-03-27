@@ -30,6 +30,15 @@ export const EDUCATION_LEVEL_OPTIONS = EDUCATION_LEVELS.map(level => ({
     label: level
 })) as { value: typeof EDUCATION_LEVELS[number]; label: string }[];
 
+/** PDS Education enum — matches pds_education.level DB column exactly */
+export const PDS_EDUCATION_LEVELS = ['Elementary', 'Secondary', 'Vocational', 'College', 'Graduate Studies'] as const;
+export type PdsEducationLevel = typeof PDS_EDUCATION_LEVELS[number];
+
+export const PDS_EDUCATION_LEVEL_OPTIONS = PDS_EDUCATION_LEVELS.map(level => ({
+    value: level,
+    label: level
+})) as { value: PdsEducationLevel; label: string }[];
+
 export const ELIGIBILITY_RECRUITMENT_OPTIONS = [
     { value: "none", label: "Not Applicable / None" },
     { value: "csc_prof", label: "Career Service (Professional)" },

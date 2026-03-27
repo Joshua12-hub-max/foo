@@ -1,4 +1,4 @@
-import { mysqlTable, varchar, int, text, mysqlEnum, datetime, boolean, primaryKey, timestamp, index, unique } from 'drizzle-orm/mysql-core';
+import { mysqlTable, varchar, int, text, mysqlEnum, datetime, boolean, primaryKey, timestamp, index, unique, decimal } from 'drizzle-orm/mysql-core';
 import { authentication } from './auth.js';
 
 export const chatConversations = mysqlTable("chat_conversations", {
@@ -135,9 +135,16 @@ export const recruitmentApplicants = mysqlTable("recruitment_applicants", {
 	course: varchar("course", { length: 255 }),
 	yearGraduated: varchar("year_graduated", { length: 10 }),
 	experience: text("experience"),
+	training: text("training"),
 	skills: text("skills"),
 	emergencyContact: varchar("emergency_contact", { length: 255 }),
 	emergencyContactNumber: varchar("emergency_contact_number", { length: 20 }),
+	telephoneNumber: varchar("telephone_number", { length: 20 }),
+	facebookUrl: varchar("facebook_url", { length: 255 }),
+	linkedinUrl: varchar("linkedin_url", { length: 255 }),
+	twitterHandle: varchar("twitter_handle", { length: 255 }),
+	agencyEmployeeNo: varchar("agency_employee_no", { length: 50 }),
+	nationality: varchar("nationality", { length: 100 }).default('Filipino'),
 	photo1x1Path: varchar("photo1x1_path", { length: 255 }),
 	hiredDate: datetime("hired_date", { mode: 'string'}),
 	startDate: datetime("start_date", { mode: 'string'}),
@@ -162,6 +169,10 @@ export const recruitmentApplicants = mysqlTable("recruitment_applicants", {
 	permCity: varchar("perm_city", { length: 100 }),
 	permProvince: varchar("perm_province", { length: 100 }),
 	permRegion: varchar("perm_region", { length: 100 }),
+	citizenshipType: varchar("citizenship_type", { length: 50 }),
+	dualCountry: varchar("dual_country", { length: 100 }),
+
+
 },
 (table) => [
 	index("job_id").on(table.jobId),
@@ -173,6 +184,74 @@ export const recruitmentApplicants = mysqlTable("recruitment_applicants", {
 	unique("pagibig_no_unique").on(table.pagibigNumber),
 	unique("tin_no_unique").on(table.tinNumber),
 	unique("gsis_no_unique").on(table.gsisNumber),
+]);
+
+export const applicantEducation = mysqlTable("applicant_education", {
+	id: int("id").autoincrement().notNull(),
+	applicantId: int("applicant_id").notNull().references(() => recruitmentApplicants.id, { onDelete: "cascade" } ),
+	level: mysqlEnum("level", ['Elementary','Secondary','Vocational','College','Graduate Studies']).notNull(),
+	schoolName: varchar("school_name", { length: 255 }).notNull(),
+	degreeCourse: varchar("degree_course", { length: 255 }),
+	yearGraduated: varchar("year_graduated", { length: 10 }),
+	unitsEarned: varchar("units_earned", { length: 50 }),
+	dateFrom: varchar("date_from", { length: 20 }),
+	dateTo: varchar("date_to", { length: 20 }),
+	honors: varchar("honors", { length: 255 }),
+	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+},
+(table) => [
+	index("idx_app_edu_id").on(table.applicantId),
+	primaryKey({ columns: [table.id], name: "applicant_education_id"}),
+]);
+
+export const applicantExperience = mysqlTable("applicant_experience", {
+	id: int("id").autoincrement().notNull(),
+	applicantId: int("applicant_id").notNull().references(() => recruitmentApplicants.id, { onDelete: "cascade" } ),
+	dateFrom: varchar("date_from", { length: 20 }).notNull(),
+	dateTo: varchar("date_to", { length: 20 }),
+	positionTitle: varchar("position_title", { length: 255 }).notNull(),
+	companyName: varchar("company_name", { length: 255 }).notNull(),
+	monthlySalary: decimal("monthly_salary", { precision: 12, scale: 2 }),
+	salaryGrade: varchar("salary_grade", { length: 20 }),
+	appointmentStatus: varchar("appointment_status", { length: 50 }),
+	isGovernment: boolean("is_government").default(false),
+	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+},
+(table) => [
+	index("idx_app_exp_id").on(table.applicantId),
+	primaryKey({ columns: [table.id], name: "applicant_experience_id"}),
+]);
+
+export const applicantTraining = mysqlTable("applicant_training", {
+	id: int("id").autoincrement().notNull(),
+	applicantId: int("applicant_id").notNull().references(() => recruitmentApplicants.id, { onDelete: "cascade" } ),
+	title: varchar("title", { length: 255 }).notNull(),
+	dateFrom: varchar("date_from", { length: 20 }),
+	dateTo: varchar("date_to", { length: 20 }),
+	hoursNumber: int("hours_number"),
+	typeOfLd: varchar("type_of_ld", { length: 50 }),
+	conductedBy: varchar("conducted_by", { length: 255 }),
+	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+},
+(table) => [
+	index("idx_app_train_id").on(table.applicantId),
+	primaryKey({ columns: [table.id], name: "applicant_training_id"}),
+]);
+
+export const applicantEligibility = mysqlTable("applicant_eligibility", {
+	id: int("id").autoincrement().notNull(),
+	applicantId: int("applicant_id").notNull().references(() => recruitmentApplicants.id, { onDelete: "cascade" } ),
+	eligibilityName: varchar("eligibility_name", { length: 255 }).notNull(),
+	rating: decimal("rating", { precision: 5, scale: 2 }),
+	examDate: varchar("exam_date", { length: 20 }),
+	examPlace: varchar("exam_place", { length: 255 }),
+	licenseNumber: varchar("license_number", { length: 50 }),
+	validityDate: varchar("validity_date", { length: 20 }),
+	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+},
+(table) => [
+	index("idx_app_elig_id").on(table.applicantId),
+	primaryKey({ columns: [table.id], name: "applicant_eligibility_id"}),
 ]);
 
 export const recruitmentEmailTemplates = mysqlTable("recruitment_email_templates", {

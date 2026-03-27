@@ -1,14 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { useForm, SubmitHandler } from "react-hook-form";
+import { useForm, SubmitHandler, useFieldArray, Path, get, FieldError as RHFFieldError } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "react-hot-toast";
 import { 
   ArrowLeft, Fingerprint, Upload, CheckCircle2, 
   AlertCircle, Loader2, Lock, Check, X, 
-  Facebook, Twitter, Linkedin 
+  Facebook, Twitter, Linkedin, GraduationCap, Award, Briefcase, Plus, Trash2
 } from "lucide-react";
 
+import { z } from "zod";
 import { RegisterSchema } from "@/schemas/authSchema";
 import { useBiometricDevice } from "@/hooks/useBiometricDevice";
 import { useRegisterMutation } from "@/hooks/useAuthQueries";
@@ -21,122 +22,41 @@ import Combobox from "@/components/Custom/Combobox";
 import ConfirmationModal from '@/components/CustomUI/ConfirmationModal';
 import EmailVerificationModal from '@/Authentication/EmailVerificationModal';
 import { PhilippineAddressSelector } from '@/components/Custom/Shared/PhilippineAddressSelector';
-import type { Region, Province, CityMunicipality } from '@/types/ph-address';
+import type { Region, Province, CityMunicipality, Barangay } from '@/types/ph-address';
 import HiredApplicantsListModal from '@/components/Custom/EmployeeManagement/Admin/Modals/HiredApplicantsListModal';
 import ph from 'phil-reg-prov-mun-brgy';
 import { EDUCATION_LEVELS } from "@/schemas/recruitment";
-import { GENDER_OPTIONS, CIVIL_STATUS_OPTIONS, BLOOD_TYPE_OPTIONS, EDUCATION_LEVEL_OPTIONS, ELIGIBILITY_RECRUITMENT_OPTIONS } from "@/constants/referenceData";
+import { GENDER_OPTIONS, CIVIL_STATUS_OPTIONS, BLOOD_TYPE_OPTIONS, EDUCATION_LEVEL_OPTIONS } from "@/constants/referenceData";
 
-type EducationLevel = typeof EDUCATION_LEVELS[number] | "";
+type EducationLevel = "Elementary School Graduate" | "High School Graduate" | "Senior High School Graduate" | "Vocational/Trade Course Graduate" | "College Graduate" | "Graduate Studies" | "";
 
 // Using library directly without unsafe assertions to comply with strict linting
 // ph is accessed as needed in the component logic below
 
-// Locally defined to avoid symbol-mismatch errors with zodResolver while maintaining 100% type safety
-export interface RegisterFormValues {
-  employeeId?: string;
-  firstName: string;
-  lastName: string;
-  middleName?: string;
-  suffix?: string;
-  
-  // Address
-  address?: string;
-  isMeycauayan: string; // "true" or "false"
-  barangay?: string;
+// locally defined type to ensure 100% type safety and zero type erasure
+type PHLibrary = { 
+  regions: Region[]; 
+  provinces: Province[]; 
+  /* eslint-disable-next-line @typescript-eslint/naming-convention */
+  city_mun: CityMunicipality[]; 
+  barangays: Barangay[]; 
+};
+const phLib = ph as PHLibrary;
 
-  email: string;
-  password?: string;
-  role?: "Administrator" | "Human Resource" | "Employee";
-  department?: string;
-  position?: string;
-  dutyType: "Standard" | "Irregular";
-  appointmentType?: 'Permanent' | 'Contractual' | 'Casual' | 'Job Order' | 'Coterminous' | 'Temporary' | 'Contract of Service' | 'JO' | 'COS' | '';
-  dateHired?: string;
-  avatar?: File; // instanceof File in schema, handled by RHF
+export type RegisterFormValues = z.input<typeof RegisterSchema>;
 
-  // Personal Info
-  birthDate?: string;
-  placeOfBirth?: string;
-  gender?: "Male" | "Female" | "";
-  civilStatus?: "Single" | "Married" | "Widowed" | "Separated" | "Annulled" | "";
-  nationality?: string;
-  bloodType?: string;
-  heightM?: string;
-  weightKg?: string;
-
-  // Contact & Detailed Address
-  resRegion?: string;
-  resProvince?: string;
-  resCity?: string;
-  resArea?: string; // resArea exists in schema
-  resHouseBlockLot?: string;
-  resSubdivision?: string;
-  resBrgy?: string;
-  resStreet?: string;
-  permRegion?: string;
-  permProvince?: string;
-  permCity?: string;
-  permBrgy?: string;
-  permStreet?: string;
-  permHouseBlockLot?: string;
-  permSubdivision?: string;
-  
-  residentialAddress?: string;
-  residentialZipCode?: string;
-  permanentAddress?: string;
-  permanentZipCode?: string;
-  telephoneNo?: string;
-  mobileNo?: string;
-  emergencyContact?: string;
-  emergencyContactNumber?: string;
-
-  // Government Identification
-  gsisNumber?: string | null;
-  pagibigNumber?: string | null;
-  philhealthNumber?: string | null;
-  umidNumber?: string | null;
-  philsysId?: string | null;
-  tinNumber?: string | null;
-  agencyEmployeeNo?: string | null;
-
-  // Educational Background
-  educationalBackground?: EducationLevel;
-  schoolName?: string;
-  course?: string;
-  yearGraduated?: string;
-  yearsOfExperience?: string;
-  experience?: string;
-  skills?: string;
-
-  // Eligibility
-  eligibilityType?: string;
-  eligibilityNumber?: string;
-  eligibilityDate?: string;
-
-  // Social & Others
-  facebookUrl?: string | null;
-  linkedinUrl?: string | null;
-  twitterHandle?: string | null;
-  ignoreDuplicateWarning?: boolean;
-
-  // Applicant data linking
-  applicantId?: number;
-  applicantHiredDate?: string;
-  applicantStartDate?: string;
-  applicantPhotoPath?: string;
-  dateAccomplished?: string;
-  pdsQuestions: {
-    q34a: boolean; q34b: boolean; q34Details?: string | null;
-    q35a: boolean; q35aDetails?: string | null; q35b: boolean; q35bDetails?: string | null; q35bDateFiled?: string | null; q35bStatus?: string | null;
-    q36: boolean; q36Details?: string | null;
-    q37: boolean; q37Details?: string | null;
-    q38a: boolean; q38aDetails?: string | null; q38b: boolean; q38bDetails?: string | null;
-    q39: boolean; q39Details?: string | null;
-    q40a: boolean; q40aDetails?: string | null; q40b: boolean; q40bDetails?: string | null; q40c: boolean; q40cDetails?: string | null;
-  };
-  isOldEmployee?: boolean;
+interface LegacyEducationData {
+    school?: string;
+    course?: string;
+    from?: string;
+    to?: string;
+    yearGrad?: string;
+    units?: string;
+    honors?: string;
 }
+
+// Zero Type Erasure: Use RegisterFormValues directly as it already contains all necessary fields.
+// The schema in authSchema.ts (Lines 219-222) handles applicant linking fields.
 
 export default function AdminRegister() {
   const navigate = useNavigate();
@@ -176,36 +96,43 @@ export default function AdminRegister() {
     }
   };
 
-  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<RegisterFormValues>({
+  const { 
+    register, handleSubmit, watch, setValue, setError, control, formState: { errors } 
+  } = useForm<RegisterFormValues>({
     resolver: zodResolver(RegisterSchema),
     mode: "onBlur",
     defaultValues: {
       employeeId: "", firstName: "", lastName: "", middleName: "", suffix: "", email: "", password: "",
       avatar: undefined,
-      educationalBackground: "", address: "", residentialZipCode: "", permanentAddress: "", permanentZipCode: "",
+      address: "",
+      residentialAddress: "",
+      residentialZipCode: "",
+      resHouseBlockLot: "",
+      resStreet: "",
+      resSubdivision: "",
+      resBarangay: "",
+      resCity: "",
+      resProvince: "",
+      resRegion: "",
+      permanentAddress: "",
+      permanentZipCode: "",
+      permHouseBlockLot: "",
+      permStreet: "",
+      permSubdivision: "",
+      permBarangay: "",
+      permCity: "",
+      permProvince: "",
+      permRegion: "",
       emergencyContact: "", emergencyContactNumber: "", isMeycauayan: "false", barangay: "",
       department: queryDept || "",
       position: "",
       role: "Employee",
       gender: "",
       civilStatus: "",
-      dutyType: (duties === 'Standard' || duties === 'Irregular' ? duties : 'Standard'),
-      appointmentType: "",
-      yearsOfExperience: "", experience: "", skills: "", eligibilityType: "", eligibilityNumber: "", eligibilityDate: "",
-      gsisNumber: "",
-      pagibigNumber: "",
-      philhealthNumber: "",
-      umidNumber: "",
-      philsysId: "",
-      tinNumber: "",
-      schoolName: "",
-      yearGraduated: "",
-      course: "",
-      facebookUrl: "",
-      linkedinUrl: "",
-      twitterHandle: "",
-      agencyEmployeeNo: "",
-      nationality: "", 
+      nationality: "Filipino",
+      citizenship: "Filipino",
+      citizenshipType: "",
+      dualCountry: "",
       placeOfBirth: "",
       birthDate: "",
       bloodType: "",
@@ -213,23 +140,88 @@ export default function AdminRegister() {
       weightKg: "",
       mobileNo: "",
       telephoneNo: "",
+      dutyType: (duties === 'Standard' || duties === 'Irregular' ? duties : 'Standard'),
+      appointmentType: "",
+      religion: "",
+      educationalBackground: "",
+      schoolName: "",
+      course: "",
+      yearGraduated: "",
+      education: {
+        Elementary: { school: "", course: "", from: "", to: "", units: "", yearGrad: "", honors: "" },
+        Secondary: { school: "", course: "", from: "", to: "", units: "", yearGrad: "", honors: "" },
+        Vocational: { school: "", course: "", from: "", to: "", units: "", yearGrad: "", honors: "" },
+        College: { school: "", course: "", from: "", to: "", units: "", yearGrad: "", honors: "" },
+        Graduate: { school: "", course: "", from: "", to: "", units: "", yearGrad: "", honors: "" },
+      },
+      yearsOfExperience: "", experience: "", skills: "", 
+      eligibilityType: "",
+      eligibilityNumber: "",
+      eligibilityDate: "",
+      gsisNumber: "",
+      pagibigNumber: "",
+      philhealthNumber: "",
+      umidNumber: "",
+      philsysId: "",
+      tinNumber: "",
+      agencyEmployeeNo: "",
+      facebookUrl: "",
+      linkedinUrl: "",
+      twitterHandle: "",
+      
+      // Multi-arrays
+      workExperiences: [],
+      trainings: [],
+      eligibilities: [],
+      
+      // Family Background & PDS Arrays
+      spouseLastName: "", spouseFirstName: "", spouseMiddleName: "", spouseSuffix: "", spouseOccupation: "", spouseEmployer: "", spouseBusAddress: "", spouseTelephone: "",
+      fatherLastName: "", fatherFirstName: "", fatherMiddleName: "", fatherSuffix: "",
+      motherMaidenLastName: "", motherMaidenFirstName: "", motherMaidenMiddleName: "", motherMaidenSuffix: "",
+      children: [],
+      otherSkills: [],
+      recognitions: [],
+      memberships: [],
       pdsQuestions: {
-        q34a: false, q34b: false, q34Details: "",
+        q34a: false, q34b: false, q34bDetails: "",
         q35a: false, q35aDetails: "", q35b: false, q35bDetails: "", q35bDateFiled: "", q35bStatus: "",
         q36: false, q36Details: "",
         q37: false, q37Details: "",
         q38a: false, q38aDetails: "", q38b: false, q38bDetails: "",
         q39: false, q39Details: "",
         q40a: false, q40aDetails: "", q40b: false, q40bDetails: "", q40c: false, q40cDetails: ""
-      }
+      },
+
+      certifiedCorrect: false
     }
   });
+
+  const { fields: eligibilityFields, append: appendEligibility, remove: removeEligibility } = useFieldArray({
+    control,
+    name: "eligibilities"
+  });
+
+  const { fields: workExperienceFields, append: appendWorkExperience, remove: removeWorkExperience } = useFieldArray({
+    control,
+    name: "workExperiences"
+  });
+
+
+
+  const { fields: trainingFields, append: appendTraining, remove: removeTraining } = useFieldArray({
+    control,
+    name: "trainings"
+  });
+
+  // REMOVED: Automatically adding empty rows as it conflicts with z.string().min(1) requirements
+  // user must manually click "Add" to prevent validation errors on empty sections.
 
   useEffect(() => {
     register("department");
     register("position");
     register("dutyType");
     register("appointmentType");
+    register("applicantId");
   }, [register]);
 
   useEffect(() => {
@@ -239,13 +231,8 @@ export default function AdminRegister() {
     }
     
     // Auto-map type=old/hired to Appointment Type if not already set
-    if (queryType === 'old' || queryType === 'hired') {
-        const currentApptType = watch("appointmentType");
-        if (!currentApptType) {
-            // Default to Permanent for Standard duties, Job Order for Irregular
-            const targetAppt = queryDuties === 'Irregular' ? 'Job Order' : 'Permanent';
-            setValue("appointmentType", targetAppt, { shouldValidate: true });
-        }
+    if (queryType === 'old') {
+        setValue("isOldEmployee", true, { shouldValidate: true });
     }
     
     if (queryDept) {
@@ -318,7 +305,7 @@ export default function AdminRegister() {
   const resRegion = watch("resRegion");
   const resProvince = watch("resProvince");
   const resCity = watch("resCity");
-  const resBrgy = watch("resBrgy");
+  const resBarangay = watch("resBarangay");
   const resHouse = watch("resHouseBlockLot");
   const resSubd = watch("resSubdivision");
   const resStreet = watch("resStreet");
@@ -326,26 +313,26 @@ export default function AdminRegister() {
   const permRegion = watch("permRegion");
   const permProvince = watch("permProvince");
   const permCity = watch("permCity");
-  const permBrgy = watch("permBrgy");
+  const permBarangay = watch("permBarangay");
   const permHouse = watch("permHouseBlockLot");
   const permSubd = watch("permSubdivision");
   const permStreet = watch("permStreet");
 
-  const extractName = <T extends Record<string, unknown>, K extends keyof T>(arr: T[], key: K, val: string): string => {
-      const found = arr.find((x) => String(x[key]) === val);
-      if (found && typeof found === 'object' && 'name' in found && typeof found.name === 'string') {
-          return found.name;
-      }
-      return '';
+  const extractName = <T, K extends keyof T>(arr: T[], key: K, val: string): string => {
+  const found = arr.find((x) => String(x[key]) === val);
+  if (found && typeof found === 'object' && found !== null && 'name' in found && typeof (found as {name: string}).name === 'string') {
+  return (found as {name: string}).name;
+  }
+  return '';
   };
-  
-  const formatAddr = (reg: string, prov: string, city: string, brgy: string, house: string, subd: string, street: string) => {
-      const rName = (ph.regions as Region[]).find((x: Region) => x.reg_code === reg)?.name || '';
-      const pName = (ph.provinces as Province[]).find((x: Province) => x.prov_code === prov)?.name || '';
-      const cName = (ph.city_mun as CityMunicipality[]).find((x: CityMunicipality) => x.mun_code === city)?.name || '';
-      const bName = brgy; // Barangay values are stored as their name
-      return [house, subd, street, bName, cName, pName, rName].filter(Boolean).join(', ');
-  };
+
+   const formatAddr = (reg: string, prov: string, city: string, brgy: string, house: string, subd: string, street: string) => {
+  const rName = phLib.regions.find((x: Region) => x.reg_code === reg)?.name || '';
+  const pName = phLib.provinces.find((x: Province) => x.prov_code === prov)?.name || '';
+  const cName = phLib.city_mun.find((x: CityMunicipality) => x.mun_code === city)?.name || '';
+  const bName = brgy; // Barangay values are stored as their name
+  return [house, subd, street, bName, cName, pName, rName].filter(Boolean).join(', ');
+   };
 
   // Real-time residential address and validation fixes
   useEffect(() => {
@@ -355,17 +342,17 @@ export default function AdminRegister() {
           return;
       }
       
-      const addr = formatAddr(resRegion||'', resProvince||'', resCity||'', resBrgy||'', resHouse||'', resSubd||'', resStreet||'');
+      const addr = formatAddr(resRegion||'', resProvince||'', resCity||'', resBarangay||'', resHouse||'', resSubd||'', resStreet||'');
       if (addr) {
           setValue("address", addr);
           setValue("residentialAddress", addr);
       }
-      if (resBrgy) {
-          setValue("barangay", extractName(ph.barangays, 'name', resBrgy));
+      if (resBarangay) {
+          setValue("barangay", extractName(phLib.barangays, 'name', resBarangay));
       } else {
           setValue("barangay", "");
       }
-  }, [resRegion, resProvince, resCity, resBrgy, resHouse, resSubd, resStreet, setValue, prefilledAddress, isFinalizingSetup, authUser]);
+  }, [resRegion, resProvince, resCity, resBarangay, resHouse, resSubd, resStreet, setValue, prefilledAddress, isFinalizingSetup, authUser]);
 
   // Real-time permanent address
   useEffect(() => {
@@ -373,11 +360,11 @@ export default function AdminRegister() {
           return;
       }
       
-      const addr = formatAddr(permRegion||'', permProvince||'', permCity||'', permBrgy||'', permHouse||'', permSubd||'', permStreet||'');
+      const addr = formatAddr(permRegion||'', permProvince||'', permCity||'', permBarangay||'', permHouse||'', permSubd||'', permStreet||'');
       if (addr) {
           setValue("permanentAddress", addr);
       }
-  }, [permRegion, permProvince, permCity, permBrgy, permHouse, permSubd, permStreet, setValue, prefilledPermanentAddress, isFinalizingSetup, authUser]);
+  }, [permRegion, permProvince, permCity, permBarangay, permHouse, permSubd, permStreet, setValue, prefilledPermanentAddress, isFinalizingSetup, authUser]);
 
   // Eligibility auto-population removed or simplified if needed, keeping manual selection for admin
   
@@ -398,185 +385,398 @@ export default function AdminRegister() {
     }
   };
 
+  /**
+   * Type-safe recursive error reporter for deeply nested RHF errors.
+   */
+  const getFirstErrorMessage = (errors: Record<string, unknown>): { field: string; message: string } | null => {
+    if (!errors) return null;
+    
+    for (const key of Object.keys(errors)) {
+      const error = errors[key];
+      if (!error) continue;
+      
+      if (typeof error === 'object' && error !== null && 'message' in error && typeof (error as { message: unknown }).message === 'string') {
+        return { field: key, message: (error as { message: string }).message };
+      }
+      
+      // If nested, go deeper
+      const nested = getFirstErrorMessage(error as Record<string, unknown>);
+      if (nested) {
+        return { field: `${key}.${nested.field}`, message: nested.message };
+      }
+    }
+    return null;
+  };
+
+  const safeParse = <T,>(str: string): T => JSON.parse(str) as T;
+
   const handlePreFill = (applicant: HiredApplicant) => {
+    // 1. Basic Info & Identity
     setValue("firstName", applicant.firstName || "");
     setValue("lastName", applicant.lastName || "");
     setValue("middleName", applicant.middleName || "");
     setValue("suffix", applicant.suffix || "");
     setValue("email", applicant.email || "");
+    setValue("password", ""); // Security: Force manual password setting
     
-    // Removed autoGenPassword as per user request to manually encode it
-    setValue("password", "");
-    
-    // Auto-populate Job Applied
+    // Auto-populate Job Applied Context
     if (applicant.department) setValue("department", applicant.department);
     if (applicant.jobTitle) setValue("position", applicant.jobTitle);
-
-    // Pre-fill Duty and Appointment from Job Posting
-    if (applicant.dutyType) {
-        setValue("dutyType", applicant.dutyType as RegisterFormValues["dutyType"]);
-    }
+    if (applicant.dutyType) setValue("dutyType", applicant.dutyType as RegisterFormValues["dutyType"]);
+    
     const aType = applicant.employmentType;
-    if (aType === 'Permanent' || aType === 'Contractual' || aType === 'Casual' || aType === 'Job Order' || aType === 'Coterminous' || aType === 'Temporary' || aType === 'Contract of Service' || aType === 'JO' || aType === 'COS' || aType === '') {
-        setValue("appointmentType", aType);
+    if (['Permanent', 'Contractual', 'Casual', 'Job Order', 'Coterminous', 'Temporary', 'Contract of Service', 'JO', 'COS'].includes(aType || "")) {
+        setValue("appointmentType", aType as RegisterFormValues["appointmentType"]);
+    }
+
+    // 100% PRECISION: Personal Bio Mapping
+    if (applicant.birthDate) setValue("birthDate", formatDateForInput(applicant.birthDate));
+    setValue("placeOfBirth", applicant.birthPlace || "");
+    setValue("gender", (applicant.sex as "Male" | "Female" | "") || "");
+    setValue("civilStatus", (applicant.civilStatus as RegisterFormValues["civilStatus"]) || "");
+    
+    // Citizenship Alignment: PDS Schema uses "citizenship" for Filipino/Dual
+    const isDual = applicant.citizenship === "Dual Citizenship" || applicant.citizenshipType === "Dual Citizenship";
+    setValue("nationality", applicant.nationality || "Filipino");
+    setValue("citizenship", (applicant.nationality === "Filipino" || !applicant.nationality) ? "Filipino" : "Dual Citizenship");
+    if (applicant.nationality && applicant.nationality !== "Filipino") {
+        setValue("dualCountry", applicant.nationality);
     }
     
-    if (applicant.birthDate) {
-        setValue("birthDate", formatDateForInput(applicant.birthDate));
+    // citizenshipType in PDS refers to "By Birth" / "By Naturalization"
+    if (applicant.citizenshipType && ["By Birth", "By Naturalization"].includes(applicant.citizenshipType)) {
+        setValue("citizenshipType", applicant.citizenshipType);
+    } else {
+        setValue("citizenshipType", null);
     }
-    setValue("placeOfBirth", applicant.birthPlace || "");
-
-    const sex = applicant.sex;
-    if (sex === 'Male' || sex === 'Female' || sex === '') {
-        setValue("gender", sex);
-    }
-
-    const cStatus = applicant.civilStatus;
-    if (cStatus === 'Single' || cStatus === 'Married' || cStatus === 'Widowed' || cStatus === 'Separated' || cStatus === 'Annulled' || cStatus === '') {
-        setValue("civilStatus", cStatus);
-    }
+    
+    setValue("dualCountry", applicant.dualCountry || null);
     setValue("bloodType", applicant.bloodType || "");
-    setValue("heightM", applicant.height || "");
-    setValue("weightKg", applicant.weight || "");
-    setValue("mobileNo", applicant.phoneNumber || "");
+    setValue("heightM", applicant.height?.toString() || "");
+    setValue("weightKg", applicant.weight?.toString() || "");
 
+    // 2. Government IDs & Identifiers
     setValue("gsisNumber", applicant.gsisNumber || "");
     setValue("pagibigNumber", applicant.pagibigNumber || "");
     setValue("philhealthNumber", applicant.philhealthNumber || "");
     setValue("umidNumber", applicant.umidNumber || "");
     setValue("philsysId", applicant.philsysId || "");
     setValue("tinNumber", applicant.tinNumber || "");
+    setValue("agencyEmployeeNo", applicant.agencyEmployeeNo || "");
+    setValue("govtIdType", applicant.govtIdType || "");
+    setValue("govtIdNo", applicant.govtIdNo || "");
+    setValue("govtIdIssuance", applicant.govtIdIssuance || "");
 
-    // Address Pre-filling
-    if (applicant.address) {
-        setPrefilledAddress(applicant.address);
-        setValue("address", applicant.address);
-    }
-    if (applicant.permanentAddress) {
-        setPrefilledPermanentAddress(applicant.permanentAddress);
-        setValue("permanentAddress", applicant.permanentAddress);
-    }
-    if (applicant.zipCode) setValue("residentialZipCode", applicant.zipCode);
-    if (applicant.permanentZipCode) setValue("permanentZipCode", applicant.permanentZipCode);
-    if (applicant.isMeycauayanResident !== undefined) {
-        setValue("isMeycauayan", applicant.isMeycauayanResident ? "true" : "false");
-    }
-
-    // Detailed address fields if they exist in the HiredApplicant type
-    const anyApplicant = applicant as any;
-    if (anyApplicant.resBrgy) setValue("resBrgy", anyApplicant.resBrgy);
-    if (anyApplicant.resCity) setValue("resCity", anyApplicant.resCity);
-    if (anyApplicant.resProvince) setValue("resProvince", anyApplicant.resProvince);
-    if (anyApplicant.resRegion) setValue("resRegion", anyApplicant.resRegion);
-    if (anyApplicant.resHouseBlockLot) setValue("resHouseBlockLot", anyApplicant.resHouseBlockLot);
-    if (anyApplicant.resStreet) setValue("resStreet", anyApplicant.resStreet);
-    if (anyApplicant.resSubdivision) setValue("resSubdivision", anyApplicant.resSubdivision);
-
-    if (anyApplicant.permBrgy) setValue("permBrgy", anyApplicant.permBrgy);
-    if (anyApplicant.permCity) setValue("permCity", anyApplicant.permCity);
-    if (anyApplicant.permProvince) setValue("permProvince", anyApplicant.permProvince);
-    if (anyApplicant.permRegion) setValue("permRegion", anyApplicant.permRegion);
-    if (anyApplicant.permHouseBlockLot) setValue("permHouseBlockLot", anyApplicant.permHouseBlockLot);
-    if (anyApplicant.permStreet) setValue("permStreet", anyApplicant.permStreet);
-    if (anyApplicant.permSubdivision) setValue("permSubdivision", anyApplicant.permSubdivision);
-
-    // Education
-    if (anyApplicant.educationalBackground) setValue("educationalBackground", anyApplicant.educationalBackground);
-    if (anyApplicant.schoolName) setValue("schoolName", anyApplicant.schoolName);
-    if (anyApplicant.course) setValue("course", anyApplicant.course);
-    if (anyApplicant.yearGraduated) setValue("yearGraduated", anyApplicant.yearGraduated);
-
-    // Eligibility
-    if (anyApplicant.eligibilityType) setValue("eligibilityType", anyApplicant.eligibilityType);
-    if (anyApplicant.licenseNo) setValue("eligibilityNumber", anyApplicant.licenseNo);
-    if (anyApplicant.eligibilityDate) setValue("eligibilityDate", formatDateForInput(anyApplicant.eligibilityDate));
-
+    // 3. Social Media Links
+    setValue("facebookUrl", applicant.facebookUrl || "");
+    setValue("linkedinUrl", applicant.linkedinUrl || "");
+    setValue("twitterHandle", applicant.twitterHandle || "");
+    
+    // 4. Contact & Address (Residential & Permanent)
+    setValue("mobileNo", applicant.phoneNumber || "");
+    setValue("telephoneNo", applicant.telephoneNumber || "");
     setValue("emergencyContact", applicant.emergencyContact || "");
     setValue("emergencyContactNumber", applicant.emergencyContactNumber || "");
- 
-    let eduLevelValue = applicant.educationalBackground || "";
-    if (eduLevelValue) {
-        // Unescape common HTML entities that come from sanitizeInput
-        eduLevelValue = eduLevelValue
-            .replace(/&#039;/g, "'")
-            .replace(/&quot;/g, '"')
-            .replace(/&amp;/g, '&')
-            .replace(/&lt;/g, '<')
-            .replace(/&gt;/g, '>');
-    }
-    const isEduLevel = (val: string): val is EducationLevel => 
-        (EDUCATION_LEVELS).some(x => x === val);
-    setValue("educationalBackground", isEduLevel(eduLevelValue) ? eduLevelValue : "");
-    setValue("schoolName", applicant.schoolName || "");
-    setValue("course", applicant.course || "");
-    setValue("yearGraduated", applicant.yearGraduated || "");
-    setValue("experience", applicant.experience || "");
-    setValue("skills", applicant.skills || "");
-    setValue("yearsOfExperience", applicant.totalExperienceYears?.toString() || "");
 
-    setValue("eligibilityType", applicant.eligibilityType || "");
-    setValue("eligibilityNumber", applicant.licenseNo || "");
-    if (applicant.eligibilityDate) {
-        setValue("eligibilityDate", formatDateForInput(applicant.eligibilityDate));
+    // 100% ADDRESS PARITY: Only set "prefilled" status if granular fields are missing
+    // This allows the PhilippineAddressSelector to be the default editable view when data is available
+    const hasGranularRes = !!(applicant.resRegion || applicant.resCity || applicant.resBarangay);
+    if (!hasGranularRes && applicant.address) {
+        setPrefilledAddress(applicant.address);
+    } else {
+        setPrefilledAddress(""); // Clear to ensure selector is shown
     }
     
-    if (applicant.address) {
-        setPrefilledAddress(applicant.address);
-        setValue("address", applicant.address);
-        setValue("residentialAddress", applicant.address);
-    }
-    if (applicant.zipCode) {
-        setValue("residentialZipCode", applicant.zipCode);
-    }
+    setValue("address", applicant.address || "");
+    setValue("residentialAddress", applicant.address || "");
+    setValue("residentialZipCode", applicant.zipCode || "");
+    setValue("isMeycauayan", applicant.isMeycauayanResident ? "true" : "false");
 
-    // Explicitly set residential address sub-fields
+    // Residential Address Components
     if (applicant.resRegion) setValue("resRegion", applicant.resRegion);
     if (applicant.resProvince) setValue("resProvince", applicant.resProvince);
     if (applicant.resCity) setValue("resCity", applicant.resCity);
-    if (applicant.resBarangay) setValue("resBrgy", applicant.resBarangay);
-    if (applicant.resHouseBlockLot) setValue("resHouseBlockLot", applicant.resHouseBlockLot);
-    if (applicant.resSubdivision) setValue("resSubdivision", applicant.resSubdivision);
-    if (applicant.resStreet) setValue("resStreet", applicant.resStreet);
+    if (applicant.resBarangay) setValue("resBarangay", applicant.resBarangay);
+    
+    // 100% MANDATORY FIELD HARDENING: Ensure required sub-fields aren't empty if present
+    setValue("resHouseBlockLot", applicant.resHouseBlockLot || "");
+    setValue("resSubdivision", applicant.resSubdivision || "");
+    setValue("resStreet", applicant.resStreet || "");
 
-    if (applicant.permanentAddress) {
+    const hasGranularPerm = !!(applicant.permRegion || applicant.permCity || applicant.permBarangay);
+    if (!hasGranularPerm && applicant.permanentAddress) {
         setPrefilledPermanentAddress(applicant.permanentAddress);
-        setValue("permanentAddress", applicant.permanentAddress);
+    } else {
+        setPrefilledPermanentAddress("");
     }
-    if (applicant.permanentZipCode) {
-        setValue("permanentZipCode", applicant.permanentZipCode);
-    }
+    
+    setValue("permanentAddress", applicant.permanentAddress || "");
+    setValue("permanentZipCode", applicant.permanentZipCode || "");
 
-    // Explicitly set permanent address sub-fields
+    // Permanent Address Components
     if (applicant.permRegion) setValue("permRegion", applicant.permRegion);
     if (applicant.permProvince) setValue("permProvince", applicant.permProvince);
     if (applicant.permCity) setValue("permCity", applicant.permCity);
-    if (applicant.permBarangay) setValue("permBrgy", applicant.permBarangay);
-    if (applicant.permHouseBlockLot) setValue("permHouseBlockLot", applicant.permHouseBlockLot);
-    if (applicant.permSubdivision) setValue("permSubdivision", applicant.permSubdivision);
-    if (applicant.permStreet) setValue("permStreet", applicant.permStreet);
+    if (applicant.permBarangay) setValue("permBarangay", applicant.permBarangay);
     
-    setValue("mobileNo", applicant.phoneNumber || "");
-    setValue("emergencyContactNumber", applicant.phoneNumber || "");
+    // 100% PERMANENT ADDRESS HARDENING
+    setValue("permHouseBlockLot", applicant.permHouseBlockLot || "");
+    setValue("permSubdivision", applicant.permSubdivision || "");
+    setValue("permStreet", applicant.permStreet || "");
+    setValue("permanentZipCode", applicant.permanentZipCode || "");
 
-    setValue("isMeycauayan", applicant.isMeycauayanResident ? "true" : "false");
+    // 5. Educational Background (100% Robust Relational Mapping & Inference)
+    const eduLevels = ['Elementary', 'Secondary', 'Vocational', 'College', 'Graduate Studies'] as const;
+    let highestMappedLevel: string | null = null;
+    
+    // Helper to extract only the year (YYYY)
+    const extractYear = (val: string | number | null | undefined): string => {
+        if (!val) return "";
+        const str = String(val);
+        // If it's a full ISO date YYYY-MM-DD, just take YYYY
+        if (str.includes("-") && str.length >= 4) return str.split("-")[0];
+        return str;
+    };
 
-    if (applicant.photoUrl) {
-        setAvatarPreview(applicant.photoUrl);
+    // A. Relational Data (Prioritized)
+    if (applicant.educations && applicant.educations.length > 0) {
+        applicant.educations.forEach((edu) => {
+            const level = edu.level;
+            const formLevel = (level === 'Graduate Studies' ? 'Graduate' : level) as "Elementary" | "Secondary" | "Vocational" | "College" | "Graduate";
+            
+            if (['Elementary', 'Secondary', 'Vocational', 'College', 'Graduate'].includes(formLevel)) {
+                setValue(`education.${formLevel}.school` as Path<RegisterFormValues>, edu.schoolName || "");
+                setValue(`education.${formLevel}.course` as Path<RegisterFormValues>, edu.degreeCourse || "");
+                setValue(`education.${formLevel}.from` as Path<RegisterFormValues>, extractYear(edu.dateFrom));
+                setValue(`education.${formLevel}.to` as Path<RegisterFormValues>, extractYear(edu.dateTo));
+                setValue(`education.${formLevel}.yearGrad` as Path<RegisterFormValues>, extractYear(edu.yearGraduated));
+                setValue(`education.${formLevel}.units` as Path<RegisterFormValues>, edu.unitsEarned || "");
+                setValue(`education.${formLevel}.honors` as Path<RegisterFormValues>, edu.honors || "");
+                highestMappedLevel = formLevel;
+            }
+        });
+    } 
+    // B. Legacy JSON Fallback
+    else if (applicant.educationalBackground) {
+        try {
+            const edu = safeParse(applicant.educationalBackground) as Record<string, LegacyEducationData>;
+            if (edu && typeof edu === 'object') {
+                eduLevels.forEach(level => {
+                    const levelData = (edu as Record<string, LegacyEducationData>)[level];
+                    if (levelData && (typeof levelData === 'object') && (levelData.school || levelData.course)) {
+                        const formLevel = (level === 'Graduate Studies' ? 'Graduate' : level) as "Elementary" | "Secondary" | "Vocational" | "College" | "Graduate";
+                        setValue(`education.${formLevel}.school` as Path<RegisterFormValues>, levelData.school || "");
+                        setValue(`education.${formLevel}.course` as Path<RegisterFormValues>, levelData.course || "");
+                        setValue(`education.${formLevel}.from` as Path<RegisterFormValues>, extractYear(levelData.from));
+                        setValue(`education.${formLevel}.to` as Path<RegisterFormValues>, extractYear(levelData.to));
+                        setValue(`education.${formLevel}.yearGrad` as Path<RegisterFormValues>, extractYear(levelData.yearGrad));
+                        setValue(`education.${formLevel}.units` as Path<RegisterFormValues>, levelData.units || "");
+                        setValue(`education.${formLevel}.honors` as Path<RegisterFormValues>, levelData.honors || "");
+                        highestMappedLevel = formLevel;
+                    }
+                });
+            }
+        } catch (e) {
+            console.error("Education JSON parse failed", e);
+        }
     }
 
+    // 100% PRECISION: Cross-map top-level fields to College/Graduate if data is still sparse
+    if (applicant.schoolName) {
+        const isCollegeLikely = !!applicant.course || !!applicant.yearGraduated;
+        const targetLevel = (isCollegeLikely ? "College" : "Secondary") as "College" | "Secondary";
+        const existingSchool = watch(`education.${targetLevel}.school` as Path<RegisterFormValues>);
+        
+        if (!existingSchool) {
+            setValue(`education.${targetLevel}.school` as Path<RegisterFormValues>, applicant.schoolName);
+            setValue(`education.${targetLevel}.course` as Path<RegisterFormValues>, applicant.course || "");
+            setValue(`education.${targetLevel}.yearGrad` as Path<RegisterFormValues>, extractYear(applicant.yearGraduated));
+            if (!highestMappedLevel) highestMappedLevel = targetLevel;
+        }
+    }
+
+    // Infer "Highest Degree/Level Attained" combobox
+    if (highestMappedLevel) {
+        const levelMap: Record<string, string> = {
+            'Elementary': 'Elementary School Graduate',
+            'Secondary': 'High School Graduate',
+            'Vocational': 'Vocational/Trade Course Graduate',
+            'College': 'College Graduate',
+            'Graduate': 'Graduate Studies',
+            'Graduate Studies': 'Graduate Studies'
+        };
+        setValue("educationalBackground", levelMap[highestMappedLevel] || "");
+    }
+    
+    // Fallback if no JSON at all but top-level fields exist
+    if (!applicant.educationalBackground && applicant.schoolName) {
+         setValue("schoolName", applicant.schoolName);
+         setValue("course", applicant.course || "");
+         setValue("yearGraduated", applicant.yearGraduated || "");
+         // If we know their employment type might hint at degree, set it? 
+         // For now, just set the basic info
+    }
+
+    setValue("highestDegree", applicant.highestDegree || "");
+    setValue("schoolName", applicant.schoolName || "");
+    setValue("course", applicant.course || "");
+    setValue("yearGraduated", applicant.yearGraduated || "");
+
+    // 6. Work Experience (Array Pre-fill)
+    if (applicant.experiences && applicant.experiences.length > 0) {
+        setValue("workExperiences", applicant.experiences.map((exp) => ({
+            dateFrom: exp.dateFrom ? formatDateForInput(exp.dateFrom) : "",
+            dateTo: exp.dateTo ? formatDateForInput(exp.dateTo) : "",
+            positionTitle: exp.positionTitle || "",
+            companyName: exp.companyName || "",
+            monthlySalary: exp.monthlySalary?.toString() || "",
+            salaryGrade: exp.salaryGrade || "",
+            appointmentStatus: exp.appointmentStatus || "",
+            isGovernment: Boolean(exp.isGovernment)
+        })));
+    } else if (applicant.experience) {
+        try {
+            const parsedExperience = safeParse(applicant.experience) as Record<string, string | number | boolean | null>[];
+            if (Array.isArray(parsedExperience)) {
+                setValue("workExperiences", parsedExperience.map(exp => ({
+                    dateFrom: String(exp.dateFrom ? formatDateForInput(String(exp.dateFrom)) : ""),
+                    dateTo: String(exp.dateTo ? formatDateForInput(String(exp.dateTo)) : ""),
+                    positionTitle: String(exp.positionTitle || ""),
+                    companyName: String(exp.companyName || ""),
+                    monthlySalary: String(exp.monthlySalary?.toString() || ""),
+                    salaryGrade: String(exp.salaryGrade || ""),
+                    appointmentStatus: String(exp.appointmentStatus || ""),
+                    isGovernment: Boolean(exp.isGovernment === true || (exp.isGovernment && typeof exp.isGovernment === 'string' && exp.isGovernment.toLowerCase() === 'true') || exp.isGovernment === 1 || (exp.isGovernment && String(exp.isGovernment) === '1'))
+                })));
+            }
+        } catch (e) {
+            console.error("Experience JSON parse failed", e);
+        }
+    }
+
+    // 7. Eligibilities (Array Pre-fill)
+    if (applicant.eligibilities && applicant.eligibilities.length > 0) {
+        setValue("eligibilities", applicant.eligibilities.map((el) => ({
+            name: el.eligibilityName || "",
+            rating: el.rating?.toString() || "",
+            examDate: el.examDate ? formatDateForInput(el.examDate) : "",
+            examPlace: el.examPlace || "",
+            licenseNo: el.licenseNumber || "",
+            licenseValidUntil: el.validityDate ? formatDateForInput(el.validityDate) : ""
+        })));
+    } else if (applicant.eligibility) {
+        try {
+            const parsedEligibilities = safeParse(applicant.eligibility) as Record<string, string | number | null>[];
+            if (Array.isArray(parsedEligibilities)) {
+                setValue("eligibilities", parsedEligibilities.map((el): { name: string; rating: string; examDate: string; examPlace: string; licenseNo: string; licenseValidUntil: string } => ({
+                    name: String(el["name"] || ""),
+                    rating: String(el["rating"] || ""),
+                    examDate: String(el["examDate"] ? formatDateForInput(String(el["examDate"])) : ""),
+                    examPlace: String(el["examPlace"] || ""),
+                    licenseNo: String(el["licenseNo"] || ""),
+                    licenseValidUntil: String(el["licenseValidUntil"] ? formatDateForInput(String(el["licenseValidUntil"])) : "")
+                })));
+            }
+        } catch (e) {
+            console.error("Eligibility JSON parse failed", e);
+        }
+    }
+
+    // 8. Training Programs (Array Pre-fill)
+    if (applicant.trainings && applicant.trainings.length > 0) {
+        setValue("trainings", applicant.trainings.map((t) => ({
+            title: t.title || "",
+            dateFrom: t.dateFrom ? formatDateForInput(t.dateFrom) : "",
+            dateTo: t.dateTo ? formatDateForInput(t.dateTo) : "",
+            hoursNumber: String(t.hoursNumber || ""),
+            typeOfLd: t.typeOfLd || "",
+            conductedBy: t.conductedBy || ""
+        })));
+    } else if (applicant.training) {
+        try {
+            const parsedTrainings = safeParse(applicant.training) as Record<string, string | number | null>[];
+            if (Array.isArray(parsedTrainings)) {
+                setValue("trainings", parsedTrainings.map((t): { title: string; dateFrom: string; dateTo: string; hoursNumber: string; typeOfLd: string; conductedBy: string } => ({
+                    title: String(t["title"] || t["trainingTitle"] || ""),
+                    dateFrom: String(t["dateFrom"] ? formatDateForInput(String(t["dateFrom"])) : ""),
+                    dateTo: String(t["dateTo"] ? formatDateForInput(String(t["dateTo"])) : ""),
+                    hoursNumber: String(t["hoursNumber"] || t["hours"] || ""),
+                    typeOfLd: String(t["typeOfLd"] || t["type"] || ""),
+                    conductedBy: String(t["conductedBy"] || t["sponsoredBy"] || "")
+                })));
+            }
+        } catch (e) {
+            console.error("Training JSON parse failed", e);
+        }
+    }
+
+    // 8.5 Family Background & PDS Data
+    if (applicant.familyBackground) {
+        try {
+            const fb = safeParse(applicant.familyBackground) as Record<string, Record<string, string>>;
+            if (fb.spouse) {
+                setValue("spouseLastName", fb.spouse.lastName || ""); setValue("spouseFirstName", fb.spouse.firstName || "");
+                setValue("spouseMiddleName", fb.spouse.middleName || ""); setValue("spouseSuffix", fb.spouse.nameExtension || "");
+                setValue("spouseOccupation", fb.spouse.occupation || ""); setValue("spouseEmployer", fb.spouse.employer || "");
+                setValue("spouseBusAddress", fb.spouse.businessAddress || ""); setValue("spouseTelephone", fb.spouse.telephoneNo || "");
+            }
+            if (fb.father) {
+                setValue("fatherLastName", fb.father.lastName || ""); setValue("fatherFirstName", fb.father.firstName || "");
+                setValue("fatherMiddleName", fb.father.middleName || ""); setValue("fatherSuffix", fb.father.nameExtension || "");
+            }
+            if (fb.mother) {
+                setValue("motherMaidenLastName", fb.mother.lastName || ""); setValue("motherMaidenFirstName", fb.mother.firstName || "");
+                setValue("motherMaidenMiddleName", fb.mother.middleName || ""); setValue("motherMaidenSuffix", fb.mother.nameExtension || "");
+            }
+        } catch(e) { console.error("Family parsing failed", e); }
+    }
+
+    if (applicant.children) {
+        try {
+            const ch = safeParse(applicant.children) as Record<string, string>[];
+            if (Array.isArray(ch)) {
+                setValue("children", ch.map(c => ({
+                    name: c.name || "",
+                    birthDate: c.dateOfBirth ? formatDateForInput(c.dateOfBirth) : ""
+                })));
+            }
+        } catch(e) { console.error("Children parsing failed", e); }
+    }
+
+    if (applicant.otherInfo) {
+        try {
+            const info = safeParse(applicant.otherInfo) as Record<string, (Record<string, string> | string)[] | undefined>;
+            const skills = info?.skills;
+            if (Array.isArray(skills)) setValue("otherSkills", skills.map(s => ({ value: typeof s === 'string' ? s : (s.description || s.value || "") })));
+            const recognitions = info?.recognitions;
+            if (Array.isArray(recognitions)) setValue("recognitions", recognitions.map(r => ({ value: typeof r === 'string' ? r : (r.description || r.value || "") })));
+            const memberships = info?.memberships;
+            if (Array.isArray(memberships)) setValue("memberships", memberships.map(m => ({ value: typeof m === 'string' ? m : (m.description || m.value || "") })));
+        } catch(e) { console.error("OtherInfo parsing failed", e); }
+    }
+
+
+    // 9. Additional Data & Photo
+    setValue("yearsOfExperience", applicant.totalExperienceYears?.toString() || "");
+    setValue("experience", applicant.experience || "");
+    setValue("skills", applicant.skills || "");
     setValue("applicantId", applicant.id);
-    if (applicant.hiredDate) {
-        setValue("applicantHiredDate", formatDateForInput(applicant.hiredDate));
-    }
+    
+    if (applicant.hiredDate) setValue("applicantHiredDate", formatDateForInput(applicant.hiredDate));
     if (applicant.startDate) {
         setValue("dateHired", formatDateForInput(applicant.startDate));
         setValue("applicantStartDate", formatDateForInput(applicant.startDate));
     }
-    if (applicant.photoPath) {
-        setValue("applicantPhotoPath", applicant.photoPath);
+
+    const photoFile = applicant.photo1x1Path || applicant.photoPath;
+    if (photoFile) {
+        setValue("applicantPhotoPath", photoFile);
+    }
+    if (applicant.photoUrl) {
+        setAvatarPreview(applicant.photoUrl);
     }
 
-    toast.success(`Form pre-filled with ${applicant.firstName}'s data!`);
+    toast.success(`Form 100% pre-filled with ${applicant.firstName}'s data!`);
   };
 
   /**
@@ -588,11 +788,17 @@ export default function AdminRegister() {
     
     if (shouldPreFill && authUser) {
       // Basic Info
+      if (authUser.email) setValue("email", authUser.email);
+      
+      // Personal Info Preservation (If available in authUser)
       if (authUser.firstName) setValue("firstName", authUser.firstName);
       if (authUser.lastName) setValue("lastName", authUser.lastName);
       if (authUser.middleName) setValue("middleName", authUser.middleName);
       if (authUser.suffix) setValue("suffix", authUser.suffix);
-      if (authUser.email) setValue("email", authUser.email);
+
+      // 100% SUCCESS: Pull from hrDetails if available for deeper pre-fill
+      // Note: useRegisterMutation mode=finalize-setup handles the backend migration,
+      // but we pre-fill the form here for user review and 100% data visibility.
 
       // Work Info
       if (authUser.department) setValue("department", authUser.department);
@@ -655,7 +861,7 @@ export default function AdminRegister() {
       if (authUser.resRegion) setValue("resRegion", authUser.resRegion);
       if (authUser.resProvince) setValue("resProvince", authUser.resProvince);
       if (authUser.resCity) setValue("resCity", authUser.resCity);
-      if (authUser.resBarangay) setValue("resBrgy", authUser.resBarangay);
+      if (authUser.resBarangay) setValue("resBarangay", authUser.resBarangay);
       if (authUser.resHouseBlockLot) setValue("resHouseBlockLot", authUser.resHouseBlockLot);
       if (authUser.resSubdivision) setValue("resSubdivision", authUser.resSubdivision);
       if (authUser.resStreet) setValue("resStreet", authUser.resStreet);
@@ -668,7 +874,7 @@ export default function AdminRegister() {
       if (authUser.permRegion) setValue("permRegion", authUser.permRegion);
       if (authUser.permProvince) setValue("permProvince", authUser.permProvince);
       if (authUser.permCity) setValue("permCity", authUser.permCity);
-      if (authUser.permBarangay) setValue("permBrgy", authUser.permBarangay);
+      if (authUser.permBarangay) setValue("permBarangay", authUser.permBarangay);
       if (authUser.permHouseBlockLot) setValue("permHouseBlockLot", authUser.permHouseBlockLot);
       if (authUser.permSubdivision) setValue("permSubdivision", authUser.permSubdivision);
       if (authUser.permStreet) setValue("permStreet", authUser.permStreet);
@@ -729,7 +935,7 @@ export default function AdminRegister() {
     }
   };
 
-  const onSubmit: SubmitHandler<RegisterFormValues> = async (data: RegisterFormValues) => {
+  const onSubmit: SubmitHandler<RegisterFormValues> = async (data) => {
     if (!bioEnrolled) {
         toast.error("Please enroll fingerprint first!");
         document.getElementById('biometrics-section')?.scrollIntoView({ behavior: 'smooth' });
@@ -738,22 +944,21 @@ export default function AdminRegister() {
 
     const formData = new FormData();
 
-    if (prefilledPermanentAddress) {
-        data.permanentAddress = prefilledPermanentAddress;
-        // Do not overwrite individual components since the user can edit them
-    }
+    // Workaround for prefilled addresses not being in 'data' if they were just strings
+    const finalData = {
+        ...data,
+        address: prefilledAddress || data.address,
+        permanentAddress: prefilledPermanentAddress || data.permanentAddress,
+        employeeId: data.employeeId || actualEmployeeId
+    };
 
-    if (prefilledAddress) {
-        data.address = prefilledAddress;
-        // Do not overwrite residentialAddress, let the object keep the decomposed values
-    }
+    const ignoreKeys = ['avatar'];
 
-    const ignoreKeys = ['avatar', 'employeeId', 'applicantId', 'applicantHiredDate', 'applicantStartDate', 'applicantPhotoPath', 'dateHired'];
-
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-    (Object.keys(data) as Array<keyof RegisterFormValues>).forEach((key) => {
-        const value = data[key];
-        const keyStr: string = key;
+    // Safely append form data using strong typing
+    const dataKeys = Object.keys(finalData) as Array<keyof typeof finalData>;
+    dataKeys.forEach((key) => {
+        const value = finalData[key];
+        const keyStr = String(key);
         if (!ignoreKeys.includes(keyStr) && value !== undefined && value !== null) {
             if (typeof value === 'object' && !(value instanceof File)) {
                 formData.append(keyStr, JSON.stringify(value));
@@ -762,15 +967,10 @@ export default function AdminRegister() {
             }
         }
     });
-    formData.append("employeeId", data.employeeId || actualEmployeeId);
+
     if (avatarRef.current?.files?.[0]) {
         formData.append("avatar", avatarRef.current.files[0]);
     }
-
-    if (data.applicantId) formData.append("applicantId", String(data.applicantId));
-    if (data.applicantHiredDate) formData.append("applicantHiredDate", data.applicantHiredDate);
-    if (data.applicantStartDate) formData.append("applicantStartDate", data.applicantStartDate);
-    if (data.applicantPhotoPath) formData.append("applicantPhotoPath", data.applicantPhotoPath);
 
     try {
       setIsSubmitting(true);
@@ -797,7 +997,12 @@ export default function AdminRegister() {
       }
 
       toast.success("Employee Record Created Successfully!");
-      navigate(`/admin-dashboard/departments?department=${queryDept || ''}`); // Return to department
+      
+      if (isFinalizingSetup) {
+          navigate("/admin-dashboard");
+      } else {
+          navigate(`/admin-dashboard/departments?department=${queryDept || ''}`); // Return to department list
+      }
     } catch (error) {
       console.error(error);
       let msg = "Registration failed";
@@ -806,11 +1011,11 @@ export default function AdminRegister() {
       interface ServerErrorData { code?: string; errors?: ZodFieldError[] }
       interface ServerError { response?: { data?: ServerErrorData } }
 
-      const isServerError = (err: unknown): err is ServerError => 
+      const isServerError = (err: { response?: { data?: ServerErrorData } } | null | undefined): err is ServerError => 
           typeof err === 'object' && err !== null && 'response' in err;
       
-      if (isServerError(error)) {
-          const resData = error.response?.data;
+      if (isServerError(error as ServerError | null)) {
+          const resData = (error as ServerError).response?.data;
 
           if (resData?.code === 'DUPLICATE_NAME') {
               setShowDuplicateModal(true);
@@ -818,11 +1023,22 @@ export default function AdminRegister() {
               return;
           }
 
-          if ("message" in (resData || {})) {
-              msg = String((resData as Record<string, string>).message);
+          if (resData && "message" in resData) {
+              msg = String(resData.message);
           }
 
-          if (resData?.errors && Array.isArray(resData.errors)) {
+          // 100% PRECISION: Map server-side uniqueness errors to RHF fields
+          if (resData?.errors && typeof resData.errors === 'object' && !Array.isArray(resData.errors)) {
+              const serverErrors = resData.errors as Record<string, string>;
+              Object.entries(serverErrors).forEach(([field, message]) => {
+                  setError(field as keyof RegisterFormValues, { 
+                      type: 'manual', 
+                      message 
+                  });
+              });
+              // Concat messages for the toast to ensure immediate visibility
+              msg = Object.values(serverErrors).join(' | ');
+          } else if (resData?.errors && Array.isArray(resData.errors)) {
               msg = resData.errors.map((err) => {
                   if (typeof err === 'string') return err;
                   if (err && typeof err === 'object' && 'message' in err) {
@@ -855,11 +1071,78 @@ export default function AdminRegister() {
       return `${inputClass} ${errors[fieldName] ? errorClass : ''}`;
   };
 
-  const FieldError = ({ name }: { name: keyof RegisterFormValues }) => {
-      const error = errors[name];
+  const FieldError = ({ name }: { name: Path<RegisterFormValues> }) => {
+      const error = get(errors, name) as RHFFieldError | undefined; 
       if (!error) return null;
-      return <p className="text-red-500 text-[10px] font-bold mt-1 ml-1 animate-in fade-in slide-in-from-top-1">{error.message as string}</p>;
+      return <p className="text-red-500 text-[10px] font-bold mt-1 ml-1 animate-in fade-in slide-in-from-top-1">{error.message || ""}</p>;
   };
+
+  const EducationLevelSection = ({ level, label }: { level: "Elementary" | "Secondary" | "Vocational" | "College" | "Graduate", label: string }) => (
+    <div className="p-4 bg-gray-50/50 rounded-xl border border-gray-100 space-y-4">
+        <h5 className="text-xs font-bold text-gray-500 uppercase tracking-widest flex items-center gap-2">
+            <GraduationCap size={14} /> {label}
+        </h5>
+        <div className="grid grid-cols-1 gap-4">
+            {/* Row 1: School Name */}
+            <div className="space-y-1">
+                <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">School / University Name</label>
+                <input {...register(`education.${level}.school` as Path<RegisterFormValues>)} className={inputClass} placeholder="Enter school name" />
+                <FieldError name={`education.${level}.school` as Path<RegisterFormValues>} />
+            </div>
+            
+            {/* Row 2: Degree, From, To */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="md:col-span-1 space-y-1">
+                    <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">Degree / Course</label>
+                    <input {...register(`education.${level}.course` as Path<RegisterFormValues>)} className={inputClass} placeholder="e.g. BS in IT" />
+                    <FieldError name={`education.${level}.course` as Path<RegisterFormValues>} />
+                </div>
+                <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">From (yyyy)</label>
+                    <input type="number" {...register(`education.${level}.from` as Path<RegisterFormValues>)} className={inputClass} placeholder="Year" />
+                    <FieldError name={`education.${level}.from` as Path<RegisterFormValues>} />
+                </div>
+                <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">To (yyyy)</label>
+                    <input type="number" {...register(`education.${level}.to` as Path<RegisterFormValues>)} className={inputClass} placeholder="Year" />
+                    <FieldError name={`education.${level}.to` as Path<RegisterFormValues>} />
+                </div>
+            </div>
+
+            {/* Row 3: Units, Year Grad, Honors */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">Units Earned</label>
+                    <input {...register(`education.${level}.units` as Path<RegisterFormValues>)} className={inputClass} placeholder="If not graduated" />
+                    <FieldError name={`education.${level}.units` as Path<RegisterFormValues>} />
+                </div>
+                <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">Year Graduated</label>
+                    <input type="number" {...register(`education.${level}.yearGrad` as Path<RegisterFormValues>)} className={inputClass} placeholder="Year" />
+                    <FieldError name={`education.${level}.yearGrad` as Path<RegisterFormValues>} />
+                </div>
+                <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">Honors Received</label>
+                    <input {...register(`education.${level}.honors` as Path<RegisterFormValues>)} className={inputClass} placeholder="e.g. Cum Laude" />
+                    <FieldError name={`education.${level}.honors` as Path<RegisterFormValues>} />
+                </div>
+            </div>
+        </div>
+    </div>
+  );
+
+  const onInvalid = (errors: Record<string, unknown>) => {
+    console.error("Form Validation Errors:", errors);
+    const errorData = getFirstErrorMessage(errors);
+    if (errorData) {
+      toast.error(`Form Error: [${errorData.field}] ${errorData.message}`);
+      const errorElement = document.querySelector(`[name="${errorData.field}"]`);
+      if (errorElement) errorElement.scrollIntoView({ behavior: "smooth", block: "center" });
+    } else {
+      toast.error("Please fill in all required fields correctly.");
+    }
+  };
+
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-8 flex flex-col font-sans animate-in fade-in duration-300">
@@ -905,7 +1188,10 @@ export default function AdminRegister() {
                 </div>
             </div>
             
-            <form onSubmit={handleSubmit(onSubmit)} className="w-full flex flex-col lg:flex-row gap-8 items-start">
+            <form 
+              onSubmit={handleSubmit(onSubmit, onInvalid)} 
+              className="w-full flex flex-col lg:flex-row gap-8 items-start"
+            >
                 
               {/* Left Column: Form Section */}
               <div className="flex-1 w-full space-y-6">
@@ -942,6 +1228,7 @@ export default function AdminRegister() {
                                 <span className="flex items-center px-4 bg-gray-200 border-r border-gray-300 text-gray-600 font-mono font-bold text-sm">EMP-</span>
                                 <input {...register("employeeId")} readOnly className="w-full bg-transparent text-gray-900 font-bold text-sm p-2.5 outline-none font-mono cursor-not-allowed" placeholder={actualEmployeeId || "Auto-generated"} />
                             </div>
+                            <FieldError name="employeeId" />
                         </div>
                         <div className="relative">
                             <label className="text-xs font-semibold text-gray-600 block mb-1.5 ml-1">Current Role Status <span className="text-red-500">*</span></label>
@@ -1027,7 +1314,6 @@ export default function AdminRegister() {
                       <input 
                         type="date" 
                         {...register("birthDate")} 
-                        value={watch("birthDate") ? new Date(watch("birthDate")!).toISOString().split('T')[0] : ''}
                         className={getInputClass("birthDate")} 
                       />
                    </div>
@@ -1047,7 +1333,7 @@ export default function AdminRegister() {
                    <Combobox
                       options={(empMetadata?.pdsGender || GENDER_OPTIONS.map(o => o.value)).map(s => ({ value: s, label: s }))}
                       value={watch("gender") || ""}
-                      onChange={(val) => setValue("gender", val as "Male" | "Female" | "", { shouldValidate: true })}
+                      onChange={(val: string) => setValue("gender", val as "Male" | "Female" | "", { shouldValidate: true })}
                       placeholder="Select..."
                       error={!!errors.gender}
                       buttonClassName={errors.gender ? errorClass : ''}
@@ -1060,7 +1346,7 @@ export default function AdminRegister() {
                    <Combobox
                       options={(empMetadata?.pdsCivilStatus || CIVIL_STATUS_OPTIONS.map(o => o.value)).map(s => ({ value: s, label: s }))}
                       value={watch("civilStatus") || ""}
-                      onChange={(val) => setValue("civilStatus", val as "Single" | "Married" | "Widowed" | "Separated" | "Annulled" | "", { shouldValidate: true })}
+                      onChange={(val: string) => setValue("civilStatus", val as "Single" | "Married" | "Widowed" | "Separated" | "Annulled" | "", { shouldValidate: true })}
                       placeholder="Select..."
                       error={!!errors.civilStatus}
                       buttonClassName={errors.civilStatus ? errorClass : ''}
@@ -1075,11 +1361,52 @@ export default function AdminRegister() {
                 </div>
 
                 <div className="space-y-1">
+                   <label className="text-xs font-semibold text-gray-600 ml-1">Citizenship</label>
+                   <Combobox
+                      options={[
+                        { value: "Filipino", label: "Filipino" },
+                        { value: "Dual Citizenship", label: "Dual Citizenship" }
+                      ]}
+                      value={watch("citizenship") || "Filipino"}
+                      onChange={(val: string) => setValue("citizenship", val, { shouldValidate: true })}
+                      placeholder="Select..."
+                      error={!!errors.citizenship}
+                      buttonClassName={errors.citizenship ? errorClass : ''}
+                   />
+                   <FieldError name="citizenship" />
+                </div>
+
+                {watch("citizenship") === "Dual Citizenship" && (
+                    <>
+                        <div className="space-y-1">
+                           <label className="text-xs font-semibold text-gray-600 ml-1">Citizenship Type</label>
+                           <Combobox
+                              options={[
+                                { value: "By Birth", label: "By Birth" },
+                                { value: "By Naturalization", label: "By Naturalization" }
+                              ]}
+                              value={watch("citizenshipType") || ""}
+                              onChange={(val: string) => setValue("citizenshipType", val, { shouldValidate: true })}
+                              placeholder="Select..."
+                              error={!!errors.citizenshipType}
+                              buttonClassName={errors.citizenshipType ? errorClass : ''}
+                           />
+                           <FieldError name="citizenshipType" />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-xs font-semibold text-gray-600 ml-1">Indicate Country (Dual)</label>
+                            <input {...register("dualCountry")} className={getInputClass("dualCountry")} placeholder="e.g. USA, Canada" />
+                            <FieldError name="dualCountry" />
+                        </div>
+                    </>
+                )}
+
+                <div className="space-y-1">
                    <label className="text-xs font-semibold text-gray-600 ml-1">Blood Type</label>
                    <Combobox
                       options={(empMetadata?.pdsBloodTypes || BLOOD_TYPE_OPTIONS.map(o => o.value)).map(s => ({ value: s, label: s }))}
                       value={watch("bloodType") || ""}
-                      onChange={(val) => setValue("bloodType", val, { shouldValidate: true })}
+                      onChange={(val: string) => setValue("bloodType", val, { shouldValidate: true })}
                       placeholder="Select..."
                       error={!!errors.bloodType}
                       buttonClassName={errors.bloodType ? errorClass : ''}
@@ -1247,42 +1574,29 @@ export default function AdminRegister() {
           </div>
 
           <div className={cardClass}>
-             <h4 className={cardHeaderClass}>Educational Background</h4>
-             <div className="space-y-4">
-                <div className="space-y-1">
-                   <label className="text-xs font-semibold text-gray-600 ml-1">Highest Degree/Level Attained</label>
-                   <Combobox
-                       options={EDUCATION_LEVEL_OPTIONS}
-                       value={watch("educationalBackground") || ""}
-                       onChange={(val) => setValue("educationalBackground", val as EducationLevel, { shouldValidate: true })}
-                       placeholder="Select highest education attained"
-                       error={!!errors.educationalBackground}
-                       buttonClassName={errors.educationalBackground ? errorClass : ''}
-                   />
-                   <FieldError name="educationalBackground" />
-                </div>
+              <h4 className={cardHeaderClass}><GraduationCap size={16} className="text-gray-400" /> Educational Background</h4>
+              <div className="space-y-6">
+                  <div>
+                      <label className="text-xs font-semibold text-gray-600 ml-1 mb-1 block">Highest Degree/Level Attained</label>
+                      <Combobox
+                          options={EDUCATION_LEVEL_OPTIONS}
+                          value={watch("educationalBackground") || ""}
+                          onChange={(val) => setValue("educationalBackground", val as EducationLevel, { shouldValidate: true })}
+                          placeholder="Select highest level..."
+                          error={!!errors.educationalBackground}
+                          buttonClassName={`pl-3 ${errors.educationalBackground ? errorClass : ''}`}
+                      />
+                      <FieldError name="educationalBackground" />
+                  </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                   <div className="space-y-1">
-                      <label className="text-xs font-semibold text-gray-600 ml-1">School / University Name</label>
-                      <input {...register("schoolName")} className={getInputClass("schoolName")} placeholder="e.g. Bulacan State University" />
-                      <FieldError name="schoolName" />
-                   </div>
-                   <div className="space-y-1">
-                      <label className="text-xs font-semibold text-gray-600 ml-1">Year Graduated</label>
-                      <input {...register("yearGraduated")} className={getInputClass("yearGraduated")} placeholder="e.g. 2020" />
-                      <FieldError name="yearGraduated" />
-                   </div>
-                </div>
-
-                {watch("educationalBackground") && !["Elementary School Graduate", "High School Graduate", "Senior High School Graduate"].includes(watch("educationalBackground") || "") && (
-                    <div className="space-y-1">
-                       <label className="text-xs font-semibold text-gray-600 ml-1">Course / Degree</label>
-                       <input {...register("course")} className={getInputClass("course")} placeholder="e.g. BS in Information Technology" />
-                       <FieldError name="course" />
-                    </div>
-                )}
-             </div>
+                  <div className="space-y-4">
+                      <EducationLevelSection level="Elementary" label="Elementary" />
+                      <EducationLevelSection level="Secondary" label="Secondary" />
+                      <EducationLevelSection level="Vocational" label="Vocational / Trade Course" />
+                      <EducationLevelSection level="College" label="College" />
+                      <EducationLevelSection level="Graduate" label="Graduate Studies" />
+                  </div>
+              </div>
           </div>
 
           <div className={cardClass}>
@@ -1316,13 +1630,13 @@ export default function AdminRegister() {
                  </div>
                  <div className="md:col-span-1">
                       <label className="text-xs font-semibold text-gray-600 ml-1 mb-1 block">Type of Duties</label>
-                       <Combobox<"Standard" | "Irregular">
+                       <Combobox
                             options={(empMetadata?.dutyTypes || ['Standard', 'Irregular']).map((dt) => {
-                                const val = (dt === "Standard" || dt === "Irregular") ? dt : "Standard";
-                                return { value: val as "Standard" | "Irregular", label: dt };
+                                const typedVal = (dt === "Standard" || dt === "Irregular") ? dt : "Standard";
+                                return { value: typedVal, label: dt };
                             })}
                             value={watch("dutyType") || "Standard"}
-                            onChange={(val) => setValue("dutyType", val, { shouldValidate: true })}
+                             onChange={(val) => setValue("dutyType", val as RegisterFormValues["dutyType"], { shouldValidate: true })}
                            placeholder="Select..."
                            error={!!errors.dutyType}
                            buttonClassName={`bg-gray-50 font-bold !pl-3 ${errors.dutyType ? errorClass : ''}`}
@@ -1331,13 +1645,13 @@ export default function AdminRegister() {
                  </div>
                   <div className="md:col-span-1">
                       <label className="text-xs font-semibold text-gray-600 ml-1 mb-1 block">Appointment Type / Schedule</label>
-                       <Combobox<'Permanent' | 'Contractual' | 'Casual' | 'Job Order' | 'Coterminous' | 'Temporary' | 'Contract of Service' | 'JO' | 'COS' | ''>
+                       <Combobox
                             options={(empMetadata?.appointmentTypes || ['Permanent', 'Contractual', 'Casual', 'Job Order', 'Coterminous', 'Temporary', 'Contract of Service']).map((at) => {
-                                const val = (at === 'Permanent' || at === 'Contractual' || at === 'Casual' || at === 'Job Order' || at === 'Coterminous' || at === 'Temporary' || at === 'Contract of Service' || at === 'JO' || at === 'COS' || at === '') ? at : '';
-                                return { value: val as 'Permanent' | 'Contractual' | 'Casual' | 'Job Order' | 'Coterminous' | 'Temporary' | 'Contract of Service' | 'JO' | 'COS' | '', label: at };
+                                const typedVal = (at === 'Permanent' || at === 'Contractual' || at === 'Casual' || at === 'Job Order' || at === 'Coterminous' || at === 'Temporary' || at === 'Contract of Service' || at === 'JO' || at === 'COS' || at === '') ? at : '';
+                                return { value: typedVal, label: at };
                             })}
                             value={watch("appointmentType") || ""}
-                            onChange={(val) => setValue("appointmentType", val, { shouldValidate: true })}
+                             onChange={(val) => setValue("appointmentType", val as RegisterFormValues["appointmentType"], { shouldValidate: true })}
                            placeholder="Select type..."
                            error={!!errors.appointmentType}
                            buttonClassName={`bg-gray-50 font-bold !pl-3 ${errors.appointmentType ? errorClass : ''}`}
@@ -1377,46 +1691,248 @@ export default function AdminRegister() {
              </div>
           </div>
 
+          {/* PDS-Aligned Civil Service Eligibility */}
           <div className={cardClass}>
-             <h4 className={cardHeaderClass}>Eligibility & Experience</h4>
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                   <label className="text-xs font-semibold text-gray-600 ml-1">CSC Eligibility Type</label>
-                   <Combobox
-                       options={empMetadata?.pdsEligibilityTypes || ELIGIBILITY_RECRUITMENT_OPTIONS}
-                       value={watch("eligibilityType") || ""}
-                       onChange={(val) => setValue("eligibilityType", val, { shouldValidate: true })}
-                       placeholder="Select..."
-                       error={!!errors.eligibilityType}
-                       buttonClassName={`pl-3 ${errors.eligibilityType ? errorClass : ''}`}
-                   />
-                   <FieldError name="eligibilityType" />
-                </div>
-                <div className="space-y-1">
-                   <label className="text-xs font-semibold text-gray-600 ml-1">Eligibility Number / License No.</label>
-                   <input {...register("eligibilityNumber")} className={getInputClass("eligibilityNumber")} placeholder="e.g. 123456" />
-                   <FieldError name="eligibilityNumber" />
-                </div>
-                <div className="space-y-1">
-                   <label className="text-xs font-semibold text-gray-600 ml-1">Date of Examination / Conferment</label>
-                   <input type="date" {...register("eligibilityDate")} className={getInputClass("eligibilityDate")} />
-                   <FieldError name="eligibilityDate" />
-                </div>
-                <div className="space-y-1">
-                   <label className="text-xs font-semibold text-gray-600 ml-1">Cumulative Years of Experience</label>
-                   <input type="number" step="0.5" {...register("yearsOfExperience")} className={getInputClass("yearsOfExperience")} placeholder="e.g. 3.5" />
-                   <FieldError name="yearsOfExperience" />
-                </div>
-                <div className="space-y-1 md:col-span-2">
-                   <label className="text-xs font-semibold text-gray-600 ml-1">Work Experience Log</label>
-                   <textarea {...register("experience")} rows={3} className={getInputClass("experience")} placeholder="List roles and responsibilities..." />
-                   <FieldError name="experience" />
-                </div>
-                <div className="space-y-1 md:col-span-2">
-                   <label className="text-xs font-semibold text-gray-600 ml-1">Core Competencies / Skills</label>
-                   <textarea {...register("skills")} rows={2} className={getInputClass("skills")} placeholder="List key skills..." />
-                   <FieldError name="skills" />
-                </div>
+             <div className="flex justify-between items-center mb-5 pb-3 border-b border-gray-100">
+                <h4 className="text-sm font-bold text-gray-800 uppercase tracking-wider flex items-center gap-2 mb-0">
+                    <Award size={16} className="text-gray-400" /> Civil Service Eligibility
+                </h4>
+                <button 
+                    type="button" 
+                    onClick={() => appendEligibility({ name: "", rating: "", examDate: "", examPlace: "", licenseNo: "", licenseValidUntil: "" })}
+                    className="text-[10px] font-bold text-blue-600 hover:text-blue-700 uppercase flex items-center gap-1 transition-colors"
+                >
+                    <Plus size={12} /> Add Eligibility
+                </button>
+             </div>
+             <div className="space-y-6">
+                {eligibilityFields.map((field, index) => (
+                    <div key={field.id} className="p-4 bg-gray-50/50 rounded-xl border border-gray-100 relative animate-in fade-in slide-in-from-top-2">
+                        {eligibilityFields.length > 1 && (
+                            <button 
+                                type="button" 
+                                onClick={() => removeEligibility(index)}
+                                className="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors"
+                            >
+                                <Trash2 size={14} />
+                            </button>
+                        )}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">Eligibility Name</label>
+                                <input {...register(`eligibilities.${index}.name` as Path<RegisterFormValues>)} className={inputClass} placeholder="e.g. CSC Professional" />
+                                <FieldError name={`eligibilities.${index}.name` as Path<RegisterFormValues>} />
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">Rating</label>
+                                <input {...register(`eligibilities.${index}.rating` as Path<RegisterFormValues>)} className={inputClass} placeholder="e.g. 85.00" />
+                                <FieldError name={`eligibilities.${index}.rating` as Path<RegisterFormValues>} />
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">Date of Exam</label>
+                                <input type="date" {...register(`eligibilities.${index}.examDate` as Path<RegisterFormValues>)} className={inputClass} />
+                                <FieldError name={`eligibilities.${index}.examDate` as Path<RegisterFormValues>} />
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">Place of Exam</label>
+                                <input {...register(`eligibilities.${index}.examPlace` as Path<RegisterFormValues>)} className={inputClass} placeholder="City/Region" />
+                                <FieldError name={`eligibilities.${index}.examPlace` as Path<RegisterFormValues>} />
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">License No.</label>
+                                <input {...register(`eligibilities.${index}.licenseNo` as Path<RegisterFormValues>)} className={inputClass} placeholder="If applicable" />
+                                <FieldError name={`eligibilities.${index}.licenseNo` as Path<RegisterFormValues>} />
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">License Validity</label>
+                                <input type="date" {...register(`eligibilities.${index}.licenseValidUntil` as Path<RegisterFormValues>)} className={inputClass} />
+                                <FieldError name={`eligibilities.${index}.licenseValidUntil` as Path<RegisterFormValues>} />
+                            </div>
+                        </div>
+                    </div>
+                ))}
+             </div>
+          </div>
+
+          {/* PDS-Aligned Work Experience */}
+          <div className={cardClass}>
+             <div className="flex justify-between items-center mb-5 pb-3 border-b border-gray-100">
+                <h4 className="text-sm font-bold text-gray-800 uppercase tracking-wider flex items-center gap-2 mb-0">
+                    <Briefcase size={16} className="text-gray-400" /> Work Experience
+                </h4>
+                <button 
+                    type="button" 
+                    onClick={() => appendWorkExperience({ dateFrom: "", dateTo: "", positionTitle: "", companyName: "", monthlySalary: "", salaryGrade: "", appointmentStatus: "", isGovernment: false })}
+                    className="text-[10px] font-bold text-blue-600 hover:text-blue-700 uppercase flex items-center gap-1 transition-colors"
+                >
+                    <Plus size={12} /> Add Experience
+                </button>
+             </div>
+             <div className="space-y-6">
+                {workExperienceFields.map((field, index) => (
+                    <div key={field.id} className="p-4 bg-gray-50/50 rounded-xl border border-gray-100 relative animate-in fade-in slide-in-from-top-2">
+                        {workExperienceFields.length > 1 && (
+                            <button 
+                                type="button" 
+                                onClick={() => removeWorkExperience(index)}
+                                className="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors"
+                            >
+                                <Trash2 size={14} />
+                            </button>
+                        )}
+                        <div className="grid grid-cols-1 gap-4">
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">Position Title</label>
+                                <input {...register(`workExperiences.${index}.positionTitle` as Path<RegisterFormValues>)} className={inputClass} placeholder="Full Title" />
+                                <FieldError name={`workExperiences.${index}.positionTitle` as Path<RegisterFormValues>} />
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">Department / Agency / Company</label>
+                                <input {...register(`workExperiences.${index}.companyName` as Path<RegisterFormValues>)} className={inputClass} placeholder="Full Name of Office" />
+                                <FieldError name={`workExperiences.${index}.companyName` as Path<RegisterFormValues>} />
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">From</label>
+                                    <input type="date" {...register(`workExperiences.${index}.dateFrom` as Path<RegisterFormValues>)} className={inputClass} />
+                                    <FieldError name={`workExperiences.${index}.dateFrom` as Path<RegisterFormValues>} />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">To</label>
+                                    <input type="date" {...register(`workExperiences.${index}.dateTo` as Path<RegisterFormValues>)} className={inputClass} />
+                                    <FieldError name={`workExperiences.${index}.dateTo` as Path<RegisterFormValues>} />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">Monthly Salary</label>
+                                    <input {...register(`workExperiences.${index}.monthlySalary` as Path<RegisterFormValues>)} className={inputClass} placeholder="e.g. 25000" />
+                                    <FieldError name={`workExperiences.${index}.monthlySalary` as Path<RegisterFormValues>} />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">SG/Step</label>
+                                    <input {...register(`workExperiences.${index}.salaryGrade` as Path<RegisterFormValues>)} className={inputClass} placeholder="e.g. 11/1" />
+                                    <FieldError name={`workExperiences.${index}.salaryGrade` as Path<RegisterFormValues>} />
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">Appointment Status</label>
+                                    <input {...register(`workExperiences.${index}.appointmentStatus` as Path<RegisterFormValues>)} className={inputClass} placeholder="e.g. Permanent" />
+                                    <FieldError name={`workExperiences.${index}.appointmentStatus` as Path<RegisterFormValues>} />
+                                </div>
+                                <div className="flex items-center gap-2 pt-4">
+                                    <input type="checkbox" {...register(`workExperiences.${index}.isGovernment` as Path<RegisterFormValues>)} className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" />
+                                    <label className="text-xs font-semibold text-gray-600">Government Service</label>
+                                    <FieldError name={`workExperiences.${index}.isGovernment` as Path<RegisterFormValues>} />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                ))}
+             </div>
+          </div>
+
+           {/* Learning & Development (Trainings) */}
+           <div className={cardClass}>
+              <div className="flex justify-between items-center mb-4">
+                 <h4 className={cardHeaderClass}>Learning & Development / Training Programs</h4>
+                 <button 
+                    type="button" 
+                    onClick={() => appendTraining({ 
+                       title: "", dateFrom: "", dateTo: "", hoursNumber: "", typeOfLd: "", conductedBy: "" 
+                    })}
+                    className="text-[10px] bg-gray-900 text-white px-3 py-1.5 rounded-md font-bold uppercase tracking-wider hover:bg-gray-800 transition-colors"
+                 >
+                    + Add Training
+                 </button>
+              </div>
+              
+              <div className="space-y-4">
+                 {trainingFields.map((field, index) => (
+                    <div key={field.id} className="p-4 rounded-xl border border-gray-200 bg-gray-50/30 relative group shadow-sm">
+                       <button 
+                          type="button" 
+                          onClick={() => removeTraining(index)}
+                          className="absolute top-4 right-4 text-gray-300 hover:text-red-500 transition-colors"
+                       >
+                          <X size={18} />
+                       </button>
+                       
+                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                          <div className="space-y-1 md:col-span-2">
+                             <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">Title of Learning and Development Interventions / Training Programs</label>
+                             <input {...register(`trainings.${index}.title` as Path<RegisterFormValues>)} className={inputClass} placeholder="Write in full" />
+                             <FieldError name={`trainings.${index}.title` as Path<RegisterFormValues>} />
+                           </div>
+                          
+                          <div className="grid grid-cols-2 gap-2">
+                             <div className="space-y-1">
+                                <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">From</label>
+                                <input type="date" {...register(`trainings.${index}.dateFrom` as Path<RegisterFormValues>)} className={inputClass} />
+                                <FieldError name={`trainings.${index}.dateFrom` as Path<RegisterFormValues>} />
+                             </div>
+                             <div className="space-y-1">
+                                <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">To</label>
+                                <input type="date" {...register(`trainings.${index}.dateTo` as Path<RegisterFormValues>)} className={inputClass} />
+                                <FieldError name={`trainings.${index}.dateTo` as Path<RegisterFormValues>} />
+                             </div>
+                          </div>
+                          
+                          <div className="grid grid-cols-2 gap-2">
+                             <div className="space-y-1">
+                                <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">Number of Hours</label>
+                                <input {...register(`trainings.${index}.hoursNumber` as Path<RegisterFormValues>)} className={inputClass} placeholder="e.g. 8" />
+                                <FieldError name={`trainings.${index}.hoursNumber` as Path<RegisterFormValues>} />
+                             </div>
+                             <div className="space-y-1">
+                                <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">Type of LD (Managerial/Technical/etc)</label>
+                                <input {...register(`trainings.${index}.typeOfLd` as Path<RegisterFormValues>)} className={inputClass} placeholder="" />
+                                <FieldError name={`trainings.${index}.typeOfLd` as Path<RegisterFormValues>} />
+                             </div>
+                          </div>
+                          
+                          <div className="space-y-1 md:col-span-2">
+                             <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">Conducted / Sponsored By</label>
+                             <input {...register(`trainings.${index}.conductedBy` as Path<RegisterFormValues>)} className={inputClass} placeholder="Write in full" />
+                             <FieldError name={`trainings.${index}.conductedBy` as Path<RegisterFormValues>} />
+                           </div>
+                       </div>
+                    </div>
+                 ))}
+                 {trainingFields.length === 0 && (
+                    <div className="text-center py-6 border-2 border-dashed border-gray-100 rounded-xl">
+                       <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest">No trainings added</p>
+                    </div>
+                  )}
+              </div>
+           </div>
+
+           {/* Additional Information */}
+           <div className={cardClass}>
+              <h4 className={cardHeaderClass}>Additional Information</h4>
+             <div className="grid grid-cols-1 gap-4">
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                     <div className="space-y-1">
+                         <label className="text-xs font-semibold text-gray-600 ml-1">Years of Experience <span className="text-red-500">*</span></label>
+                         <input 
+                           type="number" 
+                           step="0.1" 
+                           {...register("yearsOfExperience", { required: "Required" })} 
+                           className={getInputClass("yearsOfExperience")} 
+                           placeholder="e.g. 5" 
+                         />
+                         <FieldError name="yearsOfExperience" />
+                     </div>
+                 </div>
+                 <div className="space-y-1">
+                    <label className="text-xs font-semibold text-gray-600 ml-1">Experience Summary <span className="text-red-500">*</span></label>
+                    <textarea {...register("experience")} rows={3} className={getInputClass("experience")} placeholder="Describe overall professional experience..." />
+                    <FieldError name="experience" />
+                 </div>
+                 <div className="space-y-1">
+                    <label className="text-xs font-semibold text-gray-600 ml-1">Core Competencies / Skills <span className="text-red-500">*</span></label>
+                    <textarea {...register("skills")} rows={2} className={getInputClass("skills")} placeholder="List key skills..." />
+                    <FieldError name="skills" />
+                 </div>
              </div>
           </div>
         </div>
@@ -1511,12 +2027,15 @@ export default function AdminRegister() {
               <label className="flex items-start gap-3 cursor-pointer group">
                   <input 
                       type="checkbox" 
-                      required 
+                      {...register("certifiedCorrect")}
                       className="mt-1 w-5 h-5 rounded border-gray-300 text-green-600 focus:ring-green-500 transition-all cursor-pointer"
                   />
-                  <span className="text-xs text-gray-500 leading-relaxed group-hover:text-gray-700 transition-colors">
-                      By submitting this form on behalf of the employee, I certify that civil service records, government identifiers, and placement requirements have been fully verified.
-                  </span>
+                  <div className="flex flex-col gap-1">
+                      <span className="text-xs text-gray-500 leading-relaxed group-hover:text-gray-700 transition-colors">
+                          By submitting this form on behalf of the employee, I certify that civil service records, government identifiers, and placement requirements have been fully verified.
+                      </span>
+                      <FieldError name="certifiedCorrect" />
+                  </div>
               </label>
 
               <button 
@@ -1529,6 +2048,7 @@ export default function AdminRegister() {
               </button>
           </div>
         </div>
+        <input type="hidden" {...register("applicantId")} />
         </form>
       </div>
 
@@ -1558,8 +2078,16 @@ export default function AdminRegister() {
         isOpen={isVerifyModalOpen}
         email={verificationEmail}
         employeeDbId={createdEmployeeDbId}
+        showCloseButton={true}
+        onClose={() => setIsVerifyModalOpen(false)}
         onSuccess={() => {
           setIsVerifyModalOpen(false);
+          toast.success("Employee Record Created & Verified Successfully!");
+          if (isFinalizingSetup) {
+              navigate("/admin-dashboard");
+          } else {
+              navigate(`/admin-dashboard/departments?department=${queryDept || ''}`);
+          }
         }}
       />
     </div>

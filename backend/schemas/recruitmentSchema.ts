@@ -1,22 +1,25 @@
 import { z } from 'zod';
 import { createIdValidator, createStrictIdValidator, ID_REGEX } from './idValidation.js';
 
-// STRICT AUTHORIZED TESTING VALUES FOR ELIGIBILITY & CERTIFICATIONS
-const VALID_ELIGIBILITY_NAMES = [
-  "Civil Service Professional", "Civil Service Sub-Professional", "CPA Board Exam", 
-  "Driver's License", "LET Board Exam", "Nursing Licensure Exam", "Bar Examination",
-  "Engineering Board Exam", "TESDA NC II", "Real Estate Broker"
-];
+const gibberishRegex = /^(.)\1{5,}|^[bcdfghjklmnpqrstvwxzBCDFGHJKLMNPQRSTVWXZ]{12,}$|qwertyuiop|asdfghjkl|zxcvbnm|qwqewrwff/;
 
-const VALID_ELIGIBILITY_PLACES = [
-  "Manila", "Quezon City", "Makati", "Cebu City", "Davao City", 
-  "Baguio City", "Iloilo City", "Cagayan de Oro", "Zamboanga City", "Pampanga"
-];
+const validateGibberish = (val: string | undefined | null) => {
+  if (!val || val === "") return true;
+  if (/(.)\1{7,}/.test(val)) return false;
+  if (/[bcdfghjklmnpqrstvwxzBCDFGHJKLMNPQRSTVWXZ]{15,}/.test(val)) return false;
+  if (/[!@#$%^&*()_+={}[\]:;"'<>,.?/\\|`~]{4,}/.test(val)) return false;
+  return !gibberishRegex.test(val.toLowerCase());
+};
 
-const VALID_LICENSE_NUMBERS = [
-  "1234567", "9876543", "1122334", "5566778", "9900112",
-  "1029384", "5647382", "2039485", "9102837", "5060708"
-];
+const nameValidator = (val: string | undefined | null) => {
+  if (!val || val === "") return true;
+  const nameRegex = /^[a-zA-Z\s\-.ñÑ]+$/;
+  if (!nameRegex.test(val)) return false;
+  return validateGibberish(val);
+};
+
+const nameMsg = "Only letters, spaces, hyphens, and dots are allowed. Avoid random characters.";
+const gibberishMsg = "Please enter valid text, avoid random characters and excessive symbols.";
 
 // Schedule Interview Data Schema
 export const scheduleInterviewSchema = z.object({
@@ -109,61 +112,111 @@ export const updateJobSchema = createJobSchema.partial().extend({
 // Apply for Job Schema (with Length Caps + Type-Safe)
 export const applyJobSchema = z.object({
   jobId: z.string().or(z.number()).transform(val => String(val)),
-  firstName: z.string().min(1, 'First name is required').max(100, 'First name is too long'),
-  lastName: z.string().min(1, 'Last name is required').max(100, 'Last name is too long'),
-  middleName: z.string().max(100, 'Middle name is too long').optional(),
-  suffix: z.string().max(10, 'Suffix is too long').optional(),
+  firstName: z.string().min(1, 'First name is required').max(100, 'First name is too long').refine(nameValidator, nameMsg),
+  lastName: z.string().min(1, 'Last name is required').max(100, 'Last name is too long').refine(nameValidator, nameMsg),
+  middleName: z.string().max(100, 'Middle name is too long').optional().nullable().refine(nameValidator, nameMsg),
+  suffix: z.string().max(10, 'Suffix is too long').optional().nullable().refine(nameValidator, nameMsg),
   email: z.string().email('Invalid email address').max(255, 'Email is too long'),
   phoneNumber: z.string().min(1, 'Phone number is required').max(20, 'Phone number is too long'),
-  address: z.string().min(1, 'Address is required').max(500, 'Address is too long'),
-  zipCode: z.string().min(1, 'Zip code is required').max(10, 'Zip code is too long'),
-  permanentAddress: z.string().max(500, 'Permanent address is too long').optional(),
-  permanentZipCode: z.string().max(10, 'Permanent zip code is too long').optional(),
-  isMeycauayanResident: z.union([z.boolean(), z.string(), z.number()]).transform(v => v === true || v === 'true' || v === 1).optional(),
   birthDate: z.string().min(1, 'Birth date is required').max(30, 'Birth date is too long'),
   birthPlace: z.string().min(1, 'Birth place is required').max(255, 'Birth place is too long'),
   sex: z.enum(['Male', 'Female']),
   civilStatus: z.enum(['Single', 'Married', 'Widowed', 'Separated', 'Annulled']),
-  height: z.string().max(20, 'Height is too long').optional(),
-  weight: z.string().max(20, 'Weight is too long').optional(),
-  bloodType: z.string().max(10, 'Blood type is too long').optional(),
+  height: z.string().max(20, 'Height is too long').optional().nullable(),
+  weight: z.string().max(20, 'Weight is too long').optional().nullable(),
+  bloodType: z.string().max(10, 'Blood type is too long').optional().nullable(),
+  nationality: z.string().max(100).default('Filipino'),
+  citizenshipType: z.string().optional().nullable(),
+  dualCountry: z.string().optional().nullable(),
+
+  // Address Fields
+  isMeycauayanResident: z.union([z.boolean(), z.string(), z.number()]).transform(v => v === true || v === 'true' || v === 1).optional(),
+  resRegion: z.string().max(100).optional().nullable(),
+  resProvince: z.string().max(100).optional().nullable(),
+  resCity: z.string().max(100).optional().nullable(),
+  resBarangay: z.string().max(100).optional().nullable(),
+  resStreet: z.string().max(255).optional().nullable(),
+  resHouseBlockLot: z.string().max(100).optional().nullable(),
+  resSubdivision: z.string().max(100).optional().nullable(),
+  zipCode: z.string().max(10).optional().nullable(),
+
+  permRegion: z.string().max(100).optional().nullable(),
+  permProvince: z.string().max(100).optional().nullable(),
+  permCity: z.string().max(100).optional().nullable(),
+  permBarangay: z.string().max(100).optional().nullable(),
+  permStreet: z.string().max(255).optional().nullable(),
+  permHouseBlockLot: z.string().max(100).optional().nullable(),
+  permSubdivision: z.string().max(100).optional().nullable(),
+  permanentZipCode: z.string().max(10).optional().nullable(),
+
+  // Additional Contact
+  telephoneNumber: z.string().max(20).optional().nullable(),
+
+  // Emergency Contact
+  emergencyContact: z.string().min(1, 'Emergency contact person is required').max(255).refine(nameValidator, nameMsg),
+  emergencyContactNumber: z.string().min(1, 'Emergency contact number is required').max(20),
+
+  // Social Links
+  facebookUrl: z.string().max(255).optional().nullable(),
+  linkedinUrl: z.string().max(255).optional().nullable(),
+  twitterHandle: z.string().max(255).optional().nullable(),
+
+  // Government ID Fields
   gsisNumber: createIdValidator(ID_REGEX.GSIS, "GSIS Number"),
   pagibigNumber: createIdValidator(ID_REGEX.PAGIBIG, "Pag-IBIG Number"),
   philhealthNumber: createIdValidator(ID_REGEX.PHILHEALTH, "PhilHealth Number"),
   umidNumber: createIdValidator(ID_REGEX.UMID, "UMID Number"),
   philsysId: createIdValidator(ID_REGEX.PHILSYS, "PhilSys ID"),
   tinNumber: createIdValidator(ID_REGEX.TIN, "TIN"),
-  eligibility: z.string().max(255).optional().refine(val => !val || VALID_ELIGIBILITY_NAMES.includes(val), 'Fake Record rejected. Please use an authorized testing ID.'),
-  eligibilityType: z.string().max(100).optional(),
-  eligibilityDate: z.string().max(30).optional(),
-  eligibilityRating: z.string().max(50).optional(),
-  eligibilityPlace: z.string().max(255).optional().refine(val => !val || VALID_ELIGIBILITY_PLACES.includes(val), 'Fake Record rejected. Please use an authorized testing ID.'),
-  licenseNo: z.string().max(50).optional().refine(val => !val || VALID_LICENSE_NUMBERS.includes(val), 'Fake ID rejected. Please use an authorized testing ID.'),
+  agencyEmployeeNo: z.string().max(50).optional().nullable(),
+  govtIdType: z.string().max(255).optional().nullable(),
+  govtIdNo: z.string().max(255).optional().nullable(),
+  govtIdIssuance: z.string().max(255).optional().nullable(),
+
+  // PDS-Aligned Education (Object with Levels)
+  education: z.object({
+    Elementary: z.object({ school: z.string().optional().nullable(), course: z.string().optional().nullable(), from: z.coerce.string().optional().nullable(), to: z.coerce.string().optional().nullable(), units: z.string().optional().nullable(), yearGrad: z.coerce.string().optional().nullable(), honors: z.string().optional().nullable() }).optional(),
+    Secondary: z.object({ school: z.string().optional().nullable(), course: z.string().optional().nullable(), from: z.coerce.string().optional().nullable(), to: z.coerce.string().optional().nullable(), units: z.string().optional().nullable(), yearGrad: z.coerce.string().optional().nullable(), honors: z.string().optional().nullable() }).optional(),
+    Vocational: z.object({ school: z.string().optional().nullable(), course: z.string().optional().nullable(), from: z.coerce.string().optional().nullable(), to: z.coerce.string().optional().nullable(), units: z.string().optional().nullable(), yearGrad: z.coerce.string().optional().nullable(), honors: z.string().optional().nullable() }).optional(),
+    College: z.object({ school: z.string().optional().nullable(), course: z.string().optional().nullable(), from: z.coerce.string().optional().nullable(), to: z.coerce.string().optional().nullable(), units: z.string().optional().nullable(), yearGrad: z.coerce.string().optional().nullable(), honors: z.string().optional().nullable() }).optional(),
+    Graduate: z.object({ school: z.string().optional().nullable(), course: z.string().optional().nullable(), from: z.coerce.string().optional().nullable(), to: z.coerce.string().optional().nullable(), units: z.string().optional().nullable(), yearGrad: z.coerce.string().optional().nullable(), honors: z.string().optional().nullable() }).optional(),
+  }).optional(),
+
+  // PDS-Aligned Arrays
+  eligibilities: z.array(z.object({
+    name: z.string().min(1, "Eligibility name is required"),
+    rating: z.string().optional().nullable(),
+    examDate: z.string().optional().nullable(),
+    examPlace: z.string().optional().nullable(),
+    licenseNo: z.string().optional().nullable(),
+    licenseValidUntil: z.string().optional().nullable()
+  })).optional().default([]),
+
+  workExperiences: z.array(z.object({
+    dateFrom: z.string().min(1, "Date from is required"),
+    dateTo: z.string().optional().nullable().or(z.literal('')),
+    positionTitle: z.string().min(1, "Position title is required"),
+    companyName: z.string().min(1, "Company Name is required"),
+    monthlySalary: z.string().optional().nullable().or(z.literal('')),
+    salaryGrade: z.string().optional().nullable().or(z.literal('')),
+    appointmentStatus: z.string().optional().nullable().or(z.literal('')),
+    isGovernment: z.boolean().default(false)
+  })).optional().default([]),
+
+  trainings: z.array(z.object({
+    title: z.string().min(1, "Title is required"),
+    dateFrom: z.string().min(1, "Date from is required"),
+    dateTo: z.string().optional().nullable().or(z.literal('')),
+    hoursNumber: z.string().optional().nullable().or(z.literal('')),
+    typeOfLd: z.string().optional().nullable().or(z.literal('')),
+    conductedBy: z.string().optional().nullable().or(z.literal(''))
+  })).optional().default([]),
+ 
   totalExperienceYears: z.string().or(z.number()).transform(val => Number(val)).optional(),
-  educationalBackground: z.string().max(5000, 'Education details are too long').optional(),
-  schoolName: z.string().max(255).optional(),
-  course: z.string().max(255).optional(),
-  yearGraduated: z.string().max(10).optional(),
-  experience: z.string().max(5000, 'Experience details are too long').optional(),
-  skills: z.string().max(5000, 'Skills details are too long').optional(),
-  emergencyContact: z.string().min(1, 'Emergency contact person is required').max(255),
-  emergencyContactNumber: z.string().min(1, 'Emergency contact number is required').max(20),
+  skills: z.string().max(5000, 'Skills details are too long').optional().refine(validateGibberish, gibberishMsg),
   photo: z.string().max(255).optional(),
-  resRegion: z.string().max(100).optional(),
-  resProvince: z.string().max(100).optional(),
-  resCity: z.string().max(100).optional(),
-  resBrgy: z.string().max(100).optional(),
-  resStreet: z.string().max(255).optional(),
-  residentialZipCode: z.string().max(10).optional(),
-  permRegion: z.string().max(100).optional(),
-  permProvince: z.string().max(100).optional(),
-  permCity: z.string().max(100).optional(),
-  permBrgy: z.string().max(100).optional(),
-  permStreet: z.string().max(255).optional(),
-  resHouseBlockLot: z.string().max(100).optional(),
-  resSubdivision: z.string().max(100).optional(),
-  permHouseBlockLot: z.string().max(100).optional(),
-  permSubdivision: z.string().max(100).optional(),
+
+  // Anti-Spam
   hpField: z.string().max(0).optional(),
   websiteUrl: z.string().max(0).optional(),
   hToken: z.string().min(1),
@@ -207,31 +260,17 @@ export const createStrictApplyJobSchema = (requireIds: boolean, requireCsc: bool
     philsysId: requireIds ? createStrictIdValidator(ID_REGEX.PHILSYS, "PhilSys ID") : applyJobSchema.shape.philsysId,
     tinNumber: requireIds ? createStrictIdValidator(ID_REGEX.TIN, "TIN") : applyJobSchema.shape.tinNumber,
     
-    eligibility: requireCsc ? z.string().min(1, 'Eligibility is required').refine(val => VALID_ELIGIBILITY_NAMES.includes(val), 'Fake Record rejected. Please use an authorized testing ID.') : applyJobSchema.shape.eligibility,
-    eligibilityType: requireCsc ? z.enum(['none', 'csc_prof', 'csc_sub', 'ra_1080', 'special_laws', 'drivers_license', 'tesda', 'nbi_clearance', 'others']) : applyJobSchema.shape.eligibilityType,
-    eligibilityDate: requireCsc ? z.string().min(1, 'Date is required') : applyJobSchema.shape.eligibilityDate,
-    eligibilityPlace: requireCsc ? z.string().min(1, 'Place is required').refine(val => VALID_ELIGIBILITY_PLACES.includes(val), 'Fake Record rejected. Please use an authorized testing ID.') : applyJobSchema.shape.eligibilityPlace,
-    licenseNo: requireCsc ? z.string().min(1, 'License No is required').refine(val => VALID_LICENSE_NUMBERS.includes(val), 'Fake ID rejected. Please use an authorized testing ID.') : applyJobSchema.shape.licenseNo,
-    
-    educationalBackground: requireEdu ? z.string().min(1, 'Education is required') : applyJobSchema.shape.educationalBackground,
-    schoolName: requireEdu ? z.string().min(1, 'School name is required') : applyJobSchema.shape.schoolName,
-    yearGraduated: requireEdu ? z.string().min(1, 'Year graduated is required') : applyJobSchema.shape.yearGraduated,
-    experience: requireEdu ? z.string().min(1, 'Experience is required') : applyJobSchema.shape.experience,
-    skills: requireEdu ? z.string().min(1, 'Skills are required') : applyJobSchema.shape.skills,
-  }).superRefine((data, ctx) => {
-    // Conditional Course Requirement
-    if (requireEdu) {
-        const basicLevels = ["Elementary School Graduate", "High School Graduate", "Senior High School Graduate"];
-        if (data.educationalBackground && !basicLevels.includes(data.educationalBackground)) {
-            if (!data.course || data.course.trim().length === 0) {
-                ctx.addIssue({
-                    code: z.ZodIssueCode.custom,
-                    message: "Course / Degree is required for this level of education",
-                    path: ["course"]
-                });
-            }
-        }
-    }
+    education: requireEdu ? z.object({
+       Elementary: z.object({ school: z.string().optional().nullable(), course: z.string().optional().nullable(), from: z.coerce.string().optional().nullable(), to: z.coerce.string().optional().nullable(), units: z.string().optional().nullable(), yearGrad: z.coerce.string().optional().nullable(), honors: z.string().optional().nullable() }).optional(),
+       Secondary: z.object({ school: z.string().optional().nullable(), course: z.string().optional().nullable(), from: z.coerce.string().optional().nullable(), to: z.coerce.string().optional().nullable(), units: z.string().optional().nullable(), yearGrad: z.coerce.string().optional().nullable(), honors: z.string().optional().nullable() }).optional(),
+       Vocational: z.object({ school: z.string().optional().nullable(), course: z.string().optional().nullable(), from: z.coerce.string().optional().nullable(), to: z.coerce.string().optional().nullable(), units: z.string().optional().nullable(), yearGrad: z.coerce.string().optional().nullable(), honors: z.string().optional().nullable() }).optional(),
+       College: z.object({ school: z.string().optional().nullable(), course: z.string().optional().nullable(), from: z.coerce.string().optional().nullable(), to: z.coerce.string().optional().nullable(), units: z.string().optional().nullable(), yearGrad: z.coerce.string().optional().nullable(), honors: z.string().optional().nullable() }).optional(),
+       Graduate: z.object({ school: z.string().optional().nullable(), course: z.string().optional().nullable(), from: z.coerce.string().optional().nullable(), to: z.coerce.string().optional().nullable(), units: z.string().optional().nullable(), yearGrad: z.coerce.string().optional().nullable(), honors: z.string().optional().nullable() }).optional(),
+    }).refine(data => {
+       return Object.values(data || {}).some(level => level?.school && level.school.trim().length > 0);
+    }, "At least one educational record is required") : applyJobSchema.shape.education,
+
+    eligibilities: requireCsc ? applyJobSchema.shape.eligibilities.removeDefault().unwrap().min(1, "At least one eligibility record is required") : applyJobSchema.shape.eligibilities,
+    workExperiences: requireEdu ? applyJobSchema.shape.workExperiences.removeDefault().unwrap().min(1, "At least one work experience record is required") : applyJobSchema.shape.workExperiences,
   });
 };
-

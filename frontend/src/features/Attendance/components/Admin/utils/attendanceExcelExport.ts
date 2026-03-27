@@ -258,8 +258,8 @@ export const exportAttendanceToExcel = async (
         formatDate(record.date),
         formatTime(record.timeIn || ''),
         formatTime(record.timeOut || ''),
-        Number(formatMinutes(rawLate)),
-        Number(formatMinutes(rawUndertime)),
+        rawLate,
+        rawUndertime,
         isPresent ? 'X' : '',
         isLate ? 'X' : '',
         isUndertime ? 'X' : '',
@@ -300,13 +300,13 @@ export const exportAttendanceToExcel = async (
       '',
       '',
       '',
-      { formula: `SUM(G5:G${worksheet.rowCount - 1})`, result: 0 },
-      { formula: `SUM(H5:H${worksheet.rowCount - 1})`, result: 0 },
-      { formula: `COUNTIF(I5:I${worksheet.rowCount - 1},"X")`, result: 0 },
-      { formula: `COUNTIF(J5:J${worksheet.rowCount - 1},"X")`, result: 0 },
-      { formula: `COUNTIF(K5:K${worksheet.rowCount - 1},"X")`, result: 0 },
-      { formula: `COUNTIF(L5:L${worksheet.rowCount - 1},"X")`, result: 0 },
-      { formula: `COUNTA(M5:M${worksheet.rowCount - 1})-COUNTBLANK(M5:M${worksheet.rowCount - 1})`, result: 0 }
+      { formula: `SUM(G5:G${worksheet.rowCount})`, result: 0 },
+      { formula: `SUM(H5:H${worksheet.rowCount})`, result: 0 },
+      { formula: `COUNTIF(I5:I${worksheet.rowCount},"X")`, result: 0 },
+      { formula: `COUNTIF(J5:J${worksheet.rowCount},"X")`, result: 0 },
+      { formula: `COUNTIF(K5:K${worksheet.rowCount},"X")`, result: 0 },
+      { formula: `COUNTIF(L5:L${worksheet.rowCount},"X")`, result: 0 },
+      { formula: `COUNTA(M5:M${worksheet.rowCount})-COUNTBLANK(M5:M${worksheet.rowCount})`, result: 0 }
     ]);
     
     // Style the Total Row

@@ -269,7 +269,7 @@ export const getEvaluationSummary = async (_req: Request, res: Response): Promis
       };
     });
 
-    res.json({ success: true, stats, employees: formattedEmployees });
+    res.json({ success: true, data: { stats, employees: formattedEmployees } });
   } catch (_error) {
 
     res.status(500).json({ success: false, message: 'Failed to fetch summary' });
@@ -328,7 +328,14 @@ export const getRatingDistribution = async (_req: Request, res: Response): Promi
     });
 
     const total = Object.values(distribution).reduce((sum, val) => sum + val, 0);
-    res.json({ success: true, distribution, total });
+    console.log('[Performance] Distribution:', distribution, 'Total:', total);
+    res.json({ 
+      success: true, 
+      data: {
+        distribution, 
+        total 
+      }
+    });
   } catch (_error) {
 
     res.status(500).json({ success: false, message: 'Failed to fetch rating distribution' });
@@ -498,7 +505,10 @@ export const getReview = async (req: Request, res: Response): Promise<void> => {
     );
 
     // 3. Fetch Violation Count (Consistent with calculation logic: period-based, non-cancelled)
-    const empIdStr = (review.authenticationEmployeeId as never).employeeId || review.employeeId.toString();
+    const empAuth = review.authenticationEmployeeId as { firstName: string; lastName: string; employeeId: string; hrDetails?: { jobTitle?: string; positionTitle?: string; department?: { name: string } } };
+    const revAuth = review.authenticationReviewerId as { firstName: string; lastName: string };
+    
+    const empIdStr = empAuth.employeeId || review.employeeId.toString();
     const violations = await db.select({ count: count() })
       .from(policyViolations)
       .where(and(
@@ -509,8 +519,6 @@ export const getReview = async (req: Request, res: Response): Promise<void> => {
       ));
 
     // 4. Resolve flattened structure
-    const empAuth = review.authenticationEmployeeId as never;
-    const revAuth = review.authenticationReviewerId as never;
     const flatReview = {
         ...review,
         employeeFirstName: empAuth.firstName,

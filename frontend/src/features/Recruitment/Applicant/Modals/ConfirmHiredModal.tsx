@@ -72,7 +72,7 @@ const ConfirmHiredModal: React.FC<ConfirmHiredModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200">
         <div className="bg-gray-900 px-6 py-4 flex justify-between items-center">
           <h3 className="text-white font-bold flex items-center gap-2">

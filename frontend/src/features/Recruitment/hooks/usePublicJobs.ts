@@ -1,6 +1,6 @@
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { recruitmentApi } from '@/api/recruitmentApi';
-import { PublicJob, JobApplicationSchema } from '@/schemas/recruitment';
+import { PublicJob, JobApplicationSchema, JobApplicationInput } from '@/schemas/recruitment';
 
 export const usePublicJobs = (searchTerm: string = '') => {
     const { data, isLoading, error } = useQuery({
@@ -48,7 +48,8 @@ export const usePublicJobDetail = (id: string | undefined) => {
 
 export const useJobApplication = (onSuccess?: (response: { data: { success: boolean, requiresVerification?: boolean, email?: string, applicantId?: number } }) => void, onError?: (error: Error) => void) => {
     return useMutation({
-        mutationFn: async ({ id, data }: { id: string; data: JobApplicationSchema }) => {
+        mutationFn: async ({ id, data }: { id: string; data: JobApplicationInput }) => {
+            console.log('[DEBUG] useJobApplication mutation data:', JSON.stringify(data, null, 2));
             const formData = new FormData();
             formData.append('jobId', id);
 
@@ -60,7 +61,7 @@ export const useJobApplication = (onSuccess?: (response: { data: { success: bool
             Object.keys(data).forEach(key => {
                 if (skipFields.has(key)) return;
 
-                const value = data[key as keyof JobApplicationSchema];
+                const value = data[key as keyof JobApplicationInput];
                 if (value === null || value === undefined) return;
 
                 if (fileFields.has(key)) {
@@ -68,6 +69,9 @@ export const useJobApplication = (onSuccess?: (response: { data: { success: bool
                     if (value instanceof File) {
                         formData.append(key, value);
                     }
+                } else if (value !== null && typeof value === 'object') {
+                    // 100% PRECISION: Stringify objects and arrays for multipart/form-data
+                    formData.append(key, JSON.stringify(value));
                 } else if (typeof value === 'boolean') {
                     formData.append(key, value ? 'true' : 'false');
                 } else if (typeof value === 'number') {

@@ -5,6 +5,10 @@ import { chatApi, ChatMessage, ChatConversation } from '@/api/chatApi';
 import { useChatStore } from '@/stores/chatStore';
 import { useAuthStore } from '@/stores/authStore';
 import { formatFullName } from '@/utils/nameUtils';
+import { chatStartSchema } from '@/schemas/inquiry';
+import { ZodError } from 'zod';
+import { toast } from 'react-hot-toast';
+import ConfirmDialog from '@/components/Custom/Shared/ConfirmDialog';
 
 const LiveChatWidget = () => {
     const user = useAuthStore(state => state.user);
@@ -25,15 +29,40 @@ const LiveChatWidget = () => {
     const [editingId, setEditingId] = useState<number | null>(null);
     const [editInput, setEditInput] = useState('');
     const [deletingId, setDeletingId] = useState<number | null>(null);
+    const [isDeletingHistory, setIsDeletingHistory] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
+    
+    // Store integration
+    const unreadCount = useChatStore(state => state.unreadCount);
+    const setUnreadCount = useChatStore(state => state.setUnreadCount);
+    const setConversationId = useChatStore(state => state.setConversationId);
 
     // Form for onboarding
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
 
-    // Auto-onboard if authenticated
+    // Load from localStorage or Auto-onboard if authenticated
     useEffect(() => {
-        if (isAuthenticated && user && !onboarded && !loading && isOpen) {
+        const savedId = localStorage.getItem('chat_conversation_id');
+        const savedName = localStorage.getItem('chat_user_name');
+        const savedEmail = localStorage.getItem('chat_user_email');
+
+        // Always populate name/email if they exist
+        if (savedName) setName(savedName);
+        if (savedEmail) setEmail(savedEmail);
+
+        if (savedId && savedName && savedEmail) {
+            setConversation({
+                id: Number(savedId),
+                applicantName: savedName,
+                applicantEmail: savedEmail,
+                status: 'Active',
+                createdAt: '',
+                updatedAt: ''
+            });
+            setConversationId(Number(savedId));
+            setOnboarded(true);
+        } else if (isAuthenticated && user && !onboarded && !loading && isOpen) {
             const autoOnboard = async () => {
                 setLoading(true);
                 try {
@@ -41,7 +70,11 @@ const LiveChatWidget = () => {
                     const res = await chatApi.start(userName, user.email);
                     if (res.data.success) {
                         setConversation(res.data.conversation);
+                        setConversationId(res.data.conversation.id);
                         setOnboarded(true);
+                        localStorage.setItem('chat_conversation_id', res.data.conversation.id.toString());
+                        localStorage.setItem('chat_user_name', userName);
+                        localStorage.setItem('chat_user_email', user.email);
                         const msgRes = await chatApi.getMessages(res.data.conversation.id);
                         setMessages(msgRes.data.messages);
                     }
@@ -53,7 +86,7 @@ const LiveChatWidget = () => {
             };
             autoOnboard();
         }
-    }, [isAuthenticated, user, onboarded, isOpen]);
+    }, [isAuthenticated, user, onboarded, isOpen, setConversationId]);
 
     // Poll for new messages when open
     useEffect(() => {
@@ -70,11 +103,33 @@ const LiveChatWidget = () => {
                 }
             };
 
+            console.log('[Chat] Polling for messages...', conversation.id);
             fetchMessages(); // Initial fetch
             interval = setInterval(fetchMessages, 5000); // Poll every 5s
         }
         return () => clearInterval(interval);
     }, [isOpen, conversation]);
+
+    // Poll for unread count when closed
+    useEffect(() => {
+        let interval: NodeJS.Timeout;
+        if (!isOpen && conversation) {
+            const fetchUnread = async () => {
+                try {
+                    const res = await chatApi.getUnreadCount(conversation.id, 'Applicant');
+                    if (res.data.success) {
+                        setUnreadCount(res.data.count);
+                    }
+                } catch (err) {
+                    console.error('Unread count polling error:', err);
+                }
+            };
+
+            fetchUnread(); // Initial fetch
+            interval = setInterval(fetchUnread, 10000); // Poll every 10s when closed
+        }
+        return () => clearInterval(interval);
+    }, [isOpen, conversation, setUnreadCount]);
 
     // Scroll to bottom
     useEffect(() => {
@@ -87,16 +142,32 @@ const LiveChatWidget = () => {
         e.preventDefault();
         setLoading(true);
         try {
+            // Validate client-side first
+            chatStartSchema.parse({ name, email });
+            
             const res = await chatApi.start(name, email);
             if (res.data.success) {
                 setConversation(res.data.conversation);
+                setConversationId(res.data.conversation.id);
                 setOnboarded(true);
+                localStorage.setItem('chat_conversation_id', res.data.conversation.id.toString());
+                localStorage.setItem('chat_user_name', name);
+                localStorage.setItem('chat_user_email', email);
                 // Try to load history
                 const msgRes = await chatApi.getMessages(res.data.conversation.id);
                 setMessages(msgRes.data.messages);
             }
-        } catch (err) {
+        } catch (err: unknown) {
             console.error('Failed to start chat', err);
+            if (err instanceof ZodError) {
+                toast.error(err.issues[0].message, { id: 'chat-val-error' });
+            } else if (err && typeof err === 'object' && 'response' in err) {
+                const axiosErr = err as { response?: { data?: { message?: string } } };
+                const serverMsg = axiosErr.response?.data?.message || 'Failed to start chat';
+                toast.error(serverMsg, { id: 'chat-server-error' });
+            } else {
+                toast.error('Failed to start chat', { id: 'chat-generic-error' });
+            }
         } finally {
             setLoading(false);
         }
@@ -151,16 +222,21 @@ const LiveChatWidget = () => {
         }
     };
 
-    const handleDeleteConversation = async () => {
-        if (!conversation || !confirm('Are you sure you want to PERMANENTLY delete your entire chat history? This cannot be undone.')) return;
+    const confirmDeleteHistory = async () => {
+        if (!conversation) return;
         try {
             await chatApi.deleteConversation(conversation.id, 'Applicant');
+            localStorage.removeItem('chat_conversation_id');
+            // We KEEP chat_user_name and chat_user_email 
+            setConversationId(null);
+            setUnreadCount(0);
             setConversation(null);
             setMessages([]);
             setOnboarded(false);
-            localStorage.removeItem('chat_conversation_id'); // If stored
         } catch (err) {
             console.error('Delete conversation error:', err);
+        } finally {
+            setIsDeletingHistory(false);
         }
     };
 
@@ -176,7 +252,7 @@ const LiveChatWidget = () => {
                         style={{ height: 'min(580px, calc(100vh - 120px))' }}
                     >
                         {/* Header */}
-                        <div className="bg-slate-800/50 backdrop-blur-md border-b border-slate-700/50 px-5 py-5 flex items-center justify-between">
+                        <div className="bg-slate-800/50 border-b border-slate-700/50 px-5 py-5 flex items-center justify-between">
                             <div className="flex items-center gap-3">
                                 <div className="w-1 bg-white/20 h-4 rounded-full" />
                                 <div>
@@ -190,9 +266,9 @@ const LiveChatWidget = () => {
                             <div className="flex items-center gap-1">
                                 {onboarded && conversation && (
                                     <button 
-                                        onClick={handleDeleteConversation}
-                                        className="p-2.5 hover:bg-red-500/10 rounded-xl transition-all active:scale-90 text-slate-500 hover:text-red-400"
-                                        title="Delete History"
+                                        onClick={() => setIsDeletingHistory(true)}
+                                        className="p-2 text-red-300 hover:text-red-400 hover:bg-white/10 rounded-lg transition-all"
+                                        title="Delete entire history"
                                     >
                                         <Trash2 size={16} />
                                     </button>
@@ -246,102 +322,111 @@ const LiveChatWidget = () => {
                                         ref={scrollRef}
                                         className="flex-1 overflow-y-auto p-5 space-y-5 scroll-smooth custom-scrollbar"
                                     >
-                                        {messages.map((msg) => {
-                                            const isApplicant = msg.senderType === 'Applicant';
-                                            return (
-                                                <div key={msg.id} className={`flex gap-3 ${isApplicant ? 'flex-row-reverse' : 'flex-row'}`}>
-
-                                                    <div className={`max-w-[80%] group flex flex-col ${isApplicant ? 'items-end' : 'items-start'}`}>
-                                                        <div className="flex items-center gap-2 group/actions">
-                                                            {isApplicant && !msg.isDeletedForEveryone && (
-                                                                <div className="flex items-center gap-0.5 opacity-0 group-hover/actions:opacity-100 transition-all duration-200">
-                                                                    <button 
-                                                                        onClick={() => {
-                                                                            setEditingId(msg.id);
-                                                                            setEditInput(msg.message);
-                                                                        }}
-                                                                        className="p-1.5 hover:bg-white/5 rounded-lg text-slate-600 hover:text-white transition-all"
-                                                                        title="Edit"
-                                                                    >
-                                                                        <Pencil size={12} />
-                                                                    </button>
-                                                                    <button 
-                                                                        onClick={() => {
-                                                                            setDeletingId(msg.id);
-                                                                        }}
-                                                                        className="p-1.5 hover:bg-red-500/10 rounded-lg text-slate-600 hover:text-red-400 transition-all"
-                                                                        title="Delete message"
-                                                                    >
-                                                                        <Trash2 size={12} />
-                                                                    </button>
-                                                                </div>
-                                                            )}
-                                                            
-                                                            <div className={`p-4 px-5 rounded-2xl flex flex-col shadow-lg ${
-                                                                msg.isDeletedForEveryone
-                                                                ? 'bg-slate-800/50 border border-slate-700 text-slate-500 italic rounded-br-none'
-                                                                : isApplicant 
-                                                                ? 'bg-slate-100 text-slate-900 rounded-br-none font-bold' 
-                                                                : 'bg-slate-800 border border-slate-700 text-white rounded-bl-none font-medium'
-                                                            }`}>
-                                                                {editingId === msg.id ? (
-                                                                    <div className="flex flex-col gap-3 min-w-[180px]">
-                                                                        <textarea 
-                                                                            className="w-full bg-slate-900 text-white p-3 text-[12px] rounded-xl outline-none border border-slate-700 focus:border-white/20 transition-all min-h-[80px]"
-                                                                            value={editInput}
-                                                                            onChange={(e) => setEditInput(e.target.value)}
-                                                                            autoFocus
-                                                                        />
-                                                                        <div className="flex justify-end gap-2">
-                                                                            <button onClick={() => setEditingId(null)} className="text-[10px] font-black uppercase text-slate-500 hover:text-white transition-colors">Cancel</button>
-                                                                            <button onClick={() => handleEdit(msg.id)} className="px-3 py-1 bg-white text-slate-900 text-[10px] font-black uppercase rounded-lg hover:bg-slate-100 transition-all">Save</button>
-                                                                        </div>
+                                        {messages.length === 0 ? (
+                                            <div className="h-full flex flex-col items-center justify-center text-center px-4 opacity-50">
+                                                <div className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center mb-4">
+                                                    <Info size={20} className="text-slate-400" />
+                                                </div>
+                                                <p className="text-xs font-bold text-white uppercase tracking-tighter">No messages yet</p>
+                                                <p className="text-[10px] text-slate-500 mt-1 uppercase tracking-widest font-medium">Send a message to start the conversation</p>
+                                            </div>
+                                        ) : (
+                                            messages.map((msg) => {
+                                                const isApplicant = msg.senderType === 'Applicant';
+                                                return (
+                                                    <div key={msg.id} className={`flex gap-3 ${isApplicant ? 'flex-row-reverse' : 'flex-row'}`}>
+                                                        <div className={`max-w-[80%] group flex flex-col ${isApplicant ? 'items-end' : 'items-start'}`}>
+                                                            <div className="flex items-center gap-2 group/actions">
+                                                                {isApplicant && !msg.isDeletedForEveryone && (
+                                                                    <div className="flex items-center gap-0.5 opacity-0 group-hover/actions:opacity-100 transition-all duration-200">
+                                                                        <button 
+                                                                            onClick={() => {
+                                                                                setEditingId(msg.id);
+                                                                                setEditInput(msg.message);
+                                                                            }}
+                                                                            className="p-1.5 hover:bg-white/5 rounded-lg text-slate-600 hover:text-white transition-all"
+                                                                            title="Edit"
+                                                                        >
+                                                                            <Pencil size={12} />
+                                                                        </button>
+                                                                        <button 
+                                                                            onClick={() => {
+                                                                                setDeletingId(msg.id);
+                                                                            }}
+                                                                            className="p-1.5 hover:bg-red-500/10 rounded-lg text-slate-600 hover:text-red-400 transition-all"
+                                                                            title="Delete message"
+                                                                        >
+                                                                            <Trash2 size={12} />
+                                                                        </button>
                                                                     </div>
-                                                                ) : deletingId === msg.id ? (
-                                                                    <div className="flex flex-col gap-2 min-w-[150px] p-1 text-center">
-                                                                        <p className="text-[9px] font-black text-red-400 uppercase tracking-tighter mb-1">Delete message?</p>
-                                                                        <div className="flex flex-col gap-1.5">
-                                                                            <button 
-                                                                                onClick={() => handleDelete(msg.id, 'everyone')}
-                                                                                className="w-full py-1.5 bg-red-500/10 text-red-400 text-[9px] font-black uppercase rounded-lg hover:bg-red-500/20 transition-all"
-                                                                            >
-                                                                                Everyone
-                                                                            </button>
-                                                                            <button 
-                                                                                onClick={() => handleDelete(msg.id, 'me')}
-                                                                                className="w-full py-1.5 bg-slate-800 text-slate-400 text-[9px] font-black uppercase rounded-lg hover:bg-slate-700 transition-all"
-                                                                            >
-                                                                                Me Only
-                                                                            </button>
-                                                                            <button 
-                                                                                onClick={() => setDeletingId(null)} 
-                                                                                className="w-full py-1 text-[8px] font-black uppercase text-slate-600 hover:text-slate-400 transition-colors"
-                                                                            >
-                                                                                Cancel
-                                                                            </button>
-                                                                        </div>
-                                                                    </div>
-                                                                ) : (
-                                                                    <p className="text-[13px] leading-relaxed whitespace-pre-wrap">{msg.message}</p>
                                                                 )}
+                                                                
+                                                                <div className={`p-4 px-5 rounded-2xl flex flex-col shadow-lg ${
+                                                                    msg.isDeletedForEveryone
+                                                                    ? 'bg-slate-800/50 border border-slate-700 text-slate-500 italic rounded-br-none'
+                                                                    : isApplicant 
+                                                                    ? 'bg-slate-100 text-slate-900 rounded-br-none font-bold' 
+                                                                    : 'bg-slate-800 border border-slate-700 text-white rounded-bl-none font-medium'
+                                                                }`}>
+                                                                    {editingId === msg.id ? (
+                                                                        <div className="flex flex-col gap-3 min-w-[180px]">
+                                                                            <textarea 
+                                                                                className="w-full bg-slate-900 text-white p-3 text-[12px] rounded-xl outline-none border border-slate-700 focus:border-white/20 transition-all min-h-[80px]"
+                                                                                value={editInput}
+                                                                                onChange={(e) => setEditInput(e.target.value)}
+                                                                                autoFocus
+                                                                            />
+                                                                            <div className="flex justify-end gap-2">
+                                                                                <button onClick={() => setEditingId(null)} className="text-[10px] font-black uppercase text-slate-500 hover:text-white transition-colors">Cancel</button>
+                                                                                <button onClick={() => handleEdit(msg.id)} className="px-3 py-1 bg-white text-slate-900 text-[10px] font-black uppercase rounded-lg hover:bg-slate-100 transition-all">Save</button>
+                                                                            </div>
+                                                                        </div>
+                                                                    ) : deletingId === msg.id ? (
+                                                                        <div className="flex flex-col gap-2 min-w-[150px] p-1 text-center">
+                                                                            <p className="text-[9px] font-black text-red-400 uppercase tracking-tighter mb-1">Delete message?</p>
+                                                                            <div className="flex flex-col gap-1.5">
+                                                                                <button 
+                                                                                    onClick={() => handleDelete(msg.id, 'everyone')}
+                                                                                    className="w-full py-1.5 bg-red-500/10 text-red-400 text-[9px] font-black uppercase rounded-lg hover:bg-red-500/20 transition-all"
+                                                                                >
+                                                                                    Everyone
+                                                                                </button>
+                                                                                <button 
+                                                                                    onClick={() => handleDelete(msg.id, 'me')}
+                                                                                    className="w-full py-1.5 bg-slate-800 text-slate-400 text-[9px] font-black uppercase rounded-lg hover:bg-slate-700 transition-all"
+                                                                                >
+                                                                                    Me Only
+                                                                                </button>
+                                                                                <button 
+                                                                                    onClick={() => setDeletingId(null)} 
+                                                                                    className="w-full py-1 text-[8px] font-black uppercase text-slate-600 hover:text-slate-400 transition-colors"
+                                                                                >
+                                                                                    Cancel
+                                                                                </button>
+                                                                            </div>
+                                                                        </div>
+                                                                    ) : (
+                                                                        <p className="text-[13px] leading-relaxed whitespace-pre-wrap">{msg.message}</p>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                            
+                                                            <div className={`flex items-center gap-2 mt-2 transition-opacity duration-300 ${isApplicant ? 'flex-row-reverse' : 'flex-row'}`}>
+                                                                {msg.isEdited && !msg.isDeletedForEveryone && (
+                                                                    <span className="text-[9px] font-black text-white/20 uppercase tracking-tighter italic">Edited</span>
+                                                                )}
+                                                                <span className="text-[9px] text-white/20 font-black tracking-widest uppercase">
+                                                                    {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                                </span>
                                                             </div>
                                                         </div>
-                                                        
-                                                        <div className={`flex items-center gap-2 mt-2 transition-opacity duration-300 ${isApplicant ? 'flex-row-reverse' : 'flex-row'}`}>
-                                                            {msg.isEdited && !msg.isDeletedForEveryone && (
-                                                                <span className="text-[9px] font-black text-white/20 uppercase tracking-tighter italic">Edited</span>
-                                                            )}
-                                                            <span className="text-[9px] text-white/20 font-black tracking-widest uppercase">
-                                                                {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                            </span>
-                                                        </div>
                                                     </div>
-                                                </div>
-                                            );
-                                        })}
+                                                );
+                                            })
+                                        )}
                                     </div>
 
-                                    <div className="p-5 bg-slate-800/30 border-t border-slate-700/50 backdrop-blur-sm">
+                                    <div className="p-5 bg-slate-800/30 border-t border-slate-700/50">
                                         <div className="relative group">
                                             <input 
                                                 type="text" 
@@ -380,7 +465,13 @@ const LiveChatWidget = () => {
                 {isOpen ? <X size={24} strokeWidth={3} /> : (
                     <div className="relative">
                         <span className="text-[10px] font-black uppercase tracking-widest">Chat</span>
-                        <div className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-sm"></div>
+                        {unreadCount > 0 ? (
+                            <div className="absolute -top-4 -right-4 bg-red-500 text-white text-[10px] font-black px-2 py-1 rounded-full shadow-lg animate-bounce border-2 border-white">
+                                {unreadCount}
+                            </div>
+                        ) : (
+                            <div className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-sm"></div>
+                        )}
                     </div>
                 )}
             </motion.button>
@@ -400,6 +491,15 @@ const LiveChatWidget = () => {
                     background: rgba(255, 255, 255, 0.2);
                 }
             `}</style>
+            <ConfirmDialog
+                isOpen={isDeletingHistory}
+                title="Delete Chat History"
+                message="Are you sure you want to PERMANENTLY delete your entire chat history? This cannot be undone."
+                isDestructive={true}
+                confirmText="Delete History"
+                onClose={() => setIsDeletingHistory(false)}
+                onConfirm={confirmDeleteHistory}
+            />
         </div>
     );
 };

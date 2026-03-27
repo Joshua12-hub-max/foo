@@ -38,8 +38,20 @@ export const inquiryApi = {
     api.patch(`/inquiries/${id}/status`, data),
 
   /**
+   * Admin: Reply to an inquiry
+   */
+  reply: async (id: number, replyMessage: string): Promise<AxiosResponse<{ success: boolean; message: string }>> =>
+    api.post(`/inquiries/${id}/reply`, { replyMessage }),
+
+  /**
    * Admin: Delete an inquiry
    */
   delete: async (id: number): Promise<AxiosResponse<{ success: boolean; message: string }>> =>
-    api.delete(`/inquiries/${id}`)
+    api.delete(`/inquiries/${id}`),
+
+  /**
+   * Admin: Get pending count
+   */
+  getPendingCount: async (): Promise<AxiosResponse<{ success: boolean; count: number }>> =>
+    api.get('/inquiries/count/pending')
 };

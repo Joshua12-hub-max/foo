@@ -79,12 +79,12 @@ const Table: React.FC<TableProps> = ({ data, onOpenApprove, onOpenReject, onOpen
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-1">
-                      {item.status === 'Pending' && (
+                      {(item.status === 'Pending' || item.status === 'Finalizing') && (
                         <>
                           <button
                             onClick={() => onOpenApprove(item)}
                             title="Approve"
-                            className="px-3 py-1 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors flex items-center gap-1.5 text-xs font-semibold border border-gray-200"
+                            className="px-3 py-1 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors flex items-center gap-1.5 text-xs font-semibold border border-emerald-100"
                           >
                             <CheckCircle className="w-3.5 h-3.5" />
                             Approve
@@ -92,17 +92,34 @@ const Table: React.FC<TableProps> = ({ data, onOpenApprove, onOpenReject, onOpen
                           <button
                             onClick={() => onOpenReject(item)}
                             title="Reject"
-                            className="px-3 py-1 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors flex items-center gap-1.5 text-xs font-semibold border border-gray-200"
+                            className="px-3 py-1 text-red-600 hover:bg-red-50 rounded-lg transition-colors flex items-center gap-1.5 text-xs font-semibold border border-red-100"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                             Reject
                           </button>
                         </>
                       )}
+
+                      {item.status === 'Pending' && onOpenProcess && (
+                        <button
+                          onClick={() => onOpenProcess(item)}
+                          title="Process"
+                          className="px-3 py-1 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors flex items-center gap-1.5 text-xs font-semibold border border-indigo-100"
+                        >
+                          <Info className="w-3.5 h-3.5" />
+                          Process
+                        </button>
+                      )}
+
+                      {item.status === 'Processing' && (
+                        <div className="flex items-center gap-1.5 text-blue-600 bg-blue-50 px-3 py-1 rounded-lg border border-blue-100 italic">
+                          <span className="text-[10px] font-bold uppercase tracking-tight">Waiting for Employee</span>
+                        </div>
+                      )}
                       
-                       {(item.status === 'Approved' || item.status === 'Rejected') && !onOpenProcess && (
-                          <div className="flex items-center gap-1 text-gray-400 bg-gray-50 px-3 py-1 rounded border border-gray-100">
-                             <span className="text-[10px] font-semibold">Locked</span>
+                       {(item.status === 'Approved' || item.status === 'Rejected' || item.status === 'Cancelled') && (
+                          <div className="flex items-center gap-1 text-gray-400 bg-gray-50 px-3 py-1 rounded-lg border border-gray-100 shadow-inner">
+                             <span className="text-[10px] font-bold uppercase tracking-widest">Archived</span>
                           </div>
                        )}
                     </div>

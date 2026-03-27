@@ -7,6 +7,8 @@ import { useAuth } from "@hooks/useAuth";
 import { attendanceApi, DashboardStatsResponse, EmployeeStats } from "@api/attendanceApi";
 import { useUIStore } from "@/stores/uiStore";
 import { User } from "@/types";
+import { inquiryApi } from "@api/inquiryApi";
+import { chatApi } from "@api/chatApi";
 
 // Dashboard Components
 import Sidebar from "@components/Custom/DashboardAdminComponents/Sidebar";
@@ -26,8 +28,7 @@ import RegularizationWidget from "../../features/Dashboard/components/Regulariza
 // Icons
 import { 
   LayoutDashboard, Clock, Users, Briefcase, 
-  Award, Settings, Mail, MessageCircle, LucideIcon,
-  Wallet, FileText, MessageSquare, ShieldCheck
+  Award, Settings, LucideIcon
 } from "lucide-react";
 
 // --- Interfaces ---
@@ -154,8 +155,39 @@ export default function HDashboard(): React.ReactElement {
   }, [sidebarOpen, setSidebarOpenStore]);
 
   const [activeTable, setActiveTable] = useState<string | null>(null);
+  const [pendingInquiriesCount, setPendingInquiriesCount] = useState<number>(0);
+  const [pendingChatCount, setPendingChatCount] = useState<number>(0);
 
-  const { data: dashboardData, isLoading: loading } = useQuery({
+  // Fetch all pending counts
+  const fetchCounts = useCallback(async () => {
+    try {
+      const [inquiryRes, chatRes] = await Promise.all([
+        inquiryApi.getPendingCount(),
+        chatApi.getAdminUnreadTotal()
+      ]);
+
+      if (inquiryRes.data.success) {
+        setPendingInquiriesCount(Number(inquiryRes.data.count || 0));
+      }
+      if (chatRes.data.success) {
+        setPendingChatCount(Number(chatRes.data.count || 0));
+      }
+    } catch (err) {
+      console.error('Failed to fetch counts:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    console.log('[AdminDashboard] Counts updated:', { 
+        inquiries: pendingInquiriesCount, 
+        chat: pendingChatCount 
+    });
+    fetchCounts();
+    const interval = setInterval(fetchCounts, 30000); // Check every 30s
+    return () => clearInterval(interval);
+  }, [fetchCounts, pendingInquiriesCount, pendingChatCount]);
+
+  const { data: dashboardData } = useQuery({
     queryKey: ['adminDashboardStats'],
     queryFn: async (): Promise<DashboardStatsResponse['data'] | undefined> => {
       const response = await attendanceApi.getDashboardStats();
@@ -195,6 +227,13 @@ export default function HDashboard(): React.ReactElement {
   const isDashboardHome = useMemo(() => 
     location.pathname === "/admin-dashboard" || location.pathname === "/admin-dashboard/", 
   [location.pathname]);
+
+  // --- Profile Completeness Check ---
+  useEffect(() => {
+    if (user?.profileStatus === 'Initial' && location.pathname !== "/admin-dashboard/register") {
+      navigate("/admin-dashboard/register?mode=finalize-setup");
+    }
+  }, [user, navigate, location.pathname]);
 
   // --- Handlers ---
   const handleLogout = async (): Promise<void> => {
@@ -239,12 +278,13 @@ export default function HDashboard(): React.ReactElement {
       name: "Recruitment", 
       icon: Briefcase,
       action: "recruitment",
+      count: pendingInquiriesCount + pendingChatCount, // Sum of both notifications
       children: [
         { name: "Job Postings", action: "recruitment/jobs" },
         { name: "Applicant List", action: "recruitment/applicants" },
         { name: "Interview Pipeline", action: "recruitment/interviews" },
-        { name: "Live Support Chat", action: "recruitment/support" },
-        { name: "Public Inquiries", action: "recruitment/inquiries" },
+        { name: "Live Support Chat", action: "recruitment/support", count: pendingChatCount },
+        { name: "Public Inquiries", action: "recruitment/inquiries", count: pendingInquiriesCount },
         { name: "Security Audit Logs", action: "recruitment/audit" },
       ]
     },
@@ -258,7 +298,7 @@ export default function HDashboard(): React.ReactElement {
         { name: "Biometrics", action: "biometrics-logs" },
       ],
     },
-  ], []);
+  ], [pendingInquiriesCount, pendingChatCount]);
 
   const statsCards: StatCardData[] = useMemo(() => [
     { title: "Present", data: stats.present },

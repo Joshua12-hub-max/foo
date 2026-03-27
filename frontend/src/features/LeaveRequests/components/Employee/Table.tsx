@@ -72,20 +72,20 @@ export const Table: React.FC<TableProps> = ({ data, searchQuery, filters, onFina
                       <span className="text-[10px] text-gray-400 font-medium uppercase tracking-tighter">Days</span>
                     </div>
                   </td>
-                  <td className="px-6 py-4">
+                   <td className="px-6 py-4">
                     {item.status === 'Processing' && onFinalize && (
                       <button
                         onClick={() => onFinalize(item)}
                         title="Finalize Request"
-                        className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition-colors flex items-center justify-center"
+                        className="px-3 py-1 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors flex items-center gap-1.5 text-xs font-semibold border border-indigo-100"
                       >
-                        <CheckCircle size={16} />
+                        <CheckCircle size={14} />
+                        Finalize
                       </button>
                     )}
                     {item.status !== 'Pending' && item.status !== 'Processing' && (
-                       <div className="flex items-center gap-1 text-gray-400 bg-gray-50 px-2 py-1 rounded border border-gray-100 w-fit">
-                          <Info size={12} />
-                          <span className="text-[10px] font-normal uppercase">Locked</span>
+                       <div className="flex items-center gap-1 text-gray-400 bg-gray-50 px-3 py-1 rounded-lg border border-gray-100 w-fit shadow-inner">
+                          <span className="text-[10px] font-bold uppercase tracking-widest">Archived</span>
                        </div>
                     )}
                   </td>

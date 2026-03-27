@@ -7,6 +7,7 @@ export interface HiredApplicant {
   email: string;
   phoneNumber: string | null;
   photoPath: string | null;
+  photo1x1Path?: string | null;
   photoUrl: string | null;
   birthDate: string | null;
   birthPlace: string | null;
@@ -57,8 +58,86 @@ export interface HiredApplicant {
   emergencyContactNumber?: string | null;
   hiredDate: string | null;
   startDate: string | null;
+  highestDegree?: string | null;
   department?: string | null;
   jobTitle?: string | null;
   employmentType?: string | null;
   dutyType?: 'Standard' | 'Irregular' | null;
+  
+  // 100% SUCCESS: Added missing fields for data integrity
+  citizenship?: string | null;
+  nationality?: string | null;
+  citizenshipType?: string | null;
+  dualCountry?: string | null;
+  facebookUrl?: string | null;
+  linkedinUrl?: string | null;
+  twitterHandle?: string | null;
+  telephoneNumber?: string | null;
+  agencyEmployeeNo?: string | null;
+  govtIdType?: string | null;
+  govtIdNo?: string | null;
+  govtIdIssuance?: string | null;
+  training?: string | null;
+  
+  // 100% DATA FLOW: Expanded PDS fields for automated registration
+  familyBackground?: string | null;
+  children?: string | null;
+  voluntaryWork?: string | null;
+  otherInfo?: string | null;
+  pdsReferences?: string | null;
+  pdsQuestions?: string | null;
+  
+  // Relational Data
+  educations?: ApplicantEducation[];
+  experiences?: ApplicantExperience[];
+  trainings?: ApplicantTraining[];
+  eligibilities?: ApplicantEligibility[];
+}
+
+export interface ApplicantEducation {
+  id: number;
+  applicantId: number;
+  level: 'Elementary' | 'Secondary' | 'Vocational' | 'College' | 'Graduate Studies';
+  schoolName: string;
+  degreeCourse: string | null;
+  yearGraduated: string | null;
+  unitsEarned: string | null;
+  dateFrom: string | null;
+  dateTo: string | null;
+  honors: string | null;
+}
+
+export interface ApplicantExperience {
+  id: number;
+  applicantId: number;
+  dateFrom: string;
+  dateTo: string | null;
+  positionTitle: string;
+  companyName: string;
+  monthlySalary: string | number | null;
+  salaryGrade: string | null;
+  appointmentStatus: string | null;
+  isGovernment: boolean | null;
+}
+
+export interface ApplicantTraining {
+  id: number;
+  applicantId: number;
+  title: string;
+  dateFrom: string | null;
+  dateTo: string | null;
+  hoursNumber: number | null;
+  typeOfLd: string | null;
+  conductedBy: string | null;
+}
+
+export interface ApplicantEligibility {
+  id: number;
+  applicantId: number;
+  eligibilityName: string;
+  rating: string | number | null;
+  examDate: string | null;
+  examPlace: string | null;
+  licenseNumber: string | null;
+  validityDate: string | null;
 }

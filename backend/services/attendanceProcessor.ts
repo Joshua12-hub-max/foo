@@ -5,6 +5,7 @@ import { updateTardinessSummary } from '../utils/tardinessUtils.js';
 import { formatToManilaDateTime } from '../utils/dateUtils.js';
 import { checkPolicyViolations } from './violationService.js';
 import { compareIds } from '../utils/idUtils.js';
+import { calculateLateUndertime } from '../utils/attendanceUtils.js';
 
 const DAYS_OF_WEEK = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as const;
 
@@ -176,27 +177,27 @@ export const processDailyAttendance = async (
           Math.abs(new Date(l.scanTime).getTime() - blockEnd.getTime()) <= thresholdMs
         );
 
-        if (blockInLogs.length > 0) {
-          const firstIn = new Date(blockInLogs[0].scanTime);
-          if (!timeIn || firstIn < timeIn) timeIn = firstIn;
-          
-          if (firstIn > blockStart) {
-            const minutesLate = Math.floor((firstIn.getTime() - blockStart.getTime()) / 60000);
-            // L1 FIX: Grace period deducts from late minutes, not just gates them
-            // If grace = 15 and late = 20, charge 5 (not 20)
-            if (minutesLate > gracePeriod) {
-              totalLateMinutes += (minutesLate - gracePeriod);
-            }
-          }
-        }
+        if (blockInLogs.length > 0 || blockOutLogs.length > 0) {
+          const firstIn = blockInLogs.length > 0 ? new Date(blockInLogs[0].scanTime) : null;
+          const lastOut = blockOutLogs.length > 0 ? new Date(blockOutLogs[blockOutLogs.length - 1].scanTime) : null;
 
-        if (blockOutLogs.length > 0) {
-          const lastOut = new Date(blockOutLogs[blockOutLogs.length - 1].scanTime);
-          if (!timeOut || lastOut > timeOut) timeOut = lastOut;
+          if (firstIn && (!timeIn || firstIn < timeIn)) timeIn = firstIn;
+          if (lastOut && (!timeOut || lastOut > timeOut)) timeOut = lastOut;
 
-          if (lastOut < blockEnd) {
-            totalUndertimeMinutes += Math.floor((blockEnd.getTime() - lastOut.getTime()) / 60000);
-          } else if (lastOut > blockEnd) {
+          // Unified Calculation via Utility
+          const { lateMinutes, undertimeMinutes } = calculateLateUndertime(
+            firstIn,
+            lastOut,
+            blockStart,
+            blockEnd,
+            gracePeriod
+          );
+
+          totalLateMinutes += lateMinutes;
+          totalUndertimeMinutes += undertimeMinutes;
+
+          // Track Overtime (still separate for now as it doesn't have a grace period logic in utility yet)
+          if (lastOut && lastOut > blockEnd) {
             totalOvertimeMinutes += Math.floor((lastOut.getTime() - blockEnd.getTime()) / 60000);
           }
         }
@@ -205,11 +206,11 @@ export const processDailyAttendance = async (
       // ── TARGET-HOURS MODE (Irregular with no schedule) ──
       // No fixed start/end time → Late is NOT computed (no arrival benchmark).
       // Undertime = dailyTargetMinutes - renderedMinutes (if short).
-      const inLogs = logs.filter(l => l.type === 'IN');
-      const outLogs = logs.filter(l => l.type === 'OUT');
+      const targetInLogs = logs.filter(l => l.type === 'IN');
+      const targetOutLogs = logs.filter(l => l.type === 'OUT');
 
-      if (inLogs.length > 0) timeIn = new Date(inLogs[0].scanTime);
-      if (outLogs.length > 0) timeOut = new Date(outLogs[outLogs.length - 1].scanTime);
+      if (targetInLogs.length > 0) timeIn = new Date(targetInLogs[0].scanTime);
+      if (targetOutLogs.length > 0) timeOut = new Date(targetOutLogs[targetOutLogs.length - 1].scanTime);
 
       if (timeIn && timeOut) {
         const grossRenderedMinutes = Math.floor((timeOut.getTime() - timeIn.getTime()) / 60000);
@@ -226,10 +227,10 @@ export const processDailyAttendance = async (
       }
     } else {
       // Rest Day or no logs at all: Just record first in and last out
-      const inLogs = logs.filter(l => l.type === 'IN');
-      const outLogs = logs.filter(l => l.type === 'OUT');
-      if (inLogs.length > 0) timeIn = new Date(inLogs[0].scanTime);
-      if (outLogs.length > 0) timeOut = new Date(outLogs[outLogs.length - 1].scanTime);
+      const fallbackInLogs = logs.filter(l => l.type === 'IN');
+      const fallbackOutLogs = logs.filter(l => l.type === 'OUT');
+      if (fallbackInLogs.length > 0) timeIn = new Date(fallbackInLogs[0].scanTime);
+      if (fallbackOutLogs.length > 0) timeOut = new Date(fallbackOutLogs[fallbackOutLogs.length - 1].scanTime);
     }
 
     // ── STATUS DETERMINATION ──
@@ -267,10 +268,10 @@ export const processDailyAttendance = async (
         timeIn: timeIn ? formatToManilaDateTime(timeIn) : null,
         timeOut: timeOut ? formatToManilaDateTime(timeOut) : null,
         lateMinutes: totalLateMinutes,
-      undertimeMinutes: totalUndertimeMinutes,
-      overtimeMinutes: totalOvertimeMinutes,
-      status,
-      updatedAt: sql`CURRENT_TIMESTAMP`
+        undertimeMinutes: totalUndertimeMinutes,
+        overtimeMinutes: totalOvertimeMinutes,
+        status,
+        updatedAt: sql`CURRENT_TIMESTAMP`
       }).onDuplicateKeyUpdate({
         set: {
           timeIn: timeIn ? formatToManilaDateTime(timeIn) : null,
@@ -282,6 +283,12 @@ export const processDailyAttendance = async (
           updatedAt: sql`CURRENT_TIMESTAMP`
         }
       });
+    } else {
+      // CLEANUP: If no logs remain (e.g. after ghost log deletion) and not on leave, remove the DTR entry.
+      await db.delete(dailyTimeRecords).where(and(
+        compareIds(dailyTimeRecords.employeeId, employeeId),
+        eq(dailyTimeRecords.date, dateStr)
+      ));
     }
 
     // 5. AUTO-UPDATE SUMMARY & CHECK VIOLATIONS
@@ -290,7 +297,6 @@ export const processDailyAttendance = async (
     
     // Only check for violations if there's a negative incident to save resources
     if (totalLateMinutes > 0 || totalUndertimeMinutes > 0 || status === 'Absent') {
-      const dateParts = dateStr.split('-').map(Number);
       await checkPolicyViolations(employeeId, dateParts[0], dateParts[1]);
     }
 

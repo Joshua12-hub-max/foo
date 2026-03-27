@@ -8,7 +8,7 @@ export const ID_REGEX = {
   // PhilHealth: 12 digits (format: XX-XXXXXXXXX-X or XXXXXXXXXXXX)
   PHILHEALTH: /^(\d{12}|\d{2}-\d{9}-\d{1})$/,
   // UMID: 12 digits (format: XXXX-XXXXXXX-X or XXXXXXXXXXXX)
-  UMID: /^(\d{12}|\d{4}-\d{7}-\d{1})$/,
+  UMID: /^(\d{10}|\d{12}|\d{2}-\d{7}-\d{1}|\d{4}-\d{7}-\d{1})$/,
   // PhilSys: 16 digits (format: XXXX-XXXX-XXXX-XXXX or XXXXXXXXXXXXXXXX)
   PHILSYS: /^(\d{16}|\d{4}-\d{4}-\d{4}-\d{4})$/,
   // TIN: 9 or 12 digits (format: XXX-XXX-XXX or XXX-XXX-XXX-XXX or continuous)
@@ -17,14 +17,25 @@ export const ID_REGEX = {
 
 export const createIdValidator = (regex: RegExp, name: string) => {
   return z.string().optional().nullable().refine(
-    (val) => !val || regex.test(val.replace(/\s+/g, '')),
+    (val) => {
+      if (!val) return true;
+      const cleaned = val.replace(/\s+/g, '');
+      const ok = regex.test(cleaned);
+      if (!ok) console.log(`[DEBUG] ID Validation FAILED (Optional): name="${name}" val="${val}" cleaned="${cleaned}" regex=${regex}`);
+      return ok;
+    },
     { message: `Invalid ${name} format` }
   );
 };
 
 export const createStrictIdValidator = (regex: RegExp, name: string) => {
   return z.string().min(1, `${name} is required`).refine(
-    (val) => regex.test(val.replace(/\s+/g, '')),
+    (val) => {
+      const cleaned = val.replace(/\s+/g, '');
+      const ok = regex.test(cleaned);
+      if (!ok) console.log(`[DEBUG] ID Validation FAILED (Strict): name="${name}" val="${val}" cleaned="${cleaned}" regex=${regex}`);
+      return ok;
+    },
     { message: `Invalid ${name} format` }
   );
 };

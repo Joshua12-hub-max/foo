@@ -56,6 +56,13 @@ export const chatApi = {
   },
 
   /**
+   * Public/Admin: Get unread count for a conversation
+   */
+  getUnreadCount: async (conversationId: number, role?: 'Applicant' | 'Administrator'): Promise<AxiosResponse<{ success: boolean; count: number }>> => {
+    return await api.get(`/chat/unread-count/${conversationId}`, { params: { role } });
+  },
+
+  /**
    * Admin: Get all active conversations
    */
   getConversations: async (): Promise<AxiosResponse<{ success: boolean; conversations: ChatConversation[] }>> => {
@@ -94,5 +101,12 @@ export const chatApi = {
   deleteConversation: async (id: number, senderType: 'Applicant' | 'Administrator'): Promise<AxiosResponse<{ success: boolean; message: string }>> => {
     const url = senderType === 'Administrator' ? `/chat/admin/conversations/${id}` : `/chat/conversations/${id}`;
     return await api.delete(url, { params: { senderType } });
+  },
+
+  /**
+   * Admin: Get total unread count across all active conversations
+   */
+  getAdminUnreadTotal: async (): Promise<AxiosResponse<{ success: boolean; count: number }>> => {
+    return await api.get('/chat/admin/unread-total');
   }
 };

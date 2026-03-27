@@ -181,10 +181,11 @@ const ApplicantTable: React.FC<ApplicantTableProps> = ({
                             {app.stage === 'Hired' && onConfirm && (
                                 <button 
                                     onClick={() => onConfirm(app)}
-                                    className="text-emerald-600 hover:text-emerald-800 transition-colors"
+                                    className="flex items-center gap-1 px-3 py-1 bg-emerald-600 border border-emerald-600 text-white hover:bg-emerald-700 rounded-md transition-all shadow-sm"
                                     title="Confirm for Registration & Duty"
                                 >
-                                    <CheckCircle size={18} />
+                                    <CheckCircle size={14} />
+                                    <span className="text-[11px] font-bold">Confirm for Duty</span>
                                 </button>
                             )}
 

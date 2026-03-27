@@ -34,7 +34,7 @@ export default function VerifyEmail() {
                 {isSuccess ? 'Verified!' : 'Failed'}
                 </h2>
                 
-                <p className="text-gray-600 max-w-sm">
+                <p className="text-slate-500 font-medium max-w-sm">
                 {message}
                 </p>
 
@@ -47,8 +47,8 @@ export default function VerifyEmail() {
             </>
         ) : (
             <div className="flex flex-col items-center">
-                <Loader2 className="w-12 h-12 text-blue-600 animate-spin mb-4" />
-                <p className="text-gray-600">Checking verification status...</p>
+                <Loader2 className="w-12 h-12 text-green-600 animate-spin mb-4" />
+                <p className="text-slate-500 font-medium">Checking verification status...</p>
             </div>
         )}
       </div>

@@ -16,7 +16,13 @@ export const CREDIT_TYPES = [
   'Paternity Leave',
   'Solo Parent Leave',
   'Study Leave',
+  'Special Emergency Leave',
+  'VAWC Leave',
+  'Rehabilitation Leave',
+  'Special Leave Benefits for Women',
+  'Wellness Leave',
   'Adoption Leave',
+  'Other',
 ] as const;
 
 export type CreditType = typeof CREDIT_TYPES[number];

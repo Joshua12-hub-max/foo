@@ -16,8 +16,16 @@ export default defineConfig({
     tsconfigPaths()
   ],
   server: {
+    host: '127.0.0.1',
     port: 5173,
-    strictPort: true, // Forces app to crash if 5173 is taken, preventing silent port switches that break Google Auth
+    strictPort: true, 
+    proxy: {
+      '/api': {
+        target: 'http://127.0.0.1:5000',
+        changeOrigin: true,
+        secure: false,
+      }
+    },
     headers: {
       'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
     },

@@ -39,7 +39,7 @@ export default function Sidebar({ isOpen, navItems, onLogout, onSectionChange }:
 
   return (
     <aside 
-      className={`bg-gradient-to-r from-slate-950 to-green-900 text-gray-100 p-4 shadow-xl mb-6 flex flex-col justify-between transition-all duration-300 z-40 min-h-screen sticky top-0 overflow-y-auto border-r border-green-900/50 ${sidebarOpen ? 'w-72' : 'w-20'}`}
+      className={`bg-gradient-to-r from-slate-950 to-green-800 text-gray-100 p-4 shadow-xl mb-6 flex flex-col justify-between transition-all duration-300 z-40 min-h-screen sticky top-0 overflow-y-auto border-r border-green-800/50 ${sidebarOpen ? 'w-72' : 'w-20'}`}
       style={{
         scrollbarWidth: 'none',
         // @ts-ignore
@@ -108,7 +108,7 @@ export default function Sidebar({ isOpen, navItems, onLogout, onSectionChange }:
                   </button>
                 )}
                 {hasChildren && isOpen && sidebarOpen && (
-                  <div className="ml-4 pl-3 mt-1 space-y-0.5 border-l border-gray-800">
+                  <div className="ml-4 pl-1.5 mt-1 space-y-0.5 border-l border-gray-800">
                     {item.children?.map((child) => {
                       const childActive = isActive(child.action);
 
@@ -124,27 +124,27 @@ export default function Sidebar({ isOpen, navItems, onLogout, onSectionChange }:
                             <Link
                               to={child.path}
                               onClick={childOnClick}
-                              className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-all duration-200 ${
-                                childActive 
-                                    ? 'bg-slate-800 text-white font-medium shadow-sm' 
-                                    : 'text-gray-400 hover:bg-slate-800/30 hover:text-white'
-                                }`}
-                            >
-                              <span className="w-1.5 h-1.5 rounded-full bg-current opacity-40"></span>
-                              <span>{child.name}</span>
+                              className={`w-full flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs transition-all duration-200 ${
+                              childActive 
+                                  ? 'bg-slate-800 text-white font-medium shadow-sm' 
+                                  : 'text-gray-400 hover:bg-slate-800/30 hover:text-white'
+                              }`}
+                          >
+                            <span className="w-1.5 h-1.5 rounded-full bg-current opacity-40 shrink-0"></span>
+                            <span>{child.name}</span>
                             </Link>
                           ) : (
-                            <button
-                              onClick={childOnClick}
-                              className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-all duration-200 ${
-                                childActive 
-                                    ? 'bg-slate-800 text-white font-medium shadow-sm' 
-                                    : 'text-gray-400 hover:bg-slate-800/30 hover:text-white'
-                                }`}
-                            >
-                              <span className="w-1.5 h-1.5 rounded-full bg-current opacity-40"></span>
-                              <span>{child.name}</span>
-                            </button>
+                             <button
+                               onClick={childOnClick}
+                               className={`w-full flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs transition-all duration-200 ${
+                                 childActive 
+                                     ? 'bg-slate-800 text-white font-medium shadow-sm' 
+                                     : 'text-gray-400 hover:bg-slate-800/30 hover:text-white'
+                                 }`}
+                             >
+                               <span className="w-1.5 h-1.5 rounded-full bg-current opacity-40 shrink-0"></span>
+                               <span>{child.name}</span>
+                             </button>
                           )}
                         </div>
                       );
@@ -157,7 +157,7 @@ export default function Sidebar({ isOpen, navItems, onLogout, onSectionChange }:
         </nav>
       </div>
 
-      <div className="p-4 border-t border-green-900/50 rounded-b-lg flex-shrink-0 bg-green-900/30 space-y-3">
+      <div className="p-4 border-t border-green-800/50 rounded-b-lg flex-shrink-0 bg-green-800/30 space-y-3">
         {['Administrator', 'Human Resource'].includes(localStorage.getItem('user-role') || '') && (
           <Link 
             to="/admin-dashboard"

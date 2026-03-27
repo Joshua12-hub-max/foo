@@ -7,6 +7,7 @@ interface NavItem {
   icon?: LucideIcon;
   path?: string;
   action?: string;
+  count?: number;
   children?: NavItem[];
 }
 
@@ -40,7 +41,7 @@ export default function Sidebar({ sidebarOpen, navItems, handleLogout, onSection
 
   return (
     <aside 
-      className={`bg-gradient-to-r from-slate-950 to-green-900 text-gray-100 p-4 shadow-xl mb-6 flex flex-col justify-between transition-all duration-300 z-40 min-h-screen sticky top-0 overflow-y-auto border-r border-green-900/50 ${sidebarOpen ? 'w-72' : 'w-20'}`}
+      className={`bg-gradient-to-r from-slate-950 to-green-800 text-gray-100 p-4 shadow-xl mb-6 flex flex-col justify-between transition-all duration-300 z-40 min-h-screen sticky top-0 overflow-y-auto border-r border-green-800/50 ${sidebarOpen ? 'w-72' : 'w-20'}`}
       style={{
         scrollbarWidth: 'none',
         // @ts-ignore
@@ -94,12 +95,24 @@ export default function Sidebar({ sidebarOpen, navItems, handleLogout, onSection
                 >
                   {Icon && <Icon className={`w-5 h-5 flex-shrink-0 transition-colors duration-200 ${active && !hasChildren ? 'text-white' : 'text-gray-500 group-hover:text-white'}`} />}
                   {sidebarOpen && <span className="flex-1 text-left tracking-tight">{item.name}</span>}
+                  
+                  {/* Badge for both open and closed sidebar */}
+                  {item.count !== undefined && item.count > 0 && (
+                    <span className={`bg-red-500 text-white font-bold rounded-full text-center transition-all ${
+                        sidebarOpen 
+                        ? 'text-[10px] px-1.5 py-0.5 min-w-[18px]' 
+                        : 'absolute top-0 right-0 w-2.5 h-2.5 text-[0px] shadow-sm ring-1 ring-slate-900 animate-pulse'
+                    }`}>
+                      {sidebarOpen ? (item.count > 99 ? '99+' : item.count) : ''}
+                    </span>
+                  )}
+
                   {sidebarOpen && hasChildren && (
                     isOpen ? <ChevronDown className="w-4 h-4 opacity-50" /> : <ChevronRight className="w-4 h-4 opacity-50" />
                   )}
                 </MainComponent>
                 {hasChildren && isOpen && sidebarOpen && (
-                  <div className="ml-4 pl-3 mt-1 space-y-0.5 border-l border-gray-800">
+                  <div className="ml-4 pl-1.5 mt-1 space-y-0.5 border-l border-gray-800">
                     {item.children?.map((child: NavItem) => {
                       const childActive = isActive(child.action);
 
@@ -117,14 +130,19 @@ export default function Sidebar({ sidebarOpen, navItems, handleLogout, onSection
                           key={child.name}
                           to={child.path as string}
                           onClick={childOnClick}
-                          className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-all duration-200 ${
+                          className={`w-full flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs transition-all duration-200 ${
                             childActive 
                                 ? 'bg-slate-800 text-white font-medium shadow-sm' 
                                 : 'text-gray-400 hover:bg-slate-800/30 hover:text-white'
                             }`}
                         >
-                          <span className="w-1.5 h-1.5 rounded-full bg-current opacity-40"></span>
+                          <span className="w-1.5 h-1.5 rounded-full bg-current opacity-40 shrink-0"></span>
                           <span>{child.name}</span>
+                          {child.count !== undefined && child.count > 0 && (
+                            <span className="bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-sm ring-1 ring-white/10 transition-all">
+                              {child.count > 99 ? '99+' : child.count}
+                            </span>
+                          )}
                         </ChildComponent>
                       );
                     })}
@@ -136,7 +154,7 @@ export default function Sidebar({ sidebarOpen, navItems, handleLogout, onSection
         </nav>
       </div>
 
-      <div className="p-4 border-t border-green-900/50 rounded-b-lg flex-shrink-0 bg-green-900/30 space-y-3">
+      <div className="p-4 border-t border-green-800/50 rounded-b-lg flex-shrink-0 bg-green-800/30 space-y-3">
         <Link 
           to="/employee-dashboard"
           className="w-full flex items-center justify-center gap-2 py-2.5 text-gray-300 font-semibold bg-slate-800/50 hover:bg-slate-800 rounded-md transition-all border border-slate-700 hover:border-slate-600 hover:text-white text-sm"

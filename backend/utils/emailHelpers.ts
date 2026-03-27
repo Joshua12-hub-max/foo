@@ -9,9 +9,12 @@ import { sendEmail } from './emailUtils.js';
  */
 export const sendEmailNotification = async (to: string, subject: string, html: string, attachments: SendMailOptions['attachments'] = []): Promise<void> => {
   try { 
+    console.warn(`[NOTIFY DEBUG] Preparing notification for ${to}`);
     await sendEmail(to, subject, html, attachments);
+    console.warn(`[NOTIFY DEBUG] Notification sent for ${to}`);
   } catch (error: unknown) { 
-    console.error(`[NOTIFY ERROR] Failed to send email to ${to}:`, (error as Error).message); 
+    console.error(`[NOTIFY ERROR] FULL FAILURE for email to ${to}:`, (error as Error).message); 
+    if ((error as Error).stack) console.error(`[NOTIFY ERROR] Stack:`, (error as Error).stack);
   }
 };
 
@@ -71,9 +74,34 @@ export const replaceVariables = (
   let content = template;
   
   for (const [key, value] of Object.entries(variables)) {
-    const regex = new RegExp(`{{${key}}}`, 'g');
-    content = content.replace(regex, value ?? '');
+    // 100% PRECISION: Replace double braces BEFORE single braces to prevent partial matching
+    const doubleRegex = new RegExp(`{{${key}}}`, 'g');
+    const singleRegex = new RegExp(`{${key}}`, 'g');
+    const replacement = value ?? '';
+    
+    content = content.replace(doubleRegex, replacement)
+                     .replace(singleRegex, replacement);
   }
   
   return content;
+};
+
+/**
+ * Prepare template variables by ensuring both camelCase and snake_case versions exist.
+ * This ensures compatibility with templates using either {jobTitle} or {job_title} syntax.
+ * @param variables - Original variables object
+ * @returns Enhanced variables object with both casing styles
+ */
+export const prepareEmailVariables = (variables: TemplateVariables): TemplateVariables => {
+  const enhanced: TemplateVariables = { ...variables };
+  
+  for (const [key, value] of Object.entries(variables)) {
+    // Convert camelCase to snake_case: applicantFirstName -> applicant_first_name
+    const snakeKey = key.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+    if (snakeKey !== key) {
+      enhanced[snakeKey] = value;
+    }
+  }
+  
+  return enhanced;
 };

@@ -9,9 +9,6 @@ import { MySqlColumn } from 'drizzle-orm/mysql-core';
  * @returns A SQL fragment that evaluates to the numeric ID
  */
 export const normalizeIdSql = (column: MySqlColumn | string) => {
-  if (typeof column === 'string') {
-    return sql<number>`CAST(REGEXP_REPLACE(${sql.raw(column)}, '[^0-9]', '') AS UNSIGNED)`;
-  }
   return sql<number>`CAST(REGEXP_REPLACE(${column}, '[^0-9]', '') AS UNSIGNED)`;
 };
 

@@ -31,6 +31,19 @@ export const isDisposableEmail = (email: string): boolean => {
 /**
  * Validate email format using RFC 5322 regex
  */
+export const STRICT_NAME_REGEX = /^[a-zA-Z\s\-.ñÑ]{2,100}$/;
+
+/**
+ * Validates a name string against strict character requirements.
+ * Rejects symbols like !, *, ^, &, etc.
+ * @param name The name to validate
+ * @returns boolean
+ */
+export const isValidName = (name: string): boolean => {
+  if (!name || typeof name !== 'string') return false;
+  return STRICT_NAME_REGEX.test(name.trim());
+};
+
 export const isValidEmailFormat = (email: string): boolean => {
   return EMAIL_REGEX.test(email);
 };
@@ -39,7 +52,8 @@ export const isValidEmailFormat = (email: string): boolean => {
  * Strip HTML tags from a string to prevent XSS injection
  * Particularly important for content that will be embedded in HTML emails
  */
-export const sanitizeInput = (text: string): string => {
+export const sanitizeInput = (text: string | null | undefined): string => {
+  if (!text) return '';
   return text
     .replace(/<[^>]*>/g, '') // Strip all HTML tags
     .replace(/&/g, '&amp;')  // Encode ampersands

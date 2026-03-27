@@ -1,7 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { toCamelCase } from '../utils/caseUtils.js';
-
-type JsonValue = string | number | boolean | null | undefined | { [key: string]: JsonValue } | JsonValue[];
+import { JsonValue } from '../types/index.js';
 
 export const namingMiddleware = (req: Request, _res: Response, next: NextFunction) => {
   // Use structural type assertion to allow mutation of body and query if they are marked readonly in the environment

@@ -1,13 +1,11 @@
 import { Request, Response } from 'express';
 import { db } from '../db/index.js';
 import { contactInquiries } from '../db/schema.js';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, sql } from 'drizzle-orm';
 import nodemailer from 'nodemailer';
-import { isDisposableEmail, isValidEmailFormat, sanitizeInput, isWithinMaxLength } from '../utils/spamUtils.js';
-
-// Validation constants
-const MAX_MESSAGE_LENGTH = 5000;
-const MAX_NAME_LENGTH = 100;
+import { isDisposableEmail, sanitizeInput } from '../utils/spamUtils.js';
+import { inquirySchema } from '../schemas/inquirySchema.js';
+import { ZodError } from 'zod';
 
 // Valid inquiry statuses for strict type checking
 const VALID_INQUIRY_STATUSES = ['Pending', 'Read', 'Replied', 'Archived'] as const;
@@ -36,8 +34,9 @@ const sendNotification = async (to: string, subject: string, html: string): Prom
       subject,
       html
     });
-  } catch (_error) {
-    /* empty */
+  } catch (error: unknown) {
+    console.error('[Server] sendNotification error:', error);
+    // Don't throw, just log so the main flow can continue if email fails
   }
 };
 
@@ -48,30 +47,8 @@ const sendNotification = async (to: string, subject: string, html: string): Prom
  */
 export const submitInquiry = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { firstName, lastName, email, message } = req.body as { firstName: string; lastName: string; email: string; message: string };
-
-    if (!firstName || !lastName || !email || !message) {
-      res.status(400).json({ success: false, message: 'All fields are required' });
-      return;
-    }
-
-    // Anti-Spam: Validate types
-    if (typeof firstName !== 'string' || typeof lastName !== 'string' || typeof email !== 'string' || typeof message !== 'string') {
-      res.status(400).json({ success: false, message: 'Invalid input types' });
-      return;
-    }
-
-    // Anti-Spam: Validate name lengths
-    if (!isWithinMaxLength(firstName, MAX_NAME_LENGTH) || !isWithinMaxLength(lastName, MAX_NAME_LENGTH)) {
-      res.status(400).json({ success: false, message: `Names must be ${MAX_NAME_LENGTH} characters or less` });
-      return;
-    }
-
-    // Anti-Spam: Validate email format
-    if (!isValidEmailFormat(email)) {
-      res.status(400).json({ success: false, message: 'Please provide a valid email address' });
-      return;
-    }
+    const validatedData = inquirySchema.parse(req.body);
+    const { firstName, lastName, email, message } = validatedData;
 
     // Anti-Spam: Block disposable emails
     if (isDisposableEmail(email)) {
@@ -79,16 +56,10 @@ export const submitInquiry = async (req: Request, res: Response): Promise<void> 
       return;
     }
 
-    // Anti-Spam: Message length cap
-    if (!isWithinMaxLength(message, MAX_MESSAGE_LENGTH)) {
-      res.status(400).json({ success: false, message: `Message must be ${MAX_MESSAGE_LENGTH} characters or less` });
-      return;
-    }
-
-    // Anti-Spam: Sanitize all user inputs (especially message — embedded in HTML emails)
+    // Anti-Spam: Sanitize all user inputs
     const safeFirstName = sanitizeInput(firstName);
     const safeLastName = sanitizeInput(lastName);
-    const safeMessage = sanitizeInput(message);
+    const safeMessage = sanitizeInput(message || '');
 
     const [result] = await db.insert(contactInquiries).values({
       firstName: safeFirstName,
@@ -138,7 +109,8 @@ export const submitInquiry = async (req: Request, res: Response): Promise<void> 
       message: 'Inquiry submitted successfully. We have sent a confirmation to your email.',
       id: result.insertId 
     });
-  } catch (_error) {res.status(500).json({ success: false, message: 'Failed to submit inquiry. Please try again later.' });
+  } catch (error: unknown) {
+    res.status(500).json({ success: false, message: 'Failed to submit inquiry. Please try again later.' });
   }
 };
 
@@ -161,7 +133,8 @@ export const getInquiries = async (req: Request, res: Response): Promise<void> =
       .orderBy(desc(contactInquiries.createdAt));
 
     res.json({ success: true, inquiries });
-  } catch (_error) {res.status(500).json({ success: false, message: 'Failed to fetch inquiries' });
+  } catch (error: unknown) {
+    res.status(500).json({ success: false, message: 'Failed to fetch inquiries' });
   }
 };
 
@@ -197,7 +170,82 @@ export const updateStatus = async (req: Request, res: Response): Promise<void> =
       .where(eq(contactInquiries.id, Number(id)));
 
     res.json({ success: true, message: 'Inquiry status updated' });
-  } catch (_error) {res.status(500).json({ success: false, message: 'Failed to update status' });
+  } catch (error: unknown) {
+    console.error('[Server] updateInquiryStatus error:', error);
+    res.status(500).json({ success: false, message: 'Failed to update status' });
+  }
+};
+
+/**
+ * Admin: Reply to Inquiry
+ * POST /api/inquiries/:id/reply
+ */
+export const replyInquiry = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { replyMessage } = req.body as { replyMessage: string };
+
+    if (!replyMessage || typeof replyMessage !== 'string') {
+      res.status(400).json({ success: false, message: 'Reply message is required' });
+      return;
+    }
+
+    // 1. Fetch the inquiry to get the email and name
+    const [inquiry] = await db.select()
+      .from(contactInquiries)
+      .where(eq(contactInquiries.id, Number(id)))
+      .limit(1);
+
+    if (!inquiry) {
+      res.status(404).json({ success: false, message: 'Inquiry not found' });
+      return;
+    }
+
+    const sanitizedReply = sanitizeInput(replyMessage);
+
+    // 2. Send email reply
+    await sendNotification(
+      inquiry.email,
+      'Re: Your inquiry - Meycauayan HR',
+      `<div style="font-family: sans-serif; padding: 20px;">
+        <h2>Hello ${inquiry.firstName},</h2>
+        <p>This is a response from the City Human Resource Management Office of Meycauayan regarding your inquiry.</p>
+        <div style="background: #f4f4f4; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #0f172a;">
+          ${sanitizedReply.replace(/\n/g, '<br/>')}
+        </div>
+        <p>Best regards,<br/><strong>Meycauayan HR Team</strong></p>
+      </div>`
+    );
+
+    // 3. Update status and save the reply in adminNotes or just update status
+    // Keeping it simple: update status to 'Replied'
+    // 3. Update status and store reply
+    // updatedAt is automatic via .onUpdateNow() in schema
+    await db.update(contactInquiries)
+      .set({ 
+        status: 'Replied',
+        adminNotes: sql`CONCAT(COALESCE(admin_notes, ''), '\n[Reply Sent on ${new Date().toLocaleDateString()}]: ', ${sanitizedReply})`
+      })
+      .where(eq(contactInquiries.id, Number(id)));
+    res.json({ success: true, message: 'Reply sent successfully' });
+  } catch (error: unknown) {
+    console.error('Reply inquiry error:', error);
+    
+    if (error instanceof ZodError) {
+      res.status(400).json({ 
+        success: false, 
+        message: error.issues[0].message || 'Validation failed',
+        errors: error.flatten().fieldErrors 
+      });
+      return;
+    }
+
+    const errorMessage = error instanceof Error ? error.message : 'Internal Server Error';
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to send reply', 
+      error: errorMessage 
+    });
   }
 };
 
@@ -210,8 +258,25 @@ export const deleteInquiry = async (req: Request, res: Response): Promise<void> 
     const { id } = req.params;
     await db.delete(contactInquiries).where(eq(contactInquiries.id, Number(id)));
     res.json({ success: true, message: 'Inquiry deleted successfully' });
-  } catch (_error) {res.status(500).json({ success: false, message: 'Failed to delete inquiry' });
+  } catch (error: unknown) {
+    console.error('[Server] deleteInquiry error:', error);
+    res.status(500).json({ success: false, message: 'Failed to delete inquiry' });
   }
 };
+/**
+ * Admin: Get Pending Inquiry Count
+ * GET /api/inquiries/count/pending
+ */
+export const countPending = async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const [result] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(contactInquiries)
+      .where(eq(contactInquiries.status, 'Pending'));
 
-
+    res.json({ success: true, count: result?.count || 0 });
+  } catch (error: unknown) {
+    console.error('Count pending inquiries error:', error);
+    res.status(500).json({ success: false, message: 'Failed to count inquiries' });
+  }
+};

@@ -1,8 +1,8 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "33acc3cd-b2d1-4b09-9af9-17bd6f3ec369",
-  "prevId": "c4d48030-1e08-43c0-9ae5-b74aa619b9d7",
+  "id": "fc684f71-c8ee-4ae4-ab34-3aea4658daac",
+  "prevId": "33acc3cd-b2d1-4b09-9af9-17bd6f3ec369",
   "tables": {
     "budget_allocation": {
       "name": "budget_allocation",
@@ -1078,20 +1078,6 @@
           "notNull": true,
           "autoincrement": false
         },
-        "department": {
-          "name": "department",
-          "type": "varchar(100)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "department_id": {
-          "name": "department_id",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
         "employee_id": {
           "name": "employee_id",
           "type": "varchar(50)",
@@ -1164,266 +1150,17 @@
           "notNull": false,
           "autoincrement": false
         },
-        "job_title": {
-          "name": "job_title",
-          "type": "varchar(100)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "employment_status": {
-          "name": "employment_status",
-          "type": "enum('Active','Probationary','Terminated','Resigned','On Leave','Suspended','Verbal Warning','Written Warning','Show Cause')",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false,
-          "default": "'Active'"
-        },
-        "employment_type": {
-          "name": "employment_type",
-          "type": "varchar(50)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false,
-          "default": "'Probationary'"
-        },
-        "date_hired": {
-          "name": "date_hired",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "contract_end_date": {
-          "name": "contract_end_date",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "regularization_date": {
-          "name": "regularization_date",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "is_regular": {
-          "name": "is_regular",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false,
-          "default": false
-        },
-        "manager_id": {
-          "name": "manager_id",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "birth_date": {
-          "name": "birth_date",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "gender": {
-          "name": "gender",
-          "type": "enum('Male','Female')",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "civil_status": {
-          "name": "civil_status",
-          "type": "enum('Single','Married','Widowed','Separated','Annulled')",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "nationality": {
-          "name": "nationality",
-          "type": "varchar(50)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false,
-          "default": "'Filipino'"
-        },
-        "blood_type": {
-          "name": "blood_type",
-          "type": "varchar(5)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "height_cm": {
-          "name": "height_cm",
-          "type": "decimal(5,2)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "height_m": {
-          "name": "height_m",
-          "type": "decimal(4,2)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "weight_kg": {
-          "name": "weight_kg",
-          "type": "decimal(5,2)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "phone_number": {
-          "name": "phone_number",
-          "type": "varchar(20)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "address": {
-          "name": "address",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "permanent_address": {
-          "name": "permanent_address",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "emergency_contact": {
-          "name": "emergency_contact",
-          "type": "varchar(100)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "emergency_contact_number": {
-          "name": "emergency_contact_number",
-          "type": "varchar(20)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "umid_no": {
-          "name": "umid_no",
-          "type": "varchar(50)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "philsys_id": {
-          "name": "philsys_id",
-          "type": "varchar(50)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "philhealth_number": {
-          "name": "philhealth_number",
-          "type": "varchar(50)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "pagibig_number": {
-          "name": "pagibig_number",
-          "type": "varchar(50)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "tin_number": {
-          "name": "tin_number",
-          "type": "varchar(50)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "gsis_number": {
-          "name": "gsis_number",
-          "type": "varchar(50)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "agency_employee_no": {
-          "name": "agency_employee_no",
-          "type": "varchar(50)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "salary_grade": {
-          "name": "salary_grade",
-          "type": "varchar(10)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "step_increment": {
-          "name": "step_increment",
+        "login_attempts": {
+          "name": "login_attempts",
           "type": "int",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false,
-          "default": 1
+          "default": 0
         },
-        "appointment_type": {
-          "name": "appointment_type",
-          "type": "enum('Permanent','Contractual','Casual','Job Order','Coterminous','Temporary','Contract of Service','JO','COS')",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "office_address": {
-          "name": "office_address",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "station": {
-          "name": "station",
-          "type": "varchar(100)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "position_title": {
-          "name": "position_title",
-          "type": "varchar(100)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "item_number": {
-          "name": "item_number",
-          "type": "varchar(50)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "position_id": {
-          "name": "position_id",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "first_day_of_service": {
-          "name": "first_day_of_service",
-          "type": "date",
+        "lock_until": {
+          "name": "lock_until",
+          "type": "datetime",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
@@ -1456,407 +1193,10 @@
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
-        },
-        "eligibility_type": {
-          "name": "eligibility_type",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "eligibility_number": {
-          "name": "eligibility_number",
-          "type": "varchar(100)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "eligibility_date": {
-          "name": "eligibility_date",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "educational_background": {
-          "name": "educational_background",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "school_name": {
-          "name": "school_name",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "course": {
-          "name": "course",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "year_graduated": {
-          "name": "year_graduated",
-          "type": "varchar(10)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "years_of_experience": {
-          "name": "years_of_experience",
-          "type": "varchar(50)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "experience": {
-          "name": "experience",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "skills": {
-          "name": "skills",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "place_of_birth": {
-          "name": "place_of_birth",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "residential_address": {
-          "name": "residential_address",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "residential_zip_code": {
-          "name": "residential_zip_code",
-          "type": "varchar(50)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "permanent_zip_code": {
-          "name": "permanent_zip_code",
-          "type": "varchar(50)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "telephone_no": {
-          "name": "telephone_no",
-          "type": "varchar(50)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "mobile_no": {
-          "name": "mobile_no",
-          "type": "varchar(50)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "original_appointment_date": {
-          "name": "original_appointment_date",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "last_promotion_date": {
-          "name": "last_promotion_date",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "facebook_url": {
-          "name": "facebook_url",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "linkedin_url": {
-          "name": "linkedin_url",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "twitter_handle": {
-          "name": "twitter_handle",
-          "type": "varchar(100)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "religion": {
-          "name": "religion",
-          "type": "varchar(100)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "citizenship": {
-          "name": "citizenship",
-          "type": "varchar(50)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false,
-          "default": "'Filipino'"
-        },
-        "citizenship_type": {
-          "name": "citizenship_type",
-          "type": "varchar(50)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "barangay": {
-          "name": "barangay",
-          "type": "varchar(100)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "duty_type": {
-          "name": "duty_type",
-          "type": "enum('Standard','Irregular')",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false,
-          "default": "'Standard'"
-        },
-        "daily_target_hours": {
-          "name": "daily_target_hours",
-          "type": "decimal(4,2)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false,
-          "default": "'8.00'"
-        },
-        "salary_basis": {
-          "name": "salary_basis",
-          "type": "enum('Daily','Hourly')",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false,
-          "default": "'Daily'"
-        },
-        "res_house_block_lot": {
-          "name": "res_house_block_lot",
-          "type": "varchar(150)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "res_street": {
-          "name": "res_street",
-          "type": "varchar(150)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "res_subdivision": {
-          "name": "res_subdivision",
-          "type": "varchar(150)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "res_barangay": {
-          "name": "res_barangay",
-          "type": "varchar(150)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "res_city": {
-          "name": "res_city",
-          "type": "varchar(150)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "res_province": {
-          "name": "res_province",
-          "type": "varchar(150)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "res_region": {
-          "name": "res_region",
-          "type": "varchar(150)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "perm_house_block_lot": {
-          "name": "perm_house_block_lot",
-          "type": "varchar(150)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "perm_street": {
-          "name": "perm_street",
-          "type": "varchar(150)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "perm_subdivision": {
-          "name": "perm_subdivision",
-          "type": "varchar(150)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "perm_barangay": {
-          "name": "perm_barangay",
-          "type": "varchar(150)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "perm_city": {
-          "name": "perm_city",
-          "type": "varchar(150)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "perm_province": {
-          "name": "perm_province",
-          "type": "varchar(150)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "perm_region": {
-          "name": "perm_region",
-          "type": "varchar(150)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "profile_status": {
-          "name": "profile_status",
-          "type": "enum('Initial','Pending','Complete')",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false,
-          "default": "'Initial'"
-        },
-        "is_old_employee": {
-          "name": "is_old_employee",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false,
-          "default": false
-        },
-        "right_thumbmark_url": {
-          "name": "right_thumbmark_url",
-          "type": "varchar(500)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "ctc_no": {
-          "name": "ctc_no",
-          "type": "varchar(50)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "ctc_issued_at": {
-          "name": "ctc_issued_at",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "ctc_issued_date": {
-          "name": "ctc_issued_date",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "login_attempts": {
-          "name": "login_attempts",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false,
-          "default": 0
-        },
-        "lock_until": {
-          "name": "lock_until",
-          "type": "datetime",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
         }
       },
       "indexes": {},
-      "foreignKeys": {
-        "authentication_department_id_departments_id_fk": {
-          "name": "authentication_department_id_departments_id_fk",
-          "tableFrom": "authentication",
-          "tableTo": "departments",
-          "columnsFrom": [
-            "department_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        },
-        "authentication_position_id_plantilla_positions_id_fk": {
-          "name": "authentication_position_id_plantilla_positions_id_fk",
-          "tableFrom": "authentication",
-          "tableTo": "plantilla_positions",
-          "columnsFrom": [
-            "position_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        },
-        "fk_manager": {
-          "name": "fk_manager",
-          "tableFrom": "authentication",
-          "tableTo": "authentication",
-          "columnsFrom": [
-            "manager_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        }
-      },
+      "foreignKeys": {},
       "compositePrimaryKeys": {
         "authentication_id": {
           "name": "authentication_id",
@@ -2344,34 +1684,6 @@
           "notNull": false,
           "autoincrement": false
         },
-        "am_in": {
-          "name": "am_in",
-          "type": "datetime",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "am_out": {
-          "name": "am_out",
-          "type": "datetime",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "pm_in": {
-          "name": "pm_in",
-          "type": "datetime",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "pm_out": {
-          "name": "pm_out",
-          "type": "datetime",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
         "late_minutes": {
           "name": "late_minutes",
           "type": "int",
@@ -2441,107 +1753,6 @@
           ]
         }
       },
-      "checkConstraint": {}
-    },
-    "department_schedules": {
-      "name": "department_schedules",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": true
-        },
-        "department_id": {
-          "name": "department_id",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "schedule_title": {
-          "name": "schedule_title",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false,
-          "default": "'Dept Schedule'"
-        },
-        "start_date": {
-          "name": "start_date",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "end_date": {
-          "name": "end_date",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "day_of_week": {
-          "name": "day_of_week",
-          "type": "varchar(20)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "start_time": {
-          "name": "start_time",
-          "type": "time",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "end_time": {
-          "name": "end_time",
-          "type": "time",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false,
-          "default": "(now())"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false,
-          "onUpdate": true,
-          "default": "(now())"
-        }
-      },
-      "indexes": {
-        "idx_dept_period": {
-          "name": "idx_dept_period",
-          "columns": [
-            "department_id",
-            "start_date",
-            "end_date"
-          ],
-          "isUnique": false
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {
-        "department_schedules_id": {
-          "name": "department_schedules_id",
-          "columns": [
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
       "checkConstraint": {}
     },
     "dtr_corrections": {
@@ -2871,6 +2082,28 @@
           "notNull": false,
           "autoincrement": false
         },
+        "department_id": {
+          "name": "department_id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "is_default": {
+          "name": "is_default",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": false
+        },
+        "working_days": {
+          "name": "working_days",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp",
@@ -3070,6 +2303,60 @@
       },
       "checkConstraint": {}
     },
+    "accrual_rules": {
+      "name": "accrual_rules",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "days_present": {
+          "name": "days_present",
+          "type": "decimal(10,3)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "earned_credits": {
+          "name": "earned_credits",
+          "type": "decimal(10,3)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "rule_type": {
+          "name": "rule_type",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "'CSC_STANDARD'"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "accrual_rules_id": {
+          "name": "accrual_rules_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {
+        "unique_rule": {
+          "name": "unique_rule",
+          "columns": [
+            "days_present",
+            "rule_type"
+          ]
+        }
+      },
+      "checkConstraint": {}
+    },
     "leave_applications": {
       "name": "leave_applications",
       "columns": {
@@ -3089,7 +2376,7 @@
         },
         "leave_type": {
           "name": "leave_type",
-          "type": "enum('Vacation Leave','Sick Leave','Special Privilege Leave','Forced Leave','Maternity Leave','Paternity Leave','Solo Parent Leave','Study Leave','Special Emergency Leave','VAWC Leave','Rehabilitation Leave','Special Leave Benefits for Women','Wellness Leave','Adoption Leave','Other')",
+          "type": "varchar(100)",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
@@ -3172,6 +2459,20 @@
         "rejection_reason": {
           "name": "rejection_reason",
           "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "rejected_by": {
+          "name": "rejected_by",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "rejected_at": {
+          "name": "rejected_at",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
@@ -3285,7 +2586,7 @@
         },
         "credit_type": {
           "name": "credit_type",
-          "type": "enum('Vacation Leave','Sick Leave','Special Privilege Leave','Forced Leave','Maternity Leave','Paternity Leave','Solo Parent Leave','Study Leave','Adoption Leave')",
+          "type": "varchar(100)",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
@@ -3427,7 +2728,7 @@
         },
         "credit_type": {
           "name": "credit_type",
-          "type": "enum('Vacation Leave','Sick Leave','Special Privilege Leave','Forced Leave','Maternity Leave','Paternity Leave','Solo Parent Leave','Study Leave','Adoption Leave')",
+          "type": "varchar(100)",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
@@ -3546,7 +2847,7 @@
         },
         "credit_type": {
           "name": "credit_type",
-          "type": "enum('Vacation Leave','Sick Leave')",
+          "type": "varchar(100)",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
@@ -4518,6 +3819,13 @@
           "notNull": false,
           "autoincrement": false
         },
+        "training": {
+          "name": "training",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "skills": {
           "name": "skills",
           "type": "text",
@@ -4590,6 +3898,21 @@
           "notNull": false,
           "autoincrement": false,
           "default": false
+        },
+        "is_email_verified": {
+          "name": "is_email_verified",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": false
+        },
+        "verification_token": {
+          "name": "verification_token",
+          "type": "varchar(6)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
         },
         "updated_at": {
           "name": "updated_at",
@@ -4697,6 +4020,13 @@
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
+        },
+        "voluntary_work": {
+          "name": "voluntary_work",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
         }
       },
       "indexes": {
@@ -4744,7 +4074,50 @@
           ]
         }
       },
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "email_unique": {
+          "name": "email_unique",
+          "columns": [
+            "email"
+          ]
+        },
+        "umid_no_unique": {
+          "name": "umid_no_unique",
+          "columns": [
+            "umid_no"
+          ]
+        },
+        "philsys_id_unique": {
+          "name": "philsys_id_unique",
+          "columns": [
+            "philsys_id"
+          ]
+        },
+        "philhealth_no_unique": {
+          "name": "philhealth_no_unique",
+          "columns": [
+            "philhealth_no"
+          ]
+        },
+        "pagibig_no_unique": {
+          "name": "pagibig_no_unique",
+          "columns": [
+            "pagibig_no"
+          ]
+        },
+        "tin_no_unique": {
+          "name": "tin_no_unique",
+          "columns": [
+            "tin_no"
+          ]
+        },
+        "gsis_no_unique": {
+          "name": "gsis_no_unique",
+          "columns": [
+            "gsis_no"
+          ]
+        }
+      },
       "checkConstraint": {}
     },
     "recruitment_email_templates": {
@@ -5120,7 +4493,7 @@
           "name": "review_id",
           "type": "int",
           "primaryKey": false,
-          "notNull": true,
+          "notNull": false,
           "autoincrement": false
         },
         "action": {
@@ -7186,6 +6559,279 @@
       "uniqueConstraints": {},
       "checkConstraint": {}
     },
+    "pds_declarations": {
+      "name": "pds_declarations",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "employee_id": {
+          "name": "employee_id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "related_third_degree": {
+          "name": "related_third_degree",
+          "type": "varchar(10)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "related_third_details": {
+          "name": "related_third_details",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "related_fourth_degree": {
+          "name": "related_fourth_degree",
+          "type": "varchar(10)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "related_fourth_details": {
+          "name": "related_fourth_details",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "found_guilty_admin": {
+          "name": "found_guilty_admin",
+          "type": "varchar(10)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "found_guilty_details": {
+          "name": "found_guilty_details",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "criminally_charged": {
+          "name": "criminally_charged",
+          "type": "varchar(10)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "date_filed": {
+          "name": "date_filed",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "status_of_case": {
+          "name": "status_of_case",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "convicted_crime": {
+          "name": "convicted_crime",
+          "type": "varchar(10)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "convicted_details": {
+          "name": "convicted_details",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "separated_from_service": {
+          "name": "separated_from_service",
+          "type": "varchar(10)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "separated_details": {
+          "name": "separated_details",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "election_candidate": {
+          "name": "election_candidate",
+          "type": "varchar(10)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "election_details": {
+          "name": "election_details",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "resigned_to_promote": {
+          "name": "resigned_to_promote",
+          "type": "varchar(10)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "resigned_details": {
+          "name": "resigned_details",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "immigrant_status": {
+          "name": "immigrant_status",
+          "type": "varchar(10)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "immigrant_details": {
+          "name": "immigrant_details",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "indigenous_member": {
+          "name": "indigenous_member",
+          "type": "varchar(10)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "indigenous_details": {
+          "name": "indigenous_details",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "person_with_disability": {
+          "name": "person_with_disability",
+          "type": "varchar(10)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "disability_id_no": {
+          "name": "disability_id_no",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "solo_parent": {
+          "name": "solo_parent",
+          "type": "varchar(10)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "solo_parent_id_no": {
+          "name": "solo_parent_id_no",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "govt_id_type": {
+          "name": "govt_id_type",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "govt_id_no": {
+          "name": "govt_id_no",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "govt_id_issuance": {
+          "name": "govt_id_issuance",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "date_accomplished": {
+          "name": "date_accomplished",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "onUpdate": true,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "employee_id": {
+          "name": "employee_id",
+          "columns": [
+            "employee_id"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "pds_declarations_employee_id_authentication_id_fk": {
+          "name": "pds_declarations_employee_id_authentication_id_fk",
+          "tableFrom": "pds_declarations",
+          "tableTo": "authentication",
+          "columnsFrom": [
+            "employee_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "pds_declarations_id": {
+          "name": "pds_declarations_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
     "pds_education": {
       "name": "pds_education",
       "columns": {
@@ -7537,6 +7183,343 @@
       "uniqueConstraints": {},
       "checkConstraint": {}
     },
+    "pds_hr_details": {
+      "name": "pds_hr_details",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "employee_id": {
+          "name": "employee_id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "employment_status": {
+          "name": "employment_status",
+          "type": "enum('Active','Probationary','Terminated','Resigned','On Leave','Suspended','Verbal Warning','Written Warning','Show Cause')",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "'Active'"
+        },
+        "employment_type": {
+          "name": "employment_type",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "'Probationary'"
+        },
+        "appointment_type": {
+          "name": "appointment_type",
+          "type": "enum('Permanent','Contractual','Casual','Job Order','Coterminous','Temporary','Contract of Service','JO','COS')",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "job_title": {
+          "name": "job_title",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "position_title": {
+          "name": "position_title",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "item_number": {
+          "name": "item_number",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "station": {
+          "name": "station",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "office_address": {
+          "name": "office_address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "department_id": {
+          "name": "department_id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "position_id": {
+          "name": "position_id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "manager_id": {
+          "name": "manager_id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "salary_grade": {
+          "name": "salary_grade",
+          "type": "varchar(10)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "step_increment": {
+          "name": "step_increment",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": 1
+        },
+        "salary_basis": {
+          "name": "salary_basis",
+          "type": "enum('Daily','Hourly')",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "'Daily'"
+        },
+        "date_hired": {
+          "name": "date_hired",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "contract_end_date": {
+          "name": "contract_end_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "regularization_date": {
+          "name": "regularization_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "first_day_of_service": {
+          "name": "first_day_of_service",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "original_appointment_date": {
+          "name": "original_appointment_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "last_promotion_date": {
+          "name": "last_promotion_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "duty_type": {
+          "name": "duty_type",
+          "type": "enum('Standard','Irregular')",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "'Standard'"
+        },
+        "daily_target_hours": {
+          "name": "daily_target_hours",
+          "type": "decimal(4,2)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "'8.00'"
+        },
+        "start_time": {
+          "name": "start_time",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "end_time": {
+          "name": "end_time",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "is_regular": {
+          "name": "is_regular",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": false
+        },
+        "is_old_employee": {
+          "name": "is_old_employee",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": false
+        },
+        "is_meycauayan": {
+          "name": "is_meycauayan",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": false
+        },
+        "profile_status": {
+          "name": "profile_status",
+          "type": "enum('Initial','Complete')",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "'Initial'"
+        },
+        "religion": {
+          "name": "religion",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "barangay": {
+          "name": "barangay",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "facebook_url": {
+          "name": "facebook_url",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "linkedin_url": {
+          "name": "linkedin_url",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "twitter_handle": {
+          "name": "twitter_handle",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "onUpdate": true,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "idx_hr_employee_id": {
+          "name": "idx_hr_employee_id",
+          "columns": [
+            "employee_id"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "pds_hr_details_employee_id_authentication_id_fk": {
+          "name": "pds_hr_details_employee_id_authentication_id_fk",
+          "tableFrom": "pds_hr_details",
+          "tableTo": "authentication",
+          "columnsFrom": [
+            "employee_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "pds_hr_details_department_id_departments_id_fk": {
+          "name": "pds_hr_details_department_id_departments_id_fk",
+          "tableFrom": "pds_hr_details",
+          "tableTo": "departments",
+          "columnsFrom": [
+            "department_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "pds_hr_details_position_id_plantilla_positions_id_fk": {
+          "name": "pds_hr_details_position_id_plantilla_positions_id_fk",
+          "tableFrom": "pds_hr_details",
+          "tableTo": "plantilla_positions",
+          "columnsFrom": [
+            "position_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "pds_hr_details_id": {
+          "name": "pds_hr_details_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
     "pds_learning_development": {
       "name": "pds_learning_development",
       "columns": {
@@ -7713,6 +7696,380 @@
         }
       },
       "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "pds_personal_information": {
+      "name": "pds_personal_information",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "employee_id": {
+          "name": "employee_id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "birth_date": {
+          "name": "birth_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "place_of_birth": {
+          "name": "place_of_birth",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "gender": {
+          "name": "gender",
+          "type": "enum('Male','Female')",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "civil_status": {
+          "name": "civil_status",
+          "type": "enum('Single','Married','Widowed','Separated','Annulled')",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "height_m": {
+          "name": "height_m",
+          "type": "decimal(4,2)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "weight_kg": {
+          "name": "weight_kg",
+          "type": "decimal(5,2)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "blood_type": {
+          "name": "blood_type",
+          "type": "varchar(5)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "citizenship": {
+          "name": "citizenship",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "'Filipino'"
+        },
+        "citizenship_type": {
+          "name": "citizenship_type",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "dual_country": {
+          "name": "dual_country",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "residential_address": {
+          "name": "residential_address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "residential_zip_code": {
+          "name": "residential_zip_code",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "permanent_address": {
+          "name": "permanent_address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "permanent_zip_code": {
+          "name": "permanent_zip_code",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "telephone_no": {
+          "name": "telephone_no",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "mobile_no": {
+          "name": "mobile_no",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "email": {
+          "name": "email",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "umid_no": {
+          "name": "umid_no",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "philsys_id": {
+          "name": "philsys_id",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "philhealth_number": {
+          "name": "philhealth_number",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "pagibig_number": {
+          "name": "pagibig_number",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "tin_number": {
+          "name": "tin_number",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "gsis_number": {
+          "name": "gsis_number",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "agency_employee_no": {
+          "name": "agency_employee_no",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "res_house_block_lot": {
+          "name": "res_house_block_lot",
+          "type": "varchar(150)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "res_street": {
+          "name": "res_street",
+          "type": "varchar(150)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "res_subdivision": {
+          "name": "res_subdivision",
+          "type": "varchar(150)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "res_barangay": {
+          "name": "res_barangay",
+          "type": "varchar(150)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "res_city": {
+          "name": "res_city",
+          "type": "varchar(150)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "res_province": {
+          "name": "res_province",
+          "type": "varchar(150)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "res_region": {
+          "name": "res_region",
+          "type": "varchar(150)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "perm_house_block_lot": {
+          "name": "perm_house_block_lot",
+          "type": "varchar(150)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "perm_street": {
+          "name": "perm_street",
+          "type": "varchar(150)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "perm_subdivision": {
+          "name": "perm_subdivision",
+          "type": "varchar(150)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "perm_barangay": {
+          "name": "perm_barangay",
+          "type": "varchar(150)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "perm_city": {
+          "name": "perm_city",
+          "type": "varchar(150)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "perm_province": {
+          "name": "perm_province",
+          "type": "varchar(150)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "perm_region": {
+          "name": "perm_region",
+          "type": "varchar(150)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "onUpdate": true,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "employee_id": {
+          "name": "employee_id",
+          "columns": [
+            "employee_id"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "pds_personal_information_employee_id_authentication_id_fk": {
+          "name": "pds_personal_information_employee_id_authentication_id_fk",
+          "tableFrom": "pds_personal_information",
+          "tableTo": "authentication",
+          "columnsFrom": [
+            "employee_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "pds_personal_information_id": {
+          "name": "pds_personal_information_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {
+        "umid_no_unique": {
+          "name": "umid_no_unique",
+          "columns": [
+            "umid_no"
+          ]
+        },
+        "philsys_id_unique": {
+          "name": "philsys_id_unique",
+          "columns": [
+            "philsys_id"
+          ]
+        },
+        "philhealth_no_unique": {
+          "name": "philhealth_no_unique",
+          "columns": [
+            "philhealth_number"
+          ]
+        },
+        "pagibig_no_unique": {
+          "name": "pagibig_no_unique",
+          "columns": [
+            "pagibig_number"
+          ]
+        },
+        "tin_no_unique": {
+          "name": "tin_no_unique",
+          "columns": [
+            "tin_number"
+          ]
+        },
+        "gsis_no_unique": {
+          "name": "gsis_no_unique",
+          "columns": [
+            "gsis_number"
+          ]
+        }
+      },
       "checkConstraint": {}
     },
     "pds_references": {
@@ -8797,6 +9154,116 @@
       "compositePrimaryKeys": {
         "announcements_id": {
           "name": "announcements_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "audit_logs": {
+      "name": "audit_logs",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "module": {
+          "name": "module",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "action": {
+          "name": "action",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "details": {
+          "name": "details",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "ip_address": {
+          "name": "ip_address",
+          "type": "varchar(45)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "user_agent": {
+          "name": "user_agent",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "idx_user_id": {
+          "name": "idx_user_id",
+          "columns": [
+            "user_id"
+          ],
+          "isUnique": false
+        },
+        "idx_module": {
+          "name": "idx_module",
+          "columns": [
+            "module"
+          ],
+          "isUnique": false
+        },
+        "idx_created_at": {
+          "name": "idx_created_at",
+          "columns": [
+            "created_at"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "audit_logs_user_id_authentication_id_fk": {
+          "name": "audit_logs_user_id_authentication_id_fk",
+          "tableFrom": "audit_logs",
+          "tableTo": "authentication",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "audit_logs_id": {
+          "name": "audit_logs_id",
           "columns": [
             "id"
           ]

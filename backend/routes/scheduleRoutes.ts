@@ -21,7 +21,7 @@ router.get('/shift-templates/default', getDefaultShiftTemplate);
 router.use(verifyToken);
 
 // Specific POST routes BEFORE generic ones
-console.log('[DEBUG] Loading Schedule Routes - Registering dept-bulk-create');
+console.warn('[DEBUG] Loading Schedule Routes - Registering dept-bulk-create');
 router.post('/dept-bulk-create', createDepartmentSchedule);
 
 // Specific GET routes

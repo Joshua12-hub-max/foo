@@ -22,7 +22,7 @@ interface AnimatedQuoteProps {
 const AnimatedQuote = ({ quote, fadeIn }: AnimatedQuoteProps) => (
   <div className="absolute left-6 bottom-6 right-6 text-left">
     <p
-      className={`text-base italic text-slate-200 font-medium leading-relaxed transition-opacity duration-700 ${
+      className={`text-base italic text-gray-300 font-medium leading-relaxed transition-opacity duration-700 ${
         fadeIn ? "opacity-100" : "opacity-0"
       }`}
     >
@@ -30,7 +30,7 @@ const AnimatedQuote = ({ quote, fadeIn }: AnimatedQuoteProps) => (
     </p>
     {quote.quoteAuthor && (
       <p 
-        className={`text-sm mt-2 text-slate-400 font-semibold transition-opacity duration-700 ${
+        className={`text-sm mt-2 text-gray-400 font-semibold transition-opacity duration-700 ${
           fadeIn ? "opacity-100" : "opacity-0"
         }`}
       >
@@ -46,13 +46,13 @@ const BrandingSection = () => (
       <img 
         src={DEFAULT_LOGO}
         alt="Meycauayan Logo" 
-        className="w-56 h-56 mx-auto object-contain mb-4"
+        className="w-56 h-56 mx-auto object-contain mb-4 ring-2 ring-white/10 rounded-full bg-slate-900/50 p-2 shadow-2xl"
       />
     </Link>
-    <h2 className="text-3xl font-extrabold text-slate-50 mb-2 tracking-wide drop-shadow-lg">
+    <h2 className="text-3xl font-extrabold text-white mb-2 tracking-wide">
       City Human Resources Management Office
     </h2>
-    <p className="text-lg leading-relaxed text-slate-300">
+    <p className="text-lg leading-relaxed text-gray-300">
       A centralized{" "}
       <span className="font-semibold text-white">
         Human Resource Employee Management System
@@ -107,7 +107,7 @@ export default function AuthLayout({
   image,
   showQuotes = true,
   showBranding = true,
-  leftBgGradient = "from-slate-950 to-slate-900",
+  leftBgGradient = "from-slate-950 to-green-800",
   maxWidth = "max-w-sm"
 }: AuthLayoutProps) {
   const [currentQuote, setCurrentQuote] = useState(0);
@@ -173,9 +173,9 @@ export default function AuthLayout({
   }, [showQuotes, hasQuotes]);
 
   return (
-    <div className="min-h-screen flex bg-gradient-to-r from-slate-950 to-green-900 text-slate-100">
+    <div className="min-h-screen flex bg-slate-50 text-slate-900">
       {/* Left Section - Hero/Branding */}
-      <div className={`hidden md:flex relative w-3/4 bg-gradient-to-r from-slate-950 to-green-900 items-center justify-center p-12 shadow-inner overflow-hidden`}>
+      <div className={`hidden md:flex relative w-3/4 bg-gradient-to-r ${leftBgGradient} items-center justify-center p-12 overflow-hidden border-r border-white/5`}>
         {showBranding && <BrandingSection />}
         
         {/* Rotating Quote */}
@@ -185,9 +185,9 @@ export default function AuthLayout({
       </div>
 
       {/* Right Section - Form Container */}
-      <div className="flex flex-col justify-center w-full md:w-1/2 bg-white p-4 sm:p-6">
+      <div className="flex flex-col justify-center w-full md:w-1/2 bg-slate-50 p-4 sm:p-6 shadow-[-20px_0_50px_rgba(0,0,0,0.05)]">
         <div className={`mx-auto w-full ${maxWidth}`}>
-          <div className="bg-white border border-gray-200 rounded-[15px] shadow-lg p-5 sm:p-6 text-gray-800 hover:shadow-2xl transition-shadow duration-200">
+          <div className="bg-white/95 backdrop-blur-md border border-white/20 rounded-[20px] shadow-[0_20px_50px_rgba(0,0,0,0.3)] p-6 sm:p-8 text-gray-800 hover:shadow-[0_20px_60px_rgba(34,197,94,0.15)] transition-all duration-300 ring-1 ring-white/10">
             <FormHeader 
               image={image} 
               title={pageTitle} 
@@ -195,7 +195,9 @@ export default function AuthLayout({
             />
             
             {/* Form Content */}
-            {children}
+            <div className="mt-2">
+              {children}
+            </div>
           </div>
         </div>
       </div>

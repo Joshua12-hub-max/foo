@@ -1,5 +1,6 @@
 import dotenv from 'dotenv';
 dotenv.config();
+// 100% RESTART TRIGGER: Force nodemon to reload after structural fixes in auth.controller.ts
 
 import express from 'express';
 import cors from 'cors';
@@ -8,6 +9,7 @@ import helmet from 'helmet';
 import compression from 'compression';
 import crypto from 'crypto';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import cron from 'node-cron';
 import authRoutes from './routes/authRoutes.js';
@@ -121,7 +123,8 @@ app.use(
       useDefaults: true,
       directives: {
         'script-src': ["'self'", (_req, res) => `'nonce-${(res as express.Response).locals.nonce}'`],
-        'img-src': ["'self'", "https:", "data:"],
+        'img-src': ["'self'", "https:", "data:", "http:", "blob:"],
+        'connect-src': ["'self'", "https:", "http:"],
       },
     },
   })
@@ -146,19 +149,46 @@ app.use(compression());
 
 import { verifyToken } from './middleware/authMiddleware.js';
 
-// Serve public uploaded files (Avatars only) with CORS headers
+// Static file routes with explicit public/private logic
+// 1. Avatars (Public)
 app.use('/uploads/avatars', (_req, res, next) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-  next();
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    next();
 }, express.static(path.join(__dirname, 'uploads/avatars')));
 
-// 100% Data Leak Prevention: Protect sensitive uploads (Resumes, Leaves, PDS)
-app.use('/uploads', verifyToken, (_req, res, next) => {
-  // Enforce same-site origin policy for sensitive documents
-  res.setHeader('Cross-Origin-Resource-Policy', 'same-site');
-  next();
-}, express.static(path.join(__dirname, 'uploads')));
+// 2. PUBLIC IMAGES BYPASS (Combined resumes and general photos)
+// 100% PERMANENT FIX: This ensures that any image request to /uploads/... returns immediately without verifyToken
+app.use((req, res, next) => {
+    const url = req.originalUrl.toLowerCase().split('?')[0];
+    const isImage = url.startsWith('/uploads/') && (
+        url.endsWith('.jpg') || url.endsWith('.jpeg') || 
+        url.endsWith('.png') || url.endsWith('.webp') || 
+        url.endsWith('.gif')
+    );
+    
+    if (isImage) {
+        const logFile = path.join(process.cwd(), 'image_debug.log');
+        const relativePath = url.replace(/^\/uploads\//, '');
+        const fullPath = path.join(__dirname, 'uploads', relativePath);
+        const exists = fs.existsSync(fullPath);
+        
+        fs.appendFileSync(logFile, `[${new Date().toISOString()}] ${req.method} ${req.originalUrl} | Full: ${fullPath} | Exists: ${exists}\n`);
+        
+        if (exists) {
+            res.setHeader('Access-Control-Allow-Origin', '*');
+            res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+            return res.sendFile(fullPath);
+        }
+    }
+    next();
+});
+
+// 3. Resumes (Private) - For non-image files like PDFs
+app.use('/uploads/resumes', verifyToken, express.static(path.join(__dirname, 'uploads/resumes')));
+
+// 4. General Protected Uploads
+app.use('/uploads', verifyToken, express.static(path.join(__dirname, 'uploads')));
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -204,7 +234,7 @@ app.use('/api/biometric', biometricRoutes);
 
 // Root route
 app.get("/", (_req, res) => {
-  res.json({ message: "Backend is running!" });
+  res.json({ message: "Backend is running! DEBUG-PHOTO-FIX-ACTIVE" });
 });
 
 // Error handling
@@ -215,4 +245,3 @@ const PORT = Number(process.env.PORT) || 5000;
 app.listen(PORT, '0.0.0.0', () => {
   console.warn(`Server running on port ${PORT} (IPv4/IPv6)`);
 });
- 

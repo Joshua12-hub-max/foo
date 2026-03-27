@@ -103,7 +103,7 @@ export const accrueCreditsForMonth = async (month: number, year: number, specifi
     }
 
     const rawContent = typeof policyRecord.content === 'string' 
-        ? JSON.parse(policyRecord.content) 
+        ? (JSON.parse(policyRecord.content) as unknown) 
         : policyRecord.content;
     const policy = leavePolicySchema.parse(rawContent);
 

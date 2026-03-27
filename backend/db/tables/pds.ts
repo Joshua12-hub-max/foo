@@ -441,6 +441,7 @@ export const pdsHrDetails = mysqlTable("pds_hr_details", {
 	facebookUrl: varchar("facebook_url", { length: 255 }),
 	linkedinUrl: varchar("linkedin_url", { length: 255 }),
 	twitterHandle: varchar("twitter_handle", { length: 100 }),
+	experienceSummary: text("experience_summary"),
 
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
 	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow(),

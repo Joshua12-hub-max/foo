@@ -42,11 +42,11 @@ export const getEmploymentMetadata = async (_req: Request, res: Response): Promi
             .where(inArray(systemSettings.settingKey, keys));
 
         // Create a map for easy access
-        const metadataMap: Record<string, never[]> = {};
+        const metadataMap: Record<string, unknown[]> = {};
         settings.forEach(s => {
             try {
-                metadataMap[s.settingKey] = JSON.parse(s.settingValue || '[]');
-            } catch (e) {
+                metadataMap[s.settingKey] = JSON.parse(s.settingValue || '[]') as unknown[];
+            } catch (_e) {
                 metadataMap[s.settingKey] = [];
             }
         });
@@ -55,19 +55,28 @@ export const getEmploymentMetadata = async (_req: Request, res: Response): Promi
         res.json({
             success: true,
             data: {
-                appointmentTypes: metadataMap['employment_appointment_types'] || [],
-                dutyTypes: metadataMap['employment_duty_types'] || [],
-                roles: ['Administrator', 'Human Resource', 'Employee'], // Roles might still be semi-fixed but could also be dynamic if needed
-                pdsCivilStatus: metadataMap['pds_civil_status'] || [],
-                pdsBloodTypes: metadataMap['pds_blood_types'] || [],
-                pdsCitizenship: metadataMap['pds_citizenship'] || [],
-                pdsAppointmentStatus: metadataMap['pds_appointment_status'] || [],
-                pdsLdTypes: metadataMap['pds_ld_types'] || [],
-                pdsGovtIdTypes: metadataMap['pds_govt_id_types'] || [],
-                employmentStatus: metadataMap['employment_status'] || [],
-                pdsEligibilityTypes: metadataMap['pds_eligibility_types'] || [],
-                pdsGender: metadataMap['pds_gender'] || [],
-                pdsRelationshipTypes: metadataMap['pds_relationship_types'] || []
+                appointmentTypes: metadataMap['employment_appointment_types']?.length ? metadataMap['employment_appointment_types'] : ['Permanent', 'Contractual', 'Casual', 'Job Order', 'Coterminous', 'Temporary', 'Contract of Service', 'JO', 'COS'],
+                dutyTypes: metadataMap['employment_duty_types']?.length ? metadataMap['employment_duty_types'] : ['Standard', 'Irregular'],
+                roles: ['Administrator', 'Human Resource', 'Employee'], 
+                pdsCivilStatus: metadataMap['pds_civil_status']?.length ? metadataMap['pds_civil_status'] : ['Single', 'Married', 'Widowed', 'Separated', 'Annulled'],
+                pdsBloodTypes: metadataMap['pds_blood_types']?.length ? metadataMap['pds_blood_types'] : ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"],
+                pdsCitizenship: metadataMap['pds_citizenship']?.length ? metadataMap['pds_citizenship'] : ["Filipino", "Dual Citizenship"],
+                pdsAppointmentStatus: metadataMap['pds_appointment_status']?.length ? metadataMap['pds_appointment_status'] : ["Permanent", "Temporary", "Coterminous", "Contractual", "Casual"],
+                pdsLdTypes: metadataMap['pds_ld_types']?.length ? metadataMap['pds_ld_types'] : ["Managerial", "Supervisory", "Technical", "Other"],
+                pdsGovtIdTypes: metadataMap['pds_govt_id_types']?.length ? metadataMap['pds_govt_id_types'] : ["UMID", "Driver's License", "Passport", "PRC ID", "Postal ID", "Others"],
+                employmentStatus: metadataMap['employment_status']?.length ? metadataMap['employment_status'] : ['Active', 'Probationary', 'Terminated', 'Resigned', 'On Leave', 'Suspended', 'Verbal Warning', 'Written Warning', 'Show Cause'],
+                pdsEligibilityTypes: metadataMap['pds_eligibility_types']?.length ? metadataMap['pds_eligibility_types'] : [
+                    { value: 'none', label: 'None / Not Applicable' },
+                    { value: 'csc_prof', label: 'CSC Professional' },
+                    { value: 'csc_sub', label: 'CSC Subprofessional' },
+                    { value: 'ra_1080', label: 'RA 1080 (Board/Bar)' },
+                    { value: 'special_laws', label: 'Special Laws' },
+                    { value: 'drivers_license', label: "Driver's License" },
+                    { value: 'tesda', label: 'TESDA NC II/III' },
+                    { value: 'others', label: 'Others' }
+                ],
+                pdsGender: metadataMap['pds_gender']?.length ? metadataMap['pds_gender'] : ["Male", "Female", "Prefer not to say", "Other"],
+                pdsRelationshipTypes: metadataMap['pds_relationship_types']?.length ? metadataMap['pds_relationship_types'] : ["Spouse", "Father", "Mother", "Child", "Sibling", "Guardian", "Other"]
             }
         });
     } catch (error) {

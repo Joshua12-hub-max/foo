@@ -1,10 +1,10 @@
 import { create } from 'zustand';
-import { devtools } from 'zustand/middleware';
+import { JsonValue } from '@/types';
 
 export interface Modal {
   id: string;
   component: string; // Identifier for the component to render (used in mapping) or we could store component directly if not serializing
-  props?: Record<string, unknown>;
+  props?: Record<string, JsonValue>;
   onClose?: () => void;
   isOpen?: boolean; // Helpful for animations
 }
@@ -14,44 +14,31 @@ interface ModalState {
 }
 
 interface ModalActions {
-  openModal: (modal: Omit<Modal, 'id'>) => string;
+  openModal: (modal: Modal) => void;
   closeModal: (id: string) => void;
   closeAllModals: () => void;
-  getModalById: (id: string) => Modal | undefined;
+  isModalOpen: (id: string) => boolean;
+  getModalProps: (id: string) => Record<string, JsonValue> | undefined;
 }
 
-type ModalStore = ModalState & ModalActions;
+export const useModalStore = create<ModalState & ModalActions>((set, get) => ({
+  modals: [],
 
-export const useModalStore = create<ModalStore>()(
-  devtools(
-    (set, get) => ({
-      modals: [],
+  openModal: (modal) => {
+    set((state) => ({
+      modals: [...state.modals.filter((m) => m.id !== modal.id), { ...modal, isOpen: true }],
+    }));
+  },
 
-      openModal: (modalData) => {
-        const id = `modal-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-        const newModal: Modal = { ...modalData, id, isOpen: true };
-        
-        set((state) => ({
-          modals: [...state.modals, newModal],
-        }));
+  closeModal: (id) => {
+    set((state) => ({
+      modals: state.modals.filter((m) => m.id !== id),
+    }));
+  },
 
-        return id;
-      },
+  closeAllModals: () => set({ modals: [] }),
 
-      closeModal: (id) => {
-        set((state) => ({
-          modals: state.modals.filter((m) => m.id !== id),
-        }));
-      },
+  isModalOpen: (id) => get().modals.some((m) => m.id === id),
 
-      closeAllModals: () => {
-        set({ modals: [] });
-      },
-
-      getModalById: (id) => {
-        return get().modals.find((m) => m.id === id);
-      },
-    }),
-    { name: 'modal-store' }
-  )
-);
+  getModalProps: (id) => get().modals.find((m) => m.id === id)?.props,
+}));

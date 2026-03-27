@@ -461,7 +461,7 @@ export const employeeApi = {
             if (isApiError(error)) {
                 message = error.response?.data?.message || error.message || message;
             }
-            return { success: false, data: null, message };
+            return { success: false, data: {}, message };
         }
     },
 
@@ -479,7 +479,7 @@ export const employeeApi = {
             if (isApiError(error)) {
                 message = error.response?.data?.message || error.message || message;
             }
-            return { success: false, data: null, message };
+            return { success: false, data: {}, message };
         }
     }
 };

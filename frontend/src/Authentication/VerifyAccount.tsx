@@ -95,27 +95,27 @@ export default function VerifyAccount() {
     return (
       <AuthLayout title="Registration Complete">
         <div className="space-y-8 text-center animate-in zoom-in duration-300">
-          <div className="mx-auto w-20 h-20 bg-green-100 rounded-full flex items-center justify-center">
+          <div className="mx-auto w-20 h-20 bg-green-50 rounded-full flex items-center justify-center border border-green-100 shadow-sm">
             <ShieldCheck className="h-10 w-10 text-green-600" />
           </div>
           
           <div className="space-y-2">
-            <h3 className="text-xl font-black text-gray-900">You're all set!</h3>
-            <p className="text-sm text-gray-500 font-medium">Your account has been successfully verified and activated.</p>
+            <h3 className="text-xl font-black text-slate-900">You're all set!</h3>
+            <p className="text-sm text-slate-500 font-medium leading-relaxed">Your account has been successfully verified and activated.</p>
           </div>
 
-          <div className="bg-gray-50 rounded-2xl p-6 border border-gray-100 space-y-4 text-left">
-            <div className="flex justify-between items-center border-b border-gray-200 pb-3">
-              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Employee ID</span>
-              <span className="text-sm font-bold text-gray-900 font-mono tracking-tighter">{verifiedData.employeeId}</span>
+          <div className="bg-slate-50 rounded-2xl p-6 border border-slate-100 space-y-4 text-left">
+            <div className="flex justify-between items-center border-b border-slate-200 pb-3">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Employee ID</span>
+              <span className="text-sm font-bold text-slate-900 font-mono tracking-tighter">{verifiedData.employeeId}</span>
             </div>
-            <div className="flex justify-between items-center border-b border-gray-200 pb-3">
-              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Full Name</span>
-              <span className="text-sm font-bold text-gray-900">{verifiedData.fullName}</span>
+            <div className="flex justify-between items-center border-b border-slate-200 pb-3">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Full Name</span>
+              <span className="text-sm font-bold text-slate-900">{verifiedData.fullName}</span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Login Email</span>
-              <span className="text-sm font-bold text-gray-900">{verifiedData.email}</span>
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Login Email</span>
+              <span className="text-sm font-bold text-slate-900">{verifiedData.email}</span>
             </div>
           </div>
 
@@ -127,7 +127,7 @@ export default function VerifyAccount() {
               Go to Login
               <ArrowRight size={18} />
             </button>
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
               Admin will grant access to your portal soon
             </p>
           </div>
@@ -140,12 +140,12 @@ export default function VerifyAccount() {
     <AuthLayout title="Verify Your Account">
       <div className="space-y-6">
         <div className="text-center space-y-2">
-            <div className="mx-auto w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                <ShieldCheck className="h-6 w-6 text-blue-600" />
+            <div className="mx-auto w-12 h-12 bg-green-50 rounded-full flex items-center justify-center border border-green-100">
+                <ShieldCheck className="h-6 w-6 text-green-600" />
             </div>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-slate-500">
                 We've sent a 6-digit code to <br/>
-                <span className="font-medium text-gray-900">{email}</span>
+                <span className="font-medium text-slate-900">{email}</span>
             </p>
         </div>
 
@@ -184,13 +184,13 @@ export default function VerifyAccount() {
         </form>
 
         <div className="text-center">
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-slate-500">
                 Didn't receive the code?{" "}
                 <button
                     type="button"
                     onClick={handleResend}
                     disabled={resendTimer > 0}
-                    className="font-medium text-blue-600 hover:text-blue-500 disabled:opacity-50 disabled:cursor-not-allowed hover:underline"
+                    className="font-bold text-green-600 hover:text-green-700 disabled:opacity-50 disabled:cursor-not-allowed hover:underline"
                 >
                     {resendTimer > 0 ? `Resend in ${resendTimer}s` : "Resend"}
                 </button>
@@ -198,7 +198,7 @@ export default function VerifyAccount() {
         </div>
 
         <div className="text-center mt-4">
-             <Link to="/register" className="text-sm text-gray-500 hover:text-gray-900">
+             <Link to="/register" className="text-sm text-slate-400 font-bold hover:text-slate-900 transition">
                 Back to Registration
              </Link>
         </div>

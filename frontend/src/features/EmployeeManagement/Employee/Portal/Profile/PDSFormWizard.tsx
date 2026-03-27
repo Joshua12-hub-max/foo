@@ -8,14 +8,23 @@ import { fetchEmployeeProfile, employeeApi, fetchEmployeeDocuments, getNextStepI
 import { pdsApi } from "@/api/pdsApi";
 import { EmployeeDocument } from "@/types";
 import Combobox from "@/components/Custom/Combobox";
-import ph from 'phil-reg-prov-mun-brgy';
-import { getZipByMunCode } from '@/data/ph-zipcodes';
 import { Region, Province, CityMunicipality, Barangay } from '@/types/ph-address';
+import ph from 'phil-reg-prov-mun-brgy';
+
+type PHLibrary = { 
+  regions: Region[]; 
+  provinces: Province[]; 
+  /* eslint-disable-next-line @typescript-eslint/naming-convention */
+  city_mun: CityMunicipality[]; 
+  barangays: Barangay[]; 
+};
+const phLib = ph as PHLibrary;
 import { useToastStore } from '@/stores';
 import { useEmploymentMetadataQuery, useGovtIdUniquenessQuery } from "@/hooks/useCommonQueries";
 import { useDebounce } from "@/hooks/useDebounce";import { ID_REGEX } from "@/schemas/idValidation";
 import DocumentGallery from "@features/Settings/Profile/components/DocumentGallery";
 import { LucideIcon } from "lucide-react";
+import { getZipByMunCode } from "@/data/ph-zipcodes";
 
 // ─── Metadata Types ──────────────────────────────────────────────────────────
 
@@ -54,32 +63,33 @@ interface Eligibility {
 interface WorkExperience {
   id?: string | number;
   positionTitle: string;
-  department: string;
-  from: string;
-  to: string;
+  companyName: string;
+  dateFrom: string;
+  dateTo: string;
   monthlySalary: string;
   salaryGrade: string;
   appointmentStatus: string;
-  govtService: string;
-}
-
-interface VoluntaryWork {
-  id?: string | number;
-  organization: string;
-  from: string;
-  to: string;
-  hours: string;
-  positionNature: string;
+  isGovernment: boolean;
 }
 
 interface Training {
   id?: string | number;
   title: string;
-  from: string;
-  to: string;
-  hours: string;
-  ldType: string;
+  dateFrom: string;
+  dateTo: string;
+  hoursNumber: string;
+  typeOfLd: string;
   conductedBy: string;
+}
+
+interface VoluntaryWorkItem {
+  id?: string | number;
+  organizationName: string;
+  address: string;
+  dateFrom: string;
+  dateTo: string;
+  hoursNumber: string;
+  position: string;
 }
 
 interface Reference {
@@ -92,7 +102,7 @@ interface Reference {
 export interface PDSFormData {
   surname: string; firstName: string; middleName: string; nameExtension: string;
   dob: string; pob: string; sex: string; civilStatus: string;
-  height: string; weight: string; bloodType: string; citizenship: string; dualCountry: string;
+  height: string; weight: string; bloodType: string; citizenship: string; citizenshipType: string; dualCountry: string;
   umidId: string; pagibigId: string; philhealthNo: string; philsysNo: string; tinNo: string; gsisId: string; agencyEmployeeNo: string;
   resHouseStreet: string; resSubdivision: string; resBarangay: string; resCityMunicipality: string; resProvince: string; resZip: string;
   resRegion: string; resHouseBlockLot: string; resStreet: string;
@@ -114,11 +124,12 @@ export interface PDSFormData {
   };
   eligibilities: Eligibility[];
   workExperiences: WorkExperience[];
-  voluntaryWorks: VoluntaryWork[];
+  voluntaryWorks: VoluntaryWorkItem[];
   trainings: Training[];
   specialSkills: string;
   nonAcademicDistinctions: string;
   memberships: string;
+  references: Reference[];
   relatedThirdDegree: string;
   relatedThirdDetails: string;
   relatedFourthDegree: string;
@@ -144,7 +155,6 @@ export interface PDSFormData {
   disabilityIdNo: string;
   soloParent: string;
   soloParentIdNo: string;
-  references: Reference[];
   govtIdType: string;
   govtIdNo: string;
   govtIdIssuance: string;
@@ -192,16 +202,20 @@ const emptyEligibility = (): Eligibility => ({
 });
 
 const emptyWork = (): WorkExperience => ({
-  id: uid(), positionTitle: "", department: "", from: "", to: "", monthlySalary: "",
-  salaryGrade: "", appointmentStatus: "", govtService: "",
+  id: uid(), positionTitle: "", companyName: "", dateFrom: "", dateTo: "", monthlySalary: "",
+  salaryGrade: "", appointmentStatus: "", isGovernment: false,
 });
 
-const emptyVoluntary = (): VoluntaryWork => ({
-  id: uid(), organization: "", from: "", to: "", hours: "", positionNature: "",
+const emptyVoluntary = (): VoluntaryWorkItem => ({
+  id: uid(), organizationName: "", address: "", dateFrom: "", dateTo: "", hoursNumber: "", position: "",
 });
 
 const emptyTraining = (): Training => ({
-  id: uid(), title: "", from: "", to: "", hours: "", ldType: "", conductedBy: "",
+  id: uid(), title: "", dateFrom: "", dateTo: "", hoursNumber: "", typeOfLd: "", conductedBy: "",
+});
+
+const emptyReference = (): Reference => ({
+  id: uid(), name: "", address: "", contact: "",
 });
 
 const formatName = (name: string) => {
@@ -220,15 +234,9 @@ const formatName = (name: string) => {
 };
 
 const formatAddr = (reg: string, prov: string, city: string, brgy: string, house: string, subd: string, street: string) => {
-  const lib = ph as { 
-    regions: Region[]; 
-    provinces: Province[]; 
-    city_mun: CityMunicipality[]; 
-    barangays: Barangay[]; 
-  };
-  const rName = formatName(lib.regions.find((x: Region) => x.reg_code === reg)?.name || '');
-  const pName = formatName(lib.provinces.find((x: Province) => x.prov_code === prov)?.name || '');
-  const cName = formatName(lib.city_mun.find((x: CityMunicipality) => x.mun_code === city)?.name || '');
+  const rName = formatName(phLib.regions.find((x: Region) => x.reg_code === reg)?.name || '');
+  const pName = formatName(phLib.provinces.find((x: Province) => x.prov_code === prov)?.name || '');
+  const cName = formatName(phLib.city_mun.find((x: CityMunicipality) => x.mun_code === city)?.name || '');
   const bName = formatName(brgy);
   return [house, subd, street, bName, cName, pName, rName].filter(Boolean).join(', ');
 };
@@ -245,42 +253,42 @@ const PDSAddressSelector = ({ prefix, data, set, isMeycauayanOnly = false }: { p
 
   useEffect(() => {
     if (isMeycauayanOnly) {
-      const reg3 = ph.regions.find((r: Region) => r.reg_code === '03');
+      const reg3 = phLib.regions.find((r: Region) => r.reg_code === '03');
       setRegions(reg3 ? [reg3] : []);
-      set(`${prefix}Region` as unknown as any, '03');
-      const bulacan = ph.provinces.find((p: Province) => p.prov_code === '0314');
+      set(`${prefix}Region` as keyof PDSFormData, '03');
+      const bulacan = phLib.provinces.find((p: Province) => p.prov_code === '0314');
       setProvinces(bulacan ? [bulacan] : []);
-      set(`${prefix}Province` as unknown as any, '0314');
-      const meycauayan = ph.city_mun.find((c: CityMunicipality) => c.mun_code === '031412' || c.name.toUpperCase().includes('MEYCAUAYAN'));
+      set(`${prefix}Province` as keyof PDSFormData, '0314');
+      const meycauayan = phLib.city_mun.find((c: CityMunicipality) => c.mun_code === '031412' || c.name.toUpperCase().includes('MEYCAUAYAN'));
       setCities(meycauayan ? [meycauayan] : []);
       const munCode = meycauayan?.mun_code || '031412';
-      set(`${prefix}CityMunicipality` as unknown as any, munCode);
+      set(`${prefix}CityMunicipality` as keyof PDSFormData, munCode);
       const zip = getZipByMunCode(munCode);
-      if (zip) set(zipField as unknown as any, zip);
+      if (zip) set(zipField, zip);
     } else {
-      setRegions(ph.regions || []);
+      setRegions(phLib.regions || []);
     }
   }, [isMeycauayanOnly, prefix]);
 
   useEffect(() => {
     if (isMeycauayanOnly) return;
     if (watchRegion) {
-      setProvinces(ph.provinces.filter((p: Province) => p.reg_code === watchRegion) || []);
-      if (watchRegion === '13') setCities(ph.city_mun.filter((c: CityMunicipality) => c.reg_code === '13') || []);
+      setProvinces(phLib.provinces.filter((p: Province) => p.reg_code === watchRegion) || []);
+      if (watchRegion === '13') setCities(phLib.city_mun.filter((c: CityMunicipality) => c.reg_code === '13') || []);
     } else setProvinces([]);
   }, [watchRegion, isMeycauayanOnly]);
 
   useEffect(() => {
     if (isMeycauayanOnly) return;
-    if (watchProvince) setCities(ph.city_mun.filter((c: CityMunicipality) => c.prov_code === watchProvince) || []);
+    if (watchProvince) setCities(phLib.city_mun.filter((c: CityMunicipality) => c.prov_code === watchProvince) || []);
     else if (watchRegion !== '13') setCities([]);
   }, [watchProvince, watchRegion, isMeycauayanOnly]);
 
   useEffect(() => {
     if (watchCity) {
-      setBarangays(ph.barangays.filter((b: Barangay) => b.mun_code === watchCity) || []);
+      setBarangays(phLib.barangays.filter((b: Barangay) => b.mun_code === watchCity) || []);
       const zip = getZipByMunCode(String(watchCity));
-      if (zip) set(zipField as unknown as any, zip);
+      if (zip) set(zipField, zip);
     } else setBarangays([]);
   }, [watchCity, prefix]);
 
@@ -291,7 +299,12 @@ const PDSAddressSelector = ({ prefix, data, set, isMeycauayanOnly = false }: { p
           <Combobox 
             options={regions.map((r: Region) => ({ value: r.reg_code, label: formatName(r.name) }))}
             value={watchRegion || ''}
-            onChange={(val: string) => { set(`${prefix}Region` as unknown as any, val); set(`${prefix}Province` as unknown as any, ''); set(`${prefix}CityMunicipality` as unknown as any, ''); set(`${prefix}Barangay` as unknown as any, ''); }}
+            onChange={(val: string) => { 
+                set(`${prefix}Region` as keyof PDSFormData, val); 
+                set(`${prefix}Province` as keyof PDSFormData, ''); 
+                set(`${prefix}CityMunicipality` as keyof PDSFormData, ''); 
+                set(`${prefix}Barangay` as keyof PDSFormData, ''); 
+            }}
             placeholder="Select Region" disabled={isMeycauayanOnly}
             buttonClassName="rounded-lg bg-white border-gray-200 font-bold text-gray-700 h-11 transition-all hover:border-gray-400 focus:ring-4 focus:ring-gray-100/50 focus:border-gray-400"
           />
@@ -300,7 +313,11 @@ const PDSAddressSelector = ({ prefix, data, set, isMeycauayanOnly = false }: { p
           <Combobox 
             options={provinces.map((p: Province) => ({ value: p.prov_code, label: formatName(p.name) }))}
             value={watchProvince || ''}
-            onChange={(val: string) => { set(`${prefix}Province` as unknown as any, val); set(`${prefix}CityMunicipality` as unknown as any, ''); set(`${prefix}Barangay` as unknown as any, ''); }}
+            onChange={(val: string) => { 
+                set(`${prefix}Province` as keyof PDSFormData, val); 
+                set(`${prefix}CityMunicipality` as keyof PDSFormData, ''); 
+                set(`${prefix}Barangay` as keyof PDSFormData, ''); 
+            }}
             placeholder="Select Province" disabled={isMeycauayanOnly || (!watchRegion && watchRegion !== '13')}
             buttonClassName="rounded-lg bg-white border-gray-200 font-bold text-gray-700 h-11 transition-all hover:border-gray-400 focus:ring-4 focus:ring-gray-100/50 focus:border-gray-400"
           />
@@ -309,7 +326,10 @@ const PDSAddressSelector = ({ prefix, data, set, isMeycauayanOnly = false }: { p
           <Combobox 
             options={cities.map((c: CityMunicipality) => ({ value: c.mun_code, label: formatName(c.name) }))}
             value={watchCity || ''}
-            onChange={(val: string) => { set(`${prefix}CityMunicipality` as unknown as any, val); set(`${prefix}Barangay` as unknown as any, ''); }}
+            onChange={(val: string) => { 
+                set(`${prefix}CityMunicipality` as keyof PDSFormData, val); 
+                set(`${prefix}Barangay` as keyof PDSFormData, ''); 
+            }}
             placeholder="Select City" disabled={isMeycauayanOnly || (!watchProvince && watchRegion !== '13')}
             buttonClassName="rounded-lg bg-white border-gray-200 font-bold text-gray-700 h-11 transition-all hover:border-gray-400 focus:ring-4 focus:ring-gray-100/50 focus:border-gray-400"
           />
@@ -318,16 +338,16 @@ const PDSAddressSelector = ({ prefix, data, set, isMeycauayanOnly = false }: { p
           <Combobox 
             options={barangays.map((b: Barangay) => ({ value: b.name, label: formatName(b.name) }))}
             value={(data[`${prefix}Barangay` as keyof PDSFormData] as string) || ''}
-            onChange={(val: string) => set(`${prefix}Barangay` as keyof PDSFormData, val as unknown as any)}
+            onChange={(val: string) => set(`${prefix}Barangay` as keyof PDSFormData, val)}
             placeholder="Select Barangay" disabled={!watchCity}
             buttonClassName="rounded-lg bg-white border-gray-200 font-bold text-gray-700 h-11 transition-all hover:border-gray-400 focus:ring-4 focus:ring-gray-100/50 focus:border-gray-400"
           />
         </Field>
       </Grid>
       <Grid cols={3}>
-        <Field label="House / Block / Lot No."><Input value={data[`${prefix}HouseBlockLot` as keyof PDSFormData] as string} onChange={e => set(`${prefix}HouseBlockLot` as keyof PDSFormData, e.target.value as unknown as any)} placeholder="e.g. Lot 1 Block 2" /></Field>
-        <Field label="Subdivision / Village"><Input value={data[`${prefix}Subdivision` as keyof PDSFormData] as string} onChange={e => set(`${prefix}Subdivision` as keyof PDSFormData, e.target.value as unknown as any)} placeholder="e.g. Green Village" /></Field>
-        <Field label="Street"><Input value={data[`${prefix}Street` as keyof PDSFormData] as string} onChange={e => set(`${prefix}Street` as keyof PDSFormData, e.target.value as unknown as any)} placeholder="e.g. Rizal Street" /></Field>
+        <Field label="House / Block / Lot No."><Input value={data[`${prefix}HouseBlockLot` as keyof PDSFormData] as string} onChange={e => set(`${prefix}HouseBlockLot` as keyof PDSFormData, e.target.value)} placeholder="e.g. Lot 1 Block 2" /></Field>
+        <Field label="Subdivision / Village"><Input value={data[`${prefix}Subdivision` as keyof PDSFormData] as string} onChange={e => set(`${prefix}Subdivision` as keyof PDSFormData, e.target.value)} placeholder="e.g. Green Village" /></Field>
+        <Field label="Street"><Input value={data[`${prefix}Street` as keyof PDSFormData] as string} onChange={e => set(`${prefix}Street` as keyof PDSFormData, e.target.value)} placeholder="e.g. Rizal Street" /></Field>
       </Grid>
       <Grid cols={3}>
         <Field label="Zip Code"><Input value={data[`${prefix}Zip` as keyof PDSFormData] as string} readOnly className="bg-gray-50 cursor-not-allowed" placeholder="Auto-populated" /></Field>
@@ -338,8 +358,9 @@ const PDSAddressSelector = ({ prefix, data, set, isMeycauayanOnly = false }: { p
 
 const initialData: PDSFormData = {
   surname: "", firstName: "", middleName: "", nameExtension: "", dob: "", pob: "",
-  sex: "", civilStatus: "", height: "", weight: "", bloodType: "", citizenship: "", dualCountry: "",
+  sex: "", civilStatus: "", height: "", weight: "", bloodType: "", citizenship: "", citizenshipType: "", dualCountry: "",
   umidId: "", pagibigId: "", philhealthNo: "", philsysNo: "", tinNo: "", gsisId: "", agencyEmployeeNo: "",
+  isBiometricEnrolled: false,
   resHouseStreet: "", resSubdivision: "", resBarangay: "", resCityMunicipality: "", resProvince: "", resZip: "",
   resRegion: "", resHouseBlockLot: "", resStreet: "",
   sameAddress: false,
@@ -357,6 +378,7 @@ const initialData: PDSFormData = {
   voluntaryWorks: [emptyVoluntary()],
   trainings: [emptyTraining()],
   specialSkills: "", nonAcademicDistinctions: "", memberships: "",
+  references: [emptyReference(), emptyReference(), emptyReference()],
   relatedThirdDegree: "No", relatedThirdDetails: "",
   relatedFourthDegree: "No", relatedFourthDetails: "",
   foundGuiltyAdmin: "No", foundGuiltyDetails: "",
@@ -369,7 +391,6 @@ const initialData: PDSFormData = {
   indigenousMember: "No", indigenousDetails: "",
   personWithDisability: "No", disabilityIdNo: "",
   soloParent: "No", soloParentIdNo: "",
-  references: [{ name: "", address: "", contact: "" }, { name: "", address: "", contact: "" }, { name: "", address: "", contact: "" }],
   govtIdType: "", govtIdNo: "", govtIdIssuance: "", dateAccomplished: "",
   declarationAgreed: false,
   itemNumber: "", salaryGrade: "", stepIncrement: "", appointmentType: "", employmentStatus: "", station: "", officeAddress: "", dateHired: "", department: "", jobTitle: "",
@@ -382,8 +403,8 @@ const initialData: PDSFormData = {
 // ─── Sub-components using Tailwind ───────────────────────────────────────────
 
 const Field = ({ label, children, span = 1 }: { label: string; children: React.ReactNode; span?: number }) => (
-  <div className="flex flex-col gap-2" style={{ gridColumn: `span ${span}` }}>
-    <label className="text-[11px] font-bold text-gray-500 ml-1">{label}</label>
+  <div className="flex flex-col gap-1.5" style={{ gridColumn: `span ${span}` }}>
+    <label className="text-[10px] font-bold text-gray-400 uppercase ml-1 tracking-tight">{label}</label>
     {children}
   </div>
 );
@@ -393,10 +414,10 @@ const Input = (props: React.InputHTMLAttributes<HTMLInputElement> & { icon?: Luc
   return (
     <div className="flex flex-col gap-1.1 w-full">
       <div className="relative">
-        {Icon && <Icon size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />}
+        {Icon && <Icon size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />}
         <input 
           {...rest} 
-          className={`w-full bg-white border rounded-lg ${Icon ? 'pl-11' : 'px-4'} py-3 text-sm font-semibold text-gray-700 outline-none transition-all focus:ring-4 placeholder:text-gray-400 ${isError ? 'border-red-500 bg-red-50 focus:ring-red-100 focus:border-red-500' : 'border-gray-200 focus:ring-gray-100/50 focus:border-gray-400'} ${props.className || ""}`} 
+          className={`w-full bg-gray-50/50 border-[1.5px] rounded-[10px] ${Icon ? 'pl-10' : 'pl-3.5'} pr-3.5 py-2.5 text-sm font-semibold text-gray-700 outline-none transition-all shadow-sm hover:bg-white focus:bg-white focus:ring-[3px] focus:ring-green-100 placeholder:text-gray-400 ${isError ? 'border-red-500 bg-red-50 focus:ring-red-100 focus:border-red-500' : 'border-gray-200 focus:border-green-600'} ${props.className || ""}`} 
         />
       </div>
       {isError && errorMessage && (
@@ -409,7 +430,7 @@ const Input = (props: React.InputHTMLAttributes<HTMLInputElement> & { icon?: Luc
 };
 
 const Textarea = (props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) => (
-  <textarea {...props} className={`w-full bg-white border border-gray-200 rounded-lg px-4 py-3 text-sm font-semibold text-gray-700 outline-none transition-all focus:ring-4 focus:ring-gray-100/50 focus:border-gray-400 placeholder:text-gray-400 min-h-[100px] ${props.className || ""}`} />
+  <textarea {...props} className={`w-full bg-gray-50/50 border-[1.5px] border-gray-200 rounded-[10px] px-3.5 py-2.5 text-sm font-semibold text-gray-700 outline-none transition-all shadow-sm hover:bg-white focus:bg-white focus:ring-[3px] focus:ring-green-100 focus:border-green-600 placeholder:text-gray-400 min-h-[100px] ${props.className || ""}`} />
 );
 
 const Grid = ({ cols = 2, children, className }: { cols?: number; children: React.ReactNode; className?: string }) => {
@@ -418,17 +439,19 @@ const Grid = ({ cols = 2, children, className }: { cols?: number; children: Reac
 };
 
 const SectionCard = ({ title, roman, children, id }: { title: string; roman: string | number; children: React.ReactNode; id?: string }) => (
-  <div id={id} className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm animate-in fade-in zoom-in-95 duration-300">
-    <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-50">
-      <div className="w-8 h-8 rounded-lg bg-gray-100 text-gray-600 text-[10px] font-black flex items-center justify-center border border-gray-200">{roman}</div>
-      <h2 className="text-xs font-bold text-gray-800">{title}</h2>
+  <div id={id} className="bg-white p-5 rounded-[15px] border border-gray-100 shadow-sm animate-in fade-in zoom-in-95 duration-300 relative overflow-hidden">
+    <div className="flex items-center gap-3 mb-5 pb-2.5 border-b border-gray-100">
+      <div className="w-7 h-7 rounded-lg bg-gray-50 text-gray-400 text-[10px] font-black flex items-center justify-center border border-gray-100">{roman}</div>
+      <h2 className="text-sm font-bold text-gray-800 tracking-wide uppercase">{title}</h2>
     </div>
-    {children}
+    <div className="space-y-4">
+      {children}
+    </div>
   </div>
 );
 
 const Divider = ({ label }: { label: string }) => (
-  <div className="text-[10px] font-black text-gray-300 my-8 flex items-center gap-3 before:h-px before:bg-gray-100 before:flex-1 after:h-px after:bg-gray-100 after:flex-1">{label}</div>
+  <div className="text-[9px] font-black text-gray-300 my-6 uppercase tracking-[0.2em] flex items-center gap-3 before:h-px before:bg-gray-100 before:flex-1 after:h-px after:bg-gray-100 after:flex-1">{label}</div>
 );
 
 const YesNo = ({ value, onChange, label }: { value: string; onChange: (v: string) => void; label: string }) => (
@@ -494,7 +517,18 @@ const StepPersonal = ({ data, set, metadata, isIdTakenMap }: { data: PDSFormData
     <Grid cols={3} className="mt-5">
       <Field label="9. Blood Type"><Combobox options={(metadata?.pdsBloodTypes || ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]).map((b: string) => ({ value: b, label: b }))} value={data.bloodType} onChange={v => set("bloodType", v)} placeholder="Select Type" buttonClassName="rounded-xl bg-gray-50/50 border-gray-200 font-bold text-gray-700 h-11 transition-all hover:bg-white hover:border-gray-400 focus:bg-white focus:ring-4 focus:ring-gray-100/50 focus:border-gray-400" /></Field>
       <Field label="16. Citizenship"><Combobox options={(metadata?.pdsCitizenship || ["Filipino", "Dual Citizenship"]).map((s: string) => ({ value: s, label: s }))} value={data.citizenship} onChange={v => set("citizenship", v)} placeholder="Select Citizenship" buttonClassName="rounded-xl bg-gray-50/50 border-gray-200 font-bold text-gray-700 h-11 transition-all hover:bg-white hover:border-gray-400 focus:bg-white focus:ring-4 focus:ring-gray-100/50 focus:border-gray-400" /></Field>
-      {data.citizenship === "Dual Citizenship" && <Field label="Indicate Country (Dual)"><Input value={data.dualCountry} onChange={e => set("dualCountry", e.target.value)} placeholder="Country" /></Field>}
+      {data.citizenship === "Dual Citizenship" && (
+        <div className="flex flex-col gap-3">
+          <div className="flex gap-4 pt-3">
+            {["By Birth", "By Naturalization"].map(t => (
+              <label key={t} className="flex items-center gap-2 text-xs font-bold text-gray-600 cursor-pointer">
+                <input type="radio" name="citizenshipType" className="w-4 h-4 rounded-full border-gray-300 accent-blue-600" checked={data.citizenshipType === t} onChange={() => set("citizenshipType", t)} /> {t}
+              </label>
+            ))}
+          </div>
+          <Field label="Indicate Country (Dual)"><Input value={data.dualCountry} onChange={e => set("dualCountry", e.target.value)} placeholder="Country" /></Field>
+        </div>
+      )}
     </Grid>
     <Divider label="Standard IDs" />
     <Grid cols={3}>
@@ -663,13 +697,13 @@ const StepWork = ({ data, set, metadata }: { data: PDSFormData; set: PDSSetter; 
       <div key={work.id || i} className="bg-gray-50/50 border border-gray-100 rounded-lg p-5 mb-4 group relative last:mb-0 transition-all hover:bg-white hover:border-gray-200">
         <Grid cols={2}>
           <Field label="Position Title" span={2}><Input value={work.positionTitle} onChange={e => { const updated = [...data.workExperiences]; updated[i] = { ...work, positionTitle: e.target.value }; set("workExperiences", updated); }} /></Field>
-          <Field label="Department / Agency / Company" span={2}><Input value={work.department} onChange={e => { const updated = [...data.workExperiences]; updated[i] = { ...work, department: e.target.value }; set("workExperiences", updated); }} /></Field>
-          <Field label="From"><Input type="date" value={work.from} onChange={e => { const updated = [...data.workExperiences]; updated[i] = { ...work, from: e.target.value }; set("workExperiences", updated); }} /></Field>
-          <Field label="To"><Input type="date" value={work.to} onChange={e => { const updated = [...data.workExperiences]; updated[i] = { ...work, to: e.target.value }; set("workExperiences", updated); }} /></Field>
+          <Field label="Department / Agency / Company" span={2}><Input value={work.companyName} onChange={e => { const updated = [...data.workExperiences]; updated[i] = { ...work, companyName: e.target.value }; set("workExperiences", updated); }} /></Field>
+          <Field label="From"><Input type="date" value={work.dateFrom} onChange={e => { const updated = [...data.workExperiences]; updated[i] = { ...work, dateFrom: e.target.value }; set("workExperiences", updated); }} /></Field>
+          <Field label="To"><Input type="date" value={work.dateTo} onChange={e => { const updated = [...data.workExperiences]; updated[i] = { ...work, dateTo: e.target.value }; set("workExperiences", updated); }} /></Field>
           <Field label="Monthly Salary"><Input value={work.monthlySalary} onChange={e => { const updated = [...data.workExperiences]; updated[i] = { ...work, monthlySalary: e.target.value }; set("workExperiences", updated); }} /></Field>
           <Field label="Salary Grade"><Input value={work.salaryGrade} onChange={e => { const updated = [...data.workExperiences]; updated[i] = { ...work, salaryGrade: e.target.value }; set("workExperiences", updated); }} /></Field>
           <Field label="Status of Appointment"><Combobox options={(metadata?.pdsAppointmentStatus || ["Permanent", "Temporary", "Coterminous", "Contractual", "Casual"]).map((s: string) => ({ value: s, label: s }))} value={work.appointmentStatus} onChange={v => { const updated = [...data.workExperiences]; updated[i] = { ...work, appointmentStatus: v }; set("workExperiences", updated); }} placeholder="Select Status" buttonClassName="rounded-lg bg-white border-gray-200 font-bold text-gray-700 h-11 transition-all hover:border-gray-400 focus:ring-4 focus:ring-gray-100/50 focus:border-gray-400" /></Field>
-          <Field label="Gov't Service"><Combobox options={[{ value: "Y", label: "Yes" }, { value: "N", label: "No" }]} value={work.govtService} onChange={v => { const updated = [...data.workExperiences]; updated[i] = { ...work, govtService: v }; set("workExperiences", updated); }} placeholder="Y/N" buttonClassName="rounded-lg bg-white border-gray-200 font-bold text-gray-700 h-11 transition-all hover:border-gray-400 focus:ring-4 focus:ring-gray-100/50 focus:border-gray-400" /></Field>
+          <Field label="Gov't Service"><Combobox options={[{ value: "Yes", label: "Yes" }, { value: "No", label: "No" }]} value={work.isGovernment ? "Yes" : "No"} onChange={v => { const updated = [...data.workExperiences]; updated[i] = { ...work, isGovernment: v === "Yes" }; set("workExperiences", updated); }} placeholder="Y/N" buttonClassName="rounded-lg bg-white border-gray-200 font-bold text-gray-700 h-11 transition-all hover:border-gray-400 focus:ring-4 focus:ring-gray-100/50 focus:border-gray-400" /></Field>
         </Grid>
         <button onClick={() => set("workExperiences", data.workExperiences.filter((_, j) => i !== j))} className="absolute top-4 right-4 text-[10px] font-bold text-rose-500 bg-rose-50 px-2 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-rose-100">Remove</button>
       </div>
@@ -680,14 +714,15 @@ const StepWork = ({ data, set, metadata }: { data: PDSFormData; set: PDSSetter; 
 
 const StepVoluntary = ({ data, set }: { data: PDSFormData; set: PDSSetter }) => (
   <SectionCard title="Voluntary Work" roman="VI">
-    {data.voluntaryWorks.map((work, i) => (
-      <div key={work.id || i} className="bg-gray-50/50 border border-gray-100 rounded-lg p-5 mb-4 group relative last:mb-0 transition-all hover:bg-white hover:border-gray-200">
+    {data.voluntaryWorks.map((vol, i) => (
+      <div key={vol.id || i} className="bg-gray-50/50 border border-gray-100 rounded-lg p-5 mb-4 group relative last:mb-0 transition-all hover:bg-white hover:border-gray-200">
         <Grid cols={2}>
-          <Field label="Organization Name" span={2}><Input value={work.organization} onChange={e => { const updated = [...data.voluntaryWorks]; updated[i] = { ...work, organization: e.target.value }; set("voluntaryWorks", updated); }} /></Field>
-          <Field label="From"><Input type="date" value={work.from} onChange={e => { const updated = [...data.voluntaryWorks]; updated[i] = { ...work, from: e.target.value }; set("voluntaryWorks", updated); }} /></Field>
-          <Field label="To"><Input type="date" value={work.to} onChange={e => { const updated = [...data.voluntaryWorks]; updated[i] = { ...work, to: e.target.value }; set("voluntaryWorks", updated); }} /></Field>
-          <Field label="Number of Hours"><Input value={work.hours} onChange={e => { const updated = [...data.voluntaryWorks]; updated[i] = { ...work, hours: e.target.value }; set("voluntaryWorks", updated); }} /></Field>
-          <Field label="Position / Nature of Work"><Input value={work.positionNature} onChange={e => { const updated = [...data.voluntaryWorks]; updated[i] = { ...work, positionNature: e.target.value }; set("voluntaryWorks", updated); }} /></Field>
+          <Field label="Organization Name" span={2}><Input value={vol.organizationName} onChange={e => { const updated = [...data.voluntaryWorks]; updated[i] = { ...vol, organizationName: e.target.value }; set("voluntaryWorks", updated); }} /></Field>
+          <Field label="Address" span={2}><Input value={vol.address} onChange={e => { const updated = [...data.voluntaryWorks]; updated[i] = { ...vol, address: e.target.value }; set("voluntaryWorks", updated); }} /></Field>
+          <Field label="From"><Input type="date" value={vol.dateFrom} onChange={e => { const updated = [...data.voluntaryWorks]; updated[i] = { ...vol, dateFrom: e.target.value }; set("voluntaryWorks", updated); }} /></Field>
+          <Field label="To"><Input type="date" value={vol.dateTo} onChange={e => { const updated = [...data.voluntaryWorks]; updated[i] = { ...vol, dateTo: e.target.value }; set("voluntaryWorks", updated); }} /></Field>
+          <Field label="Number of Hours"><Input value={vol.hoursNumber} onChange={e => { const updated = [...data.voluntaryWorks]; updated[i] = { ...vol, hoursNumber: e.target.value }; set("voluntaryWorks", updated); }} /></Field>
+          <Field label="Position / Nature of Work"><Input value={vol.position} onChange={e => { const updated = [...data.voluntaryWorks]; updated[i] = { ...vol, position: e.target.value }; set("voluntaryWorks", updated); }} /></Field>
         </Grid>
         <button onClick={() => set("voluntaryWorks", data.voluntaryWorks.filter((_, j) => i !== j))} className="absolute top-4 right-4 text-[10px] font-bold text-rose-500 bg-rose-50 px-2 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-rose-100">Remove</button>
       </div>
@@ -702,10 +737,10 @@ const StepTraining = ({ data, set, metadata }: { data: PDSFormData; set: PDSSett
       <div key={train.id || i} className="bg-gray-50/50 border border-gray-100 rounded-lg p-6 mb-8 relative group transition-all hover:bg-white hover:border-gray-200">
         <Grid cols={2}>
           <Field label="Title of Training" span={2}><Input value={train.title} onChange={e => { const updated = [...data.trainings]; updated[i] = { ...train, title: e.target.value }; set("trainings", updated); }} /></Field>
-          <Field label="From"><Input type="date" value={train.from} onChange={e => { const updated = [...data.trainings]; updated[i] = { ...train, from: e.target.value }; set("trainings", updated); }} /></Field>
-          <Field label="To"><Input type="date" value={train.to} onChange={e => { const updated = [...data.trainings]; updated[i] = { ...train, to: e.target.value }; set("trainings", updated); }} /></Field>
-          <Field label="Number of Hours"><Input value={train.hours} onChange={e => { const updated = [...data.trainings]; updated[i] = { ...train, hours: e.target.value }; set("trainings", updated); }} /></Field>
-          <Field label="Type of LD"><Combobox options={(metadata?.pdsLdTypes || ["Managerial", "Supervisory", "Technical", "Other"]).map((s: string) => ({ value: s, label: s }))} value={train.ldType} onChange={v => { const updated = [...data.trainings]; updated[i] = { ...train, ldType: v }; set("trainings", updated); }} placeholder="Select Type" buttonClassName="rounded-lg bg-white border-gray-200 font-bold text-gray-700 h-11 transition-all hover:border-gray-400 focus:ring-4 focus:ring-gray-100/50 focus:border-gray-400" /></Field>
+          <Field label="From"><Input type="date" value={train.dateFrom} onChange={e => { const updated = [...data.trainings]; updated[i] = { ...train, dateFrom: e.target.value }; set("trainings", updated); }} /></Field>
+          <Field label="To"><Input type="date" value={train.dateTo} onChange={e => { const updated = [...data.trainings]; updated[i] = { ...train, dateTo: e.target.value }; set("trainings", updated); }} /></Field>
+          <Field label="Number of Hours"><Input value={train.hoursNumber} onChange={e => { const updated = [...data.trainings]; updated[i] = { ...train, hoursNumber: e.target.value }; set("trainings", updated); }} /></Field>
+          <Field label="Type of LD"><Combobox options={(metadata?.pdsLdTypes || ["Managerial", "Supervisory", "Technical", "Other"]).map((s: string) => ({ value: s, label: s }))} value={train.typeOfLd} onChange={v => { const updated = [...data.trainings]; updated[i] = { ...train, typeOfLd: v }; set("trainings", updated); }} placeholder="Select Type" buttonClassName="rounded-lg bg-white border-gray-200 font-bold text-gray-700 h-11 transition-all hover:border-gray-400 focus:ring-4 focus:ring-gray-100/50 focus:border-gray-400" /></Field>
           <Field label="Conducted By" span={2}><Input value={train.conductedBy} onChange={e => { const updated = [...data.trainings]; updated[i] = { ...train, conductedBy: e.target.value }; set("trainings", updated); }} /></Field>
         </Grid>
         <button onClick={() => set("trainings", data.trainings.filter((_, j) => i !== j))} className="absolute top-4 right-4 text-[10px] font-bold text-rose-500 bg-rose-50 px-2 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-rose-100">Remove</button>
@@ -729,6 +764,19 @@ const StepOtherInfo = ({ data, set, employeeId }: { data: PDSFormData; set: PDSS
         <Field label="31. Special Skills / Hobbies"><Textarea value={data.specialSkills} onChange={e => set("specialSkills", e.target.value)} placeholder="List special skills or hobbies..." /></Field>
         <Field label="32. Non-Academic Distinctions"><Textarea value={data.nonAcademicDistinctions} onChange={e => set("nonAcademicDistinctions", e.target.value)} placeholder="List non-academic distinctions..." /></Field>
         <Field label="33. Memberships in Organizations"><Textarea value={data.memberships} onChange={e => set("memberships", e.target.value)} placeholder="List association/organization memberships..." /></Field>
+      </Grid>
+      <Divider label="References (Item 41)" />
+      <Grid cols={1}>
+        {data.references.map((ref, i) => (
+          <div key={i} className="bg-gray-50/50 border border-gray-100 rounded-xl p-4 mb-4 last:mb-0">
+             <div className="text-[10px] font-bold text-gray-400 mb-3 opacity-50 uppercase tracking-widest">Reference {i + 1}</div>
+             <Grid cols={3}>
+                <Field label="Full Name"><Input value={ref.name} onChange={e => { const updated = [...data.references]; updated[i] = { ...ref, name: e.target.value }; set("references", updated); }} /></Field>
+                <Field label="Address"><Input value={ref.address} onChange={e => { const updated = [...data.references]; updated[i] = { ...ref, address: e.target.value }; set("references", updated); }} /></Field>
+                <Field label="Telephone No."><Input value={ref.contact} onChange={e => { const updated = [...data.references]; updated[i] = { ...ref, contact: e.target.value }; set("references", updated); }} /></Field>
+             </Grid>
+          </div>
+        ))}
       </Grid>
       <Divider label="Supporting Documents" />
       <div className="bg-gray-50/30 rounded-xl p-4 border border-gray-100">
@@ -771,18 +819,6 @@ const StepDeclarations = ({ data, set, metadata }: { data: PDSFormData; set: PDS
         <YesNo value={data.soloParent} onChange={v => set("soloParent", v)} label="40c. Are you a solo parent?" />
         {data.soloParent === "Yes" && <Field label="If YES, specify ID No:"><Input value={data.soloParentIdNo} onChange={e => set("soloParentIdNo", e.target.value)} /></Field>}
       </Grid>
-    </SectionCard>
-    <SectionCard title="References" roman="41">
-      <p className="text-[10px] font-bold text-gray-400 mb-6 ml-1">Persons not related by consanguinity or affinity to applicant</p>
-      {data.references.map((ref, i) => (
-        <div key={i} className="mb-4 last:mb-0 p-6 border border-gray-100 rounded-lg bg-gray-50/30 ring-1 ring-gray-100 hover:ring-gray-200 transition-all group">
-          <Grid cols={1} className="md:grid-cols-3 gap-4">
-            <Field label={`Reference ${i + 1} — Name`}><Input value={ref.name} onChange={e => { const u = [...data.references]; u[i] = { ...ref, name: e.target.value }; set("references", u); }} placeholder="Full Name" /></Field>
-            <Field label="Office / Residential Address"><Input value={ref.address} onChange={e => { const u = [...data.references]; u[i] = { ...ref, address: e.target.value }; set("references", u); }} placeholder="Complete Address" /></Field>
-            <Field label="Contact No. and/or Email"><Input value={ref.contact} onChange={e => { const u = [...data.references]; u[i] = { ...ref, contact: e.target.value }; set("references", u); }} placeholder="Contact Info" /></Field>
-          </Grid>
-        </div>
-      ))}
     </SectionCard>
     <SectionCard title="Government Issued ID & Certification" roman="42">
       <Grid cols={2}>
@@ -883,7 +919,6 @@ interface PDSFormWizardProps {
 
 const PDSFormWizard: React.FC<PDSFormWizardProps> = ({ employeeId }) => {
   const [data, setData] = useState<PDSFormData>(initialData);
-  const [loading, setLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Debounced ID numbers for real-time validation
@@ -901,7 +936,8 @@ const PDSFormWizard: React.FC<PDSFormWizardProps> = ({ employeeId }) => {
     philhealthNumber: debouncedPhilhealth,
     pagibigNumber: debouncedPagibig,
     gsisNumber: debouncedGsis,
-    agencyEmployeeNo: debouncedAgencyNo
+    agencyEmployeeNo: debouncedAgencyNo,
+    excludeAuthId: employeeId // 100% FIXED: Pass the numeric user ID to exclude the current user's own records from uniqueness check
   }, (
     (debouncedUmid?.length || 0) > 2 ||
     (debouncedTin?.length || 0) > 2 ||
@@ -943,8 +979,11 @@ const PDSFormWizard: React.FC<PDSFormWizardProps> = ({ employeeId }) => {
       await employeeApi.updateEmployee(employeeId, {
         lastName: data.surname, firstName: data.firstName, middleName: data.middleName, suffix: data.nameExtension,
         email: data.email,
-        jobTitle: data.jobTitle, itemNumber: data.itemNumber, salaryGrade: data.salaryGrade ? Number(data.salaryGrade) : undefined, stepIncrement: data.stepIncrement ? Number(data.stepIncrement) : undefined, appointmentType: data.appointmentType as unknown as any, employmentStatus: data.employmentStatus as unknown as any, station: data.station, officeAddress: data.officeAddress, dateHired: data.dateHired,
-        dutyType: data.dutyType as unknown as any, isMeycauayan: data.isMeycauayan === 'true', firstDayOfService: data.firstDayOfService,
+        jobTitle: data.jobTitle, itemNumber: data.itemNumber, salaryGrade: data.salaryGrade ? Number(data.salaryGrade) : undefined, stepIncrement: data.stepIncrement ? Number(data.stepIncrement) : undefined, 
+        appointmentType: data.appointmentType as 'Permanent' | 'Contractual' | 'Casual' | 'Job Order' | 'Coterminous' | 'Temporary', 
+        employmentStatus: data.employmentStatus as 'Active' | 'Probationary' | 'Terminated' | 'Resigned' | 'On Leave' | 'Suspended' | 'Verbal Warning' | 'Written Warning' | 'Show Cause', 
+        station: data.station, officeAddress: data.officeAddress, dateHired: data.dateHired,
+        dutyType: data.dutyType as 'Standard' | 'Irregular', isMeycauayan: data.isMeycauayan === 'true', firstDayOfService: data.firstDayOfService,
         facebookUrl: data.facebookUrl, linkedinUrl: data.linkedinUrl, twitterHandle: data.twitterHandle
       });
 
@@ -952,8 +991,8 @@ const PDSFormWizard: React.FC<PDSFormWizardProps> = ({ employeeId }) => {
       await pdsApi.updatePdsPersonalInformation({
         employeeId: employeeId,
         birthDate: data.dob, placeOfBirth: data.pob, gender: data.sex, civilStatus: data.civilStatus,
-        heightM: data.height, weightKg: data.weight, bloodType: data.bloodType, citizenship: data.citizenship,
-        dualCountry: data.dualCountry,
+        heightM: data.height, weightKg: data.weight, bloodType: data.bloodType,
+        citizenship: data.citizenship, citizenshipType: data.citizenshipType, dualCountry: data.dualCountry,
         umidNumber: data.umidId, pagibigNumber: data.pagibigId, philhealthNumber: data.philhealthNo, philsysId: data.philsysNo, tinNumber: data.tinNo, gsisNumber: data.gsisId, agencyEmployeeNo: data.agencyEmployeeNo,
         telephoneNo: data.telephone, mobileNo: data.mobile, email: data.email,
         resRegion: data.resRegion, resProvince: data.resProvince, resCity: data.resCityMunicipality, resBarangay: data.resBarangay, residentialZipCode: data.resZip, resHouseBlockLot: data.resHouseBlockLot, resStreet: data.resStreet, resSubdivision: data.resSubdivision,
@@ -988,9 +1027,9 @@ const PDSFormWizard: React.FC<PDSFormWizardProps> = ({ employeeId }) => {
         ].filter(f => f.firstName || f.lastName)),
         employeeApi.updatePdsSection(employeeId, 'education', Object.entries(data.education).map(([level, edu]) => ({ level, institution: edu.school, degree: edu.course, startDate: edu.from, endDate: edu.to, unitsEarned: edu.units, yearGraduated: edu.yearGrad, honors: edu.honors })).filter(e => e.institution)),
         employeeApi.updatePdsSection(employeeId, 'eligibility', data.eligibilities.filter(e => e.name).map(e => ({ eligibilityType: e.name, rating: e.rating, examDate: e.examDate, examPlace: e.examPlace, eligibilityNumber: e.licenseNo }))),
-        employeeApi.updatePdsSection(employeeId, 'work_experience', data.workExperiences.filter(w => w.positionTitle).map(w => ({ positionTitle: w.positionTitle, companyName: w.department, dateFrom: w.from, dateTo: w.to, monthlySalary: w.monthlySalary, salaryGrade: w.salaryGrade, appointmentStatus: w.appointmentStatus, isGovernment: w.govtService === 'Y' }))),
-        employeeApi.updatePdsSection(employeeId, 'voluntary_work', data.voluntaryWorks.filter(v => v.organization).map(v => ({ organizationName: v.organization, dateFrom: v.from, dateTo: v.to, hoursNumber: Number(v.hours) || 0, position: v.positionNature }))),
-        employeeApi.updatePdsSection(employeeId, 'learning_development', data.trainings.filter(t => t.title).map(t => ({ title: t.title, dateFrom: t.from, dateTo: t.to, hoursNumber: Number(t.hours) || 0, typeOfLd: t.ldType, conductedBy: t.conductedBy }))),
+        employeeApi.updatePdsSection(employeeId, 'work_experience', data.workExperiences.filter(w => w.positionTitle).map(w => ({ positionTitle: w.positionTitle, companyName: w.companyName, dateFrom: w.dateFrom, dateTo: w.dateTo, monthlySalary: w.monthlySalary, salaryGrade: w.salaryGrade, appointmentStatus: w.appointmentStatus, isGovernment: w.isGovernment }))),
+        employeeApi.updatePdsSection(employeeId, 'voluntary_work', data.voluntaryWorks.filter(v => v.organizationName).map(v => ({ organizationName: v.organizationName, dateFrom: v.dateFrom, dateTo: v.dateTo, hoursNumber: Number(v.hoursNumber) || 0, position: v.position }))),
+        employeeApi.updatePdsSection(employeeId, 'learning_development', data.trainings.filter(t => t.title).map(t => ({ title: t.title, dateFrom: t.dateFrom, dateTo: t.dateTo, hoursNumber: Number(t.hoursNumber) || 0, typeOfLd: t.typeOfLd, conductedBy: t.conductedBy }))),
         employeeApi.updatePdsSection(employeeId, 'references', data.references.filter(r => r.name).map(r => ({ name: r.name, address: r.address, telNo: r.contact }))),
         employeeApi.updatePdsSection(employeeId, 'other_info', [
           ...data.specialSkills.split(',').map(s => ({ type: 'Skill', description: s.trim() })),
@@ -1000,7 +1039,7 @@ const PDSFormWizard: React.FC<PDSFormWizardProps> = ({ employeeId }) => {
       ]);
 
       showToast("Employee Record Synchronized Successfully", "success");
-    } catch (err) {
+    } catch (_err) {
       showToast("Synchronization Failed", "error");
     } finally {
       setIsSubmitting(false);
@@ -1058,7 +1097,8 @@ const PDSFormWizard: React.FC<PDSFormWizardProps> = ({ employeeId }) => {
             height: personal?.heightM?.toString() || "", 
             weight: personal?.weightKg?.toString() || "", 
             bloodType: personal?.bloodType || "", 
-            citizenship: personal?.citizenship || "", 
+            citizenship: personal?.citizenship || "",
+            citizenshipType: personal?.citizenshipType || "",
             dualCountry: personal?.dualCountry || "",
             umidId: personal?.umidNumber || "", 
             pagibigId: personal?.pagibigNumber || "", 
@@ -1124,9 +1164,9 @@ const PDSFormWizard: React.FC<PDSFormWizardProps> = ({ employeeId }) => {
                   licenseValidUntil: e.validityDate || "" 
                 })) 
               : [emptyEligibility()],
-            workExperiences: (p.workExperience && p.workExperience.length > 0) ? p.workExperience.map(w => ({ id: w.id?.toString() || uid(), positionTitle: w.positionTitle, department: w.companyName, from: w.dateFrom, to: w.dateTo || "", monthlySalary: w.monthlySalary || "", salaryGrade: w.salaryGrade || "", appointmentStatus: w.appointmentStatus || "", govtService: w.isGovernment ? "Y" : "N" })) : [emptyWork()],
-            voluntaryWorks: (p.voluntaryWork && p.voluntaryWork.length > 0) ? p.voluntaryWork.map(v => ({ id: v.id?.toString() || uid(), organization: v.organizationName, from: v.dateFrom || "", to: v.dateTo || "", hours: v.hoursNumber?.toString() || "", positionNature: v.position || "" })) : [emptyVoluntary()],
-            trainings: (p.learningDevelopment && p.learningDevelopment.length > 0) ? p.learningDevelopment.map(t => ({ id: t.id?.toString() || uid(), title: t.title, from: t.dateFrom || "", to: t.dateTo || "", hours: t.hoursNumber?.toString() || "", ldType: t.typeOfLd || "", conductedBy: t.conductedBy || "" })) : [emptyTraining()],
+            workExperiences: (p.workExperience && p.workExperience.length > 0) ? p.workExperience.map(w => ({ id: w.id?.toString() || uid(), positionTitle: w.positionTitle, companyName: w.companyName, dateFrom: w.dateFrom, dateTo: w.dateTo || "", monthlySalary: w.monthlySalary || "", salaryGrade: w.salaryGrade || "", appointmentStatus: w.appointmentStatus || "", isGovernment: !!w.isGovernment })) : [emptyWork()],
+            voluntaryWorks: (p.voluntaryWork && p.voluntaryWork.length > 0) ? p.voluntaryWork.map(v => ({ id: v.id?.toString() || uid(), organizationName: v.organizationName, address: v.address || "", dateFrom: v.dateFrom || "", dateTo: v.dateTo || "", hoursNumber: v.hoursNumber?.toString() || "", position: v.position || "" })) : [emptyVoluntary()],
+            trainings: (p.learningDevelopment && p.learningDevelopment.length > 0) ? p.learningDevelopment.map(t => ({ id: t.id?.toString() || uid(), title: t.title, dateFrom: t.dateFrom || "", dateTo: t.dateTo || "", hoursNumber: t.hoursNumber?.toString() || "", typeOfLd: t.typeOfLd || "", conductedBy: t.conductedBy || "" })) : [emptyTraining()],
             specialSkills: p.otherInfo?.filter(o => o.type === 'Skill').map(o => o.description).join(", ") || "", 
             nonAcademicDistinctions: p.otherInfo?.filter(o => o.type === 'Recognition').map(o => o.description).join(", ") || "", 
             memberships: p.otherInfo?.filter(o => o.type === 'Membership').map(o => o.description).join(", ") || "",

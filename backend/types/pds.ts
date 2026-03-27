@@ -22,5 +22,6 @@ export interface PDSFormData {
 }
 
 export interface PDSParsingResult extends Partial<PDSFormData> {
-  // Add result-specific fields if any
+  // Metadata for the parsing result
+  parsedAt?: string;
 }

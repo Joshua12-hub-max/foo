@@ -23,11 +23,10 @@ const ConfirmDialog = ({
   cancelText = "Cancel", 
   isDestructive = false 
 }: ConfirmDialogProps) => {
-  if (!isOpen) return null;
-
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50">
+      {isOpen && (
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/60 backdrop-blur-[2px]">
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -88,7 +87,8 @@ const ConfirmDialog = ({
             </button>
           </div>
         </motion.div>
-      </div>
+        </div>
+      )}
     </AnimatePresence>
   );
 };

@@ -52,7 +52,7 @@ const ApproveModal: React.FC<ApproveModalProps> = ({
   const approveMutation = useMutation({
     mutationFn: async (data: LeaveActionSchema) => {
       if (!request) return;
-      await leaveApi.approveLeave(Number(request.id));
+      await leaveApi.approveLeave(Number(request.id), { remarks: data.remarks });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-leaves'] });

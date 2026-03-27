@@ -705,6 +705,11 @@ namespace BioMiddleware
             {
                 DbUpsertEnrolledUser(empId, _pendingEnrollName, _pendingEnrollDept);
 
+                // COOLDOWN FIX: Immediately update match throttles so the middleware
+                // ignores any "ghost" scan that happens before the user removes their finger.
+                _lastMatchEmpId = rawEnrolledId;
+                _lastMatchLogAt = DateTime.Now;
+
                 lblBigStatus.Text = $"✅ ENROLLED ID {empId}";
                 lblStatus.Text = "Saved";
                 SetIconSuccess();

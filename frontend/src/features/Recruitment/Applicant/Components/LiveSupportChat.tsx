@@ -206,8 +206,8 @@ const LiveSupportChat: React.FC = () => {
                                                 {conv.lastMessage || 'Click to view chat'}
                                             </p>
                                             {conv.unreadCount && conv.unreadCount > 0 ? (
-                                                <span className="bg-slate-600 text-white text-[9px] font-medium px-1.5 py-0.5 rounded-full">
-                                                    {conv.unreadCount}
+                                                <span className="bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-sm">
+                                                    {conv.unreadCount > 99 ? '99+' : conv.unreadCount}
                                                 </span>
                                             ) : null}
                                         </div>

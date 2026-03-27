@@ -16,6 +16,22 @@ interface ApproveModalProps {
   onCancel: () => void;
 }
 
+type LeavePrediction = 
+  | { type: 'special'; label: string; insufficient?: boolean }
+  | { type: 'lwop'; label: string; insufficient?: boolean }
+  | { 
+      type: 'deduction'; 
+      primaryType: string;
+      primaryBefore: number;
+      primaryDeducted: number;
+      primaryAfter: number;
+      fallbackType: string | null;
+      fallbackBefore: number;
+      fallbackDeducted: number;
+      fallbackAfter: number;
+      insufficient: boolean;
+    };
+
 const ApproveModal: React.FC<ApproveModalProps> = ({ 
   isOpen, 
   request, 
@@ -80,7 +96,7 @@ const ApproveModal: React.FC<ApproveModalProps> = ({
   }, [request]);
 
   // Predict credit deduction
-  const prediction = useMemo(() => {
+  const prediction = useMemo((): LeavePrediction | null => {
     if (!request) return null;
     
     // Check special leave
@@ -232,47 +248,47 @@ const ApproveModal: React.FC<ApproveModalProps> = ({
               {/* Credit Impact Analysis */}
               {prediction && (
                 <div className={`flex items-start gap-2 p-3 rounded-lg border mb-4 ${
-                    (prediction as Record<string, string | number>).insufficient ? 'bg-red-50 border-red-200 text-red-800' :
-                    (prediction as Record<string, string | number>).type === 'special' ? 'bg-blue-50 border-blue-200 text-blue-800' :
-                    (prediction as Record<string, string | number>).type === 'lwop' ? 'bg-amber-50 border-amber-200 text-amber-800' :
+                    prediction.insufficient ? 'bg-red-50 border-red-200 text-red-800' :
+                    prediction.type === 'special' ? 'bg-blue-50 border-blue-200 text-blue-800' :
+                    prediction.type === 'lwop' ? 'bg-amber-50 border-amber-200 text-amber-800' :
                     'bg-emerald-50 border-emerald-200 text-emerald-800'
                 }`}>
                   <div className="mt-0.5 shrink-0">
-                      {(prediction as Record<string, string | number>).insufficient ? <AlertTriangle className="w-4 h-4"/> : 
-                      (prediction as Record<string, string | number>).type === 'special' ? <Info className="w-4 h-4"/> :
+                      {prediction.insufficient ? <AlertTriangle className="w-4 h-4"/> : 
+                      prediction.type === 'special' ? <Info className="w-4 h-4"/> :
                       <CheckCircle className="w-4 h-4"/>}
                   </div>
                   <div className="flex-1 text-sm">
                       <p className="font-semibold mb-1">{
-                        (prediction as Record<string, string | number>).type === 'special' ? 'Special Leave (No Deduction)' :
-                        (prediction as Record<string, string | number>).type === 'lwop' ? 'Leave Without Pay (No Deduction)' :
-                        (prediction as Record<string, string | number>).insufficient ? 'Insufficient Credits Warning' :
+                        prediction.type === 'special' ? 'Special Leave (No Deduction)' :
+                        prediction.type === 'lwop' ? 'Leave Without Pay (No Deduction)' :
+                        prediction.insufficient ? 'Insufficient Credits Warning' :
                         'Credit Deduction Preview'
                       }</p>
                       
-                      {(prediction as Record<string, string | number>).type === 'deduction' && (
+                      {prediction.type === 'deduction' && (
                         <div className="space-y-1 text-xs">
                           <div className="flex justify-between">
-                              <span>{(prediction as Record<string, string | number>).primaryType}:</span>
-                              <span>{(prediction as Record<string, string | number>).primaryBefore} - {(prediction as Record<string, string | number>).primaryDeducted} = <strong>{(prediction as Record<string, string | number>).primaryAfter}</strong></span>
+                              <span>{prediction.primaryType}:</span>
+                              <span>{prediction.primaryBefore} - {prediction.primaryDeducted} = <strong>{prediction.primaryAfter}</strong></span>
                           </div>
-                          {(prediction as Record<string, string | number>).fallbackType && (
+                          {prediction.fallbackType && (
                               <div className="flex justify-between border-t border-black/10 pt-1">
-                                <span>{(prediction as Record<string, string | number>).fallbackType} (Cross-charge):</span>
-                                <span>{(prediction as Record<string, string | number>).fallbackBefore} - {(prediction as Record<string, string | number>).fallbackDeducted} = <strong>{(prediction as Record<string, string | number>).fallbackAfter}</strong></span>
+                                <span>{prediction.fallbackType} (Cross-charge):</span>
+                                <span>{prediction.fallbackBefore} - {prediction.fallbackDeducted} = <strong>{prediction.fallbackAfter}</strong></span>
                               </div>
                           )}
-                          {(prediction as Record<string, string | number>).insufficient && (
+                          {prediction.insufficient && (
                               <p className="mt-2 font-bold text-red-700">
                                 Warning: Employee lacks sufficient credits for {duration} days.
                               </p>
                           )}
                         </div>
                       )}
-                      {(prediction as Record<string, string | number>).type === 'special' && (
+                      {prediction.type === 'special' && (
                         <p className="text-xs opacity-90">This leave type does not deduct from leave credits.</p>
                       )}
-                      {(prediction as Record<string, string | number>).type === 'lwop' && (
+                      {prediction.type === 'lwop' && (
                         <p className="text-xs opacity-90">This request is marked as 'Without Pay'. No credits will be deducted.</p>
                       )}
                   </div>

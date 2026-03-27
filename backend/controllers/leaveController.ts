@@ -5,7 +5,7 @@ import { createNotification, notifyAdmins, updateNotificationsByReference } from
 import { accrueCreditsForMonth } from '../services/leaveAccrualService.js';
 import type { AuthenticatedHandler, AuthenticatedRequest } from '../types/index.js';
 import { type PaymentStatus, type TransactionType, type ApplicationStatus, APPLICATION_STATUS } from '../types/leave.types.js';
-import { applyLeaveSchema, rejectLeaveSchema, creditUpdateSchema, accrueCreditsSchema, leavePolicySchema, type LeavePolicyContentStrict } from '../schemas/leaveSchema.js';
+import { applyLeaveSchema, rejectLeaveSchema, approveLeaveSchema, creditUpdateSchema, accrueCreditsSchema, leavePolicySchema, type LeavePolicyContentStrict } from '../schemas/leaveSchema.js';
 import { formatFullName } from '../utils/nameUtils.js';
 import { z } from 'zod';
 
@@ -674,6 +674,7 @@ export const getMyLeaves: AuthenticatedHandler = async (req, res) => {
       pagination: { page, limit, totalItems, totalPages: Math.ceil(totalItems / limit) },
     });
   } catch (_err: unknown) {
+    console.error('[LEAVE] Error fetching leaves:', _err);
     res.status(500).json({ message: 'Something went wrong!' });
   }
 };
@@ -687,7 +688,11 @@ export const getAllLeaves: AuthenticatedHandler = async (req, res) => {
     const statusParam = req.query.status;
     const offset = (page - 1) * limit;
 
-    await processDeemedApprovedLeaves();
+    try {
+      await processDeemedApprovedLeaves();
+    } catch (pdError) {
+      console.error('[LEAVE] Error in processDeemedApprovedLeaves:', pdError);
+    }
 
     const conditions = [];
     if (search) {
@@ -701,13 +706,16 @@ export const getAllLeaves: AuthenticatedHandler = async (req, res) => {
     if (typeof statusParam === 'string' && isApplicationStatus(statusParam)) {
       conditions.push(eq(leaveApplications.status, statusParam));
     }
-    
+
     const startDate = String(req.query.startDate || '');
     const endDate = String(req.query.endDate || '');
     const employeeId = String(req.query.employeeId || '');
 
     if (startDate && endDate) {
-      conditions.push(and(lte(leaveApplications.startDate, endDate), gte(leaveApplications.endDate, startDate))); 
+      conditions.push(and(
+        lte(leaveApplications.startDate, endDate), 
+        gte(leaveApplications.endDate, startDate)
+      )); 
     }
     if (employeeId) {
        conditions.push(or(
@@ -718,11 +726,12 @@ export const getAllLeaves: AuthenticatedHandler = async (req, res) => {
     }
 
     const where = conditions.length > 0 ? and(...conditions) : undefined;
-    const [countResult] = await db.select({ total: sql<number>`count(*)` })
+
+    const countResult = await db.select({ total: sql<number>`count(*)` })
       .from(leaveApplications)
       .leftJoin(authentication, eq(leaveApplications.employeeId, authentication.employeeId))
       .where(where);
-    const totalItems = Number(countResult?.total || 0);
+    const totalItems = Number(countResult[0]?.total || 0);
 
     const leaves = await db.select({
       ...getTableColumns(leaveApplications),
@@ -740,13 +749,12 @@ export const getAllLeaves: AuthenticatedHandler = async (req, res) => {
     .leftJoin(leaveBalances, and(
       eq(leaveBalances.employeeId, leaveApplications.employeeId),
       eq(leaveBalances.creditType, leaveApplications.leaveType),
-      eq(leaveBalances.year, sql`YEAR(${leaveApplications.startDate})`)
+      sql`${leaveBalances.year} = YEAR(${leaveApplications.startDate})`
     ))
     .where(where)
     .orderBy(desc(leaveApplications.createdAt))
     .limit(limit)
     .offset(offset);
-
     const formattedLeaves = leaves.map(l => ({
         ...l,
         employeeName: formatFullName(l.lastName, l.firstName, l.middleName, l.suffix)
@@ -757,6 +765,7 @@ export const getAllLeaves: AuthenticatedHandler = async (req, res) => {
       pagination: { page, limit, totalItems, totalPages: Math.ceil(totalItems / limit) },
     });
   } catch (_err: unknown) {
+    console.error('[LEAVE] Error fetching leaves:', _err);
     res.status(500).json({ message: 'Something went wrong!' });
   }
 };
@@ -825,6 +834,13 @@ export const approveLeave: AuthenticatedHandler = async (req, res) => {
     const appId = parseInt(idParam, 10);
     const adminId = String(req.user.employeeId || req.user.id);
 
+    const validation = approveLeaveSchema.safeParse(req.body);
+    if (!validation.success) {
+      res.status(400).json({ message: 'Validation Error', errors: validation.error.format() });
+      return;
+    }
+    const { remarks } = validation.data;
+
     const application = await db.query.leaveApplications.findFirst({ where: eq(leaveApplications.id, appId) });
     if (!application) {
       res.status(404).json({ message: 'Leave application not found.' });
@@ -841,12 +857,12 @@ export const approveLeave: AuthenticatedHandler = async (req, res) => {
         const primaryBalance = await getEmployeeBalance(application.employeeId, primaryCreditType, year);
         const deductionAmount = Math.min(daysWithPayVal, primaryBalance);
         if (deductionAmount > 0) {
-          await updateBalance(application.employeeId, primaryCreditType, -deductionAmount, 'DEDUCTION', appId, 'leave_application', `Approved ${application.leaveType}`, adminId);
+          await updateBalance(application.employeeId, primaryCreditType, -deductionAmount, 'DEDUCTION', appId, 'leave_application', remarks || `Approved ${application.leaveType}`, adminId);
         }
         if (application.crossChargedFrom && daysWithPayVal > deductionAmount) {
           const crossDeduction = Math.min(daysWithPayVal - deductionAmount, await getEmployeeBalance(application.employeeId, application.crossChargedFrom, year));
           if (crossDeduction > 0) {
-            await updateBalance(application.employeeId, application.crossChargedFrom, -crossDeduction, 'DEDUCTION', appId, 'leave_application', `Approved ${application.leaveType} (cross-charged)`, adminId);
+            await updateBalance(application.employeeId, application.crossChargedFrom, -crossDeduction, 'DEDUCTION', appId, 'leave_application', remarks || `Approved ${application.leaveType} (cross-charged)`, adminId);
           }
         }
       }
@@ -864,7 +880,7 @@ export const approveLeave: AuthenticatedHandler = async (req, res) => {
         type: ['leave_request', 'leave_process', 'leave_finalize'],
         referenceId: appId,
         title: 'Leave Request Approved',
-        message: 'Your leave request has been approved.',
+        message: remarks ? `Approved: ${remarks}` : 'Your leave request has been approved.',
         newType: 'leave_approval'
     });
     res.status(200).json({ message: 'Leave approved' });
@@ -923,11 +939,29 @@ export const getHolidays: AuthenticatedHandler = async (req, res) => {
 
 export const addHoliday: AuthenticatedHandler = async (req, res) => {
   try {
-    const { name, date, type } = req.body;
+    const holidaySchema = z.object({
+      name: z.string().min(1, "Holiday name is required"),
+      date: z.string().min(1, "Date is required"),
+      type: z.enum(['Regular', 'Special Non-Working', 'Special Working'])
+    });
+
+    const validated = holidaySchema.parse(req.body);
+    const { name, date, type } = validated;
     const year = new Date(date).getFullYear();
-    await db.insert(holidays).values({ name, date, type, year });
+
+    await db.insert(holidays).values({ 
+        name, 
+        date, 
+        type, // Now strictly typed as one of the literals
+        year 
+    });
+    
     res.status(201).json({ message: 'Holiday added' });
-  } catch (_err) {
+  } catch (err: unknown) {
+    if (err instanceof z.ZodError) {
+      res.status(400).json({ message: 'Validation Error', errors: err.format() });
+      return;
+    }
     res.status(500).json({ message: 'Something went wrong!' });
   }
 };
@@ -962,14 +996,40 @@ export const getLWOPSummary: AuthenticatedHandler = async (req, res) => {
 
 export const deleteEmployeeCredit: AuthenticatedHandler = async (req, res) => {
   try {
-    const idParam = typeof req.params.id === 'string' ? req.params.id : '';
+    const idParam = (req.params.id || req.params.employeeId);
     if (!idParam) {
-      res.status(400).json({ message: 'Missing credit ID' });
+      res.status(400).json({ message: 'Missing credit ID or Employee ID' });
       return;
     }
-    await db.delete(leaveBalances).where(eq(leaveBalances.id, parseInt(idParam, 10)));
-    res.status(200).json({ message: 'Credit deleted' });
+
+    const numericId = parseInt(String(idParam), 10);
+    
+    // If it's a numeric ID, delete by primary key
+    if (!isNaN(numericId) && !String(idParam).startsWith('Emp')) {
+      await db.delete(leaveBalances).where(eq(leaveBalances.id, numericId));
+      res.status(200).json({ message: 'Credit deleted' });
+      return;
+    }
+
+    // Otherwise, assume it's an employeeId and check for creditType/year in query
+    const employeeId = String(idParam);
+    const creditType = String(req.query.creditType || '');
+    const year = parseInt(String(req.query.year || ''), 10) || getCurrentYear();
+
+    if (!creditType) {
+      res.status(400).json({ message: 'Missing creditType for deletion by Employee ID' });
+      return;
+    }
+
+    await db.delete(leaveBalances).where(and(
+      eq(leaveBalances.employeeId, employeeId),
+      eq(leaveBalances.creditType, creditType),
+      eq(leaveBalances.year, year)
+    ));
+
+    res.status(200).json({ message: 'Credit deleted successfully' });
   } catch (_err) {
+    console.error('[LEAVE] Error deleting credit:', _err);
     res.status(500).json({ message: 'Something went wrong!' });
   }
 };

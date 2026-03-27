@@ -4,6 +4,7 @@ export * from './employee';
 export * from './org';
 export * from './attendance';
 export * from './recruitment';
+export type JsonValue = string | number | boolean | null | { [key: string]: JsonValue } | JsonValue[];
 
 export interface User {
   id: number;
@@ -72,9 +73,9 @@ export interface User {
   shift?: string | null;
 }
 
-export interface ApiResponse<T = unknown> {
+export interface ApiResponse<T = Record<string, JsonValue>> {
   success: boolean;
-  data: T | null;
+  data: T;
   message?: string;
   avatar?: string | null;
 }
@@ -98,7 +99,7 @@ export interface PaginationProps {
   startIndex: number;
   endIndex: number;
   totalItems: number;
-  currentData?: unknown[];
+  currentData?: JsonValue[];
   prevPage: () => void;
   nextPage: () => void;
   handlePageChange: (page: number) => void;
@@ -195,7 +196,7 @@ export interface LeaveCredit {
 }
 
 // Job interface for recruitment
-export type EmploymentType = 'Full-time' | 'Part-time' | 'Contractual' | 'Job Order' | 'Coterminous' | 'Temporary' | 'Probationary' | 'Casual' | 'Permanent';
+export type EmploymentType = 'Full-time' | 'Part-time' | 'Contractual' | 'Job Order' | 'Coterminous' | 'Temporary' | 'Probationary' | 'Casual' | 'Permanent' | 'Contract of Service' | 'JO' | 'COS';
 export type JobStatus = 'Open' | 'Closed' | 'On Hold';
 export type JobStatusFilter = 'All' | JobStatus;
 
@@ -210,8 +211,8 @@ export interface Job {
   status: JobStatus; 
   jobDescription: string;
   requirements: string | null;
-  salaryRange?: string | null;
   officeName?: string | null;
+  salaryRange?: string | null;
   submissionAddress?: string | null;
   education?: string | null;
   experience?: string | null;
@@ -236,8 +237,8 @@ export interface JobFormData {
   status: JobStatus;
   jobDescription: string;
   requirements?: string | null;
-  salaryRange?: string | null;
   officeName?: string | null;
+  salaryRange?: string | null;
   submissionAddress?: string | null;
   education?: string | null;
   experience?: string | null;
@@ -262,14 +263,14 @@ export interface JobApplication {
   education: string;
   experience: string;
   skills: string;
-  resume: string;
+  resume: File | null;
 }
 export interface JobApplicationForm {
   firstName: string;
   lastName: string;
   email: string;
   phoneNumber: string;
-  address: string;
+  address: string; 
   education: string;
   experience: string;
   skills: string;

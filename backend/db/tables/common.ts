@@ -66,6 +66,8 @@ export const notifications = mysqlTable("notifications", {
 	type: varchar("type", { length: 50 }),
 	referenceId: int("reference_id"),
 	status: mysqlEnum("status", ['read','unread']).default('unread'),
+	link: varchar("link", { length: 255 }),
+	metadata: text("metadata"), // JSON context
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
 },
 (table) => [
@@ -125,6 +127,7 @@ export const addressRefBarangays = mysqlTable("address_ref_barangays", {
 
 
 
+/* eslint-disable-next-line @typescript-eslint/naming-convention */
 export const audit_logs = mysqlTable("audit_logs", {
 	id: int("id").autoincrement().notNull(),
 	userId: int("user_id").references(() => authentication.id, { onDelete: "set null" } ),

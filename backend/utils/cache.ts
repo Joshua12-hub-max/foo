@@ -1,4 +1,5 @@
 
+/* eslint-disable-next-line @typescript-eslint/naming-convention */
 import NodeCache from 'node-cache';
 
 // TTL of 5 minutes by default

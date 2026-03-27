@@ -105,5 +105,11 @@ export const attendanceApi = {
     },
     getHolidays: async (year?: number): Promise<AxiosResponse<ApiResponse<never[]>>> => {
         return await api.get('/holidays', { params: { year } });
+    },
+    clockIn: async (): Promise<AxiosResponse<{ success: boolean; message: string }>> => {
+        return await api.post('/attendance/clock-in');
+    },
+    clockOut: async (): Promise<AxiosResponse<{ success: boolean; message: string }>> => {
+        return await api.post('/attendance/clock-out');
     }
 };

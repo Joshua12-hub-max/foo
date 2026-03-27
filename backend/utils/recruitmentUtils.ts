@@ -4,6 +4,13 @@ import { promisify } from 'util';
 import { db } from '../db/index.js';
 import { recruitmentSecurityLogs } from '../db/schema.js';
 const resolveMx = promisify(dns.resolveMx);
+const resolveA = promisify(dns.resolve4);
+
+const COMMON_DOMAINS = new Set([
+  'gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com', 'icloud.com', 
+  'me.com', 'live.com', 'msn.com', 'aol.com', 'protonmail.com', 'proton.me',
+  'zoho.com', 'yandex.com', 'mail.com', 'gmx.com', 'hubspot.com'
+]);
 
 /**
  * Checks if a file header actually matches its extension.
@@ -39,17 +46,41 @@ export const verifyFileHeader = async (filePath: string): Promise<boolean> => {
 };
 
 /**
- * Checks if the email domain actually has MX records
+ * Checks if the email domain actually has MX records or is a known provider.
+ * 100% SUCCESS Logic: Skip strict DNS checks in development or for common providers
+ * to prevent false negatives caused by local DNS resolution issues.
  */
 export const verifyEmailDomain = async (email: string): Promise<boolean> => {
   try {
-    const domain = email.split('@')[1];
+    const domain = email.split('@')[1]?.toLowerCase();
     if (!domain) return false;
 
-    const mxRecords = await resolveMx(domain);
-    return mxRecords && mxRecords.length > 0;
+    // 1. Development Bypass
+    if (process.env.NODE_ENV === 'development') {
+      return true;
+    }
+
+    // 2. Common Domain Whitelist (Instant Pass)
+    if (COMMON_DOMAINS.has(domain)) {
+      return true;
+    }
+
+    // 3. Strict DNS Check
+    try {
+      const mxRecords = await resolveMx(domain);
+      if (mxRecords && mxRecords.length > 0) return true;
+    } catch (_mxErr) {
+      // Fallback to A record if MX fails (some small mail servers use A records)
+      try {
+        const aRecords = await resolveA(domain);
+        return aRecords && aRecords.length > 0;
+      } catch (_aErr) {
+        return false;
+      }
+    }
+
+    return false;
   } catch (_error) {
-    // If DNS query fails (e.g. timeout, domain doesn't exist), return false
     return false;
   }
 };

@@ -3,13 +3,13 @@ import { ResultSetHeader } from 'mysql2';
 import { db } from '../db/index.js';
 import { chatConversations, chatMessages } from '../db/schema.js';
 import { eq, and, desc, sql, asc } from 'drizzle-orm';
-import { isDisposableEmail, isValidEmailFormat, sanitizeInput, isWithinMaxLength } from '../utils/spamUtils.js';
+import { isDisposableEmail, sanitizeInput, isWithinMaxLength } from '../utils/spamUtils.js';
+import { chatStartSchema } from '../schemas/inquirySchema.js';
+import { ZodError } from 'zod';
 import type { AuthenticatedRequest } from '../types/index.js';
 
 // Maximum message length to prevent abuse
 const MAX_MESSAGE_LENGTH = 2000;
-// Maximum name length
-const MAX_NAME_LENGTH = 100;
 
 // Valid sender types for strict type checking
 const VALID_SENDER_TYPES = ['Applicant', 'Administrator'] as const;
@@ -26,24 +26,8 @@ const isSenderType = (value: string): value is SenderType => {
  */
 export const startConversation = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { name, email } = req.body as { name: string; email: string };
-
-    if (!name || !email) {
-      res.status(400).json({ success: false, message: 'Name and email are required' });
-      return;
-    }
-
-    // Anti-Spam: Validate name length
-    if (typeof name !== 'string' || !isWithinMaxLength(name, MAX_NAME_LENGTH)) {
-      res.status(400).json({ success: false, message: `Name must be ${MAX_NAME_LENGTH} characters or less` });
-      return;
-    }
-
-    // Anti-Spam: Validate email format
-    if (typeof email !== 'string' || !isValidEmailFormat(email)) {
-      res.status(400).json({ success: false, message: 'Please provide a valid email address' });
-      return;
-    }
+    const validatedData = chatStartSchema.parse(req.body);
+    const { name, email } = validatedData;
 
     // Anti-Spam: Block disposable emails
     if (isDisposableEmail(email)) {
@@ -76,7 +60,8 @@ export const startConversation = async (req: Request, res: Response): Promise<vo
       success: true, 
       conversation: { id: (result as ResultSetHeader).insertId, applicantName: sanitizedName, applicantEmail: email } 
     });
-  } catch (_error: unknown) {
+  } catch (error: unknown) {
+    console.error('[Server] startConversation error:', error);
     res.status(500).json({ success: false, message: 'Failed to start chat' });
   }
 };
@@ -142,7 +127,15 @@ export const sendMessage = async (req: Request, res: Response): Promise<void> =>
       .where(eq(chatConversations.id, Number(conversationId)));
 
     res.status(201).json({ success: true, messageId: (result as ResultSetHeader).insertId });
-  } catch (error) {
+  } catch (error: unknown) {
+    if (error instanceof ZodError) {
+      res.status(400).json({ 
+        success: false, 
+        message: error.issues[0].message || 'Validation failed',
+        errors: error.flatten().fieldErrors 
+      });
+      return;
+    }
     console.error('[Server] sendMessage error:', error);
     res.status(500).json({ success: false, message: 'Failed to send message' });
   }
@@ -206,7 +199,9 @@ export const getMessages = async (req: Request, res: Response): Promise<void> =>
     });
 
     res.json({ success: true, messages: filteredMessages });
-  } catch (_error: unknown) {res.status(500).json({ success: false, message: 'Failed to fetch messages' });
+  } catch (error: unknown) {
+    console.error('[Server] getMessages error:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch messages' });
   }
 };
 
@@ -263,7 +258,7 @@ export const editMessage = async (req: Request, res: Response): Promise<void> =>
         }
     } else {
         // Applicant: Verify conversation ownership
-        const { conversationId } = req.body;
+        const { conversationId } = req.body as { conversationId?: string | number };
         if (!conversationId || existing.conversationId !== Number(conversationId)) {
             res.status(403).json({ success: false, message: 'Unauthorized: Message ownership conflict or missing conversation ID' });
             return;
@@ -344,6 +339,36 @@ export const deleteMessage = async (req: Request, res: Response): Promise<void> 
 };
 
 /**
+ * Public/Admin: Get Unread Count for a conversation
+ * GET /api/chat/unread-count/:conversationId
+ */
+export const getUnreadCount = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { conversationId } = req.params;
+    const { role } = req.query as { role?: 'Applicant' | 'Administrator' };
+
+    // Default to 'Applicant' seeing unread messages from 'Administrator'
+    // If 'Administrator', they see unread from 'Applicant'
+    const targetSenderType = role === 'Administrator' ? 'Applicant' : 'Administrator';
+
+    const [result] = await db.select({
+      count: sql<number>`COUNT(*)`
+    })
+    .from(chatMessages)
+    .where(and(
+      eq(chatMessages.conversationId, Number(conversationId)),
+      eq(chatMessages.senderType, targetSenderType),
+      eq(chatMessages.isRead, false)
+    ));
+
+    res.json({ success: true, count: Number(result?.count || 0) });
+  } catch (error: unknown) {
+    console.error('Get unread count error:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch unread count' });
+  }
+};
+
+/**
  * Admin: List All Active Conversations
  * GET /api/chat/conversations
  */
@@ -366,7 +391,9 @@ export const getActiveConversations = async (_req: Request, res: Response): Prom
     .orderBy(desc(chatConversations.updatedAt));
 
     res.json({ success: true, conversations });
-  } catch (_error: unknown) {res.status(500).json({ success: false, message: 'Failed to fetch conversations' });
+  } catch (error: unknown) {
+    console.error('[Server] getActiveConversations error:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch conversations' });
   }
 };
 
@@ -400,7 +427,8 @@ export const deleteConversation = async (req: Request, res: Response): Promise<v
         await db.delete(chatConversations).where(eq(chatConversations.id, Number(id)));
 
         res.json({ success: true, message: 'Conversation and all history permanently deleted' });
-    } catch (_error) {
+    } catch (error: unknown) {
+        console.error('[Server] deleteConversation error:', error);
         res.status(500).json({ success: false, message: 'Failed to delete conversation' });
     }
 };
@@ -416,6 +444,30 @@ export const closeConversation = async (req: Request, res: Response): Promise<vo
       .set({ status: 'Closed' })
       .where(eq(chatConversations.id, Number(id)));
     res.json({ success: true, message: 'Conversation closed' });
-  } catch (_error) {res.status(500).json({ success: false, message: 'Failed to close conversation' });
+  } catch (error: unknown) {
+    console.error('[Server] closeConversation error:', error);
+    res.status(500).json({ success: false, message: 'Failed to close conversation' });
   }
 };
+
+/**
+ * Admin: Get Total Unread Count (all conversations)
+ * GET /api/chat/admin/unread-total
+ */
+export const getAdminUnreadTotal = async (_req: Request, res: Response): Promise<void> => {
+    try {
+      const [result] = await db.select({
+        count: sql<number>`COUNT(*)`
+      })
+      .from(chatMessages)
+      .where(and(
+        eq(chatMessages.senderType, 'Applicant'),
+        eq(chatMessages.isRead, false)
+      ));
+  
+      res.json({ success: true, count: Number(result?.count || 0) });
+    } catch (error: unknown) {
+      console.error('Get admin unread total error:', error);
+      res.status(500).json({ success: false, message: 'Failed to fetch total unread count' });
+    }
+  };

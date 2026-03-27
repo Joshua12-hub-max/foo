@@ -392,6 +392,25 @@ const AttendanceExport: React.FC<AttendanceExportProps> = ({ data, title, dateRa
       doc.text(`Period: ${formatDate(appliedStartDate || '') || '-'} to ${formatDate(appliedEndDate || '') || '-'}`, 14, 22);
       doc.text(`Total Records: ${exportData.length}`, 14, 28);
 
+      // Calculate Totals for PDF
+      const totals = exportData.reduce((acc, record) => {
+        const hasTimes = record.timeIn && record.timeIn !== '-' && record.timeIn !== 'null';
+        const isOnLeave = (record.status || '').startsWith('On Leave');
+        const isAbsent = record.status === 'Absent' || (!isOnLeave && !hasTimes);
+        const isLate = Number(record.lateMinutes) > 0;
+        const isUndertime = Number(record.undertimeMinutes) > 0;
+        const isPresent = !isAbsent && !isOnLeave && hasTimes;
+
+        if (isPresent) acc.present++;
+        if (isLate) acc.late++;
+        if (isUndertime) acc.undertime++;
+        if (isAbsent) acc.absent++;
+        if (isOnLeave) acc.onLeave++;
+        acc.totalLateMins += Number(record.lateMinutes || 0);
+        acc.totalUTMins += Number(record.undertimeMinutes || 0);
+        return acc;
+      }, { present: 0, late: 0, undertime: 0, absent: 0, onLeave: 0, totalLateMins: 0, totalUTMins: 0 });
+
       const tableData = exportData.map(record => {
         const hasTimes = record.timeIn && record.timeIn !== '-' && record.timeIn !== 'null';
         const isOnLeave = (record.status || '').startsWith('On Leave');
@@ -417,17 +436,36 @@ const AttendanceExport: React.FC<AttendanceExportProps> = ({ data, title, dateRa
         ]
       });
 
+      // Add Summary Row to PDF Table
+      const summaryRow = [
+        'TOTALS', '', '', '', '', '',
+        formatMinutes(totals.totalLateMins),
+        formatMinutes(totals.totalUTMins),
+        String(totals.present),
+        String(totals.late),
+        String(totals.undertime),
+        String(totals.absent),
+        String(totals.onLeave)
+      ];
+
       autoTable(doc, {
         startY: 35,
         head: [['ID', 'Employee Name', 'Dept', 'Date', 'Time In', 'Time Out', 'Late', 'UT', 'Present', 'Late', 'UT', 'Absent', 'On Leave']],
-        body: tableData,
+        body: [...tableData, summaryRow],
         styles: { fontSize: 5.5, halign: 'center', cellPadding: 1.5 },
         headStyles: { fillColor: [30, 58, 95], textColor: [255, 255, 255], fontStyle: 'bold' },
+        footStyles: { fillColor: [240, 240, 240], textColor: [30, 58, 95], fontStyle: 'bold' },
         alternateRowStyles: { fillColor: [245, 245, 245] },
         columnStyles: {
           0: { cellWidth: 16, halign: 'left' },
           1: { cellWidth: 28, halign: 'left' },
           2: { cellWidth: 28, halign: 'left' }
+        },
+        didParseCell: (data) => {
+          if (data.row.index === tableData.length) {
+            data.cell.styles.fontStyle = 'bold';
+            data.cell.styles.fillColor = [230, 235, 245];
+          }
         }
       });
 

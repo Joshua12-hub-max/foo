@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Bell, X, Check, AlertCircle, FileText, Calendar, Clock, RefreshCw, LucideIcon } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Bell, X, Check, AlertCircle, FileText, Calendar, Clock, RefreshCw, Search, LucideIcon } from "lucide-react";
 import { notificationApi } from "@/api/notificationApi";
 
 interface NotificationStyle {
@@ -22,6 +23,11 @@ const getNotificationStyle = (type: string): NotificationStyle => {
     memo_request: { icon: FileText, color: 'text-indigo-600', bg: 'bg-indigo-50' },
     memo_acknowledged: { icon: Check, color: 'text-green-600', bg: 'bg-green-50' },
     event_created: { icon: Calendar, color: 'text-pink-600', bg: 'bg-pink-50' },
+    job_application_pending: { icon: Calendar, color: 'text-amber-600', bg: 'bg-amber-50' },
+    job_application_screening: { icon: Search, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+    job_application_interview: { icon: Clock, color: 'text-blue-600', bg: 'bg-blue-50' },
+    job_application_hired: { icon: Check, color: 'text-green-600', bg: 'bg-green-50' },
+    job_application_rejected: { icon: X, color: 'text-red-600', bg: 'bg-red-50' },
   };
   return styles[type] || { icon: Bell, color: 'text-gray-600', bg: 'bg-gray-50' };
 };
@@ -56,6 +62,8 @@ interface NotificationItem {
   createdAt: string;
   senderId?: string;
   referenceId?: number;
+  link?: string;
+  metadata?: string;
 }
 
 interface NotificationResponse {
@@ -71,6 +79,7 @@ export default function NotificationMenu() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
 
   // Fetch notifications from API
   const fetchNotifications = useCallback(async () => {
@@ -244,7 +253,13 @@ export default function NotificationMenu() {
                   return (
                     <div
                       key={notification.notificationId}
-                      onClick={() => isUnread && handleMarkAsRead(notification.notificationId)}
+                      onClick={() => {
+                        if (isUnread) handleMarkAsRead(notification.notificationId);
+                        if (notification.link) {
+                          navigate(notification.link);
+                          setIsOpen(false);
+                        }
+                      }}
                       className={`group flex items-start gap-3 p-3 hover:bg-gray-50 cursor-pointer transition-colors ${
                         isUnread ? 'bg-blue-50/30' : ''
                       }`}
@@ -271,16 +286,24 @@ export default function NotificationMenu() {
                             {(notification.type?.toLowerCase().includes('request') || 
                               notification.type?.toLowerCase().includes('pending') ||
                               notification.type?.toLowerCase().includes('process') ||
-                              notification.type?.toLowerCase().includes('finalize')) && 
+                              notification.type?.toLowerCase().includes('finalize') ||
+                              notification.type?.toLowerCase().includes('screening') ||
+                              notification.type?.toLowerCase().includes('interview') ||
+                              notification.type?.toLowerCase() === 'job_application') && 
                              !notification.type?.toLowerCase().includes('approved') && 
                              !notification.type?.toLowerCase().includes('rejected') && 
+                             !notification.type?.toLowerCase().includes('hired') && 
                              !notification.type?.toLowerCase().includes('approval') && 
                              !notification.type?.toLowerCase().includes('rejection') && 
                              !notification.type?.toLowerCase().includes('acknowledged') && (
-                              <span className="px-1.5 py-0.5 text-[10px] font-medium bg-amber-100 text-amber-700 rounded whitespace-nowrap">Pending</span>
+                              <span className="px-1.5 py-0.5 text-[10px] font-medium bg-amber-100 text-amber-700 rounded whitespace-nowrap">
+                                {notification.type?.toLowerCase().includes('interview') ? 'Scheduled' : 
+                                 notification.type?.toLowerCase().includes('screening') ? 'Under Review' : 'Pending'}
+                              </span>
                             )}
                             {(notification.type?.toLowerCase().includes('approved') || 
                               notification.type?.toLowerCase().includes('approval') ||
+                              notification.type?.toLowerCase().includes('hired') ||
                               notification.type?.toLowerCase().includes('acknowledged')) && (
                               <span className="px-1.5 py-0.5 text-[10px] font-medium bg-green-100 text-green-700 rounded whitespace-nowrap">Completed</span>
                             )}

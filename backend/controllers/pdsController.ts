@@ -10,10 +10,10 @@ import {
   pdsEducation, 
   pdsEligibility, 
   pdsWorkExperience, 
-  pdsVoluntaryWork, 
   pdsLearningDevelopment, 
   pdsOtherInfo, 
   pdsReferences,
+  pdsVoluntaryWork,
   pdsPersonalInformation,
   pdsDeclarations
 } from '../db/schema.js';
@@ -120,7 +120,7 @@ export const updatePDSSection = async (req: Request, res: Response): Promise<voi
       if (items.length > 0) {
         const valuesToInsert = items.map((item) => {
           // Filter out system columns and ensure employeeId is set
-          const filteredItem: Record<string, unknown> = { ...item, employeeId: userId };
+          const filteredItem: Record<string, string | number | boolean | null> = { ...item, employeeId: userId } as Record<string, string | number | boolean | null>;
           delete filteredItem.id;
           delete filteredItem.createdAt;
           delete filteredItem.updatedAt;
@@ -128,7 +128,7 @@ export const updatePDSSection = async (req: Request, res: Response): Promise<voi
         });
 
         // Batch insert
-        await tx.insert(table).values(valuesToInsert as unknown[]); // Explicitly typed array
+        await tx.insert(table).values(valuesToInsert); // Explicitly typed array
       }
     });
 
@@ -153,7 +153,7 @@ export const parsePDSUpload = async (req: Request, res: Response): Promise<void>
     const buffer = await fs.promises.readFile(file.path);
     const extension = file.originalname.split('.').pop()?.toLowerCase();
 
-    let extractedData: Record<string, unknown> = {};
+    let extractedData: Record<string, string | number | boolean | null | object> = {};
     let avatar: string | null = null;
 
     if (extension === 'xlsx' || extension === 'xls') {
@@ -217,8 +217,8 @@ export const updatePdsPersonal = async (req: Request, res: Response): Promise<vo
   try {
     const authReq = req as AuthenticatedRequest;
     const requesterId = authReq.user?.id;
-    const data = req.body;
-    const targetEmployeeId = data.employeeId;
+    const body = req.body as Record<string, unknown>;
+    const targetEmployeeId = body.employeeId as string | undefined;
 
     if (!requesterId) {
       res.status(401).json({ success: false, message: 'Not authenticated' });
@@ -230,8 +230,8 @@ export const updatePdsPersonal = async (req: Request, res: Response): Promise<vo
       userId = parseInt(targetEmployeeId);
     }
 
-    const filteredData = { ...data, employeeId: userId };
-    delete filteredData.id;
+    const filteredData = { ...body, employeeId: userId };
+    delete (filteredData as { id?: unknown }).id;
 
     await db.transaction(async (tx) => {
       await tx.delete(pdsPersonalInformation).where(sql`employee_id = ${userId}`);
@@ -277,8 +277,8 @@ export const updatePdsQuestions = async (req: Request, res: Response): Promise<v
   try {
     const authReq = req as AuthenticatedRequest;
     const requesterId = authReq.user?.id;
-    const data = req.body;
-    const targetEmployeeId = data.employeeId;
+    const body = req.body as Record<string, unknown>;
+    const targetEmployeeId = body.employeeId as string | undefined;
 
     if (!requesterId) {
       res.status(401).json({ success: false, message: 'Not authenticated' });
@@ -290,8 +290,8 @@ export const updatePdsQuestions = async (req: Request, res: Response): Promise<v
       userId = parseInt(targetEmployeeId);
     }
 
-    const filteredData = { ...data, employeeId: userId };
-    delete filteredData.id;
+    const filteredData = { ...body, employeeId: userId };
+    delete (filteredData as { id?: number }).id;
 
     await db.transaction(async (tx) => {
       await tx.delete(pdsDeclarations).where(sql`employee_id = ${userId}`);

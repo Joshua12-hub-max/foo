@@ -10,6 +10,8 @@ import { createNotification, notifyAdmins, updateNotificationsByReference } from
 import { DTRApiResponse } from '../types/attendance.js';
 import { formatToManilaDateTime } from "../utils/dateUtils.js";
 import { compareIds } from "../utils/idUtils.js";
+import { internalPolicies } from '../db/schema.js';
+import { calculateLateUndertime, determineStatus } from '../utils/attendanceUtils.js';
 
 /** Shape returned by the getAllRecords db.select() query */
 interface DTRRecordRow {
@@ -209,6 +211,20 @@ export const getAllRecords = async (req: Request, res: Response): Promise<void> 
     }
 };
 
+/** Shared helper to fetch grace period from policies */
+const getGracePeriod = async (): Promise<number> => {
+    try {
+        const [policy] = await db.select().from(internalPolicies).where(eq(internalPolicies.category, 'tardiness')).limit(1);
+        if (policy?.content) {
+            const content = (typeof policy.content === 'string' ? JSON.parse(policy.content) : policy.content) as { gracePeriod?: number | string };
+            return Number(content.gracePeriod) || 0;
+        }
+    } catch (e) {
+        console.warn('[DTR] Failed to fetch grace period, defaulting to 0:', e);
+    }
+    return 0;
+};
+
 
 
 export const updateRecord = async (req: Request, res: Response): Promise<void> => {
@@ -292,59 +308,17 @@ export const updateRecord = async (req: Request, res: Response): Promise<void> =
     const now = toMySQLDatetime(new Date().toISOString());
 
 
-    let calculatedLate = 0;
-    let calculatedUndertime = 0;
-    let newStatus = status || existing.status;
+    const gracePeriod = await getGracePeriod();
 
-    // Calculate Late
-    if (mysqlTimeIn) {
-        // mysqlTimeIn is "YYYY-MM-DD HH:mm:ss"
-        // Parse the time part
-        const inTimePart = mysqlTimeIn.split(' ')[1]; // HH:mm:ss
-        
-        // Compare with startStr
-        const [inH, inM] = inTimePart.split(':').map(Number);
-        const [schH, schM] = startStr.split(':').map(Number);
+    const { lateMinutes: calculatedLate, undertimeMinutes: calculatedUndertime } = calculateLateUndertime(
+        mysqlTimeIn ? new Date(mysqlTimeIn) : null,
+        mysqlTimeOut ? new Date(mysqlTimeOut) : null,
+        new Date(`${existing.date} ${startStr}`),
+        new Date(`${existing.date} ${endStr}`),
+        gracePeriod
+    );
 
-        const inTotalMins = inH * 60 + inM;
-        const schTotalMins = schH * 60 + schM;
-
-        if (inTotalMins > schTotalMins) {
-            calculatedLate = inTotalMins - schTotalMins;
-            // Apply Grace Period check (optional, matching processor)
-             // For now, raw calculation.
-        }
-    }
-
-    // Calculate Undertime
-    if (mysqlTimeOut) {
-         const outTimePart = mysqlTimeOut.split(' ')[1];
-         const [outH, outM] = outTimePart.split(':').map(Number);
-         const [schEH, schEM] = endStr.split(':').map(Number);
-
-         const outTotalMins = outH * 60 + outM;
-         const schEndTotalMins = schEH * 60 + schEM;
-
-         if (outTotalMins < schEndTotalMins) {
-             calculatedUndertime = schEndTotalMins - outTotalMins;
-         }
-    }
-
-    // Unified Status Logic
-    const isLate = calculatedLate > 0;
-    const isUndertime = calculatedUndertime > 0;
-
-    if (newStatus !== 'Absent' && newStatus !== 'Leave') {
-        if (isLate && isUndertime) {
-            newStatus = 'Late/Undertime';
-        } else if (isLate) {
-            newStatus = 'Late';
-        } else if (isUndertime) {
-            newStatus = 'Undertime';
-        } else {
-            newStatus = 'Present';
-        }
-    }
+    const newStatus = determineStatus(calculatedLate, calculatedUndertime, status || existing.status || 'Present');
 
 
     // 3. Perform update
@@ -686,53 +660,22 @@ export const updateCorrectionStatus = async (req: Request, res: Response): Promi
             const startStr = schedule ? schedule.startTime : (defaultShift?.startTime || '08:00:00');
             const endStr = schedule ? schedule.endTime : (defaultShift?.endTime || '17:00:00');
             
-            const getTimePart = (d: string | Date | null): string | null => {
-                if (!d) return null;
-                // Handle DB string "YYYY-MM-DD HH:mm:ss"
-                if (typeof d === 'string' && d.includes(' ')) return d.split(' ')[1];
-                // Handle Date object or ISO string
-                const dateObj = new Date(d);
-                return isNaN(dateObj.getTime()) ? null : dateObj.toTimeString().split(' ')[0];
-            };
-
-            // Wait, logic needs checking.
             // request.correctedTimeIn is "YYYY-MM-DD HH:mm:ss"
             // We need to parse TIME part for calculation.
             
             const finalTimeIn = request.correctedTimeIn || request.originalTimeIn || (dtr ? dtr.timeIn : null);
             const finalTimeOut = request.correctedTimeOut || request.originalTimeOut || (dtr ? dtr.timeOut : null);
 
-            let calculatedLate = 0;
-            let calculatedUndertime = 0;
-            let newStatus = 'Present';
+            const gracePeriod = await getGracePeriod();
+            const { lateMinutes: calculatedLate, undertimeMinutes: calculatedUndertime } = calculateLateUndertime(
+                finalTimeIn ? (typeof finalTimeIn === 'string' ? new Date(finalTimeIn) : finalTimeIn) : null,
+                finalTimeOut ? (typeof finalTimeOut === 'string' ? new Date(finalTimeOut) : finalTimeOut) : null,
+                new Date(`${request.dateTime} ${startStr}`),
+                new Date(`${request.dateTime} ${endStr}`),
+                gracePeriod
+            );
 
-            if (finalTimeIn) {
-                    const inTimePart = getTimePart(finalTimeIn);
-                    if (inTimePart) {
-                    const [inH, inM] = inTimePart.split(':').map(Number);
-                    const [schH, schM] = startStr.split(':').map(Number);
-                    const inTotal = inH * 60 + inM;
-                    const schTotal = schH * 60 + schM;
-                    if (inTotal > schTotal) calculatedLate = inTotal - schTotal;
-                    }
-            }
-
-            if (finalTimeOut) {
-                    const outTimePart = getTimePart(finalTimeOut);
-                    if (outTimePart) {
-                    const [outH, outM] = outTimePart.split(':').map(Number);
-                    const [schEH, schEM] = endStr.split(':').map(Number);
-                    const outTotal = outH * 60 + outM;
-                    const schEndTotal = schEH * 60 + schEM;
-                    if (outTotal < schEndTotal) calculatedUndertime = schEndTotal - outTotal;
-                    }
-            }
-
-            const isLate = calculatedLate > 0;
-            const isUndertime = calculatedUndertime > 0;
-            if (isLate && isUndertime) newStatus = 'Late/Undertime';
-            else if (isLate) newStatus = 'Late';
-            else if (isUndertime) newStatus = 'Undertime';
+            const newStatus = determineStatus(calculatedLate, calculatedUndertime, 'Present');
             
             // C. Update/Insert DTR
             if (dtr) {

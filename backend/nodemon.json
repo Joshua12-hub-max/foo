@@ -1,5 +1,5 @@
 {
-  "watch": ["controllers", "routes", "db", "services", "types", "middleware", "index.ts"],
+  "watch": ["controllers", "routes", "db", "services", "types", "middleware", "schemas", "index.ts", ".env"],
   "ext": "ts,js,json",
   "ignore": ["scripts/*", "node_modules/*", "*.test.ts"]
 }

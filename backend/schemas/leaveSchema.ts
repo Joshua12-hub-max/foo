@@ -48,6 +48,15 @@ export const rejectLeaveSchema = z.object({
 export type RejectLeaveInput = z.infer<typeof rejectLeaveSchema>;
 
 /**
+ * Schema for approving a leave application
+ */
+export const approveLeaveSchema = z.object({
+  remarks: z.string().max(500).optional(),
+});
+
+export type ApproveLeaveInput = z.infer<typeof approveLeaveSchema>;
+
+/**
  * Schema for processing leave (admin uploads form)
  */
 export const processLeaveSchema = z.object({

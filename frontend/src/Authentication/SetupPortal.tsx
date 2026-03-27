@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ShieldAlert, Loader2, ArrowRight, User, Mail, Lock, Briefcase, Calendar, Clock, ChevronDown } from "lucide-react";
+import { ShieldAlert, Loader2, ArrowRight, User, Mail, Lock, Briefcase, Calendar, Clock } from "lucide-react";
 import AuthLayout from "@components/Custom/Auth/AuthLayout";
 import { toast } from "react-hot-toast";
 import api from "@/api/axios";
@@ -10,6 +10,8 @@ import axios, { AxiosError } from "axios";
 import { useEmailUniquenessQuery } from "@/hooks/useCommonQueries";
 import { useDebounce } from "@/hooks/useDebounce"; // Ensure this hook exists or use primitive
 import Combobox from "@/components/Custom/Combobox";
+
+import EmailVerificationModal from "./EmailVerificationModal";
 
 interface SetupPosition {
   id: number;
@@ -54,6 +56,8 @@ export default function SetupPortal() {
   
   const [loading, setLoading] = useState(false);
   const [verifying, setVerifying] = useState(true);
+  const [isVerifyModalOpen, setIsVerifyModalOpen] = useState(false);
+  const [verificationEmail, setVerificationEmail] = useState("");
 
   // Email Uniqueness Check
   const debouncedEmail = useDebounce(formData.email, 500);
@@ -79,7 +83,7 @@ export default function SetupPortal() {
         setRoles(res.data.roles || ["Administrator", "Human Resource"]);
         setDutyTypes(res.data.dutyTypes || ["Standard", "Irregular"]);
         setAppointmentTypes(res.data.appointmentTypes || ["Permanent", "Contractual", "Casual", "Job Order", "Coterminous", "Temporary", "Contract of Service", "JO", "COS"]);
-      } catch (err: unknown) {
+      } catch (err) {
         let message = "Setup portal is not available.";
         if (axios.isAxiosError(err)) {
           const axiosError = err as AxiosError<{ message?: string }>;
@@ -113,14 +117,11 @@ export default function SetupPortal() {
       });
 
       if (res.data.success) {
-        // Cleanup again before redirecting to verification
-        localStorage.clear();
-        sessionStorage.clear();
-        
         toast.success(res.data.message || "Account created! Please check your email.");
-        navigate("/verify-account", { state: { email: formData.email } });
+        setVerificationEmail(formData.email);
+        setIsVerifyModalOpen(true);
       }
-    } catch (err: unknown) {
+    } catch (err) {
       let message = "Failed to initialize account.";
       if (axios.isAxiosError(err)) {
         const axiosError = err as AxiosError<{ message?: string }>;
@@ -165,7 +166,6 @@ export default function SetupPortal() {
   const inputContainerClass = "relative flex items-center bg-white border border-gray-300 rounded-lg focus-within:ring-2 focus-within:ring-blue-500/10 focus-within:border-blue-500 transition-all overflow-hidden shadow-sm";
   const iconClass = "absolute left-3.5 text-gray-400";
   const inputClass = "w-full bg-transparent pl-11 pr-4 py-2.5 text-sm text-gray-900 outline-none placeholder:text-gray-400";
-  const selectClass = "w-full bg-transparent pl-1 text-sm text-gray-900 outline-none appearance-none cursor-pointer";
 
   return (
     <AuthLayout 
@@ -332,6 +332,15 @@ export default function SetupPortal() {
           </button>
         </div>
       </form>
+      <EmailVerificationModal 
+        isOpen={isVerifyModalOpen}
+        email={verificationEmail}
+        redirectToLogin={true}
+        onSuccess={() => {
+          setIsVerifyModalOpen(false);
+          navigate("/login");
+        }}
+      />
     </AuthLayout>
   );
 }

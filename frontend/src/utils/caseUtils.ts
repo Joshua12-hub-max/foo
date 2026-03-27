@@ -8,7 +8,7 @@ export const snakeToCamelCase = (str: string): string => {
     return str.replace(/(_\w)/g, (m) => m[1].toUpperCase());
 };
 
-type JsonValue = string | number | boolean | null | undefined | { [key: string]: JsonValue } | JsonValue[];
+import { JsonValue } from '@/types';
 
 /**
  * Recursively converts object keys to camelCase.

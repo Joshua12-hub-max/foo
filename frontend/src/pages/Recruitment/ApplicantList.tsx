@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useUIStore } from '@/stores';
 import { useToastStore } from '@/stores';
 import { Archive, UserCheck } from 'lucide-react';
@@ -41,6 +42,49 @@ const ApplicantList = () => {
   const [showConfirmHiredModal, setShowConfirmHiredModal] = useState<boolean>(false);
   const [selectedApplicant, setSelectedApplicant] = useState<Applicant | null>(null);
   const [selectedInterviewer, setSelectedInterviewer] = useState<string>('');
+  const [searchParams] = useSearchParams();
+
+  // Handle deep-linking from notifications
+  useEffect(() => {
+    const applicantId = searchParams.get('id');
+    if (applicantId && applicants.length > 0) {
+      const applicant = applicants.find(a => a.id.toString() === applicantId);
+      if (applicant) {
+        if (applicant.stage === 'Hired') {
+          // 100% PRECISION: Only redirect to Archive if BOTH isConfirmed AND startDate are present
+          if (applicant.isConfirmed && applicant.startDate) {
+            setActiveTab('Archive');
+            setArchiveSubTab('Hired');
+          } else {
+            setActiveTab('Hired');
+          }
+        } else if (applicant.stage === 'Rejected') {
+          setActiveTab('Archive');
+          setArchiveSubTab('Rejected');
+        } else if (applicant.stage === 'Screening') {
+          setActiveTab('Reviewed');
+          setSelectedApplicant(applicant);
+          setShowDetailModal(true);
+        } else if (applicant.stage === 'Initial Interview') {
+          setActiveTab('Initial Interview');
+          setSelectedApplicant(applicant);
+          setShowDetailModal(true);
+        } else if (applicant.stage === 'Final Interview') {
+          setActiveTab('Final Interview');
+          setSelectedApplicant(applicant);
+          setShowDetailModal(true);
+        } else if (applicant.stage === 'Applied') {
+          setActiveTab('Pending');
+          setSelectedApplicant(applicant);
+          setShowDetailModal(true);
+        } else {
+          setSelectedApplicant(applicant);
+          setShowDetailModal(true);
+        }
+      }
+    }
+  }, [searchParams, applicants, setActiveTab, setArchiveSubTab]);
+
   const [confirmModal, setConfirmModal] = useState({
     isOpen: false,
     title: '',

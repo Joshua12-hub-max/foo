@@ -64,8 +64,8 @@ export const leaveApi = {
   /**
    * Approve leave application (admin)
    */
-  approveLeave: async (id: number): Promise<AxiosResponse<{ message: string }>> => {
-    return await api.put<{ message: string }>(`/leave/${id}/approve`);
+  approveLeave: async (id: number, data?: { remarks?: string }): Promise<AxiosResponse<{ message: string }>> => {
+    return await api.put<{ message: string }>(`/leave/${id}/approve`, data);
   },
 
   /**

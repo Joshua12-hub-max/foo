@@ -1,10 +1,9 @@
 import axios, { InternalAxiosRequestConfig, AxiosError, AxiosResponse } from 'axios';
 import { toCamelCase, toSnakeCase } from '@/utils/caseUtils';
-
-type JsonValue = string | number | boolean | null | undefined | { [key: string]: JsonValue } | JsonValue[];
+import { JsonValue } from '@/types';
 
 const api = axios.create({
-    baseURL: `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`,
+    baseURL: `${import.meta.env.VITE_API_URL || ''}/api`,
     withCredentials: true,
 });
 
@@ -39,6 +38,11 @@ api.interceptors.response.use(
         return response;
     },
     (error: AxiosError<{ message?: string }>) => {
+        // Ignore aborted requests (handled by specific catch blocks or silent)
+        if (error.code === 'ERR_CANCELED') {
+            return Promise.reject(error);
+        }
+
         const status = error.response?.status;
         const message = error.response?.data?.message || error.message;
         

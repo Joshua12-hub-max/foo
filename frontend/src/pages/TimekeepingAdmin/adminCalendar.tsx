@@ -39,7 +39,7 @@ import {
 } from '@/types/calendar';
 import { scheduleApi } from '@api';
 import { ScheduleSchema } from '@/schemas/calendar';
-import { ApiError } from '@/types';
+import { ApiError, JsonValue } from '../../types';
 import {
   useCalendarStore,
   useToastStore
@@ -254,18 +254,18 @@ export default function AdminCalendar() {
   }, [createAnnouncementMutation]);
 
   const handleEditEvent = useCallback((event: CalendarEvent) => {
-    setSelectedItem(event, 'event');
+        setSelectedItem(event as unknown as JsonValue, 'event');
     setShowEventDetails(null);
     setModal('editEvent', true);
   }, [setShowEventDetails, setSelectedItem, setModal]);
 
   const handleUpdateEvent = useCallback((updatedData: CalendarEvent) => {
     if (!selectedItem) return;
-    updateEventMutation.mutate({ id: (selectedItem as CalendarEvent).id, data: updatedData as unknown as EventFormData });
+    updateEventMutation.mutate({ id: (selectedItem as unknown as CalendarEvent).id, data: updatedData as unknown as EventFormData });
   }, [selectedItem, updateEventMutation]);
 
   const handleEditAnnouncement = useCallback((announcement: Announcement) => {
-    setSelectedItem(announcement, 'announcement');
+    setSelectedItem(announcement as unknown as JsonValue, 'announcement');
     setModal('editAnnouncement', true);
   }, [setSelectedItem, setModal]);
 
@@ -274,12 +274,12 @@ export default function AdminCalendar() {
   }, [updateAnnouncementMutation]);
 
   const handleDeleteAnnouncement = useCallback((item: Announcement) => {
-    setSelectedItem(item, 'announcement');
+    setSelectedItem(item as unknown as JsonValue, 'announcement');
     setModal('deleteConfirm', true);
   }, [setSelectedItem, setModal]);
 
   const handleDeleteClick = useCallback((item: CalendarEvent) => {
-    setSelectedItem(item, 'event');
+    setSelectedItem(item as unknown as JsonValue, 'event');
     setShowEventDetails(null);
     setModal('deleteConfirm', true);
   }, [setShowEventDetails, setSelectedItem, setModal]);
@@ -288,9 +288,9 @@ export default function AdminCalendar() {
     if (!selectedItem) return;
 
     if (selectedType === 'announcement') {
-      deleteAnnouncementMutation.mutate((selectedItem as Announcement).id);
+      deleteAnnouncementMutation.mutate((selectedItem as unknown as Announcement).id);
     } else {
-      deleteEventMutation.mutate((selectedItem as CalendarEvent).id);
+      deleteEventMutation.mutate((selectedItem as unknown as CalendarEvent).id);
     }
   }, [selectedItem, selectedType, deleteAnnouncementMutation, deleteEventMutation]);
 
@@ -411,7 +411,7 @@ export default function AdminCalendar() {
         {/* Edit Announcement Modal */}
         <EditAnnouncementModal
           show={modals.editAnnouncement}
-          announcement={selectedItem as Announcement}
+          announcement={selectedItem as unknown as Announcement}
           onClose={() => {
             setModal('editAnnouncement', false);
             setSelectedItem(null, null);
@@ -426,7 +426,7 @@ export default function AdminCalendar() {
         <ConfirmDeleteModal
           show={modals.deleteConfirm}
           title="Confirm Deletion"
-          message={`Are you sure you want to delete "${(selectedItem as CalendarItem)?.title || 'this item'}"? This action cannot be undone.`}
+          message={`Are you sure you want to delete "${(selectedItem as unknown as CalendarItem)?.title || 'this item'}"? This action cannot be undone.`}
           onConfirm={handleConfirmDelete}
           onCancel={() => {
             setModal('deleteConfirm', false);

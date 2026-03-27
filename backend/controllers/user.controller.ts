@@ -7,6 +7,7 @@ import { eq, and, sql, desc, ne, InferSelectModel, SQL, or, lte, gte, inArray } 
 import type { AuthenticatedRequest, EmploymentStatus, Gender, CivilStatus, AppointmentType, UserRole } from '../types/index.js';
 import { UserService } from '../services/user.service.js';
 import { convertTo24Hour } from '../utils/dateUtils.js';
+import { AuditService } from '../services/audit.service.js';
 import { 
   authentication, 
   departments, 
@@ -783,7 +784,7 @@ export const getEmployeeDocuments = async (req: Request, res: Response): Promise
 export const uploadEmployeeDocument = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const { documentType } = req.body;
+    const { documentType } = req.body as { documentType?: string };
     const file = req.file;
 
     if (!file) {
@@ -854,6 +855,15 @@ export const deleteEmployee = async (req: Request, res: Response): Promise<void>
 
     await db.delete(authentication).where(eq(authentication.id, parseInt(id)));
 
+    // Audit Log
+    await AuditService.log({
+      userId: authReq.user.id,
+      module: 'USER_MANAGEMENT',
+      action: 'DELETE',
+      details: { targetUserId: id, employeeId: emp?.employeeId },
+      req
+    });
+
     // Free up plantilla item
     if (emp?.hrDetails) {
       if (emp.hrDetails.positionId) {
@@ -868,8 +878,8 @@ export const deleteEmployee = async (req: Request, res: Response): Promise<void>
     }
 
     res.json({ success: true, message: 'Employee deleted successfully' });
-  } catch (_error) {
-
+  } catch (error: unknown) {
+    console.error('[DELETE EMPLOYEE ERROR]', error);
     res.status(500).json({ success: false, message: 'Failed to delete employee' });
   }
 };
@@ -1256,7 +1266,16 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
 
 
     res.json({ success: true, message: 'Employee updated successfully' });
-  } catch (error) {
+
+    await AuditService.log({
+      userId: (req as AuthenticatedRequest).user.id,
+      module: 'USER_MANAGEMENT',
+      action: 'UPDATE',
+      details: { targetUserId: id, updates: Object.keys(sanitizedUpdates) },
+      req
+    });
+
+  } catch (error: unknown) {
     if (error instanceof z.ZodError) {
 
         res.status(400).json({ success: false, message: 'Validation failed', errors: error.issues });
@@ -1297,8 +1316,17 @@ export const revertEmployeeStatus = async (req: Request, res: Response): Promise
       previousStatus: oldStatus,
       newStatus: newStatus
     });
-  } catch (_error) {
 
+    await AuditService.log({
+      userId: (req as AuthenticatedRequest).user.id,
+      module: 'USER_MANAGEMENT',
+      action: 'ROLE_UPDATE', // Re-using ROLE_UPDATE or Status change
+      details: { targetUserId: id, oldStatus, newStatus },
+      req
+    });
+
+  } catch (error: unknown) {
+    console.error('[REVERT STATUS ERROR]', error);
     res.status(500).json({ success: false, message: 'Failed to revert employee status' });
   }
 };
@@ -1415,7 +1443,7 @@ export const addEmployeeEducation = async (req: Request, res: Response): Promise
       fieldOfStudy: fieldOfStudy || null,
       startDate: startDate ? String(startDate) : null,
       endDate: endDate ? String(endDate) : null,
-      isCurrent: isCurrent ? true : false, // tinyint
+      isCurrent: isCurrent ? true : false, // boolean
       type: (type || 'Education') as 'Education' | 'Certification' | 'Training',
       description: description || null
     });
@@ -1511,7 +1539,7 @@ export const addEmployeeContact = async (req: Request, res: Response): Promise<v
       phoneNumber: phoneNumber,
       email: email || null,
       address: address || null,
-      isPrimary: isPrimary ? true : false // tinyint
+      isPrimary: isPrimary ? true : false // boolean
     });
 
     res.status(201).json({ success: true, message: 'Contact added', contactId: result.insertId });

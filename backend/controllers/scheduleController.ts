@@ -14,6 +14,7 @@ import type { AuthenticatedRequest } from '../types/index.js';
 import { notifyDepartment } from './notificationController.js';
 import { formatFullName } from '../utils/nameUtils.js';
 import { getNextCutOff, convertTo24Hour } from '../utils/dateUtils.js';
+import { AuditService } from '../services/audit.service.js';
 
 const getDayName = (dateString: string): string => {
   const date = new Date(dateString);
@@ -61,7 +62,7 @@ export const getSchedules = async (req: Request, res: Response): Promise<void> =
     }));
 
     res.json({ success: true, schedules: formattedSchedules });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error fetching schedules:', error);
     res.status(500).json({ success: false, message: 'Failed to fetch schedules' });
   }
@@ -101,7 +102,7 @@ export const getNextCutOffSchedules = async (_req: Request, res: Response): Prom
             period: { start: startDateStr, end: endDateStr },
             schedules: result 
         });
-    } catch (error) {
+    } catch (error: unknown) {
         console.error('Error fetching next cut-off schedules:', error);
         res.status(500).json({ success: false, message: 'Failed to fetch upcoming schedules' });
     }
@@ -205,7 +206,7 @@ export const getDepartmentSchedulesSummary = async (_req: Request, res: Response
         });
 
         res.json({ success: true, data: summary });
-    } catch (error) {
+    } catch (error: unknown) {
         console.error('Error fetching department schedules summary:', error);
         res.status(500).json({ success: false, message: 'Failed to fetch department summary' });
     }
@@ -235,7 +236,7 @@ export const getDefaultShiftTemplate = async (_req: Request, res: Response): Pro
         }
 
         res.json({ success: true, data: defaultShift });
-    } catch (error) {
+    } catch (error: unknown) {
         console.error('Error fetching default shift template:', error);
         res.status(500).json({ success: false, message: 'Failed to fetch default shift template' });
     }
@@ -259,7 +260,7 @@ export const getShiftTemplates = async (_req: Request, res: Response): Promise<v
         .orderBy(asc(shiftTemplates.name));
 
         res.json({ success: true, templates: result });
-    } catch (error) {
+    } catch (error: unknown) {
         console.error('Error fetching shift templates:', error);
         res.status(500).json({ success: false, message: 'Failed to fetch shift templates' });
     }
@@ -291,7 +292,7 @@ export const createShiftTemplate = async (req: Request, res: Response): Promise<
         });
 
         res.json({ success: true, message: 'Shift template created successfully' });
-    } catch (error) {
+    } catch (error: unknown) {
         console.error('Error creating shift template:', error);
         res.status(500).json({ success: false, message: 'Failed to create shift template' });
     }
@@ -327,7 +328,7 @@ export const updateShiftTemplate = async (req: Request, res: Response): Promise<
             .where(eq(shiftTemplates.id, Number(id)));
 
         res.json({ success: true, message: 'Shift template updated successfully' });
-    } catch (error) {
+    } catch (error: unknown) {
         console.error('Error updating shift template:', error);
         res.status(500).json({ success: false, message: 'Failed to update shift template' });
     }
@@ -338,7 +339,7 @@ export const deleteShiftTemplate = async (req: Request, res: Response): Promise<
         const { id } = req.params;
         await db.delete(shiftTemplates).where(eq(shiftTemplates.id, Number(id)));
         res.json({ success: true, message: 'Shift template deleted successfully' });
-    } catch (error) {
+    } catch (error: unknown) {
         console.error('Error deleting shift template:', error);
         res.status(500).json({ success: false, message: 'Failed to delete shift template' });
     }
@@ -348,6 +349,7 @@ export const deleteShiftTemplate = async (req: Request, res: Response): Promise<
 
 
 export const createDepartmentSchedule = async (req: Request, res: Response): Promise<void> => {
+    const authReq = req as AuthenticatedRequest;
     try {
         const validation = departmentScheduleSchema.safeParse(req.body);
 
@@ -414,13 +416,12 @@ export const createDepartmentSchedule = async (req: Request, res: Response): Pro
         await Promise.all(insertPromises);
         
         // Audit Log for Department Bulk Create
-        const authReq = req as AuthenticatedRequest;
         if (authReq.user) {
-            await db.insert(audit_logs).values({
+            await AuditService.log({
                 userId: authReq.user.id,
                 action: 'CREATE_BULK',
                 module: 'SCHEDULE',
-                details: JSON.stringify({ 
+                details: { 
                     departmentId, 
                     employeeCount: employeeIds.length,
                     startDate,
@@ -429,9 +430,8 @@ export const createDepartmentSchedule = async (req: Request, res: Response): Pro
                     endTime,
                     repeat,
                     scheduleTitle
-                }),
-                ipAddress: req.ip || '0.0.0.0',
-                userAgent: req.headers['user-agent'] || 'Unknown'
+                },
+                req
             });
         }
 
@@ -446,7 +446,7 @@ export const createDepartmentSchedule = async (req: Request, res: Response): Pro
                 type: 'schedule',
                 referenceId: null
             });
-        } catch (notifError) {
+        } catch (notifError: unknown) {
             console.error('Error creating department notifications:', notifError);
         }
 
@@ -455,7 +455,7 @@ export const createDepartmentSchedule = async (req: Request, res: Response): Pro
             message: `Successfully applied schedule to ${employeeIds.length} employees in the department and sent notifications.` 
         });
 
-    } catch (error) {
+    } catch (error: unknown) {
         console.error('Error creating department schedule:', error);
         res.status(500).json({ success: false, message: 'Failed to create department schedule' });
     }
@@ -482,7 +482,7 @@ export const getScheduleAuditLogs = async (_req: Request, res: Response): Promis
         .limit(200);
 
         res.json({ success: true, data: logs });
-    } catch (error) {
+    } catch (error: unknown) {
         console.error('Error fetching schedule audit logs:', error);
         res.status(500).json({ success: false, message: 'Failed to fetch schedule audit logs' });
     }

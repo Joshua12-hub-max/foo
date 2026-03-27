@@ -4,11 +4,16 @@ import {
   getTodayStatus,
   getRecentActivity,
   getRawLogs,
-  getDashboardStats
+  getDashboardStats,
+  clockIn,
+  clockOut
 } from '../controllers/attendanceController.js';
 import { verifyToken, verifyAdmin } from '../middleware/authMiddleware.js';
 
 const router: Router = Router();
+
+router.post('/clock-in', verifyToken, clockIn);
+router.post('/clock-out', verifyToken, clockOut);
 
 router.get('/logs', verifyToken, getLogs);
 router.get('/raw-logs', verifyAdmin, getRawLogs);

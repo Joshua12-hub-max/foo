@@ -1,9 +1,11 @@
-import { useState } from 'react';
 import { Mail, Phone, MapPin, MessageCircle, Clock, Send, ShieldCheck, Zap, User, Loader2 } from 'lucide-react';
 import PublicLayout from '@components/Public/PublicLayout';
 import { useChatStore } from '@/stores/chatStore';
 import { motion, AnimatePresence } from 'framer-motion';
-import { inquiryApi, InquirySubmission } from '@/api/inquiryApi';
+import { inquiryApi } from '@/api/inquiryApi';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { inquirySchema, InquiryInput } from '@/schemas/inquiry';
 import { toast } from 'react-hot-toast';
 import mapVisual from '@/assets/meycauayan-map.png';
 import contactHero from '@/assets/contact-hero.png';
@@ -11,36 +13,50 @@ import SEO from '@/components/Global/SEO';
 
 const Contact = () => {
   const openChat = useChatStore((state) => state.openChat);
-  const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState<InquirySubmission>({
-    firstName: '',
-    lastName: '',
-    email: '',
-    message: ''
+  
+  const { register, handleSubmit, formState: { errors, isSubmitting }, reset } = useForm<InquiryInput>({
+    resolver: zodResolver(inquirySchema),
+    defaultValues: {
+        firstName: '',
+        lastName: '',
+        email: '',
+        message: '',
+        hpField: ''
+    }
   });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (loading) return;
-
+  const onSubmit = async (data: InquiryInput) => {
     try {
-      setLoading(true);
-      const res = await inquiryApi.submit(formData);
+      const res = await inquiryApi.submit(data);
       if (res.data.success) {
         toast.success(res.data.message || 'Inquiry sent successfully!');
-        setFormData({ firstName: '', lastName: '', email: '', message: '' });
+        reset();
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error(error);
-      toast.error('Failed to send inquiry. Please try again.');
-    } finally {
-      setLoading(false);
+      let serverMsg = 'Failed to send inquiry. Please try again.';
+      
+      if (error && typeof error === 'object' && 'response' in error) {
+        const axiosError = error as { response?: { data?: { message?: string } } };
+        serverMsg = axiosError.response?.data?.message || serverMsg;
+      }
+      
+      toast.error(serverMsg);
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+  const FieldError = ({ name }: { name: keyof InquiryInput }) => {
+    const error = errors[name];
+    if (!error) return null;
+    return (
+      <motion.p 
+        initial={{ opacity: 0, y: -5 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="text-[10px] font-bold text-red-500 mt-1 ml-1"
+      >
+        {error.message}
+      </motion.p>
+    );
   };
 
   return (
@@ -68,12 +84,12 @@ const Contact = () => {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.2 }}
-                    className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-green-500/10 border border-green-500/20 text-green-500 text-[10px] font-bold tracking-tight mb-4"
+                    className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-green-50 text-green-600 border border-green-100 text-[10px] font-bold tracking-tight mb-4 shadow-sm"
                   >
                     Contact us
                   </motion.div>
-                <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-white mb-4 tracking-tighter leading-none">
-                    Let's Build the <span className="text-green-500">Future</span> Together
+                <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-slate-900 mb-4 tracking-tighter leading-none">
+                    Let's Build the <span className="text-green-600">Future</span> Together
                 </h1>
                 <p className="text-slate-400 text-sm md:text-base font-semibold max-w-xl mx-auto lg:mx-0 leading-relaxed">
                   Connect with our human resources team for inquiries regarding job openings and applications. We prioritize every message.
@@ -126,27 +142,27 @@ const Contact = () => {
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true }}
                         transition={{ delay: i * 0.1 }}
-                        className="bg-[#1e1e1f] p-5 rounded-2xl border border-[#444746] shadow-premium hover:shadow-premium-hover transition-all duration-500 group overflow-hidden flex flex-col"
+                        className="bg-white p-5 rounded-2xl border border-slate-200 shadow-premium hover:shadow-premium-hover transition-all duration-500 group overflow-hidden flex flex-col"
                     >
                         <div className="flex gap-4">
                             <div className="w-10 h-10 bg-white/5 rounded-lg flex-shrink-0 flex items-center justify-center group-hover:bg-green-500 group-hover:text-white transition-all duration-500">
                                 {item.icon}
                             </div>
                             <div className="flex-1">
-                                <span className="text-[10px] font-bold text-green-500 tracking-tight block mb-1">How to reach us</span>
-                                <p className="text-[14px] font-bold text-white mb-0.5 tracking-tight">{item.value}</p>
+                                <span className="text-[10px] font-bold text-green-600 tracking-tight block mb-1">How to reach us</span>
+                                <p className="text-[14px] font-bold text-slate-900 mb-0.5 tracking-tight">{item.value}</p>
                                 <p className="text-[10px] font-semibold text-slate-500">{item.desc}</p>
                             </div>
                         </div>
                         
                         {item.image && (
-                            <div className="mt-4 h-24 -mx-5 -mb-5 bg-[#131314] overflow-hidden group-hover:h-32 transition-all duration-700 relative">
+                            <div className="mt-4 h-24 -mx-5 -mb-5 bg-slate-50 overflow-hidden group-hover:h-32 transition-all duration-700 relative">
                             <img 
                                     src={item.image} 
                                     alt="Map Location" 
-                                    className="w-full h-full object-cover opacity-40 group-hover:opacity-100 group-hover:scale-110 transition-all duration-700" 
+                                    className="w-full h-full object-cover opacity-60 group-hover:opacity-100 group-hover:scale-110 transition-all duration-700" 
                             />
-                            <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-slate-950 to-transparent"></div>
+                            <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-slate-200/40 to-transparent"></div>
                             </div>
                         )}
                     </motion.div>
@@ -158,49 +174,41 @@ const Contact = () => {
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                className="lg:col-span-3 bg-[#1e1e1f] p-8 rounded-3xl border border-[#444746] shadow-premium"
+                className="lg:col-span-3 bg-white p-8 rounded-3xl border border-slate-200 shadow-premium"
             >
                 <div className="mb-8">
-                    <h2 className="text-xl font-black text-white tracking-tight mb-2 flex items-center gap-3">
-                        <span className="w-1.5 h-6 bg-green-500 rounded-full"></span>
+                    <h2 className="text-xl font-black text-slate-900 tracking-tight mb-2 flex items-center gap-3">
+                        <span className="w-1.5 h-6 bg-green-600 rounded-full"></span>
                         Send a Message
                     </h2>
                     <p className="text-slate-500 text-[11px] font-bold">Have a specific question? Fill out the form below and our team will get back to you.</p>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-5">
+                <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                         <div className="space-y-1.5">
                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">First Name</label>
                             <div className="relative">
                                 <User size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
                                 <input 
-                                    id="contact-first-name"
-                                    required
-                                    type="text" 
-                                    name="firstName"
-                                    value={formData.firstName}
-                                    onChange={handleInputChange}
-                                    className="w-full pl-11 pr-4 py-3 bg-[#131314] border border-[#444746] rounded-xl text-sm font-bold text-white outline-none focus:border-green-500 transition-all placeholder:text-slate-700"
+                                    {...register('firstName')}
+                                    className={`w-full pl-11 pr-4 py-3 bg-slate-50 border rounded-xl text-sm font-bold text-slate-900 outline-none transition-all placeholder:text-slate-300 ${errors.firstName ? 'border-red-500 ring-2 ring-red-500/10' : 'border-slate-200 focus:border-green-600'}`}
                                     placeholder="John"
                                 />
                             </div>
+                            <FieldError name="firstName" />
                         </div>
                         <div className="space-y-1.5">
                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Last Name</label>
                             <div className="relative">
                                 <User size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
                                 <input 
-                                    id="contact-last-name"
-                                    required
-                                    type="text" 
-                                    name="lastName"
-                                    value={formData.lastName}
-                                    onChange={handleInputChange}
-                                    className="w-full pl-11 pr-4 py-3 bg-[#131314] border border-[#444746] rounded-xl text-sm font-bold text-white outline-none focus:border-green-500 transition-all placeholder:text-slate-700"
+                                    {...register('lastName')}
+                                    className={`w-full pl-11 pr-4 py-3 bg-slate-50 border rounded-xl text-sm font-bold text-slate-900 outline-none transition-all placeholder:text-slate-300 ${errors.lastName ? 'border-red-500 ring-2 ring-red-500/10' : 'border-slate-200 focus:border-green-600'}`}
                                     placeholder="Doe"
                                 />
                             </div>
+                            <FieldError name="lastName" />
                         </div>
                     </div>
 
@@ -209,40 +217,36 @@ const Contact = () => {
                         <div className="relative">
                             <Mail size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
                             <input 
-                                id="contact-email"
-                                required
-                                type="email" 
-                                name="email"
-                                value={formData.email}
-                                onChange={handleInputChange}
-                                className="w-full pl-11 pr-4 py-3 bg-[#131314] border border-[#444746] rounded-xl text-sm font-bold text-white outline-none focus:border-green-500 transition-all placeholder:text-slate-700"
+                                {...register('email')}
+                                className={`w-full pl-11 pr-4 py-3 bg-slate-50 border rounded-xl text-sm font-bold text-slate-900 outline-none transition-all placeholder:text-slate-300 ${errors.email ? 'border-red-500 ring-2 ring-red-500/10' : 'border-slate-200 focus:border-green-600'}`}
                                 placeholder="john.doe@example.com"
                             />
                         </div>
+                        <FieldError name="email" />
                     </div>
+
+                    {/* Honeypot field - Hidden from users */}
+                    <input type="text" {...register('hpField')} className="hidden" tabIndex={-1} autoComplete="off" />
 
                     <div className="space-y-1.5">
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Message</label>
                         <textarea 
-                            id="contact-message"
-                            required
-                            name="message"
-                            value={formData.message}
-                            onChange={handleInputChange}
+                            {...register('message')}
                             rows={4}
-                            className="w-full px-4 py-3 bg-[#131314] border border-[#444746] rounded-xl text-sm font-bold text-white outline-none focus:border-green-500 transition-all placeholder:text-slate-700 resize-none"
+                            className={`w-full px-4 py-3 bg-[#131314] border rounded-xl text-sm font-bold text-white outline-none transition-all placeholder:text-slate-700 resize-none ${errors.message ? 'border-red-500 ring-2 ring-red-500/10' : 'border-[#444746] focus:border-green-500'}`}
                             placeholder="How can we help you?"
                         ></textarea>
+                        <FieldError name="message" />
                     </div>
 
                     <button 
                         id="contact-submit-button"
                         type="submit"
-                        disabled={loading}
+                        disabled={isSubmitting}
                         className="w-full bg-green-600 hover:bg-green-700 text-white py-4 rounded-xl font-black text-sm tracking-tight transition-all shadow-xl shadow-green-900/10 flex items-center justify-center gap-3 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        {loading ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
-                        {loading ? 'Sending...' : 'Submit Inquiry'}
+                        {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
+                        {isSubmitting ? 'Sending...' : 'Submit Inquiry'}
                     </button>
                 </form>
             </motion.div>
@@ -253,7 +257,7 @@ const Contact = () => {
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="bg-[#131314] rounded-[1.5rem] sm:rounded-[2.5rem] p-6 sm:p-12 relative overflow-hidden shadow-2xl border border-[#444746]"
+            className="bg-white rounded-[1.5rem] sm:rounded-[2.5rem] p-6 sm:p-12 relative overflow-hidden shadow-2xl border border-slate-200"
         >
             {/* Subtle Patterns */}
             <motion.div 
@@ -268,14 +272,14 @@ const Contact = () => {
             
             <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
                 <div className="text-center md:text-left space-y-3">
-                    <div className="flex items-center justify-center md:justify-start gap-2 text-green-500 font-bold text-[10px] tracking-tight">
+                    <div className="flex items-center justify-center md:justify-start gap-2 text-green-600 font-bold text-[10px] tracking-tight">
                         <Zap size={14} fill="currentColor" />
                         Quick response
                     </div>
-                    <h2 className="text-3xl md:text-4xl font-black text-white tracking-tighter leading-none">
+                    <h2 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tighter leading-none">
                         Live Support
                     </h2>
-                    <p className="text-white/40 text-sm md:text-base font-semibold max-w-md">
+                    <p className="text-slate-500 text-sm md:text-base font-semibold max-w-md">
                         Chat directly with our team for real-time assistance and support.
                     </p>
                 </div>
@@ -285,7 +289,7 @@ const Contact = () => {
                         whileHover={{ scale: 1.05, y: -2 }}
                         whileTap={{ scale: 0.95 }}
                         onClick={openChat}
-                        className="group bg-white text-slate-950 px-8 py-4 rounded-xl font-black text-[14px] tracking-tight transition-all shadow-xl shadow-green-500/10 flex items-center gap-3 hover:bg-green-600 hover:text-white"
+                        className="group bg-slate-900 text-white px-8 py-4 rounded-xl font-black text-[14px] tracking-tight transition-all shadow-xl shadow-slate-200 flex items-center gap-3 hover:bg-black"
                     >
                         <MessageCircle size={18} className="transition-transform group-hover:rotate-12" />
                         Chat Now
@@ -299,7 +303,7 @@ const Contact = () => {
         </motion.div>
 
         {/* Operating Hours - Master Footer Note */}
-        <div className="mt-12 text-center text-slate-400 text-[11px] font-bold flex flex-col md:flex-row items-center justify-center gap-2 md:gap-6 tracking-tight">
+        <div className="mt-12 text-center text-slate-500 text-[11px] font-bold flex flex-col md:flex-row items-center justify-center gap-2 md:gap-6 tracking-tight">
             <div className="flex items-center gap-2">
                 <Clock size={12} className="opacity-40" />
                 Mon - Fri: 08:00 - 17:00

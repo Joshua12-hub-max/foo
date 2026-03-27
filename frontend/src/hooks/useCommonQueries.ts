@@ -196,7 +196,7 @@ export const useHiredApplicantSearch = (firstName: string, lastName: string, ena
     queryKey: ['hired-applicant', firstName, lastName],
     queryFn: async (): Promise<HiredApplicant | null> => {
       try {
-        const response = await api.get(`/auth/hired-applicant-search`, {
+        const response = await api.get(`/auth/find-hired-applicant`, {
           params: { firstName, lastName }
         });
         return response.data.data;

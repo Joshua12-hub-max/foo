@@ -47,6 +47,17 @@ async function pollBiometricLogs(): Promise<void> {
         // 2. Map bio employee_id (string, potentially formatted) → system employeeId (string, numeric)
         const systemEmployeeId = convertBioIdToEmployeeId(bioLog.employeeId);
 
+        // 3. Replicate into attendance_logs (Primary System Table)
+        // Combine logDate (YYYY-MM-DD) and logTime (HH:mm:ss)
+        const scanTime = `${bioLog.logDate} ${bioLog.logTime}`;
+        
+        await db.insert(attendanceLogs).values({
+          employeeId: systemEmployeeId,
+          scanTime: scanTime,
+          type: bioLog.cardType,
+          source: 'BIOMETRIC'
+        });
+
         // 7. Queue DTR processing for this employee+date
         const dateStr = bioLog.logDate;
         const key = `${systemEmployeeId}:${dateStr}`;
