@@ -43,7 +43,7 @@ export const useBiometricDevice = ({
 
     setStatus('CONNECTING');
     try {
-      const ws = new WebSocket('ws://localhost:4649');
+      const ws = new WebSocket('ws://127.0.0.1:4649');
 
       ws.onopen = () => {
         setStatus('CONNECTED');

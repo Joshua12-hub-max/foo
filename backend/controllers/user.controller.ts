@@ -193,19 +193,20 @@ export const mapToEmployeeApi = (emp: EmployeeMapperInput): EmployeeApiResponse 
     isMeycauayan: emp.isMeycauayan === true,
     dutyType: emp.dutyType || null,
 
-    // PDS Personal Info Fields
+    // PDS Personal Info Fields - Unified Naming
     birthDate: emp.birthDate ? String(emp.birthDate) : null,
-    placeOfBirth: String(emp.placeOfBirth || ''),
-    gender: String(emp.gender || ''),
-    civilStatus: String(emp.civilStatus || ''),
-    heightM: emp.heightM ? Number(emp.heightM) : null,
-    weightKg: emp.weightKg ? Number(emp.weightKg) : null,
-    bloodType: String(emp.bloodType || ''),
-    citizenship: String(emp.citizenship || ''),
-    residentialAddress: String(emp.residentialAddress || ''),
-    permanentAddress: String(emp.permanentAddress || ''),
-    mobileNo: String(emp.mobileNo || ''),
-    telephoneNo: String(emp.telephoneNo || ''),
+    placeOfBirth: emp.placeOfBirth || null,
+    gender: emp.gender || null,
+    civilStatus: emp.civilStatus || null,
+    nationality: emp.citizenship || 'Filipino',
+    citizenship: emp.citizenship || 'Filipino',
+    heightM: emp.heightM !== null ? Number(emp.heightM) : null,
+    weightKg: emp.weightKg !== null ? Number(emp.weightKg) : null,
+    bloodType: emp.bloodType || null,
+    residentialAddress: emp.residentialAddress || null,
+    permanentAddress: emp.permanentAddress || null,
+    mobileNo: emp.mobileNo || null,
+    telephoneNo: emp.telephoneNo || null,
     umidNumber: emp.umidNumber || null,
     philsysId: emp.philsysId || null,
     philhealthNumber: emp.philhealthNumber || null,
@@ -213,6 +214,8 @@ export const mapToEmployeeApi = (emp: EmployeeMapperInput): EmployeeApiResponse 
     tinNumber: emp.tinNumber || null,
     gsisNumber: emp.gsisNumber || null,
     agencyEmployeeNo: emp.agencyEmployeeNo || null,
+    
+    // Detailed Address Fields
     resHouseBlockLot: emp.resHouseBlockLot || null,
     resStreet: emp.resStreet || null,
     resSubdivision: emp.resSubdivision || null,
@@ -240,8 +243,10 @@ const mapToSkillApi = (skill: InferSelectModel<typeof employeeSkills>): Employee
 
 const mapToEducationApi = (edu: InferSelectModel<typeof pdsEducation>): EmployeeEducationResponse => ({
   id: edu.id,
-  institution: edu.schoolName || '',
+  schoolName: edu.schoolName || '',
+  institution: edu.schoolName || '', // Alias for frontend compatibility
   degree: edu.degreeCourse || null,
+  degreeCourse: edu.degreeCourse || null, // Alias for frontend compatibility
   fieldOfStudy: null,
   startDate: edu.dateFrom ? String(edu.dateFrom) : null,
   endDate: edu.dateTo ? String(edu.dateTo) : null,
@@ -254,12 +259,17 @@ const mapToEducationApi = (edu: InferSelectModel<typeof pdsEducation>): Employee
 
 const mapToEligibilityApi = (el: InferSelectModel<typeof pdsEligibility>): EmployeeEligibilityResponse => ({
   id: el.id,
-  eligibilityType: el.eligibilityName || '',
-  rating: el.rating,
+  eligibilityName: el.eligibilityName || '',
+  name: el.eligibilityName || '', // Alias for frontend compatibility
+  eligibilityType: el.eligibilityName || '', // Alias for frontend compatibility
+  rating: el.rating ? String(el.rating) : null,
   examDate: el.examDate,
   examPlace: el.examPlace,
-  eligibilityNumber: el.licenseNumber,
-  validityDate: el.validityDate
+  licenseNumber: el.licenseNumber,
+  eligibilityNumber: el.licenseNumber, // Alias for frontend compatibility
+  licenseNo: el.licenseNumber, // Alias for frontend compatibility
+  validityDate: el.validityDate,
+  licenseValidUntil: el.validityDate // Alias for frontend compatibility
 });
 
 const mapToContactApi = (contact: InferSelectModel<typeof employeeEmergencyContacts>): EmployeeEmergencyContactResponse => ({
@@ -315,14 +325,18 @@ const mapToLdApi = (ld: InferSelectModel<typeof pdsLearningDevelopment>): Learni
 
 const mapToWorkExperienceApi = (we: InferSelectModel<typeof pdsWorkExperience>): WorkplaceExperienceResponse => ({
   id: we.id,
-  dateFrom: we.dateFrom,
-  dateTo: we.dateTo,
-  positionTitle: we.positionTitle,
-  companyName: we.companyName,
-  monthlySalary: we.monthlySalary,
-  salaryGrade: we.salaryGrade,
-  appointmentStatus: we.appointmentStatus,
-  isGovernment: !!we.isGovernment
+  dateFrom: we.dateFrom ? String(we.dateFrom) : '',
+  dateTo: we.dateTo ? String(we.dateTo) : null,
+  positionTitle: we.positionTitle || '',
+  position: we.positionTitle || '', // Alias for frontend compatibility
+  companyName: we.companyName || '',
+  company: we.companyName || '', // Alias for frontend compatibility
+  monthlySalary: we.monthlySalary || null,
+  salary: we.monthlySalary || null, // Alias for frontend compatibility
+  salaryGrade: we.salaryGrade || null,
+  appointmentStatus: we.appointmentStatus || null,
+  status: we.appointmentStatus || null, // Alias for frontend compatibility
+  isGovernment: we.isGovernment === true
 });
 
 const mapToOtherInfoApi = (oi: InferSelectModel<typeof pdsOtherInfo>): PdsOtherInfoResponse => ({
@@ -339,21 +353,26 @@ const mapToReferencesApi = (ref: InferSelectModel<typeof pdsReferences>): PdsRef
 });
 
 const sanitizePDSFields = (updates: UpdateEmployeeInput): UpdateEmployeeInput => {
-  // Auto-convert Height (cm -> m) if likely in cm (> 3 meters is unlikely for humans)
-  if (updates.heightM && updates.heightM > 3) {
+  const extractNumeric = (val: any): number | null => {
+    if (val === null || val === undefined) return null;
+    if (typeof val === 'number') return val;
+    // Extract anything that looks like a number (decimals included)
+    const matches = String(val).match(/[-+]?[0-9]*\.?[0-9]+/);
+    return matches ? parseFloat(matches[0]) : null;
+  };
 
-    updates.heightM = parseFloat((updates.heightM / 100).toFixed(2));
+  const h = extractNumeric(updates.heightM);
+  const w = extractNumeric(updates.weightKg);
+
+  if (h !== null) {
+    // Auto-convert Height (cm -> m) if likely in cm (> 3 meters is unlikely for humans)
+    updates.heightM = h > 3 ? parseFloat((h / 100).toFixed(2)) : parseFloat(h.toFixed(2));
   }
   
-  // Auto-convert Weight to be safe (if in grams > 1000)
-  if (updates.weightKg && updates.weightKg > 1000) {
-
-     updates.weightKg = parseFloat((updates.weightKg / 1000).toFixed(2));
+  if (w !== null) {
+    // Auto-convert Weight to be safe (if in grams > 1000)
+    updates.weightKg = w > 1000 ? parseFloat((w / 1000).toFixed(2)) : parseFloat(w.toFixed(2));
   }
-
-  // Ensure precision for DECIMAL(4,2)
-  if (updates.heightM) updates.heightM = parseFloat(Number(updates.heightM).toFixed(2));
-  if (updates.weightKg) updates.weightKg = parseFloat(Number(updates.weightKg).toFixed(2));
 
   return updates;
 };
@@ -425,7 +444,7 @@ export const getEmployeeById = async (req: Request, res: Response): Promise<void
 
     const response = {
       success: true,
-      employee: {
+      profile: {
         ...mappedEmployee,
         skills: skills.map(mapToSkillApi),
         education: (education as InferSelectModel<typeof pdsEducation>[]).map(mapToEducationApi),
@@ -646,7 +665,7 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
         permRegion: sanitizedData.permRegion || null,
       });
 
-      const q = (pdsQuestions || {}) as Partial<typeof pdsDeclarations.$inferInsert>;
+      const q = (pdsQuestions || {}) as Partial<typeof pdsDeclarations.$inferInsert> & Record<string, any>;
       await db.insert(pdsDeclarations).values({
         employeeId: newEmployeeIdNum,
         relatedThirdDegree: (q.relatedThirdDegree as 'Yes' | 'No') || sanitizedData.relatedThirdDegree || null,
@@ -1183,23 +1202,48 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
       'salaryGrade', 'stepIncrement', 'dateHired', 'contractEndDate', 'regularizationDate',
       'isRegular', 'positionTitle', 'station', 'appointmentType', 'itemNumber',
       'firstDayOfService', 'officeAddress', 'religion', 'barangay', 'dutyType',
-      'isMeycauayan', 'facebookUrl', 'linkedinUrl', 'twitterHandle'
+      'isMeycauayan', 'facebookUrl', 'linkedinUrl', 'twitterHandle',
+      'relatedThirdDegree', 'relatedThirdDetails', 'relatedFourthDegree', 'relatedFourthDetails',
+      'foundGuiltyAdmin', 'foundGuiltyDetails', 'criminallyCharged', 'dateFiled', 'statusOfCase',
+      'convictedCrime', 'convictedDetails', 'separatedFromService', 'separatedDetails',
+      'electionCandidate', 'electionDetails', 'resignedToPromote', 'resignedDetails',
+      'immigrantStatus', 'immigrantDetails', 'indigenousMember', 'indigenousDetails',
+      'personWithDisability', 'disabilityIdNo', 'soloParent', 'soloParentIdNo',
+      'govtIdType', 'govtIdNo', 'govtIdIssuance', 'dateAccomplished'
     ];
     const personalFields = [
       'birthDate', 'placeOfBirth', 'gender', 'civilStatus', 'heightM', 'weightKg',
       'bloodType', 'citizenship', 'residentialAddress', 'permanentAddress',
-      'mobileNo', 'telephoneNo', 'nationality', 'phoneNumber'
+      'mobileNo', 'telephoneNo', 'nationality', 'phoneNumber',
+      'resHouseBlockLot', 'resStreet', 'resSubdivision', 'resBarangay', 'resCity', 'resProvince', 'resRegion',
+      'permHouseBlockLot', 'permStreet', 'permSubdivision', 'permBarangay', 'permCity', 'permProvince', 'permRegion',
+      'residentialZipCode', 'permanentZipCode', 'agencyEmployeeNo'
     ];
 
     const authUpdates: Partial<typeof authentication.$inferInsert> = {};
     const hrUpdates: Partial<typeof pdsHrDetails.$inferInsert> = {};
     const personalUpdates: Record<string, unknown> = {};
+    const declarationUpdates: Record<string, unknown> = {};
 
     Object.entries(sanitizedUpdates).forEach(([key, value]) => {
       if (authFields.includes(key)) {
         (authUpdates as Record<string, unknown>)[key] = value;
       } else if (hrFields.includes(key)) {
-        (hrUpdates as Record<string, unknown>)[key] = value;
+        // Declaration fields are stored in a separate table
+        const decFields = [
+            'relatedThirdDegree', 'relatedThirdDetails', 'relatedFourthDegree', 'relatedFourthDetails',
+            'foundGuiltyAdmin', 'foundGuiltyDetails', 'criminallyCharged', 'dateFiled', 'statusOfCase',
+            'convictedCrime', 'convictedDetails', 'separatedFromService', 'separatedDetails',
+            'electionCandidate', 'electionDetails', 'resignedToPromote', 'resignedDetails',
+            'immigrantStatus', 'immigrantDetails', 'indigenousMember', 'indigenousDetails',
+            'personWithDisability', 'disabilityIdNo', 'soloParent', 'soloParentIdNo',
+            'govtIdType', 'govtIdNo', 'govtIdIssuance', 'dateAccomplished'
+        ];
+        if (decFields.includes(key)) {
+            declarationUpdates[key] = value;
+        } else {
+            (hrUpdates as Record<string, unknown>)[key] = value;
+        }
       } else if (personalFields.includes(key)) {
         if (key === 'nationality') personalUpdates['citizenship'] = value;
         else if (key === 'phoneNumber') personalUpdates['mobileNo'] = value;
@@ -1207,7 +1251,15 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
       }
     });
 
-    if (Object.keys(authUpdates).length === 0 && Object.keys(hrUpdates).length === 0 && Object.keys(personalUpdates).length === 0) {
+    // Handle nested pdsQuestions object if present
+    if (updates.pdsQuestions) {
+        Object.entries(updates.pdsQuestions).forEach(([k, v]) => {
+            declarationUpdates[k] = v === true ? 'Yes' : (v === false ? 'No' : v);
+        });
+    }
+
+    if (Object.keys(authUpdates).length === 0 && Object.keys(hrUpdates).length === 0 && 
+        Object.keys(personalUpdates).length === 0 && Object.keys(declarationUpdates).length === 0) {
       res.json({ success: true, message: 'No changes detected' });
       return;
     }
@@ -1260,6 +1312,17 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
             .where(eq(pdsPersonalInformation.employeeId, parseInt(id)));
         } else {
           await tx.insert(pdsPersonalInformation).values({ ...personalUpdates, employeeId: parseInt(id) });
+        }
+      }
+
+      if (Object.keys(declarationUpdates).length > 0) {
+        const [existingDecl] = await tx.select().from(pdsDeclarations).where(eq(pdsDeclarations.employeeId, parseInt(id)));
+        if (existingDecl) {
+          await tx.update(pdsDeclarations)
+            .set(declarationUpdates)
+            .where(eq(pdsDeclarations.employeeId, parseInt(id)));
+        } else {
+          await tx.insert(pdsDeclarations).values({ ...declarationUpdates, employeeId: parseInt(id) });
         }
       }
     });

@@ -87,10 +87,10 @@ const DashboardHome: React.FC<DashboardHomeProps> = React.memo(({
   employeeLists 
 }) => {
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-neutral-50 to-white rounded-2xl shadow-sm border border-gray-200 p-8 w-full overflow-hidden text-gray-800 transition-all duration-300">
+    <div className="min-h-screen flex flex-col bg-white rounded-2xl shadow-sm border border-gray-200 p-8 w-full overflow-hidden text-gray-800 transition-all duration-300">
       <WelcomeBanner user={user} />
       
-      <div className="my-8 h-px bg-gradient-to-r from-transparent via-gray-200 to-transparent" />
+      <div className="my-8 h-px bg-gray-100" />
       
       <div className="relative mb-8">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">

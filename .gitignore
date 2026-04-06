@@ -88,3 +88,17 @@ list-ports.ps1
 run-bio.bat
 run-bio.ps1
 register_protocol.reg
+
+# ==============================
+# Research & Debugging (Antigravity)
+# ==============================
+*_dump*
+last_error*
+registration_trace.log
+test_update.ts
+dump_user.ts
+check-db.ts
+zod_errors.json
+user_dump*
+*.txt
+!backend/uploads/**/*.txt

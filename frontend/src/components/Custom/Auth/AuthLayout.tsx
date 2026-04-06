@@ -46,7 +46,7 @@ const BrandingSection = () => (
       <img 
         src={DEFAULT_LOGO}
         alt="Meycauayan Logo" 
-        className="w-56 h-56 mx-auto object-contain mb-4 ring-2 ring-white/10 rounded-full bg-slate-900/50 p-2 shadow-2xl"
+        className="w-56 h-56 mx-auto object-contain mb-4"
       />
     </Link>
     <h2 className="text-3xl font-extrabold text-white mb-2 tracking-wide">
@@ -74,7 +74,7 @@ const FormHeader = ({ image, title, subtitle }: FormHeaderProps) => (
       <img 
         src={image ?? DEFAULT_LOGO} 
         alt="Municipal of Meycauayan Logo" 
-        className="w-12 h-12 rounded-lg object-contain" 
+        className="w-12 h-12 object-contain" 
       />
     </Link>
     <h1 className="font-bold text-slate-950 text-xl text-center">
@@ -187,7 +187,7 @@ export default function AuthLayout({
       {/* Right Section - Form Container */}
       <div className="flex flex-col justify-center w-full md:w-1/2 bg-slate-50 p-4 sm:p-6 shadow-[-20px_0_50px_rgba(0,0,0,0.05)]">
         <div className={`mx-auto w-full ${maxWidth}`}>
-          <div className="bg-white/95 backdrop-blur-md border border-white/20 rounded-[20px] shadow-[0_20px_50px_rgba(0,0,0,0.3)] p-6 sm:p-8 text-gray-800 hover:shadow-[0_20px_60px_rgba(34,197,94,0.15)] transition-all duration-300 ring-1 ring-white/10">
+          <div className="relative bg-white/95 backdrop-blur-md border border-white/20 rounded-lg shadow-[0_20px_50px_rgba(0,0,0,0.3)] p-6 sm:p-8 text-gray-800 hover:shadow-[0_20px_60px_rgba(34,197,94,0.15)] transition-all duration-300 ring-1 ring-white/10">
             <FormHeader 
               image={image} 
               title={pageTitle} 

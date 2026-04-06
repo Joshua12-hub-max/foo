@@ -39,10 +39,24 @@ export class AuthService {
             position: true,
           }
         },
+        personalInformation: true,
+        employeeEmergencyContacts: true,
         pdsEducations: {
-          limit: 1,
-          orderBy: (edu, { desc }) => [desc(edu.createdAt)]
-        }
+          orderBy: (edu, { desc }) => [desc(edu.dateFrom)]
+        },
+        pdsWorkExperiences: {
+          orderBy: (we, { desc }) => [desc(we.dateFrom)]
+        },
+        pdsEligibilities: true,
+        pdsLearningDevelopments: {
+          orderBy: (ld, { desc }) => [desc(ld.dateFrom)]
+        },
+        pdsVoluntaryWorks: {
+          orderBy: (vw, { desc }) => [desc(vw.dateFrom)]
+        },
+        pdsReferences: true,
+        pdsOtherInfos: true,
+        pdsFamilies: true
       }
     });
   }
@@ -57,10 +71,24 @@ export class AuthService {
             position: true,
           }
         },
+        personalInformation: true,
+        employeeEmergencyContacts: true,
         pdsEducations: {
-          limit: 1,
-          orderBy: (edu, { desc }) => [desc(edu.createdAt)]
-        }
+          orderBy: (edu, { desc }) => [desc(edu.dateFrom)]
+        },
+        pdsWorkExperiences: {
+          orderBy: (work, { desc }) => [desc(work.dateFrom)]
+        },
+        pdsEligibilities: true,
+        pdsLearningDevelopments: {
+          orderBy: (ld, { desc }) => [desc(ld.dateFrom)]
+        },
+        pdsVoluntaryWorks: {
+          orderBy: (vw, { desc }) => [desc(vw.dateFrom)]
+        },
+        pdsReferences: true,
+        pdsOtherInfos: true,
+        pdsFamilies: true
       }
     });
   }
@@ -75,10 +103,24 @@ export class AuthService {
             position: true,
           }
         },
+        personalInformation: true,
+        employeeEmergencyContacts: true,
         pdsEducations: {
-          limit: 1,
-          orderBy: (edu, { desc }) => [desc(edu.createdAt)]
-        }
+          orderBy: (edu, { desc }) => [desc(edu.dateFrom)]
+        },
+        pdsWorkExperiences: {
+          orderBy: (work, { desc }) => [desc(work.dateFrom)]
+        },
+        pdsEligibilities: true,
+        pdsLearningDevelopments: {
+          orderBy: (ld, { desc }) => [desc(ld.dateFrom)]
+        },
+        pdsVoluntaryWorks: {
+          orderBy: (vw, { desc }) => [desc(vw.dateFrom)]
+        },
+        pdsReferences: true,
+        pdsOtherInfos: true,
+        pdsFamilies: true
       }
     });
   }

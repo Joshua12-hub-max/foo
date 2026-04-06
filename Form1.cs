@@ -63,7 +63,7 @@ namespace BioMiddleware
                  if (int.TryParse(rawId, out int id))
                  {
                      // Use a small delay to ensure device is connected before starting enrollment
-                     Timer t = new Timer();
+                     System.Windows.Forms.Timer t = new System.Windows.Forms.Timer();
                      t.Interval = 2000;
                      t.Tick += (s, e) => {
                          t.Stop();
@@ -675,6 +675,15 @@ namespace BioMiddleware
             try
             {
                 _serial?.SendLine("MODE ENROLL");
+                
+                // 100% FIX: Clear the specific slot before enrolling!
+                // This ensures re-registration works even if the sensor still has old template data.
+                Log($"HW EMPTY {id}");
+                _serial?.SendLine($"EMPTY {id}");
+                
+                // Hardware library sync delay
+                System.Threading.Thread.Sleep(500); 
+
                 _serial?.SendLine($"ENROLL {id}");
             }
             catch (Exception ex)

@@ -3,7 +3,9 @@ import { db } from '../db/index.js';
 import { sql } from 'drizzle-orm';
 import { MySqlTable } from 'drizzle-orm/mysql-core';
 import { AuthenticatedRequest } from '../types/index.js';
+import { PDSFormData } from '../types/pds.js';
 import { PDSParserService } from '../services/PDSParserService.js';
+import { PDSService } from '../services/pds.service.js';
 import fs from 'fs';
 import { 
   pdsFamily, 
@@ -152,8 +154,9 @@ export const parsePDSUpload = async (req: Request, res: Response): Promise<void>
 
     const buffer = await fs.promises.readFile(file.path);
     const extension = file.originalname.split('.').pop()?.toLowerCase();
+    const targetEmployeeId = req.body.employeeId as string | undefined;
 
-    let extractedData: Record<string, string | number | boolean | null | object> = {};
+    let extractedData: Partial<PDSFormData> = {};
     let avatar: string | null = null;
 
     if (extension === 'xlsx' || extension === 'xls') {
@@ -166,6 +169,14 @@ export const parsePDSUpload = async (req: Request, res: Response): Promise<void>
       return;
     }
 
+    // 100% AUTOMATED PERSISTENCE: If employeeId is provided, save to PROFILE immediately
+    if (targetEmployeeId) {
+        const empId = parseInt(targetEmployeeId);
+        if (!isNaN(empId)) {
+            await PDSService.saveFullPdsData(empId, extractedData, avatar);
+        }
+    }
+
     // Clean up uploaded file
     await fs.promises.unlink(file.path);
 
@@ -173,7 +184,7 @@ export const parsePDSUpload = async (req: Request, res: Response): Promise<void>
       success: true,
       data: extractedData,
       avatar,
-      message: 'PDS parsed successfully'
+      message: targetEmployeeId ? 'PDS parsed and profile updated successfully' : 'PDS parsed successfully'
     });
   } catch (err: unknown) {
     const error = err instanceof Error ? err : new Error('Unknown error');

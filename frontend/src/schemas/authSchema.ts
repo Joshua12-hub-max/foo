@@ -7,176 +7,153 @@ export const LoginSchema = z.object({
   password: z.string().min(1, "Password is required")
 });
 
-const gibberishRegex = /^(.)\1{5,}|^[bcdfghjklmnpqrstvwxzBCDFGHJKLMNPQRSTVWXZ]{12,}$|qwertyuiop|asdfghjkl|zxcvbnm|qwqewrwff/;
-
-const validateGibberish = (val: string | undefined | null) => {
-  if (!val || val === "") return true;
-  // Relaxed thresholds: 12 repeated characters or 20 consonants
-  if (/(.)\1{11,}/.test(val)) return false;
-  if (/[bcdfghjklmnpqrstvwxzBCDFGHJKLMNPQRSTVWXZ]{20,}/.test(val)) return false;
-  if (/[!@#$%^&*()_+={}[\]:;"'<>,.?/\\|`~]{6,}/.test(val)) return false;
-  return !gibberishRegex.test(val.toLowerCase());
-};
-
-const validateProfessionalText = (val: string | undefined | null) => {
-  if (!val || val === "") return true;
-  // Even more relaxed for technical summaries/skills
-  if (/(.)\1{15,}/.test(val)) return false;
-  if (/[bcdfghjklmnpqrstvwxzBCDFGHJKLMNPQRSTVWXZ]{30,}/.test(val)) return false;
-  return true; 
-};
-
 const nameValidator = (val: string | undefined | null) => {
   if (!val || val === "") return true;
   const nameRegex = /^[a-zA-Z\s\-.ñÑ]+$/;
   if (!nameRegex.test(val)) return false;
-  return validateGibberish(val);
+  return true; // Gibberish check removed for 100% Zero-Validation
 };
 
 const nameMsg = "Only letters, spaces, hyphens, and dots are allowed. Avoid random characters.";
-const gibberishMsg = "Please enter valid text, avoid random characters and excessive symbols.";
 
 export const RegisterSchema = z.object({
   employeeId: z.string().optional(),
-  firstName: z.string().min(1, "First name is required").refine(nameValidator, nameMsg),
-  lastName: z.string().min(1, "Last name is required").refine(nameValidator, nameMsg),
-  middleName: z.string().optional().refine(nameValidator, nameMsg),
-  suffix: z.string().optional().refine(nameValidator, nameMsg),
+  firstName: z.string().optional().nullable(),
+  lastName: z.string().optional().nullable(),
+  middleName: z.string().optional().nullable(),
+  suffix: z.string().optional().nullable(),
   
   // Address
-  address: z.string().optional().refine(validateGibberish, gibberishMsg),
-  isMeycauayan: z.string(), // "true" or "false"
-  barangay: z.string().optional(),
-
-  email: z.string().email("Invalid email format"),
-  password: z.string()
-    .min(8, "Password must be at least 8 characters")
-    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, "Password must contain at least one uppercase letter, one lowercase letter, and one number")
-    .optional().or(z.literal("")),
-  role: z.enum(["Administrator", "Human Resource", "Employee"]).optional(),
-  department: z.string().min(1, "Department is required"),
-  position: z.string().min(1, "Position is required"),
-  dutyType: z.enum(["Standard", "Irregular"]),
-  appointmentType: z.enum(['Permanent', 'Contractual', 'Casual', 'Job Order', 'Coterminous', 'Temporary', 'Contract of Service', 'JO', 'COS', '']).optional().transform(val => val === "" ? undefined : val),
-  startTime: z.string().optional().refine(val => !val || /^([01]\d|2[0-3]):([0-5]\d)$/.test(val), "Invalid time format"),
-  endTime: z.string().optional().refine(val => !val || /^([01]\d|2[0-3]):([0-5]\d)$/.test(val), "Invalid time format"),
+  address: z.string().optional().nullable(),
+  isMeycauayan: z.string().optional().nullable(),
+  barangay: z.string().optional().nullable(),
+  email: z.string().optional().nullable(),
+  password: z.string().optional().nullable(),
+  role: z.string().optional().nullable().or(z.literal("")),
+  department: z.string().optional().nullable(),
+  position: z.string().optional().nullable(),
+  dutyType: z.string().optional().nullable().or(z.literal("")),
+  appointmentType: z.string().optional().nullable().or(z.literal("")),
+  startTime: z.string().optional().nullable(),
+  endTime: z.string().optional().nullable(),
   dateHired: z.string().optional(),
   avatar: z.instanceof(File).optional(),
 
   // Personal Info
-  birthDate: z.string().min(1, "Birth date is required"),
-  placeOfBirth: z.string().min(1, "Place of birth is required").refine(validateGibberish, gibberishMsg),
-  gender: z.enum(["Male", "Female", ""]).optional().or(z.null()).transform(val => val === "" ? null : val),
-  civilStatus: z.enum(["Single", "Married", "Widowed", "Separated", "Annulled", ""]).optional().or(z.null()).transform(val => val === "" ? null : val),
-  nationality: z.string().min(1, "Nationality is required").refine(validateGibberish, gibberishMsg),
-  religion: z.string().optional().or(z.null()).or(z.literal("")),
-  citizenship: z.string().min(1, "Citizenship is required").default("Filipino"),
-  citizenshipType: z.string().optional().or(z.null()).or(z.literal("")),
-  dualCountry: z.string().optional().or(z.null()).or(z.literal("")),
-  bloodType: z.string().min(1, "Blood type is required"),
-  heightM: z.string().min(1, "Height is required").or(z.number().transform(v => String(v))),
-  weightKg: z.string().min(1, "Weight is required").or(z.number().transform(v => String(v))),
-
-
+  birthDate: z.string().optional().nullable(),
+  placeOfBirth: z.string().optional().nullable(),
+  gender: z.string().optional().nullable().or(z.literal("")),
+  civilStatus: z.string().optional().nullable().or(z.literal("")),
+  nationality: z.string().optional().nullable(),
+  religion: z.string().optional().nullable(),
+  citizenship: z.string().optional().nullable(),
+  citizenshipType: z.string().optional().nullable(),
+  dualCountry: z.string().optional().nullable(),
+  bloodType: z.string().optional().nullable(),
+  heightM: z.string().optional().nullable().or(z.number().transform(v => String(v))),
+  weightKg: z.string().optional().nullable().or(z.number().transform(v => String(v))),
 
   // Contact & Detailed Address
-  resRegion: z.string().optional(),
-  resProvince: z.string().optional(),
-  resCity: z.string().optional(),
-  resArea: z.string().optional(),
-  resHouseBlockLot: z.string().min(1, "House/Block/Lot is required").refine(validateGibberish, gibberishMsg),
-  resStreet: z.string().min(1, "Street is required").refine(validateGibberish, gibberishMsg),
-  resBarangay: z.string().optional(),
-  resSubdivision: z.string().optional().refine(validateGibberish, gibberishMsg),
-  permRegion: z.string().optional(),
-  permProvince: z.string().optional(),
-  permCity: z.string().optional(),
-  permBarangay: z.string().optional(),
-  permStreet: z.string().min(1, "Permanent street is required").refine(validateGibberish, gibberishMsg),
-  permHouseBlockLot: z.string().min(1, "Permanent house/block/lot is required").refine(validateGibberish, gibberishMsg),
-  permSubdivision: z.string().optional().refine(validateGibberish, gibberishMsg),
+  resRegion: z.string().optional().nullable(),
+  resProvince: z.string().optional().nullable(),
+  resCity: z.string().optional().nullable(),
+  resArea: z.string().optional().nullable(),
+  resHouseBlockLot: z.string().optional().nullable(),
+  resStreet: z.string().optional().nullable(),
+  resBarangay: z.string().optional().nullable(),
+  resSubdivision: z.string().optional().nullable(),
+  permRegion: z.string().optional().nullable(),
+  permProvince: z.string().optional().nullable(),
+  permCity: z.string().optional().nullable(),
+  permBarangay: z.string().optional().nullable(),
+  permStreet: z.string().optional().nullable(),
+  permHouseBlockLot: z.string().optional().nullable(),
+  permSubdivision: z.string().optional().nullable(),
   
-  residentialAddress: z.string().optional().refine(validateGibberish, gibberishMsg),
-  residentialZipCode: z.string().min(1, "Zip code is required"),
-  permanentAddress: z.string().optional().refine(validateGibberish, gibberishMsg),
-  permanentZipCode: z.string().min(1, "Permanent zip code is required"),
-  telephoneNo: z.string().optional().refine(validateGibberish, gibberishMsg),
-  mobileNo: z.string().min(1, "Mobile number is required"),
-  emergencyContact: z.string().min(1, "Emergency contact is required").refine(validateGibberish, gibberishMsg),
-  emergencyContactNumber: z.string().min(1, "Emergency contact number is required"),
+  residentialAddress: z.string().optional().nullable(),
+  residentialZipCode: z.string().optional().nullable(),
+  permanentAddress: z.string().optional().nullable(),
+  permanentZipCode: z.string().optional().nullable(),
+  telephoneNo: z.string().optional().nullable(),
+  mobileNo: z.string().optional().nullable(),
+  emergencyContact: z.string().optional().nullable(),
+  emergencyContactNumber: z.string().optional().nullable(),
 
   // Government Identification
-  gsisNumber: createIdValidator(ID_REGEX.GSIS, "GSIS Number").optional().nullable().or(z.literal('')),
-  pagibigNumber: createIdValidator(ID_REGEX.PAGIBIG, "Pag-IBIG Number").optional().nullable().or(z.literal('')),
-  philhealthNumber: createIdValidator(ID_REGEX.PHILHEALTH, "PhilHealth Number").optional().nullable().or(z.literal('')),
-  umidNumber: createIdValidator(ID_REGEX.UMID, "UMID Number").optional().nullable().or(z.literal('')),
-  philsysId: createIdValidator(ID_REGEX.PHILSYS, "PhilSys ID").optional().nullable().or(z.literal('')),
-  tinNumber: createIdValidator(ID_REGEX.TIN, "TIN").optional().nullable().or(z.literal('')),
-  agencyEmployeeNo: z.string().optional().nullable().or(z.literal('')).refine(validateGibberish, gibberishMsg),
+  gsisNumber: z.string().optional().nullable().or(z.literal('')),
+  pagibigNumber: z.string().optional().nullable().or(z.literal('')),
+  philhealthNumber: z.string().optional().nullable().or(z.literal('')),
+  umidNumber: z.string().optional().nullable().or(z.literal('')),
+  philsysId: z.string().optional().nullable().or(z.literal('')),
+  tinNumber: z.string().optional().nullable().or(z.literal('')),
+  agencyEmployeeNo: z.string().optional().or(z.null()).or(z.literal('')),
 
-  // Educational Background — 100% aligned with pds_education table
-  educationalBackground: z.string().optional().or(z.null()).or(z.literal("")),
-  schoolName: z.string().optional().or(z.null()).or(z.literal("")),
-  course: z.string().optional().or(z.null()).or(z.literal("")),
-  yearGraduated: z.string().optional().or(z.null()).or(z.literal("")),
-  
-  education: z.object({
-    Elementary: z.object({ school: z.string().optional().nullable(), course: z.string().optional().nullable(), from: z.string().optional().nullable(), to: z.string().optional().nullable(), units: z.string().optional().nullable(), yearGrad: z.string().optional().nullable(), honors: z.string().optional().nullable() }).optional(),
-    Secondary: z.object({ school: z.string().optional().nullable(), course: z.string().optional().nullable(), from: z.string().optional().nullable(), to: z.string().optional().nullable(), units: z.string().optional().nullable(), yearGrad: z.string().optional().nullable(), honors: z.string().optional().nullable() }).optional(),
-    Vocational: z.object({ school: z.string().optional().nullable(), course: z.string().optional().nullable(), from: z.string().optional().nullable(), to: z.string().optional().nullable(), units: z.string().optional().nullable(), yearGrad: z.string().optional().nullable(), honors: z.string().optional().nullable() }).optional(),
-    College: z.object({ school: z.string().optional().nullable(), course: z.string().optional().nullable(), from: z.string().optional().nullable(), to: z.string().optional().nullable(), units: z.string().optional().nullable(), yearGrad: z.string().optional().nullable(), honors: z.string().optional().nullable() }).optional(),
-    Graduate: z.object({ school: z.string().optional().nullable(), course: z.string().optional().nullable(), from: z.string().optional().nullable(), to: z.string().optional().nullable(), units: z.string().optional().nullable(), yearGrad: z.string().optional().nullable(), honors: z.string().optional().nullable() }).optional(),
-  }).optional(),
-
-  yearsOfExperience: z.union([z.string(), z.number()]).transform(v => String(v)).refine(v => v.trim().length > 0, "Years of experience is required"),
-  highestDegree: z.string().optional().or(z.null()).or(z.literal("")),
-  experience: z.string().min(1, "Experience summary is required").refine(validateProfessionalText, gibberishMsg),
-  skills: z.string().min(1, "Skills are required").refine(validateProfessionalText, gibberishMsg),
-
-  // Eligibility
-  eligibilityType: z.string().optional().or(z.null()).or(z.literal("")),
-  eligibilityNumber: z.string().optional().or(z.null()).or(z.literal("")),
-  eligibilityDate: z.string().optional().or(z.null()).or(z.literal("")),
-
-  eligibilities: z.array(z.object({
-    name: z.string().min(1, "Eligibility name is required"),
-    rating: z.string().optional().nullable(),
-    examDate: z.string().optional().nullable(),
-    examPlace: z.string().optional().nullable(),
-    licenseNo: z.string().optional().nullable(),
-    licenseValidUntil: z.string().optional().nullable()
+  educations: z.array(z.object({
+    level: z.string().optional().nullable(),
+    schoolName: z.string().optional().nullable(),
+    degreeCourse: z.string().optional().nullable(),
+    dateFrom: z.union([z.string(), z.number()]).optional().nullable(),
+    dateTo: z.union([z.string(), z.number()]).optional().nullable(),
+    unitsEarned: z.string().optional().nullable(),
+    yearGraduated: z.union([z.string(), z.number()]).optional().nullable(),
+    honors: z.string().optional().nullable()
   })).optional().default([]),
 
-  // Work Experience (Multi)
+  eligibilities: z.array(z.object({
+    eligibilityName: z.string().optional().nullable().or(z.literal("")),
+    rating: z.union([z.string(), z.number()]).optional().nullable(),
+    examDate: z.string().optional().nullable(),
+    examPlace: z.string().optional().nullable(),
+    licenseNumber: z.string().optional().nullable(),
+    validityDate: z.string().optional().nullable()
+  })).optional().default([]),
+
   workExperiences: z.array(z.object({
-    dateFrom: z.string().min(1, "Date from is required"),
+    dateFrom: z.string().optional().nullable().or(z.literal("")),
     dateTo: z.string().optional().nullable().or(z.literal('')),
-    positionTitle: z.string().min(1, "Position title is required"),
-    companyName: z.string().min(1, "Company Name is required"),
-    monthlySalary: z.string().optional().nullable().or(z.literal('')),
-    salaryGrade: z.string().optional().nullable().or(z.literal('')),
-    appointmentStatus: z.string().optional().nullable().or(z.literal('')),
+    positionTitle: z.string().optional().nullable().or(z.literal("")),
+    companyName: z.string().optional().nullable().or(z.literal("")),
+    monthlySalary: z.union([z.string(), z.number()]).optional().nullable(),
+    salaryGrade: z.string().optional().nullable(),
+    appointmentStatus: z.string().optional().nullable(),
     isGovernment: z.boolean().default(false)
   })).optional().default([]),
 
-
-
-  // Learning & Development (Multi)
   trainings: z.array(z.object({
-    title: z.string().min(1, "Title is required"),
-    dateFrom: z.string().min(1, "Date from is required"),
-    dateTo: z.string().optional().nullable().or(z.literal('')),
-    hoursNumber: z.string().optional().nullable().or(z.literal('')),
-    typeOfLd: z.string().optional().nullable().or(z.literal('')),
-    conductedBy: z.string().optional().nullable().or(z.literal(''))
+    title: z.string().optional().nullable(),
+    dateFrom: z.string().optional().nullable(),
+    dateTo: z.string().optional().nullable(),
+    hoursNumber: z.union([z.string(), z.number()]).optional().nullable(),
+    typeOfLd: z.string().optional().nullable(),
+    conductedBy: z.string().optional().nullable()
   })).optional().default([]),
 
+  familyBackground: z.array(z.object({
+    relationType: z.enum(['Spouse', 'Father', 'Mother', 'Child']),
+    lastName: z.string().optional().nullable(),
+    firstName: z.string().optional().nullable(),
+    middleName: z.string().optional().nullable(),
+    nameExtension: z.string().optional().nullable(),
+    occupation: z.string().optional().nullable(),
+    employer: z.string().optional().nullable(),
+    businessAddress: z.string().optional().nullable(),
+    telephoneNo: z.string().optional().nullable(),
+    dateOfBirth: z.string().optional().nullable()
+  })).optional().default([]),
 
+  otherInfo: z.array(z.object({
+    type: z.enum(['Skill', 'Recognition', 'Membership']),
+    description: z.string()
+  })).optional().default([]),
 
-  // Social & Others
-  facebookUrl: z.string().optional().nullable().or(z.literal('')).refine(validateGibberish, gibberishMsg),
-  linkedinUrl: z.string().optional().nullable().or(z.literal('')).refine(validateGibberish, gibberishMsg),
-  twitterHandle: z.string().optional().nullable().or(z.literal('')).refine(validateGibberish, gibberishMsg),
+  yearsOfExperience: z.union([z.string(), z.number()]).transform(v => String(v)).optional(),
+  highestDegree: z.string().optional().or(z.null()).or(z.literal("")),
+  experience: z.string().optional(),
+  skills: z.string().optional(),
+
+  facebookUrl: z.string().optional().nullable().or(z.literal('')),
+  linkedinUrl: z.string().optional().nullable().or(z.literal('')),
+  twitterHandle: z.string().optional().nullable().or(z.literal('')),
   ignoreDuplicateWarning: z.boolean().optional(),
 
   // Family Background
@@ -204,11 +181,7 @@ export const RegisterSchema = z.object({
     birthDate: z.string().optional().nullable()
   })).optional().default([]),
 
-  otherSkills: z.array(z.object({ value: z.string() })).optional().default([]),
-  recognitions: z.array(z.object({ value: z.string() })).optional().default([]),
-  memberships: z.array(z.object({ value: z.string() })).optional().default([]),
-
-  pdsQuestions: PdsQuestionsSchema.optional().nullable(),
+  pdsQuestions: z.any().optional(),
 
   // PDS Certifications
   govtIdType: z.string().optional().or(z.null()).or(z.literal("")),
@@ -222,71 +195,14 @@ export const RegisterSchema = z.object({
   applicantPhotoPath: z.string().optional(),
   dateAccomplished: z.string().optional(),
   isOldEmployee: z.boolean().optional().default(false),
-  certifiedCorrect: z.boolean().refine(val => val === true, "You must certify the information is correct"),
+  certifiedCorrect: z.boolean().optional().default(true),
 }).superRefine((data, ctx) => {
-  // Address Verification
-  if (data.isMeycauayan === "true") {
-    if (!data.resBarangay || data.resBarangay === "") {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Barangay is required for Meycauayan residents",
-        path: ["resBarangay"],
-      });
-    }
-  } else {
-    if (!data.resRegion || data.resRegion === "") {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Region is required", path: ["resRegion"] });
-    }
-    if (!data.resProvince || data.resProvince === "") {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Province is required", path: ["resProvince"] });
-    }
-    if (!data.resCity || data.resCity === "") {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "City/Municipality is required", path: ["resCity"] });
-    }
-  }
-
-  // Permanent Address Logic
-  if (!data.permRegion || data.permRegion === "") {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Permanent Region is required", path: ["permRegion"] });
-  }
-
-  // Duty Type Conditional Validation (GSIS, TIN, etc. only for Standard)
-  if (data.dutyType === "Standard") {
-    const requiredGovIds = [
-      { key: "gsisNumber", name: "GSIS" },
-      { key: "pagibigNumber", name: "Pag-IBIG" },
-      { key: "philhealthNumber", name: "PhilHealth" },
-      { key: "tinNumber", name: "TIN" }
-    ];
-
-    requiredGovIds.forEach(({ key, name }) => {
-      const val = data[key as keyof typeof data];
-      if (!val || val === "" || (typeof val === "string" && val.trim() === "")) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: `${name} Number is required for Standard employees`,
-          path: [key],
-        });
-      }
-    });
-
-    if (!data.eligibilities || data.eligibilities.length === 0) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "At least one eligibility is required for Standard employees",
-        path: ["eligibilities"],
-      });
-    }
-  }
 });
 
 export const VerifyOTPSchema = z.object({
   identifier: z.string().min(1, "Identifier is required"),
   otp: z.string().length(6, "OTP must be exactly 6 digits")
 });
-
-
-
 
 export const EmailVerifySchema = z.object({
   email: z.string().email("Invalid email format"),

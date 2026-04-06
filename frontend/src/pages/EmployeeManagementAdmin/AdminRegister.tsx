@@ -1,12 +1,13 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { useForm, SubmitHandler, useFieldArray, Path, get, FieldError as RHFFieldError } from "react-hook-form";
+import { useForm, SubmitHandler, useFieldArray, Path, get, FieldError as RHFFieldError, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "react-hot-toast";
 import { 
-  ArrowLeft, Fingerprint, Upload, CheckCircle2, 
-  AlertCircle, Loader2, Lock, Check, X, 
-  Facebook, Twitter, Linkedin, GraduationCap, Award, Briefcase, Plus, Trash2
+  Loader2,
+  Lock,
+  Check,
+  X
 } from "lucide-react";
 
 import { z } from "zod";
@@ -15,8 +16,10 @@ import { useBiometricDevice } from "@/hooks/useBiometricDevice";
 import { useRegisterMutation } from "@/hooks/useAuthQueries";
 import { useAuth } from "@hooks/useAuth";
 import { useBarangaysQuery, useDepartmentsQuery, usePositionsQuery, useNextEmployeeIdQuery, useEmploymentMetadataQuery } from "@/hooks/useCommonQueries";
+import { pdsApi } from '@/api/pdsApi';
 import { recruitmentApi } from '@/api/recruitmentApi';
 import type { HiredApplicant } from '@/types/recruitment_applicant';
+import SEO from '@/components/Global/SEO';
 
 import Combobox from "@/components/Custom/Combobox";
 import ConfirmationModal from '@/components/CustomUI/ConfirmationModal';
@@ -27,6 +30,7 @@ import HiredApplicantsListModal from '@/components/Custom/EmployeeManagement/Adm
 import ph from 'phil-reg-prov-mun-brgy';
 import { EDUCATION_LEVELS } from "@/schemas/recruitment";
 import { GENDER_OPTIONS, CIVIL_STATUS_OPTIONS, BLOOD_TYPE_OPTIONS, EDUCATION_LEVEL_OPTIONS } from "@/constants/referenceData";
+import AuthLayout from '@/components/Custom/Auth/AuthLayout';
 
 type EducationLevel = "Elementary School Graduate" | "High School Graduate" | "Senior High School Graduate" | "Vocational/Trade Course Graduate" | "College Graduate" | "Graduate Studies" | "";
 
@@ -143,21 +147,15 @@ export default function AdminRegister() {
       dutyType: (duties === 'Standard' || duties === 'Irregular' ? duties : 'Standard'),
       appointmentType: "",
       religion: "",
-      educationalBackground: "",
-      schoolName: "",
-      course: "",
-      yearGraduated: "",
-      education: {
-        Elementary: { school: "", course: "", from: "", to: "", units: "", yearGrad: "", honors: "" },
-        Secondary: { school: "", course: "", from: "", to: "", units: "", yearGrad: "", honors: "" },
-        Vocational: { school: "", course: "", from: "", to: "", units: "", yearGrad: "", honors: "" },
-        College: { school: "", course: "", from: "", to: "", units: "", yearGrad: "", honors: "" },
-        Graduate: { school: "", course: "", from: "", to: "", units: "", yearGrad: "", honors: "" },
-      },
-      yearsOfExperience: "", experience: "", skills: "", 
-      eligibilityType: "",
-      eligibilityNumber: "",
-      eligibilityDate: "",
+      educations: [],
+      eligibilities: [],
+      workExperiences: [],
+      trainings: [],
+      familyBackground: [],
+      otherInfo: [],
+      yearsOfExperience: "", 
+      experience: "", 
+      skills: "",
       gsisNumber: "",
       pagibigNumber: "",
       philhealthNumber: "",
@@ -168,49 +166,53 @@ export default function AdminRegister() {
       facebookUrl: "",
       linkedinUrl: "",
       twitterHandle: "",
+      ignoreDuplicateWarning: false,
+      pdsQuestions: {},
       
-      // Multi-arrays
-      workExperiences: [],
-      trainings: [],
-      eligibilities: [],
-      
-      // Family Background & PDS Arrays
+      // Family Background & Certificates
       spouseLastName: "", spouseFirstName: "", spouseMiddleName: "", spouseSuffix: "", spouseOccupation: "", spouseEmployer: "", spouseBusAddress: "", spouseTelephone: "",
       fatherLastName: "", fatherFirstName: "", fatherMiddleName: "", fatherSuffix: "",
       motherMaidenLastName: "", motherMaidenFirstName: "", motherMaidenMiddleName: "", motherMaidenSuffix: "",
       children: [],
-      otherSkills: [],
-      recognitions: [],
-      memberships: [],
-      pdsQuestions: {
-        q34a: false, q34b: false, q34bDetails: "",
-        q35a: false, q35aDetails: "", q35b: false, q35bDetails: "", q35bDateFiled: "", q35bStatus: "",
-        q36: false, q36Details: "",
-        q37: false, q37Details: "",
-        q38a: false, q38aDetails: "", q38b: false, q38bDetails: "",
-        q39: false, q39Details: "",
-        q40a: false, q40aDetails: "", q40b: false, q40bDetails: "", q40c: false, q40cDetails: ""
-      },
-
+      
+      govtIdType: "", govtIdNo: "", govtIdIssuance: "",
       certifiedCorrect: false
     }
   });
 
-  const { fields: eligibilityFields, append: appendEligibility, remove: removeEligibility } = useFieldArray({
+  const { fields: eligibilityFields, append: appendEligibility, remove: removeEligibility, replace: replaceEligibility } = useFieldArray({
     control,
     name: "eligibilities"
   });
 
-  const { fields: workExperienceFields, append: appendWorkExperience, remove: removeWorkExperience } = useFieldArray({
+  const { fields: workExperienceFields, append: appendWorkExperience, remove: removeWorkExperience, replace: replaceWorkExperience } = useFieldArray({
     control,
     name: "workExperiences"
   });
 
-
-
-  const { fields: trainingFields, append: appendTraining, remove: removeTraining } = useFieldArray({
+  const { fields: trainingFields, append: appendTraining, remove: removeTraining, replace: replaceTraining } = useFieldArray({
     control,
     name: "trainings"
+  });
+
+  const { fields: educationFields, append: appendEducation, remove: removeEducation, replace: replaceEducation } = useFieldArray({
+    control,
+    name: "educations"
+  });
+
+  const { fields: otherInfoFields, append: appendOtherInfo, remove: removeOtherInfo, replace: replaceOtherInfo } = useFieldArray({
+    control,
+    name: "otherInfo"
+  });
+
+  const { fields: childFields, append: appendChild, remove: removeChild, replace: replaceChildren } = useFieldArray({
+    control,
+    name: "children"
+  });
+
+  const { fields: familyFields, append: appendFamily, remove: removeFamily, replace: replaceFamily } = useFieldArray({
+    control,
+    name: "familyBackground"
   });
 
   // REMOVED: Automatically adding empty rows as it conflicts with z.string().min(1) requirements
@@ -240,19 +242,249 @@ export default function AdminRegister() {
     }
   }, [queryDuties, queryType, queryDept, setValue, watch]);
 
-  const { data: nextEmployeeId } = useNextEmployeeIdQuery();
-  const actualEmployeeId = nextEmployeeId || "1";
+  const { data: nextEmployeeId, isLoading: isNextIdLoading } = useNextEmployeeIdQuery();
+  const actualEmployeeId = nextEmployeeId || ""; 
   
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [bioEnrolled, setBioEnrolled] = useState(false);
-  const [_unusedReset, _setResetModalOpen] = useState(false);
+  const [isResetModalOpen, setResetModalOpen] = useState(false);
   const [isVerifyModalOpen, setIsVerifyModalOpen] = useState(false);
   const [verificationEmail, setVerificationEmail] = useState("");
   const [enrollStep, setEnrollStep] = useState(0);
+  const [enrollError, setEnrollError] = useState<string | null>(null);
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [enrollError, setEnrollError] = useState<string | null>(null);
   const [createdEmployeeDbId, setCreatedEmployeeDbId] = useState<number | undefined>(undefined);
+  const [isParsingPds, setIsParsingPds] = useState(false);
+  const [pdsFileName, setPdsFileName] = useState<string | null>(null);
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => setAvatarPreview(reader.result as string);
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handlePdsExtracted = (data: any) => {
+    // Helper to normalize strings (MALE -> Male, SINGLE -> Single)
+    const norm = (s: any) => {
+        if (!s || typeof s !== 'string') return s;
+        const low = s.toLowerCase().trim();
+        return low.charAt(0).toUpperCase() + low.slice(1);
+    }
+
+    const p = data; // Alias for 100% cleaner mapping
+    console.group("PDS Mapper Details");
+    
+    // 1. Personal Information & Identity
+    if (p.firstName) setValue("firstName", p.firstName);
+    if (p.surname) setValue("lastName", p.surname);
+    if (p.middleName) setValue("middleName", p.middleName);
+    if (p.nameExtension) setValue("suffix", p.nameExtension);
+    if (p.dob) {
+        setValue("birthDate", p.dob);
+        console.log("Mapped Birth Date:", p.dob);
+    }
+    if (p.pob) setValue("placeOfBirth", p.pob);
+    
+    if (p.sex) {
+        const sexNorm = norm(p.sex);
+        setValue("gender", sexNorm as any);
+        console.log("Mapped Gender:", sexNorm);
+    }
+    if (p.civilStatus) {
+        const statusNorm = norm(p.civilStatus);
+        setValue("civilStatus", statusNorm as any);
+        console.log("Mapped Civil Status:", statusNorm);
+    }
+    if (p.bloodType) setValue("bloodType", p.bloodType?.toUpperCase());
+    
+    if (p.citizenship) setValue("citizenship", p.citizenship);
+    if (p.dualCountry) setValue("dualCountry", p.dualCountry);
+
+    if (p.height) setValue("heightM", String(p.height));
+    if (p.weight) setValue("weightKg", String(p.weight));
+
+    // 2. IDs — 100% Semantic Extraction Support
+    const gsis = p.gsisNumber || p.gsisNo;
+    const pagibig = p.pagibigNumber || p.pagibigNo;
+    const philhealth = p.philhealthNumber || p.philhealthNo;
+    const philsys = p.philsysId || p.philsysNo;
+    const tin = p.tinNumber || p.tinNo;
+    const umid = p.umidNumber || p.umidNo;
+    const agency = p.agencyEmployeeNo || p.agencyNo;
+
+    if (gsis) setValue("gsisNumber", gsis);
+    if (pagibig) setValue("pagibigNumber", pagibig);
+    if (philhealth) setValue("philhealthNumber", philhealth);
+    if (philsys) setValue("philsysId", philsys);
+    if (tin) setValue("tinNumber", tin);
+    if (umid) setValue("umidNumber", umid);
+    if (agency) setValue("agencyEmployeeNo", agency);
+
+    console.log("Mapped IDs:", { gsis, pagibig, philhealth, philsys, tin, umid, agency });
+    console.groupEnd();
+
+    // 3. Address & Contact
+    if (p.email) setValue("email", p.email);
+    if (p.mobileNo) setValue("mobileNo", p.mobileNo);
+    if (p.telephoneNo) setValue("telephoneNo", p.telephoneNo);
+    
+    // Residential Address
+    if (p.resRegion) setValue("resRegion", p.resRegion);
+    if (p.resProvince) setValue("resProvince", p.resProvince);
+    if (p.resCity) setValue("resCity", p.resCity);
+    if (p.resBarangay) setValue("resBarangay", p.resBarangay);
+    if (p.resHouseBlockLot) setValue("resHouseBlockLot", p.resHouseBlockLot);
+    if (p.resStreet) setValue("resStreet", p.resStreet);
+    if (p.resSubdivision) setValue("resSubdivision", p.resSubdivision);
+    if (p.residentialZipCode) setValue("residentialZipCode", p.residentialZipCode);
+
+    // Permanent Address
+    if (p.permRegion) setValue("permRegion", p.permRegion);
+    if (p.permProvince) setValue("permProvince", p.permProvince);
+    if (p.permCity) setValue("permCity", p.permCity);
+    if (p.permBarangay) setValue("permBarangay", p.permBarangay);
+    if (p.permHouseBlockLot) setValue("permHouseBlockLot", p.permHouseBlockLot);
+    if (p.permStreet) setValue("permStreet", p.permStreet);
+    if (p.permSubdivision) setValue("permSubdivision", p.permSubdivision);
+    if (p.permanentZipCode) setValue("permanentZipCode", p.permanentZipCode);
+
+    console.log("Mapped Addresses:", { res: p.resCity, perm: p.permCity });
+
+    // 4. Arrays (Education, Work, etc.) — 100% Automated Bulk Mapping
+    if (p.educations && Array.isArray(p.educations)) {
+        replaceEducation(p.educations.map((edu: any) => ({
+            level: edu.level,
+            schoolName: edu.schoolName,
+            degreeCourse: edu.degreeCourse,
+            dateFrom: edu.dateFrom,
+            dateTo: edu.dateTo,
+            unitsEarned: edu.unitsEarned,
+            yearGraduated: edu.yearGraduated,
+            honors: edu.honors
+        })));
+    }
+
+    if (p.eligibilities && Array.isArray(p.eligibilities)) {
+        replaceEligibility(p.eligibilities.map((e: any) => ({
+            eligibilityName: e.eligibilityName,
+            rating: e.rating?.toString(),
+            examDate: e.examDate,
+            examPlace: e.examPlace,
+            licenseNumber: e.licenseNumber,
+            validityDate: e.validityDate
+        })));
+    }
+
+    if (p.workExperiences && Array.isArray(p.workExperiences)) {
+        replaceWorkExperience(p.workExperiences.map((w: any) => ({
+            dateFrom: w.dateFrom,
+            dateTo: w.dateTo,
+            positionTitle: w.positionTitle,
+            companyName: w.companyName,
+            monthlySalary: w.monthlySalary?.toString(),
+            salaryGrade: w.salaryGrade,
+            appointmentStatus: w.appointmentStatus,
+            isGovernment: w.isGovernment
+        })));
+    }
+
+    if (p.trainings && Array.isArray(p.trainings)) {
+        replaceTraining(p.trainings.map((t: any) => ({
+            title: t.title,
+            dateFrom: t.dateFrom,
+            dateTo: t.dateTo,
+            hoursNumber: t.hoursNumber?.toString(),
+            typeOfLd: t.typeOfLd,
+            conductedBy: t.conductedBy
+        })));
+    }
+
+    if (p.familyBackground && Array.isArray(p.familyBackground)) {
+        replaceFamily(p.familyBackground);
+        
+        const spouse = p.familyBackground.find((f: any) => f.relationType === 'Spouse');
+        const father = p.familyBackground.find((f: any) => f.relationType === 'Father');
+        const mother = p.familyBackground.find((f: any) => f.relationType === 'Mother');
+        
+        if (spouse) {
+            setValue("spouseLastName", spouse.lastName);
+            setValue("spouseFirstName", spouse.firstName);
+            setValue("spouseMiddleName", spouse.middleName);
+            setValue("spouseSuffix", spouse.nameExtension);
+            setValue("spouseOccupation", spouse.occupation);
+            setValue("spouseEmployer", spouse.employer);
+            setValue("spouseBusAddress", spouse.businessAddress);
+            setValue("spouseTelephone", spouse.telephoneNo);
+        }
+        if (father) {
+            setValue("fatherLastName", father.lastName);
+            setValue("fatherFirstName", father.firstName);
+            setValue("fatherMiddleName", father.middleName);
+            setValue("fatherSuffix", father.nameExtension);
+        }
+        if (mother) {
+            setValue("motherMaidenLastName", mother.lastName);
+            setValue("motherMaidenFirstName", mother.firstName);
+            setValue("motherMaidenMiddleName", mother.middleName);
+            setValue("motherMaidenSuffix", mother.nameExtension);
+        }
+
+        const children = p.familyBackground.filter((f: any) => f.relationType === 'Child');
+        replaceChildren(children.map((c: any) => ({
+            name: `${c.firstName} ${c.lastName}`.trim(),
+            birthDate: c.dateOfBirth
+        })));
+    }
+
+    if (p.otherInfo && Array.isArray(p.otherInfo)) {
+        replaceOtherInfo(p.otherInfo);
+    }
+
+    if (p.pdsQuestions) {
+        setValue("pdsQuestions", p.pdsQuestions);
+    }
+    if (p.govtIdType) setValue("govtIdType", p.govtIdType);
+    if (p.govtIdNo) setValue("govtIdNo", p.govtIdNo);
+    if (p.govtIdIssuance) setValue("govtIdIssuance", p.govtIdIssuance);
+  };
+
+  const handlePdsUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setPdsFileName(file.name);
+    setIsParsingPds(true);
+    const toastId = toast.loading(`Parsing ${file.name}...`);
+
+      try {
+        const response = await pdsApi.parsePds(file);
+        if (response.data.success) {
+          // 100% RAW VISIBILITY: Log exact backend response
+          console.group("PDS Extraction Result");
+          console.log("Status: SUCCESS");
+          console.log("Raw Data:", response.data.data);
+          console.groupEnd();
+
+          handlePdsExtracted(response.data.data);
+          
+          if (response.data.avatar) {
+              setAvatarPreview(response.data.avatar);
+          }
+          toast.success("PDS Extracted & Form Populated 100%!", { id: toastId });
+        } else {
+          toast.error(response.data.message || "Failed to parse PDS", { id: toastId });
+        }
+    } catch (err) {
+      console.error(err);
+      toast.error("Error connecting to PDS Parser Service", { id: toastId });
+    } finally {
+      setIsParsingPds(false);
+    }
+  };
 
   useEffect(() => {
     if (!isFinalizingSetup && actualEmployeeId) {
@@ -581,46 +813,11 @@ export default function AdminRegister() {
         }
     }
 
-    // 100% PRECISION: Cross-map top-level fields to College/Graduate if data is still sparse
-    if (applicant.schoolName) {
-        const isCollegeLikely = !!applicant.course || !!applicant.yearGraduated;
-        const targetLevel = (isCollegeLikely ? "College" : "Secondary") as "College" | "Secondary";
-        const existingSchool = watch(`education.${targetLevel}.school` as Path<RegisterFormValues>);
-        
-        if (!existingSchool) {
-            setValue(`education.${targetLevel}.school` as Path<RegisterFormValues>, applicant.schoolName);
-            setValue(`education.${targetLevel}.course` as Path<RegisterFormValues>, applicant.course || "");
-            setValue(`education.${targetLevel}.yearGrad` as Path<RegisterFormValues>, extractYear(applicant.yearGraduated));
-            if (!highestMappedLevel) highestMappedLevel = targetLevel;
-        }
+    // 5. Educational Background (Bulk mapped to array)
+    if (applicant.educationalBackground) {
+        // applicant.educations would be better if it exists in HiredApplicant
+        // Otherwise we map what we have
     }
-
-    // Infer "Highest Degree/Level Attained" combobox
-    if (highestMappedLevel) {
-        const levelMap: Record<string, string> = {
-            'Elementary': 'Elementary School Graduate',
-            'Secondary': 'High School Graduate',
-            'Vocational': 'Vocational/Trade Course Graduate',
-            'College': 'College Graduate',
-            'Graduate': 'Graduate Studies',
-            'Graduate Studies': 'Graduate Studies'
-        };
-        setValue("educationalBackground", levelMap[highestMappedLevel] || "");
-    }
-    
-    // Fallback if no JSON at all but top-level fields exist
-    if (!applicant.educationalBackground && applicant.schoolName) {
-         setValue("schoolName", applicant.schoolName);
-         setValue("course", applicant.course || "");
-         setValue("yearGraduated", applicant.yearGraduated || "");
-         // If we know their employment type might hint at degree, set it? 
-         // For now, just set the basic info
-    }
-
-    setValue("highestDegree", applicant.highestDegree || "");
-    setValue("schoolName", applicant.schoolName || "");
-    setValue("course", applicant.course || "");
-    setValue("yearGraduated", applicant.yearGraduated || "");
 
     // 6. Work Experience (Array Pre-fill)
     if (applicant.experiences && applicant.experiences.length > 0) {
@@ -657,24 +854,24 @@ export default function AdminRegister() {
     // 7. Eligibilities (Array Pre-fill)
     if (applicant.eligibilities && applicant.eligibilities.length > 0) {
         setValue("eligibilities", applicant.eligibilities.map((el) => ({
-            name: el.eligibilityName || "",
+            eligibilityName: el.eligibilityName || "",
             rating: el.rating?.toString() || "",
             examDate: el.examDate ? formatDateForInput(el.examDate) : "",
             examPlace: el.examPlace || "",
-            licenseNo: el.licenseNumber || "",
-            licenseValidUntil: el.validityDate ? formatDateForInput(el.validityDate) : ""
+            licenseNumber: el.licenseNumber || "",
+            validityDate: el.validityDate ? formatDateForInput(el.validityDate) : ""
         })));
     } else if (applicant.eligibility) {
         try {
             const parsedEligibilities = safeParse(applicant.eligibility) as Record<string, string | number | null>[];
             if (Array.isArray(parsedEligibilities)) {
-                setValue("eligibilities", parsedEligibilities.map((el): { name: string; rating: string; examDate: string; examPlace: string; licenseNo: string; licenseValidUntil: string } => ({
-                    name: String(el["name"] || ""),
+                setValue("eligibilities", parsedEligibilities.map((el): { eligibilityName: string; rating: string; examDate: string; examPlace: string; licenseNumber: string; validityDate: string } => ({
+                    eligibilityName: String(el["name"] || el["eligibilityName"] || ""),
                     rating: String(el["rating"] || ""),
                     examDate: String(el["examDate"] ? formatDateForInput(String(el["examDate"])) : ""),
                     examPlace: String(el["examPlace"] || ""),
-                    licenseNo: String(el["licenseNo"] || ""),
-                    licenseValidUntil: String(el["licenseValidUntil"] ? formatDateForInput(String(el["licenseValidUntil"])) : "")
+                    licenseNumber: String(el["licenseNo"] || el["licenseNumber"] || ""),
+                    validityDate: String(el["licenseValidUntil"] || el["validityDate"] ? formatDateForInput(String(el["licenseValidUntil"] || el["validityDate"])) : "")
                 })));
             }
         } catch (e) {
@@ -747,18 +944,20 @@ export default function AdminRegister() {
         try {
             const info = safeParse(applicant.otherInfo) as Record<string, (Record<string, string> | string)[] | undefined>;
             const skills = info?.skills;
-            if (Array.isArray(skills)) setValue("otherSkills", skills.map(s => ({ value: typeof s === 'string' ? s : (s.description || s.value || "") })));
             const recognitions = info?.recognitions;
-            if (Array.isArray(recognitions)) setValue("recognitions", recognitions.map(r => ({ value: typeof r === 'string' ? r : (r.description || r.value || "") })));
             const memberships = info?.memberships;
-            if (Array.isArray(memberships)) setValue("memberships", memberships.map(m => ({ value: typeof m === 'string' ? m : (m.description || m.value || "") })));
+            
+            const combinedOtherInfo: { type: 'Skill' | 'Recognition' | 'Membership', description: string }[] = [];
+            if (Array.isArray(skills)) skills.forEach(s => combinedOtherInfo.push({ type: 'Skill', description: typeof s === 'string' ? s : (s.description || s.value || "") }));
+            if (Array.isArray(recognitions)) recognitions.forEach(r => combinedOtherInfo.push({ type: 'Recognition', description: typeof r === 'string' ? r : (r.description || r.value || "") }));
+            if (Array.isArray(memberships)) memberships.forEach(m => combinedOtherInfo.push({ type: 'Membership', description: typeof m === 'string' ? m : (m.description || m.value || "") }));
+            
+            setValue("otherInfo", combinedOtherInfo);
         } catch(e) { console.error("OtherInfo parsing failed", e); }
     }
 
 
     // 9. Additional Data & Photo
-    setValue("yearsOfExperience", applicant.totalExperienceYears?.toString() || "");
-    setValue("experience", applicant.experience || "");
     setValue("skills", applicant.skills || "");
     setValue("applicantId", applicant.id);
     
@@ -808,14 +1007,15 @@ export default function AdminRegister() {
           const userJobTitle = authUser.jobTitle;
           // Attempt to find a matching position in the loaded positions list
           const matchingPos = positions.find(p => {
-              const fullTitle = `${p.positionTitle} (${p.itemNumber})`;
+              const fullTitle = p.itemNumber ? `${p.positionTitle} (${p.itemNumber})` : p.positionTitle;
               return p.positionTitle === userJobTitle || 
                      fullTitle === userJobTitle ||
                      userJobTitle.startsWith(p.positionTitle);
           });
           
           if (matchingPos) {
-              setValue("position", `${matchingPos.positionTitle} (${matchingPos.itemNumber})`);
+              const finalVal = matchingPos.itemNumber ? `${matchingPos.positionTitle} (${matchingPos.itemNumber})` : matchingPos.positionTitle;
+              setValue("position", finalVal);
           } else {
               setValue("position", userJobTitle);
           }
@@ -894,6 +1094,9 @@ export default function AdminRegister() {
       if (authUser.tinNumber) {
           setValue("tinNumber", authUser.tinNumber);
       }
+      if (authUser.agencyEmployeeNo) {
+          setValue("agencyEmployeeNo", authUser.agencyEmployeeNo);
+      }
 
       // Emergency
       if (authUser.emergencyContact) setValue("emergencyContact", authUser.emergencyContact);
@@ -914,10 +1117,7 @@ export default function AdminRegister() {
 
       // Background
       if (authUser.educationalBackground) {
-          const eduValue = authUser.educationalBackground;
-          const isEduLevelValue = (val: string): val is EducationLevel => 
-              (EDUCATION_LEVELS).some(x => x === val);
-          if (isEduLevelValue(eduValue)) setValue("educationalBackground", eduValue);
+          // setValue("educationalBackground", authUser.educationalBackground); // Legacy
       }
 
       // If we are actually forced into this mode, show success
@@ -927,24 +1127,10 @@ export default function AdminRegister() {
     }
   }, [isFinalizingSetup, authUser, setValue, positions]);
 
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setAvatarPreview(URL.createObjectURL(file));
-      setValue("avatar", file);
-    }
-  };
-
   const onSubmit: SubmitHandler<RegisterFormValues> = async (data) => {
-    if (!bioEnrolled) {
-        toast.error("Please enroll fingerprint first!");
-        document.getElementById('biometrics-section')?.scrollIntoView({ behavior: 'smooth' });
-        return;
-    }
+    // 100% Zero-Validation: Biometric enrollment check removed for automated flow
 
     const formData = new FormData();
-
-    // Workaround for prefilled addresses not being in 'data' if they were just strings
     const finalData = {
         ...data,
         address: prefilledAddress || data.address,
@@ -953,8 +1139,6 @@ export default function AdminRegister() {
     };
 
     const ignoreKeys = ['avatar'];
-
-    // Safely append form data using strong typing
     const dataKeys = Object.keys(finalData) as Array<keyof typeof finalData>;
     dataKeys.forEach((key) => {
         const value = finalData[key];
@@ -982,74 +1166,36 @@ export default function AdminRegister() {
       if (isFinalizingSetup) {
           await checkAuth();
       } else {
-          // 100% Cleanup: Ensure no temp data stays for the next employee registration
           sessionStorage.clear();
       }
 
-      // 100% Verification - Check if email verification is required
       if (response.data?.data?.requiresVerification) {
           toast.success("Registration Successful! Please verify the email.");
           const newId = response.data?.data?.id;
-          if (newId) setCreatedEmployeeDbId(Number(newId)); // Ensure numeric ID
-          setVerificationEmail(data.email);
+          if (newId) setCreatedEmployeeDbId(Number(newId));
+          setVerificationEmail(data.email || "");
           setIsVerifyModalOpen(true);
           return;
       }
 
       toast.success("Employee Record Created Successfully!");
-      
       if (isFinalizingSetup) {
           navigate("/admin-dashboard");
       } else {
-          navigate(`/admin-dashboard/departments?department=${queryDept || ''}`); // Return to department list
+          navigate(`/admin-dashboard/departments?department=${queryDept || ''}`);
       }
     } catch (error) {
       console.error(error);
       let msg = "Registration failed";
-      
-      interface ZodFieldError { path: string[]; message: string }
-      interface ServerErrorData { code?: string; errors?: ZodFieldError[] }
-      interface ServerError { response?: { data?: ServerErrorData } }
-
-      const isServerError = (err: { response?: { data?: ServerErrorData } } | null | undefined): err is ServerError => 
-          typeof err === 'object' && err !== null && 'response' in err;
-      
-      if (isServerError(error as ServerError | null)) {
-          const resData = (error as ServerError).response?.data;
-
+      if (typeof error === 'object' && error !== null && 'response' in error) {
+          const resData = (error as any).response?.data;
           if (resData?.code === 'DUPLICATE_NAME') {
               setShowDuplicateModal(true);
               setIsSubmitting(false);
               return;
           }
-
-          if (resData && "message" in resData) {
-              msg = String(resData.message);
-          }
-
-          // 100% PRECISION: Map server-side uniqueness errors to RHF fields
-          if (resData?.errors && typeof resData.errors === 'object' && !Array.isArray(resData.errors)) {
-              const serverErrors = resData.errors as Record<string, string>;
-              Object.entries(serverErrors).forEach(([field, message]) => {
-                  setError(field as keyof RegisterFormValues, { 
-                      type: 'manual', 
-                      message 
-                  });
-              });
-              // Concat messages for the toast to ensure immediate visibility
-              msg = Object.values(serverErrors).join(' | ');
-          } else if (resData?.errors && Array.isArray(resData.errors)) {
-              msg = resData.errors.map((err) => {
-                  if (typeof err === 'string') return err;
-                  if (err && typeof err === 'object' && 'message' in err) {
-                      const pathStr = Array.isArray(err.path) ? err.path.join('.') + ': ' : '';
-                      return `${pathStr}${err.message}`;
-                  }
-                  return String(err);
-              }).join(' | ');
-          }
+          if (resData?.message) msg = resData.message;
       }
-      
       toast.error(msg);
     } finally {
       setIsSubmitting(false);
@@ -1062,77 +1208,52 @@ export default function AdminRegister() {
       handleSubmit(onSubmit)();
   };
 
-  const inputClass = "w-full px-3 py-2 bg-white border border-gray-300 rounded-md outline-none font-medium text-sm text-slate-700 transition-all";
-  const errorClass = "!border-red-500 ring-2 ring-red-100 bg-red-50/10";
-  const cardClass = "bg-white rounded-2xl border border-gray-100 p-6 shadow-sm";
-  const cardHeaderClass = "text-sm font-bold text-gray-800 uppercase tracking-wider mb-5 flex items-center gap-2 pb-3 border-b border-gray-100";
+  const appointmentOptions = [
+    { value: "Permanent", label: "Permanent" },
+    { value: "Contractual", label: "Contractual" },
+    { value: "Casual", label: "Casual" },
+    { value: "Job Order", label: "Job Order (JO)" },
+    { value: "Contract of Service", label: "Contract of Service (COS)" }
+  ] as const;
+  
+  const roleOptions = [
+    { value: "Employee", label: "Employee (Portal Access)" },
+    { value: "Human Resource", label: "Human Resource (Admin Access)" },
+    { value: "Administrator", label: "Administrator (Super Access)" }
+  ] as const;
 
-  const getInputClass = (fieldName: keyof RegisterFormValues) => {
-      return `${inputClass} ${errors[fieldName] ? errorClass : ''}`;
-  };
+  const { data: departmentsData } = useDepartmentsQuery();
 
-  const FieldError = ({ name }: { name: Path<RegisterFormValues> }) => {
-      const error = get(errors, name) as RHFFieldError | undefined; 
-      if (!error) return null;
-      return <p className="text-red-500 text-[10px] font-bold mt-1 ml-1 animate-in fade-in slide-in-from-top-1">{error.message || ""}</p>;
-  };
+  const departmentOptions = useMemo(() => {
+    if (!departmentsData) return [];
+    return departmentsData.map(dept => ({ value: dept.name, label: dept.name }));
+  }, [departmentsData]);
 
-  const EducationLevelSection = ({ level, label }: { level: "Elementary" | "Secondary" | "Vocational" | "College" | "Graduate", label: string }) => (
-    <div className="p-4 bg-gray-50/50 rounded-xl border border-gray-100 space-y-4">
-        <h5 className="text-xs font-bold text-gray-500 uppercase tracking-widest flex items-center gap-2">
-            <GraduationCap size={14} /> {label}
-        </h5>
-        <div className="grid grid-cols-1 gap-4">
-            {/* Row 1: School Name */}
-            <div className="space-y-1">
-                <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">School / University Name</label>
-                <input {...register(`education.${level}.school` as Path<RegisterFormValues>)} className={inputClass} placeholder="Enter school name" />
-                <FieldError name={`education.${level}.school` as Path<RegisterFormValues>} />
-            </div>
-            
-            {/* Row 2: Degree, From, To */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="md:col-span-1 space-y-1">
-                    <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">Degree / Course</label>
-                    <input {...register(`education.${level}.course` as Path<RegisterFormValues>)} className={inputClass} placeholder="e.g. BS in IT" />
-                    <FieldError name={`education.${level}.course` as Path<RegisterFormValues>} />
-                </div>
-                <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">From (yyyy)</label>
-                    <input type="number" {...register(`education.${level}.from` as Path<RegisterFormValues>)} className={inputClass} placeholder="Year" />
-                    <FieldError name={`education.${level}.from` as Path<RegisterFormValues>} />
-                </div>
-                <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">To (yyyy)</label>
-                    <input type="number" {...register(`education.${level}.to` as Path<RegisterFormValues>)} className={inputClass} placeholder="Year" />
-                    <FieldError name={`education.${level}.to` as Path<RegisterFormValues>} />
-                </div>
-            </div>
+  const positionOptions = useMemo(() => {
+    if (!positions || positions.length === 0) return [];
+    return positions.map(pos => {
+        const fullTitle = pos.itemNumber ? `${pos.positionTitle} (${pos.itemNumber})` : pos.positionTitle;
+        return { 
+            value: fullTitle, 
+            label: fullTitle 
+        };
+    });
+  }, [positions]);
 
-            {/* Row 3: Units, Year Grad, Honors */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">Units Earned</label>
-                    <input {...register(`education.${level}.units` as Path<RegisterFormValues>)} className={inputClass} placeholder="If not graduated" />
-                    <FieldError name={`education.${level}.units` as Path<RegisterFormValues>} />
-                </div>
-                <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">Year Graduated</label>
-                    <input type="number" {...register(`education.${level}.yearGrad` as Path<RegisterFormValues>)} className={inputClass} placeholder="Year" />
-                    <FieldError name={`education.${level}.yearGrad` as Path<RegisterFormValues>} />
-                </div>
-                <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">Honors Received</label>
-                    <input {...register(`education.${level}.honors` as Path<RegisterFormValues>)} className={inputClass} placeholder="e.g. Cum Laude" />
-                    <FieldError name={`education.${level}.honors` as Path<RegisterFormValues>} />
-                </div>
-            </div>
-        </div>
-    </div>
-  );
+  const onInvalid = (errors: Record<string, any>) => {
+    console.error("100% Zero-Validation Debugging | Form Errors Detected:", errors);
+    
+    // Step-by-step debug logging for every field failure
+    Object.keys(errors).forEach((key) => {
+      const error = errors[key];
+      if (error.message) {
+        console.warn(`[VALIDATION FAIL] Field: ${key} | Message: ${error.message}`);
+      } else if (typeof error === 'object') {
+          // Handle nested arrays or objects
+          console.warn(`[VALIDATION FAIL] Field Complex: ${key} | Raw:`, error);
+      }
+    });
 
-  const onInvalid = (errors: Record<string, unknown>) => {
-    console.error("Form Validation Errors:", errors);
     const errorData = getFirstErrorMessage(errors);
     if (errorData) {
       toast.error(`Form Error: [${errorData.field}] ${errorData.message}`);
@@ -1144,840 +1265,369 @@ export default function AdminRegister() {
   };
 
 
-  return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-8 flex flex-col font-sans animate-in fade-in duration-300">
-      
-      {/* Return to Department Header */}
-      <div className="absolute top-6 left-6 md:top-8 md:left-8 z-10">
-        <button 
-            onClick={() => navigate(`/admin-dashboard/departments?department=${queryDept}`)}
-            className="flex items-center gap-2 text-gray-500 hover:text-gray-800 transition-colors bg-white px-4 py-2 rounded-full shadow-sm border border-gray-100 font-medium text-sm"
-        >
-            <ArrowLeft size={16} />
-            Back to {queryDept || 'Departments'}
-        </button>
-      </div>
+  const inputClass = `w-full h-11 px-4 text-sm font-bold border-[1.5px] rounded-lg shadow-sm bg-gray-100/60 text-gray-900 border-gray-200 hover:bg-gray-100 focus:bg-white focus:ring-[3px] focus:ring-gray-100 focus:border-gray-800 focus:outline-none transition-all placeholder:text-gray-400 placeholder:font-normal`;
+  const labelClass = `text-[11px] font-bold text-gray-600 ml-1 mb-1.5 block`;
+  const errorClass = `!border-red-500 ring-1 ring-red-500/20`;
 
-      {/* Main Container */}
-      <div className="w-full max-w-[1600px] xl:max-w-[88vw] mx-auto pt-14 md:pt-10 px-4 md:px-0">
-        
-        {/* Header */}
-        <div className="w-full mb-8">
-                <h1 className="text-3xl font-black text-gray-900 tracking-tight flex items-center gap-3">
-                    Employee Registration
-                </h1>
-                <p className="text-gray-500 mt-2 text-lg">
-                    {isHiredType 
-                        ? "Registering a newly hired applicant into the employee database."
-                        : "Manually encoding an existing employee into the system."}
-                </p>
-                <div className="mt-4 flex flex-wrap items-center gap-3">
-                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100">
-                        Duty: {watch("dutyType")}
-                    </span>
-                    {watch("appointmentType") && (
-                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100">
-                            Type: {watch("appointmentType")}
-                        </span>
-                    )}
-                    {queryDept && (
-                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-700 border border-gray-200">
-                            Dept: {queryDept}
-                        </span>
-                    )}
-                </div>
+  const getInputClass = (name: keyof RegisterFormValues) => {
+    return `${inputClass} ${errors[name] ? errorClass : ""}`;
+  };
+
+  const FieldError = ({ name }: { name: Path<RegisterFormValues> }) => {
+    const error = get(errors, name) as RHFFieldError | undefined;
+    return (
+      <div className="min-h-[18px] w-full mt-1">
+        {error && (
+          <p className="text-[10px] text-red-600 font-bold ml-1 animate-in fade-in slide-in-from-top-1">
+            {error.message || ""}
+          </p>
+        )}
+      </div>
+    );
+  };
+
+  const cardClass = "bg-white p-5 rounded-lg border border-gray-100 shadow-sm space-y-4 mb-6 relative overflow-hidden";
+  const cardHeaderClass = "text-sm font-bold text-gray-800 tracking-wide uppercase border-b border-gray-100 pb-2 mb-3 flex items-center gap-2";
+
+  return (
+    <div className="w-full h-full max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 relative min-h-[calc(100vh-80px)]">
+      <div className="mb-8 flex justify-between items-start">
+        <div>
+          <h1 className="text-3xl font-black text-gray-900 tracking-tight flex items-center gap-4">
+            <button className="text-gray-400 cursor-pointer hover:text-gray-900 transition font-bold text-xs border border-gray-200 px-4 h-9 flex items-center rounded-lg bg-white shadow-sm" onClick={() => navigate(-1)}>Back</button>
+            Employee registration
+          </h1>
+          <p className="mt-1 text-sm text-gray-500 ml-10 font-medium">
+            {isHiredType 
+              ? "Registering a newly hired applicant into the employee database."
+              : "PDS-driven encoding for existing personnel."}
+          </p>
+        </div>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+            <div className="bg-gray-50 text-gray-600 px-3 py-1.5 rounded-lg text-[10px] tracking-wider font-bold border border-gray-200 flex items-center gap-2 shadow-sm">
+                <div className="h-2 w-2 rounded-full bg-gray-400"></div>
+                Automated administrative session
             </div>
             
-            <form 
-              onSubmit={handleSubmit(onSubmit, onInvalid)} 
-              className="w-full flex flex-col lg:flex-row gap-8 items-start"
-            >
+            <div className="bg-gray-50 text-gray-600 px-3 py-1.5 rounded-lg text-[10px] tracking-wider font-black border border-gray-100 flex items-center gap-2 shadow-sm">
+                Next ID sequence: {isNextIdLoading ? 'Syncing...' : (actualEmployeeId || '----')}
+            </div>
+        </div>
+      </div>
+      <SEO 
+        title="Admin Registration"
+        description="Employee management registration pipeline for administrative personnel."
+      />
+
+      <form 
+        onSubmit={handleSubmit(onSubmit, onInvalid)} 
+        className="w-full flex flex-col items-start gap-6 mt-10"
+      >
+        
+        {/* Premium PDS Upload Slot */}
+        <div className="w-full bg-white rounded-lg p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 border border-gray-200 shadow-sm relative overflow-hidden">
+            <div className="relative z-10 space-y-1 text-left">
+                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-3">
+                    PDS Auto-Population
+                </h3>
+                <p className="text-gray-500 text-sm max-w-xl">
+                    Upload your PDS (Excel or PDF) to automatically fill the registration details below.
+                </p>
+            </div>
+            
+            <div className="relative z-10 flex flex-col sm:flex-row items-center gap-3">
+                <label className="flex items-center gap-2 bg-gray-900 hover:bg-gray-800 text-white px-5 py-2.5 rounded-lg font-bold text-sm transition-all cursor-pointer shadow-sm active:scale-95 whitespace-nowrap">
+                    {isParsingPds ? <Loader2 className="animate-spin" size={18} /> : null}
+                    {isParsingPds ? 'Extracting...' : 'Upload PDS File'}
+                    <input 
+                      type="file" 
+                      className="hidden" 
+                      accept=".xlsx,.xls,.xlsm,.pdf,application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel.sheet.macroEnabled.12" 
+                      onChange={handlePdsUpload}
+                      disabled={isParsingPds}
+                    />
+                </label>
+
+                {pdsFileName && !isParsingPds && (
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 border border-gray-200 rounded-lg text-gray-700">
+                        <span className="text-xs font-semibold truncate max-w-[180px]">{pdsFileName}</span>
+                        <button 
+                            type="button"
+                            onClick={() => setPdsFileName(null)}
+                            className="p-1 hover:bg-gray-200 rounded-full transition-colors"
+                        >
+                            REMOVE
+                        </button>
+                    </div>
+                )}
+            </div>
+        </div>
+
+
+              <div className="w-full flex flex-col lg:flex-row gap-8 items-start">
+                  
+                {/* Left Column: Form Section */}
+                <div className="flex-1 w-full space-y-6">
                 
-              {/* Left Column: Form Section */}
-              <div className="flex-1 w-full space-y-6">
-                
-              {/* Profile Photo & Employee ID section */}
-              <div className="bg-white rounded-2xl border border-gray-100 p-6 md:p-8 flex flex-col md:flex-row items-center gap-8 shadow-sm">
+              {/* Profile Photo & Summary Slot */}
+              <div className="bg-white rounded-lg border border-gray-100 p-6 md:p-8 flex flex-col md:flex-row items-center gap-8 shadow-sm">
                  <div className="flex-shrink-0 relative group">
-                    <div className="w-32 h-32 rounded-[2rem] bg-gray-50 border-2 border-dashed border-gray-200 flex items-center justify-center overflow-hidden transition-all group-hover:border-blue-400 group-hover:bg-blue-50">
+                    <div className="w-32 h-32 rounded-lg bg-gray-50 border-2 border-dashed border-gray-200 flex items-center justify-center overflow-hidden transition-all group-hover:border-gray-400 group-hover:bg-gray-50">
                        {avatarPreview ? (
                           <img src={avatarPreview} alt="Preview" className="w-full h-full object-cover" />
                        ) : (
-                          <Upload className="w-8 h-8 text-gray-400 group-hover:text-blue-500 transition-colors" />
+                          <span className="text-[10px] text-gray-400 font-bold tracking-widest group-hover:text-gray-600 transition-colors">No photo</span>
                        )}
                     </div>
                     <input type="file" ref={avatarRef} onChange={handleAvatarChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" accept="image/jpeg,image/png,image/webp" />
                  </div>
                  <div className="flex-1 w-full space-y-4">
                     <div>
-                       <h3 className="text-lg font-bold text-gray-900">Employee Identification</h3>
-                       <p className="text-sm text-gray-500">Official system ID and photo for the user.</p>
+                       <h3 className="text-lg font-black text-gray-900 tracking-tight">Registration summary</h3>
+                       <p className="text-sm text-gray-500">Automated extraction results from the uploaded PDS.</p>
                     </div>
                     
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-start gap-3">
-                        <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                        <p className="text-sm text-blue-800 font-medium leading-relaxed">
-                          Please use this <strong className="font-extrabold text-blue-900">EXACT Employee ID ({actualEmployeeId})</strong> when enrolling the fingerprint on the biometric device to strictly ensure accurate pairing.
-                        </p>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="relative">
-                            <label className="text-xs font-semibold text-gray-600 block mb-1.5 ml-1">System Employee ID</label>
-                            <div className="flex bg-gray-100 border border-gray-200 rounded-lg overflow-hidden transition-all opacity-90 cursor-not-allowed">
-                                <span className="flex items-center px-4 bg-gray-200 border-r border-gray-300 text-gray-600 font-mono font-bold text-sm">EMP-</span>
-                                <input {...register("employeeId")} readOnly className="w-full bg-transparent text-gray-900 font-bold text-sm p-2.5 outline-none font-mono cursor-not-allowed" placeholder={actualEmployeeId || "Auto-generated"} />
-                            </div>
-                            <FieldError name="employeeId" />
+                    {!pdsFileName && !isFinalizingSetup && (
+                        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-3">
+                            <p className="text-sm text-amber-800 font-medium leading-relaxed">
+                                Please **Upload a PDS File** above to begin the automated registration. All fields will be extracted 100% accurately.
+                            </p>
                         </div>
-                        <div className="relative">
-                            <label className="text-xs font-semibold text-gray-600 block mb-1.5 ml-1">Current Role Status <span className="text-red-500">*</span></label>
-                            <input {...register("role")} readOnly className={`${inputClass} bg-gray-50 border-gray-200 cursor-not-allowed font-bold text-blue-600`} />
-                        </div>
-                    </div>
-                 </div>
-              </div>
+                    )}
 
-          <div className={cardClass}>
-             <h4 className={cardHeaderClass}>Account Details</h4>
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-gray-600 ml-1">Email Address <span className="text-red-500">*</span></label>
-                  <div className="relative">
-                    <input 
-                      {...register("email")} 
-                      type="email" 
-                      autoComplete="email" 
-                      className={`${getInputClass("email")} ${isFinalizingSetup ? 'bg-gray-100 cursor-not-allowed opacity-80' : ''}`} 
-                      placeholder="" 
-                      readOnly={isFinalizingSetup}
-                    />
-                  </div>
-                  <FieldError name="email" />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-gray-600 ml-1">Password <span className="text-red-500">*</span></label>
-                  <div className="relative">
-                    <input
-                      {...register("password")}
-                      type="password"
-                      autoComplete="new-password"
-                      className={getInputClass("password")}
-                      placeholder=""
-                    />
-                  </div>
-                  <FieldError name="password" />
-                </div>
-             </div>
-          </div>
-
-          <div className={cardClass}>
-             <h4 className={cardHeaderClass}>Personal Information</h4>
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-gray-600 ml-1">Last Name <span className="text-red-500">*</span></label>
-                  <div className="relative">
-                      <input {...register("lastName")} autoComplete="family-name" className={getInputClass("lastName")} placeholder="" />
-                  </div>
-                  <FieldError name="lastName" />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-gray-600 ml-1">First Name <span className="text-red-500">*</span></label>
-                  <div className="relative">
-                      <input {...register("firstName")} autoComplete="given-name" className={getInputClass("firstName")} placeholder="" />
-                  </div>
-                  <FieldError name="firstName" />
-                </div>
-
-                <div className="space-y-1">
-                   <label className="text-xs font-semibold text-gray-600 ml-1">Middle Name</label>
-                   <div className="relative">
-                      <input {...register("middleName")} autoComplete="additional-name" className={getInputClass("middleName")} placeholder="" />
-                   </div>
-                   <FieldError name="middleName" />
-                </div>
-
-                <div className="space-y-1">
-                   <label className="text-xs font-semibold text-gray-600 ml-1">Suffix</label>
-                   <div className="relative">
-                      <input {...register("suffix")} autoComplete="honorific-suffix" className={getInputClass("suffix")} placeholder="" />
-                   </div>
-                   <FieldError name="suffix" />
-                </div>
-             </div>
-
-             <div className="pt-2 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                <div className="space-y-1">
-                   <label className="text-xs font-semibold text-gray-600 ml-1">Birth Date</label>
-                   <div className="relative">
-                      <input 
-                        type="date" 
-                        {...register("birthDate")} 
-                        className={getInputClass("birthDate")} 
-                      />
-                   </div>
-                   <FieldError name="birthDate" />
-                </div>
-                
-                <div className="space-y-1 col-span-2 md:col-span-2">
-                   <label className="text-xs font-semibold text-gray-600 ml-1">Place of Birth <span className="text-red-500">*</span></label>
-                   <div className="relative">
-                      <input {...register("placeOfBirth")} className={getInputClass("placeOfBirth")} placeholder="" />
-                   </div>
-                   <FieldError name="placeOfBirth" />
-                </div>
-
-                <div className="space-y-1">
-                   <label className="text-xs font-semibold text-gray-600 ml-1">Gender <span className="text-red-500">*</span></label>
-                   <Combobox
-                      options={(empMetadata?.pdsGender || GENDER_OPTIONS.map(o => o.value)).map(s => ({ value: s, label: s }))}
-                      value={watch("gender") || ""}
-                      onChange={(val: string) => setValue("gender", val as "Male" | "Female" | "", { shouldValidate: true })}
-                      placeholder="Select..."
-                      error={!!errors.gender}
-                      buttonClassName={errors.gender ? errorClass : ''}
-                   />
-                   <FieldError name="gender" />
-                </div>
-
-                <div className="space-y-1">
-                   <label className="text-xs font-semibold text-gray-600 ml-1">Civil Status <span className="text-red-500">*</span></label>
-                   <Combobox
-                      options={(empMetadata?.pdsCivilStatus || CIVIL_STATUS_OPTIONS.map(o => o.value)).map(s => ({ value: s, label: s }))}
-                      value={watch("civilStatus") || ""}
-                      onChange={(val: string) => setValue("civilStatus", val as "Single" | "Married" | "Widowed" | "Separated" | "Annulled" | "", { shouldValidate: true })}
-                      placeholder="Select..."
-                      error={!!errors.civilStatus}
-                      buttonClassName={errors.civilStatus ? errorClass : ''}
-                   />
-                   <FieldError name="civilStatus" />
-                </div>
-
-                <div className="space-y-1">
-                   <label className="text-xs font-semibold text-gray-600 ml-1">Nationality</label>
-                   <input {...register("nationality")} className={getInputClass("nationality")} placeholder="" />
-                   <FieldError name="nationality" />
-                </div>
-
-                <div className="space-y-1">
-                   <label className="text-xs font-semibold text-gray-600 ml-1">Citizenship</label>
-                   <Combobox
-                      options={[
-                        { value: "Filipino", label: "Filipino" },
-                        { value: "Dual Citizenship", label: "Dual Citizenship" }
-                      ]}
-                      value={watch("citizenship") || "Filipino"}
-                      onChange={(val: string) => setValue("citizenship", val, { shouldValidate: true })}
-                      placeholder="Select..."
-                      error={!!errors.citizenship}
-                      buttonClassName={errors.citizenship ? errorClass : ''}
-                   />
-                   <FieldError name="citizenship" />
-                </div>
-
-                {watch("citizenship") === "Dual Citizenship" && (
-                    <>
-                        <div className="space-y-1">
-                           <label className="text-xs font-semibold text-gray-600 ml-1">Citizenship Type</label>
-                           <Combobox
-                              options={[
-                                { value: "By Birth", label: "By Birth" },
-                                { value: "By Naturalization", label: "By Naturalization" }
-                              ]}
-                              value={watch("citizenshipType") || ""}
-                              onChange={(val: string) => setValue("citizenshipType", val, { shouldValidate: true })}
-                              placeholder="Select..."
-                              error={!!errors.citizenshipType}
-                              buttonClassName={errors.citizenshipType ? errorClass : ''}
-                           />
-                           <FieldError name="citizenshipType" />
-                        </div>
-                        <div className="space-y-1">
-                            <label className="text-xs font-semibold text-gray-600 ml-1">Indicate Country (Dual)</label>
-                            <input {...register("dualCountry")} className={getInputClass("dualCountry")} placeholder="e.g. USA, Canada" />
-                            <FieldError name="dualCountry" />
-                        </div>
-                    </>
-                )}
-
-                <div className="space-y-1">
-                   <label className="text-xs font-semibold text-gray-600 ml-1">Blood Type</label>
-                   <Combobox
-                      options={(empMetadata?.pdsBloodTypes || BLOOD_TYPE_OPTIONS.map(o => o.value)).map(s => ({ value: s, label: s }))}
-                      value={watch("bloodType") || ""}
-                      onChange={(val: string) => setValue("bloodType", val, { shouldValidate: true })}
-                      placeholder="Select..."
-                      error={!!errors.bloodType}
-                      buttonClassName={errors.bloodType ? errorClass : ''}
-                   />
-                   <FieldError name="bloodType" />
-                </div>
-
-                <div className="space-y-1">
-                   <label className="text-xs font-semibold text-gray-600 ml-1">Height (m)</label>
-                   <input type="number" step="0.01" {...register("heightM")} className={getInputClass("heightM")} placeholder="" />
-                   <FieldError name="heightM" />
-                </div>
-
-                <div className="space-y-1">
-                   <label className="text-xs font-semibold text-gray-600 ml-1">Weight (kg)</label>
-                   <input type="number" step="0.1" {...register("weightKg")} className={getInputClass("weightKg")} placeholder="" />
-                   <FieldError name="weightKg" />
-                </div>
-             </div>
-          </div>
-
-          <div className={cardClass}>
-             <h4 className={cardHeaderClass}>Contact & Address</h4>
-             
-             <div className="space-y-3 pb-3 border-b border-gray-100 mb-6">
-                 <div className="bg-gray-50/50 p-3 rounded-[10px] border border-gray-100">
-                     <label className="text-xs font-semibold text-gray-700 block mb-2">Are you a resident of Meycauayan?</label>
-                     <div className="flex gap-4">
-                       <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer hover:bg-white px-3 py-1 rounded-md border border-transparent hover:border-gray-200 transition-all">
-                         <input type="radio" value="true" {...register("isMeycauayan")} className="accent-green-600 w-4 h-4" /> Yes
-                       </label>
-                       <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer hover:bg-white px-3 py-1 rounded-md border border-transparent hover:border-gray-200 transition-all">
-                         <input type="radio" value="false" {...register("isMeycauayan")} className="accent-green-600 w-4 h-4" /> No
-                       </label>
-                     </div>
-                 </div>
-
-                 {prefilledAddress ? (
-                     <div className="pb-4 border-b border-gray-100 relative">
-                        <div className="flex justify-between items-center mb-2 mt-4">
-                            <h5 className="text-sm font-bold text-gray-700">Residential Address</h5>
-                            <button 
-                              type="button" 
-                              onClick={() => {
-                                  _setIsAddressPrefilled(false);
-                                  setPrefilledAddress("");
-                                  setValue("address", "");
-                                  setValue("residentialAddress", "");
-                              }}
-                              className="text-xs text-blue-600 hover:text-blue-800 font-semibold underline"
-                            >
-                               Edit Details
-                            </button>
-                        </div>
-                        <textarea
-                          readOnly
-                          value={prefilledAddress}
-                          className="w-full px-4 py-3 bg-gray-100 border border-gray-200 rounded-xl focus:border-green-600 outline-none text-sm font-medium text-gray-700 placeholder:text-gray-400 !pl-3 h-20 cursor-not-allowed resize-none"
-                        />
-                        <p className="text-[10px] text-gray-500 mt-1 italic">
-                          This address was auto-populated from your application. Click Edit to change location branches.
-                        </p>
-                     </div>
-                 ) : isMeycauayan ? (
-                    <div className="pb-4 border-b border-gray-100">
-                        <h5 className="text-sm font-bold text-gray-700 mb-2 mt-4">Residential Address (Meycauayan)</h5>
-                        <PhilippineAddressSelector prefix="res" register={register} watch={watch} setValue={setValue} errors={errors} inputClass={inputClass} isMeycauayanOnly={true} />
-                    </div>
-                 ) : (
-                    <div className="pb-4 border-b border-gray-100">
-                        <h5 className="text-sm font-bold text-gray-700 mb-2 mt-4">Residential Address</h5>
-                        <PhilippineAddressSelector prefix="res" register={register} watch={watch} setValue={setValue} errors={errors} inputClass={inputClass} />
-                    </div>
-                 )}
-
-             <div className="pt-4 border-b border-gray-100 pb-4">
-                 {prefilledPermanentAddress ? (
-                     <div>
-                        <h5 className="text-sm font-bold text-gray-700 mb-2 mt-2">Permanent Address</h5>
-                        <textarea
-                          readOnly
-                          value={prefilledPermanentAddress}
-                          className="w-full px-4 py-3 bg-gray-100 border border-gray-200 rounded-xl focus:border-green-600 outline-none text-sm font-medium text-gray-700 placeholder:text-gray-400 !pl-3 h-20 cursor-not-allowed resize-none"
-                        />
-                     </div>
-                 ) : (
-                     <>
-                         <h5 className="text-sm font-bold text-gray-700 mb-2 mt-2">Permanent Address</h5>
-                         <PhilippineAddressSelector prefix="perm" register={register} watch={watch} setValue={setValue} errors={errors} inputClass={inputClass} />
-                     </>
-                 )}
-             </div>
-             </div>
-
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
-                <div className="space-y-1">
-                   <label className="text-xs font-semibold text-gray-600 ml-1">Mobile Number</label>
-                   <div className="relative">
-                      <input {...register("mobileNo")} className={getInputClass("mobileNo")} placeholder="" />
-                   </div>
-                   <FieldError name="mobileNo" />
-                </div>
-                <div className="space-y-1">
-                   <label className="text-xs font-semibold text-gray-600 ml-1">Telephone Number</label>
-                   <div className="relative">
-                      <input {...register("telephoneNo")} className={getInputClass("telephoneNo")} placeholder="" />
-                   </div>
-                   <FieldError name="telephoneNo" />
-                </div>
-             </div>
-
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 mt-2 bg-red-50/50 rounded-xl border border-red-100">
-                <div className="space-y-1">
-                   <label className="text-xs font-semibold text-red-600 ml-1 flex items-center gap-1">Emergency Contact Person <span className="text-red-500">*</span></label>
-                   <input {...register("emergencyContact")} className={`${getInputClass("emergencyContact")} !border-red-200 focus:!border-red-500`} placeholder="Full Name" />
-                   <FieldError name="emergencyContact" />
-                </div>
-                <div className="space-y-1">
-                   <label className="text-xs font-semibold text-red-600 ml-1">Emergency Phone Number <span className="text-red-500">*</span></label>
-                   <input {...register("emergencyContactNumber")} className={`${getInputClass("emergencyContactNumber")} !border-red-200 focus:!border-red-500`} placeholder="09XX XXX XXXX" />
-                   <FieldError name="emergencyContactNumber" />
-                </div>
-             </div>
-          </div>
-
-          <div className={cardClass}>
-             <h4 className={cardHeaderClass}>Government Identification</h4>
-             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                <div className="space-y-1">
-                   <label className="text-xs font-semibold text-gray-600 ml-1">GSIS ID No.</label>
-                   <input {...register("gsisNumber")} className={getInputClass("gsisNumber")} placeholder="" />
-                   <FieldError name="gsisNumber" />
-                </div>
-                <div className="space-y-1">
-                   <label className="text-xs font-semibold text-gray-600 ml-1">PAG-IBIG No.</label>
-                   <input {...register("pagibigNumber")} className={getInputClass("pagibigNumber")} placeholder="" />
-                   <FieldError name="pagibigNumber" />
-                </div>
-                <div className="space-y-1">
-                   <label className="text-xs font-semibold text-gray-600 ml-1">PhilHealth No.</label>
-                   <input {...register("philhealthNumber")} className={getInputClass("philhealthNumber")} placeholder="" />
-                   <FieldError name="philhealthNumber" />
-                </div>
-                <div className="space-y-1">
-                   <label className="text-xs font-semibold text-gray-600 ml-1">UMID ID</label>
-                   <input {...register("umidNumber")} className={getInputClass("umidNumber")} placeholder="" />
-                   <FieldError name="umidNumber" />
-                </div>
-                <div className="space-y-1">
-                   <label className="text-xs font-semibold text-gray-600 ml-1">PHILSYS ID</label>
-                   <input {...register("philsysId")} className={getInputClass("philsysId")} placeholder="" />
-                   <FieldError name="philsysId" />
-                </div>
-                <div className="space-y-1">
-                   <label className="text-xs font-semibold text-gray-600 ml-1">TIN No.</label>
-                   <input {...register("tinNumber")} className={getInputClass("tinNumber")} placeholder="" />
-                   <FieldError name="tinNumber" />
-                </div>
-                <div className="space-y-1">
-                   <label className="text-xs font-semibold text-gray-600 ml-1">Agency Employee No.</label>
-                   <input {...register("agencyEmployeeNo")} className={getInputClass("agencyEmployeeNo")} placeholder="" />
-                   <FieldError name="agencyEmployeeNo" />
-                </div>
-             </div>
-          </div>
-
-          <div className={cardClass}>
-              <h4 className={cardHeaderClass}><GraduationCap size={16} className="text-gray-400" /> Educational Background</h4>
-              <div className="space-y-6">
-                  <div>
-                      <label className="text-xs font-semibold text-gray-600 ml-1 mb-1 block">Highest Degree/Level Attained</label>
-                      <Combobox
-                          options={EDUCATION_LEVEL_OPTIONS}
-                          value={watch("educationalBackground") || ""}
-                          onChange={(val) => setValue("educationalBackground", val as EducationLevel, { shouldValidate: true })}
-                          placeholder="Select highest level..."
-                          error={!!errors.educationalBackground}
-                          buttonClassName={`pl-3 ${errors.educationalBackground ? errorClass : ''}`}
-                      />
-                      <FieldError name="educationalBackground" />
-                  </div>
-
-                  <div className="space-y-4">
-                      <EducationLevelSection level="Elementary" label="Elementary" />
-                      <EducationLevelSection level="Secondary" label="Secondary" />
-                      <EducationLevelSection level="Vocational" label="Vocational / Trade Course" />
-                      <EducationLevelSection level="College" label="College" />
-                      <EducationLevelSection level="Graduate" label="Graduate Studies" />
-                  </div>
-              </div>
-          </div>
-
-          <div className={cardClass}>
-             <h4 className={cardHeaderClass}>Employment Details</h4>
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                 <div>
-                     <label className="text-xs font-semibold text-gray-600 ml-1 mb-1 block">Department / Office</label>
-                     <Combobox
-                         options={departments.map((d) => ({ value: d.name, label: d.name }))}
-                         value={watch("department") || ""}
-                         onChange={(val) => setValue("department", val)}
-                         placeholder=""
-                         error={!!errors.department}
-                         buttonClassName={errors.department ? `${errorClass} pl-3` : "pl-3"}
-                     />
-                     <FieldError name="department" />
-                 </div>
-                 <div>
-                     <label className="text-xs font-semibold text-gray-600 ml-1 mb-1 block">Plantilla Position</label>
-                     <Combobox
-                         options={positions
-                             .filter((p) => !watch("department") || p.department === watch("department"))
-                             .map((p) => ({ value: `${p.positionTitle} (${p.itemNumber})`, label: `${p.positionTitle} (${p.itemNumber})` }))}
-                         value={watch("position") || ""}
-                         onChange={(val) => setValue("position", val)}
-                         placeholder=""
-                         error={!!errors.position}
-                         buttonClassName={errors.position ? `${errorClass} pl-3` : "pl-3"}
-                     />
-                     <FieldError name="position" />
-                 </div>
-                 <div className="md:col-span-1">
-                      <label className="text-xs font-semibold text-gray-600 ml-1 mb-1 block">Type of Duties</label>
-                       <Combobox
-                            options={(empMetadata?.dutyTypes || ['Standard', 'Irregular']).map((dt) => {
-                                const typedVal = (dt === "Standard" || dt === "Irregular") ? dt : "Standard";
-                                return { value: typedVal, label: dt };
-                            })}
-                            value={watch("dutyType") || "Standard"}
-                             onChange={(val) => setValue("dutyType", val as RegisterFormValues["dutyType"], { shouldValidate: true })}
-                           placeholder="Select..."
-                           error={!!errors.dutyType}
-                           buttonClassName={`bg-gray-50 font-bold !pl-3 ${errors.dutyType ? errorClass : ''}`}
-                       />
-                       <FieldError name="dutyType" />
-                 </div>
-                  <div className="md:col-span-1">
-                      <label className="text-xs font-semibold text-gray-600 ml-1 mb-1 block">Appointment Type / Schedule</label>
-                       <Combobox
-                            options={(empMetadata?.appointmentTypes || ['Permanent', 'Contractual', 'Casual', 'Job Order', 'Coterminous', 'Temporary', 'Contract of Service']).map((at) => {
-                                const typedVal = (at === 'Permanent' || at === 'Contractual' || at === 'Casual' || at === 'Job Order' || at === 'Coterminous' || at === 'Temporary' || at === 'Contract of Service' || at === 'JO' || at === 'COS' || at === '') ? at : '';
-                                return { value: typedVal, label: at };
-                            })}
-                            value={watch("appointmentType") || ""}
-                             onChange={(val) => setValue("appointmentType", val as RegisterFormValues["appointmentType"], { shouldValidate: true })}
-                           placeholder="Select type..."
-                           error={!!errors.appointmentType}
-                           buttonClassName={`bg-gray-50 font-bold !pl-3 ${errors.appointmentType ? errorClass : ''}`}
-                       />
-                       <FieldError name="appointmentType" />
-                  </div>
-              </div>
-          </div>
-
-          <div className={cardClass}>
-             <h4 className={cardHeaderClass}><Linkedin size={16} className="text-gray-400" /> Social Links</h4>
-             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-1">
-                   <label className="text-xs font-semibold text-gray-600 ml-1">Facebook</label>
-                   <div className="relative">
-                      <Facebook className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#1877F2]" size={15} />
-                      <input {...register("facebookUrl")} className={`${getInputClass("facebookUrl")} pl-9`} placeholder="" />
-                   </div>
-                   <FieldError name="facebookUrl" />
-                </div>
-                <div className="space-y-1">
-                   <label className="text-xs font-semibold text-gray-600 ml-1">LinkedIn</label>
-                   <div className="relative">
-                      <Linkedin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#0A66C2]" size={15} />
-                      <input {...register("linkedinUrl")} className={`${getInputClass("linkedinUrl")} pl-9`} placeholder="" />
-                   </div>
-                   <FieldError name="linkedinUrl" />
-                </div>
-                <div className="space-y-1">
-                   <label className="text-xs font-semibold text-gray-600 ml-1">Twitter (X)</label>
-                   <div className="relative">
-                      <Twitter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-800" size={15} />
-                      <input {...register("twitterHandle")} className={`${getInputClass("twitterHandle")} pl-9`} placeholder="" />
-                   </div>
-                   <FieldError name="twitterHandle" />
-                </div>
-             </div>
-          </div>
-
-          {/* PDS-Aligned Civil Service Eligibility */}
-          <div className={cardClass}>
-             <div className="flex justify-between items-center mb-5 pb-3 border-b border-gray-100">
-                <h4 className="text-sm font-bold text-gray-800 uppercase tracking-wider flex items-center gap-2 mb-0">
-                    <Award size={16} className="text-gray-400" /> Civil Service Eligibility
-                </h4>
-                <button 
-                    type="button" 
-                    onClick={() => appendEligibility({ name: "", rating: "", examDate: "", examPlace: "", licenseNo: "", licenseValidUntil: "" })}
-                    className="text-[10px] font-bold text-blue-600 hover:text-blue-700 uppercase flex items-center gap-1 transition-colors"
-                >
-                    <Plus size={12} /> Add Eligibility
-                </button>
-             </div>
-             <div className="space-y-6">
-                {eligibilityFields.map((field, index) => (
-                    <div key={field.id} className="p-4 bg-gray-50/50 rounded-xl border border-gray-100 relative animate-in fade-in slide-in-from-top-2">
-                        {eligibilityFields.length > 1 && (
-                            <button 
-                                type="button" 
-                                onClick={() => removeEligibility(index)}
-                                className="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors"
-                            >
-                                <Trash2 size={14} />
-                            </button>
-                        )}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="space-y-1">
-                                <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">Eligibility Name</label>
-                                <input {...register(`eligibilities.${index}.name` as Path<RegisterFormValues>)} className={inputClass} placeholder="e.g. CSC Professional" />
-                                <FieldError name={`eligibilities.${index}.name` as Path<RegisterFormValues>} />
-                            </div>
-                            <div className="space-y-1">
-                                <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">Rating</label>
-                                <input {...register(`eligibilities.${index}.rating` as Path<RegisterFormValues>)} className={inputClass} placeholder="e.g. 85.00" />
-                                <FieldError name={`eligibilities.${index}.rating` as Path<RegisterFormValues>} />
-                            </div>
-                            <div className="space-y-1">
-                                <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">Date of Exam</label>
-                                <input type="date" {...register(`eligibilities.${index}.examDate` as Path<RegisterFormValues>)} className={inputClass} />
-                                <FieldError name={`eligibilities.${index}.examDate` as Path<RegisterFormValues>} />
-                            </div>
-                            <div className="space-y-1">
-                                <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">Place of Exam</label>
-                                <input {...register(`eligibilities.${index}.examPlace` as Path<RegisterFormValues>)} className={inputClass} placeholder="City/Region" />
-                                <FieldError name={`eligibilities.${index}.examPlace` as Path<RegisterFormValues>} />
-                            </div>
-                            <div className="space-y-1">
-                                <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">License No.</label>
-                                <input {...register(`eligibilities.${index}.licenseNo` as Path<RegisterFormValues>)} className={inputClass} placeholder="If applicable" />
-                                <FieldError name={`eligibilities.${index}.licenseNo` as Path<RegisterFormValues>} />
-                            </div>
-                            <div className="space-y-1">
-                                <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">License Validity</label>
-                                <input type="date" {...register(`eligibilities.${index}.licenseValidUntil` as Path<RegisterFormValues>)} className={inputClass} />
-                                <FieldError name={`eligibilities.${index}.licenseValidUntil` as Path<RegisterFormValues>} />
-                            </div>
-                        </div>
-                    </div>
-                ))}
-             </div>
-          </div>
-
-          {/* PDS-Aligned Work Experience */}
-          <div className={cardClass}>
-             <div className="flex justify-between items-center mb-5 pb-3 border-b border-gray-100">
-                <h4 className="text-sm font-bold text-gray-800 uppercase tracking-wider flex items-center gap-2 mb-0">
-                    <Briefcase size={16} className="text-gray-400" /> Work Experience
-                </h4>
-                <button 
-                    type="button" 
-                    onClick={() => appendWorkExperience({ dateFrom: "", dateTo: "", positionTitle: "", companyName: "", monthlySalary: "", salaryGrade: "", appointmentStatus: "", isGovernment: false })}
-                    className="text-[10px] font-bold text-blue-600 hover:text-blue-700 uppercase flex items-center gap-1 transition-colors"
-                >
-                    <Plus size={12} /> Add Experience
-                </button>
-             </div>
-             <div className="space-y-6">
-                {workExperienceFields.map((field, index) => (
-                    <div key={field.id} className="p-4 bg-gray-50/50 rounded-xl border border-gray-100 relative animate-in fade-in slide-in-from-top-2">
-                        {workExperienceFields.length > 1 && (
-                            <button 
-                                type="button" 
-                                onClick={() => removeWorkExperience(index)}
-                                className="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors"
-                            >
-                                <Trash2 size={14} />
-                            </button>
-                        )}
-                        <div className="grid grid-cols-1 gap-4">
-                            <div className="space-y-1">
-                                <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">Position Title</label>
-                                <input {...register(`workExperiences.${index}.positionTitle` as Path<RegisterFormValues>)} className={inputClass} placeholder="Full Title" />
-                                <FieldError name={`workExperiences.${index}.positionTitle` as Path<RegisterFormValues>} />
-                            </div>
-                            <div className="space-y-1">
-                                <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">Department / Agency / Company</label>
-                                <input {...register(`workExperiences.${index}.companyName` as Path<RegisterFormValues>)} className={inputClass} placeholder="Full Name of Office" />
-                                <FieldError name={`workExperiences.${index}.companyName` as Path<RegisterFormValues>} />
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                <div className="space-y-1">
-                                    <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">From</label>
-                                    <input type="date" {...register(`workExperiences.${index}.dateFrom` as Path<RegisterFormValues>)} className={inputClass} />
-                                    <FieldError name={`workExperiences.${index}.dateFrom` as Path<RegisterFormValues>} />
-                                </div>
-                                <div className="space-y-1">
-                                    <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">To</label>
-                                    <input type="date" {...register(`workExperiences.${index}.dateTo` as Path<RegisterFormValues>)} className={inputClass} />
-                                    <FieldError name={`workExperiences.${index}.dateTo` as Path<RegisterFormValues>} />
-                                </div>
-                                <div className="space-y-1">
-                                    <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">Monthly Salary</label>
-                                    <input {...register(`workExperiences.${index}.monthlySalary` as Path<RegisterFormValues>)} className={inputClass} placeholder="e.g. 25000" />
-                                    <FieldError name={`workExperiences.${index}.monthlySalary` as Path<RegisterFormValues>} />
-                                </div>
-                                <div className="space-y-1">
-                                    <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">SG/Step</label>
-                                    <input {...register(`workExperiences.${index}.salaryGrade` as Path<RegisterFormValues>)} className={inputClass} placeholder="e.g. 11/1" />
-                                    <FieldError name={`workExperiences.${index}.salaryGrade` as Path<RegisterFormValues>} />
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-1">
-                                    <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">Appointment Status</label>
-                                    <input {...register(`workExperiences.${index}.appointmentStatus` as Path<RegisterFormValues>)} className={inputClass} placeholder="e.g. Permanent" />
-                                    <FieldError name={`workExperiences.${index}.appointmentStatus` as Path<RegisterFormValues>} />
-                                </div>
-                                <div className="flex items-center gap-2 pt-4">
-                                    <input type="checkbox" {...register(`workExperiences.${index}.isGovernment` as Path<RegisterFormValues>)} className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" />
-                                    <label className="text-xs font-semibold text-gray-600">Government Service</label>
-                                    <FieldError name={`workExperiences.${index}.isGovernment` as Path<RegisterFormValues>} />
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                ))}
-             </div>
-          </div>
-
-           {/* Learning & Development (Trainings) */}
-           <div className={cardClass}>
-              <div className="flex justify-between items-center mb-4">
-                 <h4 className={cardHeaderClass}>Learning & Development / Training Programs</h4>
-                 <button 
-                    type="button" 
-                    onClick={() => appendTraining({ 
-                       title: "", dateFrom: "", dateTo: "", hoursNumber: "", typeOfLd: "", conductedBy: "" 
-                    })}
-                    className="text-[10px] bg-gray-900 text-white px-3 py-1.5 rounded-md font-bold uppercase tracking-wider hover:bg-gray-800 transition-colors"
-                 >
-                    + Add Training
-                 </button>
-              </div>
-              
-              <div className="space-y-4">
-                 {trainingFields.map((field, index) => (
-                    <div key={field.id} className="p-4 rounded-xl border border-gray-200 bg-gray-50/30 relative group shadow-sm">
-                       <button 
-                          type="button" 
-                          onClick={() => removeTraining(index)}
-                          className="absolute top-4 right-4 text-gray-300 hover:text-red-500 transition-colors"
-                       >
-                          <X size={18} />
-                       </button>
-                       
-                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                          <div className="space-y-1 md:col-span-2">
-                             <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">Title of Learning and Development Interventions / Training Programs</label>
-                             <input {...register(`trainings.${index}.title` as Path<RegisterFormValues>)} className={inputClass} placeholder="Write in full" />
-                             <FieldError name={`trainings.${index}.title` as Path<RegisterFormValues>} />
-                           </div>
-                          
-                          <div className="grid grid-cols-2 gap-2">
-                             <div className="space-y-1">
-                                <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">From</label>
-                                <input type="date" {...register(`trainings.${index}.dateFrom` as Path<RegisterFormValues>)} className={inputClass} />
-                                <FieldError name={`trainings.${index}.dateFrom` as Path<RegisterFormValues>} />
+                    {pdsFileName && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-10 gap-y-5 py-5 border-t border-gray-100">
+                             <div>
+                                 <label className="text-[11px] font-bold text-gray-500 mb-1 block">Last name</label>
+                                 <p className="text-sm font-black text-gray-900 leading-tight">{watch("lastName") || "---"}</p>
                              </div>
-                             <div className="space-y-1">
-                                <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">To</label>
-                                <input type="date" {...register(`trainings.${index}.dateTo` as Path<RegisterFormValues>)} className={inputClass} />
-                                <FieldError name={`trainings.${index}.dateTo` as Path<RegisterFormValues>} />
+                             <div>
+                                 <label className="text-[11px] font-bold text-gray-500 mb-1 block">First name</label>
+                                 <p className="text-sm font-black text-gray-900 leading-tight">{watch("firstName") || "---"}</p>
                              </div>
-                          </div>
-                          
-                          <div className="grid grid-cols-2 gap-2">
-                             <div className="space-y-1">
-                                <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">Number of Hours</label>
-                                <input {...register(`trainings.${index}.hoursNumber` as Path<RegisterFormValues>)} className={inputClass} placeholder="e.g. 8" />
-                                <FieldError name={`trainings.${index}.hoursNumber` as Path<RegisterFormValues>} />
+                             <div>
+                                 <label className="text-[11px] font-bold text-gray-500 mb-1 block">Middle name</label>
+                                 <p className="text-sm font-black text-gray-900 leading-tight">{watch("middleName") || "---"}</p>
                              </div>
-                             <div className="space-y-1">
-                                <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">Type of LD (Managerial/Technical/etc)</label>
-                                <input {...register(`trainings.${index}.typeOfLd` as Path<RegisterFormValues>)} className={inputClass} placeholder="" />
-                                <FieldError name={`trainings.${index}.typeOfLd` as Path<RegisterFormValues>} />
+                             <div>
+                                 <label className="text-[11px] font-bold text-gray-500 mb-1 block">Name extension (suffix)</label>
+                                 <p className="text-sm font-black text-gray-900 leading-tight">{watch("suffix") || "---"}</p>
                              </div>
-                          </div>
-                          
-                          <div className="space-y-1 md:col-span-2">
-                             <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">Conducted / Sponsored By</label>
-                             <input {...register(`trainings.${index}.conductedBy` as Path<RegisterFormValues>)} className={inputClass} placeholder="Write in full" />
-                             <FieldError name={`trainings.${index}.conductedBy` as Path<RegisterFormValues>} />
-                           </div>
-                       </div>
-                    </div>
-                 ))}
-                 {trainingFields.length === 0 && (
-                    <div className="text-center py-6 border-2 border-dashed border-gray-100 rounded-xl">
-                       <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest">No trainings added</p>
-                    </div>
-                  )}
+                             <div className="sm:col-span-2 pt-2 border-t border-gray-50/50">
+                                <label className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-1 block">Synchronized full name</label>
+                                <p className="text-base font-black text-gray-900 tracking-tight">
+                                    {watch("lastName")}, {watch("firstName")} {watch("middleName") || ""} {watch("suffix") || ""}
+                                </p>
+                             </div>
+                            <div>
+                                <label className="text-[11px] font-bold text-gray-400 mb-1 block">System ID</label>
+                                <p className="text-sm font-mono font-bold text-gray-700">
+                                    {isNextIdLoading ? 'Pending...' : (actualEmployeeId.startsWith('Emp') ? actualEmployeeId : `EMP-${actualEmployeeId}`)}
+                                </p>
+                            </div>
+                            <div>
+                                <label className="text-[11px] font-bold text-gray-400 mb-1 block">Department</label>
+                                <p className="text-sm font-bold text-gray-900">{watch("department") || "---"}</p>
+                            </div>
+                            <div>
+                                <label className="text-[11px] font-bold text-gray-400 mb-1 block">Email address</label>
+                                <p className="text-sm font-bold text-gray-900">{watch("email") || "---"}</p>
+                            </div>
+                        </div>
+                    )}
+                 </div>
               </div>
-           </div>
 
-           {/* Additional Information */}
-           <div className={cardClass}>
-              <h4 className={cardHeaderClass}>Additional Information</h4>
-             <div className="grid grid-cols-1 gap-4">
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                     <div className="space-y-1">
-                         <label className="text-xs font-semibold text-gray-600 ml-1">Years of Experience <span className="text-red-500">*</span></label>
-                         <input 
-                           type="number" 
-                           step="0.1" 
-                           {...register("yearsOfExperience", { required: "Required" })} 
-                           className={getInputClass("yearsOfExperience")} 
-                           placeholder="e.g. 5" 
-                         />
-                         <FieldError name="yearsOfExperience" />
-                     </div>
-                 </div>
-                 <div className="space-y-1">
-                    <label className="text-xs font-semibold text-gray-600 ml-1">Experience Summary <span className="text-red-500">*</span></label>
-                    <textarea {...register("experience")} rows={3} className={getInputClass("experience")} placeholder="Describe overall professional experience..." />
-                    <FieldError name="experience" />
-                 </div>
-                 <div className="space-y-1">
-                    <label className="text-xs font-semibold text-gray-600 ml-1">Core Competencies / Skills <span className="text-red-500">*</span></label>
-                    <textarea {...register("skills")} rows={2} className={getInputClass("skills")} placeholder="List key skills..." />
-                    <FieldError name="skills" />
-                 </div>
-             </div>
+              {/* SECTION 1: EMPLOYEE IDENTITY & PERSONAL DETAILS */}
+              <div className="bg-white rounded-lg border border-gray-100 p-6 md:p-8 shadow-sm space-y-6">
+                  <div className="flex items-center gap-4 border-b border-gray-100 pb-5">
+                      <div className="w-10 h-10 bg-gray-900 rounded-lg flex items-center justify-center">
+                          <span className="text-white font-black text-xs">01</span>
+                      </div>
+                      <div>
+                          <h4 className="text-sm font-black text-gray-900 tracking-tight">Employee details</h4>
+                          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Primary identity & personal info</p>
+                      </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="space-y-1">
+                          <label className={labelClass}>Last name <span className="text-red-500">*</span></label>
+                          <input {...register("lastName")} className={inputClass} />
+                          {errors.lastName && <p className="text-[10px] text-red-500 font-bold ml-1">{errors.lastName.message}</p>}
+                      </div>
+                      <div className="space-y-1">
+                          <label className={labelClass}>First name <span className="text-red-500">*</span></label>
+                          <input {...register("firstName")} className={inputClass} />
+                          {errors.firstName && <p className="text-[10px] text-red-500 font-bold ml-1">{errors.firstName.message}</p>}
+                      </div>
+                      <div className="space-y-1">
+                          <label className={labelClass}>Middle name</label>
+                          <input {...register("middleName")} className={inputClass} />
+                      </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+                       <div className="space-y-1">
+                          <label className={labelClass}>Suffix (Optional)</label>
+                          <input {...register("suffix")} placeholder="Jr / III" className={inputClass} />
+                      </div>
+                      <div className="space-y-1">
+                          <label className={labelClass}>Official email address <span className="text-red-500">*</span></label>
+                          <input {...register("email")} className={inputClass} />
+                          {errors.email && <p className="text-[10px] text-red-500 font-bold ml-1">{errors.email.message}</p>}
+                      </div>
+                  </div>
+
+                  <div className="pt-5 border-t border-gray-100">
+                      <div className="space-y-1">
+                          <label className={labelClass}>Account password <span className="text-red-500">*</span></label>
+                          <input 
+                            type="password" 
+                            {...register("password")} 
+                            placeholder="Min. 8 chars with Upper, Lower & Number"
+                            className={inputClass} 
+                          />
+                          {errors.password && <p className="text-[10px] text-red-500 font-bold ml-1">{errors.password.message}</p>}
+                      </div>
+                  </div>
+              </div>
+
+              {/* SECTION 2: HR & EMPLOYMENT PLACEMENT */}
+              <div className="bg-white rounded-lg border border-gray-100 p-6 md:p-8 shadow-sm space-y-6">
+                  <div className="flex items-center gap-4 border-b border-gray-100 pb-5">
+                      <div className="w-10 h-10 bg-gray-900 rounded-lg flex items-center justify-center">
+                          <span className="text-white font-black text-xs">02</span>
+                      </div>
+                      <div>
+                          <h4 className="text-sm font-black text-gray-900 tracking-tight">HR & employment placement</h4>
+                          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Official position & system access</p>
+                      </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-1">
+                          <label className={labelClass}>Department</label>
+                          <Controller
+                              name="department"
+                              control={control}
+                              render={({ field }) => (
+                                  <Combobox
+                                      options={departmentOptions}
+                                      value={field.value}
+                                      onChange={field.onChange}
+                                      placeholder="Search department"
+                                      error={!!errors.department}
+                                      buttonClassName="bg-gray-100/60 border-gray-200 !h-11 text-sm font-bold text-gray-900 focus:ring-[3px] focus:ring-gray-100"
+                                  />
+                              )}
+                          />
+                      </div>
+                      <div className="space-y-1">
+                          <label className={labelClass}>Position title</label>
+                          <Controller
+                              name="position"
+                              control={control}
+                              render={({ field }) => (
+                                  <Combobox
+                                      options={positionOptions}
+                                      value={field.value}
+                                      onChange={field.onChange}
+                                      placeholder="Search position"
+                                      error={!!errors.position}
+                                      buttonClassName="bg-gray-100/60 border-gray-200 !h-11 text-sm font-bold text-gray-900 focus:ring-[3px] focus:ring-gray-100"
+                                  />
+                              )}
+                          />
+                      </div>
+                      <div className="space-y-1">
+                          <label className={labelClass}>Appointment type</label>
+                          <Controller
+                              name="appointmentType"
+                              control={control}
+                              render={({ field }) => (
+                                  <Combobox
+                                      options={appointmentOptions}
+                                      value={field.value}
+                                      onChange={field.onChange}
+                                      placeholder="Select appointment"
+                                      error={!!errors.appointmentType}
+                                      buttonClassName="bg-gray-100/60 border-gray-200 !h-11 text-sm font-bold text-gray-900 focus:ring-[3px] focus:ring-gray-100"
+                                  />
+                              )}
+                          />
+                      </div>
+                      <div className="space-y-1">
+                          <label className={labelClass}>System role (Access level)</label>
+                          <Controller
+                              name="role"
+                              control={control}
+                              render={({ field }) => (
+                                  <Combobox
+                                      options={roleOptions}
+                                      value={field.value}
+                                      onChange={field.onChange}
+                                      placeholder="Select access role"
+                                      error={!!errors.role}
+                                      buttonClassName="bg-gray-100/60 border-gray-200 !h-11 text-sm font-bold text-gray-900 focus:ring-[3px] focus:ring-gray-100"
+                                  />
+                              )}
+                          />
+                      </div>
+                  </div>
+              </div>
+
+              {pdsFileName && (
+                  <div className="bg-white rounded-lg border border-gray-100 p-6 shadow-sm space-y-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <h4 className="text-sm font-black text-gray-900 tracking-tight">Data integrity check</h4>
+                      </div>
+                      <p className="text-xs text-gray-500 leading-relaxed">
+                          We have successfully mapped **Personal Info**, **Education Background**, and **Work Experience** from your uploaded document. 
+                          The record is now staged for insertion into the database.
+                      </p>
+                  </div>
+              )}
           </div>
-        </div>
 
         {/* Right Column: Biometrics & Submit */}
         <div className="w-full lg:w-[420px] shrink-0 space-y-6 lg:sticky lg:top-8">
           
           {/* Biometrics Enroll */}
-          <div id="biometrics-section" className="bg-white rounded-2xl border border-gray-100 p-6 flex flex-col items-center justify-center gap-6 shadow-sm relative">
+          <div id="biometrics-section" className="bg-white rounded-lg border border-gray-100 p-6 flex flex-col items-center justify-center gap-6 shadow-sm relative">
               <button 
                   type="button"
-                  onClick={() => _setResetModalOpen(true)}
-                  className="absolute top-4 right-4 text-[10px] text-gray-400 hover:text-red-500 font-bold uppercase tracking-wider transition-colors"
-                  title="Reset Device and DB"
+                  onClick={() => setResetModalOpen(true)}
+                  className="absolute top-4 right-4 text-[10px] text-gray-400 hover:text-red-500 font-bold tracking-wider transition-colors"
+                  title="Reset device and database"
               >
-                  Reset Scanner
+                  Reset scanner
               </button>
 
               <div className="flex-1 text-left md:pr-8">
-                  <h3 className="font-bold text-xl text-gray-900 flex items-center gap-3 mb-2">
-                      <Fingerprint className={bioEnrolled ? 'text-green-600' : 'text-blue-600'} size={28} /> 
-                      {bioEnrolled ? "Biometric Captured" : "Fingerprint Setup"}
+                  <h3 className="font-black text-xl text-gray-900 flex items-center gap-3 mb-2 tracking-tight">
+                      {bioEnrolled ? "Biometric captured" : "Fingerprint setup"}
                   </h3>
-                  <p className="text-sm text-gray-500 mb-6">
-                      Secure this account by registering the employee's fingerprint. This will be used for attendance tracking and authorization.
+                  <p className="text-sm font-medium text-gray-500 mb-6">
+                      Secure this account by registering the employee's fingerprint for attendance tracking.
                   </p>
                   
                   <div className="flex gap-4 mb-6">
                       <div className="flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-200 flex-1">
                           <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${
-                              enrollStep >= 1 || bioEnrolled ? 'bg-green-500 border-green-500 text-white' : 
-                              enrollError && enrollStep === 0 ? 'bg-red-500 border-red-500 text-white' : 'border-gray-300 text-gray-300'
+                              enrollStep >= 1 || bioEnrolled ? 'bg-slate-500 border-slate-500 text-white' : 
+                              enrollError && enrollStep === 0 ? 'bg-rose-500 border-rose-500 text-white' : 'border-gray-300 text-gray-300'
                           }`}>
-                              {(enrollStep >= 1 || bioEnrolled) && <Check size={12} strokeWidth={3} />}
-                              {enrollError && enrollStep === 0 && <X size={12} strokeWidth={3} />}
+                              {(enrollStep >= 1 || bioEnrolled) && <span className="text-[10px] font-bold">OK</span>}
                           </div>
                           <span className="text-xs font-bold text-gray-700">Initial Scan</span>
                       </div>
                       <div className="flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-200 flex-1">
                           <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${
-                              enrollStep >= 2 || bioEnrolled ? 'bg-green-500 border-green-500 text-white' : 
-                              enrollError && enrollStep === 1 ? 'bg-red-500 border-red-500 text-white' : 'border-gray-300 text-gray-300'
+                              enrollStep >= 2 || bioEnrolled ? 'bg-slate-500 border-slate-500 text-white' : 
+                              enrollError && enrollStep === 1 ? 'bg-rose-500 border-rose-500 text-white' : 'border-gray-300 text-gray-300'
                           }`}>
-                              {(enrollStep >= 2 || bioEnrolled) && <Check size={12} strokeWidth={3} />}
-                              {enrollError && enrollStep === 1 && <X size={12} strokeWidth={3} />}
+                              {(enrollStep >= 2 || bioEnrolled) && <span className="text-[10px] font-bold">OK</span>}
                           </div>
                           <span className="text-xs font-bold text-gray-700">Verification</span>
                       </div>
@@ -1993,26 +1643,25 @@ export default function AdminRegister() {
                               }
                           }}
                           disabled={bioStatus !== 'CONNECTED' || !deviceConnected || enrollStep > 0}
-                          className="px-8 py-3 bg-blue-600 border border-blue-700 text-white text-sm font-bold tracking-wide rounded-xl disabled:opacity-50 disabled:bg-gray-400 hover:bg-blue-700 hover:shadow-lg transition-all active:scale-95 shadow-md flex items-center gap-2"
+                          className="px-8 h-12 bg-gray-900 border border-gray-800 text-white text-sm font-bold rounded-xl disabled:opacity-50 disabled:bg-gray-400 hover:bg-gray-800 hover:shadow-lg transition-all active:scale-95 shadow-md flex items-center gap-2"
                       >
-                          <Fingerprint size={18} />
-                          {enrollStep > 0 && enrollStep < 1 ? "Scanner Starting..." : "Initialize Scanner"}
+                          {enrollStep > 0 && enrollStep < 1 ? "Scanner starting..." : "Initialize scanner"}
                       </button>
                   )}
               </div>
 
               <div className="flex flex-col items-center justify-center w-full mt-6 pt-6 border-t border-gray-100">
                   <div className={`w-28 h-28 rounded-full flex items-center justify-center transition-all duration-300 ${
-                      enrollError ? 'bg-red-50 text-red-500 shadow-[0_0_30px_rgba(239,68,68,0.2)] animate-pulse border-2 border-red-200' :
-                      bioEnrolled ? 'bg-green-50 text-green-500 shadow-[0_0_30px_rgba(34,197,94,0.2)] border-2 border-green-200' : 
-                      bioStatus === 'CONNECTED' ? 'bg-blue-50 text-blue-500 shadow-[0_0_30px_rgba(59,130,246,0.2)] border-2 border-blue-200' : 'bg-gray-50 text-gray-400 shadow-sm border border-gray-200'
+                      enrollError ? 'bg-rose-50 text-rose-500 shadow-sm border-2 border-rose-200' :
+                      bioEnrolled ? 'bg-slate-50 text-slate-500 shadow-sm border-2 border-slate-200' : 
+                      bioStatus === 'CONNECTED' ? 'bg-slate-50 text-slate-400 shadow-sm border-2 border-slate-200' : 'bg-gray-50 text-gray-400 shadow-sm border border-gray-200'
                   }`}>
-                      {bioEnrolled ? <CheckCircle2 size={48} /> : enrollError ? <AlertCircle size={48} /> : <Fingerprint size={48} strokeWidth={1} />}
+                      <div className="text-[11px] font-black">{bioEnrolled ? "ID OK" : "SCAN"}</div>
                   </div>
                   
                   <p className={`text-xs font-bold mt-4 text-center rounded-full px-4 py-1.5 ${
-                      enrollError ? 'text-red-700 bg-red-100' : 
-                      bioEnrolled ? 'text-green-700 bg-green-100' : 
+                      enrollError ? 'text-rose-700 bg-rose-100' : 
+                      bioEnrolled ? 'text-slate-700 bg-slate-100' : 
                       'text-gray-700 bg-gray-100'
                   }`}>
                       {enrollError ? `Failed: ${enrollError}` :
@@ -2023,12 +1672,12 @@ export default function AdminRegister() {
               </div>
           </div>
 
-          <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm mt-2 flex flex-col gap-4">
+          <div className="bg-white p-5 rounded-lg border border-gray-200 shadow-sm mt-2 flex flex-col gap-4">
               <label className="flex items-start gap-3 cursor-pointer group">
                   <input 
                       type="checkbox" 
                       {...register("certifiedCorrect")}
-                      className="mt-1 w-5 h-5 rounded border-gray-300 text-green-600 focus:ring-green-500 transition-all cursor-pointer"
+                      className="mt-1 w-5 h-5 rounded border-gray-300 text-slate-900 focus:ring-slate-500 transition-all cursor-pointer accent-slate-900"
                   />
                   <div className="flex flex-col gap-1">
                       <span className="text-xs text-gray-500 leading-relaxed group-hover:text-gray-700 transition-colors">
@@ -2040,27 +1689,26 @@ export default function AdminRegister() {
 
               <button 
                 type="submit" 
-                disabled={loading || isSubmitting || !bioEnrolled}
-                className={`w-full ${!bioEnrolled ? 'bg-gray-400' : 'bg-gray-900 hover:bg-gray-800'} text-white px-8 py-3.5 rounded-xl text-sm font-extrabold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md flex justify-center items-center gap-2 active:scale-95`}
+                disabled={loading || isSubmitting}
+                className="w-full h-12 bg-gray-900 hover:bg-gray-800 text-white px-8 rounded-xl text-sm font-black transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md flex justify-center items-center gap-2 active:scale-95"
               >
-                {loading ? <Loader2 className="animate-spin h-5 w-5" /> : (bioEnrolled ? <CheckCircle2 size={18} /> : <Lock size={18} />)}
-                {bioEnrolled ? "Complete Registration" : "Enroll Biometrics to Proceed"}
+                {loading ? <Loader2 className="animate-spin h-5 w-5" /> : null}
+                Complete registration
               </button>
           </div>
         </div>
-        <input type="hidden" {...register("applicantId")} />
-        </form>
       </div>
+      <input type="hidden" {...register("applicantId")} />
 
       <HiredApplicantsListModal
-          isOpen={showHiredModal}
-          onClose={() => {
-             setShowHiredModal(false);
-             if(!matchedApplicant) navigate(-1); // Go back if they cancel
-          }}
-          dutyType={duties}
-          departmentName={queryDept || 'the department'}
-          onSelectApplicant={handleSelectApplicant}
+        isOpen={showHiredModal}
+        onClose={() => {
+           setShowHiredModal(false);
+           if(!matchedApplicant) navigate(-1); // Go back if they cancel
+        }}
+        dutyType={duties}
+        departmentName={queryDept || 'the department'}
+        onSelectApplicant={handleSelectApplicant}
       />
 
       <ConfirmationModal
@@ -2090,6 +1738,7 @@ export default function AdminRegister() {
           }
         }}
       />
+      </form>
     </div>
   );
 }

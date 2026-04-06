@@ -5,7 +5,7 @@ import { updateTardinessSummary } from '../utils/tardinessUtils.js';
 import { formatToManilaDateTime } from '../utils/dateUtils.js';
 import { checkPolicyViolations } from './violationService.js';
 import { compareIds } from '../utils/idUtils.js';
-import { calculateLateUndertime } from '../utils/attendanceUtils.js';
+import { calculateLateUndertime, determineStatus } from '../utils/attendanceUtils.js';
 
 const DAYS_OF_WEEK = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as const;
 
@@ -17,7 +17,7 @@ const parseTimeString = (timeStr: string): [number, number, number] => {
   return [parts[0] || 0, parts[1] || 0, parts[2] || 0];
 };
 
-interface TardinessPolicy {
+interface TardinessPolicyContent {
   gracePeriod?: string | number;
 }
 
@@ -119,14 +119,11 @@ export const processDailyAttendance = async (
          }
       } else {
          // Irregular: No fixed start/end time. Use dailyTargetHours to calculate undertime.
-         // Late is NOT applicable (no fixed arrival time).
-         // Undertime = dailyTargetMinutes - renderedMinutes (if renderedMinutes < target).
          useTargetHoursMode = true;
       }
     }
 
     // Filter out rest days for logic calculation
-    // Since isRestDay column is removed, we treat all fetched schedules as active (isRestDay = 0/false)
     const activeBlocks = scheduleBlocks.map(b => ({ ...b, isRestDay: 0 }));
     
     // 1b. Fetch Tardiness Policy (Grace Period)
@@ -136,11 +133,12 @@ export const processDailyAttendance = async (
       const policyRow = policyRows[0];
       
       if (policyRow?.content) {
-        const content = (typeof policyRow.content === 'string' ? JSON.parse(policyRow.content) : policyRow.content) as TardinessPolicy;
+        const content = (typeof policyRow.content === 'string' ? JSON.parse(policyRow.content) : policyRow.content) as TardinessPolicyContent;
         gracePeriod = Number(content.gracePeriod) || 0;
       }
-    } catch (_e: unknown) {
-      console.warn('[ATTENDANCE] Error fetching tardiness policy (defaulting to 0):', _e);
+    } catch (_e: Error | unknown) {
+      const msg = _e instanceof Error ? _e.message : String(_e);
+      console.warn(`[ATTENDANCE] Error fetching tardiness policy for ${employeeId}:`, msg);
     }
     
     let totalLateMinutes = 0;
@@ -151,8 +149,6 @@ export const processDailyAttendance = async (
 
     if (activeBlocks.length > 0) {
       // ── SCHEDULE-BASED MODE (Standard or Irregular with explicit schedule) ──
-      // Map logs to blocks
-      // For each block, find the best IN (closest to startTime) and OUT (closest to endTime)
       for (const block of activeBlocks) {
         const blockStart = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
         const [sH, sM, sS] = parseTimeString(block.startTime);
@@ -162,9 +158,6 @@ export const processDailyAttendance = async (
         const [eH, eM, eS] = parseTimeString(block.endTime);
         blockEnd.setHours(eH, eM, eS);
 
-        // Find applicable logs for this block
-        // Threshold: Look for logs within 10 hours of the block start/end
-        // Increased from 4h to 10h to capture early OUTs (like 11 AM for a 5 PM shift)
         const thresholdMs = 10 * 60 * 60 * 1000;
 
         const blockInLogs = logs.filter(l => 
@@ -184,7 +177,6 @@ export const processDailyAttendance = async (
           if (firstIn && (!timeIn || firstIn < timeIn)) timeIn = firstIn;
           if (lastOut && (!timeOut || lastOut > timeOut)) timeOut = lastOut;
 
-          // Unified Calculation via Utility
           const { lateMinutes, undertimeMinutes } = calculateLateUndertime(
             firstIn,
             lastOut,
@@ -196,16 +188,13 @@ export const processDailyAttendance = async (
           totalLateMinutes += lateMinutes;
           totalUndertimeMinutes += undertimeMinutes;
 
-          // Track Overtime (still separate for now as it doesn't have a grace period logic in utility yet)
           if (lastOut && lastOut > blockEnd) {
             totalOvertimeMinutes += Math.floor((lastOut.getTime() - blockEnd.getTime()) / 60000);
           }
         }
       }
     } else if (useTargetHoursMode && logs.length > 0) {
-      // ── TARGET-HOURS MODE (Irregular with no schedule) ──
-      // No fixed start/end time → Late is NOT computed (no arrival benchmark).
-      // Undertime = dailyTargetMinutes - renderedMinutes (if short).
+      // ── TARGET-HOURS MODE ──
       const targetInLogs = logs.filter(l => l.type === 'IN');
       const targetOutLogs = logs.filter(l => l.type === 'OUT');
 
@@ -214,7 +203,6 @@ export const processDailyAttendance = async (
 
       if (timeIn && timeOut) {
         const grossRenderedMinutes = Math.floor((timeOut.getTime() - timeIn.getTime()) / 60000);
-        // Deduct 1 hour lunch if rendered > 5 hours (standard govt rule)
         const lunchDeduction = grossRenderedMinutes > 300 ? LUNCH_BREAK_MINUTES : 0;
         const netRenderedMinutes = grossRenderedMinutes - lunchDeduction;
 
@@ -223,7 +211,6 @@ export const processDailyAttendance = async (
         } else if (netRenderedMinutes > dailyTargetMinutes) {
           totalOvertimeMinutes = netRenderedMinutes - dailyTargetMinutes;
         }
-        // Late is NOT applicable in target-hours mode (no fixed start time)
       }
     } else {
       // Rest Day or no logs at all: Just record first in and last out
@@ -234,34 +221,42 @@ export const processDailyAttendance = async (
     }
 
     // ── STATUS DETERMINATION ──
-    let status: string = 'Pending';
     const hasScheduleOrTarget = activeBlocks.length > 0 || useTargetHoursMode;
+    
+    // 100% PRECISION: Correctly handle Rest Day Duty to eliminate "Pending" artifacts
+    let status = determineStatus(
+      totalLateMinutes,
+      totalUndertimeMinutes,
+      'Present',
+      hasScheduleOrTarget
+    );
 
     if (hasScheduleOrTarget) {
       if (!timeIn && logs.length === 0) {
-        // No logs at all for a working day
         status = isOnLeave ? (leaveType || 'Leave') : (useTargetHoursMode ? 'No Logs' : 'Absent');
       } else if (!timeIn) {
         status = isOnLeave ? (leaveType || 'Leave') : 'Absent';
-      } else {
-        const isLate = totalLateMinutes > 0;
-        const isUndertime = totalUndertimeMinutes > 0;
-        
-        if (isLate && isUndertime) {
-          status = 'Late/Undertime';
-        } else if (isLate) {
-          status = 'Late';
-        } else if (isUndertime) {
-          status = 'Undertime';
-        } else {
-          status = 'Present';
-        }
+      }
+    } else if (isOnLeave) {
+      status = leaveType || 'Leave';
+    }
+
+    // 4. Upsert into daily_time_records ONLY if there are VALID logs or the employee is on leave
+    const hasBothLogs = timeIn !== null && timeOut !== null;
+    
+    // 100% NOISE FILTER: 
+    // If on a Rest Day (no schedule) and not on leave, check for "Enrollment Noise"
+    // (e.g., 12 AM scans often associated with hardware testing/enrollment)
+    let isNoiseLog = false;
+    if (!hasScheduleOrTarget && !isOnLeave && hasBothLogs && timeIn) {
+      const inHour = timeIn.getHours();
+      // If scans occur between 11 PM and 1 AM on a Sunday/Rest Day, it is almost certainly noise
+      if (inHour === 0 || inHour === 23) {
+        isNoiseLog = true;
       }
     }
 
-    // 4. Upsert into daily_time_records ONLY if there are logs or the employee is on leave
-    // If they simply never clocked in (Absent), we do not create a DTR row, keeping the table clean as requested.
-    if (logs.length > 0 || isOnLeave) {
+    if ((hasBothLogs && !isNoiseLog) || isOnLeave) {
       await db.insert(dailyTimeRecords).values({
         employeeId,
         date: dateStr,
@@ -284,7 +279,7 @@ export const processDailyAttendance = async (
         }
       });
     } else {
-      // CLEANUP: If no logs remain (e.g. after ghost log deletion) and not on leave, remove the DTR entry.
+      // CLEANUP: If only a single log exists (Ghost Record) or it's identified as noise, remove the entry.
       await db.delete(dailyTimeRecords).where(and(
         compareIds(dailyTimeRecords.employeeId, employeeId),
         eq(dailyTimeRecords.date, dateStr)
@@ -292,17 +287,13 @@ export const processDailyAttendance = async (
     }
 
     // 5. AUTO-UPDATE SUMMARY & CHECK VIOLATIONS
-    // This makes the system "Real-Time"
     await updateTardinessSummary(employeeId, dateStr);
     
-    // Only check for violations if there's a negative incident to save resources
     if (totalLateMinutes > 0 || totalUndertimeMinutes > 0 || status === 'Absent') {
       await checkPolicyViolations(employeeId, dateParts[0], dateParts[1]);
     }
-
-    // console.log(`Processed DTR for ${employeeId} on ${dateStr}: Late=${totalLateMinutes}, Undertime=${totalUndertimeMinutes}`);
-  } catch (error: unknown) {
-    console.error('Error processing daily attendance:', error);
-    throw error;
+  } catch (error: Error | unknown) {
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error(`[ATTENDANCE_FATAL] Processor failed for ${employeeId} on ${dateStr}:`, msg);
   }
 };

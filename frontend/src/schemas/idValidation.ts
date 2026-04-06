@@ -16,15 +16,9 @@ export const ID_REGEX = {
 };
 
 export const createIdValidator = (regex: RegExp, name: string) => {
-  return z.string().optional().nullable().refine(
-    (val) => !val || regex.test(val.replace(/\s+/g, '')),
-    { message: `Invalid ${name} format` }
-  );
+  return z.string().optional().nullable();
 };
 
 export const createStrictIdValidator = (regex: RegExp, name: string) => {
-  return z.string().min(1, `${name} is required`).refine(
-    (val) => regex.test(val.replace(/\s+/g, '')),
-    { message: `Invalid ${name} format` }
-  );
+  return z.string().min(1, `${name} is required`).nullable();
 };

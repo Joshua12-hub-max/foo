@@ -63,6 +63,7 @@ export interface User {
   umidNumber?: string | null;
   philsysId?: string | null;
   tinNumber?: string | null;
+  agencyEmployeeNo?: string | null;
   
   // Emergency & Education
   emergencyContact?: string | null;

@@ -138,6 +138,7 @@ export interface EmployeeApiResponse {
   heightM: number | null;
   weightKg: number | null;
   bloodType: string | null;
+  nationality: string | null;
   citizenship: string | null;
   residentialAddress: string | null;
   permanentAddress: string | null;
@@ -179,8 +180,10 @@ export interface EmployeeSkillsResponse {
 
 export interface EmployeeEducationResponse {
   id: number;
+  schoolName: string; // Alias for PDS compatibility
   institution: string;
   degree: string | null;
+  degreeCourse: string | null; // Alias for PDS compatibility
   fieldOfStudy: string | null;
   startDate: string | null;
   endDate: string | null;
@@ -247,10 +250,14 @@ export interface WorkplaceExperienceResponse {
   dateFrom: string;
   dateTo: string | null;
   positionTitle: string;
+  position: string; // Alias for PDS compatibility
   companyName: string;
+  company: string; // Alias for PDS compatibility
   monthlySalary: string | null;
+  salary: string | null; // Alias for PDS compatibility
   salaryGrade: string | null;
   appointmentStatus: string | null;
+  status: string | null; // Alias for PDS compatibility
   isGovernment: boolean;
 }
 
@@ -303,12 +310,17 @@ export interface PdsDeclarationsResponse {
 
 export interface EmployeeEligibilityResponse {
   id: number;
+  eligibilityName: string; // Alias for PDS compatibility
+  name: string; // Alias for frontend compatibility
   eligibilityType: string;
   rating: string | null;
   examDate: string | null;
   examPlace: string | null;
-  eligibilityNumber: string | null;
+  licenseNumber: string | null;
+  eligibilityNumber: string | null; // Alias for frontend compatibility
+  licenseNo: string | null; // Alias for frontend compatibility
   validityDate?: string | null;
+  licenseValidUntil?: string | null; // Alias for frontend compatibility
 }
 
 /**

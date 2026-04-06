@@ -10,7 +10,7 @@ import {
   salaryTranches,
   pdsHrDetails
 } from '../db/schema.js';
-import { eq, and, sql, asc, desc, isNull, ne } from 'drizzle-orm';
+import { eq, and, sql, asc, desc, isNull, ne, inArray } from 'drizzle-orm';
 import type { AuthenticatedRequest } from '../types/index.js';
 import { 
   PlantillaPositionApiResponse, 
@@ -179,13 +179,39 @@ const logAudit = async (
   }
 };
 
+/**
+ * Recursively fetch all sub-department IDs for a parent department.
+ * @param parentId - The current parent department ID
+ * @returns Array of descendant department IDs (including the parent)
+ */
+const getDepartmentDescendants = async (parentId: number): Promise<number[]> => {
+  const children = await db.select({ id: departments.id })
+    .from(departments)
+    .where(eq(departments.parentDepartmentId, parentId));
+  
+  let ids = [parentId];
+  for (const child of children) {
+    const descendantIds = await getDepartmentDescendants(child.id);
+    ids = [...ids, ...descendantIds];
+  }
+  return ids;
+};
+
 export const getPlantilla = async (req: Request, res: Response): Promise<void> => {
   try {
     const { departmentId, isVacant } = req.query;
     
     const whereConditions = [];
     if (departmentId && departmentId !== 'All') {
-      whereConditions.push(eq(plantillaPositions.departmentId, Number(departmentId)));
+      const deptIdNum = Number(departmentId);
+      // Recursively get all descendant department IDs (including parent)
+      const allRelatedDeptIds = await getDepartmentDescendants(deptIdNum);
+      
+      if (allRelatedDeptIds.length > 1) {
+        whereConditions.push(inArray(plantillaPositions.departmentId, allRelatedDeptIds));
+      } else {
+        whereConditions.push(eq(plantillaPositions.departmentId, deptIdNum));
+      }
     }
     if (isVacant !== undefined) {
       whereConditions.push(eq(plantillaPositions.isVacant, isVacant === 'true' || isVacant === '1' ? true : false));

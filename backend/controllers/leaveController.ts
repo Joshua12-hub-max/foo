@@ -1213,34 +1213,56 @@ export const accrueMonthlyCredits: AuthenticatedHandler = async (req, res) => {
 };
 
 /**
- * Allocate default credits for new employee
+ * 100% REGISTRATION STABILITY: Initializes leave balances for a new employee.
+ * This ensures that when an employee is created, they have a footprint in the leave system
+ * and can immediately start accruing or seeing their balance status.
  */
 export const allocateDefaultCredits = async (employeeId: string): Promise<void> => {
   try {
+    const year = getCurrentYear();
     const policy = await getLeavePolicy();
-    const defaults = Object.entries(policy.initialAllocations || {}).map(([type, balance]) => ({
-      type: type,
-      balance: Number(balance)
-    }));
-
-    for (const credit of defaults) {
-      const year = getCurrentYear();
-      const existing = await getEmployeeBalance(employeeId, credit.type, year);
-      if (existing === 0) {
-        await updateBalance(
-          employeeId,
-          credit.type,
-          credit.balance,
-          'ACCRUAL',
-          undefined,
-          'manual',
-          'Initial allocation for new employee',
-          'System'
-        );
-      }
+    
+    if (!policy) {
+        console.error('[LEAVE] Cannot allocate credits: Policy missing.');
+        return;
     }
-  } catch (_error: unknown) {
-      /* empty */
+
+    // Identify standard credit types from the policy
+    const initialAllocations = policy.initialAllocations || {
+        'Vacation Leave': 0.000,
+        'Sick Leave': 0.000
+    };
+
+    for (const [creditType, amount] of Object.entries(initialAllocations)) {
+        const balanceValue = Number(amount).toFixed(3);
+        
+        // Idempotent insertion using onDuplicateKeyUpdate
+        await db.insert(leaveBalances).values({
+            employeeId,
+            creditType,
+            balance: balanceValue,
+            year
+        }).onDuplicateKeyUpdate({
+            set: {
+                updatedAt: sql`CURRENT_TIMESTAMP`
+            }
+        });
+
+        // Log the initialization in the ledger
+        await db.insert(leaveLedger).values({
+            employeeId,
+            creditType,
+            transactionType: 'ADJUSTMENT', // Use ADJUSTMENT as it's a valid enum value in schema
+            amount: balanceValue,
+            balanceAfter: balanceValue,
+            remarks: "Initial leave balance allocation during registration",
+            createdBy: 'SYSTEM'
+        });
+    }
+
+    console.error(`[LEAVE] Successfully allocated default credits for employee ${employeeId}`);
+  } catch (error) {
+    console.error(`[LEAVE] Failed to allocate default credits for ${employeeId}:`, error);
   }
 };
 
@@ -1352,3 +1374,5 @@ export const getTotalLWOPForRetirement: AuthenticatedHandler = async (req, res) 
     res.status(500).json({ message: 'Something went wrong!' });
   }
 };
+
+

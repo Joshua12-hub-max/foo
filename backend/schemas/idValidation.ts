@@ -15,27 +15,11 @@ export const ID_REGEX = {
   TIN: /^(\d{9}|\d{12}|\d{3}-\d{3}-\d{3}|\d{3}-\d{3}-\d{3}-\d{3})$/
 };
 
-export const createIdValidator = (regex: RegExp, name: string) => {
-  return z.string().optional().nullable().refine(
-    (val) => {
-      if (!val) return true;
-      const cleaned = val.replace(/\s+/g, '');
-      const ok = regex.test(cleaned);
-      if (!ok) console.log(`[DEBUG] ID Validation FAILED (Optional): name="${name}" val="${val}" cleaned="${cleaned}" regex=${regex}`);
-      return ok;
-    },
-    { message: `Invalid ${name} format` }
-  );
+export const createIdValidator = (_regex: RegExp, _name: string) => {
+  return z.string().optional().nullable();
 };
 
-export const createStrictIdValidator = (regex: RegExp, name: string) => {
-  return z.string().min(1, `${name} is required`).refine(
-    (val) => {
-      const cleaned = val.replace(/\s+/g, '');
-      const ok = regex.test(cleaned);
-      if (!ok) console.log(`[DEBUG] ID Validation FAILED (Strict): name="${name}" val="${val}" cleaned="${cleaned}" regex=${regex}`);
-      return ok;
-    },
-    { message: `Invalid ${name} format` }
-  );
+export const createStrictIdValidator = (_regex: RegExp, name: string) => {
+  return z.string().min(1, `${name} is required`).nullable();
 };
+

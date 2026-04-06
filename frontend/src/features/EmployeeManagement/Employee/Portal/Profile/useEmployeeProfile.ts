@@ -21,46 +21,41 @@ export interface UseEmployeeProfileReturn {
   updateProfile: (formData: FormData) => Promise<UpdateResult>;
 }
 
-export const useEmployeeProfile = (): UseEmployeeProfileReturn => {
+export const useEmployeeProfile = (employeeId?: number | string): UseEmployeeProfileReturn => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updating, setUpdating] = useState(false);
   const [updateSuccess, setUpdateSuccess] = useState(false);
 
-  // Fetch Profile (User Me)
+  // Fetch Profile
   const fetchProfile = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
       
-      // 1. Get basic identity to know WHO we are
-      const authRes = await axios.get('/auth/me');
-      if (!authRes.data.success) throw new Error('Failed to authenticate');
-      
-      const userId = authRes.data.data.id;
+      let targetId = employeeId;
+
+      // 1. If no employeeId provided, get basic identity from /auth/me
+      if (!targetId) {
+        const authRes = await axios.get('/auth/me');
+        if (!authRes.data.success) throw new Error('Failed to authenticate');
+        targetId = authRes.data.data.id;
+      }
 
       // 2. Fetch FULL detailed record (Skills, Education, Contacts) using Employee API
-      // The backend allows this if req.user.id === params.id
-      const fullProfileRes = await axios.get(`/employees/${userId}`);
+      const fullProfileRes = await axios.get(`/employees/${targetId}`);
       
       if (fullProfileRes.data.success) {
-        setProfile(fullProfileRes.data.employee);
+        // Handle both possible response structures (data.profile or data.employee)
+        const profileData = fullProfileRes.data.profile || fullProfileRes.data.employee;
+        if (profileData) {
+            setProfile(profileData);
+        } else {
+            throw new Error('Profile data not found in response');
+        }
       } else {
-        // Fallback to basic auth data with empty detailed fields to satisfy EmployeeDetailed type
-        setProfile({
-          ...authRes.data.data,
-          skills: [],
-          education: [],
-          emergencyContacts: [],
-          customFields: [],
-          familyBackground: [],
-          voluntaryWork: [],
-          learningDevelopment: [],
-          workExperience: [],
-          otherInfo: [],
-          references: []
-        });
+        throw new Error(fullProfileRes.data.message || 'Failed to load profile');
       }
 
     } catch (err: unknown) {
@@ -69,7 +64,7 @@ export const useEmployeeProfile = (): UseEmployeeProfileReturn => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [employeeId]);
 
   // Update profile function remains the same, targeting auth profile endpoint
   // Note: For updating specific sections like Skills/Education, we would need separate functions

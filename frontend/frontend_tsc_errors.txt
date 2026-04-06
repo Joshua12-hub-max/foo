@@ -1,4 +1,0 @@
-src/pages/TimekeepingAdmin/adminCalendar.tsx(257,45): error TS2304: Cannot find name 'JsonValue'.
-src/pages/TimekeepingAdmin/adminCalendar.tsx(268,48): error TS2304: Cannot find name 'JsonValue'.
-src/pages/TimekeepingAdmin/adminCalendar.tsx(277,40): error TS2304: Cannot find name 'JsonValue'.
-src/pages/TimekeepingAdmin/adminCalendar.tsx(282,40): error TS2304: Cannot find name 'JsonValue'.

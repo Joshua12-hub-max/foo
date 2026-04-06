@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect, useLayoutEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown, Check, Search } from "lucide-react";
 
 interface Option<T extends string> {
   value: T;
@@ -77,17 +76,36 @@ export default function Combobox<T extends string>({
        const target = e.target;
        // Ignore scroll events inside the dropdown itself
        if (dropdownRef.current && target instanceof Node && dropdownRef.current.contains(target)) return;
-       if(isOpen) setIsOpen(false);
+       
+       requestAnimationFrame(() => {
+           if (buttonRef.current && dropdownRef.current) {
+               const rect = buttonRef.current.getBoundingClientRect();
+               dropdownRef.current.style.top = `${rect.bottom + 8}px`;
+               dropdownRef.current.style.left = `${rect.left}px`;
+               dropdownRef.current.style.width = `${rect.width}px`;
+           }
+       });
+    };
+
+    const handleResize = () => {
+       if (buttonRef.current) {
+          const rect = buttonRef.current.getBoundingClientRect();
+          setPosition({
+            top: rect.bottom + 8,
+            left: rect.left,
+            width: rect.width
+          });
+       }
     };
 
     document.addEventListener("mousedown", handleClickOutside);
     window.addEventListener("scroll", handleScroll, true);
-    window.addEventListener("resize", handleScroll);
+    window.addEventListener("resize", handleResize);
 
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
       window.removeEventListener("scroll", handleScroll, true);
-      window.removeEventListener("resize", handleScroll);
+      window.removeEventListener("resize", handleResize);
     };
   }, [isOpen]);
 
@@ -109,7 +127,7 @@ export default function Combobox<T extends string>({
         type="button"
         disabled={disabled}
         onClick={() => !disabled && setIsOpen(!isOpen)}
-        className={`w-full flex items-center justify-between border rounded-md transition-all
+        className={`w-full flex items-center justify-between border rounded-lg transition-all
           ${error ? "border-red-500 ring-red-100" : "border-gray-300 focus:ring-gray-100"}
           ${isOpen ? "ring-2 ring-gray-100 border-gray-400" : ""}
           ${disabled ? "bg-gray-100 cursor-not-allowed opacity-60" : "bg-white"}
@@ -118,7 +136,9 @@ export default function Combobox<T extends string>({
         <span className={`block truncate ${!selectedOption ? "text-gray-400" : "text-gray-900"}`}>
           {selectedOption ? selectedOption.label : placeholder}
         </span>
-        <ChevronDown size={16} className={`text-gray-400 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
+        <span className="text-[10px] text-gray-400 font-bold transition-transform duration-200">
+           {isOpen ? "Close" : "Open"}
+        </span>
       </button>
 
       {createPortal(
@@ -131,23 +151,22 @@ export default function Combobox<T extends string>({
               exit={{ opacity: 0, y: -10, scale: 0.95 }}
               transition={{ duration: 0.1, ease: "easeOut" }}
               style={{
-                position: "absolute",
+                position: "fixed",
                 top: position.top,
                 left: position.left,
                 width: position.width,
                 zIndex: 9999 
               }}
-              className="bg-white border border-gray-200 rounded-md shadow-lg overflow-hidden"
+              className="bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden"
             >
               <div className="p-2 border-b border-gray-100 sticky top-0 bg-white">
-                <div className="relative">
-                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input
+                 <div className="relative">
+                    <input
                     type="text"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search..."
-                    className="w-full pl-9 pr-3 py-1.5 text-sm bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
+                    placeholder="Search options..."
+                    className="w-full px-3 py-2 text-[11px] font-bold bg-gray-100/60 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-800 focus:ring-4 focus:ring-gray-100 transition-all font-mono"
                     ref={searchInputRef}
                   />
                 </div>
@@ -172,7 +191,7 @@ export default function Combobox<T extends string>({
                         `}
                       >
                         <span>{option.label}</span>
-                        {isSelected && <Check size={14} className="text-blue-600" />}
+                        {isSelected && <span className="text-[9px] font-black text-gray-400 tracking-tighter">Selected</span>}
                       </li>
                     );
                   })

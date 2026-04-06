@@ -155,11 +155,11 @@ const Login: React.FC = () => {
     }
   };
 
-  const labelClass = "text-xs font-semibold text-gray-600 mb-1.5 ml-1 block";
-  const inputContainerClass = "relative flex items-center bg-white border border-gray-300 rounded-lg focus-within:ring-2 focus-within:ring-blue-500/10 focus-within:border-blue-500 transition-all overflow-hidden shadow-sm";
-  const iconClass = "absolute left-3.5 text-gray-400";
-  const inputClass = "w-full bg-transparent pl-11 pr-4 py-2.5 text-sm text-gray-900 outline-none placeholder:text-gray-400 font-medium";
-  const buttonClass = "w-full bg-slate-900 text-white py-3 rounded-lg font-bold text-sm hover:bg-black transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md flex justify-center items-center gap-2 active:scale-[0.98]";
+  const labelClass = "text-[11px] font-bold text-gray-600 mb-1.5 ml-1 block";
+  const inputContainerClass = "relative flex items-center bg-gray-100/60 border-[1.5px] border-gray-200 rounded-lg focus-within:ring-4 focus-within:ring-gray-100 focus-within:border-gray-800 transition-all overflow-hidden shadow-sm h-11";
+  const iconClass = "absolute left-4 text-gray-400";
+  const inputClass = "w-full bg-transparent pl-12 pr-4 h-full text-sm font-bold text-gray-900 outline-none placeholder:text-gray-400 placeholder:font-normal";
+  const buttonClass = "w-full h-12 bg-gray-900 text-white rounded-xl font-black text-sm hover:bg-black transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-xl flex justify-center items-center gap-2 active:scale-95";
 
   if (show2FA) {
     return (
@@ -228,13 +228,7 @@ const Login: React.FC = () => {
               {resend2FAMutation.isPending ? "Sending code..." : "Resend verification code"}
             </button>
 
-            <button
-              onClick={() => setShow2FA(false)}
-              className="flex items-center justify-center gap-2 text-xs font-semibold text-gray-400 hover:text-gray-600 transition-colors pt-2"
-            >
-              <ArrowLeft size={14} />
-              Back to login
-            </button>
+
           </div>
         </div>
       </AuthLayout>
@@ -334,11 +328,11 @@ const Login: React.FC = () => {
           <Link 
             to="/setup-portal" 
             onClick={handleSetupClick}
-            className={`text-xs font-bold transition-colors uppercase tracking-wider ${
-              showSetupLink ? 'text-blue-600 hover:text-blue-800' : 'text-gray-400 hover:text-gray-900'
+            className={`text-xs font-bold transition-colors tracking-tight ${
+              showSetupLink ? 'text-gray-600 hover:text-gray-900 underline underline-offset-4 ring-offset-4' : 'text-gray-400 hover:text-gray-900'
             }`}
           >
-            Initialize Portal
+            Initialize portal
           </Link>
         </div>
       </div>

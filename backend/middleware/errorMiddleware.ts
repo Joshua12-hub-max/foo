@@ -12,8 +12,11 @@ interface AppError extends Error {
 }
 
 export const errorHandler = (error: AppError | ZodError, req: Request, res: Response, _next: NextFunction) => {
-    // Log the error for internal tracking - Avoid logging the entire error object if it contains sensitive data
+    // Log the error for internal tracking (100% Traceability)
     console.error(`[ERROR] ${req.method} ${req.url}: ${error.message}`);
+    if (error.stack) {
+        console.error(error.stack);
+    }
 
     // Handle Zod Validation Errors
     if (error instanceof ZodError) {

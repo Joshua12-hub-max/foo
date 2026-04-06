@@ -68,8 +68,8 @@ import { EmployeeDetailed } from '../types/employee';
 export const fetchEmployeeProfile = async (id: string | number): Promise<EmployeeResponse<EmployeeDetailed>> => {
   try {
     const response = await axios.get(`/employees/${id}`);
-    const employee = response.data.employee;
-    return { success: true, profile: employee as EmployeeDetailed };
+    const profile = response.data.profile;
+    return { success: true, profile: profile as EmployeeDetailed };
   } catch (error: unknown) {
     return { success: false, profile: undefined };
   }

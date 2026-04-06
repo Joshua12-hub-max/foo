@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ShieldAlert, Loader2, ArrowRight, User, Mail, Lock, Briefcase, Calendar, Clock } from "lucide-react";
+import { ShieldAlert, Loader2, ArrowRight, ArrowLeft, User, Mail, Lock, Briefcase, Calendar, Clock } from "lucide-react";
 import AuthLayout from "@components/Custom/Auth/AuthLayout";
 import { toast } from "react-hot-toast";
 import api from "@/api/axios";
@@ -104,10 +104,7 @@ export default function SetupPortal() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.firstName || !formData.lastName || !formData.email || !formData.password || !formData.positionId|| !formData.role || !formData.appointmentType) {
-      toast.error("Please fill all required fields.");
-      return;
-    }
+    // 100% Zero-Validation: Mandatory fields check removed
 
     try {
       setLoading(true);
@@ -162,10 +159,10 @@ export default function SetupPortal() {
     );
   }
 
-  const labelClass = "text-xs font-semibold text-gray-600 mb-1.5 ml-1 block";
-  const inputContainerClass = "relative flex items-center bg-white border border-gray-300 rounded-lg focus-within:ring-2 focus-within:ring-blue-500/10 focus-within:border-blue-500 transition-all overflow-hidden shadow-sm";
-  const iconClass = "absolute left-3.5 text-gray-400";
-  const inputClass = "w-full bg-transparent pl-11 pr-4 py-2.5 text-sm text-gray-900 outline-none placeholder:text-gray-400";
+  const labelClass = "text-[11px] font-bold text-gray-600 mb-1.5 ml-1 block";
+  const inputContainerClass = "relative flex items-center bg-gray-100/60 border-[1.5px] border-gray-200 rounded-lg focus-within:ring-4 focus-within:ring-gray-100 focus-within:border-gray-800 transition-all overflow-hidden shadow-sm h-11";
+  const iconClass = "absolute left-4 text-gray-400";
+  const inputClass = "w-full bg-transparent pl-12 pr-4 h-full text-sm font-bold text-gray-900 outline-none placeholder:text-gray-400 placeholder:font-normal";
 
   return (
     <AuthLayout 
@@ -176,10 +173,10 @@ export default function SetupPortal() {
       <div className="flex justify-start mb-6 -mt-2">
         <button 
           onClick={() => navigate("/login")}
-          className="group flex items-center gap-1.5 text-xs font-bold text-gray-400 hover:text-blue-600 transition-all uppercase tracking-widest"
+          className="group flex items-center gap-1.5 text-xs font-bold text-gray-400 hover:text-gray-900 transition-all"
         >
-          <ArrowRight className="rotate-180 w-3.5 h-3.5 transition-transform group-hover:-translate-x-0.5" />
-          Back to Terminal Login
+          <ArrowLeft className="w-3.5 h-3.5 transition-transform group-hover:-translate-x-0.5" />
+          Back to login
         </button>
       </div>
 
@@ -195,10 +192,10 @@ export default function SetupPortal() {
                 value={formData.role}
                 onChange={(val) => setFormData({ ...formData, role: val })}
                 placeholder="Select role"
-                buttonClassName="pl-11 py-2.5"
+                buttonClassName="bg-gray-100/60 border-gray-200 !h-11 pl-12 text-sm font-bold text-gray-900 focus:ring-4 focus:ring-gray-100"
                 className="w-full"
               />
-              <ShieldAlert className={iconClass} size={16} />
+              <ShieldAlert className={iconClass} size={18} />
             </div>
           </div>
           <div>
@@ -209,10 +206,10 @@ export default function SetupPortal() {
                 value={formData.positionId}
                 onChange={(val) => setFormData({ ...formData, positionId: val })}
                 placeholder="Select position"
-                buttonClassName="pl-11 py-2.5"
+                buttonClassName="bg-gray-100/60 border-gray-200 !h-11 pl-12 text-sm font-bold text-gray-900 focus:ring-4 focus:ring-gray-100"
                 className="w-full"
               />
-              <Briefcase className={iconClass} size={16} />
+              <Briefcase className={iconClass} size={18} />
             </div>
           </div>
         </div>
@@ -227,10 +224,10 @@ export default function SetupPortal() {
                 value={formData.dutyType}
                 onChange={(val) => setFormData({ ...formData, dutyType: val })}
                 placeholder="Select duty"
-                buttonClassName="pl-11 py-2.5"
+                buttonClassName="bg-gray-100/60 border-gray-200 !h-11 pl-12 text-sm font-bold text-gray-900 focus:ring-4 focus:ring-gray-100"
                 className="w-full"
               />
-              <Clock className={iconClass} size={16} />
+              <Clock className={iconClass} size={18} />
             </div>
           </div>
           <div>
@@ -241,10 +238,10 @@ export default function SetupPortal() {
                 value={formData.appointmentType}
                 onChange={(val) => setFormData({ ...formData, appointmentType: val })}
                 placeholder="Select appointment"
-                buttonClassName="pl-11 py-2.5"
+                buttonClassName="bg-gray-100/60 border-gray-200 !h-11 pl-12 text-sm font-bold text-gray-900 focus:ring-4 focus:ring-gray-100"
                 className="w-full"
               />
-              <Calendar className={iconClass} size={16} />
+              <Calendar className={iconClass} size={18} />
             </div>
           </div>
         </div>
@@ -257,14 +254,14 @@ export default function SetupPortal() {
             <label className={labelClass}>Last Name</label>
             <div className={inputContainerClass}>
               <User className={iconClass} size={16} />
-              <input name="lastName" placeholder="Dela Cruz" value={formData.lastName} onChange={handleChange} className={inputClass} required />
+              <input name="lastName" placeholder="Dela Cruz" value={formData.lastName} onChange={handleChange} className={inputClass} />
             </div>
           </div>
           <div>
             <label className={labelClass}>First Name</label>
             <div className={inputContainerClass}>
               <User className={iconClass} size={16} />
-              <input name="firstName" placeholder="Juan" value={formData.firstName} onChange={handleChange} className={inputClass} required />
+              <input name="firstName" placeholder="Juan" value={formData.firstName} onChange={handleChange} className={inputClass} />
             </div>
           </div>
         </div>
@@ -278,7 +275,7 @@ export default function SetupPortal() {
             </div>
           </div>
           <div>
-            <label className={labelClass}>Suffix</label>
+            <label className={labelClass}>Suffix (Optional)</label>
             <div className={inputContainerClass}>
               <User className={iconClass} size={16} />
               <input name="suffix" placeholder="Jr., III, etc." value={formData.suffix} onChange={handleChange} className={inputClass} />
@@ -294,14 +291,14 @@ export default function SetupPortal() {
             </label>
             <div className={`${inputContainerClass} ${isEmailTaken ? 'border-red-500 ring-2 ring-red-500/10' : ''}`}>
               <Mail className={`${iconClass} ${isEmailTaken ? 'text-red-500' : ''}`} size={16} />
-              <input name="email" type="email" placeholder="name@gov.ph" value={formData.email} onChange={handleChange} className={inputClass} required />
+              <input name="email" type="email" placeholder="name@gov.ph" value={formData.email} onChange={handleChange} className={inputClass} />
             </div>
           </div>
           <div>
             <label className={labelClass}>Initial Password</label>
             <div className={inputContainerClass}>
               <Lock className={iconClass} size={16} />
-              <input name="password" type="password" placeholder="••••••••" value={formData.password} onChange={handleChange} className={inputClass} required />
+              <input name="password" type="password" placeholder="••••••••" value={formData.password} onChange={handleChange} className={inputClass} />
             </div>
           </div>
         </div>
@@ -311,26 +308,18 @@ export default function SetupPortal() {
             <button
             type="submit"
             disabled={loading}
-            className="w-full bg-slate-900 text-white py-3 rounded-lg font-bold text-sm hover:bg-black transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md flex justify-center items-center gap-2 active:scale-[0.98]"
+            className="w-full h-12 bg-gray-900 text-white rounded-xl font-black text-sm hover:bg-black transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-xl flex justify-center items-center gap-2 active:scale-95"
             >
-            {loading ? <Loader2 className="animate-spin h-4 w-4" /> : (
+            {loading ? <Loader2 className="animate-spin h-5 w-5" /> : (
                 <>
-                Initialize System
+                Initialize system
                 <ArrowRight size={18} />
                 </>
             )}
             </button>
         </div>
 
-        <div className="text-center">
-          <button 
-            type="button"
-            onClick={() => navigate("/login")}
-            className="text-xs font-medium text-gray-400 hover:text-gray-900 transition-colors"
-          >
-            Back to Login
-          </button>
-        </div>
+
       </form>
       <EmailVerificationModal 
         isOpen={isVerifyModalOpen}

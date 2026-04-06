@@ -21,7 +21,7 @@ type PHLibrary = {
 const phLib = ph as PHLibrary;
 import { useToastStore } from '@/stores';
 import { useEmploymentMetadataQuery, useGovtIdUniquenessQuery } from "@/hooks/useCommonQueries";
-import { useDebounce } from "@/hooks/useDebounce";import { ID_REGEX } from "@/schemas/idValidation";
+import { useDebounce } from "@/hooks/useDebounce"; import { ID_REGEX } from "@/schemas/idValidation";
 import DocumentGallery from "@features/Settings/Profile/components/DocumentGallery";
 import { LucideIcon } from "lucide-react";
 import { getZipByMunCode } from "@/data/ph-zipcodes";
@@ -53,43 +53,48 @@ interface Child {
 interface Eligibility {
   id?: string | number;
   name: string;
+  eligibilityType?: string; // Multi-format support
   rating: string;
   examDate: string;
   examPlace: string;
+  licenseNumber?: string;
   licenseNo: string;
+  eligibilityNumber?: string; // Multi-format support
   licenseValidUntil: string;
+  validityDate?: string;
 }
 
 interface WorkExperience {
-  id?: string | number;
-  positionTitle: string;
-  companyName: string;
-  dateFrom: string;
-  dateTo: string;
-  monthlySalary: string;
-  salaryGrade: string;
-  appointmentStatus: string;
-  isGovernment: boolean;
+    id?: string | number;
+    positionTitle: string;
+    companyName: string;
+    dateFrom: string;
+    dateTo: string;
+    monthlySalary: string;
+    salaryGrade: string;
+    appointmentStatus: string;
+    isGovernment: boolean;
 }
 
 interface Training {
-  id?: string | number;
-  title: string;
-  dateFrom: string;
-  dateTo: string;
-  hoursNumber: string;
-  typeOfLd: string;
-  conductedBy: string;
+    id?: string | number;
+    title: string;
+    dateFrom: string;
+    dateTo: string;
+    to?: string;
+    hoursNumber: string;
+    typeOfLd: string;
+    conductedBy: string;
 }
 
 interface VoluntaryWorkItem {
-  id?: string | number;
-  organizationName: string;
-  address: string;
-  dateFrom: string;
-  dateTo: string;
-  hoursNumber: string;
-  position: string;
+    id?: string | number;
+    organizationName: string;
+    address: string;
+    dateFrom: string;
+    dateTo: string;
+    hoursNumber: string;
+    position: string;
 }
 
 interface Reference {

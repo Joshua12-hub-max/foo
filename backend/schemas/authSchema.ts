@@ -1,108 +1,154 @@
 import { z } from 'zod';
-import { createIdValidator, ID_REGEX } from './idValidation.js';
 import { PdsQuestionsSchema } from './pdsSchema.js';
 
-const gibberishRegex = /^(.)\1{5,}|^[bcdfghjklmnpqrstvwxzBCDFGHJKLMNPQRSTVWXZ]{12,}$|qwertyuiop|asdfghjkl|zxcvbnm|qwqewrwff/;
-
-const validateGibberish = (val: string | undefined | null) => {
-  if (!val || val === "") return true;
-  // Relaxed thresholds: 12 repeated characters or 20 consonants
-  if (/(.)\1{11,}/.test(val)) return false;
-  if (/[bcdfghjklmnpqrstvwxzBCDFGHJKLMNPQRSTVWXZ]{20,}/.test(val)) return false;
-  if (/[!@#$%^&*()_+={}[\]:;"'<>,.?/\\|`~]{6,}/.test(val)) return false;
-  return !gibberishRegex.test(val.toLowerCase());
-};
-
-const validateProfessionalText = (val: string | undefined | null) => {
-  if (!val || val === "") return true;
-  // Even more relaxed for technical summaries/skills
-  if (/(.)\1{15,}/.test(val)) return false;
-  if (/[bcdfghjklmnpqrstvwxzBCDFGHJKLMNPQRSTVWXZ]{30,}/.test(val)) return false;
-  return true; 
-};
-
-const nameValidator = (val: string | undefined | null) => {
-  if (!val || val === "") return true;
-  const nameRegex = /^[a-zA-Z\s\-.ñÑ]+$/;
-  if (!nameRegex.test(val)) return false;
-  return validateGibberish(val);
-};
-
-const nameMsg = "Only letters, spaces, hyphens, and dots are allowed. Avoid random characters.";
-const gibberishMsg = "Please enter valid text, avoid random characters and excessive symbols.";
-
 const EducationSchema = z.object({
-  school: z.string().optional().nullable(),
-  course: z.string().optional().nullable(),
-  from: z.string().optional().nullable(),
-  to: z.string().optional().nullable(),
-  units: z.string().optional().nullable(),
-  yearGrad: z.string().optional().nullable(),
-  honors: z.string().optional().nullable()
-});
+  level: z.string().optional().nullable(),
+  schoolName: z.string().optional().nullable(),
+  degreeCourse: z.string().optional().nullable(),
+  course: z.string().optional().nullable(), 
+  degree: z.string().optional().nullable(), 
+  dateFrom: z.union([z.string(), z.number()]).optional().nullable(),
+  startDate: z.union([z.string(), z.number()]).optional().nullable(),
+  dateTo: z.union([z.string(), z.number()]).optional().nullable(),
+  endDate: z.union([z.string(), z.number()]).optional().nullable(),
+  unitsEarned: z.string().optional().nullable(),
+  highestLevel: z.string().optional().nullable(),
+  yearGraduated: z.union([z.string(), z.number()]).optional().nullable(),
+  honors: z.string().optional().nullable(),
+  scholarships: z.string().optional().nullable()
+}).catchall(z.any());
+
+const WorkExperienceSchema = z.object({
+  dateFrom: z.string().optional().nullable(),
+  fromDate: z.string().optional().nullable(),
+  dateTo: z.string().optional().nullable(),
+  toDate: z.string().optional().nullable(),
+  positionTitle: z.string().optional().nullable(),
+  companyName: z.string().optional().nullable(),
+  monthlySalary: z.union([z.string(), z.number()]).optional().nullable(),
+  salaryGrade: z.string().optional().nullable(),
+  appointmentStatus: z.string().optional().nullable(),
+  isGovernment: z.union([z.boolean(), z.string()]).optional().default(false).transform(v => v === true || String(v).toLowerCase() === 'yes' || String(v) === 'true')
+}).catchall(z.any());
 
 const EligibilitySchema = z.object({
-  name: z.string().min(1, "Eligibility name is required"),
-  rating: z.string().optional().nullable(),
+  eligibilityName: z.string().optional().nullable().or(z.literal("")),
+  rating: z.union([z.string(), z.number()]).optional().nullable(),
   examDate: z.string().optional().nullable(),
   examPlace: z.string().optional().nullable(),
-  licenseNo: z.string().optional().nullable(),
-  licenseValidUntil: z.string().optional().nullable()
-});
+  licenseNumber: z.string().optional().nullable(),
+  validityDate: z.string().optional().nullable()
+}).catchall(z.any());
+
+const TrainingSchema = z.object({
+  title: z.string().optional().nullable(),
+  trainingTitle: z.string().optional().nullable(),
+  dateFrom: z.string().optional().nullable(),
+  fromDate: z.string().optional().nullable(),
+  dateTo: z.string().optional().nullable(),
+  toDate: z.string().optional().nullable(),
+  hoursNumber: z.union([z.string(), z.number()]).optional().nullable(),
+  hoursCount: z.union([z.string(), z.number()]).optional().nullable(),
+  typeOfLd: z.string().optional().nullable(),
+  trainingType: z.string().optional().nullable(),
+  conductedBy: z.string().optional().nullable()
+}).catchall(z.any());
+
+const VoluntaryWorkSchema = z.object({
+  organizationName: z.string().optional().nullable(),
+  address: z.string().optional().nullable(),
+  dateFrom: z.string().optional().nullable(),
+  fromDate: z.string().optional().nullable(),
+  dateTo: z.string().optional().nullable(),
+  toDate: z.string().optional().nullable(),
+  hoursNumber: z.union([z.string(), z.number()]).optional().nullable(),
+  position: z.string().optional().nullable(),
+  natureOfWork: z.string().optional().nullable()
+}).catchall(z.any());
+
+const ReferenceSchema = z.object({
+  name: z.string().optional().nullable(),
+  address: z.string().optional().nullable(),
+  telNo: z.string().optional().nullable(),
+  telephoneNo: z.string().optional().nullable()
+}).catchall(z.any());
+
+const FamilySchema = z.object({
+  relationType: z.enum(['Spouse', 'Father', 'Mother', 'Child']),
+  lastName: z.string().optional().nullable(),
+  surname: z.string().optional().nullable(),
+  firstName: z.string().optional().nullable(),
+  middleName: z.string().optional().nullable(),
+  nameExtension: z.string().optional().nullable(),
+  extension: z.string().optional().nullable(),
+  occupation: z.string().optional().nullable(),
+  employer: z.string().optional().nullable(),
+  businessAddress: z.string().optional().nullable(),
+  telephoneNo: z.string().optional().nullable(),
+  mobileNo: z.string().optional().nullable(),
+  dateOfBirth: z.string().optional().nullable(),
+  dob: z.string().optional().nullable()
+}).catchall(z.any());
+
+const OtherInfoSchema = z.object({
+  type: z.union([z.enum(['Skill', 'Recognition', 'Membership']), z.string()]).optional().nullable(),
+  title: z.string().optional().nullable(),
+  description: z.string().optional().nullable(),
+  details: z.string().optional().nullable()
+}).catchall(z.any());
 
 export const LoginSchema = z.object({
   identifier: z.string().min(1, "Email or Employee ID is required"),
   password: z.string().min(1, "Password is required")
 });
 
-export const RegisterSchema = z.object({
-  employeeId: z.string().optional(), // Auto-generated if not provided
-  firstName: z.string().min(1, "First name is required").refine(nameValidator, nameMsg),
-  lastName: z.string().min(1, "Last name is required").refine(nameValidator, nameMsg),
-  middleName: z.string().optional().refine(nameValidator, nameMsg),
-  suffix: z.string().optional().refine(nameValidator, nameMsg),
+export const RegisterSchema = z.object({  
+  employeeId: z.string().optional(),
+  firstName: z.string().optional().nullable(),
+  lastName: z.string().optional().nullable(),
+  surname: z.string().optional().nullable(),
+  middleName: z.string().optional().nullable(),
+  maidenName: z.string().optional().nullable(),
+  suffix: z.string().optional().nullable(),
+  nameExtension: z.string().optional().nullable(),
   
-  // Address
-  address: z.string().optional().refine(validateGibberish, gibberishMsg),
+  address: z.string().optional().nullable(),
   isMeycauayan: z.union([z.boolean(), z.string()]).optional().default('false').transform((val) => val === true || val === 'true'), 
-  barangay: z.string().optional(),
+  barangay: z.string().optional().nullable(),
+  email: z.string().optional().nullable(),
+  password: z.string().optional().nullable(),
+  role: z.string().optional().nullable().or(z.literal("")),
+  department: z.string().optional().nullable(),
+  position: z.string().optional().nullable(),
+  dutyType: z.string().optional().nullable().or(z.literal("")),
+  appointmentType: z.string().optional().nullable().or(z.literal("")),
+  startTime: z.string().optional().nullable(),
+  endTime: z.string().optional().nullable(),
+  dateHired: z.string().optional().nullable(),
 
-  email: z.string().email("Invalid email format"),
-  password: z.string()
-    .min(8, "Password must be at least 8 characters")
-    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, "Password must contain at least one uppercase letter, one lowercase letter, and one number")
-    .optional().or(z.literal("")),
-  role: z.enum(["Administrator", "Human Resource", "Employee"]).default("Employee"),
-  
-  department: z.string().optional(),
-  position: z.string().optional(),
-  dutyType: z.enum(["Standard", "Irregular"]).default("Standard"),
-  appointmentType: z.enum(['Permanent', 'Contractual', 'Casual', 'Job Order', 'Coterminous', 'Temporary', 'Contract of Service', 'JO', 'COS', '']).optional().transform(val => val === "" ? undefined : val),
-  startTime: z.string().optional().refine(val => !val || /^([01]\d|2[0-3]):([0-5]\d)$/.test(val), "Invalid time format"),
-  endTime: z.string().optional().refine(val => !val || /^([01]\d|2[0-3]):([0-5]\d)$/.test(val), "Invalid time format"),
-  dateHired: z.string().optional(),
-
-  // Personal Info
   birthDate: z.string().optional().or(z.null()).or(z.literal("")),
+  dob: z.string().optional().or(z.null()).or(z.literal("")),
   placeOfBirth: z.string().optional().or(z.null()).or(z.literal("")),
-  gender: z.enum(["Male", "Female", ""]).optional().or(z.null()).transform(val => val === "" ? null : val),
-  civilStatus: z.enum(["Single", "Married", "Widowed", "Separated", "Annulled", ""]).optional().or(z.null()).transform(val => val === "" ? null : val),
+  pob: z.string().optional().or(z.null()).or(z.literal("")),
+  gender: z.string().optional().or(z.null()).or(z.literal("")),
+  sex: z.string().optional().or(z.null()).or(z.literal("")),
+  civilStatus: z.string().optional().or(z.null()).or(z.literal("")),
   religion: z.string().optional().or(z.null()).or(z.literal("")),
   nationality: z.string().optional().or(z.null()).or(z.literal("")),
-  citizenship: z.string().optional().or(z.null()).or(z.literal("")).default("Filipino"),
+  citizenship: z.string().optional().or(z.null()).or(z.literal("")),
   citizenshipType: z.string().optional().or(z.null()).or(z.literal("")),
   dualCountry: z.string().optional().or(z.null()).or(z.literal("")),
   bloodType: z.string().optional().or(z.null()).or(z.literal("")),
-  heightM: z.string().optional().or(z.null()).or(z.literal("")),
-  weightKg: z.string().optional().or(z.null()).or(z.literal("")),
+  heightM: z.union([z.string(), z.number()]).optional().or(z.null()).or(z.literal("")),
+  height: z.union([z.string(), z.number()]).optional().or(z.null()).or(z.literal("")),
+  weightKg: z.union([z.string(), z.number()]).optional().or(z.null()).or(z.literal("")),
+  weight: z.union([z.string(), z.number()]).optional().or(z.null()).or(z.literal("")),
 
-  // Contact & Detailed Address
   residentialAddress: z.string().optional().or(z.null()),
   residentialZipCode: z.string().optional().or(z.null()),
   permanentAddress: z.string().optional().or(z.null()),
   permanentZipCode: z.string().optional().or(z.null()),
 
-  // Atomic Address Fields
   resHouseBlockLot: z.string().optional().or(z.null()),
   resStreet: z.string().optional().or(z.null()),
   resSubdivision: z.string().optional().or(z.null()),
@@ -119,109 +165,49 @@ export const RegisterSchema = z.object({
   permProvince: z.string().optional().or(z.null()),
   permRegion: z.string().optional().or(z.null()),
 
-  telephoneNo: z.string().optional().or(z.null()),
-  mobileNo: z.string().optional().or(z.null()),
-  emergencyContact: z.string().optional().or(z.null()).refine(nameValidator, nameMsg),
-  emergencyContactNumber: z.string().optional().or(z.null()),
+  telephoneNo: z.string().optional().nullable(),
+  mobileNo: z.string().optional().nullable(),
+  emergencyContact: z.string().optional().nullable(),
+  emergencyContactNumber: z.string().optional().nullable(),
 
-  // Government Identification
-  gsisNumber: createIdValidator(ID_REGEX.GSIS, "GSIS Number").or(z.literal('')),
-  pagibigNumber: createIdValidator(ID_REGEX.PAGIBIG, "Pag-IBIG Number").or(z.literal('')),
-  philhealthNumber: createIdValidator(ID_REGEX.PHILHEALTH, "PhilHealth Number").or(z.literal('')),
-  umidNumber: createIdValidator(ID_REGEX.UMID, "UMID Number").or(z.literal('')),
-  philsysId: createIdValidator(ID_REGEX.PHILSYS, "PhilSys ID").or(z.literal('')),
-  tinNumber: createIdValidator(ID_REGEX.TIN, "TIN").or(z.literal('')),
-  agencyEmployeeNo: z.string().optional().or(z.null()).or(z.literal('')).refine(validateGibberish, gibberishMsg),
+  gsisNumber: z.string().optional().or(z.null()).or(z.literal('')),
+  gsisNo: z.string().optional().or(z.null()).or(z.literal('')),
+  pagibigNumber: z.string().optional().or(z.null()).or(z.literal('')),
+  pagibigNo: z.string().optional().or(z.null()).or(z.literal('')),
+  philhealthNumber: z.string().optional().or(z.null()).or(z.literal('')),
+  philhealthNo: z.string().optional().or(z.null()).or(z.literal('')),
+  umidNumber: z.string().optional().or(z.null()).or(z.literal('')),
+  umidNo: z.string().optional().or(z.null()).or(z.literal('')),
+  philsysId: z.string().optional().or(z.null()).or(z.literal('')),
+  tinNumber: z.string().optional().or(z.null()).or(z.literal('')),
+  tinNo: z.string().optional().or(z.null()).or(z.literal('')),
+  agencyEmployeeNo: z.string().optional().or(z.null()).or(z.literal('')),
 
-  // Educational Background — 100% aligned with pds_education table
   educationalBackground: z.string().optional().or(z.null()).or(z.literal("")),
   schoolName: z.string().optional().or(z.null()).or(z.literal("")),
   course: z.string().optional().or(z.null()).or(z.literal("")),
   yearGraduated: z.string().optional().or(z.null()).or(z.literal("")),
 
-  education: z.object({
-    Elementary: EducationSchema.optional(),
-    Secondary: EducationSchema.optional(),
-    Vocational: EducationSchema.optional(),
-    College: EducationSchema.optional(),
-    Graduate: EducationSchema.optional(),
-  }).optional(),
-
-  yearsOfExperience: z.string().optional().or(z.null()),
-  experience: z.string().optional().or(z.null()).refine(validateProfessionalText, gibberishMsg),
-  skills: z.string().optional().or(z.null()).refine(validateProfessionalText, gibberishMsg),
-
-  // Eligibility
-  eligibilityType: z.string().optional().or(z.null()).or(z.literal("")),
-  eligibilityNumber: z.string().optional().or(z.null()).or(z.literal("")),
-  eligibilityDate: z.string().optional().or(z.null()).or(z.literal("")),
-
+  educations: z.array(EducationSchema).optional().default([]),
   eligibilities: z.array(EligibilitySchema).optional().default([]),
+  workExperiences: z.array(WorkExperienceSchema).optional().default([]),
+  trainings: z.array(TrainingSchema).optional().default([]),
+  otherInfo: z.array(OtherInfoSchema).optional().default([]),
+  familyBackground: z.array(FamilySchema).optional().default([]),
+  voluntaryWorks: z.array(VoluntaryWorkSchema).optional().default([]),
+  references: z.array(ReferenceSchema).optional().default([]),
+  pdsQuestions: PdsQuestionsSchema.optional().nullable(),
+  experience: z.string().optional().or(z.null()).or(z.literal("")),
 
-  // Family Background
-  spouseLastName: z.string().optional().nullable().or(z.literal('')),
-  spouseFirstName: z.string().optional().nullable().or(z.literal('')),
-  spouseMiddleName: z.string().optional().nullable().or(z.literal('')),
-  spouseSuffix: z.string().optional().nullable().or(z.literal('')),
-  spouseOccupation: z.string().optional().nullable().or(z.literal('')),
-  spouseEmployer: z.string().optional().nullable().or(z.literal('')),
-  spouseBusAddress: z.string().optional().nullable().or(z.literal('')),
-  spouseTelephone: z.string().optional().nullable().or(z.literal('')),
-  
-  fatherLastName: z.string().optional().nullable().or(z.literal('')),
-  fatherFirstName: z.string().optional().nullable().or(z.literal('')),
-  fatherMiddleName: z.string().optional().nullable().or(z.literal('')),
-  fatherSuffix: z.string().optional().nullable().or(z.literal('')),
-  
-  motherMaidenLastName: z.string().optional().nullable().or(z.literal('')),
-  motherMaidenFirstName: z.string().optional().nullable().or(z.literal('')),
-  motherMaidenMiddleName: z.string().optional().nullable().or(z.literal('')),
-  motherMaidenSuffix: z.string().optional().nullable().or(z.literal('')),
-  
-  children: z.array(z.object({
-    name: z.string().optional().nullable(),
-    birthDate: z.string().optional().nullable()
-  })).optional().default([]),
-
-  // PDS Multi-entry sections
-  workExperiences: z.array(z.object({
-    dateFrom: z.string().min(1),
-    dateTo: z.string().optional().nullable().or(z.literal('')),
-    positionTitle: z.string(),
-    companyName: z.string(),
-    monthlySalary: z.string().optional().nullable().or(z.literal('')),
-    salaryGrade: z.string().optional().nullable().or(z.literal('')),
-    appointmentStatus: z.string().optional().nullable().or(z.literal('')),
-    isGovernment: z.boolean().default(false)
-  })).optional().default([]),
-
-
-  trainings: z.array(z.object({
-    title: z.string(),
-    dateFrom: z.string(),
-    dateTo: z.string().optional().nullable().or(z.literal('')),
-    hoursNumber: z.string().optional().nullable().or(z.literal('')),
-    typeOfLd: z.string().optional().nullable().or(z.literal('')),
-    conductedBy: z.string().optional().nullable().or(z.literal(''))
-  })).optional().default([]),
-
-  otherSkills: z.array(z.object({ value: z.string() })).optional().default([]),
-  recognitions: z.array(z.object({ value: z.string() })).optional().default([]),
-  memberships: z.array(z.object({ value: z.string() })).optional().default([]),
-
-
-  // Social & Others
   facebookUrl: z.string().optional().nullable().or(z.literal('')),
   linkedinUrl: z.string().optional().nullable().or(z.literal('')),
   twitterHandle: z.string().optional().nullable().or(z.literal('')),
   ignoreDuplicateWarning: z.boolean().optional().default(false),
 
-  // PDS Certifications
   govtIdType: z.string().optional().or(z.null()),
   govtIdNo: z.string().optional().or(z.null()),
   govtIdIssuance: z.string().optional().or(z.null()),
 
-  // Applicant data linking (auto-populated when pre-filling from hired applicant)
   applicantId: z.union([z.number(), z.string().transform(v => parseInt(v, 10))]).optional(),
   applicantHiredDate: z.string().optional(),
   applicantStartDate: z.string().optional(),
@@ -229,6 +215,57 @@ export const RegisterSchema = z.object({
   dateAccomplished: z.string().optional().or(z.null()).or(z.literal("")),
   isOldEmployee: z.boolean().optional().default(false),
   certifiedCorrect: z.boolean().optional().default(false),
+});
+
+export const ForgotPasswordSchema = z.object({
+  email: z.string().email("Invalid email format"),
+});
+
+export const ResetPasswordSchema = z.object({
+  identifier: z.string().min(1, "Identifier is required"),
+  otp: z.string().length(6, "OTP must be exactly 6 digits"),
+  newPassword: z.string().min(6, "Password must be at least 6 characters"),
+});
+
+export const UpdateProfileSchema = RegisterSchema.partial().extend({
+  // Controller-specific simplified/legacy fields
+  education: z.record(z.string(), z.object({
+    school: z.string().optional().nullable(),
+    course: z.string().optional().nullable(),
+    yearGrad: z.union([z.string(), z.number()]).optional().nullable(),
+    units: z.string().optional().nullable(),
+    from: z.union([z.string(), z.number()]).optional().nullable(),
+    to: z.union([z.string(), z.number()]).optional().nullable(),
+    honors: z.string().optional().nullable(),
+  })).optional(),
+  eligibilityType: z.string().optional().nullable(),
+  eligibilityNumber: z.string().optional().nullable(),
+  eligibilityDate: z.string().optional().nullable(),
+
+  // HR Details fields updateable via profile update but not in base RegisterSchema
+  positionTitle: z.string().optional().nullable(),
+  itemNumber: z.union([z.string(), z.number()]).optional().nullable(),
+  salaryGrade: z.union([z.string(), z.number()]).optional().nullable(),
+  stepIncrement: z.union([z.string(), z.number()]).optional().nullable(),
+  employmentStatus: z.string().optional().nullable(),
+  station: z.string().optional().nullable(),
+  officeAddress: z.string().optional().nullable(),
+  originalAppointmentDate: z.string().optional().nullable(),
+  lastPromotionDate: z.string().optional().nullable(),
+});
+
+export const SetupPortalSchema = z.object({
+  firstName: z.string().min(1),
+  middleName: z.string().optional(),
+  lastName: z.string().min(1),
+  suffix: z.string().optional(),
+  email: z.string().email(),
+  password: z.string().min(6),
+  departmentId: z.coerce.number().optional(),
+  positionId: z.coerce.number().optional(),
+  role: z.string().optional(),
+  dutyType: z.string().optional(),
+  appointmentType: z.string().optional(),
 });
 
 export const GoogleLoginSchema = z.object({
@@ -248,173 +285,3 @@ export const EmailVerifySchema = z.object({
 export const ResendOTPSchema = z.object({
   identifier: z.string().min(1, "Identifier is required")
 });
-
-export const ForgotPasswordSchema = z.object({
-  email: z.string().email("Invalid email format")
-});
-
-export const ResetPasswordSchema = z.object({
-  identifier: z.string().min(1, "Email or Employee ID is required"),
-  otp: z.string().length(6, "OTP must be exactly 6 digits"),
-  newPassword: z.string()
-    .min(8, "Password must be at least 8 characters")
-    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, "Password must contain at least one uppercase letter, one lowercase letter, and one number")
-});
-
-// Types inferred from schema
-export type LoginInput = z.infer<typeof LoginSchema>;
-export type RegisterInput = z.infer<typeof RegisterSchema>;
-export type VerifyOTPInput = z.infer<typeof VerifyOTPSchema>;
-export type EmailVerifyInput = z.infer<typeof EmailVerifySchema>;
-export type ResendOTPInput = z.infer<typeof ResendOTPSchema>;
-export type ForgotPasswordInput = z.infer<typeof ForgotPasswordSchema>;
-export type ResetPasswordInput = z.infer<typeof ResetPasswordSchema>;
-export type GoogleLoginInput = z.infer<typeof GoogleLoginSchema>;
-
-export const UpdateProfileSchema = z.object({
-  firstName: z.string().optional().refine(nameValidator, nameMsg),
-  lastName: z.string().optional().refine(nameValidator, nameMsg),
-  middleName: z.string().optional().refine(nameValidator, nameMsg),
-  suffix: z.string().optional().refine(nameValidator, nameMsg),
-  email: z.string().email().optional(),
-  phoneNumber: z.string().optional(),
-  mobileNo: z.string().optional(),
-  telephoneNo: z.string().optional(),
-  birthDate: z.string().optional(),
-  placeOfBirth: z.string().optional(),
-  gender: z.enum(["Male", "Female"]).optional(),
-  civilStatus: z.enum(["Single", "Married", "Widowed", "Separated", "Annulled"]).optional(),
-  nationality: z.string().optional(),
-  citizenship: z.string().optional(),
-  citizenshipType: z.string().optional(),
-  
-  // Basic Address
-  address: z.string().optional(),
-  residentialAddress: z.string().optional(),
-  residentialZipCode: z.string().optional(),
-  permanentAddress: z.string().optional(),
-  permanentZipCode: z.string().optional(),
-
-  // Atomic Address Fields
-  resHouseBlockLot: z.string().optional(),
-  resStreet: z.string().optional(),
-  resSubdivision: z.string().optional(),
-  resBarangay: z.string().optional(),
-  resCity: z.string().optional(),
-  
-  permHouseBlockLot: z.string().optional(),
-  permStreet: z.string().optional(),
-  permSubdivision: z.string().optional(),
-  permBarangay: z.string().optional(),
-  permCity: z.string().optional(),
-  
-  emergencyContact: z.string().optional(),
-  emergencyContactNumber: z.string().optional(),
-  
-  // Identification
-  umidNumber: createIdValidator(ID_REGEX.UMID, "UMID Number"),
-  philsysId: createIdValidator(ID_REGEX.PHILSYS, "PhilSys ID"),
-  gsisNumber: createIdValidator(ID_REGEX.GSIS, "GSIS Number"),
-  philhealthNumber: createIdValidator(ID_REGEX.PHILHEALTH, "PhilHealth Number"),
-  pagibigNumber: createIdValidator(ID_REGEX.PAGIBIG, "Pag-IBIG Number"),
-  tinNumber: createIdValidator(ID_REGEX.TIN, "TIN"),
-  agencyEmployeeNo: z.string().optional(),
-  
-  // Background
-  educationalBackground: z.string().optional(),
-  schoolName: z.string().optional(),
-  course: z.string().optional(),
-  yearGraduated: z.string().optional(),
-  yearsOfExperience: z.string().optional(),
-  
-  // Eligibility
-  eligibilityType: z.string().optional(),
-  eligibilityNumber: z.string().optional(),
-  eligibilityDate: z.string().optional(),
-  
-  // Physical
-  bloodType: z.string().optional(),
-  heightM: z.string().optional(),
-  weightKg: z.string().optional(),
-  
-  // Social
-  facebookUrl: z.string().optional(),
-  linkedinUrl: z.string().optional(),
-  twitterHandle: z.string().optional(),
-  
-  // Employment
-  positionTitle: z.string().optional(),
-  itemNumber: z.string().optional(),
-  salaryGrade: z.string().optional(),
-  stepIncrement: z.string().or(z.number()).optional(),
-  appointmentType: z.enum(['Permanent', 'Contractual', 'Casual', 'Job Order', 'Coterminous', 'Temporary', 'Contract of Service', 'JO', 'COS']).optional(),
-  employmentStatus: z.enum(['Active', 'Probationary', 'Terminated', 'Resigned', 'On Leave', 'Suspended', 'Verbal Warning', 'Written Warning', 'Show Cause']).optional(),
-  station: z.string().optional(),
-  officeAddress: z.string().optional(),
-  dateHired: z.string().optional(),
-  originalAppointmentDate: z.string().optional(),
-  lastPromotionDate: z.string().optional(),
-
-  // Section IX: Declarations
-  relatedThirdDegree: z.string().optional(),
-  relatedThirdDetails: z.string().optional(),
-  relatedFourthDegree: z.string().optional(),
-  relatedFourthDetails: z.string().optional(),
-  foundGuiltyAdmin: z.string().optional(),
-  foundGuiltyDetails: z.string().optional(),
-  criminallyCharged: z.string().optional(),
-  dateFiled: z.string().optional(),
-  statusOfCase: z.string().optional(),
-  convictedCrime: z.string().optional(),
-  convictedDetails: z.string().optional(),
-  separatedFromService: z.string().optional(),
-  separatedDetails: z.string().optional(),
-  electionCandidate: z.string().optional(),
-  electionDetails: z.string().optional(),
-  resignedToPromote: z.string().optional(),
-  resignedDetails: z.string().optional(),
-  immigrantStatus: z.string().optional(),
-  immigrantDetails: z.string().optional(),
-  indigenousMember: z.string().optional(),
-  indigenousDetails: z.string().optional(),
-  personWithDisability: z.string().optional(),
-  disabilityIdNo: z.string().optional(),
-  soloParent: z.string().optional(),
-  soloParentIdNo: z.string().optional(),
-
-  // Other PDS 2025 Fields
-  dualCountry: z.string().optional(),
-  govtIdType: z.string().optional(),
-  govtIdNo: z.string().optional(),
-  govtIdIssuance: z.string().optional(),
-  isMeycauayan: z.union([z.boolean(), z.string().transform(v => v === 'true')]).optional(),
-  religion: z.string().optional(),
-  dutyType: z.enum(['Standard', 'Irregular']).optional(),
-  education: z.object({
-    Elementary: EducationSchema.optional(),
-    Secondary: EducationSchema.optional(),
-    Vocational: EducationSchema.optional(),
-    College: EducationSchema.optional(),
-    Graduate: EducationSchema.optional(),
-  }).optional(),
-  eligibilities: z.array(EligibilitySchema).optional(),
-  dateAccomplished: z.string().optional().or(z.null()).or(z.literal("")),
-  pdsQuestions: PdsQuestionsSchema.optional().nullable(),
-});
-
-export type UpdateProfileInput = z.infer<typeof UpdateProfileSchema>;
-export const SetupPortalSchema = z.object({
-  firstName: z.string().min(1, "First name is required"),
-  lastName: z.string().min(1, "Last name is required"),
-  middleName: z.string().optional(),
-  suffix: z.string().optional(),
-  email: z.string().email("Invalid email format"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
-  departmentId: z.coerce.number().min(1, "Department is required"),
-  positionId: z.coerce.number().min(1, "Position is required"),
-  role: z.enum(["Administrator", "Human Resource"]).default("Administrator"),
-  dutyType: z.enum(["Standard", "Irregular"]).default("Standard"),
-  appointmentType: z.enum(['Permanent', 'Contractual', 'Casual', 'Job Order', 'Coterminous', 'Temporary', 'Contract of Service', 'JO', 'COS']).default('Permanent'),
-});
-
-export type SetupPortalInput = z.infer<typeof SetupPortalSchema>;

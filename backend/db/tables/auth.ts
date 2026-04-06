@@ -6,7 +6,7 @@ export const authentication = mysqlTable("authentication", {
 	firstName: varchar("first_name", { length: 100 }).notNull(),
 	lastName: varchar("last_name", { length: 100 }).notNull(),
 	middleName: varchar("middle_name", { length: 100 }),
-	suffix: varchar("suffix", { length: 20 }),
+	suffix: varchar("suffix", { length: 100 }),
 	email: varchar("email", { length: 255 }).notNull(),
 	role: varchar("role", { length: 50 }).notNull(),
 	employeeId: varchar("employee_id", { length: 50 }),

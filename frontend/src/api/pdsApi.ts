@@ -126,5 +126,15 @@ export const pdsApi = {
     },
     updatePdsQuestions: async (data: PDSDeclarations): Promise<AxiosResponse<{ success: boolean; message: string }>> => {
         return await api.put('/pds/questions', data);
+    },
+
+    // 100% Automated Parsing
+    parsePds: async (file: File, employeeId?: number): Promise<AxiosResponse<{ success: boolean; data: any; avatar: string | null; message: string }>> => {
+        const formData = new FormData();
+        formData.append('pds', file);
+        if (employeeId) formData.append('employeeId', employeeId.toString());
+        return await api.post('/pds/parse', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        });
     }
 };
