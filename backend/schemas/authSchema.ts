@@ -201,6 +201,56 @@ export const RegisterSchema = z.object({
   otherInfo: z.array(OtherInfoSchema).optional().default([]),
 
   declarations: PdsDeclarationsSchema.optional().nullable(),
+
+  // Additional fields for admin registration and applicant conversion
+  applicantId: z.union([z.string(), z.number()]).optional().nullable(),
+  applicantPhotoPath: z.string().optional().nullable(),
+  applicantHiredDate: z.string().optional().nullable(),
+  ignoreDuplicateWarning: z.union([z.string(), z.boolean()]).optional(),
+  isOldEmployee: z.union([z.string(), z.boolean()]).optional(),
+  isMeycauayan: z.union([z.string(), z.boolean()]).optional(),
+  dutyType: z.string().optional().nullable(),
+  appointmentType: z.string().optional().nullable(),
+  position: z.string().optional().nullable(),
+  department: z.string().optional().nullable(),
+  experience: z.string().optional().nullable(),
+
+  // Legacy fields (removed from schema but kept for backward compatibility)
+  religion: z.string().optional().nullable(),
+  facebookUrl: z.string().optional().nullable(),
+  linkedinUrl: z.string().optional().nullable(),
+  twitterHandle: z.string().optional().nullable(),
+
+  // Field aliases for backward compatibility with different naming conventions
+  surname: z.string().optional().nullable(), // alias for lastName
+  nameExtension: z.string().optional().nullable(), // alias for suffix
+  maidenName: z.string().optional().nullable(),
+  dob: z.string().optional().nullable(), // alias for birthDate
+  pob: z.string().optional().nullable(), // alias for placeOfBirth
+  sex: z.string().optional().nullable(), // alias for gender
+  height: z.union([z.string(), z.number()]).optional().nullable(), // alias for heightM
+  weight: z.union([z.string(), z.number()]).optional().nullable(), // alias for weightKg
+  nationality: z.string().optional().nullable(), // alias for citizenship
+  address: z.string().optional().nullable(),
+  residentialAddress: z.string().optional().nullable(),
+  permanentAddress: z.string().optional().nullable(),
+  gsisNo: z.string().optional().nullable(), // alias for gsisNumber
+  pagibigNo: z.string().optional().nullable(), // alias for pagibigNumber
+  philhealthNo: z.string().optional().nullable(), // alias for philhealthNumber
+  tinNo: z.string().optional().nullable(), // alias for tinNumber
+  umidNo: z.string().optional().nullable(), // alias for umidNumber
+  philsysNo: z.string().optional().nullable(), // alias for philsysId
+  agencyNo: z.string().optional().nullable(), // alias for agencyEmployeeNo
+
+  // Additional PDS-related fields
+  trainings: z.array(z.any()).optional().default([]),
+  pdsQuestions: z.any().optional().nullable(),
+  govtIdType: z.string().optional().nullable(),
+  govtIdNo: z.string().optional().nullable(),
+  govtIdIssuance: z.string().optional().nullable(),
+  dateAccomplished: z.string().optional().nullable(),
+  emergencyContact: z.string().optional().nullable(),
+  emergencyContactNumber: z.string().optional().nullable(),
 });
 
 export const UpdateProfileSchema = RegisterSchema.partial().extend({
