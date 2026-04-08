@@ -1,6 +1,7 @@
 
 import { db } from '../db/index.js';
-import { authentication } from '../db/schema.js';
+import { authentication, pdsHrDetails, employeeEmergencyContacts } from '../db/schema.js';
+import { pdsPersonalInformation } from '../db/tables/pds.js';
 import { eq, or, and, gt, sql, desc } from 'drizzle-orm';
 
 
@@ -10,12 +11,12 @@ type UpdateUser = Partial<NewUser>;
 export class AuthService {
   static async findUserByIdentifier(identifier: string) {
     const lowerIdentifier = identifier.toLowerCase();
-    
+
     // Normalize ID: remove 'emp-' prefix and leading zeros to match raw DB ID (e.g. "EMP-001" -> "1")
     const normalizedId = lowerIdentifier.replace(/^emp-/i, '').replace(/^0+/, '');
-    
+
     const conditions = [];
-    
+
     // Direct matches for email
     conditions.push(eq(authentication.email, identifier));
     // Sometimes the database might have a different case for the email or employeeId
@@ -30,99 +31,156 @@ export class AuthService {
     // fallback: just check direct equality to employeeId
     conditions.push(eq(authentication.employeeId, identifier));
 
-    return await db.query.authentication.findFirst({
-      where: or(...conditions),
-      with: {
-        hrDetails: {
-          with: {
-            department: true,
-            position: true,
-          }
-        },
-        personalInformation: true,
-        employeeEmergencyContacts: true,
-        pdsEducations: {
-          orderBy: (edu, { desc }) => [desc(edu.dateFrom)]
-        },
-        pdsWorkExperiences: {
-          orderBy: (we, { desc }) => [desc(we.dateFrom)]
-        },
-        pdsEligibilities: true,
-        pdsLearningDevelopments: {
-          orderBy: (ld, { desc }) => [desc(ld.dateFrom)]
-        },
-        pdsVoluntaryWorks: {
-          orderBy: (vw, { desc }) => [desc(vw.dateFrom)]
-        },
-        pdsReferences: true,
-        pdsOtherInfos: true,
-        pdsFamilies: true
-      }
+    // Simplified query without complex lateral joins - fetch base user first
+    const user = await db.query.authentication.findFirst({
+      where: or(...conditions)
     });
+
+    if (!user) return null;
+
+    // Fetch related data separately - with individual error handling
+    let hrDetailsResult = null;
+    let personalInfoResult = null;
+    let emergencyContactsResult = [];
+
+    try {
+      hrDetailsResult = await db.query.pdsHrDetails.findFirst({
+        where: eq(pdsHrDetails.employeeId, user.id),
+        with: {
+          department: true,
+          position: true,
+        }
+      });
+    } catch (err) {
+      console.error('[AuthService] Failed to fetch hrDetails:', err instanceof Error ? err.message : err);
+    }
+
+    try {
+      const rows = await db.select()
+        .from(pdsPersonalInformation)
+        .where(eq(pdsPersonalInformation.employeeId, user.id))
+        .limit(1);
+      personalInfoResult = rows[0] || null;
+    } catch (err) {
+      console.error('[AuthService] Failed to fetch personalInformation:', err);
+      console.error('[AuthService] Full error:', JSON.stringify(err, Object.getOwnPropertyNames(err)));
+    }
+
+    try {
+      emergencyContactsResult = await db.select()
+        .from(employeeEmergencyContacts)
+        .where(eq(employeeEmergencyContacts.employeeId, user.id))
+        .limit(1);
+    } catch (err) {
+      console.error('[AuthService] Failed to fetch emergencyContacts:', err instanceof Error ? err.message : err);
+    }
+
+    return {
+      ...user,
+      hrDetails: hrDetailsResult || null,
+      personalInformation: personalInfoResult || null,
+      employeeEmergencyContacts: emergencyContactsResult || []
+    };
   }
 
   static async findUserById(id: number) {
-    return await db.query.authentication.findFirst({
-      where: eq(authentication.id, id),
-      with: {
-        hrDetails: {
-          with: {
-            department: true,
-            position: true,
-          }
-        },
-        personalInformation: true,
-        employeeEmergencyContacts: true,
-        pdsEducations: {
-          orderBy: (edu, { desc }) => [desc(edu.dateFrom)]
-        },
-        pdsWorkExperiences: {
-          orderBy: (work, { desc }) => [desc(work.dateFrom)]
-        },
-        pdsEligibilities: true,
-        pdsLearningDevelopments: {
-          orderBy: (ld, { desc }) => [desc(ld.dateFrom)]
-        },
-        pdsVoluntaryWorks: {
-          orderBy: (vw, { desc }) => [desc(vw.dateFrom)]
-        },
-        pdsReferences: true,
-        pdsOtherInfos: true,
-        pdsFamilies: true
-      }
+    const user = await db.query.authentication.findFirst({
+      where: eq(authentication.id, id)
     });
+
+    if (!user) return null;
+
+    let hrDetailsResult = null;
+    let personalInfoResult = null;
+    let emergencyContactsResult = [];
+
+    try {
+      hrDetailsResult = await db.query.pdsHrDetails.findFirst({
+        where: eq(pdsHrDetails.employeeId, user.id),
+        with: {
+          department: true,
+          position: true,
+        }
+      });
+    } catch (err) {
+      console.error('[AuthService] Failed to fetch hrDetails for user by ID:', err instanceof Error ? err.message : err);
+    }
+
+    try {
+      const rows = await db.select()
+        .from(pdsPersonalInformation)
+        .where(eq(pdsPersonalInformation.employeeId, user.id))
+        .limit(1);
+      personalInfoResult = rows[0] || null;
+    } catch (err) {
+      console.error('[AuthService] Failed to fetch personalInformation for user by ID:', err instanceof Error ? err.message : err);
+    }
+
+    try {
+      emergencyContactsResult = await db.select()
+        .from(employeeEmergencyContacts)
+        .where(eq(employeeEmergencyContacts.employeeId, user.id))
+        .limit(1);
+    } catch (err) {
+      console.error('[AuthService] Failed to fetch emergencyContacts for user by ID:', err instanceof Error ? err.message : err);
+    }
+
+    return {
+      ...user,
+      hrDetails: hrDetailsResult || null,
+      personalInformation: personalInfoResult || null,
+      employeeEmergencyContacts: emergencyContactsResult || []
+    };
   }
 
   static async findUserByEmail(email: string) {
-    return await db.query.authentication.findFirst({
-      where: eq(authentication.email, email),
-      with: {
-        hrDetails: {
-          with: {
-            department: true,
-            position: true,
-          }
-        },
-        personalInformation: true,
-        employeeEmergencyContacts: true,
-        pdsEducations: {
-          orderBy: (edu, { desc }) => [desc(edu.dateFrom)]
-        },
-        pdsWorkExperiences: {
-          orderBy: (work, { desc }) => [desc(work.dateFrom)]
-        },
-        pdsEligibilities: true,
-        pdsLearningDevelopments: {
-          orderBy: (ld, { desc }) => [desc(ld.dateFrom)]
-        },
-        pdsVoluntaryWorks: {
-          orderBy: (vw, { desc }) => [desc(vw.dateFrom)]
-        },
-        pdsReferences: true,
-        pdsOtherInfos: true,
-        pdsFamilies: true
-      }
+    const user = await db.query.authentication.findFirst({
+      where: eq(authentication.email, email)
     });
+
+    if (!user) return null;
+
+    let hrDetailsResult = null;
+    let personalInfoResult = null;
+    let emergencyContactsResult = [];
+
+    try {
+      hrDetailsResult = await db.query.pdsHrDetails.findFirst({
+        where: eq(pdsHrDetails.employeeId, user.id),
+        with: {
+          department: true,
+          position: true,
+        }
+      });
+    } catch (err) {
+      console.error('[AuthService] Failed to fetch hrDetails for user by email:', err instanceof Error ? err.message : err);
+    }
+
+    try {
+      const rows = await db.select()
+        .from(pdsPersonalInformation)
+        .where(eq(pdsPersonalInformation.employeeId, user.id))
+        .limit(1);
+      personalInfoResult = rows[0] || null;
+    } catch (err) {
+      console.error('[AuthService] Failed to fetch personalInformation for user by email:', err instanceof Error ? err.message : err);
+    }
+
+    try {
+      emergencyContactsResult = await db.select()
+        .from(employeeEmergencyContacts)
+        .where(eq(employeeEmergencyContacts.employeeId, user.id))
+        .limit(1);
+    } catch (err) {
+      console.error('[AuthService] Failed to fetch emergencyContacts for user by email:', err instanceof Error ? err.message : err);
+    }
+
+    return {
+      ...user,
+      hrDetails: hrDetailsResult || null,
+      personalInformation: personalInfoResult || null,
+      employeeEmergencyContacts: emergencyContactsResult || []
+    };
   }
 
   static async createUser(data: NewUser) {

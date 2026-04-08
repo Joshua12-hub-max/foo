@@ -49,7 +49,13 @@ export const usePublicJobDetail = (id: string | undefined) => {
 export const useJobApplication = (onSuccess?: (response: { data: { success: boolean, requiresVerification?: boolean, email?: string, applicantId?: number } }) => void, onError?: (error: Error) => void) => {
     return useMutation({
         mutationFn: async ({ id, data }: { id: string; data: JobApplicationInput }) => {
-            console.log('[DEBUG] useJobApplication mutation data:', JSON.stringify(data, null, 2));
+            // Better debug logging that shows File objects
+            const debugData = { ...data };
+            if (debugData.resume instanceof File) debugData.resume = `[FILE: ${debugData.resume.name}]` as any;
+            if (debugData.photo instanceof File) debugData.photo = `[FILE: ${debugData.photo.name}]` as any;
+            if (debugData.eligibilityCert instanceof File) debugData.eligibilityCert = `[FILE: ${debugData.eligibilityCert.name}]` as any;
+            console.log('[DEBUG] useJobApplication mutation data:', JSON.stringify(debugData, null, 2));
+
             const formData = new FormData();
             formData.append('jobId', id);
 
@@ -67,7 +73,10 @@ export const useJobApplication = (onSuccess?: (response: { data: { success: bool
                 if (fileFields.has(key)) {
                     // Only append if it's actually a File object
                     if (value instanceof File) {
+                        console.log(`[FormData] Appending FILE: ${key} = ${value.name} (${value.size} bytes)`);
                         formData.append(key, value);
+                    } else {
+                        console.warn(`[FormData] Skipping ${key}: Not a File object, got:`, typeof value, value);
                     }
                 } else if (value !== null && typeof value === 'object') {
                     // 100% PRECISION: Stringify objects and arrays for multipart/form-data
@@ -80,7 +89,17 @@ export const useJobApplication = (onSuccess?: (response: { data: { success: bool
                     formData.append(key, value);
                 }
             });
-            
+
+            // Log final FormData contents
+            console.log('[FormData] Final FormData entries:');
+            for (const [key, value] of formData.entries()) {
+                if (value instanceof File) {
+                    console.log(`  ${key}: [FILE] ${value.name} (${value.size} bytes)`);
+                } else {
+                    console.log(`  ${key}:`, typeof value === 'string' && value.length > 50 ? value.substring(0, 50) + '...' : value);
+                }
+            }
+
             return await recruitmentApi.applyJob(formData);
         },
         onSuccess,

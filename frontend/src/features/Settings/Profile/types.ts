@@ -41,6 +41,24 @@ export interface BaseProfile {
   permanentAddress?: string | null;
   emergencyContact?: string | null;
   emergencyContactNumber?: string | null;
+
+  // Detailed Residential Address
+  resHouseBlockLot?: string | null;
+  resStreet?: string | null;
+  resSubdivision?: string | null;
+  resBarangay?: string | null;
+  resCity?: string | null;
+  resProvince?: string | null;
+  resRegion?: string | null;
+
+  // Detailed Permanent Address
+  permHouseBlockLot?: string | null;
+  permStreet?: string | null;
+  permSubdivision?: string | null;
+  permBarangay?: string | null;
+  permCity?: string | null;
+  permProvince?: string | null;
+  permRegion?: string | null;
   
   // Work Details
   originalAppointmentDate?: string | null;

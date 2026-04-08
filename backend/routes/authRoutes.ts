@@ -1,7 +1,6 @@
 import { Router } from 'express';
 import {
   login,
-  register,
   verifyEnrollment,
   getUsers,
   getUserById,
@@ -24,6 +23,7 @@ import {
   getNextId,
   checkGovtIdUniqueness
 } from '../controllers/auth.controller.js';
+import { register } from '../controllers/registration.controller.js';
 import { verifyToken, authLimiter, strictAuthLimiter } from '../middleware/authMiddleware.js';
 import multer from 'multer';
 import path from 'path';

@@ -91,8 +91,10 @@ export const useProfile = () => {
           }
 
           const mergedData = { ...userData, ...detailedData };
+
+          // Set profile with all fields including detailed address fields
           setProfile(mergedData);
-          
+
           // Populate Form Data
           setFormData({
             firstName: mergedData.firstName || mergedData.name?.split(' ')[0] || '',

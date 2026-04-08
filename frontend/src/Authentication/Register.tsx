@@ -42,7 +42,8 @@ export default function Register() {
       gsisNumber: "", pagibigNumber: "", philhealthNumber: "", tinNumber: "", umidNumber: "", philsysId: "", agencyEmployeeNo: "",
       resHouseBlockLot: "", resStreet: "", resSubdivision: "", resBarangay: "", resCity: "", resProvince: "", resRegion: "", residentialZipCode: "",
       permHouseBlockLot: "", permStreet: "", permSubdivision: "", permBarangay: "", permCity: "", permProvince: "", permRegion: "", permanentZipCode: "",
-      educations: [], eligibilities: [], workExperiences: [], trainings: [], familyBackground: [], otherInfo: [],
+      educations: [], eligibilities: [], workExperiences: [], learningDevelopments: [], familyBackground: [], otherInfo: [],
+      voluntaryWorks: [], references: [],
       certifiedCorrect: false
     }
   });
@@ -104,42 +105,68 @@ export default function Register() {
   };
 
   const handlePdsExtracted = (data: any) => {
-    // Identity & Core Synonyms
+    // Top-level name fields from PdsParserOutput
     if (data.firstName) setValue("firstName", data.firstName);
-    if (data.surname || data.lastName) setValue("lastName", data.surname || data.lastName);
+    if (data.lastName) setValue("lastName", data.lastName);
     if (data.middleName) setValue("middleName", data.middleName);
-    if (data.nameExtension || data.suffix) setValue("suffix", data.nameExtension || data.suffix);
     if (data.email) setValue("email", data.email);
-    
-    // Physical & Personal Synonyms
-    if (data.dob || data.birthDate) setValue("birthDate", data.dob || data.birthDate);
-    if (data.pob || data.placeOfBirth) setValue("placeOfBirth", data.pob || data.placeOfBirth);
-    if (data.sex || data.gender) setValue("gender", data.sex || data.gender);
-    if (data.height) setValue("heightM", data.height);
-    if (data.weight) setValue("weightKg", data.weight);
-    
-    // ID Synonyms
-    if (data.gsisNo || data.gsisNumber) setValue("gsisNumber", data.gsisNo || data.gsisNumber);
-    if (data.pagibigNo || data.pagibigNumber) setValue("pagibigNumber", data.pagibigNo || data.pagibigNumber);
-    if (data.philhealthNo || data.philhealthNumber) setValue("philhealthNumber", data.philhealthNo || data.philhealthNumber);
-    if (data.tinNo || data.tinNumber) setValue("tinNumber", data.tinNo || data.tinNumber);
-    if (data.umidNo || data.umidNumber) setValue("umidNumber", data.umidNo || data.umidNumber);
-    if (data.agencyNo || data.agencyEmployeeNo) setValue("agencyEmployeeNo", data.agencyNo || data.agencyEmployeeNo);
 
-    // Employment - Try to map or default
-    if (data.department) setValue("department", data.department);
-    if (data.positionTitle || data.position) setValue("position", data.positionTitle || data.position);
-    
-    // Populate all other fields from the raw data object into the form state
-    const currentValues = watch();
-    Object.keys(data).forEach(key => {
-        // Generic mapper for fields that now exist in the expanded defaultValues
-        if (key in currentValues) {
-            setValue(key as any, data[key]);
-        }
-    });
+    // Personal info lives under data.personal in canonical PdsParserOutput
+    const p = data.personal ?? {};
+    if (p.birthDate) setValue("birthDate", p.birthDate);
+    if (p.placeOfBirth) setValue("placeOfBirth", p.placeOfBirth);
+    if (p.gender) setValue("gender", p.gender);
+    if (p.civilStatus) setValue("civilStatus", p.civilStatus);
+    if (p.bloodType) setValue("bloodType", p.bloodType);
+    if (p.heightM != null) setValue("heightM", String(p.heightM));
+    if (p.weightKg != null) setValue("weightKg", String(p.weightKg));
+    if (p.citizenship) setValue("citizenship", p.citizenship);
+    if (p.citizenshipType) setValue("citizenshipType", p.citizenshipType);
+    if (p.dualCountry) setValue("dualCountry", p.dualCountry);
+    if (p.telephoneNo) setValue("telephoneNo", p.telephoneNo);
+    if (p.mobileNo) setValue("mobileNo", p.mobileNo);
 
-    // Forced fields for automated flow
+    // Government IDs
+    if (p.gsisNumber) setValue("gsisNumber", p.gsisNumber);
+    if (p.pagibigNumber) setValue("pagibigNumber", p.pagibigNumber);
+    if (p.philhealthNumber) setValue("philhealthNumber", p.philhealthNumber);
+    if (p.tinNumber) setValue("tinNumber", p.tinNumber);
+    if (p.umidNumber) setValue("umidNumber", p.umidNumber);
+    if (p.philsysId) setValue("philsysId", p.philsysId);
+    if (p.agencyEmployeeNo) setValue("agencyEmployeeNo", p.agencyEmployeeNo);
+
+    // Residential address
+    if (p.resHouseBlockLot) setValue("resHouseBlockLot", p.resHouseBlockLot);
+    if (p.resStreet) setValue("resStreet", p.resStreet);
+    if (p.resSubdivision) setValue("resSubdivision", p.resSubdivision);
+    if (p.resBarangay) setValue("resBarangay", p.resBarangay);
+    if (p.resCity) setValue("resCity", p.resCity);
+    if (p.resProvince) setValue("resProvince", p.resProvince);
+    if (p.resRegion) setValue("resRegion", p.resRegion);
+    if (p.residentialZipCode) setValue("residentialZipCode", p.residentialZipCode);
+
+    // Permanent address
+    if (p.permHouseBlockLot) setValue("permHouseBlockLot", p.permHouseBlockLot);
+    if (p.permStreet) setValue("permStreet", p.permStreet);
+    if (p.permSubdivision) setValue("permSubdivision", p.permSubdivision);
+    if (p.permBarangay) setValue("permBarangay", p.permBarangay);
+    if (p.permCity) setValue("permCity", p.permCity);
+    if (p.permProvince) setValue("permProvince", p.permProvince);
+    if (p.permRegion) setValue("permRegion", p.permRegion);
+    if (p.permanentZipCode) setValue("permanentZipCode", p.permanentZipCode);
+
+    // PDS arrays — canonical names
+    if (Array.isArray(data.educations) && data.educations.length > 0) setValue("educations", data.educations);
+    if (Array.isArray(data.eligibilities) && data.eligibilities.length > 0) setValue("eligibilities", data.eligibilities);
+    if (Array.isArray(data.workExperiences) && data.workExperiences.length > 0) setValue("workExperiences", data.workExperiences);
+    if (Array.isArray(data.learningDevelopments) && data.learningDevelopments.length > 0) setValue("learningDevelopments", data.learningDevelopments);
+    if (Array.isArray(data.voluntaryWorks) && data.voluntaryWorks.length > 0) setValue("voluntaryWorks", data.voluntaryWorks);
+    if (Array.isArray(data.references) && data.references.length > 0) setValue("references", data.references);
+    if (Array.isArray(data.familyBackground) && data.familyBackground.length > 0) setValue("familyBackground", data.familyBackground);
+    if (Array.isArray(data.otherInfo) && data.otherInfo.length > 0) setValue("otherInfo", data.otherInfo);
+    if (data.declarations) setValue("declarations", data.declarations);
+
+    // Forced defaults
     setValue("dutyType", "Standard");
     setValue("appointmentType", "Permanent");
     setValue("role", "Employee");

@@ -1,29 +1,18 @@
 import api from './axios';
 import { AxiosResponse } from 'axios';
-
-// Interfaces for PDS Sections (simplified for now, strictly keyed)
-export interface PDSFamily {
-  id?: number;
-  spouseLastName?: string;
-  spouseFirstName?: string;
-  spouseMiddleName?: string;
-  children?: { name: string; birthDate: string }[]; // Example structure if JSON, but likely separate rows
-  // ... maps to database schema
-}
+import type { PdsParserOutput } from '../types/pds';
 
 export interface PDSEducation {
-    id?: number;
-    level: 'Elementary' | 'Secondary' | 'Vocational' | 'College' | 'Graduate Studies';
-    schoolName: string;
-    degreeCourse?: string;
-    yearGraduated?: number;
-    unitsEarned?: string;
-    dateFrom?: number;
-    dateTo?: number;
-    honors?: string;
+  id?: number;
+  level: 'Elementary' | 'Secondary' | 'Vocational' | 'College' | 'Graduate Studies';
+  schoolName: string;
+  degreeCourse?: string;
+  yearGraduated?: number;
+  unitsEarned?: string;
+  dateFrom?: string;    // 4-char year string e.g. "2001"
+  dateTo?: string;      // 4-char year string e.g. "2005"
+  honors?: string;
 }
-
-// ... other interfaces can be added as needed
 
 export interface PDSPersonalInformation {
   id?: number;
@@ -38,13 +27,10 @@ export interface PDSPersonalInformation {
   citizenship?: string | null;
   citizenshipType?: string | null;
   dualCountry?: string | null;
-  residentialAddress?: string | null;
   residentialZipCode?: string | null;
-  permanentAddress?: string | null;
   permanentZipCode?: string | null;
   telephoneNo?: string | null;
   mobileNo?: string | null;
-  email?: string | null;
   umidNumber?: string | null;
   philsysId?: string | null;
   philhealthNumber?: string | null;
@@ -68,33 +54,34 @@ export interface PDSPersonalInformation {
   permRegion?: string | null;
 }
 
+// Declarations — booleans only, matching DB schema
 export interface PDSDeclarations {
   id?: number;
   employeeId?: number;
-  relatedThirdDegree?: string | null;
+  relatedThirdDegree?: boolean | null;
   relatedThirdDetails?: string | null;
-  relatedFourthDegree?: string | null;
+  relatedFourthDegree?: boolean | null;
   relatedFourthDetails?: string | null;
-  foundGuiltyAdmin?: string | null;
+  foundGuiltyAdmin?: boolean | null;
   foundGuiltyDetails?: string | null;
-  criminallyCharged?: string | null;
+  criminallyCharged?: boolean | null;
   dateFiled?: string | null;
   statusOfCase?: string | null;
-  convictedCrime?: string | null;
+  convictedCrime?: boolean | null;
   convictedDetails?: string | null;
-  separatedFromService?: string | null;
+  separatedFromService?: boolean | null;
   separatedDetails?: string | null;
-  electionCandidate?: string | null;
+  electionCandidate?: boolean | null;
   electionDetails?: string | null;
-  resignedToPromote?: string | null;
+  resignedToPromote?: boolean | null;
   resignedDetails?: string | null;
-  immigrantStatus?: string | null;
+  immigrantStatus?: boolean | null;
   immigrantDetails?: string | null;
-  indigenousMember?: string | null;
+  indigenousMember?: boolean | null;
   indigenousDetails?: string | null;
-  personWithDisability?: string | null;
+  personWithDisability?: boolean | null;
   disabilityIdNo?: string | null;
-  soloParent?: string | null;
+  soloParent?: boolean | null;
   soloParentIdNo?: string | null;
   govtIdType?: string | null;
   govtIdNo?: string | null;
@@ -102,39 +89,36 @@ export interface PDSDeclarations {
 }
 
 export const pdsApi = {
-    // Get PDS Section
-    getSection: async <T>(section: string, employeeId?: number): Promise<AxiosResponse<{ success: boolean; data: T[] }>> => {
-        return await api.get(`/pds/${section}`, { params: { employeeId } });
-    },
+  getSection: async <T>(section: string, employeeId?: number): Promise<AxiosResponse<{ success: boolean; data: T[] }>> => {
+    return await api.get(`/pds/${section}`, { params: { employeeId } });
+  },
 
-    // Update PDS Section (Full Replace Strategy per Controller)
-    updateSection: async <T>(section: string, items: T[], employeeId?: number): Promise<AxiosResponse<{ success: boolean; message: string }>> => {
-        return await api.put(`/pds/${section}`, { items, employeeId });
-    },
+  updateSection: async <T>(section: string, items: T[], employeeId?: number): Promise<AxiosResponse<{ success: boolean; message: string }>> => {
+    return await api.put(`/pds/${section}`, { items, employeeId });
+  },
 
-    // Personal Information
-    getPdsPersonalInformation: async (employeeId?: number): Promise<AxiosResponse<{ success: boolean; data: PDSPersonalInformation | null }>> => {
-        return await api.get('/pds/personal', { params: { employeeId } });
-    },
-    updatePdsPersonalInformation: async (data: PDSPersonalInformation): Promise<AxiosResponse<{ success: boolean; message: string }>> => {
-        return await api.put('/pds/personal', data);
-    },
+  getPdsPersonalInformation: async (employeeId?: number): Promise<AxiosResponse<{ success: boolean; data: PDSPersonalInformation | null }>> => {
+    return await api.get('/pds/personal', { params: { employeeId } });
+  },
 
-    // Declarations (Questions 34-40)
-    getPdsQuestions: async (employeeId?: number): Promise<AxiosResponse<{ success: boolean; data: PDSDeclarations | null }>> => {
-        return await api.get('/pds/questions', { params: { employeeId } });
-    },
-    updatePdsQuestions: async (data: PDSDeclarations): Promise<AxiosResponse<{ success: boolean; message: string }>> => {
-        return await api.put('/pds/questions', data);
-    },
+  updatePdsPersonalInformation: async (data: PDSPersonalInformation): Promise<AxiosResponse<{ success: boolean; message: string }>> => {
+    return await api.put('/pds/personal', data);
+  },
 
-    // 100% Automated Parsing
-    parsePds: async (file: File, employeeId?: number): Promise<AxiosResponse<{ success: boolean; data: any; avatar: string | null; message: string }>> => {
-        const formData = new FormData();
-        formData.append('pds', file);
-        if (employeeId) formData.append('employeeId', employeeId.toString());
-        return await api.post('/pds/parse', formData, {
-            headers: { 'Content-Type': 'multipart/form-data' }
-        });
-    }
+  getPdsQuestions: async (employeeId?: number): Promise<AxiosResponse<{ success: boolean; data: PDSDeclarations | null }>> => {
+    return await api.get('/pds/questions', { params: { employeeId } });
+  },
+
+  updatePdsQuestions: async (data: PDSDeclarations): Promise<AxiosResponse<{ success: boolean; message: string }>> => {
+    return await api.put('/pds/questions', data);
+  },
+
+  parsePds: async (file: File, employeeId?: number): Promise<AxiosResponse<{ success: boolean; data: Partial<PdsParserOutput>; avatar: string | null; message: string }>> => {
+    const formData = new FormData();
+    formData.append('pds', file);
+    if (employeeId) formData.append('employeeId', employeeId.toString());
+    return await api.post('/pds/parse', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  },
 };

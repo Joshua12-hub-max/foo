@@ -1,0 +1,10 @@
+export { default as PersonalInfoSection } from './PersonalInfoSection';
+export { default as ContactSection } from './ContactSection';
+export { default as AddressSection } from './AddressSection';
+export { default as GovernmentIDSection } from './GovernmentIDSection';
+export { default as EducationSection } from './EducationSection';
+export { default as ExperienceSection } from './ExperienceSection';
+export { default as EligibilitySection } from './EligibilitySection';
+export { default as TrainingSection } from './TrainingSection';
+export { default as FileUploadSection } from './FileUploadSection';
+export { default as ReviewSection } from './ReviewSection';

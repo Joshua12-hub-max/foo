@@ -50,6 +50,13 @@
       "when": 1774318195899,
       "tag": "0006_white_famine",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1775488892315,
+      "tag": "0007_exotic_hex",
+      "breakpoints": true
     }
   ]
 }

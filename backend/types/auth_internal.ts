@@ -1,37 +1,35 @@
-import { PDSEducation, PDSEligibility, PDSWorkExperience, PDSLearningDevelopment, PDSFamily, PDSOtherInfo } from './pds.js';
+import { PdsEducation, PdsEligibility, PdsWorkExperience, PdsLearningDevelopment, PdsFamily, PdsOtherInfo } from './pds.js';
 
 export interface RawPDSInput {
-  educations?: string | PDSEducation[];
-  eligibilities?: string | PDSEligibility[];
-  workExperiences?: string | PDSWorkExperience[];
-  trainings?: string | PDSLearningDevelopment[];
-  familyBackground?: string | PDSFamily[];
-  otherInfo?: string | PDSOtherInfo[];
+  educations?: string | PdsEducation[];
+  eligibilities?: string | PdsEligibility[];
+  workExperiences?: string | PdsWorkExperience[];
+  learningDevelopments?: string | PdsLearningDevelopment[];
+  familyBackground?: string | PdsFamily[];
+  otherInfo?: string | PdsOtherInfo[];
   [key: string]: unknown;
 }
 
-export interface MappedEducation extends PDSEducation {
+export interface MappedEducation extends PdsEducation {
     id?: number;
 }
 
-export interface MappedEligibility extends PDSEligibility {
-    id?: number;
-    name?: string; // Synonym for eligibilityName used in some parsers
-    licenseNo?: string; // Synonym for licenseNumber
-}
-
-export interface MappedWorkExperience extends PDSWorkExperience {
+export interface MappedEligibility extends PdsEligibility {
     id?: number;
 }
 
-export interface MappedTraining extends PDSLearningDevelopment {
+export interface MappedWorkExperience extends PdsWorkExperience {
     id?: number;
 }
 
-export interface MappedFamily extends PDSFamily {
+export interface MappedTraining extends PdsLearningDevelopment {
     id?: number;
 }
 
-export interface MappedOtherInfo extends PDSOtherInfo {
+export interface MappedFamily extends PdsFamily {
+    id?: number;
+}
+
+export interface MappedOtherInfo extends PdsOtherInfo {
     id?: number;
 }

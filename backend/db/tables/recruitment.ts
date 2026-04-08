@@ -254,6 +254,20 @@ export const applicantEligibility = mysqlTable("applicant_eligibility", {
 	primaryKey({ columns: [table.id], name: "applicant_eligibility_id"}),
 ]);
 
+export const applicantDocuments = mysqlTable('applicant_documents', {
+	id: int('id').autoincrement().notNull(),
+	applicantId: int('applicant_id').notNull().references(() => recruitmentApplicants.id, { onDelete: 'cascade' }),
+	documentName: varchar('document_name', { length: 255 }).notNull(), // Original filename
+	documentType: varchar('document_type', { length: 50 }), // 'Resume', 'Photo', 'Photo1x1', 'EligibilityCert'
+	filePath: varchar('file_path', { length: 255 }).notNull(), // Stored filename only
+	fileSize: int('file_size'), // In bytes
+	mimeType: varchar('mime_type', { length: 100 }),
+	uploadedAt: timestamp('uploaded_at', { mode: 'string' }).defaultNow(),
+}, (table) => [
+	index('idx_ad_applicant_id').on(table.applicantId),
+	primaryKey({ columns: [table.id], name: 'applicant_documents_id' }),
+]);
+
 export const recruitmentEmailTemplates = mysqlTable("recruitment_email_templates", {
 	id: int("id").autoincrement().notNull(),
 	stageName: varchar("stage_name", { length: 50 }).notNull(),

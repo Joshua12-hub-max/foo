@@ -36,18 +36,7 @@ import { sanitizeInput } from '../utils/spamUtils.js';
 import transporter, { generateOTP, maskEmail, sendEmail, sendOTPEmail } from '../utils/emailUtils.js';
 import { AuditService } from '../services/audit.service.js';
 import { PDSService } from '../services/pds.service.js';
-import type { 
-    PDSFormData, 
-    PDSEducation, 
-    PDSEligibility, 
-    PDSWorkExperience, 
-    PDSQuestions,
-    PDSLearningDevelopment,
-    PDSOtherInfo,
-    PDSFamily,
-    PDSVoluntaryWork,
-    PDSReference
-} from '../types/pds.js';
+// Note: PDS types are used in type annotations for the setupPortal function
 import type { 
     RawPDSInput
 } from '../types/auth_internal.js';
@@ -183,9 +172,9 @@ const mapToAuthUser = (user: UserWithRelations) => {
     mobileNo: pds?.mobileNo || null,
     telephoneNo: pds?.telephoneNo || null,
     
-    // Address (Residential)
-    address: pds?.residentialAddress || null,
-    residentialAddress: pds?.residentialAddress || null,
+    // Address (Residential) - reconstructed from decomposed fields
+    address: [pds?.resHouseBlockLot, pds?.resStreet, pds?.resBarangay, pds?.resCity].filter(Boolean).join(', ') || null,
+    residentialAddress: [pds?.resHouseBlockLot, pds?.resStreet, pds?.resBarangay, pds?.resCity].filter(Boolean).join(', ') || null,
     resRegion: pds?.resRegion || null,
     resProvince: pds?.resProvince || null,
     resCity: pds?.resCity || null,
@@ -194,9 +183,9 @@ const mapToAuthUser = (user: UserWithRelations) => {
     resSubdivision: pds?.resSubdivision || null,
     resStreet: pds?.resStreet || null,
     residentialZipCode: pds?.residentialZipCode || null,
-    
-    // Address (Permanent)
-    permanentAddress: pds?.permanentAddress || null,
+
+    // Address (Permanent) - reconstructed from decomposed fields
+    permanentAddress: [pds?.permHouseBlockLot, pds?.permStreet, pds?.permBarangay, pds?.permCity].filter(Boolean).join(', ') || null,
     permRegion: pds?.permRegion || null,
     permProvince: pds?.permProvince || null,
     permCity: pds?.permCity || null,
@@ -263,12 +252,7 @@ const mapToAuthUser = (user: UserWithRelations) => {
     families: Array.isArray(user.pdsFamilies) ? user.pdsFamilies : [],
     declarations: user.declarations || null,
 
-    // Social Media / Other
-    religion: hr?.religion || null,
-    barangay: hr?.barangay || null,
-    facebookUrl: hr?.facebookUrl || null,
-    linkedinUrl: hr?.linkedinUrl || null,
-    twitterHandle: hr?.twitterHandle || null,
+    // Other (social media and religion fields removed from schema)
     isMeycauayan: !!hr?.isMeycauayan,
   } as const;
 };

@@ -41,8 +41,12 @@ export const jobApplicationSchema = z.object({
   suffix: z.string().optional().nullable().refine(nameValidator, nameMsg),
   birthDate: z.string().min(1, 'Birth date is required'),
   birthPlace: z.string().min(1, 'Birth place is required').refine(validateGibberish, gibberishMsg),
-  sex: z.enum(['Male', 'Female', '']).optional().transform(val => val === "" ? undefined : val),
-  civilStatus: z.enum(['Single', 'Married', 'Widowed', 'Separated', 'Annulled', '']).optional().transform(val => val === "" ? undefined : val),
+  sex: z.enum(['Male', 'Female'], {
+    errorMap: () => ({ message: 'Sex is required. Please select Male or Female.' })
+  }),
+  civilStatus: z.enum(['Single', 'Married', 'Widowed', 'Separated', 'Annulled'], {
+    errorMap: () => ({ message: 'Civil status is required. Please select your civil status.' })
+  }),
   nationality: z.string().min(1, "Nationality is required").default('Filipino').refine(validateGibberish, gibberishMsg),
   citizenshipType: z.enum(['Filipino', 'Dual Citizenship', '']).optional().transform(val => val === "" ? undefined : val),
   dualCountry: z.string().optional().nullable(),
@@ -54,16 +58,14 @@ export const jobApplicationSchema = z.object({
   isMeycauayanResident: z.boolean().or(z.string().transform(v => v === 'true')),
 
   // Residential Address (matches PhilippineAddressSelector prefix="res")
-  resRegion: z.string().optional(),
-  resProvince: z.string().optional(),
+  resRegion: z.string().optional().nullable(),
+  resProvince: z.string().optional().nullable(),
   resCity: z.string().min(1, 'City/Municipality is required'),
   resBarangay: z.string().min(1, 'Barangay is required'),
-  resHouseBlockLot: z.string().min(1, "House/Block/Lot is required").refine(validateGibberish, gibberishMsg),
-  resSubdivision: z.string().optional().refine(validateGibberish, gibberishMsg),
-  resStreet: z.string().min(1, "Street is required").refine(validateGibberish, gibberishMsg),
-  residentialZipCode: z.string().min(1, "Zip code is required"),
-  address: z.string().min(1, 'Address is required').refine(validateGibberish, gibberishMsg),
-  zipCode: z.string().min(1, 'Zip code is required'),
+  resHouseBlockLot: z.string().optional().nullable().refine(validateGibberish, gibberishMsg),
+  resSubdivision: z.string().optional().nullable().refine(validateGibberish, gibberishMsg),
+  resStreet: z.string().optional().nullable().refine(validateGibberish, gibberishMsg),
+  zipCode: z.string().optional().nullable(),
 
   // Permanent Address (matches PhilippineAddressSelector prefix="perm")
   permRegion: z.string().optional().nullable(),
@@ -76,13 +78,23 @@ export const jobApplicationSchema = z.object({
   permanentZipCode: z.string().optional().nullable(),
 
   // Contact
-  email: z.string().email('Invalid email address'),
-  phoneNumber: z.string().min(1, 'Phone number is required'),
+  email: z.string().min(1, 'Email address is required').email('Invalid email address'),
+  phoneNumber: z.string()
+    .min(1, 'Phone number is required')
+    .refine(val => {
+      const cleaned = val.replace(/\s|-/g, '');
+      return /^(09|\+639)\d{9}$/.test(cleaned);
+    }, 'Invalid phone number. Use format: 09XX XXX XXXX'),
   telephoneNumber: z.string().max(20).optional().nullable(),
 
   // Emergency Contact
   emergencyContact: z.string().min(1, 'Emergency contact person is required').max(255).refine(nameValidator, nameMsg),
-  emergencyContactNumber: z.string().min(1, 'Emergency contact number is required').max(20),
+  emergencyContactNumber: z.string()
+    .min(1, 'Emergency contact number is required')
+    .refine(val => {
+      const cleaned = val.replace(/\s|-/g, '');
+      return /^(09|\+639)\d{9}$/.test(cleaned);
+    }, 'Invalid phone number. Use format: 09XX XXX XXXX'),
 
   // ── GOVERNMENT IDENTIFICATION ──
   gsisNumber: createIdValidator(ID_REGEX.GSIS, "GSIS Number").or(z.literal('')),
@@ -97,9 +109,15 @@ export const jobApplicationSchema = z.object({
   govtIdIssuance: z.string().max(255).optional().nullable(),
 
   // ── SOCIAL LINKS ──
-  facebookUrl: z.string().max(255).optional().nullable(),
-  linkedinUrl: z.string().max(255).optional().nullable(),
-  twitterHandle: z.string().max(255).optional().nullable(),
+  facebookUrl: z.string().max(255).optional().nullable()
+    .refine(val => !val || val === '' || /^https?:\/\/(www\.)?(facebook|fb)\.com\/.+/.test(val),
+      'Please enter a valid Facebook URL (e.g., https://facebook.com/yourprofile)'),
+  linkedinUrl: z.string().max(255).optional().nullable()
+    .refine(val => !val || val === '' || /^https?:\/\/(www\.)?linkedin\.com\/(in|company)\/.+/.test(val),
+      'Please enter a valid LinkedIn URL (e.g., https://linkedin.com/in/yourprofile)'),
+  twitterHandle: z.string().max(255).optional().nullable()
+    .refine(val => !val || val === '' || /^@?[\w]{1,15}$/.test(val),
+      'Please enter a valid Twitter handle (e.g., @yourhandle or yourhandle)'),
 
   // ── EDUCATIONAL BACKGROUND ──
   educationalBackground: z.string().optional(),
@@ -150,7 +168,7 @@ export const jobApplicationSchema = z.object({
   // File Uploads (Strictly Typed)
   photo: z.instanceof(File).or(z.string()).optional(),
   photoPreview: z.string().optional(),
-  resume: z.instanceof(File).or(z.string()).optional(),
+  resume: z.instanceof(File, { message: 'Resume is required. Please upload your resume/CV.' }).or(z.string().min(1)),
   eligibilityCert: z.instanceof(File).or(z.string()).optional(),
 
   // Anti-Spam

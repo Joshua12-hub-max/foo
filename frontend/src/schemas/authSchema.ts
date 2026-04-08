@@ -119,7 +119,7 @@ export const RegisterSchema = z.object({
     isGovernment: z.boolean().default(false)
   })).optional().default([]),
 
-  trainings: z.array(z.object({
+  learningDevelopments: z.array(z.object({
     title: z.string().optional().nullable(),
     dateFrom: z.string().optional().nullable(),
     dateTo: z.string().optional().nullable(),
@@ -144,6 +144,21 @@ export const RegisterSchema = z.object({
   otherInfo: z.array(z.object({
     type: z.enum(['Skill', 'Recognition', 'Membership']),
     description: z.string()
+  })).optional().default([]),
+
+  voluntaryWorks: z.array(z.object({
+    organizationName: z.string().optional().nullable(),
+    address: z.string().optional().nullable(),
+    dateFrom: z.string().optional().nullable(),
+    dateTo: z.string().optional().nullable(),
+    hoursNumber: z.union([z.string(), z.number()]).optional().nullable(),
+    position: z.string().optional().nullable()
+  })).optional().default([]),
+
+  references: z.array(z.object({
+    name: z.string().optional().nullable(),
+    address: z.string().optional().nullable(),
+    telNo: z.string().optional().nullable()
   })).optional().default([]),
 
   yearsOfExperience: z.union([z.string(), z.number()]).transform(v => String(v)).optional(),
@@ -181,7 +196,8 @@ export const RegisterSchema = z.object({
     birthDate: z.string().optional().nullable()
   })).optional().default([]),
 
-  pdsQuestions: z.any().optional(),
+  declarations: PdsQuestionsSchema.optional().nullable(),
+  pdsQuestions: z.any().optional(), // legacy alias — use declarations
 
   // PDS Certifications
   govtIdType: z.string().optional().or(z.null()).or(z.literal("")),

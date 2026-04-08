@@ -1,126 +1,23 @@
-export interface PDSEducation {
-  level?: 'Elementary' | 'Secondary' | 'Vocational' | 'College' | 'Graduate Studies' | string;
-  schoolName?: string;
-  degreeCourse?: string;
-  yearGraduated?: number | string;
-  unitsEarned?: string;
-  dateFrom?: number | string;
-  dateTo?: number | string;
-  honors?: string;
-}
-
-export interface PDSEligibility {
-  eligibilityName: string;
-  rating?: number | string;
-  examDate?: string;
-  examPlace?: string;
-  licenseNumber?: string;
-  validityDate?: string;
-}
-
-export interface PDSWorkExperience {
-  dateFrom: string;
-  dateTo?: string;
-  positionTitle: string;
-  companyName: string;
-  monthlySalary?: number | string;
-  salaryGrade?: string;
-  appointmentStatus?: string;
-  isGovernment?: boolean | string;
-}
-
-export interface PDSLearningDevelopment {
-  title: string;
-  dateFrom?: string;
-  dateTo?: string;
-  hoursNumber?: number | string;
-  typeOfLd?: string;
-  conductedBy?: string;
-}
-
-export interface PDSVoluntaryWork {
-  organizationName?: string;
-  address?: string;
-  dateFrom?: string;
-  dateTo?: string;
-  hoursNumber?: number | string;
-  position?: string;
-}
-
-export interface PDSReference {
-  name: string;
-  address?: string;
-  telNo?: string;
-}
-
-export interface PDSFamily {
-  relationType: 'Spouse' | 'Father' | 'Mother' | 'Child';
-  lastName?: string;
-  surname?: string; // Synonym
-  firstName?: string;
-  middleName?: string;
-  nameExtension?: string;
-  extension?: string; // Synonym
-  occupation?: string;
-  employer?: string;
-  businessAddress?: string;
-  telephoneNo?: string;
-  mobileNo?: string;
-  dateOfBirth?: string;
-}
-
-export interface PDSOtherInfo {
-  type: 'Skill' | 'Recognition' | 'Membership' | string;
-  description: string;
-  title?: string; // Synonym
-  details?: string; // Synonym
-}
-
-export interface PDSFormData {
-  // Names
-  lastName?: string;
-  surname?: string;
-  firstName?: string;
-  middleName?: string;
-  maidenName?: string;
-  suffix?: string;
-  nameExtension?: string;
-  
-  // Personal Info
+export interface PdsPersonalInfo {
   birthDate?: string;
-  dob?: string;
   placeOfBirth?: string;
-  pob?: string;
   gender?: string;
-  sex?: string;
   civilStatus?: string;
-  height?: string;
-  heightM?: string;
-  weight?: string;
-  weightKg?: string;
+  heightM?: number;
+  weightKg?: number;
   bloodType?: string;
-  
-  // IDs
-  gsisNumber?: string;
-  gsisNo?: string;
-  pagibigNumber?: string;
-  pagibigNo?: string;
-  philhealthNumber?: string;
-  philhealthNo?: string;
-  philsysId?: string;
-  tinNumber?: string;
-  tinNo?: string;
-  agencyEmployeeNo?: string;
-  umidNumber?: string;
-  umidNo?: string;
-
   citizenship?: string;
   citizenshipType?: string;
   dualCountry?: string;
-  
-  // Addresses
-  residentialAddress?: string;
-  residentialZipCode?: string;
+  telephoneNo?: string;
+  mobileNo?: string;
+  gsisNumber?: string;
+  pagibigNumber?: string;
+  philhealthNumber?: string;
+  tinNumber?: string;
+  umidNumber?: string;
+  philsysId?: string;
+  agencyEmployeeNo?: string;
   resHouseBlockLot?: string;
   resStreet?: string;
   resSubdivision?: string;
@@ -128,9 +25,7 @@ export interface PDSFormData {
   resCity?: string;
   resProvince?: string;
   resRegion?: string;
-  
-  permanentAddress?: string;
-  permanentZipCode?: string;
+  residentialZipCode?: string;
   permHouseBlockLot?: string;
   permStreet?: string;
   permSubdivision?: string;
@@ -138,30 +33,83 @@ export interface PDSFormData {
   permCity?: string;
   permProvince?: string;
   permRegion?: string;
-  
-  telephoneNo?: string;
-  mobileNo?: string;
-  email?: string;
-
-  // Arrays
-  educations?: PDSEducation[];
-  eligibilities?: PDSEligibility[];
-  workExperiences?: PDSWorkExperience[];
-  trainings?: PDSLearningDevelopment[];
-  voluntaryWorks?: PDSVoluntaryWork[];
-  references?: PDSReference[];
-  familyBackground?: PDSFamily[];
-  otherInfo?: PDSOtherInfo[];
-  
-  // Declarations & Govt ID
-  pdsQuestions?: PDSQuestions;
-  govtIdType?: string;
-  govtIdNo?: string;
-  govtIdIssuance?: string;
-  dateAccomplished?: string;
+  permanentZipCode?: string;
 }
 
-export interface PDSQuestions {
+export interface PdsEducation {
+  level: 'Elementary' | 'Secondary' | 'Vocational' | 'College' | 'Graduate Studies';
+  schoolName: string;
+  degreeCourse?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  unitsEarned?: string;
+  yearGraduated?: number;
+  honors?: string;
+}
+
+export interface PdsEligibility {
+  eligibilityName: string;
+  rating?: number;
+  examDate?: string;
+  examPlace?: string;
+  licenseNumber?: string;
+  validityDate?: string;
+}
+
+export interface PdsWorkExperience {
+  dateFrom: string;
+  dateTo?: string;
+  positionTitle: string;
+  companyName: string;
+  monthlySalary?: number;
+  salaryGrade?: string;
+  appointmentStatus?: string;
+  isGovernment: boolean;
+}
+
+export interface PdsLearningDevelopment {
+  title: string;
+  dateFrom?: string;
+  dateTo?: string;
+  hoursNumber?: number;
+  typeOfLd?: string;
+  conductedBy?: string;
+}
+
+export interface PdsVoluntaryWork {
+  organizationName: string;
+  address?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  hoursNumber?: number;
+  position?: string;
+}
+
+export interface PdsReference {
+  name: string;
+  address?: string;
+  telNo?: string;
+}
+
+export interface PdsFamily {
+  relationType: 'Spouse' | 'Father' | 'Mother' | 'Child';
+  lastName?: string;
+  firstName?: string;
+  middleName?: string;
+  nameExtension?: string;
+  occupation?: string;
+  employer?: string;
+  businessAddress?: string;
+  telephoneNo?: string;
+  dateOfBirth?: string;
+}
+
+export interface PdsOtherInfo {
+  type: 'Skill' | 'Recognition' | 'Membership';
+  description: string;
+}
+
+export interface PdsDeclarations {
   relatedThirdDegree: boolean;
   relatedThirdDetails?: string;
   relatedFourthDegree: boolean;
@@ -187,11 +135,25 @@ export interface PDSQuestions {
   disabilityIdNo?: string;
   soloParent: boolean;
   soloParentIdNo?: string;
+  govtIdType?: string;
+  govtIdNo?: string;
+  govtIdIssuance?: string;
+  dateAccomplished?: string;
 }
 
-export interface PDSParsingResult {
-  success: boolean;
-  data?: Partial<PDSFormData>;
-  error?: string;
-  parsedAt?: string;
+export interface PdsParserOutput {
+  firstName?: string;
+  lastName?: string;
+  middleName?: string;
+  email?: string;
+  personal: PdsPersonalInfo;
+  educations: PdsEducation[];
+  eligibilities: PdsEligibility[];
+  workExperiences: PdsWorkExperience[];
+  learningDevelopments: PdsLearningDevelopment[];
+  voluntaryWorks: PdsVoluntaryWork[];
+  references: PdsReference[];
+  familyBackground: PdsFamily[];
+  otherInfo: PdsOtherInfo[];
+  declarations?: Partial<PdsDeclarations>;
 }

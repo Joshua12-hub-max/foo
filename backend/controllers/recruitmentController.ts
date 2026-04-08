@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { db } from '../db/index.js';
-import { recruitmentJobs, recruitmentApplicants, authentication, recruitmentSecurityLogs, pdsHrDetails, applicantEducation, applicantExperience, applicantTraining, applicantEligibility } from '../db/schema.js';
+import { recruitmentJobs, recruitmentApplicants, authentication, recruitmentSecurityLogs, pdsHrDetails, applicantEducation, applicantExperience, applicantTraining, applicantEligibility, applicantDocuments } from '../db/schema.js';
 import { eq, and, sql, desc, or, inArray, isNull, SQL, InferSelectModel } from 'drizzle-orm';
 /* eslint-disable-next-line @typescript-eslint/naming-convention */
 import PDFDocument from 'pdfkit';
@@ -290,6 +290,13 @@ export const getJob = async (req: Request, res: Response): Promise<void> => {
 
 export const applyJob = async (req: Request, res: Response): Promise<void> => {
   try {
+    // DEBUG: Log incoming request structure
+    console.log('[RECRUITMENT] Application received');
+    console.log('[RECRUITMENT] Body keys:', Object.keys(req.body));
+    console.log('[RECRUITMENT] Files:', (req as any).files ? Object.keys((req as any).files) : 'None');
+    console.log('[RECRUITMENT] JobId:', req.body.jobId);
+    console.log('[RECRUITMENT] DutyType:', req.body.dutyType);
+
     // 0. Pre-parse JSON strings from multipart/form-data (PDS Aligned)
     const body = req.body as Record<string, string | number | boolean | object | null | undefined>;
     const jsonFields = ['education', 'eligibilities', 'workExperiences', 'trainings'];
@@ -329,7 +336,22 @@ export const applyJob = async (req: Request, res: Response): Promise<void> => {
     const parseResult = dynamicSchema.safeParse(req.body);
 
     if (!parseResult.success) {
-       res.status(400).json({ success: false, message: 'Validation failed', errors: parseResult.error.flatten().fieldErrors });
+       const errors = parseResult.error.flatten().fieldErrors;
+       const missingFields = Object.keys(errors);
+
+       console.error('[RECRUITMENT] Validation failed');
+       console.error('[RECRUITMENT] Missing/invalid fields:', missingFields);
+       console.error('[RECRUITMENT] Detailed errors:', JSON.stringify(errors, null, 2));
+
+       res.status(400).json({
+         success: false,
+         message: 'Please complete all required fields for this position.',
+         errors,
+         missingFields,
+         hint: missingFields.length > 5
+           ? 'This position requires a complete PDS. Please fill all sections.'
+           : `Please check: ${missingFields.join(', ')}`
+       });
        return;
     }
 
@@ -373,6 +395,34 @@ export const applyJob = async (req: Request, res: Response): Promise<void> => {
     if (photo && !(await verifyFileHeader(photo.path))) {
         res.status(400).json({ success: false, message: 'Invalid photo file integrity. Please upload a real image.' });
         return;
+    }
+
+    // Verify uploaded files exist
+    if (resume) {
+        if (!fs.existsSync(resume.path)) {
+            console.error('[RECRUITMENT] Resume file missing after upload:', resume.path);
+            res.status(500).json({ success: false, message: 'Resume upload failed. Please try again.' });
+            return;
+        }
+        console.log('[RECRUITMENT] Resume uploaded successfully:', resume.path);
+    }
+
+    if (eligibilityCert) {
+        if (!fs.existsSync(eligibilityCert.path)) {
+            console.error('[RECRUITMENT] Eligibility cert missing after upload:', eligibilityCert.path);
+            res.status(500).json({ success: false, message: 'Certificate upload failed. Please try again.' });
+            return;
+        }
+        console.log('[RECRUITMENT] Eligibility certificate uploaded:', eligibilityCert.path);
+    }
+
+    if (photo) {
+        if (!fs.existsSync(photo.path)) {
+            console.error('[RECRUITMENT] Photo missing after upload:', photo.path);
+            res.status(500).json({ success: false, message: 'Photo upload failed. Please try again.' });
+            return;
+        }
+        console.log('[RECRUITMENT] Photo uploaded successfully:', photo.path);
     }
 
     // CSC Compliance Check
@@ -592,6 +642,7 @@ export const applyJob = async (req: Request, res: Response): Promise<void> => {
             emergencyContact: emergencyContact ? sanitizeInput(emergencyContact) : null,
             emergencyContactNumber: emergencyContactNumber || null,
             resumePath: resume?.filename || null,
+            photoPath: photo?.filename || null,
             photo1x1Path: photo?.filename || null,
             resRegion: resRegion || null,
             resProvince: resProvince || null,
@@ -693,6 +744,57 @@ export const applyJob = async (req: Request, res: Response): Promise<void> => {
             }
         }
 
+        // Insert document metadata into applicant_documents table
+        const documentsToInsert = [];
+
+        if (resume) {
+            documentsToInsert.push({
+                applicantId: Number(applicantId),
+                documentName: resume.originalname,
+                documentType: 'Resume',
+                filePath: resume.filename,
+                fileSize: resume.size,
+                mimeType: resume.mimetype,
+            });
+        }
+
+        if (photo) {
+            documentsToInsert.push({
+                applicantId: Number(applicantId),
+                documentName: photo.originalname,
+                documentType: 'Photo',
+                filePath: photo.filename,
+                fileSize: photo.size,
+                mimeType: photo.mimetype,
+            });
+
+            // Photo1x1 is same file (legacy duplicate)
+            documentsToInsert.push({
+                applicantId: Number(applicantId),
+                documentName: photo.originalname,
+                documentType: 'Photo1x1',
+                filePath: photo.filename,
+                fileSize: photo.size,
+                mimeType: photo.mimetype,
+            });
+        }
+
+        if (eligibilityCert) {
+            documentsToInsert.push({
+                applicantId: Number(applicantId),
+                documentName: eligibilityCert.originalname,
+                documentType: 'EligibilityCert',
+                filePath: eligibilityCert.filename,
+                fileSize: eligibilityCert.size,
+                mimeType: eligibilityCert.mimetype,
+            });
+        }
+
+        // Batch insert all documents
+        if (documentsToInsert.length > 0) {
+            await tx.insert(applicantDocuments).values(documentsToInsert);
+        }
+
         return header;
     });
 
@@ -786,8 +888,17 @@ export const applyJob = async (req: Request, res: Response): Promise<void> => {
       console.error('Failed to send internal application notifications:', error);
     }
 
-    res.status(201).json({ 
-        success: true, 
+    console.log('[RECRUITMENT] Application successful');
+    console.log('[RECRUITMENT] Applicant ID:', applicantId);
+    console.log('[RECRUITMENT] Email sent to:', email);
+    console.log('[RECRUITMENT] Files saved:', {
+        resumePath: resume?.path || 'None',
+        photoPath: photo?.path || 'None',
+        eligibilityPath: eligibilityCert?.path || 'None'
+    });
+
+    res.status(201).json({
+        success: true,
         message: 'Application submitted successfully! HR will review your credentials and contact you via email for the next steps.',
         requiresVerification: false,
         email: email,
@@ -808,6 +919,30 @@ export const applyJob = async (req: Request, res: Response): Promise<void> => {
       message: 'Failed to submit application', 
       error: error instanceof Error ? error.message : 'Internal Server Error' 
     });
+  }
+};
+
+export const getApplicantDocuments = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { applicantId } = req.params;
+
+    const documents = await db.query.applicantDocuments.findMany({
+      where: eq(applicantDocuments.applicantId, Number(applicantId)),
+      orderBy: (docs, { desc }) => [desc(docs.uploadedAt)]
+    });
+
+    // Add download URLs
+    const apiBaseUrl = process.env.API_URL || 'http://localhost:5000';
+    const documentsWithUrls = documents.map(doc => ({
+      ...doc,
+      downloadUrl: `${apiBaseUrl}/uploads/resumes/${doc.filePath}`,
+      fileSizeKB: doc.fileSize ? (doc.fileSize / 1024).toFixed(2) : null,
+    }));
+
+    res.json({ success: true, documents: documentsWithUrls });
+  } catch (error) {
+    console.error('Error fetching applicant documents:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch documents' });
   }
 };
 

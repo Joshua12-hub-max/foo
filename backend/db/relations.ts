@@ -2,8 +2,8 @@ import { relations } from "drizzle-orm";
 import { authentication, googleCalendarTokens, socialConnections } from "./tables/auth.js";
 import { departments, nepotismRelationships } from "./tables/hr.js";
 import { plantillaPositions, qualificationStandards, positionPublications } from "./tables/plantilla.js";
-import { chatConversations, chatMessages, recruitmentApplicants, recruitmentJobs, applicantEducation, applicantExperience, applicantTraining, applicantEligibility } from "./tables/recruitment.js";
-import { pdsEducation, pdsEligibility, pdsFamily, pdsLearningDevelopment, pdsOtherInfo, pdsReferences, pdsVoluntaryWork, pdsWorkExperience, employeeCustomFields, employeeDocuments, employeeEducation, employeeEmergencyContacts, employeeEmploymentHistory, employeeMemos, employeeNotes, employeeSkills, pdsHrDetails, pdsPersonalInformation, pdsDeclarations } from "./tables/pds.js";
+import { chatConversations, chatMessages, recruitmentApplicants, recruitmentJobs, applicantEducation, applicantExperience, applicantTraining, applicantEligibility, applicantDocuments } from "./tables/recruitment.js";
+import { pdsEducation, pdsEligibility, pdsFamily, pdsLearningDevelopment, pdsOtherInfo, pdsReferences, pdsVoluntaryWork, pdsWorkExperience, employeeCustomFields, employeeDocuments, employeeEmergencyContacts, employeeMemos, employeeNotes, employeeSkills, pdsHrDetails, pdsPersonalInformation, pdsDeclarations } from "./tables/pds.js";
 import { performanceReviews, performanceAuditLog, performanceGoals, performanceReviewCycles, performanceImprovementPlans, performanceCriteria, performanceReviewItems } from "./tables/performance.js";
 import { stepIncrementTracker } from "./tables/payroll.js";
 import { events, syncedEvents } from "./tables/common.js";
@@ -32,9 +32,7 @@ export const authenticationRelations = relations(authentication, ({one, many}) =
 	employeeDocumentsUploadedBy: many(employeeDocuments, {
 		relationName: "employeeDocuments_uploadedBy_authentication_id"
 	}),
-	employeeEducations: many(employeeEducation),
 	employeeEmergencyContacts: many(employeeEmergencyContacts),
-	employeeEmploymentHistories: many(employeeEmploymentHistory),
 	employeeMemosEmployeeId: many(employeeMemos, {
 		relationName: "employeeMemos_employeeId_authentication_id"
 	}),
@@ -159,23 +157,9 @@ export const employeeDocumentsRelations = relations(employeeDocuments, ({one}) =
 	}),
 }));
 
-export const employeeEducationRelations = relations(employeeEducation, ({one}) => ({
-	authentication: one(authentication, {
-		fields: [employeeEducation.employeeId],
-		references: [authentication.id]
-	}),
-}));
-
 export const employeeEmergencyContactsRelations = relations(employeeEmergencyContacts, ({one}) => ({
 	authentication: one(authentication, {
 		fields: [employeeEmergencyContacts.employeeId],
-		references: [authentication.id]
-	}),
-}));
-
-export const employeeEmploymentHistoryRelations = relations(employeeEmploymentHistory, ({one}) => ({
-	authentication: one(authentication, {
-		fields: [employeeEmploymentHistory.employeeId],
 		references: [authentication.id]
 	}),
 }));
@@ -396,6 +380,7 @@ export const recruitmentApplicantsRelations = relations(recruitmentApplicants, (
 	experiences: many(applicantExperience),
 	trainings: many(applicantTraining),
 	eligibilities: many(applicantEligibility),
+	documents: many(applicantDocuments),
 }));
 
 export const applicantEducationRelations = relations(applicantEducation, ({one}) => ({
@@ -422,6 +407,13 @@ export const applicantTrainingRelations = relations(applicantTraining, ({one}) =
 export const applicantEligibilityRelations = relations(applicantEligibility, ({one}) => ({
 	applicant: one(recruitmentApplicants, {
 		fields: [applicantEligibility.applicantId],
+		references: [recruitmentApplicants.id]
+	}),
+}));
+
+export const applicantDocumentsRelations = relations(applicantDocuments, ({one}) => ({
+	applicant: one(recruitmentApplicants, {
+		fields: [applicantDocuments.applicantId],
 		references: [recruitmentApplicants.id]
 	}),
 }));

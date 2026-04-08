@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -12,6 +12,16 @@ import PublicLayout from '@components/Public/PublicLayout';
 import SEO from "@/components/Global/SEO";
 import { jobApplicationSchema, JobApplicationSchema } from '@/schemas/recruitment';
 import { usePublicJobDetail, useJobApplication } from '@/features/Recruitment/hooks/usePublicJobs';
+import PersonalInfoSection from './JobApplicationForm/sections/PersonalInfoSection';
+import ContactSection from './JobApplicationForm/sections/ContactSection';
+import AddressSection from './JobApplicationForm/sections/AddressSection';
+import GovernmentIDSection from './JobApplicationForm/sections/GovernmentIDSection';
+import EducationSection from './JobApplicationForm/sections/EducationSection';
+import ExperienceSection from './JobApplicationForm/sections/ExperienceSection';
+import EligibilitySection from './JobApplicationForm/sections/EligibilitySection';
+import TrainingSection from './JobApplicationForm/sections/TrainingSection';
+import FileUploadSection from './JobApplicationForm/sections/FileUploadSection';
+import ReviewSection from './JobApplicationForm/sections/ReviewSection';
 
 const JobDetail = () => {
     const { id } = useParams();
@@ -20,33 +30,79 @@ const JobDetail = () => {
 
     // UI State
     const [success, setSuccess] = useState(false);
-    const [resumeName, setResumeName] = useState<string | null>(null);
-    const [photoName, setPhotoName] = useState<string | null>(null);
-    const [eligibilityName, setEligibilityName] = useState<string | null>(null);
+    const [currentStep, setCurrentStep] = useState(1);
+    const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
     // Fetch Job
     const { data: job, isLoading, error } = usePublicJobDetail(id);
 
-    // Simplified Form Logic
-    const { 
-        register, 
-        handleSubmit, 
-        setValue, 
+    // Form Logic with Complete PDS Fields
+    const {
+        register,
+        handleSubmit,
+        setValue,
         trigger,
-        formState: { errors, isSubmitting: isFormLoading } 
+        control,
+        watch,
+        formState: { errors, isSubmitting: isFormLoading }
     } = useForm<Partial<JobApplicationSchema>>({
         resolver: zodResolver(jobApplicationSchema) as any,
         defaultValues: {
-            firstName: '',
-            lastName: '',
-            email: '',
+            // Basic Info
+            firstName: '', lastName: '', middleName: '', suffix: '',
+            email: '', phoneNumber: '', telephoneNumber: '',
             hToken: `v-${Math.random().toString(36).substring(2, 10)}`,
-            hpField: '',
-            websiteUrl: '',
+            hpField: '', websiteUrl: '',
             jobId: id,
-            dutyType: 'Standard',
+            dutyType: job?.dutyType || 'Standard',
             isMeycauayanResident: false,
-            phoneNumber: ''
+
+            // Personal Info
+            birthDate: '',
+            birthPlace: '',
+            sex: '' as 'Male' | 'Female',
+            civilStatus: '' as 'Single' | 'Married' | 'Widowed' | 'Separated' | 'Annulled',
+            height: '', weight: '', bloodType: '',
+            nationality: 'Filipino',
+            citizenshipType: '',
+            dualCountry: '',
+
+            // Address
+            resRegion: '', resProvince: '', resCity: '', resBarangay: '',
+            resStreet: '', resHouseBlockLot: '', resSubdivision: '', zipCode: '',
+            permRegion: '', permProvince: '', permCity: '', permBarangay: '',
+            permStreet: '', permHouseBlockLot: '', permSubdivision: '', permanentZipCode: '',
+
+            // Emergency Contact
+            emergencyContact: '',
+            emergencyContactNumber: '',
+
+            // Government IDs
+            gsisNumber: '', pagibigNumber: '', philhealthNumber: '',
+            umidNumber: '', philsysId: '', tinNumber: '',
+            agencyEmployeeNo: '',
+            govtIdType: '', govtIdNo: '', govtIdIssuance: '',
+
+            // Social Links
+            facebookUrl: '', linkedinUrl: '', twitterHandle: '',
+
+            // Education
+            education: {
+                Elementary: { school: '', course: '', from: '', to: '', units: '', yearGrad: '', honors: '' },
+                Secondary: { school: '', course: '', from: '', to: '', units: '', yearGrad: '', honors: '' },
+                Vocational: { school: '', course: '', from: '', to: '', units: '', yearGrad: '', honors: '' },
+                College: { school: '', course: '', from: '', to: '', units: '', yearGrad: '', honors: '' },
+                Graduate: { school: '', course: '', from: '', to: '', units: '', yearGrad: '', honors: '' }
+            },
+
+            // Arrays
+            eligibilities: [],
+            workExperiences: [],
+            trainings: [],
+
+            // Skills
+            skills: '',
+            totalExperienceYears: 0,
         }
     });
 
@@ -66,13 +122,159 @@ const JobDetail = () => {
             }
         },
         (err: any) => {
-            const serverMsg = err.response?.data?.message || "Failed to submit application.";
-            showToast(serverMsg, "error");
+            console.error('[JobDetail] Application submission failed:', err);
+
+            const errorData = err.response?.data;
+
+            if (errorData?.errors && typeof errorData.errors === 'object') {
+                // Show validation errors
+                const fieldErrors = errorData.errors;
+                const errorCount = Object.keys(fieldErrors).length;
+
+                showToast(
+                    errorData.hint || `${errorCount} field(s) need attention. Please review the form.`,
+                    'error'
+                );
+
+                // Log individual field errors to console for debugging
+                console.table(fieldErrors);
+
+                // Scroll to first error field
+                const firstErrorField = Object.keys(fieldErrors)[0];
+                if (firstErrorField) {
+                    const element = document.querySelector(`[name="${firstErrorField}"]`);
+                    element?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+
+            } else if (err.response?.status === 409) {
+                showToast(errorData?.message || 'Duplicate application detected.', 'error');
+
+            } else if (err.response?.status === 400) {
+                showToast(errorData?.message || 'Invalid application data. Please review your entries.', 'error');
+
+            } else {
+                showToast('Submission failed. Please check your internet connection and try again.', 'error');
+            }
         }
     );
 
-    const onSubmit = (data: any) => {
+    const onSubmit = async (data: any) => {
         if (!id) return;
+
+        console.log('=== FORM SUBMISSION DEBUG ===');
+        console.log('1. Raw form data:', data);
+        console.log('2. Job duty type:', job?.dutyType);
+
+        // Comprehensive validation diagnostics
+        const missingFields: string[] = [];
+        const validationIssues: Record<string, string> = {};
+
+        // Check required personal info
+        if (!data.firstName) missingFields.push('firstName');
+        if (!data.lastName) missingFields.push('lastName');
+        if (!data.birthDate) missingFields.push('birthDate');
+        if (!data.birthPlace) missingFields.push('birthPlace');
+        if (!data.sex) missingFields.push('sex');
+        if (!data.civilStatus) missingFields.push('civilStatus');
+
+        // Check required contact
+        if (!data.email) missingFields.push('email');
+        if (!data.phoneNumber) missingFields.push('phoneNumber');
+        if (!data.emergencyContact) missingFields.push('emergencyContact');
+        if (!data.emergencyContactNumber) missingFields.push('emergencyContactNumber');
+
+        // Check required address
+        if (!data.resCity) missingFields.push('resCity');
+        if (!data.resBarangay) missingFields.push('resBarangay');
+
+        // Check required resume
+        if (!data.resume || !(data.resume instanceof File)) {
+            missingFields.push('resume');
+            validationIssues['resume'] = 'Resume file is required';
+        }
+
+        // Check if Standard duty type requires additional fields
+        if (job?.dutyType === 'Standard') {
+            if (!data.gsisNumber) missingFields.push('gsisNumber');
+            if (!data.pagibigNumber) missingFields.push('pagibigNumber');
+            if (!data.philhealthNumber) missingFields.push('philhealthNumber');
+            if (!data.umidNumber) missingFields.push('umidNumber');
+            if (!data.philsysId) missingFields.push('philsysId');
+            if (!data.tinNumber) missingFields.push('tinNumber');
+
+            // Check education
+            const hasEducation = data.education && Object.values(data.education).some(
+                (level: any) => level?.school && level.school.trim().length > 0
+            );
+            if (!hasEducation) {
+                missingFields.push('education');
+                validationIssues['education'] = 'At least one education level required';
+            }
+
+            // Check work experience
+            if (!data.workExperiences || data.workExperiences.length === 0) {
+                missingFields.push('workExperiences');
+                validationIssues['workExperiences'] = 'At least one work experience required';
+            }
+
+            // Check eligibility
+            if (!data.eligibilities || data.eligibilities.length === 0) {
+                missingFields.push('eligibilities');
+                validationIssues['eligibilities'] = 'At least one eligibility required';
+            }
+
+            // Check eligibility certificate
+            if (!data.eligibilityCert || !(data.eligibilityCert instanceof File)) {
+                missingFields.push('eligibilityCert');
+                validationIssues['eligibilityCert'] = 'Eligibility certificate required for Standard jobs';
+            }
+        }
+
+        console.log('3. Validation Check:');
+        console.log('   - Missing fields:', missingFields);
+        console.log('   - Validation issues:', validationIssues);
+        console.log('   - Frontend errors:', errors);
+
+        // Show detailed error if validation fails
+        if (missingFields.length > 0 || Object.keys(validationIssues).length > 0) {
+            console.error('❌ VALIDATION FAILED');
+            console.error('Missing fields:', missingFields);
+            console.error('Validation issues:', validationIssues);
+
+            const allErrors = [
+                ...missingFields.map(field => `Missing: ${field}`),
+                ...Object.entries(validationIssues).map(([field, msg]) => `${field}: ${msg}`)
+            ];
+
+            setValidationErrors(allErrors);
+
+            const errorMsg = missingFields.length <= 5
+                ? `Missing required fields: ${missingFields.join(', ')}`
+                : `${missingFields.length} required fields are missing. Please complete all sections.`;
+
+            showToast(errorMsg, 'error');
+
+            // Scroll to top to see error summary
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            return;
+        }
+
+        // Clear validation errors if all checks pass
+        setValidationErrors([]);
+
+        console.log('✅ Validation passed! Submitting...');
+        console.log('4. Data being sent:', {
+            personal: { firstName: data.firstName, lastName: data.lastName, sex: data.sex, civilStatus: data.civilStatus },
+            contact: { email: data.email, phoneNumber: data.phoneNumber },
+            address: { resCity: data.resCity, resBarangay: data.resBarangay },
+            files: {
+                resume: data.resume?.name,
+                photo: data.photo?.name,
+                cert: data.eligibilityCert?.name
+            }
+        });
+        console.log('=== END DEBUG ===');
+
         mutation.mutate({ id, data });
     };
 
@@ -276,151 +478,174 @@ const JobDetail = () => {
                                         <p className="text-[10px] font-black text-green-600 border border-green-200 bg-green-50 px-4 py-1.5 rounded-full inline-block uppercase tracking-[0.4em] shadow-sm">Official Registry Entry</p>
                                     </div>
 
-                                    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 bg-white border border-gray-100 shadow-xl p-6 md:p-8 rounded-2xl relative overflow-hidden">
-                                        
-                                        <div className="absolute top-0 right-0 w-64 h-64 bg-slate-50/50 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none"></div>
+{(() => {
+                                        // Determine steps based on job duty type
+                                        const baseSteps = [
+                                            { id: 1, title: "Personal Information", component: PersonalInfoSection },
+                                            { id: 2, title: "Contact Details", component: ContactSection },
+                                            { id: 3, title: "Address", component: AddressSection },
+                                        ];
 
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5 relative z-10">
-                                            <div>
-                                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">First Name <span className="text-red-500">*</span></label>
-                                                <input 
-                                                    {...register('firstName')}
-                                                    className={`w-full border ${errors.firstName ? 'border-red-400 focus:ring-red-200 focus:border-red-400' : 'border-gray-200 focus:ring-gray-200 focus:border-gray-400'} rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:outline-none transition-all bg-gray-50 text-slate-900 placeholder:text-gray-400`}
-                                                    placeholder="e.g. Juan"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Last Name <span className="text-red-500">*</span></label>
-                                                <input 
-                                                    {...register('lastName')}
-                                                    className={`w-full border ${errors.lastName ? 'border-red-400 focus:ring-red-200 focus:border-red-400' : 'border-gray-200 focus:ring-gray-200 focus:border-gray-400'} rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:outline-none transition-all bg-gray-50 text-slate-900 placeholder:text-gray-400`}
-                                                    placeholder="e.g. Dela Cruz"
-                                                />
-                                            </div>
-                                        </div>
+                                        // Add conditional steps for Standard duty jobs
+                                        if (job?.dutyType === 'Standard') {
+                                            baseSteps.push(
+                                                { id: 4, title: "Government IDs", component: GovernmentIDSection },
+                                                { id: 5, title: "Education", component: EducationSection },
+                                                { id: 6, title: "Work Experience", component: ExperienceSection },
+                                                { id: 7, title: "Eligibility & Certifications", component: EligibilitySection }
+                                            );
+                                        }
 
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5 relative z-10">
-                                            <div>
-                                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Contact Email <span className="text-red-500">*</span></label>
-                                                <input 
-                                                    {...register('email')}
-                                                    className={`w-full border ${errors.email ? 'border-red-400 focus:ring-red-200 focus:border-red-400' : 'border-gray-200 focus:ring-gray-200 focus:border-gray-400'} rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:outline-none transition-all bg-gray-50 text-slate-900 placeholder:text-gray-400`}
-                                                    placeholder="juan.delacruz@email.com"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Contact Number <span className="text-red-500">*</span></label>
-                                                <input 
-                                                    {...register('phoneNumber')}
-                                                    className={`w-full border ${errors.phoneNumber ? 'border-red-400 focus:ring-red-200 focus:border-red-400' : 'border-gray-200 focus:ring-gray-200 focus:border-gray-400'} rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:outline-none transition-all bg-gray-50 text-slate-900 placeholder:text-gray-400`}
-                                                    placeholder="0917 123 4567"
-                                                />
-                                            </div>
-                                        </div>
+                                        // Optional training (for all jobs)
+                                        baseSteps.push({ id: baseSteps.length + 1, title: "Training & Development", component: TrainingSection });
 
-                                        <div className="space-y-4 relative z-10">
-                                            {/* Resume / PDS */}
-                                            <div className="space-y-2">
-                                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Application Form / Resume <span className="text-red-500">*</span></label>
-                                                
-                                                <div className="relative group">
-                                                    <input 
-                                                        type="file"
-                                                        onChange={(e) => {
-                                                            const file = e.target.files?.[0];
-                                                            if (file) {
-                                                                setValue('resume', file);
-                                                                setResumeName(file.name);
-                                                                trigger('resume');
-                                                            }
-                                                        }}
-                                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                                                    />
-                                                    <div className={`w-full border ${resumeName ? 'border-blue-300 bg-blue-50' : 'border-gray-200 bg-gray-50/50 hover:bg-gray-50'} rounded-lg px-4 py-3 text-sm flex items-center justify-center gap-2 transition-all ${resumeName ? 'text-blue-600' : 'text-gray-500'} font-semibold shadow-sm`}>
-                                                        <Upload size={16} />
-                                                        <span>{resumeName || 'Choose File...'}</span>
-                                                    </div>
-                                                </div>
-                                                {errors.resume && <p className="text-[10px] font-bold text-red-500 mt-1.5 ml-1 uppercase">{errors.resume.message as string}</p>}
-                                            </div>
+                                        // File uploads and review (for all jobs)
+                                        baseSteps.push(
+                                            { id: baseSteps.length + 1, title: "File Uploads", component: FileUploadSection },
+                                            { id: baseSteps.length + 1, title: "Review & Submit", component: ReviewSection }
+                                        );
 
-                                            {/* Photo */}
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
-                                                <div className="space-y-2">
-                                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">2x2 ID Picture</label>
-                                                    
-                                                    <div className="relative group">
-                                                        <input 
-                                                            type="file"
-                                                            accept="image/*"
-                                                            onChange={(e) => {
-                                                                const file = e.target.files?.[0];
-                                                                if (file) {
-                                                                    setValue('photo', file);
-                                                                    setPhotoName(file.name);
-                                                                    trigger('photo');
-                                                                }
-                                                            }}
-                                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                                                        />
-                                                        <div className={`w-full border ${photoName ? 'border-blue-300 bg-blue-50' : 'border-gray-200 bg-gray-50/50 hover:bg-gray-50'} rounded-lg px-4 py-3 text-sm flex items-center justify-center gap-2 transition-all ${photoName ? 'text-blue-600' : 'text-gray-500'} font-semibold shadow-sm`}>
-                                                            <Upload size={16} />
-                                                            <span className="truncate max-w-[150px]">{photoName || 'Choose Image...'}</span>
+                                        // Renumber IDs
+                                        const allSteps = baseSteps.map((step, idx) => ({ ...step, id: idx + 1 }));
+
+                                        return (
+                                            <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-6 bg-white border border-gray-100 shadow-xl p-6 md:p-8 rounded-2xl relative overflow-hidden">
+                                                <div className="absolute top-0 right-0 w-64 h-64 bg-slate-50/50 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none"></div>
+
+                                                {/* Validation Error Summary */}
+                                                {validationErrors.length > 0 && (
+                                                    <div className="bg-red-50 border-2 border-red-300 rounded-xl p-6 relative z-10">
+                                                        <div className="flex items-start gap-3">
+                                                            <svg className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                            </svg>
+                                                            <div className="flex-1">
+                                                                <h4 className="text-sm font-black text-red-900 uppercase tracking-wider mb-3">
+                                                                    Please Complete Required Fields ({validationErrors.length})
+                                                                </h4>
+                                                                <ul className="space-y-2">
+                                                                    {validationErrors.map((error, idx) => (
+                                                                        <li key={idx} className="text-xs font-semibold text-red-700 flex items-start gap-2">
+                                                                            <span className="text-red-500">•</span>
+                                                                            <span>{error}</span>
+                                                                        </li>
+                                                                    ))}
+                                                                </ul>
+                                                            </div>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setValidationErrors([])}
+                                                                className="text-red-600 hover:text-red-800 text-xs font-bold"
+                                                            >
+                                                                ✕
+                                                            </button>
                                                         </div>
                                                     </div>
-                                                    {errors.photo && <p className="text-[10px] font-bold text-red-500 mt-1.5 ml-1 uppercase">{errors.photo.message as string}</p>}
-                                                </div>
-
-                                                {/* Eligibility */}
-                                                <div className="space-y-2">
-                                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Eligibility Certificate</label>
-                                                    
-                                                    <div className="relative group">
-                                                        <input 
-                                                            type="file"
-                                                            onChange={(e) => {
-                                                                const file = e.target.files?.[0];
-                                                                if (file) {
-                                                                    setValue('eligibilityCert', file);
-                                                                    setEligibilityName(file.name);
-                                                                    trigger('eligibilityCert');
-                                                                }
-                                                            }}
-                                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                                                        />
-                                                        <div className={`w-full border ${eligibilityName ? 'border-blue-300 bg-blue-50' : 'border-gray-200 bg-gray-50/50 hover:bg-gray-50'} rounded-lg px-4 py-3 text-sm flex items-center justify-center gap-2 transition-all ${eligibilityName ? 'text-blue-600' : 'text-gray-500'} font-semibold shadow-sm`}>
-                                                            <Upload size={16} />
-                                                            <span className="truncate max-w-[150px]">{eligibilityName || 'Choose File...'}</span>
-                                                        </div>
-                                                    </div>
-                                                    {errors.eligibilityCert && <p className="text-[10px] font-bold text-red-500 mt-1.5 ml-1 uppercase">{errors.eligibilityCert.message as string}</p>}
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div className="pt-5 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 relative z-10">
-                                            <div className="flex items-center gap-2 opacity-70">
-                                                <ShieldCheck size={14} className="text-gray-500" />
-                                                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Protocol Encrypted End-to-End</p>
-                                            </div>
-                                            
-                                            <button 
-                                                type="submit"
-                                                disabled={mutation.isPending || isFormLoading || !resumeName}
-                                                className="w-full sm:w-auto px-6 py-2.5 bg-gray-900 text-white rounded-lg font-bold text-sm tracking-wide hover:bg-gray-800 disabled:opacity-50 transition-all shadow-md flex items-center justify-center gap-2"
-                                            >
-                                                {mutation.isPending || isFormLoading ? (
-                                                    <>
-                                                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                                                        Syncing...
-                                                    </>
-                                                ) : (
-                                                    'Commit Application'
                                                 )}
-                                            </button>
-                                        </div>
 
-                                    </form>
+                                                {/* Step Progress Indicator */}
+                                                <div className="mb-8 relative z-10">
+                                                    <div className="flex items-center justify-between overflow-x-auto pb-4">
+                                                        {allSteps.map((step, idx) => (
+                                                            <div key={step.id} className="flex items-center min-w-fit">
+                                                                <div className="flex flex-col items-center">
+                                                                    <div className={`
+                                                                        w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all
+                                                                        ${currentStep === step.id ? 'bg-green-600 text-white ring-4 ring-green-100' :
+                                                                            currentStep > step.id ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-600'}
+                                                                    `}>
+                                                                        {currentStep > step.id ? '✓' : step.id}
+                                                                    </div>
+                                                                    <span className={`text-[10px] font-bold uppercase tracking-wider mt-2 text-center max-w-[80px] ${
+                                                                        currentStep === step.id ? 'text-green-600' : 'text-gray-500'
+                                                                    }`}>
+                                                                        {step.title}
+                                                                    </span>
+                                                                </div>
+                                                                {idx < allSteps.length - 1 && (
+                                                                    <div className={`w-8 md:w-16 h-1 mx-2 transition-all ${
+                                                                        currentStep > step.id ? 'bg-green-500' : 'bg-gray-200'
+                                                                    }`}></div>
+                                                                )}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+
+                                                {/* Current Step Component */}
+                                                <div className="relative z-10 min-h-[400px]">
+                                                    {React.createElement(allSteps[currentStep - 1].component, {
+                                                        register,
+                                                        errors,
+                                                        setValue,
+                                                        watch,
+                                                        control,
+                                                        setCurrentStep
+                                                    })}
+                                                </div>
+
+                                                {/* Navigation Buttons */}
+                                                <div className="flex justify-between items-center mt-8 pt-6 border-t border-gray-200 relative z-10">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setCurrentStep(prev => Math.max(1, prev - 1));
+                                                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                                                        }}
+                                                        disabled={currentStep === 1}
+                                                        className="px-6 py-2.5 bg-gray-200 text-gray-700 rounded-lg font-bold text-sm hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                                                    >
+                                                        Previous
+                                                    </button>
+
+                                                    <div className="text-center">
+                                                        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+                                                            Step {currentStep} of {allSteps.length}
+                                                        </p>
+                                                    </div>
+
+                                                    {currentStep < allSteps.length ? (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setCurrentStep(prev => prev + 1);
+                                                                window.scrollTo({ top: 0, behavior: 'smooth' });
+                                                            }}
+                                                            className="px-6 py-2.5 bg-green-600 text-white rounded-lg font-bold text-sm hover:bg-green-700 transition-all shadow-md"
+                                                        >
+                                                            Next
+                                                        </button>
+                                                    ) : (
+                                                        <button
+                                                            type="submit"
+                                                            disabled={mutation.isPending || isFormLoading}
+                                                            className="px-6 py-2.5 bg-green-600 text-white rounded-lg font-bold text-sm hover:bg-green-700 disabled:opacity-50 transition-all shadow-md flex items-center gap-2"
+                                                        >
+                                                            {mutation.isPending || isFormLoading ? (
+                                                                <>
+                                                                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                                                    Submitting...
+                                                                </>
+                                                            ) : (
+                                                                'Submit Application'
+                                                            )}
+                                                        </button>
+                                                    )}
+                                                </div>
+
+                                                {/* Loading Overlay */}
+                                                {(mutation.isPending || isFormLoading) && (
+                                                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                                                        <div className="bg-white p-8 rounded-2xl shadow-2xl text-center space-y-4">
+                                                            <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-green-600 mx-auto"></div>
+                                                            <p className="text-lg font-bold text-gray-700">Submitting your application...</p>
+                                                            <p className="text-sm text-gray-500">Please wait while we process your information</p>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </form>
+                                        );
+                                    })()}
                                 </motion.div>
                             )}
                         </AnimatePresence>

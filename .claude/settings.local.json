@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__filesystem__list_directory",
+      "mcp__filesystem__read_file",
+      "Bash(node:*)",
+      "Bash(npx tsx -e ':*)",
+      "Bash(npx tsx:*)",
+      "mcp__filesystem__directory_tree",
+      "mcp__filesystem__read_text_file",
+      "Bash(npx tsc:*)",
+      "Bash(grep -n \"employeeEducation\\\\|employee_education\" /c/Users/Joshua/project/nebr/backend/db/tables/*.ts)",
+      "Bash(grep -rn \"pdsHrDetails\\\\|pds_hr_details\" /c/Users/Joshua/project/nebr/backend/db/tables/*.ts)",
+      "Bash(curl -s http://localhost:5000/api/health)",
+      "Bash(curl:*)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(d.get\\('error',''\\)\\)\")",
+      "Bash(npx eslint:*)",
+      "mcp__filesystem__write_file",
+      "Bash(dir:*)",
+      "Bash(ls:*)",
+      "Bash(npm run db:generate:*)",
+      "Bash(npm run:*)",
+      "Bash(tee:*)",
+      "Bash(mysql:*)",
+      "Bash(git checkout:*)"
+    ]
+  }
+}

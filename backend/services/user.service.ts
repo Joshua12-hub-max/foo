@@ -42,7 +42,6 @@ export class UserService {
       departmentId: pdsHrDetails.departmentId,
       jobTitle: pdsHrDetails.jobTitle,
       employmentStatus: pdsHrDetails.employmentStatus,
-      employmentType: pdsHrDetails.employmentType,
       role: authentication.role,
       avatarUrl: authentication.avatarUrl,
       dateHired: pdsHrDetails.dateHired,
@@ -56,16 +55,11 @@ export class UserService {
       itemNumber: pdsHrDetails.itemNumber,
       salaryGrade: pdsHrDetails.salaryGrade,
       stepIncrement: pdsHrDetails.stepIncrement,
-      facebookUrl: pdsHrDetails.facebookUrl,
-      linkedinUrl: pdsHrDetails.linkedinUrl,
-      twitterHandle: pdsHrDetails.twitterHandle,
       firstDayOfService: pdsHrDetails.firstDayOfService,
       officeAddress: pdsHrDetails.officeAddress,
-      religion: pdsHrDetails.religion,
-      barangay: pdsHrDetails.barangay,
       dutyType: pdsHrDetails.dutyType,
       isMeycauayan: pdsHrDetails.isMeycauayan,
-      
+
       // Personal Info Fields
       birthDate: pdsPersonalInformation.birthDate,
       placeOfBirth: pdsPersonalInformation.placeOfBirth,
@@ -75,8 +69,6 @@ export class UserService {
       weightKg: pdsPersonalInformation.weightKg,
       bloodType: pdsPersonalInformation.bloodType,
       citizenship: pdsPersonalInformation.citizenship,
-      residentialAddress: pdsPersonalInformation.residentialAddress,
-      permanentAddress: pdsPersonalInformation.permanentAddress,
       mobileNo: pdsPersonalInformation.mobileNo,
       telephoneNo: pdsPersonalInformation.telephoneNo,
       umidNumber: pdsPersonalInformation.umidNumber,
@@ -142,7 +134,6 @@ export class UserService {
       departmentId: pdsHrDetails.departmentId,
       jobTitle: pdsHrDetails.jobTitle,
       employmentStatus: pdsHrDetails.employmentStatus,
-      employmentType: pdsHrDetails.employmentType,
       dateHired: pdsHrDetails.dateHired,
       contractEndDate: pdsHrDetails.contractEndDate,
       regularizationDate: pdsHrDetails.regularizationDate,
@@ -156,14 +147,9 @@ export class UserService {
       stepIncrement: pdsHrDetails.stepIncrement,
       firstDayOfService: pdsHrDetails.firstDayOfService,
       officeAddress: pdsHrDetails.officeAddress,
-      religion: pdsHrDetails.religion,
-      barangay: pdsHrDetails.barangay,
       dutyType: pdsHrDetails.dutyType,
       isMeycauayan: pdsHrDetails.isMeycauayan,
-      facebookUrl: pdsHrDetails.facebookUrl,
-      linkedinUrl: pdsHrDetails.linkedinUrl,
-      twitterHandle: pdsHrDetails.twitterHandle,
-      
+
       // Personal Info Fields
       birthDate: pdsPersonalInformation.birthDate,
       placeOfBirth: pdsPersonalInformation.placeOfBirth,
@@ -173,8 +159,6 @@ export class UserService {
       weightKg: pdsPersonalInformation.weightKg,
       bloodType: pdsPersonalInformation.bloodType,
       citizenship: pdsPersonalInformation.citizenship,
-      residentialAddress: pdsPersonalInformation.residentialAddress,
-      permanentAddress: pdsPersonalInformation.permanentAddress,
       mobileNo: pdsPersonalInformation.mobileNo,
       telephoneNo: pdsPersonalInformation.telephoneNo,
       umidNumber: pdsPersonalInformation.umidNumber,
@@ -311,7 +295,6 @@ export class UserService {
       const hrData: typeof pdsHrDetails.$inferInsert = {
         employeeId: newId,
         employmentStatus: (data.employmentStatus as 'Active' | 'Probationary' | 'Terminated' | 'Resigned' | 'On Leave' | 'Suspended' | 'Verbal Warning' | 'Written Warning' | 'Show Cause') || 'Active',
-        employmentType: data.employmentType || 'Probationary',
         jobTitle: data.jobTitle || null,
         departmentId: data.departmentId || null,
         positionId: data.positionId || null,
@@ -327,13 +310,8 @@ export class UserService {
         itemNumber: data.itemNumber || null,
         firstDayOfService: data.firstDayOfService || null,
         officeAddress: data.officeAddress || null,
-        religion: data.religion || null,
-        barangay: data.barangay || null,
         dutyType: (data.dutyType as 'Standard' | 'Irregular') || 'Standard',
         isMeycauayan: !!data.isMeycauayan,
-        facebookUrl: data.facebookUrl || null,
-        linkedinUrl: data.linkedinUrl || null,
-        twitterHandle: data.twitterHandle || null,
       };
 
       await tx.insert(pdsHrDetails).values(hrData);
@@ -349,8 +327,6 @@ export class UserService {
         weightKg: data.weightKg ? String(data.weightKg) : null,
         bloodType: data.bloodType || null,
         citizenship: data.citizenship || data.nationality || 'Filipino',
-        residentialAddress: data.residentialAddress || data.address || null,
-        permanentAddress: data.permanentAddress || null,
         mobileNo: data.mobileNo || data.phoneNumber || null,
         telephoneNo: data.telephoneNo || null,
       };
@@ -374,10 +350,10 @@ export class UserService {
 
       // 2. HR fields
       const hrFields = [
-        'employmentStatus', 'employmentType', 'jobTitle', 'departmentId', 'positionId',
+        'employmentStatus', 'jobTitle', 'departmentId', 'positionId',
         'salaryGrade', 'stepIncrement', 'dateHired', 'contractEndDate', 'regularizationDate',
         'isRegular', 'positionTitle', 'station', 'appointmentType', 'itemNumber',
-        'firstDayOfService', 'officeAddress', 'religion', 'barangay', 'dutyType',
+        'firstDayOfService', 'officeAddress', 'dutyType',
         'isMeycauayan', 'facebookUrl', 'linkedinUrl', 'twitterHandle', 'managerId'
       ];
       const hrUpdate: Record<string, unknown> = {};

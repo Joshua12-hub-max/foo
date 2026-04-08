@@ -138,12 +138,44 @@ const InformationGrid: React.FC<InformationGridProps> = ({
             <InfoItem label="Email Address" value={profile?.email} />
             <InfoItem label="Mobile Number" value={profile?.mobileNo || profile?.phoneNumber} />
             <InfoItem label="Telephone Number" value={profile?.telephoneNo} />
-            <div className="md:col-span-2">
-              <InfoItem label="Residential Address" value={profile?.residentialAddress || profile?.address} />
-              <InfoItem label="Permanent Address" value={profile?.permanentAddress} />
+
+            {/* Residential Address Details */}
+            <div className="md:col-span-2 mt-4">
+              <h4 className="text-xs font-bold text-gray-700 mb-3">Residential Address</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 pl-4 border-l-2 border-gray-100">
+                <InfoItem label="House/Block/Lot" value={profile?.resHouseBlockLot} />
+                <InfoItem label="Street" value={profile?.resStreet} />
+                <InfoItem label="Subdivision/Village" value={profile?.resSubdivision} />
+                <InfoItem label="Barangay" value={profile?.resBarangay} />
+                <InfoItem label="City/Municipality" value={profile?.resCity} />
+                <InfoItem label="Province" value={profile?.resProvince} />
+                <InfoItem label="Region" value={profile?.resRegion} />
+                <InfoItem label="Full Address" value={profile?.residentialAddress || profile?.address} />
+              </div>
             </div>
-            <InfoItem label="Emergency Contact" value={profile?.emergencyContact} />
-            <InfoItem label="Emergency Number" value={profile?.emergencyContactNumber} />
+
+            {/* Permanent Address Details */}
+            <div className="md:col-span-2 mt-4">
+              <h4 className="text-xs font-bold text-gray-700 mb-3">Permanent Address</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 pl-4 border-l-2 border-gray-100">
+                <InfoItem label="House/Block/Lot" value={profile?.permHouseBlockLot} />
+                <InfoItem label="Street" value={profile?.permStreet} />
+                <InfoItem label="Subdivision/Village" value={profile?.permSubdivision} />
+                <InfoItem label="Barangay" value={profile?.permBarangay} />
+                <InfoItem label="City/Municipality" value={profile?.permCity} />
+                <InfoItem label="Province" value={profile?.permProvince} />
+                <InfoItem label="Region" value={profile?.permRegion} />
+                <InfoItem label="Full Address" value={profile?.permanentAddress} />
+              </div>
+            </div>
+
+            <div className="md:col-span-2 mt-4">
+              <h4 className="text-xs font-bold text-gray-700 mb-3">Emergency Contact</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 pl-4 border-l-2 border-gray-100">
+                <InfoItem label="Emergency Contact" value={profile?.emergencyContact} />
+                <InfoItem label="Emergency Number" value={profile?.emergencyContactNumber} />
+              </div>
+            </div>
           </div>
         )}
       </ToggleSection>

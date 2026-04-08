@@ -57,6 +57,7 @@ router.get('/applicants/:id/photo/:type', verifyAdmin, recruitmentController.gen
 router.put('/applicants/:id/stage', verifyAdmin, recruitmentController.updateApplicantStage as RequestHandler);
 router.post('/applicants/:id/confirm', verifyAdmin, recruitmentController.confirmHiredApplicant as RequestHandler);
 router.delete('/applicants/:id', verifyAdmin, recruitmentController.deleteApplicant as RequestHandler);
+router.get('/applicants/:applicantId/documents', verifyAdmin, recruitmentController.getApplicantDocuments as RequestHandler);
 
 
 router.post('/check-emails', verifyAdmin, async (_req: Request, res: Response): Promise<void> => {

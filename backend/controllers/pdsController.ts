@@ -3,9 +3,10 @@ import { db } from '../db/index.js';
 import { sql } from 'drizzle-orm';
 import { MySqlTable } from 'drizzle-orm/mysql-core';
 import { AuthenticatedRequest } from '../types/index.js';
-import { PDSFormData } from '../types/pds.js';
+import type { PdsParserOutput } from '../types/pds.js';
 import { PDSParserService } from '../services/PDSParserService.js';
 import { PDSService } from '../services/pds.service.js';
+import type { PdsSaveData } from '../services/pds.service.js';
 import fs from 'fs';
 import { 
   pdsFamily, 
@@ -156,11 +157,11 @@ export const parsePDSUpload = async (req: Request, res: Response): Promise<void>
     const extension = file.originalname.split('.').pop()?.toLowerCase();
     const targetEmployeeId = req.body.employeeId as string | undefined;
 
-    let extractedData: Partial<PDSFormData> = {};
+    let extractedData: Partial<PdsParserOutput> = {};
     let avatar: string | null = null;
 
     if (extension === 'xlsx' || extension === 'xls') {
-      extractedData = await PDSParserService.parseExcel(buffer);
+      extractedData = await PDSParserService.parseFromBuffer(buffer);
       avatar = await PDSParserService.extractImageFromExcel(buffer);
     } else if (extension === 'pdf') {
       extractedData = await PDSParserService.parsePDF(buffer);
@@ -169,12 +170,12 @@ export const parsePDSUpload = async (req: Request, res: Response): Promise<void>
       return;
     }
 
-    // 100% AUTOMATED PERSISTENCE: If employeeId is provided, save to PROFILE immediately
+    // If employeeId is provided, persist immediately to the employee's profile
     if (targetEmployeeId) {
-        const empId = parseInt(targetEmployeeId);
-        if (!isNaN(empId)) {
-            await PDSService.saveFullPdsData(empId, extractedData, avatar);
-        }
+      const empId = parseInt(targetEmployeeId);
+      if (!isNaN(empId)) {
+        await PDSService.saveFullPdsData(empId, extractedData as PdsSaveData, avatar);
+      }
     }
 
     // Clean up uploaded file

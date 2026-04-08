@@ -8,14 +8,13 @@ import type { AuthenticatedRequest, EmploymentStatus, Gender, CivilStatus, Appoi
 import { UserService } from '../services/user.service.js';
 import { convertTo24Hour } from '../utils/dateUtils.js';
 import { AuditService } from '../services/audit.service.js';
-import { 
-  authentication, 
-  departments, 
-  plantillaPositions, 
+import {
+  authentication,
+  departments,
+  plantillaPositions,
   plantillaPositionHistory,
-  employeeSkills, 
-  employeeEducation, 
-  employeeEmergencyContacts, 
+  employeeSkills,
+  employeeEmergencyContacts,
   employeeCustomFields,
   schedules,
   pdsFamily,
@@ -34,6 +33,7 @@ import {
   pdsHrDetails,
   bioEnrolledUsers
 } from '../db/schema.js';
+import { employeeEducation } from '../drizzle/schema.js';
 import { 
   EmployeeApiResponse, 
   EmployeeFamilyResponse,
@@ -138,6 +138,7 @@ interface UpdateFields {
   isMeycauayan?: boolean;
   dateAccomplished?: string | null;
   pdsQuestions?: PdsQuestions | null;
+  declarations?: PdsQuestions | null;
   [key: string]: string | number | boolean | null | undefined | PdsQuestions;
 }
 
@@ -480,7 +481,7 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
       firstName, lastName, email, department, departmentId, jobTitle, role,
       employmentStatus, employeeId, password,
       birthDate, gender, civilStatus, nationality,
-      phoneNumber, address, permanentAddress,
+      phoneNumber,
       philhealthNumber, pagibigNumber, tinNumber, gsisNumber, umidNumber,
       salaryGrade, stepIncrement, appointmentType, station, positionTitle,
       itemNumber, positionId, dateAccomplished, pdsQuestions
@@ -607,7 +608,6 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
       await db.insert(pdsHrDetails).values({
         employeeId: newEmployeeIdNum,
         employmentStatus: employmentStatus || 'Active',
-        employmentType: (sanitizedData.employmentType || 'Probationary'),
         jobTitle: jobTitle || 'N/A',
         positionTitle: positionTitle || null,
         departmentId: finalDeptId,
@@ -635,13 +635,10 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
         citizenship: nationality || 'Filipino',
         citizenshipType: sanitizedData.citizenshipType || null,
         dualCountry: sanitizedData.dualCountry || null,
-        residentialAddress: address || sanitizedData.residentialAddress || null,
         residentialZipCode: sanitizedData.residentialZipCode || null,
-        permanentAddress: permanentAddress || null,
         permanentZipCode: sanitizedData.permanentZipCode || null,
         telephoneNo: sanitizedData.telephoneNo || null,
         mobileNo: phoneNumber || sanitizedData.mobileNo || null,
-        email: email,
         umidNumber: umidNumber || null,
         philsysId: sanitizedData.philsysId || null,
         philhealthNumber: philhealthNumber || null,
@@ -665,31 +662,35 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
         permRegion: sanitizedData.permRegion || null,
       });
 
-      const q = (pdsQuestions || {}) as Partial<typeof pdsDeclarations.$inferInsert> & Record<string, any>;
+      const q = (pdsQuestions || {}) as Record<string, any>;
+      const boolQ = (field: string, fallback: any): boolean | null => {
+        const v = q[field] ?? fallback;
+        return v == null ? null : !!v;
+      };
       await db.insert(pdsDeclarations).values({
         employeeId: newEmployeeIdNum,
-        relatedThirdDegree: (q.relatedThirdDegree as 'Yes' | 'No') || sanitizedData.relatedThirdDegree || null,
+        relatedThirdDegree: boolQ('relatedThirdDegree', sanitizedData.relatedThirdDegree),
         relatedThirdDetails: q.relatedThirdDetails || sanitizedData.relatedThirdDetails || null,
-        relatedFourthDegree: (q.relatedFourthDegree as 'Yes' | 'No') || sanitizedData.relatedFourthDegree || null,
+        relatedFourthDegree: boolQ('relatedFourthDegree', sanitizedData.relatedFourthDegree),
         relatedFourthDetails: q.relatedFourthDetails || sanitizedData.relatedFourthDetails || null,
-        foundGuiltyAdmin: (q.foundGuiltyAdmin as 'Yes' | 'No') || sanitizedData.foundGuiltyAdmin || null,
+        foundGuiltyAdmin: boolQ('foundGuiltyAdmin', sanitizedData.foundGuiltyAdmin),
         foundGuiltyDetails: q.foundGuiltyDetails || sanitizedData.foundGuiltyDetails || null,
-        criminallyCharged: (q.criminallyCharged as 'Yes' | 'No') || sanitizedData.criminallyCharged || null,
+        criminallyCharged: boolQ('criminallyCharged', sanitizedData.criminallyCharged),
         dateFiled: q.dateFiled || (sanitizedData.dateFiled ? String(sanitizedData.dateFiled) : null),
         statusOfCase: q.statusOfCase || sanitizedData.statusOfCase || null,
-        convictedCrime: (q.convictedCrime as 'Yes' | 'No') || sanitizedData.convictedCrime || null,
+        convictedCrime: boolQ('convictedCrime', sanitizedData.convictedCrime),
         convictedDetails: q.convictedDetails || sanitizedData.convictedDetails || null,
-        separatedFromService: (q.separatedFromService as 'Yes' | 'No') || sanitizedData.separatedFromService || null,
+        separatedFromService: boolQ('separatedFromService', sanitizedData.separatedFromService),
         separatedDetails: q.separatedDetails || sanitizedData.separatedDetails || null,
-        electionCandidate: (q.electionCandidate as 'Yes' | 'No') || sanitizedData.electionCandidate || null,
+        electionCandidate: boolQ('electionCandidate', sanitizedData.electionCandidate),
         electionDetails: q.electionDetails || sanitizedData.electionDetails || null,
-        resignedToPromote: (q.resignedToPromote as 'Yes' | 'No') || sanitizedData.resignedToPromote || null,
+        resignedToPromote: boolQ('resignedToPromote', sanitizedData.resignedToPromote),
         resignedDetails: q.resignedDetails || sanitizedData.resignedDetails || null,
-        immigrantStatus: (q.immigrantStatus as 'Yes' | 'No') || sanitizedData.immigrantStatus || null,
+        immigrantStatus: boolQ('immigrantStatus', sanitizedData.immigrantStatus),
         immigrantDetails: q.immigrantDetails || sanitizedData.immigrantDetails || null,
-        indigenousMember: (q.indigenousMember as 'Yes' | 'No') || sanitizedData.indigenousMember || null,
+        indigenousMember: boolQ('indigenousMember', sanitizedData.indigenousMember),
         indigenousDetails: q.indigenousDetails || sanitizedData.indigenousDetails || null,
-        personWithDisability: (q.personWithDisability as 'Yes' | 'No') || sanitizedData.personWithDisability || null,
+        personWithDisability: boolQ('personWithDisability', sanitizedData.personWithDisability),
 
         disabilityIdNo: q.disabilityIdNo || sanitizedData.disabilityIdNo || null,
         soloParent: q.soloParent || sanitizedData.soloParent || null,
@@ -1251,10 +1252,11 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
       }
     });
 
-    // Handle nested pdsQuestions object if present
-    if (updates.pdsQuestions) {
-        Object.entries(updates.pdsQuestions).forEach(([k, v]) => {
-            declarationUpdates[k] = v === true ? 'Yes' : (v === false ? 'No' : v);
+    // Handle nested pdsQuestions/declarations object if present
+    const pdsQUpdates = updates.pdsQuestions;
+    if (pdsQUpdates) {
+        Object.entries(pdsQUpdates).forEach(([k, v]) => {
+            declarationUpdates[k] = (v === true || v === false) ? v : v;
         });
     }
 

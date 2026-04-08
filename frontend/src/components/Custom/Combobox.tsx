@@ -127,18 +127,23 @@ export default function Combobox<T extends string>({
         type="button"
         disabled={disabled}
         onClick={() => !disabled && setIsOpen(!isOpen)}
-        className={`w-full flex items-center justify-between border rounded-lg transition-all
-          ${error ? "border-red-500 ring-red-100" : "border-gray-300 focus:ring-gray-100"}
-          ${isOpen ? "ring-2 ring-gray-100 border-gray-400" : ""}
-          ${disabled ? "bg-gray-100 cursor-not-allowed opacity-60" : "bg-white"}
-          ${buttonClassName} px-4 py-2 focus:outline-none text-left min-h-[40px] text-sm`}
+        className={`w-full flex items-center justify-between border-2 rounded-lg transition-all active:scale-[0.99]
+          ${error ? "border-red-400 ring-4 ring-red-50" : "border-gray-300 focus:ring-4 focus:ring-gray-100"}
+          ${isOpen ? "ring-4 ring-green-100 border-green-500 shadow-lg" : "hover:border-gray-400"}
+          ${disabled ? "bg-gray-100 cursor-not-allowed opacity-60" : "bg-white hover:shadow-md"}
+          ${buttonClassName} px-4 py-3 md:py-2.5 focus:outline-none text-left min-h-[48px] md:min-h-[44px] text-[15px] md:text-sm font-medium`}
       >
-        <span className={`block truncate ${!selectedOption ? "text-gray-400" : "text-gray-900"}`}>
+        <span className={`block truncate ${!selectedOption ? "text-gray-400" : "text-gray-900 font-semibold"}`}>
           {selectedOption ? selectedOption.label : placeholder}
         </span>
-        <span className="text-[10px] text-gray-400 font-bold transition-transform duration-200">
-           {isOpen ? "Close" : "Open"}
-        </span>
+        <svg
+          className={`w-5 h-5 text-gray-400 transition-transform duration-200 flex-shrink-0 ml-2 ${isOpen ? 'rotate-180' : ''}`}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
       </button>
 
       {createPortal(
@@ -155,26 +160,32 @@ export default function Combobox<T extends string>({
                 top: position.top,
                 left: position.left,
                 width: position.width,
-                zIndex: 9999 
+                zIndex: 9999,
+                maxWidth: "100vw"
               }}
-              className="bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden"
+              className="bg-white border-2 border-gray-300 rounded-xl shadow-2xl overflow-hidden"
             >
-              <div className="p-2 border-b border-gray-100 sticky top-0 bg-white">
+              <div className="p-3 border-b-2 border-gray-100 sticky top-0 bg-white z-10">
                  <div className="relative">
                     <input
                     type="text"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     placeholder="Search options..."
-                    className="w-full px-3 py-2 text-[11px] font-bold bg-gray-100/60 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-800 focus:ring-4 focus:ring-gray-100 transition-all font-mono"
+                    className="w-full px-4 py-3 text-sm font-semibold bg-gray-50 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-100 transition-all"
                     ref={searchInputRef}
                   />
                 </div>
               </div>
 
-              <ul className="max-h-40 overflow-y-auto py-1 scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent">
+              <ul className="max-h-[300px] md:max-h-[280px] overflow-y-auto py-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100"
+                  style={{
+                    scrollBehavior: 'smooth',
+                    WebkitOverflowScrolling: 'touch'
+                  }}
+              >
                 {filteredOptions.length === 0 ? (
-                  <li className="px-4 py-3 text-sm text-gray-500 text-center">No results found.</li>
+                  <li className="px-4 py-6 text-base text-gray-500 text-center font-medium">No results found.</li>
                 ) : (
                   filteredOptions.map((option, idx) => {
                     const isSelected = String(option.value) === String(value);
@@ -186,12 +197,18 @@ export default function Combobox<T extends string>({
                           setIsOpen(false);
                           setSearch("");
                         }}
-                        className={`px-4 py-2 text-sm cursor-pointer flex items-center justify-between transition-colors
-                          ${isSelected ? "bg-blue-50 text-blue-700 font-medium" : "text-gray-700 hover:bg-gray-50"}
+                        className={`px-4 py-3.5 text-[15px] md:text-sm cursor-pointer flex items-center justify-between transition-all active:scale-[0.98]
+                          ${isSelected
+                            ? "bg-green-50 text-green-700 font-bold border-l-4 border-green-500"
+                            : "text-gray-700 hover:bg-gray-100 font-medium border-l-4 border-transparent"}
                         `}
                       >
-                        <span>{option.label}</span>
-                        {isSelected && <span className="text-[9px] font-black text-gray-400 tracking-tighter">Selected</span>}
+                        <span className="flex-1 pr-2">{option.label}</span>
+                        {isSelected && (
+                          <span className="text-[10px] font-black text-green-600 tracking-wider uppercase bg-green-100 px-2 py-1 rounded">
+                            ✓
+                          </span>
+                        )}
                       </li>
                     );
                   })

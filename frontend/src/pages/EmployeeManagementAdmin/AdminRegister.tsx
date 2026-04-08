@@ -150,10 +150,12 @@ export default function AdminRegister() {
       educations: [],
       eligibilities: [],
       workExperiences: [],
-      trainings: [],
+      learningDevelopments: [],
       familyBackground: [],
       otherInfo: [],
-      yearsOfExperience: "", 
+      voluntaryWorks: [],
+      references: [],
+      yearsOfExperience: "",
       experience: "", 
       skills: "",
       gsisNumber: "",
@@ -192,7 +194,7 @@ export default function AdminRegister() {
 
   const { fields: trainingFields, append: appendTraining, remove: removeTraining, replace: replaceTraining } = useFieldArray({
     control,
-    name: "trainings"
+    name: "learningDevelopments"
   });
 
   const { fields: educationFields, append: appendEducation, remove: removeEducation, replace: replaceEducation } = useFieldArray({
@@ -213,6 +215,16 @@ export default function AdminRegister() {
   const { fields: familyFields, append: appendFamily, remove: removeFamily, replace: replaceFamily } = useFieldArray({
     control,
     name: "familyBackground"
+  });
+
+  const { replace: replaceVoluntaryWorks } = useFieldArray({
+    control,
+    name: "voluntaryWorks"
+  });
+
+  const { replace: replaceReferences } = useFieldArray({
+    control,
+    name: "references"
   });
 
   // REMOVED: Automatically adding empty rows as it conflicts with z.string().min(1) requirements
@@ -268,95 +280,62 @@ export default function AdminRegister() {
   };
 
   const handlePdsExtracted = (data: any) => {
-    // Helper to normalize strings (MALE -> Male, SINGLE -> Single)
-    const norm = (s: any) => {
-        if (!s || typeof s !== 'string') return s;
-        const low = s.toLowerCase().trim();
-        return low.charAt(0).toUpperCase() + low.slice(1);
-    }
+    // PdsParserOutput: top-level has firstName/lastName/middleName/email,
+    // personal info lives under data.personal, arrays are top-level.
+    const personal = data.personal ?? {};
 
-    const p = data; // Alias for 100% cleaner mapping
-    console.group("PDS Mapper Details");
-    
-    // 1. Personal Information & Identity
-    if (p.firstName) setValue("firstName", p.firstName);
-    if (p.surname) setValue("lastName", p.surname);
-    if (p.middleName) setValue("middleName", p.middleName);
-    if (p.nameExtension) setValue("suffix", p.nameExtension);
-    if (p.dob) {
-        setValue("birthDate", p.dob);
-        console.log("Mapped Birth Date:", p.dob);
-    }
-    if (p.pob) setValue("placeOfBirth", p.pob);
-    
-    if (p.sex) {
-        const sexNorm = norm(p.sex);
-        setValue("gender", sexNorm as any);
-        console.log("Mapped Gender:", sexNorm);
-    }
-    if (p.civilStatus) {
-        const statusNorm = norm(p.civilStatus);
-        setValue("civilStatus", statusNorm as any);
-        console.log("Mapped Civil Status:", statusNorm);
-    }
-    if (p.bloodType) setValue("bloodType", p.bloodType?.toUpperCase());
-    
-    if (p.citizenship) setValue("citizenship", p.citizenship);
-    if (p.dualCountry) setValue("dualCountry", p.dualCountry);
+    // 1. Name fields (top-level in PdsParserOutput)
+    if (data.firstName) setValue("firstName", data.firstName);
+    if (data.lastName) setValue("lastName", data.lastName);
+    if (data.middleName) setValue("middleName", data.middleName);
+    if (data.email) setValue("email", data.email);
 
-    if (p.height) setValue("heightM", String(p.height));
-    if (p.weight) setValue("weightKg", String(p.weight));
+    // 2. Personal info (under data.personal — canonical names only)
+    if (personal.birthDate) setValue("birthDate", personal.birthDate);
+    if (personal.placeOfBirth) setValue("placeOfBirth", personal.placeOfBirth);
+    if (personal.gender) setValue("gender", personal.gender as any);
+    if (personal.civilStatus) setValue("civilStatus", personal.civilStatus as any);
+    if (personal.bloodType) setValue("bloodType", personal.bloodType?.toUpperCase());
+    if (personal.citizenship) setValue("citizenship", personal.citizenship);
+    if (personal.citizenshipType) setValue("citizenshipType", personal.citizenshipType);
+    if (personal.dualCountry) setValue("dualCountry", personal.dualCountry);
+    if (personal.heightM != null) setValue("heightM", String(personal.heightM));
+    if (personal.weightKg != null) setValue("weightKg", String(personal.weightKg));
+    if (personal.mobileNo) setValue("mobileNo", personal.mobileNo);
+    if (personal.telephoneNo) setValue("telephoneNo", personal.telephoneNo);
 
-    // 2. IDs — 100% Semantic Extraction Support
-    const gsis = p.gsisNumber || p.gsisNo;
-    const pagibig = p.pagibigNumber || p.pagibigNo;
-    const philhealth = p.philhealthNumber || p.philhealthNo;
-    const philsys = p.philsysId || p.philsysNo;
-    const tin = p.tinNumber || p.tinNo;
-    const umid = p.umidNumber || p.umidNo;
-    const agency = p.agencyEmployeeNo || p.agencyNo;
+    // 3. Government IDs (under data.personal)
+    if (personal.gsisNumber) setValue("gsisNumber", personal.gsisNumber);
+    if (personal.pagibigNumber) setValue("pagibigNumber", personal.pagibigNumber);
+    if (personal.philhealthNumber) setValue("philhealthNumber", personal.philhealthNumber);
+    if (personal.philsysId) setValue("philsysId", personal.philsysId);
+    if (personal.tinNumber) setValue("tinNumber", personal.tinNumber);
+    if (personal.umidNumber) setValue("umidNumber", personal.umidNumber);
+    if (personal.agencyEmployeeNo) setValue("agencyEmployeeNo", personal.agencyEmployeeNo);
 
-    if (gsis) setValue("gsisNumber", gsis);
-    if (pagibig) setValue("pagibigNumber", pagibig);
-    if (philhealth) setValue("philhealthNumber", philhealth);
-    if (philsys) setValue("philsysId", philsys);
-    if (tin) setValue("tinNumber", tin);
-    if (umid) setValue("umidNumber", umid);
-    if (agency) setValue("agencyEmployeeNo", agency);
+    // 4. Residential Address (under data.personal)
+    if (personal.resRegion) setValue("resRegion", personal.resRegion);
+    if (personal.resProvince) setValue("resProvince", personal.resProvince);
+    if (personal.resCity) setValue("resCity", personal.resCity);
+    if (personal.resBarangay) setValue("resBarangay", personal.resBarangay);
+    if (personal.resHouseBlockLot) setValue("resHouseBlockLot", personal.resHouseBlockLot);
+    if (personal.resStreet) setValue("resStreet", personal.resStreet);
+    if (personal.resSubdivision) setValue("resSubdivision", personal.resSubdivision);
+    if (personal.residentialZipCode) setValue("residentialZipCode", personal.residentialZipCode);
 
-    console.log("Mapped IDs:", { gsis, pagibig, philhealth, philsys, tin, umid, agency });
-    console.groupEnd();
-
-    // 3. Address & Contact
-    if (p.email) setValue("email", p.email);
-    if (p.mobileNo) setValue("mobileNo", p.mobileNo);
-    if (p.telephoneNo) setValue("telephoneNo", p.telephoneNo);
-    
-    // Residential Address
-    if (p.resRegion) setValue("resRegion", p.resRegion);
-    if (p.resProvince) setValue("resProvince", p.resProvince);
-    if (p.resCity) setValue("resCity", p.resCity);
-    if (p.resBarangay) setValue("resBarangay", p.resBarangay);
-    if (p.resHouseBlockLot) setValue("resHouseBlockLot", p.resHouseBlockLot);
-    if (p.resStreet) setValue("resStreet", p.resStreet);
-    if (p.resSubdivision) setValue("resSubdivision", p.resSubdivision);
-    if (p.residentialZipCode) setValue("residentialZipCode", p.residentialZipCode);
-
-    // Permanent Address
-    if (p.permRegion) setValue("permRegion", p.permRegion);
-    if (p.permProvince) setValue("permProvince", p.permProvince);
-    if (p.permCity) setValue("permCity", p.permCity);
-    if (p.permBarangay) setValue("permBarangay", p.permBarangay);
-    if (p.permHouseBlockLot) setValue("permHouseBlockLot", p.permHouseBlockLot);
-    if (p.permStreet) setValue("permStreet", p.permStreet);
-    if (p.permSubdivision) setValue("permSubdivision", p.permSubdivision);
-    if (p.permanentZipCode) setValue("permanentZipCode", p.permanentZipCode);
-
-    console.log("Mapped Addresses:", { res: p.resCity, perm: p.permCity });
+    // 5. Permanent Address (under data.personal)
+    if (personal.permRegion) setValue("permRegion", personal.permRegion);
+    if (personal.permProvince) setValue("permProvince", personal.permProvince);
+    if (personal.permCity) setValue("permCity", personal.permCity);
+    if (personal.permBarangay) setValue("permBarangay", personal.permBarangay);
+    if (personal.permHouseBlockLot) setValue("permHouseBlockLot", personal.permHouseBlockLot);
+    if (personal.permStreet) setValue("permStreet", personal.permStreet);
+    if (personal.permSubdivision) setValue("permSubdivision", personal.permSubdivision);
+    if (personal.permanentZipCode) setValue("permanentZipCode", personal.permanentZipCode);
 
     // 4. Arrays (Education, Work, etc.) — 100% Automated Bulk Mapping
-    if (p.educations && Array.isArray(p.educations)) {
-        replaceEducation(p.educations.map((edu: any) => ({
+    if (data.educations && Array.isArray(data.educations)) {
+        replaceEducation(data.educations.map((edu: any) => ({
             level: edu.level,
             schoolName: edu.schoolName,
             degreeCourse: edu.degreeCourse,
@@ -368,8 +347,8 @@ export default function AdminRegister() {
         })));
     }
 
-    if (p.eligibilities && Array.isArray(p.eligibilities)) {
-        replaceEligibility(p.eligibilities.map((e: any) => ({
+    if (data.eligibilities && Array.isArray(data.eligibilities)) {
+        replaceEligibility(data.eligibilities.map((e: any) => ({
             eligibilityName: e.eligibilityName,
             rating: e.rating?.toString(),
             examDate: e.examDate,
@@ -379,8 +358,8 @@ export default function AdminRegister() {
         })));
     }
 
-    if (p.workExperiences && Array.isArray(p.workExperiences)) {
-        replaceWorkExperience(p.workExperiences.map((w: any) => ({
+    if (data.workExperiences && Array.isArray(data.workExperiences)) {
+        replaceWorkExperience(data.workExperiences.map((w: any) => ({
             dateFrom: w.dateFrom,
             dateTo: w.dateTo,
             positionTitle: w.positionTitle,
@@ -392,8 +371,8 @@ export default function AdminRegister() {
         })));
     }
 
-    if (p.trainings && Array.isArray(p.trainings)) {
-        replaceTraining(p.trainings.map((t: any) => ({
+    if (data.learningDevelopments && Array.isArray(data.learningDevelopments)) {
+        replaceTraining(data.learningDevelopments.map((t: any) => ({
             title: t.title,
             dateFrom: t.dateFrom,
             dateTo: t.dateTo,
@@ -403,13 +382,13 @@ export default function AdminRegister() {
         })));
     }
 
-    if (p.familyBackground && Array.isArray(p.familyBackground)) {
-        replaceFamily(p.familyBackground);
-        
-        const spouse = p.familyBackground.find((f: any) => f.relationType === 'Spouse');
-        const father = p.familyBackground.find((f: any) => f.relationType === 'Father');
-        const mother = p.familyBackground.find((f: any) => f.relationType === 'Mother');
-        
+    if (data.familyBackground && Array.isArray(data.familyBackground)) {
+        replaceFamily(data.familyBackground);
+
+        const spouse = data.familyBackground.find((f: any) => f.relationType === 'Spouse');
+        const father = data.familyBackground.find((f: any) => f.relationType === 'Father');
+        const mother = data.familyBackground.find((f: any) => f.relationType === 'Mother');
+
         if (spouse) {
             setValue("spouseLastName", spouse.lastName);
             setValue("spouseFirstName", spouse.firstName);
@@ -433,23 +412,42 @@ export default function AdminRegister() {
             setValue("motherMaidenSuffix", mother.nameExtension);
         }
 
-        const children = p.familyBackground.filter((f: any) => f.relationType === 'Child');
+        const children = data.familyBackground.filter((f: any) => f.relationType === 'Child');
         replaceChildren(children.map((c: any) => ({
             name: `${c.firstName} ${c.lastName}`.trim(),
             birthDate: c.dateOfBirth
         })));
     }
 
-    if (p.otherInfo && Array.isArray(p.otherInfo)) {
-        replaceOtherInfo(p.otherInfo);
+    if (data.otherInfo && Array.isArray(data.otherInfo)) {
+        replaceOtherInfo(data.otherInfo);
     }
 
-    if (p.pdsQuestions) {
-        setValue("pdsQuestions", p.pdsQuestions);
+    if (data.voluntaryWorks && Array.isArray(data.voluntaryWorks)) {
+        replaceVoluntaryWorks(data.voluntaryWorks.map((v: any) => ({
+            organizationName: v.organizationName,
+            address: v.address,
+            dateFrom: v.dateFrom,
+            dateTo: v.dateTo,
+            hoursNumber: v.hoursNumber?.toString(),
+            position: v.position
+        })));
     }
-    if (p.govtIdType) setValue("govtIdType", p.govtIdType);
-    if (p.govtIdNo) setValue("govtIdNo", p.govtIdNo);
-    if (p.govtIdIssuance) setValue("govtIdIssuance", p.govtIdIssuance);
+
+    if (data.references && Array.isArray(data.references)) {
+        replaceReferences(data.references.map((r: any) => ({
+            name: r.name,
+            address: r.address,
+            telNo: r.telNo
+        })));
+    }
+
+    if (data.declarations) {
+        setValue("declarations", data.declarations);
+    }
+    if (personal.govtIdType) setValue("govtIdType", personal.govtIdType);
+    if (personal.govtIdNo) setValue("govtIdNo", personal.govtIdNo);
+    if (personal.govtIdIssuance) setValue("govtIdIssuance", personal.govtIdIssuance);
   };
 
   const handlePdsUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -881,7 +879,7 @@ export default function AdminRegister() {
 
     // 8. Training Programs (Array Pre-fill)
     if (applicant.trainings && applicant.trainings.length > 0) {
-        setValue("trainings", applicant.trainings.map((t) => ({
+        setValue("learningDevelopments", applicant.trainings.map((t) => ({
             title: t.title || "",
             dateFrom: t.dateFrom ? formatDateForInput(t.dateFrom) : "",
             dateTo: t.dateTo ? formatDateForInput(t.dateTo) : "",
@@ -893,7 +891,7 @@ export default function AdminRegister() {
         try {
             const parsedTrainings = safeParse(applicant.training) as Record<string, string | number | null>[];
             if (Array.isArray(parsedTrainings)) {
-                setValue("trainings", parsedTrainings.map((t): { title: string; dateFrom: string; dateTo: string; hoursNumber: string; typeOfLd: string; conductedBy: string } => ({
+                setValue("learningDevelopments", parsedTrainings.map((t): { title: string; dateFrom: string; dateTo: string; hoursNumber: string; typeOfLd: string; conductedBy: string } => ({
                     title: String(t["title"] || t["trainingTitle"] || ""),
                     dateFrom: String(t["dateFrom"] ? formatDateForInput(String(t["dateFrom"])) : ""),
                     dateTo: String(t["dateTo"] ? formatDateForInput(String(t["dateTo"])) : ""),

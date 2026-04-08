@@ -26,6 +26,75 @@ import DocumentGallery from "@features/Settings/Profile/components/DocumentGalle
 import { LucideIcon } from "lucide-react";
 import { getZipByMunCode } from "@/data/ph-zipcodes";
 
+// ─── Helper Functions for Location Name to Code Conversion ──────────────────
+const getRegionCodeByName = (name: string | null): string => {
+  if (!name) return '';
+  const region = phLib.regions.find(r =>
+    r.name.toUpperCase() === name.toUpperCase() ||
+    name.toUpperCase().includes(r.name.toUpperCase())
+  );
+  return region?.reg_code || '';
+};
+
+const getProvinceCodeByName = (name: string | null): string => {
+  if (!name) return '';
+  const province = phLib.provinces.find(p =>
+    p.name.toUpperCase() === name.toUpperCase() ||
+    name.toUpperCase().includes(p.name.toUpperCase())
+  );
+  return province?.prov_code || '';
+};
+
+const getCityCodeByName = (name: string | null): string => {
+  if (!name) return '';
+
+  // Normalize the search name: remove "City of" prefix and "City" suffix
+  const normalizedSearch = name
+    .toUpperCase()
+    .replace(/^CITY\s+OF\s+/i, '')
+    .replace(/\s+CITY$/i, '')
+    .trim();
+
+  const city = phLib.city_mun.find(c => {
+    // Normalize the library name
+    const normalizedLib = c.name
+      .toUpperCase()
+      .replace(/^CITY\s+OF\s+/i, '')
+      .trim();
+
+    // Check for exact match or core name match
+    return (
+      c.name.toUpperCase() === name.toUpperCase() ||
+      normalizedLib === normalizedSearch ||
+      normalizedLib.includes(normalizedSearch)
+    );
+  });
+
+  return city?.mun_code || '';
+};
+
+const getBarangayNameByName = (name: string | null, cityCode: string): string => {
+  if (!name || !cityCode) return '';
+
+  // The barangay codes in phil library are often undefined, so return the name directly
+  // The form will match against barangay names, not codes
+  const barangay = phLib.barangays.find(b =>
+    b.mun_code === cityCode &&
+    (b.name.toUpperCase() === name.toUpperCase() ||
+     b.name.toUpperCase().includes(name.toUpperCase()) ||
+     name.toUpperCase().includes(b.name.toUpperCase()))
+  );
+
+  // Return the exact name from the library for consistent matching
+  return barangay?.name || name;
+};
+
+const fixBloodType = (bloodType: string | null): string => {
+  if (!bloodType) return '';
+  // Convert "0+" or "0-" to "O+" or "O-"
+  return bloodType.replace(/^0/, 'O');
+};
+
 // ─── Metadata Types ──────────────────────────────────────────────────────────
 
 export interface PDSMetadata {
@@ -130,7 +199,7 @@ export interface PDSFormData {
   eligibilities: Eligibility[];
   workExperiences: WorkExperience[];
   voluntaryWorks: VoluntaryWorkItem[];
-  trainings: Training[];
+  learningDevelopments: Training[];
   specialSkills: string;
   nonAcademicDistinctions: string;
   memberships: string;
@@ -381,7 +450,7 @@ const initialData: PDSFormData = {
   eligibilities: [emptyEligibility()],
   workExperiences: [emptyWork()],
   voluntaryWorks: [emptyVoluntary()],
-  trainings: [emptyTraining()],
+  learningDevelopments: [emptyTraining()],
   specialSkills: "", nonAcademicDistinctions: "", memberships: "",
   references: [emptyReference(), emptyReference(), emptyReference()],
   relatedThirdDegree: "No", relatedThirdDetails: "",
@@ -738,20 +807,20 @@ const StepVoluntary = ({ data, set }: { data: PDSFormData; set: PDSSetter }) => 
 
 const StepTraining = ({ data, set, metadata }: { data: PDSFormData; set: PDSSetter; metadata: PDSMetadata }) => (
   <SectionCard title="Training Programs" roman="VII">
-    {data.trainings.map((train, i) => (
+    {data.learningDevelopments.map((train, i) => (
       <div key={train.id || i} className="bg-gray-50/50 border border-gray-100 rounded-lg p-6 mb-8 relative group transition-all hover:bg-white hover:border-gray-200">
         <Grid cols={2}>
-          <Field label="Title of Training" span={2}><Input value={train.title} onChange={e => { const updated = [...data.trainings]; updated[i] = { ...train, title: e.target.value }; set("trainings", updated); }} /></Field>
-          <Field label="From"><Input type="date" value={train.dateFrom} onChange={e => { const updated = [...data.trainings]; updated[i] = { ...train, dateFrom: e.target.value }; set("trainings", updated); }} /></Field>
-          <Field label="To"><Input type="date" value={train.dateTo} onChange={e => { const updated = [...data.trainings]; updated[i] = { ...train, dateTo: e.target.value }; set("trainings", updated); }} /></Field>
-          <Field label="Number of Hours"><Input value={train.hoursNumber} onChange={e => { const updated = [...data.trainings]; updated[i] = { ...train, hoursNumber: e.target.value }; set("trainings", updated); }} /></Field>
-          <Field label="Type of LD"><Combobox options={(metadata?.pdsLdTypes || ["Managerial", "Supervisory", "Technical", "Other"]).map((s: string) => ({ value: s, label: s }))} value={train.typeOfLd} onChange={v => { const updated = [...data.trainings]; updated[i] = { ...train, typeOfLd: v }; set("trainings", updated); }} placeholder="Select Type" buttonClassName="rounded-lg bg-white border-gray-200 font-bold text-gray-700 h-11 transition-all hover:border-gray-400 focus:ring-4 focus:ring-gray-100/50 focus:border-gray-400" /></Field>
-          <Field label="Conducted By" span={2}><Input value={train.conductedBy} onChange={e => { const updated = [...data.trainings]; updated[i] = { ...train, conductedBy: e.target.value }; set("trainings", updated); }} /></Field>
+          <Field label="Title of Training" span={2}><Input value={train.title} onChange={e => { const updated = [...data.learningDevelopments]; updated[i] = { ...train, title: e.target.value }; set("learningDevelopments", updated); }} /></Field>
+          <Field label="From"><Input type="date" value={train.dateFrom} onChange={e => { const updated = [...data.learningDevelopments]; updated[i] = { ...train, dateFrom: e.target.value }; set("learningDevelopments", updated); }} /></Field>
+          <Field label="To"><Input type="date" value={train.dateTo} onChange={e => { const updated = [...data.learningDevelopments]; updated[i] = { ...train, dateTo: e.target.value }; set("learningDevelopments", updated); }} /></Field>
+          <Field label="Number of Hours"><Input value={train.hoursNumber} onChange={e => { const updated = [...data.learningDevelopments]; updated[i] = { ...train, hoursNumber: e.target.value }; set("learningDevelopments", updated); }} /></Field>
+          <Field label="Type of LD"><Combobox options={(metadata?.pdsLdTypes || ["Managerial", "Supervisory", "Technical", "Other"]).map((s: string) => ({ value: s, label: s }))} value={train.typeOfLd} onChange={v => { const updated = [...data.learningDevelopments]; updated[i] = { ...train, typeOfLd: v }; set("learningDevelopments", updated); }} placeholder="Select Type" buttonClassName="rounded-lg bg-white border-gray-200 font-bold text-gray-700 h-11 transition-all hover:border-gray-400 focus:ring-4 focus:ring-gray-100/50 focus:border-gray-400" /></Field>
+          <Field label="Conducted By" span={2}><Input value={train.conductedBy} onChange={e => { const updated = [...data.learningDevelopments]; updated[i] = { ...train, conductedBy: e.target.value }; set("learningDevelopments", updated); }} /></Field>
         </Grid>
-        <button onClick={() => set("trainings", data.trainings.filter((_, j) => i !== j))} className="absolute top-4 right-4 text-[10px] font-bold text-rose-500 bg-rose-50 px-2 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-rose-100">Remove</button>
+        <button onClick={() => set("learningDevelopments", data.learningDevelopments.filter((_, j) => i !== j))} className="absolute top-4 right-4 text-[10px] font-bold text-rose-500 bg-rose-50 px-2 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-rose-100">Remove</button>
       </div>
     ))}
-    <AddButton onClick={() => set("trainings", [...data.trainings, emptyTraining()])} label="Add Training" />
+    <AddButton onClick={() => set("learningDevelopments", [...data.learningDevelopments, emptyTraining()])} label="Add Training" />
   </SectionCard>
 );
 
@@ -999,27 +1068,29 @@ const PDSFormWizard: React.FC<PDSFormWizardProps> = ({ employeeId }) => {
         heightM: data.height, weightKg: data.weight, bloodType: data.bloodType,
         citizenship: data.citizenship, citizenshipType: data.citizenshipType, dualCountry: data.dualCountry,
         umidNumber: data.umidId, pagibigNumber: data.pagibigId, philhealthNumber: data.philhealthNo, philsysId: data.philsysNo, tinNumber: data.tinNo, gsisNumber: data.gsisId, agencyEmployeeNo: data.agencyEmployeeNo,
-        telephoneNo: data.telephone, mobileNo: data.mobile, email: data.email,
+        telephoneNo: data.telephone, mobileNo: data.mobile,
         resRegion: data.resRegion, resProvince: data.resProvince, resCity: data.resCityMunicipality, resBarangay: data.resBarangay, residentialZipCode: data.resZip, resHouseBlockLot: data.resHouseBlockLot, resStreet: data.resStreet, resSubdivision: data.resSubdivision,
         permRegion: data.permRegion, permProvince: data.permProvince, permCity: data.permCityMunicipality, permBarangay: data.permBarangay, permanentZipCode: data.permZip, permHouseBlockLot: data.permHouseBlockLot, permStreet: data.permStreet, permSubdivision: data.permSubdivision,
       });
 
       // 3. Update PDS Declarations (Questions 34-40)
+      // Wizard stores declarations as "Yes"/"No" strings; API expects boolean | null
+      const yesNo = (s: string): boolean | null => s === "Yes" ? true : s === "No" ? false : null;
       await pdsApi.updatePdsQuestions({
         employeeId: employeeId,
         govtIdType: data.govtIdType, govtIdNo: data.govtIdNo, govtIdIssuance: data.govtIdIssuance,
-        relatedThirdDegree: data.relatedThirdDegree, relatedThirdDetails: data.relatedThirdDetails,
-        relatedFourthDegree: data.relatedFourthDegree, relatedFourthDetails: data.relatedFourthDetails,
-        foundGuiltyAdmin: data.foundGuiltyAdmin, foundGuiltyDetails: data.foundGuiltyDetails,
-        criminallyCharged: data.criminallyCharged, dateFiled: data.dateFiled, statusOfCase: data.statusOfCase,
-        convictedCrime: data.convictedCrime, convictedDetails: data.convictedDetails,
-        separatedFromService: data.separatedFromService, separatedDetails: data.separatedDetails,
-        electionCandidate: data.electionCandidate, electionDetails: data.electionDetails,
-        resignedToPromote: data.resignedToPromote, resignedDetails: data.resignedDetails,
-        immigrantStatus: data.immigrantStatus, immigrantDetails: data.immigrantDetails,
-        indigenousMember: data.indigenousMember, indigenousDetails: data.indigenousDetails,
-        personWithDisability: data.personWithDisability, disabilityIdNo: data.disabilityIdNo,
-        soloParent: data.soloParent, soloParentIdNo: data.soloParentIdNo
+        relatedThirdDegree: yesNo(data.relatedThirdDegree), relatedThirdDetails: data.relatedThirdDetails,
+        relatedFourthDegree: yesNo(data.relatedFourthDegree), relatedFourthDetails: data.relatedFourthDetails,
+        foundGuiltyAdmin: yesNo(data.foundGuiltyAdmin), foundGuiltyDetails: data.foundGuiltyDetails,
+        criminallyCharged: yesNo(data.criminallyCharged), dateFiled: data.dateFiled, statusOfCase: data.statusOfCase,
+        convictedCrime: yesNo(data.convictedCrime), convictedDetails: data.convictedDetails,
+        separatedFromService: yesNo(data.separatedFromService), separatedDetails: data.separatedDetails,
+        electionCandidate: yesNo(data.electionCandidate), electionDetails: data.electionDetails,
+        resignedToPromote: yesNo(data.resignedToPromote), resignedDetails: data.resignedDetails,
+        immigrantStatus: yesNo(data.immigrantStatus), immigrantDetails: data.immigrantDetails,
+        indigenousMember: yesNo(data.indigenousMember), indigenousDetails: data.indigenousDetails,
+        personWithDisability: yesNo(data.personWithDisability), disabilityIdNo: data.disabilityIdNo,
+        soloParent: yesNo(data.soloParent), soloParentIdNo: data.soloParentIdNo
       });
 
       // 4. Update PDS Sections (Bulk replace)
@@ -1030,11 +1101,11 @@ const PDSFormWizard: React.FC<PDSFormWizardProps> = ({ employeeId }) => {
           { firstName: data.fatherFirstName, lastName: data.fatherSurname, middleName: data.fatherMiddleName, nameExtension: data.fatherExtension, relationType: 'Father' },
           { firstName: data.motherFirstName, lastName: data.motherSurname, middleName: data.motherMiddleName, relationType: 'Mother' }
         ].filter(f => f.firstName || f.lastName)),
-        employeeApi.updatePdsSection(employeeId, 'education', Object.entries(data.education).map(([level, edu]) => ({ level, institution: edu.school, degree: edu.course, startDate: edu.from, endDate: edu.to, unitsEarned: edu.units, yearGraduated: edu.yearGrad, honors: edu.honors })).filter(e => e.institution)),
-        employeeApi.updatePdsSection(employeeId, 'eligibility', data.eligibilities.filter(e => e.name).map(e => ({ eligibilityType: e.name, rating: e.rating, examDate: e.examDate, examPlace: e.examPlace, eligibilityNumber: e.licenseNo }))),
+        employeeApi.updatePdsSection(employeeId, 'education', Object.entries(data.education).map(([level, edu]) => ({ level, schoolName: edu.school, degreeCourse: edu.course, dateFrom: edu.from, dateTo: edu.to, unitsEarned: edu.units, yearGraduated: edu.yearGrad, honors: edu.honors })).filter(e => e.schoolName)),
+        employeeApi.updatePdsSection(employeeId, 'eligibility', data.eligibilities.filter(e => e.name).map(e => ({ eligibilityName: e.name, rating: e.rating, examDate: e.examDate, examPlace: e.examPlace, licenseNumber: e.licenseNo }))),
         employeeApi.updatePdsSection(employeeId, 'work_experience', data.workExperiences.filter(w => w.positionTitle).map(w => ({ positionTitle: w.positionTitle, companyName: w.companyName, dateFrom: w.dateFrom, dateTo: w.dateTo, monthlySalary: w.monthlySalary, salaryGrade: w.salaryGrade, appointmentStatus: w.appointmentStatus, isGovernment: w.isGovernment }))),
         employeeApi.updatePdsSection(employeeId, 'voluntary_work', data.voluntaryWorks.filter(v => v.organizationName).map(v => ({ organizationName: v.organizationName, dateFrom: v.dateFrom, dateTo: v.dateTo, hoursNumber: Number(v.hoursNumber) || 0, position: v.position }))),
-        employeeApi.updatePdsSection(employeeId, 'learning_development', data.trainings.filter(t => t.title).map(t => ({ title: t.title, dateFrom: t.dateFrom, dateTo: t.dateTo, hoursNumber: Number(t.hoursNumber) || 0, typeOfLd: t.typeOfLd, conductedBy: t.conductedBy }))),
+        employeeApi.updatePdsSection(employeeId, 'learning_development', data.learningDevelopments.filter(t => t.title).map(t => ({ title: t.title, dateFrom: t.dateFrom, dateTo: t.dateTo, hoursNumber: Number(t.hoursNumber) || 0, typeOfLd: t.typeOfLd, conductedBy: t.conductedBy }))),
         employeeApi.updatePdsSection(employeeId, 'references', data.references.filter(r => r.name).map(r => ({ name: r.name, address: r.address, telNo: r.contact }))),
         employeeApi.updatePdsSection(employeeId, 'other_info', [
           ...data.specialSkills.split(',').map(s => ({ type: 'Skill', description: s.trim() })),
@@ -1095,43 +1166,43 @@ const PDSFormWizard: React.FC<PDSFormWizardProps> = ({ employeeId }) => {
             email: p.email || "",
             
             // PDS Personal Information (From new table)
-            dob: personal?.birthDate ? new Date(personal.birthDate).toISOString().split('T')[0] : "", 
+            dob: personal?.birthDate ? new Date(personal.birthDate).toISOString().split('T')[0] : "",
             pob: personal?.placeOfBirth || "",
-            sex: personal?.gender || "", 
-            civilStatus: personal?.civilStatus || "", 
-            height: personal?.heightM?.toString() || "", 
-            weight: personal?.weightKg?.toString() || "", 
-            bloodType: personal?.bloodType || "", 
+            sex: personal?.gender || "",
+            civilStatus: personal?.civilStatus || "",
+            height: personal?.heightM?.toString() || "",
+            weight: personal?.weightKg?.toString() || "",
+            bloodType: fixBloodType(personal?.bloodType),
             citizenship: personal?.citizenship || "",
             citizenshipType: personal?.citizenshipType || "",
             dualCountry: personal?.dualCountry || "",
-            umidId: personal?.umidNumber || "", 
-            pagibigId: personal?.pagibigNumber || "", 
-            philhealthNo: personal?.philhealthNumber || "", 
-            philsysId: personal?.philsysId || "", 
-            tinNo: personal?.tinNumber || "", 
-            gsisId: personal?.gsisNumber || "", 
+            umidId: personal?.umidNumber || "",
+            pagibigId: personal?.pagibigNumber || "",
+            philhealthNo: personal?.philhealthNumber || "",
+            philsysNo: personal?.philsysId || "",
+            tinNo: personal?.tinNumber || "",
+            gsisId: personal?.gsisNumber || "",
             agencyEmployeeNo: personal?.agencyEmployeeNo || "",
-            
-            resHouseBlockLot: personal?.resHouseBlockLot || "", 
+
+            resHouseBlockLot: personal?.resHouseBlockLot || "",
             resStreet: personal?.resStreet || "",
-            resSubdivision: personal?.resSubdivision || "", 
-            resBarangay: personal?.resBarangay || "", 
-            resCityMunicipality: personal?.resCity || "", 
-            resProvince: personal?.resProvince || "", 
-            resZip: personal?.residentialZipCode || "", 
-            resRegion: personal?.resRegion || "", 
-            
-            permHouseBlockLot: personal?.permHouseBlockLot || "", 
+            resSubdivision: personal?.resSubdivision || "",
+            resBarangay: getBarangayNameByName(personal?.resBarangay, getCityCodeByName(personal?.resCity)),
+            resCityMunicipality: getCityCodeByName(personal?.resCity),
+            resProvince: getProvinceCodeByName(personal?.resProvince),
+            resZip: personal?.residentialZipCode || "",
+            resRegion: getRegionCodeByName(personal?.resRegion),
+
+            permHouseBlockLot: personal?.permHouseBlockLot || "",
             permStreet: personal?.permStreet || "",
-            permSubdivision: personal?.permSubdivision || "", 
-            permBarangay: personal?.permBarangay || "", 
-            permCityMunicipality: personal?.permCity || "", 
-            permProvince: personal?.permProvince || "", 
-            permZip: personal?.permanentZipCode || "", 
-            permRegion: personal?.permRegion || "", 
-            
-            telephone: personal?.telephoneNo || "", 
+            permSubdivision: personal?.permSubdivision || "",
+            permBarangay: getBarangayNameByName(personal?.permBarangay, getCityCodeByName(personal?.permCity)),
+            permCityMunicipality: getCityCodeByName(personal?.permCity),
+            permProvince: getProvinceCodeByName(personal?.permProvince),
+            permZip: personal?.permanentZipCode || "",
+            permRegion: getRegionCodeByName(personal?.permRegion),
+
+            telephone: personal?.telephoneNo || "",
             mobile: personal?.mobileNo || "",
 
             // Other PDS Sections (Stay as they were, they didn't live in Auth table to begin with)
@@ -1171,36 +1242,37 @@ const PDSFormWizard: React.FC<PDSFormWizardProps> = ({ employeeId }) => {
               : [emptyEligibility()],
             workExperiences: (p.workExperience && p.workExperience.length > 0) ? p.workExperience.map(w => ({ id: w.id?.toString() || uid(), positionTitle: w.positionTitle, companyName: w.companyName, dateFrom: w.dateFrom, dateTo: w.dateTo || "", monthlySalary: w.monthlySalary || "", salaryGrade: w.salaryGrade || "", appointmentStatus: w.appointmentStatus || "", isGovernment: !!w.isGovernment })) : [emptyWork()],
             voluntaryWorks: (p.voluntaryWork && p.voluntaryWork.length > 0) ? p.voluntaryWork.map(v => ({ id: v.id?.toString() || uid(), organizationName: v.organizationName, address: v.address || "", dateFrom: v.dateFrom || "", dateTo: v.dateTo || "", hoursNumber: v.hoursNumber?.toString() || "", position: v.position || "" })) : [emptyVoluntary()],
-            trainings: (p.learningDevelopment && p.learningDevelopment.length > 0) ? p.learningDevelopment.map(t => ({ id: t.id?.toString() || uid(), title: t.title, dateFrom: t.dateFrom || "", dateTo: t.dateTo || "", hoursNumber: t.hoursNumber?.toString() || "", typeOfLd: t.typeOfLd || "", conductedBy: t.conductedBy || "" })) : [emptyTraining()],
+            learningDevelopments: (p.learningDevelopment && p.learningDevelopment.length > 0) ? p.learningDevelopment.map(t => ({ id: t.id?.toString() || uid(), title: t.title, dateFrom: t.dateFrom || "", dateTo: t.dateTo || "", hoursNumber: t.hoursNumber?.toString() || "", typeOfLd: t.typeOfLd || "", conductedBy: t.conductedBy || "" })) : [emptyTraining()],
             specialSkills: p.otherInfo?.filter(o => o.type === 'Skill').map(o => o.description).join(", ") || "", 
             nonAcademicDistinctions: p.otherInfo?.filter(o => o.type === 'Recognition').map(o => o.description).join(", ") || "", 
             memberships: p.otherInfo?.filter(o => o.type === 'Membership').map(o => o.description).join(", ") || "",
             
             // PDS Declarations (From new table)
-            relatedThirdDegree: questions?.relatedThirdDegree || "No", 
-            relatedThirdDetails: questions?.relatedThirdDetails || "", 
-            relatedFourthDegree: questions?.relatedFourthDegree || "No", 
-            relatedFourthDetails: questions?.relatedFourthDetails || "", 
-            foundGuiltyAdmin: questions?.foundGuiltyAdmin || "No", 
-            foundGuiltyDetails: questions?.foundGuiltyDetails || "", 
-            criminallyCharged: questions?.criminallyCharged || "No", 
-            dateFiled: questions?.dateFiled || "", 
-            statusOfCase: questions?.statusOfCase || "", 
-            convictedCrime: questions?.convictedCrime || "No", 
-            convictedDetails: questions?.convictedDetails || "", 
-            separatedFromService: questions?.separatedFromService || "No", 
-            separatedDetails: questions?.separatedDetails || "", 
-            electionCandidate: questions?.electionCandidate || "No", 
-            electionDetails: questions?.electionDetails || "", 
-            resignedToPromote: questions?.resignedToPromote || "No", 
-            resignedDetails: questions?.resignedDetails || "", 
-            immigrantStatus: questions?.immigrantStatus || "No", 
-            immigrantDetails: questions?.immigrantDetails || "", 
-            indigenousMember: questions?.indigenousMember || "No", 
-            indigenousDetails: questions?.indigenousDetails || "", 
-            personWithDisability: questions?.personWithDisability || "No", 
-            disabilityIdNo: questions?.disabilityIdNo || "", 
-            soloParent: questions?.soloParent || "No", 
+            // API returns boolean | null; wizard stores as "Yes"/"No" strings for radio buttons
+            relatedThirdDegree: questions?.relatedThirdDegree === true ? "Yes" : "No",
+            relatedThirdDetails: questions?.relatedThirdDetails || "",
+            relatedFourthDegree: questions?.relatedFourthDegree === true ? "Yes" : "No",
+            relatedFourthDetails: questions?.relatedFourthDetails || "",
+            foundGuiltyAdmin: questions?.foundGuiltyAdmin === true ? "Yes" : "No",
+            foundGuiltyDetails: questions?.foundGuiltyDetails || "",
+            criminallyCharged: questions?.criminallyCharged === true ? "Yes" : "No",
+            dateFiled: questions?.dateFiled || "",
+            statusOfCase: questions?.statusOfCase || "",
+            convictedCrime: questions?.convictedCrime === true ? "Yes" : "No",
+            convictedDetails: questions?.convictedDetails || "",
+            separatedFromService: questions?.separatedFromService === true ? "Yes" : "No",
+            separatedDetails: questions?.separatedDetails || "",
+            electionCandidate: questions?.electionCandidate === true ? "Yes" : "No",
+            electionDetails: questions?.electionDetails || "",
+            resignedToPromote: questions?.resignedToPromote === true ? "Yes" : "No",
+            resignedDetails: questions?.resignedDetails || "",
+            immigrantStatus: questions?.immigrantStatus === true ? "Yes" : "No",
+            immigrantDetails: questions?.immigrantDetails || "",
+            indigenousMember: questions?.indigenousMember === true ? "Yes" : "No",
+            indigenousDetails: questions?.indigenousDetails || "",
+            personWithDisability: questions?.personWithDisability === true ? "Yes" : "No",
+            disabilityIdNo: questions?.disabilityIdNo || "",
+            soloParent: questions?.soloParent === true ? "Yes" : "No",
             soloParentIdNo: questions?.soloParentIdNo || "",
             govtIdType: questions?.govtIdType || "", 
             govtIdNo: questions?.govtIdNo || "", 
