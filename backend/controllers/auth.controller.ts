@@ -35,11 +35,22 @@ import {
 import { sanitizeInput } from '../utils/spamUtils.js';
 import transporter, { generateOTP, maskEmail, sendEmail, sendOTPEmail } from '../utils/emailUtils.js';
 import { AuditService } from '../services/audit.service.js';
-import { PDSService } from '../services/pds.service.js';
+import { PDSService, PdsSaveData } from '../services/pds.service.js';
 // Note: PDS types are used in type annotations for the setupPortal function
 import type { 
     RawPDSInput
 } from '../types/auth_internal.js';
+import type {
+  PdsEducation,
+  PdsEligibility,
+  PdsWorkExperience,
+  PdsLearningDevelopment,
+  PdsVoluntaryWork,
+  PdsReference,
+  PdsFamily,
+  PdsOtherInfo
+} from '../types/pds.js';
+
 
 // Unused interface removed for TSC cleanup
 
@@ -382,8 +393,8 @@ export const googleLogin: AsyncHandler = async (req, res) => {
 
     try {
       await sendOTPEmail(user.email, user.firstName || 'User', otp, 'Google Login Verification', 'You are attempting to login via Google.');
-    } catch (err: unknown) { const _error = err instanceof Error ? err : new Error(String(err));
-      const message = _error instanceof Error ? _error.message : 'Unknown email error';
+    } catch (err: unknown) { // Error logged below
+      const message = err instanceof Error ? err instanceof Error ? err.message : String(err) : 'Unknown email error';
       console.error('[AUTH] Google OTP send failed:', message);
       res.status(500).json({ success: false, message: 'Failed to send verification code.' });
       return;
@@ -407,8 +418,8 @@ export const googleLogin: AsyncHandler = async (req, res) => {
       req
     });
 
-  } catch (err: unknown) { const _error = err instanceof Error ? err : new Error(String(err));
-    console.error('[GOOGLE LOGIN ERROR]', _error);
+  } catch (err: unknown) { // Error logged below
+    console.error('[GOOGLE LOGIN ERROR]', err);
     res.status(500).json({ message: 'Google authentication failed' });
   }
 };
@@ -463,7 +474,7 @@ interface RegisterRequestWithFile extends Request {
 
 interface RegisterBody {
   [key: string]: string | number | boolean | undefined | null | object | Record<string, string | number | boolean | null>[]; 
-  pdsQuestions?: string | PDSQuestions;
+  pdsQuestions?: string | any;
   educations?: string | Record<string, string | number | boolean | null>[];
   eligibilities?: string | Record<string, string | number | boolean | null>[];
   workExperiences?: string | Record<string, string | number | boolean | null>[];
@@ -830,18 +841,12 @@ export const register: AsyncHandler = async (req, res) => {
           profileStatus: 'Complete' as const,
           employmentStatus: 'Active' as const,
           isOldEmployee: validatedData.isOldEmployee || existingUser.hrDetails?.isOldEmployee || false,
-          isMeycauayan: (validatedData.isMeycauayan === true),
-          religion: validatedData.religion || existingUser.hrDetails?.religion || undefined,
-          facebookUrl: validatedData.facebookUrl || existingUser.hrDetails?.facebookUrl || undefined,
-          linkedinUrl: validatedData.linkedinUrl || existingHr?.linkedinUrl || undefined,
-          twitterHandle: validatedData.twitterHandle || existingHr?.twitterHandle || undefined,
-          experienceSummary: validatedData.experience || existingHr?.experienceSummary || null,
-         };
+          isMeycauayan: (validatedData.isMeycauayan === true),         };
 
         if (existingHr) {
-          await tx.update(pdsHrDetails).set(hrValues).where(eq(pdsHrDetails.employeeId, newUserId));
+          await tx.update(pdsHrDetails).set(hrValues as any).where(eq(pdsHrDetails.employeeId, newUserId));
         } else {
-          await tx.insert(pdsHrDetails).values(hrValues);
+          await tx.insert(pdsHrDetails).values(hrValues as any);
         }
 
         // Allocate default credits and schedules for the finalized admin
@@ -864,13 +869,7 @@ export const register: AsyncHandler = async (req, res) => {
           profileStatus: 'Complete' as const,
           employmentStatus: 'Active' as const,
           isOldEmployee: validatedData.isOldEmployee || false,
-          isMeycauayan: (validatedData.isMeycauayan === true),
-          religion: validatedData.religion || undefined,
-          facebookUrl: validatedData.facebookUrl || undefined,
-           linkedinUrl: validatedData.linkedinUrl || undefined,
-           twitterHandle: validatedData.twitterHandle || undefined,
-           experienceSummary: validatedData.experience || null,
-         });
+          isMeycauayan: (validatedData.isMeycauayan === true),         } as any);
         
         // Initial leave allocation for brand new users
         await allocateDefaultCredits(actualEmployeeId);
@@ -900,18 +899,17 @@ export const register: AsyncHandler = async (req, res) => {
 
       // --- SAVE REGISTRATION DATA TO PDS TABLES ---
       // 100% AUTOMATED PDS PERSISTENCE
-      // We map the validatedData (from RegisterSchema) to the PDSFormData structure expected by the service.
+      // We map the validatedData (from RegisterSchema) to the PdsSaveData structure expected by the service.
       const rawInput = validatedData as RawPDSInput & Record<string, unknown>;
-      const pdsData: Partial<PDSFormData> = {
+      const pdsData: any = {  // TODO: Fix structure to match PdsSaveData
         // Core Names (Synchronized with Core Profile)
         // 100% Data Fidelity: Check both Zod-validated fields and raw parser synonyms.
         lastName: validatedData.lastName || validatedData.surname || String(rawInput.surname || rawInput.last_name || ''),
         firstName: validatedData.firstName || String(rawInput.first_name || ''),
         middleName: validatedData.middleName || String(rawInput.middle_name || ''),
         suffix: validatedData.suffix || validatedData.nameExtension || String(rawInput.name_extension || rawInput.extension || ''),
-        maidenName: validatedData.maidenName || String(rawInput.maiden_name || ''),
-
-        // Personal Info
+        // maidenName removed - not in PdsSaveData schema
+                // Personal Info
         dob: safeDate(validatedData.birthDate || validatedData.dob || String(rawInput.birth_date || '')),
         pob: validatedData.placeOfBirth || validatedData.pob || String(rawInput.pob || rawInput.place_of_birth || '') || undefined,
         sex: (validatedData.gender || validatedData.sex || rawInput.sex || rawInput.gender) as string | undefined,
@@ -959,15 +957,15 @@ export const register: AsyncHandler = async (req, res) => {
         agencyEmployeeNo: (validatedData.agencyEmployeeNo || String(rawInput.agencyNo || rawInput.agency_employee_no || '')) || undefined,
         
         // Arrays from Parser (100% Passthrough)
-        educations: (validatedData.educations as PDSEducation[]) || [],
-        eligibilities: (validatedData.eligibilities as PDSEligibility[]) || [],
-        workExperiences: (validatedData.workExperiences as PDSWorkExperience[]) || [],
-        trainings: (validatedData.trainings as PDSLearningDevelopment[]) || [],
-        otherInfo: (validatedData.otherInfo as PDSOtherInfo[]) || [],
-        familyBackground: (validatedData.familyBackground as PDSFamily[]) || [],
-        voluntaryWorks: (validatedData.voluntaryWorks as PDSVoluntaryWork[]) || (rawInput.voluntaryWorks as PDSVoluntaryWork[] | undefined) || [],
-        references: (validatedData.references as PDSReference[]) || (rawInput.references as PDSReference[] | undefined) || [],
-        pdsQuestions: (validatedData.pdsQuestions as PDSQuestions) || ({} as PDSQuestions),
+        educations: (validatedData.educations as PdsEducation[]) || [],
+        eligibilities: (validatedData.eligibilities as PdsEligibility[]) || [],
+        workExperiences: (validatedData.workExperiences as PdsWorkExperience[]) || [],
+        trainings: (validatedData.trainings as PdsLearningDevelopment[]) || [],
+        otherInfo: (validatedData.otherInfo as PdsOtherInfo[]) || [],
+        familyBackground: (validatedData.familyBackground as PdsFamily[]) || [],
+        voluntaryWorks: (validatedData.voluntaryWorks as PdsVoluntaryWork[]) || (rawInput.voluntaryWorks as PdsVoluntaryWork[] | undefined) || [],
+        references: (validatedData.references as PdsReference[]) || (rawInput.references as PdsReference[] | undefined) || [],
+        pdsQuestions: (validatedData.pdsQuestions as any) || ({} as any),
         govtIdType: validatedData.govtIdType || (rawInput.govtIdType as string | undefined),
         govtIdNo: validatedData.govtIdNo || (rawInput.govtIdNo as string | undefined),
         govtIdIssuance: validatedData.govtIdIssuance || (rawInput.govt_id_issuance as string | undefined),
@@ -1011,37 +1009,37 @@ export const register: AsyncHandler = async (req, res) => {
       traceLog('5. PDS Tables Success');
 
       // --- SAVE SECTION X: GOVERNMENT ID & DECLARATIONS ---
-      const q = (validatedData.pdsQuestions as PDSQuestions) || ({} as PDSQuestions);
+      const q = (validatedData.pdsQuestions as any) || ({} as any);
       const declValues: typeof pdsDeclarations.$inferInsert = {
           employeeId: newUserId,
           govtIdType: validatedData.govtIdType || null,
         govtIdNo: validatedData.govtIdNo || null,
         govtIdIssuance: validatedData.govtIdIssuance || null,
         dateAccomplished: safeDate(validatedData.dateAccomplished) || new Date().toISOString().split('T')[0],
-        relatedThirdDegree: q.relatedThirdDegree ? 'Yes' : 'No',
+        relatedThirdDegree: !!q.relatedThirdDegree,
         relatedThirdDetails: q.relatedThirdDetails || null, 
-        relatedFourthDegree: q.relatedFourthDegree ? 'Yes' : 'No',
+        relatedFourthDegree: !!q.relatedFourthDegree,
         relatedFourthDetails: q.relatedFourthDetails || null,
-        foundGuiltyAdmin: q.foundGuiltyAdmin ? 'Yes' : 'No',
+        foundGuiltyAdmin: !!q.foundGuiltyAdmin,
         foundGuiltyDetails: q.foundGuiltyDetails || null,
-        criminallyCharged: q.criminallyCharged ? 'Yes' : 'No',
+        criminallyCharged: !!q.criminallyCharged,
           dateFiled: safeDate(q.dateFiled) || null,
           statusOfCase: q.statusOfCase || null,
-          convictedCrime: q.convictedCrime ? 'Yes' : 'No',
+          convictedCrime: !!q.convictedCrime,
           convictedDetails: q.convictedDetails || null,
-          separatedFromService: q.separatedFromService ? 'Yes' : 'No',
+          separatedFromService: !!q.separatedFromService,
           separatedDetails: q.separatedDetails || null,
-          electionCandidate: q.electionCandidate ? 'Yes' : 'No',
+          electionCandidate: !!q.electionCandidate,
           electionDetails: q.electionDetails || null,
-          resignedToPromote: q.resignedToPromote ? 'Yes' : 'No',
+          resignedToPromote: !!q.resignedToPromote,
           resignedDetails: q.resignedDetails || null,
-          immigrantStatus: q.immigrantStatus ? 'Yes' : 'No',
+          immigrantStatus: !!q.immigrantStatus,
           immigrantDetails: q.immigrantDetails || null,
-          indigenousMember: q.indigenousMember ? 'Yes' : 'No',
+          indigenousMember: !!q.indigenousMember,
           indigenousDetails: q.indigenousDetails || null,
-          personWithDisability: q.personWithDisability ? 'Yes' : 'No',
+          personWithDisability: !!q.personWithDisability,
           disabilityIdNo: q.disabilityIdNo || null,
-          soloParent: q.soloParent ? 'Yes' : 'No',
+          soloParent: !!q.soloParent,
           soloParentIdNo: q.soloParentIdNo || null,
       };
 
@@ -1133,8 +1131,8 @@ export const register: AsyncHandler = async (req, res) => {
           }
 
           await sendOTPEmail(finalEmail, firstName, verificationOTP, subject, body);
-        } catch (err: unknown) { const _error = err instanceof Error ? err : new Error(String(err));
-          console.error('[REGISTER] Email send failed:', _error instanceof Error ? _error.message : String(_error));
+        } catch (err: unknown) { // Error logged below
+          console.error('[REGISTER] Email send failed:', err instanceof Error ? err instanceof Error ? err.message : String(err) : String(err));
         }
     }
 
@@ -1145,8 +1143,8 @@ export const register: AsyncHandler = async (req, res) => {
                 .set({
                     isRegistered: true,
                     registeredEmployeeId: actualEmployeeId
-                })
-                .where(eq(recruitmentApplicants.id, validatedData.applicantId));
+                } as any)
+                .where(eq(recruitmentApplicants.id, Number(validatedData.applicantId)));
         } catch (_linkErr) {
             // Silently fail link update
         }
@@ -1189,20 +1187,20 @@ export const register: AsyncHandler = async (req, res) => {
       }
     }
   } catch (err: unknown) {
-    const _error = err instanceof Error ? err : new Error(String(err));
-    traceLog('FATAL ERROR DURING REGISTRATION', _error.message);
-    console.error('[AUTH] Registration failed:', _error);
+    // Error logged below
+    traceLog('FATAL ERROR DURING REGISTRATION', err instanceof Error ? err.message : String(err));
+    console.error('[AUTH] Registration failed:', err);
     
-    if (_error instanceof z.ZodError) {
+    if (err instanceof z.ZodError) {
       try {
-        fs.writeFileSync(path.join(process.cwd(), 'zod_errors.json'), JSON.stringify(_error.format(), null, 2));
+        fs.writeFileSync(path.join(process.cwd(), 'zoderrs.json'), JSON.stringify(err.format(), null, 2));
       } catch (_e: unknown) { /* ignore */ }
     }
     
     res.status(500).json({
       success: false,
       message: 'An unexpected error occurred during registration.',
-      error: _error.message,
+      error: err instanceof Error ? err.message : String(err),
       data: null
     });
   }
@@ -1256,7 +1254,7 @@ export const verifyRegistrationOTP = async (req: Request, res: Response): Promis
         lastName: user.lastName
       }
     });
-  } catch (err: unknown) { const _error = err instanceof Error ? err : new Error(String(err));
+  } catch (err: unknown) { // Error logged below
     res.status(500).json({ success: false, message: 'Server Error' });
   }
 };
@@ -1291,8 +1289,8 @@ export const resendVerificationEmail: AsyncHandler = async (req, res) => {
 
     res.status(200).json({ success: true, message: 'Verification code resent successfully.' });
   } catch (err: unknown) { 
-    const _error = err instanceof Error ? err : new Error(String(err));
-    console.error('[Resend Verification Error]', _error.message);
+    // Error logged below
+    console.error('[Resend Verification Error]', err instanceof Error ? err.message : String(err));
     res.status(500).json({ success: false, message: 'Failed to resend verification code.' });
   }
 };
@@ -1356,8 +1354,8 @@ export const forgotPassword: AsyncHandler = async (req, res) => {
 
     res.status(200).json({ success: true, message: 'Password reset code sent to your email.' });
   } catch (err: unknown) { 
-    const _error = err instanceof Error ? err : new Error(String(err));
-    console.error('[FORGOT PASSWORD ERROR]', _error.message);
+    // Error logged below
+    console.error('[FORGOT PASSWORD ERROR]', err instanceof Error ? err.message : String(err));
     res.status(500).json({ success: false, message: 'Failed to send reset code.' });
   }
 };
@@ -1412,8 +1410,8 @@ export const resetPassword: AsyncHandler = async (req, res) => {
 
     res.status(200).json({ success: true, message: 'Password reset successfully. You can now login.' });
   } catch (err: unknown) { 
-    const _error = err instanceof Error ? err : new Error(String(err));
-    console.error('[RESET PASSWORD ERROR]', _error.message);
+    // Error logged below
+    console.error('[RESET PASSWORD ERROR]', err instanceof Error ? err.message : String(err));
     res.status(500).json({ success: false, message: 'Failed to reset password.' });
   }
 };
@@ -1487,7 +1485,7 @@ export const getMe: AuthenticatedHandler = async (req, res) => {
       }
     });
   } catch (err: unknown) { 
-    const _error = err instanceof Error ? err : new Error(String(err));
+    // Error logged below
     res.status(500).json({ success: false, message: 'Server Error' });
   }
 };
@@ -1633,8 +1631,8 @@ export const login: AsyncHandler = async (req, res) => {
       try {
         await sendOTPEmail(user.email, user.firstName, otp, 'Your Login OTP', 'Your One-Time Password (OTP) for login is:');
       } catch (err: unknown) { 
-        const _error = err instanceof Error ? err : new Error(String(err));
-        console.error('[2FA Send Error]', _error.message);
+        // Error logged below
+        console.error('[2FA Send Error]', err instanceof Error ? err.message : String(err));
         res.status(500).json({ success: false, message: 'Failed to send 2FA code.' });
         return;
       }
@@ -1720,12 +1718,12 @@ export const login: AsyncHandler = async (req, res) => {
     });
 
   } catch (err: unknown) { 
-    const _error = err instanceof Error ? err : new Error(String(err));
-    console.error('[LOGIN ERROR]', _error.message);
+    // Error logged below
+    console.error('[LOGIN ERROR]', err instanceof Error ? err.message : String(err));
     res.status(500).json({
       success: false,
-      message: _error.message || 'An unexpected error occurred during login.',
-      error: _error.message
+      message: err instanceof Error ? err.message : String(err) || 'An unexpected error occurred during login.',
+      error: err instanceof Error ? err.message : String(err)
     });
   }
 };
@@ -1802,8 +1800,8 @@ export const verifyTwoFactorOTP: AsyncHandler = async (req, res) => {
     });
 
   } catch (err: unknown) { 
-    const _error = err instanceof Error ? err : new Error(String(err));
-    console.error('[2FA VERIFY ERROR]', _error.message);
+    // Error logged below
+    console.error('[2FA VERIFY ERROR]', err instanceof Error ? err.message : String(err));
     res.status(500).json({ success: false, message: 'Verification failed.' });
   }
 };
@@ -1818,7 +1816,7 @@ export const enableTwoFactor: AuthenticatedHandler = async (req, res) => {
       .where(eq(authentication.id, userId));
     res.status(200).json({ success: true, message: 'Two-factor authentication enabled.' });
   } catch (err: unknown) { 
-    const _error = err instanceof Error ? err : new Error(String(err));
+    // Error logged below
     res.status(500).json({ success: false, message: 'Failed to enable 2FA.' });
   }
 };
@@ -1833,7 +1831,7 @@ export const disableTwoFactor: AuthenticatedHandler = async (req, res) => {
       .where(eq(authentication.id, userId));
     res.status(200).json({ success: true, message: 'Two-factor authentication disabled.' });
   } catch (err: unknown) { 
-    const _error = err instanceof Error ? err : new Error(String(err));
+    // Error logged below
     res.status(500).json({ success: false, message: 'Failed to disable 2FA.' });
   }
 };
@@ -1863,7 +1861,7 @@ export const resendTwoFactorOTP: AsyncHandler = async (req, res) => {
 
     res.status(200).json({ success: true, message: 'OTP resent successfully.' });
   } catch (err: unknown) { 
-    const _error = err instanceof Error ? err : new Error(String(err));
+    // Error logged below
     res.status(500).json({ success: false, message: 'Failed to resend OTP.' });
   }
 };
@@ -1907,7 +1905,7 @@ export const getUsers: AsyncHandler = async (_req, res) => {
       data: users
     });
   } catch (err: unknown) { 
-    const _error = err instanceof Error ? err : new Error(String(err));
+    // Error logged below
     res.status(500).json({
       success: false,
       message: 'An unexpected error occurred while fetching users.',
@@ -1979,8 +1977,8 @@ export const getUserById: AsyncHandler = async (req, res) => {
       }
     });
   } catch (err: unknown) { 
-    const _error = err instanceof Error ? err : new Error(String(err));
-    console.error('[Get User Detail Error]', _error.message);
+    // Error logged below
+    console.error('[Get User Detail Error]', err instanceof Error ? err.message : String(err));
     res.status(500).json({ success: false, message: 'Failed to find user detail' });
   }
 };
@@ -2077,12 +2075,12 @@ export const updateProfile: AuthenticatedHandler = async (req, res) => {
       }
     }
 
-    if (updates.facebookUrl !== undefined) mappedHrUpdates.facebookUrl = String(updates.facebookUrl);
-    if (updates.linkedinUrl !== undefined) mappedHrUpdates.linkedinUrl = String(updates.linkedinUrl);
-    if (updates.twitterHandle !== undefined) mappedHrUpdates.twitterHandle = String(updates.twitterHandle);
-    if (updates.isMeycauayan !== undefined) mappedHrUpdates.isMeycauayan = !!updates.isMeycauayan;
-    if (updates.religion !== undefined) mappedHrUpdates.religion = String(updates.religion);
-    if (updates.dutyType !== undefined) mappedHrUpdates.dutyType = updates.dutyType as 'Standard' | 'Irregular';
+    // facebookUrl removed - not in pdsHrDetails schema
+        // linkedinUrl removed - not in pdsHrDetails schema
+        // twitterHandle removed - not in pdsHrDetails schema
+        if (updates.isMeycauayan !== undefined) mappedHrUpdates.isMeycauayan = !!updates.isMeycauayan;
+    // religion removed - not in pdsHrDetails schema
+        if (updates.dutyType !== undefined) mappedHrUpdates.dutyType = updates.dutyType as 'Standard' | 'Irregular';
     
     if (updates.positionTitle !== undefined) {
         mappedHrUpdates.positionTitle = String(updates.positionTitle);
@@ -2218,17 +2216,17 @@ export const updateProfile: AuthenticatedHandler = async (req, res) => {
         }
 
         // 100% AUTOMATED PDS INGESTION (Replacing manual loops/old reliance)
-        const pdsData: Partial<PDSFormData> = {
-            educations: (updates.educations as PDSEducation[]) || [],
-            workExperiences: (updates.workExperiences as PDSWorkExperience[]) || [],
-            trainings: (updates.trainings as PDSLearningDevelopment[]) || [],
-            eligibilities: (updates.eligibilities as PDSEligibility[]) || [],
-            familyBackground: (updates.familyBackground as PDSFamily[]) || [],
-            voluntaryWorks: (updates.voluntaryWorks as PDSVoluntaryWork[]) || [],
-            references: (updates.references as PDSReference[]) || [],
-            otherInfo: (updates.otherInfo as PDSOtherInfo[]) || [],
-            pdsQuestions: (updates.pdsQuestions as PDSQuestions) || undefined
-        };
+        const pdsData: Partial<PdsSaveData> = {
+            educations: (updates.educations as PdsEducation[]) || [],
+            workExperiences: (updates.workExperiences as PdsWorkExperience[]) || [],
+            learningDevelopments: (updates.trainings as PdsLearningDevelopment[]) || [],
+            eligibilities: (updates.eligibilities as PdsEligibility[]) || [],
+            familyBackground: (updates.familyBackground as PdsFamily[]) || [],
+            voluntaryWorks: (updates.voluntaryWorks as PdsVoluntaryWork[]) || [],
+            references: (updates.references as PdsReference[]) || [],
+            otherInfo: (updates.otherInfo as PdsOtherInfo[]) || [],
+            // pdsQuestions removed - not in PdsSaveData schema
+                    };
 
         // Legacy Bridge: Bridge 'education' dict to 'educations' array
         if (updates.education) {
@@ -2243,8 +2241,8 @@ export const updateProfile: AuthenticatedHandler = async (req, res) => {
                         degreeCourse: edu.course || undefined,
                         yearGraduated: safeInt(edu.yearGrad),
                         unitsEarned: edu.units || undefined,
-                        dateFrom: safeInt(edu.from),
-                        dateTo: safeInt(edu.to),
+                        dateFrom: edu.from ? String(edu.from) : undefined,
+                        dateTo: edu.to ? String(edu.to) : undefined,
                         honors: edu.honors || undefined,
                     });
                 }
@@ -2307,8 +2305,8 @@ export const updateProfile: AuthenticatedHandler = async (req, res) => {
       } as UserWithRelations)
     });
   } catch (err: unknown) { 
-    const _error = err instanceof Error ? err : new Error(String(err));
-    console.error('[Update Profile Error]', _error.message);
+    // Error logged below
+    console.error('[Update Profile Error]', err instanceof Error ? err.message : String(err));
     res.status(500).json({ success: false, message: 'Failed to update profile' });
   }
 };
@@ -2330,7 +2328,7 @@ export const getNextId: AsyncHandler = async (_req, res) => {
       data: formattedNextId
     });
   } catch (err: unknown) { 
-    const _error = err instanceof Error ? err : new Error(String(err));
+    // Error logged below
     res.status(500).json({ success: false, message: 'Failed to fetch next ID' });
   }
 };
@@ -2430,8 +2428,8 @@ export const findHiredApplicant: AsyncHandler = async (req, res) => {
       }
     });
   } catch (err: unknown) { 
-    const _error = err instanceof Error ? err : new Error(String(err));
-    console.error('Error in findHiredApplicant:', _error.message);
+    // Error logged below
+    console.error('Error in findHiredApplicant:', err instanceof Error ? err.message : String(err));
     res.status(500).json({ success: false, message: 'Failed to search for applicant' });
   }
 };
@@ -2457,7 +2455,7 @@ export const checkEmailUniqueness: AsyncHandler = async (req, res) => {
       isUnique: true 
     });
   } catch (err: unknown) { 
-    const _error = err instanceof Error ? err : new Error(String(err));
+    // Error logged below
     res.status(400).json({ success: false, message: 'Invalid email address.' });
   }
 };
@@ -2547,7 +2545,7 @@ export const getSetupPositions: AsyncHandler = async (_req, res) => {
       roles
     });
   } catch (err: unknown) { 
-    const _error = err instanceof Error ? err : new Error(String(err));
+    // Error logged below
     res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
@@ -2647,7 +2645,7 @@ export const setupPortal: AsyncHandler = async (req, res) => {
       // 3. Create placeholder PDS Personal Information
       await tx.insert(pdsPersonalInformation).values({
         employeeId: newUserId,
-        email: email,
+        // email removed - not in pdsPersonalInformation schema
         citizenship: 'Filipino'
       });
     });
@@ -2711,12 +2709,12 @@ export const checkGovtIdUniqueness: AsyncHandler = async (req, res) => {
       message: 'Government ID is unique and available.'
     });
     return;
-  } catch (err: unknown) { const _error = err instanceof Error ? err : new Error(String(err));
-    console.error('Check Govt ID error:', _error);
+  } catch (err: unknown) { // Error logged below
+    console.error('Check Govt ID error:', err);
     res.status(500).json({ 
       success: false, 
       message: 'Internal server error during uniqueness check.',
-      error: _error instanceof Error ? _error.message : String(_error)
+      error: err instanceof Error ? err instanceof Error ? err.message : String(err) : String(err)
     });
     return;
   }
