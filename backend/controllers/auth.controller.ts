@@ -2518,9 +2518,15 @@ export const findHiredApplicant: AsyncHandler = async (req, res) => {
 
 export const checkEmailUniqueness: AsyncHandler = async (req, res) => {
   try {
-    const { email } = z.object({ email: z.string().email() }).parse(req.query);
+    const { email, applicantId } = z.object({ 
+      email: z.string().email(),
+      applicantId: z.string().optional()
+    }).parse(req.query);
     
-    const errors = await checkSystemWideUniqueness({ email });
+    const errors = await checkSystemWideUniqueness({ 
+      email,
+      excludeApplicantId: applicantId ? parseInt(applicantId) : undefined
+    });
     
     if (errors.email) {
       res.status(409).json({ 
@@ -2538,7 +2544,7 @@ export const checkEmailUniqueness: AsyncHandler = async (req, res) => {
     });
   } catch (err: unknown) { 
     // Error logged below
-    res.status(400).json({ success: false, message: 'Invalid email address.' });
+    res.status(400).json({ success: false, message: 'Invalid request parameters.' });
   }
 };
 

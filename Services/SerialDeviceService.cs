@@ -26,8 +26,8 @@ namespace BioMiddleware.Services
             {
                 NewLine = "\n",
                 Encoding = Encoding.ASCII,
-                ReadTimeout = 500,
-                WriteTimeout = 500,
+                ReadTimeout = 5000,   // Increased from 500ms to 5000ms (5 seconds)
+                WriteTimeout = 5000,  // Increased from 500ms to 5000ms (5 seconds)
                 DtrEnable = true,
                 RtsEnable = true
             };

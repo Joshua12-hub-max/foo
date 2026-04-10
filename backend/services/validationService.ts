@@ -25,8 +25,9 @@ export interface CheckUniquenessParams {
  */
 export async function checkSystemWideUniqueness(params: CheckUniquenessParams): Promise<Record<string, string>> {
   const errors: Record<string, string> = {};
-  
-  if (params.email && !params.umidNumber && !params.philsysId && !params.philhealthNumber && !params.pagibigNumber && !params.tinNumber && !params.gsisNumber) {
+
+  // Skip validation only if absolutely nothing is provided
+  if (!params.email && !params.umidNumber && !params.philsysId && !params.philhealthNumber && !params.pagibigNumber && !params.tinNumber && !params.gsisNumber && !params.employeeId && !params.agencyEmployeeNo) {
     return errors;
   }
 

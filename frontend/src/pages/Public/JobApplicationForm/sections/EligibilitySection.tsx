@@ -29,7 +29,7 @@ const EligibilitySection: React.FC<EligibilitySectionProps> = ({ register, error
     <div className="space-y-6">
       <div>
         <h3 className="text-lg font-black text-slate-900 mb-1 uppercase tracking-widest flex items-center gap-3">
-          <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
+          <span className="w-1.5 h-1.5 bg-slate-500 rounded-full"></span>
           Civil Service Eligibility
         </h3>
         <p className="text-xs text-slate-500 font-semibold mb-6">
@@ -142,7 +142,7 @@ const EligibilitySection: React.FC<EligibilitySectionProps> = ({ register, error
       <button
         type="button"
         onClick={addEligibility}
-        className="w-full border-2 border-dashed border-gray-300 rounded-lg px-4 py-3 text-sm font-bold text-gray-600 hover:border-green-500 hover:text-green-600 hover:bg-green-50 transition-all"
+        className="w-full border-2 border-dashed border-gray-300 rounded-lg px-4 py-3 text-sm font-bold text-gray-600 hover:border-slate-500 hover:text-slate-600 hover:bg-slate-50 transition-all"
       >
         + Add Eligibility
       </button>

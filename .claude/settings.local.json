@@ -25,7 +25,22 @@
       "Bash(git checkout:*)",
       "Bash(git push:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(tasklist:*)",
+      "Bash(findstr:*)",
+      "Bash(Get-Process)",
+      "Bash(Where-Object { $_ProcessName -like '*Bio*' -or $_ProcessName -like '*Middleware*' })",
+      "Bash(Select-Object ProcessName, Id)",
+      "Bash(netstat:*)",
+      "Bash(taskkill:*)",
+      "Bash(dotnet build:*)",
+      "Bash(cmd //c start BioMiddleware.exe)",
+      "WebSearch",
+      "WebFetch(domain:zed.dev)",
+      "WebFetch(domain:github.com)",
+      "Bash(for file in *.tsx)",
+      "Bash(do sed -i 's/bg-green-500/bg-slate-500/g; s/text-green-600/text-slate-600/g; s/text-green-700/text-slate-700/g; s/border-green-500/border-slate-500/g; s/border-green-600/border-slate-600/g; s/border-green-200/border-slate-200/g; s/bg-green-50/bg-slate-50/g; s/bg-green-100/bg-slate-100/g; s/hover:border-green-500/hover:border-slate-400/g; s/hover:text-green-600/hover:text-slate-700/g; s/hover:bg-green-50/hover:bg-slate-100/g; s/focus:ring-green-100/focus:ring-slate-100/g; s/focus:ring-green-500/focus:ring-slate-500/g; s/focus:border-green-500/focus:border-slate-500/g; s/ring-green-100/ring-slate-100/g' \"$file\")",
+      "Bash(done)"
     ]
   }
 }

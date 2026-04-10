@@ -96,3 +96,11 @@ const PublicLayout: React.FC<PublicLayoutProps> = ({ children }) => {
 };
 
 export default PublicLayout;
+      </footer>
+
+      <LiveChatWidget />
+    </div>
+  );
+};
+
+export default PublicLayout;

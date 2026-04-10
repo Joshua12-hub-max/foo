@@ -32,6 +32,7 @@ const JobDetail = () => {
     const [success, setSuccess] = useState(false);
     const [currentStep, setCurrentStep] = useState(1);
     const [validationErrors, setValidationErrors] = useState<string[]>([]);
+    const [termsAccepted, setTermsAccepted] = useState(false);
 
     // Fetch Job
     const { data: job, isLoading, error } = usePublicJobDetail(id);
@@ -287,7 +288,7 @@ const JobDetail = () => {
 
     if (isLoading) return (
         <div className="min-h-[80vh] flex items-center justify-center bg-slate-50">
-            <div className="animate-spin w-8 h-8 border-[3px] border-slate-200 border-t-green-600 rounded-full font-sans"></div>
+            <div className="animate-spin w-8 h-8 border-[3px] border-slate-200 border-t-accent rounded-full font-sans"></div>
         </div>
     );
 
@@ -295,7 +296,7 @@ const JobDetail = () => {
         <div className="min-h-[80vh] flex flex-col items-center justify-center bg-slate-50 p-6 text-center font-sans">
             <h2 className="text-2xl font-black text-slate-900 mb-2 tracking-tight">Unavailable</h2>
             <p className="text-slate-500 mb-8 font-semibold text-sm">This job record has been archived or is no longer accepting submissions.</p>
-            <button onClick={() => navigate('/careers/jobs')} className="px-6 py-3 bg-slate-900 text-white rounded-xl font-bold text-xs tracking-widest hover:bg-black transition-all active:scale-95 shadow-sm uppercase">
+            <button onClick={() => navigate('/careers/jobs')} className="px-6 py-3 bg-accent text-white rounded-xl font-bold text-xs tracking-widest hover:bg-accent-hover transition-all active:scale-95 shadow-sm uppercase">
                 Back to Listings
             </button>
         </div>
@@ -308,14 +309,14 @@ const JobDetail = () => {
             <div className="min-h-screen bg-slate-50 font-sans text-slate-900 pb-24 pt-10 sm:pt-16 relative overflow-hidden">
                 {/* Decorative Elements matching Master Balance */}
                 <div className="absolute top-0 right-0 w-1/2 h-full hidden lg:block opacity-[0.03] pointer-events-none bg-gradient-to-l from-slate-200 to-transparent"></div>
-                <div className="absolute top-[-10%] right-[-5%] w-[500px] h-[500px] bg-green-500/5 rounded-full blur-[120px] pointer-events-none"></div>
+                <div className="absolute top-[-10%] right-[-5%] w-[500px] h-[500px] bg-slate-500/5 rounded-full blur-[120px] pointer-events-none"></div>
                 
                 <div className="max-w-6xl mx-auto px-6 relative z-10">
                     
                     {/* Header Section */}
                     <button 
                         onClick={() => navigate('/careers/jobs')} 
-                        className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:text-green-600 hover:border-green-200 transition-all mb-12 group rounded-xl shadow-sm hover:shadow active:scale-95 w-fit"
+                        className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:text-slate-900 hover:border-slate-300 transition-all mb-12 group rounded-xl shadow-sm hover:shadow active:scale-95 w-fit"
                     >
                         <ArrowLeft size={14} className="transition-transform group-hover:-translate-x-1" />
                         Back to Portal
@@ -326,7 +327,7 @@ const JobDetail = () => {
                         {/* Job Details Column */}
                         <div className="lg:col-span-3 space-y-12">
                             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-                                <span className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-green-50/80 text-green-600 border border-green-100 rounded-lg text-[10px] font-extrabold uppercase tracking-widest mb-6 shadow-sm">
+                                <span className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-[10px] font-extrabold uppercase tracking-widest mb-6 shadow-sm">
                                     {job.department}
                                 </span>
                                 <h1 className="text-4xl md:text-6xl lg:text-7xl font-black text-slate-900 mb-8 tracking-tighter leading-[0.9]">
@@ -354,7 +355,7 @@ const JobDetail = () => {
                             <div className="space-y-16">
                                 <motion.section initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, duration: 0.4 }} className="max-w-3xl">
                                     <h3 className="text-lg font-black text-slate-900 mb-6 uppercase tracking-widest flex items-center gap-3">
-                                        <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
+                                        <span className="w-1.5 h-1.5 bg-slate-500 rounded-full"></span>
                                         Description
                                     </h3>
                                     <div className="text-sm md:text-[15px] text-slate-600 font-semibold leading-loose whitespace-pre-wrap">
@@ -364,39 +365,39 @@ const JobDetail = () => {
 
                                 <motion.section initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2, duration: 0.4 }} className="max-w-3xl">
                                     <h3 className="text-lg font-black text-slate-900 mb-8 uppercase tracking-widest flex items-center gap-3">
-                                        <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
+                                        <span className="w-1.5 h-1.5 bg-slate-500 rounded-full"></span>
                                         Qualifications
                                     </h3>
                                     
                                     {(job.education || job.experience || job.training || job.eligibility || job.otherQualifications) ? (
                                         <div className="space-y-4">
                                             {job.education && (
-                                                <div className="p-6 bg-white border border-slate-200 rounded-2xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.02)] hover:shadow-[0_8px_30px_-4px_rgba(0,0,0,0.06)] hover:border-green-200 transition-all duration-300 group">
-                                                    <div className="text-[10px] font-black text-slate-400 group-hover:text-green-600 uppercase tracking-[0.2em] mb-2 transition-colors">Education</div>
+                                                <div className="p-6 bg-white border border-slate-200 rounded-2xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.02)] hover:shadow-[0_8px_30px_-4px_rgba(0,0,0,0.06)] hover:border-slate-300 transition-all duration-300 group">
+                                                    <div className="text-[10px] font-black text-slate-400 group-hover:text-slate-900 uppercase tracking-[0.2em] mb-2 transition-colors">Education</div>
                                                     <div className="text-sm md:text-base font-bold text-slate-800 leading-tight">{job.education}</div>
                                                 </div>
                                             )}
                                             {job.experience && (
-                                                <div className="p-6 bg-white border border-slate-200 rounded-2xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.02)] hover:shadow-[0_8px_30px_-4px_rgba(0,0,0,0.06)] hover:border-green-200 transition-all duration-300 group">
-                                                    <div className="text-[10px] font-black text-slate-400 group-hover:text-green-600 uppercase tracking-[0.2em] mb-2 transition-colors">Experience</div>
+                                                <div className="p-6 bg-white border border-slate-200 rounded-2xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.02)] hover:shadow-[0_8px_30px_-4px_rgba(0,0,0,0.06)] hover:border-slate-300 transition-all duration-300 group">
+                                                    <div className="text-[10px] font-black text-slate-400 group-hover:text-slate-900 uppercase tracking-[0.2em] mb-2 transition-colors">Experience</div>
                                                     <div className="text-sm md:text-base font-bold text-slate-800 leading-tight">{job.experience}</div>
                                                 </div>
                                             )}
                                             {job.training && (
-                                                <div className="p-6 bg-white border border-slate-200 rounded-2xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.02)] hover:shadow-[0_8px_30px_-4px_rgba(0,0,0,0.06)] hover:border-green-200 transition-all duration-300 group">
-                                                    <div className="text-[10px] font-black text-slate-400 group-hover:text-green-600 uppercase tracking-[0.2em] mb-2 transition-colors">Training</div>
+                                                <div className="p-6 bg-white border border-slate-200 rounded-2xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.02)] hover:shadow-[0_8px_30px_-4px_rgba(0,0,0,0.06)] hover:border-slate-300 transition-all duration-300 group">
+                                                    <div className="text-[10px] font-black text-slate-400 group-hover:text-slate-900 uppercase tracking-[0.2em] mb-2 transition-colors">Training</div>
                                                     <div className="text-sm md:text-base font-bold text-slate-800 leading-tight">{job.training}</div>
                                                 </div>
                                             )}
                                             {job.eligibility && (
-                                                <div className="p-6 bg-white border border-slate-200 rounded-2xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.02)] hover:shadow-[0_8px_30px_-4px_rgba(0,0,0,0.06)] hover:border-green-200 transition-all duration-300 group">
-                                                    <div className="text-[10px] font-black text-slate-400 group-hover:text-green-600 uppercase tracking-[0.2em] mb-2 transition-colors">Eligibility</div>
+                                                <div className="p-6 bg-white border border-slate-200 rounded-2xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.02)] hover:shadow-[0_8px_30px_-4px_rgba(0,0,0,0.06)] hover:border-slate-300 transition-all duration-300 group">
+                                                    <div className="text-[10px] font-black text-slate-400 group-hover:text-slate-900 uppercase tracking-[0.2em] mb-2 transition-colors">Eligibility</div>
                                                     <div className="text-sm md:text-base font-bold text-slate-800 leading-tight">{job.eligibility}</div>
                                                 </div>
                                             )}
                                             {job.otherQualifications && (
-                                                <div className="p-6 bg-white border border-slate-200 rounded-2xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.02)] hover:shadow-[0_8px_30px_-4px_rgba(0,0,0,0.06)] hover:border-green-200 transition-all duration-300 group">
-                                                    <div className="text-[10px] font-black text-slate-400 group-hover:text-green-600 uppercase tracking-[0.2em] mb-2 transition-colors">Other Qualifications</div>
+                                                <div className="p-6 bg-white border border-slate-200 rounded-2xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.02)] hover:shadow-[0_8px_30px_-4px_rgba(0,0,0,0.06)] hover:border-slate-300 transition-all duration-300 group">
+                                                    <div className="text-[10px] font-black text-slate-400 group-hover:text-slate-900 uppercase tracking-[0.2em] mb-2 transition-colors">Other Qualifications</div>
                                                     <div className="text-sm md:text-base font-bold text-slate-800 leading-relaxed whitespace-pre-wrap">{job.otherQualifications}</div>
                                                 </div>
                                             )}
@@ -415,9 +416,9 @@ const JobDetail = () => {
                             <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3, duration: 0.4 }} className="sticky top-28 space-y-6">
                                 {job.attachmentPath && (
                                     <div className="bg-white border border-slate-200 shadow-xl shadow-slate-200/40 rounded-[2rem] p-8 space-y-6 relative overflow-hidden group">
-                                        <div className="absolute top-0 right-0 w-32 h-32 bg-green-500/5 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-green-500/10 transition-colors duration-500 pointer-events-none"></div>
+                                        <div className="absolute top-0 right-0 w-32 h-32 bg-slate-500/5 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-slate-500/10 transition-colors duration-500 pointer-events-none"></div>
                                         <div className="relative z-10">
-                                            <div className="p-4 bg-slate-50 border border-slate-100 text-slate-600 rounded-2xl w-fit mb-6 shadow-sm group-hover:bg-green-50 group-hover:text-green-600 group-hover:border-green-100 transition-colors">
+                                            <div className="p-4 bg-slate-50 border border-slate-100 text-slate-600 rounded-2xl w-fit mb-6 shadow-sm group-hover:bg-slate-100 group-hover:text-slate-900 group-hover:border-slate-200 transition-colors">
                                                 <FileText size={20} />
                                             </div>
                                             <div>
@@ -429,7 +430,7 @@ const JobDetail = () => {
                                             href={job.attachmentPath} 
                                             target="_blank" 
                                             rel="noopener noreferrer"
-                                            className="relative z-10 flex items-center justify-center gap-2.5 w-full py-3.5 bg-slate-900 text-white text-[11px] font-black rounded-xl hover:bg-black transition-all shadow-lg active:scale-95 uppercase tracking-widest border border-slate-800"
+                                            className="relative z-10 flex items-center justify-center gap-2.5 w-full py-3.5 bg-accent text-white text-[11px] font-black rounded-xl hover:bg-accent-hover transition-all shadow-lg active:scale-95 uppercase tracking-widest border border-slate-800"
                                         >
                                             <Download size={14} /> Download
                                         </a>
@@ -450,8 +451,8 @@ const JobDetail = () => {
                                     animate={{ opacity: 1, y: 0, scale: 1 }}
                                     className="bg-white border border-slate-200 shadow-2xl shadow-slate-200/50 rounded-[3rem] p-12 md:p-16 text-center space-y-8 relative overflow-hidden"
                                 >
-                                    <div className="absolute top-0 right-0 w-64 h-64 bg-green-500/5 rounded-full blur-3xl -mr-32 -mt-32"></div>
-                                    <div className="w-24 h-24 bg-green-50 text-green-600 border border-green-100 rounded-[2rem] flex items-center justify-center mx-auto shadow-sm relative z-10">
+                                    <div className="absolute top-0 right-0 w-64 h-64 bg-slate-500/5 rounded-full blur-3xl -mr-32 -mt-32"></div>
+                                    <div className="w-24 h-24 bg-slate-100 text-slate-900 border border-slate-200 rounded-[2rem] flex items-center justify-center mx-auto shadow-sm relative z-10">
                                         <CheckCircle2 size={40} className="animate-bounce" style={{ animationDuration: '3s' }} />
                                     </div>
                                     <div className="space-y-4 relative z-10">
@@ -460,7 +461,7 @@ const JobDetail = () => {
                                     </div>
                                     <button 
                                         onClick={() => navigate('/careers/jobs')}
-                                        className="relative z-10 px-10 py-4 bg-slate-900 text-white rounded-xl font-black text-[11px] uppercase tracking-[0.2em] hover:bg-black transition-all shadow-lg active:scale-95 border border-slate-800 mt-4 mx-auto block"
+                                        className="relative z-10 px-10 py-4 bg-accent text-white rounded-xl font-black text-[11px] uppercase tracking-[0.2em] hover:bg-accent-hover transition-all shadow-lg active:scale-95 border border-slate-800 mt-4 mx-auto block"
                                     >
                                         Return to Portal
                                     </button>
@@ -475,7 +476,7 @@ const JobDetail = () => {
                                 >
                                     <div className="text-center space-y-4">
                                         <h2 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tighter uppercase">Submit Credentials</h2>
-                                        <p className="text-[10px] font-black text-green-600 border border-green-200 bg-green-50 px-4 py-1.5 rounded-full inline-block uppercase tracking-[0.4em] shadow-sm">Official Registry Entry</p>
+                                        <p className="text-[10px] font-black text-slate-700 border border-slate-200 bg-slate-100 px-4 py-1.5 rounded-full inline-block uppercase tracking-[0.4em] shadow-sm">Official Registry Entry</p>
                                     </div>
 
 {(() => {
@@ -551,20 +552,20 @@ const JobDetail = () => {
                                                                 <div className="flex flex-col items-center">
                                                                     <div className={`
                                                                         w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all
-                                                                        ${currentStep === step.id ? 'bg-green-600 text-white ring-4 ring-green-100' :
-                                                                            currentStep > step.id ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-600'}
+                                                                        ${currentStep === step.id ? 'bg-accent text-white ring-4 ring-slate-200' :
+                                                                            currentStep > step.id ? 'bg-slate-700 text-white' : 'bg-gray-200 text-gray-600'}
                                                                     `}>
                                                                         {currentStep > step.id ? '✓' : step.id}
                                                                     </div>
                                                                     <span className={`text-[10px] font-bold uppercase tracking-wider mt-2 text-center max-w-[80px] ${
-                                                                        currentStep === step.id ? 'text-green-600' : 'text-gray-500'
+                                                                        currentStep === step.id ? 'text-accent' : 'text-gray-500'
                                                                     }`}>
                                                                         {step.title}
                                                                     </span>
                                                                 </div>
                                                                 {idx < allSteps.length - 1 && (
                                                                     <div className={`w-8 md:w-16 h-1 mx-2 transition-all ${
-                                                                        currentStep > step.id ? 'bg-green-500' : 'bg-gray-200'
+                                                                        currentStep > step.id ? 'bg-slate-700' : 'bg-gray-200'
                                                                     }`}></div>
                                                                 )}
                                                             </div>
@@ -580,7 +581,8 @@ const JobDetail = () => {
                                                         setValue,
                                                         watch,
                                                         control,
-                                                        setCurrentStep
+                                                        setCurrentStep,
+                                                        ...(allSteps[currentStep - 1].component === ReviewSection ? { onTermsChange: setTermsAccepted } : {})
                                                     })}
                                                 </div>
 
@@ -611,15 +613,19 @@ const JobDetail = () => {
                                                                 setCurrentStep(prev => prev + 1);
                                                                 window.scrollTo({ top: 0, behavior: 'smooth' });
                                                             }}
-                                                            className="px-6 py-2.5 bg-green-600 text-white rounded-lg font-bold text-sm hover:bg-green-700 transition-all shadow-md"
+                                                            className="px-6 py-2.5 bg-accent text-white rounded-lg font-bold text-sm hover:bg-accent-hover transition-all shadow-md"
                                                         >
                                                             Next
                                                         </button>
                                                     ) : (
                                                         <button
                                                             type="submit"
-                                                            disabled={mutation.isPending || isFormLoading}
-                                                            className="px-6 py-2.5 bg-green-600 text-white rounded-lg font-bold text-sm hover:bg-green-700 disabled:opacity-50 transition-all shadow-md flex items-center gap-2"
+                                                            disabled={mutation.isPending || isFormLoading || !termsAccepted}
+                                                            className={`px-6 py-2.5 rounded-lg font-bold text-sm transition-all shadow-md flex items-center gap-2 ${
+                                                                termsAccepted && !mutation.isPending && !isFormLoading
+                                                                    ? 'bg-accent text-white hover:bg-accent-hover'
+                                                                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                                            }`}
                                                         >
                                                             {mutation.isPending || isFormLoading ? (
                                                                 <>
@@ -637,7 +643,7 @@ const JobDetail = () => {
                                                 {(mutation.isPending || isFormLoading) && (
                                                     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                                                         <div className="bg-white p-8 rounded-2xl shadow-2xl text-center space-y-4">
-                                                            <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-green-600 mx-auto"></div>
+                                                            <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-accent mx-auto"></div>
                                                             <p className="text-lg font-bold text-gray-700">Submitting your application...</p>
                                                             <p className="text-sm text-gray-500">Please wait while we process your information</p>
                                                         </div>

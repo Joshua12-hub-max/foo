@@ -118,7 +118,7 @@ const EducationSection: React.FC<EducationSectionProps> = ({ register, errors, s
     <div className="space-y-6">
       <div>
         <h3 className="text-lg font-black text-slate-900 mb-1 uppercase tracking-widest flex items-center gap-3">
-          <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
+          <span className="w-1.5 h-1.5 bg-slate-500 rounded-full"></span>
           Educational Background
         </h3>
         <p className="text-xs text-slate-500 font-semibold mb-6">
@@ -136,7 +136,7 @@ const EducationSection: React.FC<EducationSectionProps> = ({ register, errors, s
               onClick={() => setActiveTab(level)}
               className={`px-4 py-2 text-xs font-bold uppercase tracking-wider rounded-t-lg transition-all whitespace-nowrap ${
                 activeTab === level
-                  ? 'bg-green-500 text-white border-b-2 border-green-600'
+                  ? 'bg-slate-500 text-white border-b-2 border-slate-600'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >

@@ -156,10 +156,10 @@ const Login: React.FC = () => {
   };
 
   const labelClass = "text-[11px] font-bold text-gray-600 mb-1.5 ml-1 block";
-  const inputContainerClass = "relative flex items-center bg-gray-100/60 border-[1.5px] border-gray-200 rounded-lg focus-within:ring-4 focus-within:ring-gray-100 focus-within:border-gray-800 transition-all overflow-hidden shadow-sm h-11";
+  const inputContainerClass = "relative flex items-center bg-gray-100/60 border-[1.5px] border-gray-200 rounded-lg focus-within:ring-4 focus-within:ring-gray-100 focus-within:border-accent transition-all overflow-hidden shadow-sm h-11";
   const iconClass = "absolute left-4 text-gray-400";
   const inputClass = "w-full bg-transparent pl-12 pr-4 h-full text-sm font-bold text-gray-900 outline-none placeholder:text-gray-400 placeholder:font-normal";
-  const buttonClass = "w-full h-12 bg-gray-900 text-white rounded-xl font-black text-sm hover:bg-black transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-xl flex justify-center items-center gap-2 active:scale-95";
+  const buttonClass = "w-full h-12 bg-accent text-white rounded-xl font-black text-sm hover:bg-accent-hover transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-xl flex justify-center items-center gap-2 active:scale-95";
 
   if (show2FA) {
     return (
@@ -170,7 +170,7 @@ const Login: React.FC = () => {
         <div className="space-y-6">
           <div className="flex justify-center">
             <div className="bg-blue-50 p-4 rounded-full border border-blue-100">
-              <CheckCircle className="text-blue-600 w-8 h-8" />
+              <CheckCircle className="text-accent w-8 h-8" />
             </div>
           </div>
           
@@ -223,7 +223,7 @@ const Login: React.FC = () => {
                 onSuccess: () => showToast("New code sent!", "success")
               })}
               disabled={resend2FAMutation.isPending}
-              className="text-xs font-bold text-blue-600 hover:text-blue-700 disabled:opacity-50 transition-colors"
+              className="text-xs font-bold text-accent hover:text-accent-hover disabled:opacity-50 transition-colors"
             >
               {resend2FAMutation.isPending ? "Sending code..." : "Resend verification code"}
             </button>
@@ -269,7 +269,7 @@ const Login: React.FC = () => {
           <div>
             <div className="flex justify-between items-center">
               <label className={labelClass}>Password</label>
-              <Link to="/forgot-password" className="text-xs font-semibold text-blue-600 hover:text-blue-700 mb-1.5 mr-1">
+              <Link to="/forgot-password" className="text-xs font-semibold text-accent hover:text-accent-hover mb-1.5 mr-1">
                 Forgot?
               </Link>
             </div>
@@ -304,7 +304,7 @@ const Login: React.FC = () => {
                   onChange={(e) => setRememberMe(e.target.checked)}
                   className="peer sr-only"
                 />
-                <div className="w-4 h-4 border-2 border-gray-300 rounded peer-checked:bg-slate-900 peer-checked:border-slate-900 transition-all" />
+                <div className="w-4 h-4 border-2 border-gray-300 rounded peer-checked:bg-accent peer-checked:border-accent transition-all" />
                 <CheckCircle className="absolute inset-0 text-white opacity-0 peer-checked:opacity-100 scale-50 peer-checked:scale-75 transition-all" size={16} />
               </div>
               <span className="text-xs font-medium text-gray-500 group-hover:text-gray-900 transition-colors">Keep me signed in</span>

@@ -30,9 +30,9 @@ export const verifyEnrollment = async (employeeId: string) => {
   return response.data;
 };
 
-export const checkEmailUniqueness = async (email: string) => {
+export const checkEmailUniqueness = async (email: string, applicantId?: string | number) => {
   const response = await api.get(`/auth/check-email`, {
-    params: { email }
+    params: { email, applicantId }
   });
   return response.data;
 };

@@ -126,7 +126,10 @@ export const sendMessage = async (req: Request, res: Response): Promise<void> =>
       .set({ updatedAt: sql`now()` })
       .where(eq(chatConversations.id, Number(conversationId)));
 
-    res.status(201).json({ success: true, messageId: (result as ResultSetHeader).insertId });
+    const insertedId = (result as ResultSetHeader).insertId;
+    const [newMessage] = await db.select().from(chatMessages).where(eq(chatMessages.id, insertedId));
+
+    res.status(201).json({ success: true, message: newMessage });
   } catch (error: unknown) {
     if (error instanceof ZodError) {
       res.status(400).json({ 

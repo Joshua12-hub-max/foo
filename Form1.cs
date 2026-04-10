@@ -47,6 +47,9 @@ namespace BioMiddleware
         // Auto-standby timer (do NOT confuse with tmrScan)
         private readonly System.Windows.Forms.Timer _tmrUiStandby = new System.Windows.Forms.Timer();
 
+        // Enrollment timeout timer (prevents stuck enrollments)
+        private readonly System.Windows.Forms.Timer _tmrEnrollTimeout = new System.Windows.Forms.Timer();
+
         public Form1()
         {
             InitializeComponent();
@@ -133,6 +136,22 @@ namespace BioMiddleware
                 }
 
                 SetUiStandby("AUTO");
+            };
+
+            // Enrollment timeout: automatically cancel stuck enrollments after 60 seconds
+            _tmrEnrollTimeout.Interval = 60000; // 60 seconds
+            _tmrEnrollTimeout.Tick += (_, __) =>
+            {
+                _tmrEnrollTimeout.Stop();
+                if (_isEnrolling)
+                {
+                    Log("SYS ENROLL_TIMEOUT: Enrollment timed out after 60s");
+                    _wsServer?.Broadcast("ENROLL_ERROR:Timeout - enrollment took too long");
+                    ResetEnrollSession();
+                    try { _serial?.SendLine("MODE ATTEND"); } catch { }
+                    SetUiStandby("ENROLL_TIMEOUT");
+                    ResumeScanning();
+                }
             };
         }
 
@@ -389,6 +408,7 @@ namespace BioMiddleware
             _pendingEnrollId = 0;
             _pendingEnrollName = "";
             _pendingEnrollDept = "";
+            _tmrEnrollTimeout.Stop(); // Stop timeout timer when resetting
         }
 
         private void ResetUiThrottles()
@@ -663,10 +683,14 @@ namespace BioMiddleware
             _pendingEnrollName = (fullName ?? "").Trim();
             _pendingEnrollDept = (department ?? "").Trim();
 
+            // Start enrollment timeout timer
+            _tmrEnrollTimeout.Stop();
+            _tmrEnrollTimeout.Start();
+
             lblBigStatus.Text = $"ENROLLING ID {id}";
             lblStatus.Text = "Place finger on scanner";
             SetIconWarning();
-            
+
             _wsServer?.Broadcast("ENROLL_STARTED");
 
             Log($"SYS ENROLL_START: {id} | {_pendingEnrollName} | {_pendingEnrollDept}");
@@ -999,11 +1023,12 @@ namespace BioMiddleware
         protected override void OnFormClosed(FormClosedEventArgs e)
         {
             base.OnFormClosed(e);
-            try 
+            try
             {
                _tmrUiStandby.Stop();
+               _tmrEnrollTimeout.Stop();
                _wsServer?.Dispose(); // Stop WS Server
-            } 
+            }
             catch { }
             DisconnectDevice();
         }

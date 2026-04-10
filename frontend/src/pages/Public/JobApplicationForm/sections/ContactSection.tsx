@@ -26,7 +26,7 @@ const ContactSection: React.FC<ContactSectionProps> = ({ register, errors, setVa
     <div className="space-y-6">
       <div>
         <h3 className="text-lg font-black text-slate-900 mb-1 uppercase tracking-widest flex items-center gap-3">
-          <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
+          <span className="w-1.5 h-1.5 bg-slate-500 rounded-full"></span>
           Contact Information
         </h3>
         <p className="text-xs text-slate-500 font-semibold mb-6">How can we reach you?</p>

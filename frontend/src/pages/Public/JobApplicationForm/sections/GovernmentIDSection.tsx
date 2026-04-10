@@ -51,7 +51,7 @@ const GovernmentIDSection: React.FC<GovernmentIDSectionProps> = ({ register, err
     <div className="space-y-6">
       <div>
         <h3 className="text-lg font-black text-slate-900 mb-1 uppercase tracking-widest flex items-center gap-3">
-          <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
+          <span className="w-1.5 h-1.5 bg-slate-500 rounded-full"></span>
           Government Identification Numbers
         </h3>
         <p className="text-xs text-slate-500 font-semibold mb-6">Provide your government-issued ID numbers</p>

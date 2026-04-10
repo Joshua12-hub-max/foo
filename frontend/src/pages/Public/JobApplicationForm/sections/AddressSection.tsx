@@ -13,7 +13,7 @@ interface AddressSectionProps {
 const AddressSection: React.FC<AddressSectionProps> = ({ register, errors, watch, setValue }) => {
   const [sameAsResidential, setSameAsResidential] = useState(false);
 
-  const inputClass = "w-full border-2 border-gray-300 focus:ring-4 focus:ring-green-100 focus:border-green-500 rounded-lg px-4 py-3 md:py-2.5 text-[15px] md:text-sm focus:outline-none transition-all bg-white text-slate-900 placeholder:text-gray-400 font-medium hover:border-gray-400 min-h-[48px] md:min-h-[44px]";
+  const inputClass = "w-full border-2 border-gray-300 focus:ring-4 focus:ring-slate-100 focus:border-slate-500 rounded-lg px-4 py-3 md:py-2.5 text-[15px] md:text-sm focus:outline-none transition-all bg-white text-slate-900 placeholder:text-gray-400 font-medium hover:border-gray-400 min-h-[48px] md:min-h-[44px]";
 
   const handleSameAsResidential = (checked: boolean) => {
     setSameAsResidential(checked);
@@ -54,7 +54,7 @@ const AddressSection: React.FC<AddressSectionProps> = ({ register, errors, watch
     <div className="space-y-6">
       <div>
         <h3 className="text-lg font-black text-slate-900 mb-1 uppercase tracking-widest flex items-center gap-3">
-          <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
+          <span className="w-1.5 h-1.5 bg-slate-500 rounded-full"></span>
           Address Information
         </h3>
         <p className="text-xs text-slate-500 font-semibold mb-6">Provide your residential and permanent address</p>
@@ -85,7 +85,7 @@ const AddressSection: React.FC<AddressSectionProps> = ({ register, errors, watch
               type="checkbox"
               checked={sameAsResidential}
               onChange={(e) => handleSameAsResidential(e.target.checked)}
-              className="w-4 h-4 text-green-600 focus:ring-green-500 rounded"
+              className="w-4 h-4 text-slate-600 focus:ring-slate-500 rounded"
             />
             <span className="text-xs font-semibold text-slate-700">Same as residential address</span>
           </label>
@@ -104,8 +104,8 @@ const AddressSection: React.FC<AddressSectionProps> = ({ register, errors, watch
         )}
 
         {sameAsResidential && (
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-            <p className="text-xs text-green-700 font-semibold">
+          <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+            <p className="text-xs text-slate-700 font-semibold">
               Permanent address will be the same as your residential address.
             </p>
           </div>

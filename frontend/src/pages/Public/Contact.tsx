@@ -1,27 +1,26 @@
-import { Mail, Phone, MapPin, MessageCircle, Clock, Send, ShieldCheck, Zap, User, Loader2 } from 'lucide-react';
+import { Mail, Phone, MapPin, MessageCircle, Clock, Send, Loader2 } from 'lucide-react';
 import PublicLayout from '@components/Public/PublicLayout';
 import { useChatStore } from '@/stores/chatStore';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { inquiryApi } from '@/api/inquiryApi';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { inquirySchema, InquiryInput } from '@/schemas/inquiry';
 import { toast } from 'react-hot-toast';
 import mapVisual from '@/assets/meycauayan-map.png';
-import contactHero from '@/assets/contact-hero.png';
 import SEO from '@/components/Global/SEO';
 
 const Contact = () => {
   const openChat = useChatStore((state) => state.openChat);
-  
+
   const { register, handleSubmit, formState: { errors, isSubmitting }, reset } = useForm<InquiryInput>({
     resolver: zodResolver(inquirySchema),
     defaultValues: {
-        firstName: '',
-        lastName: '',
-        email: '',
-        message: '',
-        hpField: ''
+      firstName: '',
+      lastName: '',
+      email: '',
+      message: '',
+      hpField: ''
     }
   });
 
@@ -35,12 +34,12 @@ const Contact = () => {
     } catch (error: unknown) {
       console.error(error);
       let serverMsg = 'Failed to send inquiry. Please try again.';
-      
+
       if (error && typeof error === 'object' && 'response' in error) {
         const axiosError = error as { response?: { data?: { message?: string } } };
         serverMsg = axiosError.response?.data?.message || serverMsg;
       }
-      
+
       toast.error(serverMsg);
     }
   };
@@ -49,269 +48,306 @@ const Contact = () => {
     const error = errors[name];
     if (!error) return null;
     return (
-      <motion.p 
+      <motion.p
         initial={{ opacity: 0, y: -5 }}
         animate={{ opacity: 1, y: 0 }}
-        className="text-[10px] font-bold text-red-500 mt-1 ml-1"
+        className="text-xs text-red-500 mt-1.5 font-medium"
       >
         {error.message}
       </motion.p>
     );
   };
 
+  const contactMethods = [
+    {
+      icon: Mail,
+      label: 'Email',
+      value: 'hr@lgu-meycauayan.gov.ph',
+      description: 'Send us an email anytime',
+      action: 'mailto:hr@lgu-meycauayan.gov.ph'
+    },
+    {
+      icon: Phone,
+      label: 'Phone',
+      value: '(044) 123-4567',
+      description: 'Mon-Fri, 8am-5pm',
+      action: 'tel:+63441234567'
+    },
+    {
+      icon: MapPin,
+      label: 'Office',
+      value: 'City Hall, Meycauayan',
+      description: 'MacArthur Highway, Bulacan',
+      image: mapVisual
+    }
+  ];
+
   return (
     <PublicLayout>
-      <SEO 
+      <SEO
         title="Contact Us"
         description="Get in touch with the City of Meycauayan HR team. We are here to assist with your inquiries."
       />
-        {/* Background Decorative Elements - Master Balance */}
-        <div className="absolute top-0 left-0 right-0 h-[600px] -z-10 overflow-hidden pointer-events-none">
-            <div className="absolute top-[-5%] left-[-5%] w-[400px] h-[400px] bg-green-500/5 rounded-full blur-[100px] mix-blend-screen opacity-10"></div>
-            <div className="absolute bottom-0 right-[-5%] w-[300px] h-[300px] bg-green-900/5 rounded-full blur-[100px] mix-blend-screen opacity-10"></div>
-        </div>
 
-      <div className="max-w-6xl mx-auto px-6 pt-4 md:pt-8 pb-16">
-        {/* Header - Compact 100% Balance with Conceptual Visual */}
-        <div className="flex flex-col lg:flex-row items-center gap-10 mb-12">
-            <motion.div 
-                initial={{ opacity: 0, x: -30 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.6, ease: "easeOut" }}
-                className="flex-1 text-center lg:text-left"
+      {/* Hero */}
+      <div className="relative bg-gradient-to-br from-slate-50 via-white to-slate-50 border-b border-slate-200 py-24 overflow-hidden">
+        {/* Blue Smoke Grid Background - Small Squares */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#0ea5e9_1px,transparent_1px),linear-gradient(to_bottom,#0ea5e9_1px,transparent_1px)] bg-[size:16px_16px] smoke-grid"></div>
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#38bdf8_1px,transparent_1px),linear-gradient(to_bottom,#38bdf8_1px,transparent_1px)] bg-[size:24px_24px] smoke-grid-secondary"></div>
+        <div className="absolute inset-0 bg-gradient-to-br from-white/85 via-white/50 to-white/85"></div>
+
+        <div className="max-w-6xl mx-auto px-6 relative z-10">
+          <div className="max-w-3xl mx-auto text-center">
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-slate-200 shadow-sm text-sm font-medium text-slate-700 mb-8"
             >
-                  <motion.div 
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.2 }}
-                    className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-green-50 text-green-600 border border-green-100 text-[10px] font-bold tracking-tight mb-4 shadow-sm"
-                  >
-                    Contact us
-                  </motion.div>
-                <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-slate-900 mb-4 tracking-tighter leading-none">
-                    Let's Build the <span className="text-green-600">Future</span> Together
-                </h1>
-                <p className="text-slate-400 text-sm md:text-base font-semibold max-w-xl mx-auto lg:mx-0 leading-relaxed">
-                  Connect with our human resources team for inquiries regarding job openings and applications. We prioritize every message.
-                </p>
+              <MessageCircle size={16} className="text-slate-500" />
+              Support
             </motion.div>
-            
-            <motion.div 
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="hidden lg:block w-64 h-64 relative group"
+
+            <motion.h1
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="text-5xl sm:text-6xl md:text-7xl font-bold text-slate-900 leading-tight mb-8"
             >
-                <div className="absolute inset-0 bg-green-500/10 rounded-full blur-3xl group-hover:bg-green-500/20 transition-colors duration-700"></div>
-                <img 
-                    src={contactHero} 
-                    alt="Communication Support" 
-                    className="w-full h-full object-contain relative z-10 transition-transform duration-700 group-hover:scale-110" 
-                />
-            </motion.div>
+              Get in touch
+            </motion.h1>
+
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="text-2xl text-slate-700 leading-relaxed font-medium"
+            >
+              Have questions about careers or applications? Our HR team is here to help.
+            </motion.p>
+          </div>
         </div>
+      </div>
 
-        {/* Master Info & Form Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 mb-12">
-            
-            {/* Info Cards Column */}
-            <div className="lg:col-span-2 space-y-5">
-                {[
-                    {
-                        icon: <Mail className="text-green-500" size={20} />,
-                        label: "Email Us",
-                        value: "hr@lgu-meycauayan.gov.ph",
-                        desc: "Send us an email anytime."
-                    },
-                    {
-                        icon: <Phone className="text-green-500" size={20} />,
-                        label: "Call Us",
-                        value: "(044) 123-4567",
-                        desc: "Direct Human Resource office line."
-                    },
-                    {
-                        icon: <MapPin className="text-green-500" size={20} />,
-                        label: "Visit Us",
-                        value: "Meycauayan City Hall",
-                        desc: "Brgy. Saluysoy, MacArthur Highway, City of Meycauayan, Bulacan",
-                        image: mapVisual
-                    }
-                ].map((item, i) => (
-                    <motion.div 
-                        key={i}
-                        initial={{ opacity: 0, y: 20 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true }}
-                        transition={{ delay: i * 0.1 }}
-                        className="bg-white p-5 rounded-2xl border border-slate-200 shadow-premium hover:shadow-premium-hover transition-all duration-500 group overflow-hidden flex flex-col"
-                    >
-                        <div className="flex gap-4">
-                            <div className="w-10 h-10 bg-white/5 rounded-lg flex-shrink-0 flex items-center justify-center group-hover:bg-green-500 group-hover:text-white transition-all duration-500">
-                                {item.icon}
-                            </div>
-                            <div className="flex-1">
-                                <span className="text-[10px] font-bold text-green-600 tracking-tight block mb-1">How to reach us</span>
-                                <p className="text-[14px] font-bold text-slate-900 mb-0.5 tracking-tight">{item.value}</p>
-                                <p className="text-[10px] font-semibold text-slate-500">{item.desc}</p>
-                            </div>
-                        </div>
-                        
-                        {item.image && (
-                            <div className="mt-4 h-24 -mx-5 -mb-5 bg-slate-50 overflow-hidden group-hover:h-32 transition-all duration-700 relative">
-                            <img 
-                                    src={item.image} 
-                                    alt="Map Location" 
-                                    className="w-full h-full object-cover opacity-60 group-hover:opacity-100 group-hover:scale-110 transition-all duration-700" 
-                            />
-                            <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-slate-200/40 to-transparent"></div>
-                            </div>
-                        )}
-                    </motion.div>
-                ))}
-            </div>
-
-            {/* Inquiry Form Column */}
-            <motion.div 
+      {/* Content */}
+      <div className="bg-white py-20">
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-16">
+            {/* Contact Methods */}
+            {contactMethods.map((method, index) => (
+              <motion.div
+                key={index}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                className="lg:col-span-3 bg-white p-8 rounded-3xl border border-slate-200 shadow-premium"
-            >
-                <div className="mb-8">
-                    <h2 className="text-xl font-black text-slate-900 tracking-tight mb-2 flex items-center gap-3">
-                        <span className="w-1.5 h-6 bg-green-600 rounded-full"></span>
-                        Send a Message
-                    </h2>
-                    <p className="text-slate-500 text-[11px] font-bold">Have a specific question? Fill out the form below and our team will get back to you.</p>
-                </div>
-
-                <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                        <div className="space-y-1.5">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">First Name</label>
-                            <div className="relative">
-                                <User size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
-                                <input 
-                                    {...register('firstName')}
-                                    className={`w-full pl-11 pr-4 py-3 bg-slate-50 border rounded-xl text-sm font-bold text-slate-900 outline-none transition-all placeholder:text-slate-300 ${errors.firstName ? 'border-red-500 ring-2 ring-red-500/10' : 'border-slate-200 focus:border-green-600'}`}
-                                    placeholder="John"
-                                />
-                            </div>
-                            <FieldError name="firstName" />
-                        </div>
-                        <div className="space-y-1.5">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Last Name</label>
-                            <div className="relative">
-                                <User size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
-                                <input 
-                                    {...register('lastName')}
-                                    className={`w-full pl-11 pr-4 py-3 bg-slate-50 border rounded-xl text-sm font-bold text-slate-900 outline-none transition-all placeholder:text-slate-300 ${errors.lastName ? 'border-red-500 ring-2 ring-red-500/10' : 'border-slate-200 focus:border-green-600'}`}
-                                    placeholder="Doe"
-                                />
-                            </div>
-                            <FieldError name="lastName" />
-                        </div>
+                transition={{ delay: index * 0.1 }}
+                className="group"
+              >
+                {method.action ? (
+                  <a
+                    href={method.action}
+                    className="block bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-2xl p-8 transition-all duration-200 hover:shadow-lg h-full"
+                  >
+                    <div className="flex items-start gap-4 mb-6">
+                      <div className="p-3 bg-white border border-slate-200 rounded-xl text-slate-600 group-hover:text-slate-900 transition-colors">
+                        <method.icon size={24} />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-base font-semibold text-slate-500 mb-1">
+                          {method.label}
+                        </p>
+                        <p className="text-xl font-bold text-slate-900 mb-2 leading-snug">
+                          {method.value}
+                        </p>
+                        <p className="text-base text-slate-600 leading-relaxed">
+                          {method.description}
+                        </p>
+                      </div>
                     </div>
-
-                    <div className="space-y-1.5">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Email Address</label>
-                        <div className="relative">
-                            <Mail size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
-                            <input 
-                                {...register('email')}
-                                className={`w-full pl-11 pr-4 py-3 bg-slate-50 border rounded-xl text-sm font-bold text-slate-900 outline-none transition-all placeholder:text-slate-300 ${errors.email ? 'border-red-500 ring-2 ring-red-500/10' : 'border-slate-200 focus:border-green-600'}`}
-                                placeholder="john.doe@example.com"
-                            />
-                        </div>
-                        <FieldError name="email" />
+                    {method.image && (
+                      <div className="h-32 -mx-8 -mb-8 overflow-hidden rounded-b-2xl">
+                        <img
+                          src={method.image}
+                          alt="Location"
+                          className="w-full h-full object-cover opacity-50 group-hover:opacity-75 group-hover:scale-105 transition-all duration-500"
+                        />
+                      </div>
+                    )}
+                  </a>
+                ) : (
+                  <div className="bg-slate-50 border border-slate-200 rounded-2xl p-8 h-full">
+                    <div className="flex items-start gap-4 mb-6">
+                      <div className="p-3 bg-white border border-slate-200 rounded-xl text-slate-600">
+                        <method.icon size={24} />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-base font-semibold text-slate-500 mb-1">
+                          {method.label}
+                        </p>
+                        <p className="text-xl font-bold text-slate-900 mb-2 leading-snug">
+                          {method.value}
+                        </p>
+                        <p className="text-base text-slate-600 leading-relaxed">
+                          {method.description}
+                        </p>
+                      </div>
                     </div>
+                    {method.image && (
+                      <div className="h-32 -mx-8 -mb-8 overflow-hidden rounded-b-2xl">
+                        <img
+                          src={method.image}
+                          alt="Location"
+                          className="w-full h-full object-cover opacity-50"
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+              </motion.div>
+            ))}
+          </div>
 
-                    {/* Honeypot field - Hidden from users */}
-                    <input type="text" {...register('hpField')} className="hidden" tabIndex={-1} autoComplete="off" />
-
-                    <div className="space-y-1.5">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Message</label>
-                        <textarea 
-                            {...register('message')}
-                            rows={4}
-                            className={`w-full px-4 py-3 bg-[#131314] border rounded-xl text-sm font-bold text-white outline-none transition-all placeholder:text-slate-700 resize-none ${errors.message ? 'border-red-500 ring-2 ring-red-500/10' : 'border-[#444746] focus:border-green-500'}`}
-                            placeholder="How can we help you?"
-                        ></textarea>
-                        <FieldError name="message" />
-                    </div>
-
-                    <button 
-                        id="contact-submit-button"
-                        type="submit"
-                        disabled={isSubmitting}
-                        className="w-full bg-green-600 hover:bg-green-700 text-white py-4 rounded-xl font-black text-sm tracking-tight transition-all shadow-xl shadow-green-900/10 flex items-center justify-center gap-3 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
-                        {isSubmitting ? 'Sending...' : 'Submit Inquiry'}
-                    </button>
-                </form>
-            </motion.div>
-        </div>
-
-        {/* Live Chat CTA - Premium Design Integration */}
-        <motion.div 
-            initial={{ opacity: 0, y: 30 }}
+          {/* Contact Form */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="bg-white rounded-[1.5rem] sm:rounded-[2.5rem] p-6 sm:p-12 relative overflow-hidden shadow-2xl border border-slate-200"
-        >
-            {/* Subtle Patterns */}
-            <motion.div 
-                animate={{ 
-                    scale: [1, 1.2, 1],
-                    opacity: [0.1, 0.2, 0.1]
-                }}
-                transition={{ duration: 8, repeat: Infinity }}
-                className="absolute top-0 right-0 w-64 h-64 bg-green-500/10 rounded-full blur-[80px] -mr-32 -mt-32"
-            ></motion.div>
-            <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full blur-[60px] -ml-24 -mb-24"></div>
-            
-            <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
-                <div className="text-center md:text-left space-y-3">
-                    <div className="flex items-center justify-center md:justify-start gap-2 text-green-600 font-bold text-[10px] tracking-tight">
-                        <Zap size={14} fill="currentColor" />
-                        Quick response
-                    </div>
-                    <h2 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tighter leading-none">
-                        Live Support
-                    </h2>
-                    <p className="text-slate-500 text-sm md:text-base font-semibold max-w-md">
-                        Chat directly with our team for real-time assistance and support.
-                    </p>
-                </div>
-                
-                <div className="flex flex-col items-center gap-4">
-                    <motion.button 
-                        whileHover={{ scale: 1.05, y: -2 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={openChat}
-                        className="group bg-slate-900 text-white px-8 py-4 rounded-xl font-black text-[14px] tracking-tight transition-all shadow-xl shadow-slate-200 flex items-center gap-3 hover:bg-black"
-                    >
-                        <MessageCircle size={18} className="transition-transform group-hover:rotate-12" />
-                        Chat Now
-                    </motion.button>
-                    <div className="flex items-center gap-2 text-white/30 text-[10px] font-bold tracking-tight">
-                        <ShieldCheck size={12} />
-                        Secure chat
-                    </div>
-                </div>
+            className="max-w-2xl mx-auto zed-card p-10"
+          >
+            <div className="mb-10 text-center">
+              <h2 className="text-4xl font-bold text-[var(--zed-text-dark)] tracking-tight mb-4">
+                Send us a message
+              </h2>
+              <p className="text-lg text-[var(--zed-text-muted)] font-medium">
+                Fill out the form below and we'll get back to you within 24 hours
+              </p>
             </div>
-        </motion.div>
 
-        {/* Operating Hours - Master Footer Note */}
-        <div className="mt-12 text-center text-slate-500 text-[11px] font-bold flex flex-col md:flex-row items-center justify-center gap-2 md:gap-6 tracking-tight">
-            <div className="flex items-center gap-2">
-                <Clock size={12} className="opacity-40" />
-                Mon - Fri: 08:00 - 17:00
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-xs font-bold text-[var(--zed-text-dark)] uppercase tracking-wider mb-2">
+                    First Name
+                  </label>
+                  <input
+                    {...register('firstName')}
+                    className={`w-full px-4 py-4 bg-white border rounded-[var(--radius-md)] text-base focus:outline-none focus:ring-4 transition-all ${
+                      errors.firstName
+                        ? 'border-[var(--zed-error)] ring-[var(--zed-error)]/10'
+                        : 'border-[var(--zed-border-light)] focus:border-[var(--zed-primary)] focus:ring-[var(--zed-primary)]/10'
+                    }`}
+                    placeholder="John"
+                  />
+                  <FieldError name="firstName" />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-[var(--zed-text-dark)] uppercase tracking-wider mb-2">
+                    Last Name
+                  </label>
+                  <input
+                    {...register('lastName')}
+                    className={`w-full px-4 py-4 bg-white border rounded-[var(--radius-md)] text-base focus:outline-none focus:ring-4 transition-all ${
+                      errors.lastName
+                        ? 'border-[var(--zed-error)] ring-[var(--zed-error)]/10'
+                        : 'border-[var(--zed-border-light)] focus:border-[var(--zed-primary)] focus:ring-[var(--zed-primary)]/10'
+                    }`}
+                    placeholder="Doe"
+                  />
+                  <FieldError name="lastName" />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[var(--zed-text-dark)] uppercase tracking-wider mb-2">
+                  Email Address
+                </label>
+                <input
+                  {...register('email')}
+                  className={`w-full px-4 py-4 bg-white border rounded-[var(--radius-md)] text-base focus:outline-none focus:ring-4 transition-all ${
+                    errors.email
+                      ? 'border-[var(--zed-error)] ring-[var(--zed-error)]/10'
+                      : 'border-[var(--zed-border-light)] focus:border-[var(--zed-primary)] focus:ring-[var(--zed-primary)]/10'
+                  }`}
+                  placeholder="john.doe@example.com"
+                />
+                <FieldError name="email" />
+              </div>
+
+              <input type="text" {...register('hpField')} className="hidden" tabIndex={-1} />
+
+              <div>
+                <label className="block text-xs font-bold text-[var(--zed-text-dark)] uppercase tracking-wider mb-2">
+                  Message
+                </label>
+                <textarea
+                  {...register('message')}
+                  rows={5}
+                  className={`w-full px-4 py-4 bg-white border rounded-[var(--radius-md)] text-base leading-relaxed focus:outline-none focus:ring-4 transition-all resize-none ${
+                    errors.message
+                      ? 'border-[var(--zed-error)] ring-[var(--zed-error)]/10'
+                      : 'border-[var(--zed-border-light)] focus:border-[var(--zed-primary)] focus:ring-[var(--zed-primary)]/10'
+                  }`}
+                  placeholder="How can we help you?"
+                />
+                <FieldError name="message" />
+              </div>
+
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full zed-btn zed-btn-accent py-5 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
+              >                {isSubmitting ? (
+                  <>
+                    <Loader2 size={20} className="animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <Send size={20} />
+                    Send Message
+                  </>
+                )}
+              </button>
+            </form>
+          </motion.div>
+
+          {/* Live Chat CTA */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="mt-16 max-w-2xl mx-auto bg-[var(--zed-bg-dark)] text-white rounded-[var(--radius-lg)] p-12 text-center shadow-[var(--zed-shadow-xl)] border border-[var(--zed-border-dark)]"
+          >
+            <div className="mb-10">
+              <h3 className="text-4xl font-bold mb-4 tracking-tight">
+                Need immediate help?
+              </h3>
+              <p className="text-lg text-slate-400 font-medium">
+                Chat with our team for real-time assistance
+              </p>
             </div>
-            <div className="hidden md:block w-1 h-1 bg-slate-200 rounded-full"></div>
-            <div className="flex items-center gap-2">
-                Response Target: <span className="text-green-500 font-black">{'<'} 30 Minutes</span>
+            <button
+              onClick={openChat}
+              className="px-12 py-5 bg-white hover:bg-slate-50 text-[var(--zed-bg-dark)] rounded-[var(--radius-md)] font-bold text-lg transition-all active:scale-95 inline-flex items-center gap-3 shadow-lg"
+            >
+              <MessageCircle size={22} />
+              Start Live Chat
+            </button>
+          </motion.div>
+
+          {/* Office Hours */}
+          <div className="mt-16 text-center">
+            <div className="inline-flex items-center gap-8 px-8 py-5 bg-[var(--zed-bg-surface)] border border-[var(--zed-border-light)] rounded-full shadow-sm">
+              <div className="flex items-center gap-3 text-sm text-[var(--zed-text-dark)]">
+                <Clock size={18} className="text-[var(--zed-primary)]" />
+                <span className="font-bold uppercase tracking-wider">Mon - Fri: 8:00 AM - 5:00 PM</span>
+              </div>
+              <div className="w-1.5 h-1.5 bg-[var(--zed-border-light)] rounded-full"></div>
+              <div className="text-sm text-[var(--zed-text-muted)] font-bold">
+                Typical response time: <span className="text-[var(--zed-primary)] uppercase tracking-wide">&lt; 24 hours</span>
+              </div>
             </div>
+          </div>
         </div>
       </div>
     </PublicLayout>

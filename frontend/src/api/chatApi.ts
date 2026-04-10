@@ -39,7 +39,7 @@ export const chatApi = {
    * Public/Admin: Send a message
    * Uses dedicated admin route if senderType is Administrator
    */
-  sendMessage: async (data: { conversationId: number; message: string; senderType: 'Applicant' | 'Administrator' }): Promise<AxiosResponse<{ success: boolean; messageId: number }>> => {
+  sendMessage: async (data: { conversationId: number; message: string; senderType: 'Applicant' | 'Administrator' }): Promise<AxiosResponse<{ success: boolean; message: ChatMessage }>> => {
     const url = data.senderType === 'Administrator' ? '/chat/admin/message' : '/chat/message';
     return await api.post(url, data);
   },

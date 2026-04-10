@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Send, User, Loader2, Info, Pencil, Trash2 } from 'lucide-react';
+import { X, Send, MessageCircle, Loader2, Trash2, AlertCircle } from 'lucide-react';
 import { chatApi, ChatMessage, ChatConversation } from '@/api/chatApi';
 import { useChatStore } from '@/stores/chatStore';
 import { useAuthStore } from '@/stores/authStore';
@@ -13,33 +13,42 @@ import ConfirmDialog from '@/components/Custom/Shared/ConfirmDialog';
 const LiveChatWidget = () => {
     const user = useAuthStore(state => state.user);
     const isAuthenticated = useAuthStore(state => state.isAuthenticated);
-    
-    const { isOpen, setIsOpen } = { 
-        isOpen: useChatStore(state => state.isOpen), 
+
+    const { isOpen, setIsOpen } = {
+        isOpen: useChatStore(state => state.isOpen),
         setIsOpen: (open: boolean) => {
             if (open) useChatStore.getState().openChat();
             else useChatStore.getState().closeChat();
         }
     };
+
     const [onboarded, setOnboarded] = useState(false);
     const [conversation, setConversation] = useState<ChatConversation | null>(null);
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [input, setInput] = useState('');
     const [loading, setLoading] = useState(false);
-    const [editingId, setEditingId] = useState<number | null>(null);
-    const [editInput, setEditInput] = useState('');
     const [deletingId, setDeletingId] = useState<number | null>(null);
     const [isDeletingHistory, setIsDeletingHistory] = useState(false);
+    const [isConnected, setIsConnected] = useState(true);
+    const [isPageVisible, setIsPageVisible] = useState(true);
     const scrollRef = useRef<HTMLDivElement>(null);
-    
-    // Store integration
+
     const unreadCount = useChatStore(state => state.unreadCount);
     const setUnreadCount = useChatStore(state => state.setUnreadCount);
     const setConversationId = useChatStore(state => state.setConversationId);
 
-    // Form for onboarding
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
+    const [formErrors, setFormErrors] = useState<{ name?: string; email?: string }>({});
+
+    // Visibility Listener
+    useEffect(() => {
+        const handleVisibilityChange = () => {
+            setIsPageVisible(document.visibilityState === 'visible');
+        };
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+    }, []);
 
     // Load from localStorage or Auto-onboard if authenticated
     useEffect(() => {
@@ -47,7 +56,6 @@ const LiveChatWidget = () => {
         const savedName = localStorage.getItem('chat_user_name');
         const savedEmail = localStorage.getItem('chat_user_email');
 
-        // Always populate name/email if they exist
         if (savedName) setName(savedName);
         if (savedEmail) setEmail(savedEmail);
 
@@ -77,43 +85,46 @@ const LiveChatWidget = () => {
                         localStorage.setItem('chat_user_email', user.email);
                         const msgRes = await chatApi.getMessages(res.data.conversation.id);
                         setMessages(msgRes.data.messages);
+                        setIsConnected(true);
                     }
                 } catch (err) {
                     console.error('Auto-onboard failed:', err);
+                    setIsConnected(false);
                 } finally {
                     setLoading(false);
                 }
             };
             autoOnboard();
         }
-    }, [isAuthenticated, user, onboarded, isOpen, setConversationId]);
+    }, [isAuthenticated, user, onboarded, isOpen, setConversationId, loading]);
 
-    // Poll for new messages when open
+    // Poll for new messages when open and page is visible
     useEffect(() => {
         let interval: NodeJS.Timeout;
-        if (isOpen && conversation) {
+        if (isOpen && conversation && isPageVisible) {
             const fetchMessages = async () => {
                 try {
                     const res = await chatApi.getMessages(conversation.id, true, 'Applicant');
                     if (res.data.success) {
                         setMessages(res.data.messages);
+                        setIsConnected(true);
                     }
                 } catch (err) {
                     console.error('Polling error:', err);
+                    setIsConnected(false);
                 }
             };
 
-            console.log('[Chat] Polling for messages...', conversation.id);
-            fetchMessages(); // Initial fetch
-            interval = setInterval(fetchMessages, 5000); // Poll every 5s
+            fetchMessages();
+            interval = setInterval(fetchMessages, 4000);
         }
         return () => clearInterval(interval);
-    }, [isOpen, conversation]);
+    }, [isOpen, conversation, isPageVisible]);
 
-    // Poll for unread count when closed
+    // Poll for unread count when closed and page is visible
     useEffect(() => {
         let interval: NodeJS.Timeout;
-        if (!isOpen && conversation) {
+        if (!isOpen && conversation && isPageVisible) {
             const fetchUnread = async () => {
                 try {
                     const res = await chatApi.getUnreadCount(conversation.id, 'Applicant');
@@ -125,11 +136,11 @@ const LiveChatWidget = () => {
                 }
             };
 
-            fetchUnread(); // Initial fetch
-            interval = setInterval(fetchUnread, 10000); // Poll every 10s when closed
+            fetchUnread();
+            interval = setInterval(fetchUnread, 12000);
         }
         return () => clearInterval(interval);
-    }, [isOpen, conversation, setUnreadCount]);
+    }, [isOpen, conversation, setUnreadCount, isPageVisible]);
 
     // Scroll to bottom
     useEffect(() => {
@@ -140,33 +151,41 @@ const LiveChatWidget = () => {
 
     const handleStartChat = async (e: React.FormEvent) => {
         e.preventDefault();
+        setFormErrors({});
         setLoading(true);
+
         try {
-            // Validate client-side first
-            chatStartSchema.parse({ name, email });
-            
-            const res = await chatApi.start(name, email);
+            chatStartSchema.parse({ name: name.trim(), email: email.trim() });
+
+            const res = await chatApi.start(name.trim(), email.trim());
             if (res.data.success) {
                 setConversation(res.data.conversation);
                 setConversationId(res.data.conversation.id);
                 setOnboarded(true);
                 localStorage.setItem('chat_conversation_id', res.data.conversation.id.toString());
-                localStorage.setItem('chat_user_name', name);
-                localStorage.setItem('chat_user_email', email);
-                // Try to load history
+                localStorage.setItem('chat_user_name', name.trim());
+                localStorage.setItem('chat_user_email', email.trim());
                 const msgRes = await chatApi.getMessages(res.data.conversation.id);
                 setMessages(msgRes.data.messages);
+                setIsConnected(true);
+                toast.success('Chat started successfully!');
             }
         } catch (err: unknown) {
             console.error('Failed to start chat', err);
             if (err instanceof ZodError) {
-                toast.error(err.issues[0].message, { id: 'chat-val-error' });
+                const errors: { name?: string; email?: string } = {};
+                err.issues.forEach(issue => {
+                    const path = issue.path[0] as string;
+                    if (path === 'name') errors.name = issue.message;
+                    if (path === 'email') errors.email = issue.message;
+                });
+                setFormErrors(errors);
             } else if (err && typeof err === 'object' && 'response' in err) {
                 const axiosErr = err as { response?: { data?: { message?: string } } };
                 const serverMsg = axiosErr.response?.data?.message || 'Failed to start chat';
-                toast.error(serverMsg, { id: 'chat-server-error' });
+                toast.error(serverMsg);
             } else {
-                toast.error('Failed to start chat', { id: 'chat-generic-error' });
+                toast.error('Failed to start chat. Please check your connection.');
             }
         } finally {
             setLoading(false);
@@ -180,327 +199,310 @@ const LiveChatWidget = () => {
         setInput('');
 
         try {
-            await chatApi.sendMessage({
+            const res = await chatApi.sendMessage({
                 conversationId: conversation.id,
-                message: originalMsg,
+                message: originalMsg.trim(),
                 senderType: 'Applicant'
             });
-            // Immediately fetch to show user msg
-            const res = await chatApi.getMessages(conversation.id);
-            setMessages(res.data.messages);
+            if (res.data.success) {
+                setMessages(prev => [...prev, res.data.message]);
+                setIsConnected(true);
+            }
         } catch (err) {
             console.error('Send error:', err);
             setInput(originalMsg);
+            toast.error('Failed to send message. Please try again.');
+            setIsConnected(false);
         }
     };
 
-    const handleEdit = async (msgId: number) => {
-        if (!editInput.trim() || !conversation) return;
-        try {
-            await chatApi.editMessage(msgId, { 
-                message: editInput, 
-                senderType: 'Applicant',
-                conversationId: conversation.id 
-            });
-            setEditingId(null);
-            const res = await chatApi.getMessages(conversation.id);
-            setMessages(res.data.messages);
-        } catch (err) {
-            console.error('Edit error:', err);
-        }
-    };
-
-    const handleDelete = async (msgId: number, type: 'me' | 'everyone') => {
+    const handleDeleteHistory = async () => {
         if (!conversation) return;
-        try {
-            await chatApi.deleteMessage(msgId, type, 'Applicant', conversation.id);
-            setDeletingId(null);
-            const res = await chatApi.getMessages(conversation.id);
-            setMessages(res.data.messages);
-        } catch (err) {
-            console.error('Delete error:', err);
-        }
-    };
-
-    const confirmDeleteHistory = async () => {
-        if (!conversation) return;
+        setIsDeletingHistory(true);
         try {
             await chatApi.deleteConversation(conversation.id, 'Applicant');
             localStorage.removeItem('chat_conversation_id');
-            // We KEEP chat_user_name and chat_user_email 
-            setConversationId(null);
-            setUnreadCount(0);
+            localStorage.removeItem('chat_user_name');
+            localStorage.removeItem('chat_user_email');
             setConversation(null);
             setMessages([]);
             setOnboarded(false);
+            setIsOpen(false);
+            toast.success('Chat history deleted');
         } catch (err) {
-            console.error('Delete conversation error:', err);
+            console.error('Delete history error:', err);
+            toast.error('Failed to delete chat history');
         } finally {
             setIsDeletingHistory(false);
+            setDeletingId(null);
         }
     };
 
     return (
-        <div className="fixed bottom-6 right-6 z-[9999] font-outfit">
-            <AnimatePresence>
-                {isOpen && (
-                    <motion.div 
-                        initial={{ opacity: 0, scale: 0.9, y: 40, filter: 'blur(10px)' }}
-                        animate={{ opacity: 1, scale: 1, y: 0, filter: 'blur(0px)' }}
-                        exit={{ opacity: 0, scale: 0.9, y: 40, filter: 'blur(10px)' }}
-                        className="absolute bottom-20 right-[-8px] sm:right-0 w-[calc(100vw-32px)] sm:w-[360px] bg-slate-900 rounded-3xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.5)] border border-slate-700/50 overflow-hidden flex flex-col"
-                        style={{ height: 'min(580px, calc(100vh - 120px))' }}
-                    >
-                        {/* Header */}
-                        <div className="bg-slate-800/50 border-b border-slate-700/50 px-5 py-5 flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <div className="w-1 bg-white/20 h-4 rounded-full" />
-                                <div>
-                                    <h3 className="font-black text-sm text-white flex items-center gap-2 tracking-tight uppercase">
-                                        Live support
-                                        <span className="flex h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse"></span>
-                                    </h3>
-                                    <p className="text-[10px] font-bold text-slate-400 tracking-widest uppercase">Active session</p>
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-1">
-                                {onboarded && conversation && (
-                                    <button 
-                                        onClick={() => setIsDeletingHistory(true)}
-                                        className="p-2 text-red-300 hover:text-red-400 hover:bg-white/10 rounded-lg transition-all"
-                                        title="Delete entire history"
-                                    >
-                                        <Trash2 size={16} />
-                                    </button>
-                                )}
-                                <button 
-                                    onClick={() => setIsOpen(false)}
-                                    className="p-2.5 hover:bg-white/5 rounded-xl transition-all active:scale-90 text-slate-500 hover:text-white"
-                                >
-                                    <X size={16} />
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Content */}
-                        <div className="flex-1 min-h-0 relative z-20 bg-slate-900 flex flex-col overflow-hidden">
-                            {!onboarded ? (
-                                <div className="flex-1 p-8 flex flex-col justify-center text-center">
-                                    <div className="mb-10">
-                                        <h4 className="text-xl font-black text-white tracking-tight uppercase">Chat with HR</h4>
-                                        <p className="text-[11px] text-slate-500 mt-2 font-bold uppercase tracking-wider">Please enter your details to start</p>
-                                    </div>
-                                    <form onSubmit={handleStartChat} className="space-y-4">
-                                        <input 
-                                            required
-                                            type="text" 
-                                            placeholder="Full name" 
-                                            className="w-full px-5 py-4 bg-slate-800/50 border border-slate-700/50 rounded-2xl focus:bg-slate-800 focus:ring-2 focus:ring-white/10 outline-none transition-all font-bold text-[13px] text-white placeholder:text-slate-600"
-                                            value={name}
-                                            onChange={(e) => setName(e.target.value)}
-                                        />
-                                        <input 
-                                            required
-                                            type="email" 
-                                            placeholder="Email address" 
-                                            className="w-full px-5 py-4 bg-slate-800/50 border border-slate-700/50 rounded-2xl focus:bg-slate-800 focus:ring-2 focus:ring-white/10 outline-none transition-all font-bold text-[13px] text-white placeholder:text-slate-600"
-                                            value={email}
-                                            onChange={(e) => setEmail(e.target.value)}
-                                        />
-                                        <button 
-                                            disabled={loading}
-                                            className="w-full bg-white text-slate-900 font-black py-4 rounded-2xl shadow-2xl hover:bg-slate-100 active:scale-95 transition-all text-xs tracking-widest uppercase mt-4"
-                                        >
-                                            {loading ? <Loader2 size={16} className="animate-spin" /> : 'Start chat'}
-                                        </button>
-                                    </form>
-                                    <p className="mt-10 text-[9px] text-slate-600 font-bold tracking-widest uppercase">Typical response: 5 mins</p>
+        <>
+            {/* Chat Button */}
+            <motion.button
+                onClick={() => setIsOpen(!isOpen)}
+                className="fixed bottom-6 right-6 z-50 p-4 bg-[var(--zed-bg-dark)] hover:bg-[var(--zed-bg-darker)] text-white rounded-full shadow-[var(--zed-shadow-xl)] transition-all active:scale-95 border border-[var(--zed-border-dark)]"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+            >
+                <AnimatePresence mode="wait">
+                    {isOpen ? (
+                        <motion.div
+                            key="close"
+                            initial={{ rotate: -90, opacity: 0 }}
+                            animate={{ rotate: 0, opacity: 1 }}
+                            exit={{ rotate: 90, opacity: 0 }}
+                        >
+                            <X size={24} />
+                        </motion.div>
+                    ) : (
+                        <motion.div
+                            key="open"
+                            className="relative"
+                            initial={{ scale: 0.8, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.8, opacity: 0 }}
+                        >
+                            <MessageCircle size={24} />
+                            {unreadCount > 0 ? (
+                                <div className="absolute -top-3 -right-3 bg-[var(--zed-primary)] text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center border-2 border-[var(--zed-bg-dark)]">
+                                    {unreadCount}
                                 </div>
                             ) : (
-                                <>
-                                    <div 
-                                        ref={scrollRef}
-                                        className="flex-1 overflow-y-auto p-5 space-y-5 scroll-smooth custom-scrollbar"
-                                    >
-                                        {messages.length === 0 ? (
-                                            <div className="h-full flex flex-col items-center justify-center text-center px-4 opacity-50">
-                                                <div className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center mb-4">
-                                                    <Info size={20} className="text-slate-400" />
-                                                </div>
-                                                <p className="text-xs font-bold text-white uppercase tracking-tighter">No messages yet</p>
-                                                <p className="text-[10px] text-slate-500 mt-1 uppercase tracking-widest font-medium">Send a message to start the conversation</p>
-                                            </div>
-                                        ) : (
-                                            messages.map((msg) => {
-                                                const isApplicant = msg.senderType === 'Applicant';
-                                                return (
-                                                    <div key={msg.id} className={`flex gap-3 ${isApplicant ? 'flex-row-reverse' : 'flex-row'}`}>
-                                                        <div className={`max-w-[80%] group flex flex-col ${isApplicant ? 'items-end' : 'items-start'}`}>
-                                                            <div className="flex items-center gap-2 group/actions">
-                                                                {isApplicant && !msg.isDeletedForEveryone && (
-                                                                    <div className="flex items-center gap-0.5 opacity-0 group-hover/actions:opacity-100 transition-all duration-200">
-                                                                        <button 
-                                                                            onClick={() => {
-                                                                                setEditingId(msg.id);
-                                                                                setEditInput(msg.message);
-                                                                            }}
-                                                                            className="p-1.5 hover:bg-white/5 rounded-lg text-slate-600 hover:text-white transition-all"
-                                                                            title="Edit"
-                                                                        >
-                                                                            <Pencil size={12} />
-                                                                        </button>
-                                                                        <button 
-                                                                            onClick={() => {
-                                                                                setDeletingId(msg.id);
-                                                                            }}
-                                                                            className="p-1.5 hover:bg-red-500/10 rounded-lg text-slate-600 hover:text-red-400 transition-all"
-                                                                            title="Delete message"
-                                                                        >
-                                                                            <Trash2 size={12} />
-                                                                        </button>
-                                                                    </div>
-                                                                )}
-                                                                
-                                                                <div className={`p-4 px-5 rounded-2xl flex flex-col shadow-lg ${
-                                                                    msg.isDeletedForEveryone
-                                                                    ? 'bg-slate-800/50 border border-slate-700 text-slate-500 italic rounded-br-none'
-                                                                    : isApplicant 
-                                                                    ? 'bg-slate-100 text-slate-900 rounded-br-none font-bold' 
-                                                                    : 'bg-slate-800 border border-slate-700 text-white rounded-bl-none font-medium'
-                                                                }`}>
-                                                                    {editingId === msg.id ? (
-                                                                        <div className="flex flex-col gap-3 min-w-[180px]">
-                                                                            <textarea 
-                                                                                className="w-full bg-slate-900 text-white p-3 text-[12px] rounded-xl outline-none border border-slate-700 focus:border-white/20 transition-all min-h-[80px]"
-                                                                                value={editInput}
-                                                                                onChange={(e) => setEditInput(e.target.value)}
-                                                                                autoFocus
-                                                                            />
-                                                                            <div className="flex justify-end gap-2">
-                                                                                <button onClick={() => setEditingId(null)} className="text-[10px] font-black uppercase text-slate-500 hover:text-white transition-colors">Cancel</button>
-                                                                                <button onClick={() => handleEdit(msg.id)} className="px-3 py-1 bg-white text-slate-900 text-[10px] font-black uppercase rounded-lg hover:bg-slate-100 transition-all">Save</button>
-                                                                            </div>
-                                                                        </div>
-                                                                    ) : deletingId === msg.id ? (
-                                                                        <div className="flex flex-col gap-2 min-w-[150px] p-1 text-center">
-                                                                            <p className="text-[9px] font-black text-red-400 uppercase tracking-tighter mb-1">Delete message?</p>
-                                                                            <div className="flex flex-col gap-1.5">
-                                                                                <button 
-                                                                                    onClick={() => handleDelete(msg.id, 'everyone')}
-                                                                                    className="w-full py-1.5 bg-red-500/10 text-red-400 text-[9px] font-black uppercase rounded-lg hover:bg-red-500/20 transition-all"
-                                                                                >
-                                                                                    Everyone
-                                                                                </button>
-                                                                                <button 
-                                                                                    onClick={() => handleDelete(msg.id, 'me')}
-                                                                                    className="w-full py-1.5 bg-slate-800 text-slate-400 text-[9px] font-black uppercase rounded-lg hover:bg-slate-700 transition-all"
-                                                                                >
-                                                                                    Me Only
-                                                                                </button>
-                                                                                <button 
-                                                                                    onClick={() => setDeletingId(null)} 
-                                                                                    className="w-full py-1 text-[8px] font-black uppercase text-slate-600 hover:text-slate-400 transition-colors"
-                                                                                >
-                                                                                    Cancel
-                                                                                </button>
-                                                                            </div>
-                                                                        </div>
-                                                                    ) : (
-                                                                        <p className="text-[13px] leading-relaxed whitespace-pre-wrap">{msg.message}</p>
-                                                                    )}
-                                                                </div>
-                                                            </div>
-                                                            
-                                                            <div className={`flex items-center gap-2 mt-2 transition-opacity duration-300 ${isApplicant ? 'flex-row-reverse' : 'flex-row'}`}>
-                                                                {msg.isEdited && !msg.isDeletedForEveryone && (
-                                                                    <span className="text-[9px] font-black text-white/20 uppercase tracking-tighter italic">Edited</span>
-                                                                )}
-                                                                <span className="text-[9px] text-white/20 font-black tracking-widest uppercase">
-                                                                    {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                                </span>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })
+                                <div className="absolute -top-1 -right-1 w-3 h-3 bg-[var(--zed-primary)] rounded-full animate-pulse border-2 border-[var(--zed-bg-dark)]"></div>
+                            )}
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            </motion.button>
+
+            {/* Chat Window */}
+            <AnimatePresence>
+                {isOpen && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 20, scale: 0.95 }}
+                        className="fixed bottom-24 right-6 w-[380px] h-[600px] bg-white border border-[var(--zed-border-light)] rounded-[var(--radius-lg)] shadow-[var(--zed-shadow-xl)] z-50 flex flex-col overflow-hidden font-sans"
+                    >
+                        {/* Header */}
+                        <div className="bg-[var(--zed-bg-dark)] px-6 py-5 flex items-center justify-between border-b border-[var(--zed-border-dark)]">
+                            <div>
+                                <h3 className="font-bold text-lg text-white flex items-center gap-2 tracking-tight">
+                                    Live Support
+                                    {isConnected ? (
+                                        <span className="flex h-2 w-2 rounded-full bg-[var(--zed-primary)] animate-pulse"></span>
+                                    ) : (
+                                        <span className="flex h-2 w-2 rounded-full bg-[var(--zed-error)]"></span>
+                                    )}
+                                </h3>
+                                <p className="text-xs text-slate-400 font-medium uppercase tracking-wider">
+                                    {isConnected ? 'Online' : 'Reconnecting...'}
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => setIsOpen(false)}
+                                className="p-2 hover:bg-[var(--zed-border-dark)] rounded-lg transition-colors text-white"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        {/* Onboarding Form */}
+                        {!onboarded ? (
+                            <div className="flex-1 p-8 flex flex-col justify-center bg-[var(--zed-bg-surface)]">
+                                <div className="text-center mb-8">
+                                    <div className="w-16 h-16 bg-white border border-[var(--zed-border-light)] rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm">
+                                        <MessageCircle size={32} className="text-[var(--zed-bg-dark)]" />
+                                    </div>
+                                    <h4 className="text-2xl font-bold text-[var(--zed-text-dark)] tracking-tight mb-2">
+                                        How can we help?
+                                    </h4>
+                                    <p className="text-sm text-[var(--zed-text-muted)] font-medium">
+                                        Start a conversation with our HR team
+                                    </p>
+                                </div>
+
+                                <form onSubmit={handleStartChat} className="space-y-5">
+                                    <div>
+                                        <label className="block text-xs font-bold text-[var(--zed-text-dark)] uppercase tracking-wider mb-2">
+                                            Your Full Name
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={name}
+                                            onChange={(e) => setName(e.target.value)}
+                                            className={`w-full px-4 py-3 bg-white border rounded-[var(--radius-md)] text-sm focus:outline-none focus:ring-4 transition-all ${
+                                                formErrors.name
+                                                    ? 'border-[var(--zed-error)] ring-[var(--zed-error)]/10'
+                                                    : 'border-[var(--zed-border-light)] focus:border-[var(--zed-primary)] focus:ring-[var(--zed-primary)]/10'
+                                            }`}
+                                            placeholder="John Doe"
+                                        />
+                                        {formErrors.name && (
+                                            <p className="text-[10px] text-[var(--zed-error)] font-bold mt-1.5 uppercase tracking-wide flex items-center gap-1">
+                                                <AlertCircle size={10} />
+                                                {formErrors.name}
+                                            </p>
                                         )}
                                     </div>
 
-                                    <div className="p-5 bg-slate-800/30 border-t border-slate-700/50">
-                                        <div className="relative group">
-                                            <input 
-                                                type="text" 
-                                                value={input}
-                                                onChange={(e) => setInput(e.target.value)}
-                                                onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                                                placeholder="Write a message..."
-                                                className="w-full pl-6 pr-14 py-4 bg-slate-800 border border-slate-700 rounded-2xl focus:bg-slate-700 focus:border-slate-500 transition-all outline-none font-bold text-[13px] text-white placeholder:text-slate-600 shadow-inner"
-                                            />
-                                            <button 
-                                                onClick={handleSend}
-                                                disabled={!input.trim()}
-                                                className="absolute right-1.5 top-1.5 w-11 h-11 bg-white text-slate-900 rounded-xl flex items-center justify-center hover:bg-slate-100 transition-all active:scale-95 disabled:opacity-20 shadow-xl"
-                                            >
+                                    <div>
+                                        <label className="block text-xs font-bold text-[var(--zed-text-dark)] uppercase tracking-wider mb-2">
+                                            Work Email
+                                        </label>
+                                        <input
+                                            type="email"
+                                            value={email}
+                                            onChange={(e) => setEmail(e.target.value)}
+                                            className={`w-full px-4 py-3 bg-white border rounded-[var(--radius-md)] text-sm focus:outline-none focus:ring-4 transition-all ${
+                                                formErrors.email
+                                                    ? 'border-[var(--zed-error)] ring-[var(--zed-error)]/10'
+                                                    : 'border-[var(--zed-border-light)] focus:border-[var(--zed-primary)] focus:ring-[var(--zed-primary)]/10'
+                                            }`}
+                                            placeholder="john@example.com"
+                                        />
+                                        {formErrors.email && (
+                                            <p className="text-[10px] text-[var(--zed-error)] font-bold mt-1.5 uppercase tracking-wide flex items-center gap-1">
+                                                <AlertCircle size={10} />
+                                                {formErrors.email}
+                                            </p>
+                                        )}
+                                    </div>
+
+                                    <button
+                                        type="submit"
+                                        disabled={loading}
+                                        className="w-full zed-btn zed-btn-primary py-4 shadow-lg disabled:opacity-50 inline-flex items-center justify-center gap-2"
+                                    >
+                                        {loading ? (
+                                            <>
+                                                <Loader2 size={18} className="animate-spin" />
+                                                Initializing...
+                                            </>
+                                        ) : (
+                                            <>
                                                 <Send size={18} />
-                                            </button>
+                                                Start Chat
+                                            </>
+                                        )}
+                                    </button>
+                                </form>
+                            </div>
+                        ) : (
+                            <>
+                                {/* Messages */}
+                                <div ref={scrollRef} className="flex-1 p-5 overflow-y-auto space-y-4 bg-[var(--zed-bg-surface)] scrollbar-premium">
+                                    {messages.length === 0 ? (
+                                        <div className="h-full flex items-center justify-center p-8">
+                                            <div className="text-center">
+                                                <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center mx-auto mb-4 border border-[var(--zed-border-light)]">
+                                                    <MessageCircle size={24} className="text-slate-300" />
+                                                </div>
+                                                <p className="text-sm text-[var(--zed-text-dark)] font-bold tracking-tight">
+                                                    No messages yet
+                                                </p>
+                                                <p className="text-xs text-[var(--zed-text-muted)] mt-1 font-medium">
+                                                    Ask us anything about Meycauayan HR!
+                                                </p>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        messages.map((msg) => (
+                                            <div
+                                                key={msg.id}
+                                                className={`flex ${msg.senderType === 'Applicant' ? 'justify-end' : 'justify-start'}`}
+                                            >
+                                                <div
+                                                    className={`max-w-[85%] rounded-[var(--radius-md)] px-4 py-3 shadow-sm ${
+                                                        msg.senderType === 'Applicant'
+                                                            ? 'bg-[var(--zed-bg-dark)] text-white'
+                                                            : 'bg-white border border-[var(--zed-border-light)] text-[var(--zed-text-dark)]'
+                                                    }`}
+                                                >
+                                                    <p className="text-sm leading-relaxed whitespace-pre-wrap break-words font-medium">
+                                                        {msg.message}
+                                                    </p>
+                                                    <p
+                                                        className={`text-[10px] mt-2 font-bold uppercase tracking-wide ${
+                                                            msg.senderType === 'Applicant'
+                                                                ? 'text-slate-400'
+                                                                : 'text-[var(--zed-text-muted)]'
+                                                        }`}
+                                                    >
+                                                        {new Date(msg.createdAt).toLocaleTimeString([], {
+                                                            hour: '2-digit',
+                                                            minute: '2-digit'
+                                                        })}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+
+                                {/* Connection Status Banner */}
+                                {!isConnected && (
+                                    <div className="px-4 py-2 bg-[var(--zed-error)] text-white">
+                                        <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider">
+                                            <AlertCircle size={14} />
+                                            Reconnecting to live support...
                                         </div>
                                     </div>
-                                </>
-                            )}
-                        </div>
+                                )}
+
+                                {/* Input Area */}
+                                <div className="p-4 bg-white border-t border-[var(--zed-border-light)]">
+                                    <div className="flex gap-2">
+                                        <input
+                                            type="text"
+                                            value={input}
+                                            onChange={(e) => setInput(e.target.value)}
+                                            onKeyPress={(e) => e.key === 'Enter' && handleSend()}
+                                            placeholder="Type your message..."
+                                            className="flex-1 px-4 py-3 bg-[var(--zed-bg-surface)] border border-[var(--zed-border-light)] rounded-[var(--radius-md)] text-sm focus:outline-none focus:ring-4 focus:ring-[var(--zed-primary)]/10 focus:border-[var(--zed-primary)]"
+                                        />
+                                        <button
+                                            onClick={handleSend}
+                                            disabled={!input.trim()}
+                                            className="zed-btn zed-btn-primary px-4 shadow-sm disabled:opacity-30 disabled:cursor-not-allowed"
+                                        >
+                                            <Send size={18} />
+                                        </button>
+                                    </div>
+
+                                    <div className="mt-3 flex items-center justify-between">
+                                        <button
+                                            onClick={() => setDeletingId(-1)}
+                                            className="text-[10px] text-[var(--zed-error)] hover:underline font-bold uppercase tracking-wider flex items-center gap-1 transition-all"
+                                        >
+                                            <Trash2 size={12} />
+                                            Reset Conversation
+                                        </button>
+                                        <span className="text-[10px] text-[var(--zed-text-muted)] font-bold uppercase tracking-wider">
+                                            Press Enter to send
+                                        </span>
+                                    </div>
+                                </div>
+                            </>
+                        )}
                     </motion.div>
                 )}
             </AnimatePresence>
 
-            <motion.button
-                whileHover={{ scale: 1.05, y: -4 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => useChatStore.getState().toggleChat()}
-                className={`w-16 h-16 rounded-3xl shadow-[0_20px_50px_-10px_rgba(0,0,0,0.5)] flex items-center justify-center transition-all border ${
-                    isOpen 
-                    ? 'bg-white text-slate-900 border-white' 
-                    : 'bg-slate-900 text-white border-slate-700 hover:border-slate-500'
-                }`}
-            >
-                {isOpen ? <X size={24} strokeWidth={3} /> : (
-                    <div className="relative">
-                        <span className="text-[10px] font-black uppercase tracking-widest">Chat</span>
-                        {unreadCount > 0 ? (
-                            <div className="absolute -top-4 -right-4 bg-red-500 text-white text-[10px] font-black px-2 py-1 rounded-full shadow-lg animate-bounce border-2 border-white">
-                                {unreadCount}
-                            </div>
-                        ) : (
-                            <div className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-sm"></div>
-                        )}
-                    </div>
-                )}
-            </motion.button>
-            
-            <style>{`
-                .custom-scrollbar::-webkit-scrollbar {
-                    width: 4px;
-                }
-                .custom-scrollbar::-webkit-scrollbar-track {
-                    background: transparent;
-                }
-                .custom-scrollbar::-webkit-scrollbar-thumb {
-                    background: rgba(255, 255, 255, 0.1);
-                    border-radius: 10px;
-                }
-                .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-                    background: rgba(255, 255, 255, 0.2);
-                }
-            `}</style>
+            {/* Delete Confirmation */}
             <ConfirmDialog
-                isOpen={isDeletingHistory}
+                isOpen={deletingId === -1}
+                onClose={() => setDeletingId(null)}
+                onConfirm={handleDeleteHistory}
                 title="Delete Chat History"
-                message="Are you sure you want to PERMANENTLY delete your entire chat history? This cannot be undone."
-                isDestructive={true}
-                confirmText="Delete History"
-                onClose={() => setIsDeletingHistory(false)}
-                onConfirm={confirmDeleteHistory}
+                message="Are you sure you want to delete this entire conversation? This action cannot be undone."
+                confirmText="Delete"
+                isLoading={isDeletingHistory}
             />
-        </div>
+        </>
     );
 };
 

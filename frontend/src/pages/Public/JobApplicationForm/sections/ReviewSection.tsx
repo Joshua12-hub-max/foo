@@ -5,11 +5,19 @@ import type { JobApplicationSchema } from '@/schemas/recruitment';
 interface ReviewSectionProps {
   watch: UseFormWatch<JobApplicationSchema>;
   setCurrentStep: (step: number) => void;
+  onTermsChange?: (accepted: boolean) => void;
 }
 
-const ReviewSection: React.FC<ReviewSectionProps> = ({ watch, setCurrentStep }) => {
+const ReviewSection: React.FC<ReviewSectionProps> = ({ watch, setCurrentStep, onTermsChange }) => {
   const [termsAccepted, setTermsAccepted] = useState(false);
   const formData = watch();
+
+  const handleTermsChange = (checked: boolean) => {
+    setTermsAccepted(checked);
+    if (onTermsChange) {
+      onTermsChange(checked);
+    }
+  };
 
   const InfoCard = ({ title, stepNumber, children }: { title: string; stepNumber: number; children: React.ReactNode }) => (
     <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
@@ -40,7 +48,7 @@ const ReviewSection: React.FC<ReviewSectionProps> = ({ watch, setCurrentStep }) 
     <div className="space-y-6">
       <div>
         <h3 className="text-lg font-black text-slate-900 mb-1 uppercase tracking-widest flex items-center gap-3">
-          <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
+          <span className="w-1.5 h-1.5 bg-slate-500 rounded-full"></span>
           Review Application
         </h3>
         <p className="text-xs text-slate-500 font-semibold mb-6">Review all information before submitting</p>
@@ -230,8 +238,8 @@ const ReviewSection: React.FC<ReviewSectionProps> = ({ watch, setCurrentStep }) 
           <input
             type="checkbox"
             checked={termsAccepted}
-            onChange={(e) => setTermsAccepted(e.target.checked)}
-            className="w-5 h-5 text-green-600 focus:ring-green-500 rounded mt-1 flex-shrink-0"
+            onChange={(e) => handleTermsChange(e.target.checked)}
+            className="w-5 h-5 text-slate-600 focus:ring-slate-500 rounded mt-1 flex-shrink-0"
           />
           <div className="text-sm">
             <p className="font-bold text-gray-800 mb-2">I hereby certify that:</p>
@@ -243,28 +251,6 @@ const ReviewSection: React.FC<ReviewSectionProps> = ({ watch, setCurrentStep }) 
             </ul>
           </div>
         </label>
-      </div>
-
-      {/* Submit Button */}
-      <div className="flex items-center justify-between pt-4">
-        <button
-          type="button"
-          onClick={() => setCurrentStep(8)}
-          className="px-6 py-3 border border-gray-300 rounded-lg text-sm font-bold text-gray-700 hover:bg-gray-50 transition-all"
-        >
-          Back
-        </button>
-        <button
-          type="submit"
-          disabled={!termsAccepted}
-          className={`px-8 py-3 rounded-lg text-sm font-bold text-white transition-all ${
-            termsAccepted
-              ? 'bg-green-600 hover:bg-green-700 shadow-lg hover:shadow-xl'
-              : 'bg-gray-300 cursor-not-allowed'
-          }`}
-        >
-          Submit Application
-        </button>
       </div>
 
       {!termsAccepted && (

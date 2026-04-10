@@ -13,7 +13,7 @@ const PersonalInfoSection: React.FC<PersonalInfoSectionProps> = ({ register, err
     <div className="space-y-6">
       <div>
         <h3 className="text-lg font-black text-slate-900 mb-1 uppercase tracking-widest flex items-center gap-3">
-          <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
+          <span className="w-1.5 h-1.5 bg-slate-500 rounded-full"></span>
           Personal Information
         </h3>
         <p className="text-xs text-slate-500 font-semibold mb-6">Please provide your complete personal details</p>
@@ -130,7 +130,7 @@ const PersonalInfoSection: React.FC<PersonalInfoSectionProps> = ({ register, err
                 type="radio"
                 value="Male"
                 {...register('sex')}
-                className="w-4 h-4 text-green-600 focus:ring-green-500"
+                className="w-4 h-4 text-slate-600 focus:ring-slate-500"
               />
               <span className="text-sm font-semibold text-slate-700">Male</span>
             </label>
@@ -139,7 +139,7 @@ const PersonalInfoSection: React.FC<PersonalInfoSectionProps> = ({ register, err
                 type="radio"
                 value="Female"
                 {...register('sex')}
-                className="w-4 h-4 text-green-600 focus:ring-green-500"
+                className="w-4 h-4 text-slate-600 focus:ring-slate-500"
               />
               <span className="text-sm font-semibold text-slate-700">Female</span>
             </label>
