@@ -171,6 +171,9 @@ export const recruitmentApplicants = mysqlTable("recruitment_applicants", {
 	permRegion: varchar("perm_region", { length: 100 }),
 	citizenshipType: varchar("citizenship_type", { length: 50 }),
 	dualCountry: varchar("dual_country", { length: 100 }),
+	govtIdType: varchar("govt_id_type", { length: 100 }),
+	govtIdNo: varchar("govt_id_no", { length: 100 }),
+	govtIdIssuance: varchar("govt_id_issuance", { length: 255 }),
 
 
 },

@@ -10,8 +10,17 @@ import type { CalendarDisplayItem, Holiday, Announcement, ScheduleEntry } from '
 export const filterEventsByDate = (events: CalendarDisplayItem[], date: Date): CalendarDisplayItem[] => {
   if (!events || !Array.isArray(events)) return [];
   
+  // Helper to parse "YYYY-MM-DD" safely into local date context
+  const parseLocalDate = (dateStr: string) => {
+    const str = String(dateStr).split('T')[0];
+    const [year, month, day] = str.split('-').map(Number);
+    if (!year || !month || !day) return new Date(NaN);
+    return new Date(year, month - 1, day);
+  };
+
   return events.filter(item => {
-    const itemDate = new Date(item.date || '');
+    if (!item.date) return false;
+    const itemDate = parseLocalDate(item.date);
     return isSameDay(itemDate, date);
   });
 };
@@ -42,87 +51,121 @@ export const sortCalendarItemsByTime = (items: CalendarDisplayItem[]): CalendarD
  * @returns {Array} - Combined and sorted calendar items
  */
 export const combineCalendarItems = (events: CalendarDisplayItem[], holidays: Holiday[], showHolidays: boolean, announcements: Announcement[], currentDate: Date, schedules: ScheduleEntry[] = []): CalendarDisplayItem[] => {
-  let allItems = [...events];
+  let allItems: CalendarDisplayItem[] = [];
   const currentYear = currentDate.getFullYear();
   const currentMonth = currentDate.getMonth();
 
-  // Add holidays
+  // Helper to parse "YYYY-MM-DD" safely into local date
+  const parseLocalDate = (dateStr: string | Date) => {
+    const str = String(dateStr).split('T')[0];
+    const [year, month, day] = str.split('-').map(Number);
+    return new Date(year, month - 1, day);
+  };
+
+  // 1. Expand Recurring Events
+  if (events && Array.isArray(events)) {
+    events.forEach(event => {
+      const pattern = (event.recurringPattern || 'none').toLowerCase();
+      const baseDate = parseLocalDate(event.date || event.startDate || '');
+      const endDateLimit = event.recurringEndDate ? parseLocalDate(event.recurringEndDate) : new Date(currentYear, currentMonth + 1, 0);
+
+      if (pattern === 'none') {
+        allItems.push(event);
+      } else {
+        // Expand based on pattern
+        const iter = new Date(baseDate);
+        while (iter <= endDateLimit) {
+          // Only add if it falls in the current month view
+          if (iter.getMonth() === currentMonth && iter.getFullYear() === currentYear) {
+            const dateStr = `${iter.getFullYear()}-${String(iter.getMonth() + 1).padStart(2, '0')}-${String(iter.getDate()).padStart(2, '0')}`;
+            allItems.push({
+              ...event,
+              id: `${event.id}-${dateStr}`,
+              date: dateStr
+            });
+          }
+
+          if (pattern === 'daily') iter.setDate(iter.getDate() + 1);
+          else if (pattern === 'weekly') iter.setDate(iter.getDate() + 7);
+          else if (pattern === 'monthly') iter.setMonth(iter.getMonth() + 1);
+          else break;
+
+          // Safety break
+          if (iter.getFullYear() > currentYear + 1) break;
+        }
+      }
+    });
+  }
+
+  // 2. Add holidays (Fixed to handle date string correctly)
   if (showHolidays && holidays && Array.isArray(holidays)) {
-    const holidayItems: CalendarDisplayItem[] = holidays.map(h => ({
-      ...h,
-      id: `holiday-${h.id}-${currentYear}`,
-      title: h.title || h.name || 'Holiday',
-      type: 'holiday', // Explicit type
-      time: '00:00', // All day
-      isHoliday: true,
-      date: new Date(currentYear, h.month, h.day).toISOString().split('T')[0], // Assign a specific date for sorting
-    }));
-    allItems = [...allItems, ...holidayItems];
+    holidays.forEach(h => {
+      const holidayDate = h.date ? parseLocalDate(h.date) : (h.month !== undefined ? new Date(currentYear, h.month, h.day) : null);
+      
+      if (holidayDate && holidayDate.getMonth() === currentMonth && holidayDate.getFullYear() === currentYear) {
+        const dateStr = `${holidayDate.getFullYear()}-${String(holidayDate.getMonth() + 1).padStart(2, '0')}-${String(holidayDate.getDate()).padStart(2, '0')}`;
+        
+        allItems.push({
+          ...h,
+          id: `holiday-${h.id}-${dateStr}`,
+          title: h.title || h.name || 'Holiday',
+          type: 'holiday',
+          time: '00:00',
+          isHoliday: true,
+          date: dateStr
+        });
+      }
+    });
   }
 
-  // Add announcements
+  // 3. Add announcements
   if (announcements && Array.isArray(announcements)) {
-    const announcementItems = announcements.map(a => ({
-      ...a,
-      id: `announcement-${a.id}`,
-      type: 'announcement', // Explicit type
-      time: '00:00', // All day
-      isAnnouncement: true,
-      date: a.startDate || a.createdAt, // Use startDate or createdAt
-    }));
-    allItems = [...allItems, ...announcementItems];
+    announcements.forEach(a => {
+      const aDate = parseLocalDate(a.startDate || a.createdAt);
+      if (aDate.getMonth() === currentMonth && aDate.getFullYear() === currentYear) {
+        allItems.push({
+          ...a,
+          id: `announcement-${a.id}`,
+          type: 'announcement',
+          time: '00:00',
+          isAnnouncement: true,
+          date: a.startDate || a.createdAt,
+        });
+      }
+    });
   }
 
-  // Add schedules - expand each schedule to show on relevant days
+  // 4. Add schedules - expand each schedule to show on relevant days
   if (schedules && Array.isArray(schedules) && schedules.length > 0) {
-    const scheduleItems: CalendarDisplayItem[] = [];
-    console.log('📅 Processing schedules for calendar:', schedules);
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     
     schedules.forEach(schedule => {
-      const startDateStr = schedule.startDate || schedule.startDate;
-      const endDateStr = schedule.endDate || schedule.endDate;
+      const startDateStr = schedule.startDate;
+      const endDateStr = schedule.endDate;
       const daysString = schedule.days || schedule.dayOfWeek || '';
       // @ts-ignore
       const scheduleDays = daysString ? daysString.split(',').map(d => d.trim()) : [];
       
-      console.log(`Duty: ${schedule.duties || schedule.scheduleName}`, { startDateStr, endDateStr, scheduleDays });
-      
-      // Check if we have valid date strings (not 'Recurring' or empty)
       const hasValidDates = startDateStr && endDateStr && 
                             startDateStr !== 'Recurring' && endDateStr !== 'Recurring';
       
       if (hasValidDates) {
-        // Parse dates as local time to avoid timezone offset issues
-        const parseLocalDate = (dateStr: string | Date) => {
-          const str = String(dateStr).split('T')[0]; // Get just the date part
-          const [year, month, day] = str.split('-').map(Number);
-          return new Date(year, month - 1, day); // month is 0-indexed
-        };
+        const start = parseLocalDate(startDateStr!);
+        const end = parseLocalDate(endDateStr!);
         
-        const start = parseLocalDate(startDateStr);
-        const end = parseLocalDate(endDateStr);
-        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-        
-        console.log(`Iterating from ${start.toDateString()} to ${end.toDateString()}`);
-        
-        // Iterate through each day in the schedule range for the current month view
         for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-          // Only add if the day is in the current month being viewed
           if (d.getMonth() === currentMonth && d.getFullYear() === currentYear) {
             const dayName = dayNames[d.getDay()];
-            
-            // Check if this day of week is in the schedule's days (or if no specific days, show all)
             if (scheduleDays.length === 0 || scheduleDays.includes(dayName)) {
-              // Format date as YYYY-MM-DD in local time
               const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
               
-              scheduleItems.push({
+              allItems.push({
                 id: `schedule-${schedule.id}-${dateStr}`,
                 title: schedule.duties || schedule.scheduleName || 'Work Duties',
                 type: 'schedule',
                 isSchedule: true,
-                time: schedule.startTime || schedule.startTime || '09:00',
-                endTime: schedule.endTime || schedule.endTime || '17:00',
+                time: schedule.startTime || '09:00',
+                endTime: schedule.endTime || '17:00',
                 date: dateStr,
                 startDate: startDateStr,
                 endDate: endDateStr,
@@ -132,10 +175,7 @@ export const combineCalendarItems = (events: CalendarDisplayItem[], holidays: Ho
           }
         }
       } else if (scheduleDays.length > 0) {
-        // No date range, but we have specific days - show for current month on those days
-        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
         const daysInCurrentMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-        
         for (let day = 1; day <= daysInCurrentMonth; day++) {
           const d = new Date(currentYear, currentMonth, day);
           const dayName = dayNames[d.getDay()];
@@ -143,13 +183,13 @@ export const combineCalendarItems = (events: CalendarDisplayItem[], holidays: Ho
           if (scheduleDays.includes(dayName)) {
             const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
             
-            scheduleItems.push({
+            allItems.push({
               id: `schedule-${schedule.id}-${dateStr}`,
               title: schedule.duties || schedule.scheduleName || 'Work Duties',
               type: 'schedule',
               isSchedule: true,
-              time: schedule.startTime || schedule.startTime || '09:00',
-              endTime: schedule.endTime || schedule.endTime || '17:00',
+              time: schedule.startTime || '09:00',
+              endTime: schedule.endTime || '17:00',
               date: dateStr,
               originalSchedule: schedule
             });
@@ -157,9 +197,6 @@ export const combineCalendarItems = (events: CalendarDisplayItem[], holidays: Ho
         }
       }
     });
-    
-    console.log(`Generated ${scheduleItems.length} schedule items for display`);
-    allItems = [...allItems, ...scheduleItems];
   }
   
   // Deduplicate items by ID to prevent React key errors

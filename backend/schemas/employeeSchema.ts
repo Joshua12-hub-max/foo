@@ -22,7 +22,7 @@ export const BaseEmployeeSchema = z.object({
   contractEndDate: z.string().optional().nullable(), // Required if Job Order
   regularizationDate: z.string().optional().nullable(), // Auto-calc or manual
   isRegular: z.boolean(),
-  employeeId: z.string().optional().nullable(),
+  employeeId: z.string().regex(/^Emp-(00[1-9]|0[1-9][0-9]|1[0-9]{2}|200)$/, "Employee ID must be exactly Emp-001 to Emp-200 due to sensor capacity limits").optional().nullable(),
   password: z.string().optional().nullable(),
   positionId: z.number().optional().nullable(),
   
@@ -40,8 +40,22 @@ export const BaseEmployeeSchema = z.object({
   citizenshipType: z.string().optional().nullable(),
   
   // PDS Fields
-  heightM: z.coerce.number().optional().nullable(),
-  weightKg: z.coerce.number().optional().nullable(),
+  heightM: z.preprocess((val) => {
+    if (val === "" || val === null || val === undefined) return null;
+    if (typeof val === 'number') return val;
+    const cleaned = String(val).replace(/,/g, '').trim();
+    if (cleaned === "" || cleaned.toLowerCase() === 'n/a') return null;
+    const num = Number(cleaned);
+    return isNaN(num) ? null : num;
+  }, z.number().nullable().optional()),
+  weightKg: z.preprocess((val) => {
+    if (val === "" || val === null || val === undefined) return null;
+    if (typeof val === 'number') return val;
+    const cleaned = String(val).replace(/,/g, '').trim();
+    if (cleaned === "" || cleaned.toLowerCase() === 'n/a') return null;
+    const num = Number(cleaned);
+    return isNaN(num) ? null : num;
+  }, z.number().nullable().optional()),
   bloodType: z.string().optional().nullable(),
   placeOfBirth: z.string().optional().nullable(),
   residentialAddress: z.string().optional().nullable(),

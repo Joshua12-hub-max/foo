@@ -6,6 +6,7 @@ import {
   LucideIcon, Download
 } from 'lucide-react';
 import { Applicant } from '@/types/recruitment';
+import { requestDownloadToken } from '@/Service/Auth';
 
 interface ApplicantDetailModalProps {
   isOpen: boolean;
@@ -13,8 +14,23 @@ interface ApplicantDetailModalProps {
   applicant: Applicant; 
 }
 
+const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 const ApplicantDetailModal: React.FC<ApplicantDetailModalProps> = ({ isOpen, onClose, applicant }) => {
   if (!isOpen || !applicant) return null;
+
+  // Securely open URLs using a short-lived token
+  const handleOpenSecureUrl = async (url: string | null) => {
+      if (!url) return;
+      try {
+          const token = await requestDownloadToken();
+          const separator = url.includes('?') ? '&' : '?';
+          const secureUrl = token ? `${url}${separator}token=${token}` : url;
+          window.open(secureUrl, '_blank');
+      } catch (err) {
+          window.open(url, '_blank');
+      }
+  };
 
   const DetailSection = ({ title, icon: Icon, children }: { title: string, icon: LucideIcon, children: React.ReactNode }) => (
     <div className="bg-white rounded-xl border border-gray-100 mb-5 overflow-hidden">
@@ -116,7 +132,7 @@ const ApplicantDetailModal: React.FC<ApplicantDetailModalProps> = ({ isOpen, onC
                     <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Photo</label>
                     <div className="w-32 h-32 bg-gray-50 rounded-xl border border-gray-100 overflow-hidden flex items-center justify-center">
                         {applicant.photoPath ? (
-                            <img src={`http://localhost:5000/uploads/resumes/${applicant.photoPath}`} alt="Applicant" className="w-full h-full object-cover" />
+                            <img src={`${apiUrl}/uploads/resumes/${applicant.photoPath}`} alt="Applicant" className="w-full h-full object-cover" />
                         ) : (
                             <User size={32} className="text-gray-200" />
                         )}
@@ -184,21 +200,19 @@ const ApplicantDetailModal: React.FC<ApplicantDetailModalProps> = ({ isOpen, onC
         <div className="bg-gray-50 px-8 py-5 border-t border-gray-100 flex items-center justify-between sticky bottom-0 z-20">
           <div className="flex gap-3">
              {applicant.resumePath && (
-               <a 
-                  href={`http://localhost:5000/uploads/resumes/${applicant.resumePath}`}
-                  target="_blank" rel="noopener noreferrer"
+               <button 
+                  onClick={() => handleOpenSecureUrl(`${apiUrl}/uploads/resumes/${applicant.resumePath}`)}
                   className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white text-gray-700 text-xs font-bold hover:bg-gray-50 transition-all border border-gray-200 shadow-sm"
                >
                   <FileText size={14} /> Resume
-               </a>
+               </button>
              )}
-             <a 
-                href={`http://localhost:5000/api/recruitment/applicants/${applicant.id}/pdf`}
-                target="_blank" rel="noopener noreferrer"
+             <button 
+                onClick={() => handleOpenSecureUrl(`${apiUrl}/api/recruitment/applicants/${applicant.id}/pdf`)}
                 className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-900 text-white text-xs font-bold hover:bg-gray-800 transition-all shadow-sm"
              >
                 <Download size={14} /> Application (PDF)
-             </a>
+             </button>
           </div>
           <button 
             onClick={onClose}

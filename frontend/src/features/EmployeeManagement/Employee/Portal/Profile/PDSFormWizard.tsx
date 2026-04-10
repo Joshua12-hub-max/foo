@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { 
   Loader2, 
   Save, Link as LinkIcon, 
@@ -36,6 +36,11 @@ const getRegionCodeByName = (name: string | null): string => {
   return region?.reg_code || '';
 };
 
+const getRegionNameByCode = (code: string | null): string => {
+  if (!code) return '';
+  return phLib.regions.find(r => r.reg_code === code)?.name || '';
+};
+
 const getProvinceCodeByName = (name: string | null): string => {
   if (!name) return '';
   const province = phLib.provinces.find(p =>
@@ -43,6 +48,11 @@ const getProvinceCodeByName = (name: string | null): string => {
     name.toUpperCase().includes(p.name.toUpperCase())
   );
   return province?.prov_code || '';
+};
+
+const getProvinceNameByCode = (code: string | null): string => {
+  if (!code) return '';
+  return phLib.provinces.find(p => p.prov_code === code)?.name || '';
 };
 
 const getCityCodeByName = (name: string | null): string => {
@@ -73,19 +83,25 @@ const getCityCodeByName = (name: string | null): string => {
   return city?.mun_code || '';
 };
 
+const getCityNameByCode = (code: string | null): string => {
+  if (!code) return '';
+  return phLib.city_mun.find(c => c.mun_code === code)?.name || '';
+};
+
 const getBarangayNameByName = (name: string | null, cityCode: string): string => {
   if (!name || !cityCode) return '';
 
-  // The barangay codes in phil library are often undefined, so return the name directly
-  // The form will match against barangay names, not codes
-  const barangay = phLib.barangays.find(b =>
-    b.mun_code === cityCode &&
-    (b.name.toUpperCase() === name.toUpperCase() ||
-     b.name.toUpperCase().includes(name.toUpperCase()) ||
-     name.toUpperCase().includes(b.name.toUpperCase()))
-  );
+  const normalizedSearch = name.trim().toUpperCase();
 
   // Return the exact name from the library for consistent matching
+  const barangay = phLib.barangays.find(b => {
+    if (b.mun_code !== cityCode) return false;
+    const libName = b.name.toUpperCase();
+    return libName === normalizedSearch || 
+           libName.includes(normalizedSearch) || 
+           normalizedSearch.includes(libName);
+  });
+
   return barangay?.name || name;
 };
 
@@ -319,51 +335,57 @@ const PDSAddressSelector = ({ prefix, data, set, isMeycauayanOnly = false }: { p
   const watchRegion = data[`${prefix}Region` as keyof PDSFormData] as string;
   const watchProvince = data[`${prefix}Province` as keyof PDSFormData] as string;
   const watchCity = data[`${prefix}CityMunicipality` as keyof PDSFormData] as string;
-  const [regions, setRegions] = useState<Region[]>([]);
-  const [provinces, setProvinces] = useState<Province[]>([]);
-  const [cities, setCities] = useState<CityMunicipality[]>([]);
-  const [barangays, setBarangays] = useState<Barangay[]>([]);
   const zipField = `${prefix}Zip` as keyof PDSFormData;
+
+  const regions = useMemo(() => {
+    if (isMeycauayanOnly) {
+      const reg3 = phLib.regions.find((r: Region) => r.reg_code === '03');
+      return reg3 ? [reg3] : [];
+    }
+    return phLib.regions || [];
+  }, [isMeycauayanOnly]);
+
+  const provinces = useMemo(() => {
+    if (isMeycauayanOnly) {
+      const bulacan = phLib.provinces.find((p: Province) => p.prov_code === '0314');
+      return bulacan ? [bulacan] : [];
+    }
+    if (!watchRegion) return [];
+    return phLib.provinces.filter((p: Province) => p.reg_code === watchRegion) || [];
+  }, [isMeycauayanOnly, watchRegion]);
+
+  const cities = useMemo(() => {
+    if (isMeycauayanOnly) {
+      const meycauayan = phLib.city_mun.find((c: CityMunicipality) => c.mun_code === '031412' || c.name.toUpperCase().includes('MEYCAUAYAN'));
+      return meycauayan ? [meycauayan] : [];
+    }
+    if (watchRegion === '13') {
+      return phLib.city_mun.filter((c: CityMunicipality) => c.reg_code === '13') || [];
+    }
+    if (!watchProvince) return [];
+    return phLib.city_mun.filter((c: CityMunicipality) => c.prov_code === watchProvince) || [];
+  }, [isMeycauayanOnly, watchProvince, watchRegion]);
+
+  const barangays = useMemo(() => {
+    if (!watchCity) return [];
+    return phLib.barangays.filter((b: Barangay) => b.mun_code === watchCity) || [];
+  }, [watchCity]);
 
   useEffect(() => {
     if (isMeycauayanOnly) {
-      const reg3 = phLib.regions.find((r: Region) => r.reg_code === '03');
-      setRegions(reg3 ? [reg3] : []);
       set(`${prefix}Region` as keyof PDSFormData, '03');
-      const bulacan = phLib.provinces.find((p: Province) => p.prov_code === '0314');
-      setProvinces(bulacan ? [bulacan] : []);
       set(`${prefix}Province` as keyof PDSFormData, '0314');
-      const meycauayan = phLib.city_mun.find((c: CityMunicipality) => c.mun_code === '031412' || c.name.toUpperCase().includes('MEYCAUAYAN'));
-      setCities(meycauayan ? [meycauayan] : []);
-      const munCode = meycauayan?.mun_code || '031412';
-      set(`${prefix}CityMunicipality` as keyof PDSFormData, munCode);
-      const zip = getZipByMunCode(munCode);
+      set(`${prefix}CityMunicipality` as keyof PDSFormData, '031412');
+      const zip = getZipByMunCode('031412');
       if (zip) set(zipField, zip);
-    } else {
-      setRegions(phLib.regions || []);
     }
   }, [isMeycauayanOnly, prefix]);
 
   useEffect(() => {
-    if (isMeycauayanOnly) return;
-    if (watchRegion) {
-      setProvinces(phLib.provinces.filter((p: Province) => p.reg_code === watchRegion) || []);
-      if (watchRegion === '13') setCities(phLib.city_mun.filter((c: CityMunicipality) => c.reg_code === '13') || []);
-    } else setProvinces([]);
-  }, [watchRegion, isMeycauayanOnly]);
-
-  useEffect(() => {
-    if (isMeycauayanOnly) return;
-    if (watchProvince) setCities(phLib.city_mun.filter((c: CityMunicipality) => c.prov_code === watchProvince) || []);
-    else if (watchRegion !== '13') setCities([]);
-  }, [watchProvince, watchRegion, isMeycauayanOnly]);
-
-  useEffect(() => {
     if (watchCity) {
-      setBarangays(phLib.barangays.filter((b: Barangay) => b.mun_code === watchCity) || []);
       const zip = getZipByMunCode(String(watchCity));
       if (zip) set(zipField, zip);
-    } else setBarangays([]);
+    }
   }, [watchCity, prefix]);
 
   return (
@@ -1069,8 +1091,16 @@ const PDSFormWizard: React.FC<PDSFormWizardProps> = ({ employeeId }) => {
         citizenship: data.citizenship, citizenshipType: data.citizenshipType, dualCountry: data.dualCountry,
         umidNumber: data.umidId, pagibigNumber: data.pagibigId, philhealthNumber: data.philhealthNo, philsysId: data.philsysNo, tinNumber: data.tinNo, gsisNumber: data.gsisId, agencyEmployeeNo: data.agencyEmployeeNo,
         telephoneNo: data.telephone, mobileNo: data.mobile,
-        resRegion: data.resRegion, resProvince: data.resProvince, resCity: data.resCityMunicipality, resBarangay: data.resBarangay, residentialZipCode: data.resZip, resHouseBlockLot: data.resHouseBlockLot, resStreet: data.resStreet, resSubdivision: data.resSubdivision,
-        permRegion: data.permRegion, permProvince: data.permProvince, permCity: data.permCityMunicipality, permBarangay: data.permBarangay, permanentZipCode: data.permZip, permHouseBlockLot: data.permHouseBlockLot, permStreet: data.permStreet, permSubdivision: data.permSubdivision,
+        resRegion: getRegionNameByCode(data.resRegion), 
+        resProvince: getProvinceNameByCode(data.resProvince), 
+        resCity: getCityNameByCode(data.resCityMunicipality), 
+        resBarangay: data.resBarangay, 
+        residentialZipCode: data.resZip, resHouseBlockLot: data.resHouseBlockLot, resStreet: data.resStreet, resSubdivision: data.resSubdivision,
+        permRegion: getRegionNameByCode(data.permRegion), 
+        permProvince: getProvinceNameByCode(data.permProvince), 
+        permCity: getCityNameByCode(data.permCityMunicipality), 
+        permBarangay: data.permBarangay, 
+        permanentZipCode: data.permZip, permHouseBlockLot: data.permHouseBlockLot, permStreet: data.permStreet, permSubdivision: data.permSubdivision,
       });
 
       // 3. Update PDS Declarations (Questions 34-40)
@@ -1156,6 +1186,23 @@ const PDSFormWizard: React.FC<PDSFormWizardProps> = ({ employeeId }) => {
           const personal = pdsPersonalRes.data.data;
           const questions = pdsQuestionsRes.data.data;
 
+          console.log('[PDS Load] Raw Address Data:', {
+            res: { region: personal?.resRegion, province: personal?.resProvince, city: personal?.resCity, brgy: personal?.resBarangay },
+            perm: { region: personal?.permRegion, province: personal?.permProvince, city: personal?.permCity, brgy: personal?.permBarangay }
+          });
+
+          const resRegCode = getRegionCodeByName(personal?.resRegion);
+          const resProvCode = getProvinceCodeByName(personal?.resProvince);
+          const resCityCode = getCityCodeByName(personal?.resCity);
+          const permRegCode = getRegionCodeByName(personal?.permRegion);
+          const permProvCode = getProvinceCodeByName(personal?.permProvince);
+          const permCityCode = getCityCodeByName(personal?.permCity);
+
+          console.log('[PDS Load] Calculated Codes:', {
+            res: { region: resRegCode, province: resProvCode, city: resCityCode },
+            perm: { region: permRegCode, province: permProvCode, city: permCityCode }
+          });
+
           setData((prev: PDSFormData) => ({
             ...prev,
             // Core Auth Data (Remains in Auth Profile)
@@ -1187,20 +1234,20 @@ const PDSFormWizard: React.FC<PDSFormWizardProps> = ({ employeeId }) => {
             resHouseBlockLot: personal?.resHouseBlockLot || "",
             resStreet: personal?.resStreet || "",
             resSubdivision: personal?.resSubdivision || "",
-            resBarangay: getBarangayNameByName(personal?.resBarangay, getCityCodeByName(personal?.resCity)),
-            resCityMunicipality: getCityCodeByName(personal?.resCity),
-            resProvince: getProvinceCodeByName(personal?.resProvince),
+            resBarangay: getBarangayNameByName(personal?.resBarangay, resCityCode),
+            resCityMunicipality: resCityCode,
+            resProvince: resProvCode,
             resZip: personal?.residentialZipCode || "",
-            resRegion: getRegionCodeByName(personal?.resRegion),
+            resRegion: resRegCode,
 
             permHouseBlockLot: personal?.permHouseBlockLot || "",
             permStreet: personal?.permStreet || "",
             permSubdivision: personal?.permSubdivision || "",
-            permBarangay: getBarangayNameByName(personal?.permBarangay, getCityCodeByName(personal?.permCity)),
-            permCityMunicipality: getCityCodeByName(personal?.permCity),
-            permProvince: getProvinceCodeByName(personal?.permProvince),
+            permBarangay: getBarangayNameByName(personal?.permBarangay, permCityCode),
+            permCityMunicipality: permCityCode,
+            permProvince: permProvCode,
             permZip: personal?.permanentZipCode || "",
-            permRegion: getRegionCodeByName(personal?.permRegion),
+            permRegion: permRegCode,
 
             telephone: personal?.telephoneNo || "",
             mobile: personal?.mobileNo || "",
@@ -1214,7 +1261,7 @@ const PDSFormWizard: React.FC<PDSFormWizardProps> = ({ employeeId }) => {
             spouseEmployer: p.familyBackground?.find(f => f.relationType === 'Spouse')?.employer || "", 
             spouseBusinessAddress: p.familyBackground?.find(f => f.relationType === 'Spouse')?.businessAddress || "", 
             spouseTelephone: p.familyBackground?.find(f => f.relationType === 'Spouse')?.telephoneNo || "",
-            children: p.familyBackground?.filter(f => f.relationType === 'Child').map(c => ({ id: c.id?.toString() || uid(), fullName: `${c.firstName} ${c.lastName}`, dob: c.dateOfBirth || "" })) || [],
+            children: p.familyBackground?.filter(f => f.relationType === 'Child').map(c => ({ id: c.id?.toString() || uid(), fullName: `${c.lastName}, ${c.firstName}`, dob: c.dateOfBirth || "" })) || [],
             fatherSurname: p.familyBackground?.find(f => f.relationType === 'Father')?.lastName || "", 
             fatherFirstName: p.familyBackground?.find(f => f.relationType === 'Father')?.firstName || "", 
             fatherMiddleName: p.familyBackground?.find(f => f.relationType === 'Father')?.middleName || "", 
@@ -1297,8 +1344,11 @@ const PDSFormWizard: React.FC<PDSFormWizardProps> = ({ employeeId }) => {
             facebookUrl: p.facebookUrl || "", 
             linkedinUrl: p.linkedinUrl || "", 
             twitterHandle: p.twitterHandle || "",
-            emergencyContactPerson: p.emergencyContact || "", 
-            emergencyContactPhone: p.emergencyContactNumber || "",
+            
+            // Emergency Contact Mapping
+            emergencyContactPerson: p.emergencyContacts?.[0]?.name || p.emergencyContact || "", 
+            emergencyContactPhone: p.emergencyContacts?.[0]?.phoneNumber || p.emergencyContactNumber || "",
+            
             nextStepDate: stepRes.nextStepDate ? new Date(stepRes.nextStepDate).toLocaleDateString() : "N/A", 
             totalLwopDays: stepRes.totalLwopDays || 0,
             isBiometricEnrolled: !!p.isBiometricEnrolled,

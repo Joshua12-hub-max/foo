@@ -78,7 +78,7 @@ export const getNextCutOffSchedules = async (_req: Request, res: Response): Prom
         const result = await db.select({
             id: schedules.id,
             employeeId: schedules.employeeId,
-            employeeName: sql<string>`CONCAT(${authentication.firstName}, ' ', ${authentication.lastName})`,
+            employeeName: sql<string>`CONCAT(${authentication.lastName}, ', ', ${authentication.firstName})`,
             departmentName: departments.name,
             scheduleTitle: schedules.scheduleTitle,
             startDate: schedules.startDate,
@@ -277,18 +277,20 @@ export const createShiftTemplate = async (req: Request, res: Response): Promise<
 
         const { name, startTime, endTime, description, departmentId, isDefault, workingDays } = validation.data;
         
-        if (isDefault) {
-            await db.update(shiftTemplates).set({ isDefault: false });
-        }
+        await db.transaction(async (tx) => {
+            if (isDefault) {
+                await tx.update(shiftTemplates).set({ isDefault: false });
+            }
 
-        await db.insert(shiftTemplates).values({
-            name,
-            startTime,
-            endTime,
-            description,
-            departmentId: departmentId === 'all' ? null : departmentId,
-            isDefault: !!isDefault,
-            workingDays: workingDays || null
+            await tx.insert(shiftTemplates).values({
+                name,
+                startTime,
+                endTime,
+                description,
+                departmentId: departmentId === 'all' ? null : departmentId,
+                isDefault: !!isDefault,
+                workingDays: workingDays || null
+            });
         });
 
         res.json({ success: true, message: 'Shift template created successfully' });
@@ -310,22 +312,24 @@ export const updateShiftTemplate = async (req: Request, res: Response): Promise<
 
         const { name, startTime, endTime, description, departmentId, isDefault, workingDays } = validation.data;
 
-        if (isDefault) {
-            await db.update(shiftTemplates).set({ isDefault: false });
-        }
+        await db.transaction(async (tx) => {
+            if (isDefault) {
+                await tx.update(shiftTemplates).set({ isDefault: false });
+            }
 
-        await db.update(shiftTemplates)
-            .set({
-                name,
-                startTime,
-                endTime,
-                description,
-                departmentId: departmentId === 'all' ? null : departmentId,
-                isDefault: !!isDefault,
-                workingDays: workingDays || null,
-                updatedAt: sql`CURRENT_TIMESTAMP`
-            })
-            .where(eq(shiftTemplates.id, Number(id)));
+            await tx.update(shiftTemplates)
+                .set({
+                    name,
+                    startTime,
+                    endTime,
+                    description,
+                    departmentId: departmentId === 'all' ? null : departmentId,
+                    isDefault: !!isDefault,
+                    workingDays: workingDays || null,
+                    updatedAt: sql`CURRENT_TIMESTAMP`
+                })
+                .where(eq(shiftTemplates.id, Number(id)));
+        });
 
         res.json({ success: true, message: 'Shift template updated successfully' });
     } catch (error: unknown) {
@@ -473,7 +477,7 @@ export const getScheduleAuditLogs = async (_req: Request, res: Response): Promis
             createdAt: audit_logs.createdAt,
             ipAddress: audit_logs.ipAddress,
             userAgent: audit_logs.userAgent,
-            userName: sql<string>`CONCAT(${authentication.firstName}, ' ', ${authentication.lastName})`
+            userName: sql<string>`CONCAT(${authentication.lastName}, ', ', ${authentication.firstName})`
         })
         .from(audit_logs)
         .leftJoin(authentication, eq(audit_logs.userId, authentication.id))

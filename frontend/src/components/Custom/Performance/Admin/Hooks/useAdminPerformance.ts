@@ -93,15 +93,13 @@ export const useAdminPerformance = (): AdminPerformanceHookReturn => {
     setError(null);
     try {
       const res = await fetchEvaluationSummary();
-      const payload = res as unknown as { success: boolean; message?: string; employees?: unknown[]; stats?: Record<string, unknown> };
       
-      if (res.success || payload.success) {
-          const empList = payload.employees || (res.data as Record<string, unknown>)?.employees || [];
-          const mappedData = mapPerformanceData(empList as Parameters<typeof mapPerformanceData>[0]);
+      if (res.success && res.data) {
+          const mappedData = mapPerformanceData(res.data.employees as Parameters<typeof mapPerformanceData>[0]);
           setPerformanceData(mappedData);
-          setStats((payload.stats as Record<string, number>) || (res.data as Record<string, any>)?.stats || {} as Record<string, number>);
+          setStats(res.data.stats || {} as Record<string, number>);
       } else {
-          setError(res.message || payload.message || MESSAGES.ERROR_LOAD);
+          setError(res.message || MESSAGES.ERROR_LOAD);
       }
 
     } catch (err) {

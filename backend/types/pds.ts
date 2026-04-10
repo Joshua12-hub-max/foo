@@ -34,6 +34,8 @@ export interface PdsPersonalInfo {
   permProvince?: string;
   permRegion?: string;
   permanentZipCode?: string;
+  emergencyContact?: string;
+  emergencyContactNumber?: string;
 }
 
 export interface PdsEducation {

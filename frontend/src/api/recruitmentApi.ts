@@ -101,4 +101,7 @@ export const recruitmentApi = {
     // Security Audit
     getSecurityLogs: async (): Promise<AxiosResponse<{ success: boolean; logs: SecurityLog[] }>> =>
         api.get('/recruitment/security-logs'),
+
+    getApplicantDocuments: async (applicantId: number): Promise<AxiosResponse<{ success: boolean; documents: any[] }>> =>
+        api.get(`/recruitment/applicants/${applicantId}/documents`),
 };

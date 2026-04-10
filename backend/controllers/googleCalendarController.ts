@@ -393,12 +393,22 @@ export const exportToGoogle = async (req: Request, res: Response): Promise<void>
       const eventDate = new Date(event.date);
       eventDate.setHours(event.time || 9, 0, 0, 0);
 
-      const googleEvent = {
+      const googleEvent: any = {
         summary: event.title,
         description: event.description || '',
         start: { dateTime: eventDate.toISOString(), timeZone: 'Asia/Manila' },
         end: { dateTime: new Date(eventDate.getTime() + 3600000).toISOString(), timeZone: 'Asia/Manila' },
       };
+
+      // Handle Recurrence Expansion for Google
+      if (event.recurringPattern && event.recurringPattern !== 'none') {
+          let rrule = `RRULE:FREQ=${event.recurringPattern.toUpperCase()}`;
+          if (event.recurringEndDate) {
+              const until = new Date(event.recurringEndDate).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+              rrule += `;UNTIL=${until}`;
+          }
+          googleEvent.recurrence = [rrule];
+      }
 
       const response = await calendar.events.insert({ calendarId: 'primary', requestBody: googleEvent });
       await db.insert(syncedEvents).values({

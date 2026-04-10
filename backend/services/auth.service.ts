@@ -8,7 +8,41 @@ import { eq, or, and, gt, sql, desc } from 'drizzle-orm';
 type NewUser = typeof authentication.$inferInsert;
 type UpdateUser = Partial<NewUser>;
 
+import jwt from 'jsonwebtoken';
+
 export class AuthService {
+  /**
+   * Generates a 100% Secure, short-lived (60s) token for direct file downloads
+   * which bypasses the need for httpOnly cookies in window.open calls.
+   */
+  static generateDownloadToken(userId: number): string {
+    const secret = process.env.JWT_SECRET;
+    if (!secret) throw new Error('JWT_SECRET missing');
+    
+    return jwt.sign(
+      { sub: userId, type: 'download' },
+      secret,
+      { expiresIn: '60s' }
+    );
+  }
+
+  /**
+   * Verifies a download token from a URL query parameter.
+   */
+  static verifyDownloadToken(token: string): number | null {
+    try {
+      const secret = process.env.JWT_SECRET;
+      if (!secret) return null;
+      
+      const decoded = jwt.verify(token, secret) as unknown as { sub: number; type: string };
+      if (decoded.type !== 'download') return null;
+      
+      return decoded.sub;
+    } catch {
+      return null;
+    }
+  }
+
   static async findUserByIdentifier(identifier: string) {
     const lowerIdentifier = identifier.toLowerCase();
 
@@ -41,7 +75,7 @@ export class AuthService {
     // Fetch related data separately - with individual error handling
     let hrDetailsResult = null;
     let personalInfoResult = null;
-    let emergencyContactsResult = [];
+    let emergencyContactsResult: any[] = [];
 
     try {
       hrDetailsResult = await db.query.pdsHrDetails.findFirst({
@@ -92,7 +126,7 @@ export class AuthService {
 
     let hrDetailsResult = null;
     let personalInfoResult = null;
-    let emergencyContactsResult = [];
+    let emergencyContactsResult: any[] = [];
 
     try {
       hrDetailsResult = await db.query.pdsHrDetails.findFirst({
@@ -142,7 +176,7 @@ export class AuthService {
 
     let hrDetailsResult = null;
     let personalInfoResult = null;
-    let emergencyContactsResult = [];
+    let emergencyContactsResult: any[] = [];
 
     try {
       hrDetailsResult = await db.query.pdsHrDetails.findFirst({

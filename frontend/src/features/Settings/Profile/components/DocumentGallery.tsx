@@ -4,6 +4,8 @@ import { EmployeeDocument } from '../types';
 import { employeeApi } from '@/api/employeeApi';
 import { toast } from 'react-hot-toast';
 
+import { requestDownloadToken } from '@/Service/Auth';
+
 interface DocumentGalleryProps {
   employeeId: number;
   documents: EmployeeDocument[];
@@ -14,7 +16,21 @@ const DocumentGallery: React.FC<DocumentGalleryProps> = ({ employeeId, documents
   const [uploadingType, setUploadingType] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
+  // Securely open URLs using a short-lived token
+  const handleOpenSecureUrl = async (url: string | null) => {
+      if (!url) return;
+      try {
+          const token = await requestDownloadToken();
+          const separator = url.includes('?') ? '&' : '?';
+          const secureUrl = token ? `${url}${separator}token=${token}` : url;
+          window.open(secureUrl, '_blank');
+      } catch (err) {
+          window.open(url, '_blank');
+      }
+  };
+
   const docSlots = [
+    { type: 'Personal Data Sheet (PDS)', label: 'Personal Data Sheet (PDS)', required: 'REQUIRED PDF', accept: '.pdf', icon: <FileText size={14} /> },
     { type: '2x2 ID Photo', label: '2x2 ID Photo', required: 'REQUIRED JPG/PNG', accept: 'image/png, image/jpeg', icon: <LucideUser size={14} /> },
     { type: 'Resume', label: 'Resume / CV', required: 'REQUIRED PDF/DOCX', accept: '.pdf,.doc,.docx', icon: <Briefcase size={14} /> },
     { type: 'Eligibility Certificate', label: 'Eligibility Cert.', required: 'REQUIRED PDF', accept: '.pdf', icon: <Shield size={14} /> },
@@ -127,14 +143,12 @@ const DocumentGallery: React.FC<DocumentGalleryProps> = ({ employeeId, documents
               <div className="flex items-center gap-1">
                 {doc ? (
                   <>
-                    <a 
-                      href={`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}${doc.filePath}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-white rounded-md transition-all"
+                    <button 
+                      onClick={() => handleOpenSecureUrl(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}${doc.filePath}`)}
+                      className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-white rounded-md transition-all cursor-pointer"
                     >
                       <Eye size={16} />
-                    </a>
+                    </button>
                     <button
                       onClick={() => handleDelete(doc.id)}
                       disabled={isDeleting}

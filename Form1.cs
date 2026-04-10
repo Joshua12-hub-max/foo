@@ -15,7 +15,7 @@ namespace BioMiddleware
         private const int HOST_BAUD = 115200;
         private const int SCAN_INTERVAL_MS = 1000; // Slower polling for better stability
         private const int NO_MATCH_UI_THROTTLE_SEC = 2;
-        private const int MATCH_COOLDOWN_SEC = 60; // Up from 6 to prevent spam scans
+        private const int MATCH_COOLDOWN_SEC = 5; // Reduced from 60 to prevent scanner feeling stuck
 
         private const int UI_RETURN_TO_STANDBY_MS = 5000;
 
@@ -547,9 +547,8 @@ namespace BioMiddleware
                     return;
                 }
 
-                // Double Log Strategy: Insert to BOTH biometric-dedicated and HR-general logs
+                // Single Log Strategy: Insert ONLY to biometric logs, Node.js polling handles the rest
                 DbInsertBioAttendance(empId, allowed, now);
-                DbInsertHrAttendance(empId, allowed, now);
 
                 lblBigStatus.Text = $"{allowed} - {name}";
                 lblStatus.Text = $"Logged {now:yyyy-MM-dd HH:mm:ss}";

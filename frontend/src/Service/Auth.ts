@@ -107,4 +107,14 @@ export const setupPortal = async (data: Record<string, unknown>) => {
     return response.data;
 };
 
+export const requestDownloadToken = async (): Promise<string | null> => {
+    try {
+        const response = await api.get<{ success: boolean; token: string }>("/auth/download-token");
+        return response.data.token;
+    } catch (err) {
+        console.error('Failed to get download token:', err);
+        return null;
+    }
+};
+
 export default api;

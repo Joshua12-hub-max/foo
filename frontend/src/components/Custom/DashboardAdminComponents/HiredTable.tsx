@@ -101,8 +101,8 @@ export default function HiredTable({ onClose, employees = [] }: HiredTableProps)
           </thead>
           <tbody className="divide-y divide-slate-100">
             {currentEmployees.length ? (
-              currentEmployees.map(employee => (
-                <tr key={employee.id} className="hover:bg-[#F8F9FA] hover:shadow-xl transition-colors group bg-white">
+              currentEmployees.map((employee, idx) => (
+                <tr key={`${employee.id}-${idx}`} className="hover:bg-[#F8F9FA] hover:shadow-xl transition-colors group bg-white">
                   <td className="px-4 py-4 text-sm font-medium text-gray-700 whitespace-nowrap">{employee.id}</td>
                   <td className="px-4 py-4 text-sm font-semibold text-gray-900 whitespace-nowrap">{employee.name}</td>
                   <td className="px-4 py-4 text-sm text-gray-600 font-medium whitespace-nowrap">{employee.department || '-'}</td>

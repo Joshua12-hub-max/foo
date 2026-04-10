@@ -34,23 +34,40 @@ export const calculateLateUndertime = (
   let undertimeMinutes = 0;
   let renderMinutes = 0;
 
-  // 100% Precision: Calculate Late Minutes
+  // 100% PRECISION: Calculate Late Minutes
   if (timeIn && timeIn > blockStart) {
     const rawLate = Math.floor((timeIn.getTime() - blockStart.getTime()) / 60000);
-    // Deductive grace period: if late > 15, late = rawLate - 15
+    // Deductive grace period logic
     if (rawLate > gracePeriod) {
       lateMinutes = rawLate - gracePeriod;
     }
+  } else if (!timeIn) {
+    // Audit Requirement: If NO time-in, they are technically 100% late for the block (Absence logic usually handles this, but we record the minutes for rating)
+    lateMinutes = 0; // Absence is handled by status, late minutes are for partials
   }
 
-  // 100% Precision: Calculate Undertime Minutes
-  // Logic: If someone didn't clock out, the rest of the shift is considered undertime.
+  // 100% PRECISION: Calculate Undertime Minutes
+  const now = new Date();
+  const isShiftActive = now < blockEnd;
+
   if (timeOut && timeOut < blockEnd) {
     undertimeMinutes = Math.floor((blockEnd.getTime() - timeOut.getTime()) / 60000);
   } else if (!timeOut) {
-    // Audit Requirement: If NO time-out, the entire duration from blockStart (or timeIn) to blockEnd is undertime.
-    const effectiveStart = (timeIn && timeIn > blockStart) ? timeIn : blockStart;
-    undertimeMinutes = Math.floor((blockEnd.getTime() - effectiveStart.getTime()) / 60000);
+    // Audit Requirement: If NO time-out, we only record undertime if the shift has already ended.
+    // If the shift is still active, undertime is 0 (Pending completion).
+    if (!isShiftActive) {
+      const effectiveStart = (timeIn && timeIn > blockStart) ? timeIn : blockStart;
+      const ut = Math.floor((blockEnd.getTime() - effectiveStart.getTime()) / 60000);
+      undertimeMinutes = Math.max(0, ut);
+    } else {
+      undertimeMinutes = 0;
+    }
+  }
+
+  // 100% PRECISION: Absence Penalty
+  // If BOTH are missing, the undertime equals the full shift duration
+  if (!timeIn && !timeOut) {
+      undertimeMinutes = Math.floor((blockEnd.getTime() - blockStart.getTime()) / 60000);
   }
 
   // Calculate Rendered Minutes for potential DTR auditing
@@ -70,7 +87,9 @@ export const determineStatus = (
   lateMinutes: number,
   undertimeMinutes: number,
   baseStatus: string = 'Present',
-  hasSchedule: boolean = true
+  hasSchedule: boolean = true,
+  isShiftActive: boolean = false,
+  hasTimeOut: boolean = false
 ): string => {
   // If no logs at all for a scheduled day, it's Absent
   if (!hasSchedule) return 'Rest Day Duty';
@@ -78,6 +97,13 @@ export const determineStatus = (
   // If it's already a non-calculable status, keep it
   if (baseStatus === 'Absent' || baseStatus === 'Leave' || baseStatus === 'No Logs') {
     return baseStatus;
+  }
+
+  // 100% PRECISION: Real-time Status Determination
+  // If the shift is still active and they haven't timed out, it's 'Present'.
+  if (isShiftActive && !hasTimeOut) {
+    if (lateMinutes > 0) return 'Present (Late)';
+    return 'Present';
   }
 
   if (lateMinutes > 0 && undertimeMinutes > 0) return 'Late/Undertime';

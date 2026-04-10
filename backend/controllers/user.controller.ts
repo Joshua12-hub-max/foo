@@ -33,34 +33,31 @@ import {
   pdsHrDetails,
   bioEnrolledUsers
 } from '../db/schema.js';
-import { employeeEducation } from '../drizzle/schema.js';
-import { 
-  EmployeeApiResponse, 
+import {
+  EmployeeApiResponse,
   EmployeeFamilyResponse,
   VoluntaryWorkResponse,
   LearningDevelopmentResponse,
   WorkplaceExperienceResponse,
   EmployeeMapperInput,
-  EmployeeSkillsResponse, 
-  EmployeeEducationResponse, 
-  EmployeeEmergencyContactResponse, 
+  EmployeeSkillsResponse,
+  EmployeeEducationResponse,
+  EmployeeEmergencyContactResponse,
   EmployeeCustomFieldResponse,
   PdsOtherInfoResponse,
   PdsReferenceResponse,
   EmployeeEligibilityResponse
 } from '../types/employee.js';
-import { 
-  CreateEmployeeSchema, 
-  UpdateEmployeeSchema, 
+import {
+  CreateEmployeeSchema,
+  UpdateEmployeeSchema,
   RevertStatusSchema,
   AddSkillSchema,
-  AddEducationSchema,
   AddContactSchema,
   AddCustomFieldSchema,
   UpdateCustomFieldSchema,
   UpdateEmployeeInput,
   UpdateSkillSchema,
-  UpdateEducationSchema,
   UpdateContactSchema
 } from '../schemas/employeeSchema.js';
 import { formatFullName } from '../utils/nameUtils.js';
@@ -176,7 +173,7 @@ export const mapToEmployeeApi = (emp: EmployeeMapperInput): EmployeeApiResponse 
     positionId: emp.positionId || null,
     duties: emp.duties || 'No Schedule',
     shift: emp.shift || null,
-    
+
     facebookUrl: emp.facebookUrl || null,
     linkedinUrl: emp.linkedinUrl || null,
     twitterHandle: emp.twitterHandle || null,
@@ -215,7 +212,9 @@ export const mapToEmployeeApi = (emp: EmployeeMapperInput): EmployeeApiResponse 
     tinNumber: emp.tinNumber || null,
     gsisNumber: emp.gsisNumber || null,
     agencyEmployeeNo: emp.agencyEmployeeNo || null,
-    
+    emergencyContact: emp.emergencyContact || null,
+    emergencyContactNumber: emp.emergencyContactNumber || null,
+
     // Detailed Address Fields
     resHouseBlockLot: emp.resHouseBlockLot || null,
     resStreet: emp.resStreet || null,
@@ -249,13 +248,13 @@ const mapToEducationApi = (edu: InferSelectModel<typeof pdsEducation>): Employee
   degree: edu.degreeCourse || null,
   degreeCourse: edu.degreeCourse || null, // Alias for frontend compatibility
   fieldOfStudy: null,
-  startDate: edu.dateFrom ? String(edu.dateFrom) : null,
-  endDate: edu.dateTo ? String(edu.dateTo) : null,
-  isCurrent: false,
+  startDate: edu.dateFrom || null,
+  endDate: edu.dateTo || null,
+  isCurrent: !edu.dateTo || edu.dateTo === 'Present',
   level: edu.level,
   yearGraduated: edu.yearGraduated ? String(edu.yearGraduated) : null,
-  honors: edu.honors,
-  unitsEarned: edu.unitsEarned
+  honors: edu.honors || null,
+  unitsEarned: edu.unitsEarned || null
 });
 
 const mapToEligibilityApi = (el: InferSelectModel<typeof pdsEligibility>): EmployeeEligibilityResponse => ({
@@ -293,35 +292,35 @@ const mapToCustomFieldApi = (field: InferSelectModel<typeof employeeCustomFields
 const mapToFamilyApi = (fam: InferSelectModel<typeof pdsFamily>): EmployeeFamilyResponse => ({
   id: fam.id,
   relationType: fam.relationType,
-  lastName: fam.lastName,
-  firstName: fam.firstName,
-  middleName: fam.middleName,
-  nameExtension: fam.nameExtension,
-  occupation: fam.occupation,
-  employer: fam.employer,
-  businessAddress: fam.businessAddress,
-  telephoneNo: fam.telephoneNo,
-  dateOfBirth: fam.dateOfBirth
+  lastName: fam.lastName || '',
+  firstName: fam.firstName || '',
+  middleName: fam.middleName || null,
+  nameExtension: fam.nameExtension || null,
+  occupation: fam.occupation || null,
+  employer: fam.employer || null,
+  businessAddress: fam.businessAddress || null,
+  telephoneNo: fam.telephoneNo || null,
+  dateOfBirth: fam.dateOfBirth || null
 });
 
 const mapToVoluntaryWorkApi = (vw: InferSelectModel<typeof pdsVoluntaryWork>): VoluntaryWorkResponse => ({
   id: vw.id,
   organizationName: vw.organizationName,
-  address: vw.address,
-  dateFrom: vw.dateFrom,
-  dateTo: vw.dateTo,
-  hoursNumber: vw.hoursNumber,
-  position: vw.position
+  address: vw.address || null,
+  dateFrom: vw.dateFrom || null,
+  dateTo: vw.dateTo || null,
+  hoursNumber: vw.hoursNumber || null,
+  position: vw.position || null
 });
 
 const mapToLdApi = (ld: InferSelectModel<typeof pdsLearningDevelopment>): LearningDevelopmentResponse => ({
   id: ld.id,
   title: ld.title,
-  dateFrom: ld.dateFrom,
-  dateTo: ld.dateTo,
-  hoursNumber: ld.hoursNumber,
-  typeOfLd: ld.typeOfLd,
-  conductedBy: ld.conductedBy
+  dateFrom: ld.dateFrom || null,
+  dateTo: ld.dateTo || null,
+  hoursNumber: ld.hoursNumber || null,
+  typeOfLd: ld.typeOfLd || null,
+  conductedBy: ld.conductedBy || null
 });
 
 const mapToWorkExperienceApi = (we: InferSelectModel<typeof pdsWorkExperience>): WorkplaceExperienceResponse => ({
@@ -349,12 +348,12 @@ const mapToOtherInfoApi = (oi: InferSelectModel<typeof pdsOtherInfo>): PdsOtherI
 const mapToReferencesApi = (ref: InferSelectModel<typeof pdsReferences>): PdsReferenceResponse => ({
   id: ref.id,
   name: ref.name,
-  address: ref.address,
-  telNo: ref.telNo
+  address: ref.address || null,
+  telNo: ref.telNo || null
 });
 
 const sanitizePDSFields = (updates: UpdateEmployeeInput): UpdateEmployeeInput => {
-  const extractNumeric = (val: any): number | null => {
+  const extractNumeric = (val: string | number | null | undefined): number | null => {
     if (val === null || val === undefined) return null;
     if (typeof val === 'number') return val;
     // Extract anything that looks like a number (decimals included)
@@ -369,7 +368,7 @@ const sanitizePDSFields = (updates: UpdateEmployeeInput): UpdateEmployeeInput =>
     // Auto-convert Height (cm -> m) if likely in cm (> 3 meters is unlikely for humans)
     updates.heightM = h > 3 ? parseFloat((h / 100).toFixed(2)) : parseFloat(h.toFixed(2));
   }
-  
+
   if (w !== null) {
     // Auto-convert Weight to be safe (if in grams > 1000)
     updates.weightKg = w > 1000 ? parseFloat((w / 1000).toFixed(2)) : parseFloat(w.toFixed(2));
@@ -385,7 +384,7 @@ const sanitizePDSFields = (updates: UpdateEmployeeInput): UpdateEmployeeInput =>
 export const getAllEmployees = async (req: Request, res: Response): Promise<void> => {
   try {
     const { department, departmentId } = req.query;
-    
+
     const conditions: SQL[] = [];
     if (departmentId) {
       conditions.push(eq(pdsHrDetails.departmentId, Number(departmentId)));
@@ -397,8 +396,8 @@ export const getAllEmployees = async (req: Request, res: Response): Promise<void
 
     const mappedEmployees = employees.map(mapToEmployeeApi);
     res.json({ success: true, employees: mappedEmployees });
-  } catch (_error) {
-
+  } catch (error) {
+    console.error('[GET ALL EMPLOYEES ERROR]', error);
     res.status(500).json({ success: false, message: 'Failed to fetch employees' });
   }
 };
@@ -407,7 +406,7 @@ export const getEmployeeById = async (req: Request, res: Response): Promise<void
   try {
     const { id } = req.params as { id: string };
     console.warn(`[DEBUG] Fetching employee profile for ID: ${id}`);
-    
+
     const [employeeData, relatedData] = await Promise.all([
       UserService.getEmployeeById(parseInt(id)),
       UserService.getRelatedData(parseInt(id))
@@ -466,8 +465,8 @@ export const getEmployeeById = async (req: Request, res: Response): Promise<void
     res.json(response);
   } catch (error) {
     console.error('[ERROR] Failed to fetch employee profile:', error);
-    res.status(500).json({ 
-      success: false, 
+    res.status(500).json({
+      success: false,
       message: 'Failed to fetch employee',
       error: error instanceof Error ? error.message : String(error)
     });
@@ -537,6 +536,13 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
        .from(authentication);
 
        const nextSeq = (lastIdResult[0]?.maxId || 0) + 1;
+       
+       // STRICT ENFORCEMENT: Max capacity is Emp-200 based on biometric sensor limit
+       if (nextSeq > 200) {
+           res.status(409).json({ success: false, message: 'Sensor capacity limit reached. Cannot generate Employee ID beyond Emp-200.' });
+           return;
+       }
+       
        // Format back to Emp-XXX as requested by user
        finalEmployeeId = `Emp-${String(nextSeq).padStart(3, '0')}`;
     }
@@ -662,10 +668,13 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
         permRegion: sanitizedData.permRegion || null,
       });
 
-      const q = (pdsQuestions || {}) as Record<string, any>;
-      const boolQ = (field: string, fallback: any): boolean | null => {
+      const q = (pdsQuestions || {}) as Partial<PdsQuestions>;
+      const boolQ = (field: keyof PdsQuestions, fallback: boolean | string | null | undefined): boolean | null => {
         const v = q[field] ?? fallback;
-        return v == null ? null : !!v;
+        if (v === null || v === undefined) return null;
+        if (typeof v === 'boolean') return v;
+        const s = String(v).toLowerCase().trim();
+        return s === 'true' || s === 'yes' || s === '1' || s === 'y';
       };
       await db.insert(pdsDeclarations).values({
         employeeId: newEmployeeIdNum,
@@ -691,9 +700,8 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
         indigenousMember: boolQ('indigenousMember', sanitizedData.indigenousMember),
         indigenousDetails: q.indigenousDetails || sanitizedData.indigenousDetails || null,
         personWithDisability: boolQ('personWithDisability', sanitizedData.personWithDisability),
-
         disabilityIdNo: q.disabilityIdNo || sanitizedData.disabilityIdNo || null,
-        soloParent: q.soloParent || sanitizedData.soloParent || null,
+        soloParent: boolQ('soloParent', sanitizedData.soloParent),
         soloParentIdNo: q.soloParentIdNo || sanitizedData.soloParentIdNo || null,
         govtIdType: sanitizedData.govtIdType || null,
         govtIdNo: sanitizedData.govtIdNo || null,
@@ -743,7 +751,7 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
         }
       }
     }
-    
+
     if (finalPosId && newEmployeeIdNum) {
        const today = new Date().toISOString().split('T')[0];
        await db.update(plantillaPositions)
@@ -795,7 +803,14 @@ export const getEmployeeDocuments = async (req: Request, res: Response): Promise
   try {
     const { id } = req.params;
     const documents = await db.select().from(employeeDocuments).where(eq(employeeDocuments.employeeId, parseInt(id as string)));
-    res.json({ success: true, documents });
+    
+    // Map documentName to fileName for frontend compatibility
+    const mappedDocs = documents.map(d => ({
+        ...d,
+        fileName: d.documentName
+    }));
+    
+    res.json({ success: true, documents: mappedDocs });
   } catch (_error) {
     res.status(500).json({ success: false, message: 'Failed to fetch documents' });
   }
@@ -821,10 +836,10 @@ export const uploadEmployeeDocument = async (req: Request, res: Response): Promi
       mimeType: file.mimetype
     });
 
-    res.json({ 
-      success: true, 
-      message: 'Document uploaded successfully', 
-      document: { id: result.insertId, documentName: file.originalname, filePath: `/uploads/resumes/${file.filename}` } 
+    res.json({
+      success: true,
+      message: 'Document uploaded successfully',
+      document: { id: result.insertId, documentName: file.originalname, filePath: `/uploads/resumes/${file.filename}` }
     });
   } catch (_error) {
     res.status(500).json({ success: false, message: 'Failed to upload document' });
@@ -834,7 +849,7 @@ export const uploadEmployeeDocument = async (req: Request, res: Response): Promi
 export const deleteEmployeeDocument = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id, docId } = req.params;
-    
+
     const [doc] = await db.select().from(employeeDocuments).where(and(
       eq(employeeDocuments.id, parseInt(docId as string)),
       eq(employeeDocuments.employeeId, parseInt(id as string))
@@ -1030,7 +1045,7 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
              gender: ['Male','Female'],
              civilStatus: ['Single','Married','Widowed','Separated','Annulled'],
              dutyType: ['Standard', 'Irregular'],
-       
+
            };
             if (enumValidation[drizzleKey] && processedVal !== null) {
               if (!enumValidation[drizzleKey].includes(String(processedVal))) {
@@ -1039,7 +1054,7 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
                 continue;
               }
             }
-            
+
             if (drizzleKey === 'duties') {
                // Special handling for duties - do not add to authentication updateFields
                // We will handle this separately below
@@ -1057,7 +1072,7 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
       const empId = currentEmployee.employeeId;
       const today = new Date().toISOString().split('T')[0];
       const newDuties = sanitizedUpdates.duties !== undefined ? String(sanitizedUpdates.duties) : null;
-      
+
       // Check for ALL currently active schedule records (multi-day)
       const currentActiveSchedules = await db.query.schedules.findMany({
         where: and(
@@ -1070,7 +1085,7 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
       if (currentActiveSchedules.length > 0) {
           // If duties is being updated, we check if it's a future transition
           const targetStartDate = sanitizedUpdates.startDate ? String(sanitizedUpdates.startDate) : today;
-          
+
           if (targetStartDate > today && newDuties !== null) {
               // FUTURE TRANSITION: Prepare next schedule set
               // 1. Close current schedules
@@ -1180,7 +1195,7 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
           await db.update(plantillaPositions)
             .set({ isVacant: false, incumbentId: parseInt(id) })
             .where(eq(plantillaPositions.id, newPosId));
-          
+
           if (updates.itemNumber === undefined) updateFields.itemNumber = plantilla.itemNumber;
           if (updates.positionTitle === undefined) updateFields.positionTitle = plantilla.positionTitle;
           if (updates.salaryGrade === undefined) updateFields.salaryGrade = String(plantilla.salaryGrade);
@@ -1192,7 +1207,7 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
     }
 
     if (Object.keys(updateFields).length === 0) {
-      // We will perform the DB update below if there are fields, 
+      // We will perform the DB update below if there are fields,
       // but we need to check if there are ANY fields including HR ones.
     }
 
@@ -1214,17 +1229,25 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
     ];
     const personalFields = [
       'birthDate', 'placeOfBirth', 'gender', 'civilStatus', 'heightM', 'weightKg',
-      'bloodType', 'citizenship', 'residentialAddress', 'permanentAddress',
+      'bloodType', 'citizenship', 'citizenshipType', 'dualCountry', 'residentialAddress', 'permanentAddress',
       'mobileNo', 'telephoneNo', 'nationality', 'phoneNumber',
+      'umidNumber', 'philsysId', 'philhealthNumber', 'pagibigNumber', 'tinNumber', 'gsisNumber', 'agencyEmployeeNo',
       'resHouseBlockLot', 'resStreet', 'resSubdivision', 'resBarangay', 'resCity', 'resProvince', 'resRegion',
       'permHouseBlockLot', 'permStreet', 'permSubdivision', 'permBarangay', 'permCity', 'permProvince', 'permRegion',
-      'residentialZipCode', 'permanentZipCode', 'agencyEmployeeNo'
+      'residentialZipCode', 'permanentZipCode'
     ];
 
     const authUpdates: Partial<typeof authentication.$inferInsert> = {};
     const hrUpdates: Partial<typeof pdsHrDetails.$inferInsert> = {};
     const personalUpdates: Record<string, unknown> = {};
     const declarationUpdates: Record<string, unknown> = {};
+
+    const toBool = (v: any): boolean | null => {
+      if (v === null || v === undefined) return null;
+      if (typeof v === 'boolean') return v;
+      const s = String(v).toLowerCase().trim();
+      return s === 'true' || s === 'yes' || s === '1' || s === 'y';
+    };
 
     Object.entries(sanitizedUpdates).forEach(([key, value]) => {
       if (authFields.includes(key)) {
@@ -1241,8 +1264,30 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
             'govtIdType', 'govtIdNo', 'govtIdIssuance', 'dateAccomplished'
         ];
         if (decFields.includes(key)) {
-            declarationUpdates[key] = value;
+            const booleanDecs = [
+                'relatedThirdDegree', 'relatedFourthDegree', 'foundGuiltyAdmin', 'criminallyCharged',
+                'convictedCrime', 'separatedFromService', 'electionCandidate', 'resignedToPromote',
+                'immigrantStatus', 'indigenousMember', 'personWithDisability', 'soloParent'
+            ];
+            if (booleanDecs.includes(key)) {
+                declarationUpdates[key] = toBool(value);
+            } else {
+                declarationUpdates[key] = value;
+            }
         } else {
+            // Enum validation before adding to hrUpdates
+            const enumValidation: Record<string, string[]> = {
+                appointmentType: ['Permanent', 'Contractual', 'Casual', 'Job Order', 'Coterminous', 'Temporary', 'Contract of Service', 'JO', 'COS'],
+                employmentStatus: ['Active', 'Probationary', 'Terminated', 'Resigned', 'On Leave', 'Suspended', 'Verbal Warning', 'Written Warning', 'Show Cause'],
+                dutyType: ['Standard', 'Irregular'],
+            };
+            
+            if (enumValidation[key] && value !== null && value !== undefined) {
+                if (!enumValidation[key].includes(String(value))) {
+                    console.warn(`Skipping invalid enum value for ${key}: "${value}"`);
+                    return;
+                }
+            }
             (hrUpdates as Record<string, unknown>)[key] = value;
         }
       } else if (personalFields.includes(key)) {
@@ -1256,11 +1301,20 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
     const pdsQUpdates = updates.pdsQuestions;
     if (pdsQUpdates) {
         Object.entries(pdsQUpdates).forEach(([k, v]) => {
-            declarationUpdates[k] = (v === true || v === false) ? v : v;
+            const booleanDecs = [
+                'relatedThirdDegree', 'relatedFourthDegree', 'foundGuiltyAdmin', 'criminallyCharged',
+                'convictedCrime', 'separatedFromService', 'electionCandidate', 'resignedToPromote',
+                'immigrantStatus', 'indigenousMember', 'personWithDisability', 'soloParent'
+            ];
+            if (booleanDecs.includes(k)) {
+                declarationUpdates[k] = toBool(v);
+            } else {
+                declarationUpdates[k] = v;
+            }
         });
     }
 
-    if (Object.keys(authUpdates).length === 0 && Object.keys(hrUpdates).length === 0 && 
+    if (Object.keys(authUpdates).length === 0 && Object.keys(hrUpdates).length === 0 &&
         Object.keys(personalUpdates).length === 0 && Object.keys(declarationUpdates).length === 0) {
       res.json({ success: true, message: 'No changes detected' });
       return;
@@ -1407,7 +1461,7 @@ export const getEmployeeSkills = async (req: Request, res: Response): Promise<vo
       .from(employeeSkills)
       .where(eq(employeeSkills.employeeId, parseInt(id)))
       .orderBy(employeeSkills.skillName);
-    
+
     const mappedSkills = skills.map(mapToSkillApi);
     res.json({ success: true, skills: mappedSkills });
   } catch (_error) {
@@ -1459,7 +1513,6 @@ export const updateEmployeeSkill = async (req: Request, res: Response): Promise<
 
     res.json({ success: true, message: 'Skill updated' });
   } catch (_error) {
-
     res.status(500).json({ success: false, message: 'Failed to update skill' });
   }
 };
@@ -1488,7 +1541,7 @@ export const getEmployeeEducation = async (req: Request, res: Response): Promise
     const education = await db.select()
       .from(pdsEducation)
       .where(eq(pdsEducation.employeeId, parseInt(id)));
-    
+
     const mappedEducation = (education as InferSelectModel<typeof pdsEducation>[]).map(mapToEducationApi);
     res.json({ success: true, education: mappedEducation });
   } catch (_error) {
@@ -1499,22 +1552,32 @@ export const getEmployeeEducation = async (req: Request, res: Response): Promise
 export const addEmployeeEducation = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params as { id: string };
-    const { institution, degree, fieldOfStudy, startDate, endDate, isCurrent, type, description } = AddEducationSchema.parse(req.body);
+    const { institution, degree, startDate, endDate, level, yearGraduated, honors, unitsEarned } = req.body as {
+      institution: string;
+      degree?: string;
+      startDate?: string;
+      endDate?: string;
+      level: 'Elementary' | 'Secondary' | 'Vocational' | 'College' | 'Graduate Studies';
+      yearGraduated?: number;
+      honors?: string;
+      unitsEarned?: string;
+    };
 
-    const [result] = await db.insert(employeeEducation).values({
+    const [result] = await db.insert(pdsEducation).values({
       employeeId: parseInt(id),
-      institution,
-      degree: degree || null,
-      fieldOfStudy: fieldOfStudy || null,
-      startDate: startDate ? String(startDate) : null,
-      endDate: endDate ? String(endDate) : null,
-      isCurrent: isCurrent ? true : false, // boolean
-      type: (type || 'Education') as 'Education' | 'Certification' | 'Training',
-      description: description || null
+      schoolName: institution,
+      degreeCourse: degree || null,
+      dateFrom: startDate || null,
+      dateTo: endDate || null,
+      level: level,
+      yearGraduated: yearGraduated || null,
+      honors: honors || null,
+      unitsEarned: unitsEarned || null
     });
 
     res.status(201).json({ success: true, message: 'Education added', educationId: result.insertId });
-  } catch (_error) {
+  } catch (error) {
+    console.error('[ADD EDUCATION ERROR]', error);
     res.status(500).json({ success: false, message: 'Failed to add education' });
   }
 };
@@ -1522,33 +1585,42 @@ export const addEmployeeEducation = async (req: Request, res: Response): Promise
 export const updateEmployeeEducation = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id, educationId } = req.params as { id: string; educationId: string };
-    const updates = UpdateEducationSchema.parse(req.body);
+    const updates = req.body as {
+      institution?: string;
+      degree?: string;
+      startDate?: string;
+      endDate?: string;
+      level?: 'Elementary' | 'Secondary' | 'Vocational' | 'College' | 'Graduate Studies';
+      yearGraduated?: number;
+      honors?: string;
+      unitsEarned?: string;
+    };
 
     if (Object.keys(updates).length === 0) {
         res.status(400).json({ success: false, message: 'No fields to update' });
         return;
     }
 
-    const drizzleUpdates: Partial<typeof employeeEducation.$inferInsert> = {};
-    if (updates.institution) drizzleUpdates.institution = updates.institution;
-    if (updates.degree !== undefined) drizzleUpdates.degree = updates.degree || null;
-    if (updates.fieldOfStudy !== undefined) drizzleUpdates.fieldOfStudy = updates.fieldOfStudy || null;
-    if (updates.startDate !== undefined) drizzleUpdates.startDate = updates.startDate ? String(updates.startDate) : null;
-    if (updates.endDate !== undefined) drizzleUpdates.endDate = updates.endDate ? String(updates.endDate) : null;
-    if (updates.isCurrent !== undefined) drizzleUpdates.isCurrent = updates.isCurrent ? true : false;
-    if (updates.type) drizzleUpdates.type = updates.type as 'Education' | 'Certification' | 'Training';
-    if (updates.description !== undefined) drizzleUpdates.description = updates.description || null;
+    const drizzleUpdates: Partial<typeof pdsEducation.$inferInsert> = {};
+    if (updates.institution) drizzleUpdates.schoolName = updates.institution;
+    if (updates.degree !== undefined) drizzleUpdates.degreeCourse = updates.degree || null;
+    if (updates.startDate !== undefined) drizzleUpdates.dateFrom = updates.startDate || null;
+    if (updates.endDate !== undefined) drizzleUpdates.dateTo = updates.endDate || null;
+    if (updates.level) drizzleUpdates.level = updates.level;
+    if (updates.yearGraduated !== undefined) drizzleUpdates.yearGraduated = updates.yearGraduated || null;
+    if (updates.honors !== undefined) drizzleUpdates.honors = updates.honors || null;
+    if (updates.unitsEarned !== undefined) drizzleUpdates.unitsEarned = updates.unitsEarned || null;
 
-    await db.update(employeeEducation)
+    await db.update(pdsEducation)
       .set(drizzleUpdates)
       .where(and(
-        eq(employeeEducation.id, parseInt(educationId)),
-        eq(employeeEducation.employeeId, parseInt(id))
+        eq(pdsEducation.id, parseInt(educationId)),
+        eq(pdsEducation.employeeId, parseInt(id))
       ));
 
     res.json({ success: true, message: 'Education updated' });
-  } catch (_error) {
-
+  } catch (error) {
+    console.error('[UPDATE EDUCATION ERROR]', error);
     res.status(500).json({ success: false, message: 'Failed to update education' });
   }
 };
@@ -1556,13 +1628,14 @@ export const updateEmployeeEducation = async (req: Request, res: Response): Prom
 export const deleteEmployeeEducation = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id, educationId } = req.params as { id: string; educationId: string };
-    await db.delete(employeeEducation)
+    await db.delete(pdsEducation)
       .where(and(
-        eq(employeeEducation.id, parseInt(educationId)),
-        eq(employeeEducation.employeeId, parseInt(id))
+        eq(pdsEducation.id, parseInt(educationId)),
+        eq(pdsEducation.employeeId, parseInt(id))
       ));
     res.json({ success: true, message: 'Education deleted' });
-  } catch (_error) {
+  } catch (error) {
+    console.error('[DELETE EDUCATION ERROR]', error);
     res.status(500).json({ success: false, message: 'Failed to delete education' });
   }
 };
@@ -1578,7 +1651,7 @@ export const getEmployeeContacts = async (req: Request, res: Response): Promise<
       .from(employeeEmergencyContacts)
       .where(eq(employeeEmergencyContacts.employeeId, parseInt(id)))
       .orderBy(desc(employeeEmergencyContacts.isPrimary));
-    
+
     const mappedContacts = contacts.map(mapToContactApi);
     res.json({ success: true, contacts: mappedContacts });
   } catch (_error) {
@@ -1653,7 +1726,6 @@ export const updateEmployeeContact = async (req: Request, res: Response): Promis
 
     res.json({ success: true, message: 'Contact updated' });
   } catch (_error) {
-
     res.status(500).json({ success: false, message: 'Failed to update contact' });
   }
 };
@@ -1691,7 +1763,6 @@ export const addEmployeeCustomField = async (req: Request, res: Response): Promi
 
     res.status(201).json({ success: true, message: 'Custom field added', fieldId: result.insertId });
   } catch (_error) {
-
     res.status(500).json({ success: false, message: 'Failed to add custom field' });
   }
 };
@@ -1724,7 +1795,6 @@ export const updateEmployeeCustomField = async (req: Request, res: Response): Pr
 
     res.json({ success: true, message: 'Custom field updated' });
   } catch (_error: unknown) {
-
     res.status(500).json({ success: false, message: 'Failed to update custom field' });
   }
 };
@@ -1739,7 +1809,6 @@ export const deleteEmployeeCustomField = async (req: Request, res: Response): Pr
       ));
     res.json({ success: true, message: 'Custom field deleted' });
   } catch (_error: unknown) {
-
     res.status(500).json({ success: false, message: 'Failed to delete custom field' });
   }
 };

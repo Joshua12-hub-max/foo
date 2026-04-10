@@ -18,12 +18,12 @@ const PerformanceReviews = () => {
     try {
       setLoading(true);
       const [reviewsData, cyclesData] = await Promise.all([
-        fetchReviews() as Promise<{ success: boolean; data?: { reviews: InternalReview[] } }>,
-        fetchReviewCycles() as Promise<{ success: boolean; data?: { cycles: ReviewCycle[] } }>
+        fetchReviews(),
+        fetchReviewCycles()
       ]);
 
-      if (reviewsData.success && reviewsData.data) setReviews(reviewsData.data.reviews);
-      if (cyclesData.success && cyclesData.data) setCycles(cyclesData.data.cycles);
+      if (reviewsData.success && reviewsData.reviews) setReviews(reviewsData.reviews);
+      if (cyclesData.success && cyclesData.cycles) setCycles(cyclesData.cycles);
     } catch (err) {
       console.error("Failed to load reviews data", err);
     } finally {
@@ -46,17 +46,21 @@ const PerformanceReviews = () => {
   const statusOptions = [
     { value: 'All', label: 'All Statuses' },
     { value: 'Draft', label: 'Draft' },
-    { value: 'In Progress', label: 'In Progress' },
-    { value: 'Pending Approval', label: 'Pending Approval' },
-    { value: 'Completed', label: 'Completed' },
+    { value: 'Self-Rated', label: 'Self-Rated' },
+    { value: 'Submitted', label: 'Submitted' },
+    { value: 'Acknowledged', label: 'Acknowledged' },
+    { value: 'Approved', label: 'Approved' },
+    { value: 'Finalized', label: 'Finalized' },
   ];
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'Completed': return 'bg-green-100 text-green-700';
-      case 'In Progress': return 'bg-blue-100 text-blue-700';
+      case 'Finalized': return 'bg-green-100 text-green-700';
+      case 'Approved': return 'bg-emerald-100 text-emerald-700';
+      case 'Acknowledged': return 'bg-teal-100 text-teal-700';
+      case 'Submitted': return 'bg-blue-100 text-blue-700';
+      case 'Self-Rated': return 'bg-indigo-100 text-indigo-700';
       case 'Draft': return 'bg-gray-100 text-gray-700';
-      case 'Pending Approval': return 'bg-yellow-100 text-yellow-700';
       default: return 'bg-gray-100 text-gray-700';
     }
   };

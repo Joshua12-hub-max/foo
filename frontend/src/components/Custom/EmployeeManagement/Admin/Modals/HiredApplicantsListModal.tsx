@@ -30,7 +30,7 @@ const HiredApplicantsListModal: React.FC<HiredApplicantsListModalProps> = ({
 
   const applicants = response?.data?.applicants || [];
   const filteredApplicants = applicants.filter(app => {
-    const fullName = `${app.firstName} ${app.lastName} ${app.middleName || ''}`.toLowerCase();
+    const fullName = `${app.lastName}, ${app.firstName} ${app.middleName || ''}`.toLowerCase();
     return fullName.includes(searchTerm.toLowerCase()) || 
            (app.jobTitle || '').toLowerCase().includes(searchTerm.toLowerCase());
   });

@@ -21,7 +21,6 @@ const DailyTimeRecord = () => {
     error,
     successMessage,
     paginationData,
-    totals,
     uniqueDepartments,
     uniqueEmployees,
     editingRecord,
@@ -113,7 +112,6 @@ const DailyTimeRecord = () => {
         filters={filters}
         onEdit={handleEdit}
         onReview={handleReview}
-        totals={totals}
       />
 
       {paginationData && (

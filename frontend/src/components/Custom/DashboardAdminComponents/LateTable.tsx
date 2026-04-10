@@ -89,8 +89,8 @@ export default function LateTable({ onClose, employees = [] }: LateTableProps) {
           </thead>
           <tbody className="divide-y divide-slate-100">
             {currentEmployees.length ? (
-              currentEmployees.map(employee => (
-                <tr key={employee.id} className="hover:bg-[#F8F9FA] hover:shadow-xl transition-colors group bg-white">
+              currentEmployees.map((employee, idx) => (
+                <tr key={`${employee.id}-${idx}`} className="hover:bg-[#F8F9FA] hover:shadow-xl transition-colors group bg-white">
                   <td className="px-4 py-4 whitespace-nowrap">
                     <span className="px-3 py-1 text-xs font-semibold rounded-full bg-orange-100 text-orange-700">
                       {employee.status}

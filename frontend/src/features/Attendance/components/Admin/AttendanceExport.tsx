@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { FileSpreadsheet, FileText, Loader2 } from 'lucide-react';
 import { useToastStore } from '@/stores';
 import { exportAttendanceToExcel } from './utils/attendanceExcelExport';
@@ -68,6 +68,26 @@ const getEmployeeName = (record: AttendanceRecord): string => {
 };
 
 /**
+ * Get internal canonical ID for matching (pure numeric string)
+ * e.g. "Emp-001" -> "1", "1" -> "1", "EMP-01" -> "1"
+ */
+const getCanonicalId = (id: string | number | undefined | null): string => {
+  if (id === null || id === undefined) return '';
+  const raw = String(id).trim();
+  const digits = raw.replace(/\D/g, '');
+  return digits.replace(/^0+/, '') || '0';
+};
+
+/**
+ * Format ID for user-facing display (Emp-000)
+ */
+const formatDisplayId = (id: string | number | undefined | null): string => {
+  const canon = getCanonicalId(id);
+  if (!canon || canon === '0') return String(id || '');
+  return `Emp-${canon.padStart(3, '0')}`;
+};
+
+/**
  * Format minutes to readable format  
  */
 const formatMinutes = (value: string | number): string => {
@@ -106,11 +126,12 @@ const getLeaveAbbreviation = (leaveType: string): string => {
   return map[leaveType] || 'LV';
 };
 
-const AttendanceExport: React.FC<AttendanceExportProps> = ({ data, title, dateRange, filters }) => {
+const AttendanceExport: React.FC<AttendanceExportProps> = ({ data: _data, title, dateRange, filters }) => {
   const showToast = useToastStore((state) => state.showToast);
   const showNotification = (message: string, type: 'success' | 'error') => showToast(message, type);
   const [isExporting, setIsExporting] = useState(false);
   const [groupByDepartment, setGroupByDepartment] = useState(false);
+  const exportInProgress = useRef(false);
   
   // ═══════════════════════════════════════════════════════════════
   // Period Logic: 1-15 or 16-End of Month (Katapusan)
@@ -136,26 +157,34 @@ const AttendanceExport: React.FC<AttendanceExportProps> = ({ data, title, dateRa
     }
   }
 
-  const fetchAllData = async (): Promise<AttendanceRecord[]> => {
-    const transformLogs = (logs: DTRApiResponse[]): AttendanceRecord[] => {
-        return logs.map(l => ({
-            id: l.id,
-            employeeId: String(l.employeeId),
-            employeeName: l.employeeName || 'Unknown',
-            name: l.employeeName || 'Unknown',
-            date: String(l.date),
-            timeIn: l.timeIn || undefined,
-            timeOut: l.timeOut || undefined,
-            lateMinutes: Number(l.lateMinutes || 0),
-            undertimeMinutes: Number(l.undertimeMinutes || 0),
-            status: l.status || 'Present',
-            department: l.department || 'N/A',
-            duties: l.duties
-        }));
-    };
+  // UTC-safe date parser — must be defined before any usage
+  const parseDateStr = (str: string): Date => {
+    const parts = str.split(/[-/]/).map(Number);
+    if (parts[0] > 1000) return new Date(Date.UTC(parts[0], parts[1] - 1, parts[2]));
+    if (parts[2] > 1000) return new Date(Date.UTC(parts[2], parts[0] - 1, parts[1]));
+    return new Date(str);
+  };
 
+  // Check if a date falls on a weekend (Saturday=6, Sunday=0)
+  const isWeekend = (dateStr: string): boolean => {
+    const d = parseDateStr(dateStr);
+    const day = d.getUTCDay();
+    return day === 0 || day === 6;
+  };
+
+  // Normalize name to "Last, First" format for consistent exports
+  const normalizeNameForExport = (emp: { firstName?: string; lastName?: string; name?: string }, fallback: string): string => {
+    const first = (emp.firstName || '').trim();
+    const last = (emp.lastName || '').trim();
+    if (last && first) return `${last}, ${first}`;
+    if (emp.name) return emp.name;
+    return fallback;
+  };
+
+  const fetchAllData = async (): Promise<AttendanceRecord[]> => {
     try {
-      const selectedDept = filters?.department && filters?.department !== 'All Departments' && filters?.department !== 'all' ? filters.department : undefined;
+      const selectedDept = filters?.department && filters?.department !== 'All Departments' && filters?.department !== 'all' && filters?.department !== '' ? filters.department : undefined;
+      const selectedEmployeeId = filters?.employeeId && filters?.employeeId !== 'all' && filters?.employeeId !== '' ? filters.employeeId : undefined;
 
       // 1. Fetch data in parallel
       const [logsResponse, employeesResponse, leavesResponse] = await Promise.all([
@@ -164,194 +193,210 @@ const AttendanceExport: React.FC<AttendanceExportProps> = ({ data, title, dateRa
           startDate: appliedStartDate,
           endDate: appliedEndDate,
           page: 1,
-          limit: 100000 
+          limit: 100000
         }),
-        employeeApi.fetchEmployees({ department: selectedDept } as { department?: string | null }),
+        employeeApi.fetchEmployees({ 
+          department: selectedDept,
+          // 100% SUCCESS Logic: If a specific employee is selected, only fetch that one for the base list
+          employeeId: selectedEmployeeId
+        } as any),
         leaveApi.getAllApplications({
           status: 'Approved',
           startDate: appliedStartDate,
           endDate: appliedEndDate,
           limit: 100000,
           page: 1,
-        }).catch(() => ({ data: { applications: [] } }))
+        }).catch(() => ({ data: { applications: [] as LeaveApplication[] } }))
       ]);
 
-      const rawLogs = logsResponse.data.success && Array.isArray(logsResponse.data.data) ? logsResponse.data.data : [];
-      const employees = employeesResponse.success && Array.isArray(employeesResponse.employees) ? employeesResponse.employees : [];
-      
-      // Leave Lookup: key: "YYYY-MM-DD_empId" → leaveType
-      const leaveMap = new Map<string, string>(); 
-      const approvedLeavesResponse = leavesResponse.data as { applications?: LeaveApplication[] };
-      const approvedLeaves = approvedLeavesResponse.applications || [];
-      
+      let employees = employeesResponse.success && Array.isArray(employeesResponse.employees) ? employeesResponse.employees : [];
+
+      // 2. Extra Safety: If employeeId is specified, ensure we only keep that one in the base list
+      if (selectedEmployeeId) {
+        employees = employees.filter(e => 
+          getCanonicalId(e.employeeId || e.id) === getCanonicalId(selectedEmployeeId)
+        );
+      }
+
+      const rawLogs: DTRApiResponse[] = logsResponse.data?.data || [];
+
+      // Leave Lookup: key: "YYYY-MM-DD_matchingId" → leaveType
+      const leaveMap = new Map<string, string>();
+      const leaveResponseData = leavesResponse.data as { applications?: LeaveApplication[] };
+      const approvedLeaves: LeaveApplication[] = leaveResponseData?.applications || [];
+
       approvedLeaves.forEach((leave: LeaveApplication) => {
         if (leave.status !== 'Approved') return;
-        const empId = String(leave.employeeId);
+        const matchingId = getCanonicalId(leave.employeeId);
 
-        // Timezone-safe date range generation for leaves
         const start = parseDateStr(leave.startDate);
         const end = parseDateStr(leave.endDate);
 
         const d = new Date(start);
         while (d <= end) {
           const dateStr = d.toISOString().split('T')[0];
-          leaveMap.set(`${dateStr}_${empId}`, leave.leaveType);
+          leaveMap.set(`${dateStr}_${matchingId}`, leave.leaveType);
           d.setUTCDate(d.getUTCDate() + 1);
         }
       });
 
-
       const empLookup = new Map<string, Employee>();
       employees.forEach((emp: Employee) => {
-          const empId = String(emp.employeeId || emp.id);
-          empLookup.set(empId, emp);
+        const matchingId = getCanonicalId(emp.employeeId || emp.id);
+        empLookup.set(matchingId, emp);
       });
 
       const logMap = new Map<string, AttendanceRecord>();
       rawLogs.forEach((log: DTRApiResponse) => {
-          const logDateVal = log.date ? (String(log.date).includes('T') ? log.date.split('T')[0] : log.date) : '';
-          const empId = String(log.employeeId || '');
-          if (!empId || !logDateVal) return;
-          
-          const key = `${logDateVal}_${empId}`;
-          const emp = empLookup.get(empId);
-          const fullName = emp ? `${emp.firstName || ''} ${emp.lastName || ''}`.trim() : (log.employeeName || `Employee ${empId}`);
-          
-          logMap.set(key, {
-            id: log.id,
-            employeeId: empId,
-            name: fullName,
-            date: String(logDateVal),
-            timeIn: log.timeIn || undefined,
-            timeOut: log.timeOut || undefined,
-            lateMinutes: Number(log.lateMinutes ?? 0),
-            undertimeMinutes: Number(log.undertimeMinutes ?? 0),
-            status: log.status || 'Present',
-            department: log.department || emp?.department || selectedDept || 'N/A',
-            duties: log.duties
-          });
+        const logDateVal = log.date ? (String(log.date).includes('T') ? log.date.split('T')[0] : log.date) : '';
+        const rawEmpId = String(log.employeeId || '');
+        const matchingId = getCanonicalId(rawEmpId);
+        if (!matchingId || !logDateVal) return;
+
+        const key = `${logDateVal}_${matchingId}`;
+        const emp = empLookup.get(matchingId);
+        const fullName = emp
+          ? normalizeNameForExport(emp, log.employeeName || `Employee ${rawEmpId}`)
+          : (log.employeeName || `Employee ${rawEmpId}`);
+
+        logMap.set(key, {
+          id: log.id,
+          employeeId: formatDisplayId(rawEmpId),
+          name: fullName,
+          date: String(logDateVal),
+          timeIn: log.timeIn ?? undefined,
+          timeOut: log.timeOut ?? undefined,
+          lateMinutes: Number(log.lateMinutes ?? 0),
+          undertimeMinutes: Number(log.undertimeMinutes ?? 0),
+          status: log.status || 'Present',
+          department: log.department || emp?.department || selectedDept || 'N/A',
+          duties: log.duties
+        });
       });
 
       // 3. Generate Date Array (UTC safe)
-      const parseDateStr = (str: string) => {
-          const parts = str.split(/[-/]/).map(Number);
-          if (parts[0] > 1000) return new Date(Date.UTC(parts[0], parts[1] - 1, parts[2])); 
-          if (parts[2] > 1000) return new Date(Date.UTC(parts[2], parts[0] - 1, parts[1]));
-          return new Date(str);
-      };
-
       const dateArray: string[] = [];
       try {
-          const current = parseDateStr(appliedStartDate!);
-          const end = parseDateStr(appliedEndDate!);
-          while (current <= end) {
-            dateArray.push(current.toISOString().split('T')[0]);
-            current.setUTCDate(current.getUTCDate() + 1);
-          }
+        const current = parseDateStr(appliedStartDate!);
+        const end = parseDateStr(appliedEndDate!);
+        while (current <= end) {
+          dateArray.push(current.toISOString().split('T')[0]);
+          current.setUTCDate(current.getUTCDate() + 1);
+        }
       } catch (e) {
-          console.error("Date parsing failed", e);
-          return transformLogs(rawLogs);
+        console.error("Date parsing failed", e);
+        throw new Error('Failed to parse date range for export');
       }
 
       // 4. Build Final Data
       const fullRecords: AttendanceRecord[] = [];
-      let targetEmployeesList: { employeeId: string, name: string, department: string }[] = [];
-      
+      let targetEmployeesList: { employeeId: string; displayId: string; name: string; department: string }[] = [];
+
       if (employees.length > 0) {
-          targetEmployeesList = employees.map(e => ({
-              employeeId: String(e.employeeId || e.id),
-              name: `${e.firstName || ''} ${e.lastName || ''}`.trim(),
-              department: e.department || selectedDept || 'N/A'
-          }));
+        targetEmployeesList = employees.map(e => ({
+          employeeId: getCanonicalId(e.employeeId || e.id),
+          displayId: formatDisplayId(e.employeeId || e.id),
+          name: normalizeNameForExport(e, `Employee ${e.employeeId || e.id}`),
+          department: e.department || selectedDept || 'N/A'
+        }));
       } else {
-          const uniqueIds = Array.from(new Set(rawLogs.map(l => String(l.employeeId))));
-          targetEmployeesList = uniqueIds.map(id => {
-              const log = rawLogs.find(l => String(l.employeeId) === id);
-              return {
-                  employeeId: id,
-                  name: log?.employeeName || `Employee ${id}`,
-                  department: log?.department || selectedDept || 'N/A'
-              };
-          });
+        const uniqueIds = Array.from(new Set(rawLogs.map(l => getCanonicalId(l.employeeId))));
+        targetEmployeesList = uniqueIds.map(nid => {
+          const log = rawLogs.find(l => getCanonicalId(l.employeeId) === nid);
+          return {
+            employeeId: nid,
+            displayId: formatDisplayId(nid),
+            name: log?.employeeName || `Employee ${nid}`,
+            department: log?.department || selectedDept || 'N/A'
+          };
+        });
       }
 
       if (targetEmployeesList.length === 0 && rawLogs.length > 0) {
-          return rawLogs.map(l => ({
-              id: l.id,
-              employeeId: String(l.employeeId),
-              name: l.employeeName || 'Unknown',
-              date: String(l.date),
-              timeIn: l.timeIn || undefined,
-              timeOut: l.timeOut || undefined,
-              lateMinutes: Number(l.lateMinutes || 0),
-              undertimeMinutes: Number(l.undertimeMinutes || 0),
-              status: l.status || 'Present',
-              department: l.department || 'N/A',
-              duties: l.duties
-          }));
+        return rawLogs.map(l => ({
+          id: l.id,
+          employeeId: formatDisplayId(l.employeeId),
+          name: l.employeeName || 'Unknown',
+          date: String(l.date),
+          timeIn: l.timeIn ?? undefined,
+          timeOut: l.timeOut ?? undefined,
+          lateMinutes: Number(l.lateMinutes || 0),
+          undertimeMinutes: Number(l.undertimeMinutes || 0),
+          status: l.status || 'Present',
+          department: l.department || 'N/A',
+          duties: l.duties
+        }));
       }
 
-      const manilaToday = new Date().toLocaleString("en-US", {timeZone: "Asia/Manila"});
-      const todayStr = new Date(manilaToday).toISOString().split('T')[0];
+      // Fix: Use Intl.DateTimeFormat for reliable Manila-local date in YYYY-MM-DD format
+      const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' });
 
       dateArray.forEach(dateStr => {
-          targetEmployeesList.forEach(emp => {
-              const empId = emp.employeeId;
-              const key = `${dateStr}_${empId}`;
-              const existingLog = logMap.get(key);
-              const leaveType = leaveMap.get(key);
-              const isFuture = dateStr > todayStr;
+        const weekend = isWeekend(dateStr);
+        targetEmployeesList.forEach(emp => {
+          const empId = emp.employeeId;
+          const key = `${dateStr}_${empId}`;
+          const existingLog = logMap.get(key);
+          const leaveType = leaveMap.get(key);
+          const isFuture = dateStr > todayStr;
 
-              if (existingLog) {
-                  const hasTimes = existingLog.timeIn && existingLog.timeIn !== '-' && existingLog.timeIn !== 'null';
-                  let finalStatus = existingLog.status;
-                  if (!hasTimes && (finalStatus === 'Present' || !finalStatus) && !leaveType) finalStatus = 'Absent';
-                  if (leaveType) finalStatus = `On Leave (${getLeaveAbbreviation(leaveType)})`;
+          if (existingLog) {
+            const hasTimes = existingLog.timeIn && existingLog.timeIn !== '-' && existingLog.timeIn !== 'null';
+            let finalStatus = existingLog.status;
+            if (!hasTimes && (finalStatus === 'Present' || !finalStatus) && !leaveType) {
+              finalStatus = weekend ? 'Rest Day' : 'Absent';
+            }
+            if (leaveType) finalStatus = `On Leave (${getLeaveAbbreviation(leaveType)})`;
 
-                  fullRecords.push({
-                    ...existingLog,
-                    name: emp.name,
-                    status: finalStatus,
-                    department: emp.department
-                  });
-              } else if (leaveType) {
-                  fullRecords.push({
-                      id: `leave-${dateStr}-${empId}`,
-                      employeeId: empId,
-                      name: emp.name,
-                      date: dateStr,
-                      timeIn: '-',
-                      timeOut: '-',
-                      status: `On Leave (${getLeaveAbbreviation(leaveType)})`,
-                      lateMinutes: 0,
-                      undertimeMinutes: 0,
-                      department: emp.department
-                  });
-              } else if (!isFuture) {
-                  fullRecords.push({
-                      id: `absent-${dateStr}-${empId}`,
-                      employeeId: empId,
-                      name: emp.name,
-                      date: dateStr,
-                      timeIn: '-',
-                      timeOut: '-',
-                      status: 'Absent',
-                      lateMinutes: 0,
-                      undertimeMinutes: 0,
-                      department: emp.department
-                  });
-              }
-          });
+            fullRecords.push({
+              ...existingLog,
+              employeeId: emp.displayId,
+              name: emp.name,
+              status: finalStatus,
+              department: emp.department
+            });
+          } else if (leaveType) {
+            fullRecords.push({
+              id: `leave-${dateStr}-${empId}`,
+              employeeId: emp.displayId,
+              name: emp.name,
+              date: dateStr,
+              timeIn: '-',
+              timeOut: '-',
+              status: `On Leave (${getLeaveAbbreviation(leaveType)})`,
+              lateMinutes: 0,
+              undertimeMinutes: 0,
+              department: emp.department
+            });
+          } else if (!isFuture) {
+            // M2: Weekends → "Rest Day" instead of "Absent"
+            fullRecords.push({
+              id: `${weekend ? 'rest' : 'absent'}-${dateStr}-${empId}`,
+              employeeId: emp.displayId,
+              name: emp.name,
+              date: dateStr,
+              timeIn: '-',
+              timeOut: '-',
+              status: weekend ? 'Rest Day' : 'Absent',
+              lateMinutes: 0,
+              undertimeMinutes: 0,
+              department: emp.department
+            });
+          }
+        });
       });
 
       return fullRecords;
     } catch (error) {
       console.error("Error fetching export data:", error);
-      return data; 
+      showNotification("Failed to fetch complete data for export. Please try again.", "error");
+      return [];
     }
   };
 
   const handleExportExcel = async () => {
+    if (exportInProgress.current) return;
+    exportInProgress.current = true;
     setIsExporting(true);
     try {
       const exportData = await fetchAllData();
@@ -370,10 +415,13 @@ const AttendanceExport: React.FC<AttendanceExportProps> = ({ data, title, dateRa
       showNotification("Failed to export Excel report", "error");
     } finally {
       setIsExporting(false);
+      exportInProgress.current = false;
     }
   };
 
   const handleExportPDF = async () => {
+    if (exportInProgress.current) return;
+    exportInProgress.current = true;
     setIsExporting(true);
     try {
       const exportData = await fetchAllData();
@@ -386,39 +434,42 @@ const AttendanceExport: React.FC<AttendanceExportProps> = ({ data, title, dateRa
       doc.setFontSize(16);
       doc.setTextColor(30, 58, 95);
       doc.text(title, 14, 15);
-      
+
       doc.setFontSize(10);
       doc.setTextColor(100, 100, 100);
       doc.text(`Period: ${formatDate(appliedStartDate || '') || '-'} to ${formatDate(appliedEndDate || '') || '-'}`, 14, 22);
       doc.text(`Total Records: ${exportData.length}`, 14, 28);
 
-      // Calculate Totals for PDF
+      // Calculate Totals for PDF (exclude Rest Day from Absent count)
       const totals = exportData.reduce((acc, record) => {
         const hasTimes = record.timeIn && record.timeIn !== '-' && record.timeIn !== 'null';
         const isOnLeave = (record.status || '').startsWith('On Leave');
-        const isAbsent = record.status === 'Absent' || (!isOnLeave && !hasTimes);
+        const isRestDay = record.status === 'Rest Day';
+        const isAbsent = record.status === 'Absent' || (!isOnLeave && !isRestDay && !hasTimes);
         const isLate = Number(record.lateMinutes) > 0;
         const isUndertime = Number(record.undertimeMinutes) > 0;
-        const isPresent = !isAbsent && !isOnLeave && hasTimes;
+        const isPresent = !isAbsent && !isOnLeave && !isRestDay && hasTimes;
 
         if (isPresent) acc.present++;
         if (isLate) acc.late++;
         if (isUndertime) acc.undertime++;
         if (isAbsent) acc.absent++;
         if (isOnLeave) acc.onLeave++;
+        if (isRestDay) acc.restDay++;
         acc.totalLateMins += Number(record.lateMinutes || 0);
         acc.totalUTMins += Number(record.undertimeMinutes || 0);
         return acc;
-      }, { present: 0, late: 0, undertime: 0, absent: 0, onLeave: 0, totalLateMins: 0, totalUTMins: 0 });
+      }, { present: 0, late: 0, undertime: 0, absent: 0, onLeave: 0, restDay: 0, totalLateMins: 0, totalUTMins: 0 });
 
       const tableData = exportData.map(record => {
         const hasTimes = record.timeIn && record.timeIn !== '-' && record.timeIn !== 'null';
         const isOnLeave = (record.status || '').startsWith('On Leave');
-        const isAbsent = record.status === 'Absent' || (!isOnLeave && !hasTimes);
+        const isRestDay = record.status === 'Rest Day';
+        const isAbsent = record.status === 'Absent' || (!isOnLeave && !isRestDay && !hasTimes);
         const isLate = Number(record.lateMinutes) > 0;
         const isUndertime = Number(record.undertimeMinutes) > 0;
-        const isPresent = !isAbsent && !isOnLeave && hasTimes;
-        
+        const isPresent = !isAbsent && !isOnLeave && !isRestDay && hasTimes;
+
         return [
           record.employeeId || '',
           getEmployeeName(record),
@@ -432,11 +483,11 @@ const AttendanceExport: React.FC<AttendanceExportProps> = ({ data, title, dateRa
           isLate ? 'X' : '',
           isUndertime ? 'X' : '',
           isAbsent ? 'X' : '',
-          isOnLeave ? record.status?.replace('On Leave ', '').replace('(', '').replace(')', '') || 'LV' : ''
-        ]
+          isOnLeave ? record.status?.replace('On Leave ', '').replace('(', '').replace(')', '') || 'LV' : (isRestDay ? 'RD' : '')
+        ];
       });
 
-      // Add Summary Row to PDF Table
+      // Summary Row
       const summaryRow = [
         'TOTALS', '', '', '', '', '',
         formatMinutes(totals.totalLateMins),
@@ -445,12 +496,12 @@ const AttendanceExport: React.FC<AttendanceExportProps> = ({ data, title, dateRa
         String(totals.late),
         String(totals.undertime),
         String(totals.absent),
-        String(totals.onLeave)
+        `LV:${totals.onLeave}/RD:${totals.restDay}`
       ];
 
       autoTable(doc, {
         startY: 35,
-        head: [['ID', 'Employee Name', 'Dept', 'Date', 'Time In', 'Time Out', 'Late', 'UT', 'Present', 'Late', 'UT', 'Absent', 'On Leave']],
+        head: [['ID', 'Employee Name', 'Dept', 'Date', 'Time In', 'Time Out', 'Late', 'UT', 'Present', 'Late', 'UT', 'Absent', 'Leave/RD']],
         body: [...tableData, summaryRow],
         styles: { fontSize: 5.5, halign: 'center', cellPadding: 1.5 },
         headStyles: { fillColor: [30, 58, 95], textColor: [255, 255, 255], fontStyle: 'bold' },
@@ -465,6 +516,7 @@ const AttendanceExport: React.FC<AttendanceExportProps> = ({ data, title, dateRa
           if (data.row.index === tableData.length) {
             data.cell.styles.fontStyle = 'bold';
             data.cell.styles.fillColor = [230, 235, 245];
+            data.cell.styles.textColor = [30, 58, 95];
           }
         }
       });
@@ -475,7 +527,8 @@ const AttendanceExport: React.FC<AttendanceExportProps> = ({ data, title, dateRa
       console.error('PDF Export error:', error);
       showNotification("Failed to export PDF", "error");
     } finally {
-        setIsExporting(false);
+      setIsExporting(false);
+      exportInProgress.current = false;
     }
   };
 

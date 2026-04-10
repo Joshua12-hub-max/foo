@@ -9,6 +9,7 @@ import {
   pdsLearningDevelopment,
   pdsOtherInfo,
   pdsReferences,
+  employeeEmergencyContacts,
 } from '../db/schema.js';
 import { pdsPersonalInformation, pdsDeclarations } from '../db/tables/pds.js';
 import { eq } from 'drizzle-orm';
@@ -69,16 +70,30 @@ export class PDSService {
 
   static safeDate(val: unknown): string | null {
     if (val === null || val === undefined || String(val).trim() === '' || String(val).toLowerCase() === 'null') return null;
-    const d = new Date(String(val));
+    
+    // Handle Excel serial numbers (e.g. 36541)
+    const s = String(val).trim();
+    if (/^\d{5}(\.\d+)?$/.test(s)) {
+        const serial = parseFloat(s);
+        if (serial > 10000 && serial < 60000) { // Reasonable range for birth/hire dates
+            const date = new Date((serial - 25569) * 86400 * 1000);
+            if (!isNaN(date.getTime())) return date.toISOString().split('T')[0];
+        }
+    }
+
+    const d = new Date(s);
     if (isNaN(d.getTime())) return null;
     return d.toISOString().split('T')[0];
   }
 
   static safeFloat(val: unknown): string | null {
     if (val === null || val === undefined || String(val).trim() === '' || String(val).toLowerCase() === 'null') return null;
-    const cleaned = String(val).replace(/,/g, '').replace(/[^0-9.-]/g, '');
+    const s = String(val).replace(/,/g, '');
+    const isNegative = s.trim().startsWith('-');
+    const cleaned = s.replace(/[^0-9.]/g, '');
     const f = parseFloat(cleaned);
-    return isNaN(f) ? null : f.toString();
+    if (isNaN(f)) return null;
+    return (isNegative ? -f : f).toString();
   }
 
   static isGarbageRow(row: PDSSectionRow, keyFields: string[]): boolean {
@@ -152,6 +167,19 @@ export class PDSService {
       };
       await (tx as typeof db).delete(pdsPersonalInformation).where(eq(pdsPersonalInformation.employeeId, employeeId));
       await (tx as typeof db).insert(pdsPersonalInformation).values(personalRow);
+
+      // Emergency Contact (upsert)
+      if (p.emergencyContact && p.emergencyContactNumber) {
+        const emergencyData = {
+          employeeId,
+          name: this.safeStr(p.emergencyContact, 255)!,
+          phoneNumber: this.safeStr(p.emergencyContactNumber, 50)!,
+          relationship: 'Contact Person',
+          isPrimary: true
+        };
+        await (tx as typeof db).delete(employeeEmergencyContacts).where(eq(employeeEmergencyContacts.employeeId, employeeId));
+        await (tx as typeof db).insert(employeeEmergencyContacts).values(emergencyData);
+      }
     }
 
     // Family Background (delete + insert)

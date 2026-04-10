@@ -147,12 +147,14 @@ export class PDSParserService {
 
       // Sex
       const sexRow = fp(sheet1 as ExcelJS.Worksheet, /sex at birth/i, ['B', 'C']).row;
-      if (sexRow > 0) personal.gender = gc(sheet1 as ExcelJS.Worksheet, sexRow, [{col: 'D', val: 'Male'}, {col: 'F', val: 'Female'}]);
+      if (sexRow > 0) personal.gender = gc(sheet1 as ExcelJS.Worksheet, sexRow, [{col: 'D', val: 'Male'}, {col: 'E', val: 'Male'}, {col: 'F', val: 'Female'}, {col: 'G', val: 'Female'}]);
 
       // Civil Status
       const civilRow = fp(sheet1 as ExcelJS.Worksheet, /civil status/i, ['B', 'C']).row;
-      if (civilRow > 0) personal.civilStatus = gc(sheet1 as ExcelJS.Worksheet, civilRow, [{col: 'D', val: 'Single'}, {col: 'F', val: 'Married'}]) ||
-                           gc(sheet1 as ExcelJS.Worksheet, civilRow + 1, [{col: 'D', val: 'Widowed'}, {col: 'F', val: 'Separated'}]);
+      if (civilRow > 0) personal.civilStatus = 
+                           gc(sheet1 as ExcelJS.Worksheet, civilRow, [{col: 'D', val: 'Single'}, {col: 'E', val: 'Single'}, {col: 'F', val: 'Married'}, {col: 'G', val: 'Married'}]) ||
+                           gc(sheet1 as ExcelJS.Worksheet, civilRow + 1, [{col: 'D', val: 'Widowed'}, {col: 'E', val: 'Widowed'}, {col: 'F', val: 'Separated'}, {col: 'G', val: 'Separated'}]) ||
+                           gc(sheet1 as ExcelJS.Worksheet, civilRow + 2, [{col: 'D', val: 'Other/s'}, {col: 'E', val: 'Other/s'}]);
 
       // Height
       const heightRow = fp(sheet1 as ExcelJS.Worksheet, /height.*\(m\)/i, ['B', 'C']).row;
@@ -229,11 +231,11 @@ export class PDSParserService {
 
         // Extract region - search for region label near residential address section
         let resRegionFound = false;
-        for (let offset = 3; offset <= 8 && !resRegionFound; offset++) {
+        for (let offset = 2; offset <= 14 && !resRegionFound; offset++) {
           const labelG = g('G', rr + offset);
           const labelH = g('H', rr + offset);
           if (/region/i.test(labelG) || /region/i.test(labelH)) {
-            personal.resRegion = g('I', rr + offset) || g('J', rr + offset);
+            personal.resRegion = g('I', rr + offset) || g('J', rr + offset) || g('K', rr + offset);
             resRegionFound = true;
           }
         }
@@ -266,11 +268,11 @@ export class PDSParserService {
 
         // Extract region - search for region label near permanent address section
         let permRegionFound = false;
-        for (let offset = 3; offset <= 8 && !permRegionFound; offset++) {
+        for (let offset = 2; offset <= 14 && !permRegionFound; offset++) {
           const labelG = g('G', pr + offset);
           const labelH = g('H', pr + offset);
           if (/region/i.test(labelG) || /region/i.test(labelH)) {
-            personal.permRegion = g('I', pr + offset) || g('J', pr + offset);
+            personal.permRegion = g('I', pr + offset) || g('J', pr + offset) || g('K', pr + offset);
             permRegionFound = true;
           }
         }
@@ -529,6 +531,20 @@ export class PDSParserService {
     // ==========================================
     if (sheet4) {
        const g = (c: string, r: number) => gv(sheet4 as ExcelJS.Worksheet, c, r);
+
+      // --- EMERGENCY CONTACT ---
+      const emergencyPos = fp(sheet4 as ExcelJS.Worksheet, /case of emergency/i, ['A', 'B', 'C']);
+      if (emergencyPos.row > 0) {
+        personal.emergencyContact = g('D', emergencyPos.row) || g('E', emergencyPos.row);
+        personal.emergencyContactNumber = g('D', emergencyPos.row + 1) || g('E', emergencyPos.row + 1);
+      } else {
+        // Alternative location near thumbmark
+        const thumbPos = fp(sheet4 as ExcelJS.Worksheet, /right thumbmark/i, ['A', 'B', 'C']);
+        if (thumbPos.row > 0) {
+          personal.emergencyContact = g('D', thumbPos.row - 2) || g('E', thumbPos.row - 2);
+          personal.emergencyContactNumber = g('D', thumbPos.row - 1) || g('E', thumbPos.row - 1);
+        }
+      }
 
       // --- 41. REFERENCES ---
       const refLabelRow = fp(sheet4 as ExcelJS.Worksheet, /references.*person not related/i, ['C', 'D']).row;

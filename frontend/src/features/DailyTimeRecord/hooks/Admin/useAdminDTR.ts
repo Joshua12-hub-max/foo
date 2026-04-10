@@ -18,6 +18,7 @@ import {
 import { DTRApiResponse } from "@/types/attendance";
 import { AttendanceRecord } from "@/types";
 import { ITEMS_PER_PAGE, MESSAGES, DELAYS, STATUS_STYLES } from "../../Constants/adminDTR.constant";
+import { formatEmployeeId } from "@/utils/formatters";
 
 export const useAdminDTR = () => {
   const today = useMemo(() => new Date().toLocaleDateString("en-US"), []);
@@ -46,7 +47,7 @@ export const useAdminDTR = () => {
   const { data, isLoading, error: queryError, refetch } = useQuery({
     queryKey: ['admin-dtr-logs', storeFilters, storeSearch, storePagination.page],
     queryFn: async () => {
-        const response = await attendanceApi.getLogs({
+        const response = await dtrApi.getAllRecords({
             page: storePagination.page,
             limit: storePagination.limit,
             department: storeFilters.department,
@@ -93,7 +94,7 @@ export const useAdminDTR = () => {
             
             return {
               id: item.id || 0, 
-              employeeId: String(item.employeeId || "N/A"),
+              employeeId: formatEmployeeId(item.employeeId),
               name: item.employeeName || 'Unknown Employee',
               department: item.department || 'N/A',
               date: formattedDate || "N/A",
@@ -121,7 +122,6 @@ export const useAdminDTR = () => {
         const resData = response.data as { totals?: { lateMinutes: number; undertimeMinutes: number; hoursWorked: string }, pagination?: { totalPages: number; total: number } };
         return {
             items: mappedLogs,
-            totals: resData.totals,
             pagination: resData.pagination
         };
     },
@@ -130,7 +130,6 @@ export const useAdminDTR = () => {
 
   const dtrData = data?.items || [];
   const serverPagination = data?.pagination;
-  const totals = data?.totals || { lateMinutes: 0, undertimeMinutes: 0, hoursWorked: '0.00' };
   const error = queryError ? (queryError as Error).message : errorLocal;
 
   // React Query: Mutation
@@ -250,7 +249,6 @@ export const useAdminDTR = () => {
     dtrData,
     filteredData: dtrData,
     paginationData,
-    totals,
     uniqueDepartments,
     uniqueEmployees,
     editingRecord,

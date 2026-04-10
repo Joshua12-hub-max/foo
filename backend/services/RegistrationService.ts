@@ -12,12 +12,13 @@ import {
   pdsOtherInfo,
   pdsReferences,
   pdsDeclarations,
+  employeeEmergencyContacts,
 } from '../db/tables/pds.js';
 import { eq, or, and, sql, ne } from 'drizzle-orm';
 import { RegisterSchema } from '../schemas/authSchema.js';
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
-import { normalizeIdSql } from '../utils/idUtils.js';
+import { normalizeIdSql, normalizeIdJs } from '../utils/idUtils.js';
 import { generateOTP } from '../utils/emailUtils.js';
 import { UserRole } from '../types/index.js';
 
@@ -84,12 +85,17 @@ export class RegistrationService {
     options: { isFinalizingSetup?: boolean; ignoreDuplicateWarning?: boolean } = {}
   ) {
     const { employeeId, email, password } = data;
-    const inputEmployeeId = String(employeeId || '');
+    // 100% STRICT ENFORCEMENT: Normalize to Emp-XXX format immediately
+    const inputEmployeeId = normalizeIdJs(String(employeeId || ''));
+
+    if (!inputEmployeeId) {
+        throw new Error('Employee ID is required and must contain valid numeric digits.');
+    }
 
     // 1. Biometric enrollment check
     const [enrolled] = await db.select().from(bioEnrolledUsers).where(
       and(
-        sql`${normalizeIdSql(bioEnrolledUsers.employeeId)} = ${normalizeIdSql(inputEmployeeId)}`,
+        sql`${normalizeIdSql(bioEnrolledUsers.employeeId)} = ${inputEmployeeId}`,
         eq(bioEnrolledUsers.userStatus, 'active')
       )
     ).limit(1);
@@ -98,7 +104,8 @@ export class RegistrationService {
       console.warn(`[RegistrationService] Biometric record not found for: ${inputEmployeeId}`);
     }
 
-    const actualEmployeeId = enrolled?.employeeId || inputEmployeeId;
+    // Always use the normalized version to ensure 'Emp-XXX' format in DB
+    const actualEmployeeId = inputEmployeeId; 
     const finalEmail = email || `${actualEmployeeId}@chrmo.local`;
 
     // 2. Check for existing account
@@ -110,7 +117,10 @@ export class RegistrationService {
       with: { hrDetails: true }
     });
 
-    const effectiveFinalizingSetup = options.isFinalizingSetup || (existingUser?.hrDetails?.profileStatus === 'Initial');
+    const effectiveFinalizingSetup = 
+      options.isFinalizingSetup || 
+      !existingUser?.hrDetails || 
+      existingUser?.hrDetails?.profileStatus === 'Initial';
 
     if (existingUser) {
       if (!effectiveFinalizingSetup) {
@@ -225,9 +235,7 @@ export class RegistrationService {
         suffix: data.suffix || null,
         role: assignedRole,
         isVerified: finalIsVerified,
-        verificationOtp: verificationOTP,
-        otpExpiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
-        onboardingStep: 'Dashboard'
+        verificationToken: verificationOTP
       };
 
       if (existingUser) {
@@ -300,6 +308,20 @@ export class RegistrationService {
       await tx.insert(pdsPersonalInformation)
         .values(personalData)
         .onDuplicateKeyUpdate({ set: personalData });
+
+      // EMPLOYEE EMERGENCY CONTACT (upsert)
+      if (data.emergencyContact && data.emergencyContactNumber) {
+        const emergencyData = {
+          employeeId: newUserId!,
+          name: data.emergencyContact,
+          phoneNumber: data.emergencyContactNumber,
+          relationship: 'Contact Person', // Default mapping
+          isPrimary: true
+        };
+        
+        await tx.delete(employeeEmergencyContacts).where(eq(employeeEmergencyContacts.employeeId, newUserId!));
+        await tx.insert(employeeEmergencyContacts).values(emergencyData);
+      }
 
       // PDS EDUCATION (delete + insert)
       if (data.educations && data.educations.length > 0) {

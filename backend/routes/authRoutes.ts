@@ -21,7 +21,8 @@ import {
   checkEmailUniqueness,
   updateProfile,
   getNextId,
-  checkGovtIdUniqueness
+  checkGovtIdUniqueness,
+  requestDownloadToken
 } from '../controllers/auth.controller.js';
 import { register } from '../controllers/registration.controller.js';
 import { verifyToken, authLimiter, strictAuthLimiter } from '../middleware/authMiddleware.js';
@@ -70,6 +71,7 @@ router.get('/next-id', getNextId as never);
 // ============================================================================
 
 router.get('/me', verifyToken, getMe as never);
+router.get('/download-token', verifyToken, requestDownloadToken as never);
 router.put('/profile/:id', verifyToken, upload.single('avatar'), updateProfile as never);
 router.post('/logout', verifyToken, logout as never);
 

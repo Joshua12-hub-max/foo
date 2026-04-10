@@ -14,7 +14,7 @@ interface AttendanceState {
   getQuery: () => AttendanceQueryValues;
 }
 
-const initialFilters: AttendanceFilterValues = {
+export const initialFilters: AttendanceFilterValues = {
   department: '',
   employeeId: '',
   startDate: '',

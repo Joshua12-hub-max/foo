@@ -369,7 +369,7 @@ export const applyJob = async (req: Request, res: Response): Promise<void> => {
       workExperiences,
       hpField, websiteUrl, hToken,
       nationality, telephoneNumber, agencyEmployeeNo, facebookUrl, linkedinUrl, twitterHandle,
-      citizenshipType, dualCountry
+      citizenshipType, dualCountry, govtIdType, govtIdNo, govtIdIssuance
     } = parseResult.data;
 
     // Construct full address strings for persistence and searchability
@@ -452,26 +452,65 @@ export const applyJob = async (req: Request, res: Response): Promise<void> => {
         return;
     }
 
-    // 5. Duplicate & Identity Fraud Check (Pre-Parsing Verification)
+    // 5. Identity Fraud & Per-Job Duplicate Check (RAW SQL for 100% Reliability)
     try {
-        const uniquenessResults = await checkSystemWideUniqueness({
-            email,
-            gsisNumber,
-            pagibigNumber,
-            philhealthNumber,
-            umidNumber,
-            philsysId,
-            tinNumber
-        });
+        console.log('[RECRUITMENT] Starting raw-SQL duplicate check for:', email);
+        
+        // 100% PRECISION: Use raw query to avoid Drizzle 'or' spreading issues
+        const [existingApplications] = await db.execute(sql`
+            SELECT id, job_id as jobId, first_name as firstName, last_name as lastName, email, tin_no as tinNumber, gsis_no as gsisNumber 
+            FROM recruitment_applicants 
+            WHERE email = ${email} 
+               OR (tin_no IS NOT NULL AND tin_no != '' AND tin_no = ${tinNumber || 'NEVER_MATCH'})
+               OR (gsis_no IS NOT NULL AND gsis_no != '' AND gsis_no = ${gsisNumber || 'NEVER_MATCH'})
+               OR (philsys_id IS NOT NULL AND philsys_id != '' AND philsys_id = ${philsysId || 'NEVER_MATCH'})
+            LIMIT 10
+        `) as any;
 
-        if (Object.keys(uniquenessResults).length > 0) {
-          console.warn(`[RECRUITMENT] Duplicate detected for email: ${email}`, uniquenessResults);
-          res.status(409).json({ success: false, message: 'An account with these identifiers already exists. If this is you, please contact HR.', errors: uniquenessResults });
-          return;
+        if (existingApplications && Array.isArray(existingApplications) && existingApplications.length > 0) {
+            console.log(`[RECRUITMENT] Analyzing ${existingApplications.length} potential duplicates via Raw SQL`);
+            
+            for (const existingApplication of existingApplications) {
+                const dbFirstName = String(existingApplication.firstName || '');
+                const dbLastName = String(existingApplication.lastName || '');
+                const dbEmail = String(existingApplication.email || '');
+                const dbTin = String(existingApplication.tinNumber || '');
+                const dbGsis = String(existingApplication.gsisNumber || '');
+                const dbJobId = existingApplication.jobId;
+
+                // Identity Fraud: Same ID or email, but name mismatch
+                const isIdMatch = (dbTin === tinNumber && tinNumber) || (dbGsis === gsisNumber && gsisNumber) || (dbEmail === email);
+                const isNameMismatch = dbFirstName.toLowerCase() !== String(firstName).toLowerCase() || dbLastName.toLowerCase() !== String(lastName).toLowerCase();
+
+                if (isIdMatch && isNameMismatch) {
+                    console.warn(`[RECRUITMENT] Identity fraud detected for ${email}. Mismatch: DB(${dbLastName}, ${dbFirstName}) vs Input(${lastName}, ${firstName})`);
+                    await logSecurityViolation({
+                        jobId: Number(jobId), firstName: firstName, lastName: lastName, email,
+                        violationType: 'Identity Fraud', details: `Mismatched identity details with existing records (ID/Email match but Name mismatch)`,
+                        ipAddress: req.ip || 'Unknown'
+                    });
+                    res.status(409).json({ success: false, message: 'Identity verification failed. These identifiers belong to another person.' });
+                    return;
+                }
+
+                // Per-Job Duplicate Check: Only block if applying for the exact same job
+                if (dbJobId !== null && Number(dbJobId) === Number(jobId)) {
+                    console.warn(`[RECRUITMENT] Duplicate job application detected for ${email} on Job ${jobId}`);
+                    res.status(409).json({ success: false, message: 'You have already applied for this position. Please wait before submitting a new application.' });
+                    return;
+                }
+            }
         }
+
     } catch (err: unknown) {
-        console.error('[RECRUITMENT] Uniqueness check failed:', err instanceof Error ? err.message : 'Unknown error');
-        res.status(500).json({ success: false, message: 'Internal server error during verification' });
+        const errMsg = err instanceof Error ? err.message : 'Unknown error';
+        console.error('[RECRUITMENT] FATAL: Raw SQL Duplicate check exception:', errMsg);
+        
+        res.status(500).json({ 
+            success: false, 
+            message: 'Internal server error during verification',
+            error: errMsg
+        });
         return;
     }
 
@@ -493,100 +532,6 @@ export const applyJob = async (req: Request, res: Response): Promise<void> => {
             ipAddress: req.ip || 'Unknown'
         });
         res.status(400).json({ success: false, message: 'Invalid email domain. Please use a verified provider.' });
-        return;
-    }
-
-    // Duplicate & Identity Fraud Check
-    // 1. Check against AUTHENTICATION (Existing Employees)
-    const uniqueErrors = await checkSystemWideUniqueness({
-        email,
-        umidNumber: umidNumber || null,
-        philsysId: philsysId || null,
-        philhealthNumber: philhealthNumber || null,
-        pagibigNumber: pagibigNumber || null,
-        tinNumber: tinNumber || null,
-        gsisNumber: gsisNumber || null
-    });
-
-    if (Object.keys(uniqueErrors).length > 0) {
-        res.status(409).json({ 
-            success: false, 
-            message: 'Identity verification failed. Information already in use by an existing employee.', 
-            errors: uniqueErrors 
-        });
-        return;
-    }
-
-    // 2. Check against RECRUITMENT_APPLICANTS (Pending/Recent Applications)
-    const cleanValue = (val: string | null | undefined) => {
-        if (val === undefined || val === null || val === 'undefined') return null;
-        return val;
-    };
-
-    const duplicateConditions = [
-        eq(recruitmentApplicants.email, email)
-    ];
-
-    if (cleanValue(gsisNumber)) duplicateConditions.push(eq(recruitmentApplicants.gsisNumber, cleanValue(gsisNumber)!));
-    if (cleanValue(pagibigNumber)) duplicateConditions.push(eq(recruitmentApplicants.pagibigNumber, cleanValue(pagibigNumber)!));
-    if (cleanValue(philhealthNumber)) duplicateConditions.push(eq(recruitmentApplicants.philhealthNumber, cleanValue(philhealthNumber)!));
-    if (cleanValue(umidNumber)) duplicateConditions.push(eq(recruitmentApplicants.umidNumber, cleanValue(umidNumber)!));
-    if (cleanValue(philsysId)) duplicateConditions.push(eq(recruitmentApplicants.philsysId, cleanValue(philsysId)!));
-    if (cleanValue(tinNumber)) duplicateConditions.push(eq(recruitmentApplicants.tinNumber, cleanValue(tinNumber)!));
-
-    // Handle array-based eligibility check if needed (Legacy: licenseNo)
-    const primaryLicense = cleanValue(eligibilities?.[0]?.licenseNo);
-    if (primaryLicense) duplicateConditions.push(eq(recruitmentApplicants.licenseNo, primaryLicense));
-
-    const existingApplicantRecords = await db.select()
-        .from(recruitmentApplicants)
-        .where(or(...duplicateConditions));
-
-    if (existingApplicantRecords.length > 0) {
-        const errors: { field: string; message: string }[] = [];
-        
-        existingApplicantRecords.forEach(rec => {
-            if (rec.email === email) errors.push({ field: 'email', message: 'Email already exists in a recent application' });
-            if (gsisNumber && rec.gsisNumber === gsisNumber) errors.push({ field: 'gsisNumber', message: 'GSIS Number already exists' });
-            if (pagibigNumber && rec.pagibigNumber === pagibigNumber) errors.push({ field: 'pagibigNumber', message: 'Pag-IBIG Number already exists' });
-            if (philhealthNumber && rec.philhealthNumber === philhealthNumber) errors.push({ field: 'philhealthNumber', message: 'PhilHealth Number already exists' });
-            if (umidNumber && rec.umidNumber === umidNumber) errors.push({ field: 'umidNumber', message: 'UMID Number already exists' });
-            if (philsysId && rec.philsysId === philsysId) errors.push({ field: 'philsysId', message: 'PhilSys ID already exists' });
-            if (tinNumber && rec.tinNumber === tinNumber) errors.push({ field: 'tinNumber', message: 'TIN Number already exists' });
-            if (primaryLicense && rec.licenseNo === primaryLicense) errors.push({ field: 'licenseNo', message: 'License Number already exists' });
-        });
-
-        if (errors.length > 0) {
-            // Deduplicate errors by field
-            const uniqueFieldErrors = Array.from(new Map(errors.map(err => [err.field, err])).values());
-            res.status(409).json({ 
-                success: false, 
-                message: 'Duplicate application detected. Some information is already registered in our recruitment system.', 
-                errors: uniqueFieldErrors 
-            });
-            return;
-        }
-    }
-
-    const existingApplication = await checkDuplicateApplication({
-        firstName, lastName, middleName, suffix, email, birthDate, tinNumber, gsisNumber, philsysId
-    });
-
-    if (existingApplication) {
-        const isIdentityFraud = (existingApplication.tinNumber === tinNumber && tinNumber) &&
-                                (existingApplication.firstName !== firstName || existingApplication.lastName !== lastName);
-
-        if (isIdentityFraud) {
-            await logSecurityViolation({
-                jobId: Number(jobId), firstName: firstName, lastName: lastName, email,
-                violationType: 'Identity Fraud', details: `ID ${tinNumber} mismatch with name`,
-                ipAddress: req.ip || 'Unknown'
-            });
-            res.status(409).json({ success: false, message: 'Identity verification failed. This ID is already registered.' });
-            return;
-        }
-
-        res.status(409).json({ success: false, message: 'You have recently applied. Please wait 3 months before submitting a new application.' });
         return;
     }
 
@@ -666,6 +611,9 @@ export const applyJob = async (req: Request, res: Response): Promise<void> => {
             twitterHandle: twitterHandle || null,
             citizenshipType: citizenshipType || null,
             dualCountry: dualCountry || null,
+            govtIdType: govtIdType || null,
+            govtIdNo: govtIdNo || null,
+            govtIdIssuance: govtIdIssuance || null,
             verificationToken: null,
             isEmailVerified: true,
             createdAt: currentManilaDateTime()
@@ -874,7 +822,7 @@ export const applyJob = async (req: Request, res: Response): Promise<void> => {
       await notifyAdmins({
         senderId: null,
         title: 'New Job Application',
-        message: `${firstName} ${lastName} has applied for ${jobConfig.title}.`,
+        message: `${lastName}, ${firstName} has applied for ${jobConfig.title}.`,
         type: 'job_application_pending',
         referenceId: applicantId,
         link: `/admin-dashboard/recruitment/applicants?id=${applicantId}`,
@@ -990,6 +938,7 @@ export const getApplicants = async (req: Request, res: Response): Promise<void> 
         experiences: true,
         trainings: true,
         eligibilities: true,
+        documents: true,
         authentication: {
           columns: {
             firstName: true,
@@ -1093,24 +1042,24 @@ export const updateApplicantStage = async (req: Request, res: Response): Promise
       
       let notifType = 'job_application_pending';
       let notifTitle = 'Application Update';
-      let notifMessage = `Applicant ${applicant.firstName} ${applicant.lastName} stage updated to ${stage}`;
+      let notifMessage = `Applicant ${applicant.lastName}, ${applicant.firstName} stage updated to ${stage}`;
 
       if (stage === 'Screening') {
         notifType = 'job_application_screening';
         notifTitle = 'Application Under Review';
-        notifMessage = `Applicant ${applicant.firstName} ${applicant.lastName} is now Under Review.`;
+        notifMessage = `Applicant ${applicant.lastName}, ${applicant.firstName} is now Under Review.`;
       } else if (stage === 'Hired') {
         notifType = 'job_application_hired';
         notifTitle = 'Applicant Hired';
-        notifMessage = `Congratulations! ${applicant.firstName} ${applicant.lastName} has been Hired.`;
+        notifMessage = `Congratulations! ${applicant.lastName}, ${applicant.firstName} has been Hired.`;
       } else if (stage === 'Rejected') {
         notifType = 'job_application_rejected';
         notifTitle = 'Application Rejected';
-        notifMessage = `${applicant.firstName} ${applicant.lastName} has been Rejected.`;
+        notifMessage = `${applicant.lastName}, ${applicant.firstName} has been Rejected.`;
       } else if (stage === 'Initial Interview' || stage === 'Final Interview') {
         notifType = 'job_application_interview';
         notifTitle = 'Interview Scheduled';
-        notifMessage = `Interview scheduled for ${applicant.firstName} ${applicant.lastName} (${stage})`;
+        notifMessage = `Interview scheduled for ${applicant.lastName}, ${applicant.firstName} (${stage})`;
       }
 
       const affected = await updateNotificationsByReference({
@@ -1146,7 +1095,7 @@ export const updateApplicantStage = async (req: Request, res: Response): Promise
           const rawVariables = {
             applicantFirstName: applicant.firstName,
             applicantLastName: applicant.lastName,
-            applicantName: `${applicant.firstName} ${applicant.lastName}`,
+            applicantName: `${applicant.lastName}, ${applicant.firstName}`,
             jobTitle: applicant.recruitmentJob?.title || 'the position',
             interviewDate: applicant.interviewDate ? new Date(applicant.interviewDate).toLocaleString() : 'TBD',
             interviewLink: applicant.interviewLink || '#',
@@ -1381,14 +1330,14 @@ export const generateOfferLetter = async (req: Request, res: Response): Promise<
     doc.on('end', () => { 
       const pdfBuffer = Buffer.concat(chunks); 
       res.setHeader('Content-Type', 'application/pdf'); 
-      res.setHeader('Content-Disposition', `attachment; filename=offer_letter_${applicant.firstName}_${applicant.lastName}.pdf`); 
+      res.setHeader('Content-Disposition', `attachment; filename=offer_letter_${applicant.lastName}_${applicant.firstName}.pdf`); 
       res.send(pdfBuffer); 
     }); 
     doc.fontSize(20).font('Helvetica-Bold').text('OFFER OF EMPLOYMENT', { align: 'center' }); 
     doc.moveDown(2); 
     doc.fontSize(12).font('Helvetica').text(`Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`); 
     doc.moveDown(); 
-    doc.text(`${applicant.firstName} ${applicant.lastName}`); 
+    doc.text(`${applicant.lastName}, ${applicant.firstName}`); 
     doc.text(applicant.email); 
     doc.moveDown(2); 
     doc.text(`Dear ${applicant.firstName},`); 
@@ -1484,12 +1433,12 @@ export const generateMeetingLink: AuthenticatedHandler = async (req, res) => {
 
     const result = await generateGoogleMeetLink({
       userId: authReq.user.id,
-      title: `Interview: ${jobTitle || 'Position'} - ${applicant.firstName} ${applicant.lastName}`,
+      title: `Interview: ${jobTitle || 'Position'} - ${applicant.lastName}, ${applicant.firstName}`,
       startTime: interviewDate,
       duration: duration,
-      description: `Interview for ${jobTitle || 'the position'} with ${applicant.firstName} ${applicant.lastName}`,
+      description: `Interview for ${jobTitle || 'the position'} with ${applicant.lastName}, ${applicant.firstName}`,
       attendeeEmail: applicant.email,
-      attendeeName: `${applicant.firstName} ${applicant.lastName}`
+      attendeeName: `${applicant.lastName}, ${applicant.firstName}`
     });
 
     if (!result.success) {

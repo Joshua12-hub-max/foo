@@ -1,6 +1,14 @@
 
 import { db } from '../db/index.js';
-import { qualificationStandards, authentication, plantillaPositions, pdsEducation, pdsWorkExperience, pdsEligibility } from '../db/schema.js';
+import { 
+    qualificationStandards, 
+    authentication, 
+    plantillaPositions, 
+    pdsEducation, 
+    pdsWorkExperience, 
+    pdsEligibility,
+    pdsLearningDevelopment
+} from '../db/schema.js';
 import { eq } from 'drizzle-orm';
 
 export interface ValidationResult {
@@ -13,6 +21,7 @@ export interface ValidationResult {
     employeeId: string;
     education: string | null;
     experienceYears: number;
+    trainingHours: number;
     eligibility: string | null;
   };
   positionDetails: {
@@ -27,6 +36,15 @@ export interface ValidationResult {
     eligibility: string;
   };
 }
+
+const EDUCATION_RANK: Record<string, number> = {
+    'None': 0,
+    'Elementary': 1,
+    'Secondary': 2,
+    'Vocational': 3,
+    'College': 4,
+    'Graduate Studies': 5
+};
 
 export class QualificationService {
   /**
@@ -49,24 +67,45 @@ export class QualificationService {
     }
 
     // 2. Calculate PDS Data
-    const educations = await db.select().from(pdsEducation).where(eq(pdsEducation.employeeId, employeeId));    // Extract highest education
-    const highestEducation = educations.length > 0 ? educations[0].degreeCourse || 
-                                            educations[0].level : null;
+    
+    // Education
+    const educations = await db.select().from(pdsEducation).where(eq(pdsEducation.employeeId, employeeId));
+    let highestRank = 0;
+    let highestEduLabel = 'None';
+    
+    for (const edu of educations) {
+        const rank = EDUCATION_RANK[edu.level] || 0;
+        if (rank > highestRank) {
+            highestRank = rank;
+            highestEduLabel = edu.degreeCourse || edu.level;
+        }
+    }
 
+    // Experience
     const experiences = await db.select().from(pdsWorkExperience).where(eq(pdsWorkExperience.employeeId, employeeId));
     let totalExperienceYears = 0;
     for (const exp of experiences) {
         if (exp.dateFrom) {
             const start = new Date(exp.dateFrom);
-            const end = exp.dateTo ? new Date(exp.dateTo) : new Date();
-            const years = (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24 * 365);
-            totalExperienceYears += years;
+            const end = (exp.dateTo && exp.dateTo.toLowerCase() !== 'present') 
+                ? new Date(exp.dateTo) 
+                : new Date();
+            
+            if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
+                const years = (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24 * 365.25);
+                totalExperienceYears += Math.max(0, years);
+            }
         }
     }
-    const empExp = Math.floor(totalExperienceYears); // Round down to complete years
+    const empExpYears = Math.floor(totalExperienceYears * 10) / 10; // 1 decimal place
 
+    // Training
+    const trainings = await db.select().from(pdsLearningDevelopment).where(eq(pdsLearningDevelopment.employeeId, employeeId));
+    const totalTrainingHours = trainings.reduce((sum, t) => sum + (t.hoursNumber || 0), 0);
+
+    // Eligibility
     const eligibilities = await db.select().from(pdsEligibility).where(eq(pdsEligibility.employeeId, employeeId));
-    const eligibilityType = eligibilities.length > 0 ? eligibilities.map(e => e.eligibilityName).join(', ') : null;
+    const eligibilityNames = eligibilities.map(e => e.eligibilityName);
 
     // 3. Get Position & QS
     const [position] = await db.select({
@@ -83,6 +122,13 @@ export class QualificationService {
         throw new Error('Position not found');
     }
 
+    const defaultRequirements = {
+        education: 'None',
+        experienceYears: 0,
+        trainingHours: 0,
+        eligibility: 'None'
+    };
+
     if (!position.qualificationStandardsId) {
         return {
             qualified: true,
@@ -90,23 +136,19 @@ export class QualificationService {
             missingRequirements: [],
             employeeDetails: {
                 id: employee.id,
-                name: `${employee.firstName} ${employee.lastName}`,
+                name: `${employee.lastName}, ${employee.firstName}`,
                 employeeId: employee.employeeId || '',
-                education: highestEducation,
-                experienceYears: empExp,
-                eligibility: eligibilityType
+                education: highestEduLabel,
+                experienceYears: empExpYears,
+                trainingHours: totalTrainingHours,
+                eligibility: eligibilityNames.join(', ') || 'None'
             },
             positionDetails: {
                 id: position.id,
                 title: position.positionTitle,
                 salaryGrade: position.salaryGrade
             },
-            requirements: {
-                education: 'None',
-                experienceYears: 0,
-                trainingHours:   0,
-                eligibility: 'None'
-            }
+            requirements: defaultRequirements
         };
     }
 
@@ -119,71 +161,96 @@ export class QualificationService {
         throw new Error('Qualification Standard not found');
     }
 
-    // 4. Validation Logic
+    // 4. Strict Validation Logic
     const missingRequirements: string[] = [];
-    let score = 0;
-    const maxScore = 4; // Education, Experience, Training, Eligibility
+    let passedCount = 0;
+    const totalCriteria = 4;
 
-    // Education (25%)
-    if (highestEducation) {
-        score += 1;
+    // A. Education Validation
+    const reqEdu = qs.educationRequirement.toLowerCase();
+    let eduPassed = false;
+    
+    // Check rank-based progression
+    if (reqEdu.includes('graduate studies') || reqEdu.includes('master')) {
+        eduPassed = highestRank >= 5;
+    } else if (reqEdu.includes('college') || reqEdu.includes('bachelor')) {
+        eduPassed = highestRank >= 4;
+    } else if (reqEdu.includes('vocational')) {
+        eduPassed = highestRank >= 3;
+    } else if (reqEdu.includes('secondary') || reqEdu.includes('high school')) {
+        eduPassed = highestRank >= 2;
+    } else if (reqEdu.includes('elementary')) {
+        eduPassed = highestRank >= 1;
     } else {
-        missingRequirements.push(`Education: ${qs.educationRequirement}`);
+        // If "None" or unrecognizable, pass it
+        eduPassed = true;
     }
 
-    // Experience (25%)
-    const requiredExp = qs.experienceYears || 0;
-    if (empExp >= requiredExp) {
-        score += 1;
+    if (eduPassed) {
+        passedCount++;
     } else {
-        missingRequirements.push(`Experience: ${requiredExp} years required (has ${empExp} years)`);
+        missingRequirements.push(`Education: Requires ${qs.educationRequirement} (Current: ${highestEduLabel})`);
     }
 
-    // Training (25%)
-    const requiredTraining = qs.trainingHours || 0;
-    if (empExp > 0 || requiredTraining === 0) {
-        score += 1;
+    // B. Experience Validation
+    const reqExp = qs.experienceYears || 0;
+    if (empExpYears >= reqExp) {
+        passedCount++;
     } else {
-        missingRequirements.push(`Training: ${requiredTraining} hours required`);
+        missingRequirements.push(`Experience: Requires ${reqExp} years (Current: ${empExpYears} years)`);
     }
 
-    // Eligibility (25%)
-    if (eligibilityType) {
-        const employeeElig = eligibilityType.toLowerCase();
-        const requiredElig = (qs.eligibilityRequired || '').toLowerCase();
+    // C. Training Validation
+    const reqTraining = qs.trainingHours || 0;
+    if (totalTrainingHours >= reqTraining) {
+        passedCount++;
+    } else {
+        missingRequirements.push(`Training: Requires ${reqTraining} hours (Current: ${totalTrainingHours} hours)`);
+    }
 
-        if (
-            requiredElig === '' || 
-            employeeElig.includes(requiredElig) || 
-            requiredElig.includes(employeeElig) ||
-            employeeElig.includes('professional') || 
-            employeeElig.includes('cpa') || 
-            employeeElig.includes('engineer') ||
-            employeeElig.includes('bar') ||
-            employeeElig.includes('board') 
-        ) {
-            score += 1;
-        } else {
-            missingRequirements.push(`Eligibility: ${qs.eligibilityRequired} (has ${eligibilityType})`);
+    // D. Eligibility Validation
+    const reqElig = (qs.eligibilityRequired || '').toLowerCase();
+    let eligPassed = reqElig === '' || reqElig === 'none' || reqElig === 'n/a';
+    
+    if (!eligPassed) {
+        for (const empElig of eligibilityNames) {
+            const lowEmpElig = empElig.toLowerCase();
+            if (lowEmpElig.includes(reqElig) || reqElig.includes(lowEmpElig)) {
+                eligPassed = true;
+                break;
+            }
+            // Broad categories
+            if (reqElig.includes('career service') && (lowEmpElig.includes('professional') || lowEmpElig.includes('subprofessional'))) {
+                eligPassed = true; break;
+            }
+            if ((reqElig.includes('ra 1080') || reqElig.includes('board') || reqElig.includes('bar')) && 
+                (lowEmpElig.includes('board') || lowEmpElig.includes('bar') || lowEmpElig.includes('professional'))) {
+                eligPassed = true; break;
+            }
         }
-    } else {
-        missingRequirements.push(`Eligibility: ${qs.eligibilityRequired}`);
     }
 
-    const qualificationScore = Math.round((score / maxScore) * 100);
-    const qualified = qualificationScore === 100;
+    if (eligPassed) {
+        passedCount++;
+    } else {
+        missingRequirements.push(`Eligibility: Requires ${qs.eligibilityRequired} (Current: ${eligibilityNames.join(', ') || 'None'})`);
+    }
+
+    const score = Math.round((passedCount / totalCriteria) * 100);
+    const qualified = passedCount === totalCriteria;
 
     return {
         qualified,
-        score: qualificationScore,
+        score,
         missingRequirements,
         employeeDetails: {
             id: employee.id,
-            name: `${employee.firstName} ${employee.lastName}`,
+            name: `${employee.lastName}, ${employee.firstName}`,
             employeeId: employee.employeeId || '',
-            education: highestEducation,
-            experienceYears: empExp,
-            eligibility: eligibilityType
+            education: highestEduLabel,
+            experienceYears: empExpYears,
+            trainingHours: totalTrainingHours,
+            eligibility: eligibilityNames.join(', ') || 'None'
         },
         positionDetails: {
             id: position.id,

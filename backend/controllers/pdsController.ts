@@ -8,6 +8,7 @@ import { PDSParserService } from '../services/PDSParserService.js';
 import { PDSService } from '../services/pds.service.js';
 import type { PdsSaveData } from '../services/pds.service.js';
 import fs from 'fs';
+import path from 'path';
 import { 
   pdsFamily, 
   pdsEducation, 
@@ -18,7 +19,8 @@ import {
   pdsReferences,
   pdsVoluntaryWork,
   pdsPersonalInformation,
-  pdsDeclarations
+  pdsDeclarations,
+  employeeDocuments
 } from '../db/schema.js';
 import { PDSUpdateSchema } from '../schemas/employeeSchema.js';
 
@@ -175,6 +177,28 @@ export const parsePDSUpload = async (req: Request, res: Response): Promise<void>
       const empId = parseInt(targetEmployeeId);
       if (!isNaN(empId)) {
         await PDSService.saveFullPdsData(empId, extractedData as PdsSaveData, avatar);
+
+        // --- SAVE UPLOADED FILE AS PERMANENT DOCUMENT ---
+        try {
+          const docsDir = path.join(process.cwd(), 'uploads', 'resumes');
+          if (!fs.existsSync(docsDir)) fs.mkdirSync(docsDir, { recursive: true });
+
+          const newFileName = `pds-${Date.now()}-${file.originalname}`;
+          const newPath = path.join(docsDir, newFileName);
+          
+          // Copy file before unlinking
+          await fs.promises.copyFile(file.path, newPath);
+
+          // Record in database
+          await db.insert(employeeDocuments).values({
+            employeeId: empId,
+            documentType: 'PDS Form',
+            documentName: file.originalname,
+            filePath: `uploads/resumes/${newFileName}`
+          });
+        } catch (docErr) {
+          console.error('Failed to save PDS document:', docErr);
+        }
       }
     }
 
@@ -242,8 +266,19 @@ export const updatePdsPersonal = async (req: Request, res: Response): Promise<vo
       userId = parseInt(targetEmployeeId);
     }
 
-    const filteredData = { ...body, employeeId: userId };
-    delete (filteredData as { id?: unknown }).id;
+    const personalFields = [
+      'employeeId', 'birthDate', 'placeOfBirth', 'gender', 'civilStatus', 'heightM', 'weightKg',
+      'bloodType', 'citizenship', 'citizenshipType', 'dualCountry', 'telephoneNo', 'mobileNo',
+      'gsisNumber', 'pagibigNumber', 'philhealthNumber', 'tinNumber', 'umidNumber', 'philsysId', 'agencyEmployeeNo',
+      'resHouseBlockLot', 'resStreet', 'resSubdivision', 'resBarangay', 'resCity', 'resProvince', 'resRegion', 'residentialZipCode',
+      'permHouseBlockLot', 'permStreet', 'permSubdivision', 'permBarangay', 'permCity', 'permProvince', 'permRegion', 'permanentZipCode'
+    ];
+
+    const filteredData: any = {};
+    personalFields.forEach(f => {
+      if (body[f] !== undefined) filteredData[f] = body[f];
+    });
+    filteredData.employeeId = userId;
 
     await db.transaction(async (tx) => {
       await tx.delete(pdsPersonalInformation).where(sql`employee_id = ${userId}`);

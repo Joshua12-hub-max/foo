@@ -1,11 +1,13 @@
 import { db } from '../db/index.js';
-import { attendanceLogs, schedules, dailyTimeRecords, internalPolicies, authentication, leaveApplications, shiftTemplates, pdsHrDetails } from '../db/schema.js';
+import { attendanceLogs, schedules, dailyTimeRecords, internalPolicies, authentication, leaveApplications, pdsHrDetails } from '../db/schema.js';
 import { eq, and, asc, sql, or } from 'drizzle-orm';
 import { updateTardinessSummary } from '../utils/tardinessUtils.js';
 import { formatToManilaDateTime } from '../utils/dateUtils.js';
 import { checkPolicyViolations } from './violationService.js';
-import { compareIds } from '../utils/idUtils.js';
+import { compareIds, normalizeIdJs } from '../utils/idUtils.js';
 import { calculateLateUndertime, determineStatus } from '../utils/attendanceUtils.js';
+
+import * as leaveService from './leaveService.js';
 
 const DAYS_OF_WEEK = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as const;
 
@@ -51,16 +53,10 @@ export const processDailyAttendance = async (
     .limit(1);
 
     // 2a. Fetch System Default Shift
-    const [systemDefaultShift] = await db.select({
-      startTime: shiftTemplates.startTime,
-      endTime: shiftTemplates.endTime
-    })
-    .from(shiftTemplates)
-    .where(eq(shiftTemplates.isDefault, true))
-    .limit(1);
+    const systemDefaultShift = await leaveService.getDefaultShift();
 
-    const defaultStart = systemDefaultShift?.startTime || '08:00:00';
-    const defaultEnd = systemDefaultShift?.endTime || '17:00:00';
+    const defaultStart = systemDefaultShift.startTime || '08:00:00';
+    const defaultEnd = systemDefaultShift.endTime || '17:00:00';
 
     // 2b. Check for Approved Leave
     const approvedLeaves = await db.select({
@@ -223,12 +219,29 @@ export const processDailyAttendance = async (
     // ── STATUS DETERMINATION ──
     const hasScheduleOrTarget = activeBlocks.length > 0 || useTargetHoursMode;
     
+    // Determine if the shift is still active based on the last block or current time
+    let isShiftActive = false;
+    if (activeBlocks.length > 0) {
+        const lastBlock = activeBlocks[activeBlocks.length - 1];
+        const blockEnd = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
+        const [eH, eM, eS] = parseTimeString(lastBlock.endTime);
+        blockEnd.setHours(eH, eM, eS);
+        isShiftActive = new Date() < blockEnd;
+    }
+
+    // 100% PRECISION: If the shift is still active, undertime is NOT yet calculable.
+    if (isShiftActive && timeOut === null) {
+        totalUndertimeMinutes = 0;
+    }
+
     // 100% PRECISION: Correctly handle Rest Day Duty to eliminate "Pending" artifacts
     let status = determineStatus(
       totalLateMinutes,
       totalUndertimeMinutes,
       'Present',
-      hasScheduleOrTarget
+      hasScheduleOrTarget,
+      isShiftActive,
+      timeOut !== null
     );
 
     if (hasScheduleOrTarget) {
@@ -241,24 +254,36 @@ export const processDailyAttendance = async (
       status = leaveType || 'Leave';
     }
 
-    // 4. Upsert into daily_time_records ONLY if there are VALID logs or the employee is on leave
-    const hasBothLogs = timeIn !== null && timeOut !== null;
+    // 4. Upsert into daily_time_records ONLY if there are VALID logs, the employee is on leave, OR they have a schedule
     
+    let shouldSaveDTR = false;
+    
+    if (isOnLeave) {
+        shouldSaveDTR = true;
+    } else if (hasScheduleOrTarget) {
+        shouldSaveDTR = true; // Always save if they are scheduled! (to record absence, late, undertime)
+    } else if (timeIn !== null || timeOut !== null) {
+        shouldSaveDTR = true; // Unscheduled, but they logged something (Overtime/Rest Day Duty)
+    }
+
     // 100% NOISE FILTER: 
     // If on a Rest Day (no schedule) and not on leave, check for "Enrollment Noise"
-    // (e.g., 12 AM scans often associated with hardware testing/enrollment)
     let isNoiseLog = false;
-    if (!hasScheduleOrTarget && !isOnLeave && hasBothLogs && timeIn) {
+    if (!hasScheduleOrTarget && !isOnLeave && timeIn !== null && timeOut !== null) {
       const inHour = timeIn.getHours();
-      // If scans occur between 11 PM and 1 AM on a Sunday/Rest Day, it is almost certainly noise
       if (inHour === 0 || inHour === 23) {
         isNoiseLog = true;
       }
     }
 
-    if ((hasBothLogs && !isNoiseLog) || isOnLeave) {
+    if (isNoiseLog) {
+        shouldSaveDTR = false;
+    }
+
+    if (shouldSaveDTR) {
+      const normalizedTargetId = normalizeIdJs(employeeId);
       await db.insert(dailyTimeRecords).values({
-        employeeId,
+        employeeId: normalizedTargetId,
         date: dateStr,
         timeIn: timeIn ? formatToManilaDateTime(timeIn) : null,
         timeOut: timeOut ? formatToManilaDateTime(timeOut) : null,
@@ -279,7 +304,7 @@ export const processDailyAttendance = async (
         }
       });
     } else {
-      // CLEANUP: If only a single log exists (Ghost Record) or it's identified as noise, remove the entry.
+      // CLEANUP: Only delete if it's truly a ghost record on a rest day with no logs
       await db.delete(dailyTimeRecords).where(and(
         compareIds(dailyTimeRecords.employeeId, employeeId),
         eq(dailyTimeRecords.date, dateStr)

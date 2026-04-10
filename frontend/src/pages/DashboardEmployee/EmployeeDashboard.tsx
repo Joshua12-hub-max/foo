@@ -145,8 +145,8 @@ export default function EmployeeDashboard(): React.ReactElement {
           
           // Precise calculation matching backend logic
           const logs = logsRes.data?.data || [];
-          const present = logs.filter((l: { status: string }) => ['Present', 'Late', 'Undertime', 'Late/Undertime'].includes(l.status)).length;
-          const late = logs.filter((l: { status: string }) => ['Late', 'Late/Undertime'].includes(l.status)).length;
+          const present = logs.filter((l: { status: string }) => ['Present', 'Present (Late)', 'Late', 'Undertime', 'Late/Undertime'].includes(l.status)).length;
+          const late = logs.filter((l: { status: string }) => ['Late', 'Present (Late)', 'Late/Undertime'].includes(l.status)).length;
           const absent = logs.filter((l: { status: string }) => l.status === 'Absent' || l.status === 'No Logs').length; 
 
           // Fetch leave credits

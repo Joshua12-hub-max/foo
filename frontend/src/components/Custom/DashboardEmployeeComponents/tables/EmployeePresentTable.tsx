@@ -29,7 +29,7 @@ const EmployeePresentTable: React.FC<EmployeePresentTableProps> = ({ onClose }) 
           limit: 100
         });
 
-        const presentLogs = (res.data?.data || []).filter((l) => l.status === 'Present');
+        const presentLogs = (res.data?.data || []).filter((l) => ['Present', 'Present (Late)'].includes(l.status));
         setRecords(presentLogs);
       } catch (err) {
         console.error("Failed to fetch present records:", err);

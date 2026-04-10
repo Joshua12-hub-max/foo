@@ -31,5 +31,3 @@ export const formatFullName = (
   
   return parts.join(' ').trim();
 };
-
-// End of nameUtils.ts

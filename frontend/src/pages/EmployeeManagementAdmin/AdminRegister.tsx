@@ -757,7 +757,6 @@ export default function AdminRegister() {
 
     // 5. Educational Background (100% Robust Relational Mapping & Inference)
     const eduLevels = ['Elementary', 'Secondary', 'Vocational', 'College', 'Graduate Studies'] as const;
-    let highestMappedLevel: string | null = null;
     
     // Helper to extract only the year (YYYY)
     const extractYear = (val: string | number | null | undefined): string => {
@@ -768,22 +767,21 @@ export default function AdminRegister() {
         return str;
     };
 
+    const newEducations: any[] = [];
+
     // A. Relational Data (Prioritized)
     if (applicant.educations && applicant.educations.length > 0) {
         applicant.educations.forEach((edu) => {
-            const level = edu.level;
-            const formLevel = (level === 'Graduate Studies' ? 'Graduate' : level) as "Elementary" | "Secondary" | "Vocational" | "College" | "Graduate";
-            
-            if (['Elementary', 'Secondary', 'Vocational', 'College', 'Graduate'].includes(formLevel)) {
-                setValue(`education.${formLevel}.school` as Path<RegisterFormValues>, edu.schoolName || "");
-                setValue(`education.${formLevel}.course` as Path<RegisterFormValues>, edu.degreeCourse || "");
-                setValue(`education.${formLevel}.from` as Path<RegisterFormValues>, extractYear(edu.dateFrom));
-                setValue(`education.${formLevel}.to` as Path<RegisterFormValues>, extractYear(edu.dateTo));
-                setValue(`education.${formLevel}.yearGrad` as Path<RegisterFormValues>, extractYear(edu.yearGraduated));
-                setValue(`education.${formLevel}.units` as Path<RegisterFormValues>, edu.unitsEarned || "");
-                setValue(`education.${formLevel}.honors` as Path<RegisterFormValues>, edu.honors || "");
-                highestMappedLevel = formLevel;
-            }
+            newEducations.push({
+                level: edu.level || "",
+                schoolName: edu.schoolName || "",
+                degreeCourse: edu.degreeCourse || "",
+                dateFrom: extractYear(edu.dateFrom),
+                dateTo: extractYear(edu.dateTo),
+                yearGraduated: extractYear(edu.yearGraduated),
+                unitsEarned: edu.unitsEarned || "",
+                honors: edu.honors || ""
+            });
         });
     } 
     // B. Legacy JSON Fallback
@@ -794,15 +792,16 @@ export default function AdminRegister() {
                 eduLevels.forEach(level => {
                     const levelData = (edu as Record<string, LegacyEducationData>)[level];
                     if (levelData && (typeof levelData === 'object') && (levelData.school || levelData.course)) {
-                        const formLevel = (level === 'Graduate Studies' ? 'Graduate' : level) as "Elementary" | "Secondary" | "Vocational" | "College" | "Graduate";
-                        setValue(`education.${formLevel}.school` as Path<RegisterFormValues>, levelData.school || "");
-                        setValue(`education.${formLevel}.course` as Path<RegisterFormValues>, levelData.course || "");
-                        setValue(`education.${formLevel}.from` as Path<RegisterFormValues>, extractYear(levelData.from));
-                        setValue(`education.${formLevel}.to` as Path<RegisterFormValues>, extractYear(levelData.to));
-                        setValue(`education.${formLevel}.yearGrad` as Path<RegisterFormValues>, extractYear(levelData.yearGrad));
-                        setValue(`education.${formLevel}.units` as Path<RegisterFormValues>, levelData.units || "");
-                        setValue(`education.${formLevel}.honors` as Path<RegisterFormValues>, levelData.honors || "");
-                        highestMappedLevel = formLevel;
+                        newEducations.push({
+                            level: level,
+                            schoolName: levelData.school || "",
+                            degreeCourse: levelData.course || "",
+                            dateFrom: extractYear(levelData.from),
+                            dateTo: extractYear(levelData.to),
+                            yearGraduated: extractYear(levelData.yearGrad),
+                            unitsEarned: levelData.units || "",
+                            honors: levelData.honors || ""
+                        });
                     }
                 });
             }
@@ -811,15 +810,13 @@ export default function AdminRegister() {
         }
     }
 
-    // 5. Educational Background (Bulk mapped to array)
-    if (applicant.educationalBackground) {
-        // applicant.educations would be better if it exists in HiredApplicant
-        // Otherwise we map what we have
+    if (newEducations.length > 0) {
+        replaceEducation(newEducations);
     }
 
     // 6. Work Experience (Array Pre-fill)
     if (applicant.experiences && applicant.experiences.length > 0) {
-        setValue("workExperiences", applicant.experiences.map((exp) => ({
+        replaceWorkExperience(applicant.experiences.map((exp) => ({
             dateFrom: exp.dateFrom ? formatDateForInput(exp.dateFrom) : "",
             dateTo: exp.dateTo ? formatDateForInput(exp.dateTo) : "",
             positionTitle: exp.positionTitle || "",
@@ -833,7 +830,7 @@ export default function AdminRegister() {
         try {
             const parsedExperience = safeParse(applicant.experience) as Record<string, string | number | boolean | null>[];
             if (Array.isArray(parsedExperience)) {
-                setValue("workExperiences", parsedExperience.map(exp => ({
+                replaceWorkExperience(parsedExperience.map(exp => ({
                     dateFrom: String(exp.dateFrom ? formatDateForInput(String(exp.dateFrom)) : ""),
                     dateTo: String(exp.dateTo ? formatDateForInput(String(exp.dateTo)) : ""),
                     positionTitle: String(exp.positionTitle || ""),
@@ -851,7 +848,7 @@ export default function AdminRegister() {
 
     // 7. Eligibilities (Array Pre-fill)
     if (applicant.eligibilities && applicant.eligibilities.length > 0) {
-        setValue("eligibilities", applicant.eligibilities.map((el) => ({
+        replaceEligibility(applicant.eligibilities.map((el) => ({
             eligibilityName: el.eligibilityName || "",
             rating: el.rating?.toString() || "",
             examDate: el.examDate ? formatDateForInput(el.examDate) : "",
@@ -863,7 +860,7 @@ export default function AdminRegister() {
         try {
             const parsedEligibilities = safeParse(applicant.eligibility) as Record<string, string | number | null>[];
             if (Array.isArray(parsedEligibilities)) {
-                setValue("eligibilities", parsedEligibilities.map((el): { eligibilityName: string; rating: string; examDate: string; examPlace: string; licenseNumber: string; validityDate: string } => ({
+                replaceEligibility(parsedEligibilities.map((el): { eligibilityName: string; rating: string; examDate: string; examPlace: string; licenseNumber: string; validityDate: string } => ({
                     eligibilityName: String(el["name"] || el["eligibilityName"] || ""),
                     rating: String(el["rating"] || ""),
                     examDate: String(el["examDate"] ? formatDateForInput(String(el["examDate"])) : ""),
@@ -879,7 +876,7 @@ export default function AdminRegister() {
 
     // 8. Training Programs (Array Pre-fill)
     if (applicant.trainings && applicant.trainings.length > 0) {
-        setValue("learningDevelopments", applicant.trainings.map((t) => ({
+        replaceTraining(applicant.trainings.map((t) => ({
             title: t.title || "",
             dateFrom: t.dateFrom ? formatDateForInput(t.dateFrom) : "",
             dateTo: t.dateTo ? formatDateForInput(t.dateTo) : "",
@@ -891,7 +888,7 @@ export default function AdminRegister() {
         try {
             const parsedTrainings = safeParse(applicant.training) as Record<string, string | number | null>[];
             if (Array.isArray(parsedTrainings)) {
-                setValue("learningDevelopments", parsedTrainings.map((t): { title: string; dateFrom: string; dateTo: string; hoursNumber: string; typeOfLd: string; conductedBy: string } => ({
+                replaceTraining(parsedTrainings.map((t): { title: string; dateFrom: string; dateTo: string; hoursNumber: string; typeOfLd: string; conductedBy: string } => ({
                     title: String(t["title"] || t["trainingTitle"] || ""),
                     dateFrom: String(t["dateFrom"] ? formatDateForInput(String(t["dateFrom"])) : ""),
                     dateTo: String(t["dateTo"] ? formatDateForInput(String(t["dateTo"])) : ""),
@@ -1216,6 +1213,7 @@ export default function AdminRegister() {
   
   const roleOptions = [
     { value: "Employee", label: "Employee (Portal Access)" },
+    { value: "Applicant", label: "Newly Hired (Limited Access)" },
     { value: "Human Resource", label: "Human Resource (Admin Access)" },
     { value: "Administrator", label: "Administrator (Super Access)" }
   ] as const;
@@ -1420,7 +1418,7 @@ export default function AdminRegister() {
                             <div>
                                 <label className="text-[11px] font-bold text-gray-400 mb-1 block">System ID</label>
                                 <p className="text-sm font-mono font-bold text-gray-700">
-                                    {isNextIdLoading ? 'Pending...' : (actualEmployeeId.startsWith('Emp') ? actualEmployeeId : `EMP-${actualEmployeeId}`)}
+                                    {isNextIdLoading ? 'Pending...' : (actualEmployeeId.startsWith('Emp-') ? actualEmployeeId : (actualEmployeeId ? `Emp-${actualEmployeeId.padStart(3, '0')}` : '---'))}
                                 </p>
                             </div>
                             <div>
@@ -1436,66 +1434,11 @@ export default function AdminRegister() {
                  </div>
               </div>
 
-              {/* SECTION 1: EMPLOYEE IDENTITY & PERSONAL DETAILS */}
+              {/* SECTION 1: HR & EMPLOYMENT PLACEMENT */}
               <div className="bg-white rounded-lg border border-gray-100 p-6 md:p-8 shadow-sm space-y-6">
                   <div className="flex items-center gap-4 border-b border-gray-100 pb-5">
                       <div className="w-10 h-10 bg-gray-900 rounded-lg flex items-center justify-center">
                           <span className="text-white font-black text-xs">01</span>
-                      </div>
-                      <div>
-                          <h4 className="text-sm font-black text-gray-900 tracking-tight">Employee details</h4>
-                          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Primary identity & personal info</p>
-                      </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                      <div className="space-y-1">
-                          <label className={labelClass}>Last name <span className="text-red-500">*</span></label>
-                          <input {...register("lastName")} className={inputClass} />
-                          {errors.lastName && <p className="text-[10px] text-red-500 font-bold ml-1">{errors.lastName.message}</p>}
-                      </div>
-                      <div className="space-y-1">
-                          <label className={labelClass}>First name <span className="text-red-500">*</span></label>
-                          <input {...register("firstName")} className={inputClass} />
-                          {errors.firstName && <p className="text-[10px] text-red-500 font-bold ml-1">{errors.firstName.message}</p>}
-                      </div>
-                      <div className="space-y-1">
-                          <label className={labelClass}>Middle name</label>
-                          <input {...register("middleName")} className={inputClass} />
-                      </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
-                       <div className="space-y-1">
-                          <label className={labelClass}>Suffix (Optional)</label>
-                          <input {...register("suffix")} placeholder="Jr / III" className={inputClass} />
-                      </div>
-                      <div className="space-y-1">
-                          <label className={labelClass}>Official email address <span className="text-red-500">*</span></label>
-                          <input {...register("email")} className={inputClass} />
-                          {errors.email && <p className="text-[10px] text-red-500 font-bold ml-1">{errors.email.message}</p>}
-                      </div>
-                  </div>
-
-                  <div className="pt-5 border-t border-gray-100">
-                      <div className="space-y-1">
-                          <label className={labelClass}>Account password <span className="text-red-500">*</span></label>
-                          <input 
-                            type="password" 
-                            {...register("password")} 
-                            placeholder="Min. 8 chars with Upper, Lower & Number"
-                            className={inputClass} 
-                          />
-                          {errors.password && <p className="text-[10px] text-red-500 font-bold ml-1">{errors.password.message}</p>}
-                      </div>
-                  </div>
-              </div>
-
-              {/* SECTION 2: HR & EMPLOYMENT PLACEMENT */}
-              <div className="bg-white rounded-lg border border-gray-100 p-6 md:p-8 shadow-sm space-y-6">
-                  <div className="flex items-center gap-4 border-b border-gray-100 pb-5">
-                      <div className="w-10 h-10 bg-gray-900 rounded-lg flex items-center justify-center">
-                          <span className="text-white font-black text-xs">02</span>
                       </div>
                       <div>
                           <h4 className="text-sm font-black text-gray-900 tracking-tight">HR & employment placement</h4>
@@ -1571,6 +1514,61 @@ export default function AdminRegister() {
                                   />
                               )}
                           />
+                      </div>
+                  </div>
+              </div>
+
+              {/* SECTION 2: EMPLOYEE IDENTITY & PERSONAL DETAILS */}
+              <div className="bg-white rounded-lg border border-gray-100 p-6 md:p-8 shadow-sm space-y-6">
+                  <div className="flex items-center gap-4 border-b border-gray-100 pb-5">
+                      <div className="w-10 h-10 bg-gray-900 rounded-lg flex items-center justify-center">
+                          <span className="text-white font-black text-xs">02</span>
+                      </div>
+                      <div>
+                          <h4 className="text-sm font-black text-gray-900 tracking-tight">Employee details</h4>
+                          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Primary identity & personal info</p>
+                      </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="space-y-1">
+                          <label className={labelClass}>Last name <span className="text-red-500">*</span></label>
+                          <input {...register("lastName")} className={inputClass} />
+                          {errors.lastName && <p className="text-[10px] text-red-500 font-bold ml-1">{errors.lastName.message}</p>}
+                      </div>
+                      <div className="space-y-1">
+                          <label className={labelClass}>First name <span className="text-red-500">*</span></label>
+                          <input {...register("firstName")} className={inputClass} />
+                          {errors.firstName && <p className="text-[10px] text-red-500 font-bold ml-1">{errors.firstName.message}</p>}
+                      </div>
+                      <div className="space-y-1">
+                          <label className={labelClass}>Middle name</label>
+                          <input {...register("middleName")} className={inputClass} />
+                      </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+                       <div className="space-y-1">
+                          <label className={labelClass}>Suffix (Optional)</label>
+                          <input {...register("suffix")} placeholder="Jr / III" className={inputClass} />
+                      </div>
+                      <div className="space-y-1">
+                          <label className={labelClass}>Official email address <span className="text-red-500">*</span></label>
+                          <input {...register("email")} className={inputClass} />
+                          {errors.email && <p className="text-[10px] text-red-500 font-bold ml-1">{errors.email.message}</p>}
+                      </div>
+                  </div>
+
+                  <div className="pt-5 border-t border-gray-100">
+                      <div className="space-y-1">
+                          <label className={labelClass}>Account password <span className="text-red-500">*</span></label>
+                          <input 
+                            type="password" 
+                            {...register("password")} 
+                            placeholder="Min. 8 chars with Upper, Lower & Number"
+                            className={inputClass} 
+                          />
+                          {errors.password && <p className="text-[10px] text-red-500 font-bold ml-1">{errors.password.message}</p>}
                       </div>
                   </div>
               </div>

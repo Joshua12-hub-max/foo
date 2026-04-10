@@ -232,7 +232,7 @@ export const usePerformanceReview = () => {
           
           const params = new URLSearchParams(window.location.search);
           const empId = params.get('employeeId');
-          if (empId && isMounted) setFormData(prev => ({ ...prev, employeeId: String(empId) }));
+          if (empId && isMounted) setFormData(prev => ({ ...prev, employeeId: Number(empId) }));
         }
       } catch (err) {
         if (isMounted) {
@@ -271,11 +271,11 @@ export const usePerformanceReview = () => {
     fetchMetrics();
   }, [formData.employeeId, isNew]);
 
-  const selectedEmployee = useMemo(() => employees.find(e => String(e.id) === formData.employeeId), [employees, formData.employeeId]);
+  const selectedEmployee = useMemo(() => employees.find(e => e.id === formData.employeeId), [employees, formData.employeeId]);
   const selectedCycle = useMemo(() => cycles.find(c => c.id == formData.reviewCycleId), [cycles, formData.reviewCycleId]);
   
   const permissions = useMemo(() => {
-    const role = user?.role?.toLowerCase() || '';
+    const role = user?.role || '';
     const isReviewer = ['Administrator', 'Human Resource'].includes(role);
     const isEmployee = role === 'Employee';
     return {
@@ -442,9 +442,9 @@ export const usePerformanceReview = () => {
       });
       
       const payload: Partial<InternalReview> = {
-        employeeId: String(formData.employeeId),
+        employeeId: Number(formData.employeeId),
         reviewerId: Number(user?.id || formData.reviewerId),
-        reviewCycleId: Number(formData.reviewCycleId),
+        reviewCycleId: Number(formData.reviewCycleId) || undefined,
         overallFeedback,
         totalScore: "0",
       };
@@ -631,6 +631,7 @@ export const usePerformanceReview = () => {
         }
 
         const res = await updateReview(reviewId, {
+            items: itemsPayload as ReviewItem[],
             overallFeedback,
             reviewerRemarks: formData.additionalComments
         });

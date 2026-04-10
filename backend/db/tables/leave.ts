@@ -110,24 +110,6 @@ export const leaveMonetizationRequests = mysqlTable("leave_monetization_requests
 	primaryKey({ columns: [table.id], name: "leave_monetization_requests_id"}),
 ]);
 
-export const leaveRequests = mysqlTable("leave_requests", {
-	id: int("id").autoincrement().notNull(),
-	employeeId: varchar("employee_id", { length: 50 }).notNull(),
-	leaveType: varchar("leave_type", { length: 50 }).notNull(),
-	startDate: date("start_date", { mode: 'string' }).notNull(),
-	endDate: date("end_date", { mode: 'string' }).notNull(),
-	reason: text("reason"),
-	status: mysqlEnum("status", ['Pending','Processing','Finalizing','Approved','Rejected']).default('Pending'),
-	rejectionReason: text("rejection_reason"),
-	approvedBy: varchar("approved_by", { length: 50 }),
-	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
-	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow(),
-	withPay: boolean("with_pay").default(false),
-},
-(table) => [
-	primaryKey({ columns: [table.id], name: "leave_requests_id"}),
-]);
-
 export const lwopSummary = mysqlTable("lwop_summary", {
 	id: int("id").autoincrement().notNull(),
 	employeeId: varchar("employee_id", { length: 50 }).notNull(),

@@ -1,5 +1,14 @@
 import { z } from 'zod';
 
+const safeCoerceNumber = z.preprocess((val) => {
+  if (val === "" || val === null || val === undefined) return null;
+  if (typeof val === 'number') return val;
+  const cleaned = String(val).replace(/,/g, '').trim();
+  if (cleaned === "" || cleaned.toLowerCase() === 'n/a') return null;
+  const num = Number(cleaned);
+  return isNaN(num) ? null : num;
+}, z.number().nullable().optional());
+
 const PdsDeclarationsSchema = z.object({
   relatedThirdDegree: z.boolean().default(false),
   relatedThirdDetails: z.string().optional().nullable(),
@@ -39,7 +48,7 @@ const EducationSchema = z.object({
   dateFrom: z.string().optional().nullable(),
   dateTo: z.string().optional().nullable(),
   unitsEarned: z.string().optional().nullable(),
-  yearGraduated: z.coerce.number().optional().nullable(),
+  yearGraduated: safeCoerceNumber,
   honors: z.string().optional().nullable()
 });
 
@@ -48,7 +57,7 @@ const WorkExperienceSchema = z.object({
   dateTo: z.string().optional().nullable(),
   positionTitle: z.string(),
   companyName: z.string(),
-  monthlySalary: z.coerce.number().optional().nullable(),
+  monthlySalary: safeCoerceNumber,
   salaryGrade: z.string().optional().nullable(),
   appointmentStatus: z.string().optional().nullable(),
   isGovernment: z.boolean().default(false)
@@ -56,7 +65,7 @@ const WorkExperienceSchema = z.object({
 
 const EligibilitySchema = z.object({
   eligibilityName: z.string(),
-  rating: z.coerce.number().optional().nullable(),
+  rating: safeCoerceNumber,
   examDate: z.string().optional().nullable(),
   examPlace: z.string().optional().nullable(),
   licenseNumber: z.string().optional().nullable(),
@@ -67,7 +76,7 @@ const LearningDevelopmentSchema = z.object({
   title: z.string(),
   dateFrom: z.string().optional().nullable(),
   dateTo: z.string().optional().nullable(),
-  hoursNumber: z.coerce.number().optional().nullable(),
+  hoursNumber: safeCoerceNumber,
   typeOfLd: z.string().optional().nullable(),
   conductedBy: z.string().optional().nullable()
 });
@@ -77,7 +86,7 @@ const VoluntaryWorkSchema = z.object({
   address: z.string().optional().nullable(),
   dateFrom: z.string().optional().nullable(),
   dateTo: z.string().optional().nullable(),
-  hoursNumber: z.coerce.number().optional().nullable(),
+  hoursNumber: safeCoerceNumber,
   position: z.string().optional().nullable()
 });
 
@@ -145,15 +154,15 @@ export const RegisterSchema = z.object({
   lastName: z.string().min(1),
   middleName: z.string().optional().nullable(),
   suffix: z.string().optional().nullable(),
-  employeeId: z.string().optional().nullable(),
+  employeeId: z.string().regex(/^Emp-(00[1-9]|0[1-9][0-9]|1[0-9]{2}|200)$/, "Employee ID must be exactly Emp-001 to Emp-200 due to sensor capacity limits").optional().nullable(),
 
   // PDS Personal Information
   birthDate: z.string().optional().nullable(),
   placeOfBirth: z.string().optional().nullable(),
   gender: z.string().optional().nullable(),
   civilStatus: z.string().optional().nullable(),
-  heightM: z.coerce.number().optional().nullable(),
-  weightKg: z.coerce.number().optional().nullable(),
+  heightM: safeCoerceNumber,
+  weightKg: safeCoerceNumber,
   bloodType: z.string().optional().nullable(),
   citizenship: z.string().optional().nullable(),
   citizenshipType: z.string().optional().nullable(),

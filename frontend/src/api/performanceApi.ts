@@ -19,11 +19,25 @@ export interface InternalReviewListResponse {
 export interface EvaluationSummaryResponse {
   success: boolean;
   message?: string;
-  employees?: InternalReview[];
-  stats?: Record<string, number>;
   data?: {
-    employees?: InternalReview[];
-    stats?: Record<string, number>;
+    employees: Array<{
+      id: number;
+      name: string;
+      firstName: string;
+      lastName: string;
+      department: string;
+      jobTitle: string;
+      positionTitle: string;
+      avatarUrl: string | null;
+      employeeId: string;
+      reviewId: number | null;
+      status: string;
+      lastEvaluationDate: string | null;
+      duties: string;
+      score: string | number | null;
+      birthDate: string | null;
+    }>;
+    stats: Record<string, number>;
   };
 }
 
@@ -69,13 +83,13 @@ export const updateReview = async (id: string | number, reviewData: Partial<Inte
 
 // 5. Submit Self-Rating
 export const submitSelfRating = async (id: string | number, data: { items: Partial<ReviewItem>[]; employeeRemarks?: string; isDraft?: boolean }): Promise<ApiResponse<{ selfRatingScore?: string | number }>> => {
-  const response = await axios.post<ApiResponse<{ selfRatingScore?: string | number }>>(`/performance/reviews/${id}/self-rate`, data);
+  const response = await axios.post<ApiResponse<{ selfRatingScore?: string | number }>>(`/performance/reviews/${id}/self-rating`, data);
   return response.data;
 };
 
 // 6. Submit Reviewer Rating
 export const submitReviewerRating = async (id: string | number, data: { items: Partial<ReviewItem>[]; reviewerRemarks?: string; overallFeedback?: string }): Promise<ApiResponse<{ reviewerRatingScore?: string | number }>> => {
-  const response = await axios.post<ApiResponse<{ reviewerRatingScore?: string | number }>>(`/performance/reviews/${id}/submit`, data);
+  const response = await axios.post<ApiResponse<{ reviewerRatingScore?: string | number }>>(`/performance/reviews/${id}/reviewer-rating`, data);
   return response.data;
 };
 

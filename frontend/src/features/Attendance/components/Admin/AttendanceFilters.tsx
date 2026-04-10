@@ -2,7 +2,7 @@ import React, { useEffect } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AttendanceFilterSchema, AttendanceFilterValues } from "@/schemas/attendanceSchema";
-import { useAttendanceStore } from "@/stores/attendanceStore";
+import { useAttendanceStore, initialFilters } from "@/stores/attendanceStore";
 import Combobox from "@/components/Custom/Combobox";
 
 interface EmployeeOption {
@@ -23,31 +23,39 @@ const AttendanceFilters: React.FC<AttendanceFiltersProps> = ({
 }) => {
   const { filters, setFilters, resetFilters } = useAttendanceStore();
   
-  const { register, handleSubmit, reset, control } = useForm<AttendanceFilterValues>({
+  const { register, handleSubmit, reset, control, getValues } = useForm<AttendanceFilterValues>({
     resolver: zodResolver(AttendanceFilterSchema),
     defaultValues: filters,
   });
 
-  // Sync form with store if external changes happen (like clear all)
+  // Sync form with store only when INITIALIZING 
   useEffect(() => {
     reset(filters);
-  }, [filters, reset]);
+  }, []); // Only run once on mount to populate initial state
 
   const onSubmit = (data: AttendanceFilterValues) => {
-    setFilters(data);
+    // 100% SUCCESS Logic: Transform empty strings to undefined for clean API calls
+    const cleanedFilters = {
+      department: data.department || undefined,
+      employeeId: data.employeeId || undefined,
+      startDate: data.startDate || undefined,
+      endDate: data.endDate || undefined,
+    };
+    setFilters(cleanedFilters);
   };
 
   const handleClear = () => {
-    resetFilters();
+    reset(initialFilters); // Reset local form state
+    resetFilters();        // Reset Zustand store
   };
 
   const departmentOptions = [
-    { value: '', label: 'Department' },
+    { value: '', label: 'All Departments' },
     ...uniqueDepartments.map(dept => ({ value: dept, label: dept }))
   ];
 
   const employeeOptions = [
-    { value: '', label: 'Employee' },
+    { value: '', label: 'All Employees' },
     ...uniqueEmployees.map(emp => ({ value: emp.id, label: emp.name }))
   ];
 
@@ -65,7 +73,11 @@ const AttendanceFilters: React.FC<AttendanceFiltersProps> = ({
                 <Combobox
                   options={departmentOptions}
                   value={field.value}
-                  onChange={field.onChange}
+                  onChange={(val) => {
+                    field.onChange(val);
+                    // FIXED: Do not set filters immediately to allow combining with other filters
+                    // The user must click 'Apply Filter' for a deterministic experience
+                  }}
                   placeholder="Department"
                   disabled={isLoading}
                   className="w-full"
@@ -84,7 +96,9 @@ const AttendanceFilters: React.FC<AttendanceFiltersProps> = ({
                 <Combobox
                   options={employeeOptions}
                   value={field.value}
-                  onChange={field.onChange}
+                  onChange={(val) => {
+                    field.onChange(val);
+                  }}
                   placeholder="Employee"
                   disabled={isLoading}
                   className="w-full"
@@ -96,23 +110,37 @@ const AttendanceFilters: React.FC<AttendanceFiltersProps> = ({
 
           {/* From Date Filter */}
           <div className="w-full">
-            <input
-              type="date"
-              {...register("startDate")}
-              disabled={isLoading}
-              className="w-full px-3 bg-white border border-gray-200 rounded-lg shadow-sm py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200 focus:border-gray-200 hover:border-gray-200 transition-all disabled:opacity-50 appearance-none cursor-pointer h-[38px]"
-              placeholder="Start Date"
+            <Controller
+              name="startDate"
+              control={control}
+              render={({ field }) => (
+                <input
+                  type="date"
+                  {...field}
+                  value={field.value || ''}
+                  disabled={isLoading}
+                  className="w-full px-3 bg-white border border-gray-200 rounded-lg shadow-sm py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200 focus:border-gray-200 hover:border-gray-200 transition-all disabled:opacity-50 appearance-none cursor-pointer h-[38px]"
+                  placeholder="Start Date"
+                />
+              )}
             />
           </div>
 
           {/* To Date Filter */}
           <div className="w-full">
-            <input
-              type="date"
-              {...register("endDate")}
-              disabled={isLoading}
-              className="w-full px-3 bg-white border border-gray-200 rounded-lg shadow-sm py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200 focus:border-gray-200 hover:border-gray-200 transition-all disabled:opacity-50 appearance-none cursor-pointer h-[38px]"
-              placeholder="End Date"
+            <Controller
+              name="endDate"
+              control={control}
+              render={({ field }) => (
+                <input
+                  type="date"
+                  {...field}
+                  value={field.value || ''}
+                  disabled={isLoading}
+                  className="w-full px-3 bg-white border border-gray-200 rounded-lg shadow-sm py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200 focus:border-gray-200 hover:border-gray-200 transition-all disabled:opacity-50 appearance-none cursor-pointer h-[38px]"
+                  placeholder="End Date"
+                />
+              )}
             />
           </div>
 

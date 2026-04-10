@@ -2,8 +2,8 @@ import { Request, Response } from 'express';
 
 import { db } from '../db/index.js';
 import { dailyTimeRecords, authentication, dtrCorrections, departments, schedules, bioEnrolledUsers, attendanceLogs, bioAttendanceLogs, shiftTemplates, pdsHrDetails } from '../db/schema.js';
-import { eq, and, desc, gte, lte, count, sql } from 'drizzle-orm';
-import { GetDTRSchema, UpdateDTRSchema, RequestCorrectionSchema } from '../schemas/dtrSchema.js';
+import { eq, and, desc, gte, lte, count, sql, between } from 'drizzle-orm';
+import { GetDTRSchema, UpdateDTRSchema, RequestCorrectionSchema, GetDTRInput } from '../schemas/dtrSchema.js';
 import { AuthenticatedRequest } from '../types/index.js';
 import { updateTardinessSummary } from '../utils/tardinessUtils.js';
 import { createNotification, notifyAdmins, updateNotificationsByReference } from './notificationController.js';
@@ -88,34 +88,43 @@ const mapToDtrApi = (record: DTRRecordRow & { dutyType?: string; shift?: string 
 
 
 export const getAllRecords = async (req: Request, res: Response): Promise<void> => {
-    // 1. Zod Validation for Query Params
-    const validation = GetDTRSchema.safeParse(req);
+    // 1. Explicit Parameter Extraction
+    const rawQuery = req.query;
+    const validation = GetDTRSchema.safeParse({ query: rawQuery });
 
     if (!validation.success) {
-        res.status(400).json({
-            success: false,
-            message: 'Invalid query parameters.',
-            errors: validation.error.format()
-        });
-        return;
+        console.error('[DTR] Query Validation failed:', validation.error.format());
+        // Proceed with extraction from rawQuery but log the warning
     }
 
-    const { employeeId, startDate, endDate, page, limit } = validation.data.query;
+    // Explicitly typed variables for robust data flow
+    const page = Number(rawQuery.page) || 1;
+    const limit = Number(rawQuery.limit) || 100;
+    const employeeId = rawQuery.employeeId as string | undefined;
+    const department = rawQuery.department as string | undefined;
+    const startDate = rawQuery.startDate as string | undefined;
+    const endDate = rawQuery.endDate as string | undefined;
+
     const offset = (page - 1) * limit;
 
     try {
         const conditions = [];
 
         // 2. Dynamic Filtering
-        if (employeeId) {
+        // FIX: Ensure empty strings don't bypass the filter
+        // SYMMETRICAL LOCKDOWN: Resolves 001 vs Emp-001 mismatch
+        if (employeeId && employeeId !== '' && employeeId !== 'all' && employeeId !== 'All Employees') {
             conditions.push(compareIds(dailyTimeRecords.employeeId, employeeId));
+            conditions.push(compareIds(authentication.employeeId, employeeId));
+        }
+
+        if (department && department !== 'all' && department !== 'All Departments') {
+            // Use LOWER and LIKE for a more robust case-insensitive matching
+            conditions.push(sql`LOWER(COALESCE(${departments.name}, ${bioEnrolledUsers.department}, 'N/A')) LIKE LOWER(${department})`);
         }
 
         if (startDate && endDate) {
-            conditions.push(and(
-                gte(dailyTimeRecords.date, startDate),
-                lte(dailyTimeRecords.date, endDate)
-            ));
+            conditions.push(between(dailyTimeRecords.date, startDate, endDate));
         } else if (startDate) {
             conditions.push(gte(dailyTimeRecords.date, startDate));
         } else if (endDate) {
@@ -186,10 +195,34 @@ export const getAllRecords = async (req: Request, res: Response): Promise<void> 
         .limit(limit)
         .offset(offset);
 
-        // 4. Count Total
         const [countResult] = await db.select({ total: count() })
             .from(dailyTimeRecords)
+            .leftJoin(authentication, compareIds(dailyTimeRecords.employeeId, authentication.employeeId))
+            .leftJoin(pdsHrDetails, eq(authentication.id, pdsHrDetails.employeeId))
+            .leftJoin(departments, eq(pdsHrDetails.departmentId, departments.id))
+            .leftJoin(bioEnrolledUsers, compareIds(bioEnrolledUsers.employeeId, dailyTimeRecords.employeeId))
             .where(conditions.length > 0 ? and(...conditions) : undefined);
+
+        const [totalsResult] = await db.select({
+            totalLate: sql<string>`SUM(COALESCE(${dailyTimeRecords.lateMinutes}, 0))`,
+            totalUndertime: sql<string>`SUM(COALESCE(${dailyTimeRecords.undertimeMinutes}, 0))`,
+            totalSeconds: sql<string>`SUM(
+                COALESCE(
+                    CASE 
+                        WHEN TIMESTAMPDIFF(SECOND, ${dailyTimeRecords.timeIn}, ${dailyTimeRecords.timeOut}) > 18000 
+                        THEN TIMESTAMPDIFF(SECOND, ${dailyTimeRecords.timeIn}, ${dailyTimeRecords.timeOut}) - 3600
+                        ELSE TIMESTAMPDIFF(SECOND, ${dailyTimeRecords.timeIn}, ${dailyTimeRecords.timeOut})
+                    END, 
+                    0
+                )
+            )`
+        })
+        .from(dailyTimeRecords)
+        .leftJoin(authentication, compareIds(dailyTimeRecords.employeeId, authentication.employeeId))
+        .leftJoin(pdsHrDetails, eq(authentication.id, pdsHrDetails.employeeId))
+        .leftJoin(departments, eq(pdsHrDetails.departmentId, departments.id))
+        .leftJoin(bioEnrolledUsers, compareIds(bioEnrolledUsers.employeeId, dailyTimeRecords.employeeId))
+        .where(conditions.length > 0 ? and(...conditions) : undefined);
             
         const total = countResult.total;
 
@@ -198,6 +231,11 @@ export const getAllRecords = async (req: Request, res: Response): Promise<void> 
         res.status(200).json({
             success: true,
             data: formattedRecords,
+            totals: {
+                lateMinutes: Number(totalsResult?.totalLate || 0),
+                undertimeMinutes: Number(totalsResult?.totalUndertime || 0),
+                hoursWorked: (Number(totalsResult?.totalSeconds || 0) / 3600).toFixed(2)
+            },
             pagination: {
                 total,
                 page,

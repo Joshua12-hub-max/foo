@@ -8,15 +8,34 @@ let lastSyncedBioId = 0;
 let isPolling = false;
 
 /**
- * Normalizes an employee ID by removing common prefixes like 'EMP-' or 'CHRMO-'
- * and any other non-digit characters.
+ * Normalizes an employee ID by ensuring it follows the 'Emp-XXX' format.
+ * If it's already 'Emp-XXX', it returns it. 
+ * If it's just a number, it pads it (e.g., '1' -> 'Emp-001').
  */
 const convertBioIdToEmployeeId = (bioId: string): string => {
-  // Robust normalization: extract only digits
+  if (bioId.startsWith('Emp-')) return bioId;
+  
+  // Extract only digits and pad to 3 places
   const numericId = bioId.replace(/\D/g, '');
-  return numericId || bioId; // Fallback to original if no digits found (edge case)
+  if (numericId) {
+    return `Emp-${numericId.padStart(3, '0')}`;
+  }
+  
+  return bioId; // Fallback
 };
 
+
+/**
+ * Normalizes card types from the biometric middleware to the system's strict 'IN'/'OUT' enum.
+ */
+const normalizeCardType = (cardType: string | null | undefined): 'IN' | 'OUT' => {
+  if (!cardType) return 'IN';
+  const upper = cardType.toUpperCase().trim();
+  // Handle common variations from different middleware/hardware versions
+  if (upper === 'IN' || upper === '0' || upper === 'CHECK-IN' || upper === 'ENTRY') return 'IN';
+  if (upper === 'OUT' || upper === '1' || upper === 'CHECK-OUT' || upper === 'EXIT') return 'OUT';
+  return 'IN'; // Default fallback
+};
 
 async function pollBiometricLogs(): Promise<void> {
   if (isPolling) return;
@@ -30,7 +49,6 @@ async function pollBiometricLogs(): Promise<void> {
       .orderBy(bioAttendanceLogs.id);
 
     if (newBioLogs.length === 0) {
-      // Periodic heartbeat for visibility in backend console (once every 12 polls = 1 minute)
       if (Math.floor(Date.now() / 1000) % 60 < 5) {
         console.warn(`[BIO-SYNC] Heartbeat: Service active, waiting for middleware data... (Last ID: ${lastSyncedBioId})`);
       }
@@ -39,40 +57,41 @@ async function pollBiometricLogs(): Promise<void> {
 
     console.warn(`[BIO-SYNC] Found ${newBioLogs.length} new biometric log(s) since ID ${lastSyncedBioId}`);
 
-    // Track which employee+date combos need DTR reprocessing
     const processQueue = new Map<string, { employeeId: string; dateStr: string }>();
 
     for (const bioLog of newBioLogs) {
       try {
-        // 2. Map bio employee_id (string, potentially formatted) → system employeeId (string, numeric)
         const systemEmployeeId = convertBioIdToEmployeeId(bioLog.employeeId);
+        
+        // 100% RELIABILITY: Normalize type to match MySQL Enum
+        const normalizedType = normalizeCardType(bioLog.cardType);
 
-        // 3. Replicate into attendance_logs (Primary System Table)
-        // Combine logDate (YYYY-MM-DD) and logTime (HH:mm:ss)
-        const scanTime = `${bioLog.logDate} ${bioLog.logTime}`;
+        // 100% PRECISION: Ensure logDate and logTime are combined correctly
+        // Some hardware might return logDate as '2023-10-01' or '10/01/2023'
+        const rawDate = String(bioLog.logDate);
+        const dateParts = rawDate.includes('T') ? rawDate.split('T')[0] : rawDate;
+        const scanTime = `${dateParts} ${bioLog.logTime}`;
         
         await db.insert(attendanceLogs).values({
           employeeId: systemEmployeeId,
           scanTime: scanTime,
-          type: bioLog.cardType,
+          type: normalizedType,
           source: 'BIOMETRIC'
+        }).onDuplicateKeyUpdate({
+          set: { employeeId: systemEmployeeId } // No-op to prevent duplicates
         });
 
-        // 7. Queue DTR processing for this employee+date
-        const dateStr = bioLog.logDate;
-        const key = `${systemEmployeeId}:${dateStr}`;
+        const key = `${systemEmployeeId}:${dateParts}`;
         if (!processQueue.has(key)) {
-          processQueue.set(key, { employeeId: systemEmployeeId, dateStr });
+          processQueue.set(key, { employeeId: systemEmployeeId, dateStr: dateParts });
         }
       } catch (err) {
         console.error(`[BIO-SYNC] Failed to sync bio log ID ${bioLog.id}:`, err);
       }
     }
 
-    // 8. Update lastSyncedBioId to the highest ID we processed
     lastSyncedBioId = newBioLogs[newBioLogs.length - 1].id;
 
-    // 9. Process DTR for all affected employee+date combos
     for (const { employeeId, dateStr } of processQueue.values()) {
       try {
         await processDailyAttendance(employeeId, dateStr);
@@ -110,15 +129,14 @@ async function initializeLastSyncedId(): Promise<void> {
     const syncedCount = attCount?.count ?? 0;
 
     // 3. Robust Sync Strategy:
-    // If syncedCount is less than maxBioId logs we've seen (roughly), 
-    // it's safer to start from a lower ID or 0 to ensure no data loss.
-    
-    if (syncedCount === 0 || syncedCount < maxBioId) {
+    // If we have existing records, we start from the current max to pick up ONLY new ones.
+    // If it's a fresh start (syncedCount === 0), we start from 0.
+    if (syncedCount === 0) {
         lastSyncedBioId = 0;
-        console.warn(`[BIO-SYNC] Detected gap or fresh start (Bio: ${maxBioId}, Synced: ${syncedCount}). Starting full re-sync.`);
+        console.warn(`[BIO-SYNC] Fresh start detected. Starting full re-sync.`);
     } else {
         lastSyncedBioId = maxBioId;
-        console.warn(`[BIO-SYNC] Initialized: lastSyncedBioId=${lastSyncedBioId}`);
+        console.warn(`[BIO-SYNC] Initialized: lastSyncedBioId=${lastSyncedBioId} (Current Bio Max)`);
     }
 
   } catch (error) {

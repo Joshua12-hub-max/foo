@@ -3,6 +3,7 @@ import { z } from 'zod';
 export const GetDTRSchema = z.object({
   query: z.object({
     employeeId: z.string().optional(),
+    department: z.string().optional(),
     startDate: z.string().optional(),
     endDate: z.string().optional(),
     page: z.coerce.number().int().min(1).default(1),

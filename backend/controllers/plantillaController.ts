@@ -378,22 +378,39 @@ export const updatePosition = async (req: Request, res: Response): Promise<void>
       columns: { name: true }
     }) : null;
 
-    await db.update(plantillaPositions)
-      .set({
-        itemNumber: updates.itemNumber,
-        positionTitle: updates.positionTitle,
-        salaryGrade: updates.salaryGrade,
-        stepIncrement: updates.stepIncrement,
-        departmentId: updates.departmentId,
-        department: dept?.name || oldData.department, // Keep old department name if not updating departmentId
-        isVacant: updates.isVacant ? true : false,
-        monthlySalary: updates.monthlySalary ? String(updates.monthlySalary) : null,
-        areaCode: updates.areaCode || null,
-        areaType: updates.areaType || null,
-        areaLevel: updates.areaLevel || null,
-        lastPromotionDate: updates.lastPromotionDate || null
-      })
-      .where(eq(plantillaPositions.id, Number(id)));
+    await db.transaction(async (tx) => {
+      // 1. Update Position Table
+      await tx.update(plantillaPositions)
+        .set({
+          itemNumber: updates.itemNumber,
+          positionTitle: updates.positionTitle,
+          salaryGrade: updates.salaryGrade,
+          stepIncrement: updates.stepIncrement,
+          departmentId: updates.departmentId,
+          department: dept?.name || oldData.department, 
+          isVacant: updates.isVacant ? true : false,
+          monthlySalary: updates.monthlySalary ? String(updates.monthlySalary) : null,
+          areaCode: updates.areaCode || null,
+          areaType: updates.areaType || null,
+          areaLevel: updates.areaLevel || null,
+          lastPromotionDate: updates.lastPromotionDate || null
+        })
+        .where(eq(plantillaPositions.id, Number(id)));
+
+      // 2. SYNC LOGIC: If position is filled, update incumbent's profile
+      if (oldData.incumbentId && !updates.isVacant) {
+        await tx.update(pdsHrDetails)
+          .set({
+            jobTitle: updates.positionTitle || oldData.positionTitle,
+            positionTitle: updates.positionTitle || oldData.positionTitle,
+            itemNumber: updates.itemNumber || oldData.itemNumber,
+            salaryGrade: updates.salaryGrade ? String(updates.salaryGrade) : String(oldData.salaryGrade),
+            stepIncrement: updates.stepIncrement ?? oldData.stepIncrement,
+            departmentId: updates.departmentId ?? oldData.departmentId
+          })
+          .where(eq(pdsHrDetails.employeeId, oldData.incumbentId));
+      }
+    });
 
     await logAudit(Number(id), 'updated', authReq.user.id, oldData, updates);
     res.json({ success: true, message: 'Position updated successfully' });

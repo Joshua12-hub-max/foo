@@ -6,6 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { jobSchema, JobSchema } from '@/schemas/jobSchema';
 import { Job, JobStatus, EmploymentType } from '@/types';
+import { plantillaApi, type Position } from '@/api/plantillaApi';
 import Combobox from '@/components/Custom/Combobox';
 
 const EMPLOYMENT_TYPES = [
@@ -91,7 +92,8 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
   saving 
 }) => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-
+  const [positions, setPositions] = useState<Position[]>([]);
+  const [loadingPositions, setLoadingPositions] = useState(false);
 
   const {
     register,
@@ -120,6 +122,7 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
       requireCivilService: false,
       requireGovernmentIds: false,
       requireEducationExperience: false,
+      plantillaId: null
     }
     });
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -128,6 +131,7 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
   const currentDept = watch('department');
   const currentEmploymentType = watch('employmentType');
   const isPermanent = currentEmploymentType === 'Permanent';
+  const currentPlantillaId = watch('plantillaId');
   
   const currentDutyType = watch('dutyType') || 'Standard';
   const currentStatus = watch('status') || 'Open';
@@ -139,6 +143,10 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
 
   // Options derived from state
   const departmentOptions = departments.map(d => ({ value: d.name, label: d.name }));
+  const positionOptions = positions.map(p => ({ 
+    value: String(p.id), 
+    label: `${p.itemNumber} - ${p.positionTitle}` 
+  }));
 
   useEffect(() => {
     if (isPermanent) {
@@ -149,16 +157,42 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
   }, [isPermanent, setValue]);
 
   useEffect(() => {
-    const loadDepartments = async () => {
-        const response = await fetchDepartments();
-        if (response.success && response.departments) {
-            setDepartments(response.departments);
+    const loadData = async () => {
+        setLoadingPositions(true);
+        try {
+            const [deptRes, posRes] = await Promise.all([
+                fetchDepartments(),
+                plantillaApi.getPositions({ isVacant: true })
+            ]);
+            
+            if (deptRes.success && deptRes.departments) {
+                setDepartments(deptRes.departments);
+            }
+            if (posRes.data.success) {
+                setPositions(posRes.data.positions);
+            }
+        } catch (err) {
+            console.error('Failed to load initial data:', err);
+        } finally {
+            setLoadingPositions(false);
         }
     };
     if (isOpen) {
-        loadDepartments();
+        loadData();
     }
   }, [isOpen]);
+
+  const handlePositionChange = (posIdStr: string) => {
+    const posId = parseInt(posIdStr);
+    setValue('plantillaId', posId, { shouldValidate: true });
+    
+    const selectedPos = positions.find(p => p.id === posId);
+    if (selectedPos) {
+        setValue('title', selectedPos.positionTitle, { shouldValidate: true });
+        setValue('department', selectedPos.departmentName || selectedPos.department, { shouldValidate: true });
+        setValue('employmentType', 'Permanent', { shouldValidate: true });
+    }
+  };
 
   useEffect(() => {
     if (isOpen) {
@@ -182,6 +216,7 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
           requireCivilService: initialData.requireCivilService || false,
           requireGovernmentIds: initialData.requireGovernmentIds || false,
           requireEducationExperience: initialData.requireEducationExperience || false,
+          plantillaId: initialData.plantillaId || null,
         });
       } else {
         reset({
@@ -203,6 +238,7 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
           requireCivilService: false,
           requireGovernmentIds: false,
           requireEducationExperience: false,
+          plantillaId: null,
         });
       }
       setSelectedFile(null);
@@ -218,7 +254,8 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
         'title', 'department', 'location', 'employmentType', 'dutyType',
         'status', 'applicationEmail', 'jobDescription', 'requirements',
         'education', 'experience', 'training', 'eligibility', 'otherQualifications',
-        'requireCivilService', 'requireGovernmentIds', 'requireEducationExperience'
+        'requireCivilService', 'requireGovernmentIds', 'requireEducationExperience',
+        'plantillaId'
       ];
 
       fields.forEach(field => {
@@ -253,6 +290,26 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
         
         <form id="job-form" onSubmit={handleSubmit(handleFormSubmit)} className="flex-1 overflow-y-auto">
           <div className="p-6 space-y-5">
+            {/* Plantilla Position Link */}
+            <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-bold text-blue-700 uppercase tracking-wider ml-1">Link to Plantilla Position</label>
+                {loadingPositions && <Loader2 className="w-3 h-3 animate-spin text-blue-600" />}
+              </div>
+              <Combobox
+                  options={positionOptions}
+                  value={currentPlantillaId ? String(currentPlantillaId) : ''}
+                  onChange={handlePositionChange}
+                  placeholder="Search Vacant Item Number..."
+                  className="w-full"
+                  buttonClassName="bg-white border-blue-200 text-sm py-2.5"
+                  error={!!errors.plantillaId}
+              />
+              <p className="text-[10px] text-blue-500 font-medium italic ml-1 leading-relaxed">
+                Linking a position will automatically populate the Title and Department. Recommended for Standard/Permanent roles.
+              </p>
+            </div>
+
             {/* File Upload */}
             <div>
               <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Qualification Document (Upload)</label>

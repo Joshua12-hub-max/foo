@@ -3,7 +3,7 @@ import { z } from 'zod';
 import fs from 'fs';
 import path from 'path';
 import { db } from '../db/index.js';
-import { authentication, bioEnrolledUsers, schedules, recruitmentApplicants, departments, plantillaPositions, recruitmentJobs, shiftTemplates, pdsHrDetails, pdsEducation, pdsEligibility, pdsWorkExperience, pdsLearningDevelopment, pdsVoluntaryWork, pdsReferences, employeeEmergencyContacts, pdsOtherInfo, pdsFamily } from '../db/schema.js';
+import { authentication, bioEnrolledUsers, schedules, recruitmentApplicants, departments, plantillaPositions, recruitmentJobs, shiftTemplates, pdsHrDetails, pdsEducation, pdsEligibility, pdsWorkExperience, pdsLearningDevelopment, pdsVoluntaryWork, pdsReferences, employeeEmergencyContacts, pdsOtherInfo, pdsFamily, employeeDocuments, applicantDocuments } from '../db/schema.js';
 import { pdsPersonalInformation, pdsDeclarations } from '../db/tables/pds.js';
 import { eq, or, and, sql, getTableColumns, desc, InferSelectModel, ne, inArray } from 'drizzle-orm';
 import { AuthService } from '../services/auth.service.js';
@@ -385,10 +385,9 @@ export const googleLogin: AsyncHandler = async (req, res) => {
     }
 
     const otp = generateOTP();
-    const otpExpires = new Date(Date.now() + 10 * 60 * 1000);
 
     await db.update(authentication)
-      .set({ twoFactorOtp: otp, twoFactorOtpExpires: otpExpires.toISOString() })
+      .set({ twoFactorOtp: otp, twoFactorOtpExpires: sql`DATE_ADD(NOW(), INTERVAL 10 MINUTE)` })
       .where(eq(authentication.id, user.id));
 
     try {
@@ -679,7 +678,7 @@ export const register: AsyncHandler = async (req, res) => {
         if (nameMatch) {
             res.status(409).json({ 
                 success: false, 
-                message: `An employee named "${firstName} ${lastName}" is already registered. If this is a different person with the same name, please confirm to proceed.`, 
+                message: `An employee named "${lastName}, ${firstName}" is already registered. If this is a different person with the same name, please confirm to proceed.`, 
                 code: 'DUPLICATE_NAME'
             });
             return;
@@ -733,6 +732,13 @@ export const register: AsyncHandler = async (req, res) => {
 
     // 9. Determine Portal Role & Parse Position
     let assignedRole: UserRole = 'Employee';
+    
+    // 100% WORKFLOW INTEGRITY: Prioritize explicit role selection from the HR dropdown
+    const validRoles = ['Administrator', 'Human Resource', 'Employee', 'Applicant'];
+    if (validatedData.role && validRoles.includes(validatedData.role)) {
+        assignedRole = validatedData.role as UserRole;
+    }
+
     const rawPos = validatedData.position || '';
     
     const posMatch = rawPos.match(/^(.*)\s\((.*)\)$/);
@@ -743,19 +749,27 @@ export const register: AsyncHandler = async (req, res) => {
     const department = validatedData.department || enrolled?.department || 'Unassigned';
     const deptLower: string = (department || '').toLowerCase();
 
-    // 100% SUCCESS Logic: Determine role based on position/dept but PRESERVE existing higher roles
-    if (deptLower.includes('human resource') && posTitleLower.includes('department head')) {
-        assignedRole = 'Human Resource';
-    } else if (posTitleLower.includes('administrative officer')) {
-        assignedRole = 'Administrator';
+    // Fallback Logic: Auto-determine role only if the dropdown wasn't used or sent default
+    if (!validRoles.includes(validatedData.role)) {
+        if (deptLower.includes('human resource') && posTitleLower.includes('department head')) {
+            assignedRole = 'Human Resource';
+        } else if (posTitleLower.includes('administrative officer')) {
+            assignedRole = 'Administrator';
+        }
     }
 
-    // Role Preservation: If finalizing setup, never downgrade an existing Admin or HR to Employee
+    // Role Preservation: If finalizing setup, never downgrade an existing Admin or HR to Employee/Applicant
     if (effectiveFinalizingSetup && existingUser) {
         const currentRole = existingUser.role as UserRole;
-        if ((currentRole === 'Administrator' || currentRole === 'Human Resource') && assignedRole === 'Employee') {
+        if ((currentRole === 'Administrator' || currentRole === 'Human Resource') && (assignedRole === 'Employee' || assignedRole === 'Applicant')) {
             assignedRole = currentRole;
         }
+    }
+
+    // 100% REGISTRATION INDICATOR: If this comes from a hired applicant, assign 'Applicant' role
+    // unless they were explicitly assigned a higher role by HR via the dropdown
+    if (!!validatedData.applicantId && assignedRole === 'Employee') {
+        assignedRole = 'Applicant';
     }
 
     // Resolve IDs
@@ -841,7 +855,7 @@ export const register: AsyncHandler = async (req, res) => {
           profileStatus: 'Complete' as const,
           employmentStatus: 'Active' as const,
           isOldEmployee: validatedData.isOldEmployee || existingUser.hrDetails?.isOldEmployee || false,
-          isMeycauayan: (validatedData.isMeycauayan === true),         };
+         };
 
         if (existingHr) {
           await tx.update(pdsHrDetails).set(hrValues as any).where(eq(pdsHrDetails.employeeId, newUserId));
@@ -869,7 +883,7 @@ export const register: AsyncHandler = async (req, res) => {
           profileStatus: 'Complete' as const,
           employmentStatus: 'Active' as const,
           isOldEmployee: validatedData.isOldEmployee || false,
-          isMeycauayan: (validatedData.isMeycauayan === true),         } as any);
+         } as any);
         
         // Initial leave allocation for brand new users
         await allocateDefaultCredits(actualEmployeeId);
@@ -901,60 +915,60 @@ export const register: AsyncHandler = async (req, res) => {
       // 100% AUTOMATED PDS PERSISTENCE
       // We map the validatedData (from RegisterSchema) to the PdsSaveData structure expected by the service.
       const rawInput = validatedData as RawPDSInput & Record<string, unknown>;
-      const pdsData: any = {  // TODO: Fix structure to match PdsSaveData
+      const pdsData: any = {  // Canonical shape for PDSService
         // Core Names (Synchronized with Core Profile)
-        // 100% Data Fidelity: Check both Zod-validated fields and raw parser synonyms.
         lastName: validatedData.lastName || validatedData.surname || String(rawInput.surname || rawInput.last_name || ''),
         firstName: validatedData.firstName || String(rawInput.first_name || ''),
         middleName: validatedData.middleName || String(rawInput.middle_name || ''),
         suffix: validatedData.suffix || validatedData.nameExtension || String(rawInput.name_extension || rawInput.extension || ''),
-        // maidenName removed - not in PdsSaveData schema
-                // Personal Info
-        dob: safeDate(validatedData.birthDate || validatedData.dob || String(rawInput.birth_date || '')),
-        pob: validatedData.placeOfBirth || validatedData.pob || String(rawInput.pob || rawInput.place_of_birth || '') || undefined,
-        sex: (validatedData.gender || validatedData.sex || rawInput.sex || rawInput.gender) as string | undefined,
-        civilStatus: (validatedData.civilStatus || rawInput.civil_status || rawInput.civilStatus) as string | undefined,
-        height: (safeFloat(validatedData.heightM) || safeFloat(validatedData.height) || safeFloat(rawInput.height as string | number | undefined))?.toString() || undefined,
-        weight: (safeFloat(validatedData.weightKg) || safeFloat(validatedData.weight) || safeFloat(rawInput.weight as string | number | undefined))?.toString() || undefined,
-        bloodType: (validatedData.bloodType || rawInput.blood_type || rawInput.bloodType) ? String(validatedData.bloodType || rawInput.blood_type || rawInput.bloodType).substring(0, 5) : undefined,
         
-        citizenship: validatedData.citizenship || validatedData.nationality || (rawInput.citizenship as string | undefined) || 'Filipino',
-        citizenshipType: validatedData.citizenshipType || (rawInput.citizenship_type as string | undefined),
-        dualCountry: validatedData.dualCountry || (rawInput.dual_country as string | undefined),
+        // Nested Personal Block (Strictly mapped to pds_personal_information table)
+        personal: {
+            birthDate: safeDate(validatedData.birthDate || validatedData.dob || String(rawInput.birth_date || '')),
+            placeOfBirth: validatedData.placeOfBirth || validatedData.pob || String(rawInput.pob || rawInput.place_of_birth || ''),
+            gender: (validatedData.gender || validatedData.sex || rawInput.sex || rawInput.gender) as string,
+            civilStatus: (validatedData.civilStatus || rawInput.civil_status || rawInput.civilStatus) as string,
+            heightM: (safeFloat(validatedData.heightM) || safeFloat(validatedData.height) || safeFloat(rawInput.height as string | number | undefined)),
+            weightKg: (safeFloat(validatedData.weightKg) || safeFloat(validatedData.weight) || safeFloat(rawInput.weight as string | number | undefined)),
+            bloodType: (validatedData.bloodType || rawInput.blood_type || rawInput.bloodType) ? String(validatedData.bloodType || rawInput.blood_type || rawInput.bloodType).substring(0, 5) : undefined,
+            
+            citizenship: validatedData.citizenship || validatedData.nationality || (rawInput.citizenship as string | undefined) || 'Filipino',
+            citizenshipType: validatedData.citizenshipType || (rawInput.citizenship_type as string | undefined),
+            dualCountry: validatedData.dualCountry || (rawInput.dual_country as string | undefined),
 
-        // Address Information
-        residentialAddress: validatedData.residentialAddress || validatedData.address || (rawInput.residential_address as string | undefined),
-        residentialZipCode: validatedData.residentialZipCode || (rawInput.residential_zip_code as string | undefined),
-        resRegion: validatedData.resRegion || (rawInput.res_region as string | undefined),
-        resProvince: validatedData.resProvince || (rawInput.res_province as string | undefined),
-        resCity: validatedData.resCity || (rawInput.res_city as string | undefined),
-        resBarangay: validatedData.resBarangay || (rawInput.res_barangay as string | undefined),
-        resHouseBlockLot: validatedData.resHouseBlockLot || (rawInput.res_house_block_lot as string | undefined),
-        resStreet: validatedData.resStreet || (rawInput.res_street as string | undefined),
-        resSubdivision: validatedData.resSubdivision || (rawInput.res_subdivision as string | undefined),
+            // Address Information
+            residentialAddress: validatedData.residentialAddress || validatedData.address || (rawInput.residential_address as string | undefined),
+            residentialZipCode: validatedData.residentialZipCode || (rawInput.residential_zip_code as string | undefined),
+            resRegion: validatedData.resRegion || (rawInput.res_region as string | undefined),
+            resProvince: validatedData.resProvince || (rawInput.res_province as string | undefined),
+            resCity: validatedData.resCity || (rawInput.res_city as string | undefined),
+            resBarangay: validatedData.resBarangay || (rawInput.res_barangay as string | undefined),
+            resHouseBlockLot: validatedData.resHouseBlockLot || (rawInput.res_house_block_lot as string | undefined),
+            resStreet: validatedData.resStreet || (rawInput.res_street as string | undefined),
+            resSubdivision: validatedData.resSubdivision || (rawInput.res_subdivision as string | undefined),
 
-        permanentAddress: validatedData.permanentAddress || (rawInput.permanent_address as string | undefined),
-        permanentZipCode: validatedData.permanentZipCode || (rawInput.permanent_zip_code as string | undefined),
-        permRegion: validatedData.permRegion || (rawInput.perm_region as string | undefined),
-        permProvince: validatedData.permProvince || (rawInput.perm_province as string | undefined),
-        permCity: validatedData.permCity || (rawInput.perm_city as string | undefined),
-        permBarangay: validatedData.permBarangay || (rawInput.perm_barangay as string | undefined),
-        permHouseBlockLot: validatedData.permHouseBlockLot || (rawInput.perm_house_block_lot as string | undefined),
-        permStreet: validatedData.permStreet || (rawInput.perm_street as string | undefined),
-        permSubdivision: validatedData.permSubdivision || (rawInput.perm_subdivision as string | undefined),
+            permanentAddress: validatedData.permanentAddress || (rawInput.permanent_address as string | undefined),
+            permanentZipCode: validatedData.permanentZipCode || (rawInput.permanent_zip_code as string | undefined),
+            permRegion: validatedData.permRegion || (rawInput.perm_region as string | undefined),
+            permProvince: validatedData.permProvince || (rawInput.perm_province as string | undefined),
+            permCity: validatedData.permCity || (rawInput.perm_city as string | undefined),
+            permBarangay: validatedData.permBarangay || (rawInput.perm_barangay as string | undefined),
+            permHouseBlockLot: validatedData.permHouseBlockLot || (rawInput.perm_house_block_lot as string | undefined),
+            permStreet: validatedData.permStreet || (rawInput.perm_street as string | undefined),
+            permSubdivision: validatedData.permSubdivision || (rawInput.perm_subdivision as string | undefined),
 
-        telephoneNo: validatedData.telephoneNo || (rawInput.telephone_no as string | undefined),
-        mobileNo: validatedData.mobileNo || (rawInput.mobile_no as string | undefined),
-        email: finalEmail || validatedData.email || (rawInput.email as string | undefined),
+            telephoneNo: validatedData.telephoneNo || (rawInput.telephone_no as string | undefined),
+            mobileNo: validatedData.mobileNo || (rawInput.mobile_no as string | undefined),
 
-        // Government IDs
-        gsisNumber: (validatedData.gsisNumber || validatedData.gsisNo || String(rawInput.gsis_no || rawInput.gsis_number || '')) || undefined,
-        pagibigNumber: (validatedData.pagibigNumber || validatedData.pagibigNo || String(rawInput.pagibig_no || rawInput.pagibig_number || '')) || undefined,
-        philhealthNumber: (validatedData.philhealthNumber || validatedData.philhealthNo || String(rawInput.philhealth_no || rawInput.philhealth_number || '')) || undefined,
-        philsysId: (validatedData.philsysId || String(rawInput.philsysNo || rawInput.philsys_id || '')) || undefined,
-        tinNumber: (validatedData.tinNumber || validatedData.tinNo || String(rawInput.tin_no || rawInput.tin_number || '')) || undefined,
-        umidNumber: (validatedData.umidNumber || validatedData.umidNo || String(rawInput.umid_no || rawInput.umid_number || '')) || undefined,
-        agencyEmployeeNo: (validatedData.agencyEmployeeNo || String(rawInput.agencyNo || rawInput.agency_employee_no || '')) || undefined,
+            // Government IDs
+            gsisNumber: (validatedData.gsisNumber || validatedData.gsisNo || String(rawInput.gsis_no || rawInput.gsis_number || '')),
+            pagibigNumber: (validatedData.pagibigNumber || validatedData.pagibigNo || String(rawInput.pagibig_no || rawInput.pagibig_number || '')),
+            philhealthNumber: (validatedData.philhealthNumber || validatedData.philhealthNo || String(rawInput.philhealth_no || rawInput.philhealth_number || '')),
+            philsysId: (validatedData.philsysId || String(rawInput.philsysNo || rawInput.philsys_id || '')),
+            tinNumber: (validatedData.tinNumber || validatedData.tinNo || String(rawInput.tin_no || rawInput.tin_number || '')),
+            umidNumber: (validatedData.umidNumber || validatedData.umidNo || String(rawInput.umid_no || rawInput.umid_number || '')),
+            agencyEmployeeNo: (validatedData.agencyEmployeeNo || String(rawInput.agencyNo || rawInput.agency_employee_no || '')),
+        },
         
         // Arrays from Parser (100% Passthrough)
         educations: (validatedData.educations as PdsEducation[]) || [],
@@ -965,11 +979,7 @@ export const register: AsyncHandler = async (req, res) => {
         familyBackground: (validatedData.familyBackground as PdsFamily[]) || [],
         voluntaryWorks: (validatedData.voluntaryWorks as PdsVoluntaryWork[]) || (rawInput.voluntaryWorks as PdsVoluntaryWork[] | undefined) || [],
         references: (validatedData.references as PdsReference[]) || (rawInput.references as PdsReference[] | undefined) || [],
-        pdsQuestions: (validatedData.pdsQuestions as any) || ({} as any),
-        govtIdType: validatedData.govtIdType || (rawInput.govtIdType as string | undefined),
-        govtIdNo: validatedData.govtIdNo || (rawInput.govtIdNo as string | undefined),
-        govtIdIssuance: validatedData.govtIdIssuance || (rawInput.govt_id_issuance as string | undefined),
-        dateAccomplished: validatedData.dateAccomplished || (rawInput.date_accomplished as string | undefined),
+        declarations: (validatedData.pdsQuestions as any) || ({} as any),
       };
 
       // 100% DEFENSIVE PDS PERSISTENCE
@@ -1145,8 +1155,55 @@ export const register: AsyncHandler = async (req, res) => {
                     registeredEmployeeId: actualEmployeeId
                 } as any)
                 .where(eq(recruitmentApplicants.id, Number(validatedData.applicantId)));
+                
+            // 100% RELIABLE PDS & DOCUMENT TRANSFER
+            // Automatically save the applicant's existing documents (Resume, Photo, Eligibility, Application PDF) 
+            // as the new employee's PDS documents so no manual upload is required.
+            if (newUserId) {
+                const applicantIdNum = Number(validatedData.applicantId);
+                const applicant = await db.query.recruitmentApplicants.findFirst({
+                    where: eq(recruitmentApplicants.id, applicantIdNum)
+                });
+                
+                if (applicant) {
+                    const docsToSync = [];
+                    const appDocs = await db.select().from(applicantDocuments).where(eq(applicantDocuments.applicantId, applicantIdNum));
+                    
+                    for (const doc of appDocs) {
+                       let mappedType = 'Other';
+                       if (doc.documentType === 'Resume') mappedType = 'Resume';
+                       else if (doc.documentType === 'Photo' || doc.documentType === 'Photo1x1') mappedType = '2x2 ID Photo';
+                       else if (doc.documentType === 'EligibilityCert') mappedType = 'Eligibility Certificate';
+                       
+                       docsToSync.push({
+                          employeeId: newUserId,
+                          documentType: mappedType,
+                          documentName: doc.documentName,
+                          filePath: doc.filePath,
+                          mimeType: doc.mimeType || 'application/octet-stream',
+                          uploadedBy: newUserId
+                       });
+                    }
+                    
+                    // Add the Application Form automatically as the literal PDS document reference
+                    // We point it to the dynamic PDF generator so HR can always view/download their original application PDF from the employee profile.
+                    docsToSync.push({
+                        employeeId: newUserId,
+                        documentType: 'Personal Data Sheet (PDS)',
+                        documentName: `Application_Form_APP-${String(applicant.id).padStart(6, '0')}.pdf`,
+                        filePath: `/api/recruitment/applicants/${applicant.id}/pdf`,
+                        mimeType: 'application/pdf',
+                        uploadedBy: newUserId
+                    });
+                    
+                    if (docsToSync.length > 0) {
+                        await db.insert(employeeDocuments).values(docsToSync);
+                    }
+                }
+            }
         } catch (_linkErr) {
             // Silently fail link update
+            console.error('[REGISTER] Failed to sync applicant documents:', _linkErr);
         }
     }
 
@@ -1159,7 +1216,7 @@ export const register: AsyncHandler = async (req, res) => {
         email: finalEmail, 
         id: newUserId,
         employeeId: actualEmployeeId, 
-        fullName: `${firstName} ${lastName}`, 
+        fullName: `${lastName}, ${firstName}`, 
         department,
         requiresVerification: !authDataValues.isVerified,
         message: authDataValues.isVerified 
@@ -1309,13 +1366,11 @@ export const forgotPassword: AsyncHandler = async (req, res) => {
 
     // Generate 6-digit numeric OTP for better mobile/PC experience (stays in page)
     const otp = generateOTP();
-    const resetExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes for OTP
-    const mysqlFormattedDate = resetExpires.toISOString().slice(0, 19).replace('T', ' ');
 
     await db.update(authentication)
       .set({
         resetPasswordToken: otp, // We reuse this field to store the OTP
-        resetPasswordExpires: mysqlFormattedDate
+        resetPasswordExpires: sql`DATE_ADD(NOW(), INTERVAL 10 MINUTE)`
       })
       .where(eq(authentication.id, user.id));
 
@@ -1363,7 +1418,6 @@ export const forgotPassword: AsyncHandler = async (req, res) => {
 export const resetPassword: AsyncHandler = async (req, res) => {
   try {
     const { identifier, otp, newPassword } = ResetPasswordSchema.parse(req.body);
-    const nowFormatted = new Date().toISOString().slice(0, 19).replace('T', ' ');
 
     // Find user by email or employee ID
     const user = await db.query.authentication.findFirst({
@@ -1378,13 +1432,20 @@ export const resetPassword: AsyncHandler = async (req, res) => {
       return;
     }
 
-    // Verify OTP and Expiration
-    if (user.resetPasswordToken !== otp) {
+    // Verify OTP and Expiration using database time
+    const [dbCheck] = await db.select({
+        isExpired: sql<boolean>`${authentication.resetPasswordExpires} < NOW()`,
+        isValidToken: sql<boolean>`${authentication.resetPasswordToken} = ${otp}`
+    })
+    .from(authentication)
+    .where(eq(authentication.id, user.id));
+
+    if (!dbCheck || !dbCheck.isValidToken) {
       res.status(400).json({ success: false, message: 'Invalid verification code.' });
       return;
     }
 
-    if (!user.resetPasswordExpires || user.resetPasswordExpires < nowFormatted) {
+    if (dbCheck.isExpired) {
         res.status(400).json({ success: false, message: 'Verification code has expired.' });
         return;
     }
@@ -1484,12 +1545,21 @@ export const getMe: AuthenticatedHandler = async (req, res) => {
         } as UserWithRelations)
       }
     });
-  } catch (err: unknown) { 
+    } catch (err: unknown) {
     // Error logged below
     res.status(500).json({ success: false, message: 'Server Error' });
-  }
-};
+    }
+    };
 
+    export const requestDownloadToken: AuthenticatedHandler = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const token = AuthService.generateDownloadToken(userId);
+        res.status(200).json({ success: true, token });
+    } catch (err) {
+        res.status(500).json({ success: false, message: 'Failed to generate download token' });
+    }
+    };
 export const login: AsyncHandler = async (req, res) => {
   try {
     const { identifier, password } = LoginSchema.parse(req.body);
@@ -1622,10 +1692,9 @@ export const login: AsyncHandler = async (req, res) => {
     if (user.twoFactorEnabled) {
 
       const otp = generateOTP();
-      const otpExpires = new Date(Date.now() + 10 * 60 * 1000);
 
       await db.update(authentication)
-        .set({ twoFactorOtp: otp, twoFactorOtpExpires: otpExpires.toISOString() })
+        .set({ twoFactorOtp: otp, twoFactorOtpExpires: sql`DATE_ADD(NOW(), INTERVAL 10 MINUTE)` })
         .where(eq(authentication.id, user.id));
 
       try {
@@ -1743,14 +1812,21 @@ export const verifyTwoFactorOTP: AsyncHandler = async (req, res) => {
       return;
     }
 
-    const nowFormatted = new Date().toISOString().slice(0, 19).replace('T', ' ');
-    if (!user.twoFactorOtp || !user.twoFactorOtpExpires || user.twoFactorOtpExpires < nowFormatted) {
-      res.status(400).json({ success: false, message: 'otp has expired or not found. please login again.' });
+    // Verify OTP and Expiration using database time
+    const [dbCheck] = await db.select({
+        isExpired: sql<boolean>`${authentication.twoFactorOtpExpires} < NOW()`,
+        isValidToken: sql<boolean>`${authentication.twoFactorOtp} = ${otp}`
+    })
+    .from(authentication)
+    .where(eq(authentication.id, user.id));
+
+    if (!dbCheck || !dbCheck.isValidToken) {
+      res.status(400).json({ success: false, message: 'Invalid or incorrect verification code.' });
       return;
     }
 
-    if (user.twoFactorOtp !== otp) {
-      res.status(400).json({ success: false, message: 'invalid otp.' });
+    if (dbCheck.isExpired) {
+      res.status(400).json({ success: false, message: 'OTP has expired. Please login again.' });
       return;
     }
 
@@ -1851,10 +1927,9 @@ export const resendTwoFactorOTP: AsyncHandler = async (req, res) => {
       return;
     }
     const otp = generateOTP();
-    const otpExpires = new Date(Date.now() + 10 * 60 * 1000);
 
     await db.update(authentication)
-      .set({ twoFactorOtp: otp, twoFactorOtpExpires: otpExpires.toISOString() })
+      .set({ twoFactorOtp: otp, twoFactorOtpExpires: sql`DATE_ADD(NOW(), INTERVAL 10 MINUTE)` })
       .where(eq(authentication.id, user.id));
 
     await sendOTPEmail(user.email, user.firstName, otp, 'New Login OTP', 'You requested a new One-Time Password (OTP) for login:');
@@ -2320,6 +2395,13 @@ export const getNextId: AsyncHandler = async (_req, res) => {
 
     const maxId = result?.maxId || 0;
     const nextId = maxId + 1;
+    
+    // STRICT ENFORCEMENT: Max capacity is Emp-200 based on biometric sensor limit
+    if (nextId > 200) {
+       res.status(409).json({ success: false, message: 'Sensor capacity limit reached. Cannot generate Employee ID beyond Emp-200.' });
+       return;
+    }
+    
     // Format back to Emp-XXX as requested by user
     const formattedNextId = `Emp-${String(nextId).padStart(3, '0')}`;
 

@@ -129,9 +129,11 @@ const getJwtSecret = (): string | null => {
 // Middleware Functions
 // ============================================================================
 
+import { AuthService } from '../services/auth.service.js';
+
 /**
  * Verify JWT token from cookies and attach user to request.
- * Uses try-catch for robust error handling.
+ * 100% ROBUST: Now also supports short-lived download tokens for window.open bypass.
  */
 export const verifyToken: MiddlewareFunction = (
   req: Request,
@@ -139,12 +141,25 @@ export const verifyToken: MiddlewareFunction = (
   next: NextFunction
 ) => {
   try {
-    const token = req.cookies?.accessToken as string | undefined;
+    let token = req.cookies?.accessToken as string | undefined;
+    const downloadToken = req.query.token as string | undefined;
+
+    // 1. Handle Short-lived Download Tokens (One-time bypass for PDF/Docs)
+    if (!token && downloadToken) {
+        const userId = AuthService.verifyDownloadToken(downloadToken);
+        if (userId) {
+            // Re-fetch user or construct partial user from ID
+            (req as AuthenticatedRequest).user = {
+                id: userId,
+                employeeId: 'DOWNLOADER', // Placeholder
+                role: 'Employee' // Minimal required role for downloads
+            };
+            return next();
+        }
+    }
 
     if (!token) {
       logDebug(`[AUTH] No accessToken cookie found for ${req.method} ${req.originalUrl}`);
-      logDebug(`[AUTH] Cookies keys: ${JSON.stringify(Object.keys(req.cookies || {}))}`);
-      logDebug(`[AUTH] Headers: ${JSON.stringify(req.headers)}`);
       res.status(401).json({ 
         message: 'authentication required. please log in.',
         code: 'NO_TOKEN'

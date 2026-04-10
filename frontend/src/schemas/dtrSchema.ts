@@ -5,7 +5,8 @@ export const DTRFilterSchema = z.object({
   employeeId: z.string().optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
-  department: z.string().optional(), // For UI filtering if backend supports or if we map first
+  department: z.string().optional(),
+  search: z.string().optional(),
 });
 
 export const PaginationSchema = z.object({

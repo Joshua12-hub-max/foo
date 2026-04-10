@@ -3,6 +3,7 @@ import { attendanceApi } from "@/api/attendanceApi";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from '@tanstack/react-query';
 import { formatFullName } from '@/utils/nameUtils';
+import { formatEmployeeId } from "@/utils/formatters";
 import { 
   filterDTRData, 
   calculatePagination, 
@@ -57,7 +58,7 @@ export const useEmployeeDTR = () => {
     const fullName = formatFullName(user.lastName, user.firstName);
 
     return {
-      id: user.employeeId as string | number,
+      id: formatEmployeeId(user.employeeId),
       name: fullName,
       department: user.department || 'N/A'
     };
@@ -137,16 +138,6 @@ export const useEmployeeDTR = () => {
     [filteredData, currentPage]
   );
 
-  const totals = useMemo(() => {
-    const late = filteredData.reduce((sum, item) => sum + (item.lateMinutes || 0), 0);
-    const ut = filteredData.reduce((sum, item) => sum + (item.undertimeMinutes || 0), 0);
-    const hours = filteredData.reduce((sum, item) => sum + parseFloat(String(item.hoursWorked || 0)), 0);
-    return {
-      lateMinutes: late,
-      undertimeMinutes: ut,
-      hoursWorked: hours.toFixed(2)
-    };
-  }, [filteredData]);
 
   // Event handlers
   const handleFilterChange = useCallback((field: keyof EmployeeDTRFilters, value: string) => {
@@ -239,7 +230,6 @@ export const useEmployeeDTR = () => {
     employeeInfo,
     filteredData,
     paginationData,
-    totals,
     
     // Setters
     setCurrentPage,

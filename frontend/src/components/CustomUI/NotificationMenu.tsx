@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Bell, X, Check, AlertCircle, FileText, Calendar, Clock, RefreshCw, Search, LucideIcon } from "lucide-react";
 import { notificationApi } from "@/api/notificationApi";
+import { useAuthStore } from "@/stores";
 
 interface NotificationStyle {
   icon: LucideIcon;
@@ -73,6 +74,7 @@ interface NotificationResponse {
 }
 
 export default function NotificationMenu() {
+  const { isAuthenticated } = useAuthStore();
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -83,6 +85,7 @@ export default function NotificationMenu() {
 
   // Fetch notifications from API
   const fetchNotifications = useCallback(async () => {
+    if (!isAuthenticated) return;
     setIsLoading(true);
     setError(null);
     try {
@@ -98,10 +101,11 @@ export default function NotificationMenu() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [isAuthenticated]);
 
   // Fetch just the unread count for polling
   const fetchUnreadCount = useCallback(async () => {
+    if (!isAuthenticated) return;
     try {
       const response = await notificationApi.getUnreadCount();
       const data = response.data as { success: boolean; unreadCount: number };
@@ -109,10 +113,11 @@ export default function NotificationMenu() {
     } catch (err) {
       console.error('Unread count fetch error:', err);
     }
-  }, []);
+  }, [isAuthenticated]);
 
   // Mark notification as read
   const handleMarkAsRead = useCallback(async (id: string | number) => {
+    if (!isAuthenticated) return;
     try {
       await notificationApi.markAsRead(id);
       setNotifications(prev => prev.map(n => 
@@ -122,10 +127,11 @@ export default function NotificationMenu() {
     } catch (err) {
       console.error('Mark as read error:', err);
     }
-  }, []);
+  }, [isAuthenticated]);
 
   // Delete notification
   const handleDelete = useCallback(async (id: string | number) => {
+    if (!isAuthenticated) return;
     try {
       await notificationApi.deleteNotification(id);
       setNotifications(prev => prev.filter(n => n.notificationId !== id));
@@ -133,10 +139,11 @@ export default function NotificationMenu() {
     } catch (err) {
       console.error('Delete notification error:', err);
     }
-  }, []);
+  }, [isAuthenticated]);
 
   // Mark all as read
   const handleMarkAllAsRead = useCallback(async () => {
+    if (!isAuthenticated) return;
     try {
       const unreadNotifications = notifications.filter(n => n.status === 'unread');
       await Promise.all(unreadNotifications.map(n => notificationApi.markAsRead(n.notificationId)));
@@ -145,14 +152,19 @@ export default function NotificationMenu() {
     } catch (err) {
       console.error('Mark all as read error:', err);
     }
-  }, [notifications]);
+  }, [isAuthenticated, notifications]);
 
   // Initial fetch and polling
   useEffect(() => {
+    if (!isAuthenticated) {
+        setNotifications([]);
+        setUnreadCount(0);
+        return;
+    }
     fetchNotifications();
     const pollInterval = setInterval(fetchUnreadCount, 30000);
     return () => clearInterval(pollInterval);
-  }, [fetchNotifications, fetchUnreadCount]);
+  }, [isAuthenticated, fetchNotifications, fetchUnreadCount]);
 
   // Refresh when menu opens
   useEffect(() => {

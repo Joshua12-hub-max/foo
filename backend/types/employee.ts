@@ -67,6 +67,8 @@ export interface EmployeeMapperInput {
   tinNumber?: string | null;
   gsisNumber?: string | null;
   agencyEmployeeNo?: string | null;
+  emergencyContact?: string | null;
+  emergencyContactNumber?: string | null;
   resHouseBlockLot?: string | null;
   resStreet?: string | null;
   resSubdivision?: string | null;
@@ -151,6 +153,8 @@ export interface EmployeeApiResponse {
   tinNumber: string | null;
   gsisNumber: string | null;
   agencyEmployeeNo: string | null;
+  emergencyContact: string | null;
+  emergencyContactNumber: string | null;
   resHouseBlockLot: string | null;
   resStreet: string | null;
   resSubdivision: string | null;

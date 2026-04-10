@@ -11,6 +11,7 @@ export const attendanceLogs = mysqlTable("attendance_logs", {
 },
 (table) => [
 	primaryKey({ columns: [table.id], name: "attendance_logs_id"}),
+	unique("unique_log").on(table.employeeId, table.scanTime, table.type),
 ]);
 
 export const dailyTimeRecords = mysqlTable("daily_time_records", {

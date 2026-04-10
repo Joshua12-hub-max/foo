@@ -17,12 +17,13 @@ import {
   pdsPersonalInformation,
   pdsDeclarations,
   departments, 
-  shiftTemplates,
   schedules
 } from '../db/schema.js';
 import { eq, and, desc, SQL, sql } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 import { normalizeIdSql } from '../utils/idUtils.js';
+
+import * as LeaveService from './leaveService.js';
 
 type NewEmployee = typeof authentication.$inferInsert;
 
@@ -30,6 +31,11 @@ export class UserService {
   static async getAllEmployees(conditions: SQL[] = []) {
     const where = conditions.length > 0 ? and(...conditions) : undefined;
     
+    // Fetch default shift times once
+    const defaultShift = await LeaveService.getDefaultShift();
+    const defaultName = defaultShift.name || 'Standard Shift';
+    const defaultTime = `${defaultShift.startTime} - ${defaultShift.endTime}`;
+
     const query = db.select({
       id: authentication.id,
       employeeId: authentication.employeeId,
@@ -96,14 +102,12 @@ export class UserService {
       duties: sql<string>`COALESCE(
         (SELECT schedule_title FROM schedules WHERE ${normalizeIdSql(schedules.employeeId)} = ${normalizeIdSql(authentication.employeeId)} AND (start_date IS NULL OR start_date <= CURDATE()) AND (end_date IS NULL OR end_date >= CURDATE()) ORDER BY updated_at DESC LIMIT 1),
         (SELECT schedule_title FROM schedules WHERE ${normalizeIdSql(schedules.employeeId)} = ${normalizeIdSql(authentication.employeeId)} AND (start_date IS NULL OR start_date <= CURDATE()) ORDER BY start_date DESC LIMIT 1),
-        (SELECT name FROM ${shiftTemplates} WHERE is_default = 1 LIMIT 1),
-        'Standard Shift'
+        ${defaultName}
       )`,
       shift: sql<string>`COALESCE(
         (SELECT CONCAT(TIME_FORMAT(start_time, '%h:%i %p'), ' - ', TIME_FORMAT(end_time, '%h:%i %p')) FROM schedules WHERE ${normalizeIdSql(schedules.employeeId)} = ${normalizeIdSql(authentication.employeeId)} AND (start_date IS NULL OR start_date <= CURDATE()) AND (end_date IS NULL OR end_date >= CURDATE()) ORDER BY updated_at DESC LIMIT 1),
         (SELECT CONCAT(TIME_FORMAT(start_time, '%h:%i %p'), ' - ', TIME_FORMAT(end_time, '%h:%i %p')) FROM schedules WHERE ${normalizeIdSql(schedules.employeeId)} = ${normalizeIdSql(authentication.employeeId)} AND (start_date IS NULL OR start_date <= CURDATE()) ORDER BY start_date DESC LIMIT 1),
-        (SELECT CONCAT(TIME_FORMAT(start_time, '%h:%i %p'), ' - ', TIME_FORMAT(end_time, '%h:%i %p')) FROM ${shiftTemplates} WHERE is_default = 1 LIMIT 1),
-        '08:00 AM - 05:00 PM'
+        ${defaultTime}
       )`,
       isBiometricEnrolled: sql<boolean>`CASE WHEN (SELECT 1 FROM ${bioEnrolledUsers} WHERE ${normalizeIdSql(bioEnrolledUsers.employeeId)} = ${normalizeIdSql(authentication.employeeId)} LIMIT 1) IS NOT NULL THEN true ELSE false END`
     })
@@ -118,6 +122,11 @@ export class UserService {
   }
 
   static async getEmployeeById(id: number) {
+    // Fetch default shift times once
+    const defaultShift = await LeaveService.getDefaultShift();
+    const defaultName = defaultShift.name || 'Standard Shift';
+    const defaultTime = `${defaultShift.startTime} - ${defaultShift.endTime}`;
+
     const results = await db.select({
       id: authentication.id,
       email: authentication.email,
@@ -186,14 +195,12 @@ export class UserService {
       duties: sql<string>`COALESCE(
         (SELECT schedule_title FROM schedules WHERE ${normalizeIdSql(schedules.employeeId)} = ${normalizeIdSql(authentication.employeeId)} AND (start_date IS NULL OR start_date <= CURDATE()) AND (end_date IS NULL OR end_date >= CURDATE()) ORDER BY updated_at DESC LIMIT 1),
         (SELECT schedule_title FROM schedules WHERE ${normalizeIdSql(schedules.employeeId)} = ${normalizeIdSql(authentication.employeeId)} AND (start_date IS NULL OR start_date <= CURDATE()) ORDER BY start_date DESC LIMIT 1),
-        (SELECT name FROM ${shiftTemplates} WHERE is_default = 1 LIMIT 1),
-        'Standard Shift'
+        ${defaultName}
       )`,
       shift: sql<string>`COALESCE(
         (SELECT CONCAT(TIME_FORMAT(start_time, '%h:%i %p'), ' - ', TIME_FORMAT(end_time, '%h:%i %p')) FROM schedules WHERE ${normalizeIdSql(schedules.employeeId)} = ${normalizeIdSql(authentication.employeeId)} AND (start_date IS NULL OR start_date <= CURDATE()) AND (end_date IS NULL OR end_date >= CURDATE()) ORDER BY updated_at DESC LIMIT 1),
         (SELECT CONCAT(TIME_FORMAT(start_time, '%h:%i %p'), ' - ', TIME_FORMAT(end_time, '%h:%i %p')) FROM schedules WHERE ${normalizeIdSql(schedules.employeeId)} = ${normalizeIdSql(authentication.employeeId)} AND (start_date IS NULL OR start_date <= CURDATE()) ORDER BY start_date DESC LIMIT 1),
-        (SELECT CONCAT(TIME_FORMAT(start_time, '%h:%i %p'), ' - ', TIME_FORMAT(end_time, '%h:%i %p')) FROM ${shiftTemplates} WHERE is_default = 1 LIMIT 1),
-        '08:00 AM - 05:00 PM'
+        ${defaultTime}
       )`,
       isBiometricEnrolled: sql<boolean>`CASE WHEN (SELECT 1 FROM ${bioEnrolledUsers} WHERE ${normalizeIdSql(bioEnrolledUsers.employeeId)} = ${normalizeIdSql(authentication.employeeId)} LIMIT 1) IS NOT NULL THEN true ELSE false END`
     })
@@ -371,13 +378,18 @@ export class UserService {
       // 3. Personal Info fields
       const personalFields = [
         'birthDate', 'placeOfBirth', 'gender', 'civilStatus', 'heightM', 'weightKg',
-        'bloodType', 'citizenship', 'residentialAddress', 'permanentAddress',
-        'mobileNo', 'telephoneNo', 'nationality'
+        'bloodType', 'citizenship', 'citizenshipType', 'dualCountry', 'residentialAddress', 'permanentAddress',
+        'mobileNo', 'telephoneNo', 'nationality', 'phoneNumber',
+        'umidNumber', 'philsysId', 'philhealthNumber', 'pagibigNumber', 'tinNumber', 'gsisNumber', 'agencyEmployeeNo',
+        'resHouseBlockLot', 'resStreet', 'resSubdivision', 'resBarangay', 'resCity', 'resProvince', 'resRegion',
+        'permHouseBlockLot', 'permStreet', 'permSubdivision', 'permBarangay', 'permCity', 'permProvince', 'permRegion',
+        'residentialZipCode', 'permanentZipCode'
       ];
       const personalUpdate: Record<string, unknown> = {};
       personalFields.forEach(f => { 
         if (data[f] !== undefined) {
           if (f === 'nationality') personalUpdate['citizenship'] = data[f];
+          else if (f === 'phoneNumber') personalUpdate['mobileNo'] = data[f];
           else personalUpdate[f] = data[f];
         }
       });

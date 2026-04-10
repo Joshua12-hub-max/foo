@@ -15,13 +15,8 @@ interface Times {
 
 const ClockInWidget = ({ onStatusChange }: ClockInWidgetProps) => {
   const { user } = useAuth();
-  const [currentTime, setCurrentTime] = useState(new Date());
   const queryClient = useQueryClient();
 
-  useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
 
   const { data: statusData, isLoading: isStatusLoading } = useQuery({
     queryKey: ['todayStatus', user?.id],
@@ -70,12 +65,11 @@ const ClockInWidget = ({ onStatusChange }: ClockInWidgetProps) => {
     <div className="bg-white rounded-lg border border-gray-200 p-3 mb-4 flex items-center justify-between">
       <div className="flex items-center gap-4">
         <div>
-          <h2 className="text-lg font-bold text-gray-900 flex items-center gap-1.5">
-            <Clock className="w-4 h-4 text-gray-600" />
-            {currentTime.toLocaleTimeString()}
-          </h2>
-          <p className="text-xs text-gray-500">
-            {currentTime.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
+           <p className="text-sm font-bold text-gray-900 flex items-center gap-1.5">
+            Attendance Status
+          </p>
+          <p className="text-[10px] text-gray-500">
+            {new Date().toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
           </p>
         </div>
         

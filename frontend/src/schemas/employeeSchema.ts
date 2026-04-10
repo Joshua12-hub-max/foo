@@ -17,7 +17,7 @@ export const CreateEmployeeSchema = z.object({
   contractEndDate: z.string().optional().nullable(),
   regularizationDate: z.string().optional().nullable(),
   isRegular: z.boolean().default(false),
-  employeeId: z.string().optional(),
+  employeeId: z.string().regex(/^Emp-(00[1-9]|0[1-9][0-9]|1[0-9]{2}|200)$/, "Employee ID must be exactly Emp-001 to Emp-200 based on sensor capacity limits").optional(),
   password: z.string().optional(),
   
   // Personal Info

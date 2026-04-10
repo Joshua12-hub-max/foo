@@ -167,6 +167,48 @@ const GovernmentIDSection: React.FC<GovernmentIDSectionProps> = ({ register, err
         </div>
       </div>
 
+      <div className="pt-6 border-t border-slate-100">
+        <h4 className="text-sm font-black text-slate-900 mb-4 uppercase tracking-widest flex items-center gap-2">
+           Other Government Issued ID
+           <span className="text-[10px] font-bold text-slate-400 normal-case tracking-normal">(Required if the above are not available)</span>
+        </h4>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5">
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">
+                ID Type
+              </label>
+              <input
+                {...register('govtIdType')}
+                className="w-full border border-gray-200 focus:ring-gray-200 focus:border-gray-400 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:outline-none transition-all bg-gray-50 text-slate-900 placeholder:text-gray-400"
+                placeholder="e.g. Driver's License, Passport"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">
+                ID Number
+              </label>
+              <input
+                {...register('govtIdNo')}
+                className="w-full border border-gray-200 focus:ring-gray-200 focus:border-gray-400 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:outline-none transition-all bg-gray-50 text-slate-900 placeholder:text-gray-400"
+                placeholder="Enter ID Number"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">
+                Place / Date of Issuance
+              </label>
+              <input
+                {...register('govtIdIssuance')}
+                className="w-full border border-gray-200 focus:ring-gray-200 focus:border-gray-400 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:outline-none transition-all bg-gray-50 text-slate-900 placeholder:text-gray-400"
+                placeholder="e.g. LTO Manila / 2023-01-01"
+              />
+            </div>
+        </div>
+      </div>
+
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <p className="text-xs text-blue-700 font-semibold">
           Note: Government ID numbers will be auto-formatted as you type. Requirements may vary based on the job position.

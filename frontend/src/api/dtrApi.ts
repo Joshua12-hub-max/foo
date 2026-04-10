@@ -22,7 +22,10 @@ export const dtrApi = {
         if (params.page) queryParams.append('page', params.page.toString());
         if (params.limit) queryParams.append('limit', params.limit.toString());
         if (params.employeeId) queryParams.append('employeeId', params.employeeId);
+        if (params.department) queryParams.append('department', params.department);
         if (params.startDate) queryParams.append('startDate', params.startDate);
+        if (params.endDate) queryParams.append('endDate', params.endDate);
+        if (params.search) queryParams.append('search', params.search);
         return await api.get('/dtr/all', { params: queryParams });
     },
 

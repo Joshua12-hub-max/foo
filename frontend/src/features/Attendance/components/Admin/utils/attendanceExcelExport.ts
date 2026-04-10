@@ -133,6 +133,7 @@ const getStatusColor = (status: string): string => {
   if (statusLower.includes('absent')) return 'FFDC3545'; // Red
   if (statusLower.includes('late')) return 'FFFD7E14'; // Orange
   if (statusLower.includes('leave')) return 'FF007BFF'; // Blue
+  if (statusLower.includes('rest day')) return 'FF6C757D'; // Gray
   return 'FF6C757D'; // Gray
 };
 
@@ -171,7 +172,7 @@ export const exportAttendanceToExcel = async (
       { header: 'Late', key: 'lateStatus', width: 10 },
       { header: 'Undertime', key: 'undertimeStatus', width: 12 },
       { header: 'Absent', key: 'absent', width: 10 },
-      { header: 'On Leave', key: 'onLeave', width: 14 }
+      { header: 'Leave/RD', key: 'onLeave', width: 14 }
     ];
 
     // Add title row
@@ -203,7 +204,7 @@ export const exportAttendanceToExcel = async (
     worksheet.getRow(3).height = 18;
 
     // Add header row
-    const headerRow = worksheet.addRow(['Employee ID', 'Employee Name', 'Department', 'Date', 'Time In', 'Time Out', 'Late (min)', 'Undertime (min)', 'Present', 'Late', 'Undertime', 'Absent', 'On Leave']);
+    const headerRow = worksheet.addRow(['Employee ID', 'Employee Name', 'Department', 'Date', 'Time In', 'Time Out', 'Late (min)', 'Undertime (min)', 'Present', 'Late', 'Undertime', 'Absent', 'Leave/RD']);
     applyHeaderStyle(headerRow);
 
     // Group data by department if requested
@@ -243,13 +244,14 @@ export const exportAttendanceToExcel = async (
       const rawUndertime = record.undertimeMinutes || 0;
       const hasTimes = record.timeIn && record.timeIn !== '-' && record.timeIn !== 'null';
       const isOnLeave = (record.status || '').startsWith('On Leave');
-      const isAbsent = record.status === 'Absent' || (!isOnLeave && !hasTimes);
+      const isRestDay = record.status === 'Rest Day';
+      const isAbsent = record.status === 'Absent' || (!isOnLeave && !isRestDay && !hasTimes);
       const isLate = Number(rawLate) > 0;
       const isUndertime = Number(rawUndertime) > 0;
-      const isPresent = !isAbsent && !isOnLeave && hasTimes;
+      const isPresent = !isAbsent && !isOnLeave && !isRestDay && hasTimes;
 
-      // Extract leave abbreviation from status like "On Leave (VL)"
-      const leaveAbbr = isOnLeave ? (record.status || '').replace('On Leave ', '').replace('(', '').replace(')', '') : '';
+      // Extract leave abbreviation from status like "On Leave (VL)" or show "RD" for Rest Day
+      const leaveAbbr = isOnLeave ? (record.status || '').replace('On Leave ', '').replace('(', '').replace(')', '') : (isRestDay ? 'RD' : '');
 
       const row = worksheet.addRow([
         record.employeeId || '',
@@ -292,7 +294,8 @@ export const exportAttendanceToExcel = async (
       }
     });
 
-    // Add a final Auto-Calculation row at the very bottom
+    // H2 Fix: Calculate the last data row BEFORE adding the TOTALS row to avoid circular reference
+    const lastDataRow = worksheet.rowCount;
     const totalRow = worksheet.addRow([
       'TOTALS',
       '',
@@ -300,13 +303,13 @@ export const exportAttendanceToExcel = async (
       '',
       '',
       '',
-      { formula: `SUM(G5:G${worksheet.rowCount})`, result: 0 },
-      { formula: `SUM(H5:H${worksheet.rowCount})`, result: 0 },
-      { formula: `COUNTIF(I5:I${worksheet.rowCount},"X")`, result: 0 },
-      { formula: `COUNTIF(J5:J${worksheet.rowCount},"X")`, result: 0 },
-      { formula: `COUNTIF(K5:K${worksheet.rowCount},"X")`, result: 0 },
-      { formula: `COUNTIF(L5:L${worksheet.rowCount},"X")`, result: 0 },
-      { formula: `COUNTA(M5:M${worksheet.rowCount})-COUNTBLANK(M5:M${worksheet.rowCount})`, result: 0 }
+      { formula: `SUM(G5:G${lastDataRow})`, result: 0 },
+      { formula: `SUM(H5:H${lastDataRow})`, result: 0 },
+      { formula: `COUNTIF(I5:I${lastDataRow},"X")`, result: 0 },
+      { formula: `COUNTIF(J5:J${lastDataRow},"X")`, result: 0 },
+      { formula: `COUNTIF(K5:K${lastDataRow},"X")`, result: 0 },
+      { formula: `COUNTIF(L5:L${lastDataRow},"X")`, result: 0 },
+      { formula: `COUNTA(M5:M${lastDataRow})-COUNTBLANK(M5:M${lastDataRow})`, result: 0 }
     ]);
     
     // Style the Total Row
@@ -379,12 +382,14 @@ export const exportAttendanceToCSV = (
     const csvContent = [
       headers.join(','),
       ...data.map(record => {
+        const hasTimes = record.timeIn && record.timeIn !== '-' && record.timeIn !== 'null' && record.timeIn !== null;
         const isOnLeave = (record.status || '').startsWith('On Leave');
-        const isAbsent = record.status === 'Absent' || (!isOnLeave && (record.timeIn === '-' || record.timeIn === null));
+        const isRestDay = record.status === 'Rest Day';
+        const isAbsent = record.status === 'Absent' || (!isOnLeave && !isRestDay && !hasTimes);
         const isLate = Number(record.lateMinutes || 0) > 0;
         const isUndertime = Number(record.undertimeMinutes || 0) > 0;
-        const isPresent = !isAbsent && !isOnLeave && !isLate && !isUndertime;
-        const leaveAbbr = isOnLeave ? (record.status || '').replace('On Leave ', '').replace('(', '').replace(')', '') : '';
+        const isPresent = !isAbsent && !isOnLeave && !isRestDay && hasTimes;
+        const leaveAbbr = isOnLeave ? (record.status || '').replace('On Leave ', '').replace('(', '').replace(')', '') : (isRestDay ? 'RD' : '');
         
         return [
           `"${record.employeeId || ''}"`,

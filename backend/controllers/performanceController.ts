@@ -101,23 +101,10 @@ const calculateReviewScore = async (reviewId: number): Promise<string> => {
   .leftJoin(performanceCriteria, eq(performanceReviewItems.criteriaId, performanceCriteria.id))
   .where(eq(performanceReviewItems.reviewId, reviewId));
 
-  const review = await db.query.performanceReviews.findFirst({
-    where: eq(performanceReviews.id, reviewId),
-    with: {
-      authenticationEmployeeId: true
-    }
-  });
-
-  if (!review) return '0';
-
-  const empIdStr = review.authenticationEmployeeId.employeeId || review.employeeId.toString();
-
   let totalWeightedScore = 0;
   let totalWeight = 0;
 
   items.forEach(item => {
-    // Coalesce weight: item weight -> criteria weight -> 1
-    // FIXED: Item weight must take precedence to allow overrides
     const weight = parseFloat(String(item.itemWeight || item.criteriaWeight || 1));
     const score = parseFloat(String(item.score)) || 0;
     
@@ -127,62 +114,13 @@ const calculateReviewScore = async (reviewId: number): Promise<string> => {
 
   const baseScore = totalWeight > 0 ? (totalWeightedScore / totalWeight) : 0;
 
-  try {
-    const attendance = await calculateAttendanceScore(review.employeeId, review.reviewPeriodStart, review.reviewPeriodEnd);
-    
-    // Fetch exact violations within period to deduct
-    // S4 FIX: Use resolved empIdStr (varchar) instead of numeric employeeId
-    const violations = await db.select({ count: sql<number>`count(*)` })
-      .from(policyViolations)
-      .where(and(
-        eq(policyViolations.employeeId, empIdStr),
-        gte(policyViolations.createdAt, `${review.reviewPeriodStart} 00:00:00`),
-        lte(policyViolations.createdAt, `${review.reviewPeriodEnd} 23:59:59`),
-        ne(policyViolations.status, 'cancelled')
-      ));
-    
-    const violationCount = Number(violations[0]?.count) || 0;
+  // Clamp to CSC range [1.00, 5.00], or 0 if no scores
+  let finalScore = baseScore;
+  if (finalScore < 1.00 && baseScore > 0) finalScore = 1.00;
+  if (finalScore > 5.00) finalScore = 5.00;
+  if (baseScore === 0) finalScore = 0;
 
-    // Fetch exact "Over Leave" Days (Leave Without Pay) within period
-    // S4 FIX: Use resolved empIdStr (varchar) instead of numeric employeeId
-    const overLeaves = await db.select({ lwopSum: sql<number>`SUM(${leaveApplications.daysWithoutPay})` })
-      .from(leaveApplications)
-      .where(and(
-        eq(leaveApplications.employeeId, empIdStr),
-        eq(leaveApplications.status, 'Approved'),
-        gte(leaveApplications.startDate, review.reviewPeriodStart),
-        lte(leaveApplications.endDate, review.reviewPeriodEnd)
-      ));
-
-    // Fallback safely to 0 if no lwop data is found
-    const overLeaveDays = Number(overLeaves[0]?.lwopSum) || 0;
-
-    // 100% Precision Deductions based on CSC/Meycauayan metrics:
-    // Tardiness/Undertime: 0.01 points deducted per instance or precise equivalent
-    // Absences/Leave: 0.05 points deducted per unexcused absence
-    // Over Leaves: 0.05 points deducted per day WITHOUT pay (LWOP)  <--- NEWLY ADDED
-    // Violations: 0.50 points deducted per policy violation
-    const tardinessDeduction = (attendance.details.totalLates + attendance.details.totalUndertime) * 0.01;
-    
-    // Deducting -0.05 per regular absence AND -0.05 per 'Over Leave' (LWOP) day
-    const leaveDeduction = (attendance.details.totalAbsences * 0.05) + (overLeaveDays * 0.05);
-
-    const violationDeduction = violationCount * 0.50;
-
-    const totalDeduction = tardinessDeduction + leaveDeduction + violationDeduction;
-
-    let finalScore = baseScore - totalDeduction;
-
-    // CSC Ratings are clamped between 1.00 (Poor) and 5.00 (Outstanding)
-    if (finalScore < 1.00 && baseScore > 0) finalScore = 1.00;
-    if (finalScore > 5.00) finalScore = 5.00;
-    if (baseScore === 0) finalScore = 0;
-
-    return finalScore.toFixed(2);
-  } catch (_error) {
-
-    return baseScore.toFixed(2);
-  }
+  return finalScore.toFixed(2);
 };
 
 export const getEvaluationSummary = async (_req: Request, res: Response): Promise<void> => {
@@ -433,7 +371,7 @@ export const getReview = async (req: Request, res: Response): Promise<void> => {
     }
 
     if (authReq.user.role !== 'Administrator' && authReq.user.role !== 'Human Resource') {
-      if (review.employeeId != authReq.user.id && review.reviewerId != authReq.user.id) {
+      if (review.employeeId !== authReq.user.id && review.reviewerId !== authReq.user.id) {
         res.status(403).json({ success: false, message: 'Unauthorized access to this review' });
         return;
       }
@@ -441,32 +379,14 @@ export const getReview = async (req: Request, res: Response): Promise<void> => {
 
     let attendanceDetails = null;
 
-    // 1. Auto-calculate Attendance Score if period is defined
+    // Read-only attendance data for display (no DB mutations on GET)
     if (review.reviewPeriodStart && review.reviewPeriodEnd) {
-      const attendanceScore = await calculateAttendanceScore(review.employeeId, review.reviewPeriodStart, review.reviewPeriodEnd);
-      attendanceDetails = attendanceScore.details;
-      
-      const attRate = attendanceScore.score;
-      
-      // Update items in DB
-      await db.update(performanceReviewItems)
-        .set({ 
-          tScore: String(attRate),
-          score: sql<string>`(COALESCE(${performanceReviewItems.qScore}, 0) + COALESCE(${performanceReviewItems.eScore}, 0) + ${attRate}) / 3`
-        })
-        .where(and(
-          eq(performanceReviewItems.reviewId, Number(id)),
-          or(
-            like(performanceReviewItems.criteriaTitle, '%Attendance%'),
-            like(performanceReviewItems.criteriaTitle, '%Punctuality%')
-          )
-        ));
-
-      // Recalculate total review score
-      const newTotalScore = await calculateReviewScore(Number(id));
-      await db.update(performanceReviews)
-        .set({ totalScore: newTotalScore })
-        .where(eq(performanceReviews.id, Number(id)));
+      try {
+        const attendanceScore = await calculateAttendanceScore(review.employeeId, review.reviewPeriodStart, review.reviewPeriodEnd);
+        attendanceDetails = attendanceScore.details;
+      } catch (_attendanceError) {
+        // Non-fatal: attendance data unavailable, continue with null
+      }
     }
 
     // 2. Fetch fresh items (with criteria info)
@@ -554,7 +474,7 @@ export const acknowledgeReview = async (req: Request, res: Response): Promise<vo
       return;
     }
 
-    if (review.employeeId != authReq.user.id) {
+    if (review.employeeId !== authReq.user.id) {
       res.status(403).json({ success: false, message: 'You can only acknowledge your own reviews' });
       return;
     }
@@ -590,7 +510,7 @@ export const disagreeWithReview = async (req: Request, res: Response): Promise<v
       return;
     }
 
-    if (review.employeeId != authReq.user.id) {
+    if (review.employeeId !== authReq.user.id) {
       res.status(403).json({ success: false, message: 'You can only disagree with your own reviews' });
       return;
     }
@@ -758,8 +678,8 @@ export const updateReview = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
-    const isReviewer = ['Administrator', 'Human Resource'].includes(authReq.user.role) || review.reviewerId == authReq.user.id;
-    const isEmployee = review.employeeId == authReq.user.id;
+    const isReviewer = ['Administrator', 'Human Resource'].includes(authReq.user.role) || review.reviewerId === authReq.user.id;
+    const isEmployee = review.employeeId === authReq.user.id;
 
     if (!isReviewer && !isEmployee) {
       res.status(403).json({ success: false, message: 'Unauthorized: You cannot edit this review.' });
@@ -1124,7 +1044,7 @@ export const submitSelfRating = async (req: Request, res: Response): Promise<voi
       return;
     }
 
-    if (review.employeeId != authReq.user.id) {
+    if (review.employeeId !== authReq.user.id) {
       res.status(403).json({ success: false, message: 'Unauthorized: You are not the assigned employee for this review.' });
       return;
     }
@@ -1206,7 +1126,7 @@ export const submitReviewerRating = async (req: Request, res: Response): Promise
       return;
     }
 
-    if (review.reviewerId != authReq.user.id && !['Administrator', 'Human Resource'].includes(authReq.user.role)) {
+    if (review.reviewerId !== authReq.user.id && !['Administrator', 'Human Resource'].includes(authReq.user.role)) {
       res.status(403).json({ success: false, message: 'Unauthorized: You are not the assigned reviewer for this employee.' });
       return;
     }

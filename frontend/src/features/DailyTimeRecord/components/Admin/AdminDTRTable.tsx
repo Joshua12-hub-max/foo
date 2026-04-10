@@ -11,11 +11,6 @@ interface AdminDTRTableProps {
   filters: DTRFilters;
   onEdit: (item: DTRRecord) => void;
   onReview?: (item: DTRRecord) => void;
-  totals?: {
-    lateMinutes: number;
-    undertimeMinutes: number;
-    hoursWorked: string;
-  };
 }
 
 // Helper to get alignment class
@@ -93,7 +88,6 @@ export const AdminDTRTable: React.FC<AdminDTRTableProps> = ({
   filters,
   onEdit,
   onReview,
-  totals
 }) => {
   const hasActiveFilters = debouncedSearchQuery || Object.values(filters).some(v => v);
   
@@ -151,18 +145,6 @@ export const AdminDTRTable: React.FC<AdminDTRTableProps> = ({
                     </td>
                   </tr>
                 ))}
-                {/* Summary Row */}
-                {totals && (
-                  <tr className="bg-gray-100 font-bold border-t-2 border-gray-300">
-                    <td colSpan={8} className="px-6 py-4 text-right text-gray-700 text-sm">
-                      Totals:
-                    </td>
-                    <td className="px-6 py-4 text-center text-red-700 text-sm">{formatDuration(totals.lateMinutes)}</td>
-                    <td className="px-6 py-4 text-center text-orange-700 text-sm">{formatDuration(totals.undertimeMinutes)}</td>
-                    <td className="px-6 py-4 text-center text-gray-900 text-sm">{totals.hoursWorked}h</td>
-                    <td className="bg-gray-100 text-sm"></td>
-                  </tr>
-                )}
               </>
             ) : (
               <tr>

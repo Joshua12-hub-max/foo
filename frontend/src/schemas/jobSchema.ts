@@ -7,6 +7,7 @@ export const jobSchema = z.object({
   employmentType: z.enum(['Full-time', 'Part-time', 'Contractual', 'Job Order', 'Coterminous', 'Temporary', 'Probationary', 'Casual', 'Permanent', 'Contract of Service', 'JO', 'COS'] as const),
   dutyType: z.enum(['Standard', 'Irregular'] as const),
   status: z.enum(['Open', 'Closed', 'On Hold'] as const),
+  plantillaId: z.number().nullish(),
   applicationEmail: z.string().min(1, 'Email is required').email('Invalid email address'),
   jobDescription: z.string().min(10, 'Description must be at least 10 characters'),
   requirements: z.string().nullish(),

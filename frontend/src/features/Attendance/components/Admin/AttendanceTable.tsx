@@ -34,7 +34,18 @@ interface AttendanceTableProps {
 
 const formatTime = (time?: string) => {
     if (!time) return '-';
-    return new Date(time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+    try {
+        // 100% ROBUST: Handle cases where backend returns 'HH:mm:ss' instead of ISO
+        const dateObj = time.includes('T') || time.includes('-') 
+            ? new Date(time) 
+            : new Date(`1970-01-01T${time}`);
+            
+        if (isNaN(dateObj.getTime())) return time; // Fallback to raw string if still invalid
+        
+        return dateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+    } catch (e) {
+        return time;
+    }
 };
 
 const AttendanceTable: React.FC<AttendanceTableProps> = memo(({ data, headers, isLoading, pagination }) => {
@@ -77,8 +88,8 @@ const AttendanceTable: React.FC<AttendanceTableProps> = memo(({ data, headers, i
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {data.map((row) => (
-              <tr key={row.id || `${row.employeeId}-${row.date}`} className="hover:bg-[#F8F9FA] hover:shadow-xl transition-colors">
+            {data.map((row, index) => (
+              <tr key={`${row.employeeId}-${row.date}-${row.id || index}`} className="hover:bg-[#F8F9FA] hover:shadow-xl transition-colors">
                 
                 {/* Status - First Column */}
                 <td className="px-6 py-4 whitespace-nowrap">

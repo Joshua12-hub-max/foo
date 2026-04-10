@@ -2,26 +2,43 @@ import { sql } from 'drizzle-orm';
 import { MySqlColumn } from 'drizzle-orm/mysql-core';
 
 /**
- * Normalizes an employee ID by removing common prefixes like 'EMP-' or 'CHRMO-'
- * and any other non-digit characters, then casting to unsigned integer for robust joining.
- * 
- * @param column The Drizzle column containing the employee ID
- * @returns A SQL fragment that evaluates to the numeric ID
+ * SYMMETRICAL NORMALIZE:
+ * Converts DB columns/values to strict 'Emp-XXX' format.
+ * e.g., '1' -> 'Emp-001', 'Emp-1' -> 'Emp-001', 'Emp-001' -> 'Emp-001'
  */
 export const normalizeIdSql = (column: MySqlColumn | string) => {
-  return sql<number>`CAST(REGEXP_REPLACE(${column}, '[^0-9]', '') AS UNSIGNED)`;
+  if (typeof column === 'string') {
+    const numericPart = column.replace(/\D/g, '');
+    const padded = numericPart.padStart(3, '0');
+    return `Emp-${padded}`;
+  }
+  
+  // For SQL columns, we use MySQL functions to strip non-digits, pad, and re-prefix
+  return sql`CONCAT('Emp-', LPAD(REGEXP_REPLACE(${column}, '[^0-9]', ''), 3, '0'))`;
 };
 
 /**
- * Creates a robust comparison between two employee ID columns or a value.
- * Handles format mismatches like 'EMP-001' vs '1'.
+ * Normalizes a JS string to the strict 'Emp-XXX' format.
+ */
+export const normalizeIdJs = (id: string | null | undefined): string => {
+  if (!id) return '';
+  const numericPart = id.replace(/\D/g, '');
+  if (!numericPart) return id; // Return original if no digits (like 'admin')
+  return `Emp-${numericPart.padStart(3, '0')}`;
+};
+
+/**
+ * The 'Absolute Lockdown' Comparison.
+ * Compares both sides in the strict 'Emp-XXX' format.
  */
 export const compareIds = (col1: MySqlColumn, col2: MySqlColumn | string) => {
+  const normalizedCol1 = normalizeIdSql(col1);
+  
   if (typeof col2 === 'string') {
-    // If col2 is a literal value (string), we normalize it in JS then compare
-    const numericId = col2.replace(/\D/g, '');
-    if (!numericId) return sql`FALSE`;
-    return sql`${normalizeIdSql(col1)} = ${parseInt(numericId)}`;
+    const target = normalizeIdJs(col2);
+    return sql`${normalizedCol1} = ${target}`;
   }
-  return sql`${normalizeIdSql(col1)} = ${normalizeIdSql(col2)}`;
+  
+  const normalizedCol2 = normalizeIdSql(col2);
+  return sql`${normalizedCol1} = ${normalizedCol2}`;
 };

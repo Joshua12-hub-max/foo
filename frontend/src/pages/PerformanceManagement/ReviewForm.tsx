@@ -105,7 +105,7 @@ const ReviewForm = () => {
           employees={employees}
           cycles={cycles}
           isNew={isNew}
-          onEmployeeChange={(value) => setFormData({...formData, employeeId: String(value)})}
+          onEmployeeChange={(value) => setFormData({...formData, employeeId: Number(value)})}
           onCycleChange={(value) => setFormData({...formData, reviewCycleId: Number(value)})}
         />
 

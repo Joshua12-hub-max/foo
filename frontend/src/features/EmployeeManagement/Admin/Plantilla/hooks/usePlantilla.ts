@@ -234,10 +234,11 @@ export const usePlantilla = ({ showNotification }: UsePlantillaOptions = {}): Us
         setCurrentPosition(position);
         try {
           const response = await plantillaApi.getPositionHistory(position.id);
-          // @ts-ignore - History record type mismatch in some environments, casting safely
+          // @ts-expect-error - History record type mismatch in some environments, casting safely
           setPositionHistory(response.data.history as HistoryRecord[]);
           setIsHistoryModalOpen(true);
         } catch (err) {
+          console.error('[Plantilla] History load failed:', err);
           notify("Failed to load position history", "error");
         }
     }, []);
@@ -246,10 +247,11 @@ export const usePlantilla = ({ showNotification }: UsePlantillaOptions = {}): Us
         setCurrentPosition(position);
         try {
           const response = await plantillaApi.getAvailableEmployees();
-          // @ts-ignore - Employee type mismatch
+          // @ts-expect-error - Employee type mismatch
           setAvailableEmployees(response.data.employees as Employee[]);
           setIsAssignModalOpen(true);
         } catch (err) {
+          console.error('[Plantilla] Available employees load failed:', err);
           notify("Failed to load available employees", "error");
         }
     }, []);

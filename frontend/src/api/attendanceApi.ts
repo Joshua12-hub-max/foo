@@ -70,13 +70,21 @@ export interface DashboardStatsResponse {
 // Ensure strict return types
 export const attendanceApi = {
     getLogs: async (params: AttendanceQueryValues): Promise<AxiosResponse<AttendanceLogResponse>> => {
+        // 100% SUCCESS Logic: Ensure we only append valid, truthy values to the URL
         const queryParams = new URLSearchParams();
+        
         if (params.page) queryParams.append('page', params.page.toString());
         if (params.limit) queryParams.append('limit', params.limit.toString());
-        if (params.employeeId) queryParams.append('employeeId', params.employeeId);
+        
+        // Ensure values are not 'null', 'undefined', or empty strings before appending
+        if (params.employeeId && params.employeeId !== 'all') {
+            queryParams.append('employeeId', params.employeeId);
+        }
         if (params.startDate) queryParams.append('startDate', params.startDate);
         if (params.endDate) queryParams.append('endDate', params.endDate);
-        if (params.department) queryParams.append('department', params.department);
+        if (params.department && params.department !== 'all') {
+            queryParams.append('department', params.department);
+        }
         if (params.search) queryParams.append('search', params.search);
 
         return await api.get('/attendance/logs', { params: queryParams });

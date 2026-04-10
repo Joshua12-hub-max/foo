@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@hooks/useAuth";
 import { attendanceApi, DashboardStatsResponse, EmployeeStats } from "@api/attendanceApi";
 import { useUIStore } from "@/stores/uiStore";
+import { useAuthStore } from "@/stores";
 import { User } from "@/types";
 import { inquiryApi } from "@api/inquiryApi";
 import { chatApi } from "@api/chatApi";
@@ -135,16 +136,17 @@ const DashboardHome: React.FC<DashboardHomeProps> = React.memo(({
 
 export default function HDashboard(): React.ReactElement {
   const { user, logout } = useAuth();
+  const { isAuthenticated } = useAuthStore();
   const navigate = useNavigate();
   const location = useLocation();
 
   // --- State Management ---
   const [searchQuery, setSearchQuery] = useState<string>("");
-  
+
   // Use Global UI Store for Sidebar Sync
   const sidebarOpen = useUIStore((state) => state.sidebarOpen);
   const setSidebarOpenStore = useUIStore((state) => state.setSidebarOpen);
-  
+
   // Wrapper to match React.Dispatch<React.SetStateAction<boolean>> signature for Header
   const setSidebarOpen = useCallback((value: boolean | ((prev: boolean) => boolean)) => {
       if (typeof value === 'function') {
@@ -160,6 +162,7 @@ export default function HDashboard(): React.ReactElement {
 
   // Fetch all pending counts
   const fetchCounts = useCallback(async () => {
+    if (!isAuthenticated) return;
     try {
       const [inquiryRes, chatRes] = await Promise.all([
         inquiryApi.getPendingCount(),
@@ -175,18 +178,14 @@ export default function HDashboard(): React.ReactElement {
     } catch (err) {
       console.error('Failed to fetch counts:', err);
     }
-  }, []);
+  }, [isAuthenticated]);
 
   useEffect(() => {
-    console.log('[AdminDashboard] Counts updated:', { 
-        inquiries: pendingInquiriesCount, 
-        chat: pendingChatCount 
-    });
+    if (!isAuthenticated) return;
     fetchCounts();
     const interval = setInterval(fetchCounts, 30000); // Check every 30s
     return () => clearInterval(interval);
-  }, [fetchCounts, pendingInquiriesCount, pendingChatCount]);
-
+  }, [fetchCounts, isAuthenticated]);
   const { data: dashboardData } = useQuery({
     queryKey: ['adminDashboardStats'],
     queryFn: async (): Promise<DashboardStatsResponse['data'] | undefined> => {
