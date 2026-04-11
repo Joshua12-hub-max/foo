@@ -33,11 +33,11 @@ const PublicHeader = () => {
 
   return (
     <header>
-      <nav 
+      <nav
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
-          isScrolled 
-            ? 'bg-white/95 backdrop-blur-md border-b border-slate-200 py-2 shadow-sm' 
-            : 'bg-slate-50/50 backdrop-blur-sm border-b border-transparent py-3.5'
+          isScrolled
+            ? 'bg-white/95 backdrop-blur-md border-b border-[var(--zed-border-light)] py-2 shadow-[var(--zed-shadow-sm)]'
+            : 'bg-white/50 backdrop-blur-sm border-b border-transparent py-3.5'
         }`}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-12 flex justify-between items-center relative">
@@ -48,18 +48,18 @@ const PublicHeader = () => {
               onClick={() => navigate('/careers')}
           >
               <div className="relative">
-                <img 
-                    src={logo} 
-                    alt="Meycauayan Logo" 
-                    className="w-11 h-11 object-contain transition-transform duration-500 group-hover:scale-105 relative z-10" 
+                <img
+                    src={logo}
+                    alt="Meycauayan Logo"
+                    className="w-11 h-11 object-contain transition-transform duration-500 group-hover:scale-105 relative z-10"
                 />
-                <div className={`absolute inset-0 blur-xl rounded-full transition-opacity duration-500 opacity-0 group-hover:opacity-100 ${isScrolled ? 'bg-green-500/20' : 'bg-slate-400/10'}`}></div>
+                <div className={`absolute inset-0 blur-xl rounded-full transition-opacity duration-500 opacity-0 group-hover:opacity-100 ${isScrolled ? 'bg-accent/20' : 'bg-gray-400/10'}`}></div>
               </div>
               <div className="flex flex-col">
-                    <span className={`font-black text-xs sm:text-[13px] md:text-sm leading-none tracking-tight transition-colors ${isScrolled ? 'text-slate-900' : 'text-slate-800'}`}>
+                    <span className={`font-bold text-xs sm:text-sm md:text-base leading-tight transition-colors ${isScrolled ? 'text-[var(--zed-text-dark)]' : 'text-gray-800'}`}>
                     City Human Resource Management Office Job Portal
                   </span>
-                  <span className={`text-[9px] font-bold tracking-tight transition-colors mt-0.5 ${isScrolled ? 'text-green-600/80' : 'text-slate-500'}`}>
+                  <span className={`text-xs font-medium tracking-tight transition-colors mt-0.5 ${isScrolled ? 'text-accent' : 'text-gray-500'}`}>
                     City Government of Meycauayan
                   </span>
               </div>
@@ -73,17 +73,17 @@ const PublicHeader = () => {
                         id={`nav-link-${link.name.toLowerCase().replace(/\s+/g, '-')}`}
                         key={link.path}
                         onClick={() => navigate(link.path)}
-                        className={`relative py-1 text-[15px] font-semibold tracking-tight transition-all duration-300 ${
+                        className={`relative py-1 text-base font-medium transition-all duration-300 ${
                             checkActive(link)
-                            ? 'text-green-600'
-                            : 'text-slate-500 hover:text-slate-900'
+                            ? 'text-accent'
+                            : 'text-[var(--zed-text-muted)] hover:text-[var(--zed-text-dark)]'
                         }`}
                     >
                         {link.name}
                         {checkActive(link) && (
-                            <motion.div 
+                            <motion.div
                                 layoutId="nav-underline-master"
-                                className="absolute -bottom-1 left-0 right-0 h-0.5 rounded-full bg-green-500"
+                                className="absolute -bottom-1 left-0 right-0 h-0.5 rounded-full bg-accent"
                             />
                         )}
                     </button>
@@ -93,10 +93,10 @@ const PublicHeader = () => {
 
           {/* Mobile Menu Button */}
           <div className="md:hidden">
-            <button 
+            <button
               id="mobile-menu-toggle"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2.5 rounded-xl transition-all bg-slate-100 text-slate-900 border border-slate-200"
+              className="p-2.5 rounded-[var(--radius-sm)] transition-all bg-[var(--zed-bg-surface)] text-[var(--zed-text-dark)] border border-[var(--zed-border-light)]"
             >
               {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
@@ -107,13 +107,13 @@ const PublicHeader = () => {
       {/* Mobile Menu Dropdown */}
       <AnimatePresence>
         {mobileMenuOpen && (
-            <motion.div 
+            <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="md:hidden fixed inset-x-4 top-20 bg-white/98 backdrop-blur-2xl rounded-2xl border border-slate-200 z-50 p-6 shadow-2xl overflow-hidden"
+                className="md:hidden fixed inset-x-4 top-20 bg-white/98 backdrop-blur-2xl rounded-[var(--radius-md)] border border-[var(--zed-border-light)] z-50 p-6 shadow-[var(--zed-shadow-xl)] overflow-hidden"
             >
-                <div className="flex flex-col gap-1.5 relative z-10">
+                <div className="flex flex-col gap-2 relative z-10">
                   {navLinks.map((link) => (
                       <button
                       id={`mobile-nav-link-${link.name.toLowerCase().replace(/\s+/g, '-')}`}
@@ -122,10 +122,10 @@ const PublicHeader = () => {
                           navigate(link.path);
                           setMobileMenuOpen(false);
                       }}
-                      className={`w-full text-left px-5 py-3.5 rounded-xl font-semibold text-[15px] tracking-tight transition-all ${
+                      className={`w-full text-left px-5 py-4 rounded-[var(--radius-sm)] font-medium text-base transition-all ${
                           checkActive(link)
-                          ? 'bg-green-50 text-green-600'
-                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                          ? 'bg-accent text-white'
+                          : 'text-[var(--zed-text-muted)] hover:text-[var(--zed-text-dark)] hover:bg-[var(--zed-bg-surface)]'
                       }`}
                       >
                       {link.name}
@@ -133,7 +133,7 @@ const PublicHeader = () => {
                   ))}
 
                 </div>
-                <div className="absolute top-[-50%] right-[-20%] w-[200px] h-[200px] bg-green-500/5 rounded-full blur-[80px]"></div>
+                <div className="absolute top-[-50%] right-[-20%] w-[200px] h-[200px] bg-accent/5 rounded-full blur-[80px]"></div>
             </motion.div>
         )}
       </AnimatePresence>

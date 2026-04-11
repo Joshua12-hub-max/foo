@@ -90,7 +90,7 @@ const Contact = () => {
       />
 
       {/* Hero */}
-      <div className="relative bg-gradient-to-br from-slate-50 via-white to-slate-50 border-b border-slate-200 py-24 overflow-hidden">
+      <div className="relative bg-gradient-to-br from-gray-50 via-white to-gray-50 border-b border-gray-200 py-24 overflow-hidden">
         {/* Blue Smoke Grid Background - Small Squares */}
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#0ea5e9_1px,transparent_1px),linear-gradient(to_bottom,#0ea5e9_1px,transparent_1px)] bg-[size:16px_16px] smoke-grid"></div>
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#38bdf8_1px,transparent_1px),linear-gradient(to_bottom,#38bdf8_1px,transparent_1px)] bg-[size:24px_24px] smoke-grid-secondary"></div>
@@ -101,9 +101,9 @@ const Contact = () => {
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-slate-200 shadow-sm text-sm font-medium text-slate-700 mb-8"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-gray-200 shadow-sm text-sm font-medium text-gray-700 mb-8"
             >
-              <MessageCircle size={16} className="text-slate-500" />
+              <MessageCircle size={16} className="text-gray-500" />
               Support
             </motion.div>
 
@@ -111,7 +111,8 @@ const Contact = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
-              className="text-5xl sm:text-6xl md:text-7xl font-bold text-slate-900 leading-tight mb-8"
+              className="text-5xl sm:text-6xl md:text-7xl font-bold text-gray-900 leading-tight mb-8"
+              style={{ fontFamily: 'IBM Plex Sans, sans-serif' }}
             >
               Get in touch
             </motion.h1>
@@ -120,7 +121,8 @@ const Contact = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="text-2xl text-slate-700 leading-relaxed font-medium"
+              className="text-2xl text-gray-700 leading-relaxed font-medium"
+              style={{ fontFamily: 'IBM Plex Sans, sans-serif' }}
             >
               Have questions about careers or applications? Our HR team is here to help.
             </motion.p>
@@ -145,20 +147,20 @@ const Contact = () => {
                 {method.action ? (
                   <a
                     href={method.action}
-                    className="block bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-2xl p-8 transition-all duration-200 hover:shadow-lg h-full"
+                    className="block bg-white hover:bg-accent/5 border border-[var(--zed-border-light)] hover:border-accent rounded-[var(--radius-sm)] p-8 transition-all duration-200 hover:shadow-lg h-full"
                   >
                     <div className="flex items-start gap-4 mb-6">
-                      <div className="p-3 bg-white border border-slate-200 rounded-xl text-slate-600 group-hover:text-slate-900 transition-colors">
+                      <div className="p-3 bg-accent/10 border border-accent/20 rounded-[var(--radius-sm)] text-accent transition-colors">
                         <method.icon size={24} />
                       </div>
                       <div className="flex-1">
-                        <p className="text-base font-semibold text-slate-500 mb-1">
+                        <p className="text-base font-semibold text-gray-500 mb-1">
                           {method.label}
                         </p>
-                        <p className="text-xl font-bold text-slate-900 mb-2 leading-snug">
+                        <p className="text-xl font-bold text-gray-900 mb-2 leading-snug">
                           {method.value}
                         </p>
-                        <p className="text-base text-slate-600 leading-relaxed">
+                        <p className="text-base text-gray-600 leading-relaxed">
                           {method.description}
                         </p>
                       </div>
@@ -174,19 +176,19 @@ const Contact = () => {
                     )}
                   </a>
                 ) : (
-                  <div className="bg-slate-50 border border-slate-200 rounded-2xl p-8 h-full">
+                  <div className="bg-white border border-[var(--zed-border-light)] rounded-[var(--radius-sm)] p-8 h-full">
                     <div className="flex items-start gap-4 mb-6">
-                      <div className="p-3 bg-white border border-slate-200 rounded-xl text-slate-600">
+                      <div className="p-3 bg-accent/10 border border-accent/20 rounded-[var(--radius-sm)] text-accent">
                         <method.icon size={24} />
                       </div>
                       <div className="flex-1">
-                        <p className="text-base font-semibold text-slate-500 mb-1">
+                        <p className="text-base font-semibold text-gray-500 mb-1">
                           {method.label}
                         </p>
-                        <p className="text-xl font-bold text-slate-900 mb-2 leading-snug">
+                        <p className="text-xl font-bold text-gray-900 mb-2 leading-snug">
                           {method.value}
                         </p>
-                        <p className="text-base text-slate-600 leading-relaxed">
+                        <p className="text-base text-gray-600 leading-relaxed">
                           {method.description}
                         </p>
                       </div>
@@ -230,10 +232,10 @@ const Contact = () => {
                   </label>
                   <input
                     {...register('firstName')}
-                    className={`w-full px-4 py-4 bg-white border rounded-[var(--radius-md)] text-base focus:outline-none focus:ring-4 transition-all ${
+                    className={`w-full px-4 py-4 bg-white border rounded-[var(--radius-sm)] text-base focus:outline-none focus:ring-4 transition-all ${
                       errors.firstName
                         ? 'border-[var(--zed-error)] ring-[var(--zed-error)]/10'
-                        : 'border-[var(--zed-border-light)] focus:border-[var(--zed-primary)] focus:ring-[var(--zed-primary)]/10'
+                        : 'border-[var(--zed-border-light)] focus:border-accent focus:ring-accent/10'
                     }`}
                     placeholder="John"
                   />
@@ -246,10 +248,10 @@ const Contact = () => {
                   </label>
                   <input
                     {...register('lastName')}
-                    className={`w-full px-4 py-4 bg-white border rounded-[var(--radius-md)] text-base focus:outline-none focus:ring-4 transition-all ${
+                    className={`w-full px-4 py-4 bg-white border rounded-[var(--radius-sm)] text-base focus:outline-none focus:ring-4 transition-all ${
                       errors.lastName
                         ? 'border-[var(--zed-error)] ring-[var(--zed-error)]/10'
-                        : 'border-[var(--zed-border-light)] focus:border-[var(--zed-primary)] focus:ring-[var(--zed-primary)]/10'
+                        : 'border-[var(--zed-border-light)] focus:border-accent focus:ring-accent/10'
                     }`}
                     placeholder="Doe"
                   />
@@ -282,7 +284,7 @@ const Contact = () => {
                 <textarea
                   {...register('message')}
                   rows={5}
-                  className={`w-full px-4 py-4 bg-white border rounded-[var(--radius-md)] text-base leading-relaxed focus:outline-none focus:ring-4 transition-all resize-none ${
+                  className={`w-full px-4 py-4 bg-white border rounded-[var(--radius-sm)] text-base leading-relaxed focus:outline-none focus:ring-4 transition-all resize-none ${
                     errors.message
                       ? 'border-[var(--zed-error)] ring-[var(--zed-error)]/10'
                       : 'border-[var(--zed-border-light)] focus:border-[var(--zed-primary)] focus:ring-[var(--zed-primary)]/10'
@@ -316,19 +318,19 @@ const Contact = () => {
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="mt-16 max-w-2xl mx-auto bg-[var(--zed-bg-dark)] text-white rounded-[var(--radius-lg)] p-12 text-center shadow-[var(--zed-shadow-xl)] border border-[var(--zed-border-dark)]"
+            className="mt-16 max-w-2xl mx-auto bg-[var(--zed-bg-dark)] text-white rounded-[var(--radius-sm)] p-12 text-center shadow-[var(--zed-shadow-xl)] border border-[var(--zed-border-dark)]"
           >
             <div className="mb-10">
               <h3 className="text-4xl font-bold mb-4 tracking-tight">
                 Need immediate help?
               </h3>
-              <p className="text-lg text-slate-400 font-medium">
+              <p className="text-lg text-gray-400 font-medium">
                 Chat with our team for real-time assistance
               </p>
             </div>
             <button
               onClick={openChat}
-              className="px-12 py-5 bg-white hover:bg-slate-50 text-[var(--zed-bg-dark)] rounded-[var(--radius-md)] font-bold text-lg transition-all active:scale-95 inline-flex items-center gap-3 shadow-lg"
+              className="px-12 py-5 bg-white hover:bg-gray-50 text-[var(--zed-bg-dark)] rounded-[var(--radius-sm)] font-bold text-lg transition-all active:scale-95 inline-flex items-center gap-3 shadow-lg"
             >
               <MessageCircle size={22} />
               Start Live Chat
@@ -339,11 +341,11 @@ const Contact = () => {
           <div className="mt-16 text-center">
             <div className="inline-flex items-center gap-8 px-8 py-5 bg-[var(--zed-bg-surface)] border border-[var(--zed-border-light)] rounded-full shadow-sm">
               <div className="flex items-center gap-3 text-sm text-[var(--zed-text-dark)]">
-                <Clock size={18} className="text-[var(--zed-primary)]" />
+                <Clock size={18} className="text-accent" />
                 <span className="font-bold uppercase tracking-wider">Mon - Fri: 8:00 AM - 5:00 PM</span>
               </div>
-              <div className="w-1.5 h-1.5 bg-[var(--zed-border-light)] rounded-full"></div>
-              <div className="text-sm text-[var(--zed-text-muted)] font-bold">
+              <div className="w-1.5 h-1.5 bg-gray-300 rounded-full"></div>
+              <div className="text-sm text-gray-500 font-bold">
                 Typical response time: <span className="text-[var(--zed-primary)] uppercase tracking-wide">&lt; 24 hours</span>
               </div>
             </div>
