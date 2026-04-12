@@ -115,7 +115,7 @@ const InterviewPanel: React.FC<InterviewPanelProps> = ({
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
                 </span>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Live Panel</p>
+                <p className="text-[10px] font-bold text-slate-400 tracking-widest">Live Panel</p>
               </div>
             </div>
           </div>
@@ -138,7 +138,7 @@ const InterviewPanel: React.FC<InterviewPanelProps> = ({
                   <p className="text-sm text-slate-400 truncate mb-2">{applicantEmail || 'email@example.com'}</p>
                   
                   {jobTitle && (
-                    <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-slate-700/50 border border-slate-600/50 text-[10px] font-bold uppercase tracking-wider text-slate-300">
+                    <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-slate-700/50 border border-slate-600/50 text-[10px] font-bold tracking-wider text-slate-300">
                        <Sparkles size={10} className="text-amber-400" />
                        {jobTitle}
                     </div>
@@ -150,7 +150,7 @@ const InterviewPanel: React.FC<InterviewPanelProps> = ({
 
           {/* MAIN ACTION - VIDEO CALL */}
           <div className="space-y-4">
-            <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+            <h4 className="text-[10px] font-bold text-slate-500 tracking-widest flex items-center gap-2">
               <Monitor size={12} /> Connection
             </h4>
             
@@ -193,7 +193,7 @@ const InterviewPanel: React.FC<InterviewPanelProps> = ({
           {interviewLink && (
             <div className="space-y-3">
                <div className="flex items-center justify-between">
-                <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Meeting Link</h4>
+                <h4 className="text-xs font-bold text-gray-500 tracking-wider">Meeting Link</h4>
                 <div className="flex items-center gap-1.5">
                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
                    <span className="text-[10px] text-amber-500 font-medium">For Applicant & Interviewer</span>
@@ -226,7 +226,7 @@ const InterviewPanel: React.FC<InterviewPanelProps> = ({
 
           {/* RESOURCES */}
           <div className="space-y-3">
-             <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Resources</h4>
+             <h4 className="text-xs font-bold text-gray-500 tracking-wider">Resources</h4>
              {resumePath ? (
                <a
                  href={`http://localhost:5000/uploads/resumes/${resumePath}`}
@@ -315,7 +315,7 @@ const InterviewPanel: React.FC<InterviewPanelProps> = ({
                 placeholder="Start typing your interview notes here..."
               />
               <div className="px-4 py-2 bg-gray-50 border-t border-gray-100 rounded-b-xl flex justify-end">
-                <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">
+                <span className="text-[10px] font-bold text-gray-400 tracking-wider">
                   {isSubmitting ? 'Saving...' : 'Auto-save enabled on exit'}
                 </span>
               </div>

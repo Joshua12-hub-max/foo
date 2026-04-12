@@ -15,7 +15,7 @@ const styles: Record<string, string> = {
 
 export const StatusBadge: React.FC<StatusBadgeProps> = ({ status }) => {
   return (
-    <span className={`px-2.5 py-1 text-[10px] font-black uppercase tracking-wider rounded-lg border ${styles[status] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+    <span className={`px-2.5 py-1 text-[10px] font-black tracking-wider rounded-lg border ${styles[status] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>
       {status}
     </span>
   );

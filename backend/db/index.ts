@@ -122,4 +122,14 @@ export const runMigrations = async () => {
   }
 };
 
+export const closeDatabase = async (): Promise<void> => {
+  try {
+    await pool.end();
+    console.warn('Database pool closed successfully.');
+  } catch (err: unknown) {
+    const error = err as Error;
+    console.error('Error closing database pool:', error.message);
+  }
+};
+
 export default pool;

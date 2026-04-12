@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Bell } from 'lucide-react';
 import { announcementApi } from '../../../api/announcementApi';
 
@@ -9,7 +9,7 @@ interface Announcement {
   priority?: 'normal' | 'urgent' | 'high' | 'medium' | string;
 }
 
-export default function AnnouncementSection() {
+export default function AnnouncementSection({ searchQuery = "" }: { searchQuery?: string }) {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
 
   useEffect(() => {
@@ -26,6 +26,15 @@ export default function AnnouncementSection() {
     fetchAnnouncements();
   }, []);
 
+  const filteredAnnouncements = useMemo(() => {
+    if (!searchQuery) return announcements;
+    const query = searchQuery.toLowerCase();
+    return announcements.filter(a => 
+      a.title.toLowerCase().includes(query) || 
+      a.content.toLowerCase().includes(query)
+    );
+  }, [announcements, searchQuery]);
+
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 hover:shadow-md transition-all duration-300">
       <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
@@ -33,9 +42,9 @@ export default function AnnouncementSection() {
         Announcements
       </h3>
       
-      {announcements.length > 0 ? (
+      {filteredAnnouncements.length > 0 ? (
         <div className="space-y-4 max-h-64 overflow-y-auto custom-scrollbar">
-          {announcements.map((announcement) => (
+          {filteredAnnouncements.map((announcement) => (
             <div key={announcement.id || Math.random()} className="p-3 bg-gray-50 rounded-lg border border-gray-200/60 shadow-sm hover:border-emerald-500/30 transition-all">
               <div className="flex justify-between items-start mb-1">
                 <h4 className="text-sm font-bold text-gray-800">{announcement.title}</h4>

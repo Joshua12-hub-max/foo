@@ -106,7 +106,7 @@ const SecurityAuditLogs = () => {
           {isLoading ? (
             <div className="p-16 flex flex-col items-center gap-3">
               <Loader2 className="animate-spin text-slate-400" size={24} />
-              <p className="text-xs text-slate-400 uppercase tracking-wider">Scanning security logs...</p>
+              <p className="text-xs text-slate-400 tracking-wider">Scanning security logs...</p>
             </div>
           ) : filteredLogs.length === 0 ? (
             <div className="p-16 flex flex-col items-center text-center gap-2">
@@ -126,12 +126,12 @@ const SecurityAuditLogs = () => {
             <table className="w-full text-left">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50">
-                  <th className="px-6 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Timestamp</th>
-                  <th className="px-6 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Applicant</th>
-                  <th className="px-6 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Violation</th>
-                  <th className="px-6 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Details</th>
-                  <th className="px-6 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Job</th>
-                  <th className="px-6 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">IP</th>
+                  <th className="px-6 py-3 text-[11px] font-semibold text-slate-500 tracking-wider">Timestamp</th>
+                  <th className="px-6 py-3 text-[11px] font-semibold text-slate-500 tracking-wider">Applicant</th>
+                  <th className="px-6 py-3 text-[11px] font-semibold text-slate-500 tracking-wider">Violation</th>
+                  <th className="px-6 py-3 text-[11px] font-semibold text-slate-500 tracking-wider">Details</th>
+                  <th className="px-6 py-3 text-[11px] font-semibold text-slate-500 tracking-wider">Job</th>
+                  <th className="px-6 py-3 text-[11px] font-semibold text-slate-500 tracking-wider">IP</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">

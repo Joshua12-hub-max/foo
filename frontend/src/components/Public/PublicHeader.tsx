@@ -36,30 +36,30 @@ const PublicHeader = () => {
       <nav
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
           isScrolled
-            ? 'bg-white/95 backdrop-blur-md border-b border-[var(--zed-border-light)] py-2 shadow-[var(--zed-shadow-sm)]'
-            : 'bg-white/50 backdrop-blur-sm border-b border-transparent py-3.5'
+            ? 'bg-white/95 backdrop-blur-md border-b border-[var(--zed-border-light)] py-3 shadow-[var(--zed-shadow-sm)]'
+            : 'bg-white/50 backdrop-blur-sm border-b border-transparent py-5'
         }`}
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-12 flex justify-between items-center relative">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex justify-between items-center relative">
           {/* Logo Section */}
           <div 
               id="header-logo"
-              className="flex items-center gap-3.5 cursor-pointer group" 
+              className="flex items-center gap-4 cursor-pointer group" 
               onClick={() => navigate('/careers')}
           >
               <div className="relative">
                 <img
                     src={logo}
                     alt="Meycauayan Logo"
-                    className="w-11 h-11 object-contain transition-transform duration-500 group-hover:scale-105 relative z-10"
+                    className="w-14 h-14 object-contain transition-transform duration-500 group-hover:scale-105 relative z-10"
                 />
                 <div className={`absolute inset-0 blur-xl rounded-full transition-opacity duration-500 opacity-0 group-hover:opacity-100 ${isScrolled ? 'bg-accent/20' : 'bg-gray-400/10'}`}></div>
               </div>
               <div className="flex flex-col">
-                    <span className={`font-bold text-xs sm:text-sm md:text-base leading-tight transition-colors ${isScrolled ? 'text-[var(--zed-text-dark)]' : 'text-gray-800'}`}>
+                    <span className={`font-bold text-sm sm:text-base md:text-lg leading-tight transition-colors ${isScrolled ? 'text-[var(--zed-text-dark)]' : 'text-gray-800'}`}>
                     City Human Resource Management Office Job Portal
                   </span>
-                  <span className={`text-xs font-medium tracking-tight transition-colors mt-0.5 ${isScrolled ? 'text-accent' : 'text-gray-500'}`}>
+                  <span className={`text-xs sm:text-sm font-medium tracking-tight transition-colors mt-0.5 ${isScrolled ? 'text-accent' : 'text-gray-500'}`}>
                     City Government of Meycauayan
                   </span>
               </div>
@@ -139,7 +139,7 @@ const PublicHeader = () => {
       </AnimatePresence>
       
       {/* Dynamic Spacer */}
-      <div className="h-24 md:h-28"></div>
+      <div className="h-28 md:h-32"></div>
     </header>
   );
 };

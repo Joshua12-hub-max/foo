@@ -18,24 +18,24 @@ export default function WelcomeBanner({ user }: WelcomeBannerProps) {
   });
 
   return (
-    <div className="flex justify-between items-center bg-white border border-gray-200 rounded-lg p-3 mb-4">
-      <div className="flex items-center gap-3">
-        <div className="p-2 bg-gray-100 rounded-lg">
-           <TrendingUp className="w-4 h-4 text-gray-700" />
+    <div className="flex justify-between items-center bg-[var(--zed-bg-surface)] border border-[var(--zed-border-light)] rounded-[var(--radius-sm)] p-4 mb-6 shadow-sm">
+      <div className="flex items-center gap-4">
+        <div className="p-2.5 bg-white border border-[var(--zed-border-light)] rounded-[var(--radius-sm)] shadow-sm">
+           <TrendingUp className="w-5 h-5 text-[var(--zed-accent)]" />
         </div>
         <div>
-          <h2 className="text-base font-bold text-gray-900">
+          <h2 className="text-lg font-bold text-[var(--zed-text-dark)] tracking-tight">
             Welcome, {user?.name || "Admin"}
           </h2>
-          <p className="text-xs text-gray-500">{formattedDate}</p>
+          <p className="text-xs font-medium text-[var(--zed-text-muted)] tracking-wide">{formattedDate}</p>
         </div>
       </div>
 
-      <div className="bg-gray-900 text-center rounded-lg px-3 py-2 min-w-[50px]">
-        <div className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">
+      <div className="bg-[var(--zed-primary)] border border-[var(--zed-primary-hover)] text-center rounded-[var(--radius-lg)] px-4 py-2 min-w-[60px] shadow-lg">
+        <div className="text-[10px] font-bold text-blue-100 tracking-widest mb-0.5">
           {date.toLocaleString("en-US", { month: "short" })}
         </div>
-        <div className="text-xl font-bold text-white leading-none">
+        <div className="text-2xl font-black text-white leading-none font-mono">
           {date.getDate()}
         </div>
       </div>

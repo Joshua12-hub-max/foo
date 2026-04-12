@@ -257,7 +257,7 @@ const ScheduleInterviewModal: React.FC<ScheduleInterviewModalProps> = ({
               {/* Date and Time */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Date</label>
+                  <label className="block text-xs font-bold text-gray-500 tracking-wider mb-1.5 ml-1">Date</label>
                   <input 
                     type="date" 
                     {...register('date')}
@@ -269,7 +269,7 @@ const ScheduleInterviewModal: React.FC<ScheduleInterviewModalProps> = ({
                   )}
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Time</label>
+                  <label className="block text-xs font-bold text-gray-500 tracking-wider mb-1.5 ml-1">Time</label>
                   <input 
                     type="time" 
                     {...register('time')}
@@ -283,7 +283,7 @@ const ScheduleInterviewModal: React.FC<ScheduleInterviewModalProps> = ({
 
               {/* Platform */}
               <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 ml-1">Platform</label>
+                <label className="block text-xs font-bold text-gray-500 tracking-wider mb-2 ml-1">Platform</label>
                 <div className="grid grid-cols-3 gap-2">
                   <label className={`flex items-center justify-center gap-1.5 p-2.5 rounded-lg border cursor-pointer transition-all text-sm ${platform === 'Jitsi Meet' ? 'bg-orange-50 border-orange-200 text-orange-700 font-medium' : 'bg-white border-gray-200 hover:bg-gray-50'}`}>
                     <input 
@@ -354,7 +354,7 @@ const ScheduleInterviewModal: React.FC<ScheduleInterviewModalProps> = ({
               {/* Meeting Link */}
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Meeting Link</label>
+                  <label className="block text-xs font-bold text-gray-500 tracking-wider ml-1">Meeting Link</label>
                   {canAutoGenerate && (
                     <button
                       type="button"
@@ -405,7 +405,7 @@ const ScheduleInterviewModal: React.FC<ScheduleInterviewModalProps> = ({
 
               {/* Notes */}
               <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Message / Notes</label>
+                <label className="block text-xs font-bold text-gray-500 tracking-wider mb-1.5 ml-1">Message / Notes</label>
                 <textarea 
                   {...register('notes')}
                   className="w-full p-3 border border-gray-200 rounded-lg h-24 text-sm focus:ring-2 focus:ring-gray-200 outline-none transition-all resize-none"

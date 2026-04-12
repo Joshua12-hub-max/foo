@@ -15,7 +15,7 @@ import {
 import { eq, and, ne, or, sql, desc, lte, gte, getTableColumns } from 'drizzle-orm';
 import { createNotification, notifyAdmins, updateNotificationsByReference } from './notificationController.js';
 import { accrueCreditsForMonth } from '../services/leaveAccrualService.js';
-import * as LeaveService from '../services/leaveService.js';
+import * as leaveService from '../services/leaveService.js';
 import type { AuthenticatedHandler, AuthenticatedRequest } from '../types/index.js';
 import { type PaymentStatus, type ApplicationStatus, APPLICATION_STATUS } from '../types/leave.types.js';
 import { 
@@ -55,7 +55,7 @@ const getCurrentYear = (): number => new Date().getFullYear();
 
 const processDeemedApprovedLeaves = async (): Promise<void> => {
     try {
-        const policy = await LeaveService.getLeavePolicy();
+        const policy = await leaveService.getLeavePolicy();
         if (!policy) return;
 
         const gracePeriod = policy.deemedApprovalGracePeriod || 5;
@@ -80,7 +80,7 @@ const processDeemedApprovedLeaves = async (): Promise<void> => {
             const createdDate = new Date(application.createdAt || today);
             const createdStr = createdDate.toISOString().split('T')[0];
             
-            const workingDaysPassed = await LeaveService.calculateWorkingDays(createdStr, todayStr);
+            const workingDaysPassed = await leaveService.calculateWorkingDays(createdStr, todayStr);
 
             if (workingDaysPassed >= gracePeriod) {
                 const isSpecialLeave = policy.specialLeavesNoDeduction.includes(application.leaveType);
@@ -92,24 +92,24 @@ const processDeemedApprovedLeaves = async (): Promise<void> => {
                     const deductionAmount = Number(application.workingDays);
                     
                     if (application.crossChargedFrom) {
-                        const currentBalance = await LeaveService.getEmployeeBalance(application.employeeId, application.crossChargedFrom, year);
+                        const currentBalance = await leaveService.getEmployeeBalance(application.employeeId, application.crossChargedFrom, year);
                         finalSafeDeduction = Math.min(deductionAmount, currentBalance);
                         if (finalSafeDeduction > 0) {
-                            await LeaveService.updateBalance(application.employeeId, application.crossChargedFrom, -finalSafeDeduction, 'DEDUCTION', application.id, 'leave_application', `${application.leaveType} cross-charged (Deemed Approved)`, approvedBy);
+                            await leaveService.updateBalance(application.employeeId, application.crossChargedFrom, -finalSafeDeduction, 'DEDUCTION', application.id, 'leave_application', `${application.leaveType} cross-charged (Deemed Approved)`, approvedBy);
                         }
                         const remainder = deductionAmount - finalSafeDeduction;
                         if (remainder > 0) {
-                            await LeaveService.updateLWOPSummary(application.employeeId, remainder, year);
+                            await leaveService.updateLWOPSummary(application.employeeId, remainder, year);
                         }
                     } else {
-                        const currentBalance = await LeaveService.getEmployeeBalance(application.employeeId, primaryCreditType, year);
+                        const currentBalance = await leaveService.getEmployeeBalance(application.employeeId, primaryCreditType, year);
                         finalSafeDeduction = Math.min(deductionAmount, currentBalance);
                         if (finalSafeDeduction > 0) {
-                            await LeaveService.updateBalance(application.employeeId, primaryCreditType, -finalSafeDeduction, 'DEDUCTION', application.id, 'leave_application', `${application.leaveType} (Deemed Approved)`, approvedBy);
+                            await leaveService.updateBalance(application.employeeId, primaryCreditType, -finalSafeDeduction, 'DEDUCTION', application.id, 'leave_application', `${application.leaveType} (Deemed Approved)`, approvedBy);
                         }
                         const remainder = deductionAmount - finalSafeDeduction;
                         if (remainder > 0) {
-                            await LeaveService.updateLWOPSummary(application.employeeId, remainder, year);
+                            await leaveService.updateLWOPSummary(application.employeeId, remainder, year);
                         }
                     }
                 } else if (isSpecialLeave) {
@@ -126,7 +126,7 @@ const processDeemedApprovedLeaves = async (): Promise<void> => {
                 const finalWithoutPay = Number(application.workingDays) - finalSafeDeduction;
 
                 if (application.actualPaymentStatus === 'WITHOUT_PAY') {
-                    await LeaveService.updateLWOPSummary(application.employeeId, Number(application.workingDays), year);
+                    await leaveService.updateLWOPSummary(application.employeeId, Number(application.workingDays), year);
                 }
 
                 await db.update(leaveApplications)
@@ -155,7 +155,7 @@ const processDeemedApprovedLeaves = async (): Promise<void> => {
                 }
 
                 const eventType: 'LWOP' | 'Leave' = Number(finalWithoutPay) > 0 ? 'LWOP' : 'Leave';
-                await LeaveService.logToServiceRecord(
+                await leaveService.logToServiceRecord(
                   application.employeeId, 
                   eventType, 
                   String(application.startDate).split('T')[0], 
@@ -207,14 +207,14 @@ const calculateTardinessDeduction = async (
       return { daysEquivalent: 0, deductedFromVL: 0, chargedAsLWOP: 0 };
     }
 
-    const vlBalance = await LeaveService.getEmployeeBalance(employeeId, 'Vacation Leave', year);
+    const vlBalance = await leaveService.getEmployeeBalance(employeeId, 'Vacation Leave', year);
     
     let deductedFromVL = 0;
     let chargedAsLWOP = 0;
 
     if (vlBalance >= daysEquivalent) {
       deductedFromVL = daysEquivalent;
-      await LeaveService.updateBalance(
+      await leaveService.updateBalance(
         employeeId,
         'Vacation Leave',
         -daysEquivalent,
@@ -227,7 +227,7 @@ const calculateTardinessDeduction = async (
     } else if (vlBalance > 0) {
       deductedFromVL = vlBalance;
       chargedAsLWOP = daysEquivalent - vlBalance;
-      await LeaveService.updateBalance(
+      await leaveService.updateBalance(
         employeeId,
         'Vacation Leave',
         -vlBalance,
@@ -237,10 +237,10 @@ const calculateTardinessDeduction = async (
         `Tardiness/Undertime deduction for ${month}/${year} (partial)`,
         'SYSTEM'
       );
-      await LeaveService.updateLWOPSummary(employeeId, chargedAsLWOP, year);
+      await leaveService.updateLWOPSummary(employeeId, chargedAsLWOP, year);
     } else {
       chargedAsLWOP = daysEquivalent;
-      await LeaveService.updateLWOPSummary(employeeId, chargedAsLWOP, year);
+      await leaveService.updateLWOPSummary(employeeId, chargedAsLWOP, year);
     }
 
     await db.update(tardinessSummary)
@@ -272,7 +272,7 @@ export const applyLeave: AuthenticatedHandler = async (req, res) => {
       return;
     }
 
-    const policy = await LeaveService.getLeavePolicy();
+    const policy = await leaveService.getLeavePolicy();
     if (!policy) {
       res.status(500).json({ message: 'Internal Error: Leave policy not configured.' });
       return;
@@ -291,7 +291,7 @@ export const applyLeave: AuthenticatedHandler = async (req, res) => {
       return;
     }
 
-    const workingDays = await LeaveService.calculateWorkingDays(startDate, endDate);
+    const workingDays = await leaveService.calculateWorkingDays(startDate, endDate);
     if (workingDays === 0) {
       res.status(400).json({ message: 'Leave duration is 0 working days.' });
       return;
@@ -300,15 +300,15 @@ export const applyLeave: AuthenticatedHandler = async (req, res) => {
     const todayStr = new Date().toISOString().split('T')[0];
     const advanceFiling = policy.advanceFilingDays;
     if (advanceFiling.appliesTo.includes(leaveType)) {
-      const workingDaysAdvance = await LeaveService.calculateWorkingDays(todayStr, startDate);
-      if (workingDaysAdvance <= advanceFiling.days) {
+      const workingDaysAdvance = await leaveService.calculateWorkingDays(todayStr, startDate);
+      if (workingDaysAdvance < advanceFiling.days) {
         res.status(400).json({ message: `${leaveType} must be filed at least ${advanceFiling.days} working days in advance.` });
         return;
       }
     }
 
     if (leaveType === (policy.sickLeaveType || 'Sick Leave')) {
-      const workingDaysPassed = await LeaveService.calculateWorkingDays(endDate, todayStr);
+      const workingDaysPassed = await leaveService.calculateWorkingDays(endDate, todayStr);
       const window = policy.sickLeaveWindow.maxDaysAfterReturn;
       if (workingDaysPassed > window + 1) {
         res.status(400).json({ message: `Sick Leave must be filed within ${window} working days upon returning.` });
@@ -349,7 +349,7 @@ export const applyLeave: AuthenticatedHandler = async (req, res) => {
         return;
       }
 
-      const primaryBalance = await LeaveService.getEmployeeBalance(employeeId, primaryCreditType, year);
+      const primaryBalance = await leaveService.getEmployeeBalance(employeeId, primaryCreditType, year);
       if (primaryBalance >= workingDays) {
         daysWithPay = workingDays;
         actualPaymentStatus = 'WITH_PAY';
@@ -357,7 +357,7 @@ export const applyLeave: AuthenticatedHandler = async (req, res) => {
         daysWithPay = primaryBalance;
         const crossChargeType = policy.crossChargeMap[leaveType];
         if (crossChargeType) {
-          const crossBalance = await LeaveService.getEmployeeBalance(employeeId, crossChargeType, year);
+          const crossBalance = await leaveService.getEmployeeBalance(employeeId, crossChargeType, year);
           const remaining = workingDays - primaryBalance;
           if (crossBalance >= remaining) {
             daysWithPay = workingDays;
@@ -667,21 +667,21 @@ export const approveLeave: AuthenticatedHandler = async (req, res) => {
     }
 
     if (application.actualPaymentStatus === 'WITH_PAY' || application.actualPaymentStatus === 'PARTIAL') {
-      const policy = await LeaveService.getLeavePolicy();
+      const policy = await leaveService.getLeavePolicy();
       const year = new Date(application.startDate).getFullYear();
       const daysWithPayVal = Number(application.daysWithPay);
       const primaryCreditType = policy.leaveToCreditMap[application.leaveType];
 
       if (primaryCreditType && daysWithPayVal > 0) {
-        const primaryBalance = await LeaveService.getEmployeeBalance(application.employeeId, primaryCreditType, year);
+        const primaryBalance = await leaveService.getEmployeeBalance(application.employeeId, primaryCreditType, year);
         const deductionAmount = Math.min(daysWithPayVal, primaryBalance);
         if (deductionAmount > 0) {
-          await LeaveService.updateBalance(application.employeeId, primaryCreditType, -deductionAmount, 'DEDUCTION', appId, 'leave_application', remarks || `Approved ${application.leaveType}`, adminId);
+          await leaveService.updateBalance(application.employeeId, primaryCreditType, -deductionAmount, 'DEDUCTION', appId, 'leave_application', remarks || `Approved ${application.leaveType}`, adminId);
         }
         if (application.crossChargedFrom && daysWithPayVal > deductionAmount) {
-          const crossDeduction = Math.min(daysWithPayVal - deductionAmount, await LeaveService.getEmployeeBalance(application.employeeId, application.crossChargedFrom, year));
+          const crossDeduction = Math.min(daysWithPayVal - deductionAmount, await leaveService.getEmployeeBalance(application.employeeId, application.crossChargedFrom, year));
           if (crossDeduction > 0) {
-            await LeaveService.updateBalance(application.employeeId, application.crossChargedFrom, -crossDeduction, 'DEDUCTION', appId, 'leave_application', remarks || `Approved ${application.leaveType} (cross-charged)`, adminId);
+            await leaveService.updateBalance(application.employeeId, application.crossChargedFrom, -crossDeduction, 'DEDUCTION', appId, 'leave_application', remarks || `Approved ${application.leaveType} (cross-charged)`, adminId);
           }
         }
       }
@@ -689,11 +689,11 @@ export const approveLeave: AuthenticatedHandler = async (req, res) => {
 
     await db.update(leaveApplications).set({ status: 'Approved', approvedBy: adminId, approvedAt: sql`CURRENT_TIMESTAMP`, updatedAt: sql`CURRENT_TIMESTAMP` }).where(eq(leaveApplications.id, appId));
     const eventType: 'LWOP' | 'Leave' = application.leaveType.includes('Without Pay') ? 'LWOP' : 'Leave';
-    await LeaveService.logToServiceRecord(application.employeeId, eventType, application.startDate, application.endDate, application.leaveType, Number(application.workingDays), !!application.isWithPay, `Approved ${application.leaveType}`, appId, 'leave_application', adminId);
+    await leaveService.logToServiceRecord(application.employeeId, eventType, application.startDate, application.endDate, application.leaveType, Number(application.workingDays), !!application.isWithPay, `Approved ${application.leaveType}`, appId, 'leave_application', adminId);
 
     if (Number(application.daysWithoutPay) > 0) {
       const year = new Date(application.startDate).getFullYear();
-      await LeaveService.updateLWOPSummary(application.employeeId, Number(application.daysWithoutPay), year);
+      await leaveService.updateLWOPSummary(application.employeeId, Number(application.daysWithoutPay), year);
     }
 
     await updateNotificationsByReference({
@@ -1014,8 +1014,8 @@ export const updateEmployeeCredit: AuthenticatedHandler = async (req, res) => {
 
     const { creditType, balance, remarks } = validation.data;
     const year = getCurrentYear();
-    const currentBalance = await LeaveService.getEmployeeBalance(employeeId, creditType, year);
-    const result = await LeaveService.updateBalance(employeeId, creditType, balance - currentBalance, 'ADJUSTMENT', undefined, 'manual', remarks || 'Admin adjustment', adminId);
+    const currentBalance = await leaveService.getEmployeeBalance(employeeId, creditType, year);
+    const result = await leaveService.updateBalance(employeeId, creditType, balance - currentBalance, 'ADJUSTMENT', undefined, 'manual', remarks || 'Admin adjustment', adminId);
 
     if (result.success) {
       res.status(200).json({ message: 'Credit updated', previousBalance: currentBalance, newBalance: result.newBalance });
@@ -1049,8 +1049,7 @@ export const accrueMonthlyCredits: AuthenticatedHandler = async (req, res) => {
  */
 export const allocateDefaultCredits = async (employeeId: string): Promise<void> => {
   try {
-    const year = getCurrentYear();
-    const policy = await LeaveService.getLeavePolicy();
+    const policy = await leaveService.getLeavePolicy();
     
     if (!policy) {
         console.error('[LEAVE] Cannot allocate credits: Policy missing.');
@@ -1063,7 +1062,7 @@ export const allocateDefaultCredits = async (employeeId: string): Promise<void> 
     };
 
     for (const [creditType, amount] of Object.entries(initialAllocations)) {
-        await LeaveService.updateBalance(
+        await leaveService.updateBalance(
             employeeId,
             creditType,
             Number(amount),

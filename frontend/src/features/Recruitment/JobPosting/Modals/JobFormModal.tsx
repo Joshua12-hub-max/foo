@@ -293,7 +293,7 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
             {/* Plantilla Position Link */}
             <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 space-y-3">
               <div className="flex items-center justify-between">
-                <label className="block text-xs font-bold text-blue-700 uppercase tracking-wider ml-1">Link to Plantilla Position</label>
+                <label className="block text-xs font-bold text-blue-700 tracking-wider ml-1">Link to Plantilla Position</label>
                 {loadingPositions && <Loader2 className="w-3 h-3 animate-spin text-blue-600" />}
               </div>
               <Combobox
@@ -312,7 +312,7 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
 
             {/* File Upload */}
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Qualification Document (Upload)</label>
+              <label className="block text-xs font-bold text-gray-500 tracking-wider mb-1.5 ml-1">Qualification Document (Upload)</label>
               <div className="flex items-center gap-2">
                 <label 
                     htmlFor="file-upload" 
@@ -351,7 +351,7 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
             </div>
 
             <div className="relative group z-50">
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Department <span className="text-red-500">*</span></label>
+                <label className="block text-xs font-bold text-gray-500 tracking-wider mb-1.5 ml-1">Department <span className="text-red-500">*</span></label>
                 <Combobox
                     options={departmentOptions}
                     value={currentDept}
@@ -367,7 +367,7 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
             {/* Job Title & Location (Swapped Positions) */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Job Title <span className="text-red-500">*</span></label>
+                <label className="block text-xs font-bold text-gray-500 tracking-wider mb-1.5 ml-1">Job Title <span className="text-red-500">*</span></label>
                 <input 
                     type="text" 
                     placeholder="e.g. Software Engineer"
@@ -378,7 +378,7 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Location <span className="text-red-500">*</span></label>
+                <label className="block text-xs font-bold text-gray-500 tracking-wider mb-1.5 ml-1">Location <span className="text-red-500">*</span></label>
                 <input 
                   type="text" 
                   placeholder="e.g. Main Office"
@@ -392,7 +392,7 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
             {/* Duty Type, Employment Type & Status */}
             <div className="grid grid-cols-1 gap-4">
               <div className="z-40">
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Duty Type</label>
+                <label className="block text-xs font-bold text-gray-500 tracking-wider mb-1.5 ml-1">Duty Type</label>
                 <Combobox
                     options={DUTY_TYPE_OPTIONS}
                     value={currentDutyType}
@@ -408,7 +408,7 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
 
             <div className="grid grid-cols-2 gap-4">
               <div className="z-30">
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Employment Type</label>
+                <label className="block text-xs font-bold text-gray-500 tracking-wider mb-1.5 ml-1">Employment Type</label>
                 <Combobox
                     options={EMPLOYMENT_TYPE_OPTIONS}
                     value={currentEmploymentType}
@@ -421,7 +421,7 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
                  {errors.employmentType && <p className="text-red-500 text-xs mt-1 ml-1">{errors.employmentType.message}</p>}
               </div>
               <div className="z-30">
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Status</label>
+                <label className="block text-xs font-bold text-gray-500 tracking-wider mb-1.5 ml-1">Status</label>
                 <Combobox
                     options={JOB_STATUS_OPTIONS}
                     value={currentStatus}
@@ -496,7 +496,7 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
 
             {/* Application Email */}
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Application Email <span className="text-red-500">*</span></label>
+              <label className="block text-xs font-bold text-gray-500 tracking-wider mb-1.5 ml-1">Application Email <span className="text-red-500">*</span></label>
               <input 
                 type="email" 
                 placeholder="e.g. hr@company.com"
@@ -508,7 +508,7 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
 
             {/* Job Description */}
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Job Description <span className="text-red-500">*</span></label>
+              <label className="block text-xs font-bold text-gray-500 tracking-wider mb-1.5 ml-1">Job Description <span className="text-red-500">*</span></label>
               <textarea 
                 rows={4}
                 placeholder="Describe the role and responsibilities..."
@@ -520,7 +520,7 @@ const JobFormModal: React.FC<JobFormModalProps> = ({
 
             {/* Requirements (Structured) */}
             <div className="space-y-4 pt-4 border-t border-gray-100">
-              <h3 className="block text-sm font-bold text-gray-800 uppercase tracking-wider mb-2">Qualifications & Requirements</h3>
+              <h3 className="block text-sm font-bold text-gray-800 tracking-wider mb-2">Qualifications & Requirements</h3>
               
               <div className="z-20">
                  <label className="block text-xs font-bold text-gray-500 tracking-wider mb-1.5 ml-1">Education</label>

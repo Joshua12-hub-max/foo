@@ -1,10 +1,12 @@
-import React, { forwardRef, useImperativeHandle, Ref } from 'react';
+import React, { forwardRef, useImperativeHandle } from 'react';
+import { useOutletContext } from 'react-router-dom';
 import { useUIStore } from '@/stores';
-import { AlertTriangle, Plus } from 'lucide-react';
+import { AlertTriangle, Plus, RefreshCw } from 'lucide-react';
 import { useMemoManagement, MemoFilters, MemoTable, MemoFormModal, MemoViewModal, MemoDeleteModal } from '@features/EmployeeManagement/Admin/Memos';
 
 interface OutletContext {
   sidebarOpen?: boolean;
+  searchQuery?: string;
 }
 
 interface AdminMemoPageProps {
@@ -17,6 +19,7 @@ export interface AdminMemoPageRef {
 
 const AdminMemoPage = forwardRef<AdminMemoPageRef, AdminMemoPageProps>(({ hideHeader = false }, ref) => {
   const sidebarOpen = useUIStore((state) => state.sidebarOpen);
+  const { searchQuery } = useOutletContext<OutletContext>();
 
   const {
     memos, employees, loading, error, saving,
@@ -33,6 +36,13 @@ const AdminMemoPage = forwardRef<AdminMemoPageRef, AdminMemoPageProps>(({ hideHe
     openAddModal: openCreateForm
   }));
 
+  // Sync global search query to memo filters if present
+  React.useEffect(() => {
+    if (searchQuery !== undefined) {
+      handleFilterChange('search', searchQuery);
+    }
+  }, [searchQuery, handleFilterChange]);
+
   return (
     <div className="w-full">
       {!hideHeader && (
@@ -47,6 +57,7 @@ const AdminMemoPage = forwardRef<AdminMemoPageRef, AdminMemoPageProps>(({ hideHe
               onClick={() => loadData()}
               disabled={loading}
             >
+              <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
               Refresh
             </button>
             <button 

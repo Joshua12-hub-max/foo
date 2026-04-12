@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useUIStore } from '@/stores';
 import { ArrowLeft } from 'lucide-react';
 
 import { fetchEmployeeProfile, revertEmployeeStatus } from '@/api/employeeApi';
@@ -17,7 +16,6 @@ import ProfileSkeleton from '@features/EmployeeManagement/Employee/Portal/Profil
 const EmployeeProfile: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const sidebarOpen = useUIStore((state) => state.sidebarOpen);
   
   const [profile, setProfile] = useState<EmployeeDetailed | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -62,67 +60,61 @@ const EmployeeProfile: React.FC = () => {
   };
 
   if (loading) return (
-    <div className={`min-h-screen flex flex-col bg-white rounded-xl shadow-sm border border-gray-200 p-0 w-full overflow-hidden text-gray-800 transition-all duration-300`}>
-      <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-100 px-6 pt-6">
-        <button 
-          onClick={() => navigate('/admin-dashboard/employees')}
-          className="flex items-center gap-2 text-gray-500 hover:text-gray-800 transition-colors"
-        >
-          <ArrowLeft size={18} />
-          <span className="font-bold text-sm">Return to Directory</span>
-        </button>
-      </div>
+    <div className="min-h-screen flex flex-col bg-[var(--zed-bg-surface)] p-8">
       <ProfileSkeleton />
     </div>
   );
   
   if (!profile) return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="text-center p-8 bg-white rounded-2xl shadow-sm border border-gray-100 max-w-md">
-        <h2 className="text-xl font-bold text-gray-800 mb-2">Profile Not Found</h2>
-        <p className="text-gray-500 mb-6">The employee record you are looking for might have been removed or moved.</p>
+    <div className="min-h-screen flex items-center justify-center bg-[var(--zed-bg-surface)] p-8">
+      <div className="text-center p-10 bg-white rounded-[var(--radius-lg)] shadow-sm border border-[var(--zed-border-light)] max-w-md">
+        <h2 className="text-xl font-bold text-[var(--zed-text-dark)] mb-2">Profile not found</h2>
+        <p className="text-[var(--zed-text-muted)] mb-8 font-medium">The employee record you are looking for might have been removed or moved.</p>
         <button 
           onClick={() => navigate('/admin-dashboard/employees')}
-          className="bg-gray-900 text-white px-6 py-2 rounded-xl font-bold"
+          className="bg-[var(--zed-primary)] text-white px-8 py-3 rounded-[var(--radius-md)] font-black text-xs shadow-lg shadow-[var(--zed-primary)]/20 hover:bg-[var(--zed-primary-hover)] transition-all active:scale-95"
         >
-          Back to Directory
+          Return to directory
         </button>
       </div>
     </div>
   );
 
   return (
-    <div className={`min-h-screen flex flex-col bg-gray-50 p-0 w-full overflow-hidden text-gray-800 transition-all duration-300`}>
-
-      {/* Navigation Header */}
-      <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-200 bg-white px-6 pt-6 sticky top-0 z-10">
+    <div className="min-h-screen flex flex-col bg-[var(--zed-bg-surface)] animate-in fade-in duration-500">
+      
+      {/* Navigation Header - Fixed at top, aligned width with content below */}
+      <div className="sticky top-0 z-20 bg-[var(--zed-bg-surface)]/80 backdrop-blur-md pt-6 pb-4 mb-4 border-b border-[var(--zed-border-light)] px-8">
         <button 
           onClick={() => navigate('/admin-dashboard/employees')}
-          className="flex items-center gap-2 text-gray-500 hover:text-gray-800 transition-colors"
+          className="flex items-center gap-2 text-[var(--zed-text-muted)] hover:text-black transition-all group"
         >
-          <ArrowLeft size={18} />
-          <span className="font-bold text-sm">Return to Directory</span>
+          <div className="p-2 rounded-full group-hover:bg-white transition-all shadow-none group-hover:shadow-sm border border-transparent group-hover:border-[var(--zed-border-light)]">
+            <ArrowLeft size={18} className="group-hover:-translate-x-0.5 transition-transform" />
+          </div>
+          <span className="font-black text-xs tracking-widest uppercase">Return to directory</span>
         </button>
       </div>
 
-      {/* Profile Header with HR Details */}
-      <div className="mb-6 px-6">
-        <ProfileHeader 
-            profile={profile}
-            isAdmin={true}
-            onStatusToggle={() => {
-              const newStatus = profile.employmentStatus === 'Active' ? 'Suspended' : 'Active';
-              handleStatusChange(profile.id, newStatus);
-            }}
-            statusLoading={false}
-        />
-      </div>
+      {/* Main Content Area - px-8 padding matches the navigation header above */}
+      <div className="px-8 pb-12 space-y-8">
+        
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <ProfileHeader 
+              profile={profile}
+              isAdmin={true}
+              onStatusToggle={() => {
+                const newStatus = profile.employmentStatus === 'Active' ? 'Suspended' : 'Active';
+                handleStatusChange(profile.id, newStatus);
+              }}
+              statusLoading={false}
+          />
+        </div>
 
-      {/* Primary Content: PDS Form Wizard */}
-      <div className="px-6 pb-8">
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-[var(--radius-lg)] border border-[var(--zed-border-light)] shadow-sm overflow-hidden">
           <PDSFormWizard employeeId={Number(id)} />
         </div>
+
       </div>
     </div>
   );

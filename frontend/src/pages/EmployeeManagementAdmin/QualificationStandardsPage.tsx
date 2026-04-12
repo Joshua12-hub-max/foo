@@ -164,7 +164,7 @@ export const QualificationStandardsPage: React.FC<QualificationStandardsPageProp
               <thead className="bg-gray-200 shadow-md text-gray-700">
                 <tr>
                   <th className="px-6 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap">Position Title</th>
-                  <th className="px-6 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap">SG</th>
+                  <th className="px-6 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap">Sg</th>
                   <th className="px-6 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap">Education</th>
                   <th className="px-6 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap">Experience</th>
                   <th className="px-6 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap">Training</th>

@@ -157,7 +157,7 @@ const DepartmentCard: React.FC<{ dept: DepartmentNode; expanded: boolean; onTogg
         </div>
         <div className="flex items-center gap-2 text-blue-200 mb-2">
            <Building2 size={14} />
-           <span className="text-xs font-bold uppercase tracking-wider">{dept.name}</span>
+           <span className="text-xs font-bold tracking-wider">{dept.name}</span>
         </div>
         
         {/* Head Profile */}
@@ -185,7 +185,7 @@ const DepartmentCard: React.FC<{ dept: DepartmentNode; expanded: boolean; onTogg
             className="bg-gray-50 border-t border-gray-100"
           >
             <div className="p-2 flex items-center justify-between bg-gray-100/50 border-b border-gray-200 px-4">
-               <span className="text-[10px] font-bold text-gray-500 uppercase flex items-center gap-1">
+               <span className="text-[10px] font-bold text-gray-500 flex items-center gap-1">
                  <Users size={10} /> Workforce
                </span>
                <span className="text-[10px] font-bold text-gray-500 bg-gray-200 px-1.5 rounded-full">{dept.positions.length}</span>

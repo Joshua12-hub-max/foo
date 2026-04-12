@@ -554,14 +554,14 @@ const YesNo = ({ value, onChange, label }: { value: string; onChange: (v: string
   <Field label={label}>
     <div className="flex gap-2">
       {["Yes", "No"].map(opt => (
-        <button key={opt} onClick={() => onChange(opt)} className={`flex-1 py-2.5 border rounded-lg text-[10px] font-bold transition-all ${value === opt ? "bg-gray-900 border-gray-900 text-white shadow-md shadow-gray-900/10" : "bg-white border-gray-200 text-gray-400 hover:border-gray-300"}`}>{opt}</button>
+        <button key={opt} onClick={() => onChange(opt)} className={`flex-1 py-2.5 border rounded-[var(--radius-md)] text-[10px] font-bold transition-all ${value === opt ? "bg-[var(--zed-primary)] border-[var(--zed-primary)] text-white shadow-md shadow-[var(--zed-primary)]/10" : "bg-white border-gray-200 text-gray-400 hover:border-gray-300"}`}>{opt}</button>
       ))}
     </div>
   </Field>
 );
 
 const AddButton = ({ onClick, label }: { onClick: () => void; label: string }) => (
-  <button onClick={onClick} className="w-full py-3 border-2 border-dashed border-gray-100 rounded-lg text-[10px] font-bold text-gray-400 hover:border-gray-300 hover:text-gray-600 hover:bg-gray-50 transition-all active:scale-[0.98] mt-4">+ {label}</button>
+  <button onClick={onClick} className="w-full py-3 border-2 border-dashed border-gray-100 rounded-[var(--radius-md)] text-[10px] font-bold text-gray-400 hover:border-[var(--zed-primary)] hover:text-[var(--zed-primary)] hover:bg-blue-50/30 transition-all active:scale-[0.98] mt-4">+ {label}</button>
 );
 
 const EduRow = ({ data, onChange }: { data: PDSFormData["education"]["Elementary"]; onChange: (k: string, v: string) => void }) => (
@@ -601,7 +601,7 @@ const StepPersonal = ({ data, set, metadata, isIdTakenMap }: { data: PDSFormData
         <div className="flex gap-4 pt-3">
           {["Male", "Female"].map(s => (
             <label key={s} className="flex items-center gap-2 text-xs font-bold text-gray-600 cursor-pointer">
-              <input type="radio" name="sex" className="w-4 h-4 rounded-full border-gray-300 accent-blue-600" checked={data.sex === s} onChange={() => set("sex", s)} /> {s}
+              <input type="radio" name="sex" className="w-4 h-4 rounded-full border-gray-300 accent-[var(--zed-primary)]" checked={data.sex === s} onChange={() => set("sex", s)} /> {s}
             </label>
           ))}
         </div>
@@ -618,7 +618,7 @@ const StepPersonal = ({ data, set, metadata, isIdTakenMap }: { data: PDSFormData
           <div className="flex gap-4 pt-3">
             {["By Birth", "By Naturalization"].map(t => (
               <label key={t} className="flex items-center gap-2 text-xs font-bold text-gray-600 cursor-pointer">
-                <input type="radio" name="citizenshipType" className="w-4 h-4 rounded-full border-gray-300 accent-blue-600" checked={data.citizenshipType === t} onChange={() => set("citizenshipType", t)} /> {t}
+                <input type="radio" name="citizenshipType" className="w-4 h-4 rounded-full border-gray-300 accent-[var(--zed-primary)]" checked={data.citizenshipType === t} onChange={() => set("citizenshipType", t)} /> {t}
               </label>
             ))}
           </div>
@@ -688,7 +688,7 @@ const StepPersonal = ({ data, set, metadata, isIdTakenMap }: { data: PDSFormData
     <Divider label="17. Residential Address" /><PDSAddressSelector prefix="res" data={data} set={set} />
     <Divider label="18. Permanent Address" />
     <div className="flex flex-col gap-4">
-      <label className="flex items-center gap-2 text-[11px] font-bold text-gray-500 cursor-pointer mb-2 pl-1"><input type="checkbox" className="w-4 h-4 rounded border-gray-300 accent-blue-600" checked={data.sameAddress} onChange={e => set("sameAddress", e.target.checked)} /> Same as residential</label>
+      <label className="flex items-center gap-2 text-[11px] font-bold text-gray-500 cursor-pointer mb-2 pl-1"><input type="checkbox" className="w-4 h-4 rounded border-gray-300 accent-[var(--zed-primary)]" checked={data.sameAddress} onChange={e => set("sameAddress", e.target.checked)} /> Same as residential</label>
       {!data.sameAddress && <PDSAddressSelector prefix="perm" data={data} set={set} />}
     </div>
     <Divider label="Contact Details" />
@@ -1361,22 +1361,22 @@ const PDSFormWizard: React.FC<PDSFormWizardProps> = ({ employeeId }) => {
 
   const set = useCallback(<K extends keyof PDSFormData>(key: K, value: PDSFormData[K]) => { setData((prev: PDSFormData) => ({ ...prev, [key]: value })); }, []);
 
-  if (isSubmitting) return <div className="w-full min-h-[400px] flex flex-col items-center justify-center gap-4 bg-white rounded-3xl border border-gray-100 shadow-sm"><div className="w-12 h-12 border-4 border-gray-100 border-t-gray-900 rounded-full animate-spin" /><p className="text-xs font-bold text-gray-400">Loading PDS Data...</p></div>;
+  if (isSubmitting) return <div className="w-full min-h-[400px] flex flex-col items-center justify-center gap-4 bg-white rounded-[var(--radius-lg)] border border-[var(--zed-border-light)] shadow-sm"><div className="w-12 h-12 border-4 border-gray-100 border-t-[var(--zed-primary)] rounded-full animate-spin" /><p className="text-xs font-bold text-[var(--zed-text-muted)]">Loading PDS Data...</p></div>;
 
   return (
-    <div className="w-full bg-gray-50 min-h-screen font-sans p-6 pb-24">
+    <div className="w-full bg-[var(--zed-bg-surface)] min-h-screen font-sans p-6 pb-24">
       <div className="max-w-[1400px] mx-auto">
         <div className="flex items-center justify-between mb-8 px-2">
-          <div><h1 className="text-xl font-black text-gray-800 tracking-tight">Personal Data Sheet</h1><p className="text-[10px] text-gray-400 font-bold mt-1">CS Form 212 (Revised 2025)</p></div>
+          <div><h1 className="text-xl font-black text-[var(--zed-text-dark)] tracking-tight">Personal Data Sheet</h1><p className="text-[10px] text-[var(--zed-text-muted)] font-bold mt-1">CS Form 212 (Revised 2025)</p></div>
           <div className="flex items-center gap-3">
-            <button onClick={handleSave} disabled={isSubmitting} className="px-6 py-2.5 bg-gray-900 text-white rounded-xl font-bold text-xs flex items-center gap-2 hover:bg-black transition-all disabled:opacity-50">
+            <button onClick={handleSave} disabled={isSubmitting} className="px-6 py-2.5 bg-[var(--zed-primary)] text-white rounded-[var(--radius-md)] font-bold text-xs flex items-center gap-2 hover:bg-[var(--zed-primary-hover)] transition-all disabled:opacity-50">
               {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} {isSubmitting ? "Synchronizing..." : "Save Changes"}
             </button>
           </div>
         </div>
-        <div className="sticky top-6 z-10 mb-8"><div className="bg-white border border-gray-200 rounded-xl p-2 shadow-sm flex gap-1.5 overflow-x-auto no-scrollbar scroll-smooth">
+        <div className="sticky top-6 z-10 mb-8"><div className="bg-white border border-[var(--zed-border-light)] rounded-[var(--radius-lg)] p-2 shadow-sm flex gap-1.5 overflow-x-auto no-scrollbar scroll-smooth">
           {STEPS.map((s) => (
-            <button key={s.id} onClick={() => setActiveSection(s.id)} className={`flex flex-col items-center justify-center flex-1 min-w-[100px] lg:min-w-[120px] px-4 py-3 rounded-lg transition-all duration-200 shrink-0 ${activeSection === s.id ? "bg-gray-900 text-white shadow-lg shadow-gray-900/10 active:scale-95" : "text-gray-500 hover:bg-gray-50 hover:text-gray-800"}`}><span className="text-[9px] font-black opacity-50 mb-1">{s.roman}</span><span className="text-[10px] font-bold whitespace-nowrap leading-none">{s.label}</span></button>
+            <button key={s.id} onClick={() => setActiveSection(s.id)} className={`flex flex-col items-center justify-center flex-1 min-w-[100px] lg:min-w-[120px] px-4 py-3 rounded-[var(--radius-md)] transition-all duration-200 shrink-0 ${activeSection === s.id ? "bg-[var(--zed-primary)] text-white shadow-lg shadow-[var(--zed-primary)]/10 active:scale-95" : "text-[var(--zed-text-muted)] hover:bg-[var(--zed-bg-surface)] hover:text-[var(--zed-text-dark)]"}`}><span className="text-[9px] font-black opacity-50 mb-1">{s.roman}</span><span className="text-[10px] font-bold whitespace-nowrap leading-none">{s.label}</span></button>
           ))}
         </div></div>
         <div className="w-full"><div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">

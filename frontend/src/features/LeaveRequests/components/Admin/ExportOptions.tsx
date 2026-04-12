@@ -16,7 +16,7 @@ const ExportOptions: React.FC<ExportOptionsProps> = ({ onExportCSV, onExportPDF,
         className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-teal-700 bg-teal-50 rounded-lg hover:bg-teal-100 transition-colors disabled:opacity-50"
       >
         <FileSpreadsheet size={16} />
-        <span>CSV</span>
+        <span>Csv</span>
       </button>
       <button
         onClick={onExportPDF}

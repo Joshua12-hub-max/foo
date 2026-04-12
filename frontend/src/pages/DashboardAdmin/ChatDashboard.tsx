@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useOutletContext } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { chatApi, ChatConversation, ChatMessage } from '@/api/chatApi';
 import { 
@@ -8,10 +9,10 @@ import {
 import { useToastStore, useAuthStore } from '@/stores';
 
 const ChatDashboard = () => {
+    const { searchQuery } = useOutletContext<{ searchQuery: string }>();
     const [selectedId, setSelectedId] = useState<number | null>(null);
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [input, setInput] = useState('');
-    const [searchTerm, setSearchTerm] = useState('');
     const [editingId, setEditingId] = useState<number | null>(null);
     const [editInput, setEditInput] = useState('');
     const [deletingId, setDeletingId] = useState<number | null>(null);
@@ -125,8 +126,8 @@ const ChatDashboard = () => {
     });
 
     const filteredConversations = conversations.filter(c => 
-        c.applicantName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.applicantEmail.toLowerCase().includes(searchTerm.toLowerCase())
+        c.applicantName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        c.applicantEmail.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
     const selectedConv = conversations.find(c => c.id === selectedId);
@@ -140,23 +141,13 @@ const ChatDashboard = () => {
                 <div className="bg-white border border-slate-200 rounded-3xl flex flex-col overflow-hidden shadow-sm h-full">
                     <div className="p-5 border-b border-slate-100 flex flex-col gap-4">
                         <h2 className="text-lg font-semibold text-slate-800 leading-tight">Live Support</h2>
-                        <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                            <input 
-                                type="text"
-                                placeholder="Search conversations..."
-                                className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-slate-900/5 outline-none font-normal text-xs"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                            />
-                        </div>
                     </div>
 
                     <div className="flex-1 overflow-y-auto">
                         {loadingConv ? (
                             <div className="p-10 flex flex-col items-center gap-3">
                                 <Loader2 className="animate-spin text-slate-400" />
-                                <span className="text-[10px] font-medium uppercase text-slate-400">Loading Chats...</span>
+                                <span className="text-[10px] font-medium text-slate-400">Loading chats...</span>
                             </div>
                         ) : filteredConversations.length === 0 ? (
                             <div className="p-10 text-center text-slate-400 italic text-sm">
@@ -283,29 +274,29 @@ const ChatDashboard = () => {
                                                             autoFocus
                                                         />
                                                         <div className="flex justify-end gap-2">
-                                                            <button onClick={() => setEditingId(null)} className="text-[10px] font-semibold uppercase text-slate-400 hover:text-slate-600">Cancel</button>
-                                                            <button onClick={() => handleEdit(msg.id)} className="text-[10px] font-semibold uppercase text-slate-600 hover:text-slate-900">Save</button>
+                                                            <button onClick={() => setEditingId(null)} className="text-[10px] font-semibold text-slate-400 hover:text-slate-600">Cancel</button>
+                                                            <button onClick={() => handleEdit(msg.id)} className="text-[10px] font-semibold text-slate-600 hover:text-slate-900">Save</button>
                                                         </div>
                                                     </div>
                                                 ) : deletingId === msg.id ? (
                                                     <div className="flex flex-col gap-2 min-w-[180px] p-1">
-                                                        <p className="text-[10px] font-bold text-red-500 uppercase mb-1">Delete Message?</p>
+                                                        <p className="text-[10px] font-bold text-red-500 mb-1">Delete message?</p>
                                                         <div className="flex flex-col gap-1.5">
                                                             <button 
                                                                 onClick={() => handleDelete(msg.id, 'everyone')}
-                                                                className="w-full py-2 bg-red-500 text-white text-[9px] font-bold uppercase rounded-lg hover:bg-red-600 transition-all"
+                                                                className="w-full py-2 bg-red-500 text-white text-[9px] font-bold rounded-lg hover:bg-red-600 transition-all"
                                                             >
                                                                 Everyone
                                                             </button>
                                                             <button 
                                                                 onClick={() => handleDelete(msg.id, 'me')}
-                                                                className="w-full py-2 bg-slate-200 text-slate-600 text-[9px] font-bold uppercase rounded-lg hover:bg-slate-300 transition-all"
+                                                                className="w-full py-2 bg-slate-200 text-slate-600 text-[9px] font-bold rounded-lg hover:bg-slate-300 transition-all"
                                                             >
                                                                 Me Only
                                                             </button>
                                                             <button 
                                                                 onClick={() => setDeletingId(null)}
-                                                                className="w-full py-1.5 text-[9px] font-bold text-slate-400 hover:text-slate-600 uppercase transition-colors"
+                                                                className="w-full py-1.5 text-[9px] font-bold text-slate-400 hover:text-slate-600 transition-colors"
                                                             >
                                                                 Cancel
                                                             </button>
@@ -319,15 +310,15 @@ const ChatDashboard = () => {
                                         
                                         <div className="flex items-center gap-2 mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                                             {msg.isEdited && !msg.isDeletedForEveryone && (
-                                                <span className="text-[9px] font-semibold text-slate-400 uppercase">Edited</span>
+                                                <span className="text-[9px] font-semibold text-slate-400">Edited</span>
                                             )}
-                                            <span className="text-[9px] font-medium text-slate-400 uppercase">
+                                            <span className="text-[9px] font-medium text-slate-400">
                                                 {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                             </span>
                                             {msg.senderType === 'Administrator' && (
                                                 <button 
                                                     onClick={() => setDeletingId(msg.id)}
-                                                    className="text-[9px] font-semibold text-slate-400 hover:text-slate-600 uppercase"
+                                                    className="text-[9px] font-semibold text-slate-400 hover:text-slate-600"
                                                 >
                                                     Remove
                                                 </button>

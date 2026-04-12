@@ -36,7 +36,7 @@ const ApplicantDetailModal: React.FC<ApplicantDetailModalProps> = ({ isOpen, onC
     <div className="bg-white rounded-xl border border-gray-100 mb-5 overflow-hidden">
       <div className="bg-[#F8F9FA] px-6 py-3 border-b border-gray-100 flex items-center gap-2">
         <Icon size={14} className="text-gray-400" />
-        <h3 className="font-bold text-gray-500 text-[10px] uppercase tracking-widest">{title}</h3>
+        <h3 className="font-bold text-gray-500 text-[10px] tracking-widest">{title}</h3>
       </div>
       <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {children}
@@ -46,7 +46,7 @@ const ApplicantDetailModal: React.FC<ApplicantDetailModalProps> = ({ isOpen, onC
 
   const DataField = ({ label, value, icon: Icon, fullWidth = false }: { label: string, value: string | null | undefined, icon?: LucideIcon, fullWidth?: boolean }) => (
     <div className={`space-y-1.5 ${fullWidth ? 'md:col-span-2 lg:col-span-3' : ''}`}>
-      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1.5 ml-0.5">
+      <label className="text-[10px] font-bold text-gray-400 tracking-widest flex items-center gap-1.5 ml-0.5">
         {label}
       </label>
       <div className="bg-gray-50/50 px-4 py-2.5 rounded-lg border border-gray-100 min-h-[42px] flex items-center">
@@ -77,7 +77,7 @@ const ApplicantDetailModal: React.FC<ApplicantDetailModalProps> = ({ isOpen, onC
                 {applicant.firstName} {applicant.lastName}
               </h2>
               <div className="flex items-center gap-3">
-                <span className="text-[10px] font-bold text-gray-500 bg-gray-100 px-2.5 py-1 rounded border border-gray-200 uppercase tracking-wider">
+                <span className="text-[10px] font-bold text-gray-500 bg-gray-100 px-2.5 py-1 rounded border border-gray-200 tracking-wider">
                   {applicant.jobTitle}
                 </span>
                 <span className="text-[10px] font-semibold text-gray-400 flex items-center gap-1.5">
@@ -100,20 +100,20 @@ const ApplicantDetailModal: React.FC<ApplicantDetailModalProps> = ({ isOpen, onC
           {/* Summary Cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
             <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
-              <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider mb-1">Status</p>
+              <p className="text-[10px] font-bold text-gray-400 tracking-wider mb-1">Status</p>
               <p className="text-sm font-bold text-gray-700">{applicant.stage || 'Applied'}</p>
             </div>
             <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 overflow-hidden">
-              <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider mb-1">Email</p>
+              <p className="text-[10px] font-bold text-gray-400 tracking-wider mb-1">Email</p>
               <p className="text-sm font-bold text-gray-700 truncate">{applicant.email}</p>
             </div>
             <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
-              <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider mb-1">Phone</p>
+              <p className="text-[10px] font-bold text-gray-400 tracking-wider mb-1">Phone</p>
               <p className="text-sm font-bold text-gray-700">{applicant.phoneNumber}</p>
             </div>
             <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
-              <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider mb-1">Source</p>
-              <p className="text-sm font-bold text-gray-700 uppercase">{applicant.source}</p>
+              <p className="text-[10px] font-bold text-gray-400 tracking-wider mb-1">Source</p>
+              <p className="text-sm font-bold text-gray-700">{applicant.source}</p>
             </div>
           </div>
 
@@ -129,7 +129,7 @@ const ApplicantDetailModal: React.FC<ApplicantDetailModalProps> = ({ isOpen, onC
                 </div>
                 
                 <div className="shrink-0 flex flex-col">
-                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Photo</label>
+                    <label className="text-[10px] font-bold text-gray-400 tracking-wider mb-2">Photo</label>
                     <div className="w-32 h-32 bg-gray-50 rounded-xl border border-gray-100 overflow-hidden flex items-center justify-center">
                         {applicant.photoPath ? (
                             <img src={`${apiUrl}/uploads/resumes/${applicant.photoPath}`} alt="Applicant" className="w-full h-full object-cover" />
@@ -151,7 +151,7 @@ const ApplicantDetailModal: React.FC<ApplicantDetailModalProps> = ({ isOpen, onC
 
           <DetailSection title="Residency & Contact" icon={MapPin}>
             <div className="md:col-span-2 lg:col-span-3 mb-1">
-                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Meycauayan Resident</label>
+                <label className="text-[10px] font-bold text-gray-400 tracking-wider">Meycauayan Resident</label>
                 <div className="mt-1">
                     <span className={`px-3 py-1 rounded text-xs font-bold border ${applicant.isMeycauayanResident ? 'bg-gray-100 text-gray-700 border-gray-200' : 'bg-white text-gray-300 border-gray-100'}`}>
                         {applicant.isMeycauayanResident ? 'Resident' : 'Non-Resident'}
@@ -169,14 +169,14 @@ const ApplicantDetailModal: React.FC<ApplicantDetailModalProps> = ({ isOpen, onC
             <DataField label="GSIS" value={applicant.gsisNumber} />
             <DataField label="Pag-IBIG" value={applicant.pagibigNumber} />
             <DataField label="PhilHealth" value={applicant.philhealthNumber} />
-            <DataField label="UMID" value={applicant.umidNumber} />
+            <DataField label="Umid" value={applicant.umidNumber} />
             <DataField label="PhilSys" value={applicant.philsysId} />
-            <DataField label="TIN" value={applicant.tinNumber} />
+            <DataField label="Tin" value={applicant.tinNumber} />
           </DetailSection>
 
           <DetailSection title="Professional Qualifications" icon={BadgeCheck}>
             <div className="md:col-span-2 lg:col-span-3">
-              <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Eligibility</h4>
+              <h4 className="text-[10px] font-bold text-gray-400 tracking-widest mb-3">Eligibility</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                 <DataField label="Name / Title" value={applicant.eligibility} />
                 <DataField label="Category" value={applicant.eligibilityType?.replace(/_/g, ' ').toUpperCase()} />

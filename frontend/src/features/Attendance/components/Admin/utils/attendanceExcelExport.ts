@@ -1,5 +1,6 @@
 import ExcelJS from 'exceljs';
 import { AttendanceRecord } from '@/types';
+import { formatDuration } from '@/utils/formatters';
 
 interface ExportOptions {
   title?: string;
@@ -56,24 +57,6 @@ const getEmployeeName = (record: AttendanceRecord): string => {
   if (record.name) return record.name;
   if (record.employeeName) return record.employeeName;
   return `Employee #${record.employeeId}`;
-};
-
-/**
- * Make minutes readable but retain numeric value in excel formulas if possible
- * Since this function returns a string for display in other formats, we'll
- * keep it for CSV, but in Excel we will pass raw numbers.
- */
-const formatMinutes = (value: string | number): string => {
-  const mins = typeof value === 'string' ? parseInt(value, 10) : Number(value || 0);
-  if (isNaN(mins) || mins <= 0) return '0';
-  
-  const hours = Math.floor(mins / 60);
-  const remainingMinutes = mins % 60;
-  
-  if (hours > 0) {
-    return `${hours}h${remainingMinutes > 0 ? ` ${remainingMinutes}m` : ''}`;
-  }
-  return `${remainingMinutes}m`;
 };
 
 /**
@@ -166,8 +149,8 @@ export const exportAttendanceToExcel = async (
       { header: 'Date', key: 'date', width: 14 },
       { header: 'Time In', key: 'timeIn', width: 12 },
       { header: 'Time Out', key: 'timeOut', width: 12 },
-      { header: 'Late (min)', key: 'late', width: 10 },
-      { header: 'Undertime (min)', key: 'undertime', width: 14 },
+      { header: 'Late', key: 'late', width: 10 },
+      { header: 'Undertime', key: 'undertime', width: 14 },
       { header: 'Present', key: 'present', width: 10 },
       { header: 'Late', key: 'lateStatus', width: 10 },
       { header: 'Undertime', key: 'undertimeStatus', width: 12 },
@@ -204,7 +187,7 @@ export const exportAttendanceToExcel = async (
     worksheet.getRow(3).height = 18;
 
     // Add header row
-    const headerRow = worksheet.addRow(['Employee ID', 'Employee Name', 'Department', 'Date', 'Time In', 'Time Out', 'Late (min)', 'Undertime (min)', 'Present', 'Late', 'Undertime', 'Absent', 'Leave/RD']);
+    const headerRow = worksheet.addRow(['Employee ID', 'Employee Name', 'Department', 'Date', 'Time In', 'Time Out', 'Late', 'Undertime', 'Present', 'Late', 'Undertime', 'Absent', 'Leave/RD']);
     applyHeaderStyle(headerRow);
 
     // Group data by department if requested
@@ -260,8 +243,8 @@ export const exportAttendanceToExcel = async (
         formatDate(record.date),
         formatTime(record.timeIn || ''),
         formatTime(record.timeOut || ''),
-        rawLate,
-        rawUndertime,
+        formatDuration(rawLate),
+        formatDuration(rawUndertime),
         isPresent ? 'X' : '',
         isLate ? 'X' : '',
         isUndertime ? 'X' : '',
@@ -296,6 +279,11 @@ export const exportAttendanceToExcel = async (
 
     // H2 Fix: Calculate the last data row BEFORE adding the TOTALS row to avoid circular reference
     const lastDataRow = worksheet.rowCount;
+    
+    // Calculate total minutes manually since they are now strings in the spreadsheet
+    const totalLateMinutes = limitedData.reduce((sum, rec) => sum + Number(rec.lateMinutes || 0), 0);
+    const totalUndertimeMinutes = limitedData.reduce((sum, rec) => sum + Number(rec.undertimeMinutes || 0), 0);
+
     const totalRow = worksheet.addRow([
       'TOTALS',
       '',
@@ -303,8 +291,8 @@ export const exportAttendanceToExcel = async (
       '',
       '',
       '',
-      { formula: `SUM(G5:G${lastDataRow})`, result: 0 },
-      { formula: `SUM(H5:H${lastDataRow})`, result: 0 },
+      formatDuration(totalLateMinutes),
+      formatDuration(totalUndertimeMinutes),
       { formula: `COUNTIF(I5:I${lastDataRow},"X")`, result: 0 },
       { formula: `COUNTIF(J5:J${lastDataRow},"X")`, result: 0 },
       { formula: `COUNTIF(K5:K${lastDataRow},"X")`, result: 0 },
@@ -398,8 +386,8 @@ export const exportAttendanceToCSV = (
           `"${formatDate(record.date)}"`,
           `"${formatTime(record.timeIn || '')}"`,
           `"${formatTime(record.timeOut || '')}"`,
-          `"${formatMinutes(record.lateMinutes || 0)}"`,
-          `"${formatMinutes(record.undertimeMinutes || 0)}"`,
+          `"${formatDuration(record.lateMinutes || 0)}"`,
+          `"${formatDuration(record.undertimeMinutes || 0)}"`,
           `"${isPresent ? 'X' : ''}"`,
           `"${isLate ? 'X' : ''}"`,
           `"${isUndertime ? 'X' : ''}"`,

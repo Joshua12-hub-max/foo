@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useOutletContext } from 'react-router-dom';
 import { useUIStore } from '@/stores';
   
 // Hooks
@@ -13,7 +14,6 @@ import {
 // Components - Direct imports for faster initial parse
 import Header from '@features/LeaveRequests/components/Admin/Header';
 import Filters from '@features/LeaveRequests/components/Admin/Filters';
-import SearchBar from '@features/LeaveRequests/components/Admin/SearchBar';
 import Table from '@features/LeaveRequests/components/Admin/Table';
 import LoadingSpinner from '@features/LeaveRequests/components/Admin/LoadingSpinner';
 import ErrorAlert from '@features/LeaveRequests/components/Admin/ErrorAlert';
@@ -37,6 +37,16 @@ import { AddCreditInput, CreditUpdateInput } from '@/schemas/creditsSchema';
 import type { LeaveCredit, AdminLeaveRequest } from '@features/LeaveRequests/types';
 
 const AdminLeaveRequest = () => {
+  const { searchQuery } = useOutletContext<{ searchQuery: string }>();
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 500);
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
+
   const today = useMemo(() => new Date().toLocaleDateString('en-US'), []);
   const sidebarOpen = useUIStore((state) => state.sidebarOpen);
   const [activeTab, setActiveTab] = useState<'requests' | 'credits'>('requests');
@@ -77,11 +87,8 @@ const AdminLeaveRequest = () => {
   const {
     filters: draftFilters,
     appliedFilters,
-    searchQuery,
-    debouncedSearchQuery,
     handleFilterChange,
     handleApplyFilters,
-    handleSearchChange,
     handleClear
   } = useAdminLeaveFilters();
 
@@ -90,7 +97,6 @@ const AdminLeaveRequest = () => {
     credits, 
     pagination: creditsPagination,
     setPage: setCreditsPage,
-    search: creditsSearch,
     setSearch: setCreditsSearch,
     isLoading: loadingCredits, 
     employees: allEmployees, 
@@ -119,7 +125,8 @@ const AdminLeaveRequest = () => {
   // Sync Search with Server
   useEffect(() => {
     updateFilters({ search: debouncedSearchQuery });
-  }, [debouncedSearchQuery]);
+    setCreditsSearch(debouncedSearchQuery);
+  }, [debouncedSearchQuery, setCreditsSearch, updateFilters]);
 
   // Sync Applied Filters with Server
   useEffect(() => {
@@ -130,7 +137,7 @@ const AdminLeaveRequest = () => {
       fromDate: String(appliedFilters.fromDate || ''),
       toDate: String(appliedFilters.toDate || '')
     });
-  }, [appliedFilters]);
+  }, [appliedFilters, updateFilters]);
 
   // Sync Clear Action
   // We need to detect when filters are cleared. 
@@ -250,7 +257,7 @@ const AdminLeaveRequest = () => {
                   loading={loadingCredits}
                   pagination={creditsPagination}
                   onPageChange={setCreditsPage}
-                  searchTerm={creditsSearch}
+                  searchTerm={debouncedSearchQuery}
                   onSearchChange={setCreditsSearch}
                   onAdd={() => setIsAddCreditOpen(true)}
                   onEdit={(credit) => setEditCredit({ isOpen: true, data: credit })}
@@ -301,11 +308,6 @@ const AdminLeaveRequest = () => {
                 onFilterChange={handleFilterChange}
                 onApply={handleApplyFilters}
                 onClear={handleClear}
-              />
-              {/* Search */}
-              <SearchBar
-                searchQuery={searchQuery}
-                onChange={handleSearchChange}
               />
 
               {/* Table */}

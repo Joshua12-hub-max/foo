@@ -16,7 +16,7 @@ const MonitorStats: React.FC<MonitorStatsProps> = ({ logs }) => {
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
       <div className="bg-white px-5 py-4 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between">
         <div>
-          <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">On Time</p>
+          <p className="text-xs text-gray-500 font-bold tracking-wider mb-1">On Time</p>
           <h3 className="text-2xl font-black text-gray-800 leading-none">
             {onTimeCount}
           </h3>
@@ -28,7 +28,7 @@ const MonitorStats: React.FC<MonitorStatsProps> = ({ logs }) => {
       
       <div className="bg-white px-5 py-4 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between">
         <div>
-          <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Late</p>
+          <p className="text-xs text-gray-500 font-bold tracking-wider mb-1">Late</p>
           <h3 className="text-2xl font-black text-gray-800 leading-none">
             {lateCount}
           </h3>
@@ -40,7 +40,7 @@ const MonitorStats: React.FC<MonitorStatsProps> = ({ logs }) => {
 
       <div className="bg-white px-5 py-4 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between">
         <div>
-           <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Scans</p>
+           <p className="text-xs text-gray-500 font-bold tracking-wider mb-1">Scans</p>
            <h3 className="text-2xl font-black text-gray-800 leading-none">{totalScans}</h3>
         </div>
         <div className="p-2 bg-blue-50 rounded-lg">

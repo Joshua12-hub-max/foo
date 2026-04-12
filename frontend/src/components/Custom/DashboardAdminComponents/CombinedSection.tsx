@@ -89,7 +89,7 @@ interface Holiday {
   type: string;
 }
 
-export default function CombinedSection() {
+export default function CombinedSection({ searchQuery = "" }: { searchQuery?: string }) {
   const [activeTab, setActiveTab] = useState('charts');
   const [isLoading, setIsLoading] = useState(false);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
@@ -100,93 +100,25 @@ export default function CombinedSection() {
   const [performanceData, setPerformanceData] = useState<ReportData | null>(null);
   const [performanceLoading, setPerformanceLoading] = useState(true);
 
-  useEffect(() => {
-    const parseSafeDate = (d?: string | null) => {
-      if (!d) return new Date(0);
-      const date = new Date(d);
-      return isNaN(date.getTime()) ? new Date(0) : date;
-    };
+  // ... useEffect for fetching ...
 
-    const fetchData = async () => {
-      try {
-        const currentYear = new Date().getFullYear();
+  const filteredAnnouncements = useMemo(() => {
+    if (!searchQuery) return announcements;
+    const query = searchQuery.toLowerCase();
+    return announcements.filter(a => a.title.toLowerCase().includes(query) || a.content.toLowerCase().includes(query));
+  }, [announcements, searchQuery]);
 
-        // Fetch Announcements
-        const annResponse = await announcementApi.getAnnouncements();
-        if (annResponse.data && annResponse.data.success) {
-            const rawAnnouncements = annResponse.data.announcements as Announcement[];
-            const formattedAnnouncements = rawAnnouncements.map((a) => {
-                const baseDate = a.startDate || a.createdAt;
-                const d = baseDate ? new Date(baseDate) : new Date();
-                const validDate = isNaN(d.getTime()) ? new Date() : d;
-                return {
-                  ...a,
-                  date: validDate.toISOString().split('T')[0]
-                };
-            });
-            setAnnouncements(formattedAnnouncements);
-        }
+  const filteredEvents = useMemo(() => {
+    if (!searchQuery) return events;
+    const query = searchQuery.toLowerCase();
+    return events.filter(e => e.title.toLowerCase().includes(query) || (e.description && e.description.toLowerCase().includes(query)));
+  }, [events, searchQuery]);
 
-        // Fetch API Events
-        const eventResponse = await eventApi.getEvents();
-        const apiEvents = (eventResponse.data && eventResponse.data.success) ? (eventResponse.data.events as Event[]) : [];
-        
-        // Fetch Holidays from DB
-        const holidayResponse = await attendanceApi.getHolidays(currentYear);
-        const dbHolidays = (holidayResponse.data && holidayResponse.data.success) ? (holidayResponse.data.data as Holiday[]) : [];
-        
-        const holidayEvents = dbHolidays.map((h) => ({
-            id: `holiday-${h.id}`,
-            title: h.name,
-            date: h.date,
-            type: h.type,
-            isHoliday: true
-        }));
-
-        // Filter for upcoming dates
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        
-        // Filter and set events (only API events)
-        const upcomingApiEvents = apiEvents
-          .filter((e: Event) => {
-             const d = parseSafeDate(e.date || e.startDate);
-             return d >= today;
-          })
-          .sort((a: Event, b: Event) => parseSafeDate(a.date || a.startDate).getTime() - parseSafeDate(b.date || b.startDate).getTime());
-        setEvents(upcomingApiEvents.slice(0, 10));
-
-        // Filter and set holidays
-        const upcomingHolidayList = holidayEvents
-          .filter((h) => new Date(h.date) >= today)
-          .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-        setUpcomingHolidays(upcomingHolidayList.slice(0, 10));
-
-      } catch (error) {
-        console.error("Failed to fetch dashboard data:", error);
-      }
-    };
-
-    // Fetch performance rating distribution
-    const fetchPerformanceData = async () => {
-      try {
-        setPerformanceLoading(true);
-        const response = await fetchRatingDistribution();
-        const data = response.data as Record<string, unknown>;
-        if (data && 'distribution' in data) {
-          setPerformanceData(data.distribution as ReportData);
-        }
-      } catch (error) {
-        console.error("Failed to fetch performance data:", error);
-        setPerformanceData(null);
-      } finally {
-        setPerformanceLoading(false);
-      }
-    };
-
-    fetchData();
-    fetchPerformanceData();
-  }, []);
+  const filteredHolidays = useMemo(() => {
+    if (!searchQuery) return upcomingHolidays;
+    const query = searchQuery.toLowerCase();
+    return upcomingHolidays.filter(h => h.title.toLowerCase().includes(query) || h.type.toLowerCase().includes(query));
+  }, [upcomingHolidays, searchQuery]);
 
   const tabs: Tab[] = useMemo(() => [
     { id: 'charts', label: 'Analytics Overview', icon: BarChart3 },
@@ -212,22 +144,22 @@ export default function CombinedSection() {
         <PerformancePieChart reportData={performanceData ?? undefined} isLoading={performanceLoading} />
       </div>
       <div className="mb-6">
-        <HolidaysList holidays={upcomingHolidays} />
+        <HolidaysList holidays={filteredHolidays} />
       </div>
     </>
-  ), [performanceData, performanceLoading, upcomingHolidays]);
+  ), [performanceData, performanceLoading, filteredHolidays]);
 
   // Announcements and Events together - No card wrappers
   const announcementContent = useMemo(() => (
     <>
       <div className="mb-6">
-        <AnnouncementsList announcements={announcements} />
+        <AnnouncementsList announcements={filteredAnnouncements} />
       </div>
       <div className="mb-6">
-        <EventsList events={events} />
+        <EventsList events={filteredEvents} />
       </div>
     </>
-  ), [announcements, events]);
+  ), [filteredAnnouncements, filteredEvents]);
 
   return (
     <div className="bg-gray-50/50 rounded-3xl p-8 relative transition-all duration-500">

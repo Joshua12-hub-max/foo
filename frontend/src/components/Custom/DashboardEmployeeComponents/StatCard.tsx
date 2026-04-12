@@ -1,4 +1,4 @@
-import { useMemo, useCallback } from 'react';
+import { useCallback } from 'react';
 
 interface StatCardProps {
   title: string;
@@ -8,37 +8,30 @@ interface StatCardProps {
 }
 
 export default function StatCard({ title, data, value, onClick }: StatCardProps) {
-  // Unified gray-based color scheme
-  const colorMap: Record<string, string> = useMemo(() => ({
-    'Present Days': 'bg-gray-800',
-    'Absent Days': 'bg-gray-700',
-    'Late Arrivals': 'bg-gray-600',
-    'Reports Filed': 'bg-gray-500',
-    'Leave Balance': 'bg-gray-900',
-  }), []);
-
   const handleClick = useCallback(() => {
     onClick?.({ title, data });
   }, [onClick, title, data]);
 
+  const displayValue = value !== undefined ? value : (Array.isArray(data) ? data.length : 0);
+
   const cardContent = (
     <>
-      <div className="flex items-center justify-between mb-2">
-        <div className={`w-8 h-8 ${colorMap[title] || 'bg-gray-700'} rounded-lg flex items-center justify-center`}>
+      <div className="flex items-center justify-between mb-4">
+        <div className={`w-2 h-2 rounded-full ${onClick ? 'bg-[var(--zed-text-muted)] group-hover:bg-[var(--zed-text-dark)] transition-colors' : 'bg-[var(--zed-text-muted)]'}`}>
         </div>
         {onClick && (
-          <span className="text-[10px] text-gray-400 font-medium uppercase tracking-wide">View</span>
+          <span className="text-[10px] tracking-[0.2em] transition-colors text-[var(--zed-text-muted)] font-medium group-hover:text-[var(--zed-text-dark)]">
+            View Details
+          </span>
         )}
       </div>
-      <p className="text-2xl font-bold text-gray-900">
-        {value !== undefined ? value : (Array.isArray(data) ? data.length : 0)}
-      </p>
-      <h3 className="text-xs font-semibold text-gray-500 mt-1">{title}</h3>
+      <p className="text-3xl font-black text-[var(--zed-text-dark)] font-mono tracking-tight">{displayValue}</p>
+      <h3 className="text-xs font-bold text-[var(--zed-text-muted)] mt-1.5 tracking-wide">{title}</h3>
     </>
   );
 
-  const className = `bg-white p-4 rounded-lg border border-gray-200 shadow-sm transition-all duration-200 ${
-    onClick ? 'hover:shadow-md hover:border-gray-300 cursor-pointer text-left w-full' : ''
+  const className = `p-5 rounded-[var(--radius-sm)] border transition-all duration-200 text-left w-full relative overflow-hidden group bg-white border-[var(--zed-border-light)] ${
+    onClick ? 'hover:border-[var(--zed-border-dark)] hover:shadow-[var(--zed-shadow-sm)] cursor-pointer' : 'shadow-sm'
   }`;
 
   if (onClick) {

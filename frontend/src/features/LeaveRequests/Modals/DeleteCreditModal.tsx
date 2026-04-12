@@ -61,7 +61,7 @@ const DeleteCreditModal: React.FC<DeleteCreditModalProps> = ({
           <div className="bg-red-50/30 p-4 rounded-xl border border-red-100/50 space-y-4">
             {/* Employee Info */}
             <div className="border-b border-red-100/30 pb-3">
-              <p className="text-[10px] text-red-700 font-bold uppercase tracking-wider mb-1">Selected Employee</p>
+              <p className="text-[10px] text-red-700 font-bold tracking-wider mb-1">Selected Employee</p>
               <p className="text-sm text-gray-800 font-bold">
                 {credit.firstName} {credit.lastName}
               </p>
@@ -71,11 +71,11 @@ const DeleteCreditModal: React.FC<DeleteCreditModalProps> = ({
             {/* Credit Details */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-0.5">Type</p>
+                <p className="text-[10px] text-gray-500 font-bold tracking-wider mb-0.5">Type</p>
                 <p className="text-sm font-semibold text-gray-700">{credit.creditType}</p>
               </div>
               <div>
-                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-0.5">Current Balance</p>
+                <p className="text-[10px] text-gray-500 font-bold tracking-wider mb-0.5">Current Balance</p>
                 <p className="text-sm font-semibold text-gray-700">{credit.balance} Days</p>
               </div>
             </div>

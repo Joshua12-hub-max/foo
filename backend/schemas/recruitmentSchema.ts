@@ -5,15 +5,19 @@ const gibberishRegex = /^(.)\1{5,}|^[bcdfghjklmnpqrstvwxzBCDFGHJKLMNPQRSTVWXZ]{1
 
 const validateGibberish = (val: string | undefined | null) => {
   if (!val || val === "") return true;
-  if (/(.)\1{7,}/.test(val)) return false;
-  if (/[bcdfghjklmnpqrstvwxzBCDFGHJKLMNPQRSTVWXZ]{15,}/.test(val)) return false;
-  if (/[!@#$%^&*()_+={}[\]:;"'<>,.?/\\|`~]{4,}/.test(val)) return false;
+  // Relaxed: 10 repeated characters instead of 7
+  if (/(.)\1{10,}/.test(val)) return false;
+  // Relaxed: 20 consecutive consonants instead of 15
+  if (/[bcdfghjklmnpqrstvwxzBCDFGHJKLMNPQRSTVWXZ]{20,}/.test(val)) return false;
+  // Relaxed: 6 consecutive special symbols instead of 4
+  if (/[!@#$%^&*()_+={}[\]:;"'<>,.?/\\|`~]{6,}/.test(val)) return false;
   return !gibberishRegex.test(val.toLowerCase());
 };
 
 const nameValidator = (val: string | undefined | null) => {
   if (!val || val === "") return true;
-  const nameRegex = /^[a-zA-Z\s\-.ñÑ]+$/;
+  // Relaxed: Added numbers and more chars for names like "III", "Jr.", etc.
+  const nameRegex = /^[a-zA-Z\s\-.ñÑ0-9\s]+$/;
   if (!nameRegex.test(val)) return false;
   return validateGibberish(val);
 };

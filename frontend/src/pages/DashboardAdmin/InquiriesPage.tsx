@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useOutletContext } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { inquiryApi, Inquiry } from '@/api/inquiryApi';
 import { 
@@ -8,8 +9,8 @@ import {
 import { useToastStore } from '@/stores';
 
 const InquiriesPage = () => {
+  const { searchQuery } = useOutletContext<{ searchQuery: string }>();
   const [filter, setFilter] = useState('All');
-  const [searchTerm, setSearchTerm] = useState('');
   const [selectedInquiry, setSelectedInquiry] = useState<Inquiry | null>(null);
   
   const queryClient = useQueryClient();
@@ -48,9 +49,9 @@ const InquiriesPage = () => {
   });
 
   const filteredInquiries = inquiries.filter(inq => 
-    `${inq.firstName} ${inq.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    inq.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    inq.message.toLowerCase().includes(searchTerm.toLowerCase())
+    `${inq.firstName} ${inq.lastName}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    inq.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    inq.message.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const getStatusColor = (status: string) => {
@@ -91,23 +92,12 @@ const InquiriesPage = () => {
       <div className="grid lg:grid-cols-12 gap-6">
         {/* Inquiry List */}
         <div className={`${selectedInquiry ? 'lg:col-span-4' : 'lg:col-span-12'} space-y-4`}>
-          <div className="relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-            <input 
-              type="text"
-              placeholder="Search by name, email or content..."
-              className="w-full pl-12 pr-4 py-3.5 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-slate-500/10 outline-none font-bold text-sm shadow-sm"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-
           <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
             <div className="max-h-[70vh] overflow-y-auto">
               {isLoading ? (
                 <div className="p-20 flex flex-col items-center gap-3">
                   <Loader2 className="animate-spin text-slate-400" size={32} />
-                  <p className="text-xs font-black text-slate-400 uppercase tracking-widest">FETCHING MESSAGES...</p>
+                  <p className="text-xs font-black text-slate-400 tracking-widest">Fetching messages...</p>
                 </div>
               ) : filteredInquiries.length === 0 ? (
                 <div className="p-20 flex flex-col items-center text-center gap-3">
@@ -127,7 +117,7 @@ const InquiriesPage = () => {
                       }`}
                     >
                       <div className="flex justify-between items-start">
-                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase border ${getStatusColor(inquiry.status)}`}>
+                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-black border ${getStatusColor(inquiry.status)}`}>
                           {inquiry.status}
                         </span>
                         <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1">
@@ -188,7 +178,7 @@ const InquiriesPage = () => {
                     <div className="p-1.5 bg-white rounded-lg shadow-sm">
                       <MessageSquare size={16} className="text-slate-400" />
                     </div>
-                    <span className="text-xs font-black text-slate-400 uppercase tracking-widest">MESSAGE CONTENT</span>
+                    <span className="text-xs font-black text-slate-400 tracking-widest">Message Content</span>
                   </div>
                   <p className="text-slate-700 font-medium leading-[1.8] text-sm italic whitespace-pre-wrap">
                     "{selectedInquiry.message}"
@@ -197,7 +187,7 @@ const InquiriesPage = () => {
 
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div className="space-y-4">
-                    <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Metadata</h5>
+                    <h5 className="text-[10px] font-black text-slate-400 tracking-widest ml-1">Metadata</h5>
                     <div className="bg-white border border-slate-100 rounded-2xl p-4 space-y-3 shadow-sm">
                       <div className="flex justify-between items-center text-xs">
                         <span className="text-slate-400 font-bold">Received At:</span>
@@ -211,14 +201,14 @@ const InquiriesPage = () => {
                   </div>
 
                   <div className="space-y-4">
-                    <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Quick Actions</h5>
+                    <h5 className="text-[10px] font-black text-slate-400 tracking-widest ml-1">Quick Actions</h5>
                     <div className="flex flex-wrap gap-2">
                       {selectedInquiry.status !== 'Replied' && (
                         <button 
                           onClick={() => updateStatusMutation.mutate({ id: selectedInquiry.id, status: 'Replied' })}
                           className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 text-white rounded-xl text-xs font-black shadow-lg shadow-emerald-600/20 hover:bg-emerald-700 transition-all active:scale-95"
                         >
-                          <CheckCircle2 size={14} /> MARK REPLIED
+                          <CheckCircle2 size={14} /> Mark Replied
                         </button>
                       )}
                       {selectedInquiry.status === 'Pending' && (
@@ -226,7 +216,7 @@ const InquiriesPage = () => {
                           onClick={() => updateStatusMutation.mutate({ id: selectedInquiry.id, status: 'Read' })}
                           className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl text-xs font-black shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all active:scale-95"
                         >
-                          <CheckCircle2 size={14} /> MARK AS READ
+                          <CheckCircle2 size={14} /> Mark as Read
                         </button>
                       )}
                       {selectedInquiry.status !== 'Archived' && (
@@ -234,7 +224,7 @@ const InquiriesPage = () => {
                           onClick={() => updateStatusMutation.mutate({ id: selectedInquiry.id, status: 'Archived' })}
                           className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white rounded-xl text-xs font-black shadow-lg shadow-slate-900/20 hover:bg-slate-950 transition-all active:scale-95"
                         >
-                          <Archive size={14} /> ARCHIVE
+                          <Archive size={14} /> Archive
                         </button>
                       )}
                     </div>
@@ -249,7 +239,7 @@ const InquiriesPage = () => {
                     className="flex-1 flex items-center justify-center gap-2 py-4 bg-white border-2 border-slate-900 text-slate-900 rounded-2xl text-xs font-black hover:bg-slate-900 hover:text-white transition-all group"
                   >
                     <Reply size={16} className="group-hover:-translate-x-1 transition-transform" />
-                    REPLY VIA EMAIL
+                    Reply via Email
                   </a>
                 </div>
               </div>

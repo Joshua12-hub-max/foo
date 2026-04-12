@@ -124,14 +124,14 @@ const DocumentListModal: React.FC<DocumentListModalProps> = ({ isOpen, onClose, 
           {loading ? (
               <div className="flex flex-col items-center justify-center py-10 gap-3">
                   <Loader2 className="animate-spin text-gray-400" size={32} />
-                  <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Scanning Document Vault...</p>
+                  <p className="text-xs font-bold text-gray-400 tracking-widest">Scanning Document Vault...</p>
               </div>
           ) : (
             <div className="space-y-3">
                 {/* 1. Show Dynamic Documents from Table if they exist (Highest Accuracy) */}
                 {dynamicDocs.length > 0 && (
                     <div className="space-y-3">
-                        <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest ml-1">Verified Uploads</p>
+                        <p className="text-[10px] font-black text-blue-600 tracking-widest ml-1">Verified Uploads</p>
                         {dynamicDocs.map((doc) => (
                             <div 
                                 key={doc.id}
@@ -157,7 +157,7 @@ const DocumentListModal: React.FC<DocumentListModalProps> = ({ isOpen, onClose, 
                 )}
 
                 {/* 2. Legacy / Generated Documents */}
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Generated & Core Files</p>
+                <p className="text-[10px] font-black text-gray-400 tracking-widest ml-1">Generated & Core Files</p>
                 {legacyDocs.map((doc) => (
                 <div 
                     key={doc.id}

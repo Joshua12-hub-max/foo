@@ -1,13 +1,14 @@
-import { useState } from 'react';
-import { Search, MapPin, Clock, ChevronRight, Briefcase } from 'lucide-react';
-import { Link } from 'react-router-dom';
-import PublicLayout from '@components/Public/PublicLayout';
-import SEO from '@/components/Global/SEO';
-import { motion } from 'framer-motion';
-import { usePublicJobs } from '@/features/Recruitment/hooks/usePublicJobs';
+import { useState } from "react";
+import { Search, MapPin, Clock, ChevronRight, Briefcase } from "lucide-react";
+import { Link } from "react-router-dom";
+import PublicLayout from "@components/Public/PublicLayout";
+import SEO from "@/components/Global/SEO";
+import { motion } from "framer-motion";
+import { usePublicJobs } from "@/features/Recruitment/hooks/usePublicJobs";
+import HiringProcessTree from "@/components/Public/HiringProcessTree";
 
 const Jobs = () => {
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
   const { filteredJobs, isLoading } = usePublicJobs(searchTerm);
 
   return (
@@ -20,8 +21,8 @@ const Jobs = () => {
       {/* Hero Section */}
       <div className="relative bg-gradient-to-br from-gray-50 via-white to-gray-50 border-b border-gray-200 py-24 overflow-hidden">
         {/* Blue Smoke Grid Background - Small Squares */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#0ea5e9_1px,transparent_1px),linear-gradient(to_bottom,#0ea5e9_1px,transparent_1px)] bg-[size:16px_16px] smoke-grid"></div>
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#38bdf8_1px,transparent_1px),linear-gradient(to_bottom,#38bdf8_1px,transparent_1px)] bg-[size:24px_24px] smoke-grid-secondary"></div>
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,var(--zed-primary)_1px,transparent_1px),linear-gradient(to_bottom,var(--zed-primary)_1px,transparent_1px)] bg-[size:16px_16px] smoke-grid"></div>
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,var(--zed-primary-hover)_1px,transparent_1px),linear-gradient(to_bottom,var(--zed-primary-hover)_1px,transparent_1px)] bg-[size:24px_24px] smoke-grid-secondary"></div>
         <div className="absolute inset-0 bg-gradient-to-br from-white/85 via-white/50 to-white/85"></div>
 
         <div className="max-w-6xl mx-auto px-6 relative z-10">
@@ -40,7 +41,7 @@ const Jobs = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
               className="text-5xl sm:text-6xl md:text-7xl font-bold text-[var(--zed-text-dark)] leading-tight mb-8"
-              style={{ fontFamily: 'IBM Plex Sans, sans-serif' }}
+              style={{ fontFamily: "IBM Plex Sans, sans-serif" }}
             >
               Explore opportunities
             </motion.h1>
@@ -50,9 +51,10 @@ const Jobs = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
               className="text-2xl text-gray-700 leading-relaxed mb-10 font-medium"
-              style={{ fontFamily: 'IBM Plex Sans, sans-serif' }}
+              style={{ fontFamily: "IBM Plex Sans, sans-serif" }}
             >
-              Join the City of Meycauayan team. Browse positions across all departments.
+              Join the City of Meycauayan team. Browse positions across all
+              departments.
             </motion.p>
 
             {/* Search Bar */}
@@ -82,13 +84,19 @@ const Jobs = () => {
         </div>
       </div>
 
+      <HiringProcessTree />
+
       {/* Jobs List */}
       <div className="bg-white py-16">
         <div className="max-w-5xl mx-auto px-6">
           {/* Results count */}
           {!isLoading && filteredJobs.length > 0 && (
             <div className="mb-8 text-lg text-[var(--zed-text-muted)] font-medium">
-              Found <span className="font-bold text-[var(--zed-text-dark)]">{filteredJobs.length}</span> {filteredJobs.length === 1 ? 'position' : 'positions'}
+              Found{" "}
+              <span className="font-bold text-[var(--zed-text-dark)]">
+                {filteredJobs.length}
+              </span>{" "}
+              {filteredJobs.length === 1 ? "position" : "positions"}
             </div>
           )}
 
@@ -115,7 +123,7 @@ const Jobs = () => {
                 </p>
                 {searchTerm && (
                   <button
-                    onClick={() => setSearchTerm('')}
+                    onClick={() => setSearchTerm("")}
                     className="px-8 py-4 bg-[var(--zed-bg-dark)] hover:bg-black text-white rounded-[var(--radius-sm)] font-bold text-lg transition-all active:scale-95"
                   >
                     Clear Search
@@ -155,7 +163,9 @@ const Jobs = () => {
                           </div>
                           <div className="flex items-center gap-2">
                             <Clock size={18} className="text-accent" />
-                            <span className="font-medium">{job.employmentType}</span>
+                            <span className="font-medium">
+                              {job.employmentType}
+                            </span>
                           </div>
                         </div>
                       </div>

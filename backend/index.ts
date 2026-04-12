@@ -46,13 +46,13 @@ import complianceRoutes from './routes/complianceRoutes.js';
 import devRoutes from './routes/devRoutes.js';
 import biometricRoutes from './routes/biometricRoutes.js';
 import commonRoutes from './routes/commonRoutes.js';
-import { waitForDatabase, runMigrations } from './db/index.js';
+import { waitForDatabase, runMigrations, closeDatabase } from './db/index.js';
 import { namingMiddleware } from './middleware/namingMiddleware.js';
 
 
 dotenv.config();
 import { checkForNewApplications } from './services/emailReceiverService.js';
-import { startPollingService } from './services/pollingService.js';
+import { startPollingService, stopPollingService } from './services/pollingService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -242,6 +242,34 @@ import { errorHandler } from './middleware/errorMiddleware.js';
 app.use(errorHandler);
 
 const PORT = Number(process.env.PORT) || 5000;
-app.listen(PORT, '0.0.0.0', () => {
+const server = app.listen(PORT, '0.0.0.0', () => {
   console.warn(`Server running on port ${PORT} (IPv4/IPv6)`);
 });
+
+const gracefulShutdown = (signal: string) => {
+  console.warn(`[${signal}] Received. Shutting down gracefully...`);
+  
+  // Stop background tasks
+  stopPollingService();
+  
+  // Close the Express server to stop accepting new connections and release the port
+  server.close(async () => {
+    console.warn('HTTP server closed.');
+    
+    // Close database connections
+    await closeDatabase();
+    
+    console.warn('Graceful shutdown complete.');
+    process.exit(0);
+  });
+
+  // Fallback: forcefully shutdown after 10 seconds if connections are hanging
+  setTimeout(() => {
+    console.error('Could not close connections in time, forcefully shutting down');
+    process.exit(1);
+  }, 10000);
+};
+
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.once('SIGUSR2', () => gracefulShutdown('SIGUSR2')); // Nodemon specific

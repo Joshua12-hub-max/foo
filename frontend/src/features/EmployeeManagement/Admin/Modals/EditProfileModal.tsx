@@ -124,32 +124,35 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/30 flex items-start justify-center z-50 p-4">
-      <div className="bg-white rounded-lg w-full max-w-md shadow-xl mt-16 border border-gray-200 p-6">
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-in fade-in duration-300">
+      <div className="bg-white rounded-[var(--radius-lg)] w-full max-w-md shadow-2xl border border-[var(--zed-border-light)] overflow-hidden">
         {/* Header */}
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-lg font-bold text-gray-800">Edit Profile</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+        <div className="flex justify-between items-center px-6 py-5 border-b border-[var(--zed-border-light)] bg-gray-50/50">
+          <div className="flex items-center gap-2">
+            <div className="w-1.5 h-5 bg-[var(--zed-primary)] rounded-full" />
+            <h2 className="text-base font-bold text-[var(--zed-text-dark)] tracking-tight">Edit profile settings</h2>
+          </div>
+          <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-all">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-4">
+        <form onSubmit={handleSubmit(onFormSubmit)} className="p-6 space-y-6">
           {/* Avatar */}
           <div className="flex justify-center">
-            <div className="relative">
-              <div className="w-20 h-20 rounded-full overflow-hidden bg-gray-200 border-4 border-white">
+            <div className="relative group">
+              <div className="w-24 h-24 rounded-full overflow-hidden bg-gray-100 border-2 border-[var(--zed-border-light)] shadow-inner transition-transform group-hover:scale-105 duration-300">
                 {avatarPreview ? (
                   <img src={avatarPreview} alt="Avatar" className="w-full h-full object-cover" />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-600 text-xl font-bold">
+                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[var(--zed-primary)] to-[var(--zed-accent)] text-white text-2xl font-black">
                     {firstName?.[0]}{lastName?.[0]}
                   </div>
                 )}
               </div>
-              <label className="absolute bottom-0 right-0 w-7 h-7 bg-gray-100 rounded-full flex items-center justify-center cursor-pointer hover:bg-gray-200 transition-colors border border-gray-200">
-                <Camera size={14} className="text-gray-500" />
+              <label className="absolute bottom-0 right-0 w-8 h-8 bg-white rounded-full shadow-lg flex items-center justify-center cursor-pointer hover:bg-gray-50 transition-all border border-[var(--zed-border-light)] group-hover:scale-110">
+                <Camera size={14} className="text-[var(--zed-primary)]" />
                 <input type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" />
               </label>
             </div>
@@ -157,69 +160,70 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
 
           {/* Error Message */}
           {error && (
-            <div className="bg-red-50 text-red-600 text-sm p-3 rounded-lg">
+            <div className="bg-red-50 border border-red-100 text-red-600 text-[11px] font-bold p-3 rounded-[var(--radius-md)] flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
               {error}
             </div>
           )}
 
           {/* Fields */}
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm text-gray-600 mb-1 block flex items-center gap-1">
-                <User size={14} className="text-gray-400" /> First Name
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black text-[var(--zed-text-muted)] tracking-widest ml-1 flex items-center gap-1 uppercase">
+                First name
               </label>
               <input
                 type="text"
                 {...register('firstName')}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-300 text-sm"
+                className="w-full px-4 py-2.5 bg-gray-50/50 border border-gray-200 rounded-[var(--radius-md)] focus:bg-white focus:ring-4 focus:ring-blue-50 focus:border-[var(--zed-primary)] outline-none text-sm font-bold text-[var(--zed-text-dark)] transition-all"
               />
-              {errors.firstName && <p className="text-red-500 text-xs mt-1">{errors.firstName.message}</p>}
+              {errors.firstName && <p className="text-red-500 text-[9px] font-bold ml-1">{errors.firstName.message}</p>}
             </div>
-            <div>
-              <label className="text-sm text-gray-600 mb-1 block flex items-center gap-1">
-                <User size={14} className="text-gray-400" /> Last Name
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black text-[var(--zed-text-muted)] tracking-widest ml-1 flex items-center gap-1 uppercase">
+                Last name
               </label>
               <input
                 type="text"
                 {...register('lastName')}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-300 text-sm"
+                className="w-full px-4 py-2.5 bg-gray-50/50 border border-gray-200 rounded-[var(--radius-md)] focus:bg-white focus:ring-4 focus:ring-blue-50 focus:border-[var(--zed-primary)] outline-none text-sm font-bold text-[var(--zed-text-dark)] transition-all"
               />
-              {errors.lastName && <p className="text-red-500 text-xs mt-1">{errors.lastName.message}</p>}
+              {errors.lastName && <p className="text-red-500 text-[9px] font-bold ml-1">{errors.lastName.message}</p>}
             </div>
           </div>
 
-          <div>
-            <label className="text-sm text-gray-600 mb-1 block flex items-center gap-1">
-              <Mail size={14} className="text-gray-400" /> Email
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-black text-[var(--zed-text-muted)] tracking-widest ml-1 flex items-center gap-1 uppercase">
+              Email address
             </label>
             <input
               type="email"
               {...register('email')}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-300 text-sm"
+              className="w-full px-4 py-2.5 bg-gray-50/50 border border-gray-200 rounded-[var(--radius-md)] focus:bg-white focus:ring-4 focus:ring-blue-50 focus:border-[var(--zed-primary)] outline-none text-sm font-bold text-[var(--zed-text-dark)] transition-all"
             />
-            {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>}
+            {errors.email && <p className="text-red-500 text-[9px] font-bold ml-1">{errors.email.message}</p>}
           </div>
 
           {/* Actions */}
-          <div className="flex gap-3 pt-4 border-t border-gray-200 mt-4">
+          <div className="flex gap-3 pt-6 border-t border-[var(--zed-border-light)] mt-2">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2.5 text-sm text-gray-600 bg-gray-100 hover:text-red-700 rounded-lg transition-colors"
+              className="flex-1 px-4 py-3 text-xs font-bold text-gray-500 bg-gray-100 hover:bg-gray-200 hover:text-red-700 rounded-[var(--radius-md)] transition-all active:scale-95"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 px-4 py-2.5 text-sm text-white bg-gray-900 hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-1"
+              className="flex-1 px-4 py-3 text-xs font-bold text-white bg-[var(--zed-primary)] hover:bg-[var(--zed-primary-hover)] rounded-[var(--radius-md)] shadow-lg shadow-[var(--zed-primary)]/20 transition-all disabled:opacity-50 flex items-center justify-center gap-2 active:scale-95"
             >
               {loading ? (
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
                 <>
                   <Save size={14} />
-                  Save Changes
+                  Save changes
                 </>
               )}
             </button>

@@ -166,11 +166,11 @@ const PublicInquiries: React.FC = () => {
                     <table className="w-full text-left">
                         <thead>
                             <tr className="border-b border-slate-200 bg-slate-50">
-                                <th className="px-6 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Sender</th>
-                                <th className="px-6 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Message</th>
-                                <th className="px-6 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Status</th>
-                                <th className="px-6 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Date</th>
-                                <th className="px-6 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Actions</th>
+                                <th className="px-6 py-3 text-[11px] font-semibold text-slate-500 tracking-wider">Sender</th>
+                                <th className="px-6 py-3 text-[11px] font-semibold text-slate-500 tracking-wider">Message</th>
+                                <th className="px-6 py-3 text-[11px] font-semibold text-slate-500 tracking-wider">Status</th>
+                                <th className="px-6 py-3 text-[11px] font-semibold text-slate-500 tracking-wider">Date</th>
+                                <th className="px-6 py-3 text-[11px] font-semibold text-slate-500 tracking-wider">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
@@ -264,14 +264,14 @@ const PublicInquiries: React.FC = () => {
                         <div className="p-6 space-y-4">
                             <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
                                 <div className="flex justify-between items-start mb-2">
-                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Original Message</p>
+                                    <p className="text-xs font-bold text-slate-400 tracking-wider">Original Message</p>
                                     <p className="text-[10px] text-slate-400 font-medium">{replyModal.name} • {replyModal.email}</p>
                                 </div>
                                 <p className="text-sm text-slate-600 italic">"{replyModal.message}"</p>
                             </div>
                             
                             <div className="space-y-2">
-                                <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">Your Response</label>
+                                <label className="text-xs font-bold text-slate-700 tracking-wide">Your Response</label>
                                 <textarea
                                     autoFocus
                                     placeholder="Type your reply here..."

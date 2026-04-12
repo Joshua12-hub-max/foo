@@ -6,6 +6,7 @@ import { processDailyAttendance } from './attendanceProcessor.js';
 // Track the last synced bio_attendance_logs ID (monotonic, avoids clock drift)
 let lastSyncedBioId = 0;
 let isPolling = false;
+let pollingInterval: NodeJS.Timeout | null = null;
 
 /**
  * Normalizes an employee ID by ensuring it follows the 'Emp-XXX' format.
@@ -165,9 +166,22 @@ export const startPollingService = async (intervalMs: number = 5000): Promise<vo
     await initializeLastSyncedId();
 
     // Start polling
-    setInterval(pollBiometricLogs, intervalMs);
+    if (!pollingInterval) {
+      pollingInterval = setInterval(pollBiometricLogs, intervalMs);
+    }
   } catch (err: unknown) {
     const error = err as Error;
     console.error('[BIO-SYNC] Failed to start polling service:', error.message);
+  }
+};
+
+/**
+ * Stops the background biometric polling service.
+ */
+export const stopPollingService = (): void => {
+  if (pollingInterval) {
+    clearInterval(pollingInterval);
+    pollingInterval = null;
+    console.warn('[BIO-SYNC] Polling service stopped.');
   }
 };

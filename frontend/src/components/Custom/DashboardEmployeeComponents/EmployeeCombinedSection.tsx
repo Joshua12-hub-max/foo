@@ -57,7 +57,7 @@ const LoadingOverlay = memo(() => (
 
 LoadingOverlay.displayName = 'LoadingOverlay';
 
-export default function EmployeeCombinedSection() {
+export default function EmployeeCombinedSection({ searchQuery = "" }: { searchQuery?: string }) {
   const [activeTab, setActiveTab] = useState('analytics');
   const [isLoading, setIsLoading] = useState(false);
   // @ts-ignore
@@ -146,10 +146,10 @@ export default function EmployeeCombinedSection() {
         <PerformancePieChart reportData={distribution} isLoading={performanceLoading} />
       </div>
       <div className="mb-6">
-        <AnnouncementSection />
+        <AnnouncementSection searchQuery={searchQuery} />
       </div>
     </>
-  ), [distribution, performanceLoading]);
+  ), [distribution, performanceLoading, searchQuery]);
 
   return (
     <div className="bg-gray-50/50 rounded-3xl p-8 relative transition-all duration-500">

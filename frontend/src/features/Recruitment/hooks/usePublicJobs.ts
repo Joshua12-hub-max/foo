@@ -1,6 +1,7 @@
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { recruitmentApi } from '@/api/recruitmentApi';
-import { PublicJob, JobApplicationSchema, JobApplicationInput } from '@/schemas/recruitment';
+import { AxiosError } from 'axios';
+import { PublicJob, JobApplicationSchema, JobApplicationInput, RecruitmentErrorResponse } from '@/schemas/recruitment';
+import { recruitmentApi } from '@/api';
 
 export const usePublicJobs = (searchTerm: string = '') => {
     const { data, isLoading, error } = useQuery({
@@ -46,7 +47,10 @@ export const usePublicJobDetail = (id: string | undefined) => {
     });
 };
 
-export const useJobApplication = (onSuccess?: (response: { data: { success: boolean, requiresVerification?: boolean, email?: string, applicantId?: number } }) => void, onError?: (error: Error) => void) => {
+export const useJobApplication = (
+  onSuccess?: (response: { data: { success: boolean, requiresVerification?: boolean, email?: string, applicantId?: number } }) => void, 
+  onError?: (error: AxiosError<RecruitmentErrorResponse>) => void
+) => {
     return useMutation({
         mutationFn: async ({ id, data }: { id: string; data: JobApplicationInput }) => {
             // Better debug logging that shows File objects
@@ -103,6 +107,6 @@ export const useJobApplication = (onSuccess?: (response: { data: { success: bool
             return await recruitmentApi.applyJob(formData);
         },
         onSuccess,
-        onError: (error: Error) => onError?.(error)
+        onError: (error: AxiosError<RecruitmentErrorResponse>) => onError?.(error)
     });
 };

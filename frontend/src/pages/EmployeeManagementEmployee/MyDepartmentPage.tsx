@@ -94,7 +94,7 @@ const MyDepartmentPage: React.FC<MyDepartmentPageProps> = ({ hideHeader = false 
             <div className="flex flex-col lg:flex-row gap-6">
               {/* Employee Avatar & Name */}
               <div className="flex items-center gap-4 lg:w-64 lg:border-r lg:border-gray-100 lg:pr-6">
-                <div className="w-16 h-16 rounded-xl bg-gray-100 flex items-center justify-center text-gray-600 font-bold text-xl uppercase border border-gray-200 overflow-hidden flex-shrink-0">
+                <div className="w-16 h-16 rounded-xl bg-gray-100 flex items-center justify-center text-gray-600 font-bold text-xl border border-gray-200 overflow-hidden flex-shrink-0">
                   {myRecord.avatarUrl ? (
                     <img src={myRecord.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
                   ) : (
@@ -119,7 +119,7 @@ const MyDepartmentPage: React.FC<MyDepartmentPageProps> = ({ hideHeader = false 
                 <div>
                   <div className="flex items-center gap-1.5 text-gray-400 mb-1">
                     <Hash size={12} />
-                    <span className="text-xs font-medium uppercase">Employee ID</span>
+                    <span className="text-xs font-medium">Employee ID</span>
                   </div>
                   <p className="text-sm font-semibold text-gray-800">{myRecord.employeeId || '---'}</p>
                 </div>
@@ -127,7 +127,7 @@ const MyDepartmentPage: React.FC<MyDepartmentPageProps> = ({ hideHeader = false 
                 <div>
                   <div className="flex items-center gap-1.5 text-gray-400 mb-1">
                     <Mail size={12} />
-                    <span className="text-xs font-medium uppercase">Email</span>
+                    <span className="text-xs font-medium">Email</span>
                   </div>
                   <p className="text-sm font-semibold text-gray-800 truncate">{myRecord.email}</p>
                 </div>
@@ -135,7 +135,7 @@ const MyDepartmentPage: React.FC<MyDepartmentPageProps> = ({ hideHeader = false 
                 <div>
                   <div className="flex items-center gap-1.5 text-gray-400 mb-1">
                     <Building2 size={12} />
-                    <span className="text-xs font-medium uppercase">Department</span>
+                    <span className="text-xs font-medium">Department</span>
                   </div>
                   <p className="text-sm font-semibold text-gray-800">{departmentData?.name}</p>
                 </div>
@@ -143,7 +143,7 @@ const MyDepartmentPage: React.FC<MyDepartmentPageProps> = ({ hideHeader = false 
                 <div>
                   <div className="flex items-center gap-1.5 text-gray-400 mb-1">
                     <Calendar size={12} />
-                    <span className="text-xs font-medium uppercase">Date Hired</span>
+                    <span className="text-xs font-medium">Date Hired</span>
                   </div>
                   <p className="text-sm font-semibold text-gray-800">
                     {myRecord.dateHired 

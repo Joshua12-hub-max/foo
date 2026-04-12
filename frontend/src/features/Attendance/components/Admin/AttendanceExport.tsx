@@ -12,6 +12,7 @@ import autoTable from 'jspdf-autotable';
 import { Employee } from '@/types';
 import { DTRApiResponse } from '@/types/attendance';
 import type { LeaveApplication } from '@/types/leave.types';
+import { formatDuration } from '@/utils/formatters';
 
 interface AttendanceExportProps {
   data: AttendanceRecord[];
@@ -85,22 +86,6 @@ const formatDisplayId = (id: string | number | undefined | null): string => {
   const canon = getCanonicalId(id);
   if (!canon || canon === '0') return String(id || '');
   return `Emp-${canon.padStart(3, '0')}`;
-};
-
-/**
- * Format minutes to readable format  
- */
-const formatMinutes = (value: string | number): string => {
-  const mins = typeof value === 'string' ? parseInt(value, 10) : Number(value || 0);
-  if (isNaN(mins) || mins <= 0) return '0';
-  
-  const hours = Math.floor(mins / 60);
-  const remainingMinutes = mins % 60;
-  
-  if (hours > 0) {
-    return `${hours}h${remainingMinutes > 0 ? ` ${remainingMinutes}m` : ''}`;
-  }
-  return `${remainingMinutes}m`;
 };
 
 /**
@@ -477,8 +462,8 @@ const AttendanceExport: React.FC<AttendanceExportProps> = ({ data: _data, title,
           formatDate(record.date),
           formatTime(record.timeIn || ''),
           formatTime(record.timeOut || ''),
-          formatMinutes(record.lateMinutes || 0),
-          formatMinutes(record.undertimeMinutes || 0),
+          formatDuration(record.lateMinutes || 0),
+          formatDuration(record.undertimeMinutes || 0),
           isPresent ? 'X' : '',
           isLate ? 'X' : '',
           isUndertime ? 'X' : '',
@@ -490,8 +475,8 @@ const AttendanceExport: React.FC<AttendanceExportProps> = ({ data: _data, title,
       // Summary Row
       const summaryRow = [
         'TOTALS', '', '', '', '', '',
-        formatMinutes(totals.totalLateMins),
-        formatMinutes(totals.totalUTMins),
+        formatDuration(totals.totalLateMins),
+        formatDuration(totals.totalUTMins),
         String(totals.present),
         String(totals.late),
         String(totals.undertime),

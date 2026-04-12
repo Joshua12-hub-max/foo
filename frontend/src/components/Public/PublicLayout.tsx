@@ -30,11 +30,11 @@ const PublicLayout: React.FC<PublicLayoutProps> = ({ children }) => {
           <div className="flex flex-col md:flex-row justify-between items-start gap-12 mb-16">
             {/* Brand Section */}
             <div className="space-y-6 max-w-md">
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-4">
                   <img
                     src={logo}
                     alt="Meycauayan Logo"
-                    className="w-10 h-10 object-contain"
+                    className="w-12 h-12 object-contain"
                   />
                   <div>
                     <h3 className="font-bold text-gray-900 text-base sm:text-lg leading-tight">City Human Resource Management Office</h3>

@@ -96,7 +96,7 @@ const ConfirmHiredModal: React.FC<ConfirmHiredModalProps> = ({
           <div className="space-y-5">
             {/* 1. Date & Time */}
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5 ml-1">
+              <label className="block text-xs font-bold text-gray-500 mb-1.5 ml-1">
                 Official Start Date & Time
               </label>
               <div className="relative">
@@ -116,7 +116,7 @@ const ConfirmHiredModal: React.FC<ConfirmHiredModalProps> = ({
 
             {/* 2. Document Selection */}
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase mb-2 ml-1">
+              <label className="block text-xs font-bold text-gray-500 mb-2 ml-1">
                 Include Uploaded Requirements in Email
               </label>
               <div className="grid grid-cols-1 gap-2">
@@ -139,7 +139,7 @@ const ConfirmHiredModal: React.FC<ConfirmHiredModalProps> = ({
 
             {/* 3. Custom Instructions */}
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5 ml-1">
+              <label className="block text-xs font-bold text-gray-500 mb-1.5 ml-1">
                 Manual Instructions / Missing Requirements
               </label>
               <textarea

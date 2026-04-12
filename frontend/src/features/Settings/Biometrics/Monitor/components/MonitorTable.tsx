@@ -76,7 +76,7 @@ const MonitorTable: React.FC<MonitorTableProps> = ({ logs, loading }) => {
                     <StatusBadge status={log.status || 'Pending'} />
                   </td>
                   <td className="px-6 py-4">
-                      <span className="text-sm text-gray-500 font-mono font-bold leading-tight uppercase tracking-tighter">{log.employeeId}</span>
+                      <span className="text-sm text-gray-500 font-mono font-bold leading-tight tracking-tighter">{log.employeeId}</span>
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
@@ -92,13 +92,13 @@ const MonitorTable: React.FC<MonitorTableProps> = ({ logs, loading }) => {
                     {log.scanTime ? new Date(log.scanTime).toLocaleString() : '-'}
                   </td>
                   <td className="px-6 py-4">
-                    <span className="text-sm font-bold text-blue-600 uppercase tracking-tighter">{log.duties || 'No Schedule'}</span>
+                    <span className="text-sm font-bold text-blue-600 tracking-tighter">{log.duties || 'No Schedule'}</span>
                   </td>
                   <td className="px-6 py-4 text-gray-600 font-medium">
                     {log.department || '-'}
                   </td>
                    <td className="px-6 py-4">
-                    <span className="text-gray-500 text-xs font-bold uppercase">{log.source}</span>
+                    <span className="text-gray-500 text-xs font-bold">{log.source}</span>
                   </td>
                   <td className="px-6 py-4">
                     <span className={`text-xs font-black px-2 py-1 rounded-lg ${

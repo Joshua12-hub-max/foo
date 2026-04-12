@@ -75,6 +75,7 @@ interface DashboardHomeProps {
   activeTable: string | null;
   setActiveTable: (table: string | null) => void;
   employeeLists: EmployeeLists;
+  searchQuery: string;
 }
 
 // --- Sub-Component: Dashboard Home ---
@@ -85,13 +86,14 @@ const DashboardHome: React.FC<DashboardHomeProps> = React.memo(({
   handleStatCardClick, 
   activeTable, 
   setActiveTable, 
-  employeeLists 
+  employeeLists,
+  searchQuery
 }) => {
   return (
-    <div className="min-h-screen flex flex-col bg-white rounded-2xl shadow-sm border border-gray-200 p-8 w-full overflow-hidden text-gray-800 transition-all duration-300">
+    <div className="min-h-screen flex flex-col bg-[var(--zed-bg-light)] rounded-[var(--radius-sm)] shadow-[var(--zed-shadow-sm)] border border-[var(--zed-border-light)] p-8 w-full overflow-hidden text-[var(--zed-text-dark)] transition-all duration-300">
       <WelcomeBanner user={user} />
       
-      <div className="my-8 h-px bg-gray-100" />
+      <div className="my-8 h-px bg-[var(--zed-border-light)]" />
       
       <div className="relative mb-8">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
@@ -108,9 +110,9 @@ const DashboardHome: React.FC<DashboardHomeProps> = React.memo(({
 
         {/* Overlay Tables with smooth transitions */}
         {activeTable && (
-          <div className="absolute inset-0 top-0 bg-white/95 p-6 rounded-2xl shadow-2xl border border-gray-100 z-20 h-[34rem] overflow-y-auto animate-in fade-in zoom-in duration-200">
-            <div className="flex justify-between items-center mb-4 sticky top-0 bg-white/10 py-2">
-              <h3 className="text-lg font-bold text-gray-900">{activeTable} Employees</h3>
+          <div className="absolute inset-0 top-0 bg-[var(--zed-bg-light)]/95 backdrop-blur-sm p-6 rounded-[var(--radius-sm)] shadow-[var(--zed-shadow-lg)] border border-[var(--zed-border-light)] z-20 h-[34rem] overflow-y-auto animate-in fade-in zoom-in duration-200">
+            <div className="flex justify-between items-center mb-4 sticky top-0 bg-[var(--zed-bg-light)]/10 py-2">
+              <h3 className="text-lg font-bold text-[var(--zed-text-dark)]">{activeTable} Employees</h3>
             </div>
             {activeTable === "Present" && <PresentTable onClose={() => setActiveTable(null)} employees={employeeLists.present} />}
             {activeTable === "Absent" && <AbsentTable onClose={() => setActiveTable(null)} employees={employeeLists.absent} />}
@@ -127,7 +129,7 @@ const DashboardHome: React.FC<DashboardHomeProps> = React.memo(({
         <RegularizationWidget />
       </div>
 
-      <CombinedSection />
+      <CombinedSection searchQuery={searchQuery} />
     </div>
   );
 });
@@ -314,14 +316,14 @@ export default function HDashboard(): React.ReactElement {
   // --- Auth Guard Rendering ---
   if (!user) {
     return (
-      <div className="h-screen w-full flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600" />
+      <div className="h-screen w-full flex items-center justify-center bg-[var(--zed-bg-surface)]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--zed-accent)]" />
       </div>
     );
   }
 
   return (
-    <div className="flex h-screen bg-[#FDFDFD] text-gray-900 font-sans antialiased overflow-hidden">
+    <div className="flex h-screen bg-[var(--zed-bg-surface)] text-[var(--zed-text-dark)] font-sans antialiased overflow-hidden selection:bg-[var(--zed-text-dark)] selection:text-white">
       <Sidebar
         navItems={navItems}
         sidebarOpen={sidebarOpen}
@@ -338,7 +340,7 @@ export default function HDashboard(): React.ReactElement {
           setSearchQuery={setSearchQuery}
         />
         
-        <main className="flex-1 overflow-y-auto p-6 lg:p-8 custom-scrollbar">
+        <main className="flex-1 overflow-y-auto p-6 lg:p-8 scrollbar-premium">
           {isDashboardHome ? (
             <DashboardHome
               user={user}
@@ -347,10 +349,11 @@ export default function HDashboard(): React.ReactElement {
               activeTable={activeTable}
               setActiveTable={setActiveTable}
               employeeLists={employeeLists}
+              searchQuery={searchQuery}
             />
           ) : (
             <div className="">
-              <Outlet context={{ sidebarOpen }} />
+              <Outlet context={{ sidebarOpen, searchQuery }} />
             </div>
           )}
         </main>

@@ -5,6 +5,7 @@ import { exportAttendanceToExcel } from '../utils/attendanceExcelExport';
 import { AttendanceRecord } from '../hooks/useAttendanceData';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { formatDuration } from '@/utils/formatters';
 
 interface AttendanceExportProps {
   data: AttendanceRecord[];
@@ -53,19 +54,6 @@ const getEmployeeName = (record: AttendanceRecord): string => {
     return `${record.firstName || ''} ${record.lastName || ''}`.trim();
   }
   return `Employee #${record.employeeId}`;
-};
-
-/**
- * Format minutes to readable format
- */
-const formatMinutes = (value: string | number): string => {
-  if (!value || value === 0 || value === '0') return '-';
-  const mins = typeof value === 'string' ? parseInt(value, 10) : value;
-  if (isNaN(mins) || mins === 0) return '-';
-  const hours = Math.floor(mins / 60);
-  const remainingMins = mins % 60;
-  if (hours > 0) return `${hours}h ${remainingMins}m`;
-  return `${remainingMins}m`;
 };
 
 const AttendanceExport: React.FC<AttendanceExportProps> = ({ data, title, dateRange }) => {
@@ -125,8 +113,8 @@ const AttendanceExport: React.FC<AttendanceExportProps> = ({ data, title, dateRa
         formatDate(record.date),
         formatTime(record.timeIn),
         formatTime(record.timeOut),
-        formatMinutes(record.late),
-        formatMinutes(record.undertime),
+        formatDuration(record.late),
+        formatDuration(record.undertime),
         record.status || '-'
       ]);
 
@@ -208,4 +196,3 @@ const AttendanceExport: React.FC<AttendanceExportProps> = ({ data, title, dateRa
 };
 
 export default AttendanceExport;
-

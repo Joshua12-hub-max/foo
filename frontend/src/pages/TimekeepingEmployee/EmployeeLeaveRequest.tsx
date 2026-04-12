@@ -1,5 +1,6 @@
 import React from 'react';
 import { useState, useEffect } from 'react';
+import { useOutletContext } from 'react-router-dom';
 import { useUIStore } from '@/stores';
 // API
 import { leaveApi } from '@/api/leaveApi';
@@ -13,7 +14,6 @@ import LoadingSpinner from '@/features/LeaveRequests/components/Employee/Loading
 import ErrorAlert from '@/features/LeaveRequests/components/Employee/ErrorAlert';
 import SuccessAlert from '@/features/LeaveRequests/components/Employee/SuccessAlert';
 import Filters from '@/features/LeaveRequests/components/Employee/Filters';
-import SearchBar from '@/features/LeaveRequests/components/Employee/SearchBar';
 import Table from '@/features/LeaveRequests/components/Employee/Table';
 import Pagination from '@/components/CustomUI/Pagination';
 
@@ -25,6 +25,16 @@ import { LeaveStatus } from "@/components/Custom/Timekeeping/LeaveRequestCompone
 import type { LeaveBalance, ApplicationStatus, LeaveType } from '@/types/leave.types';
 
 const LeaveRequest = () => {
+  const { searchQuery } = useOutletContext<{ searchQuery: string }>();
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 500);
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
+
   const sidebarOpen = useUIStore((state) => state.sidebarOpen);
 
   // State management
@@ -59,11 +69,8 @@ const LeaveRequest = () => {
   const { 
     filters, 
     appliedFilters, 
-    searchQuery, 
-    debouncedSearchQuery, 
     handleFilterChange, 
     handleApplyFilters, 
-    handleSearchChange, 
     handleClear 
   } = useFilters(leaves); // Passing leaves helps useFilters know data structure, though we don't use its filteredData return anymore for rendering
   
@@ -71,7 +78,7 @@ const LeaveRequest = () => {
   // Sync Search with Server
   useEffect(() => {
     updateServerFilters({ search: debouncedSearchQuery });
-  }, [debouncedSearchQuery]);
+  }, [debouncedSearchQuery, updateServerFilters]);
 
   useEffect(() => {
     updateServerFilters({
@@ -80,7 +87,7 @@ const LeaveRequest = () => {
       status: (appliedFilters.status || '') as ApplicationStatus | '',
       type: (appliedFilters.type || '') as LeaveType | ''
     });
-  }, [appliedFilters]);
+  }, [appliedFilters, updateServerFilters]);
 
   // Auto-dismiss messages
   useEffect(() => {
@@ -153,15 +160,8 @@ const LeaveRequest = () => {
 
       {/* Search, Credits, and Create Button Row */}
       <div className="flex items-center justify-between gap-4 mb-6">
-        {/* Search Bar */}
-        <div className="relative flex-1 max-w-md">
-           <SearchBar 
-              searchQuery={searchQuery}
-              onChange={handleSearchChange}
-              isLoading={isLoading}
-              resultCount={pagination.totalItems}
-           />
-        </div>
+        {/* Placeholder for spacing where search bar was */}
+        <div className="flex-1 max-w-md"></div>
 
         {/* Right Side: Credits + Create Button */}
         <div className="flex items-center gap-4">
@@ -179,7 +179,7 @@ const LeaveRequest = () => {
                     <span className={`text-sm font-black tracking-tight ${Number(credit.balance || 0) > 0 ? 'text-gray-900' : 'text-gray-400'}`}>
                       {Number(credit.balance || 0).toFixed(1)}
                     </span>
-                    <span className="text-[8px] font-medium text-gray-400 uppercase">Days</span>
+                    <span className="text-[8px] font-medium text-gray-400">Days</span>
                   </div>
                 </div>
               ))}

@@ -12,17 +12,27 @@ export const EDUCATION_LEVELS = [
 
 const gibberishRegex = /^(.)\1{5,}|^[bcdfghjklmnpqrstvwxzBCDFGHJKLMNPQRSTVWXZ]{12,}$|qwertyuiop|asdfghjkl|zxcvbnm|qwqewrwff/;
 
+export interface RecruitmentErrorResponse {
+  errors?: Record<string, string | string[]>;
+  hint?: string;
+  message?: string;
+}
+
 const validateGibberish = (val: string | undefined | null) => {
   if (!val || val === "") return true;
-  if (/(.)\1{7,}/.test(val)) return false;
-  if (/[bcdfghjklmnpqrstvwxzBCDFGHJKLMNPQRSTVWXZ]{15,}/.test(val)) return false;
-  if (/[!@#$%^&*()_+={}[\]:;"'<>,.?/\\|`~]{4,}/.test(val)) return false;
+  // Relaxed: 10 repeated characters instead of 7
+  if (/(.)\1{10,}/.test(val)) return false;
+  // Relaxed: 20 consecutive consonants instead of 15
+  if (/[bcdfghjklmnpqrstvwxzBCDFGHJKLMNPQRSTVWXZ]{20,}/.test(val)) return false;
+  // Relaxed: 6 consecutive special symbols instead of 4
+  if (/[!@#$%^&*()_+={}[\]:;"'<>,.?/\\|`~]{6,}/.test(val)) return false;
   return !gibberishRegex.test(val.toLowerCase());
 };
 
 const nameValidator = (val: string | undefined | null) => {
   if (!val || val === "") return true;
-  const nameRegex = /^[a-zA-Z\s\-.ñÑ]{2,100}$/;
+  // Relaxed: Added numbers and more chars for names like "III", "Jr.", etc.
+  const nameRegex = /^[a-zA-Z\s\-.ñÑ0-9]{2,100}$/;
   if (!nameRegex.test(val)) return false;
   return validateGibberish(val);
 };
@@ -32,7 +42,7 @@ const gibberishMsg = "Please enter valid text, avoid random characters and exces
 
 export const jobApplicationSchema = z.object({
   jobId: z.string().or(z.number()).optional(),
-  dutyType: z.enum(['Standard', 'Irregular']).optional().default('Standard'),
+  dutyType: z.enum(['Standard', 'Irregular']),
 
   // ── PERSONAL INFORMATION ──
   firstName: z.string().min(1, 'First name is required').refine(nameValidator, nameMsg),
@@ -42,10 +52,10 @@ export const jobApplicationSchema = z.object({
   birthDate: z.string().min(1, 'Birth date is required'),
   birthPlace: z.string().min(1, 'Birth place is required').refine(validateGibberish, gibberishMsg),
   sex: z.enum(['Male', 'Female'], {
-    errorMap: () => ({ message: 'Sex is required. Please select Male or Female.' })
+    message: 'Sex is required. Please select Male or Female.'
   }),
   civilStatus: z.enum(['Single', 'Married', 'Widowed', 'Separated', 'Annulled'], {
-    errorMap: () => ({ message: 'Civil status is required. Please select your civil status.' })
+    message: 'Civil status is required. Please select your civil status.'
   }),
   nationality: z.string().min(1, "Nationality is required").default('Filipino').refine(validateGibberish, gibberishMsg),
   citizenshipType: z.enum(['Filipino', 'Dual Citizenship', '']).optional().transform(val => val === "" ? undefined : val),
@@ -55,7 +65,7 @@ export const jobApplicationSchema = z.object({
   weight: z.string().optional().refine(validateGibberish, gibberishMsg),
 
   // ── CONTACT & ADDRESS ──
-  isMeycauayanResident: z.boolean().or(z.string().transform(v => v === 'true')),
+  isMeycauayanResident: z.preprocess((val) => val === 'true' || val === true, z.boolean()).default(false),
 
   // Residential Address (matches PhilippineAddressSelector prefix="res")
   resRegion: z.string().optional().nullable(),
@@ -127,7 +137,7 @@ export const jobApplicationSchema = z.object({
     Vocational: z.object({ school: z.string().optional().nullable(), course: z.string().optional().nullable(), from: z.coerce.string().optional().nullable(), to: z.coerce.string().optional().nullable(), units: z.string().optional().nullable(), yearGrad: z.coerce.string().optional().nullable(), honors: z.string().optional().nullable() }).optional(),
     College: z.object({ school: z.string().optional().nullable(), course: z.string().optional().nullable(), from: z.coerce.string().optional().nullable(), to: z.coerce.string().optional().nullable(), units: z.string().optional().nullable(), yearGrad: z.coerce.string().optional().nullable(), honors: z.string().optional().nullable() }).optional(),
     Graduate: z.object({ school: z.string().optional().nullable(), course: z.string().optional().nullable(), from: z.coerce.string().optional().nullable(), to: z.coerce.string().optional().nullable(), units: z.string().optional().nullable(), yearGrad: z.coerce.string().optional().nullable(), honors: z.string().optional().nullable() }).optional(),
-  }).optional(),
+  }),
 
   // ── CIVIL SERVICE ELIGIBILITY ──
   eligibilities: z.array(z.object({
@@ -137,7 +147,7 @@ export const jobApplicationSchema = z.object({
     examPlace: z.string().optional().nullable(),
     licenseNo: z.string().optional().nullable(),
     licenseValidUntil: z.string().optional().nullable()
-  })).optional().default([]),
+  })).default([]),
 
   // ── WORK EXPERIENCE ──
   workExperiences: z.array(z.object({
@@ -149,7 +159,7 @@ export const jobApplicationSchema = z.object({
     salaryGrade: z.string().optional().nullable().or(z.literal('')),
     appointmentStatus: z.string().optional().nullable().or(z.literal('')),
     isGovernment: z.boolean().default(false)
-  })).optional().default([]),
+  })).default([]),
 
   // ── LEARNING & DEVELOPMENT / TRAINING PROGRAMS ──
   trainings: z.array(z.object({
@@ -159,7 +169,7 @@ export const jobApplicationSchema = z.object({
     hoursNumber: z.string().optional().nullable().or(z.literal('')),
     typeOfLd: z.string().optional().nullable().or(z.literal('')),
     conductedBy: z.string().optional().nullable().or(z.literal(''))
-  })).optional().default([]),
+  })).default([]),
 
   // ── ADDITIONAL INFORMATION ──
   totalExperienceYears: z.string().or(z.number()).transform(val => Number(val)).optional(),
@@ -222,8 +232,8 @@ export const createDynamicJobApplicationSchema = (
        return Object.values(data || {}).some(level => level?.school && level.school.trim().length > 0);
     }, "At least one educational record is required") : jobApplicationSchema.shape.education,
 
-    eligibilities: needCsc ? jobApplicationSchema.shape.eligibilities.removeDefault().unwrap().min(1, "At least one eligibility record is required") : jobApplicationSchema.shape.eligibilities,
-    workExperiences: needExp ? jobApplicationSchema.shape.workExperiences.removeDefault().unwrap().min(1, "At least one work experience record is required") : jobApplicationSchema.shape.workExperiences,
+    eligibilities: needCsc ? jobApplicationSchema.shape.eligibilities.removeDefault().min(1, "At least one eligibility record is required") : jobApplicationSchema.shape.eligibilities,
+    workExperiences: needExp ? jobApplicationSchema.shape.workExperiences.removeDefault().min(1, "At least one work experience record is required") : jobApplicationSchema.shape.workExperiences,
   }).superRefine((data, ctx) => {
     if (needEdu && minEduRank >= 0) {
       const applicantEduRank = getApplicantEducationRank(data.education);

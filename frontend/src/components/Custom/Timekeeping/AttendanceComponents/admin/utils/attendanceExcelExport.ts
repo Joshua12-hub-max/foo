@@ -1,5 +1,6 @@
 import ExcelJS from 'exceljs';
 import { AttendanceRecord } from '../hooks/useAttendanceData';
+import { formatDuration } from '@/utils/formatters';
 
 interface ExportOptions {
   title?: string;
@@ -53,21 +54,6 @@ const getEmployeeName = (record: AttendanceRecord): string => {
     return `${record.firstName || ''} ${record.lastName || ''}`.trim();
   }
   return `Employee #${record.employeeId}`;
-};
-
-/**
- * Format late/undertime values
- */
-const formatMinutes = (value: string | number): string => {
-  if (!value || value === 0 || value === '0') return '-';
-  const mins = typeof value === 'string' ? parseInt(value, 10) : value;
-  if (isNaN(mins) || mins === 0) return '-';
-  const hours = Math.floor(mins / 60);
-  const remainingMins = mins % 60;
-  if (hours > 0) {
-    return `${hours}h ${remainingMins}m`;
-  }
-  return `${remainingMins}m`;
 };
 
 /**
@@ -232,8 +218,8 @@ export const exportAttendanceToExcel = async (
         formatDate(record.date),
         formatTime(record.timeIn),
         formatTime(record.timeOut),
-        formatMinutes(record.late),
-        formatMinutes(record.undertime),
+        formatDuration(record.late),
+        formatDuration(record.undertime),
         record.status || '-'
       ]);
       
@@ -308,8 +294,8 @@ export const exportAttendanceToCSV = (
         `"${formatDate(record.date)}"`,
         `"${formatTime(record.timeIn)}"`,
         `"${formatTime(record.timeOut)}"`,
-        `"${formatMinutes(record.late)}"`,
-        `"${formatMinutes(record.undertime)}"`,
+        `"${formatDuration(record.late)}"`,
+        `"${formatDuration(record.undertime)}"`,
         `"${record.status || '-'}"`
       ].join(','))
     ].join('\n');

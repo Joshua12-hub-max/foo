@@ -3,10 +3,10 @@ import { useAuth } from "@/hooks/useAuth";
 
 interface LeaveRequestFormData {
   leaveType: string;
-  isPaid: boolean;
+  isWithPay: boolean;
   startDate: string;
   endDate: string;
-  description: string;
+  reason: string;
   attachment: File | null;
 }
 
@@ -14,7 +14,7 @@ interface LeaveRequestFormErrors {
   leaveType?: string;
   startDate?: string;
   endDate?: string;
-  description?: string;
+  reason?: string;
   attachment?: string;
   submit?: string;
 }
@@ -29,10 +29,10 @@ export const useLeaveRequestForm = () => {
 
   const initialFormData: LeaveRequestFormData = {
     leaveType: '',
-    isPaid: true,
+    isWithPay: true,
     startDate: '',
     endDate: '',
-    description: '',
+    reason: '',
     attachment: null,
   };
 
@@ -112,10 +112,10 @@ export const useLeaveRequestForm = () => {
       }
     }
 
-    if (!formData.description.trim()) {
-      newErrors.description = 'Reason for leave is required';
-    } else if (formData.description.trim().length < 10) {
-      newErrors.description = 'Reason must be at least 10 characters';
+    if (!formData.reason.trim()) {
+      newErrors.reason = 'Reason for leave is required';
+    } else if (formData.reason.trim().length < 10) {
+      newErrors.reason = 'Reason must be at least 10 characters';
     }
 
     if (!formData.attachment) {

@@ -113,13 +113,13 @@ const Table: React.FC<TableProps> = ({ data, onOpenApprove, onOpenReject, onOpen
 
                       {item.status === 'Processing' && (
                         <div className="flex items-center gap-1.5 text-blue-600 bg-blue-50 px-3 py-1 rounded-lg border border-blue-100 italic">
-                          <span className="text-[10px] font-bold uppercase tracking-tight">Waiting for Employee</span>
+                          <span className="text-[10px] font-bold tracking-tight">Waiting for Employee</span>
                         </div>
                       )}
                       
                        {(item.status === 'Approved' || item.status === 'Rejected' || item.status === 'Cancelled') && (
                           <div className="flex items-center gap-1 text-gray-400 bg-gray-50 px-3 py-1 rounded-lg border border-gray-100 shadow-inner">
-                             <span className="text-[10px] font-bold uppercase tracking-widest">Archived</span>
+                             <span className="text-[10px] font-bold tracking-widest">Archived</span>
                           </div>
                        )}
                     </div>

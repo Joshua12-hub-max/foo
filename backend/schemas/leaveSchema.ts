@@ -19,12 +19,13 @@ export const applyLeaveSchema = z.object({
     message: 'Invalid end date format',
   }),
   reason: z.string()
-    .min(10, 'Reason must be at least 10 characters long')
+    .min(10, 'Reason must be at least 10 characters')
     .max(1000, 'Reason cannot exceed 1000 characters'),
   isWithPay: z.preprocess((val) => {
     if (typeof val === 'string') return val === 'true';
+    if (val === undefined || val === null) return true;
     return Boolean(val);
-  }, z.boolean()),
+  }, z.boolean().default(true)),
 }).refine((data) => {
   const start = new Date(data.startDate);
   const end = new Date(data.endDate);
@@ -34,7 +35,7 @@ export const applyLeaveSchema = z.object({
   path: ['endDate'],
 });
 
-export type ApplyLeaveInput = z.infer<typeof applyLeaveSchema>;
+export type ApplyLeaveInput = z.output<typeof applyLeaveSchema>;
 
 /**
  * Schema for rejecting a leave application
@@ -217,12 +218,19 @@ export const leavePolicySchema = z.object({
   forcedLeaveRule: z.object({
     minimumVLRequired: z.number(),
     description: z.string(),
+  }).optional().default({
+    minimumVLRequired: 5,
+    description: "Must take at least 5 days VL if balance is 10 or more",
   }),
-  deemedApprovalGracePeriod: z.number(),
+  deemedApprovalGracePeriod: z.number().optional().default(5),
   deemedApproval: z.object({
     days: z.number(),
     description: z.string(),
     reference: z.string(),
+  }).optional().default({
+    days: 5,
+    description: "Automatic approval after 5 days of inactivity",
+    reference: "CSC Rule",
   }),
   sickLeaveType: z.string().default('Sick Leave'),
   initialAllocations: z.record(z.string(), z.number()).default({

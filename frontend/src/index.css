@@ -8,8 +8,8 @@
   --font-serif: 'IBM Plex Serif', Georgia, serif;
   --font-mono: 'IBM Plex Mono', 'Courier New', monospace;
 
-  --color-accent: #2563eb;
-  --color-accent-hover: #1d4ed8;
+  --color-accent: oklch(0.48 0.28 264);
+  --color-accent-hover: oklch(0.42 0.28 264);
 }
 
 @layer base {
@@ -24,25 +24,25 @@
 /* ZED-INSPIRED DESIGN SYSTEM */
 :root {
   /* ── PRIMARY COLORS ── */
-  --zed-primary: #0ea5e9;
-  --zed-primary-hover: #0284c7;
-  --zed-primary-rgb: 14, 165, 233;
+  --zed-primary: oklch(0.48 0.28 264);
+  --zed-primary-hover: oklch(0.42 0.28 264);
+  --zed-primary-rgb: 0, 102, 255;
 
   /* ── ACCENT COLORS ── */
-  --zed-accent: #2563eb;
-  --zed-accent-hover: #1d4ed8;
-  --zed-accent-rgb: 37, 99, 235;
+  --zed-accent: oklch(0.48 0.28 264);
+  --zed-accent-hover: oklch(0.42 0.28 264);
+  --zed-accent-rgb: 0, 102, 255;
 
   /* ── BACKGROUNDS ── */
   --zed-bg-light: #ffffff;
-  --zed-bg-surface: #f8fafc;
-  --zed-bg-dark: #0f172a;
-  --zed-bg-darker: #020617;
+  --zed-bg-surface: #fafafa;
+  --zed-bg-dark: #27272a;
+  --zed-bg-darker: #18181b;
 
   /* ── TEXT COLORS ── */
-  --zed-text-dark: #0f172a;
+  --zed-text-dark: #000000;
   --zed-text-light: #f1f5f9;
-  --zed-text-muted: #64748b;
+  --zed-text-muted: oklch(0.359228 0.010478 262.86);
 
   /* ── BORDERS ── */
   --zed-border-light: #e2e8f0;
@@ -52,7 +52,7 @@
   --zed-success: #22c55e;
   --zed-warning: #f59e0b;
   --zed-error: #ef4444;
-  --zed-info: #0ea5e9;
+  --zed-info: var(--zed-primary);
 
   /* ── SPACING (8px base) ── */
   --spacing-xs: 0.25rem;
@@ -75,18 +75,152 @@
   --easing-standard: cubic-bezier(0.4, 0, 0.2, 1);
   --easing-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 
-  /* ── BORDER RADIUS ── */
-  --radius-xs: 0.25rem;
-  --radius-sm: 0.5rem;
-  --radius-md: 0.75rem;
-  --radius-lg: 1rem;
-  --radius-xl: 1.5rem;
+  /* ── BORDER RADIUS (Sharper Design) ── */
+  --radius-xs: 1px;
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 6px;
+  --radius-xl: 8px;
 
   /* Legacy compatibility */
   --shadow-premium: var(--zed-shadow-md);
   --shadow-premium-hover: var(--zed-shadow-lg);
   --glass-bg: rgba(255, 255, 255, 0.7);
   --glass-border: rgba(255, 255, 255, 0.3);
+}
+
+/* ── SYSTEM-WIDE BUTTON & ACCENT OVERRIDES ── */
+/* This ensures 100% consistency even with hardcoded Tailwind blue/indigo classes */
+@layer base {
+  .bg-blue-500, .bg-blue-600, .bg-blue-700, .bg-blue-800, .bg-indigo-500, .bg-indigo-600, .bg-indigo-700, .bg-indigo-800, .bg-accent {
+    background-color: var(--zed-accent) !important;
+  }
+
+  .hover\:bg-blue-600:hover, .hover\:bg-blue-700:hover, .hover\:bg-blue-800:hover, .hover\:bg-blue-900:hover, .hover\:bg-indigo-600:hover, .hover\:bg-indigo-700:hover, .hover\:bg-indigo-800:hover, .hover\:bg-indigo-900:hover, .hover\:bg-accent-hover:hover {
+    background-color: var(--zed-accent-hover) !important;
+  }
+
+  .text-blue-500, .text-blue-600, .text-blue-700, .text-blue-800, .text-indigo-500, .text-indigo-600, .text-indigo-700, .text-indigo-800, .text-accent {
+    color: var(--zed-accent) !important;
+  }
+
+  .border-blue-500, .border-blue-600, .border-blue-700, .border-blue-800, .border-blue-200, .border-indigo-500, .border-indigo-600, .border-indigo-700, .border-indigo-800, .border-indigo-200, .border-accent {
+    border-color: var(--zed-accent) !important;
+  }
+
+  /* Focus rings */
+  .focus\:ring-blue-500:focus, .focus\:ring-indigo-500:focus {
+    --tw-ring-color: var(--zed-accent) !important;
+  }
+
+  /* Global Button Rounding (Lg) */
+  button {
+    border-radius: var(--radius-lg) !important;
+    transition: all 0.2s ease !important;
+  }
+
+  /* Primary Action Buttons Only (Catching all Apply/Submit/Create variants) */
+  button[type="submit"],
+  .zed-btn-primary,
+  .zed-btn-accent,
+  button.bg-gray-900,
+  button.bg-slate-900,
+  button.bg-slate-800,
+  button.bg-zinc-900,
+  button.bg-zinc-950,
+  /* Target "Apply Filter" specifically even if it uses light-ish gray but acts as a primary action */
+  button[aria-label="Apply filters"] {
+    background-color: var(--zed-primary) !important;
+    color: #ffffff !important;
+    border-color: var(--zed-primary) !important;
+  }
+
+  button[type="submit"]:hover,
+  .zed-btn-primary:hover,
+  button.bg-gray-900:hover,
+  button.bg-slate-900:hover,
+  button.bg-slate-800:hover,
+  button.bg-zinc-900:hover,
+  button[aria-label="Apply filters"]:hover {
+    background-color: var(--zed-primary-hover) !important;
+    transform: translateY(-1px);
+    box-shadow: var(--zed-shadow-md);
+  }
+
+  button:active {
+    transform: translateY(0);
+  }
+
+  /* Sharp Field Resets (Adjusted to Lg) */
+  input, select, textarea {
+    border-radius: var(--radius-lg) !important;
+    border: 1px solid var(--zed-border-light) !important;
+    padding: 0.875rem 1.25rem !important;
+    font-size: 0.875rem !important;
+    background-color: #ffffff !important;
+    transition: all 0.2s ease !important;
+  }
+
+  input:focus, select:focus, textarea:focus {
+    border-color: var(--zed-accent) !important;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--zed-accent), transparent 90%) !important;
+    outline: none !important;
+  }
+
+  /* Table Redesign (Lg) */
+  table {
+    width: 100% !important;
+    border-collapse: separate !important;
+    border-spacing: 0 !important;
+    border: 1px solid var(--zed-border-light) !important;
+    border-radius: var(--radius-lg) !important;
+    overflow: hidden !important;
+  }
+
+  thead th {
+    background-color: var(--zed-bg-surface) !important;
+    color: var(--zed-text-muted) !important;
+    font-weight: 700 !important;
+    text-transform: none !important;
+    font-size: 0.75rem !important;
+    padding: 1rem 1.25rem !important;
+    border-bottom: 1px solid var(--zed-border-light) !important;
+    text-align: left !important;
+  }
+
+  tbody td {
+    padding: 1rem 1.25rem !important;
+    font-size: 0.875rem !important;
+    color: var(--zed-text-dark) !important;
+    border-bottom: 1px solid var(--zed-border-light) !important;
+    background-color: #ffffff !important;
+  }
+
+  tbody tr:last-child td {
+    border-bottom: none !important;
+  }
+
+  tbody tr:hover td {
+    background-color: var(--zed-bg-surface) !important;
+  }
+
+  /* Global Tailwind Rounding Overrides */
+  .rounded-lg, .rounded-xl, .rounded-2xl, .rounded-3xl, .rounded-full {
+    border-radius: var(--radius-md) !important;
+  }
+  
+  .rounded-sm {
+    border-radius: var(--radius-sm) !important;
+  }
+
+  /* Text Colors */
+  .text-slate-800, .text-slate-900, .text-gray-800, .text-gray-900, .text-zinc-800, .text-zinc-900, .text-zinc-950 {
+    color: var(--zed-text-dark) !important;
+  }
+
+  .text-slate-400, .text-slate-500, .text-slate-600, .text-gray-400, .text-gray-500, .text-gray-600, .text-zinc-400, .text-zinc-500, .text-zinc-600 {
+    color: var(--zed-text-muted) !important;
+  }
 }
 
 /* ── ZED UTILITY CLASSES ── */

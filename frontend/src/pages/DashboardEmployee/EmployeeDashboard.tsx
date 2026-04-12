@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate, Outlet, useLocation } from "react-router-dom";
 
 import { useAuth } from "@hooks/useAuth";
-import { LayoutDashboard, CheckSquare, Clock, FileText, User as UserIcon, Calendar as CalendarIcon, Settings, Award, type LucideIcon } from 'lucide-react';
+import { LayoutDashboard, CheckSquare, FileText, Settings, Award, type LucideIcon } from 'lucide-react';
 import Sidebar from "@components/Custom/DashboardEmployeeComponents/Sidebar";
 import Header from "@components/Custom/DashboardEmployeeComponents/Header";
 import WelcomeBanner from "@components/Custom/DashboardEmployeeComponents/WelcomeBanner";
@@ -16,7 +16,6 @@ import EmployeeReportsTable from "@components/Custom/DashboardEmployeeComponents
 import LoadingScreen from "@components/Custom/DashboardEmployeeComponents/LoadingScreen";
 import { attendanceApi } from "@api/attendanceApi";
 import { leaveApi } from "@api/leaveApi"; 
-import ClockInWidget from "@components/Custom/DashboardEmployeeComponents/ClockInWidget";
 import EventListCard from "@components/Custom/DashboardEmployeeComponents/EventListCard";
 
 import { User } from '@/types';
@@ -58,13 +57,13 @@ interface DashboardHomeProps {
   activeTable: string | null;
   setActiveTable: (table: string | null) => void;
   refreshStats: () => Promise<void>;
+  searchQuery: string;
 }
 
 // Dashboard Home Component for Employee
-const EmployeeDashboardHome: React.FC<DashboardHomeProps> = ({ user, statsCards, events, eventsLoading, handleStatCardClick, activeTable, setActiveTable, refreshStats }) => (
+const EmployeeDashboardHome: React.FC<DashboardHomeProps> = ({ user, statsCards, events, eventsLoading, handleStatCardClick, activeTable, setActiveTable, refreshStats, searchQuery }) => (
   <>
     <WelcomeBanner userName={user?.name} />
-    <ClockInWidget onStatusChange={refreshStats} />
     <div className="relative mb-8">
       <div className="grid grid-cols-5 gap-4">
         {statsCards.slice(0, 3).map((stat) => (
@@ -91,7 +90,7 @@ const EmployeeDashboardHome: React.FC<DashboardHomeProps> = ({ user, statsCards,
         ))}
       </div>
       {activeTable && (
-        <div className="absolute inset-0 bg-[#F8F9FA] p-6 rounded-lg shadow-md border border-gray-100 z-10 h-[32rem] overflow-y-auto">
+        <div className="absolute inset-0 bg-[var(--zed-bg-light)]/95 backdrop-blur-sm p-6 rounded-[var(--radius-sm)] shadow-[var(--zed-shadow-lg)] border border-[var(--zed-border-light)] z-10 h-[32rem] overflow-y-auto animate-in fade-in zoom-in duration-200">
           {activeTable === "Present" && <EmployeePresentTable onClose={() => setActiveTable(null)} />}
           {activeTable === "Absent" && <EmployeeAbsentTable onClose={() => setActiveTable(null)} />}
           {activeTable === "Late" && <EmployeeLateTable onClose={() => setActiveTable(null)} />}
@@ -100,15 +99,17 @@ const EmployeeDashboardHome: React.FC<DashboardHomeProps> = ({ user, statsCards,
         </div>
       )}
     </div>
-    <EmployeeCombinedSection />
+    <EmployeeCombinedSection searchQuery={searchQuery} />
   </>
 );
 
 
 export default function EmployeeDashboard(): React.ReactElement {
+// ... omitting existing state/effects setup logic ...
   const { user, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(true);
   const [activeTable, setActiveTable] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const [stats, setStats] = useState<Stats>({
     present: 0,
     absent: 0,
@@ -171,8 +172,9 @@ export default function EmployeeDashboard(): React.ReactElement {
           try {
             setEventsLoading(true);
             const eventsRes = await eventApi.getEvents();
-            if (eventsRes.data && eventsRes.data.events) {
-              setEvents(eventsRes.data.events);
+            const eventsData = eventsRes.data as { events?: CalendarEvent[] };
+            if (eventsData && eventsData.events) {
+              setEvents(eventsData.events);
             }
           } catch (err) {
             console.error("Error fetching dashboard events:", err);
@@ -247,23 +249,23 @@ export default function EmployeeDashboard(): React.ReactElement {
   }
 
   return (
-    <div className="flex h-screen bg-[#F8F9FA] text-gray-800">
+    <div className="flex h-screen bg-[var(--zed-bg-surface)] text-[var(--zed-text-dark)] font-sans antialiased overflow-hidden selection:bg-[var(--zed-text-dark)] selection:text-white">
       <Sidebar isOpen={sidebarOpen} navItems={NAV_ITEMS} onLogout={handleLogout} onSectionChange={handleNavigate} />
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <Header 
             onToggleSidebar={toggleSidebar} 
-            searchQuery=""
-            setSearchQuery={() => {}}
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
         />
 
         {/* SUSPENSION WARNING BANNER */}
         {user?.employmentStatus === 'Suspended' || (user?.profileStatus as string) === 'Suspended' ? (
-          <div className="bg-red-600 text-white px-6 py-4 mx-7 mt-6 rounded-xl shadow-lg border-l-8 border-red-800 flex items-start gap-4 animate-pulse">
-            <div className="bg-white/20 p-2 rounded-full">
+          <div className="bg-red-600 text-white px-6 py-4 mx-7 mt-6 rounded-[var(--radius-sm)] shadow-sm border-l-4 border-red-800 flex items-start gap-4 animate-pulse">
+            <div className="bg-white/20 p-2 rounded-[var(--radius-sm)]">
                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
             </div>
             <div>
-              <h3 className="text-lg font-black uppercase tracking-wider">Account Suspended</h3>
+              <h3 className="text-lg font-black tracking-wider">Account Suspended</h3>
               <p className="text-red-100 font-medium mt-1">
                 Your account is currently under suspension. You have limited access to the portal. 
                 You cannot submit requests, update your profile, or perform administrative actions. 
@@ -273,7 +275,7 @@ export default function EmployeeDashboard(): React.ReactElement {
           </div>
         ) : null}
 
-        <main className="p-7 overflow-y-auto relative">
+        <main className="flex-1 overflow-y-auto p-6 lg:p-8 scrollbar-premium">
           {isDashboardHome ? (
             <EmployeeDashboardHome
               user={user}
@@ -286,7 +288,7 @@ export default function EmployeeDashboard(): React.ReactElement {
               refreshStats={fetchStats}
             />
           ) : (
-            <Outlet context={{ sidebarOpen }} />
+            <Outlet context={{ sidebarOpen, searchQuery }} />
           )}
           </main>
       </div>

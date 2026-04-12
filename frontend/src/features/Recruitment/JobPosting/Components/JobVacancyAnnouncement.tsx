@@ -66,7 +66,7 @@ const JobVacancyAnnouncement: React.FC<JobVacancyAnnouncementProps> = ({ job, on
              
              <div className="flex-1 text-center px-4">
                 <p className="text-sm italic mb-1">Republic of the Philippines</p>
-                <h1 className="text-xl font-bold uppercase tracking-wide leading-tight">CITY GOVERNMENT OF MEYCAUAYAN</h1>
+                <h1 className="text-xl font-bold tracking-wide leading-tight">City Government of Meycauayan</h1>
                 <p className="text-sm">MacArthur Highway, Saluysoy, City of Meycauayan, Bulacan</p>
                 <p className="text-sm">044-919-8020 local 501</p>
                 <p className="text-sm text-blue-800 underline">email: chrmomeyc.jobs@gmail.com</p>
@@ -82,26 +82,26 @@ const JobVacancyAnnouncement: React.FC<JobVacancyAnnouncementProps> = ({ job, on
 
           <div className="mb-6">
               <div className="border-t border-b border-gray-400 py-1 mb-1">
-                 <h2 className="text-center font-bold text-lg uppercase tracking-wider text-gray-600">OFFICE OF THE CITY HUMAN RESOURCE MANAGEMENT OFFICER</h2>
+                 <h2 className="text-center font-bold text-lg tracking-wider text-gray-600">Office of the City Human Resource Management Officer</h2>
               </div>
               <div className="border-b border-gray-800 w-full mb-8"></div> {/* Double line effect */}
               
-              <h2 className="text-center font-bold text-xl underline decoration-2 underline-offset-4 uppercase mb-6">JOB VACANCIES ANNOUNCEMENT</h2>
+              <h2 className="text-center font-bold text-xl underline decoration-2 underline-offset-4 mb-6">Job Vacancies Announcement</h2>
           </div>
 
           {/* Job Details Table */}
           <table className="w-full border-collapse border border-black mb-6 text-sm">
             <tbody>
               <tr>
-                <td className="border border-black p-2 font-bold w-[25%] bg-gray-100">POSITION TITLE</td>
-                <td className="border border-black p-2 font-bold uppercase" colSpan={3}>{job.title}</td>
+                <td className="border border-black p-2 font-bold w-[25%] bg-gray-100">Position Title</td>
+                <td className="border border-black p-2 font-bold" colSpan={3}>{job.title}</td>
               </tr>
               <tr>
-                <td className="border border-black p-2 font-bold bg-gray-100">OFFICE</td>
-                <td className="border border-black p-2 uppercase" colSpan={3}>{job.department}</td>
+                <td className="border border-black p-2 font-bold bg-gray-100">Office</td>
+                <td className="border border-black p-2" colSpan={3}>{job.department}</td>
               </tr>
               <tr>
-                <td className="border border-black p-2 font-bold bg-gray-100">EMPLOYMENT STATUS</td>
+                <td className="border border-black p-2 font-bold bg-gray-100">Employment Status</td>
                 <td className="border border-black p-2" colSpan={3}>
                    <div className="flex flex-col gap-2">
                       <div className="flex gap-12">
@@ -119,15 +119,15 @@ const JobVacancyAnnouncement: React.FC<JobVacancyAnnouncementProps> = ({ job, on
                         </div>
                       </div>
                       <div className="pt-1 border-t border-gray-200">
-                        <span className="font-bold text-xs uppercase">Duty Type: </span>
+                        <span className="font-bold text-xs">Duty Type: </span>
                         <span className="text-xs">{job.dutyType || 'Standard'}</span>
                       </div>
                    </div>
                 </td>
               </tr>
               <tr>
-                 <td className="border border-black p-2 font-bold bg-gray-100">WORK LOCATION</td>
-                 <td className="border border-black p-2 uppercase" colSpan={3}>{job.location}</td>
+                 <td className="border border-black p-2 font-bold bg-gray-100">Work Location</td>
+                 <td className="border border-black p-2" colSpan={3}>{job.location}</td>
               </tr>
             </tbody>
           </table>
@@ -136,7 +136,7 @@ const JobVacancyAnnouncement: React.FC<JobVacancyAnnouncementProps> = ({ job, on
 
            {/* Job Description Box */}
            <div className="border border-black mb-6">
-               <div className="border-b border-black p-2 font-bold text-sm text-center bg-gray-100 uppercase">JOB DESCRIPTION</div>
+               <div className="border-b border-black p-2 font-bold text-sm text-center bg-gray-100">Job Description</div>
                <div className="p-4 text-sm whitespace-pre-wrap min-h-[150px] text-justify leading-relaxed">
                    {job.jobDescription}
                </div>
@@ -144,7 +144,7 @@ const JobVacancyAnnouncement: React.FC<JobVacancyAnnouncementProps> = ({ job, on
 
            {/* Requirements Section */}
            <div className="border border-black mb-8 p-4 text-sm">
-               <div className="font-bold text-center mb-4 uppercase underline">REQUIREMENTS:</div>
+               <div className="font-bold text-center mb-4 underline">Requirements:</div>
                <div className="px-4 space-y-3">
                  {(job.education || job.experience || job.training || job.eligibility || job.otherQualifications) ? (
                    <>
@@ -197,31 +197,31 @@ const JobVacancyAnnouncement: React.FC<JobVacancyAnnouncementProps> = ({ job, on
               <p>Submit your application and complete requirements to the:</p>
               
               <div className="font-bold">
-                  <p>OFFICE OF THE CITY HUMAN RESOURCE MANAGEMENT OFFICER</p>
+                  <p>Office of the City Human Resource Management Officer</p>
                   <p>City Government of Meycauayan</p>
                   <p>5th Floor, New Meycauayan City Hall, McArthur Highway,</p>
                   <p>Saluysoy, City of Meycauayan, Bulacan</p>
               </div>
 
-              <p>or email at <span className="text-blue-800 underline font-bold">{job.applicationEmail}</span> with the subject line : [POSITION APPLIED - APPLICANT'S NAME]</p>
+              <p>or email at <span className="text-blue-800 underline font-bold">{job.applicationEmail}</span> with the subject line : [Position Applied - Applicant's Name]</p>
               
-              <p className="font-bold uppercase">APPLICATIONS WITH INCOMPLETE DOCUMENTS SHALL NOT BE ENTERTAINED.</p>
+              <p className="font-bold">Applications with incomplete documents shall not be entertained.</p>
 
               <p>For inquiries, contact 044-919-8020 local 501 and look for [Recruitment Staff/FSB Secretariat/HRMPSB Secretariat].</p>
 
               <p className="font-bold">Deadline for Submission: <span className="underline decoration-black decoration-1 underline-offset-2">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></p>
 
               <p className="text-xs mt-6 px-8 leading-tight">
-                  This Office upholds equal opportunity employment and highly encourages qualified women, persons with disabilities (PWDs), members of indigenous groups and other marginalized sectors to apply.
+                  This office upholds equal opportunity employment and highly encourages qualified women, persons with disabilities (PWDs), members of indigenous groups and other marginalized sectors to apply.
               </p>
 
-              <p className="font-bold pt-4">WE LOOK FORWARD TO YOUR APPLICATION!</p>
+              <p className="font-bold pt-4">We look forward to your application!</p>
            </div>
            
            {/* Footer Controlled Copy Note */}
             <div className="border border-gray-400 p-2 text-[10px] text-gray-500 flex gap-2 italic">
                <div className="flex-1 text-justify">
-                  This document is a Controlled Copy issued by the City Government of Meycauayan to the particular recipient. Any and all reproduction thereof without the necessary authority and security mark or seal shall be considered UNCONTROLLED COPIES. The Document Control Procedure of the City Government of Meycauayan shall apply. If you come into possession of this document by mistake or accident, kindly return the same. Any unauthorized or illegal use hereof shall be punishable by the Revised Penal Code and other applicable laws of the Philippines.
+                  This document is a controlled copy issued by the City Government of Meycauayan to the particular recipient. Any and all reproduction thereof without the necessary authority and security mark or seal shall be considered uncontrolled copies. The Document Control Procedure of the City Government of Meycauayan shall apply. If you come into possession of this document by mistake or accident, kindly return the same. Any unauthorized or illegal use hereof shall be punishable by the Revised Penal Code and other applicable laws of the Philippines.
                </div>
             </div>
 

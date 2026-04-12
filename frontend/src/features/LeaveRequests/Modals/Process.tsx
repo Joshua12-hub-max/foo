@@ -59,7 +59,7 @@ const AdminLeaveRequestProcess: React.FC<ProcessModalProps> = ({ isOpen, request
 
           <div className="p-6 space-y-5">
             {error && (
-              <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-100 rounded-lg text-red-600 text-xs font-bold uppercase">
+              <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-100 rounded-lg text-red-600 text-xs font-bold">
                 <X size={14} />
                 {error}
               </div>
@@ -67,7 +67,7 @@ const AdminLeaveRequestProcess: React.FC<ProcessModalProps> = ({ isOpen, request
             
             {/* Request Info Card */}
             <div className="bg-gray-50 border border-gray-200 rounded-xl p-5 space-y-4">
-              <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Request Details</h3>
+              <h3 className="text-xs font-bold text-gray-500 tracking-wider ml-1">Request Details</h3>
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-500">Employee</span>
@@ -77,7 +77,7 @@ const AdminLeaveRequestProcess: React.FC<ProcessModalProps> = ({ isOpen, request
                   <span className="text-sm text-gray-500">Leave Type</span>
                   <span className="text-sm font-bold text-gray-800">
                     {request?.leaveType}
-                    <span className="ml-2 px-2 py-0.5 rounded-full bg-gray-200 text-[10px] text-gray-600 font-bold uppercase">
+                    <span className="ml-2 px-2 py-0.5 rounded-full bg-gray-200 text-[10px] text-gray-600 font-bold">
                       {request?.isWithPay ? 'With Pay' : 'Without Pay'}
                     </span>
                   </span>
@@ -88,7 +88,7 @@ const AdminLeaveRequestProcess: React.FC<ProcessModalProps> = ({ isOpen, request
                 </div>
                 {request?.reason && (
                   <div className="mt-3 pt-3 border-t border-gray-200/50">
-                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Employee Reason</p>
+                    <p className="text-xs font-bold text-gray-500 tracking-wider mb-2">Employee Reason</p>
                     <p className="text-sm text-gray-700 bg-white p-3 rounded-lg border border-gray-200/50 leading-relaxed shadow-sm italic">
                       "{request?.reason}"
                     </p>

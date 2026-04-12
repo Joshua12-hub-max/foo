@@ -44,7 +44,7 @@ const MyMemosPage: React.FC<MyMemosPageProps> = ({ hideHeader = false }) => {
       {error && (
         <div className="bg-red-50 text-red-700 px-4 py-3 rounded-xl mb-4 flex items-center gap-2 border border-red-100">
           <AlertTriangle size={18} />
-          <span className="text-xs font-bold uppercase tracking-wide">{error}</span>
+          <span className="text-xs font-bold tracking-wide">{error}</span>
         </div>
       )}
 

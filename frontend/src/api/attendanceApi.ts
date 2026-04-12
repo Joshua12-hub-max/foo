@@ -105,19 +105,10 @@ export const attendanceApi = {
         }
         return await api.get('/attendance/raw-logs', { params: queryParams });
     },
-    getTodayStatus: async (employeeId?: string): Promise<AxiosResponse<AttendanceActionResponse>> => {
-        return await api.get('/attendance/today-status', { params: { employeeId } });
-    },
     getDashboardStats: async (): Promise<AxiosResponse<DashboardStatsResponse>> => {
         return await api.get<DashboardStatsResponse>('/attendance/dashboard-stats');
     },
     getHolidays: async (year?: number): Promise<AxiosResponse<ApiResponse<never[]>>> => {
         return await api.get('/holidays', { params: { year } });
-    },
-    clockIn: async (): Promise<AxiosResponse<{ success: boolean; message: string }>> => {
-        return await api.post('/attendance/clock-in');
-    },
-    clockOut: async (): Promise<AxiosResponse<{ success: boolean; message: string }>> => {
-        return await api.post('/attendance/clock-out');
     }
 };

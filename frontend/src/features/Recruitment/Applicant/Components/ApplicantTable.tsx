@@ -43,7 +43,7 @@ const ApplicantTable: React.FC<ApplicantTableProps> = ({
   };
 
   const getSourceBadge = (source: string | undefined) => (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-gray-100 text-gray-600 text-[10px] font-bold uppercase tracking-wider border border-gray-200">
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-gray-100 text-gray-600 text-[10px] font-bold tracking-wider border border-gray-200">
       {source === 'email' ? <Mail size={10} /> : <Globe size={10} />} {source || 'Unknown'}
     </span>
   );
@@ -108,19 +108,18 @@ const ApplicantTable: React.FC<ApplicantTableProps> = ({
                       <div className="text-sm text-gray-700">{app.jobDepartment || 'HR'}</div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase ${
-                        app.jobDutyType === 'Irregular' ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-blue-50 text-blue-700 border border-blue-200'
+                      <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold ${ app.jobDutyType === 'Irregular' ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-blue-50 text-blue-700 border border-blue-200'
                       }`}>
                         {app.jobDutyType || 'Standard'}
                       </span>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex flex-col gap-1.5">
-                        <span className="px-2.5 py-1 rounded-md text-[10px] font-bold uppercase bg-gray-100 text-gray-700 border border-gray-200 w-fit">
+                        <span className="px-2.5 py-1 rounded-md text-[10px] font-bold bg-gray-100 text-gray-700 border border-gray-200 w-fit">
                             {app.jobEmploymentType || 'Permanent'}
                         </span>
                         {app.isConfirmed && (
-                            <div className="flex items-center gap-1 text-emerald-600 font-bold text-[10px] uppercase">
+                            <div className="flex items-center gap-1 text-emerald-600 font-bold text-[10px]">
                                 <CheckCircle size={10} /> Confirmed for Duty
                             </div>
                         )}

@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { db } from '../db/index.js';
 import { recruitmentJobs, recruitmentApplicants, authentication, recruitmentSecurityLogs, pdsHrDetails, applicantEducation, applicantExperience, applicantTraining, applicantEligibility, applicantDocuments } from '../db/schema.js';
-import { eq, and, sql, desc, or, inArray, isNull, SQL, InferSelectModel } from 'drizzle-orm';
+import { eq, and, sql, desc, or, inArray, isNull, SQL, InferSelectModel, isNotNull, ne } from 'drizzle-orm';
 /* eslint-disable-next-line @typescript-eslint/naming-convention */
 import PDFDocument from 'pdfkit';
 import path from 'path';
@@ -288,12 +288,27 @@ export const getJob = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
+interface DbApplicantRow {
+    id: number;
+    jobId: number | null;
+    firstName: string;
+    lastName: string;
+    email: string;
+    tinNumber: string | null;
+    gsisNumber: string | null;
+    philsysId: string | null;
+    philhealthNumber: string | null;
+    pagibigNumber: string | null;
+    umidNumber: string | null;
+}
+
 export const applyJob = async (req: Request, res: Response): Promise<void> => {
   try {
     // DEBUG: Log incoming request structure
     console.log('[RECRUITMENT] Application received');
     console.log('[RECRUITMENT] Body keys:', Object.keys(req.body));
-    console.log('[RECRUITMENT] Files:', (req as any).files ? Object.keys((req as any).files) : 'None');
+    const files = (req as { files?: Record<string, Express.Multer.File[]> }).files;
+    console.log('[RECRUITMENT] Files:', files ? Object.keys(files) : 'None');
     console.log('[RECRUITMENT] JobId:', req.body.jobId);
     console.log('[RECRUITMENT] DutyType:', req.body.dutyType);
 
@@ -379,7 +394,6 @@ export const applyJob = async (req: Request, res: Response): Promise<void> => {
         .filter(Boolean).join(', ');
 
     // File Integrity Audit
-    const files = (req as { files?: Record<string, Express.Multer.File[]> }).files;
     const resume = files?.['resume']?.[0];
     const eligibilityCert = files?.['eligibilityCert']?.[0];
     const photo = files?.['photo']?.[0];
@@ -456,16 +470,30 @@ export const applyJob = async (req: Request, res: Response): Promise<void> => {
     try {
         console.log('[RECRUITMENT] Starting raw-SQL duplicate check for:', email);
         
-        // 100% PRECISION: Use raw query to avoid Drizzle 'or' spreading issues
-        const [existingApplications] = await db.execute(sql`
-            SELECT id, job_id as jobId, first_name as firstName, last_name as lastName, email, tin_no as tinNumber, gsis_no as gsisNumber 
-            FROM recruitment_applicants 
-            WHERE email = ${email} 
-               OR (tin_no IS NOT NULL AND tin_no != '' AND tin_no = ${tinNumber || 'NEVER_MATCH'})
-               OR (gsis_no IS NOT NULL AND gsis_no != '' AND gsis_no = ${gsisNumber || 'NEVER_MATCH'})
-               OR (philsys_id IS NOT NULL AND philsys_id != '' AND philsys_id = ${philsysId || 'NEVER_MATCH'})
-            LIMIT 10
-        `) as any;
+        // 100% PRECISION: Use native select to avoid casting issues
+        const existingApplications = await db.select({
+            id: recruitmentApplicants.id,
+            jobId: recruitmentApplicants.jobId,
+            firstName: recruitmentApplicants.firstName,
+            lastName: recruitmentApplicants.lastName,
+            email: recruitmentApplicants.email,
+            tinNumber: recruitmentApplicants.tinNumber,
+            gsisNumber: recruitmentApplicants.gsisNumber,
+            philsysId: recruitmentApplicants.philsysId,
+            philhealthNumber: recruitmentApplicants.philhealthNumber,
+            pagibigNumber: recruitmentApplicants.pagibigNumber,
+            umidNumber: recruitmentApplicants.umidNumber
+        }).from(recruitmentApplicants).where(
+            or(
+                eq(recruitmentApplicants.email, email),
+                and(isNotNull(recruitmentApplicants.tinNumber), ne(recruitmentApplicants.tinNumber, ''), eq(recruitmentApplicants.tinNumber, tinNumber ?? 'NEVER_MATCH')),
+                and(isNotNull(recruitmentApplicants.gsisNumber), ne(recruitmentApplicants.gsisNumber, ''), eq(recruitmentApplicants.gsisNumber, gsisNumber ?? 'NEVER_MATCH')),
+                and(isNotNull(recruitmentApplicants.philsysId), ne(recruitmentApplicants.philsysId, ''), eq(recruitmentApplicants.philsysId, philsysId ?? 'NEVER_MATCH')),
+                and(isNotNull(recruitmentApplicants.philhealthNumber), ne(recruitmentApplicants.philhealthNumber, ''), eq(recruitmentApplicants.philhealthNumber, philhealthNumber ?? 'NEVER_MATCH')),
+                and(isNotNull(recruitmentApplicants.pagibigNumber), ne(recruitmentApplicants.pagibigNumber, ''), eq(recruitmentApplicants.pagibigNumber, pagibigNumber ?? 'NEVER_MATCH')),
+                and(isNotNull(recruitmentApplicants.umidNumber), ne(recruitmentApplicants.umidNumber, ''), eq(recruitmentApplicants.umidNumber, umidNumber ?? 'NEVER_MATCH'))
+            )
+        ).limit(10);
 
         if (existingApplications && Array.isArray(existingApplications) && existingApplications.length > 0) {
             console.log(`[RECRUITMENT] Analyzing ${existingApplications.length} potential duplicates via Raw SQL`);
@@ -476,27 +504,54 @@ export const applyJob = async (req: Request, res: Response): Promise<void> => {
                 const dbEmail = String(existingApplication.email || '');
                 const dbTin = String(existingApplication.tinNumber || '');
                 const dbGsis = String(existingApplication.gsisNumber || '');
+                const dbPhilsys = String(existingApplication.philsysId || '');
+                const dbPhilhealth = String(existingApplication.philhealthNumber || '');
+                const dbPagibig = String(existingApplication.pagibigNumber || '');
+                const dbUmid = String(existingApplication.umidNumber || '');
                 const dbJobId = existingApplication.jobId;
 
-                // Identity Fraud: Same ID or email, but name mismatch
-                const isIdMatch = (dbTin === tinNumber && tinNumber) || (dbGsis === gsisNumber && gsisNumber) || (dbEmail === email);
+                // Identity Fraud Detection: Same identifier exists but with a different name
+                const isIdMatch = 
+                    (dbTin === tinNumber && tinNumber) || 
+                    (dbGsis === gsisNumber && gsisNumber) || 
+                    (dbPhilsys === philsysId && philsysId) ||
+                    (dbPhilhealth === philhealthNumber && philhealthNumber) ||
+                    (dbPagibig === pagibigNumber && pagibigNumber) ||
+                    (dbUmid === umidNumber && umidNumber) ||
+                    (dbEmail === email);
+                
                 const isNameMismatch = dbFirstName.toLowerCase() !== String(firstName).toLowerCase() || dbLastName.toLowerCase() !== String(lastName).toLowerCase();
 
                 if (isIdMatch && isNameMismatch) {
-                    console.warn(`[RECRUITMENT] Identity fraud detected for ${email}. Mismatch: DB(${dbLastName}, ${dbFirstName}) vs Input(${lastName}, ${firstName})`);
+                    let duplicateField = 'Identifier';
+                    if (dbEmail === email) duplicateField = 'Email';
+                    else if (dbTin === tinNumber) duplicateField = 'TIN';
+                    else if (dbGsis === gsisNumber) duplicateField = 'GSIS';
+                    else if (dbPhilsys === philsysId) duplicateField = 'PhilSys ID';
+                    else if (dbPhilhealth === philhealthNumber) duplicateField = 'PhilHealth';
+                    else if (dbPagibig === pagibigNumber) duplicateField = 'Pag-IBIG';
+                    else if (dbUmid === umidNumber) duplicateField = 'UMID';
+
+                    console.warn(`[RECRUITMENT] Identity fraud detected for ${email}. Field: ${duplicateField}. Mismatch: DB(${dbLastName}, ${dbFirstName}) vs Input(${lastName}, ${firstName})`);
+                    
                     await logSecurityViolation({
                         jobId: Number(jobId), firstName: firstName, lastName: lastName, email,
-                        violationType: 'Identity Fraud', details: `Mismatched identity details with existing records (ID/Email match but Name mismatch)`,
+                        violationType: 'Identity Fraud', details: `Duplicate ${duplicateField} belongs to another person (${dbLastName}, ${dbFirstName})`,
                         ipAddress: req.ip || 'Unknown'
                     });
-                    res.status(409).json({ success: false, message: 'Identity verification failed. These identifiers belong to another person.' });
+                    
+                    res.status(409).json({ 
+                        success: false, 
+                        message: `The provided ${duplicateField} is already registered to another person. Please verify your information.`,
+                        field: duplicateField.toLowerCase().replace(' ', '')
+                    });
                     return;
                 }
 
                 // Per-Job Duplicate Check: Only block if applying for the exact same job
                 if (dbJobId !== null && Number(dbJobId) === Number(jobId)) {
                     console.warn(`[RECRUITMENT] Duplicate job application detected for ${email} on Job ${jobId}`);
-                    res.status(409).json({ success: false, message: 'You have already applied for this position. Please wait before submitting a new application.' });
+                    res.status(409).json({ success: false, message: 'You have already applied for this position. Please wait for the screening results.' });
                     return;
                 }
             }

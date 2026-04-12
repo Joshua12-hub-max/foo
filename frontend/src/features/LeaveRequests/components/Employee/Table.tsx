@@ -69,7 +69,7 @@ export const Table: React.FC<TableProps> = ({ data, searchQuery, filters, onFina
                           {Number(item.workingDays || 0).toFixed(1)}
                         </span>
                       </div>
-                      <span className="text-[10px] text-gray-400 font-medium uppercase tracking-tighter">Days</span>
+                      <span className="text-[10px] text-gray-400 font-medium tracking-tighter">Days</span>
                     </div>
                   </td>
                    <td className="px-6 py-4">
@@ -85,7 +85,7 @@ export const Table: React.FC<TableProps> = ({ data, searchQuery, filters, onFina
                     )}
                     {item.status !== 'Pending' && item.status !== 'Processing' && (
                        <div className="flex items-center gap-1 text-gray-400 bg-gray-50 px-3 py-1 rounded-lg border border-gray-100 w-fit shadow-inner">
-                          <span className="text-[10px] font-bold uppercase tracking-widest">Archived</span>
+                          <span className="text-[10px] font-bold tracking-widest">Archived</span>
                        </div>
                     )}
                   </td>

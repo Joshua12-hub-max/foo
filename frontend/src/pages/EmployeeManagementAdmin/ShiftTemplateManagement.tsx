@@ -159,7 +159,7 @@ const ShiftTemplateManagement: React.FC = () => {
             {loading ? (
                 <div className="flex flex-col items-center justify-center py-20 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
                     <Loader2 className="w-8 h-8 text-gray-400 animate-spin mb-3" />
-                    <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">Loading Templates...</p>
+                    <p className="text-sm font-bold text-gray-400 tracking-widest">Loading Templates...</p>
                 </div>
             ) : templates.length === 0 ? (
                 <div className="text-center py-20 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
@@ -176,7 +176,7 @@ const ShiftTemplateManagement: React.FC = () => {
                                     <div className="flex items-center gap-2 mb-1">
                                         <h3 className="font-bold text-gray-800 group-hover:text-blue-600 transition-colors truncate">{temp.name}</h3>
                                         {temp.isDefault && (
-                                            <span className="bg-amber-100 text-amber-700 text-[8px] font-black px-1.5 py-0.5 rounded uppercase flex items-center gap-0.5 shrink-0">
+                                            <span className="bg-amber-100 text-amber-700 text-[8px] font-black px-1.5 py-0.5 rounded flex items-center gap-0.5 shrink-0">
                                                 <Check size={8} strokeWidth={4} /> Default
                                             </span>
                                         )}
@@ -206,7 +206,7 @@ const ShiftTemplateManagement: React.FC = () => {
                                 {temp.workingDays && (
                                     <div className="flex flex-wrap gap-1">
                                         {temp.workingDays.split(',').map(day => (
-                                            <span key={day} className="text-[9px] font-bold bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded uppercase">{day.substring(0,3)}</span>
+                                            <span key={day} className="text-[9px] font-bold bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">{day.substring(0,3)}</span>
                                         ))}
                                     </div>
                                 )}
@@ -247,7 +247,7 @@ const ShiftTemplateManagement: React.FC = () => {
                             </div>
 
                             <div className="space-y-1">
-                                <label className="text-[10px] font-black uppercase text-gray-400 block ml-1">Template Name</label>
+                                <label className="text-[10px] font-black text-gray-400 block ml-1">Template Name</label>
                                 <input 
                                     required
                                     value={formData.name}
@@ -258,7 +258,7 @@ const ShiftTemplateManagement: React.FC = () => {
                             </div>
 
                             <div className="space-y-1">
-                                <label className="text-[10px] font-black uppercase text-gray-400 block ml-1">Applicable Department</label>
+                                <label className="text-[10px] font-black text-gray-400 block ml-1">Applicable Department</label>
                                 <Combobox 
                                     options={deptOptions}
                                     value={formData.departmentId ? String(formData.departmentId) : 'all'}
@@ -271,7 +271,7 @@ const ShiftTemplateManagement: React.FC = () => {
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black uppercase text-gray-400 block ml-1">Work Days Selection</label>
+                                <label className="text-[10px] font-black text-gray-400 block ml-1">Work Days Selection</label>
                                 <div className="flex flex-wrap gap-2">
                                     {daysOfWeek.map(day => {
                                         const isSelected = formData.workingDays?.split(',').map(d => d.trim()).includes(day);
@@ -295,7 +295,7 @@ const ShiftTemplateManagement: React.FC = () => {
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-1">
-                                    <label className="text-[10px] font-black uppercase text-gray-400 block ml-1">Start Time</label>
+                                    <label className="text-[10px] font-black text-gray-400 block ml-1">Start Time</label>
                                     <input 
                                         type="time"
                                         required
@@ -305,7 +305,7 @@ const ShiftTemplateManagement: React.FC = () => {
                                     />
                                 </div>
                                 <div className="space-y-1">
-                                    <label className="text-[10px] font-black uppercase text-gray-400 block ml-1">End Time</label>
+                                    <label className="text-[10px] font-black text-gray-400 block ml-1">End Time</label>
                                     <input 
                                         type="time"
                                         required
@@ -316,7 +316,7 @@ const ShiftTemplateManagement: React.FC = () => {
                                 </div>
                             </div>
                             <div className="space-y-1">
-                                <label className="text-[10px] font-black uppercase text-gray-400 block ml-1">Description (Optional)</label>
+                                <label className="text-[10px] font-black text-gray-400 block ml-1">Description (Optional)</label>
                                 <textarea 
                                     value={formData.description}
                                     onChange={e => setFormData({...formData, description: e.target.value})}

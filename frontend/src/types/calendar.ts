@@ -106,4 +106,6 @@ export interface CalendarDisplayItem {
   name?: string;
   color?: string;
   content?: string;
+  recurringPattern?: 'none' | 'daily' | 'weekly' | 'monthly' | null;
+  recurringEndDate?: string | null;
 }

@@ -1352,7 +1352,7 @@ export default function AdminRegister() {
                             onClick={() => setPdsFileName(null)}
                             className="p-1 hover:bg-gray-200 rounded-full transition-colors"
                         >
-                            REMOVE
+                            Remove
                         </button>
                     </div>
                 )}
@@ -1410,7 +1410,7 @@ export default function AdminRegister() {
                                  <p className="text-sm font-black text-gray-900 leading-tight">{watch("suffix") || "---"}</p>
                              </div>
                              <div className="sm:col-span-2 pt-2 border-t border-gray-50/50">
-                                <label className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-1 block">Synchronized full name</label>
+                                <label className="text-[10px] font-black text-blue-600 tracking-widest mb-1 block">Synchronized full name</label>
                                 <p className="text-base font-black text-gray-900 tracking-tight">
                                     {watch("lastName")}, {watch("firstName")} {watch("middleName") || ""} {watch("suffix") || ""}
                                 </p>
@@ -1442,7 +1442,7 @@ export default function AdminRegister() {
                       </div>
                       <div>
                           <h4 className="text-sm font-black text-gray-900 tracking-tight">HR & employment placement</h4>
-                          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Official position & system access</p>
+                          <p className="text-[10px] text-gray-400 font-bold tracking-wider">Official position & system access</p>
                       </div>
                   </div>
 
@@ -1526,7 +1526,7 @@ export default function AdminRegister() {
                       </div>
                       <div>
                           <h4 className="text-sm font-black text-gray-900 tracking-tight">Employee details</h4>
-                          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Primary identity & personal info</p>
+                          <p className="text-[10px] text-gray-400 font-bold tracking-wider">Primary identity & personal info</p>
                       </div>
                   </div>
 
@@ -1614,7 +1614,7 @@ export default function AdminRegister() {
                               enrollStep >= 1 || bioEnrolled ? 'bg-slate-500 border-slate-500 text-white' : 
                               enrollError && enrollStep === 0 ? 'bg-rose-500 border-rose-500 text-white' : 'border-gray-300 text-gray-300'
                           }`}>
-                              {(enrollStep >= 1 || bioEnrolled) && <span className="text-[10px] font-bold">OK</span>}
+                              {(enrollStep >= 1 || bioEnrolled) && <span className="text-[10px] font-bold">Ok</span>}
                           </div>
                           <span className="text-xs font-bold text-gray-700">Initial Scan</span>
                       </div>
@@ -1623,7 +1623,7 @@ export default function AdminRegister() {
                               enrollStep >= 2 || bioEnrolled ? 'bg-slate-500 border-slate-500 text-white' : 
                               enrollError && enrollStep === 1 ? 'bg-rose-500 border-rose-500 text-white' : 'border-gray-300 text-gray-300'
                           }`}>
-                              {(enrollStep >= 2 || bioEnrolled) && <span className="text-[10px] font-bold">OK</span>}
+                              {(enrollStep >= 2 || bioEnrolled) && <span className="text-[10px] font-bold">Ok</span>}
                           </div>
                           <span className="text-xs font-bold text-gray-700">Verification</span>
                       </div>

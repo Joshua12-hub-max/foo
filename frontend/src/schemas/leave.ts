@@ -63,7 +63,7 @@ export const applyLeaveSchema = z.object({
   path: ['endDate'],
 });
 
-export type ApplyLeaveInput = z.infer<typeof applyLeaveSchema>;
+export type ApplyLeaveInput = z.output<typeof applyLeaveSchema>;
 
 export const rejectLeaveSchema = z.object({
   reason: z.string()
@@ -151,22 +151,31 @@ export const leaveActionSchema = z.object({
 });
 export type LeaveActionSchema = z.infer<typeof leaveActionSchema>;
 
-// Re-export old names
+/** @deprecated Use submitLeaveRequestSchema instead */
 export const leaveRequestSchema = z.object({
   leaveType: z.string().min(1, 'Leave type is required'),
   startDate: z.string().min(1, 'Start date is required'),
   endDate: z.string().min(1, 'End date is required'),
-  reason: z.string().optional(),
+  reason: z.string()
+    .min(10, 'Reason must be at least 10 characters')
+    .max(1000, 'Reason cannot exceed 1000 characters'),
 });
-export type LeaveRequestSchema = z.infer<typeof leaveRequestSchema>;
+export type LeaveRequestSchema = z.output<typeof leaveRequestSchema>;
 
 export const submitLeaveRequestSchema = z.object({
   leaveType: z.enum(LEAVE_TYPE_VALUES),
   isWithPay: z.boolean().default(true),
-  isPaid: z.boolean().default(true), // Legacy alias
   startDate: z.string().min(1, 'Start date is required'),
   endDate: z.string().min(1, 'End date is required'),
-  reason: z.string().min(10, 'Reason must be at least 10 characters').max(1000).optional(),
-  description: z.string().min(10, 'Reason must be at least 10 characters').max(1000).optional(), // Legacy alias
+  reason: z.string()
+    .min(10, 'Reason must be at least 10 characters')
+    .max(1000, 'Reason cannot exceed 1000 characters'),
+}).refine((data) => {
+  const start = new Date(data.startDate);
+  const end = new Date(data.endDate);
+  return start <= end;
+}, {
+  message: 'End date must be on or after start date',
+  path: ['endDate'],
 });
-export type SubmitLeaveRequestSchema = z.infer<typeof submitLeaveRequestSchema>;
+export type SubmitLeaveRequestSchema = z.output<typeof submitLeaveRequestSchema>;

@@ -97,7 +97,7 @@ const RejectModal: React.FC<RejectModalProps> = ({
           <div className="p-6 space-y-5">
             {/* Request Info Card */}
             <div className="bg-gray-50 border border-gray-200 rounded-xl p-5 space-y-4">
-              <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Request Information</h3>
+              <h3 className="text-xs font-bold text-gray-500 tracking-wider ml-1">Request Information</h3>
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-500">Employee</span>
@@ -115,7 +115,7 @@ const RejectModal: React.FC<RejectModalProps> = ({
             </div>
 
             <div className="space-y-1.5">
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">
+              <label className="block text-xs font-bold text-gray-500 tracking-wider ml-1">
                 Rejection Reason <span className="text-red-500">*</span>
               </label>
               <textarea
@@ -125,7 +125,7 @@ const RejectModal: React.FC<RejectModalProps> = ({
                 rows={3}
               />
               {errors.reason && (
-                <div className="flex items-center gap-1.5 mt-2 text-red-600 text-[11px] font-bold uppercase ml-1">
+                <div className="flex items-center gap-1.5 mt-2 text-red-600 text-[11px] font-bold ml-1">
                     <AlertCircle size={12} />
                     <p>{errors.reason.message}</p>
                 </div>

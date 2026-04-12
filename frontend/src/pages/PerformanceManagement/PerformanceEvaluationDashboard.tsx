@@ -1,4 +1,4 @@
-import { useAdminPerformance } from "@/components/Custom/Performance/Admin/Hooks/useAdminPerformance";
+import { useAdminPerformance } from "@/components/Custom/Performance/Admin/Components/Hooks/useAdminPerformance";
 import { PerformanceNotification } from "@/components/Custom/Performance/Admin/Components/PerformanceNotification";
 import { PerformanceFilters } from "@/components/Custom/Performance/Admin/Components/PerformanceFilters";
 import { PerformanceSearchBar } from "@/components/Custom/Performance/Admin/Components/PerformanceSearchBar";

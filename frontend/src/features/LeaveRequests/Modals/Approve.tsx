@@ -201,7 +201,7 @@ const ApproveModal: React.FC<ApproveModalProps> = ({
           <div className="p-6 space-y-5">
             {/* Request Info Card */}
             <div className="bg-gray-50 border border-gray-200 rounded-xl p-5 space-y-4">
-              <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Request Information</h3>
+              <h3 className="text-xs font-bold text-gray-500 tracking-wider ml-1">Request Information</h3>
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-500">Employee</span>
@@ -284,7 +284,7 @@ const ApproveModal: React.FC<ApproveModalProps> = ({
             )}
             
             <div className="space-y-1.5">
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Approval Comments</label>
+              <label className="block text-xs font-bold text-gray-500 tracking-wider ml-1">Approval Comments</label>
               <textarea
                 {...register('remarks')}
                 placeholder="Add any approval comments (optional)..."

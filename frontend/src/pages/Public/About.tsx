@@ -1,32 +1,36 @@
-import PublicLayout from '@components/Public/PublicLayout';
-import { Target, Eye, Users, Shield, TrendingUp, Award } from 'lucide-react';
-import { motion } from 'framer-motion';
-import missionImg from '@/assets/about-mission.png';
-import visionImg from '@/assets/about-vision.png';
-import SEO from '@/components/Global/SEO';
+import PublicLayout from "@components/Public/PublicLayout";
+import { Target, Eye, Users, Shield, TrendingUp, Award } from "lucide-react";
+import { motion } from "framer-motion";
+import missionImg from "@/assets/about-mission.png";
+import visionImg from "@/assets/about-vision.png";
+import SEO from "@/components/Global/SEO";
 
 const About = () => {
   const values = [
     {
       icon: Users,
-      title: 'Community Impact',
-      description: 'Make a tangible difference in the lives of your neighbors and build a stronger community together.'
+      title: "Community Impact",
+      description:
+        "Make a tangible difference in the lives of your neighbors and build a stronger community together.",
     },
     {
       icon: Shield,
-      title: 'Secure Benefits',
-      description: 'Government-standard compensation packages and comprehensive tenure safety for all employees.'
+      title: "Secure Benefits",
+      description:
+        "Government-standard compensation packages and comprehensive tenure safety for all employees.",
     },
     {
       icon: TrendingUp,
-      title: 'Career Growth',
-      description: 'Continuous opportunities for professional development, training programs, and career advancement.'
+      title: "Career Growth",
+      description:
+        "Continuous opportunities for professional development, training programs, and career advancement.",
     },
     {
       icon: Award,
-      title: 'Civic Honor',
-      description: 'Take pride in serving the people of Meycauayan City and contribute to public service excellence.'
-    }
+      title: "Civic Honor",
+      description:
+        "Take pride in serving the people of Meycauayan City and contribute to public service excellence.",
+    },
   ];
 
   return (
@@ -39,8 +43,8 @@ const About = () => {
       {/* Hero Section */}
       <div className="relative bg-gradient-to-br from-gray-50 via-white to-gray-50 border-b border-gray-200 py-24 overflow-hidden">
         {/* Blue Smoke Grid Background */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#0ea5e9_1px,transparent_1px),linear-gradient(to_bottom,#0ea5e9_1px,transparent_1px)] bg-[size:16px_16px] smoke-grid"></div>
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#38bdf8_1px,transparent_1px),linear-gradient(to_bottom,#38bdf8_1px,transparent_1px)] bg-[size:24px_24px] smoke-grid-secondary"></div>
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,var(--zed-primary)_1px,transparent_1px),linear-gradient(to_bottom,var(--zed-primary)_1px,transparent_1px)] bg-[size:16px_16px] smoke-grid"></div>
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,var(--zed-primary-hover)_1px,transparent_1px),linear-gradient(to_bottom,var(--zed-primary-hover)_1px,transparent_1px)] bg-[size:24px_24px] smoke-grid-secondary"></div>
         <div className="absolute inset-0 bg-gradient-to-br from-white/85 via-white/50 to-white/85"></div>
 
         <div className="max-w-6xl mx-auto px-6 relative z-10">
@@ -59,7 +63,7 @@ const About = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
               className="text-5xl sm:text-6xl md:text-7xl font-bold text-[var(--zed-text-dark)] leading-tight mb-8"
-              style={{ fontFamily: 'IBM Plex Sans, sans-serif' }}
+              style={{ fontFamily: "IBM Plex Sans, sans-serif" }}
             >
               Excellence in public service
             </motion.h1>
@@ -69,10 +73,10 @@ const About = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
               className="text-2xl text-gray-700 leading-relaxed font-medium"
-              style={{ fontFamily: 'IBM Plex Sans, sans-serif' }}
+              style={{ fontFamily: "IBM Plex Sans, sans-serif" }}
             >
-              To uphold the highest standards of human resource management in the
-              City Government of Meycauayan, fostering a workforce that is
+              To uphold the highest standards of human resource management in
+              the City Government of Meycauayan, fostering a workforce that is
               professional, integrity-driven, and dedicated to public service.
             </motion.p>
           </div>
@@ -93,13 +97,19 @@ const About = () => {
                 <div className="mb-6 p-4 bg-accent/10 text-accent rounded-[var(--radius-sm)] w-fit group-hover:bg-accent group-hover:text-white transition-all">
                   <Target size={28} />
                 </div>
-                <h2 className="text-3xl font-bold text-[var(--zed-text-dark)] mb-6" style={{ fontFamily: 'IBM Plex Sans, sans-serif' }}>
+                <h2
+                  className="text-3xl font-bold text-[var(--zed-text-dark)] mb-6"
+                  style={{ fontFamily: "IBM Plex Sans, sans-serif" }}
+                >
                   Our Mission
                 </h2>
-                <p className="text-lg text-[var(--zed-text-muted)] leading-relaxed font-medium mb-6" style={{ fontFamily: 'IBM Plex Sans, sans-serif' }}>
-                  To provide efficient, transparent, and accessible public service.
-                  We value integrity and excellence in all our administrative
-                  standards and employee relations.
+                <p
+                  className="text-lg text-[var(--zed-text-muted)] leading-relaxed font-medium mb-6"
+                  style={{ fontFamily: "IBM Plex Sans, sans-serif" }}
+                >
+                  To provide efficient, transparent, and accessible public
+                  service. We value integrity and excellence in all our
+                  administrative standards and employee relations.
                 </p>
               </div>
               <div className="h-48 -mx-0 -mb-0 overflow-hidden bg-[var(--zed-bg-surface)]">
@@ -122,10 +132,16 @@ const About = () => {
                 <div className="mb-6 p-4 bg-accent/10 text-accent rounded-[var(--radius-sm)] w-fit group-hover:bg-accent group-hover:text-white transition-all">
                   <Eye size={28} />
                 </div>
-                <h2 className="text-3xl font-bold text-[var(--zed-text-dark)] mb-6" style={{ fontFamily: 'IBM Plex Sans, sans-serif' }}>
+                <h2
+                  className="text-3xl font-bold text-[var(--zed-text-dark)] mb-6"
+                  style={{ fontFamily: "IBM Plex Sans, sans-serif" }}
+                >
                   Our Vision
                 </h2>
-                <p className="text-lg text-[var(--zed-text-muted)] leading-relaxed font-medium mb-6" style={{ fontFamily: 'IBM Plex Sans, sans-serif' }}>
+                <p
+                  className="text-lg text-[var(--zed-text-muted)] leading-relaxed font-medium mb-6"
+                  style={{ fontFamily: "IBM Plex Sans, sans-serif" }}
+                >
                   To be a model Local Government Unit that empowers its citizens
                   through innovative and sustainable public service programs and
                   high-performance workforce.
@@ -149,7 +165,7 @@ const About = () => {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 className="text-4xl sm:text-5xl font-bold text-[var(--zed-text-dark)] mb-6"
-                style={{ fontFamily: 'IBM Plex Sans, sans-serif' }}
+                style={{ fontFamily: "IBM Plex Sans, sans-serif" }}
               >
                 Why work with us
               </motion.h2>
@@ -159,9 +175,10 @@ const About = () => {
                 viewport={{ once: true }}
                 transition={{ delay: 0.1 }}
                 className="text-xl text-[var(--zed-text-muted)] font-medium max-w-2xl mx-auto"
-                style={{ fontFamily: 'IBM Plex Sans, sans-serif' }}
+                style={{ fontFamily: "IBM Plex Sans, sans-serif" }}
               >
-                Join a team dedicated to making a meaningful difference in our community
+                Join a team dedicated to making a meaningful difference in our
+                community
               </motion.p>
             </div>
 
@@ -178,10 +195,16 @@ const About = () => {
                   <div className="mb-6 p-3 bg-accent/10 text-accent rounded-[var(--radius-sm)] w-fit group-hover:bg-accent group-hover:text-white transition-all">
                     <value.icon size={24} />
                   </div>
-                  <h3 className="text-xl font-bold text-[var(--zed-text-dark)] mb-4" style={{ fontFamily: 'IBM Plex Sans, sans-serif' }}>
+                  <h3
+                    className="text-xl font-bold text-[var(--zed-text-dark)] mb-4"
+                    style={{ fontFamily: "IBM Plex Sans, sans-serif" }}
+                  >
                     {value.title}
                   </h3>
-                  <p className="text-base text-[var(--zed-text-muted)] leading-relaxed font-medium" style={{ fontFamily: 'IBM Plex Sans, sans-serif' }}>
+                  <p
+                    className="text-base text-[var(--zed-text-muted)] leading-relaxed font-medium"
+                    style={{ fontFamily: "IBM Plex Sans, sans-serif" }}
+                  >
                     {value.description}
                   </p>
                 </motion.div>
