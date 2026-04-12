@@ -118,17 +118,28 @@ app.use(
   helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" },
     crossOriginEmbedderPolicy: false,
-    crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" },
+    crossOriginOpenerPolicy: { policy: "unsafe-none" },
+    frameguard: false, // Disable X-Frame-Options to allow frame-ancestors to work
     contentSecurityPolicy: {
       useDefaults: true,
       directives: {
-        'script-src': ["'self'", (_req, res) => `'nonce-${(res as express.Response).locals.nonce}'`],
+        'script-src': ["'self'", "https://*.zoom.us", "https://*.googleapis.com", (_req, res) => `'nonce-${(res as express.Response).locals.nonce}'`],
         'img-src': ["'self'", "https:", "data:", "http:", "blob:"],
-        'connect-src': ["'self'", "https:", "http:"],
+        'connect-src': ["'self'", "https:", "http:", "wss://*.zoom.us"],
+        'frame-src': ["'self'", "https://*.zoom.us", "https://meet.google.com", "https://meet.jit.si"],
+        'frame-ancestors': ["'self'", "http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:5174", "http://127.0.0.1:5174"],
+        'media-src': ["'self'", "blob:", "https://*.zoom.us"],
+        'worker-src': ["'self'", "blob:"],
       },
     },
   })
 );
+
+// 100% PERMISSIONS: Explicitly allow camera and microphone via Permissions-Policy
+app.use((_req, res, next) => {
+  res.setHeader('Permissions-Policy', 'camera=(self "https://meet.jit.si" "https://*.zoom.us"), microphone=(self "https://meet.jit.si" "https://*.zoom.us"), display-capture=(self "https://meet.jit.si" "https://*.zoom.us"), fullscreen=(self)');
+  next();
+});
 app.use(cors({
   origin: [
     "http://localhost:5173",
@@ -244,6 +255,15 @@ app.use(errorHandler);
 const PORT = Number(process.env.PORT) || 5000;
 const server = app.listen(PORT, '0.0.0.0', () => {
   console.warn(`Server running on port ${PORT} (IPv4/IPv6)`);
+});
+
+server.on('error', (e: any) => {
+  if (e.code === 'EADDRINUSE') {
+    console.error(`[FATAL] Port ${PORT} is already in use. Please kill the process using this port.`);
+    console.error(`[TIP] On Windows: netstat -ano | findstr :${PORT}`);
+    console.error(`[TIP] Then: taskkill /F /PID <PID_FROM_ABOVE>`);
+    process.exit(1);
+  }
 });
 
 const gracefulShutdown = (signal: string) => {

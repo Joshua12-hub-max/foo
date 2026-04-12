@@ -147,7 +147,7 @@ export const RegisterSchema = z.object({
   // Required Authentication / Contact Fields
   email: z.string().email(),
   password: z.string().optional().nullable(),
-  role: z.string().default('user'),
+  role: z.string().default('Employee'),
   
   // Basic Names (Authentication table)
   firstName: z.string().optional().nullable(),
@@ -208,6 +208,24 @@ export const RegisterSchema = z.object({
   references: z.array(ReferenceSchema).optional().default([]),
   familyBackground: z.array(FamilySchema).optional().default([]),
   otherInfo: z.array(OtherInfoSchema).optional().default([]),
+
+  // 100% DATA FLOW: Individual family fields for automated registration pre-fill
+  spouseLastName: z.string().optional().nullable(),
+  spouseFirstName: z.string().optional().nullable(),
+  spouseMiddleName: z.string().optional().nullable(),
+  spouseSuffix: z.string().optional().nullable(),
+  spouseOccupation: z.string().optional().nullable(),
+  spouseEmployer: z.string().optional().nullable(),
+  spouseBusAddress: z.string().optional().nullable(),
+  spouseTelephone: z.string().optional().nullable(),
+  fatherLastName: z.string().optional().nullable(),
+  fatherFirstName: z.string().optional().nullable(),
+  fatherMiddleName: z.string().optional().nullable(),
+  fatherSuffix: z.string().optional().nullable(),
+  motherMaidenLastName: z.string().optional().nullable(),
+  motherMaidenFirstName: z.string().optional().nullable(),
+  motherMaidenMiddleName: z.string().optional().nullable(),
+  motherMaidenSuffix: z.string().optional().nullable(),
 
   declarations: PdsDeclarationsSchema.optional().nullable(),
 

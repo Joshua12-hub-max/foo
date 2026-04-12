@@ -90,10 +90,18 @@ export const useProfile = () => {
             }
           }
 
-          const mergedData = { ...userData, ...detailedData };
+          // 100% DATA MERGE: Ensure granular address fields (resHouseBlockLot, etc.) and documents
+          // are preserved from detailedData during the merge.
+          const mergedData = { 
+            ...userData, 
+            ...detailedData,
+            // Explicitly ensure IDs are matched
+            id: userData.id,
+            isLinkedToRecruitment: !!detailedData.email || !!userData.email
+          } as Profile & { isLinkedToRecruitment: boolean };
 
-          // Set profile with all fields including detailed address fields
           setProfile(mergedData);
+          setFormData(mergedData as unknown as ProfileFormData);
 
           // Populate Form Data
           setFormData({

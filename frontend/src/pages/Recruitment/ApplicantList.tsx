@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { useUIStore } from '@/stores';
-import { useToastStore } from '@/stores';
+import { useUIStore, useToastStore, useAuthStore } from '@/stores';
 import { Archive, UserCheck } from 'lucide-react';
 import { useApplicantData, useApplicantFilters, useApplicantActions, Applicant } from '@applicant/Hooks';
 import { AssignInterviewerModal, ScheduleInterviewModal, DocumentListModal, ConfirmHiredModal } from '@applicant/Modals';
@@ -9,10 +8,20 @@ import { ApplicantTabs, ApplicantFilters, ApplicantTable, InterviewPanel, Public
 import ConfirmDialog from '@/components/Custom/Shared/ConfirmDialog';
 import Pagination from '@/components/CustomUI/Pagination';
 import type { ScheduleInterviewFormData } from '@/schemas/recruitmentSchema';
+import useInterviewStore from '@/stores/useInterviewStore';
 
 const ApplicantList = () => {
   const sidebarOpen = useUIStore((state) => state.sidebarOpen);
   const showToast = useToastStore((state) => state.showToast);
+  const user = useAuthStore((state) => state.user);
+  
+  // Persistent Interview State
+  const { 
+    activeApplicant, 
+    startInterview, 
+    endInterview 
+  } = useInterviewStore();
+
   const showNotification = (message: string, type: 'success' | 'error') => showToast(message, type);
   
   // Custom Hooks
@@ -94,10 +103,6 @@ const ApplicantList = () => {
     onConfirm: () => {}
   });
   
-  // Interview State
-  const [showInterview, setShowInterview] = useState<boolean>(false);
-  const [interviewApplicant, setInterviewApplicant] = useState<Applicant | null>(null);
-
   const onAssignClick = (applicant: Applicant): void => {
     setSelectedApplicant(applicant);
     setShowAssignModal(true);
@@ -115,8 +120,7 @@ const ApplicantList = () => {
 
   const onJoinInterview = (applicant: Applicant): void => {
     if (applicant.interviewLink) {
-      setInterviewApplicant(applicant);
-      setShowInterview(true);
+      startInterview(applicant);
     } else {
       showNotification('No interview link available. Please schedule an interview first.', 'error');
     }
@@ -175,49 +179,52 @@ const ApplicantList = () => {
     handleScheduleInterview(Number(selectedApplicant.id), data, () => setShowScheduleModal(false));
   };
 
-  // Show interview panel if active
-  if (showInterview && interviewApplicant) {
-    return (
-      <InterviewPanel
-        roomName={interviewApplicant.interviewLink?.split('/').pop() || 'interview'}
-        displayName="Interviewer"
-        applicantId={interviewApplicant.id}
-        applicantName={`${interviewApplicant.firstName} ${interviewApplicant.lastName}`}
-        applicantEmail={interviewApplicant.email}
-        jobTitle={interviewApplicant.jobTitle}
-        interviewLink={interviewApplicant.interviewLink}
-        resumePath={interviewApplicant.resumePath}
-        onClose={() => {
-          setShowInterview(false);
-          setInterviewApplicant(null);
-        }}
-      />
-    );
-  }
-
   return (
-    <div className={`min-h-screen flex flex-col bg-gradient-to-br from-neutral-100 to-stone-50 rounded-xl shadow-xl p-7 w-full overflow-hidden text-gray-800 transition-all duration-300 ${sidebarOpen ? 'max-w-[1400px] xl:max-w-[77vw]' : 'max-w-[1600px] xl:max-w-[88vw]'}`}>
+    <div className={`min-h-screen flex flex-col bg-white rounded-xl shadow-sm border border-slate-200 p-7 w-full overflow-hidden text-gray-800 transition-all duration-300 relative ${sidebarOpen ? 'max-w-[1400px] xl:max-w-[77vw]' : 'max-w-[1600px] xl:max-w-[88vw]'}`}>
+      
+      {/* Zed Design Element: Background Grid (Ultra-Subtle) */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,var(--zed-primary)_1px,transparent_1px),linear-gradient(to_bottom,var(--zed-primary)_1px,transparent_1px)] bg-[size:5px_5px] opacity-[0.001] smoke-grid pointer-events-none"></div>
+
+      {/* Persistent Interview Session Layer */}
+      {activeApplicant && (
+        <div className="animate-in fade-in slide-in-from-bottom-10 duration-500">
+          <InterviewPanel
+            roomName={activeApplicant.interviewLink?.split('/').pop() || 'interview'}
+            displayName={user ? `${user.firstName} ${user.lastName}`.trim() : 'Interviewer'}
+            applicantId={activeApplicant.id}
+            applicantName={`${activeApplicant.firstName} ${activeApplicant.lastName}`}
+            applicantEmail={activeApplicant.email}
+            jobTitle={activeApplicant.jobTitle}
+            interviewLink={activeApplicant.interviewLink}
+            interviewPlatform={activeApplicant.interviewPlatform}
+            resumePath={activeApplicant.resumePath}
+            onClose={() => endInterview()}
+          />
+        </div>
+      )}
 
       
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex justify-between items-center mb-6 relative z-10">
         <div>
-          <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">Applicant List</h2>
-          <p className="text-sm text-gray-600 mt-1">Fair Hiring Procedure: Review, Assign, Schedule</p>
+          <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+            Applicant Management
+          </h2>
+          <p className="text-sm text-gray-600 mt-1 font-medium">Fair Hiring Procedure: Review, Assign, Schedule</p>
         </div>
       </div>
 
-      <hr className="mb-6 border-gray-200" />
+      <hr className="mb-6 border-slate-100 relative z-10" />
 
       <ApplicantTabs activeTab={activeTab} setActiveTab={setActiveTab} />
       
       {activeTab === 'Archive' && (
-        <div className="flex gap-2 mb-6 bg-white/50 p-1.5 rounded-xl border border-gray-200 w-fit">
+        <div className="flex gap-2 mb-6 bg-slate-50 p-1.5 rounded-xl border border-slate-200 w-fit relative z-10">
           <button
             onClick={() => setArchiveSubTab('Rejected')}
             className={`px-6 py-2 rounded-lg text-sm font-bold transition-all duration-200 ${
               archiveSubTab === 'Rejected'
-                ? 'bg-gray-300 text-gray-800 shadow-sm'
-                : 'text-gray-500 hover:bg-gray-100'
+                ? 'bg-slate-200 text-slate-800 shadow-sm'
+                : 'text-slate-500 hover:bg-slate-100'
             }`}
           >
             Rejected Applicants
@@ -226,8 +233,8 @@ const ApplicantList = () => {
             onClick={() => setArchiveSubTab('Hired')}
             className={`px-6 py-2 rounded-lg text-sm font-bold transition-all duration-200 ${
               archiveSubTab === 'Hired'
-                ? 'bg-gray-300 text-gray-800 shadow-sm'
-                : 'text-gray-500 hover:bg-gray-100'
+                ? 'bg-slate-200 text-slate-800 shadow-sm'
+                : 'text-slate-500 hover:bg-slate-100'
             }`}
           >
             Archived Hired

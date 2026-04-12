@@ -177,7 +177,7 @@ export class PDSParserService {
         if (personal.citizenship === 'Dual Citizenship') {
           const byBirth = gc(sheet1 as ExcelJS.Worksheet, citizenRow + 1, [{col: 'I', val: 'by birth'}]);
           const byNat = gc(sheet1 as ExcelJS.Worksheet, citizenRow + 1, [{col: 'K', val: 'by naturalization'}]);
-          personal.citizenshipType = byBirth || byNat || null;
+          personal.citizenshipType = byBirth || byNat || undefined;
 
           // Get the dual citizenship country
           const countryRow = fp(sheet1 as ExcelJS.Worksheet, /pls\. indicate country/i, ['G', 'H']).row;

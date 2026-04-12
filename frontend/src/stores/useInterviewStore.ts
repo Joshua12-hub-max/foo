@@ -1,34 +1,44 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+import { Applicant } from '@/features/Recruitment/Applicant/Hooks/useApplicantData';
 
 interface InterviewState {
-  activeApplicantId: number | null;
-  startTime: Date | null;
+  activeApplicant: Applicant | null;
+  startTime: string | null;
   isCallActive: boolean;
   notes: string;
   setNotes: (notes: string) => void;
-  startInterview: (applicantId: number) => void;
+  startInterview: (applicant: Applicant) => void;
   endInterview: () => void;
   setCallActive: (isActive: boolean) => void;
 }
 
-const useInterviewStore = create<InterviewState>((set) => ({
-  activeApplicantId: null,
-  startTime: null,
-  isCallActive: false,
-  notes: '',
-  setNotes: (notes) => set({ notes }),
-  startInterview: (applicantId) => set({ 
-    activeApplicantId: applicantId, 
-    startTime: new Date(),
-    isCallActive: true 
-  }),
-  endInterview: () => set({ 
-    activeApplicantId: null, 
-    startTime: null,
-    isCallActive: false,
-    notes: '' 
-  }),
-  setCallActive: (isActive) => set({ isCallActive: isActive })
-}));
+const useInterviewStore = create<InterviewState>()(
+  persist(
+    (set) => ({
+      activeApplicant: null,
+      startTime: null,
+      isCallActive: false,
+      notes: '',
+      setNotes: (notes) => set({ notes }),
+      startInterview: (applicant) => set({ 
+        activeApplicant: applicant, 
+        startTime: new Date().toISOString(),
+        isCallActive: false // Initialize as false until video is actually started
+      }),
+      endInterview: () => set({ 
+        activeApplicant: null, 
+        startTime: null, 
+        isCallActive: false,
+        notes: '' 
+      }),
+      setCallActive: (isActive) => set({ isCallActive: isActive })
+    }),
+    {
+      name: 'interview-session-storage',
+    }
+  )
+);
 
 export default useInterviewStore;
+

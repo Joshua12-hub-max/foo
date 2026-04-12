@@ -23,7 +23,8 @@ import {
   updateEmployeeContact,
   getEmployeeDocuments,
   uploadEmployeeDocument,
-  deleteEmployeeDocument
+  deleteEmployeeDocument,
+  syncEmployeeDocumentsFromRecruitment
 } from '../controllers/user.controller.js';
 import { verifyToken, verifyAdmin, verifyOwnerOrAdmin } from '../middleware/authMiddleware.js';
 import { uploadAvatar, uploadResume } from '../middleware/uploadMiddleware.js';
@@ -69,5 +70,6 @@ router.delete('/:id/custom-fields/:fieldId', verifyToken, verifyOwnerOrAdmin, de
 router.get('/:id/documents', verifyToken, getEmployeeDocuments);
 router.post('/:id/documents', verifyToken, verifyOwnerOrAdmin, uploadResume.single('document'), uploadEmployeeDocument);
 router.delete('/:id/documents/:docId', verifyToken, verifyOwnerOrAdmin, deleteEmployeeDocument);
+router.post('/:id/sync-from-recruitment', verifyToken, verifyOwnerOrAdmin, syncEmployeeDocumentsFromRecruitment);
 
 export default router;

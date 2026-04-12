@@ -57,6 +57,13 @@
       "when": 1775488892315,
       "tag": "0007_exotic_hex",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "5",
+      "when": 1775968468163,
+      "tag": "0008_ambitious_doomsday",
+      "breakpoints": true
     }
   ]
 }

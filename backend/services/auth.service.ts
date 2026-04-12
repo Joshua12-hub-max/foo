@@ -43,6 +43,39 @@ export class AuthService {
     }
   }
 
+  /**
+   * Generates a secure, short-lived (10 mins) token for OAuth state parameter.
+   * This allows authentication to persist through cross-origin redirects
+   * when cookies might be blocked by browser COOP/SameSite policies.
+   */
+  static generateOAuthStateToken(userId: number): string {
+    const secret = process.env.JWT_SECRET;
+    if (!secret) throw new Error('JWT_SECRET missing');
+    
+    return jwt.sign(
+      { sub: userId, type: 'oauth_state' },
+      secret,
+      { expiresIn: '10m' }
+    );
+  }
+
+  /**
+   * Verifies an OAuth state token.
+   */
+  static verifyOAuthStateToken(token: string): number | null {
+    try {
+      const secret = process.env.JWT_SECRET;
+      if (!secret) return null;
+      
+      const decoded = jwt.verify(token, secret) as unknown as { sub: number; type: string };
+      if (decoded.type !== 'oauth_state') return null;
+      
+      return decoded.sub;
+    } catch {
+      return null;
+    }
+  }
+
   static async findUserByIdentifier(identifier: string) {
     const lowerIdentifier = identifier.toLowerCase();
 

@@ -10,6 +10,9 @@ const __dirname = path.dirname(__filename);
 
 // https://vite.dev/config/
 export default defineConfig({
+  define: {
+    'process.env': {}
+  },
   plugins: [
     react(), 
     tailwindcss(),
@@ -28,6 +31,7 @@ export default defineConfig({
     },
     headers: {
       'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
+      'Permissions-Policy': 'camera=*, microphone=*, display-capture=*, fullscreen=*',
     },
   },
   // Exclude large libraries from pre-bundling - they load on-demand only

@@ -14,6 +14,12 @@ const useApplicantFilters = (applicants: Applicant[], itemsPerPage = 10) => {
 
   const filteredApplicants = useMemo(() => {
     return applicants.filter(app => {
+      // 100% PRECISION: Exclude anyone who has already completed registration as an employee.
+      // Once they are an employee, they should no longer appear in any recruitment/applicant lists.
+      if (app.registeredEmployeeId !== null && app.registeredEmployeeId !== undefined) {
+        return false;
+      }
+
       const matchesSearch = 
         (app.firstName + ' ' + app.lastName).toLowerCase().includes(searchTerm.toLowerCase()) ||
         app.email.toLowerCase().includes(searchTerm.toLowerCase()) ||

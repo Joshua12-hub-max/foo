@@ -141,24 +141,25 @@ export const verifyToken: MiddlewareFunction = (
   next: NextFunction
 ) => {
   try {
-    let token = req.cookies?.accessToken as string | undefined;
     const downloadToken = req.query.token as string | undefined;
+    let cookieToken = req.cookies?.accessToken as string | undefined;
 
-    // 1. Handle Short-lived Download Tokens (One-time bypass for PDF/Docs)
-    if (!token && downloadToken) {
+    // 1. Handle Short-lived Download Tokens (Highest Priority for Frames/Downloads)
+    if (downloadToken) {
         const userId = AuthService.verifyDownloadToken(downloadToken);
         if (userId) {
-            // Re-fetch user or construct partial user from ID
             (req as AuthenticatedRequest).user = {
                 id: userId,
-                employeeId: 'DOWNLOADER', // Placeholder
-                role: 'Employee' // Minimal required role for downloads
+                employeeId: 'DOWNLOADER',
+                role: 'Employee'
             };
             return next();
         }
+        // If download token was provided but invalid, we don't fall back to cookies for safety
+        return res.status(401).json({ message: 'Invalid download token.', code: 'INVALID_TOKEN' });
     }
 
-    if (!token) {
+    if (!cookieToken) {
       logDebug(`[AUTH] No accessToken cookie found for ${req.method} ${req.originalUrl}`);
       res.status(401).json({ 
         message: 'authentication required. please log in.',
@@ -177,7 +178,7 @@ export const verifyToken: MiddlewareFunction = (
       return;
     }
 
-    jwt.verify(token, secret, (err, decoded) => {
+    jwt.verify(cookieToken, secret, (err, decoded) => {
       try {
         if (err) {
           logDebug(`[AUTH] Token verification failed for ${req.method} ${req.originalUrl}: ${err.message}`);

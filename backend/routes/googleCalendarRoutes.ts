@@ -1,13 +1,13 @@
 import { Router } from 'express';
 import { initiateGoogleAuth, handleGoogleCallback, disconnectGoogleCalendar, getSyncStatus, importFromGoogle, exportToGoogle, bidirectionalSync
 } from '../controllers/googleCalendarController.js';
-import { verifyToken } from '../middleware/authMiddleware.js';
+import { verifyToken, optionalAuth } from '../middleware/authMiddleware.js';
 
 const router: Router = Router();
 
 // OAuth routes
 router.get('/auth', verifyToken, initiateGoogleAuth);
-router.get('/callback', verifyToken, handleGoogleCallback);
+router.get('/callback', optionalAuth, handleGoogleCallback);
 router.post('/disconnect', verifyToken, disconnectGoogleCalendar);
 
 // Sync routes

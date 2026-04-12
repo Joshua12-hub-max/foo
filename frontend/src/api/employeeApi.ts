@@ -422,6 +422,15 @@ export const deleteEmployeeDocument = async (id: string | number, docId: number)
   }
 };
 
+export const syncEmployeeDocumentsFromRecruitment = async (id: string | number): Promise<{ success: boolean; message?: string }> => {
+  try {
+    const response = await axios.post(`/employees/${id}/sync-from-recruitment`);
+    return response.data;
+  } catch (error: unknown) {
+    return { success: false, message: 'Failed to synchronize documents' };
+  }
+};
+
 export const employeeApi = {
     fetchEmployees,
     fetchEmployeeProfile,
@@ -449,6 +458,7 @@ export const employeeApi = {
     fetchEmployeeDocuments,
     uploadEmployeeDocument,
     deleteEmployeeDocument,
+    syncEmployeeDocumentsFromRecruitment,
     getNextStepIncrement,
     
     // Generic PDS Section Updates

@@ -136,16 +136,22 @@ const JobDetail = () => {
 
       // Address
       resRegion: "",
+      resRegionCode: "",
       resProvince: "",
+      resProvinceCode: "",
       resCity: "",
+      resCityCode: "",
       resBarangay: "",
       resStreet: "",
       resHouseBlockLot: "",
       resSubdivision: "",
       zipCode: "",
       permRegion: "",
+      permRegionCode: "",
       permProvince: "",
+      permProvinceCode: "",
       permCity: "",
+      permCityCode: "",
       permBarangay: "",
       permStreet: "",
       permHouseBlockLot: "",
@@ -259,9 +265,16 @@ const JobDetail = () => {
       const errorData = err.response?.data;
 
       if (errorData?.errors && typeof errorData.errors === "object") {
-        // Show validation errors
+        // Show validation errors in summary box
         const fieldErrors = errorData.errors;
         const errorCount = Object.keys(fieldErrors).length;
+
+        // Populate validationErrors state for the summary box
+        const errorMessages = Object.entries(fieldErrors).map(([field, error]) => {
+          const message = Array.isArray(error) ? error[0] : String(error);
+          return `${field}: ${message}`;
+        });
+        setValidationErrors(errorMessages);
 
         showToast(
           errorData.hint ||
@@ -272,12 +285,8 @@ const JobDetail = () => {
         // Log individual field errors to console for debugging
         console.table(fieldErrors);
 
-        // Scroll to first error field
-        const firstErrorField = Object.keys(fieldErrors)[0];
-        if (firstErrorField) {
-          const element = document.querySelector(`[name="${firstErrorField}"]`);
-          element?.scrollIntoView({ behavior: "smooth", block: "center" });
-        }
+        // Scroll to form to see the error box
+        scrollToForm();
       } else if (err.response?.status === 409) {
         showToast(
           errorData?.message || "Duplicate application detected.",
@@ -362,6 +371,7 @@ const JobDetail = () => {
     control: Control<JobApplicationSchema>;
     setCurrentStep: (step: number) => void;
     dutyType?: "Standard" | "Irregular";
+    employmentType?: string;
     onTermsChange?: (accepted: boolean) => void;
     termsAccepted?: boolean;
     getStepIndex?: (component: React.ElementType) => number;
@@ -811,6 +821,7 @@ const JobDetail = () => {
                         control,
                         setCurrentStep,
                         dutyType: job?.dutyType,
+                        employmentType: job?.employmentType,
                         ...(allSteps[currentStep - 1].component === ReviewSection
                           ? {
                               onTermsChange: setTermsAccepted,
@@ -822,7 +833,7 @@ const JobDetail = () => {
                     </div>
 
                         {/* Navigation Buttons */}
-                        <div className="flex justify-between items-center mt-8 pt-6 border-t border-gray-200 relative z-10">
+                        <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mt-8 pt-6 border-t border-gray-200 relative z-10">
                           <button
                             type="button"
                             onClick={() => {
@@ -831,14 +842,14 @@ const JobDetail = () => {
                               scrollToForm();
                             }}
                             disabled={currentStep === 1}
-                            className="px-6 py-2.5 bg-gray-200 text-gray-700 rounded-lg font-bold text-sm hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                            className="w-full sm:w-auto px-8 py-3 bg-gray-200 text-gray-700 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                           >
                             Previous
                           </button>
 
-                          <div className="text-center">
-                            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">
-                              Step {currentStep} of {allSteps.length}
+                          <div className="order-first sm:order-none">
+                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                              Step {currentStep} / {allSteps.length}
                             </p>
                           </div>
 
@@ -846,27 +857,30 @@ const JobDetail = () => {
                             <button
                               type="button"
                               onClick={handleNext}
-                              className="px-6 py-2.5 bg-accent text-white rounded-lg font-bold text-sm hover:bg-accent-hover transition-all shadow-md active:scale-95"
+                              className="w-full sm:w-auto px-8 py-3 bg-slate-900 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg active:scale-95"
                             >
-                              Next
+                              Next Step
                             </button>
                           ) : (
                             <button
                               type="submit"
                               disabled={mutation.isPending || isFormLoadingState}
-                              className={`px-6 py-2.5 rounded-lg font-bold text-sm transition-all shadow-md flex items-center gap-2 active:scale-95 ${
+                              className={`w-full sm:w-auto px-10 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all shadow-xl flex items-center justify-center gap-3 active:scale-95 border-b-4 ${
                                 !mutation.isPending && !isFormLoadingState
-                                  ? "bg-accent text-white hover:bg-accent-hover"
-                                  : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                                  ? "bg-accent text-white hover:bg-accent-hover border-slate-900"
+                                  : "bg-gray-300 text-gray-500 cursor-not-allowed border-gray-400"
                               }`}
                             >
                               {mutation.isPending || isFormLoadingState ? (
                                 <>
-                                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                                  Submitting...
+                                  <div className="w-4 h-4 border-[3px] border-white border-t-transparent rounded-full animate-spin"></div>
+                                  Processing...
                                 </>
                               ) : (
-                                "Submit Application"
+                                <>
+                                  <Send size={14} />
+                                  Submit Application
+                                </>
                               )}
                             </button>
                           )}

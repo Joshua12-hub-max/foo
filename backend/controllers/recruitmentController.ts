@@ -148,6 +148,7 @@ export const getHiredByDuty: AuthenticatedHandler = async (req, res) => {
         experiences: true,
         trainings: true,
         eligibilities: true,
+        documents: true,
       },
       orderBy: (applicants, { desc }) => [desc(applicants.hiredDate)]
     });
@@ -314,7 +315,10 @@ export const applyJob = async (req: Request, res: Response): Promise<void> => {
 
     // 0. Pre-parse JSON strings from multipart/form-data (PDS Aligned)
     const body = req.body as Record<string, string | number | boolean | object | null | undefined>;
-    const jsonFields = ['education', 'eligibilities', 'workExperiences', 'trainings'];
+    const jsonFields = [
+      'education', 'eligibilities', 'workExperiences', 'trainings',
+      'familyBackground', 'children', 'voluntaryWorks', 'references', 'otherInfo', 'declarations'
+    ];
     jsonFields.forEach(field => {
       const value = body[field];
       if (typeof value === 'string' && (value.startsWith('{') || value.startsWith('['))) {
@@ -384,7 +388,8 @@ export const applyJob = async (req: Request, res: Response): Promise<void> => {
       workExperiences,
       hpField, websiteUrl, hToken,
       nationality, telephoneNumber, agencyEmployeeNo, facebookUrl, linkedinUrl, twitterHandle,
-      citizenshipType, dualCountry, govtIdType, govtIdNo, govtIdIssuance
+      citizenshipType, dualCountry, govtIdType, govtIdNo, govtIdIssuance,
+      familyBackground, children, voluntaryWorks, references, otherInfo, declarations
     } = parseResult.data;
 
     // Construct full address strings for persistence and searchability
@@ -669,6 +674,15 @@ export const applyJob = async (req: Request, res: Response): Promise<void> => {
             govtIdType: govtIdType || null,
             govtIdNo: govtIdNo || null,
             govtIdIssuance: govtIdIssuance || null,
+            
+            // 100% DATA FLOW: Expanded PDS fields for automated registration
+            familyBackground: familyBackground ? JSON.stringify(familyBackground) : null,
+            children: children ? JSON.stringify(children) : null,
+            voluntaryWork: voluntaryWorks ? JSON.stringify(voluntaryWorks) : null,
+            pdsReferences: references ? JSON.stringify(references) : null,
+            otherInfo: otherInfo ? JSON.stringify(otherInfo) : null,
+            pdsQuestions: declarations ? JSON.stringify(declarations) : null,
+
             verificationToken: null,
             isEmailVerified: true,
             createdAt: currentManilaDateTime()
@@ -959,6 +973,11 @@ export const getApplicants = async (req: Request, res: Response): Promise<void> 
     // 100% PRECISION: Removed Auto-archive logic to ensure manual confirmation as requested.
 
     const conditions: SQL[] = [];
+    
+    // 100% PRECISION: Exclude applicants who have already registered as employees.
+    // They are no longer part of the recruitment lifecycle.
+    conditions.push(isNull(recruitmentApplicants.registeredEmployeeId));
+
     if (jobId && typeof jobId === 'string' && !isNaN(Number(jobId))) {
       conditions.push(eq(recruitmentApplicants.jobId, Number(jobId)));
     }
@@ -968,13 +987,25 @@ export const getApplicants = async (req: Request, res: Response): Promise<void> 
       if (stageStr === 'Pending') {
         const orCondition = or(eq(recruitmentApplicants.stage, 'Applied'), isNull(recruitmentApplicants.stage));
         if (orCondition) conditions.push(orCondition);
+        conditions.push(eq(recruitmentApplicants.isConfirmed, false)); // Active list only
+      } else if (stageStr === 'Archive') {
+        // Archive tab shows Rejected OR Hired+Confirmed
+        conditions.push(or(
+            eq(recruitmentApplicants.stage, 'Rejected'),
+            and(eq(recruitmentApplicants.stage, 'Hired'), eq(recruitmentApplicants.isConfirmed, true))
+        ) as SQL);
       } else if (stageStr === 'Reviewed') {
         conditions.push(eq(recruitmentApplicants.stage, 'Screening'));
+        conditions.push(eq(recruitmentApplicants.isConfirmed, false)); // Active list only
       } else if (stageStr === 'Interview') {
         conditions.push(inArray(recruitmentApplicants.stage, ['Initial Interview', 'Final Interview']));
+        conditions.push(eq(recruitmentApplicants.isConfirmed, false)); // Active list only
       } else if (isApplicantStage(stageStr)) {
         // stageStr is now narrowed to ApplicantStage
         conditions.push(eq(recruitmentApplicants.stage, stageStr));
+        if (stageStr !== 'Hired') { // For Hired, we might want to see them before they are confirmed
+            conditions.push(eq(recruitmentApplicants.isConfirmed, false));
+        }
       }
     }
 
@@ -1332,11 +1363,11 @@ export const getApplicantStats = async (_req: Request, res: Response): Promise<v
   try {
     const [stats] = await db.select({
       total: sql`count(*)`,
-      pending: sql`sum(case when ${recruitmentApplicants.stage} = 'Applied' or ${recruitmentApplicants.stage} is null then 1 else 0 end)`,
-      screening: sql`sum(case when ${recruitmentApplicants.stage} = 'Screening' then 1 else 0 end)`,
-      interviewing: sql`sum(case when ${recruitmentApplicants.stage} in ('Initial Interview', 'Final Interview') then 1 else 0 end)`,
-      hired: sql`sum(case when ${recruitmentApplicants.stage} = 'Hired' then 1 else 0 end)`,
-      rejected: sql`sum(case when ${recruitmentApplicants.stage} = 'Rejected' then 1 else 0 end)`
+      pending: sql`sum(case when (${recruitmentApplicants.stage} = 'Applied' or ${recruitmentApplicants.stage} is null) and ${recruitmentApplicants.registeredEmployeeId} is null then 1 else 0 end)`,
+      screening: sql`sum(case when ${recruitmentApplicants.stage} = 'Screening' and ${recruitmentApplicants.registeredEmployeeId} is null then 1 else 0 end)`,
+      interviewing: sql`sum(case when ${recruitmentApplicants.stage} in ('Initial Interview', 'Final Interview') and ${recruitmentApplicants.registeredEmployeeId} is null then 1 else 0 end)`,
+      hired: sql`sum(case when ${recruitmentApplicants.stage} = 'Hired' and ${recruitmentApplicants.registeredEmployeeId} is null then 1 else 0 end)`,
+      rejected: sql`sum(case when ${recruitmentApplicants.stage} = 'Rejected' and ${recruitmentApplicants.registeredEmployeeId} is null then 1 else 0 end)`
     }).from(recruitmentApplicants);
     
     res.json(stats); 

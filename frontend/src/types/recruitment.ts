@@ -5,6 +5,17 @@ export type ApplicantStatus = 'Applied' | 'Screening' | 'Interview' | 'Offer' | 
 export type ApplicantSource = 'web' | 'email';
 export type InterviewPlatform = 'Google Meet' | 'Zoom' | 'Other' | 'Jitsi Meet';
 
+export interface ApplicantDocument {
+  id: number;
+  applicantId: number;
+  documentName: string;
+  documentType: string;
+  filePath: string;
+  fileSize: number | null;
+  mimeType: string | null;
+  uploadedAt: string;
+}
+
 export interface Applicant {
   id: number;
   jobId?: number | null;
@@ -23,6 +34,7 @@ export interface Applicant {
   photoPath?: string;
   eligibilityPath?: string;
   photoUrl?: string;
+  documents?: ApplicantDocument[];
   status: ApplicantStatus;
   stage: ApplicantStage;
   source: ApplicantSource;

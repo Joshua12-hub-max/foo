@@ -14,6 +14,7 @@ import { useNextEmployeeIdQuery } from "@/hooks/useCommonQueries";
 import { useAuth } from "@/hooks/useAuth";
 import SEO from "@/components/Global/SEO";
 import { pdsApi } from "@/api/pdsApi";
+import type { PdsParserOutput, PdsWorkExperience } from "@/types/pds";
 
 export type RegisterFormValues = z.input<typeof RegisterSchema>;
 
@@ -158,7 +159,31 @@ export default function Register() {
     // PDS arrays — canonical names
     if (Array.isArray(data.educations) && data.educations.length > 0) setValue("educations", data.educations);
     if (Array.isArray(data.eligibilities) && data.eligibilities.length > 0) setValue("eligibilities", data.eligibilities);
-    if (Array.isArray(data.workExperiences) && data.workExperiences.length > 0) setValue("workExperiences", data.workExperiences);
+    if (Array.isArray(data.workExperiences) && data.workExperiences.length > 0) {
+        setValue("workExperiences", data.workExperiences);
+        
+        // --- 100% SUCCESS: Extract Current Position/Department from latest work experience ---
+        const currentWork = data.workExperiences.find((w: any) => 
+            w.dateTo === 'Present' || 
+            w.dateTo === '' || 
+            !w.dateTo
+        ) || data.workExperiences[0];
+
+        if (currentWork) {
+            if (currentWork.positionTitle) setValue("position", currentWork.positionTitle);
+            if (currentWork.companyName) setValue("department", currentWork.companyName);
+            
+            // Infer Duty Type and Appointment Type from work experience if possible
+            if (currentWork.appointmentStatus) {
+                const status = currentWork.appointmentStatus.toLowerCase();
+                if (status.includes('permanent')) setValue("appointmentType", "Permanent");
+                else if (status.includes('contractual') || status.includes('contract')) setValue("appointmentType", "Contractual");
+                else if (status.includes('casual')) setValue("appointmentType", "Casual");
+                else if (status.includes('job order') || status === 'jo') setValue("appointmentType", "Job Order");
+                else if (status.includes('coterminous')) setValue("appointmentType", "Coterminous");
+            }
+        }
+    }
     if (Array.isArray(data.learningDevelopments) && data.learningDevelopments.length > 0) setValue("learningDevelopments", data.learningDevelopments);
     if (Array.isArray(data.voluntaryWorks) && data.voluntaryWorks.length > 0) setValue("voluntaryWorks", data.voluntaryWorks);
     if (Array.isArray(data.references) && data.references.length > 0) setValue("references", data.references);
@@ -166,9 +191,12 @@ export default function Register() {
     if (Array.isArray(data.otherInfo) && data.otherInfo.length > 0) setValue("otherInfo", data.otherInfo);
     if (data.declarations) setValue("declarations", data.declarations);
 
-    // Forced defaults
-    setValue("dutyType", "Standard");
-    setValue("appointmentType", "Permanent");
+    // Dynamic defaults — only set if not already inferred
+    if (!watch("dutyType")) setValue("dutyType", "Standard");
+    if (!watch("appointmentType")) setValue("appointmentType", "Permanent");
+    
+    // Role is still inferred by backend based on department/position, 
+    // but we can set a sensible default for the form state
     setValue("role", "Employee");
     setValue("certifiedCorrect", true);
   };

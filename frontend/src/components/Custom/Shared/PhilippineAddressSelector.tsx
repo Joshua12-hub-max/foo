@@ -65,16 +65,19 @@ export const PhilippineAddressSelector = <T extends FieldValues>({
     if (isMeycauayanOnly) {
       const reg3 = phLib.regions.find((r: Region) => r.reg_code === '03');
       setRegions(reg3 ? [reg3] : []);
-      setValue(`${prefix}Region` as Path<T>, '03' as PathValue<T, Path<T>>, { shouldValidate: true });
+      setValue(`${prefix}RegionCode` as Path<T>, '03' as PathValue<T, Path<T>>);
+      setValue(`${prefix}Region` as Path<T>, formatName(reg3?.name || '') as PathValue<T, Path<T>>, { shouldValidate: true });
 
       const bulacan = phLib.provinces.find((p: Province) => p.prov_code === '0314');
       setProvinces(bulacan ? [bulacan] : []);
-      setValue(`${prefix}Province` as Path<T>, '0314' as PathValue<T, Path<T>>, { shouldValidate: true });
+      setValue(`${prefix}ProvinceCode` as Path<T>, '0314' as PathValue<T, Path<T>>);
+      setValue(`${prefix}Province` as Path<T>, formatName(bulacan?.name || '') as PathValue<T, Path<T>>, { shouldValidate: true });
 
       const meycauayan = phLib.city_mun.find((c: CityMunicipality) => c.mun_code === '031412' || c.name.toUpperCase().includes('MEYCAUAYAN'));
       setCities(meycauayan ? [meycauayan] : []);
       const munCode = meycauayan?.mun_code || '031412';
-      setValue(`${prefix}City` as Path<T>, munCode as PathValue<T, Path<T>>, { shouldValidate: true });
+      setValue(`${prefix}CityCode` as Path<T>, munCode as PathValue<T, Path<T>>);
+      setValue(`${prefix}City` as Path<T>, formatName(meycauayan?.name || '') as PathValue<T, Path<T>>, { shouldValidate: true });
 
       const zip = getZipByMunCode(munCode);
       if (zip) {
@@ -88,58 +91,62 @@ export const PhilippineAddressSelector = <T extends FieldValues>({
   // 2. Load Provinces when Region changes
   useEffect(() => {
     if (isMeycauayanOnly) return;
+    const regionCode = watch(`${prefix}RegionCode` as Path<T>);
 
-    if (watchRegion) {
-      const filteredProvinces = phLib.getProvincesByRegion?.(watchRegion) ||
-                               phLib.provinces?.filter((p: Province) => p.reg_code === watchRegion) || [];
+    if (regionCode) {
+      const filteredProvinces = phLib.getProvincesByRegion?.(regionCode as string) ||
+                               phLib.provinces?.filter((p: Province) => p.reg_code === regionCode) || [];
       setProvinces(filteredProvinces);
 
       // For NCR (Region 13), load cities directly
-      if (watchRegion === '13') {
+      if (regionCode === '13') {
         const filteredCities = phLib.city_mun?.filter((c: CityMunicipality) => c.reg_code === '13') || [];
         setCities(filteredCities);
       }
     } else {
       setProvinces([]);
     }
-  }, [watchRegion, isMeycauayanOnly]);
+  }, [watch(`${prefix}RegionCode` as Path<T>), isMeycauayanOnly]);
 
   // 3. Load Cities when Province changes
   useEffect(() => {
     if (isMeycauayanOnly) return;
+    const regionCode = watch(`${prefix}RegionCode` as Path<T>);
+    const provinceCode = watch(`${prefix}ProvinceCode` as Path<T>);
 
-    if (watchProvince) {
-      const filteredCities = phLib.getCityMunByProvince?.(watchProvince) ||
-                            phLib.city_mun?.filter((c: CityMunicipality) => c.prov_code === watchProvince) || [];
+    if (provinceCode) {
+      const filteredCities = phLib.getCityMunByProvince?.(provinceCode as string) ||
+                            phLib.city_mun?.filter((c: CityMunicipality) => c.prov_code === provinceCode) || [];
       setCities(filteredCities);
-    } else if (watchRegion !== '13') {
+    } else if (regionCode !== '13') {
       setCities([]);
     }
-  }, [watchProvince, watchRegion, isMeycauayanOnly]);
+  }, [watch(`${prefix}ProvinceCode` as Path<T>), watch(`${prefix}RegionCode` as Path<T>), isMeycauayanOnly]);
 
   // 4. Load Barangays + Auto Zip Code when City changes
   useEffect(() => {
-    if (watchCity) {
+    const cityCode = watch(`${prefix}CityCode` as Path<T>);
+    if (cityCode) {
       let filteredBarangays: Barangay[] = [];
-      const cityCode = String(watchCity);
+      const cityCodeStr = String(cityCode);
 
       if (phLib.getBarangayByMun) {
-        filteredBarangays = phLib.getBarangayByMun(cityCode) || [];
+        filteredBarangays = phLib.getBarangayByMun(cityCodeStr) || [];
       } else if (phLib.barangays) {
-        filteredBarangays = phLib.barangays.filter((b: Barangay) => b.mun_code === cityCode) || [];
+        filteredBarangays = phLib.barangays.filter((b: Barangay) => b.mun_code === cityCodeStr) || [];
       }
 
       setBarangays(filteredBarangays);
 
       // Direct munCode → zip code lookup (100% coverage, no string matching)
-      const zip = getZipByMunCode(cityCode);
+      const zip = getZipByMunCode(cityCodeStr);
       if (zip) {
         setValue(zipField, zip as PathValue<T, Path<T>>, { shouldValidate: true });
       }
     } else {
       setBarangays([]);
     }
-  }, [watchCity, prefix, setValue, zipField]);
+  }, [watch(`${prefix}CityCode` as Path<T>), prefix, setValue, zipField]);
 
   // Helper to format names to Normal/Title Case
   const formatName = (name: string) => {
@@ -193,10 +200,15 @@ export const PhilippineAddressSelector = <T extends FieldValues>({
           <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Region</label>
           <Combobox 
              options={regions.map((r: Region) => ({ value: r.reg_code, label: formatName(r.name) }))}
-             value={watchRegion || ''}
+             value={watch(`${prefix}RegionCode` as Path<T>) || ''}
              onChange={(val: string) => {
-                 setValue(`${prefix}Region` as Path<T>, val as PathValue<T, Path<T>>, { shouldValidate: true });
+                 const region = regions.find(r => r.reg_code === val);
+                 setValue(`${prefix}RegionCode` as Path<T>, val as PathValue<T, Path<T>>, { shouldValidate: true });
+                 setValue(`${prefix}Region` as Path<T>, formatName(region?.name || '') as PathValue<T, Path<T>>, { shouldValidate: true });
+                 
+                 setValue(`${prefix}ProvinceCode` as Path<T>, '' as PathValue<T, Path<T>>);
                  setValue(`${prefix}Province` as Path<T>, '' as PathValue<T, Path<T>>);
+                 setValue(`${prefix}CityCode` as Path<T>, '' as PathValue<T, Path<T>>);
                  setValue(`${prefix}City` as Path<T>, '' as PathValue<T, Path<T>>);
                  setValue(`${prefix}Barangay` as Path<T>, '' as PathValue<T, Path<T>>);
              }}
@@ -213,19 +225,23 @@ export const PhilippineAddressSelector = <T extends FieldValues>({
           <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Province</label>
           <Combobox
              options={provinces.map((p: Province) => ({ value: p.prov_code, label: formatName(p.name) }))}
-             value={watchProvince || ''}
+             value={watch(`${prefix}ProvinceCode` as Path<T>) || ''}
              onChange={(val: string) => {
-                 setValue(`${prefix}Province` as Path<T>, val as PathValue<T, Path<T>>, { shouldValidate: true });
+                 const province = provinces.find(p => p.prov_code === val);
+                 setValue(`${prefix}ProvinceCode` as Path<T>, val as PathValue<T, Path<T>>, { shouldValidate: true });
+                 setValue(`${prefix}Province` as Path<T>, formatName(province?.name || '') as PathValue<T, Path<T>>, { shouldValidate: true });
+                 
+                 setValue(`${prefix}CityCode` as Path<T>, '' as PathValue<T, Path<T>>);
                  setValue(`${prefix}City` as Path<T>, '' as PathValue<T, Path<T>>);
                  setValue(`${prefix}Barangay` as Path<T>, '' as PathValue<T, Path<T>>);
              }}
-             placeholder={!watchRegion ? "Select region first" : provinces.length === 0 ? "No provinces available" : "Select province"}
-             className={isMeycauayanOnly || (!watchRegion && watchRegion !== '13') ? 'opacity-60 pointer-events-none' : ''}
+             placeholder={!watch(`${prefix}RegionCode` as Path<T>) ? "Select region first" : provinces.length === 0 ? "No provinces available" : "Select province"}
+             className={isMeycauayanOnly || (!watch(`${prefix}RegionCode` as Path<T>) && watch(`${prefix}RegionCode` as Path<T>) !== '13') ? 'opacity-60 pointer-events-none' : ''}
              error={!!errors[`${prefix}Province`]}
              buttonClassName="rounded-[12px]"
           />
           <FieldError name={`${prefix}Province`} />
-          {watchRegion && provinces.length === 0 && (
+          {watch(`${prefix}RegionCode` as Path<T>) && provinces.length === 0 && (
             <p className="text-orange-600 text-xs ml-1 font-semibold">⚠️ No provinces found for this region</p>
           )}
         </div>
@@ -235,18 +251,21 @@ export const PhilippineAddressSelector = <T extends FieldValues>({
           <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">City/Municipality <span className="text-red-500">*</span></label>
           <Combobox
              options={cities.map((c: CityMunicipality) => ({ value: c.mun_code, label: formatName(c.name) }))}
-             value={watchCity || ''}
+             value={watch(`${prefix}CityCode` as Path<T>) || ''}
              onChange={(val: string) => {
-                 setValue(`${prefix}City` as Path<T>, val as PathValue<T, Path<T>>, { shouldValidate: true });
+                 const city = cities.find(c => c.mun_code === val);
+                 setValue(`${prefix}CityCode` as Path<T>, val as PathValue<T, Path<T>>, { shouldValidate: true });
+                 setValue(`${prefix}City` as Path<T>, formatName(city?.name || '') as PathValue<T, Path<T>>, { shouldValidate: true });
+                 
                  setValue(`${prefix}Barangay` as Path<T>, '' as PathValue<T, Path<T>>);
              }}
-             placeholder={!watchProvince && watchRegion !== '13' ? "Select province first" : cities.length === 0 ? "No cities available" : "Select city"}
-             className={isMeycauayanOnly || (!watchProvince && watchRegion !== '13') ? 'opacity-60 pointer-events-none' : ''}
+             placeholder={!watch(`${prefix}ProvinceCode` as Path<T>) && watch(`${prefix}RegionCode` as Path<T>) !== '13' ? "Select province first" : cities.length === 0 ? "No cities available" : "Select city"}
+             className={isMeycauayanOnly || (!watch(`${prefix}ProvinceCode` as Path<T>) && watch(`${prefix}RegionCode` as Path<T>) !== '13') ? 'opacity-60 pointer-events-none' : ''}
              error={!!errors[`${prefix}City`] as boolean}
              buttonClassName="rounded-[12px]"
           />
           <FieldError name={`${prefix}City`} />
-          {(watchProvince || watchRegion === '13') && cities.length === 0 && (
+          {(watch(`${prefix}ProvinceCode` as Path<T>) || watch(`${prefix}RegionCode` as Path<T>) === '13') && cities.length === 0 && (
             <p className="text-orange-600 text-xs ml-1 font-semibold">⚠️ No cities found for this province</p>
           )}
         </div>
@@ -256,15 +275,15 @@ export const PhilippineAddressSelector = <T extends FieldValues>({
           <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Barangay <span className="text-red-500">*</span></label>
           <Combobox
              options={barangays.map((b: Barangay) => ({ value: b.name, label: formatName(b.name) }))}
-             value={watchBarangay || ''}
+             value={watch(`${prefix}Barangay` as Path<T>) || ''}
              onChange={(val: string) => setValue(`${prefix}Barangay` as Path<T>, val as PathValue<T, Path<T>>, { shouldValidate: true })}
-             placeholder={!watchCity ? "Select city first" : barangays.length === 0 ? "No barangays available" : "Select barangay"}
-             className={!watchCity ? 'opacity-60 pointer-events-none' : ''}
+             placeholder={!watch(`${prefix}CityCode` as Path<T>) ? "Select city first" : barangays.length === 0 ? "No barangays available" : "Select barangay"}
+             className={!watch(`${prefix}CityCode` as Path<T>) ? 'opacity-60 pointer-events-none' : ''}
              error={!!errors[`${prefix}Barangay`] as boolean}
              buttonClassName="rounded-[12px]"
           />
           <FieldError name={`${prefix}Barangay`} />
-          {watchCity && barangays.length === 0 && (
+          {watch(`${prefix}CityCode` as Path<T>) && barangays.length === 0 && (
             <p className="text-orange-600 text-xs ml-1 font-semibold">⚠️ No barangays found for this city</p>
           )}
         </div>

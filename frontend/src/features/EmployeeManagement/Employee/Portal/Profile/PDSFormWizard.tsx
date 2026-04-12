@@ -27,8 +27,11 @@ import { LucideIcon } from "lucide-react";
 import { getZipByMunCode } from "@/data/ph-zipcodes";
 
 // ─── Helper Functions for Location Name to Code Conversion ──────────────────
+const isLocationCode = (val: string): boolean => /^\d+$/.test(val);
+
 const getRegionCodeByName = (name: string | null): string => {
   if (!name) return '';
+  if (isLocationCode(name)) return name;
   const region = phLib.regions.find(r =>
     r.name.toUpperCase() === name.toUpperCase() ||
     name.toUpperCase().includes(r.name.toUpperCase())
@@ -43,6 +46,7 @@ const getRegionNameByCode = (code: string | null): string => {
 
 const getProvinceCodeByName = (name: string | null): string => {
   if (!name) return '';
+  if (isLocationCode(name)) return name;
   const province = phLib.provinces.find(p =>
     p.name.toUpperCase() === name.toUpperCase() ||
     name.toUpperCase().includes(p.name.toUpperCase())
@@ -57,6 +61,7 @@ const getProvinceNameByCode = (code: string | null): string => {
 
 const getCityCodeByName = (name: string | null): string => {
   if (!name) return '';
+  if (isLocationCode(name)) return name;
 
   // Normalize the search name: remove "City of" prefix and "City" suffix
   const normalizedSearch = name
@@ -886,6 +891,34 @@ const StepOtherInfo = ({ data, set, employeeId }: { data: PDSFormData; set: PDSS
   );
 };
 
+const StepDocumentRepository = ({ employeeId }: { employeeId: number }) => {
+  const [docs, setDocs] = useState<EmployeeDocument[]>([]);
+  const loadDocs = useCallback(async () => {
+    const res = await fetchEmployeeDocuments(employeeId);
+    if (res.success && res.documents) setDocs(res.documents);
+  }, [employeeId]);
+  useEffect(() => { loadDocs(); }, [loadDocs]);
+
+  return (
+    <SectionCard title="Personal Document Repository" roman="DOCS">
+      <div className="bg-slate-50/30 rounded-2xl p-8 border border-gray-100">
+        <div className="mb-10 text-center max-w-2xl mx-auto">
+          <div className="w-16 h-16 bg-[var(--zed-primary)]/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-[var(--zed-primary)]/20">
+            <Paperclip size={32} className="text-[var(--zed-primary)]" />
+          </div>
+          <h3 className="text-2xl font-black text-gray-800 uppercase tracking-tight mb-2">Centralized Document Management</h3>
+          <p className="text-sm text-gray-500 font-medium">Your official identification, application history, and certification documents are stored here securely for HR compliance.</p>
+        </div>
+        <DocumentGallery 
+          employeeId={employeeId} 
+          documents={docs} 
+          onDocumentChange={loadDocs} 
+        />
+      </div>
+    </SectionCard>
+  );
+};
+
 const StepDeclarations = ({ data, set, metadata }: { data: PDSFormData; set: PDSSetter; metadata: PDSMetadata }) => (
   <div className="space-y-8">
     <SectionCard title="Declarations" roman="IX">
@@ -1057,7 +1090,8 @@ const PDSFormWizard: React.FC<PDSFormWizardProps> = ({ employeeId }) => {
     { id: 4, label: "Work Experience", roman: "V" },
     { id: 5, label: "Voluntary Work", roman: "VI" },
     { id: 6, label: "Learning & Development", roman: "VII" },
-    { id: 7, label: "Other Info & Docs", roman: "VIII" },
+    { id: 7, label: "Other Information", roman: "VIII" },
+    { id: 10, label: "DOCUMENT REPOSITORY", roman: "DOCS" },
     { id: 8, label: "Legal Declarations", roman: "IX" },
     { id: 9, label: "Human Resource Internal Details", roman: "HR" },
   ];
@@ -1388,6 +1422,7 @@ const PDSFormWizard: React.FC<PDSFormWizardProps> = ({ employeeId }) => {
           {activeSection === 5 && <StepVoluntary data={data} set={set} />}
           {activeSection === 6 && <StepTraining data={data} set={set} metadata={metadata as PDSMetadata} />}
           {activeSection === 7 && <StepOtherInfo data={data} set={set} employeeId={employeeId} />}
+          {activeSection === 10 && <StepDocumentRepository employeeId={employeeId} />}
           {activeSection === 8 && <StepDeclarations data={data} set={set} metadata={metadata as PDSMetadata} />}
           {activeSection === 9 && <StepHRDetails data={data} set={set} metadata={metadata as PDSMetadata} />}
         </div></div>

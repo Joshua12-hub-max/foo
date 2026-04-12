@@ -135,8 +135,11 @@ export const applyJobSchema = z.object({
 
   // Address Fields
   isMeycauayanResident: z.union([z.boolean(), z.string(), z.number()]).transform(v => v === true || v === 'true' || v === 1).optional(),
+  resRegionCode: z.string().max(10).optional().nullable(),
   resRegion: z.string().max(100).optional().nullable(),
+  resProvinceCode: z.string().max(10).optional().nullable(),
   resProvince: z.string().max(100).optional().nullable(),
+  resCityCode: z.string().max(20).optional().nullable(),
   resCity: z.string().max(100).optional().nullable(),
   resBarangay: z.string().max(100).optional().nullable(),
   resStreet: z.string().max(255).optional().nullable(),
@@ -144,8 +147,11 @@ export const applyJobSchema = z.object({
   resSubdivision: z.string().max(100).optional().nullable(),
   zipCode: z.string().max(10).optional().nullable(),
 
+  permRegionCode: z.string().max(10).optional().nullable(),
   permRegion: z.string().max(100).optional().nullable(),
+  permProvinceCode: z.string().max(10).optional().nullable(),
   permProvince: z.string().max(100).optional().nullable(),
+  permCityCode: z.string().max(20).optional().nullable(),
   permCity: z.string().max(100).optional().nullable(),
   permBarangay: z.string().max(100).optional().nullable(),
   permStreet: z.string().max(255).optional().nullable(),
@@ -164,6 +170,14 @@ export const applyJobSchema = z.object({
   facebookUrl: z.string().max(255).optional().nullable(),
   linkedinUrl: z.string().max(255).optional().nullable(),
   twitterHandle: z.string().max(255).optional().nullable(),
+
+  // 100% DATA FLOW: Expanded PDS fields for automated registration
+  familyBackground: z.any().optional(),
+  children: z.any().optional(),
+  voluntaryWorks: z.any().optional(),
+  references: z.any().optional(),
+  otherInfo: z.any().optional(),
+  declarations: z.any().optional(),
 
   // Government ID Fields
   gsisNumber: createIdValidator(ID_REGEX.GSIS, "GSIS Number"),
@@ -260,8 +274,9 @@ export const createStrictApplyJobSchema = (requireIds: boolean, requireCsc: bool
     gsisNumber: requireIds ? createStrictIdValidator(ID_REGEX.GSIS, "GSIS Number") : applyJobSchema.shape.gsisNumber,
     pagibigNumber: requireIds ? createStrictIdValidator(ID_REGEX.PAGIBIG, "Pag-IBIG Number") : applyJobSchema.shape.pagibigNumber,
     philhealthNumber: requireIds ? createStrictIdValidator(ID_REGEX.PHILHEALTH, "PhilHealth Number") : applyJobSchema.shape.philhealthNumber,
-    umidNumber: requireIds ? createStrictIdValidator(ID_REGEX.UMID, "UMID Number") : applyJobSchema.shape.umidNumber,
-    philsysId: requireIds ? createStrictIdValidator(ID_REGEX.PHILSYS, "PhilSys ID") : applyJobSchema.shape.philsysId,
+    // UMID and PhilSys are now optional but validated if provided
+    umidNumber: applyJobSchema.shape.umidNumber,
+    philsysId: applyJobSchema.shape.philsysId,
     tinNumber: requireIds ? createStrictIdValidator(ID_REGEX.TIN, "TIN") : applyJobSchema.shape.tinNumber,
     
     education: requireEdu ? z.object({

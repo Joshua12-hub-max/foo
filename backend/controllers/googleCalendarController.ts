@@ -134,13 +134,22 @@ const getAuthenticatedClient = async (userId: number): Promise<{ client: OAuth2C
   }
 };
 
+import { AuthService } from '../services/auth.service.js';
+
 // ============================================================================
 // Controller Functions
 // ============================================================================
 
-export const initiateGoogleAuth = async (_req: Request, res: Response): Promise<void> => {
+export const initiateGoogleAuth = async (req: Request, res: Response): Promise<void> => {
   try {
+    const authReq = req as AuthenticatedRequest;
+    const userId = authReq.user.id;
+    
     const oauth2Client = getOAuth2Client();
+
+    // Generate a secure state token to carry authentication through the redirect
+    // This bypasses cookie issues in cross-origin redirects (COOP/SameSite)
+    const stateToken = AuthService.generateOAuthStateToken(userId);
 
     const authUrl = oauth2Client.generateAuthUrl({
       // eslint-disable-next-line @typescript-eslint/naming-convention
@@ -149,6 +158,7 @@ export const initiateGoogleAuth = async (_req: Request, res: Response): Promise<
       prompt: 'consent',
       // eslint-disable-next-line @typescript-eslint/naming-convention
       include_granted_scopes: true,
+      state: stateToken, // Pass our secure token
     });
 
     res.json({ authUrl });
@@ -163,9 +173,25 @@ export const initiateGoogleAuth = async (_req: Request, res: Response): Promise<
 };
 
 export const handleGoogleCallback = async (req: Request, res: Response): Promise<void> => {
-  const { code } = req.query;
+  const { code, state } = req.query;
   const authReq = req as AuthenticatedRequest;
-  const userId = authReq.user.id;
+  
+  // ROBUST AUTHENTICATION:
+  // 1. Try standard cookie-based auth (if verifyToken succeeded)
+  // 2. Fallback to state-token based auth (if cookie was blocked by COOP/SameSite)
+  let userId = authReq.user?.id;
+
+  if (!userId && state && typeof state === 'string') {
+    userId = AuthService.verifyOAuthStateToken(state) || undefined;
+  }
+
+  if (!userId) {
+    res.status(401).json({ 
+      message: 'Authentication required. Your session may have expired or was blocked by browser security.',
+      code: 'NO_AUTH'
+    });
+    return;
+  }
 
   // Type-safe code validation
   if (!code || typeof code !== 'string') {

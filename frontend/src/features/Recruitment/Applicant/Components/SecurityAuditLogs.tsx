@@ -53,132 +53,133 @@ const SecurityAuditLogs = () => {
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
+    <div className="space-y-8 animate-in fade-in duration-500 relative z-10">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
         <div>
-          <h2 className="text-xl font-bold text-slate-800 tracking-tight">
-            Security Audit Logs
+          <h2 className="text-2xl font-black text-[var(--zed-text-dark)] tracking-tight uppercase">
+            Security Intelligence
           </h2>
-          <p className="text-sm text-slate-500 mt-1">
-            Blocked threats detected during job applications · Auto-refreshes every 30s
+          <p className="text-sm font-medium text-[var(--zed-text-muted)] mt-2">
+            Automated threat detection and blocked applicant protocols · Real-time monitoring active
           </p>
         </div>
-        <div className="flex items-center gap-3 text-sm">
-          <span className="text-slate-500">{statCounts.total} total</span>
-          <span className="text-slate-400">·</span>
-          <span className="text-slate-500">{statCounts.today} today</span>
+        <div className="flex items-center gap-4 text-[10px] font-black uppercase tracking-widest text-[var(--zed-text-muted)]">
+          <span className="bg-[var(--zed-bg-surface)] px-3 py-1 rounded border border-[var(--zed-border-light)]">{statCounts.total} archived</span>
+          <span className="bg-[var(--zed-success)]/10 text-[var(--zed-success)] px-3 py-1 rounded border border-[var(--zed-success)]/20">{statCounts.today} today</span>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
+      <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--zed-text-muted)]" size={18} />
           <input
             type="text"
             placeholder="Search by name, email, IP address, or details..."
-            className="w-full pl-11 pr-4 py-2.5 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-slate-300 outline-none text-sm"
+            className="w-full pl-12 pr-4 py-3 bg-white border border-[var(--zed-border-light)] rounded-[var(--radius-lg)] focus:outline-none focus:ring-4 focus:ring-[var(--zed-primary)]/10 focus:border-[var(--zed-primary)] text-sm font-medium transition-all shadow-sm"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-lg p-1 overflow-x-auto">
+        <div className="flex items-center gap-1 bg-white border border-[var(--zed-border-light)] rounded-[var(--radius-lg)] p-1.5 shadow-sm overflow-x-auto">
           {violationTypes.map((type) => (
             <button
               key={type}
               onClick={() => setFilterType(type)}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap transition-all ${
+              className={`px-4 py-2 rounded-[var(--radius-sm)] text-[10px] font-black tracking-widest uppercase transition-all whitespace-nowrap ${
                 filterType === type
-                  ? 'bg-slate-100 text-slate-800'
-                  : 'text-slate-400 hover:text-slate-600'
+                  ? 'bg-[var(--zed-primary)] text-white shadow-md'
+                  : 'text-[var(--zed-text-muted)] hover:text-[var(--zed-primary)] hover:bg-[var(--zed-bg-surface)]'
               }`}
             >
-              {type === 'All' ? 'All' : getViolationLabel(type)}
+              {type === 'All' ? 'All Types' : getViolationLabel(type)}
             </button>
           ))}
         </div>
       </div>
 
       {/* Table */}
-      <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+      <div className="bg-white border border-[var(--zed-border-light)] rounded-[var(--radius-lg)] overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           {isLoading ? (
-            <div className="p-16 flex flex-col items-center gap-3">
-              <Loader2 className="animate-spin text-slate-400" size={24} />
-              <p className="text-xs text-slate-400 tracking-wider">Scanning security logs...</p>
+            <div className="p-24 flex flex-col items-center gap-4">
+              <Loader2 className="animate-spin text-[var(--zed-primary)]" size={32} />
+              <p className="text-[10px] font-black text-[var(--zed-text-muted)] uppercase tracking-[0.2em]">Executing deep scan...</p>
             </div>
           ) : filteredLogs.length === 0 ? (
-            <div className="p-16 flex flex-col items-center text-center gap-2">
-              <p className="text-sm text-slate-500">
-                {logs.length === 0 ? 'No violations recorded yet — the system is clean.' : 'No results match your search.'}
+            <div className="p-24 flex flex-col items-center text-center gap-4">
+              <p className="text-xs font-black text-[var(--zed-text-muted)] uppercase tracking-[0.2em]">
+                {logs.length === 0 ? 'Firewall status: Clean. No violations recorded.' : 'Zero matches found in database.'}
               </p>
               {logs.length > 0 && (
                 <button 
                   onClick={() => { setSearchTerm(''); setFilterType('All'); }}
-                  className="text-xs text-slate-600 underline underline-offset-4 hover:text-slate-800"
+                  className="text-[10px] font-black text-[var(--zed-primary)] uppercase tracking-widest underline underline-offset-8 hover:brightness-110 transition-all"
                 >
-                  Clear filters
+                  Reset Protocol
                 </button>
               )}
             </div>
           ) : (
-            <table className="w-full text-left">
+            <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b border-slate-200 bg-slate-50">
-                  <th className="px-6 py-3 text-[11px] font-semibold text-slate-500 tracking-wider">Timestamp</th>
-                  <th className="px-6 py-3 text-[11px] font-semibold text-slate-500 tracking-wider">Applicant</th>
-                  <th className="px-6 py-3 text-[11px] font-semibold text-slate-500 tracking-wider">Violation</th>
-                  <th className="px-6 py-3 text-[11px] font-semibold text-slate-500 tracking-wider">Details</th>
-                  <th className="px-6 py-3 text-[11px] font-semibold text-slate-500 tracking-wider">Job</th>
-                  <th className="px-6 py-3 text-[11px] font-semibold text-slate-500 tracking-wider">IP</th>
+                <tr className="border-b border-[var(--zed-border-light)] bg-[var(--zed-bg-surface)]">
+                  <th className="px-8 py-5 text-[10px] font-black text-[var(--zed-text-dark)] tracking-[0.2em] uppercase">Log Timestamp</th>
+                  <th className="px-8 py-5 text-[10px] font-black text-[var(--zed-text-dark)] tracking-[0.2em] uppercase">Target Entity</th>
+                  <th className="px-8 py-5 text-[10px] font-black text-[var(--zed-text-dark)] tracking-[0.2em] uppercase whitespace-nowrap">Classification</th>
+                  <th className="px-8 py-5 text-[10px] font-black text-[var(--zed-text-dark)] tracking-[0.2em] uppercase">Detection Data</th>
+                  <th className="px-8 py-5 text-[10px] font-black text-[var(--zed-text-dark)] tracking-[0.2em] uppercase">Reference Job</th>
+                  <th className="px-8 py-5 text-[10px] font-black text-[var(--zed-text-dark)] tracking-[0.2em] uppercase text-center">Origin Address</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-[var(--zed-border-light)]/30">
                 {filteredLogs.map((log) => {
                   return (
-                    <tr key={log.id} className="hover:bg-slate-50/50 transition-colors">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          <Clock size={12} className="text-slate-300" />
+                    <tr key={log.id} className="hover:bg-[var(--zed-bg-surface)]/50 transition-colors">
+                      <td className="px-8 py-6">
+                        <div className="flex items-center gap-3 text-[var(--zed-text-dark)]">
+                          <Clock size={14} className="opacity-40" />
                           <div>
-                            <p className="text-xs font-medium text-slate-700">
-                              {log.createdAt ? new Date(log.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+                            <p className="text-xs font-black uppercase tracking-tight">
+                              {log.createdAt ? new Date(log.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
                             </p>
-                            <p className="text-[10px] text-slate-400">
-                              {log.createdAt ? new Date(log.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : ''}
+                            <p className="text-[10px] font-bold text-[var(--zed-text-muted)] tracking-widest uppercase mt-1">
+                              {log.createdAt ? new Date(log.createdAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : ''}
                             </p>
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
-                            <User size={14} className="text-slate-400" />
+                      <td className="px-8 py-6">
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 rounded-full bg-[var(--zed-bg-surface)] border border-[var(--zed-border-light)] flex items-center justify-center shrink-0">
+                            <User size={18} className="text-[var(--zed-primary)]" />
                           </div>
                           <div className="min-w-0">
-                            <p className="text-sm font-medium text-slate-800 truncate">{log.firstName} {log.lastName}</p>
-                            <p className="text-xs text-slate-400 truncate">{log.email}</p>
+                            <p className="text-sm font-black text-[var(--zed-text-dark)] uppercase tracking-tight truncate">{log.firstName} {log.lastName}</p>
+                            <p className="text-[10px] font-bold text-[var(--zed-text-muted)] tracking-wide truncate mt-1 lowercase">{log.email}</p>
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
-                        <span className="inline-flex items-center px-2.5 py-1 rounded text-[11px] font-medium bg-slate-100 text-slate-600 border border-slate-200">
+                      <td className="px-8 py-6">
+                        <span className="inline-flex items-center px-3 py-1 rounded-[var(--radius-sm)] text-[9px] font-black bg-[var(--zed-error)]/10 text-[var(--zed-error)] border border-[var(--zed-error)]/20 tracking-widest uppercase">
                           {getViolationLabel(log.violationType)}
                         </span>
                       </td>
-                      <td className="px-6 py-4">
-                        <p className="text-xs text-slate-600 max-w-[200px] truncate" title={log.details || ''}>
+                      <td className="px-8 py-6">
+                        <p className="text-xs font-medium text-[var(--zed-text-dark)] max-w-[200px] truncate uppercase tracking-tight" title={log.details || ''}>
                           {log.details || '—'}
                         </p>
                       </td>
-                      <td className="px-6 py-4">
-                        <p className="text-xs font-medium text-slate-700 max-w-[150px] truncate">
+                      <td className="px-8 py-6">
+                        <p className="text-xs font-black text-[var(--zed-text-dark)] max-w-[150px] truncate uppercase tracking-widest">
                           {log.jobTitle || 'N/A'}
                         </p>
                       </td>
-                      <td className="px-6 py-4">
-                        <span className="text-xs font-mono text-slate-500">{log.ipAddress || '—'}</span>
+                      <td className="px-8 py-6">
+                        <div className="flex justify-center">
+                          <span className="text-[10px] font-black text-[var(--zed-text-muted)] bg-[var(--zed-bg-surface)] px-3 py-1 rounded border border-[var(--zed-border-light)] uppercase tracking-tighter">{log.ipAddress || '0.0.0.0'}</span>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -190,12 +191,12 @@ const SecurityAuditLogs = () => {
 
         {/* Footer */}
         {filteredLogs.length > 0 && (
-          <div className="px-6 py-3 bg-slate-50 border-t border-slate-200 flex justify-between items-center">
-            <p className="text-xs text-slate-400">
-              Showing {filteredLogs.length} of {logs.length} entries
+          <div className="px-8 py-4 bg-[var(--zed-bg-surface)] border-t border-[var(--zed-border-light)] flex justify-between items-center relative">
+            <p className="text-[9px] font-black text-[var(--zed-text-muted)] uppercase tracking-widest">
+              Report Analysis: {filteredLogs.length} of {logs.length} detected threats
             </p>
-            <p className="text-xs text-slate-400">
-              Last 100 records · Auto-logged by system
+            <p className="text-[9px] font-black text-[var(--zed-text-muted)] uppercase tracking-widest opacity-40">
+              System Audit Protocol · Last 100 entries
             </p>
           </div>
         )}

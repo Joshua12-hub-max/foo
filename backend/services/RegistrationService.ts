@@ -13,7 +13,9 @@ import {
   pdsReferences,
   pdsDeclarations,
   employeeEmergencyContacts,
+  employeeDocuments,
 } from '../db/tables/pds.js';
+import { applicantDocuments } from '../db/tables/recruitment.js';
 import { eq, or, and, sql, ne } from 'drizzle-orm';
 import { RegisterSchema } from '../schemas/authSchema.js';
 import { z } from 'zod';
@@ -28,6 +30,15 @@ import { UserRole } from '../types/index.js';
 function emptyToNull<T>(value: T | string | null | undefined): T | null {
   if (value === '' || value === undefined) return null;
   return value as T;
+}
+
+/**
+ * Safely converts string values to numbers or null
+ */
+function safeToNumber(value: string | number | null | undefined): string | null {
+  if (value === null || value === undefined || value === '') return null;
+  const num = Number(value);
+  return isNaN(num) ? null : num.toString();
 }
 
 /**
@@ -100,8 +111,9 @@ export class RegistrationService {
       )
     ).limit(1);
 
-    if (!enrolled) {
-      console.warn(`[RegistrationService] Biometric record not found for: ${inputEmployeeId}`);
+    // FIX: Biometric check MUST be blocking for public registration to prevent fake accounts.
+    if (!enrolled && !options.isFinalizingSetup) {
+      throw new Error('Biometric enrollment is required before registration. Please use the biometric scanner first.');
     }
 
     // Always use the normalized version to ensure 'Emp-XXX' format in DB
@@ -171,21 +183,39 @@ export class RegistrationService {
     const verificationOTP = generateOTP();
 
     // 5. Determine role
+    const typedData = data; 
     let assignedRole: UserRole = 'Employee';
-    const anyData = data as typeof data & { position?: string; department?: string };
-    const rawPos = anyData.position || '';
+
+    // FIX: Privilege Escalation - Only trust explicit Admin/HR roles if finalizing an existing setup
+    if (typedData.role && ['Administrator', 'Human Resource', 'Employee', 'Applicant'].includes(typedData.role)) {
+       if ((typedData.role === 'Administrator' || typedData.role === 'Human Resource') && !effectiveFinalizingSetup) {
+           assignedRole = 'Employee'; // Downgrade injected roles during public registration
+       } else {
+           assignedRole = typedData.role as UserRole;
+       }
+    }
+
+    const rawPos = typedData.position || '';
     const posMatch = rawPos.match(/^(.*)\s\((.*)\)$/);
     const positionTitle = posMatch ? posMatch[1].trim() : rawPos;
     const itemNumber = posMatch ? posMatch[2].trim() : null;
 
     const posTitleLower = positionTitle.toLowerCase();
-    const department = anyData.department || enrolled?.department || 'Unassigned';
+    const department = typedData.department || enrolled?.department || 'Unassigned';
     const deptLower = (department || '').toLowerCase();
 
-    if (deptLower.includes('human resource') && posTitleLower.includes('department head')) {
-      assignedRole = 'Human Resource';
-    } else if (posTitleLower.includes('administrative officer')) {
-      assignedRole = 'Administrator';
+    // FIX: Broadened Role Inference must be carefully applied.
+    const isHRDept = deptLower.includes('human resource') || deptLower.includes('chrmo');
+    const isHRTitle = posTitleLower.includes('hr') || posTitleLower.includes('human resource') || posTitleLower.includes('department head');
+    const isAdminTitle = posTitleLower.includes('administrative officer') || posTitleLower.includes('administrator') || posTitleLower.includes('system admin');
+
+    // Only allow inference if not explicitly provided and verified
+    if (assignedRole === 'Employee') {
+        if (isHRDept && isHRTitle) {
+            assignedRole = 'Human Resource';
+        } else if (isAdminTitle) {
+            assignedRole = 'Administrator';
+        }
     }
 
     if (effectiveFinalizingSetup && existingUser) {
@@ -217,8 +247,9 @@ export class RegistrationService {
     }
 
     const preserveVerification = effectiveFinalizingSetup && existingUser?.isVerified;
-    const isHRAdmin = assignedRole === 'Administrator' || assignedRole === 'Human Resource';
-    const finalIsVerified = (preserveVerification || isHRAdmin) ? true : false;
+    
+    // FIX: Remove automatic verification bypass. Everyone must verify their email.
+    const finalIsVerified = preserveVerification ? true : false;
 
     let newUserId = existingUser?.id;
 
@@ -253,6 +284,7 @@ export class RegistrationService {
         departmentId,
         positionId,
         jobTitle: positionTitle,
+        positionTitle: positionTitle,
         employmentStatus: 'Active' as const,
         isMeycauayan: true,
         profileStatus: 'Complete' as const,
@@ -273,8 +305,8 @@ export class RegistrationService {
         placeOfBirth: emptyToNull(data.placeOfBirth),
         gender: emptyToNull(data.gender),
         civilStatus: emptyToNull(data.civilStatus),
-        heightM: emptyToNull(data.heightM?.toString()),
-        weightKg: emptyToNull(data.weightKg?.toString()),
+        heightM: safeToNumber(data.heightM),
+        weightKg: safeToNumber(data.weightKg),
         bloodType: emptyToNull(data.bloodType),
         citizenship: data.citizenship || 'Filipino',
         citizenshipType: emptyToNull(data.citizenshipType),
@@ -295,7 +327,7 @@ export class RegistrationService {
         resCity: emptyToNull(data.resCity),
         resProvince: emptyToNull(data.resProvince),
         resRegion: emptyToNull(data.resRegion),
-        residentialZipCode: emptyToNull(data.residentialZipCode),
+        residentialZipCode: emptyToNull(data.residentialZipCode || (data as any).zipCode),
         permHouseBlockLot: emptyToNull(data.permHouseBlockLot),
         permStreet: emptyToNull(data.permStreet),
         permSubdivision: emptyToNull(data.permSubdivision),
@@ -376,10 +408,46 @@ export class RegistrationService {
         }
       }
 
+      // 100% DATA INTEGRITY: Merge individual family fields into the familyBackground array if provided
+      const familyFieldsData: any[] = [];
+      if (data.spouseLastName || data.spouseFirstName) {
+        familyFieldsData.push({
+          relationType: 'Spouse',
+          lastName: data.spouseLastName || null,
+          firstName: data.spouseFirstName || null,
+          middleName: data.spouseMiddleName || null,
+          nameExtension: data.spouseSuffix || null,
+          occupation: data.spouseOccupation || null,
+          employer: data.spouseEmployer || null,
+          businessAddress: data.spouseBusAddress || null,
+          telephoneNo: data.spouseTelephone || null,
+        });
+      }
+      if (data.fatherLastName || data.fatherFirstName) {
+        familyFieldsData.push({
+          relationType: 'Father',
+          lastName: data.fatherLastName || null,
+          firstName: data.fatherFirstName || null,
+          middleName: data.fatherMiddleName || null,
+          nameExtension: data.fatherSuffix || null,
+        });
+      }
+      if (data.motherMaidenLastName || data.motherMaidenFirstName) {
+        familyFieldsData.push({
+          relationType: 'Mother',
+          lastName: data.motherMaidenLastName || null,
+          firstName: data.motherMaidenFirstName || null,
+          middleName: data.motherMaidenMiddleName || null,
+          nameExtension: data.motherMaidenSuffix || null,
+        });
+      }
+
+      const combinedFamilyBackground = [...(data.familyBackground || []), ...familyFieldsData];
+
       // PDS FAMILY (delete + insert)
-      if (data.familyBackground && data.familyBackground.length > 0) {
+      if (combinedFamilyBackground.length > 0) {
         // Filter out records without valid names (at least firstName or lastName should be present)
-        const validFamilyBackground = data.familyBackground.filter(fam =>
+        const validFamilyBackground = combinedFamilyBackground.filter(fam =>
           !isPlaceholder(fam.firstName) || !isPlaceholder(fam.lastName)
         );
 
@@ -446,6 +514,36 @@ export class RegistrationService {
           await tx.insert(pdsOtherInfo).values(
             validOtherInfo.map(o => sanitizeObject({ employeeId: newUserId!, type: o.type, description: o.description }))
           );
+        }
+      }
+
+      // 100% DOCUMENT MIGRATION: Auto-link applicant documents to employee profile
+      if (data.applicantId) {
+        const appId = Number(data.applicantId);
+        if (!isNaN(appId)) {
+          const appDocs = await tx.select().from(applicantDocuments).where(eq(applicantDocuments.applicantId, appId));
+          if (appDocs.length > 0) {
+            // Filter out documents that might already be linked to avoid duplicates
+            await tx.delete(employeeDocuments).where(eq(employeeDocuments.employeeId, newUserId!));
+            
+            await tx.insert(employeeDocuments).values(
+              appDocs.map(d => {
+                // 100% MAPPING PARITY: Ensure types match what DocumentGallery expects
+                let targetType = d.documentType || 'Other';
+                if (targetType === 'Photo' || targetType === 'Photo1x1') targetType = '2x2 ID Photo';
+                if (targetType === 'EligibilityCert') targetType = 'Eligibility Certificate';
+
+                return {
+                  employeeId: newUserId!,
+                  documentName: d.documentName,
+                  documentType: targetType,
+                  filePath: d.filePath.startsWith('/uploads/') ? d.filePath : `/uploads/resumes/${d.filePath}`,
+                  fileSize: d.fileSize,
+                  mimeType: d.mimeType
+                };
+              })
+            );
+          }
         }
       }
     });

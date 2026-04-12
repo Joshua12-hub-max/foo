@@ -69,8 +69,11 @@ export const jobApplicationSchema = z.object({
 
   // Residential Address (matches PhilippineAddressSelector prefix="res")
   resRegion: z.string().optional().nullable(),
+  resRegionCode: z.string().optional().nullable(),
   resProvince: z.string().optional().nullable(),
+  resProvinceCode: z.string().optional().nullable(),
   resCity: z.string().min(1, 'City/Municipality is required'),
+  resCityCode: z.string().optional().nullable(),
   resBarangay: z.string().min(1, 'Barangay is required'),
   resHouseBlockLot: z.string().optional().nullable().refine(validateGibberish, gibberishMsg),
   resSubdivision: z.string().optional().nullable().refine(validateGibberish, gibberishMsg),
@@ -79,8 +82,11 @@ export const jobApplicationSchema = z.object({
 
   // Permanent Address (matches PhilippineAddressSelector prefix="perm")
   permRegion: z.string().optional().nullable(),
+  permRegionCode: z.string().optional().nullable(),
   permProvince: z.string().optional().nullable(),
+  permProvinceCode: z.string().optional().nullable(),
   permCity: z.string().optional().nullable(),
+  permCityCode: z.string().optional().nullable(),
   permBarangay: z.string().optional().nullable(),
   permHouseBlockLot: z.string().optional().nullable().refine(validateGibberish, gibberishMsg),
   permSubdivision: z.string().optional().nullable().refine(validateGibberish, gibberishMsg),
@@ -175,6 +181,14 @@ export const jobApplicationSchema = z.object({
   totalExperienceYears: z.string().or(z.number()).transform(val => Number(val)).optional(),
   skills: z.string().max(5000, 'Skills details are too long').optional().refine(validateGibberish, gibberishMsg),
 
+  // 100% DATA FLOW: Expanded PDS fields for automated registration
+  familyBackground: z.array(z.any()).optional().default([]),
+  children: z.array(z.any()).optional().default([]),
+  voluntaryWorks: z.array(z.any()).optional().default([]),
+  references: z.array(z.any()).optional().default([]),
+  otherInfo: z.array(z.any()).optional().default([]),
+  declarations: z.any().optional().nullable(),
+
   // File Uploads (Strictly Typed)
   photo: z.instanceof(File).or(z.string()).optional(),
   photoPreview: z.string().optional(),
@@ -218,8 +232,9 @@ export const createDynamicJobApplicationSchema = (
     gsisNumber: needIds ? createStrictIdValidator(ID_REGEX.GSIS, "GSIS Number") : jobApplicationSchema.shape.gsisNumber,
     pagibigNumber: needIds ? createStrictIdValidator(ID_REGEX.PAGIBIG, "Pag-IBIG Number") : jobApplicationSchema.shape.pagibigNumber,
     philhealthNumber: needIds ? createStrictIdValidator(ID_REGEX.PHILHEALTH, "PhilHealth Number") : jobApplicationSchema.shape.philhealthNumber,
-    umidNumber: needIds ? createStrictIdValidator(ID_REGEX.UMID, "UMID Number") : jobApplicationSchema.shape.umidNumber,
-    philsysId: needIds ? createStrictIdValidator(ID_REGEX.PHILSYS, "PhilSys ID") : jobApplicationSchema.shape.philsysId,
+    // UMID and PhilSys are now optional but validated if provided (matching backend)
+    umidNumber: jobApplicationSchema.shape.umidNumber,
+    philsysId: jobApplicationSchema.shape.philsysId,
     tinNumber: needIds ? createStrictIdValidator(ID_REGEX.TIN, "TIN") : jobApplicationSchema.shape.tinNumber,
 
     education: needEdu ? z.object({

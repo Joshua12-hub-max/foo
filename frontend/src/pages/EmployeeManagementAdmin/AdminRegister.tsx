@@ -682,10 +682,20 @@ export default function AdminRegister() {
     
     setValue("dualCountry", applicant.dualCountry || null);
     setValue("bloodType", applicant.bloodType || "");
-    setValue("heightM", applicant.height?.toString() || "");
+
+    // 100% ACCURACY: Height/Weight Unit Conversion (Recruitment uses cm, PDS uses meters)
+    const hVal = parseFloat(applicant.height || "0");
+    if (hVal > 3) { // Value is likely in centimeters
+       setValue("heightM", (hVal / 100).toFixed(2));
+    } else {
+       setValue("heightM", applicant.height?.toString() || "");
+    }
+
+    // Weight is usually same (kg), but ensure it's a string
     setValue("weightKg", applicant.weight?.toString() || "");
 
     // 2. Government IDs & Identifiers
+
     setValue("gsisNumber", applicant.gsisNumber || "");
     setValue("pagibigNumber", applicant.pagibigNumber || "");
     setValue("philhealthNumber", applicant.philhealthNumber || "");
@@ -949,6 +959,46 @@ export default function AdminRegister() {
             
             setValue("otherInfo", combinedOtherInfo);
         } catch(e) { console.error("OtherInfo parsing failed", e); }
+    }
+
+    // 8.6 Voluntary Work, References & PDS Questions
+    if (applicant.voluntaryWork) {
+        try {
+            const vw = safeParse(applicant.voluntaryWork) as Record<string, string>[];
+            if (Array.isArray(vw)) {
+                replaceVoluntaryWorks(vw.map(v => ({
+                    organizationName: v.organizationName || "",
+                    address: v.address || "",
+                    dateFrom: v.dateFrom ? formatDateForInput(v.dateFrom) : "",
+                    dateTo: v.dateTo ? formatDateForInput(v.dateTo) : "",
+                    hoursNumber: String(v.hoursNumber || ""),
+                    position: v.position || ""
+                })));
+            }
+        } catch(e) { console.error("Voluntary work parsing failed", e); }
+    }
+
+    if (applicant.pdsReferences) {
+        try {
+            const refs = safeParse(applicant.pdsReferences) as Record<string, string>[];
+            if (Array.isArray(refs)) {
+                replaceReferences(refs.map(r => ({
+                    name: r.name || "",
+                    address: r.address || "",
+                    telNo: r.telNo || ""
+                })));
+            }
+        } catch(e) { console.error("References parsing failed", e); }
+    }
+
+    if (applicant.pdsQuestions) {
+        try {
+            const qs = safeParse(applicant.pdsQuestions) as Record<string, any>;
+            if (qs && typeof qs === 'object') {
+                setValue("declarations", qs);
+                setValue("pdsQuestions", qs); // Keep for backward compatibility if any component uses it
+            }
+        } catch(e) { console.error("PDS Questions parsing failed", e); }
     }
 
 

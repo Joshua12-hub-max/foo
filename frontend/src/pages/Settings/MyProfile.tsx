@@ -3,12 +3,14 @@ import { useUIStore } from '@/stores';
 import { Check, X } from 'lucide-react';
 import { ProfileHeader, ProfileAvatar, InformationGrid, useProfile } from '@settings/Profile';
 import type { Profile } from '@settings/Profile';
+import { employeeApi } from '@/api/employeeApi';
+import DocumentGallery from '@/features/Settings/Profile/components/DocumentGallery';
 
 import MyMemosPage from '@pages/EmployeeManagementEmployee/MyMemosPage';
 
 export default function MyProfile() {
   const sidebarOpen = useUIStore((state) => state.sidebarOpen);
-  const [activeTab, setActiveTab] = React.useState<'info' | 'memos'>('info');
+  const [activeTab, setActiveTab] = React.useState<'info' | 'docs' | 'memos'>('info');
 
   const {
     user, profile, loading, saving, error, success,
@@ -16,6 +18,19 @@ export default function MyProfile() {
     setError, setSuccess, handleChange, handleAvatarChange,
     handleSubmit, handleCancel, setProfile
   } = useProfile();
+
+  // Handle document refresh
+  const refreshDocs = React.useCallback(async () => {
+    if (!profile?.id) return;
+    try {
+      const res = await employeeApi.fetchEmployeeDocuments(profile.id);
+      if (res.success && res.documents) {
+        setProfile(prev => prev ? { ...prev, documents: res.documents } : null);
+      }
+    } catch (err) {
+      console.error("Failed to refresh documents:", err);
+    }
+  }, [profile?.id, setProfile]);
 
   if (loading) {
     return (
@@ -37,7 +52,7 @@ export default function MyProfile() {
         handleCancel={handleCancel}
         handleSubmit={handleSubmit}
         saving={saving}
-        hideEdit={activeTab === 'memos'} // Hide Edit button on Memos tab
+        hideEdit={activeTab !== 'info'} // Only show Edit on Info tab
       />
 
       {/* Navigation Tabs */}
@@ -53,6 +68,16 @@ export default function MyProfile() {
           Personal Information
         </button>
         <button
+          onClick={() => { setActiveTab('docs'); setIsEditing(false); }}
+          className={`pb-3 text-sm font-bold tracking-wide transition-all border-b-2 ${
+            activeTab === 'docs' 
+              ? 'text-navy-900 border-navy-900' 
+              : 'text-gray-400 border-transparent hover:text-navy-700'
+          }`}
+        >
+          Document Repository
+        </button>
+        <button
           onClick={() => { setActiveTab('memos'); setIsEditing(false); }}
           className={`pb-3 text-sm font-bold tracking-wide transition-all border-b-2 ${
             activeTab === 'memos' 
@@ -64,7 +89,7 @@ export default function MyProfile() {
         </button>
       </div>
 
-      {activeTab === 'info' ? (
+      {activeTab === 'info' && (
         <>
           {/* Alerts */}
           {success && (
@@ -98,7 +123,23 @@ export default function MyProfile() {
             setProfile={setProfile}
           />
         </>
-      ) : (
+      )}
+
+      {activeTab === 'docs' && (
+        <div className="p-4 bg-slate-50/30 rounded-2xl border border-gray-100 animate-in fade-in slide-in-from-bottom-2">
+           <div className="mb-8">
+              <h3 className="text-lg font-black text-gray-800 uppercase tracking-tight">Personal Document Repository</h3>
+              <p className="text-sm text-gray-500 font-medium">Manage your official 2x2 photo, PDS, Resume, and Eligibility certificates.</p>
+           </div>
+           <DocumentGallery 
+              employeeId={profile?.id || 0} 
+              documents={profile?.documents || []} 
+              onDocumentChange={refreshDocs} 
+           />
+        </div>
+      )}
+
+      {activeTab === 'memos' && (
         /* Memos Tab Content */
         <div className="min-h-[500px]">
            <MyMemosPage hideHeader={false} />

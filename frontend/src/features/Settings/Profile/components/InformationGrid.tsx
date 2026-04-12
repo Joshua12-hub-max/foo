@@ -1,10 +1,32 @@
 import React, { useState } from 'react';
-import { ChevronDown, Lock, Loader2, Mail, Phone, MapPin, Calendar, User as LucideUser, Briefcase, GraduationCap, Shield, ChevronRight, Ruler, Weight, Droplets, MapPinIcon, Globe, CreditCard, Building2, BadgeCheck, FileText } from 'lucide-react';
+import { ChevronDown, Lock, Loader2, Mail, Phone, MapPin, Calendar, User as LucideUser, Briefcase, GraduationCap, Shield, Ruler, Weight, Droplets, MapPinIcon, Globe, CreditCard, Building2, BadgeCheck, FileText } from 'lucide-react';
 import InfoItem from './InfoItem';
 import EmploymentStatusBadge from '@components/Custom/Common/EmploymentStatusBadge';
 import { enableTwoFactor, disableTwoFactor } from '@/Service/Auth';
 import { User } from '@/types';
 import { Profile, ProfileFormData } from '../types';
+import ph from 'phil-reg-prov-mun-brgy';
+
+const phLib = ph as {
+  regions: any[];
+  provinces: any[];
+  city_mun: any[];
+  barangays: any[];
+};
+
+const getLocationName = (type: 'region' | 'province' | 'city' | 'barangay', code: string | null | undefined) => {
+  if (!code) return null;
+  // If it's not a code (e.g. already a name), return it
+  if (!/^\d+$/.test(code)) return code;
+
+  switch (type) {
+    case 'region': return phLib.regions.find(r => r.reg_code === code)?.name || code;
+    case 'province': return phLib.provinces.find(p => p.prov_code === code)?.name || code;
+    case 'city': return phLib.city_mun.find(c => c.mun_code === code)?.name || code;
+    case 'barangay': return code; // Barangays are usually stored as names or codes depend on lib
+    default: return code;
+  }
+};
 
 interface InformationGridProps {
   profile: Profile | null;
@@ -28,7 +50,7 @@ const ToggleSection: React.FC<{ title: string; defaultOpen?: boolean; children: 
         onClick={() => setIsOpen(!isOpen)}
         className="w-full flex items-center justify-between py-4 text-left group"
       >
-        <h3 className="text-xs font-black text-gray-800">{title}</h3>
+        <h3 className="text-xs font-black text-gray-800 uppercase tracking-widest">{title}</h3>
         <ChevronDown 
           size={16} 
           className={`text-gray-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} 
@@ -141,30 +163,30 @@ const InformationGrid: React.FC<InformationGridProps> = ({
 
             {/* Residential Address Details */}
             <div className="md:col-span-2 mt-4">
-              <h4 className="text-xs font-bold text-gray-700 mb-3">Residential Address</h4>
+              <h4 className="text-xs font-bold text-gray-700 mb-3 uppercase tracking-wider">Residential Address Details</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 pl-4 border-l-2 border-gray-100">
                 <InfoItem label="House/Block/Lot" value={profile?.resHouseBlockLot} />
                 <InfoItem label="Street" value={profile?.resStreet} />
                 <InfoItem label="Subdivision/Village" value={profile?.resSubdivision} />
                 <InfoItem label="Barangay" value={profile?.resBarangay} />
-                <InfoItem label="City/Municipality" value={profile?.resCity} />
-                <InfoItem label="Province" value={profile?.resProvince} />
-                <InfoItem label="Region" value={profile?.resRegion} />
+                <InfoItem label="City/Municipality" value={getLocationName('city', profile?.resCity)} />
+                <InfoItem label="Province" value={getLocationName('province', profile?.resProvince)} />
+                <InfoItem label="Region" value={getLocationName('region', profile?.resRegion)} />
                 <InfoItem label="Full Address" value={profile?.residentialAddress || profile?.address} />
               </div>
             </div>
 
             {/* Permanent Address Details */}
             <div className="md:col-span-2 mt-4">
-              <h4 className="text-xs font-bold text-gray-700 mb-3">Permanent Address</h4>
+              <h4 className="text-xs font-bold text-gray-700 mb-3 uppercase tracking-wider">Permanent Address Details</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 pl-4 border-l-2 border-gray-100">
                 <InfoItem label="House/Block/Lot" value={profile?.permHouseBlockLot} />
                 <InfoItem label="Street" value={profile?.permStreet} />
                 <InfoItem label="Subdivision/Village" value={profile?.permSubdivision} />
                 <InfoItem label="Barangay" value={profile?.permBarangay} />
-                <InfoItem label="City/Municipality" value={profile?.permCity} />
-                <InfoItem label="Province" value={profile?.permProvince} />
-                <InfoItem label="Region" value={profile?.permRegion} />
+                <InfoItem label="City/Municipality" value={getLocationName('city', profile?.permCity)} />
+                <InfoItem label="Province" value={getLocationName('province', profile?.permProvince)} />
+                <InfoItem label="Region" value={getLocationName('region', profile?.permRegion)} />
                 <InfoItem label="Full Address" value={profile?.permanentAddress} />
               </div>
             </div>

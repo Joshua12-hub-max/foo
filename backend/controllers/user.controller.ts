@@ -26,6 +26,7 @@ import {
   pdsEducation,
   pdsEligibility,
   recruitmentApplicants,
+  applicantDocuments,
   employeeDocuments,
   shiftTemplates,
   pdsPersonalInformation,
@@ -183,7 +184,6 @@ export const mapToEmployeeApi = (emp: EmployeeMapperInput): EmployeeApiResponse 
     originalAppointmentDate: emp.originalAppointmentDate || null,
     lastPromotionDate: emp.lastPromotionDate || null,
 
-    barangay: emp.resBarangay || null,
     religion: emp.religion || null,
     isBiometricEnrolled: !!emp.isBiometricEnrolled,
     startTime: emp.startTime || null,
@@ -196,13 +196,32 @@ export const mapToEmployeeApi = (emp: EmployeeMapperInput): EmployeeApiResponse 
     placeOfBirth: emp.placeOfBirth || null,
     gender: emp.gender || null,
     civilStatus: emp.civilStatus || null,
-    nationality: emp.citizenship || 'Filipino',
     citizenship: emp.citizenship || 'Filipino',
     heightM: emp.heightM !== null ? Number(emp.heightM) : null,
     weightKg: emp.weightKg !== null ? Number(emp.weightKg) : null,
     bloodType: emp.bloodType || null,
     residentialAddress: emp.residentialAddress || null,
     permanentAddress: emp.permanentAddress || null,
+    
+    // Detailed Address Fields (100% Data Flow)
+    resHouseBlockLot: emp.resHouseBlockLot || null,
+    resStreet: emp.resStreet || null,
+    resSubdivision: emp.resSubdivision || null,
+    resBarangay: emp.resBarangay || null,
+    resCity: emp.resCity || null,
+    resProvince: emp.resProvince || null,
+    resRegion: emp.resRegion || null,
+    residentialZipCode: emp.residentialZipCode || null,
+
+    permHouseBlockLot: emp.permHouseBlockLot || null,
+    permStreet: emp.permStreet || null,
+    permSubdivision: emp.permSubdivision || null,
+    permBarangay: emp.permBarangay || null,
+    permCity: emp.permCity || null,
+    permProvince: emp.permProvince || null,
+    permRegion: emp.permRegion || null,
+    permanentZipCode: emp.permanentZipCode || null,
+
     mobileNo: emp.mobileNo || null,
     telephoneNo: emp.telephoneNo || null,
     umidNumber: emp.umidNumber || null,
@@ -214,22 +233,6 @@ export const mapToEmployeeApi = (emp: EmployeeMapperInput): EmployeeApiResponse 
     agencyEmployeeNo: emp.agencyEmployeeNo || null,
     emergencyContact: emp.emergencyContact || null,
     emergencyContactNumber: emp.emergencyContactNumber || null,
-
-    // Detailed Address Fields
-    resHouseBlockLot: emp.resHouseBlockLot || null,
-    resStreet: emp.resStreet || null,
-    resSubdivision: emp.resSubdivision || null,
-    resBarangay: emp.resBarangay || null,
-    resCity: emp.resCity || null,
-    resProvince: emp.resProvince || null,
-    resRegion: emp.resRegion || null,
-    permHouseBlockLot: emp.permHouseBlockLot || null,
-    permStreet: emp.permStreet || null,
-    permSubdivision: emp.permSubdivision || null,
-    permBarangay: emp.permBarangay || null,
-    permCity: emp.permCity || null,
-    permProvince: emp.permProvince || null,
-    permRegion: emp.permRegion || null,
   };
 };
 
@@ -396,7 +399,8 @@ export const getAllEmployees = async (req: Request, res: Response): Promise<void
 
     const mappedEmployees = employees.map(mapToEmployeeApi);
     res.json({ success: true, employees: mappedEmployees });
-  } catch (error) {
+  } catch (err: unknown) {
+    const error = err instanceof Error ? err : new Error(String(err));
     console.error('[GET ALL EMPLOYEES ERROR]', error);
     res.status(500).json({ success: false, message: 'Failed to fetch employees' });
   }
@@ -435,9 +439,13 @@ export const getEmployeeById = async (req: Request, res: Response): Promise<void
     console.warn(`[DEBUG] Mapping employee profile data...`);
     // Map everything to the strict API response format
     const mappedEmployee = mapToEmployeeApi(employeeData);
-    const { skills, education, emergencyContacts, customFields, familyBackground, voluntaryWork, learningDevelopment, workExperience, otherInfo, references, eligibilities, declarations } = relatedData;
+    const { 
+      skills, education, emergencyContacts, customFields, familyBackground, 
+      voluntaryWork, learningDevelopment, workExperience, otherInfo, 
+      references, eligibilities, declarations, documents 
+    } = relatedData;
 
-    console.warn(`[DEBUG] Related data counts: Skills=${skills.length}, Edu=${education.length}, Eligibilities=${eligibilities.length}`);
+    console.warn(`[DEBUG] Related data counts: Skills=${skills.length}, Edu=${education.length}, Documents=${documents?.length || 0}`);
 
     // Filter contacts for non-admins
     const finalContacts = !isSelf && !isAdmin ? [] : emergencyContacts;
@@ -457,18 +465,23 @@ export const getEmployeeById = async (req: Request, res: Response): Promise<void
         otherInfo: otherInfo.map(mapToOtherInfoApi),
         references: references.map(mapToReferencesApi),
         eligibilities: eligibilities.map(mapToEligibilityApi),
-        declarations: declarations
+        declarations: declarations,
+        documents: (documents || []).map(d => ({
+            ...d,
+            fileName: d.documentName
+        }))
       }
     };
 
     console.warn(`[DEBUG] Successfully built response for employee ID: ${id}`);
     res.json(response);
-  } catch (error) {
+  } catch (err: unknown) {
+    const error = err instanceof Error ? err : new Error(String(err));
     console.error('[ERROR] Failed to fetch employee profile:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch employee',
-      error: error instanceof Error ? error.message : String(error)
+      error: error.message
     });
   }
 };
@@ -790,8 +803,9 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
     }
 
     res.status(201).json({ success: true, message: 'Employee created successfully', employeeId: finalEmployeeId });
-  } catch (_error) {
-    res.status(500).json({ success: false, message: 'Failed to create employee' });
+  } catch (err: unknown) {
+    const error = err instanceof Error ? err : new Error(String(err));
+    res.status(500).json({ success: false, message: 'Failed to create employee', error: error.message });
   }
 };
 
@@ -811,8 +825,9 @@ export const getEmployeeDocuments = async (req: Request, res: Response): Promise
     }));
     
     res.json({ success: true, documents: mappedDocs });
-  } catch (_error) {
-    res.status(500).json({ success: false, message: 'Failed to fetch documents' });
+  } catch (err: unknown) {
+    const error = err instanceof Error ? err : new Error(String(err));
+    res.status(500).json({ success: false, message: 'Failed to fetch documents', error: error.message });
   }
 };
 
@@ -841,8 +856,74 @@ export const uploadEmployeeDocument = async (req: Request, res: Response): Promi
       message: 'Document uploaded successfully',
       document: { id: result.insertId, documentName: file.originalname, filePath: `/uploads/resumes/${file.filename}` }
     });
-  } catch (_error) {
-    res.status(500).json({ success: false, message: 'Failed to upload document' });
+  } catch (err: unknown) {
+    const error = err instanceof Error ? err : new Error(String(err));
+    res.status(500).json({ success: false, message: 'Failed to upload document', error: error.message });
+  }
+};
+
+export const syncEmployeeDocumentsFromRecruitment = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const employeeId = parseInt(id as string);
+
+    // 1. Find the authentication record to get the link to recruitment
+    const user = await db.query.authentication.findFirst({
+      where: eq(authentication.id, employeeId)
+    });
+
+    if (!user) {
+      res.status(404).json({ success: false, message: 'Employee not found' });
+      return;
+    }
+
+    // 2. Find the recruitment applicant record
+    const applicant = await db.query.recruitmentApplicants.findFirst({
+      where: eq(recruitmentApplicants.email, user.email) // Email is the most reliable cross-link
+    });
+
+    if (!applicant) {
+      res.status(404).json({ success: false, message: 'No matching recruitment record found for this email.' });
+      return;
+    }
+
+    // 3. Fetch applicant documents
+    const appDocs = await db.select().from(applicantDocuments).where(eq(applicantDocuments.applicantId, applicant.id));
+
+    if (appDocs.length === 0) {
+      res.status(404).json({ success: false, message: 'No documents found in the recruitment record.' });
+      return;
+    }
+
+    // 4. Sync documents to employee_documents
+    await db.transaction(async (tx) => {
+      // Clear existing to avoid duplicates if re-syncing
+      await tx.delete(employeeDocuments).where(eq(employeeDocuments.employeeId, employeeId));
+
+      const docsToInsert = appDocs.map((d: InferSelectModel<typeof applicantDocuments>) => {
+        let targetType = d.documentType || 'Other';
+        // Normalize types
+        if (targetType === 'Photo' || targetType === 'Photo1x1') targetType = '2x2 ID Photo';
+        if (targetType === 'EligibilityCert') targetType = 'Eligibility Certificate';
+
+        return {
+          employeeId: employeeId,
+          documentName: d.documentName,
+          documentType: targetType,
+          filePath: d.filePath.startsWith('/uploads/') ? d.filePath : `/uploads/resumes/${d.filePath}`,
+          fileSize: d.fileSize,
+          mimeType: d.mimeType
+        };
+      });
+
+      await tx.insert(employeeDocuments).values(docsToInsert);
+    });
+
+    res.json({ success: true, message: `Successfully synchronized ${appDocs.length} documents from recruitment.` });
+  } catch (err: unknown) {
+    const error = err instanceof Error ? err : new Error(String(err));
+    console.error('[SYNC DOCUMENTS ERROR]', error);
+    res.status(500).json({ success: false, message: 'Failed to synchronize documents' });
   }
 };
 
@@ -866,8 +947,9 @@ export const deleteEmployeeDocument = async (req: Request, res: Response): Promi
 
     await db.delete(employeeDocuments).where(eq(employeeDocuments.id, parseInt(docId as string)));
     res.json({ success: true, message: 'Document deleted successfully' });
-  } catch (_error) {
-    res.status(500).json({ success: false, message: 'Failed to delete document' });
+  } catch (err: unknown) {
+    const error = err instanceof Error ? err : new Error(String(err));
+    res.status(500).json({ success: false, message: 'Failed to delete document', error: error.message });
   }
 };
 
@@ -1464,8 +1546,9 @@ export const getEmployeeSkills = async (req: Request, res: Response): Promise<vo
 
     const mappedSkills = skills.map(mapToSkillApi);
     res.json({ success: true, skills: mappedSkills });
-  } catch (_error) {
-    res.status(500).json({ success: false, message: 'Failed to fetch skills' });
+  } catch (err: unknown) {
+    const error = err instanceof Error ? err : new Error(String(err));
+    res.status(500).json({ success: false, message: 'Failed to fetch skills', error: error.message });
   }
 };
 
@@ -1483,8 +1566,9 @@ export const addEmployeeSkill = async (req: Request, res: Response): Promise<voi
     });
 
     res.status(201).json({ success: true, message: 'Skill added', skillId: result.insertId });
-  } catch (_error) {
-    res.status(500).json({ success: false, message: 'Failed to add skill' });
+  } catch (err: unknown) {
+    const error = err instanceof Error ? err : new Error(String(err));
+    res.status(500).json({ success: false, message: 'Failed to add skill', error: error.message });
   }
 };
 
@@ -1512,8 +1596,9 @@ export const updateEmployeeSkill = async (req: Request, res: Response): Promise<
       ));
 
     res.json({ success: true, message: 'Skill updated' });
-  } catch (_error) {
-    res.status(500).json({ success: false, message: 'Failed to update skill' });
+  } catch (err: unknown) {
+    const error = err instanceof Error ? err : new Error(String(err));
+    res.status(500).json({ success: false, message: 'Failed to update skill', error: error.message });
   }
 };
 
@@ -1526,8 +1611,9 @@ export const deleteEmployeeSkill = async (req: Request, res: Response): Promise<
         eq(employeeSkills.employeeId, parseInt(id))
       ));
     res.json({ success: true, message: 'Skill deleted' });
-  } catch (_error) {
-    res.status(500).json({ success: false, message: 'Failed to delete skill' });
+  } catch (err: unknown) {
+    const error = err instanceof Error ? err : new Error(String(err));
+    res.status(500).json({ success: false, message: 'Failed to delete skill', error: error.message });
   }
 };
 
@@ -1544,8 +1630,9 @@ export const getEmployeeEducation = async (req: Request, res: Response): Promise
 
     const mappedEducation = (education as InferSelectModel<typeof pdsEducation>[]).map(mapToEducationApi);
     res.json({ success: true, education: mappedEducation });
-  } catch (_error) {
-    res.status(500).json({ success: false, message: 'Failed to fetch education' });
+  } catch (err: unknown) {
+    const error = err instanceof Error ? err : new Error(String(err));
+    res.status(500).json({ success: false, message: 'Failed to fetch education', error: error.message });
   }
 };
 
@@ -1576,9 +1663,10 @@ export const addEmployeeEducation = async (req: Request, res: Response): Promise
     });
 
     res.status(201).json({ success: true, message: 'Education added', educationId: result.insertId });
-  } catch (error) {
+  } catch (err: unknown) {
+    const error = err instanceof Error ? err : new Error(String(err));
     console.error('[ADD EDUCATION ERROR]', error);
-    res.status(500).json({ success: false, message: 'Failed to add education' });
+    res.status(500).json({ success: false, message: 'Failed to add education', error: error.message });
   }
 };
 
@@ -1619,9 +1707,10 @@ export const updateEmployeeEducation = async (req: Request, res: Response): Prom
       ));
 
     res.json({ success: true, message: 'Education updated' });
-  } catch (error) {
+  } catch (err: unknown) {
+    const error = err instanceof Error ? err : new Error(String(err));
     console.error('[UPDATE EDUCATION ERROR]', error);
-    res.status(500).json({ success: false, message: 'Failed to update education' });
+    res.status(500).json({ success: false, message: 'Failed to update education', error: error.message });
   }
 };
 
@@ -1634,9 +1723,10 @@ export const deleteEmployeeEducation = async (req: Request, res: Response): Prom
         eq(pdsEducation.employeeId, parseInt(id))
       ));
     res.json({ success: true, message: 'Education deleted' });
-  } catch (error) {
+  } catch (err: unknown) {
+    const error = err instanceof Error ? err : new Error(String(err));
     console.error('[DELETE EDUCATION ERROR]', error);
-    res.status(500).json({ success: false, message: 'Failed to delete education' });
+    res.status(500).json({ success: false, message: 'Failed to delete education', error: error.message });
   }
 };
 
@@ -1654,8 +1744,9 @@ export const getEmployeeContacts = async (req: Request, res: Response): Promise<
 
     const mappedContacts = contacts.map(mapToContactApi);
     res.json({ success: true, contacts: mappedContacts });
-  } catch (_error) {
-    res.status(500).json({ success: false, message: 'Failed to fetch contacts' });
+  } catch (err: unknown) {
+    const error = err instanceof Error ? err : new Error(String(err));
+    res.status(500).json({ success: false, message: 'Failed to fetch contacts', error: error.message });
   }
 };
 
@@ -1681,8 +1772,9 @@ export const addEmployeeContact = async (req: Request, res: Response): Promise<v
     });
 
     res.status(201).json({ success: true, message: 'Contact added', contactId: result.insertId });
-  } catch (_error) {
-    res.status(500).json({ success: false, message: 'Failed to add contact' });
+  } catch (err: unknown) {
+    const error = err instanceof Error ? err : new Error(String(err));
+    res.status(500).json({ success: false, message: 'Failed to add contact', error: error.message });
   }
 };
 
@@ -1725,8 +1817,9 @@ export const updateEmployeeContact = async (req: Request, res: Response): Promis
       ));
 
     res.json({ success: true, message: 'Contact updated' });
-  } catch (_error) {
-    res.status(500).json({ success: false, message: 'Failed to update contact' });
+  } catch (err: unknown) {
+    const error = err instanceof Error ? err : new Error(String(err));
+    res.status(500).json({ success: false, message: 'Failed to update contact', error: error.message });
   }
 };
 
@@ -1739,8 +1832,9 @@ export const deleteEmployeeContact = async (req: Request, res: Response): Promis
         eq(employeeEmergencyContacts.employeeId, parseInt(id))
       ));
     res.json({ success: true, message: 'Contact deleted' });
-  } catch (_error) {
-    res.status(500).json({ success: false, message: 'Failed to delete contact' });
+  } catch (err: unknown) {
+    const error = err instanceof Error ? err : new Error(String(err));
+    res.status(500).json({ success: false, message: 'Failed to delete contact', error: error.message });
   }
 };
 
@@ -1762,8 +1856,9 @@ export const addEmployeeCustomField = async (req: Request, res: Response): Promi
     });
 
     res.status(201).json({ success: true, message: 'Custom field added', fieldId: result.insertId });
-  } catch (_error) {
-    res.status(500).json({ success: false, message: 'Failed to add custom field' });
+  } catch (err: unknown) {
+    const error = err instanceof Error ? err : new Error(String(err));
+    res.status(500).json({ success: false, message: 'Failed to add custom field', error: error.message });
   }
 };
 
@@ -1794,8 +1889,9 @@ export const updateEmployeeCustomField = async (req: Request, res: Response): Pr
       ));
 
     res.json({ success: true, message: 'Custom field updated' });
-  } catch (_error: unknown) {
-    res.status(500).json({ success: false, message: 'Failed to update custom field' });
+  } catch (err: unknown) {
+    const error = err instanceof Error ? err : new Error(String(err));
+    res.status(500).json({ success: false, message: 'Failed to update custom field', error: error.message });
   }
 };
 
@@ -1808,7 +1904,8 @@ export const deleteEmployeeCustomField = async (req: Request, res: Response): Pr
         eq(employeeCustomFields.employeeId, parseInt(id))
       ));
     res.json({ success: true, message: 'Custom field deleted' });
-  } catch (_error: unknown) {
-    res.status(500).json({ success: false, message: 'Failed to delete custom field' });
+  } catch (err: unknown) {
+    const error = err instanceof Error ? err : new Error(String(err));
+    res.status(500).json({ success: false, message: 'Failed to delete custom field', error: error.message });
   }
 };

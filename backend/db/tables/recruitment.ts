@@ -175,6 +175,14 @@ export const recruitmentApplicants = mysqlTable("recruitment_applicants", {
 	govtIdNo: varchar("govt_id_no", { length: 100 }),
 	govtIdIssuance: varchar("govt_id_issuance", { length: 255 }),
 
+	// 100% DATA FLOW: Expanded PDS fields for automated registration
+	familyBackground: text("family_background"),
+	children: text("children"),
+	voluntaryWork: text("voluntary_work"),
+	pdsReferences: text("pds_references"),
+	otherInfo: text("other_info"),
+	pdsQuestions: text("pds_questions"),
+
 
 },
 (table) => [

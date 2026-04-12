@@ -159,54 +159,54 @@ const LiveSupportChat: React.FC = () => {
     const selectedConv = conversations.find(c => c.id === selectedId);
 
     return (
-        <div className="h-[750px] flex bg-white rounded-lg border border-slate-200 overflow-hidden animate-in fade-in duration-500 w-full relative">
+        <div className="h-[750px] flex bg-white rounded-[var(--radius-lg)] border border-[var(--zed-border-light)] overflow-hidden animate-in fade-in duration-500 w-full relative zed-shadow-sm">
             {/* Conversations List */}
-            <div className={`w-full md:w-80 lg:w-96 flex-shrink-0 border-r border-slate-200 flex flex-col transition-all duration-300 ${selectedId ? 'hidden md:flex' : 'flex'}`}>
-                <div className="p-4 border-b border-slate-200 bg-slate-50">
-                    <h3 className="font-semibold text-slate-800 mb-3 text-sm">
-                        Messages
+            <div className={`w-full md:w-80 lg:w-96 flex-shrink-0 border-r border-[var(--zed-border-light)] flex flex-col transition-all duration-300 ${selectedId ? 'hidden md:flex' : 'flex'}`}>
+                <div className="p-6 border-b border-[var(--zed-border-light)] bg-[var(--zed-bg-surface)]">
+                    <h3 className="font-black text-[var(--zed-text-dark)] mb-4 text-[10px] tracking-[0.2em] uppercase">
+                        Communications List
                     </h3>
                     <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--zed-text-muted)]" size={16} />
                         <input
                             type="text"
-                            placeholder="Search applicant or email..."
+                            placeholder="Search protocol or entity..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-slate-300 outline-none transition-all placeholder:text-slate-400"
+                            className="w-full pl-11 pr-4 py-3 bg-white border border-[var(--zed-border-light)] rounded-[var(--radius-md)] text-xs font-bold uppercase tracking-tight focus:outline-none focus:ring-4 focus:ring-[var(--zed-primary)]/10 focus:border-[var(--zed-primary)] transition-all placeholder:text-[var(--zed-text-muted)]/40"
                         />
                     </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto custom-scrollbar">
+                <div className="flex-1 overflow-y-auto scrollbar-premium">
                     {loadingConv ? (
-                        <div className="flex flex-col items-center justify-center p-12 space-y-3">
-                            <Loader2 className="animate-spin text-slate-300" size={24} />
-                            <p className="text-xs text-slate-400">Loading chats...</p>
+                        <div className="flex flex-col items-center justify-center p-12 space-y-4">
+                            <Loader2 className="animate-spin text-[var(--zed-primary)]" size={24} />
+                            <p className="text-[10px] font-black text-[var(--zed-text-muted)] uppercase tracking-widest">Fetching data nodes...</p>
                         </div>
                     ) : filteredConversations.length === 0 ? (
                         <div className="p-12 text-center">
-                            <p className="text-sm text-slate-400">No active conversations</p>
+                            <p className="text-[10px] font-black text-[var(--zed-text-muted)] uppercase tracking-widest opacity-40">No active data streams</p>
                         </div>
                     ) : (
-                        <div className="divide-y divide-slate-100">
+                        <div className="divide-y divide-[var(--zed-border-light)]/30">
                             {filteredConversations.map((conv) => (
                                 <button
                                     key={conv.id}
                                     onClick={() => setSelectedId(conv.id)}
-                                    className={`w-full p-4 flex items-center gap-3 hover:bg-slate-50 transition-all text-left ${selectedId === conv.id ? 'bg-slate-50 border-l-2 border-slate-700' : 'border-l-2 border-transparent'}`}
+                                    className={`w-full p-6 flex items-center gap-4 hover:bg-[var(--zed-bg-surface)] transition-all text-left relative ${selectedId === conv.id ? 'bg-[var(--zed-bg-surface)] after:absolute after:left-0 after:top-0 after:bottom-0 after:w-1 after:bg-[var(--zed-primary)]' : ''}`}
                                 >
                                     <div className="flex-1 min-w-0">
                                         <div className="flex justify-between items-center mb-1">
-                                            <h4 className="font-medium text-slate-800 truncate text-sm">{conv.applicantName || 'Anonymous'}</h4>
-                                            <span className="text-[10px] text-slate-400 shrink-0">{new Date(conv.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                            <h4 className="text-sm font-black text-[var(--zed-text-dark)] truncate uppercase tracking-tight">{conv.applicantName || 'Anonymous Node'}</h4>
+                                            <span className="text-[9px] font-black text-[var(--zed-text-muted)] shrink-0 opacity-40 uppercase">{new Date(conv.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                         </div>
-                                        <div className="flex items-center justify-between gap-2">
-                                            <p className={`text-xs truncate flex-1 ${conv.unreadCount && conv.unreadCount > 0 ? 'text-slate-700 font-medium' : 'text-slate-400'}`}>
-                                                {conv.lastMessage || 'Click to view chat'}
+                                        <div className="flex items-center justify-between gap-3">
+                                            <p className={`text-[11px] truncate flex-1 ${conv.unreadCount && conv.unreadCount > 0 ? 'text-[var(--zed-text-dark)] font-bold' : 'text-[var(--zed-text-muted)]'}`}>
+                                                {conv.lastMessage || 'Stream standby...'}
                                             </p>
                                             {conv.unreadCount && conv.unreadCount > 0 ? (
-                                                <span className="bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-sm">
+                                                <span className="bg-[var(--zed-primary)] text-white text-[9px] font-black px-2 py-0.5 rounded-full shadow-md">
                                                     {conv.unreadCount > 99 ? '99+' : conv.unreadCount}
                                                 </span>
                                             ) : null}
@@ -224,25 +224,25 @@ const LiveSupportChat: React.FC = () => {
                 {selectedId && selectedConv ? (
                     <>
                         {/* Chat Header */}
-                        <div className="p-4 bg-white border-b border-slate-200 flex items-center justify-between z-10 sticky top-0">
-                            <div className="flex items-center gap-3 min-w-0">
-                                <button onClick={() => setSelectedId(null)} className="md:hidden p-2 -ml-2 text-slate-400 hover:text-slate-800 transition-colors">
+                        <div className="p-6 bg-white border-b border-[var(--zed-border-light)] flex items-center justify-between z-10 sticky top-0">
+                            <div className="flex items-center gap-4 min-w-0">
+                                <button onClick={() => setSelectedId(null)} className="md:hidden p-2 -ml-2 text-[var(--zed-text-muted)] hover:text-[var(--zed-text-dark)] transition-colors">
                                     <ChevronLeft size={20} />
                                 </button>
                                 <div className="min-w-0">
-                                    <h4 className="font-medium text-slate-800 leading-tight truncate text-sm">{selectedConv.applicantName || 'Anonymous'}</h4>
-                                    <p className="text-xs text-slate-400 truncate flex items-center gap-1.5 mt-0.5">
-                                        <span className="w-1.5 h-1.5 bg-slate-400 rounded-full"></span>
+                                    <h4 className="text-sm font-black text-[var(--zed-text-dark)] leading-tight truncate uppercase tracking-tight">{selectedConv.applicantName || 'Anonymous Entity'}</h4>
+                                    <p className="text-[10px] font-bold text-[var(--zed-text-muted)] truncate flex items-center gap-2 mt-1 uppercase tracking-widest">
+                                        <span className="w-1.5 h-1.5 bg-[var(--zed-success)] rounded-full animate-pulse"></span>
                                         {selectedConv.applicantEmail}
                                     </p>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-3">
                                 <button
                                     onClick={() => closeMutation.mutate(selectedId)}
-                                    className="px-3 py-1.5 text-xs font-medium text-slate-600 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 transition-all flex items-center gap-1.5"
+                                    className="px-4 py-2 text-[10px] font-black text-[var(--zed-text-dark)] bg-white border border-[var(--zed-border-light)] rounded-[var(--radius-sm)] hover:bg-[var(--zed-bg-surface)] transition-all flex items-center gap-2 uppercase tracking-widest shadow-sm active:scale-95"
                                 >
-                                    <CheckCircle2 size={14} />
+                                    <CheckCircle2 size={14} className="text-[var(--zed-success)]" />
                                     <span className="hidden sm:inline">Resolve</span>
                                 </button>
                                 <button 
@@ -251,13 +251,13 @@ const LiveSupportChat: React.FC = () => {
                                             deleteConvMutation.mutate(selectedId);
                                         }
                                     }}
-                                    className="p-2 text-slate-400 hover:bg-slate-50 hover:text-slate-600 rounded-lg transition-all"
+                                    className="p-3 text-[var(--zed-text-muted)] hover:bg-[var(--zed-bg-surface)] hover:text-[var(--zed-error)] rounded-full transition-all active:scale-90"
                                     title="Delete Conversation"
                                 >
-                                    <Trash2 size={16} />
+                                    <Trash2 size={18} />
                                 </button>
-                                <button className="p-2 text-slate-400 hover:bg-slate-50 rounded-lg transition-all">
-                                    <MoreVertical size={16} />
+                                <button className="p-3 text-[var(--zed-text-muted)] hover:bg-[var(--zed-bg-surface)] rounded-full transition-all active:scale-90">
+                                    <MoreVertical size={18} />
                                 </button>
                             </div>
                         </div>
@@ -265,16 +265,15 @@ const LiveSupportChat: React.FC = () => {
                         {/* Messages Area */}
                         <div 
                             ref={scrollRef}
-                            className="flex-1 overflow-y-auto p-6 space-y-5 custom-scrollbar bg-slate-50/30"
+                            className="flex-1 overflow-y-auto p-8 space-y-6 scrollbar-premium bg-[var(--zed-bg-surface)]/30"
                         >
                             {messages.map((msg, idx) => {
                                 const isMe = msg.senderType === 'Administrator';
                                 return (
-                                    <div key={msg.id || idx} className={`flex items-end gap-3 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
+                                    <div key={msg.id || idx} className={`flex items-end gap-4 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
 
                                         <div className={`max-w-[75%] lg:max-w-[65%] group flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
-                                            <div className={`flex items-center gap-2 ${isMe ? 'flex-row' : 'flex-row-reverse'}`}>
-                                                {/* Actions appear on hover */}
+                                            <div className={`flex items-center gap-3 ${isMe ? 'flex-row' : 'flex-row-reverse'}`}>
                                                 {!msg.isDeletedForEveryone && (
                                                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all duration-200">
                                                         {isMe && msg.senderId === currentUser?.id && (
@@ -283,7 +282,7 @@ const LiveSupportChat: React.FC = () => {
                                                                     setEditingId(msg.id);
                                                                     setEditInput(msg.message);
                                                                 }}
-                                                                className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-600 transition-all"
+                                                                className="p-2 hover:bg-white rounded-lg text-[var(--zed-text-muted)] hover:text-[var(--zed-primary)] transition-all zed-shadow-sm"
                                                                 title="Edit"
                                                             >
                                                                 <Pencil size={12} />
@@ -293,7 +292,7 @@ const LiveSupportChat: React.FC = () => {
                                                             onClick={() => {
                                                                 setDeletingId(msg.id);
                                                             }}
-                                                            className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-600 transition-all"
+                                                            className="p-2 hover:bg-white rounded-lg text-[var(--zed-text-muted)] hover:text-[var(--zed-error)] transition-all zed-shadow-sm"
                                                             title={isMe ? "Delete for everyone" : "Remove for me"}
                                                         >
                                                             <Trash2 size={12} />
@@ -301,52 +300,52 @@ const LiveSupportChat: React.FC = () => {
                                                     </div>
                                                 )}
                                                 
-                                                <div className={`px-4 py-3 rounded-xl border transition-all ${
+                                                <div className={`px-5 py-4 rounded-[var(--radius-lg)] border transition-all zed-shadow-sm ${
                                                     msg.isDeletedForEveryone
-                                                    ? 'bg-slate-50 border-slate-200 text-slate-400 italic rounded-br-none'
+                                                    ? 'bg-white border-[var(--zed-border-light)] text-[var(--zed-text-muted)] italic opacity-40 rounded-br-none'
                                                     : isMe
-                                                    ? 'bg-slate-700 border-slate-700 text-white rounded-br-none'
-                                                    : 'bg-white border-slate-200 text-slate-700 rounded-bl-none'
+                                                    ? 'bg-[var(--zed-primary)] border-[var(--zed-primary)] text-white rounded-br-none'
+                                                    : 'bg-white border-[var(--zed-border-light)] text-[var(--zed-text-dark)] font-medium rounded-bl-none'
                                                 }`}>
                                                     {editingId === msg.id ? (
-                                                        <div className="flex flex-col gap-3 min-w-[250px]">
+                                                        <div className="flex flex-col gap-4 min-w-[280px]">
                                                             <textarea 
-                                                                className="w-full bg-white/10 text-white p-3 text-xs rounded-lg outline-none border border-slate-500 focus:border-slate-300 transition-all min-h-[80px]"
+                                                                className="w-full bg-white/10 text-white p-4 text-xs font-bold rounded-[var(--radius-md)] outline-none border border-white/30 focus:border-white transition-all min-h-[100px] resize-none"
                                                                 value={editInput}
                                                                 onChange={(e) => setEditInput(e.target.value)}
                                                                 autoFocus
                                                             />
-                                                            <div className="flex justify-end gap-2">
-                                                                <button onClick={() => setEditingId(null)} className="px-3 py-1.5 text-xs text-slate-300 hover:text-white transition-colors">Cancel</button>
+                                                            <div className="flex justify-end gap-3">
+                                                                <button onClick={() => setEditingId(null)} className="text-[10px] font-black uppercase text-white/60 hover:text-white transition-colors">Cancel</button>
                                                                 <button 
                                                                     onClick={() => handleSaveEdit(msg.id)} 
                                                                     disabled={editMutation.isPending}
-                                                                    className="px-3 py-1.5 bg-white text-slate-800 text-xs font-medium rounded-lg hover:bg-slate-100 disabled:opacity-50 transition-all"
+                                                                    className="px-4 py-1.5 bg-white text-[var(--zed-primary)] text-[10px] font-black uppercase tracking-widest rounded-[var(--radius-sm)] hover:bg-white/90 disabled:opacity-50 transition-all shadow-md"
                                                                 >
-                                                                    {editMutation.isPending ? 'Saving...' : 'Save'}
+                                                                    {editMutation.isPending ? 'Syncing...' : 'Update'}
                                                                 </button>
                                                             </div>
                                                         </div>
                                                     ) : deletingId === msg.id ? (
-                                                        <div className="flex flex-col gap-2 min-w-[200px] text-center p-1">
-                                                            <p className="text-xs font-medium text-slate-500 mb-1">Delete this message?</p>
+                                                        <div className="flex flex-col gap-3 min-w-[220px] text-center p-1">
+                                                            <p className="text-[10px] font-black text-[var(--zed-text-muted)] uppercase tracking-widest mb-2">Security Override</p>
                                                             <button 
                                                                 onClick={() => deleteMutation.mutate({ msgId: msg.id, type: 'everyone' })}
-                                                                className="w-full py-2 bg-slate-600 text-white text-xs font-medium rounded-lg hover:bg-slate-700 transition-all"
+                                                                className="w-full py-2.5 bg-[var(--zed-error)] text-white text-[10px] font-black uppercase tracking-widest rounded-[var(--radius-sm)] hover:brightness-110 transition-all shadow-md"
                                                             >
-                                                                Delete for everyone
+                                                                Purge Globally
                                                             </button>
                                                             <button 
                                                                 onClick={() => deleteMutation.mutate({ msgId: msg.id, type: 'me' })}
-                                                                className="w-full py-2 bg-slate-100 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-200 transition-all"
+                                                                className="w-full py-2.5 bg-[var(--zed-bg-surface)] text-[var(--zed-text-dark)] text-[10px] font-black uppercase tracking-widest rounded-[var(--radius-sm)] border border-[var(--zed-border-light)] hover:bg-white transition-all"
                                                             >
-                                                                Remove for me
+                                                                Remove Locally
                                                             </button>
                                                             <button 
                                                                 onClick={() => setDeletingId(null)} 
-                                                                className="w-full py-1.5 text-xs text-slate-400 hover:text-slate-600 transition-colors"
+                                                                className="w-full py-2 text-[10px] font-black text-[var(--zed-text-muted)] uppercase tracking-widest hover:text-[var(--zed-text-dark)] transition-colors"
                                                             >
-                                                                Cancel
+                                                                Abort
                                                             </button>
                                                         </div>
                                                     ) : (
@@ -355,11 +354,11 @@ const LiveSupportChat: React.FC = () => {
                                                 </div>
                                             </div>
 
-                                            <div className={`flex items-center gap-2 mt-1.5 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
+                                            <div className={`flex items-center gap-3 mt-2 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
                                                 {msg.isEdited && !msg.isDeletedForEveryone && (
-                                                    <span className="text-[10px] text-slate-300 italic">edited</span>
+                                                    <span className="text-[9px] font-black text-[var(--zed-text-muted)] uppercase opacity-40">Modified</span>
                                                 )}
-                                                <span className="text-[10px] text-slate-300">
+                                                <span className="text-[9px] font-black text-[var(--zed-text-muted)] uppercase opacity-40 tracking-tighter">
                                                     {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                                 </span>
                                             </div>
@@ -370,61 +369,52 @@ const LiveSupportChat: React.FC = () => {
                         </div>
 
                         {/* Message Input */}
-                        <div className="p-4 bg-white border-t border-slate-200">
+                        <div className="p-6 bg-white border-t border-[var(--zed-border-light)]">
                             <form onSubmit={handleSend} className="relative">
                                 <input
                                     type="text"
                                     value={input}
                                     onChange={(e) => setInput(e.target.value)}
                                     disabled={sendMutation.isPending}
-                                    placeholder="Write a message..."
-                                    className="w-full pl-4 pr-14 py-3 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:bg-white focus:border-slate-300 focus:ring-2 focus:ring-slate-200 transition-all text-sm placeholder:text-slate-400"
+                                    placeholder="Enter communication protocol..."
+                                    className="w-full pl-6 pr-16 py-4 bg-[var(--zed-bg-surface)] border border-[var(--zed-border-light)] rounded-[var(--radius-lg)] outline-none focus:bg-white focus:ring-4 focus:ring-[var(--zed-primary)]/10 focus:border-[var(--zed-primary)] transition-all text-sm font-bold uppercase tracking-tight placeholder:text-[var(--zed-text-muted)]/40 shadow-inner"
                                 />
                                 <button
                                     type="submit"
                                     disabled={!input.trim() || sendMutation.isPending}
-                                    className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 disabled:opacity-30 transition-all flex items-center justify-center"
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 p-3 bg-[var(--zed-primary)] text-white rounded-[var(--radius-md)] hover:brightness-110 disabled:opacity-30 transition-all flex items-center justify-center shadow-lg active:scale-95"
                                 >
                                     {sendMutation.isPending ? (
-                                        <Loader2 className="animate-spin" size={16} />
+                                        <Loader2 className="animate-spin" size={20} />
                                     ) : (
-                                        <Send size={16} />
+                                        <Send size={20} />
                                     )}
                                 </button>
                             </form>
-                            <p className="text-[10px] text-center text-slate-300 mt-2">
-                                Press Enter to send message
-                            </p>
+                            <div className="flex justify-center gap-4 mt-3">
+                                <p className="text-[9px] font-black text-[var(--zed-text-muted)] uppercase tracking-[0.2em] opacity-30">
+                                    AES-256 Encrypted Stream
+                                </p>
+                            </div>
                         </div>
                     </>
                 ) : (
-                    <div className="flex-1 flex flex-col items-center justify-center text-center p-12 space-y-3 animate-in fade-in duration-500">
-                        <div className="max-w-sm">
-                            <h4 className="text-lg font-semibold text-slate-700">Chat Hub</h4>
-                            <p className="text-sm text-slate-400 mt-2 leading-relaxed">
-                                Select a candidate conversation to provide support and manage their application process in real-time.
+                    <div className="flex-1 flex flex-col items-center justify-center text-center p-12 space-y-6 animate-in fade-in duration-500 relative">
+                        {/* Background grid detail for empty state */}
+                        <div className="absolute inset-0 bg-[linear-gradient(to_right,var(--zed-primary)_1px,transparent_1px),linear-gradient(to_bottom,var(--zed-primary)_1px,transparent_1px)] bg-[size:32px_32px] opacity-[0.01] pointer-events-none"></div>
+                        
+                        <div className="max-w-md relative z-10">
+                            <div className="w-24 h-24 bg-[var(--zed-bg-surface)] rounded-[var(--radius-lg)] border border-[var(--zed-border-light)] flex items-center justify-center mx-auto mb-8 shadow-sm">
+                                <MoreVertical size={40} className="text-[var(--zed-primary)] opacity-20" />
+                            </div>
+                            <h4 className="text-2xl font-black text-[var(--zed-text-dark)] uppercase tracking-tight mb-4">Communication Hub</h4>
+                            <p className="text-sm font-medium text-[var(--zed-text-muted)] leading-relaxed uppercase tracking-wider">
+                                Initialize a candidate data stream to provide tactical support and manage the synchronization of their recruitment lifecycle in real-time.
                             </p>
                         </div>
                     </div>
                 )}
             </div>
-            
-            <style>{`
-                .custom-scrollbar::-webkit-scrollbar {
-                    width: 5px;
-                }
-                .custom-scrollbar::-webkit-scrollbar-track {
-                    background: transparent;
-                }
-                .custom-scrollbar::-webkit-scrollbar-thumb {
-                    background: #e2e8f0;
-                    border-radius: 10px;
-                }
-                .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-                    background: #cbd5e1;
-                }
-            `}
-            </style>
         </div>
     );
 };

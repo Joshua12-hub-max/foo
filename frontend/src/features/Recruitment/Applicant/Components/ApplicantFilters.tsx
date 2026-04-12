@@ -23,13 +23,13 @@ const ApplicantFilters: React.FC<ApplicantFiltersProps> = ({
   ];
 
   return (
-    <div className="flex flex-col sm:flex-row gap-4 mb-6 justify-between">
+    <div className="flex flex-col sm:flex-row gap-4 mb-6 justify-between relative z-10">
       <div className="relative flex-1 max-w-md">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
         <input 
           type="text" 
           placeholder="Search applicants..." 
-          className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-200 focus:border-gray-300 bg-white"
+          className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-200 focus:border-gray-300 bg-white text-sm"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
@@ -40,7 +40,7 @@ const ApplicantFilters: React.FC<ApplicantFiltersProps> = ({
         onChange={(val) => setSourceFilter(val as SourceFilter)}
         placeholder="Filter Source"
         className="w-40"
-        buttonClassName="bg-gray-100 border-gray-200 text-gray-700 py-2"
+        buttonClassName="bg-gray-100 border-gray-200 text-gray-700 py-2 text-sm font-medium"
       />
     </div>
   );

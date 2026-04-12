@@ -124,95 +124,97 @@ const PublicInquiries: React.FC = () => {
     });
 
     return (
-        <div className="space-y-6">
-            <div className="flex flex-wrap gap-3 items-center justify-between">
+        <div className="space-y-8 relative z-10">
+            <div className="flex flex-wrap gap-4 items-center justify-between">
                 <div className="relative flex-1 min-w-[300px]">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--zed-text-muted)]" size={18} />
                     <input
                         type="text"
                         placeholder="Search inquiries..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-slate-300 outline-none text-sm transition-all"
+                        className="w-full pl-12 pr-4 py-3 bg-white border border-[var(--zed-border-light)] rounded-[var(--radius-lg)] focus:outline-none focus:ring-4 focus:ring-[var(--zed-primary)]/10 focus:border-[var(--zed-primary)] text-sm font-medium transition-all"
                     />
                 </div>
-                <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-lg p-1">
+                <div className="flex items-center gap-1 bg-white border border-[var(--zed-border-light)] rounded-[var(--radius-lg)] p-1.5 shadow-sm">
                     {['All', 'Pending', 'Read', 'Replied'].map((status) => (
                         <button
                             key={status}
                             onClick={() => setStatusFilter(status)}
-                            className={`px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap transition-all ${
+                            className={`px-5 py-2 rounded-[var(--radius-sm)] text-[10px] font-black tracking-widest uppercase transition-all ${
                                 statusFilter === status
-                                    ? 'bg-slate-100 text-slate-800'
-                                    : 'text-slate-400 hover:text-slate-600'
+                                    ? 'bg-[var(--zed-primary)] text-white shadow-md'
+                                    : 'text-[var(--zed-text-muted)] hover:text-[var(--zed-primary)] hover:bg-[var(--zed-bg-surface)]'
                             }`}
                         >
-                            {status === 'All' ? 'All Status' : status}
+                            {status === 'All' ? 'All Records' : status}
                         </button>
                     ))}
                 </div>
             </div>
 
             {loading ? (
-                <div className="flex justify-center py-12">
-                    <div className="animate-spin rounded-full h-6 w-6 border-2 border-slate-300 border-t-slate-600"></div>
+                <div className="flex justify-center py-20">
+                    <div className="animate-spin rounded-full h-8 w-8 border-4 border-[var(--zed-border-light)] border-t-[var(--zed-primary)]"></div>
                 </div>
             ) : filteredInquiries.length === 0 ? (
-                <div className="text-center py-12 bg-white rounded-lg border border-slate-200">
-                    <p className="text-sm text-slate-500">No inquiries found</p>
+                <div className="text-center py-20 bg-white rounded-[var(--radius-lg)] border border-[var(--zed-border-light)] shadow-sm">
+                    <p className="text-xs font-black text-[var(--zed-text-muted)] uppercase tracking-[0.2em]">No inquiries found</p>
                 </div>
             ) : (
-                <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
-                    <table className="w-full text-left">
+                <div className="bg-white border border-[var(--zed-border-light)] rounded-[var(--radius-lg)] overflow-hidden shadow-sm">
+                    <table className="w-full text-left border-collapse">
                         <thead>
-                            <tr className="border-b border-slate-200 bg-slate-50">
-                                <th className="px-6 py-3 text-[11px] font-semibold text-slate-500 tracking-wider">Sender</th>
-                                <th className="px-6 py-3 text-[11px] font-semibold text-slate-500 tracking-wider">Message</th>
-                                <th className="px-6 py-3 text-[11px] font-semibold text-slate-500 tracking-wider">Status</th>
-                                <th className="px-6 py-3 text-[11px] font-semibold text-slate-500 tracking-wider">Date</th>
-                                <th className="px-6 py-3 text-[11px] font-semibold text-slate-500 tracking-wider">Actions</th>
+                            <tr className="border-b border-[var(--zed-border-light)] bg-[var(--zed-bg-surface)]">
+                                <th className="px-8 py-5 text-[10px] font-black text-[var(--zed-text-dark)] tracking-[0.2em] uppercase">Sender Identification</th>
+                                <th className="px-8 py-5 text-[10px] font-black text-[var(--zed-text-dark)] tracking-[0.2em] uppercase">Communication Body</th>
+                                <th className="px-8 py-5 text-[10px] font-black text-[var(--zed-text-dark)] tracking-[0.2em] uppercase">Stage</th>
+                                <th className="px-8 py-5 text-[10px] font-black text-[var(--zed-text-dark)] tracking-[0.2em] uppercase whitespace-nowrap">Timestamp</th>
+                                <th className="px-8 py-5 text-[10px] font-black text-[var(--zed-text-dark)] tracking-[0.2em] uppercase text-center">Protocol</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-100">
+                        <tbody className="divide-y divide-[var(--zed-border-light)]/30">
                             {filteredInquiries.map((inq) => (
-                                <tr key={inq.id} className="hover:bg-slate-50/50 transition-colors">
-                                    <td className="px-6 py-4">
+                                <tr key={inq.id} className="hover:bg-[var(--zed-bg-surface)]/50 transition-colors">
+                                    <td className="px-8 py-6">
                                         <div className="min-w-0">
-                                            <p className="text-sm font-medium text-slate-800 truncate">{inq.firstName} {inq.lastName}</p>
-                                            <p className="text-xs text-slate-400 truncate">{inq.email}</p>
+                                            <p className="text-sm font-black text-[var(--zed-text-dark)] uppercase tracking-tight truncate">{inq.firstName} {inq.lastName}</p>
+                                            <p className="text-[10px] font-bold text-[var(--zed-text-muted)] tracking-wide truncate mt-1 lowercase">{inq.email}</p>
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4">
-                                        <div className="space-y-2">
-                                            <p className="text-xs text-slate-600 max-w-[400px]" title={inq.message}>
+                                    <td className="px-8 py-6">
+                                        <div className="space-y-3">
+                                            <p className="text-xs font-medium text-[var(--zed-text-dark)] max-w-[450px] leading-relaxed" title={inq.message}>
                                                 {inq.message}
                                             </p>
                                             {inq.adminNotes && (
-                                                <div className="mt-2 p-2 bg-slate-50 border-l-2 border-slate-300 rounded text-[10px] text-slate-500 italic whitespace-pre-wrap">
-                                                    {inq.adminNotes}
+                                                <div className="mt-3 p-4 bg-[var(--zed-bg-surface)] border-l-4 border-[var(--zed-primary)] rounded-[var(--radius-sm)] text-[10px] font-bold text-[var(--zed-text-muted)] italic whitespace-pre-wrap shadow-inner">
+                                                    Official Response: {inq.adminNotes}
                                                 </div>
                                             )}
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4">
-                                        <span className="inline-flex items-center px-2.5 py-1 rounded text-[11px] font-medium bg-slate-100 text-slate-600 border border-slate-200">
+                                    <td className="px-8 py-6">
+                                        <span className={`inline-flex items-center px-3 py-1 rounded-[var(--radius-sm)] text-[9px] font-black tracking-widest uppercase border ${
+                                            inq.status === 'Replied' ? 'bg-[var(--zed-success)]/10 text-[var(--zed-success)] border-[var(--zed-success)]/20' : 'bg-[var(--zed-bg-surface)] text-[var(--zed-text-muted)] border-[var(--zed-border-light)]'
+                                        }`}>
                                             {inq.status}
                                         </span>
                                     </td>
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center gap-1.5">
-                                            <Clock size={12} className="text-slate-300" />
-                                            <span className="text-xs text-slate-500">
-                                                {new Date(inq.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                    <td className="px-8 py-6">
+                                        <div className="flex items-center gap-2 text-[var(--zed-text-muted)]">
+                                            <Clock size={12} className="opacity-40" />
+                                            <span className="text-[10px] font-bold tracking-widest uppercase">
+                                                {new Date(inq.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                                             </span>
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center gap-1">
+                                    <td className="px-8 py-6">
+                                        <div className="flex items-center justify-center gap-2">
                                             {inq.status === 'Pending' && (
                                                 <button 
                                                     onClick={() => handleUpdateStatus(inq.id, 'Read')}
-                                                    className="px-2.5 py-1.5 text-xs font-medium text-slate-600 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 transition-all"
+                                                    className="px-4 py-2 text-[10px] font-black uppercase tracking-widest text-[var(--zed-text-dark)] bg-white border border-[var(--zed-border-light)] rounded-[var(--radius-sm)] hover:bg-[var(--zed-bg-surface)] transition-all shadow-sm active:scale-95"
                                                 >
                                                     Mark Read
                                                 </button>
@@ -220,7 +222,7 @@ const PublicInquiries: React.FC = () => {
                                             {inq.status !== 'Replied' && (
                                                 <button 
                                                     onClick={() => handleReply(inq)}
-                                                    className="px-2.5 py-1.5 text-xs font-medium text-white bg-slate-800 border border-slate-700 rounded-lg hover:bg-slate-900 transition-all flex items-center gap-1 shadow-sm"
+                                                    className="px-4 py-2 text-[10px] font-black uppercase tracking-widest text-white bg-[var(--zed-primary)] border border-[var(--zed-primary)] rounded-[var(--radius-sm)] hover:brightness-110 transition-all flex items-center gap-2 shadow-md active:scale-95"
                                                 >
                                                     <Send size={12} />
                                                     Reply
@@ -228,9 +230,9 @@ const PublicInquiries: React.FC = () => {
                                             )}
                                             <button 
                                                 onClick={() => handleDelete(inq.id)}
-                                                className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-lg transition-all"
+                                                className="p-2.5 text-[var(--zed-text-muted)] hover:text-[var(--zed-error)] transition-all active:scale-90"
                                             >
-                                                <Trash2 size={14} />
+                                                <Trash2 size={16} />
                                             </button>
                                         </div>
                                     </td>
@@ -243,58 +245,61 @@ const PublicInquiries: React.FC = () => {
 
             <ConfirmDialog
                 isOpen={confirmModal.isOpen}
-                title="Delete Inquiry"
-                message="Are you sure you want to permanently delete this inquiry? This cannot be undone."
+                title="Delete Inquiry Record"
+                message="Are you sure you want to permanently purge this inquiry from the central database? This action is irreversible."
                 isDestructive={true}
-                confirmText="Delete"
+                confirmText="Delete Record"
                 onClose={() => setConfirmModal({ isOpen: false, idToDelete: 0 })}
                 onConfirm={confirmDelete}
             />
 
             {/* Reply Modal */}
             {replyModal.isOpen && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 animate-in fade-in duration-200">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
-                        <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                            <h3 className="font-bold text-slate-800">Reply to Inquiry</h3>
-                            <button onClick={() => setReplyModal(prev => ({ ...prev, isOpen: false }))} className="text-slate-400 hover:text-slate-600 transition-colors">
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-white/60 backdrop-blur-md animate-in fade-in duration-300">
+                    <div className="bg-white rounded-[var(--radius-lg)] zed-shadow-xl border border-[var(--zed-border-light)] w-full max-w-xl overflow-hidden animate-in zoom-in-95 duration-300 relative">
+                        {/* Grid detail */}
+                        <div className="absolute inset-0 bg-[linear-gradient(to_right,var(--zed-primary)_1px,transparent_1px),linear-gradient(to_bottom,var(--zed-primary)_1px,transparent_1px)] bg-[size:24px_24px] opacity-[0.01] pointer-events-none"></div>
+                        
+                        <div className="px-8 py-5 border-b border-[var(--zed-border-light)] flex justify-between items-center bg-[var(--zed-bg-surface)] relative z-10">
+                            <h3 className="font-black text-[var(--zed-text-dark)] uppercase tracking-widest text-sm">Response Protocol</h3>
+                            <button onClick={() => setReplyModal(prev => ({ ...prev, isOpen: false }))} className="text-[var(--zed-text-muted)] hover:text-[var(--zed-text-dark)] transition-all p-2 rounded-full active:scale-90">
                                 <X size={20} />
                             </button>
                         </div>
-                        <div className="p-6 space-y-4">
-                            <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                                <div className="flex justify-between items-start mb-2">
-                                    <p className="text-xs font-bold text-slate-400 tracking-wider">Original Message</p>
-                                    <p className="text-[10px] text-slate-400 font-medium">{replyModal.name} • {replyModal.email}</p>
+                        <div className="p-8 space-y-6 relative z-10">
+                            <div className="bg-[var(--zed-bg-surface)] p-6 rounded-[var(--radius-lg)] border border-[var(--zed-border-light)] shadow-inner">
+                                <div className="flex justify-between items-start mb-3">
+                                    <p className="text-[9px] font-black text-[var(--zed-text-muted)] tracking-[0.2em] uppercase">Original Communication</p>
+                                    <p className="text-[9px] font-black text-[var(--zed-primary)] tracking-widest uppercase">{replyModal.name}</p>
                                 </div>
-                                <p className="text-sm text-slate-600 italic">"{replyModal.message}"</p>
+                                <p className="text-xs font-medium text-[var(--zed-text-dark)] italic leading-relaxed">"{replyModal.message}"</p>
                             </div>
                             
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold text-slate-700 tracking-wide">Your Response</label>
+                            <div className="space-y-3">
+                                <label className="text-[10px] font-black text-[var(--zed-text-dark)] tracking-[0.2em] uppercase ml-1">Official Response</label>
                                 <textarea
                                     autoFocus
-                                    placeholder="Type your reply here..."
-                                    className="w-full min-h-[150px] p-4 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-slate-100 focus:border-slate-400 outline-none text-sm transition-all resize-none shadow-inner"
+                                    placeholder="Compose your reply here..."
+                                    className="w-full min-h-[180px] p-6 bg-white border border-[var(--zed-border-light)] rounded-[var(--radius-lg)] focus:outline-none focus:ring-4 focus:ring-[var(--zed-primary)]/10 focus:border-[var(--zed-primary)] text-sm font-medium transition-all resize-none shadow-sm"
                                     value={replyModal.replyText}
                                     onChange={(e) => setReplyModal(prev => ({ ...prev, replyText: e.target.value }))}
                                 />
                             </div>
                         </div>
-                        <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
+                        <div className="px-8 py-5 bg-[var(--zed-bg-surface)] border-t border-[var(--zed-border-light)] flex justify-end gap-4 relative z-10">
                             <button 
                                 onClick={() => setReplyModal(prev => ({ ...prev, isOpen: false }))}
-                                className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 transition-colors"
+                                className="px-6 py-2.5 text-[10px] font-black text-[var(--zed-text-muted)] uppercase tracking-widest hover:text-[var(--zed-text-dark)] transition-colors"
                             >
-                                Cancel
+                                Abandon
                             </button>
                             <button 
                                 disabled={replying || !replyModal.replyText.trim()}
                                 onClick={confirmReply}
-                                className="px-6 py-2 bg-slate-800 text-white text-sm font-bold rounded-xl hover:bg-slate-900 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md flex items-center gap-2"
+                                className="px-8 py-2.5 bg-[var(--zed-primary)] text-white text-[10px] font-black uppercase tracking-widest rounded-[var(--radius-sm)] hover:brightness-110 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-md flex items-center gap-3 active:scale-95"
                             >
-                                {replying && <Loader2 size={16} className="animate-spin" />}
-                                {replying ? 'Sending...' : 'Send Reply'}
+                                {replying ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                                {replying ? 'Transmitting...' : 'Dispatch Reply'}
                             </button>
                         </div>
                     </div>

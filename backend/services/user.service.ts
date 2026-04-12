@@ -16,6 +16,7 @@ import {
   pdsHrDetails, 
   pdsPersonalInformation,
   pdsDeclarations,
+  employeeDocuments,
   departments, 
   schedules
 } from '../db/schema.js';
@@ -91,6 +92,7 @@ export class UserService {
       resCity: pdsPersonalInformation.resCity,
       resProvince: pdsPersonalInformation.resProvince,
       resRegion: pdsPersonalInformation.resRegion,
+      residentialZipCode: pdsPersonalInformation.residentialZipCode,
       permHouseBlockLot: pdsPersonalInformation.permHouseBlockLot,
       permStreet: pdsPersonalInformation.permStreet,
       permSubdivision: pdsPersonalInformation.permSubdivision,
@@ -98,6 +100,7 @@ export class UserService {
       permCity: pdsPersonalInformation.permCity,
       permProvince: pdsPersonalInformation.permProvince,
       permRegion: pdsPersonalInformation.permRegion,
+      permanentZipCode: pdsPersonalInformation.permanentZipCode,
 
       duties: sql<string>`COALESCE(
         (SELECT schedule_title FROM schedules WHERE ${normalizeIdSql(schedules.employeeId)} = ${normalizeIdSql(authentication.employeeId)} AND (start_date IS NULL OR start_date <= CURDATE()) AND (end_date IS NULL OR end_date >= CURDATE()) ORDER BY updated_at DESC LIMIT 1),
@@ -184,6 +187,7 @@ export class UserService {
       resCity: pdsPersonalInformation.resCity,
       resProvince: pdsPersonalInformation.resProvince,
       resRegion: pdsPersonalInformation.resRegion,
+      residentialZipCode: pdsPersonalInformation.residentialZipCode,
       permHouseBlockLot: pdsPersonalInformation.permHouseBlockLot,
       permStreet: pdsPersonalInformation.permStreet,
       permSubdivision: pdsPersonalInformation.permSubdivision,
@@ -191,6 +195,7 @@ export class UserService {
       permCity: pdsPersonalInformation.permCity,
       permProvince: pdsPersonalInformation.permProvince,
       permRegion: pdsPersonalInformation.permRegion,
+      permanentZipCode: pdsPersonalInformation.permanentZipCode,
 
       duties: sql<string>`COALESCE(
         (SELECT schedule_title FROM schedules WHERE ${normalizeIdSql(schedules.employeeId)} = ${normalizeIdSql(authentication.employeeId)} AND (start_date IS NULL OR start_date <= CURDATE()) AND (end_date IS NULL OR end_date >= CURDATE()) ORDER BY updated_at DESC LIMIT 1),
@@ -216,7 +221,7 @@ export class UserService {
 
 
   static async getRelatedData(id: number) {
-    const [skills, education, emergencyContacts, customFields, familyBackground, voluntaryWork, learningDevelopment, workExperience, otherInfo, references, eligibilities, declarations] = await Promise.all([
+    const [skills, education, emergencyContacts, customFields, familyBackground, voluntaryWork, learningDevelopment, workExperience, otherInfo, references, eligibilities, declarations, documents] = await Promise.all([
       db.select()
         .from(employeeSkills)
         .where(eq(employeeSkills.employeeId, id))
@@ -234,7 +239,7 @@ export class UserService {
       db.select()
         .from(employeeCustomFields)
         .where(eq(employeeCustomFields.employeeId, id)),
-      
+
       db.select()
         .from(pdsFamily)
         .where(eq(pdsFamily.employeeId, id)),
@@ -269,16 +274,30 @@ export class UserService {
       db.select()
         .from(pdsDeclarations)
         .where(eq(pdsDeclarations.employeeId, id))
-        .limit(1)
+        .limit(1),
+
+      db.select()
+        .from(employeeDocuments)
+        .where(eq(employeeDocuments.employeeId, id))
     ]);
 
-    return { 
-      skills, education, emergencyContacts, customFields, 
-      familyBackground, voluntaryWork, learningDevelopment, 
-      workExperience, otherInfo, references, eligibilities,
-      declarations: declarations[0] || null
+    return {
+      skills,
+      education,
+      emergencyContacts,
+      customFields,
+      familyBackground,
+      voluntaryWork,
+      learningDevelopment,
+      workExperience,
+      otherInfo,
+      references,
+      eligibilities,
+      declarations: declarations[0] || null,
+      documents
     };
   }
+
 
   static async createEmployee(data: NewEmployee & { password?: string; employmentStatus?: string; employmentType?: string; departmentId?: number; positionId?: number; salaryGrade?: string | number; stepIncrement?: number; dateHired?: string; contractEndDate?: string; regularizationDate?: string; isRegular?: boolean; positionTitle?: string; station?: string; appointmentType?: string; itemNumber?: string; firstDayOfService?: string; officeAddress?: string; religion?: string; barangay?: string; dutyType?: string; isMeycauayan?: boolean; facebookUrl?: string; linkedinUrl?: string; twitterHandle?: string; birthDate?: string; placeOfBirth?: string; gender?: string; civilStatus?: string; heightM?: string | number; weightKg?: string | number; bloodType?: string; citizenship?: string; nationality?: string; residentialAddress?: string; address?: string; permanentAddress?: string; mobileNo?: string; phoneNumber?: string; telephoneNo?: string; jobTitle?: string }) {
     return await db.transaction(async (tx) => {

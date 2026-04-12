@@ -93,8 +93,14 @@ const ScheduleInterviewModal: React.FC<ScheduleInterviewModalProps> = ({
   // Listen for OAuth callback messages from popup (secure with origin validation)
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
-      // Validate origin for security (only trust our own frontend URL)
-      const trustedOrigins = ['http://localhost:5173', 'http://localhost:5174', window.location.origin];
+      // Validate origin for security (only trust our own frontend and backend URLs)
+      const trustedOrigins = [
+        'http://localhost:5173', 
+        'http://localhost:5174', 
+        'http://127.0.0.1:5173', 
+        'http://127.0.0.1:5174',
+        window.location.origin
+      ];
       if (!trustedOrigins.includes(event.origin)) {
         return;
       }
@@ -176,20 +182,15 @@ const ScheduleInterviewModal: React.FC<ScheduleInterviewModalProps> = ({
         const left = window.screen.width / 2 - width / 2;
         const top = window.screen.height / 2 - height / 2;
         
-        const popup = window.open(
+        window.open(
           data.authUrl, 
           'Google Calendar Connect', 
           `width=${width},height=${height},top=${top},left=${left}`
         );
-
-        if (popup) {
-          const timer = setInterval(() => {
-            if (popup.closed) {
-              clearInterval(timer);
-              checkGoogleStatus(); // Refresh status on close
-            }
-          }, 1000);
-        }
+        
+        // No more setInterval with popup.closed check! 
+        // The popup will send a message back via postMessage, 
+        // which our useEffect listener above will handle.
       }
     } catch (error) {
       console.error('Failed to initiate Google Auth', error);

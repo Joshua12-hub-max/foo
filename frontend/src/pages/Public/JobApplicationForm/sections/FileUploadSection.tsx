@@ -14,6 +14,7 @@ interface FileUploadSectionProps {
   setValue: UseFormSetValue<JobApplicationSchema>;
   watch: UseFormWatch<JobApplicationSchema>;
   dutyType?: "Standard" | "Irregular";
+  employmentType?: string;
 }
 interface FileInfo {
   name: string;
@@ -26,10 +27,16 @@ const FileUploadSection: React.FC<FileUploadSectionProps> = ({
   setValue,
   watch,
   dutyType = "Standard",
+  employmentType = "Full-time",
 }) => {
   const [resumeFile, setResumeFile] = useState<FileInfo | null>(null);
   const [photoFile, setPhotoFile] = useState<FileInfo | null>(null);
   const [certFile, setCertFile] = useState<FileInfo | null>(null);
+
+  const isCSCRequired = 
+    dutyType === "Standard" || 
+    ["Permanent", "Temporary", "Probationary"].includes(employmentType || "");
+
   const MAX_FILE_SIZE = 10 * 1024 * 1024;
   const RESUME_TYPES = [
     "application/pdf",
@@ -414,7 +421,7 @@ const FileUploadSection: React.FC<FileUploadSectionProps> = ({
         )}{" "}
       </div>{" "}
       {/* Eligibility Certificate Upload */}{" "}
-      {dutyType === "Standard" && (
+      {isCSCRequired && (
         <div className="space-y-3">
           {" "}
           <label className="block text-xs font-bold text-gray-500 tracking-wider ml-1">

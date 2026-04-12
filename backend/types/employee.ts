@@ -83,6 +83,8 @@ export interface EmployeeMapperInput {
   permCity?: string | null;
   permProvince?: string | null;
   permRegion?: string | null;
+  residentialZipCode?: string | null;
+  permanentZipCode?: string | null;
 }
 
 /**
@@ -124,7 +126,6 @@ export interface EmployeeApiResponse {
   officeAddress: string | null;
   originalAppointmentDate: string | null;
   lastPromotionDate: string | null;
-  barangay: string | null;
   religion: string | null;
   isBiometricEnrolled: boolean;
   startTime: string | null;
@@ -140,7 +141,6 @@ export interface EmployeeApiResponse {
   heightM: number | null;
   weightKg: number | null;
   bloodType: string | null;
-  nationality: string | null;
   citizenship: string | null;
   residentialAddress: string | null;
   permanentAddress: string | null;
@@ -162,6 +162,7 @@ export interface EmployeeApiResponse {
   resCity: string | null;
   resProvince: string | null;
   resRegion: string | null;
+  residentialZipCode: string | null;
   permHouseBlockLot: string | null;
   permStreet: string | null;
   permSubdivision: string | null;
@@ -169,6 +170,7 @@ export interface EmployeeApiResponse {
   permCity: string | null;
   permProvince: string | null;
   permRegion: string | null;
+  permanentZipCode: string | null;
 }
 
 /**
