@@ -25,6 +25,14 @@ import type {
   PdsDeclarations,
   PdsPersonalInfo,
 } from '../types/pds.js';
+import {
+  normalizePdsInt,
+  normalizePdsFloat,
+  normalizePdsString,
+  normalizePdsDate,
+  extractPdsYear,
+  isPdsGarbageRow,
+} from '../utils/pdsDataUtils.js';
 
 // Canonical data shape accepted by saveFullPdsData — no synonyms
 export interface PdsSaveData {
@@ -53,55 +61,44 @@ export interface PdsSaveData {
 type PDSSectionRow = Record<string, unknown>;
 
 export class PDSService {
+  /**
+   * DEPRECATED: Use normalizePdsInt from pdsDataUtils.ts
+   * @deprecated
+   */
   static safeInt(val: unknown, defaultVal: number | null = 0): number | null {
-    if (val === null || val === undefined || String(val).trim() === '' || String(val).toLowerCase() === 'null') return defaultVal;
-    const cleaned = String(val).replace(/[^0-9-]/g, '');
-    if (!cleaned) return defaultVal;
-    const parsed = parseInt(cleaned, 10);
-    return isNaN(parsed) ? defaultVal : parsed;
+    return normalizePdsInt(val, defaultVal);
   }
 
+  /**
+   * DEPRECATED: Use normalizePdsString from pdsDataUtils.ts
+   * @deprecated
+   */
   static safeStr(val: unknown, maxLen?: number): string | null {
-    if (val === null || val === undefined || String(val).trim() === '' || String(val).toLowerCase() === 'null') return null;
-    let s = String(val).trim();
-    if (maxLen) s = s.substring(0, maxLen);
-    return s;
+    return normalizePdsString(val, maxLen);
   }
 
+  /**
+   * DEPRECATED: Use normalizePdsDate from pdsDataUtils.ts
+   * @deprecated
+   */
   static safeDate(val: unknown): string | null {
-    if (val === null || val === undefined || String(val).trim() === '' || String(val).toLowerCase() === 'null') return null;
-    
-    // Handle Excel serial numbers (e.g. 36541)
-    const s = String(val).trim();
-    if (/^\d{5}(\.\d+)?$/.test(s)) {
-        const serial = parseFloat(s);
-        if (serial > 10000 && serial < 60000) { // Reasonable range for birth/hire dates
-            const date = new Date((serial - 25569) * 86400 * 1000);
-            if (!isNaN(date.getTime())) return date.toISOString().split('T')[0];
-        }
-    }
-
-    const d = new Date(s);
-    if (isNaN(d.getTime())) return null;
-    return d.toISOString().split('T')[0];
+    return normalizePdsDate(val);
   }
 
+  /**
+   * DEPRECATED: Use normalizePdsFloat from pdsDataUtils.ts
+   * @deprecated
+   */
   static safeFloat(val: unknown): string | null {
-    if (val === null || val === undefined || String(val).trim() === '' || String(val).toLowerCase() === 'null') return null;
-    const s = String(val).replace(/,/g, '');
-    const isNegative = s.trim().startsWith('-');
-    const cleaned = s.replace(/[^0-9.]/g, '');
-    const f = parseFloat(cleaned);
-    if (isNaN(f)) return null;
-    return (isNegative ? -f : f).toString();
+    return normalizePdsFloat(val);
   }
 
+  /**
+   * DEPRECATED: Use isPdsGarbageRow from pdsDataUtils.ts
+   * @deprecated
+   */
   static isGarbageRow(row: PDSSectionRow, keyFields: string[]): boolean {
-    if (!row || typeof row !== 'object') return true;
-    return keyFields.every(field => {
-      const val = row[field];
-      return val === null || val === undefined || String(val).trim() === '' || String(val).toLowerCase() === 'null' || String(val).includes('---');
-    });
+    return isPdsGarbageRow(row, keyFields);
   }
 
   static async saveFullPdsData(
@@ -208,17 +205,17 @@ export class PDSService {
     // Educational Background (delete + insert)
     if (data.educations) {
       const filteredEdu = data.educations
-        .filter(e => !this.isGarbageRow(e as unknown as PDSSectionRow, ['schoolName']))
+        .filter(e => !isPdsGarbageRow(e as unknown as PDSSectionRow, ['schoolName']))
         .map(e => ({
           employeeId,
           level: (e.level || 'College') as 'Elementary' | 'Secondary' | 'Vocational' | 'College' | 'Graduate Studies',
-          schoolName: this.safeStr(e.schoolName, 255) ?? 'Unknown School',
-          degreeCourse: this.safeStr(e.degreeCourse, 255),
-          dateFrom: this.safeStr(e.dateFrom, 4),       // 4-char year string e.g. "2001"
-          dateTo: this.safeStr(e.dateTo, 4),           // 4-char year string e.g. "2005"
-          yearGraduated: this.safeInt(e.yearGraduated),
-          unitsEarned: this.safeStr(e.unitsEarned, 50),
-          honors: this.safeStr(e.honors, 255),
+          schoolName: normalizePdsString(e.schoolName, 255) ?? 'Unknown School',
+          degreeCourse: normalizePdsString(e.degreeCourse, 255),
+          dateFrom: extractPdsYear(e.dateFrom),  // Extract year from date (YYYY-MM-DD → YYYY)
+          dateTo: extractPdsYear(e.dateTo),      // Extract year from date (YYYY-MM-DD → YYYY)
+          yearGraduated: normalizePdsInt(e.yearGraduated),
+          unitsEarned: normalizePdsString(e.unitsEarned, 50),
+          honors: normalizePdsString(e.honors, 255),
         }));
       await (tx as typeof db).delete(pdsEducation).where(eq(pdsEducation.employeeId, employeeId));
       if (filteredEdu.length > 0) await (tx as typeof db).insert(pdsEducation).values(filteredEdu);

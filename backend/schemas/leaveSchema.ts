@@ -26,6 +26,11 @@ export const applyLeaveSchema = z.object({
     if (val === undefined || val === null) return true;
     return Boolean(val);
   }, z.boolean().default(true)),
+  isHalfDay: z.preprocess((val) => {
+    if (typeof val === 'string') return val === 'true';
+    if (val === undefined || val === null) return false;
+    return Boolean(val);
+  }, z.boolean().default(false)),
 }).refine((data) => {
   const start = new Date(data.startDate);
   const end = new Date(data.endDate);

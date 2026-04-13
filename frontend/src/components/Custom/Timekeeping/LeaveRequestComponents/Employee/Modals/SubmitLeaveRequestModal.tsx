@@ -61,6 +61,7 @@ export const SubmitLeaveRequestModal: React.FC<SubmitLeaveRequestModalProps> = (
     defaultValues: {
       leaveType: 'Vacation Leave',
       isWithPay: true,
+      isHalfDay: false,
       startDate: '',
       endDate: '',
       reason: '',
@@ -68,14 +69,16 @@ export const SubmitLeaveRequestModal: React.FC<SubmitLeaveRequestModalProps> = (
   });
 
   const watchAllFields = watch();
-  const { leaveType, isWithPay, startDate, endDate } = watchAllFields;
+  const { leaveType, isWithPay, isHalfDay, startDate, endDate } = watchAllFields;
 
   // Helper to calculate working days (frontend version)
-  const calculateWorkingDays = (startStr: string, endStr: string) => {
+  const calculateWorkingDays = (startStr: string, endStr: string, halfDay: boolean) => {
     if (!startStr || !endStr) return 0;
     const start = new Date(startStr);
     const end = new Date(endStr);
     if (isNaN(start.getTime()) || isNaN(end.getTime()) || start > end) return 0;
+
+    if (halfDay && startStr === endStr) return 0.5;
 
     let count = 0;
     const cur = new Date(start);
@@ -88,11 +91,11 @@ export const SubmitLeaveRequestModal: React.FC<SubmitLeaveRequestModalProps> = (
       }
       cur.setDate(cur.getDate() + 1);
     }
-    return count;
+    return halfDay ? Math.max(0, count - 0.5) : count;
   };
 
   // Calculate duration (excluding weekends and holidays)
-  const duration = useMemo(() => calculateWorkingDays(startDate, endDate), [startDate, endDate, nonWorkingHolidays]);
+  const duration = useMemo(() => calculateWorkingDays(startDate, endDate, !!isHalfDay), [startDate, endDate, nonWorkingHolidays, isHalfDay]);
 
   // Advance filing check
   const advanceFilingStatus = useMemo(() => {
@@ -102,7 +105,7 @@ export const SubmitLeaveRequestModal: React.FC<SubmitLeaveRequestModalProps> = (
     if (!advanceFiling.appliesTo.includes(leaveType)) return { isOk: true };
 
     const todayStr = new Date().toISOString().split('T')[0];
-    const workingDaysAdvance = calculateWorkingDays(todayStr, startDate);
+    const workingDaysAdvance = calculateWorkingDays(todayStr, startDate, false);
 
     if (workingDaysAdvance < advanceFiling.days) {
       return {
@@ -186,6 +189,7 @@ export const SubmitLeaveRequestModal: React.FC<SubmitLeaveRequestModalProps> = (
         endDate: data.endDate,
         reason: data.reason,
         isWithPay: !!data.isWithPay,
+        isHalfDay: !!data.isHalfDay
       };
 
       await leaveApi.applyLeave(payload);
@@ -310,8 +314,8 @@ export const SubmitLeaveRequestModal: React.FC<SubmitLeaveRequestModalProps> = (
               </FormInput>
             </div>
 
-            {/* Leave Type - Full Width */}
-            <div className="grid grid-cols-1">
+            {/* Leave Type & Options */}
+            <div className="grid grid-cols-1 gap-4">
               <FormInput label="Leave Type" error={errors.leaveType?.message} required>
                 <Combobox
                   options={leaveTypes.map(type => ({ value: type, label: type }))}
@@ -321,6 +325,26 @@ export const SubmitLeaveRequestModal: React.FC<SubmitLeaveRequestModalProps> = (
                   error={!!errors.leaveType}
                 />
               </FormInput>
+
+              <div className="flex items-center gap-6 bg-gray-50 p-3 rounded-lg border border-gray-100">
+                <label className="flex items-center gap-2 cursor-pointer group">
+                  <input
+                    type="checkbox"
+                    {...register('isWithPay')}
+                    className="w-4 h-4 rounded border-gray-300 text-gray-900 focus:ring-gray-900 cursor-pointer"
+                  />
+                  <span className="text-xs font-semibold text-gray-700 group-hover:text-gray-900 transition-colors">Request with Pay</span>
+                </label>
+
+                <label className="flex items-center gap-2 cursor-pointer group">
+                  <input
+                    type="checkbox"
+                    {...register('isHalfDay')}
+                    className="w-4 h-4 rounded border-gray-300 text-gray-900 focus:ring-gray-900 cursor-pointer"
+                  />
+                  <span className="text-xs font-semibold text-gray-700 group-hover:text-gray-900 transition-colors">Half Day Leave</span>
+                </label>
+              </div>
             </div>
 
             {/* Start & End Date - Grid Layout */}
@@ -337,8 +361,19 @@ export const SubmitLeaveRequestModal: React.FC<SubmitLeaveRequestModalProps> = (
                 {...register('endDate')}
                 error={errors.endDate?.message}
                 required
+                disabled={watch('isHalfDay')}
               />
             </div>
+
+            {/* Auto-set End Date if Half Day */}
+            {watch('isHalfDay') && watch('startDate') && watch('endDate') !== watch('startDate') && (
+              <div className="hidden">
+                {(() => {
+                  setValue('endDate', watch('startDate'));
+                  return null;
+                })()}
+              </div>
+            )}
 
             {/* Reason for Leave - Standardized */}
             <FormInput label="Reason for Leave" error={errors.reason?.message} required>

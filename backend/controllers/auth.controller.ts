@@ -1,13 +1,11 @@
-import { compareIds, normalizeIdJs, normalizeIdSql } from '../utils/idUtils.js';
+import { compareIds } from '../utils/idUtils.js';
 import { Request, Response, NextFunction } from 'express';
 import type { AuthenticatedRequest, AuthenticatedHandler, AsyncHandler } from '../types/index.js';
 import { z } from 'zod';
-import fs from 'fs';
-import path from 'path';
 import { db } from '../db/index.js';
-import { authentication, bioEnrolledUsers, schedules, recruitmentApplicants, departments, plantillaPositions, recruitmentJobs, shiftTemplates, pdsHrDetails, pdsEducation, pdsEligibility, pdsWorkExperience, pdsLearningDevelopment, pdsVoluntaryWork, pdsReferences, employeeEmergencyContacts, pdsOtherInfo, pdsFamily, employeeDocuments, applicantDocuments } from '../db/schema.js';
+import { authentication, bioEnrolledUsers, schedules, recruitmentApplicants, departments, plantillaPositions, recruitmentJobs, pdsHrDetails, pdsEducation, pdsEligibility, pdsWorkExperience, pdsLearningDevelopment, pdsVoluntaryWork, pdsReferences, employeeEmergencyContacts, pdsOtherInfo, pdsFamily } from '../db/schema.js';
 import { pdsPersonalInformation, pdsDeclarations } from '../db/tables/pds.js';
-import { eq, or, and, sql, getTableColumns, desc, InferSelectModel, ne, inArray } from 'drizzle-orm';
+import { eq, or, and, sql, getTableColumns, desc, InferSelectModel, inArray } from 'drizzle-orm';
 import { AuthService } from '../services/auth.service.js';
 import { checkSystemWideUniqueness } from '../services/validationService.js';
 import bcrypt from 'bcryptjs';
@@ -16,7 +14,6 @@ import jwt from 'jsonwebtoken';
 import { OAuth2Client } from 'google-auth-library';
 import { 
   LoginSchema, 
-  RegisterSchema, 
   VerifyOTPSchema, 
   EmailVerifySchema, 
   ResendOTPSchema, 
@@ -31,9 +28,6 @@ import transporter, { generateOTP, maskEmail, sendEmail, sendOTPEmail } from '..
 import { AuditService } from '../services/audit.service.js';
 import { PDSService, PdsSaveData } from '../services/pds.service.js';
 // Note: PDS types are used in type annotations for the setupPortal function
-import type { 
-    RawPDSInput
-} from '../types/auth_internal.js';
 import type {
   PdsEducation,
   PdsEligibility,
@@ -88,17 +82,6 @@ const safeFloat = (val: string | number | null | undefined): number | undefined 
   if (cleaned === '' || cleaned === '.') return undefined;
   const parsed = parseFloat(cleaned);
   return isNaN(parsed) ? undefined : parsed;
-};
-
-const traceLog = (step: string, data?: unknown) => {
-    try {
-        const timestamp = new Date().toISOString();
-        const message = `[TRACE][${timestamp}] ${step}${data ? ': ' + JSON.stringify(data) : ''}`;
-        console.error(message);
-        fs.appendFileSync(path.join(process.cwd(), 'registration_trace.log'), message + '\n');
-    } catch (_e) {
-        // Ignore trace logging errors to prevent infinite loops or crashes during failure
-    }
 };
 
 // Define the shape of the user object with relations as returned by findFirst/select
@@ -350,11 +333,11 @@ export const googleLogin: AsyncHandler = async (req, res, next) => {
 
 
     if (user.role !== 'Administrator' && user.role !== 'Human Resource') {
-      const rawId = user.employeeId || '0';
+      const normalizedEmployeeId = user.employeeId || '0';
 
       const [enrolled] = await db.select().from(bioEnrolledUsers).where(
         and(
-          compareIds(bioEnrolledUsers.employeeId, rawId),
+          compareIds(bioEnrolledUsers.employeeId, normalizedEmployeeId),
           eq(bioEnrolledUsers.userStatus, 'active')
         )
       ).limit(1);
@@ -455,7 +438,7 @@ export const verifyEnrollment: AsyncHandler = async (req, res, next) => {
         alreadyRegistered: !!existingAccount
       }
     });
-  } catch (err) {
+  } catch (err: unknown) {
     next(err);
   }
 };
@@ -746,7 +729,7 @@ export const requestDownloadToken: AuthenticatedHandler = async (req, res, next)
     const userId = req.user.id;
     const token = AuthService.generateDownloadToken(userId);
     res.status(200).json({ success: true, token });
-  } catch (err) {
+  } catch (err: unknown) {
     next(err);
   }
 };
@@ -815,11 +798,11 @@ export const login: AsyncHandler = async (req, res, next) => {
     );
 
     if (user.role !== 'Administrator' && user.role !== 'Human Resource') {
-      const rawId = user.employeeId || '0';
+      const normalizedEmployeeId = user.employeeId || '0';
 
       const [enrolled] = await db.select().from(bioEnrolledUsers).where(
         and(
-          compareIds(bioEnrolledUsers.employeeId, rawId),
+          compareIds(bioEnrolledUsers.employeeId, normalizedEmployeeId),
           eq(bioEnrolledUsers.userStatus, 'active')
         )
       ).limit(1);
@@ -1360,9 +1343,8 @@ export const updateProfile: AuthenticatedHandler = async (req, res, next) => {
     const personalUpdates: Record<string, unknown> = {};
     personalFields.forEach(f => {
       const fieldName = f as keyof typeof updates;
-      if (updates[fieldName] !== undefined) {
-        const value = updates[fieldName];
-        
+      const value = updates[fieldName] as unknown;
+      if (value !== undefined) {
         let finalValue: string | number | boolean | null | undefined;
         
         // Apply specialized sanitization for specific field types
@@ -1741,7 +1723,7 @@ export const logout: AuthenticatedHandler = async (req, res, next) => {
     }
 
     res.status(200).json({ success: true, message: 'Logged out successfully.' });
-  } catch (err) {
+  } catch (err: unknown) {
     next(err);
   }
 };
@@ -1927,7 +1909,7 @@ export const setupPortal: AsyncHandler = async (req, res, next) => {
       message: `${role} account created. Please verify your email.`,
       data: { email, role: role }
     });
-  } catch (err) {
+  } catch (err: unknown) {
     next(err);
   }
 };

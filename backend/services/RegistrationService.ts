@@ -15,7 +15,7 @@ import {
   employeeEmergencyContacts,
   employeeDocuments,
 } from '../db/tables/pds.js';
-import { applicantDocuments } from '../db/tables/recruitment.js';
+import { applicantDocuments, recruitmentApplicants } from '../db/tables/recruitment.js';
 import { eq, or, and, sql, ne } from 'drizzle-orm';
 import { RegisterSchema } from '../schemas/authSchema.js';
 import { z } from 'zod';
@@ -23,9 +23,20 @@ import bcrypt from 'bcryptjs';
 import { normalizeIdSql, normalizeIdJs } from '../utils/idUtils.js';
 import { generateOTP } from '../utils/emailUtils.js';
 import { UserRole } from '../types/index.js';
+import {
+  normalizePdsString,
+  normalizePdsDate,
+  normalizePdsFloat,
+  normalizePdsInt,
+  extractPdsYear,
+  isPdsGarbage,
+  sanitizePdsObject,
+} from '../utils/pdsDataUtils.js';
 
 /**
  * Converts empty strings to null, useful for optional fields and date fields
+ * DEPRECATED: Use normalizePdsString from pdsDataUtils.ts
+ * @deprecated
  */
 function emptyToNull<T>(value: T | string | null | undefined): T | null {
   if (value === '' || value === undefined) return null;
@@ -34,85 +45,47 @@ function emptyToNull<T>(value: T | string | null | undefined): T | null {
 
 /**
  * Safely converts string values to numbers or null
+ * DEPRECATED: Use normalizePdsFloat from pdsDataUtils.ts
+ * @deprecated
  */
 function safeToNumber(value: string | number | null | undefined): string | null {
-  if (value === null || value === undefined || value === '') return null;
-  const num = Number(value);
-  return isNaN(num) ? null : num.toString();
+  return normalizePdsFloat(value);
 }
 
 /**
  * Extracts year from a date string or returns null for empty values
- * Handles formats like "2022-07-14" -> "2022" or "2022" -> "2022"
+ * DEPRECATED: Use extractPdsYear from pdsDataUtils.ts
+ * @deprecated
  */
 function extractYear(dateValue: string | null | undefined): string | null {
-  if (!dateValue || dateValue === '') return null;
-  // If it's already just a year (4 digits), return it
-  if (/^\d{4}$/.test(dateValue)) return dateValue;
-  // Extract year from date format like "2022-07-14"
-  const match = dateValue.match(/^(\d{4})/);
-  return match ? match[1] : null;
+  return extractPdsYear(dateValue);
 }
 
 /**
  * Checks if a value is a placeholder text that should be treated as null/empty
+ * DEPRECATED: Use isPdsGarbage from pdsDataUtils.ts
+ * @deprecated
  */
 function isPlaceholder(value: string | null | undefined): boolean {
-  if (!value) return true;
-  const trimmed = value.trim();
-  if (!trimmed) return true;
-
-  const placeholders = [
-    '(Continue on separate sheet if necessary)',
-    'N/A',
-    'n/a',
-    'NA',
-    'na',
-    'NONE',
-    'none',
-    'None',
-    'House/Block/Lot No.',
-    'Street',
-    'Subdivision/Village',
-    'Barangay',
-    'City/Municipality',
-    'Province',
-    'ZIP CODE'
-  ];
-
-  // Check exact matches
-  if (placeholders.includes(trimmed)) return true;
-
-  // Check for numbered form labels like "23. NAME of CHILDREN"
-  if (/^\d+\.\s*[A-Z\s]+/.test(trimmed)) return true;
-
-  // Check for common placeholder patterns
-  if (trimmed.includes('(Write full name') || trimmed.includes('(list all)')) return true;
-
-  return false;
+  return isPdsGarbage(value);
 }
 
 /**
  * Truncates a string to a maximum length and converts placeholders to null
+ * DEPRECATED: Use normalizePdsString from pdsDataUtils.ts
+ * @deprecated
  */
 function sanitizeAndTruncate(value: string | null | undefined, maxLength: number): string | null {
-  if (!value || isPlaceholder(value)) return null;
-  const trimmed = value.trim();
-  return trimmed.length > maxLength ? trimmed.substring(0, maxLength) : trimmed;
+  return normalizePdsString(value, maxLength);
 }
 
 /**
  * Sanitizes an object by converting all empty string values and placeholder text to null
+ * DEPRECATED: Use sanitizePdsObject from pdsDataUtils.ts
+ * @deprecated
  */
 function sanitizeObject<T extends Record<string, any>>(obj: T): T {
-  const result = { ...obj };
-  for (const key in result) {
-    const value = result[key];
-    if (typeof value === 'string' && (value === '' || isPlaceholder(value))) {
-      result[key] = null as any;
-    }
-  }
-  return result;
+  return sanitizePdsObject(obj);
 }
 
 export class RegistrationService {
@@ -325,44 +298,44 @@ export class RegistrationService {
         await tx.insert(pdsHrDetails).values(hrData);
       }
 
-      // PDS PERSONAL INFORMATION (upsert)
+      // PDS PERSONAL INFORMATION (upsert) - Using unified data sanitization
       const personalData = {
         employeeId: newUserId,
-        birthDate: emptyToNull(data.birthDate),
-        placeOfBirth: sanitizeAndTruncate(data.placeOfBirth, 255),
-        gender: sanitizeAndTruncate(data.gender, 50),
-        civilStatus: sanitizeAndTruncate(data.civilStatus, 50),
-        heightM: safeToNumber(data.heightM),
-        weightKg: safeToNumber(data.weightKg),
-        bloodType: sanitizeAndTruncate(data.bloodType, 10),
+        birthDate: normalizePdsDate(data.birthDate),
+        placeOfBirth: normalizePdsString(data.placeOfBirth, 255),
+        gender: normalizePdsString(data.gender, 50),
+        civilStatus: normalizePdsString(data.civilStatus, 50),
+        heightM: normalizePdsFloat(data.heightM),
+        weightKg: normalizePdsFloat(data.weightKg),
+        bloodType: normalizePdsString(data.bloodType, 10),
         citizenship: data.citizenship || 'Filipino',
-        citizenshipType: sanitizeAndTruncate(data.citizenshipType, 50),
-        dualCountry: sanitizeAndTruncate(data.dualCountry, 100),
-        telephoneNo: sanitizeAndTruncate(data.telephoneNo, 50),
-        mobileNo: sanitizeAndTruncate(data.mobileNo, 50),
-        gsisNumber: sanitizeAndTruncate(data.gsisNumber, 50),
-        pagibigNumber: sanitizeAndTruncate(data.pagibigNumber, 50),
-        philhealthNumber: sanitizeAndTruncate(data.philhealthNumber, 50),
-        tinNumber: sanitizeAndTruncate(data.tinNumber, 50),
-        umidNumber: sanitizeAndTruncate(data.umidNumber, 50),
-        philsysId: sanitizeAndTruncate(data.philsysId, 50),
-        agencyEmployeeNo: sanitizeAndTruncate(data.agencyEmployeeNo, 50),
-        resHouseBlockLot: sanitizeAndTruncate(data.resHouseBlockLot, 150),
-        resStreet: sanitizeAndTruncate(data.resStreet, 150),
-        resSubdivision: sanitizeAndTruncate(data.resSubdivision, 150),
-        resBarangay: sanitizeAndTruncate(data.resBarangay, 150),
-        resCity: sanitizeAndTruncate(data.resCity, 150),
-        resProvince: sanitizeAndTruncate(data.resProvince, 150),
-        resRegion: sanitizeAndTruncate(data.resRegion, 150),
-        residentialZipCode: sanitizeAndTruncate(data.residentialZipCode || (data as any).zipCode, 10),
-        permHouseBlockLot: sanitizeAndTruncate(data.permHouseBlockLot, 150),
-        permStreet: sanitizeAndTruncate(data.permStreet, 150),
-        permSubdivision: sanitizeAndTruncate(data.permSubdivision, 150),
-        permBarangay: sanitizeAndTruncate(data.permBarangay, 150),
-        permCity: sanitizeAndTruncate(data.permCity, 150),
-        permProvince: sanitizeAndTruncate(data.permProvince, 150),
-        permRegion: sanitizeAndTruncate(data.permRegion, 150),
-        permanentZipCode: sanitizeAndTruncate(data.permanentZipCode, 10),
+        citizenshipType: normalizePdsString(data.citizenshipType, 50),
+        dualCountry: normalizePdsString(data.dualCountry, 100),
+        telephoneNo: normalizePdsString(data.telephoneNo, 50),
+        mobileNo: normalizePdsString(data.mobileNo, 50),
+        gsisNumber: normalizePdsString(data.gsisNumber, 50),
+        pagibigNumber: normalizePdsString(data.pagibigNumber, 50),
+        philhealthNumber: normalizePdsString(data.philhealthNumber, 50),
+        tinNumber: normalizePdsString(data.tinNumber, 50),
+        umidNumber: normalizePdsString(data.umidNumber, 50),
+        philsysId: normalizePdsString(data.philsysId, 50),
+        agencyEmployeeNo: normalizePdsString(data.agencyEmployeeNo, 50),
+        resHouseBlockLot: normalizePdsString(data.resHouseBlockLot, 150),
+        resStreet: normalizePdsString(data.resStreet, 150),
+        resSubdivision: normalizePdsString(data.resSubdivision, 150),
+        resBarangay: normalizePdsString(data.resBarangay, 150),
+        resCity: normalizePdsString(data.resCity, 150),
+        resProvince: normalizePdsString(data.resProvince, 150),
+        resRegion: normalizePdsString(data.resRegion, 150),
+        residentialZipCode: normalizePdsString(data.residentialZipCode || (data as any).zipCode, 10),
+        permHouseBlockLot: normalizePdsString(data.permHouseBlockLot, 150),
+        permStreet: normalizePdsString(data.permStreet, 150),
+        permSubdivision: normalizePdsString(data.permSubdivision, 150),
+        permBarangay: normalizePdsString(data.permBarangay, 150),
+        permCity: normalizePdsString(data.permCity, 150),
+        permProvince: normalizePdsString(data.permProvince, 150),
+        permRegion: normalizePdsString(data.permRegion, 150),
+        permanentZipCode: normalizePdsString(data.permanentZipCode, 10),
       };
       await tx.insert(pdsPersonalInformation)
         .values(personalData)
@@ -382,54 +355,54 @@ export class RegistrationService {
         await tx.insert(employeeEmergencyContacts).values(emergencyData);
       }
 
-      // PDS EDUCATION (delete + insert)
+      // PDS EDUCATION (delete + insert) - Using unified year extraction
       if (data.educations && data.educations.length > 0) {
         // Filter out placeholder records
-        const validEducations = data.educations.filter(edu => !isPlaceholder(edu.schoolName));
+        const validEducations = data.educations.filter(edu => !isPdsGarbage(edu.schoolName));
 
         if (validEducations.length > 0) {
           await tx.delete(pdsEducation).where(eq(pdsEducation.employeeId, newUserId));
           await tx.insert(pdsEducation).values(
             validEducations.map(edu => {
-              const sanitized = sanitizeObject({ employeeId: newUserId!, ...edu });
+              const sanitized = sanitizePdsObject({ employeeId: newUserId!, ...edu });
               // Extract year from date fields (education table stores year only as VARCHAR(4))
               return {
                 ...sanitized,
-                dateFrom: extractYear(sanitized.dateFrom as any),
-                dateTo: extractYear(sanitized.dateTo as any)
+                dateFrom: extractPdsYear(sanitized.dateFrom as any),
+                dateTo: extractPdsYear(sanitized.dateTo as any)
               };
             })
           );
         }
       }
 
-      // PDS ELIGIBILITIES (delete + insert)
+      // PDS ELIGIBILITIES (delete + insert) - Using unified sanitization
       if (data.eligibilities && data.eligibilities.length > 0) {
         // Filter out placeholder records
-        const validEligibilities = data.eligibilities.filter(elig => !isPlaceholder(elig.eligibilityName));
+        const validEligibilities = data.eligibilities.filter(elig => !isPdsGarbage(elig.eligibilityName));
 
         if (validEligibilities.length > 0) {
           await tx.delete(pdsEligibility).where(eq(pdsEligibility.employeeId, newUserId));
           await tx.insert(pdsEligibility).values(
-            validEligibilities.map(elig => sanitizeObject({ employeeId: newUserId!, ...elig })) as any[]
+            validEligibilities.map(elig => sanitizePdsObject({ employeeId: newUserId!, ...elig })) as any[]
           );
         }
       }
 
-      // PDS WORK EXPERIENCE (delete + insert)
+      // PDS WORK EXPERIENCE (delete + insert) - Using unified sanitization
       if (data.workExperiences && data.workExperiences.length > 0) {
         // Filter out placeholder records
         const validWorkExperiences = data.workExperiences.filter(work =>
-          !isPlaceholder(work.companyName) && !isPlaceholder(work.positionTitle)
+          !isPdsGarbage(work.companyName) && !isPdsGarbage(work.positionTitle)
         );
 
         if (validWorkExperiences.length > 0) {
           await tx.delete(pdsWorkExperience).where(eq(pdsWorkExperience.employeeId, newUserId));
           await tx.insert(pdsWorkExperience).values(
-            validWorkExperiences.map(work => sanitizeObject({
+            validWorkExperiences.map(work => sanitizePdsObject({
               employeeId: newUserId!,
               ...work,
-              monthlySalary: work.monthlySalary != null ? String(work.monthlySalary) : null,
+              monthlySalary: work.monthlySalary != null ? normalizePdsFloat(work.monthlySalary) : null,
             })) as any[]
           );
         }
@@ -471,75 +444,75 @@ export class RegistrationService {
 
       const combinedFamilyBackground = [...(data.familyBackground || []), ...familyFieldsData];
 
-      // PDS FAMILY (delete + insert)
+      // PDS FAMILY (delete + insert) - Using unified sanitization
       if (combinedFamilyBackground.length > 0) {
         // Filter out records without valid names (at least firstName or lastName should be present)
         const validFamilyBackground = combinedFamilyBackground.filter(fam =>
-          !isPlaceholder(fam.firstName) || !isPlaceholder(fam.lastName)
+          !isPdsGarbage(fam.firstName) || !isPdsGarbage(fam.lastName)
         );
 
         if (validFamilyBackground.length > 0) {
           await tx.delete(pdsFamily).where(eq(pdsFamily.employeeId, newUserId));
           await tx.insert(pdsFamily).values(
-            validFamilyBackground.map(fam => sanitizeObject({ employeeId: newUserId!, ...fam }))
+            validFamilyBackground.map(fam => sanitizePdsObject({ employeeId: newUserId!, ...fam }))
           );
         }
       }
 
-      // PDS VOLUNTARY WORK (delete + insert)
+      // PDS VOLUNTARY WORK (delete + insert) - Using unified sanitization
       if (data.voluntaryWorks && data.voluntaryWorks.length > 0) {
         // Filter out placeholder records
-        const validVoluntaryWorks = data.voluntaryWorks.filter(vol => !isPlaceholder(vol.organizationName));
+        const validVoluntaryWorks = data.voluntaryWorks.filter(vol => !isPdsGarbage(vol.organizationName));
 
         if (validVoluntaryWorks.length > 0) {
           await tx.delete(pdsVoluntaryWork).where(eq(pdsVoluntaryWork.employeeId, newUserId));
           await tx.insert(pdsVoluntaryWork).values(
-            validVoluntaryWorks.map(vol => sanitizeObject({ employeeId: newUserId!, ...vol }))
+            validVoluntaryWorks.map(vol => sanitizePdsObject({ employeeId: newUserId!, ...vol }))
           );
         }
       }
 
-      // PDS LEARNING DEVELOPMENT (delete + insert) — canonical name
+      // PDS LEARNING DEVELOPMENT (delete + insert) - Using unified sanitization
       if (data.learningDevelopments && data.learningDevelopments.length > 0) {
         // Filter out placeholder records
-        const validLearningDevelopments = data.learningDevelopments.filter(t => !isPlaceholder(t.title));
+        const validLearningDevelopments = data.learningDevelopments.filter(t => !isPdsGarbage(t.title));
 
         if (validLearningDevelopments.length > 0) {
           await tx.delete(pdsLearningDevelopment).where(eq(pdsLearningDevelopment.employeeId, newUserId));
           await tx.insert(pdsLearningDevelopment).values(
-            validLearningDevelopments.map(t => sanitizeObject({ employeeId: newUserId!, ...t }))
+            validLearningDevelopments.map(t => sanitizePdsObject({ employeeId: newUserId!, ...t }))
           );
         }
       }
 
-      // PDS REFERENCES (delete + insert)
+      // PDS REFERENCES (delete + insert) - Using unified sanitization
       if (data.references && data.references.length > 0) {
         // Filter out placeholder records
-        const validReferences = data.references.filter(r => !isPlaceholder(r.name));
+        const validReferences = data.references.filter(r => !isPdsGarbage(r.name));
 
         if (validReferences.length > 0) {
           await tx.delete(pdsReferences).where(eq(pdsReferences.employeeId, newUserId));
           await tx.insert(pdsReferences).values(
-            validReferences.map(r => sanitizeObject({ employeeId: newUserId!, ...r }))
+            validReferences.map(r => sanitizePdsObject({ employeeId: newUserId!, ...r }))
           );
         }
       }
 
-      // PDS DECLARATIONS (delete + insert)
+      // PDS DECLARATIONS (delete + insert) - Using unified sanitization
       if (data.declarations) {
         await tx.delete(pdsDeclarations).where(eq(pdsDeclarations.employeeId, newUserId));
-        await tx.insert(pdsDeclarations).values(sanitizeObject({ employeeId: newUserId!, ...data.declarations }));
+        await tx.insert(pdsDeclarations).values(sanitizePdsObject({ employeeId: newUserId!, ...data.declarations }));
       }
 
-      // PDS OTHER INFO (delete + insert)
+      // PDS OTHER INFO (delete + insert) - Using unified sanitization
       if (data.otherInfo && data.otherInfo.length > 0) {
         // Filter out records with empty descriptions (description is required)
-        const validOtherInfo = data.otherInfo.filter(o => !isPlaceholder(o.description));
+        const validOtherInfo = data.otherInfo.filter(o => !isPdsGarbage(o.description));
 
         if (validOtherInfo.length > 0) {
           await tx.delete(pdsOtherInfo).where(eq(pdsOtherInfo.employeeId, newUserId));
           await tx.insert(pdsOtherInfo).values(
-            validOtherInfo.map(o => sanitizeObject({ employeeId: newUserId!, type: o.type, description: o.description }))
+            validOtherInfo.map(o => sanitizePdsObject({ employeeId: newUserId!, type: o.type, description: o.description }))
           );
         }
       }

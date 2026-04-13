@@ -131,6 +131,7 @@ export interface LeaveApplication {
   endDate: string;
   workingDays: number;
   isWithPay: boolean;
+  isHalfDay: boolean;
   actualPaymentStatus: PaymentStatus;
   daysWithPay: number;
   daysWithoutPay: number;
@@ -195,6 +196,7 @@ export type ApplyLeavePayload = {
   endDate: string;
   reason: string;
   isWithPay: boolean;
+  isHalfDay?: boolean;
 } | FormData;
 
 export interface RejectLeavePayload {

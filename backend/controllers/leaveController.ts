@@ -12,7 +12,7 @@ import {
     pdsHrDetails, 
     departments 
 } from '../db/schema.js';
-import { eq, and, ne, or, sql, desc, lte, gte, getTableColumns } from 'drizzle-orm';
+import { eq, and, ne, or, sql, desc, lte, gte, getTableColumns, like } from 'drizzle-orm';
 import { createNotification, notifyAdmins, updateNotificationsByReference } from './notificationController.js';
 import { accrueCreditsForMonth } from '../services/leaveAccrualService.js';
 import * as leaveService from '../services/leaveService.js';
@@ -285,14 +285,22 @@ export const applyLeave: AuthenticatedHandler = async (req, res) => {
       return;
     }
 
-    const { leaveType, startDate, endDate, reason, isWithPay } = validation.data;
+    const { leaveType, startDate, endDate, reason, isWithPay, isHalfDay } = validation.data;
 
     if (!policy.types.includes(leaveType)) {
       res.status(400).json({ message: `Invalid leave type: ${leaveType}.` });
       return;
     }
 
-    const workingDays = await leaveService.calculateWorkingDays(startDate, endDate);
+    let workingDays = await leaveService.calculateWorkingDays(startDate, endDate);
+    if (isHalfDay) {
+        if (startDate === endDate) {
+            workingDays = 0.5;
+        } else {
+            workingDays = Math.max(0, workingDays - 0.5);
+        }
+    }
+
     if (workingDays === 0) {
       res.status(400).json({ message: 'Leave duration is 0 working days.' });
       return;
@@ -313,6 +321,12 @@ export const applyLeave: AuthenticatedHandler = async (req, res) => {
       const window = policy.sickLeaveWindow.maxDaysAfterReturn;
       if (workingDaysPassed > window + 1) {
         res.status(400).json({ message: `Sick Leave must be filed within ${window} working days upon returning.` });
+        return;
+      }
+      
+      // CSC Rule: > 5 days needs medical cert
+      if (workingDays > 5 && !multerReq.file) {
+        res.status(400).json({ message: 'Sick Leave exceeding 5 days requires a medical certificate.' });
         return;
       }
     }
@@ -390,6 +404,7 @@ export const applyLeave: AuthenticatedHandler = async (req, res) => {
       endDate,
       workingDays: workingDays.toString(),
       isWithPay: !!isWithPay,
+      isHalfDay: !!isHalfDay,
       actualPaymentStatus,
       daysWithPay: daysWithPay.toString(),
       daysWithoutPay: daysWithoutPay.toString(),
@@ -433,7 +448,10 @@ export const applyLeave: AuthenticatedHandler = async (req, res) => {
       message: 'Leave application submitted successfully',
       id: result.insertId,
       workingDays,
-      actualPaymentStatus
+      actualPaymentStatus,
+      daysWithPay,
+      daysWithoutPay,
+      crossChargedFrom
     });
   } catch (err: unknown) {
     const error = err instanceof Error ? err : new Error('Unknown error');
@@ -681,34 +699,92 @@ export const approveLeave: AuthenticatedHandler = async (req, res) => {
       return;
     }
 
-    if (application.actualPaymentStatus === 'WITH_PAY' || application.actualPaymentStatus === 'PARTIAL') {
-      const policy = await leaveService.getLeavePolicy();
-      const year = new Date(application.startDate).getFullYear();
-      const daysWithPayVal = Number(application.daysWithPay);
-      const primaryCreditType = policy.leaveToCreditMap[application.leaveType];
+    if (application.status === 'Approved') {
+        res.status(400).json({ message: 'Application is already approved.' });
+        return;
+    }
 
-      if (primaryCreditType && daysWithPayVal > 0) {
+    const policy = await leaveService.getLeavePolicy();
+    const year = new Date(application.startDate).getFullYear();
+    const isSpecialLeave = policy.specialLeavesNoDeduction.includes(application.leaveType);
+    
+    let finalActualPaymentStatus: PaymentStatus = application.actualPaymentStatus;
+    let finalDaysWithPay = Number(application.daysWithPay);
+    let finalDaysWithoutPay = Number(application.daysWithoutPay);
+    const workingDays = Number(application.workingDays);
+
+    // Re-verify balance and process deduction
+    if (application.isWithPay && !isSpecialLeave) {
+      const primaryCreditType = policy.leaveToCreditMap[application.leaveType];
+      if (primaryCreditType) {
         const primaryBalance = await leaveService.getEmployeeBalance(application.employeeId, primaryCreditType, year);
-        const deductionAmount = Math.min(daysWithPayVal, primaryBalance);
+        const deductionAmount = Math.min(workingDays, primaryBalance);
+        let crossDeductionAmount = 0;
+
         if (deductionAmount > 0) {
           await leaveService.updateBalance(application.employeeId, primaryCreditType, -deductionAmount, 'DEDUCTION', appId, 'leave_application', remarks || `Approved ${application.leaveType}`, adminId);
         }
-        if (application.crossChargedFrom && daysWithPayVal > deductionAmount) {
-          const crossDeduction = Math.min(daysWithPayVal - deductionAmount, await leaveService.getEmployeeBalance(application.employeeId, application.crossChargedFrom, year));
-          if (crossDeduction > 0) {
-            await leaveService.updateBalance(application.employeeId, application.crossChargedFrom, -crossDeduction, 'DEDUCTION', appId, 'leave_application', remarks || `Approved ${application.leaveType} (cross-charged)`, adminId);
-          }
+
+        const remainingNeeded = workingDays - deductionAmount;
+        if (remainingNeeded > 0) {
+            const crossChargeType = policy.crossChargeMap[application.leaveType];
+            if (crossChargeType) {
+                const crossBalance = await leaveService.getEmployeeBalance(application.employeeId, crossChargeType, year);
+                crossDeductionAmount = Math.min(remainingNeeded, crossBalance);
+                if (crossDeductionAmount > 0) {
+                    await leaveService.updateBalance(application.employeeId, crossChargeType, -crossDeductionAmount, 'DEDUCTION', appId, 'leave_application', remarks || `Approved ${application.leaveType} (cross-charged)`, adminId);
+                }
+            }
         }
+
+        finalDaysWithPay = deductionAmount + crossDeductionAmount;
+        finalDaysWithoutPay = workingDays - finalDaysWithPay;
+        
+        if (finalDaysWithPay === workingDays) finalActualPaymentStatus = 'WITH_PAY';
+        else if (finalDaysWithPay > 0) finalActualPaymentStatus = 'PARTIAL';
+        else finalActualPaymentStatus = 'WITHOUT_PAY';
       }
+    } else if (!application.isWithPay) {
+        finalActualPaymentStatus = 'WITHOUT_PAY';
+        finalDaysWithPay = 0;
+        finalDaysWithoutPay = workingDays;
+    } else if (isSpecialLeave) {
+        finalActualPaymentStatus = 'WITH_PAY';
+        finalDaysWithPay = workingDays;
+        finalDaysWithoutPay = 0;
     }
 
-    await db.update(leaveApplications).set({ status: 'Approved', approvedBy: adminId, approvedAt: sql`CURRENT_TIMESTAMP`, updatedAt: sql`CURRENT_TIMESTAMP` }).where(eq(leaveApplications.id, appId));
-    const eventType: 'LWOP' | 'Leave' = application.leaveType.includes('Without Pay') ? 'LWOP' : 'Leave';
-    await leaveService.logToServiceRecord(application.employeeId, eventType, application.startDate, application.endDate, application.leaveType, Number(application.workingDays), !!application.isWithPay, `Approved ${application.leaveType}`, appId, 'leave_application', adminId);
+    // Update application with final numbers and status
+    await db.update(leaveApplications).set({ 
+        status: 'Approved', 
+        approvedBy: adminId, 
+        approvedAt: sql`CURRENT_TIMESTAMP`, 
+        updatedAt: sql`CURRENT_TIMESTAMP`,
+        actualPaymentStatus: finalActualPaymentStatus,
+        daysWithPay: finalDaysWithPay.toString(),
+        daysWithoutPay: finalDaysWithoutPay.toString()
+    }).where(eq(leaveApplications.id, appId));
 
-    if (Number(application.daysWithoutPay) > 0) {
-      const year = new Date(application.startDate).getFullYear();
-      await leaveService.updateLWOPSummary(application.employeeId, Number(application.daysWithoutPay), year);
+    // Log to Service Record correctly
+    const eventType: 'LWOP' | 'Leave' = finalActualPaymentStatus === 'WITHOUT_PAY' ? 'LWOP' : 'Leave';
+    const isWithPayRecord = finalActualPaymentStatus !== 'WITHOUT_PAY';
+    
+    await leaveService.logToServiceRecord(
+        application.employeeId, 
+        eventType, 
+        application.startDate, 
+        application.endDate, 
+        application.leaveType, 
+        workingDays, 
+        isWithPayRecord, 
+        remarks || `Approved ${application.leaveType}`, 
+        appId, 
+        'leave_application', 
+        adminId
+    );
+
+    if (finalDaysWithoutPay > 0) {
+      await leaveService.updateLWOPSummary(application.employeeId, finalDaysWithoutPay, year);
     }
 
     await updateNotificationsByReference({
@@ -718,7 +794,7 @@ export const approveLeave: AuthenticatedHandler = async (req, res) => {
         message: remarks ? `Approved: ${remarks}` : 'Your leave request has been approved.',
         newType: 'leave_approval'
     });
-    res.status(200).json({ message: 'Leave approved' });
+    res.status(200).json({ message: 'Leave approved', actualPaymentStatus: finalActualPaymentStatus });
   } catch (err: unknown) {
     const error = err instanceof Error ? err : new Error('Unknown error');
     res.status(500).json({ message: error.message || 'Something went wrong!' });
@@ -956,6 +1032,9 @@ export const getAllEmployeeCredits: AuthenticatedHandler = async (req, res) => {
     const year = parseInt(String(req.query.year || ''), 10) || getCurrentYear();
     const offset = (page - 1) * limit;
 
+    const policy = await leaveService.getLeavePolicy();
+    const leaveToCreditMap = policy.leaveToCreditMap || {};
+
     const conditions = [eq(leaveBalances.year, year)];
     if (search) {
       conditions.push(or(
@@ -986,11 +1065,28 @@ export const getAllEmployeeCredits: AuthenticatedHandler = async (req, res) => {
       department: sql<string>`COALESCE(${departments.name}, 'N/A')`,
       daysUsedWithPay: sql<number>`(
         SELECT COALESCE(ABS(SUM(ll.amount)), 0) FROM ${leaveLedger} ll 
-        WHERE ll.employee_id = ${leaveBalances.employeeId} AND ll.credit_type = ${leaveBalances.creditType} AND ll.transaction_type = 'DEDUCTION' AND YEAR(ll.created_at) = ${year}
+        WHERE ll.employee_id = ${leaveBalances.employeeId} 
+          AND ll.credit_type = ${leaveBalances.creditType} 
+          AND ll.transaction_type = 'DEDUCTION' 
+          AND YEAR(ll.created_at) = ${year}
       )`,
       daysUsedWithoutPay: sql<number>`(
         SELECT COALESCE(SUM(la.days_without_pay), 0) FROM ${leaveApplications} la 
-        WHERE la.employee_id = ${leaveBalances.employeeId} AND la.leave_type = ${leaveBalances.creditType} AND la.status = 'Approved' AND YEAR(la.start_date) = ${year}
+        WHERE la.employee_id = ${leaveBalances.employeeId} 
+          AND (
+            la.leave_type = ${leaveBalances.creditType}
+            OR EXISTS (
+                SELECT 1 FROM (SELECT 1) as dummy 
+                WHERE ${leaveBalances.creditType} = (
+                    CASE la.leave_type 
+                        ${Object.entries(leaveToCreditMap).map(([lt, ct]) => `WHEN '${lt}' THEN '${ct}'`).join('\n                        ')}
+                        ELSE la.leave_type 
+                    END
+                )
+            )
+          )
+          AND la.status = 'Approved' 
+          AND YEAR(la.start_date) = ${year}
       )`
     })
     .from(leaveBalances)

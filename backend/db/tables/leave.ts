@@ -9,6 +9,7 @@ export const leaveApplications = mysqlTable("leave_applications", {
 	endDate: date("end_date", { mode: 'string' }).notNull(),
 	workingDays: decimal("working_days", { precision: 10, scale: 3 }).notNull(),
 	isWithPay: boolean("is_with_pay").default(true).notNull(),
+	isHalfDay: boolean("is_half_day").default(false).notNull(),
 	actualPaymentStatus: mysqlEnum("actual_payment_status", ['WITH_PAY','WITHOUT_PAY','PARTIAL']).default('WITH_PAY').notNull(),
 	daysWithPay: decimal("days_with_pay", { precision: 10, scale: 3 }).default('0.000'),
 	daysWithoutPay: decimal("days_without_pay", { precision: 10, scale: 3 }).default('0.000'),

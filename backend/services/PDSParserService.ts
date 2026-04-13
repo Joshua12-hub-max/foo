@@ -29,7 +29,15 @@ import {
 } from '../types/pdsRawExcelData.js';
 import { PDS_COORDINATE_MAP, CellRange, CheckboxCoordinate } from '../config/pdsCoordinateMap.js';
 import { PdsParserOutputSchema } from '../schemas/pdsParserSchema.js';
-import { normalizeToIsoDate, excelSerialToIsoDate } from '../utils/dateUtils.js';
+import {
+  normalizePdsDate,
+  extractPdsYear,
+  normalizePdsInt,
+  normalizePdsFloat,
+  normalizePdsString,
+  isPdsGarbage,
+  isPdsGarbageRow as isGarbageRowUtil,
+} from '../utils/pdsDataUtils.js';
 
 /**
  * PDS Parser Service — Revised 2025 (Coordinate-Based)
@@ -48,42 +56,23 @@ import { normalizeToIsoDate, excelSerialToIsoDate } from '../utils/dateUtils.js'
  * - Explicit interfaces for raw data
  */
 
-// Patterns that indicate a cell contains a form label/header, not real data
-const GARBAGE_PATTERNS = [
-  /^(continue on separate sheet|cs form 212|signature|date filed|status of case)/i,
-  /^(wet signature|e-signature|digital certificate)/i,
-  /^(inclusive dates|dd\/mm|number of hours|conducted.*sponsored)/i,
-  /^(position title|department.*agency|name of school|basic education)/i,
-  /^(name.*address.*organization|scholarship|highest level)/i,
-  /^(house\/block|subdivision\/village|city\/municipality|province$|street$|barangay$|zip code)/i,
-  /^(gov't service|status of appointment|rating|if applicable)/i,
-  /^(from$|to$|period of attendance|level$)/i,
-  /^(name extension|jr\.,? sr|pls\. indicate)/i,
-  /^(if yes|if holder|please indicate|pursuant to)/i,
-  /^(are you|have you|do you|were you)/i,
-  /^(special skills|non-academic|membership in)/i,
-  /^(\d{1,2}\.$|[ivx]+\.\s)/i, // Section numbers like "35." or "VII. "
-  /^(ces\/csee|career service|board.*bar)/i,
-  /^(license|valid until|place of exam)/i,
-  /^(name$|office.*residential address|contact no)/i,
-];
+// DEPRECATED: Garbage patterns moved to pdsDataUtils.ts
+// This constant is kept for reference but is no longer used in this file
 
 /**
  * Check if a value is garbage (form labels, empty, or invalid)
+ * DEPRECATED: Use isPdsGarbage from pdsDataUtils.ts instead
  */
 const isGarbage = (val: string | null): boolean => {
-  if (!val || val.trim().length === 0) return true;
-  const s = val.trim();
-  if (s === '[object Object]') return true;
-  return GARBAGE_PATTERNS.some((p) => p.test(s));
+  return isPdsGarbage(val);
 };
 
 /**
  * Check if an entire row is garbage (all fields empty or invalid)
+ * DEPRECATED: Use isPdsGarbageRow from pdsDataUtils.ts instead
  */
 const isGarbageRow = (rowData: Record<string, string | null>): boolean => {
-  const values = Object.values(rowData);
-  return values.every((v) => !v || isGarbage(v));
+  return isGarbageRowUtil(rowData, Object.keys(rowData));
 };
 
 /**
@@ -98,7 +87,7 @@ const getCellValue = (sheet: ExcelJS.Worksheet, cellAddress: string): string | n
 
   // Handle Date objects - convert to ISO format immediately
   if (value instanceof Date) {
-    return normalizeToIsoDate(value);
+    return normalizePdsDate(value);
   }
 
   // Handle rich text
@@ -114,7 +103,7 @@ const getCellValue = (sheet: ExcelJS.Worksheet, cellAddress: string): string | n
 
     // Check if result is a date serial number
     if (typeof result === 'number' && result > 1 && result < 60000) {
-      const isoDate = excelSerialToIsoDate(result);
+      const isoDate = normalizePdsDate(result);
       if (isoDate) return isoDate;
     }
 
@@ -554,174 +543,176 @@ const extractAllData = (workbook: ExcelJS.Workbook): RawPdsExcelData => {
 const transformRawData = (rawData: RawPdsExcelData): PdsParserOutput => {
   const { personalInfo: raw } = rawData;
 
-  // Transform personal info
+  // Transform personal info using unified utilities
   const personal: PdsPersonalInfo = {
-    birthDate: raw.birthDate ? normalizeToIsoDate(raw.birthDate) || undefined : undefined,
-    placeOfBirth: raw.placeOfBirth || undefined,
-    gender: raw.gender || undefined,
-    civilStatus: raw.civilStatus || undefined,
-    heightM: raw.heightM ? parseFloat(raw.heightM) || undefined : undefined,
-    weightKg: raw.weightKg ? parseFloat(raw.weightKg) || undefined : undefined,
-    bloodType: raw.bloodType || undefined,
-    citizenship: raw.citizenship || undefined,
-    citizenshipType: raw.citizenshipType || undefined,
-    dualCountry: raw.dualCountry || undefined,
-    telephoneNo: raw.telephoneNo || undefined,
-    mobileNo: raw.mobileNo || undefined,
-    gsisNumber: raw.gsisNumber || undefined,
-    pagibigNumber: raw.pagibigNumber || undefined,
-    philhealthNumber: raw.philhealthNumber || undefined,
-    tinNumber: raw.tinNumber || undefined,
-    umidNumber: raw.umidNumber || undefined,
-    philsysId: raw.philsysId || undefined,
-    agencyEmployeeNo: raw.agencyEmployeeNo || undefined,
-    resHouseBlockLot: raw.resHouseBlockLot || undefined,
-    resStreet: raw.resStreet || undefined,
-    resSubdivision: raw.resSubdivision || undefined,
-    resBarangay: raw.resBarangay || undefined,
-    resCity: raw.resCity || undefined,
-    resProvince: raw.resProvince || undefined,
-    resRegion: raw.resRegion || undefined,
-    residentialZipCode: raw.residentialZipCode || undefined,
-    permHouseBlockLot: raw.permHouseBlockLot || undefined,
-    permStreet: raw.permStreet || undefined,
-    permSubdivision: raw.permSubdivision || undefined,
-    permBarangay: raw.permBarangay || undefined,
-    permCity: raw.permCity || undefined,
-    permProvince: raw.permProvince || undefined,
-    permRegion: raw.permRegion || undefined,
-    permanentZipCode: raw.permanentZipCode || undefined,
-    emergencyContact: raw.emergencyContact || undefined,
-    emergencyContactNumber: raw.emergencyContactNumber || undefined,
+    birthDate: normalizePdsDate(raw.birthDate) || undefined,
+    placeOfBirth: normalizePdsString(raw.placeOfBirth) || undefined,
+    gender: normalizePdsString(raw.gender) || undefined,
+    civilStatus: normalizePdsString(raw.civilStatus) || undefined,
+    heightM: raw.heightM ? normalizePdsFloat(raw.heightM) ? parseFloat(normalizePdsFloat(raw.heightM)!) : undefined : undefined,
+    weightKg: raw.weightKg ? normalizePdsFloat(raw.weightKg) ? parseFloat(normalizePdsFloat(raw.weightKg)!) : undefined : undefined,
+    bloodType: normalizePdsString(raw.bloodType) || undefined,
+    citizenship: normalizePdsString(raw.citizenship) || undefined,
+    citizenshipType: normalizePdsString(raw.citizenshipType) || undefined,
+    dualCountry: normalizePdsString(raw.dualCountry) || undefined,
+    telephoneNo: normalizePdsString(raw.telephoneNo) || undefined,
+    mobileNo: normalizePdsString(raw.mobileNo) || undefined,
+    gsisNumber: normalizePdsString(raw.gsisNumber) || undefined,
+    pagibigNumber: normalizePdsString(raw.pagibigNumber) || undefined,
+    philhealthNumber: normalizePdsString(raw.philhealthNumber) || undefined,
+    tinNumber: normalizePdsString(raw.tinNumber) || undefined,
+    umidNumber: normalizePdsString(raw.umidNumber) || undefined,
+    philsysId: normalizePdsString(raw.philsysId) || undefined,
+    agencyEmployeeNo: normalizePdsString(raw.agencyEmployeeNo) || undefined,
+    resHouseBlockLot: normalizePdsString(raw.resHouseBlockLot) || undefined,
+    resStreet: normalizePdsString(raw.resStreet) || undefined,
+    resSubdivision: normalizePdsString(raw.resSubdivision) || undefined,
+    resBarangay: normalizePdsString(raw.resBarangay) || undefined,
+    resCity: normalizePdsString(raw.resCity) || undefined,
+    resProvince: normalizePdsString(raw.resProvince) || undefined,
+    resRegion: normalizePdsString(raw.resRegion) || undefined,
+    residentialZipCode: normalizePdsString(raw.residentialZipCode) || undefined,
+    permHouseBlockLot: normalizePdsString(raw.permHouseBlockLot) || undefined,
+    permStreet: normalizePdsString(raw.permStreet) || undefined,
+    permSubdivision: normalizePdsString(raw.permSubdivision) || undefined,
+    permBarangay: normalizePdsString(raw.permBarangay) || undefined,
+    permCity: normalizePdsString(raw.permCity) || undefined,
+    permProvince: normalizePdsString(raw.permProvince) || undefined,
+    permRegion: normalizePdsString(raw.permRegion) || undefined,
+    permanentZipCode: normalizePdsString(raw.permanentZipCode) || undefined,
+    emergencyContact: normalizePdsString(raw.emergencyContact) || undefined,
+    emergencyContactNumber: normalizePdsString(raw.emergencyContactNumber) || undefined,
   };
 
   // Transform family background
   const familyBackground: PdsFamily[] = [];
 
   // Spouse
-  if (rawData.familyBackground.spouse.surname || rawData.familyBackground.spouse.firstName) {
+  if (normalizePdsString(rawData.familyBackground.spouse.surname) || normalizePdsString(rawData.familyBackground.spouse.firstName)) {
     familyBackground.push({
       relationType: 'Spouse',
-      lastName: rawData.familyBackground.spouse.surname || undefined,
-      firstName: rawData.familyBackground.spouse.firstName || undefined,
-      middleName: rawData.familyBackground.spouse.middleName || undefined,
-      occupation: rawData.familyBackground.spouse.occupation || undefined,
-      employer: rawData.familyBackground.spouse.employer || undefined,
-      businessAddress: rawData.familyBackground.spouse.businessAddress || undefined,
-      telephoneNo: rawData.familyBackground.spouse.telephoneNo || undefined,
+      lastName: normalizePdsString(rawData.familyBackground.spouse.surname) || undefined,
+      firstName: normalizePdsString(rawData.familyBackground.spouse.firstName) || undefined,
+      middleName: normalizePdsString(rawData.familyBackground.spouse.middleName) || undefined,
+      occupation: normalizePdsString(rawData.familyBackground.spouse.occupation) || undefined,
+      employer: normalizePdsString(rawData.familyBackground.spouse.employer) || undefined,
+      businessAddress: normalizePdsString(rawData.familyBackground.spouse.businessAddress) || undefined,
+      telephoneNo: normalizePdsString(rawData.familyBackground.spouse.telephoneNo) || undefined,
     });
   }
 
   // Father
-  if (rawData.familyBackground.father.surname || rawData.familyBackground.father.firstName) {
+  if (normalizePdsString(rawData.familyBackground.father.surname) || normalizePdsString(rawData.familyBackground.father.firstName)) {
     familyBackground.push({
       relationType: 'Father',
-      lastName: rawData.familyBackground.father.surname || undefined,
-      firstName: rawData.familyBackground.father.firstName || undefined,
-      middleName: rawData.familyBackground.father.middleName || undefined,
-      nameExtension: rawData.familyBackground.father.nameExtension || undefined,
+      lastName: normalizePdsString(rawData.familyBackground.father.surname) || undefined,
+      firstName: normalizePdsString(rawData.familyBackground.father.firstName) || undefined,
+      middleName: normalizePdsString(rawData.familyBackground.father.middleName) || undefined,
+      nameExtension: normalizePdsString(rawData.familyBackground.father.nameExtension) || undefined,
     });
   }
 
   // Mother
-  if (rawData.familyBackground.mother.surname || rawData.familyBackground.mother.firstName) {
+  if (normalizePdsString(rawData.familyBackground.mother.surname) || normalizePdsString(rawData.familyBackground.mother.firstName)) {
     familyBackground.push({
       relationType: 'Mother',
-      lastName: rawData.familyBackground.mother.surname || undefined,
-      firstName: rawData.familyBackground.mother.firstName || undefined,
-      middleName: rawData.familyBackground.mother.middleName || undefined,
+      lastName: normalizePdsString(rawData.familyBackground.mother.surname) || undefined,
+      firstName: normalizePdsString(rawData.familyBackground.mother.firstName) || undefined,
+      middleName: normalizePdsString(rawData.familyBackground.mother.middleName) || undefined,
     });
   }
 
   // Children
   rawData.familyBackground.children.forEach((child) => {
-    if (child.name) {
+    const childName = normalizePdsString(child.name);
+    if (childName) {
       familyBackground.push({
         relationType: 'Child',
-        firstName: child.name,
-        dateOfBirth: child.dateOfBirth ? normalizeToIsoDate(child.dateOfBirth) || undefined : undefined,
+        firstName: childName,
+        dateOfBirth: normalizePdsDate(child.dateOfBirth) || undefined,
       });
     }
   });
 
-  // Transform educations
+  // Transform educations - CRITICAL FIX: Extract year only for dateFrom/dateTo (DB expects VARCHAR(4))
   const educations: PdsEducation[] = rawData.educations.map((edu) => ({
     level: edu.level as PdsEducation['level'],
-    schoolName: edu.schoolName || '',
-    degreeCourse: edu.degreeCourse || undefined,
-    dateFrom: edu.dateFrom || undefined,
-    dateTo: edu.dateTo || undefined,
-    unitsEarned: edu.unitsEarned || undefined,
-    yearGraduated: edu.yearGraduated ? parseInt(edu.yearGraduated) || undefined : undefined,
-    honors: edu.honors || undefined,
+    schoolName: normalizePdsString(edu.schoolName) || '',
+    degreeCourse: normalizePdsString(edu.degreeCourse) || undefined,
+    dateFrom: extractPdsYear(edu.dateFrom) || undefined,
+    dateTo: extractPdsYear(edu.dateTo) || undefined,
+    unitsEarned: normalizePdsString(edu.unitsEarned) || undefined,
+    yearGraduated: normalizePdsInt(edu.yearGraduated) || undefined,
+    honors: normalizePdsString(edu.honors) || undefined,
   }));
 
   // Transform eligibilities
   const eligibilities: PdsEligibility[] = rawData.eligibilities.map((elig) => ({
-    eligibilityName: elig.eligibilityName || '',
-    rating: elig.rating ? parseFloat(elig.rating) || undefined : undefined,
-    examDate: elig.examDate ? normalizeToIsoDate(elig.examDate) || undefined : undefined,
-    examPlace: elig.examPlace || undefined,
-    licenseNumber: elig.licenseNumber || undefined,
-    validityDate: elig.validityDate ? normalizeToIsoDate(elig.validityDate) || undefined : undefined,
+    eligibilityName: normalizePdsString(elig.eligibilityName) || '',
+    rating: normalizePdsFloat(elig.rating) ? parseFloat(normalizePdsFloat(elig.rating)!) : undefined,
+    examDate: normalizePdsDate(elig.examDate) || undefined,
+    examPlace: normalizePdsString(elig.examPlace) || undefined,
+    licenseNumber: normalizePdsString(elig.licenseNumber) || undefined,
+    validityDate: normalizePdsDate(elig.validityDate) || undefined,
   }));
 
   // Transform work experiences
   const workExperiences: PdsWorkExperience[] = rawData.workExperiences.map((work) => {
-    const dateTo = work.dateTo?.toLowerCase() === 'present' ? 'Present' : normalizeToIsoDate(work.dateTo || '') || undefined;
+    const normalizedDateTo = normalizePdsDate(work.dateTo);
+    const dateTo = normalizedDateTo === 'Present' ? 'Present' : normalizedDateTo || undefined;
 
     return {
-      dateFrom: normalizeToIsoDate(work.dateFrom || '') || work.dateFrom || '',
+      dateFrom: normalizePdsDate(work.dateFrom) || '',
       dateTo,
-      positionTitle: work.positionTitle || '',
-      companyName: work.companyName || '',
-      monthlySalary: work.monthlySalary ? parseFloat(work.monthlySalary.replace(/,/g, '')) || undefined : undefined,
-      salaryGrade: work.salaryGrade || '',
-      appointmentStatus: work.appointmentStatus || undefined,
+      positionTitle: normalizePdsString(work.positionTitle) || '',
+      companyName: normalizePdsString(work.companyName) || '',
+      monthlySalary: normalizePdsFloat(work.monthlySalary) ? parseFloat(normalizePdsFloat(work.monthlySalary)!) : undefined,
+      salaryGrade: normalizePdsString(work.salaryGrade) || '',
+      appointmentStatus: normalizePdsString(work.appointmentStatus) || undefined,
       isGovernment: work.isGovernment?.toUpperCase() === 'Y' || work.isGovernment?.toUpperCase() === 'YES',
     };
   });
 
   // Transform voluntary works
   const voluntaryWorks: PdsVoluntaryWork[] = rawData.voluntaryWorks.map((vol) => ({
-    organizationName: vol.organizationName || '',
-    address: vol.address || undefined,
-    dateFrom: vol.dateFrom ? normalizeToIsoDate(vol.dateFrom) || undefined : undefined,
-    dateTo: vol.dateTo ? normalizeToIsoDate(vol.dateTo) || undefined : undefined,
-    hoursNumber: vol.hoursNumber ? parseInt(vol.hoursNumber) || undefined : undefined,
-    position: vol.position || undefined,
+    organizationName: normalizePdsString(vol.organizationName) || '',
+    address: normalizePdsString(vol.address) || undefined,
+    dateFrom: normalizePdsDate(vol.dateFrom) || undefined,
+    dateTo: normalizePdsDate(vol.dateTo) || undefined,
+    hoursNumber: normalizePdsInt(vol.hoursNumber) || undefined,
+    position: normalizePdsString(vol.position) || undefined,
   }));
 
   // Transform learning developments
   const learningDevelopments: PdsLearningDevelopment[] = rawData.learningDevelopments.map((ld) => ({
-    title: ld.title || '',
-    dateFrom: ld.dateFrom ? normalizeToIsoDate(ld.dateFrom) || undefined : undefined,
-    dateTo: ld.dateTo ? normalizeToIsoDate(ld.dateTo) || undefined : undefined,
-    hoursNumber: ld.hoursNumber ? parseInt(ld.hoursNumber) || undefined : undefined,
-    typeOfLd: ld.typeOfLd || undefined,
-    conductedBy: ld.conductedBy || undefined,
+    title: normalizePdsString(ld.title) || '',
+    dateFrom: normalizePdsDate(ld.dateFrom) || undefined,
+    dateTo: normalizePdsDate(ld.dateTo) || undefined,
+    hoursNumber: normalizePdsInt(ld.hoursNumber) || undefined,
+    typeOfLd: normalizePdsString(ld.typeOfLd) || undefined,
+    conductedBy: normalizePdsString(ld.conductedBy) || undefined,
   }));
 
   // Transform other info
   const otherInfo: PdsOtherInfo[] = rawData.otherInfo
-    .filter((info) => info.description)
+    .filter((info) => normalizePdsString(info.description))
     .map((info) => ({
       type: info.type,
-      description: info.description || '',
+      description: normalizePdsString(info.description) || '',
     }));
 
   // Transform references
   const references: PdsReference[] = rawData.references.map((ref) => ({
-    name: ref.name || '',
-    address: ref.address || undefined,
-    telNo: ref.telNo || undefined,
+    name: normalizePdsString(ref.name) || '',
+    address: normalizePdsString(ref.address) || undefined,
+    telNo: normalizePdsString(ref.telNo) || undefined,
   }));
 
   return {
-    firstName: raw.firstName || undefined,
-    lastName: raw.surname || undefined,
-    middleName: raw.middleName || undefined,
-    email: raw.email || undefined,
+    firstName: normalizePdsString(raw.firstName) || undefined,
+    lastName: normalizePdsString(raw.surname) || undefined,
+    middleName: normalizePdsString(raw.middleName) || undefined,
+    email: normalizePdsString(raw.email) || undefined,
     personal,
     familyBackground,
     educations,

@@ -54,6 +54,7 @@ export const applyLeaveSchema = z.object({
     .min(10, 'Reason must be at least 10 characters')
     .max(1000, 'Reason cannot exceed 1000 characters'),
   isWithPay: z.boolean().default(true),
+  isHalfDay: z.boolean().default(false).optional(),
 }).refine((data) => {
   const start = new Date(data.startDate);
   const end = new Date(data.endDate);
@@ -165,6 +166,7 @@ export type LeaveRequestSchema = z.output<typeof leaveRequestSchema>;
 export const submitLeaveRequestSchema = z.object({
   leaveType: z.enum(LEAVE_TYPE_VALUES),
   isWithPay: z.boolean().default(true),
+  isHalfDay: z.boolean().default(false).optional(),
   startDate: z.string().min(1, 'Start date is required'),
   endDate: z.string().min(1, 'End date is required'),
   reason: z.string()

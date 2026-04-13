@@ -44,6 +44,7 @@ export const PdsPersonalInfoSchema = z.object({
   gsisNumber: z.string().nullable().optional(),
   pagibigNumber: z.string().nullable().optional(),
   philhealthNumber: z.string().nullable().optional(),
+  sssNumber: z.string().nullable().optional(),
   tinNumber: z.string().nullable().optional(),
   umidNumber: z.string().nullable().optional(),
   philsysId: z.string().nullable().optional(),
