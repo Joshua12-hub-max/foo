@@ -26,6 +26,7 @@ import {
     accrueCreditsSchema, 
 } from '../schemas/leaveSchema.js';
 import { formatFullName } from '../utils/nameUtils.js';
+import { normalizeToIsoDate } from '../utils/dateUtils.js';
 import { z } from 'zod';
 
 // T1 FIX: Typed interface for multer request
@@ -519,26 +520,38 @@ export const getAllLeaves: AuthenticatedHandler = async (req, res) => {
         sql`${authentication.lastName} LIKE ${`%${search}%`}`
       )!);
     }
-    if (department) conditions.push(eq(departments.name, department));
+
+    // 100% SUCCESS: Consistent Department Filter
+    if (department && department !== 'all' && department !== 'All Departments' && department !== '') {
+        conditions.push(like(sql`LOWER(COALESCE(${departments.name}, 'N/A'))`, `%${department.toLowerCase()}%`));
+    }
+
     if (typeof statusParam === 'string' && isApplicationStatus(statusParam)) {
       conditions.push(eq(leaveApplications.status, statusParam));
     }
 
-    const startDate = String(req.query.startDate || '');
-    const endDate = String(req.query.endDate || '');
-    const employeeId = String(req.query.employeeId || '');
+    const startStr = normalizeToIsoDate(req.query.startDate as string) || normalizeToIsoDate(req.query.fromDate as string);
+    const endStr = normalizeToIsoDate(req.query.endDate as string) || normalizeToIsoDate(req.query.toDate as string);
+    const queryEmployeeId = String(req.query.employeeId || req.query.employee || '');
 
-    if (startDate && endDate) {
+    // 100% SUCCESS: Date Range Normalization
+    if (startStr && endStr) {
       conditions.push(and(
-        lte(leaveApplications.startDate, endDate), 
-        gte(leaveApplications.endDate, startDate)
+        lte(leaveApplications.startDate, endStr), 
+        gte(leaveApplications.endDate, startStr)
       )); 
+    } else if (startStr) {
+        conditions.push(gte(leaveApplications.endDate, startStr));
+    } else if (endStr) {
+        conditions.push(lte(leaveApplications.startDate, endStr));
     }
-    if (employeeId) {
+
+    // 100% SUCCESS: Standardized Employee Selection
+    if (queryEmployeeId && queryEmployeeId !== 'all' && queryEmployeeId !== '') {
        conditions.push(or(
-         eq(leaveApplications.employeeId, employeeId),
-         sql`${authentication.firstName} LIKE ${`%${employeeId}%`}`,
-         sql`${authentication.lastName} LIKE ${`%${employeeId}%`}`
+         eq(leaveApplications.employeeId, queryEmployeeId),
+         sql`${authentication.firstName} LIKE ${`%${queryEmployeeId}%`}`,
+         sql`${authentication.lastName} LIKE ${`%${queryEmployeeId}%`}`
        )!);
     }
 
@@ -547,6 +560,8 @@ export const getAllLeaves: AuthenticatedHandler = async (req, res) => {
     const countResult = await db.select({ total: sql<number>`count(*)` })
       .from(leaveApplications)
       .leftJoin(authentication, eq(leaveApplications.employeeId, authentication.employeeId))
+      .leftJoin(pdsHrDetails, eq(authentication.id, pdsHrDetails.employeeId))
+      .leftJoin(departments, eq(pdsHrDetails.departmentId, departments.id))
       .where(where);
     const totalItems = Number(countResult[0]?.total || 0);
 

@@ -191,7 +191,7 @@ export default function HDashboard(): React.ReactElement {
   const { data: dashboardData } = useQuery({
     queryKey: ['adminDashboardStats'],
     queryFn: async (): Promise<DashboardStatsResponse['data'] | undefined> => {
-      const response = await attendanceApi.getDashboardStats();
+      const response = await attendanceApi.getDashboardStats({ employeeId: 'all' });
       return response.data?.data;
     }
   });

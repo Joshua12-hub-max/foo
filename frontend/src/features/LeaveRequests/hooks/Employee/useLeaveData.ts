@@ -1,40 +1,20 @@
-import { useState } from 'react';
+import { useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { leaveApi } from "@/api/leaveApi";
 import { EmployeeLeaveRequest } from '../../types';
-import type { LeaveApplication, ApplicationStatus } from '@/types/leave.types';
+import type { LeaveApplication } from '@/types/leave.types';
+import { useLeaveStore } from '@/stores/leaveStore';
 
-export const useLeaveData = (initialFilters?: Record<string, string>) => {
+export const useLeaveData = () => {
   const queryClient = useQueryClient();
-  const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(10);
-  const [filters, setFilters] = useState<{
-    search: string;
-    startDate: string;
-    endDate: string;
-    status: ApplicationStatus | '';
-    type: string;
-  }>({
-    search: '',
-    startDate: '',
-    endDate: '',
-    status: '' as ApplicationStatus | '',
-    type: ''
-  });
+  const { filters, pagination, searchQuery, getQuery, setPage, setLimit, setFilters } = useLeaveStore();
+  
+  const queryParams = useMemo(() => getQuery(), [filters, pagination.page, pagination.limit, searchQuery, getQuery]);
 
   const { data, isLoading: loading, error } = useQuery({
-    queryKey: ['employee-leaves', page, limit, filters],
+    queryKey: ['employee-leaves', queryParams],
     queryFn: async () => {
-      const params = {
-        page,
-        limit,
-        search: filters.search,
-        startDate: filters.startDate,
-        endDate: filters.endDate,
-        status: filters.status
-      };
-      
-      const response = await leaveApi.getMyApplications(params);
+      const response = await leaveApi.getMyApplications(queryParams);
       const rawLeaves = response.data?.applications || [];
       
       const leaves: EmployeeLeaveRequest[] = rawLeaves.map((l: LeaveApplication) => ({
@@ -68,9 +48,8 @@ export const useLeaveData = (initialFilters?: Record<string, string>) => {
     await queryClient.invalidateQueries({ queryKey: ['employee-leaves'] });
   };
 
-  const updateFilters = (newFilters: Partial<typeof filters>) => {
-    setFilters(prev => ({ ...prev, ...newFilters }));
-    setPage(1);
+  const updateFilters = (newFilters: any) => {
+    setFilters(newFilters);
   };
 
   return { 
@@ -80,6 +59,8 @@ export const useLeaveData = (initialFilters?: Record<string, string>) => {
     error: error ? (error as Error).message : null, 
     refreshLeaves,
     setPage,
+    setLimit,
     updateFilters
   };
 };
+

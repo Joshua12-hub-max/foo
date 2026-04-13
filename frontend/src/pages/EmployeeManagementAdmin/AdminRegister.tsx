@@ -1288,23 +1288,60 @@ export default function AdminRegister() {
 
   const onInvalid = (errors: Record<string, any>) => {
     console.error("100% Zero-Validation Debugging | Form Errors Detected:", errors);
-    
-    // Step-by-step debug logging for every field failure
-    Object.keys(errors).forEach((key) => {
-      const error = errors[key];
-      if (error.message) {
-        console.warn(`[VALIDATION FAIL] Field: ${key} | Message: ${error.message}`);
-      } else if (typeof error === 'object') {
-          // Handle nested arrays or objects
-          console.warn(`[VALIDATION FAIL] Field Complex: ${key} | Raw:`, error);
-      }
-    });
 
-    const errorData = getFirstErrorMessage(errors);
-    if (errorData) {
-      toast.error(`Form Error: [${errorData.field}] ${errorData.message}`);
-      const errorElement = document.querySelector(`[name="${errorData.field}"]`);
-      if (errorElement) errorElement.scrollIntoView({ behavior: "smooth", block: "center" });
+    // Collect all error messages
+    const errorMessages: string[] = [];
+    const collectErrors = (obj: Record<string, any>, prefix = '') => {
+      Object.keys(obj).forEach((key) => {
+        const error = obj[key];
+        const fieldPath = prefix ? `${prefix}.${key}` : key;
+
+        if (error && typeof error === 'object') {
+          if (error.message) {
+            // Direct error with message
+            const friendlyFieldName = fieldPath
+              .replace(/([A-Z])/g, ' $1')
+              .replace(/^./, str => str.toUpperCase())
+              .replace(/\./g, ' → ');
+            errorMessages.push(`${friendlyFieldName}: ${error.message}`);
+            console.warn(`[VALIDATION FAIL] Field: ${fieldPath} | Message: ${error.message}`);
+          } else if (Array.isArray(error)) {
+            // Array of errors
+            error.forEach((item, index) => {
+              if (item && typeof item === 'object') {
+                collectErrors(item, `${fieldPath}[${index}]`);
+              }
+            });
+          } else {
+            // Nested object errors
+            collectErrors(error, fieldPath);
+          }
+        }
+      });
+    };
+
+    collectErrors(errors);
+
+    // Show comprehensive error summary
+    if (errorMessages.length > 0) {
+      const summary = errorMessages.length > 3
+        ? `${errorMessages.length} fields need attention:\n• ${errorMessages.slice(0, 3).join('\n• ')}\n... and ${errorMessages.length - 3} more`
+        : `Please fix the following:\n• ${errorMessages.join('\n• ')}`;
+
+      toast.error(summary, {
+        duration: 8000,
+        style: {
+          maxWidth: '500px',
+          whiteSpace: 'pre-line',
+        },
+      });
+
+      // Scroll to first error
+      const errorData = getFirstErrorMessage(errors);
+      if (errorData) {
+        const errorElement = document.querySelector(`[name="${errorData.field}"]`);
+        if (errorElement) errorElement.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
     } else {
       toast.error("Please fill in all required fields correctly.");
     }
@@ -1485,6 +1522,12 @@ export default function AdminRegister() {
               </div>
 
               {/* SECTION 1: HR & EMPLOYMENT PLACEMENT */}
+              {/* Visible to: Human Resource, Administrator, Employee roles, and hired applicant registrations */}
+              {(authUser?.role === 'Human Resource' ||
+                authUser?.role === 'Administrator' ||
+                authUser?.role === 'Employee' ||
+                isHiredType ||
+                matchedApplicant) && (
               <div className="bg-white rounded-lg border border-gray-100 p-6 md:p-8 shadow-sm space-y-6">
                   <div className="flex items-center gap-4 border-b border-gray-100 pb-5">
                       <div className="w-10 h-10 bg-gray-900 rounded-lg flex items-center justify-center">
@@ -1567,6 +1610,7 @@ export default function AdminRegister() {
                       </div>
                   </div>
               </div>
+              )}
 
               {/* SECTION 2: EMPLOYEE IDENTITY & PERSONAL DETAILS */}
               <div className="bg-white rounded-lg border border-gray-100 p-6 md:p-8 shadow-sm space-y-6">
@@ -1733,13 +1777,19 @@ export default function AdminRegister() {
                   </div>
               </label>
 
-              <button 
-                type="submit" 
+              <button
+                type="submit"
                 disabled={loading || isSubmitting}
                 className="w-full h-12 bg-gray-900 hover:bg-gray-800 text-white px-8 rounded-xl text-sm font-black transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md flex justify-center items-center gap-2 active:scale-95"
               >
-                {loading ? <Loader2 className="animate-spin h-5 w-5" /> : null}
-                Complete registration
+                {loading ? (
+                  <>
+                    <Loader2 className="animate-spin h-5 w-5" />
+                    <span>Submitting registration...</span>
+                  </>
+                ) : (
+                  'Complete registration'
+                )}
               </button>
           </div>
         </div>

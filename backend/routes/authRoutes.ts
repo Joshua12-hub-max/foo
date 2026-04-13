@@ -25,7 +25,7 @@ import {
   requestDownloadToken
 } from '../controllers/auth.controller.js';
 import { register } from '../controllers/registration.controller.js';
-import { verifyToken, authLimiter, strictAuthLimiter } from '../middleware/authMiddleware.js';
+import { verifyToken, verifyAdmin, authLimiter, strictAuthLimiter } from '../middleware/authMiddleware.js';
 import multer from 'multer';
 import path from 'path';
 
@@ -76,7 +76,7 @@ router.put('/profile/:id', verifyToken, upload.single('avatar'), updateProfile a
 router.post('/logout', verifyToken, logout as never);
 
 // User Management (Basic)
-router.get('/users', verifyToken, getUsers as never);
+router.get('/users', verifyToken, verifyAdmin, getUsers as never);
 router.get('/users/:id', verifyToken, getUserById as never);
 
 // Two-Factor Authentication

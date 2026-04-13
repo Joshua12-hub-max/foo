@@ -1,4 +1,6 @@
-import { Request, Response } from 'express';
+import { compareIds, normalizeIdJs, normalizeIdSql } from '../utils/idUtils.js';
+import { Request, Response, NextFunction } from 'express';
+import type { AuthenticatedRequest, AuthenticatedHandler, AsyncHandler } from '../types/index.js';
 import { z } from 'zod';
 import fs from 'fs';
 import path from 'path';
@@ -10,16 +12,8 @@ import { AuthService } from '../services/auth.service.js';
 import { checkSystemWideUniqueness } from '../services/validationService.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { normalizeIdSql } from '../utils/idUtils.js';
 
 import { OAuth2Client } from 'google-auth-library';
-import type { 
-  AsyncHandler, 
-  AuthenticatedHandler,
-  AuthenticatedRequest,
-  UserRole
-} from '../types/index.js';
-import { allocateDefaultCredits } from './leaveController.js';
 import { 
   LoginSchema, 
   RegisterSchema, 
@@ -279,7 +273,7 @@ const mapToAuthUser = (user: UserWithRelations) => {
 // Auth Controllers
 // ============================================================================
 
-export const googleLogin: AsyncHandler = async (req, res) => {
+export const googleLogin: AsyncHandler = async (req, res, next) => {
   try {
     const { credential } = GoogleLoginSchema.parse(req.body);
     // Verify Google Token
@@ -360,7 +354,7 @@ export const googleLogin: AsyncHandler = async (req, res) => {
 
       const [enrolled] = await db.select().from(bioEnrolledUsers).where(
         and(
-          sql`${normalizeIdSql(bioEnrolledUsers.employeeId)} = ${normalizeIdSql(rawId)}`,
+          compareIds(bioEnrolledUsers.employeeId, rawId),
           eq(bioEnrolledUsers.userStatus, 'active')
         )
       ).limit(1);
@@ -392,8 +386,8 @@ export const googleLogin: AsyncHandler = async (req, res) => {
 
     try {
       await sendOTPEmail(user.email, user.firstName || 'User', otp, 'Google Login Verification', 'You are attempting to login via Google.');
-    } catch (err: unknown) { // Error logged below
-      const message = err instanceof Error ? err instanceof Error ? err.message : String(err) : 'Unknown email error';
+    } catch (err: unknown) { 
+      const message = err instanceof Error ? err.message : String(err);
       console.error('[AUTH] Google OTP send failed:', message);
       res.status(500).json({ success: false, message: 'Failed to send verification code.' });
       return;
@@ -417,20 +411,19 @@ export const googleLogin: AsyncHandler = async (req, res) => {
       req
     });
 
-  } catch (err: unknown) { // Error logged below
-    console.error('[GOOGLE LOGIN ERROR]', err);
-    res.status(500).json({ message: 'Google authentication failed' });
+  } catch (err: unknown) {
+    next(err);
   }
 };
 
-export const verifyEnrollment: AsyncHandler = async (req, res) => {
+export const verifyEnrollment: AsyncHandler = async (req, res, next) => {
   try {
     const employeeId = String(req.params.employeeId);
     
     // Check bio_enrolled_users
     const [enrolled] = await db.select().from(bioEnrolledUsers).where(
       and(
-        sql`${normalizeIdSql(bioEnrolledUsers.employeeId)} = ${normalizeIdSql(employeeId)}`,
+        compareIds(bioEnrolledUsers.employeeId, employeeId),
         eq(bioEnrolledUsers.userStatus, 'active')
       )
     ).limit(1);
@@ -447,7 +440,7 @@ export const verifyEnrollment: AsyncHandler = async (req, res) => {
     // Check if already registered in the web system
     const [existingAccount] = await db.select({ employeeId: authentication.employeeId })
       .from(authentication)
-      .where(sql`${normalizeIdSql(authentication.employeeId)} = ${normalizeIdSql(employeeId)}`)
+      .where(compareIds(authentication.employeeId, employeeId))
       .limit(1);
 
     res.status(200).json({
@@ -462,12 +455,12 @@ export const verifyEnrollment: AsyncHandler = async (req, res) => {
         alreadyRegistered: !!existingAccount
       }
     });
-  } catch {
-    res.status(500).json({ success: false, message: 'Failed to verify enrollment.' });
+  } catch (err) {
+    next(err);
   }
 };
 
-export const verifyRegistrationOTP = async (req: Request, res: Response): Promise<void> => {
+export const verifyRegistrationOTP = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { email, otp } = EmailVerifySchema.parse(req.body);
     
@@ -515,12 +508,12 @@ export const verifyRegistrationOTP = async (req: Request, res: Response): Promis
         lastName: user.lastName
       }
     });
-  } catch (err: unknown) { // Error logged below
-    res.status(500).json({ success: false, message: 'Server Error' });
+  } catch (err: unknown) {
+    next(err);
   }
 };
 
-export const resendVerificationEmail: AsyncHandler = async (req, res) => {
+export const resendVerificationEmail: AsyncHandler = async (req, res, next) => {
   try {
     const { email } = ForgotPasswordSchema.parse(req.body); // Reuse simple email schema
     const user = await db.query.authentication.findFirst({
@@ -550,13 +543,11 @@ export const resendVerificationEmail: AsyncHandler = async (req, res) => {
 
     res.status(200).json({ success: true, message: 'Verification code resent successfully.' });
   } catch (err: unknown) { 
-    // Error logged below
-    console.error('[Resend Verification Error]', err instanceof Error ? err.message : String(err));
-    res.status(500).json({ success: false, message: 'Failed to resend verification code.' });
+    next(err);
   }
 };
 
-export const forgotPassword: AsyncHandler = async (req, res) => {
+export const forgotPassword: AsyncHandler = async (req, res, next) => {
   try {
     const { email } = ForgotPasswordSchema.parse(req.body);
     const user = await db.query.authentication.findFirst({
@@ -613,13 +604,11 @@ export const forgotPassword: AsyncHandler = async (req, res) => {
 
     res.status(200).json({ success: true, message: 'Password reset code sent to your email.' });
   } catch (err: unknown) { 
-    // Error logged below
-    console.error('[FORGOT PASSWORD ERROR]', err instanceof Error ? err.message : String(err));
-    res.status(500).json({ success: false, message: 'Failed to send reset code.' });
+    next(err);
   }
 };
 
-export const resetPassword: AsyncHandler = async (req, res) => {
+export const resetPassword: AsyncHandler = async (req, res, next) => {
   try {
     const { identifier, otp, newPassword } = ResetPasswordSchema.parse(req.body);
 
@@ -675,13 +664,11 @@ export const resetPassword: AsyncHandler = async (req, res) => {
 
     res.status(200).json({ success: true, message: 'Password reset successfully. You can now login.' });
   } catch (err: unknown) { 
-    // Error logged below
-    console.error('[RESET PASSWORD ERROR]', err instanceof Error ? err.message : String(err));
-    res.status(500).json({ success: false, message: 'Failed to reset password.' });
+    next(err);
   }
 };
 
-export const getMe: AuthenticatedHandler = async (req, res) => {
+export const getMe: AuthenticatedHandler = async (req, res, next) => {
   try {
     const userId = req.user.id;
 
@@ -749,22 +736,22 @@ export const getMe: AuthenticatedHandler = async (req, res) => {
         } as UserWithRelations)
       }
     });
-    } catch (err: unknown) {
-    // Error logged below
-    res.status(500).json({ success: false, message: 'Server Error' });
-    }
-    };
+  } catch (err: unknown) {
+    next(err);
+  }
+};
 
-    export const requestDownloadToken: AuthenticatedHandler = async (req, res) => {
-    try {
-        const userId = req.user.id;
-        const token = AuthService.generateDownloadToken(userId);
-        res.status(200).json({ success: true, token });
-    } catch (err) {
-        res.status(500).json({ success: false, message: 'Failed to generate download token' });
-    }
-    };
-export const login: AsyncHandler = async (req, res) => {
+export const requestDownloadToken: AuthenticatedHandler = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const token = AuthService.generateDownloadToken(userId);
+    res.status(200).json({ success: true, token });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const login: AsyncHandler = async (req, res, next) => {
   try {
     const { identifier, password } = LoginSchema.parse(req.body);
     
@@ -780,13 +767,11 @@ export const login: AsyncHandler = async (req, res) => {
     }
     
     if (!user) {
-
       res.status(401).json({ success: false, message: 'Invalid Credentials' });
       return;
     }
 
     if (!user.isVerified) {
-
       res.status(403).json({
         success: false,
         message: 'Email not verified. Please check your email.',
@@ -813,7 +798,6 @@ export const login: AsyncHandler = async (req, res) => {
 
     // CHECK TERMINATION STATUS
     if (user.hrDetails?.employmentStatus === 'Terminated') {
-
       res.status(403).json({
         success: false,
         message: 'access denied: your account has been terminated. please contact human resource.',
@@ -835,7 +819,7 @@ export const login: AsyncHandler = async (req, res) => {
 
       const [enrolled] = await db.select().from(bioEnrolledUsers).where(
         and(
-          sql`${normalizeIdSql(bioEnrolledUsers.employeeId)} = ${normalizeIdSql(rawId)}`,
+          compareIds(bioEnrolledUsers.employeeId, rawId),
           eq(bioEnrolledUsers.userStatus, 'active')
         )
       ).limit(1);
@@ -904,9 +888,7 @@ export const login: AsyncHandler = async (req, res) => {
       try {
         await sendOTPEmail(user.email, user.firstName, otp, 'Your Login OTP', 'Your One-Time Password (OTP) for login is:');
       } catch (err: unknown) { 
-        // Error logged below
-        console.error('[2FA Send Error]', err instanceof Error ? err.message : String(err));
-        res.status(500).json({ success: false, message: 'Failed to send 2FA code.' });
+        next(err);
         return;
       }
 
@@ -991,17 +973,11 @@ export const login: AsyncHandler = async (req, res) => {
     });
 
   } catch (err: unknown) { 
-    // Error logged below
-    console.error('[LOGIN ERROR]', err instanceof Error ? err.message : String(err));
-    res.status(500).json({
-      success: false,
-      message: err instanceof Error ? err.message : String(err) || 'An unexpected error occurred during login.',
-      error: err instanceof Error ? err.message : String(err)
-    });
+    next(err);
   }
 };
 
-export const verifyTwoFactorOTP: AsyncHandler = async (req, res) => {
+export const verifyTwoFactorOTP: AsyncHandler = async (req, res, next) => {
   try {
     const { identifier, otp } = VerifyOTPSchema.parse(req.body);
     const user = await db.query.authentication.findFirst({
@@ -1080,13 +1056,11 @@ export const verifyTwoFactorOTP: AsyncHandler = async (req, res) => {
     });
 
   } catch (err: unknown) { 
-    // Error logged below
-    console.error('[2FA VERIFY ERROR]', err instanceof Error ? err.message : String(err));
-    res.status(500).json({ success: false, message: 'Verification failed.' });
+    next(err);
   }
 };
 
-export const enableTwoFactor: AuthenticatedHandler = async (req, res) => {
+export const enableTwoFactor: AuthenticatedHandler = async (req, res, next) => {
   const authReq = req;
   const userId = authReq.user.id;
 
@@ -1096,12 +1070,11 @@ export const enableTwoFactor: AuthenticatedHandler = async (req, res) => {
       .where(eq(authentication.id, userId));
     res.status(200).json({ success: true, message: 'Two-factor authentication enabled.' });
   } catch (err: unknown) { 
-    // Error logged below
-    res.status(500).json({ success: false, message: 'Failed to enable 2FA.' });
+    next(err);
   }
 };
 
-export const disableTwoFactor: AuthenticatedHandler = async (req, res) => {
+export const disableTwoFactor: AuthenticatedHandler = async (req, res, next) => {
   const authReq = req;
   const userId = authReq.user.id;
 
@@ -1111,12 +1084,11 @@ export const disableTwoFactor: AuthenticatedHandler = async (req, res) => {
       .where(eq(authentication.id, userId));
     res.status(200).json({ success: true, message: 'Two-factor authentication disabled.' });
   } catch (err: unknown) { 
-    // Error logged below
-    res.status(500).json({ success: false, message: 'Failed to disable 2FA.' });
+    next(err);
   }
 };
 
-export const resendTwoFactorOTP: AsyncHandler = async (req, res) => {
+export const resendTwoFactorOTP: AsyncHandler = async (req, res, next) => {
   try {
     const { identifier } = ResendOTPSchema.parse(req.body);
     const user = await db.query.authentication.findFirst({
@@ -1140,12 +1112,11 @@ export const resendTwoFactorOTP: AsyncHandler = async (req, res) => {
 
     res.status(200).json({ success: true, message: 'OTP resent successfully.' });
   } catch (err: unknown) { 
-    // Error logged below
-    res.status(500).json({ success: false, message: 'Failed to resend OTP.' });
+    next(err);
   }
 };
 
-export const getUsers: AsyncHandler = async (_req, res) => {
+export const getUsers: AsyncHandler = async (_req, res, next) => {
   try {
     const users = await db.select({
       id: authentication.id,
@@ -1184,19 +1155,22 @@ export const getUsers: AsyncHandler = async (_req, res) => {
       data: users
     });
   } catch (err: unknown) { 
-    // Error logged below
-    res.status(500).json({
-      success: false,
-      message: 'An unexpected error occurred while fetching users.',
-      data: null
-    });
+    next(err);
   }
 };
 
-export const getUserById: AsyncHandler = async (req, res) => {
+export const getUserById: AuthenticatedHandler = async (req, res, next) => {
   const { id } = req.params;
+  const requesterId = req.user.id;
+  const requesterRole = req.user.role;
 
   try {
+    // Ownership and Role Check
+    if (Number(id) !== requesterId && !['Administrator', 'Human Resource'].includes(requesterRole)) {
+      res.status(403).json({ success: false, message: 'Access Denied: You can only view your own user data.' });
+      return;
+    }
+
     const [user] = await db.select({
       ...getTableColumns(authentication),
       department: departments.name,
@@ -1256,9 +1230,7 @@ export const getUserById: AsyncHandler = async (req, res) => {
       }
     });
   } catch (err: unknown) { 
-    // Error logged below
-    console.error('[Get User Detail Error]', err instanceof Error ? err.message : String(err));
-    res.status(500).json({ success: false, message: 'Failed to find user detail' });
+    next(err);
   }
 };
 
@@ -1266,7 +1238,7 @@ interface UpdateProfileRequest extends AuthenticatedRequest {
   file?: Express.Multer.File;
 }
 
-export const updateProfile: AuthenticatedHandler = async (req, res) => {
+export const updateProfile: AuthenticatedHandler = async (req, res, next) => {
   const profileReq = req as unknown as UpdateProfileRequest;
   try {
     const userId = req.user.id;
@@ -1488,7 +1460,7 @@ export const updateProfile: AuthenticatedHandler = async (req, res) => {
             } else {
                 const insertValues: typeof pdsPersonalInformation.$inferInsert = { 
                     ...personalUpdates, 
-                    employeeId: (targetUserId as unknown as number)
+                    employeeId: targetUserId
                 };
                 await tx.insert(pdsPersonalInformation).values(insertValues);
             }
@@ -1584,13 +1556,11 @@ export const updateProfile: AuthenticatedHandler = async (req, res) => {
       } as UserWithRelations)
     });
   } catch (err: unknown) { 
-    // Error logged below
-    console.error('[Update Profile Error]', err instanceof Error ? err.message : String(err));
-    res.status(500).json({ success: false, message: 'Failed to update profile' });
+    next(err);
   }
 };
 
-export const getNextId: AsyncHandler = async (_req, res) => {
+export const getNextId: AsyncHandler = async (_req, res, next) => {
   try {
     const [result] = await db.select({
       maxId: sql<number | null>`MAX(CAST(REGEXP_REPLACE(employee_id, '[^0-9]', '') AS UNSIGNED))`
@@ -1618,12 +1588,10 @@ export const getNextId: AsyncHandler = async (_req, res) => {
       data: formattedNextId
     });
   } catch (err: unknown) {
-    // Error logged below
-    console.error('[Get Next ID Error]', err instanceof Error ? err.message : String(err));
-    res.status(500).json({ success: false, message: 'Failed to fetch next ID' });
+    next(err);
   }
 };
-export const findHiredApplicant: AsyncHandler = async (req, res) => {
+export const findHiredApplicant: AsyncHandler = async (req, res, next) => {
   try {
     const firstNameParam = req.query.firstName;
     const lastNameParam = req.query.lastName;
@@ -1718,23 +1686,20 @@ export const findHiredApplicant: AsyncHandler = async (req, res) => {
       }
     });
   } catch (err: unknown) { 
-    // Error logged below
-    console.error('Error in findHiredApplicant:', err instanceof Error ? err.message : String(err));
-    res.status(500).json({ success: false, message: 'Failed to search for applicant' });
+    next(err);
   }
 };
 
-export const checkEmailUniqueness: AsyncHandler = async (req, res) => {
+export const checkEmailUniqueness: AsyncHandler = async (req, res, next) => {
   try {
-    const { email, applicantId, applicant_id } = z.object({ 
+    const { email, applicantId } = z.object({ 
       email: z.string().email(),
-      applicantId: z.string().optional(),
-      applicant_id: z.string().optional()
+      applicantId: z.string().optional()
     }).parse(req.query);
     
     const errors = await checkSystemWideUniqueness({ 
       email,
-      excludeApplicantId: (applicantId || applicant_id) ? parseInt(applicantId || applicant_id!) : undefined
+      excludeApplicantId: applicantId ? parseInt(applicantId) : undefined
     });
     
     if (errors.email) {
@@ -1752,30 +1717,33 @@ export const checkEmailUniqueness: AsyncHandler = async (req, res) => {
       isUnique: true 
     });
   } catch (err: unknown) { 
-    // Error logged below
-    res.status(400).json({ success: false, message: 'Invalid request parameters.' });
+    next(err);
   }
 };
 
-export const logout: AuthenticatedHandler = async (req, res) => {
-  const userId = req.user?.id || null;
-  
-  res.clearCookie('accessToken', {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax'
-  });
-
-  if (userId) {
-    await AuditService.log({
-      userId,
-      module: 'AUTH',
-      action: 'LOGOUT',
-      req
+export const logout: AuthenticatedHandler = async (req, res, next) => {
+  try {
+    const userId = req.user?.id || null;
+    
+    res.clearCookie('accessToken', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax'
     });
-  }
 
-  res.status(200).json({ success: true, message: 'Logged out successfully.' });
+    if (userId) {
+      await AuditService.log({
+        userId,
+        module: 'AUTH',
+        action: 'LOGOUT',
+        req
+      });
+    }
+
+    res.status(200).json({ success: true, message: 'Logged out successfully.' });
+  } catch (err) {
+    next(err);
+  }
 };
 
 
@@ -1795,7 +1763,7 @@ const getDepartmentDescendantsForSetup = async (parentId: number): Promise<numbe
   return ids;
 };
 
-export const getSetupPositions: AsyncHandler = async (_req, res) => {
+export const getSetupPositions: AsyncHandler = async (_req, res, next) => {
   try {
     // 1. Ensure HR Department exists with official name
     const hrDept = await db.query.departments.findFirst({
@@ -1813,6 +1781,7 @@ export const getSetupPositions: AsyncHandler = async (_req, res) => {
     const positions = await db.query.plantillaPositions.findMany({
       where: inArray(plantillaPositions.departmentId, allHrDeptIds),
       orderBy: [desc(plantillaPositions.salaryGrade), desc(plantillaPositions.itemNumber)],
+      limit: 2, // 100% FIXED: Return only the two highest positions
     });
 
     if (positions.length === 0) {
@@ -1842,12 +1811,11 @@ export const getSetupPositions: AsyncHandler = async (_req, res) => {
       roles
     });
   } catch (err: unknown) { 
-    // Error logged below
-    res.status(500).json({ success: false, message: "Internal server error" });
+    next(err);
   }
 };
 
-export const setupPortal: AsyncHandler = async (req, res) => {
+export const setupPortal: AsyncHandler = async (req, res, next) => {
   try {
     const validatedData = SetupPortalSchema.parse(req.body);
     const { 
@@ -1959,34 +1927,32 @@ export const setupPortal: AsyncHandler = async (req, res) => {
       message: `${role} account created. Please verify your email.`,
       data: { email, role: role }
     });
-  } catch (_err) {
-    const errMessage = _err instanceof Error ? `${_err.message}\n${_err.stack}` : String(_err);
-    console.error('[SETUP_PORTAL_CRASH]', errMessage);
-    res.status(500).json({ success: false, message: "Internal server error", error: errMessage });
+  } catch (err) {
+    next(err);
   }
 };
-export const checkGovtIdUniqueness: AsyncHandler = async (req, res) => {
+export const checkGovtIdUniqueness: AsyncHandler = async (req, res, next) => {
   try {
     const { 
-      umidNumber, umid_number,
-      philsysId, philsys_id,
-      philhealthNumber, philhealth_number,
-      pagibigNumber, pagibig_number,
-      tinNumber, tin_number,
-      gsisNumber, gsis_number,
-      excludeAuthId, exclude_auth_id,
-      excludeApplicantId, exclude_applicant_id
+      umidNumber,
+      philsysId,
+      philhealthNumber,
+      pagibigNumber,
+      tinNumber,
+      gsisNumber,
+      excludeAuthId,
+      excludeApplicantId
     } = req.query;
 
     const errors = await checkSystemWideUniqueness({
-      umidNumber: String(umidNumber || umid_number || ''),
-      philsysId: String(philsysId || philsys_id || ''),
-      philhealthNumber: String(philhealthNumber || philhealth_number || ''),
-      pagibigNumber: String(pagibigNumber || pagibig_number || ''),
-      tinNumber: String(tinNumber || tin_number || ''),
-      gsisNumber: String(gsisNumber || gsis_number || ''),
-      excludeAuthId: excludeAuthId ? Number(excludeAuthId) : (exclude_auth_id ? Number(exclude_auth_id) : undefined),
-      excludeApplicantId: excludeApplicantId ? Number(excludeApplicantId) : (exclude_applicant_id ? Number(exclude_applicant_id) : undefined)
+      umidNumber: String(umidNumber || ''),
+      philsysId: String(philsysId || ''),
+      philhealthNumber: String(philhealthNumber || ''),
+      pagibigNumber: String(pagibigNumber || ''),
+      tinNumber: String(tinNumber || ''),
+      gsisNumber: String(gsisNumber || ''),
+      excludeAuthId: excludeAuthId ? Number(excludeAuthId) : undefined,
+      excludeApplicantId: excludeApplicantId ? Number(excludeApplicantId) : undefined
     });
 
     if (Object.keys(errors).length > 0) {
@@ -2006,13 +1972,7 @@ export const checkGovtIdUniqueness: AsyncHandler = async (req, res) => {
       message: 'Government ID is unique and available.'
     });
     return;
-  } catch (err: unknown) { // Error logged below
-    console.error('Check Govt ID error:', err);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Internal server error during uniqueness check.',
-      error: err instanceof Error ? err instanceof Error ? err.message : String(err) : String(err)
-    });
-    return;
+  } catch (err: unknown) { 
+    next(err);
   }
 };

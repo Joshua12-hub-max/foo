@@ -306,6 +306,7 @@ export interface LeaveFilters {
   status: ApplicationStatus | '';
   leaveType: LeaveType | '';
   department: string;
+  employeeId: string;
   startDate: string;
   endDate: string;
 }

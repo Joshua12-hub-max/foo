@@ -19,6 +19,7 @@ interface LeaveState {
   // Filters
   filters: LeaveFilters;
   searchQuery: string;
+  pagination: { page: number; limit: number };
 
   // Credits view
   selectedCredits: LeaveBalance[] | null;
@@ -43,6 +44,9 @@ interface LeaveActions {
   setFilters: (filters: Partial<LeaveFilters>) => void;
   setSearchQuery: (query: string) => void;
   resetFilters: () => void;
+  setPage: (page: number) => void;
+  setLimit: (limit: number) => void;
+  getQuery: () => any;
 
   // Credits actions
   setSelectedCredits: (credits: LeaveBalance[] | null) => void;
@@ -62,8 +66,14 @@ const defaultFilters: LeaveFilters = {
   status: '',
   leaveType: '',
   department: '',
+  employeeId: '',
   startDate: '',
   endDate: '',
+};
+
+const initialPagination = {
+    page: 1,
+    limit: 50,
 };
 
 const initialState: LeaveState = {
@@ -71,6 +81,7 @@ const initialState: LeaveState = {
   modalMode: null,
   filters: defaultFilters,
   searchQuery: '',
+  pagination: initialPagination,
   selectedCredits: null,
   creditsYear: new Date().getFullYear(),
   isSubmitting: false,
@@ -121,14 +132,41 @@ export const useLeaveStore = create<LeaveStore>((set) => ({
   // Filter actions
   setFilters: (newFilters) => set((state) => ({
     filters: { ...state.filters, ...newFilters },
+    pagination: { ...state.pagination, page: 1 } 
   })),
 
-  setSearchQuery: (query) => set({ searchQuery: query }),
+  setSearchQuery: (query) => set((state) => ({ 
+    searchQuery: query,
+    pagination: { ...state.pagination, page: 1 } 
+  })),
 
   resetFilters: () => set({
     filters: defaultFilters,
     searchQuery: '',
+    pagination: initialPagination
   }),
+  
+  setPage: (page) => set((state) => ({
+    pagination: { ...state.pagination, page }
+  })),
+
+  setLimit: (limit) => set((state) => ({
+    pagination: { ...state.pagination, limit, page: 1 }
+  })),
+
+  getQuery: () => {
+    const { filters, pagination, searchQuery } = get();
+    // Clean up empty strings or undefined
+    const cleanFilters = Object.fromEntries(
+        Object.entries(filters).filter(([_, v]) => v !== '' && v !== undefined)
+    );
+    return {
+        ...cleanFilters,
+        search: searchQuery || undefined,
+        page: pagination.page,
+        limit: pagination.limit
+    };
+  },
 
   // Credits actions
   setSelectedCredits: (credits) => set({ selectedCredits: credits }),

@@ -4,12 +4,12 @@ import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from '@tanstack/react-query';
 import { formatFullName } from '@/utils/nameUtils';
 import { formatEmployeeId } from "@/utils/formatters";
+import { useDTRStore } from "@/stores/dtrStore";
 import { 
   filterDTRData, 
   calculatePagination, 
   getStatusBadge as getStatusBadgeUtil,
   EmployeeDTRRecord,
-  EmployeeDTRFilters,
   EmployeePaginationResult,
   EmployeeInfo
 } from "../../Utils/employeeDTRUtils";
@@ -36,15 +36,9 @@ interface RawDTRRecord {
 
 export const useEmployeeDTR = () => {
   const { user } = useAuth();
+  const { filters, setFilters, resetFilters, search, setSearch } = useDTRStore();
   const today = useMemo(() => new Date().toLocaleDateString("en-US"), []);
 
-  // State management
-  const [filters, setFilters] = useState<EmployeeDTRFilters>({
-    fromDate: "",
-    toDate: "",
-  });
-
-  const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [loadingType, setLoadingType] = useState<string>(""); 
@@ -68,14 +62,14 @@ export const useEmployeeDTR = () => {
 
   // React Query: Fetch Data
   const { data: dtrData = [], isLoading, error: queryError, refetch } = useQuery({
-    queryKey: ['employee-dtr-logs', user?.employeeId, filters.fromDate, filters.toDate],
+    queryKey: ['employee-dtr-logs', user?.employeeId, filters.startDate, filters.endDate],
     queryFn: async () => {
         if (!user?.employeeId) return [];
         
         const response = await attendanceApi.getLogs({ 
           employeeId: String(user.employeeId),
-          startDate: filters.fromDate || undefined,
-          endDate: filters.toDate || undefined,
+          startDate: filters.startDate || undefined,
+          endDate: filters.endDate || undefined,
           limit: 1000
         });
         
@@ -129,7 +123,14 @@ export const useEmployeeDTR = () => {
 
   // Derived data
   const filteredData = useMemo(
-    () => filterDTRData(dtrData, filters, debouncedSearchQuery),
+    () => {
+        // Map store filters to EmployeeDTRFilters shape for the utility function
+        const legacyFilters = {
+            fromDate: filters.startDate || "",
+            toDate: filters.endDate || ""
+        };
+        return filterDTRData(dtrData, legacyFilters, debouncedSearchQuery);
+    },
     [filters, debouncedSearchQuery, dtrData]
   );
 
@@ -140,13 +141,15 @@ export const useEmployeeDTR = () => {
 
 
   // Event handlers
-  const handleFilterChange = useCallback((field: keyof EmployeeDTRFilters, value: string) => {
-    setFilters((prev) => ({ ...prev, [field]: value }));
-  }, []);
+  const handleFilterChange = useCallback((field: string, value: string) => {
+    // Standardize field mapping
+    const mappedField = field === "fromDate" ? "startDate" : (field === "toDate" ? "endDate" : field);
+    setFilters({ [mappedField]: value });
+  }, [setFilters]);
 
   const handleApply = useCallback(() => {
     // Check if at least one filter is selected
-    const hasFilters = filters.fromDate || filters.toDate;
+    const hasFilters = filters.startDate || filters.endDate;
     if (!hasFilters) {
       setErrorLocal("Please select at least one filter before applying.");
       return;
@@ -155,14 +158,13 @@ export const useEmployeeDTR = () => {
   }, [filters]);
 
   const handleClear = useCallback(() => {
-    setFilters({ fromDate: "", toDate: "" });
-    setSearchQuery("");
+    resetFilters();
     setSuccessMessage(MESSAGES.FILTERS_CLEARED);
-  }, []);
+  }, [resetFilters]);
 
   const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(e.target.value);
-  }, []);
+    setSearch(e.target.value);
+  }, [setSearch]);
 
   const handleRefresh = useCallback(async () => {
     await refetch();
@@ -187,7 +189,7 @@ export const useEmployeeDTR = () => {
       clearTimeout(searchTimeoutRef.current);
     }
     searchTimeoutRef.current = setTimeout(() => {
-      setDebouncedSearchQuery(searchQuery);
+      setDebouncedSearchQuery(search);
     }, DELAYS.SEARCH_DEBOUNCE);
 
     return () => {
@@ -195,7 +197,7 @@ export const useEmployeeDTR = () => {
         clearTimeout(searchTimeoutRef.current);
       }
     };
-  }, [searchQuery]);
+  }, [search]);
 
   useEffect(() => {
     if (error || errorLocal) {
@@ -219,7 +221,7 @@ export const useEmployeeDTR = () => {
     // Data
     today,
     filters,
-    searchQuery,
+    searchQuery: search,
     debouncedSearchQuery,
     currentPage,
     isLoading: isLoading || loadingType !== "",
@@ -247,3 +249,4 @@ export const useEmployeeDTR = () => {
     getStatusBadge
   };
 };
+

@@ -198,7 +198,17 @@ export const verifyToken: MiddlewareFunction = (
         }
 
         // Attach strongly-typed user to request
-        (req as AuthenticatedRequest).user = decoded;
+        const user = decoded as JwtPayload;
+        
+        // Handle Portal View Switch for Admin/HR
+        const portalView = req.headers['x-portal-view'];
+        if (portalView === 'employee' && ['Administrator', 'Human Resource'].includes(user.role)) {
+            // Override role to 'Employee' for the duration of this request
+            (req as AuthenticatedRequest).user = { ...user, role: 'Employee' };
+        } else {
+            (req as AuthenticatedRequest).user = user;
+        }
+        
         next();
       } catch (callbackError) {
         logDebug(`[AUTH] Error in JWT verify callback: ${callbackError instanceof Error ? callbackError.message : String(callbackError)}`);

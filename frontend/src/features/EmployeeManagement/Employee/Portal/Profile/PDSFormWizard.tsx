@@ -1188,20 +1188,39 @@ const PDSFormWizard: React.FC<PDSFormWizardProps> = ({ employeeId }) => {
 
   useEffect(() => {
     if (data.sameAddress) {
-      setData(prev => ({ ...prev, permHouseStreet: prev.resHouseStreet, permSubdivision: prev.resSubdivision, permBarangay: prev.resBarangay, permCityMunicipality: prev.resCityMunicipality, permProvince: prev.resProvince, permZip: prev.resZip, permRegion: prev.resRegion, permHouseBlockLot: prev.resHouseBlockLot, permStreet: prev.resStreet }));
+      const updatedPerm = {
+        permHouseStreet: data.resHouseStreet,
+        permSubdivision: data.resSubdivision,
+        permBarangay: data.resBarangay,
+        permCityMunicipality: data.resCityMunicipality,
+        permProvince: data.resProvince,
+        permZip: data.resZip,
+        permRegion: data.resRegion,
+        permHouseBlockLot: data.resHouseBlockLot,
+        permStreet: data.resStreet
+      };
+
+      const hasChanged = Object.entries(updatedPerm).some(([key, val]) => data[key as keyof PDSFormData] !== val);
+      if (hasChanged) {
+        setData(prev => ({ ...prev, ...updatedPerm }));
+      }
     }
-  }, [data.sameAddress, data.resHouseStreet, data.resSubdivision, data.resBarangay, data.resCityMunicipality, data.resProvince, data.resZip, data.resRegion, data.resHouseBlockLot, data.resStreet]);
+  }, [data.sameAddress, data.resHouseStreet, data.resSubdivision, data.resBarangay, data.resCityMunicipality, data.resProvince, data.resZip, data.resRegion, data.resHouseBlockLot, data.resStreet, data]);
 
   useEffect(() => {
     const formatted = formatAddr(data.resRegion, data.resProvince, data.resCityMunicipality, data.resBarangay, data.resHouseBlockLot, data.resSubdivision, data.resStreet);
-    if (formatted && formatted !== data.resHouseStreet) setData(prev => ({ ...prev, resHouseStreet: formatted }));
-  }, [data.resRegion, data.resProvince, data.resCityMunicipality, data.resBarangay, data.resHouseBlockLot, data.resSubdivision, data.resStreet]);
+    if (formatted && formatted !== data.resHouseStreet) {
+      setData(prev => ({ ...prev, resHouseStreet: formatted }));
+    }
+  }, [data.resRegion, data.resProvince, data.resCityMunicipality, data.resBarangay, data.resHouseBlockLot, data.resSubdivision, data.resStreet, data.resHouseStreet]);
 
   useEffect(() => {
     if (data.sameAddress) return;
     const formatted = formatAddr(data.permRegion, data.permProvince, data.permCityMunicipality, data.permBarangay, data.permHouseBlockLot, data.permSubdivision, data.permStreet);
-    if (formatted && formatted !== data.permHouseStreet) setData(prev => ({ ...prev, permHouseStreet: formatted }));
-  }, [data.sameAddress, data.permRegion, data.permProvince, data.permCityMunicipality, data.permBarangay, data.permHouseBlockLot, data.permSubdivision, data.permStreet]);
+    if (formatted && formatted !== data.permHouseStreet) {
+      setData(prev => ({ ...prev, permHouseStreet: formatted }));
+    }
+  }, [data.sameAddress, data.permRegion, data.permProvince, data.permCityMunicipality, data.permBarangay, data.permHouseBlockLot, data.permSubdivision, data.permStreet, data.permHouseStreet]);
 
   useEffect(() => {
     if (!employeeId) return;

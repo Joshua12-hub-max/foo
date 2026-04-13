@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { attendanceApi } from '@/api/attendanceApi';
+import { useAttendanceStore } from '@/stores/attendanceStore';
 
 export interface AttendanceRecord {
   id: string | number;
@@ -34,12 +35,15 @@ const getStringOrNumber = (val: unknown, fallback: string | number = 0): string 
 
 
 export const useAttendanceData = (isAdmin: boolean = false) => {
+  const queryParams = useAttendanceStore((state) => state.getQuery());
+  const { page, limit } = useAttendanceStore((state) => state.pagination);
+
   // 3. Define the explicit Generics for useQuery to prevent 'as' casting later
   const { data, isLoading, error, refetch } = useQuery<AttendanceRecord[], Error>({
-    queryKey: ['attendance', { isAdmin }],
+    queryKey: ['attendance', { isAdmin, ...queryParams }],
     queryFn: async (): Promise<AttendanceRecord[]> => {
       // Treat the response strictly as unknown instead of 'any'
-      const response: unknown = await attendanceApi.getLogs({});
+      const response: unknown = await attendanceApi.getLogs(queryParams);
       
       let apiData: unknown[] =[];
 
@@ -47,10 +51,16 @@ export const useAttendanceData = (isAdmin: boolean = false) => {
       if (Array.isArray(response)) {
         apiData = response;
       } else if (isRecord(response)) {
-        if (Array.isArray(response.data)) {
-          apiData = response.data;
-        } else if (isRecord(response.data) && Array.isArray(response.data.data)) {
-          apiData = response.data.data;
+        // Axios wraps the response in a 'data' property
+        const axiosData = response.data;
+        if (Array.isArray(axiosData)) {
+          apiData = axiosData;
+        } else if (isRecord(axiosData)) {
+          if (Array.isArray(axiosData.data)) {
+            apiData = axiosData.data;
+          } else if (isRecord(axiosData.data) && Array.isArray(axiosData.data.data)) {
+            apiData = axiosData.data.data;
+          }
         }
       }
       
@@ -61,7 +71,7 @@ export const useAttendanceData = (isAdmin: boolean = false) => {
 
         const firstName = getStringOrUndefined(item.firstName);
         const lastName = getStringOrUndefined(item.lastName);
-        const providedName = getStringOrUndefined(item.name);
+        const providedName = getStringOrUndefined(item.name || item.employeeName);
         
         const computedName = `${firstName || ''} ${lastName || ''}`.trim();
         const finalName = providedName || (computedName.length > 0 ? computedName : undefined);
@@ -93,6 +103,8 @@ export const useAttendanceData = (isAdmin: boolean = false) => {
     data, // Already strictly typed as AttendanceRecord[] via useQuery Generic
     isLoading, 
     error: error ? error.message : null, 
-    refetch 
+    refetch,
+    page,
+    limit
   };
 };

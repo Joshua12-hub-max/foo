@@ -19,7 +19,6 @@ import Pagination from '@/components/CustomUI/Pagination';
 
 // Hooks
 import { useLeaveData } from '@/features/LeaveRequests/hooks/Employee/useLeaveData';
-import { useFilters } from '@/features/LeaveRequests/hooks/Employee/useFilters';
 import { EmployeeLeaveRequest } from "@/features/LeaveRequests/types";
 import { LeaveStatus } from "@/components/Custom/Timekeeping/LeaveRequestComponents/Employee/constants/leaveConstants";
 import type { LeaveBalance, ApplicationStatus, LeaveType } from '@/types/leave.types';
@@ -65,29 +64,13 @@ const LeaveRequest = () => {
     staleTime: 1000 * 60 * 10, // 10 minutes
   });
   
-  // useFilters para e-manage ang UI state of filters only
-  const { 
-    filters, 
-    appliedFilters, 
-    handleFilterChange, 
-    handleApplyFilters, 
-    handleClear 
-  } = useFilters(leaves); // Passing leaves helps useFilters know data structure, though we don't use its filteredData return anymore for rendering
-  
+  // Standardized approach: Let the Filters component handle its own internal RHF state
+  // and update the LeaveStore directly on "Apply".
 
   // Sync Search with Server
   useEffect(() => {
     updateServerFilters({ search: debouncedSearchQuery });
   }, [debouncedSearchQuery, updateServerFilters]);
-
-  useEffect(() => {
-    updateServerFilters({
-      startDate: String(appliedFilters.date || ''),
-      endDate: appliedFilters.date ? undefined : undefined, 
-      status: (appliedFilters.status || '') as ApplicationStatus | '',
-      type: (appliedFilters.type || '') as LeaveType | ''
-    });
-  }, [appliedFilters, updateServerFilters]);
 
   // Auto-dismiss messages
   useEffect(() => {
@@ -149,10 +132,6 @@ const LeaveRequest = () => {
 
       {/* Filters */}
       <Filters 
-        filters={filters}
-        onFilterChange={handleFilterChange}
-        onApplyFilters={handleApplyFilters}
-        onClear={handleClear}
         onNewRequest={() => setIsSubmitModalOpen(true)}
         isLoading={isLoading}
         hasCredits={credits.length > 0 && credits.some((c) => c.balance > 0)}
@@ -206,7 +185,6 @@ const LeaveRequest = () => {
         <Table 
           data={leaves}
           searchQuery={debouncedSearchQuery}
-          filters={filters}
           onFinalize={(req) => handleOpenFinalize(req)}
         />
       )}

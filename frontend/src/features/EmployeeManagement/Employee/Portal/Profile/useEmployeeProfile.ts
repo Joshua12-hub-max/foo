@@ -99,7 +99,8 @@ export const useEmployeeProfile = (employeeId?: number | string): UseEmployeePro
 
   useEffect(() => {
     fetchProfile();
-  }, [fetchProfile]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return {
     profile,

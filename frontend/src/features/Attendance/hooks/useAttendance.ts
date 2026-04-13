@@ -10,10 +10,10 @@ export const useAttendanceLogs = (filters: AttendanceQueryValues) => {
 };
 
 
-export const useRecentActivity = () => {
+export const useRecentActivity = (params?: AttendanceQueryValues) => {
     return useQuery({
-        queryKey: ['recentActivity'],
-        queryFn: attendanceApi.getRecentActivity,
+        queryKey: ['recentActivity', params],
+        queryFn: () => attendanceApi.getRecentActivity(params),
     });
 };
 
@@ -24,9 +24,9 @@ export const useTodayStatus = (employeeId?: string) => {
     });
 };
 
-export const useDashboardStats = () => {
+export const useDashboardStats = (params?: AttendanceQueryValues) => {
     return useQuery({
-        queryKey: ['dashboardStats'],
-        queryFn: attendanceApi.getDashboardStats,
+        queryKey: ['dashboardStats', params],
+        queryFn: () => attendanceApi.getDashboardStats(params),
     });
 };

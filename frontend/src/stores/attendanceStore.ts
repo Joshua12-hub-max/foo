@@ -47,8 +47,18 @@ export const useAttendanceStore = create<AttendanceState>((set, get) => ({
     })),
   getQuery: () => {
     const state = get();
+    const query: Record<string, string | number> = {};
+
+    // Filter out empty strings from filters
+    Object.entries(state.filters).forEach(([key, value]) => {
+      if (value !== '' && value !== undefined && value !== null) {
+        query[key] = value;
+      }
+    });
+
+    // Add pagination
     return {
-      ...state.filters,
+      ...query,
       ...state.pagination,
     };
   },

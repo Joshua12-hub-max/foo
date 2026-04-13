@@ -6,17 +6,19 @@ import {
   authentication, 
   bioEnrolledUsers,
   departments,
-  pdsHrDetails
+  pdsHrDetails,
+  leaveApplications
 } from "../db/schema.js";
-import { eq, and, sql, desc, between, or, like, inArray } from "drizzle-orm";
+import { eq, and, sql, desc, gte, lte, between, or, like, inArray, ne, isNotNull, lt } from "drizzle-orm";
 import type { AuthenticatedRequest } from "../types/index.js";
 import {
   GetLogsSchema,
 } from "../schemas/attendanceSchema.js";
 import { DTRApiResponse } from "../types/attendance.js";
-import { formatToManilaDateTime, currentManilaDateTime } from "../utils/dateUtils.js";
-import { compareIds, normalizeIdJs, normalizeIdSql } from "../utils/idUtils.js";
-import { processDailyAttendance } from "../services/attendanceProcessor.js";
+import { formatToManilaDateTime, currentManilaDateOnly, normalizeToIsoDate } from "../utils/dateUtils.js";
+import { formatFullName } from "../utils/nameUtils.js";
+import { compareIds, normalizeIdJs } from "../utils/idUtils.js";
+import { ATTENDANCE_STATUS } from '../constants/statusConstants.js';
 
 /**
  * Standard Error Handler
@@ -28,18 +30,6 @@ const handleError = (res: Response, error: Error, context: string): void => {
     message: `An unexpected error occurred in ${context}.`,
     error: error.message
   });
-};
-
-/**
- * Get Local Manila Date (YYYY-MM-DD)
- */
-const getLocalDate = (): string => {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Manila",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
 };
 
 /**
@@ -71,137 +61,131 @@ export const getLogs = async (req: Request, res: Response): Promise<void> => {
     const { page, limit, startDate, endDate, department, employeeId: queryEmployeeId, search } = validation.data.query;
     const isAdminOrHr = ['Administrator', 'Human Resource'].includes(user.role);
     
-    // 1. Determine Target Employees (ID Isolation)
-    // We use distinct() to prevent join multipliers if an employee has multiple HR records (though they shouldn't)
-    const employeeQuery = db.selectDistinct({
-      id: authentication.id,
-      employeeId: authentication.employeeId,
-      firstName: authentication.firstName,
-      lastName: authentication.lastName,
-      middleName: authentication.middleName,
-      suffix: authentication.suffix,
-      department: sql<string>`COALESCE(${departments.name}, ${bioEnrolledUsers.department}, 'N/A')`
-    })
-    .from(authentication)
-    .leftJoin(pdsHrDetails, eq(authentication.id, pdsHrDetails.employeeId))
-    .leftJoin(departments, eq(pdsHrDetails.departmentId, departments.id))
-    .leftJoin(bioEnrolledUsers, compareIds(bioEnrolledUsers.employeeId, authentication.employeeId));
+    // 100% PRECISE FILTERING: 
+    // 1. If an explicit employeeId is provided (and it's not 'all'), use it strictly.
+    // 2. If 'all' is explicitly provided, use 'all' (only for Admin/HR).
+    // 3. IF NO ID IS PROVIDED (empty or missing):
+    //    - If Admin/HR, use 'all' (This is for the Admin Portal).
+    //    - If regular user, use user.employeeId (Self).
+    const effectiveEmployeeId = (queryEmployeeId && queryEmployeeId !== 'all' && queryEmployeeId !== '') 
+      ? String(queryEmployeeId) 
+      : (isAdminOrHr ? 'all' : user.employeeId);
 
-    const empConditions = [];
+    // 100% SUCCESS: Correctly identify if we are in a single employee view for Absent expansion
+    const isSingleEmployee = (effectiveEmployeeId !== 'all');
+    const targetIdForExpansion = isSingleEmployee ? effectiveEmployeeId : null;
+
+    // Normalize Dates to YYYY-MM-DD for MySQL compatibility
+    const startStr = normalizeToIsoDate(startDate) || (currentManilaDateOnly().split('-').slice(0, 2).join('-') + '-01');
+    const endStr = normalizeToIsoDate(endDate) || currentManilaDateOnly();
     
-    if (!isAdminOrHr) {
-      empConditions.push(compareIds(authentication.employeeId, user.employeeId));
-    } else {
-      if (queryEmployeeId && queryEmployeeId !== 'all' && queryEmployeeId !== '') {
-        empConditions.push(compareIds(authentication.employeeId, queryEmployeeId));
-      }
-      if (department && department !== 'all' && department !== 'All Departments' && department !== '') {
-        empConditions.push(sql`COALESCE(${departments.name}, ${bioEnrolledUsers.department}, 'N/A') = ${department}`);
-      }
-      if (search && search !== '') {
-        const s = `%${search}%`;
-        empConditions.push(or(
-          like(authentication.firstName, s),
-          like(authentication.lastName, s),
-          like(authentication.employeeId, s)
-        ));
-      }
-    }
-
-    const targetEmployees = await employeeQuery.where(empConditions.length > 0 ? and(...empConditions) : undefined);
-
-    if (targetEmployees.length === 0) {
-      res.status(200).json({ success: true, data: [], totals: { lateMinutes: 0, undertimeMinutes: 0, hoursWorked: "0.00" }, pagination: { total: 0, page, limit, totalPages: 0 } });
-      return;
-    }
-
-    // 2. Define Date Range
-    const start = (startDate && startDate !== '') ? new Date(startDate) : new Date();
-    const end = (endDate && endDate !== '') ? new Date(endDate) : new Date();
-    if (!startDate || startDate === '') {
-      start.setDate(1); // Default to current month start
-    }
-
     const dates: string[] = [];
-    if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
-      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    const dStart = new Date(startStr);
+    const dEnd = new Date(endStr);
+    
+    if (!isNaN(dStart.getTime()) && !isNaN(dEnd.getTime())) {
+      for (let d = new Date(dStart); d <= dEnd; d.setDate(d.getDate() + 1)) {
         dates.push(d.toISOString().split('T')[0]);
       }
     }
 
-    // 3. Get existing DTRs for these employees and dates
-    // 100% TYPE SAFETY: Filter out nulls and ensure arrays are not empty to prevent SQL 'IN ()' errors
-    const empIds = targetEmployees.map(e => e.employeeId).filter((id): id is string => !!id);
+    // 100% PRECISION: Join shift and duty info directly for Attendance View
+    const dtrQuery = db.select({
+      dtr: dailyTimeRecords,
+      firstName: authentication.firstName,
+      lastName: authentication.lastName,
+      middleName: authentication.middleName,
+      suffix: authentication.suffix,
+      department: sql<string>`COALESCE(${departments.name}, ${bioEnrolledUsers.department}, 'N/A')`,
+      bioFullName: bioEnrolledUsers.fullName,
+      dutyType: sql<string>`COALESCE(${pdsHrDetails.dutyType}, 'Standard')`,
+      shift: sql<string>`COALESCE(
+        (SELECT CONCAT(TIME_FORMAT(start_time, '%h:%i %p'), ' - ', TIME_FORMAT(end_time, '%h:%i %p')) 
+         FROM schedules 
+         WHERE employee_id = ${dailyTimeRecords.employeeId} 
+         AND (start_date IS NULL OR start_date <= ${dailyTimeRecords.date}) 
+         AND (end_date IS NULL OR end_date >= ${dailyTimeRecords.date}) 
+         ORDER BY updated_at DESC LIMIT 1),
+        (SELECT CONCAT(TIME_FORMAT(start_time, '%h:%i %p'), ' - ', TIME_FORMAT(end_time, '%h:%i %p')) 
+         FROM shift_templates WHERE is_default = 1 LIMIT 1),
+        '08:00 AM - 05:00 PM'
+      )`
+    })
+    .from(dailyTimeRecords)
+    .leftJoin(authentication, compareIds(dailyTimeRecords.employeeId, authentication.employeeId))
+    .leftJoin(pdsHrDetails, eq(authentication.id, pdsHrDetails.employeeId))
+    .leftJoin(departments, eq(pdsHrDetails.departmentId, departments.id))
+    .leftJoin(bioEnrolledUsers, compareIds(bioEnrolledUsers.employeeId, dailyTimeRecords.employeeId));
+
+    const conditions = [];
+    conditions.push(between(dailyTimeRecords.date, startStr, endStr));
     
-    let existingDtrs: any[] = [];
-    if (empIds.length > 0 && dates.length > 0) {
-      existingDtrs = await db.select().from(dailyTimeRecords).where(and(
-        inArray(normalizeIdSql(dailyTimeRecords.employeeId), empIds.map(normalizeIdJs)),
-        inArray(dailyTimeRecords.date, dates)
-      ));
+    if (effectiveEmployeeId !== 'all') {
+        conditions.push(compareIds(dailyTimeRecords.employeeId, effectiveEmployeeId));
+    }
+    
+    // 100% SUCCESS: Apply department filter even if employeeId is specified (though usually redundant)
+    // but critical if effectiveEmployeeId is 'all'
+    if (department && department !== 'all' && department !== 'All Departments' && department !== '') {
+        conditions.push(like(sql`LOWER(COALESCE(${departments.name}, ${bioEnrolledUsers.department}, 'N/A'))`, `%${department.toLowerCase()}%`));
+    }
+    
+    if (effectiveEmployeeId === 'all' && search && search !== '') {
+        const s = `%${search}%`;
+        conditions.push(or(
+            like(authentication.firstName, s),
+            like(authentication.lastName, s),
+            like(dailyTimeRecords.employeeId, s)
+        ));
     }
 
-    const dtrMap = new Map<string, typeof existingDtrs[0]>();
+    const existingDtrs = await dtrQuery.where(and(...conditions));
+
+    const fullList: DTRApiResponse[] = [];
     let totalLate = 0;
     let totalUndertime = 0;
     let totalSecondsWorked = 0;
 
-    existingDtrs.forEach(d => {
-      dtrMap.set(`${d.employeeId}:${d.date}`, d);
-      totalLate += (d.lateMinutes || 0);
-      totalUndertime += (d.undertimeMinutes || 0);
-      if (d.timeIn && d.timeOut) {
-          const diff = (new Date(d.timeOut).getTime() - new Date(d.timeIn).getTime()) / 1000;
-          // Apply 1 hour break policy if worked > 5 hours
+    existingDtrs.forEach(({ dtr, firstName, lastName, middleName, suffix, department, bioFullName, dutyType, shift }) => {
+      const empId = dtr.employeeId;
+      totalLate += (dtr.lateMinutes || 0);
+      totalUndertime += (dtr.undertimeMinutes || 0);
+      
+      if (dtr.timeIn && dtr.timeOut) {
+          const diff = (new Date(dtr.timeOut).getTime() - new Date(dtr.timeIn).getTime()) / 1000;
           totalSecondsWorked += (diff > 18000 ? diff - 3600 : diff);
       }
+
+      const fullName = (firstName && lastName) 
+        ? `${toTitleCase(lastName)}, ${toTitleCase(firstName)}${middleName ? ' ' + toTitleCase(middleName) : ''}`
+        : (bioFullName || `Employee ${empId}`);
+
+      fullList.push({
+        id: dtr.id,
+        employeeId: normalizeIdJs(empId),
+        date: dtr.date,
+        timeIn: dtr.timeIn ? formatToManilaDateTime(dtr.timeIn) : null,
+        timeOut: dtr.timeOut ? formatToManilaDateTime(dtr.timeOut) : null,
+        lateMinutes: dtr.lateMinutes || 0,
+        undertimeMinutes: dtr.undertimeMinutes || 0,
+        overtimeMinutes: dtr.overtimeMinutes || 0,
+        status: dtr.status || ATTENDANCE_STATUS.PRESENT,
+        createdAt: dtr.createdAt || null,
+        updatedAt: dtr.updatedAt || null,
+        employeeName: fullName,
+        firstName: firstName || '',
+        lastName: lastName || '',
+        middleName: middleName || null,
+        suffix: suffix || null,
+        department: department || 'N/A',
+        duties: 'Regular Schedule',
+        shift: shift || '08:00 AM - 05:00 PM',
+        dutyType: dutyType || 'Standard'
+      });
     });
 
-    // 4. Construct Full Attendance List
-    const fullList: DTRApiResponse[] = [];
-    const sortedDates = [...dates].sort((a, b) => b.localeCompare(a));
+    fullList.sort((a, b) => b.date.localeCompare(a.date));
     
-    // 100% PRECISION: Smart Expansion
-    // If viewing a SPECIFIC employee, we show ALL dates (including absents) for their DTR.
-    // If viewing ALL employees or a DEPARTMENT, we ONLY show rows that physically exist in the database
-    // to prevent the "Too Many Absent" clutter reported by the user.
-    const isSingleEmployee = queryEmployeeId && queryEmployeeId !== 'all' && queryEmployeeId !== '';
-
-    for (const date of sortedDates) {
-      for (const emp of targetEmployees) {
-        const dtr = dtrMap.get(`${emp.employeeId}:${date}`);
-        
-        // Skip expansion if it's not a single-employee view and no record exists
-        if (!isSingleEmployee && !dtr) continue;
-
-        const fullName = `${toTitleCase(emp.lastName)}, ${toTitleCase(emp.firstName)}${emp.middleName ? ' ' + toTitleCase(emp.middleName) : ''}`;
-
-        fullList.push({
-          id: dtr?.id || 0,
-          employeeId: emp.employeeId || '',
-          date: date,
-          timeIn: dtr?.timeIn ? formatToManilaDateTime(dtr.timeIn) : null,
-          timeOut: dtr?.timeOut ? formatToManilaDateTime(dtr.timeOut) : null,
-          lateMinutes: dtr?.lateMinutes || 0,
-          undertimeMinutes: dtr?.undertimeMinutes || 0,
-          overtimeMinutes: dtr?.overtimeMinutes || 0,
-          status: dtr?.status || 'Absent',
-          createdAt: dtr?.createdAt || null,
-          updatedAt: dtr?.updatedAt || null,
-          employeeName: fullName,
-          firstName: emp.firstName || '',
-          lastName: emp.lastName || '',
-          middleName: emp.middleName || null,
-          suffix: emp.suffix || null,
-          department: emp.department || 'N/A',
-          duties: 'Standard Shift',
-          shift: '08:00 AM - 05:00 PM',
-          dutyType: 'Standard'
-        });
-      }
-    }
-
-    // 5. Pagination
     const total = fullList.length;
     const totalPages = Math.ceil(total / limit);
     const offset = (page - 1) * limit;
@@ -226,8 +210,29 @@ export const getLogs = async (req: Request, res: Response): Promise<void> => {
 /**
  * GET /recent-activity
  */
-export const getRecentActivity = async (_req: Request, res: Response): Promise<void> => {
+export const getRecentActivity = async (req: Request, res: Response): Promise<void> => {
   try {
+    const authReq = req as AuthenticatedRequest;
+    const user = authReq.user;
+    const { employeeId: queryEmployeeId } = req.query;
+
+    const isAdminOrHr = ['Administrator', 'Human Resource'].includes(user.role);
+
+    // 100% PRECISE FILTERING: 
+    // 1. If an explicit employeeId is provided (and it's not 'all'), use it strictly.
+    // 2. If 'all' is explicitly provided, use 'all' (only for Admin/HR).
+    // 3. IF NO ID IS PROVIDED (empty or missing):
+    //    - If Admin/HR, use 'all' (This is for the Admin Portal).
+    //    - If regular user, use user.employeeId (Self).
+    const effectiveId = (queryEmployeeId && queryEmployeeId !== 'all' && queryEmployeeId !== '') 
+      ? String(queryEmployeeId) 
+      : (isAdminOrHr && queryEmployeeId === 'all' ? 'all' : (isAdminOrHr && !queryEmployeeId ? 'all' : user.employeeId));
+
+    const whereConditions = [];
+    if (effectiveId !== 'all') {
+      whereConditions.push(compareIds(dailyTimeRecords.employeeId, effectiveId));
+    }
+
     const logs = await db.select({
       id: dailyTimeRecords.id,
       employeeId: dailyTimeRecords.employeeId,
@@ -238,17 +243,23 @@ export const getRecentActivity = async (_req: Request, res: Response): Promise<v
       updatedAt: dailyTimeRecords.updatedAt,
       firstName: authentication.firstName,
       lastName: authentication.lastName,
+      middleName: authentication.middleName,
+      suffix: authentication.suffix,
       bioFullName: bioEnrolledUsers.fullName
     })
     .from(dailyTimeRecords)
     .leftJoin(authentication, compareIds(dailyTimeRecords.employeeId, authentication.employeeId))
     .leftJoin(bioEnrolledUsers, compareIds(bioEnrolledUsers.employeeId, dailyTimeRecords.employeeId))
+    .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
     .orderBy(desc(dailyTimeRecords.updatedAt))
     .limit(20);
 
     const formattedLogs = logs.map(log => ({
       ...log,
-      employeeName: log.firstName && log.lastName ? `${toTitleCase(log.lastName)}, ${toTitleCase(log.firstName)}` : (log.bioFullName || "Unknown"),
+      employeeId: normalizeIdJs(log.employeeId),
+      employeeName: log.firstName && log.lastName 
+        ? formatFullName(log.lastName, log.firstName, log.middleName, log.suffix) 
+        : (log.bioFullName || `Employee ${normalizeIdJs(log.employeeId)}`),
       timeIn: log.timeIn ? formatToManilaDateTime(log.timeIn) : null,
       timeOut: log.timeOut ? formatToManilaDateTime(log.timeOut) : null,
     }));
@@ -264,14 +275,35 @@ export const getRecentActivity = async (_req: Request, res: Response): Promise<v
  */
 export const getRawLogs = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { employeeId, startDate, endDate, limit = 500 } = req.query;
+    const authReq = req as AuthenticatedRequest;
+    const user = authReq.user;
+    const { employeeId: queryEmployeeId, startDate, endDate, department, limit = 500 } = req.query;
+    
+    const isAdminOrHr = ['Administrator', 'Human Resource'].includes(user.role);
+    
+    // Default to 'all' for Admin/HR, otherwise 'self'
+    const effectiveId = (queryEmployeeId && queryEmployeeId !== 'all' && queryEmployeeId !== '') 
+      ? String(queryEmployeeId) 
+      : (isAdminOrHr ? 'all' : user.employeeId);
+
+    const startStr = normalizeToIsoDate(startDate as string);
+    const endStr = normalizeToIsoDate(endDate as string);
+
     const whereConditions = [];
 
-    if (employeeId && employeeId !== 'all') {
-      whereConditions.push(compareIds(attendanceLogs.employeeId, String(employeeId)));
+    if (effectiveId !== 'all') {
+      whereConditions.push(compareIds(attendanceLogs.employeeId, effectiveId));
     }
-    if (startDate && endDate) {
-      whereConditions.push(between(attendanceLogs.scanTime, `${startDate} 00:00:00`, `${endDate} 23:59:59`));
+    if (startStr && endStr) {
+      whereConditions.push(between(attendanceLogs.scanTime, `${startStr} 00:00:00`, `${endStr} 23:59:59`));
+    } else if (startStr) {
+        whereConditions.push(gte(attendanceLogs.scanTime, `${startStr} 00:00:00`));
+    } else if (endStr) {
+        whereConditions.push(lte(attendanceLogs.scanTime, `${endStr} 23:59:59`));
+    }
+
+    if (department && department !== 'all' && department !== 'All Departments' && department !== '') {
+        whereConditions.push(like(sql`LOWER(COALESCE(${departments.name}, ${bioEnrolledUsers.department}, 'N/A'))`, `%${String(department).toLowerCase()}%`));
     }
 
     const logs = await db.select({
@@ -282,10 +314,26 @@ export const getRawLogs = async (req: Request, res: Response): Promise<void> => 
       source: attendanceLogs.source,
       firstName: authentication.firstName,
       lastName: authentication.lastName,
-      bioFullName: bioEnrolledUsers.fullName
+      middleName: authentication.middleName,
+      suffix: authentication.suffix,
+      bioFullName: bioEnrolledUsers.fullName,
+      department: sql<string>`COALESCE(${departments.name}, ${bioEnrolledUsers.department}, 'N/A')`,
+      shift: sql<string>`COALESCE(
+        (SELECT CONCAT(TIME_FORMAT(start_time, '%h:%i %p'), ' - ', TIME_FORMAT(end_time, '%h:%i %p')) 
+         FROM schedules 
+         WHERE employee_id = ${attendanceLogs.employeeId} 
+         AND (start_date IS NULL OR start_date <= DATE(${attendanceLogs.scanTime})) 
+         AND (end_date IS NULL OR end_date >= DATE(${attendanceLogs.scanTime})) 
+         ORDER BY updated_at DESC LIMIT 1),
+        (SELECT CONCAT(TIME_FORMAT(start_time, '%h:%i %p'), ' - ', TIME_FORMAT(end_time, '%h:%i %p')) 
+         FROM shift_templates WHERE is_default = 1 LIMIT 1),
+        '08:00 AM - 05:00 PM'
+      )`
     })
     .from(attendanceLogs)
     .leftJoin(authentication, compareIds(attendanceLogs.employeeId, authentication.employeeId))
+    .leftJoin(pdsHrDetails, eq(authentication.id, pdsHrDetails.employeeId))
+    .leftJoin(departments, eq(pdsHrDetails.departmentId, departments.id))
     .leftJoin(bioEnrolledUsers, compareIds(attendanceLogs.employeeId, bioEnrolledUsers.employeeId))
     .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
     .orderBy(desc(attendanceLogs.scanTime))
@@ -293,7 +341,10 @@ export const getRawLogs = async (req: Request, res: Response): Promise<void> => 
 
     const formattedLogs = logs.map(log => ({
       ...log,
-      employeeName: log.firstName && log.lastName ? `${toTitleCase(log.lastName)}, ${toTitleCase(log.firstName)}` : (log.bioFullName || "Unknown Employee")
+      employeeId: normalizeIdJs(log.employeeId),
+      employeeName: log.firstName && log.lastName 
+        ? formatFullName(log.lastName, log.firstName, log.middleName, log.suffix) 
+        : (log.bioFullName || `Employee ${normalizeIdJs(log.employeeId)}`)
     }));
 
     res.status(200).json({ success: true, data: formattedLogs });
@@ -305,44 +356,186 @@ export const getRawLogs = async (req: Request, res: Response): Promise<void> => 
 /**
  * GET /dashboard-stats
  */
-export const getDashboardStats = async (_req: Request, res: Response): Promise<void> => {
+export const getDashboardStats = async (req: Request, res: Response): Promise<void> => {
   try {
-    const today = getLocalDate();
+    const authReq = req as AuthenticatedRequest;
+    const user = authReq.user;
+    const { employeeId: queryEmployeeId } = req.query;
     
-    // Fetch DTRs with Names
+    const isAdminOrHr = ['Administrator', 'Human Resource'].includes(user.role);
+    
+    // Default to 'all' for Admin/HR, otherwise 'self'
+    const effectiveId = (queryEmployeeId && queryEmployeeId !== 'all' && queryEmployeeId !== '') 
+      ? String(queryEmployeeId) 
+      : (isAdminOrHr ? 'all' : user.employeeId);
+
+    const today = currentManilaDateOnly();
+    
+    // 1. Fetch DTRs for today
     const dtrs = await db.select({
-      id: dailyTimeRecords.id,
+      id: dailyTimeRecords.employeeId, // Use actual employee ID (Emp-001) not database ID
       employeeId: dailyTimeRecords.employeeId,
       status: dailyTimeRecords.status,
       timeIn: dailyTimeRecords.timeIn,
       timeOut: dailyTimeRecords.timeOut,
       firstName: authentication.firstName,
       lastName: authentication.lastName,
-      department: sql<string>`COALESCE(${departments.name}, 'N/A')`
+      middleName: authentication.middleName,
+      suffix: authentication.suffix,
+      department: departments.name,
+      jobTitle: pdsHrDetails.jobTitle
     })
     .from(dailyTimeRecords)
     .leftJoin(authentication, compareIds(dailyTimeRecords.employeeId, authentication.employeeId))
     .leftJoin(pdsHrDetails, eq(authentication.id, pdsHrDetails.employeeId))
     .leftJoin(departments, eq(pdsHrDetails.departmentId, departments.id))
-    .where(eq(dailyTimeRecords.date, today));
-    
-    const presentList = dtrs.filter(d => d.status && ['Present', 'Present (Late)', 'Late', 'Undertime', 'Late/Undertime'].includes(d.status));
-    const lateList = dtrs.filter(d => d.status && ['Late', 'Present (Late)', 'Late/Undertime'].includes(d.status));
-    
+    .where(and(
+        eq(dailyTimeRecords.date, today),
+        effectiveId !== 'all' ? compareIds(dailyTimeRecords.employeeId, effectiveId) : undefined
+    ));
+
+    // 2. Fetch Active Leave Applications
+    const leaveStatusList = ['Approved'];
+    const activeLeaves = await db.select({
+      id: authentication.id,
+      employeeId: leaveApplications.employeeId,
+      firstName: authentication.firstName,
+      lastName: authentication.lastName,
+      middleName: authentication.middleName,
+      suffix: authentication.suffix,
+      leaveType: leaveApplications.leaveType,
+      department: departments.name
+    })
+    .from(leaveApplications)
+    .leftJoin(authentication, compareIds(leaveApplications.employeeId, authentication.employeeId))
+    .leftJoin(pdsHrDetails, eq(authentication.id, pdsHrDetails.employeeId))
+    .leftJoin(departments, eq(pdsHrDetails.departmentId, departments.id))
+    .where(and(
+      inArray(leaveApplications.status, leaveStatusList as any),
+      lte(leaveApplications.startDate, today),
+      gte(leaveApplications.endDate, today),
+      effectiveId !== 'all' ? compareIds(leaveApplications.employeeId, effectiveId) : undefined
+    ));
+
+    // 3. Fetch Recent Hires (Last 30 days)
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const hiredDateStr = thirtyDaysAgo.toISOString().split('T')[0];
+
+    const recentHires = await db.select({
+      id: authentication.id,
+      employeeId: authentication.employeeId,
+      firstName: authentication.firstName,
+      lastName: authentication.lastName,
+      middleName: authentication.middleName,
+      suffix: authentication.suffix,
+      createdAt: authentication.createdAt,
+      department: departments.name,
+      jobTitle: pdsHrDetails.jobTitle
+    })
+    .from(authentication)
+    .leftJoin(pdsHrDetails, eq(authentication.id, pdsHrDetails.employeeId))
+    .leftJoin(departments, eq(pdsHrDetails.departmentId, departments.id))
+    .where(and(
+      gte(pdsHrDetails.dateHired, hiredDateStr), // 100% ACCURACY: Use actual hiring date
+      ne(authentication.role, 'Applicant'),
+      ne(authentication.role, 'Administrator'), // 100% SUCCESS: Filter out Admin
+      ne(authentication.role, 'Human Resource'), // 100% SUCCESS: Filter out HR
+      isNotNull(authentication.employeeId),
+      effectiveId !== 'all' ? compareIds(authentication.employeeId, effectiveId) : undefined
+    ));
+
+    // 4. Fetch All Active Employees (for Absent count and list)
+    const activeEmployees = await db.select({
+      id: authentication.id,
+      employeeId: authentication.employeeId,
+      firstName: authentication.firstName,
+      lastName: authentication.lastName,
+      middleName: authentication.middleName,
+      suffix: authentication.suffix,
+      department: departments.name,
+      jobTitle: pdsHrDetails.jobTitle
+    })
+    .from(authentication)
+    .leftJoin(pdsHrDetails, eq(authentication.id, pdsHrDetails.employeeId))
+    .leftJoin(departments, eq(pdsHrDetails.departmentId, departments.id))
+    .where(and(
+        ne(authentication.role, 'Applicant'),
+        ne(authentication.role, 'Administrator'), // Filter out Admin
+        ne(authentication.role, 'Human Resource'), // Filter out HR
+        isNotNull(authentication.employeeId),
+        or(eq(pdsHrDetails.employmentStatus, 'Active'), sql`${pdsHrDetails.employmentStatus} IS NULL`),
+        lt(pdsHrDetails.dateHired, today), // 100% ACCURACY: Only mark as absent if hired BEFORE today
+        effectiveId !== 'all' ? compareIds(authentication.employeeId, effectiveId) : undefined
+    ));
+
+    // Filter Lists
+    const presentList = dtrs.filter(d => d.status && [
+      ATTENDANCE_STATUS.PRESENT, 
+      ATTENDANCE_STATUS.PRESENT_LATE, 
+      ATTENDANCE_STATUS.LATE, 
+      ATTENDANCE_STATUS.UNDERTIME, 
+      ATTENDANCE_STATUS.LATE_UNDERTIME
+    ].includes(d.status as any));
+
+    const lateList = dtrs.filter(d => d.status && [
+      ATTENDANCE_STATUS.LATE, 
+      ATTENDANCE_STATUS.PRESENT_LATE, 
+      ATTENDANCE_STATUS.LATE_UNDERTIME
+    ].includes(d.status as any));
+
+    const presentIds = new Set(presentList.map(d => normalizeIdJs(d.employeeId)));
+    const leaveIds = new Set(activeLeaves.map(l => normalizeIdJs(l.employeeId)));
+
+    const absentListRaw = activeEmployees.filter(emp => {
+        const id = normalizeIdJs(emp.employeeId);
+        return !presentIds.has(id) && !leaveIds.has(id);
+    });
+
     const counts = {
       present: presentList.length,
       late: lateList.length,
-      absent: 0,
-      onLeave: 0,
-      hired: 0
+      absent: absentListRaw.length,
+      onLeave: activeLeaves.length,
+      hired: recentHires.length
     };
 
     const lists = {
-      present: presentList.map(d => ({ ...d, name: `${d.lastName}, ${d.firstName}` })),
-      late: lateList.map(d => ({ ...d, name: `${d.lastName}, ${d.firstName}` })),
-      absent: [],
-      onLeave: [],
-      hired: []
+      present: presentList.map(d => ({ 
+        ...d, 
+        id: d.id, // Numeric ID for frontend
+        employeeId: normalizeIdJs(d.employeeId),
+        department: d.department || 'N/A',
+        name: formatFullName(d.lastName, d.firstName, d.middleName, d.suffix) || `Employee ${normalizeIdJs(d.employeeId)}` 
+      })),
+      late: lateList.map(d => ({ 
+        ...d, 
+        id: d.id,
+        employeeId: normalizeIdJs(d.employeeId),
+        department: d.department || 'N/A',
+        name: formatFullName(d.lastName, d.firstName, d.middleName, d.suffix) || `Employee ${normalizeIdJs(d.employeeId)}` 
+      })),
+      absent: absentListRaw.map(a => ({
+        ...a,
+        id: a.id,
+        employeeId: normalizeIdJs(a.employeeId),
+        department: a.department || 'N/A',
+        name: formatFullName(a.lastName, a.firstName, a.middleName, a.suffix) || `Employee ${normalizeIdJs(a.employeeId)}`
+      })),
+      onLeave: activeLeaves.map(l => ({
+        ...l,
+        id: l.id,
+        employeeId: normalizeIdJs(l.employeeId),
+        department: l.department || 'N/A',
+        name: formatFullName(l.lastName, l.firstName, l.middleName, l.suffix) || `Employee ${normalizeIdJs(l.employeeId)}`
+      })),
+      hired: recentHires.map(h => ({
+        ...h,
+        id: h.id,
+        employeeId: normalizeIdJs(h.employeeId),
+        department: h.department || 'N/A',
+        name: formatFullName(h.lastName, h.firstName, h.middleName, h.suffix) || `Employee ${normalizeIdJs(h.employeeId)}`
+      }))
     };
 
     res.status(200).json({ success: true, data: { counts, lists } });

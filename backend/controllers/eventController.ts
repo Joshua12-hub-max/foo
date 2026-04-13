@@ -24,6 +24,7 @@ export const getEvents = async (req: Request, res: Response): Promise<void> => {
   try {
     const authReq = req as AuthenticatedRequest;
     const isAdminOrHr = ['Administrator', 'Human Resource'].includes(authReq.user.role || '');
+    const { onlyMyDept } = req.query;
 
     const baseCondition = or(
       gte(events.endDate, sql`CURDATE()`),
@@ -32,7 +33,8 @@ export const getEvents = async (req: Request, res: Response): Promise<void> => {
 
     const conditions = [baseCondition];
 
-    if (!isAdminOrHr) {
+    // If not Admin OR if Admin explicitly asks for their personal portal view (onlyMyDept)
+    if (!isAdminOrHr || onlyMyDept === 'true') {
       const userRecord = await db.select({
         departmentName: departments.name
       })

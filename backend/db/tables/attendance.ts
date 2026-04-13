@@ -7,6 +7,7 @@ export const attendanceLogs = mysqlTable("attendance_logs", {
 	scanTime: datetime("scan_time", { mode: 'string'}).notNull(),
 	type: mysqlEnum("type", ['IN','OUT']).notNull(),
 	source: varchar("source", { length: 50 }).default('BIOMETRIC'),
+	bioLogId: bigint("bio_log_id", { mode: 'number' }), // 100% Tracking for Middleware Logs
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
 },
 (table) => [
@@ -139,7 +140,7 @@ export const bioEnrolledUsers = mysqlTable("bio_enrolled_users", {
 });
 
 export const bioAttendanceLogs = mysqlTable("bio_attendance_logs", {
-	id: bigint({ mode: 'number' }).primaryKey().autoincrement().notNull(),
+	id: bigint("id", { mode: 'number' }).primaryKey().autoincrement().notNull(),
 	employeeId: varchar("employee_id", { length: 50 }).notNull(),
 	cardType: mysqlEnum("card_type", ['IN', 'OUT']).notNull(),
 	logDate: date("log_date", { mode: 'string' }).notNull(),

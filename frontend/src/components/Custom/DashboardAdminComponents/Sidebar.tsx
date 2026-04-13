@@ -1,6 +1,8 @@
 import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { LogOut, ChevronDown, ChevronRight, LucideIcon, Users } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useAuthStore } from '@/stores/authStore';
 
 interface NavItem {
   name: string;
@@ -22,6 +24,9 @@ interface SidebarProps {
 export default function Sidebar({ sidebarOpen, navItems, handleLogout, onSectionChange, userRole }: SidebarProps) {
   const [openDropdowns, setOpenDropdowns] = useState<Record<string, boolean>>({});
   const location = useLocation();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const setPortalView = useAuthStore((state) => state.setPortalView);
 
   const toggleDropdown = (name: string) => {
     setOpenDropdowns(prev => ({
@@ -39,13 +44,20 @@ export default function Sidebar({ sidebarOpen, navItems, handleLogout, onSection
     return location.pathname.includes(action);
   };
 
+  const handleSwitchToEmployeePortal = (e: React.MouseEvent) => {
+    e.preventDefault();
+    // 100% SUCCESS: Set portal view to employee to filter data to self only
+    setPortalView(true);
+    // Clear all cached queries to prevent showing admin data in employee portal
+    queryClient.invalidateQueries();
+    navigate('/employee-dashboard');
+  };
+
   return (
     <aside 
       className={`bg-[var(--zed-bg-surface)] text-[var(--zed-text-dark)] shadow-[var(--zed-shadow-sm)] flex flex-col justify-between transition-all duration-300 z-40 min-h-screen sticky top-0 overflow-y-auto border-r border-[var(--zed-border-light)] ${sidebarOpen ? 'w-72' : 'w-20'}`}
       style={{
         scrollbarWidth: 'none',
-        // @ts-expect-error - msOverflowStyle is IE specific
-        msOverflowStyle: 'none'
       }}
     >
       <div className="flex flex-col"> 
@@ -80,13 +92,12 @@ export default function Sidebar({ sidebarOpen, navItems, handleLogout, onSection
               }
             };
 
-            const MainComponent = item.path ? Link : 'button';
+            const MainComponent = (item.path ? Link : 'button') as React.ElementType;
 
             return (
               <div key={item.name} className="w-full">
-                {/* @ts-expect-error - dynamic component rendering based on item.path */}
                 <MainComponent
-                  to={item.path as string}
+                  {...(item.path ? { to: item.path } : {})}
                   onClick={mainOnClick}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-[var(--radius-sm)] text-sm transition-all duration-200 group relative tracking-tight ${
                     active && !hasChildren 
@@ -156,13 +167,13 @@ export default function Sidebar({ sidebarOpen, navItems, handleLogout, onSection
       </div>
 
       <div className="p-4 border-t border-[var(--zed-border-light)] flex-shrink-0 bg-gray-50/50 space-y-3">
-        <Link 
-          to="/employee-dashboard"
-          className="w-full flex items-center justify-center gap-2 py-2.5 text-[var(--zed-text-muted)] font-black bg-white hover:bg-gray-50 rounded-[var(--radius-sm)] transition-all border border-[var(--zed-border-light)] hover:text-[var(--zed-text-dark)] text-xs tracking-wider"
+        <button
+          onClick={handleSwitchToEmployeePortal}
+          className="w-full flex items-center justify-center gap-2 py-3 text-[var(--zed-accent)] font-black bg-white hover:bg-[var(--zed-accent)] hover:text-white rounded-[var(--radius-sm)] transition-all border border-[var(--zed-accent)] text-xs tracking-wider shadow-sm group"
         >
-          <Users className="w-4 h-4 flex-shrink-0" />
-          {sidebarOpen && 'Employee Portal'}
-        </Link>
+          <Users className="w-4 h-4 flex-shrink-0 group-hover:scale-110 transition-transform" />
+          {sidebarOpen && 'Switch to Employee Portal'}
+        </button>
         <button
           onClick={handleLogout}
           className="w-full flex items-center justify-center gap-2 py-2.5 text-white font-black bg-red-600 hover:bg-red-700 rounded-[var(--radius-sm)] transition-all shadow-sm active:scale-95 text-xs tracking-wider"

@@ -31,7 +31,8 @@ export const useAdminDTR = () => {
     setFilters: setStoreFilters,
     setSearch: setStoreSearch,
     setPage: setStorePage,
-    resetFilters
+    resetFilters,
+    getQuery
   } = useDTRStore();
 
   // Local UI state for search input (not yet debounced)
@@ -43,19 +44,13 @@ export const useAdminDTR = () => {
 
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  const queryParams = useMemo(() => getQuery(), [storeFilters, storeSearch, storePagination.page, getQuery]);
+
   // React Query: Fetch Data
   const { data, isLoading, error: queryError, refetch } = useQuery({
-    queryKey: ['admin-dtr-logs', storeFilters, storeSearch, storePagination.page],
+    queryKey: ['admin-dtr-logs', queryParams],
     queryFn: async () => {
-        const response = await dtrApi.getAllRecords({
-            page: storePagination.page,
-            limit: storePagination.limit,
-            department: storeFilters.department,
-            employeeId: storeFilters.employeeId,
-            startDate: storeFilters.startDate,
-            endDate: storeFilters.endDate,
-            search: storeSearch
-        });
+        const response = await dtrApi.getAllRecords(queryParams);
         
         const logs = response.data.data || [];
         const mappedLogs = logs.map((item: DTRApiResponse): DTRRecord => {

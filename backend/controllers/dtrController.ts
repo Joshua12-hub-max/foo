@@ -2,16 +2,18 @@ import { Request, Response } from 'express';
 
 import { db } from '../db/index.js';
 import { dailyTimeRecords, authentication, dtrCorrections, departments, schedules, bioEnrolledUsers, attendanceLogs, bioAttendanceLogs, shiftTemplates, pdsHrDetails } from '../db/schema.js';
-import { eq, and, desc, gte, lte, count, sql, between } from 'drizzle-orm';
-import { GetDTRSchema, UpdateDTRSchema, RequestCorrectionSchema, GetDTRInput } from '../schemas/dtrSchema.js';
+import { eq, and, desc, gte, lte, count, sql, between, like } from 'drizzle-orm';
+import { UpdateDTRSchema, RequestCorrectionSchema } from '../schemas/dtrSchema.js';
 import { AuthenticatedRequest } from '../types/index.js';
 import { updateTardinessSummary } from '../utils/tardinessUtils.js';
 import { createNotification, notifyAdmins, updateNotificationsByReference } from './notificationController.js';
 import { DTRApiResponse } from '../types/attendance.js';
-import { formatToManilaDateTime } from "../utils/dateUtils.js";
-import { compareIds } from "../utils/idUtils.js";
+import { formatToManilaDateTime, normalizeToIsoDate } from "../utils/dateUtils.js";
+import { formatFullName } from "../utils/nameUtils.js";
+import { compareIds, normalizeIdJs } from "../utils/idUtils.js";
 import { internalPolicies } from '../db/schema.js';
 import { calculateLateUndertime, determineStatus } from '../utils/attendanceUtils.js';
+import { ATTENDANCE_STATUS } from '../constants/statusConstants.js';
 
 /** Shape returned by the getAllRecords db.select() query */
 interface DTRRecordRow {
@@ -49,7 +51,6 @@ const toMySQLDatetime = (isoStr: string | null | undefined): string | null => {
     if (isNaN(date.getTime())) return null;
     return formatToManilaDateTime(date);
   } catch (_e: unknown) {
-
     return null;
   }
 };
@@ -66,7 +67,7 @@ const mapToDtrApi = (record: DTRRecordRow & { dutyType?: string; shift?: string 
         lateMinutes: record.lateMinutes ?? 0,
         undertimeMinutes: record.undertimeMinutes ?? 0,
         overtimeMinutes: record.overtimeMinutes ?? 0,
-        status: record.status || 'Pending',
+        status: record.status || ATTENDANCE_STATUS.PENDING,
         createdAt: record.createdAt ? new Date(record.createdAt).toISOString() : null,
         updatedAt: record.updatedAt ? new Date(record.updatedAt).toISOString() : null,
         employeeName: record.employeeName || 'Unknown Employee',
@@ -88,52 +89,57 @@ const mapToDtrApi = (record: DTRRecordRow & { dutyType?: string; shift?: string 
 
 
 export const getAllRecords = async (req: Request, res: Response): Promise<void> => {
-    // 1. Explicit Parameter Extraction
+    const authReq = req as AuthenticatedRequest;
+    const user = authReq.user;
     const rawQuery = req.query;
-    const validation = GetDTRSchema.safeParse({ query: rawQuery });
-
-    if (!validation.success) {
-        console.error('[DTR] Query Validation failed:', validation.error.format());
-        // Proceed with extraction from rawQuery but log the warning
-    }
-
-    // Explicitly typed variables for robust data flow
+    
     const page = Number(rawQuery.page) || 1;
     const limit = Number(rawQuery.limit) || 100;
-    const employeeId = rawQuery.employeeId as string | undefined;
+    const queryEmployeeId = rawQuery.employeeId as string | undefined;
     const department = rawQuery.department as string | undefined;
     const startDate = rawQuery.startDate as string | undefined;
     const endDate = rawQuery.endDate as string | undefined;
 
+    const isAdminOrHr = ['Administrator', 'Human Resource'].includes(user.role);
+    
+    // 100% PRECISE FILTERING: 
+    // 1. If an explicit employeeId is provided (and it's not 'all'), use it strictly.
+    // 2. If 'all' is explicitly provided, use 'all' (only for Admin/HR).
+    // 3. IF NO ID IS PROVIDED (empty or missing):
+    //    - If Admin/HR, use 'all' (This is for the Admin Portal).
+    //    - If regular user, use user.employeeId (Self).
+    const effectiveEmployeeId = (queryEmployeeId && queryEmployeeId !== 'all' && queryEmployeeId !== 'All Employees' && queryEmployeeId !== '') 
+      ? String(queryEmployeeId) 
+      : (isAdminOrHr && queryEmployeeId === 'all' ? 'all' : (isAdminOrHr && !queryEmployeeId ? 'all' : user.employeeId));
+
     const offset = (page - 1) * limit;
+
+    // Normalize Dates for MySQL compatibility
+    const normStartDate = normalizeToIsoDate(startDate);
+    const normEndDate = normalizeToIsoDate(endDate);
 
     try {
         const conditions = [];
 
-        // 2. Dynamic Filtering
-        // FIX: Ensure empty strings don't bypass the filter
-        // SYMMETRICAL LOCKDOWN: Resolves 001 vs Emp-001 mismatch
-        if (employeeId && employeeId !== '' && employeeId !== 'all' && employeeId !== 'All Employees') {
-            conditions.push(compareIds(dailyTimeRecords.employeeId, employeeId));
-            conditions.push(compareIds(authentication.employeeId, employeeId));
+        if (effectiveEmployeeId !== 'all') {
+            conditions.push(compareIds(dailyTimeRecords.employeeId, effectiveEmployeeId));
         }
 
         if (department && department !== 'all' && department !== 'All Departments') {
-            // Use LOWER and LIKE for a more robust case-insensitive matching
-            conditions.push(sql`LOWER(COALESCE(${departments.name}, ${bioEnrolledUsers.department}, 'N/A')) LIKE LOWER(${department})`);
+            conditions.push(like(sql`LOWER(COALESCE(${departments.name}, ${bioEnrolledUsers.department}, 'N/A'))`, `%${department.toLowerCase()}%`));
         }
 
-        if (startDate && endDate) {
-            conditions.push(between(dailyTimeRecords.date, startDate, endDate));
-        } else if (startDate) {
-            conditions.push(gte(dailyTimeRecords.date, startDate));
-        } else if (endDate) {
-            conditions.push(lte(dailyTimeRecords.date, endDate));
+        if (normStartDate && normEndDate) {
+            conditions.push(between(dailyTimeRecords.date, normStartDate, normEndDate));
+        } else if (normStartDate) {
+            conditions.push(gte(dailyTimeRecords.date, normStartDate));
+        } else if (normEndDate) {
+            conditions.push(lte(dailyTimeRecords.date, normEndDate));
         }
 
         const records = await db.select({
             id: dailyTimeRecords.id,
-            employeeId: sql<string>`${dailyTimeRecords.employeeId}`,
+            employeeId: dailyTimeRecords.employeeId,
             date: dailyTimeRecords.date,
             timeIn: dailyTimeRecords.timeIn,
             timeOut: dailyTimeRecords.timeOut,
@@ -142,20 +148,11 @@ export const getAllRecords = async (req: Request, res: Response): Promise<void> 
             status: dailyTimeRecords.status,
             createdAt: dailyTimeRecords.createdAt,
             updatedAt: dailyTimeRecords.updatedAt,
-            employeeName: sql<string>`COALESCE(
-                NULLIF(TRIM(CONCAT(
-                    COALESCE(NULLIF(TRIM(${authentication.lastName}), ''), ''), 
-                    IF(NULLIF(TRIM(${authentication.firstName}), '') IS NOT NULL, CONCAT(', ', TRIM(${authentication.firstName})), ''),
-                    IF(NULLIF(TRIM(${authentication.middleName}), '') IS NOT NULL, CONCAT(' ', SUBSTRING(TRIM(${authentication.middleName}), 1, 1), '.'), ''),
-                    IF(NULLIF(TRIM(${authentication.suffix}), '') IS NOT NULL, CONCAT(' ', TRIM(${authentication.suffix})), '')
-                )), ''),
-                NULLIF(TRIM(${bioEnrolledUsers.fullName}), ''),
-                'Unknown Employee'
-            )`,
             firstName: authentication.firstName,
             lastName: authentication.lastName,
             middleName: authentication.middleName,
             suffix: authentication.suffix,
+            bioFullName: bioEnrolledUsers.fullName,
             department: sql<string>`COALESCE(${departments.name}, ${bioEnrolledUsers.department}, 'N/A')`,
             dutyType: sql<string>`COALESCE(${pdsHrDetails.dutyType}, 'Standard')`,
             duties: sql<string>`COALESCE(
@@ -170,7 +167,6 @@ export const getAllRecords = async (req: Request, res: Response): Promise<void> 
                 (SELECT CONCAT(TIME_FORMAT(start_time, '%h:%i %p'), ' - ', TIME_FORMAT(end_time, '%h:%i %p')) FROM shift_templates WHERE is_default = 1 LIMIT 1),
                 '08:00 AM - 05:00 PM'
             )`,
-            // Correction info via LEFT JOIN
             correctionId: dtrCorrections.id,
             correctionStatus: dtrCorrections.status,
             correctionReason: dtrCorrections.reason,
@@ -184,11 +180,12 @@ export const getAllRecords = async (req: Request, res: Response): Promise<void> 
         .leftJoin(bioEnrolledUsers, compareIds(bioEnrolledUsers.employeeId, dailyTimeRecords.employeeId))
         .leftJoin(
             dtrCorrections,
-            and(
-                compareIds(dtrCorrections.employeeId, dailyTimeRecords.employeeId),
-                eq(dtrCorrections.dateTime, dailyTimeRecords.date),
-                eq(dtrCorrections.status, 'Pending')
-            )
+            eq(dtrCorrections.id, sql`(
+                SELECT MAX(id) FROM dtr_corrections dc 
+                WHERE ${compareIds(sql`dc.employee_id`, dailyTimeRecords.employeeId)} 
+                AND dc.date_time = ${dailyTimeRecords.date} 
+                AND dc.status = 'Pending'
+            )`)
         )
         .where(conditions.length > 0 ? and(...conditions) : undefined)
         .orderBy(desc(dailyTimeRecords.date), desc(dailyTimeRecords.timeIn))
@@ -226,7 +223,17 @@ export const getAllRecords = async (req: Request, res: Response): Promise<void> 
             
         const total = countResult.total;
 
-        const formattedRecords = records.map((r) => mapToDtrApi(r as DTRRecordRow & { dutyType?: string; shift?: string }));
+        const formattedRecords = records.map((r) => {
+          const fullName = r.firstName && r.lastName 
+            ? formatFullName(r.lastName, r.firstName, r.middleName, r.suffix)
+            : (r.bioFullName || `Employee ${normalizeIdJs(r.employeeId)}`);
+
+          return mapToDtrApi({
+            ...r,
+            employeeId: normalizeIdJs(r.employeeId),
+            employeeName: fullName
+          } as DTRRecordRow);
+        });
 
         res.status(200).json({
             success: true,
@@ -244,7 +251,6 @@ export const getAllRecords = async (req: Request, res: Response): Promise<void> 
             }
         });
     } catch (_err: unknown) {
-
         res.status(500).json({ message: 'Something went wrong!' });
     }
 };
@@ -266,7 +272,6 @@ const getGracePeriod = async (): Promise<number> => {
 
 
 export const updateRecord = async (req: Request, res: Response): Promise<void> => {
-  // Zod Validation
   const validation = UpdateDTRSchema.safeParse(req);
   
   if (!validation.success) {
@@ -282,34 +287,27 @@ export const updateRecord = async (req: Request, res: Response): Promise<void> =
   const { timeIn, timeOut, status } = validation.data.body;
 
   try {
-    // 1. Check if record exists
     const [existing] = await db.select()
         .from(dailyTimeRecords)
         .where(eq(dailyTimeRecords.id, Number(id)))
         .limit(1);
 
     if (!existing) {
-        console.warn(`[DTR Update] Record NOT found: ${id}`);
         res.status(404).json({ success: false, message: 'DTR Record not found.' });
         return;
     }
 
-    // 2. Schedule Fetching & Calculation Logic
-    // We need to calculate late/undertime based on the schedule for this day.
-    // First, determine day of week from the DTR Date
     const dtrDate = new Date(existing.date);
-    const dayName = dtrDate.toLocaleDateString('en-US', { weekday: 'long' }); // e.g., "Monday"
+    const dayName = dtrDate.toLocaleDateString('en-US', { weekday: 'long' });
 
-    // Fetch Schedule
     const [schedule] = await db.select()
         .from(schedules)
         .where(and(
-            eq(schedules.employeeId, existing.employeeId),
+            compareIds(schedules.employeeId, existing.employeeId),
             eq(schedules.dayOfWeek, dayName)
         ))
         .limit(1);
 
-    // Fetch System Default Shift as fallback
     const [defaultShift] = await db.select({
         startTime: shiftTemplates.startTime,
         endTime: shiftTemplates.endTime
@@ -321,30 +319,21 @@ export const updateRecord = async (req: Request, res: Response): Promise<void> =
     const startStr = schedule ? schedule.startTime : (defaultShift?.startTime || '08:00:00');
     const endStr = schedule ? schedule.endTime : (defaultShift?.endTime || '17:00:00');
 
-    // Helper to format input to MySQL DateTime
     const processInputTime = (inputTime: string | null | undefined, dateStr: string): string | null => {
         if (!inputTime) return null;
-        
-        // precise regex for HH:mm or HH:mm:ss
         const timeRegex = /^([0-1]?[0-9]|2[0-3]):([0-5][0-9])(:[0-5][0-9])?$/;
-        
         if (timeRegex.test(inputTime)) {
-             // It's a time string, combine with date
-             // Ensure dateStr is YYYY-MM-DD
              const cleanDate = new Date(dateStr).toISOString().split('T')[0];
              let cleanTime = inputTime;
              if (inputTime.split(':').length === 2) cleanTime += ':00';
              return `${cleanDate} ${cleanTime}`;
         }
-        
-        // Otherwise treat as ISO/Date string
         return toMySQLDatetime(inputTime);
     };
 
     const mysqlTimeIn = processInputTime(timeIn, existing.date);
     const mysqlTimeOut = processInputTime(timeOut, existing.date);
     const now = toMySQLDatetime(new Date().toISOString());
-
 
     const gracePeriod = await getGracePeriod();
 
@@ -356,11 +345,18 @@ export const updateRecord = async (req: Request, res: Response): Promise<void> =
         gracePeriod
     );
 
-    const newStatus = determineStatus(calculatedLate, calculatedUndertime, status || existing.status || 'Present');
+    const newStatus = determineStatus(
+        calculatedLate,
+        calculatedUndertime,
+        status || existing.status || ATTENDANCE_STATUS.PRESENT,
+        true, // hasSchedule
+        false, // isShiftActive
+        !!mysqlTimeOut, // hasTimeOut
+        mysqlTimeIn, // timeIn
+        mysqlTimeOut // timeOut
+    );
 
-
-    // 3. Perform update
-    const [_result] = await db.update(dailyTimeRecords)
+    await db.update(dailyTimeRecords)
       .set({
         timeIn: mysqlTimeIn,
         timeOut: mysqlTimeOut,
@@ -371,27 +367,23 @@ export const updateRecord = async (req: Request, res: Response): Promise<void> =
       })
       .where(eq(dailyTimeRecords.id, Number(id)));
 
-    // 4. SYNC TO BIOMETRIC LOGS (100% Source of Truth Requirement)
     try {
         const dateStr = new Date(existing.date).toISOString().split('T')[0];
         
-        // 1. Update attendance_logs (Node.js side)
         await db.delete(attendanceLogs).where(and(
-            eq(attendanceLogs.employeeId, existing.employeeId),
+            compareIds(attendanceLogs.employeeId, existing.employeeId),
             eq(sql`DATE(${attendanceLogs.scanTime})`, dateStr)
         ));
 
-        // 2. Update bio_attendance_logs (C# side)
         await db.delete(bioAttendanceLogs).where(and(
-            eq(bioAttendanceLogs.employeeId, existing.employeeId),
+            compareIds(bioAttendanceLogs.employeeId, existing.employeeId),
             eq(bioAttendanceLogs.logDate, dateStr)
         ));
 
-        // 3. Insert Updated Logs
         const getTimeOnly = (dt: string | null): string | null => {
             if (!dt) return null;
             if (dt.includes(' ')) return dt.split(' ')[1];
-            return dt; // Fallback if already only time
+            return dt;
         };
 
         if (mysqlTimeIn) {
@@ -425,17 +417,14 @@ export const updateRecord = async (req: Request, res: Response): Promise<void> =
                 logTime: getTimeOnly(mysqlTimeOut) || '00:00:00'
             });
         }
-        console.log(`[DTR-SYNC] Successfully sync'd manual update for ${existing.employeeId} on ${dateStr}`);
     } catch (syncErr) {
         console.error('[DTR-SYNC] Failed to sync manual update to biometrics:', syncErr);
     }
 
-    // 5. Update Summary to reflect this manual change
     await updateTardinessSummary(existing.employeeId, existing.date);
 
     res.status(200).json({ success: true, message: 'Record updated successfully' });
   } catch (_err: unknown) {
-
     res.status(500).json({ success: false, message: 'Failed to update record' });
   }
 };
@@ -463,11 +452,8 @@ export const requestCorrection = async (req: Request, res: Response): Promise<vo
 
 const parseTimeInput = (timeStr: string | null | undefined, dateStr: string): string | null => {
   if (!timeStr) return null;
-
   try {
     const datePart = new Date(dateStr).toISOString().split('T')[0];
-    
-    // Handle "HH:mm AM/PM" (12-hour format)
     const time12Regex = /^(\d{1,2}):(\d{2})\s?(AM|PM)$/i;
     const match12 = timeStr.match(time12Regex);
     if (match12) {
@@ -477,35 +463,23 @@ const parseTimeInput = (timeStr: string | null | undefined, dateStr: string): st
       if (period.toUpperCase() === 'AM' && h === 12) h = 0;
       return `${datePart} ${h.toString().padStart(2, '0')}:${minutes}:00`;
     }
-
-    // Handle "HH:mm" or "HH:mm:ss" (24-hour format)
     const time24Regex = /^(\d{1,2}):(\d{2})(:(\d{2}))?$/;
     if (time24Regex.test(timeStr)) {
       let cleanTime = timeStr;
       if (timeStr.split(':').length === 2) cleanTime += ':00';
       return `${datePart} ${cleanTime}`;
     }
-
-    // Fallback: Try generic Date parsing
     const d = new Date(`${dateStr} ${timeStr}`);
     if (!isNaN(d.getTime())) {
-      // Return YYYY-MM-DD HH:mm:ss
         return d.toISOString().replace('T', ' ').split('.')[0];
-        // Note: ISOString is UTC. We might want local.
-        // But for now, let's stick to simple string concat if regex fails.
-        // Actually, generic parsing might be risky with timezones.
     }
-
     return null;
   } catch (_e) {
-
     return null;
   }
 };
 
   try {
-
-    // Format times to MySQL DateTime
     const dbOriginalIn = parseTimeInput(originalTimeIn, date);
     const dbOriginalOut = parseTimeInput(originalTimeOut, date);
     const dbCorrectedIn = parseTimeInput(correctedTimeIn, date);
@@ -513,7 +487,7 @@ const parseTimeInput = (timeStr: string | null | undefined, dateStr: string): st
 
     const [result] = await db.insert(dtrCorrections).values({
       employeeId,
-      dateTime: date, // Map 'date' from request to 'dateTime' column
+      dateTime: date,
       originalTimeIn: dbOriginalIn,
       originalTimeOut: dbOriginalOut,
       correctedTimeIn: dbCorrectedIn,
@@ -524,18 +498,10 @@ const parseTimeInput = (timeStr: string | null | undefined, dateStr: string): st
 
     const correctionId = result.insertId;
 
-    // Notify Admins
     try {
-      // Determine notification strategy:
-      // Admins get the 'New Request' notification (Action-oriented)
-      // Regular employees get the 'Submitted' notification (Confirmation-oriented)
-      // If a user is both, we give them the 'New Request' notification so they can act on it if needed,
-      // and skip the redundant 'Submitted' one to keep it 'ISA LANG'.
-      
       const userRole = authReq.user?.role;
       const isAdminOrHR = userRole === 'Administrator' || userRole === 'Human Resource';
 
-      // 1. Notify OTHER Admins/HR
       await notifyAdmins({
         senderId: employeeId,
         title: 'New DTR Correction Request',
@@ -545,9 +511,6 @@ const parseTimeInput = (timeStr: string | null | undefined, dateStr: string): st
         excludeId: employeeId 
       });
 
-      // 2. Notify the requester
-      // If the requester is an Admin/HR, we send them the 'New Request' version for consistency with their portal view,
-      // But only one notification total.
       await createNotification({
         recipientId: employeeId,
         senderId: isAdminOrHR ? employeeId : null,
@@ -567,8 +530,6 @@ const parseTimeInput = (timeStr: string | null | undefined, dateStr: string): st
       message: 'Correction request submitted successfully. Waiting for Admin approval.' 
     });
   } catch (err: unknown) {
-
-    if (err instanceof Error && 'sqlMessage' in err) console.error('SQL Error:', (err as Error & { sqlMessage: string }).sqlMessage);
     res.status(500).json({ success: false, message: 'Failed to submit correction request' });
   }
 };
@@ -578,8 +539,6 @@ import { UpdateCorrectionStatusSchema } from '../schemas/dtrSchema.js';
 export const getCorrectionRequests = async (req: Request, res: Response): Promise<void> => {
   try {
     const { status } = req.query;
-    
-    // Build query conditions
     const conditions = [];
     if (status && typeof status === 'string' && status !== 'All') {
         conditions.push(eq(dtrCorrections.status, status as 'Pending' | 'Approved' | 'Rejected'));
@@ -613,6 +572,8 @@ export const getCorrectionRequests = async (req: Request, res: Response): Promis
             name = `${toTitleCase(req.lastName)}, ${toTitleCase(req.firstName)}`;
         } else if (req.bioFullName) {
             name = req.bioFullName;
+        } else {
+            name = `Employee ${req.employeeId}`;
         }
         return { ...req, employeeName: name };
     });
@@ -639,12 +600,10 @@ export const updateCorrectionStatus = async (req: Request, res: Response): Promi
   }
 
   const { ids, status, rejectionReason } = validation.data.body;
-  
   const adminId = (req as AuthenticatedRequest).user?.employeeId || 'System';
 
   try {
       for (const id of ids) {
-          // 1. Get Correction Request
           const [request] = await db.select().from(dtrCorrections).where(eq(dtrCorrections.id, id)).limit(1);
           if (!request) continue;
 
@@ -658,7 +617,6 @@ export const updateCorrectionStatus = async (req: Request, res: Response): Promi
                   })
                   .where(eq(dtrCorrections.id, id));
 
-              // Update existing notifications (Admin and Employee)
               try {
                 await updateNotificationsByReference({
                   type: 'dtr_request',
@@ -670,14 +628,11 @@ export const updateCorrectionStatus = async (req: Request, res: Response): Promi
               } catch (nErr) { console.error('Notification Update Error:', nErr); }
 
           } else if (status === 'Approved') {
-              // APPROVED LOGIC
-              // A. Fetch existing DTR record
               const [dtr] = await db.select().from(dailyTimeRecords).where(and(
                   compareIds(dailyTimeRecords.employeeId, request.employeeId),
                   eq(dailyTimeRecords.date, request.dateTime)
               ));
 
-            // B. Calculate Logic (replicated from updateRecord)
             const dtrDate = new Date(request.dateTime);
             const dayName = dtrDate.toLocaleDateString('en-US', { weekday: 'long' });
             
@@ -686,7 +641,6 @@ export const updateCorrectionStatus = async (req: Request, res: Response): Promi
                 eq(schedules.dayOfWeek, dayName)
             )).limit(1);
 
-            // Fetch System Default Shift as fallback
             const [defaultShift] = await db.select({
                 startTime: shiftTemplates.startTime,
                 endTime: shiftTemplates.endTime
@@ -697,9 +651,6 @@ export const updateCorrectionStatus = async (req: Request, res: Response): Promi
 
             const startStr = schedule ? schedule.startTime : (defaultShift?.startTime || '08:00:00');
             const endStr = schedule ? schedule.endTime : (defaultShift?.endTime || '17:00:00');
-            
-            // request.correctedTimeIn is "YYYY-MM-DD HH:mm:ss"
-            // We need to parse TIME part for calculation.
             
             const finalTimeIn = request.correctedTimeIn || request.originalTimeIn || (dtr ? dtr.timeIn : null);
             const finalTimeOut = request.correctedTimeOut || request.originalTimeOut || (dtr ? dtr.timeOut : null);
@@ -713,9 +664,17 @@ export const updateCorrectionStatus = async (req: Request, res: Response): Promi
                 gracePeriod
             );
 
-            const newStatus = determineStatus(calculatedLate, calculatedUndertime, 'Present');
+            const newStatus = determineStatus(
+                calculatedLate,
+                calculatedUndertime,
+                ATTENDANCE_STATUS.PRESENT,
+                true, // hasSchedule
+                false, // isShiftActive
+                !!finalTimeOut, // hasTimeOut
+                finalTimeIn, // timeIn
+                finalTimeOut // timeOut
+            );
             
-            // C. Update/Insert DTR
             if (dtr) {
                 await db.update(dailyTimeRecords).set({
                     timeIn: finalTimeIn,
@@ -737,29 +696,22 @@ export const updateCorrectionStatus = async (req: Request, res: Response): Promi
                     });
             }
 
-            // D. Update Summary
             await updateTardinessSummary(request.employeeId, request.dateTime);
 
-            // F. SYNC TO BIOMETRIC LOGS (100% Source of Truth Requirement)
-            // When a correction is approved, we also update the raw logs so they match the DTR.
             try {
-                // Sanitize date to ensure matching bio_attendance_logs.logDate format
                 const syncDate = new Date(request.dateTime);
                 const dateStr = syncDate.toISOString().split('T')[0];
                 
-                // 1. Update attendance_logs (Node.js side)
                 await db.delete(attendanceLogs).where(and(
-                    eq(attendanceLogs.employeeId, request.employeeId),
+                    compareIds(attendanceLogs.employeeId, request.employeeId),
                     eq(sql`DATE(${attendanceLogs.scanTime})`, dateStr)
                 ));
 
-                // 2. Update bio_attendance_logs (C# side)
                 await db.delete(bioAttendanceLogs).where(and(
-                    eq(bioAttendanceLogs.employeeId, request.employeeId),
+                    compareIds(bioAttendanceLogs.employeeId, request.employeeId),
                     eq(bioAttendanceLogs.logDate, dateStr)
                 ));
 
-                // 3. Insert Corrected Logs
                 const getCorrectedTime = (val: string | Date | null): string | null => {
                     if (!val) return null;
                     if (typeof val === 'string' && val.includes(' ')) return val.split(' ')[1];
@@ -800,12 +752,10 @@ export const updateCorrectionStatus = async (req: Request, res: Response): Promi
                         logTime: getCorrectedTime(finalTimeOut) || '00:00:00'
                     });
                 }
-                console.log(`[DTR-SYNC] Successfully sync'd correction for ${request.employeeId} on ${dateStr}`);
             } catch (syncErr: unknown) {
                 console.error('[DTR-SYNC] Failed to sync correction to biometrics:', syncErr);
             }
 
-            // E. Update Request Status
             await db.update(dtrCorrections)
                 .set({ 
                     status: 'Approved', 
@@ -814,7 +764,6 @@ export const updateCorrectionStatus = async (req: Request, res: Response): Promi
                 })
                 .where(eq(dtrCorrections.id, id));
 
-            // Update existing notifications (Admin and Employee)
             try {
               await updateNotificationsByReference({
                 type: 'dtr_request',
@@ -826,7 +775,6 @@ export const updateCorrectionStatus = async (req: Request, res: Response): Promi
             } catch (nErr: unknown) { console.error('Notification Update Error:', nErr); }
         }
     }
-
     res.json({ success: true, message: `Requests ${status} successfully` });
   } catch (_err: unknown) {
     res.status(500).json({ success: false, message: 'Failed to update status' });

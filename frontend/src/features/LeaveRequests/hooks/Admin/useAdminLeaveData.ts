@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { leaveApi } from "@api/leaveApi";
 import { AdminLeaveRequest } from '../../types';
 import type { LeaveApplication } from '@/types/leave.types';
 import { formatFullName } from '@/utils/nameUtils';
+import { useLeaveStore } from '@/stores/leaveStore';
 
 interface AdminLeaveDataResponse {
   leaves: AdminLeaveRequest[];
@@ -15,31 +16,16 @@ interface AdminLeaveDataResponse {
   };
 }
 
-export const useAdminLeaveData = (initialFilters?: Record<string, string>) => {
+export const useAdminLeaveData = () => {
   const queryClient = useQueryClient();
-  const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(10);
-  const [filters, setFilters] = useState({
-    search: '',
-    department: '',
-    employee: '',
-    fromDate: '',
-    toDate: ''
-  });
+  
+  const { filters, pagination, searchQuery, getQuery, setPage, setLimit } = useLeaveStore();
+  const queryParams = useMemo(() => getQuery(), [filters, pagination.page, pagination.limit, searchQuery, getQuery]);
 
   const { data, isLoading: loading, error } = useQuery({
-    queryKey: ['admin-leaves', page, limit, filters],
+    queryKey: ['admin-leaves', queryParams],
     queryFn: async () => {
-      const params = {
-        page,
-        limit,
-        search: filters.search,
-        department: filters.department,
-        employeeId: filters.employee, // Mapping 'employee' (name) to backend param
-        startDate: filters.fromDate,
-        endDate: filters.toDate
-      };
-      const res = await leaveApi.getAllApplications(params);
+      const res = await leaveApi.getAllApplications(queryParams);
       
       const rawLeaves = res?.data?.applications;
       const leaves: AdminLeaveRequest[] = Array.isArray(rawLeaves) ? rawLeaves.map((l: LeaveApplication) => {
@@ -86,10 +72,8 @@ export const useAdminLeaveData = (initialFilters?: Record<string, string>) => {
     await queryClient.invalidateQueries({ queryKey: ['admin-leaves'] });
   };
 
-  // Helper to update filters from the UI
-  const updateFilters = (newFilters: Partial<typeof filters>) => {
-    setFilters(prev => ({ ...prev, ...newFilters }));
-    setPage(1); // Reset to page 1 on filter change
+  const updateFilters = (newFilters: any) => {
+    useLeaveStore.getState().setFilters(newFilters);
   };
 
   return { 

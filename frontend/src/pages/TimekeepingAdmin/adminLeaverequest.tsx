@@ -68,7 +68,7 @@ const AdminLeaveRequest = () => {
   // Fetch Filter Options using Centralized Hook
   const { data: filterOptions, isLoading: loadingFilters } = useFilterOptions();
   const departmentOptions = filterOptions.departments;
-  const employeeOptions = filterOptions.employees.map(e => e.name);
+  const employeeOptions = filterOptions.employees; // {id, name} objects
 
 
   // Custom hooks
@@ -83,14 +83,9 @@ const AdminLeaveRequest = () => {
     updateFilters 
   } = useAdminLeaveData();
 
-  // We still use useAdminLeaveFilters to manage the "Draft" state of the filter form
-  const {
-    filters: draftFilters,
-    appliedFilters,
-    handleFilterChange,
-    handleApplyFilters,
-    handleClear
-  } = useAdminLeaveFilters();
+  // Standardized approach: Let the Filters component handle its own internal RHF state
+  // and update the LeaveStore directly on "Apply".
+  // The useAdminLeaveData hook will automatically react to store changes.
 
   // Credits Hook
   const { 
@@ -127,22 +122,6 @@ const AdminLeaveRequest = () => {
     updateFilters({ search: debouncedSearchQuery });
     setCreditsSearch(debouncedSearchQuery);
   }, [debouncedSearchQuery, setCreditsSearch, updateFilters]);
-
-  // Sync Applied Filters with Server
-  useEffect(() => {
-    // When "Apply" is clicked in filters, we update the server filters
-    updateFilters({
-      department: String(appliedFilters.department || ''),
-      employee: String(appliedFilters.employee || ''), 
-      fromDate: String(appliedFilters.fromDate || ''),
-      toDate: String(appliedFilters.toDate || '')
-    });
-  }, [appliedFilters, updateFilters]);
-
-  // Sync Clear Action
-  // We need to detect when filters are cleared. 
-  // simplified: just rely on the effect above IF appliedFilters updates to empty strings on clear.
-  // Checking useAdminLeaveFilters: handleClear sets pending and applied to empty strings. So the effect above covers it.
 
   const handleRefresh = useCallback(async () => {
     await refreshLeaves();
@@ -302,12 +281,9 @@ const AdminLeaveRequest = () => {
 
               {/* Filters */}
               <Filters
-                filters={draftFilters}
                 departments={departmentOptions}
                 uniqueEmployees={employeeOptions}
-                onFilterChange={handleFilterChange}
-                onApply={handleApplyFilters}
-                onClear={handleClear}
+                isLoading={loading}
               />
 
               {/* Table */}

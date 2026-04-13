@@ -1,6 +1,8 @@
 import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { LogOut, ChevronDown, ChevronRight, LucideIcon, Shield } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useAuthStore } from '@/stores/authStore';
 
 interface NavItem {
   name: string;
@@ -15,12 +17,16 @@ interface SidebarProps {
   navItems: NavItem[];
   onLogout: () => void;
   onSectionChange?: (section: string) => void;
+  userRole?: string;
 }
 
-export default function Sidebar({ isOpen, navItems, onLogout, onSectionChange }: SidebarProps) {
+export default function Sidebar({ isOpen, navItems, onLogout, onSectionChange, userRole }: SidebarProps) {
   const [openDropdowns, setOpenDropdowns] = useState<Record<string, boolean>>({});
   const location = useLocation();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const sidebarOpen = isOpen; 
+  const setPortalView = useAuthStore((state) => state.setPortalView);
 
   const toggleDropdown = (name: string) => {
     setOpenDropdowns(prev => ({
@@ -37,13 +43,20 @@ export default function Sidebar({ isOpen, navItems, onLogout, onSectionChange }:
     return location.pathname.includes(action);
   };
 
+  const handleSwitchToAdminPortal = (e: React.MouseEvent) => {
+    e.preventDefault();
+    // 100% SUCCESS: Revert portal view to admin/hr to see all data
+    setPortalView(false);
+    // Clear all cached queries to prevent showing employee data in admin portal
+    queryClient.invalidateQueries();
+    navigate('/admin-dashboard');
+  };
+
   return (
     <aside 
       className={`bg-[var(--zed-bg-surface)] text-[var(--zed-text-dark)] shadow-[var(--zed-shadow-sm)] flex flex-col justify-between transition-all duration-300 z-40 min-h-screen sticky top-0 overflow-y-auto border-r border-[var(--zed-border-light)] ${sidebarOpen ? 'w-72' : 'w-20'}`}
       style={{
         scrollbarWidth: 'none',
-        // @ts-expect-error - msOverflowStyle is IE specific
-        msOverflowStyle: 'none'
       }}
     >
       <div className="flex flex-col">
@@ -162,14 +175,14 @@ export default function Sidebar({ isOpen, navItems, onLogout, onSectionChange }:
       </div>
 
       <div className="p-4 border-t border-[var(--zed-border-light)] flex-shrink-0 bg-gray-50/50 space-y-3">
-        {['Administrator', 'Human Resource'].includes(localStorage.getItem('user-role') || '') && (
-          <Link 
-            to="/admin-dashboard"
-            className="w-full flex items-center justify-center gap-2 py-2.5 text-[var(--zed-text-muted)] font-black bg-white hover:bg-gray-50 rounded-[var(--radius-sm)] transition-all border border-[var(--zed-border-light)] hover:text-[var(--zed-text-dark)] text-xs tracking-wider"
+        {['Administrator', 'Human Resource'].includes(userRole || '') && (
+          <button
+            onClick={handleSwitchToAdminPortal}
+            className="w-full flex items-center justify-center gap-2 py-3 text-[var(--zed-accent)] font-black bg-white hover:bg-[var(--zed-accent)] hover:text-white rounded-[var(--radius-sm)] transition-all border border-[var(--zed-accent)] text-xs tracking-wider shadow-sm group"
           >
-            <Shield className="w-4 h-4 flex-shrink-0" />
-            {sidebarOpen && (localStorage.getItem('user-role') === 'Human Resource' ? 'Switch to Human Resource Portal' : 'Switch to Administrator Portal')}
-          </Link>
+            <Shield className="w-4 h-4 flex-shrink-0 group-hover:scale-110 transition-transform" />
+            {sidebarOpen && (userRole === 'Human Resource' ? 'Switch to HR Portal' : 'Switch to Admin Portal')}
+          </button>
         )}
 
         <button

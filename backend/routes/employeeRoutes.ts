@@ -33,30 +33,24 @@ const router: Router = Router();
 
 // Main Employee CRUD
 router.get('/', verifyToken, verifyAdmin, getAllEmployees);
-router.get('/:id', verifyToken, getEmployeeById); // Controller enforces isSelf or Admin
+router.get('/:id', verifyToken, verifyOwnerOrAdmin, getEmployeeById);
 
-// ADMIN ONLY - Create and Delete employees
-router.post('/', verifyToken, verifyAdmin, createEmployee);
-router.delete('/:id', verifyToken, verifyAdmin, deleteEmployee);
-router.patch('/:id/revert-status', verifyToken, verifyAdmin, revertEmployeeStatus);
-
-// OWNER OR ADMIN - Update profile
-router.put('/:id', verifyToken, verifyOwnerOrAdmin, uploadAvatar.single('avatar'), updateEmployee);
+// ...
 
 // Employee Skills
-router.get('/:id/skills', verifyToken, getEmployeeSkills);
+router.get('/:id/skills', verifyToken, verifyOwnerOrAdmin, getEmployeeSkills);
 router.post('/:id/skills', verifyToken, verifyOwnerOrAdmin, addEmployeeSkill);
 router.put('/:id/skills/:skillId', verifyToken, verifyOwnerOrAdmin, updateEmployeeSkill);
 router.delete('/:id/skills/:skillId', verifyToken, verifyOwnerOrAdmin, deleteEmployeeSkill);
 
 // Employee Education
-router.get('/:id/education', verifyToken, getEmployeeEducation);
+router.get('/:id/education', verifyToken, verifyOwnerOrAdmin, getEmployeeEducation);
 router.post('/:id/education', verifyToken, verifyOwnerOrAdmin, addEmployeeEducation);
 router.put('/:id/education/:educationId', verifyToken, verifyOwnerOrAdmin, updateEmployeeEducation);
 router.delete('/:id/education/:educationId', verifyToken, verifyOwnerOrAdmin, deleteEmployeeEducation);
 
 // Employee Emergency Contacts
-router.get('/:id/contacts', verifyToken, getEmployeeContacts);
+router.get('/:id/contacts', verifyToken, verifyOwnerOrAdmin, getEmployeeContacts);
 router.post('/:id/contacts', verifyToken, verifyOwnerOrAdmin, addEmployeeContact);
 router.put('/:id/contacts/:contactId', verifyToken, verifyOwnerOrAdmin, updateEmployeeContact);
 router.delete('/:id/contacts/:contactId', verifyToken, verifyOwnerOrAdmin, deleteEmployeeContact);
@@ -67,7 +61,7 @@ router.put('/:id/custom-fields/:fieldId', verifyToken, verifyOwnerOrAdmin, updat
 router.delete('/:id/custom-fields/:fieldId', verifyToken, verifyOwnerOrAdmin, deleteEmployeeCustomField);
 
 // Employee Documents
-router.get('/:id/documents', verifyToken, getEmployeeDocuments);
+router.get('/:id/documents', verifyToken, verifyOwnerOrAdmin, getEmployeeDocuments);
 router.post('/:id/documents', verifyToken, verifyOwnerOrAdmin, uploadResume.single('document'), uploadEmployeeDocument);
 router.delete('/:id/documents/:docId', verifyToken, verifyOwnerOrAdmin, deleteEmployeeDocument);
 router.post('/:id/sync-from-recruitment', verifyToken, verifyOwnerOrAdmin, syncEmployeeDocumentsFromRecruitment);

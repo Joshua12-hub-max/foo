@@ -1,6 +1,7 @@
 import axios, { InternalAxiosRequestConfig, AxiosError, AxiosResponse } from 'axios';
 import { toCamelCase, toSnakeCase } from '@/utils/caseUtils';
 import { JsonValue } from '@/types';
+import { useAuthStore } from '@/stores/authStore';
 
 const api = axios.create({
     baseURL: `${import.meta.env.VITE_API_URL || ''}/api`,
@@ -10,24 +11,30 @@ const api = axios.create({
 // Request Interceptor - Set Content-Type dynamically
 api.interceptors.request.use(
     (config: InternalAxiosRequestConfig) => {
+        const { isEmployeeView } = useAuthStore.getState();
+
+        // Add Portal View Header if active
+        if (isEmployeeView) {
+            config.headers['x-portal-view'] = 'employee';
+        }
+
         // Transform body to snake_case for backend
         if (config.data && !(config.data instanceof FormData)) {
             config.data = toSnakeCase(config.data as JsonValue);
             config.headers['Content-Type'] = 'application/json';
         }
-        
+
         // Transform query parameters to snake_case
         if (config.params) {
             config.params = toSnakeCase(config.params as JsonValue);
         }
-        
+
         return config;
     },
     (error: AxiosError) => {
         return Promise.reject(error);
     }
 );
-
 // Response Interceptors
 api.interceptors.response.use(
     (response: AxiosResponse) => {

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  X, User, Mail, Phone, MapPin, Calendar, Briefcase, 
-  GraduationCap, Award, Brain, Fingerprint, FileText,
-  BadgeCheck, Globe, Hash, Ruler, Weight, Droplet,
+  X, User, MapPin, Calendar, 
+  Fingerprint, FileText,
+  BadgeCheck, 
   LucideIcon, Download, Eye, FileCode, Paperclip, Loader2
 } from 'lucide-react';
 import { Applicant, ApplicantDocument } from '@/types/recruitment';

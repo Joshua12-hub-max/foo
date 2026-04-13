@@ -22,6 +22,10 @@ export const currentManilaDateTime = (): string => {
   return formatToManilaDateTime(new Date());
 };
 
+export const currentManilaDateOnly = (): string => {
+  return formatToManilaDateTime(new Date()).split(' ')[0];
+};
+
 /**
  * Format minutes into a readable duration string (e.g. "8h 40m")
  */
@@ -83,4 +87,57 @@ export const convertTo24Hour = (time12h: string): string => {
   if (hours === 12) hours = 0;
   if (modifier.toUpperCase() === 'PM') hours += 12;
   return `${String(hours).padStart(2, '0')}:${minutes}:00`;
+};
+
+/**
+ * Normalize any date value to ISO date format (YYYY-MM-DD)
+ * Handles Date objects, date strings, and various date formats
+ * Returns null for invalid dates
+ */
+export const normalizeToIsoDate = (value: string | Date | null | undefined): string | null => {
+  if (!value) return null;
+
+  if (value instanceof Date) {
+    if (isNaN(value.getTime())) return null;
+    return value.toISOString().split('T')[0];
+  }
+
+  // Explicitly handle MM-DD-YYYY or M-D-YYYY
+  const mdiyMatch = value.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+  if (mdiyMatch) {
+    const [_, month, day, year] = mdiyMatch;
+    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+  }
+
+  // Explicitly handle DD-MM-YYYY if needed, but the user example 04-01-2025 looks like MM-DD-YYYY or YYYY-MM-DD
+  // HTML5 date inputs use YYYY-MM-DD which new Date() handles fine.
+
+  const date = new Date(value);
+  if (isNaN(date.getTime())) return null;
+
+  return date.toISOString().split('T')[0];
+};
+
+/**
+ * Check if a string is in ISO date format (YYYY-MM-DD)
+ */
+export const isIsoDateFormat = (value: string): boolean => {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value);
+};
+
+/**
+ * Convert Excel serial date to ISO date format (YYYY-MM-DD)
+ * Excel stores dates as numbers (days since 1900-01-01, with some quirks)
+ * Returns null for invalid serial numbers
+ */
+export const excelSerialToIsoDate = (serial: number): string | null => {
+  if (serial < 1 || serial > 60000) return null;
+
+  // Excel's date system: 1 = 1900-01-01, but Excel incorrectly treats 1900 as a leap year
+  // Subtract 25569 to get Unix epoch days, then convert to milliseconds
+  const date = new Date((serial - 25569) * 86400 * 1000);
+
+  if (isNaN(date.getTime())) return null;
+
+  return date.toISOString().split('T')[0];
 };

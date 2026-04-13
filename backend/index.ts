@@ -1,6 +1,6 @@
 import dotenv from 'dotenv';
 dotenv.config();
-// 100% RESTART TRIGGER: Force nodemon to reload after structural fixes in auth.controller.ts
+// 100% RESTART TRIGGER: Force nodemon to reload after structural fixes and port cleanup
 
 import express from 'express';
 import cors from 'cors';

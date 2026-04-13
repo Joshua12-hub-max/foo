@@ -2,8 +2,8 @@ import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { AdminLeaveRequest, LeaveFilters } from '../../types';
 
 export const useAdminLeaveFilters = (data: AdminLeaveRequest[] = []) => {
-  const [pendingFilters, setPendingFilters] = useState<LeaveFilters>({department: '', employee: '', fromDate: '', toDate: ''});
-  const [appliedFilters, setAppliedFilters] = useState<LeaveFilters>({department: '', employee: '', fromDate: '', toDate: ''});
+  const [pendingFilters, setPendingFilters] = useState<LeaveFilters>({department: '', employeeId: '', startDate: '', endDate: '', status: '', leaveType: ''});
+  const [appliedFilters, setAppliedFilters] = useState<LeaveFilters>({department: '', employeeId: '', startDate: '', endDate: '', status: '', leaveType: ''});
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -31,7 +31,7 @@ export const useAdminLeaveFilters = (data: AdminLeaveRequest[] = []) => {
   const [filterError, setFilterError] = useState<string | null>(null);
 
   const handleApplyFilters = useCallback(() => {
-    const hasFilters = pendingFilters.department || pendingFilters.employee || pendingFilters.fromDate || pendingFilters.toDate;
+    const hasFilters = pendingFilters.department || pendingFilters.employeeId || pendingFilters.startDate || pendingFilters.endDate;
     if (!hasFilters) {
       setFilterError("Please select at least one filter before applying.");
       return;
@@ -45,7 +45,7 @@ export const useAdminLeaveFilters = (data: AdminLeaveRequest[] = []) => {
   }, []);
 
   const handleClear = useCallback(() => {
-    const emptyFilters: LeaveFilters = { department: '', employee: '', fromDate: '', toDate: '' };
+    const emptyFilters: LeaveFilters = { department: '', employeeId: '', startDate: '', endDate: '', status: '', leaveType: '' };
     setPendingFilters(emptyFilters);
     setAppliedFilters(emptyFilters);
     setSearchQuery('');
@@ -59,15 +59,15 @@ export const useAdminLeaveFilters = (data: AdminLeaveRequest[] = []) => {
       result = result.filter(item => item.department === appliedFilters.department);
     }
 
-    if (appliedFilters.employee) {
-      result = result.filter(item => `${item.firstName} ${item.lastName}` === appliedFilters.employee);
+    if (appliedFilters.employeeId) {
+      result = result.filter(item => `${item.firstName} ${item.lastName}` === appliedFilters.employeeId);
     }
 
-    if (appliedFilters.fromDate) {
-      result = result.filter(item => item.startDate >= appliedFilters.fromDate);
+    if (appliedFilters.startDate) {
+      result = result.filter(item => item.startDate >= appliedFilters.startDate);
     }
-    if (appliedFilters.toDate) {
-      result = result.filter(item => item.endDate <= appliedFilters.toDate);
+    if (appliedFilters.endDate) {
+      result = result.filter(item => item.endDate <= appliedFilters.endDate);
     }
 
     const query = debouncedSearchQuery.toLowerCase();

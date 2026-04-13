@@ -70,27 +70,15 @@ export interface DashboardStatsResponse {
 // Ensure strict return types
 export const attendanceApi = {
     getLogs: async (params: AttendanceQueryValues): Promise<AxiosResponse<AttendanceLogResponse>> => {
-        // 100% SUCCESS Logic: Ensure we only append valid, truthy values to the URL
-        const queryParams = new URLSearchParams();
-        
-        if (params.page) queryParams.append('page', params.page.toString());
-        if (params.limit) queryParams.append('limit', params.limit.toString());
-        
-        // Ensure values are not 'null', 'undefined', or empty strings before appending
-        if (params.employeeId && params.employeeId !== 'all') {
-            queryParams.append('employeeId', params.employeeId);
-        }
-        if (params.startDate) queryParams.append('startDate', params.startDate);
-        if (params.endDate) queryParams.append('endDate', params.endDate);
-        if (params.department && params.department !== 'all') {
-            queryParams.append('department', params.department);
-        }
-        if (params.search) queryParams.append('search', params.search);
-
-        return await api.get('/attendance/logs', { params: queryParams });
+        // 100% SUCCESS Logic: Pass parameters as a plain object
+        // The axios interceptor in frontend/src/api/axios.ts will automatically
+        // transform these to snake_case for the backend (e.g., startDate -> start_date).
+        return await api.get('/attendance/logs', { params });
     },
-    getRecentActivity: async (): Promise<AxiosResponse<RecentActivityResponse>> => {
-        return await api.get('/attendance/recent-activity');
+    getRecentActivity: async (params?: AttendanceQueryValues): Promise<AxiosResponse<RecentActivityResponse>> => {
+        const queryParams = new URLSearchParams();
+        if (params?.employeeId) queryParams.append('employeeId', params.employeeId);
+        return await api.get('/attendance/recent-activity', { params: queryParams });
     },
     getRawLogs: async (params?: AttendanceQueryValues): Promise<AxiosResponse<RawLogsResponse>> => {
         const queryParams = new URLSearchParams();
@@ -105,8 +93,10 @@ export const attendanceApi = {
         }
         return await api.get('/attendance/raw-logs', { params: queryParams });
     },
-    getDashboardStats: async (): Promise<AxiosResponse<DashboardStatsResponse>> => {
-        return await api.get<DashboardStatsResponse>('/attendance/dashboard-stats');
+    getDashboardStats: async (params?: AttendanceQueryValues): Promise<AxiosResponse<DashboardStatsResponse>> => {
+        const queryParams = new URLSearchParams();
+        if (params?.employeeId) queryParams.append('employeeId', params.employeeId);
+        return await api.get<DashboardStatsResponse>('/attendance/dashboard-stats', { params: queryParams });
     },
     getHolidays: async (year?: number): Promise<AxiosResponse<ApiResponse<never[]>>> => {
         return await api.get('/holidays', { params: { year } });

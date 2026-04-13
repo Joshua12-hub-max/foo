@@ -152,6 +152,29 @@ export const getMessages = async (req: Request, res: Response): Promise<void> =>
   try {
     const { conversationId } = req.params;
     const { markRead, reader } = req.query;
+    const authReq = req as AuthenticatedRequest;
+    const user = authReq.user;
+
+    // Fetch conversation first to check ownership
+    const [conv] = await db.select().from(chatConversations).where(eq(chatConversations.id, Number(conversationId))).limit(1);
+    
+    if (!conv) {
+      res.status(404).json({ success: false, message: 'Conversation not found' });
+      return;
+    }
+
+    // Security: Only the applicant or an Admin/HR can see the messages
+    if (user) {
+      const isAdminOrHr = ['Administrator', 'Human Resource'].includes(user.role);
+      const isOwner = conv.applicantEmail === user.email;
+      
+      if (!isAdminOrHr && !isOwner) {
+        res.status(403).json({ success: false, message: 'Access Denied: You are not a participant in this conversation.' });
+        return;
+      }
+    }
+    // Note: If no user (applicant mode without token), we currently rely on the conversationId being a "secret".
+    // In a fully hardened system, we would check a session-based applicant token here.
 
     const messages = await db.select({
       id: chatMessages.id,

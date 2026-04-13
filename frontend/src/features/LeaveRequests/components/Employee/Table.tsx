@@ -1,21 +1,22 @@
 import React from 'react';
 import { CheckCircle, Info } from 'lucide-react';
 import { STATUS_STYLES } from './constants/leaveConstants';
-import { EmployeeLeaveRequest, EmployeeLeaveFilters } from '../../types';
+import { EmployeeLeaveRequest } from '../../types';
+import { useLeaveStore } from '@/stores/leaveStore';
 
 interface TableProps {
   data: EmployeeLeaveRequest[];
   searchQuery: string;
-  filters: EmployeeLeaveFilters;
   onFinalize?: (request: EmployeeLeaveRequest) => void;
 }
 
-export const Table: React.FC<TableProps> = ({ data, searchQuery, filters, onFinalize }) => {
+export const Table: React.FC<TableProps> = ({ data, searchQuery, onFinalize }) => {
+  const { filters } = useLeaveStore();
   const getStatusBadge = (status: string) => {
     return STATUS_STYLES[status] || 'bg-gray-100 text-gray-800';
   };
 
-  const hasActiveFilters = searchQuery || Object.values(filters).some(v => v);
+  const hasActiveFilters = searchQuery || Object.values(filters).some(v => v !== '' && v !== undefined);
 
   return (
     <div className="flex-1 overflow-hidden rounded-xl bg-[#F8F9FA] p-1">

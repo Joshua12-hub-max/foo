@@ -16,8 +16,10 @@ import { formatEmployeeId } from '@/utils/formatters';
 
 const AdminAttendance = () => {
   const sidebarOpen = useUIStore((state) => state.sidebarOpen);
-  const { getQuery, setPage, pagination: storePagination } = useAttendanceStore();
-  const queryParams = getQuery();
+  const { filters, pagination, getQuery, setPage } = useAttendanceStore();
+  
+  // 100% REACTIVE: queryParams will now update whenever filters or pagination change
+  const queryParams = useMemo(() => getQuery(), [filters, pagination, getQuery]);
 
   // 1. Fetch Data
   const { data, isLoading, error, refetch } = useAttendanceLogs(queryParams);

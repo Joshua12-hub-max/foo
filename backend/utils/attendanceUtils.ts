@@ -1,3 +1,5 @@
+import { ATTENDANCE_STATUS } from '../constants/statusConstants.js';
+
 /**
  * Attendance Utilities
  * Centralized logic for late/undertime calculations and status determination.
@@ -14,14 +16,6 @@ export interface AttendanceCalculation {
 
 /**
  * Calculates late and undertime minutes based on a schedule block and a grace period.
- * Consistent with the Philippine government rule (15-min grace deduction).
- * 
- * @param timeIn Actual clock-in time (Date)
- * @param timeOut Actual clock-out time (Date)
- * @param blockStart Scheduled start time (Date)
- * @param blockEnd Scheduled end time (Date)
- * @param gracePeriod Grace period in minutes (typically 15)
- * @returns Object containing lateMinutes and undertimeMinutes
  */
 export const calculateLateUndertime = (
   timeIn: Date | null,
@@ -37,13 +31,9 @@ export const calculateLateUndertime = (
   // 100% PRECISION: Calculate Late Minutes
   if (timeIn && timeIn > blockStart) {
     const rawLate = Math.floor((timeIn.getTime() - blockStart.getTime()) / 60000);
-    // Deductive grace period logic
     if (rawLate > gracePeriod) {
       lateMinutes = rawLate - gracePeriod;
     }
-  } else if (!timeIn) {
-    // Audit Requirement: If NO time-in, they are technically 100% late for the block (Absence logic usually handles this, but we record the minutes for rating)
-    lateMinutes = 0; // Absence is handled by status, late minutes are for partials
   }
 
   // 100% PRECISION: Calculate Undertime Minutes
@@ -53,8 +43,6 @@ export const calculateLateUndertime = (
   if (timeOut && timeOut < blockEnd) {
     undertimeMinutes = Math.floor((blockEnd.getTime() - timeOut.getTime()) / 60000);
   } else if (!timeOut) {
-    // Audit Requirement: If NO time-out, we only record undertime if the shift has already ended.
-    // If the shift is still active, undertime is 0 (Pending completion).
     if (!isShiftActive) {
       const effectiveStart = (timeIn && timeIn > blockStart) ? timeIn : blockStart;
       const ut = Math.floor((blockEnd.getTime() - effectiveStart.getTime()) / 60000);
@@ -64,13 +52,10 @@ export const calculateLateUndertime = (
     }
   }
 
-  // 100% PRECISION: Absence Penalty
-  // If BOTH are missing, the undertime equals the full shift duration
   if (!timeIn && !timeOut) {
       undertimeMinutes = Math.floor((blockEnd.getTime() - blockStart.getTime()) / 60000);
   }
 
-  // Calculate Rendered Minutes for potential DTR auditing
   if (timeIn && timeOut) {
     renderMinutes = Math.floor((timeOut.getTime() - timeIn.getTime()) / 60000);
   }
@@ -80,34 +65,72 @@ export const calculateLateUndertime = (
 
 /**
  * Determines the attendance status string based on late and undertime minutes.
- * Preserves special statuses like 'Absent' or 'Leave' if already determined.
- * 100% Precision: Handles Rest Day Duty cases where a schedule might be missing.
+ * Uses centralized ATTENDANCE_STATUS constants for 100% consistency.
+ *
+ * Business Rules:
+ * - Late only → "Present (Late)"
+ * - Late + Undertime → "Absent" (new rule)
+ * - Undertime only → "Undertime"
+ * - Night time (10 PM - 5 AM) → Invalid status
+ * - No schedule → "Rest Day Duty"
+ * - Reserved statuses (Absent, On Leave, No Logs) → preserved
  */
 export const determineStatus = (
   lateMinutes: number,
   undertimeMinutes: number,
-  baseStatus: string = 'Present',
+  baseStatus: string = ATTENDANCE_STATUS.PRESENT,
   hasSchedule: boolean = true,
   isShiftActive: boolean = false,
-  hasTimeOut: boolean = false
+  hasTimeOut: boolean = false,
+  timeIn?: string | null,
+  timeOut?: string | null
 ): string => {
-  // If no logs at all for a scheduled day, it's Absent
-  if (!hasSchedule) return 'Rest Day Duty';
+  // Check for rest day
+  if (!hasSchedule) return ATTENDANCE_STATUS.REST_DAY_DUTY;
 
-  // If it's already a non-calculable status, keep it
-  if (baseStatus === 'Absent' || baseStatus === 'Leave' || baseStatus === 'No Logs') {
+  // Preserve reserved statuses
+  const reserved = [ATTENDANCE_STATUS.ABSENT, ATTENDANCE_STATUS.ON_LEAVE, ATTENDANCE_STATUS.NO_LOGS];
+  if (reserved.includes(baseStatus as any)) {
     return baseStatus;
   }
 
-  // 100% PRECISION: Real-time Status Determination
-  // If the shift is still active and they haven't timed out, it's 'Present'.
-  if (isShiftActive && !hasTimeOut) {
-    if (lateMinutes > 0) return 'Present (Late)';
-    return 'Present';
+  // Night time validation helper (10 PM - 5 AM)
+  const isNightTime = (time: string): boolean => {
+    const hour = parseInt(time.split(':')[0]);
+    return hour >= 22 || hour < 5;
+  };
+
+  // Validate night time in
+  if (timeIn && isNightTime(timeIn)) {
+    return 'Invalid - Night Time In';
   }
 
-  if (lateMinutes > 0 && undertimeMinutes > 0) return 'Late/Undertime';
-  if (lateMinutes > 0) return 'Late';
-  if (undertimeMinutes > 0) return 'Undertime';
-  return 'Present';
+  // Validate night time out
+  if (timeOut && isNightTime(timeOut)) {
+    return 'Invalid - Night Time Out';
+  }
+
+  // Currently on shift (no time out yet)
+  if (isShiftActive && !hasTimeOut) {
+    if (lateMinutes > 0) return ATTENDANCE_STATUS.PRESENT_LATE;
+    return ATTENDANCE_STATUS.PRESENT;
+  }
+
+  // NEW RULE: Both late AND undertime = Absent
+  if (lateMinutes > 0 && undertimeMinutes > 0) {
+    return ATTENDANCE_STATUS.ABSENT;
+  }
+
+  // UPDATED RULE: Late only = Present (Late)
+  if (lateMinutes > 0) {
+    return ATTENDANCE_STATUS.PRESENT_LATE;
+  }
+
+  // Undertime only
+  if (undertimeMinutes > 0) {
+    return ATTENDANCE_STATUS.UNDERTIME;
+  }
+
+  // All good
+  return ATTENDANCE_STATUS.PRESENT;
 };

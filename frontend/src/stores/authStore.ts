@@ -11,6 +11,7 @@ interface AuthState {
   role: string | null;
   department: string | null;
   authError: string | null;
+  isEmployeeView: boolean;
 }
 
 interface AuthActions {
@@ -20,6 +21,7 @@ interface AuthActions {
   checkAuth: () => Promise<void>;
   clearError: () => void;
   nukeAllStores: () => void;
+  setPortalView: (isEmployee: boolean) => void;
 }
 
 type AuthStore = AuthState & AuthActions;
@@ -31,6 +33,7 @@ const initialState: AuthState = {
   role: null,
   department: null,
   authError: null,
+  isEmployeeView: false,
 };
 
 export const useAuthStore = create<AuthStore>()(
@@ -38,6 +41,10 @@ export const useAuthStore = create<AuthStore>()(
     persist(
       (set, get) => ({
         ...initialState,
+
+        setPortalView: (isEmployee) => {
+          set({ isEmployeeView: isEmployee });
+        },
 
         setUser: (user) => {
           set({
@@ -107,7 +114,8 @@ export const useAuthStore = create<AuthStore>()(
         partialize: (state) => ({ 
             user: state.user,
             isAuthenticated: state.isAuthenticated,
-            role: state.role 
+            role: state.role,
+            isEmployeeView: state.isEmployeeView
         }),
       }
     )

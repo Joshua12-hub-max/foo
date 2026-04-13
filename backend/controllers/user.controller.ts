@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 import path from 'path';
@@ -64,7 +64,7 @@ import {
 import { formatFullName } from '../utils/nameUtils.js';
 import { checkSystemWideUniqueness } from '../services/validationService.js';
 import { PdsQuestions } from '../schemas/pdsSchema.js';
-import { normalizeIdSql } from '../utils/idUtils.js';
+import { compareIds } from '../utils/idUtils.js';
 
 
 // Standardized role type from global types
@@ -384,7 +384,7 @@ const sanitizePDSFields = (updates: UpdateEmployeeInput): UpdateEmployeeInput =>
 // EMPLOYEE CRUD OPERATIONS
 // ============================================================================
 
-export const getAllEmployees = async (req: Request, res: Response): Promise<void> => {
+export const getAllEmployees = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { department, departmentId } = req.query;
 
@@ -400,16 +400,26 @@ export const getAllEmployees = async (req: Request, res: Response): Promise<void
     const mappedEmployees = employees.map(mapToEmployeeApi);
     res.json({ success: true, employees: mappedEmployees });
   } catch (err: unknown) {
-    const error = err instanceof Error ? err : new Error(String(err));
-    console.error('[GET ALL EMPLOYEES ERROR]', error);
-    res.status(500).json({ success: false, message: 'Failed to fetch employees' });
+    next(err);
   }
 };
 
-export const getEmployeeById = async (req: Request, res: Response): Promise<void> => {
+export const getEmployeeById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { id } = req.params as { id: string };
     console.warn(`[DEBUG] Fetching employee profile for ID: ${id}`);
+
+    const authReq = req as AuthenticatedRequest;
+    const requester = authReq.user;
+    const isSelf = requester.id === parseInt(id);
+    const roleLower = requester.role?.toLowerCase() || '';
+    const isAdminOrHr = ['administrator', 'human resource'].includes(roleLower);
+
+    // Hard access block for non-self, non-admin
+    if (!isSelf && !isAdminOrHr) {
+      res.status(403).json({ success: false, message: 'Access Denied: You can only view your own profile.' });
+      return;
+    }
 
     const [employeeData, relatedData] = await Promise.all([
       UserService.getEmployeeById(parseInt(id)),
@@ -424,12 +434,8 @@ export const getEmployeeById = async (req: Request, res: Response): Promise<void
 
     console.warn(`[DEBUG] Found employee data for: ${employeeData.firstName} ${employeeData.lastName}`);
 
-    // Security: PII Filtering
-    const authReq = req as AuthenticatedRequest;
-    const requester = authReq.user;
-    const isSelf = requester.id === parseInt(id);
-    const roleLower = requester.role?.toLowerCase() || '';
-    const isAdmin = ['administrator', 'human resource'].includes(roleLower);
+    // Security: PII Filtering (already present below)
+    const isAdmin = isAdminOrHr;
 
     if (!isSelf && !isAdmin) {
       res.status(403).json({ success: false, message: 'Access Denied: You can only view your own profile.' });
@@ -476,17 +482,11 @@ export const getEmployeeById = async (req: Request, res: Response): Promise<void
     console.warn(`[DEBUG] Successfully built response for employee ID: ${id}`);
     res.json(response);
   } catch (err: unknown) {
-    const error = err instanceof Error ? err : new Error(String(err));
-    console.error('[ERROR] Failed to fetch employee profile:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch employee',
-      error: error.message
-    });
+    next(err);
   }
 };
 
-export const createEmployee = async (req: Request, res: Response): Promise<void> => {
+export const createEmployee = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const validatedData = CreateEmployeeSchema.parse(req.body);
     const {
@@ -783,7 +783,7 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
     // 100% SUCCESS GUARANTEE: Ensure biometric record exists in our system
     // The C# middleware normally does this, but we do it here as well for absolute reliability
     const [existingBio] = await db.select().from(bioEnrolledUsers).where(
-      sql`${normalizeIdSql(bioEnrolledUsers.employeeId)} = ${normalizeIdSql(finalEmployeeId)}`
+      compareIds(bioEnrolledUsers.employeeId, finalEmployeeId)
     ).limit(1);
 
     if (existingBio) {
@@ -792,8 +792,7 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
         department: finalDeptName || 'Unassigned',
         userStatus: 'active',
         updatedAt: sql`CURRENT_TIMESTAMP`
-      }).where(sql`${normalizeIdSql(bioEnrolledUsers.employeeId)} = ${normalizeIdSql(finalEmployeeId)}`);
-    } else {
+      }).where(compareIds(bioEnrolledUsers.employeeId, finalEmployeeId));    } else {
       await db.insert(bioEnrolledUsers).values({
         employeeId: finalEmployeeId,
         fullName: formatFullName(lastName, firstName, validatedData.middleName, validatedData.suffix),
@@ -804,8 +803,7 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
 
     res.status(201).json({ success: true, message: 'Employee created successfully', employeeId: finalEmployeeId });
   } catch (err: unknown) {
-    const error = err instanceof Error ? err : new Error(String(err));
-    res.status(500).json({ success: false, message: 'Failed to create employee', error: error.message });
+    next(err);
   }
 };
 
@@ -813,7 +811,7 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
 // DOCUMENT MANAGEMENT
 // ============================================================================
 
-export const getEmployeeDocuments = async (req: Request, res: Response): Promise<void> => {
+export const getEmployeeDocuments = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { id } = req.params;
     const documents = await db.select().from(employeeDocuments).where(eq(employeeDocuments.employeeId, parseInt(id as string)));
@@ -826,12 +824,11 @@ export const getEmployeeDocuments = async (req: Request, res: Response): Promise
     
     res.json({ success: true, documents: mappedDocs });
   } catch (err: unknown) {
-    const error = err instanceof Error ? err : new Error(String(err));
-    res.status(500).json({ success: false, message: 'Failed to fetch documents', error: error.message });
+    next(err);
   }
 };
 
-export const uploadEmployeeDocument = async (req: Request, res: Response): Promise<void> => {
+export const uploadEmployeeDocument = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { id } = req.params;
     const { documentType } = req.body as { documentType?: string };
@@ -857,12 +854,11 @@ export const uploadEmployeeDocument = async (req: Request, res: Response): Promi
       document: { id: result.insertId, documentName: file.originalname, filePath: `/uploads/resumes/${file.filename}` }
     });
   } catch (err: unknown) {
-    const error = err instanceof Error ? err : new Error(String(err));
-    res.status(500).json({ success: false, message: 'Failed to upload document', error: error.message });
+    next(err);
   }
 };
 
-export const syncEmployeeDocumentsFromRecruitment = async (req: Request, res: Response): Promise<void> => {
+export const syncEmployeeDocumentsFromRecruitment = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { id } = req.params;
     const employeeId = parseInt(id as string);
@@ -921,13 +917,11 @@ export const syncEmployeeDocumentsFromRecruitment = async (req: Request, res: Re
 
     res.json({ success: true, message: `Successfully synchronized ${appDocs.length} documents from recruitment.` });
   } catch (err: unknown) {
-    const error = err instanceof Error ? err : new Error(String(err));
-    console.error('[SYNC DOCUMENTS ERROR]', error);
-    res.status(500).json({ success: false, message: 'Failed to synchronize documents' });
+    next(err);
   }
 };
 
-export const deleteEmployeeDocument = async (req: Request, res: Response): Promise<void> => {
+export const deleteEmployeeDocument = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { id, docId } = req.params;
 
@@ -948,12 +942,11 @@ export const deleteEmployeeDocument = async (req: Request, res: Response): Promi
     await db.delete(employeeDocuments).where(eq(employeeDocuments.id, parseInt(docId as string)));
     res.json({ success: true, message: 'Document deleted successfully' });
   } catch (err: unknown) {
-    const error = err instanceof Error ? err : new Error(String(err));
-    res.status(500).json({ success: false, message: 'Failed to delete document', error: error.message });
+    next(err);
   }
 };
 
-export const deleteEmployee = async (req: Request, res: Response): Promise<void> => {
+export const deleteEmployee = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { id } = req.params as { id: string };
     const authReq = req as AuthenticatedRequest;
@@ -996,12 +989,11 @@ export const deleteEmployee = async (req: Request, res: Response): Promise<void>
 
     res.json({ success: true, message: 'Employee deleted successfully' });
   } catch (error: unknown) {
-    console.error('[DELETE EMPLOYEE ERROR]', error);
-    res.status(500).json({ success: false, message: 'Failed to delete employee' });
+    next(error);
   }
 };
 
-export const updateEmployee = async (req: Request, res: Response): Promise<void> => {
+export const updateEmployee = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { id } = req.params as { id: string };
     const updates = UpdateEmployeeSchema.parse(req.body);
@@ -1324,7 +1316,7 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
     const personalUpdates: Record<string, unknown> = {};
     const declarationUpdates: Record<string, unknown> = {};
 
-    const toBool = (v: any): boolean | null => {
+    const toBool = (v: unknown): boolean | null => {
       if (v === null || v === undefined) return null;
       if (typeof v === 'boolean') return v;
       const s = String(v).toLowerCase().trim();
@@ -1477,18 +1469,11 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
     });
 
   } catch (error: unknown) {
-    if (error instanceof z.ZodError) {
-
-        res.status(400).json({ success: false, message: 'Validation failed', errors: error.issues });
-        return;
-    }
-
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    res.status(500).json({ success: false, message: `Failed to update employee: ${errorMessage}` });
+    next(error);
   }
 };
 
-export const revertEmployeeStatus = async (req: Request, res: Response): Promise<void> => {
+export const revertEmployeeStatus = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { id } = req.params as { id: string };
     const { newStatus, reason: _reason } = RevertStatusSchema.parse(req.body);
@@ -1527,8 +1512,7 @@ export const revertEmployeeStatus = async (req: Request, res: Response): Promise
     });
 
   } catch (error: unknown) {
-    console.error('[REVERT STATUS ERROR]', error);
-    res.status(500).json({ success: false, message: 'Failed to revert employee status' });
+    next(error);
   }
 };
 
@@ -1536,7 +1520,7 @@ export const revertEmployeeStatus = async (req: Request, res: Response): Promise
 // EMPLOYEE SKILLS
 // ============================================================================
 
-export const getEmployeeSkills = async (req: Request, res: Response): Promise<void> => {
+export const getEmployeeSkills = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { id } = req.params as { id: string };
     const skills = await db.select()
@@ -1547,12 +1531,11 @@ export const getEmployeeSkills = async (req: Request, res: Response): Promise<vo
     const mappedSkills = skills.map(mapToSkillApi);
     res.json({ success: true, skills: mappedSkills });
   } catch (err: unknown) {
-    const error = err instanceof Error ? err : new Error(String(err));
-    res.status(500).json({ success: false, message: 'Failed to fetch skills', error: error.message });
+    next(err);
   }
 };
 
-export const addEmployeeSkill = async (req: Request, res: Response): Promise<void> => {
+export const addEmployeeSkill = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { id } = req.params as { id: string };
     const { skillName, category, proficiencyLevel, yearsExperience } = AddSkillSchema.parse(req.body);
@@ -1567,12 +1550,11 @@ export const addEmployeeSkill = async (req: Request, res: Response): Promise<voi
 
     res.status(201).json({ success: true, message: 'Skill added', skillId: result.insertId });
   } catch (err: unknown) {
-    const error = err instanceof Error ? err : new Error(String(err));
-    res.status(500).json({ success: false, message: 'Failed to add skill', error: error.message });
+    next(err);
   }
 };
 
-export const updateEmployeeSkill = async (req: Request, res: Response): Promise<void> => {
+export const updateEmployeeSkill = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { id, skillId } = req.params as { id: string; skillId: string };
     const updates = UpdateSkillSchema.parse(req.body);
@@ -1597,12 +1579,11 @@ export const updateEmployeeSkill = async (req: Request, res: Response): Promise<
 
     res.json({ success: true, message: 'Skill updated' });
   } catch (err: unknown) {
-    const error = err instanceof Error ? err : new Error(String(err));
-    res.status(500).json({ success: false, message: 'Failed to update skill', error: error.message });
+    next(err);
   }
 };
 
-export const deleteEmployeeSkill = async (req: Request, res: Response): Promise<void> => {
+export const deleteEmployeeSkill = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { id, skillId } = req.params as { id: string; skillId: string };
     await db.delete(employeeSkills)
@@ -1612,8 +1593,7 @@ export const deleteEmployeeSkill = async (req: Request, res: Response): Promise<
       ));
     res.json({ success: true, message: 'Skill deleted' });
   } catch (err: unknown) {
-    const error = err instanceof Error ? err : new Error(String(err));
-    res.status(500).json({ success: false, message: 'Failed to delete skill', error: error.message });
+    next(err);
   }
 };
 
@@ -1621,7 +1601,7 @@ export const deleteEmployeeSkill = async (req: Request, res: Response): Promise<
 // EMPLOYEE EDUCATION
 // ============================================================================
 
-export const getEmployeeEducation = async (req: Request, res: Response): Promise<void> => {
+export const getEmployeeEducation = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { id } = req.params as { id: string };
     const education = await db.select()
@@ -1631,12 +1611,11 @@ export const getEmployeeEducation = async (req: Request, res: Response): Promise
     const mappedEducation = (education as InferSelectModel<typeof pdsEducation>[]).map(mapToEducationApi);
     res.json({ success: true, education: mappedEducation });
   } catch (err: unknown) {
-    const error = err instanceof Error ? err : new Error(String(err));
-    res.status(500).json({ success: false, message: 'Failed to fetch education', error: error.message });
+    next(err);
   }
 };
 
-export const addEmployeeEducation = async (req: Request, res: Response): Promise<void> => {
+export const addEmployeeEducation = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { id } = req.params as { id: string };
     const { institution, degree, startDate, endDate, level, yearGraduated, honors, unitsEarned } = req.body as {
@@ -1664,13 +1643,11 @@ export const addEmployeeEducation = async (req: Request, res: Response): Promise
 
     res.status(201).json({ success: true, message: 'Education added', educationId: result.insertId });
   } catch (err: unknown) {
-    const error = err instanceof Error ? err : new Error(String(err));
-    console.error('[ADD EDUCATION ERROR]', error);
-    res.status(500).json({ success: false, message: 'Failed to add education', error: error.message });
+    next(err);
   }
 };
 
-export const updateEmployeeEducation = async (req: Request, res: Response): Promise<void> => {
+export const updateEmployeeEducation = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { id, educationId } = req.params as { id: string; educationId: string };
     const updates = req.body as {
@@ -1708,13 +1685,11 @@ export const updateEmployeeEducation = async (req: Request, res: Response): Prom
 
     res.json({ success: true, message: 'Education updated' });
   } catch (err: unknown) {
-    const error = err instanceof Error ? err : new Error(String(err));
-    console.error('[UPDATE EDUCATION ERROR]', error);
-    res.status(500).json({ success: false, message: 'Failed to update education', error: error.message });
+    next(err);
   }
 };
 
-export const deleteEmployeeEducation = async (req: Request, res: Response): Promise<void> => {
+export const deleteEmployeeEducation = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { id, educationId } = req.params as { id: string; educationId: string };
     await db.delete(pdsEducation)
@@ -1724,9 +1699,7 @@ export const deleteEmployeeEducation = async (req: Request, res: Response): Prom
       ));
     res.json({ success: true, message: 'Education deleted' });
   } catch (err: unknown) {
-    const error = err instanceof Error ? err : new Error(String(err));
-    console.error('[DELETE EDUCATION ERROR]', error);
-    res.status(500).json({ success: false, message: 'Failed to delete education', error: error.message });
+    next(err);
   }
 };
 
@@ -1734,7 +1707,7 @@ export const deleteEmployeeEducation = async (req: Request, res: Response): Prom
 // EMPLOYEE EMERGENCY CONTACTS
 // ============================================================================
 
-export const getEmployeeContacts = async (req: Request, res: Response): Promise<void> => {
+export const getEmployeeContacts = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { id } = req.params as { id: string };
     const contacts = await db.select()
@@ -1745,12 +1718,11 @@ export const getEmployeeContacts = async (req: Request, res: Response): Promise<
     const mappedContacts = contacts.map(mapToContactApi);
     res.json({ success: true, contacts: mappedContacts });
   } catch (err: unknown) {
-    const error = err instanceof Error ? err : new Error(String(err));
-    res.status(500).json({ success: false, message: 'Failed to fetch contacts', error: error.message });
+    next(err);
   }
 };
 
-export const addEmployeeContact = async (req: Request, res: Response): Promise<void> => {
+export const addEmployeeContact = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { id } = req.params as { id: string };
     const { name, relationship, phoneNumber, email, address, isPrimary } = AddContactSchema.parse(req.body);
@@ -1773,12 +1745,11 @@ export const addEmployeeContact = async (req: Request, res: Response): Promise<v
 
     res.status(201).json({ success: true, message: 'Contact added', contactId: result.insertId });
   } catch (err: unknown) {
-    const error = err instanceof Error ? err : new Error(String(err));
-    res.status(500).json({ success: false, message: 'Failed to add contact', error: error.message });
+    next(err);
   }
 };
 
-export const updateEmployeeContact = async (req: Request, res: Response): Promise<void> => {
+export const updateEmployeeContact = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { id, contactId } = req.params as { id: string; contactId: string };
     const updates = UpdateContactSchema.parse(req.body);
@@ -1818,12 +1789,11 @@ export const updateEmployeeContact = async (req: Request, res: Response): Promis
 
     res.json({ success: true, message: 'Contact updated' });
   } catch (err: unknown) {
-    const error = err instanceof Error ? err : new Error(String(err));
-    res.status(500).json({ success: false, message: 'Failed to update contact', error: error.message });
+    next(err);
   }
 };
 
-export const deleteEmployeeContact = async (req: Request, res: Response): Promise<void> => {
+export const deleteEmployeeContact = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { id, contactId } = req.params as { id: string; contactId: string };
     await db.delete(employeeEmergencyContacts)
@@ -1833,8 +1803,7 @@ export const deleteEmployeeContact = async (req: Request, res: Response): Promis
       ));
     res.json({ success: true, message: 'Contact deleted' });
   } catch (err: unknown) {
-    const error = err instanceof Error ? err : new Error(String(err));
-    res.status(500).json({ success: false, message: 'Failed to delete contact', error: error.message });
+    next(err);
   }
 };
 
@@ -1843,7 +1812,7 @@ export const deleteEmployeeContact = async (req: Request, res: Response): Promis
 // EMPLOYEE CUSTOM FIELDS
 // ============================================================================
 
-export const addEmployeeCustomField = async (req: Request, res: Response): Promise<void> => {
+export const addEmployeeCustomField = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { id } = req.params as { id: string };
     const { section, fieldName, fieldValue } = AddCustomFieldSchema.parse(req.body);
@@ -1857,12 +1826,11 @@ export const addEmployeeCustomField = async (req: Request, res: Response): Promi
 
     res.status(201).json({ success: true, message: 'Custom field added', fieldId: result.insertId });
   } catch (err: unknown) {
-    const error = err instanceof Error ? err : new Error(String(err));
-    res.status(500).json({ success: false, message: 'Failed to add custom field', error: error.message });
+    next(err);
   }
 };
 
-export const updateEmployeeCustomField = async (req: Request, res: Response): Promise<void> => {
+export const updateEmployeeCustomField = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { id, fieldId } = req.params as { id: string; fieldId: string };
     const updates = UpdateCustomFieldSchema.parse(req.body);
@@ -1890,12 +1858,11 @@ export const updateEmployeeCustomField = async (req: Request, res: Response): Pr
 
     res.json({ success: true, message: 'Custom field updated' });
   } catch (err: unknown) {
-    const error = err instanceof Error ? err : new Error(String(err));
-    res.status(500).json({ success: false, message: 'Failed to update custom field', error: error.message });
+    next(err);
   }
 };
 
-export const deleteEmployeeCustomField = async (req: Request, res: Response): Promise<void> => {
+export const deleteEmployeeCustomField = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { id, fieldId } = req.params as { id: string; fieldId: string };
     await db.delete(employeeCustomFields)
@@ -1905,7 +1872,6 @@ export const deleteEmployeeCustomField = async (req: Request, res: Response): Pr
       ));
     res.json({ success: true, message: 'Custom field deleted' });
   } catch (err: unknown) {
-    const error = err instanceof Error ? err : new Error(String(err));
-    res.status(500).json({ success: false, message: 'Failed to delete custom field', error: error.message });
+    next(err);
   }
 };

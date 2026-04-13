@@ -234,8 +234,13 @@ export const getPdsPersonal = async (req: Request, res: Response): Promise<void>
       return;
     }
 
+    const requesterRole = authReq.user?.role?.toLowerCase();
     let userId = requesterId;
     if (targetEmployeeId && targetEmployeeId !== requesterId.toString()) {
+      if (!['admin', 'human resource'].includes(requesterRole || '')) {
+        res.status(403).json({ success: false, message: 'Access Denied: You cannot access other users\' PDS data.' });
+        return;
+      }
       userId = parseInt(targetEmployeeId);
     }
 
@@ -261,8 +266,13 @@ export const updatePdsPersonal = async (req: Request, res: Response): Promise<vo
       return;
     }
 
+    const requesterRole = authReq.user?.role?.toLowerCase();
     let userId = requesterId;
     if (targetEmployeeId && targetEmployeeId !== requesterId.toString()) {
+      if (!['admin', 'human resource'].includes(requesterRole || '')) {
+        res.status(403).json({ success: false, message: 'Access Denied: You cannot access other users\' PDS data.' });
+        return;
+      }
       userId = parseInt(targetEmployeeId);
     }
 
@@ -305,8 +315,13 @@ export const getPdsQuestions = async (req: Request, res: Response): Promise<void
       return;
     }
 
+    const requesterRole = authReq.user?.role?.toLowerCase();
     let userId = requesterId;
     if (targetEmployeeId && targetEmployeeId !== requesterId.toString()) {
+      if (!['admin', 'human resource'].includes(requesterRole || '')) {
+        res.status(403).json({ success: false, message: 'Access Denied: You cannot access other users\' PDS data.' });
+        return;
+      }
       userId = parseInt(targetEmployeeId);
     }
 
@@ -332,8 +347,13 @@ export const updatePdsQuestions = async (req: Request, res: Response): Promise<v
       return;
     }
 
+    const requesterRole = authReq.user?.role?.toLowerCase();
     let userId = requesterId;
     if (targetEmployeeId && targetEmployeeId !== requesterId.toString()) {
+      if (!['admin', 'human resource'].includes(requesterRole || '')) {
+        res.status(403).json({ success: false, message: 'Access Denied: You cannot access other users\' PDS data.' });
+        return;
+      }
       userId = parseInt(targetEmployeeId);
     }
 

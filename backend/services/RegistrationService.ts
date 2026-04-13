@@ -70,10 +70,35 @@ function isPlaceholder(value: string | null | undefined): boolean {
     'na',
     'NONE',
     'none',
-    'None'
+    'None',
+    'House/Block/Lot No.',
+    'Street',
+    'Subdivision/Village',
+    'Barangay',
+    'City/Municipality',
+    'Province',
+    'ZIP CODE'
   ];
 
-  return placeholders.includes(trimmed);
+  // Check exact matches
+  if (placeholders.includes(trimmed)) return true;
+
+  // Check for numbered form labels like "23. NAME of CHILDREN"
+  if (/^\d+\.\s*[A-Z\s]+/.test(trimmed)) return true;
+
+  // Check for common placeholder patterns
+  if (trimmed.includes('(Write full name') || trimmed.includes('(list all)')) return true;
+
+  return false;
+}
+
+/**
+ * Truncates a string to a maximum length and converts placeholders to null
+ */
+function sanitizeAndTruncate(value: string | null | undefined, maxLength: number): string | null {
+  if (!value || isPlaceholder(value)) return null;
+  const trimmed = value.trim();
+  return trimmed.length > maxLength ? trimmed.substring(0, maxLength) : trimmed;
 }
 
 /**
@@ -286,6 +311,8 @@ export class RegistrationService {
         jobTitle: positionTitle,
         positionTitle: positionTitle,
         employmentStatus: 'Active' as const,
+        appointmentType: data.appointmentType || undefined,
+        dutyType: ((data.dutyType === 'Standard' || data.dutyType === 'Irregular') ? data.dutyType : 'Standard') as 'Standard' | 'Irregular',
         isMeycauayan: true,
         profileStatus: 'Complete' as const,
         dateHired: new Date().toISOString().split('T')[0],
@@ -302,40 +329,40 @@ export class RegistrationService {
       const personalData = {
         employeeId: newUserId,
         birthDate: emptyToNull(data.birthDate),
-        placeOfBirth: emptyToNull(data.placeOfBirth),
-        gender: emptyToNull(data.gender),
-        civilStatus: emptyToNull(data.civilStatus),
+        placeOfBirth: sanitizeAndTruncate(data.placeOfBirth, 255),
+        gender: sanitizeAndTruncate(data.gender, 50),
+        civilStatus: sanitizeAndTruncate(data.civilStatus, 50),
         heightM: safeToNumber(data.heightM),
         weightKg: safeToNumber(data.weightKg),
-        bloodType: emptyToNull(data.bloodType),
+        bloodType: sanitizeAndTruncate(data.bloodType, 10),
         citizenship: data.citizenship || 'Filipino',
-        citizenshipType: emptyToNull(data.citizenshipType),
-        dualCountry: emptyToNull(data.dualCountry),
-        telephoneNo: emptyToNull(data.telephoneNo),
-        mobileNo: emptyToNull(data.mobileNo),
-        gsisNumber: emptyToNull(data.gsisNumber),
-        pagibigNumber: emptyToNull(data.pagibigNumber),
-        philhealthNumber: emptyToNull(data.philhealthNumber),
-        tinNumber: emptyToNull(data.tinNumber),
-        umidNumber: emptyToNull(data.umidNumber),
-        philsysId: emptyToNull(data.philsysId),
-        agencyEmployeeNo: emptyToNull(data.agencyEmployeeNo),
-        resHouseBlockLot: emptyToNull(data.resHouseBlockLot),
-        resStreet: emptyToNull(data.resStreet),
-        resSubdivision: emptyToNull(data.resSubdivision),
-        resBarangay: emptyToNull(data.resBarangay),
-        resCity: emptyToNull(data.resCity),
-        resProvince: emptyToNull(data.resProvince),
-        resRegion: emptyToNull(data.resRegion),
-        residentialZipCode: emptyToNull(data.residentialZipCode || (data as any).zipCode),
-        permHouseBlockLot: emptyToNull(data.permHouseBlockLot),
-        permStreet: emptyToNull(data.permStreet),
-        permSubdivision: emptyToNull(data.permSubdivision),
-        permBarangay: emptyToNull(data.permBarangay),
-        permCity: emptyToNull(data.permCity),
-        permProvince: emptyToNull(data.permProvince),
-        permRegion: emptyToNull(data.permRegion),
-        permanentZipCode: emptyToNull(data.permanentZipCode),
+        citizenshipType: sanitizeAndTruncate(data.citizenshipType, 50),
+        dualCountry: sanitizeAndTruncate(data.dualCountry, 100),
+        telephoneNo: sanitizeAndTruncate(data.telephoneNo, 50),
+        mobileNo: sanitizeAndTruncate(data.mobileNo, 50),
+        gsisNumber: sanitizeAndTruncate(data.gsisNumber, 50),
+        pagibigNumber: sanitizeAndTruncate(data.pagibigNumber, 50),
+        philhealthNumber: sanitizeAndTruncate(data.philhealthNumber, 50),
+        tinNumber: sanitizeAndTruncate(data.tinNumber, 50),
+        umidNumber: sanitizeAndTruncate(data.umidNumber, 50),
+        philsysId: sanitizeAndTruncate(data.philsysId, 50),
+        agencyEmployeeNo: sanitizeAndTruncate(data.agencyEmployeeNo, 50),
+        resHouseBlockLot: sanitizeAndTruncate(data.resHouseBlockLot, 150),
+        resStreet: sanitizeAndTruncate(data.resStreet, 150),
+        resSubdivision: sanitizeAndTruncate(data.resSubdivision, 150),
+        resBarangay: sanitizeAndTruncate(data.resBarangay, 150),
+        resCity: sanitizeAndTruncate(data.resCity, 150),
+        resProvince: sanitizeAndTruncate(data.resProvince, 150),
+        resRegion: sanitizeAndTruncate(data.resRegion, 150),
+        residentialZipCode: sanitizeAndTruncate(data.residentialZipCode || (data as any).zipCode, 10),
+        permHouseBlockLot: sanitizeAndTruncate(data.permHouseBlockLot, 150),
+        permStreet: sanitizeAndTruncate(data.permStreet, 150),
+        permSubdivision: sanitizeAndTruncate(data.permSubdivision, 150),
+        permBarangay: sanitizeAndTruncate(data.permBarangay, 150),
+        permCity: sanitizeAndTruncate(data.permCity, 150),
+        permProvince: sanitizeAndTruncate(data.permProvince, 150),
+        permRegion: sanitizeAndTruncate(data.permRegion, 150),
+        permanentZipCode: sanitizeAndTruncate(data.permanentZipCode, 10),
       };
       await tx.insert(pdsPersonalInformation)
         .values(personalData)
@@ -544,6 +571,14 @@ export class RegistrationService {
               })
             );
           }
+
+          // Mark applicant as registered to prevent duplicate registrations
+          await tx.update(recruitmentApplicants)
+            .set({
+              isRegistered: true,
+              registeredEmployeeId: actualEmployeeId
+            })
+            .where(eq(recruitmentApplicants.id, appId));
         }
       }
     });

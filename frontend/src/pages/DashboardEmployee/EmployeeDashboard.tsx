@@ -127,43 +127,25 @@ export default function EmployeeDashboard(): React.ReactElement {
   const fetchStats = useCallback(async (): Promise<void> => {
       if (!user) return;
       try {
-          // Fetch logs for current month
-          const now = new Date();
-          const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
-          const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-          
-          const startDate = firstDay.toISOString().split('T')[0];
-          const endDate = lastDay.toISOString().split('T')[0];
-          
-          const empId = String(user.employeeId || user.id);
-
-          const logsRes = await attendanceApi.getLogs({ 
-              startDate, 
-              endDate,
-              employeeId: empId,
-              limit: 100 // Get all logs for the current month for accurate stats
-          });
-          
-          // Precise calculation matching backend logic
-          const logs = logsRes.data?.data || [];
-          const present = logs.filter((l: { status: string }) => ['Present', 'Present (Late)', 'Late', 'Undertime', 'Late/Undertime'].includes(l.status)).length;
-          const late = logs.filter((l: { status: string }) => ['Late', 'Present (Late)', 'Late/Undertime'].includes(l.status)).length;
-          const absent = logs.filter((l: { status: string }) => l.status === 'Absent' || l.status === 'No Logs').length; 
+          // 100% PRECISION: Explicitly pass user's employeeId to ensure self-data only
+          const statsRes = await attendanceApi.getDashboardStats({ employeeId: String(user.employeeId) });
+          const dashboardData = statsRes.data?.data;
+          const counts = dashboardData?.counts;
 
           // Fetch leave credits
           const creditsRes = await leaveApi.getMyCredits();
           const credits = creditsRes.data?.credits || [];
           
-          // Sum up all balances (handle both string and number for compatibility)
+          // Sum up all balances
           const leaveBalance = credits.reduce((sum: number, credit: { balance: string | number }) => {
             const balance = typeof credit.balance === 'string' ? parseFloat(credit.balance) : credit.balance;
             return sum + (balance || 0);
           }, 0);
 
           setStats({
-              present,
-              absent,
-              late,
+              present: counts?.present || 0,
+              absent: counts?.absent || 0,
+              late: counts?.late || 0,
               reports: 0, 
               leaves: leaveBalance
           });
@@ -250,7 +232,7 @@ export default function EmployeeDashboard(): React.ReactElement {
 
   return (
     <div className="flex h-screen bg-[var(--zed-bg-surface)] text-[var(--zed-text-dark)] font-sans antialiased overflow-hidden selection:bg-[var(--zed-text-dark)] selection:text-white">
-      <Sidebar isOpen={sidebarOpen} navItems={NAV_ITEMS} onLogout={handleLogout} onSectionChange={handleNavigate} />
+      <Sidebar isOpen={sidebarOpen} navItems={NAV_ITEMS} onLogout={handleLogout} onSectionChange={handleNavigate} userRole={user?.role} />
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <Header 
             onToggleSidebar={toggleSidebar} 
@@ -286,6 +268,7 @@ export default function EmployeeDashboard(): React.ReactElement {
               activeTable={activeTable}
               setActiveTable={setActiveTable}
               refreshStats={fetchStats}
+              searchQuery={searchQuery}
             />
           ) : (
             <Outlet context={{ sidebarOpen, searchQuery }} />

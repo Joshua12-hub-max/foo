@@ -167,8 +167,17 @@ const SetupRoute = ({ children }: { children: React.ReactNode }) => {
 export default function App() {
   const checkAuth = useAuthStore((state) => state.checkAuth);
   const loading = useAuthStore((state) => state.isLoading);
+  const setPortalView = useAuthStore((state) => state.setPortalView);
 
   useEffect(() => {
+    // 100% PERSISTENCE FIX: Sync Portal View state with URL for Admin/HR users on reload
+    const path = window.location.pathname;
+    if (path.startsWith('/employee-dashboard')) {
+        setPortalView(true);
+    } else if (path.startsWith('/admin-dashboard')) {
+        setPortalView(false);
+    }
+
     checkAuth();
     
     // Cross-tab authentication synchronization
@@ -180,7 +189,7 @@ export default function App() {
     
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
-  }, [checkAuth]);
+  }, [checkAuth, setPortalView]);
 
   if (loading) {
     return <PageLoader />;
