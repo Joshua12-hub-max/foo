@@ -14,6 +14,7 @@ export interface PdsPersonalInfo {
   gsisNumber?: string;
   pagibigNumber?: string;
   philhealthNumber?: string;
+  sssNumber?: string;
   tinNumber?: string;
   umidNumber?: string;
   philsysId?: string;

@@ -27,66 +27,14 @@ import {
   normalizePdsString,
   normalizePdsDate,
   normalizePdsFloat,
-  normalizePdsInt,
   extractPdsYear,
   isPdsGarbage,
   sanitizePdsObject,
 } from '../utils/pdsDataUtils.js';
 
-/**
- * Converts empty strings to null, useful for optional fields and date fields
- * DEPRECATED: Use normalizePdsString from pdsDataUtils.ts
- * @deprecated
- */
-function emptyToNull<T>(value: T | string | null | undefined): T | null {
-  if (value === '' || value === undefined) return null;
-  return value as T;
-}
-
-/**
- * Safely converts string values to numbers or null
- * DEPRECATED: Use normalizePdsFloat from pdsDataUtils.ts
- * @deprecated
- */
-function safeToNumber(value: string | number | null | undefined): string | null {
-  return normalizePdsFloat(value);
-}
-
-/**
- * Extracts year from a date string or returns null for empty values
- * DEPRECATED: Use extractPdsYear from pdsDataUtils.ts
- * @deprecated
- */
-function extractYear(dateValue: string | null | undefined): string | null {
-  return extractPdsYear(dateValue);
-}
-
-/**
- * Checks if a value is a placeholder text that should be treated as null/empty
- * DEPRECATED: Use isPdsGarbage from pdsDataUtils.ts
- * @deprecated
- */
-function isPlaceholder(value: string | null | undefined): boolean {
-  return isPdsGarbage(value);
-}
-
-/**
- * Truncates a string to a maximum length and converts placeholders to null
- * DEPRECATED: Use normalizePdsString from pdsDataUtils.ts
- * @deprecated
- */
-function sanitizeAndTruncate(value: string | null | undefined, maxLength: number): string | null {
-  return normalizePdsString(value, maxLength);
-}
-
-/**
- * Sanitizes an object by converting all empty string values and placeholder text to null
- * DEPRECATED: Use sanitizePdsObject from pdsDataUtils.ts
- * @deprecated
- */
-function sanitizeObject<T extends Record<string, any>>(obj: T): T {
-  return sanitizePdsObject(obj);
-}
+// DEPRECATED HELPER FUNCTIONS - Kept for backward compatibility
+// All functionality moved to pdsDataUtils.ts
+// These wrappers will be removed in a future version
 
 export class RegistrationService {
   static async registerUser(
@@ -277,6 +225,11 @@ export class RegistrationService {
       if (!newUserId) throw new Error('Failed to get auth user ID');
 
       // HR DETAILS
+      const validAppointmentTypes = ['Permanent', 'Contractual', 'Casual', 'Job Order', 'Coterminous', 'Temporary', 'Contract of Service', 'JO', 'COS'] as const;
+      const appointmentType = validAppointmentTypes.includes(data.appointmentType as any)
+        ? (data.appointmentType as typeof validAppointmentTypes[number])
+        : undefined;
+
       const hrData = {
         employeeId: newUserId,
         departmentId,
@@ -284,7 +237,7 @@ export class RegistrationService {
         jobTitle: positionTitle,
         positionTitle: positionTitle,
         employmentStatus: 'Active' as const,
-        appointmentType: data.appointmentType || undefined,
+        appointmentType,
         dutyType: ((data.dutyType === 'Standard' || data.dutyType === 'Irregular') ? data.dutyType : 'Standard') as 'Standard' | 'Irregular',
         isMeycauayan: true,
         profileStatus: 'Complete' as const,
@@ -316,6 +269,7 @@ export class RegistrationService {
         gsisNumber: normalizePdsString(data.gsisNumber, 50),
         pagibigNumber: normalizePdsString(data.pagibigNumber, 50),
         philhealthNumber: normalizePdsString(data.philhealthNumber, 50),
+        sssNumber: normalizePdsString(data.sssNumber, 50),
         tinNumber: normalizePdsString(data.tinNumber, 50),
         umidNumber: normalizePdsString(data.umidNumber, 50),
         philsysId: normalizePdsString(data.philsysId, 50),

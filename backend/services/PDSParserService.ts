@@ -560,6 +560,7 @@ const transformRawData = (rawData: RawPdsExcelData): PdsParserOutput => {
     gsisNumber: normalizePdsString(raw.gsisNumber) || undefined,
     pagibigNumber: normalizePdsString(raw.pagibigNumber) || undefined,
     philhealthNumber: normalizePdsString(raw.philhealthNumber) || undefined,
+    sssNumber: normalizePdsString(raw.sssNumber) || undefined,
     tinNumber: normalizePdsString(raw.tinNumber) || undefined,
     umidNumber: normalizePdsString(raw.umidNumber) || undefined,
     philsysId: normalizePdsString(raw.philsysId) || undefined,

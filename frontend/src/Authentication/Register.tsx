@@ -40,7 +40,7 @@ export default function Register() {
       department: "", position: "", role: "Employee", dutyType: "Standard", appointmentType: "Permanent",
       birthDate: "", placeOfBirth: "", gender: "", civilStatus: "", mobileNo: "", telephoneNo: "",
       nationality: "Filipino", citizenship: "Filipino", bloodType: "", heightM: "", weightKg: "",
-      gsisNumber: "", pagibigNumber: "", philhealthNumber: "", tinNumber: "", umidNumber: "", philsysId: "", agencyEmployeeNo: "",
+      gsisNumber: "", pagibigNumber: "", philhealthNumber: "", sssNumber: "", tinNumber: "", umidNumber: "", philsysId: "", agencyEmployeeNo: "",
       resHouseBlockLot: "", resStreet: "", resSubdivision: "", resBarangay: "", resCity: "", resProvince: "", resRegion: "", residentialZipCode: "",
       permHouseBlockLot: "", permStreet: "", permSubdivision: "", permBarangay: "", permCity: "", permProvince: "", permRegion: "", permanentZipCode: "",
       educations: [], eligibilities: [], workExperiences: [], learningDevelopments: [], familyBackground: [], otherInfo: [],
@@ -131,6 +131,7 @@ export default function Register() {
     if (p.gsisNumber) setValue("gsisNumber", p.gsisNumber);
     if (p.pagibigNumber) setValue("pagibigNumber", p.pagibigNumber);
     if (p.philhealthNumber) setValue("philhealthNumber", p.philhealthNumber);
+    if (p.sssNumber) setValue("sssNumber", p.sssNumber);
     if (p.tinNumber) setValue("tinNumber", p.tinNumber);
     if (p.umidNumber) setValue("umidNumber", p.umidNumber);
     if (p.philsysId) setValue("philsysId", p.philsysId);
@@ -434,6 +435,7 @@ export default function Register() {
                 <input {...register("gsisNumber")} />
                 <input {...register("pagibigNumber")} />
                 <input {...register("philhealthNumber")} />
+                <input {...register("sssNumber")} />
                 <input {...register("tinNumber")} />
                 <input {...register("umidNumber")} />
                 <input {...register("agencyEmployeeNo")} />

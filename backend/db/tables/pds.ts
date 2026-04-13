@@ -193,12 +193,13 @@ export const pdsPersonalInformation = mysqlTable('pds_personal_information', {
 	mobileNo:    varchar('mobile_no',    { length: 50 }),
 
 	// Government IDs — all unique across employees
-	gsisNumber:      varchar('gsis_number',      { length: 50 }),
-	pagibigNumber:   varchar('pagibig_number',   { length: 50 }),
+	gsisNumber:       varchar('gsis_number',       { length: 50 }),
+	pagibigNumber:    varchar('pagibig_number',    { length: 50 }),
 	philhealthNumber: varchar('philhealth_number', { length: 50 }),
-	tinNumber:       varchar('tin_number',       { length: 50 }),
-	umidNumber:      varchar('umid_no',          { length: 50 }),
-	philsysId:       varchar('philsys_id',       { length: 50 }),
+	sssNumber:        varchar('sss_number',        { length: 50 }),
+	tinNumber:        varchar('tin_number',        { length: 50 }),
+	umidNumber:       varchar('umid_no',           { length: 50 }),
+	philsysId:        varchar('philsys_id',        { length: 50 }),
 	agencyEmployeeNo: varchar('agency_employee_no', { length: 50 }),
 
 	// Residential address (decomposed — no flat text field)
@@ -229,6 +230,7 @@ export const pdsPersonalInformation = mysqlTable('pds_personal_information', {
 	unique('uq_pds_gsis_number').on(table.gsisNumber),
 	unique('uq_pds_pagibig_number').on(table.pagibigNumber),
 	unique('uq_pds_philhealth_number').on(table.philhealthNumber),
+	unique('uq_pds_sss_number').on(table.sssNumber),
 	unique('uq_pds_tin_number').on(table.tinNumber),
 	unique('uq_pds_umid_number').on(table.umidNumber),
 	unique('uq_pds_philsys_id').on(table.philsysId),

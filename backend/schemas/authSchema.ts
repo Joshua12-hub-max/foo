@@ -180,6 +180,7 @@ export const RegisterSchema = z.object({
   gsisNumber: z.string().optional().nullable(),
   pagibigNumber: z.string().optional().nullable(),
   philhealthNumber: z.string().optional().nullable(),
+  sssNumber: z.string().optional().nullable(),
   tinNumber: z.string().optional().nullable(),
   umidNumber: z.string().optional().nullable(),
   philsysId: z.string().optional().nullable(),

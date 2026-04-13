@@ -87,6 +87,7 @@ export const RegisterSchema = z.object({
   gsisNumber: z.string().optional().nullable().or(z.literal('')),
   pagibigNumber: z.string().optional().nullable().or(z.literal('')),
   philhealthNumber: z.string().optional().nullable().or(z.literal('')),
+  sssNumber: z.string().optional().nullable().or(z.literal('')),
   umidNumber: z.string().optional().nullable().or(z.literal('')),
   philsysId: z.string().optional().nullable().or(z.literal('')),
   tinNumber: z.string().optional().nullable().or(z.literal('')),
