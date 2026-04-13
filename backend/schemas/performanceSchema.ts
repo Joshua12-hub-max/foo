@@ -4,6 +4,7 @@ export const createCriteriaSchema = z.object({
   title: z.string().min(1, 'Title is required'),
   description: z.string().optional(),
   category: z.string().optional(),
+  criteriaType: z.enum(['core_function', 'support_function', 'core_competency', 'organizational_competency']).optional(),
   weight: z.number().or(z.string()).optional(),
   maxScore: z.number().int().optional(),
   ratingDefinition5: z.string().optional(),

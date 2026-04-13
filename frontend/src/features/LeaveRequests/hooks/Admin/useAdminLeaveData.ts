@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { leaveApi } from "@api/leaveApi";
 import { AdminLeaveRequest } from '../../types';
@@ -72,9 +72,9 @@ export const useAdminLeaveData = () => {
     await queryClient.invalidateQueries({ queryKey: ['admin-leaves'] });
   };
 
-  const updateFilters = (newFilters: any) => {
+  const updateFilters = useCallback((newFilters: any) => {
     useLeaveStore.getState().setFilters(newFilters);
-  };
+  }, []);
 
   return { 
     leaves: data?.leaves || [], 

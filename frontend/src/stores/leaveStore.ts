@@ -91,7 +91,7 @@ const initialState: LeaveState = {
 // Store Implementation
 // ============================================================================
 
-export const useLeaveStore = create<LeaveStore>((set) => ({
+export const useLeaveStore = create<LeaveStore>((set, get) => ({
   ...initialState,
 
   // Application actions

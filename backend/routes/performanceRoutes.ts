@@ -15,7 +15,7 @@ router.delete('/cycles/:id', verifyToken, performanceController.deleteReviewCycl
 
 // Criteria
 router.get('/criteria', verifyToken, performanceController.getCriteria);
-router.post('/criteria', verifyToken, performanceController.addCriteria);
+router.post('/criteria', verifyToken, performanceController.createCriteria);
 router.put('/criteria/:id', verifyToken, performanceController.updateCriteria);
 router.delete('/criteria/:id', verifyToken, performanceController.deleteCriteria);
 

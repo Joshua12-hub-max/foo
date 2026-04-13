@@ -35,7 +35,7 @@ export const Filters: React.FC<FiltersProps> = ({
       startDate: data.startDate || undefined,
       endDate: data.endDate || undefined,
     };
-    setFilters(cleanedFilters);
+    setFilters(cleanedFilters as any);
   };
 
   const handleClearClick = () => {

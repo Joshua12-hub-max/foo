@@ -62,6 +62,7 @@ const app = express();
 import { initCronJobs } from './jobs/employmentChecks.js';
 import { initLeaveAccrualJob } from './jobs/leaveAccrual.js';
 import { startForcedLeaveCron } from './jobs/forcedLeaveDeduction.js';
+import { initPerformanceAutomationJob } from './jobs/performanceReviewGenerator.js';
 
 // Email application checker scheduled (every 5 minutes)
 const startServices = async () => {

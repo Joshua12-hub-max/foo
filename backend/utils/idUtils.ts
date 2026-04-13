@@ -12,9 +12,9 @@ type SqlInput = SQL | AnyMySqlColumn | string | number | null | undefined;
  */
 
 export const normalizeIdSql = (column: SQL | AnyMySqlColumn) => {
-  // 100% PRECISION: Reverting to 3-digit padding as requested by User.
-  // Within the 1-200 range, 3-digit LPAD is completely safe from truncation.
-  return sql`CONCAT('Emp-', LPAD(REGEXP_REPLACE(${column}, '[^0-9]', ''), 3, '0'))`;
+  // 100% PRECISION: Direct column access.
+  // Since we normalized the entire database, we no longer need expensive REGEXP_REPLACE on every query.
+  return column;
 };
 
 export const normalizeIdJs = (id: IdInput): string => {
@@ -25,20 +25,16 @@ export const normalizeIdJs = (id: IdInput): string => {
 };
 
 /**
- * The 'Absolute Lockdown' Comparison.
- * Compares both sides in the strict 'Emp-XXX' format.
- * 100% PRECISE: Fixes the 'Join Explosion' and 'Data Vanishing' bugs.
+ * The Optimized 'Absolute Lockdown' Comparison.
+ * Since data is pre-normalized, we can use simple equality for indexed lookups.
  */
 export function compareIds(col1: SQL | AnyMySqlColumn, col2: SqlInput) {
   if (!col1 || !col2) return sql`1=0`;
 
-  const normalizedCol1 = normalizeIdSql(col1);
-  
   if (typeof col2 === 'string' || typeof col2 === 'number') {
     const target = normalizeIdJs(col2);
-    return sql`${normalizedCol1} = ${target}`;
+    return sql`${col1} = ${target}`;
   }
   
-  const normalizedCol2 = normalizeIdSql(col2 as SQL | AnyMySqlColumn);
-  return sql`${normalizedCol1} = ${normalizedCol2}`;
+  return sql`${col1} = ${col2}`;
 }

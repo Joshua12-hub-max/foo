@@ -150,7 +150,10 @@ export interface LeaveApplication {
   // Joined fields
   firstName?: string;
   lastName?: string;
+  middleName?: string;
+  suffix?: string;
   department?: string;
+  currentBalance?: number;
 }
 
 export interface Holiday {

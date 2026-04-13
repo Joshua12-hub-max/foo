@@ -514,12 +514,24 @@ const extractAllData = (workbook: ExcelJS.Workbook): RawPdsExcelData => {
   const references: readonly RawReferenceExcel[] = sheet4
     ? extractArrayData(sheet4, PDS_COORDINATE_MAP.c4.references, (row) => {
         const name = row.A || row.B;
+        const address = row.F;
+        const telNo = row.G;
+
+        // Filter out garbage data - check all fields
         if (!name || isGarbage(name)) return null;
+        if (address && isGarbage(address)) return null;
+        if (telNo && isGarbage(telNo)) return null;
+
+        // Additional validation: reject if name is too short (likely a question number)
+        if (name.trim().length < 3) return null;
+
+        // Additional validation: reject if address is suspiciously long (declaration text)
+        if (address && address.length > 200) return null;
 
         return {
           name,
-          address: row.F,
-          telNo: row.G,
+          address,
+          telNo,
         };
       })
     : [];
@@ -702,12 +714,22 @@ const transformRawData = (rawData: RawPdsExcelData): PdsParserOutput => {
       description: normalizePdsString(info.description) || '',
     }));
 
-  // Transform references
-  const references: PdsReference[] = rawData.references.map((ref) => ({
-    name: normalizePdsString(ref.name) || '',
-    address: normalizePdsString(ref.address) || undefined,
-    telNo: normalizePdsString(ref.telNo) || undefined,
-  }));
+  // Transform references - filter out invalid/garbage entries
+  const references: PdsReference[] = rawData.references
+    .map((ref) => ({
+      name: normalizePdsString(ref.name, 255) || '',
+      address: normalizePdsString(ref.address, 255) || undefined,
+      telNo: normalizePdsString(ref.telNo, 50) || undefined,
+    }))
+    .filter((ref) => {
+      // Must have a valid name
+      if (!ref.name || ref.name.length < 3) return false;
+      // Additional safety check for garbage that slipped through
+      if (isPdsGarbage(ref.name)) return false;
+      if (ref.address && isPdsGarbage(ref.address)) return false;
+      if (ref.telNo && isPdsGarbage(ref.telNo)) return false;
+      return true;
+    });
 
   return {
     firstName: normalizePdsString(raw.firstName) || undefined,

@@ -43,7 +43,9 @@
       "Bash(done)",
       "Bash(git pull:*)",
       "Bash(git merge:*)",
-      "Bash(npx ts-node:*)"
+      "Bash(npx ts-node:*)",
+      "Bash(grep:*)",
+      "Bash(npx drizzle-kit:*)"
     ]
   }
 }

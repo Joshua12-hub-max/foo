@@ -27,6 +27,7 @@ export interface AdminLeaveRequest {
   employeeId: string;
   firstName: string;
   lastName: string;
+  name?: string; // Add name property for convenience
   department: string;
   leaveType: LeaveType;
   startDate: string;
@@ -43,13 +44,6 @@ export interface AdminLeaveRequest {
   daysWithPay?: number;
   daysWithoutPay?: number;
   crossChargedFrom?: string | null;
-}
-
-export interface LeaveFilters {
-  department: string;
-  employee: string;
-  fromDate: string;
-  toDate: string;
 }
 
 export interface EmployeeLeaveRequest {
@@ -78,3 +72,4 @@ export interface EmployeeLeaveFilters {
   type: string;
   date: string;
 }
+

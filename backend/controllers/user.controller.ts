@@ -386,7 +386,7 @@ const sanitizePDSFields = (updates: UpdateEmployeeInput): UpdateEmployeeInput =>
 
 export const getAllEmployees = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const { department, departmentId } = req.query;
+    const { department, departmentId, page, limit } = req.query;
 
     const conditions: SQL[] = [];
     if (departmentId) {
@@ -395,14 +395,30 @@ export const getAllEmployees = async (req: Request, res: Response, next: NextFun
       conditions.push(eq(departments.name, department as string));
     }
 
-    const employees = await UserService.getAllEmployees(conditions.filter((c): c is SQL => !!c));
+    const pageNum = parseInt(page as string) || 1;
+    const limitNum = parseInt(limit as string) || 50;
+    const offset = (pageNum - 1) * limitNum;
 
-    const mappedEmployees = employees.map(mapToEmployeeApi);
-    res.json({ success: true, employees: mappedEmployees });
+    const result = await UserService.getAllEmployees(
+      conditions.filter((c): c is SQL => !!c),
+      limitNum,
+      offset
+    );
+
+    const mappedEmployees = result.employees.map(mapToEmployeeApi);
+
+    res.json({ 
+      success: true, 
+      employees: mappedEmployees,
+      total: result.total,
+      page: result.page,
+      totalPages: result.totalPages
+    });
   } catch (err: unknown) {
     next(err);
   }
 };
+
 
 export const getEmployeeById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {

@@ -13,7 +13,13 @@ const ReviewCycles = () => {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCycle, setEditingCycle] = useState<ReviewCycle | null>(null);
-  const [formData, setFormData] = useState({title: '', description: '', startDate: '', endDate: ''});
+  const [formData, setFormData] = useState({
+    title: '', 
+    description: '', 
+    startDate: '', 
+    endDate: '', 
+    ratingPeriod: 'annual' as '1st_sem' | '2nd_sem' | 'annual'
+  });
   
   // Toast notification hook
   const showToast = useToastStore((state) => state.showToast);
@@ -41,13 +47,13 @@ const ReviewCycles = () => {
   const closeModal = () => {
     setIsModalOpen(false);
     setEditingCycle(null);
-    setFormData({ title: '', description: '', startDate: '', endDate: '' });
+    setFormData({ title: '', description: '', startDate: '', endDate: '', ratingPeriod: 'annual' });
   };
 
   // Open modal for creating new cycle
   const handleNewCycle = () => {
     setEditingCycle(null);
-    setFormData({ title: '', description: '', startDate: '', endDate: '' });
+    setFormData({ title: '', description: '', startDate: '', endDate: '', ratingPeriod: 'annual' });
     setIsModalOpen(true);
   };
 
@@ -58,7 +64,8 @@ const ReviewCycles = () => {
       title: cycle.title || '',
       description: cycle.description || '',
       startDate: cycle.startDate ? cycle.startDate.split('T')[0] : '',
-      endDate: cycle.endDate ? cycle.endDate.split('T')[0] : ''
+      endDate: cycle.endDate ? cycle.endDate.split('T')[0] : '',
+      ratingPeriod: (cycle.ratingPeriod as any) || 'annual'
     });
     setIsModalOpen(true);
   };
@@ -164,9 +171,16 @@ const ReviewCycles = () => {
                 className={`bg-white p-6 rounded-2xl border border-gray-100 hover:border-gray-200 hover:shadow-lg transition-all group border-l-4 ${borderLColor[status.label] || 'border-l-slate-300'} shadow-sm flex flex-col h-full`}
               >
                 <div className="flex justify-between items-start mb-4">
-                  <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black tracking-widest border border-gray-100 ${statusColors[status.label] || 'bg-gray-50 text-gray-500'}`}>
-                    {status.label}
-                  </span>
+                  <div className="flex flex-col gap-1.5">
+                    <span className={`w-fit px-2.5 py-1 rounded-lg text-[9px] font-black tracking-widest border border-gray-100 ${statusColors[status.label] || 'bg-gray-50 text-gray-500'}`}>
+                      {status.label}
+                    </span>
+                    {cycle.ratingPeriod && (
+                      <span className="w-fit px-2 py-0.5 rounded-md text-[8px] font-bold tracking-tight bg-blue-50 text-blue-700 border border-blue-100 uppercase">
+                        {cycle.ratingPeriod.replace('_', ' ')}
+                      </span>
+                    )}
+                  </div>
                   <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
                     <button 
                       onClick={() => handleEditCycle(cycle)}
@@ -237,16 +251,30 @@ const ReviewCycles = () => {
               </div>
               <form onSubmit={handleSubmit} className="p-6 space-y-4">
                 <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="col-span-2">
+                      <label className="block text-[10px] font-bold text-gray-400 tracking-widest mb-1.5 ml-1">Cycle Title</label>
+                      <input
+                        type="text"
+                        required
+                        value={formData.title}
+                        onChange={(e) => setFormData({...formData, title: e.target.value})}
+                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-gray-100 focus:border-gray-300 outline-none transition-all text-gray-900 font-medium placeholder-gray-400"
+                        placeholder={`e.g. 2nd Semester ${new Date().getFullYear()}`}
+                      />
+                    </div>
+                  </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-gray-400 tracking-widest mb-1.5 ml-1">Cycle Title</label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.title}
-                      onChange={(e) => setFormData({...formData, title: e.target.value})}
-                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-gray-100 focus:border-gray-300 outline-none transition-all text-gray-900 font-medium placeholder-gray-400"
-                      placeholder={`e.g. 2nd Semester ${new Date().getFullYear()}`}
-                    />
+                    <label className="block text-[10px] font-bold text-gray-400 tracking-widest mb-1.5 ml-1">Rating Period</label>
+                    <select
+                      value={formData.ratingPeriod}
+                      onChange={(e) => setFormData({...formData, ratingPeriod: e.target.value as any})}
+                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-gray-100 focus:border-gray-300 outline-none transition-all text-gray-900 font-medium"
+                    >
+                      <option value="1st_sem">1st Semester (Jan-Jun)</option>
+                      <option value="2nd_sem">2nd Semester (Jul-Dec)</option>
+                      <option value="annual">Annual (Jan-Dec)</option>
+                    </select>
                   </div>
                   <div>
                     <label className="block text-[10px] font-bold text-gray-400 tracking-widest mb-1.5 ml-1">Description</label>

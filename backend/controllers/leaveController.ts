@@ -1079,7 +1079,7 @@ export const getAllEmployeeCredits: AuthenticatedHandler = async (req, res) => {
                 SELECT 1 FROM (SELECT 1) as dummy 
                 WHERE ${leaveBalances.creditType} = (
                     CASE la.leave_type 
-                        ${Object.entries(leaveToCreditMap).map(([lt, ct]) => `WHEN '${lt}' THEN '${ct}'`).join('\n                        ')}
+                        ${sql.raw(Object.entries(leaveToCreditMap).map(([lt, ct]) => `WHEN '${lt}' THEN '${ct}'`).join('\n                        '))}
                         ELSE la.leave_type 
                     END
                 )

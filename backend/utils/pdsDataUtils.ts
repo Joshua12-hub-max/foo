@@ -46,14 +46,21 @@ const COMPREHENSIVE_GARBAGE_PATTERNS = [
   /^(house\/block|subdivision\/village|city\/municipality|province$|street$|barangay$|zip code)/i,
   /^(House\/Block\/Lot No\.|Street|Subdivision\/Village|Barangay|City\/Municipality|Province|ZIP CODE)/i,
 
-  // Numbered section headers (e.g., "23. NAME of CHILDREN")
+  // Numbered section headers (e.g., "23. NAME of CHILDREN", "34.", "35.a")
   /^\d{1,2}\.\s*[A-Z\s]+/,
+  /^\d{1,2}\.[a-z]?\.?\s*$/i, // Just question numbers like "42.", "34.a."
 
   // Section markers (e.g., "VII. ")
   /^[ivx]+\.\s/i,
 
   // Instructional text
   /Write full name|list all|Continue on separate sheet if necessary/i,
+
+  // Declaration text (from bottom of PDS form)
+  /I declare under oath|I authorize the agency|I agree that any misrepresentation/i,
+  /personally accomplished this Personal Data Sheet/i,
+  /true, correct, and complete statement/i,
+  /provisions of pertinent laws, rules, and regulations/i,
 
   // Common placeholder values
   /^(N\/A|n\/a|NA|na|NONE|none|None|---+|_+|\s*$)/,

@@ -38,7 +38,7 @@ const Filters: React.FC<FiltersProps> = ({
       status: data.status || undefined,
       leaveType: data.leaveType || undefined,
     };
-    setFilters(cleanedFilters);
+    setFilters(cleanedFilters as any);
   };
 
   const handleClear = () => {

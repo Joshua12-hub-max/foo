@@ -20,6 +20,13 @@ const categoryOptions = [
   { value: 'General', label: 'General' },
 ];
 
+const criteriaTypeOptions = [
+  { value: 'core_function', label: 'Core Function' },
+  { value: 'support_function', label: 'Support Function' },
+  { value: 'core_competency', label: 'Core Competency' },
+  { value: 'organizational_competency', label: 'Organizational Competency' },
+];
+
 const EditCriteriaModal: React.FC<EditCriteriaModalProps> = ({ isOpen, onClose, onSubmit, initialData }) => {
   const {
     register,
@@ -32,6 +39,7 @@ const EditCriteriaModal: React.FC<EditCriteriaModalProps> = ({ isOpen, onClose, 
     defaultValues: {
       section: 'Performance',
       category: 'Strategic Priorities',
+      criteriaType: 'core_function',
       title: '',
       description: '',
       weight: 0,
@@ -42,8 +50,9 @@ const EditCriteriaModal: React.FC<EditCriteriaModalProps> = ({ isOpen, onClose, 
   useEffect(() => {
     if (initialData) {
       reset({
-        section: (initialData.section as 'Performance' | 'Competency') || 'Performance',
-        category: (initialData.category as 'Strategic Priorities' | 'Core Functions' | 'Support Functions' | 'General') || 'Strategic Priorities',
+        section: (initialData.section as any) || 'Performance',
+        category: (initialData.category as any) || 'General',
+        criteriaType: (initialData.criteriaType as any) || 'core_function',
         title: initialData.title || initialData.criteriaTitle || '',
         description: initialData.description || initialData.criteriaDescription || '',
         weight: Number(initialData.weight) || 0,
@@ -60,6 +69,7 @@ const EditCriteriaModal: React.FC<EditCriteriaModalProps> = ({ isOpen, onClose, 
       reset({
         section: 'Performance',
         category: 'Strategic Priorities',
+        criteriaType: 'core_function',
         title: '',
         description: '',
         weight: 0,
@@ -123,7 +133,7 @@ const EditCriteriaModal: React.FC<EditCriteriaModalProps> = ({ isOpen, onClose, 
                 render={({ field }) => (
                   <Combobox
                     options={categoryOptions}
-                    value={field.value}
+                    value={field.value || 'General'}
                     onChange={field.onChange}
                     placeholder="Select Category"
                     className="w-full"
@@ -132,6 +142,28 @@ const EditCriteriaModal: React.FC<EditCriteriaModalProps> = ({ isOpen, onClose, 
                 )}
               />
               {errors.category && <p className="text-red-500 text-xs mt-1">{errors.category.message}</p>}
+            </div>
+
+            {/* Criteria Type */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-900 mb-1.5">
+                Criteria Type (DB Mapping)
+              </label>
+              <Controller
+                name="criteriaType"
+                control={control}
+                render={({ field }) => (
+                  <Combobox
+                    options={criteriaTypeOptions}
+                    value={field.value || 'core_function'}
+                    onChange={field.onChange}
+                    placeholder="Select Criteria Type"
+                    className="w-full"
+                    buttonClassName="bg-white border-gray-200"
+                  />
+                )}
+              />
+              {errors.criteriaType && <p className="text-red-500 text-xs mt-1">{errors.criteriaType.message}</p>}
             </div>
             
             {/* Success Indicators */}

@@ -132,6 +132,7 @@ export const leaveFiltersSchema = z.object({
   status: z.string().optional(),
   leaveType: z.string().optional(),
   department: z.string().optional(),
+  employeeId: z.string().optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
 });

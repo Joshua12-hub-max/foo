@@ -40,14 +40,16 @@ interface EmployeeResponse<T = Employee> {
 import { UpdateEmployeeInput } from '../schemas/employeeSchema';
 
 //Employee CRUD
-export const fetchEmployees = async (deptParams: { department?: string | null, departmentId?: number | null } = {}): Promise<EmployeeResponse> => {
-  const { department, departmentId } = deptParams;
+export const fetchEmployees = async (deptParams: { department?: string | null, departmentId?: number | null, page?: number, limit?: number } = {}): Promise<EmployeeResponse & { total?: number, page?: number, totalPages?: number }> => {
+  const { department, departmentId, page = 1, limit = 50 } = deptParams;
   
   try {
     const response = await axios.get('/employees', { 
         params: { 
             departmentId,
-            department: department && department !== 'All Departments' ? department : undefined
+            department: department && department !== 'All Departments' ? department : undefined,
+            page,
+            limit
         }
     });
     const employees = response.data.employees;
@@ -57,7 +59,13 @@ export const fetchEmployees = async (deptParams: { department?: string | null, d
         return { success: false, employees: [] };
     }
     
-    return { success: true, employees };
+    return { 
+        success: true, 
+        employees, 
+        total: response.data.total, 
+        page: response.data.page, 
+        totalPages: response.data.totalPages 
+    };
   } catch (error: unknown) {
     return { success: false, employees: [] };
   }

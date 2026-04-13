@@ -42,7 +42,7 @@ const verifySofiaData = async () => {
   try {
     // Find Sofia's record
     const sofia = await db.query.authentication.findFirst({
-      where: eq(authentication.employeeId, 'Emp-001'),
+      where: eq(authentication.employeeId, 'Emp-010'),
     });
 
     if (!sofia) {
