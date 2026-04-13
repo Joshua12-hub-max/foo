@@ -102,3 +102,6 @@ zod_errors.json
 user_dump*
 *.txt
 !backend/uploads/**/*.txt
+
+nul
+backend/nul

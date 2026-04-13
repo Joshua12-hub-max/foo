@@ -3,32 +3,37 @@ import { Search, X, Loader2, Calendar } from 'lucide-react';
 import { leaveApi } from '../../../api/leaveApi';
 
 interface LeaveRequest {
-  id: number;
+  id: string | number;
   employeeId: string;
   name: string;
   department: string;
   leaveType: string;
   startDate: string;
   endDate: string;
-  startDateRaw: string;
-  endDateRaw: string;
+  startDateRaw?: string;
+  endDateRaw?: string;
   status: string;
+  period?: string; // Optional period string if passed from backend
 }
 
 interface LeaveTableProps {
   onClose: () => void;
+  employees?: any[]; // Allow any for flexibility, but we'll map it
 }
 
 const ITEMS_PER_PAGE = 10;
 
-export default function LeaveTable({ onClose }: LeaveTableProps) {
-  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
-  const [loading, setLoading] = useState(true);
+export default function LeaveTable({ onClose, employees }: LeaveTableProps) {
+  const [internalLeaveRequests, setInternalLeaveRequests] = useState<LeaveRequest[]>([]);
+  const [loading, setLoading] = useState(!employees); // Only load if employees not provided
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
+    // Only fetch if employees prop is NOT provided
+    if (employees) return;
+
     const fetchLeaveRequests = async () => {
       try {
         setLoading(true);
@@ -73,7 +78,7 @@ export default function LeaveTable({ onClose }: LeaveTableProps) {
               endDateRaw: leave.endDate,
               status: leave.status
             }));
-          setLeaveRequests(approvedLeaves);
+          setInternalLeaveRequests(approvedLeaves);
         }
       } catch (err) {
         console.error('Failed to fetch leave requests:', err);
@@ -83,17 +88,37 @@ export default function LeaveTable({ onClose }: LeaveTableProps) {
       }
     };
     fetchLeaveRequests();
-  }, []);
+  }, [employees]);
+
+  // Merge sources
+  const finalLeaveRequests = useMemo(() => {
+    if (employees) {
+      return employees.map(emp => ({
+        id: emp.id,
+        employeeId: emp.employeeId || String(emp.id),
+        name: emp.name,
+        department: emp.department,
+        leaveType: emp.leaveType || 'On Leave',
+        startDate: emp.startDate ? new Date(emp.startDate).toLocaleDateString() : '-',
+        endDate: emp.endDate ? new Date(emp.endDate).toLocaleDateString() : '-',
+        startDateRaw: emp.startDate,
+        endDateRaw: emp.endDate,
+        status: emp.status || 'Approved',
+        period: emp.period
+      }));
+    }
+    return internalLeaveRequests;
+  }, [employees, internalLeaveRequests]);
 
   const filteredEmployees = useMemo(() => {
     const query = searchQuery.toLowerCase();
-    if (!query) return leaveRequests;
-    return leaveRequests.filter(leave =>
+    if (!query) return finalLeaveRequests;
+    return finalLeaveRequests.filter(leave =>
       leave.name?.toLowerCase().includes(query) ||
       leave.employeeId?.toLowerCase().includes(query) ||
       leave.department?.toLowerCase().includes(query)
     );
-  }, [searchQuery, leaveRequests]);
+  }, [searchQuery, finalLeaveRequests]);
 
   const paginationData = useMemo(() => {
     const totalPages = Math.ceil(filteredEmployees.length / ITEMS_PER_PAGE);
@@ -145,7 +170,6 @@ export default function LeaveTable({ onClose }: LeaveTableProps) {
         )}
       </div>
 
-      {/* Styled Table matching PlantillaTable */}
       {/* Styled Table matching the new design */}
       <div className="flex-1 overflow-auto rounded-lg border border-gray-100">
         <table className="w-full text-sm">
@@ -160,12 +184,13 @@ export default function LeaveTable({ onClose }: LeaveTableProps) {
           </thead>
           <tbody className="divide-y divide-slate-100">
             {currentEmployees.length ? (
-              currentEmployees.map(emp => {
-                const start = new Date(emp.startDateRaw);
-                const end = new Date(emp.endDateRaw);
-                const duration = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+              currentEmployees.map((emp, idx) => {
+                const start = emp.startDateRaw ? new Date(emp.startDateRaw) : null;
+                const end = emp.endDateRaw ? new Date(emp.endDateRaw) : null;
+                const duration = (start && end) ? Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1 : null;
+                
                 return (
-                  <tr key={emp.id} className="hover:bg-[#F8F9FA] hover:shadow-xl transition-colors group bg-white">
+                  <tr key={`${emp.id}-${idx}`} className="hover:bg-[#F8F9FA] hover:shadow-xl transition-colors group bg-white">
                     <td className="px-4 py-4 text-sm font-medium text-gray-700 whitespace-nowrap">{emp.employeeId}</td>
                     <td className="px-4 py-4 text-sm font-semibold text-gray-900 whitespace-nowrap">{emp.name}</td>
                     <td className="px-4 py-4 text-sm text-gray-600 font-medium whitespace-nowrap">{emp.department}</td>
@@ -175,7 +200,8 @@ export default function LeaveTable({ onClose }: LeaveTableProps) {
                       </span>
                     </td>
                     <td className="px-4 py-4 text-sm text-gray-700 whitespace-nowrap">
-                      {emp.startDate} - {emp.endDate} <span className="text-xs text-gray-400 font-bold ml-1">({duration}d)</span>
+                      {emp.period || `${emp.startDate} - ${emp.endDate}`} 
+                      {duration && <span className="text-xs text-gray-400 font-bold ml-1">({duration}d)</span>}
                     </td>
                   </tr>
                 );

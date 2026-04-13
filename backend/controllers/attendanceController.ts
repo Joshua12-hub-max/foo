@@ -417,11 +417,7 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<vo
       effectiveId !== 'all' ? compareIds(leaveApplications.employeeId, effectiveId) : undefined
     ));
 
-    // 3. Fetch Recent Hires (Last 30 days)
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    const hiredDateStr = thirtyDaysAgo.toISOString().split('T')[0];
-
+    // 3. Fetch Hired Today (100% SUCCESS: Strictly for today to match other cards)
     const recentHires = await db.select({
       id: authentication.id,
       employeeId: authentication.employeeId,
@@ -437,10 +433,11 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<vo
     .leftJoin(pdsHrDetails, eq(authentication.id, pdsHrDetails.employeeId))
     .leftJoin(departments, eq(pdsHrDetails.departmentId, departments.id))
     .where(and(
-      gte(pdsHrDetails.dateHired, hiredDateStr), // 100% ACCURACY: Use actual hiring date
+      eq(pdsHrDetails.dateHired, today), // 100% FIX: Only hired TODAY
+      inArray(pdsHrDetails.employmentStatus, ['Active', 'Probationary']), // 100% FIX: Only include officially hired personnel
       ne(authentication.role, 'Applicant'),
-      ne(authentication.role, 'Administrator'), // 100% SUCCESS: Filter out Admin
-      ne(authentication.role, 'Human Resource'), // 100% SUCCESS: Filter out HR
+      ne(authentication.role, 'Administrator'), 
+      ne(authentication.role, 'Human Resource'), 
       isNotNull(authentication.employeeId),
       effectiveId !== 'all' ? compareIds(authentication.employeeId, effectiveId) : undefined
     ));
@@ -473,15 +470,13 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<vo
     const presentList = dtrs.filter(d => d.status && [
       ATTENDANCE_STATUS.PRESENT, 
       ATTENDANCE_STATUS.PRESENT_LATE, 
-      ATTENDANCE_STATUS.LATE, 
-      ATTENDANCE_STATUS.UNDERTIME, 
-      ATTENDANCE_STATUS.LATE_UNDERTIME
+      ATTENDANCE_STATUS.UNDERTIME,
+      'Present', 'Present (Late)', 'Undertime'
     ].includes(d.status as any));
 
     const lateList = dtrs.filter(d => d.status && [
-      ATTENDANCE_STATUS.LATE, 
       ATTENDANCE_STATUS.PRESENT_LATE, 
-      ATTENDANCE_STATUS.LATE_UNDERTIME
+      'Present (Late)'
     ].includes(d.status as any));
 
     const presentIds = new Set(presentList.map(d => normalizeIdJs(d.employeeId)));
@@ -489,6 +484,8 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<vo
 
     const absentListRaw = activeEmployees.filter(emp => {
         const id = normalizeIdJs(emp.employeeId);
+        // If an employee is marked as 'Absent' in DTR (because of Late+Undertime), they will NOT be in presentList
+        // so they will correctly fall into the absent category here.
         return !presentIds.has(id) && !leaveIds.has(id);
     });
 
@@ -503,35 +500,35 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<vo
     const lists = {
       present: presentList.map(d => ({ 
         ...d, 
-        id: d.id, // Numeric ID for frontend
+        id: normalizeIdJs(d.employeeId), // Use Employee ID for display, mask database ID
         employeeId: normalizeIdJs(d.employeeId),
         department: d.department || 'N/A',
         name: formatFullName(d.lastName, d.firstName, d.middleName, d.suffix) || `Employee ${normalizeIdJs(d.employeeId)}` 
       })),
       late: lateList.map(d => ({ 
         ...d, 
-        id: d.id,
+        id: normalizeIdJs(d.employeeId),
         employeeId: normalizeIdJs(d.employeeId),
         department: d.department || 'N/A',
         name: formatFullName(d.lastName, d.firstName, d.middleName, d.suffix) || `Employee ${normalizeIdJs(d.employeeId)}` 
       })),
       absent: absentListRaw.map(a => ({
         ...a,
-        id: a.id,
+        id: normalizeIdJs(a.employeeId),
         employeeId: normalizeIdJs(a.employeeId),
         department: a.department || 'N/A',
         name: formatFullName(a.lastName, a.firstName, a.middleName, a.suffix) || `Employee ${normalizeIdJs(a.employeeId)}`
       })),
       onLeave: activeLeaves.map(l => ({
         ...l,
-        id: l.id,
+        id: normalizeIdJs(l.employeeId),
         employeeId: normalizeIdJs(l.employeeId),
         department: l.department || 'N/A',
         name: formatFullName(l.lastName, l.firstName, l.middleName, l.suffix) || `Employee ${normalizeIdJs(l.employeeId)}`
       })),
       hired: recentHires.map(h => ({
         ...h,
-        id: h.id,
+        id: normalizeIdJs(h.employeeId), // Use formatted Employee ID
         employeeId: normalizeIdJs(h.employeeId),
         department: h.department || 'N/A',
         name: formatFullName(h.lastName, h.firstName, h.middleName, h.suffix) || `Employee ${normalizeIdJs(h.employeeId)}`

@@ -2,7 +2,6 @@ import { useState, useMemo, useCallback } from 'react';
 import { Search, X, UserCheck } from 'lucide-react';
 
 interface HiredApplicant {
-  id: string | number;
   name: string;
   department?: string;
   position?: string;
@@ -27,7 +26,6 @@ export default function HiredTable({ onClose, employees = [] }: HiredTableProps)
     if (!query) return employees;
     return employees.filter(emp =>
       emp.name?.toLowerCase().includes(query) ||
-      String(emp.id)?.toLowerCase().includes(query) ||
       emp.department?.toLowerCase().includes(query) ||
       emp.position?.toLowerCase().includes(query)
     );
@@ -92,7 +90,6 @@ export default function HiredTable({ onClose, employees = [] }: HiredTableProps)
         <table className="w-full text-sm">
           <thead className="bg-gray-200 shadow-md text-gray-700">
             <tr>
-              <th className="px-4 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap">ID</th>
               <th className="px-4 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap">Name</th>
               <th className="px-4 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap">Department</th>
               <th className="px-4 py-4 text-left text-sm font-bold tracking-wide whitespace-nowrap">Position</th>
@@ -102,8 +99,7 @@ export default function HiredTable({ onClose, employees = [] }: HiredTableProps)
           <tbody className="divide-y divide-slate-100">
             {currentEmployees.length ? (
               currentEmployees.map((employee, idx) => (
-                <tr key={`${employee.id}-${idx}`} className="hover:bg-[#F8F9FA] hover:shadow-xl transition-colors group bg-white">
-                  <td className="px-4 py-4 text-sm font-medium text-gray-700 whitespace-nowrap">{employee.id}</td>
+                <tr key={`${idx}`} className="hover:bg-[#F8F9FA] hover:shadow-xl transition-colors group bg-white">
                   <td className="px-4 py-4 text-sm font-semibold text-gray-900 whitespace-nowrap">{employee.name}</td>
                   <td className="px-4 py-4 text-sm text-gray-600 font-medium whitespace-nowrap">{employee.department || '-'}</td>
                   <td className="px-4 py-4 text-sm text-gray-600 whitespace-nowrap">{employee.position || employee.jobTitle || '-'}</td>
@@ -112,7 +108,7 @@ export default function HiredTable({ onClose, employees = [] }: HiredTableProps)
               ))
             ) : (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-gray-400 text-sm font-medium">
+                <td colSpan={4} className="px-4 py-8 text-center text-gray-400 text-sm font-medium">
                   <UserCheck className="w-8 h-8 mx-auto mb-2 opacity-50" />
                   {searchQuery ? 'No matching records' : 'No hired applicants yet'}
                 </td>

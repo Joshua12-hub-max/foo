@@ -117,7 +117,7 @@ const DashboardHome: React.FC<DashboardHomeProps> = React.memo(({
             {activeTable === "Present" && <PresentTable onClose={() => setActiveTable(null)} employees={employeeLists.present} />}
             {activeTable === "Absent" && <AbsentTable onClose={() => setActiveTable(null)} employees={employeeLists.absent} />}
             {activeTable === "Late" && <LateTable onClose={() => setActiveTable(null)} employees={employeeLists.late} />}
-            {activeTable === "On-Leave" && <LeaveTable onClose={() => setActiveTable(null)} />}
+            {activeTable === "On-Leave" && <LeaveTable onClose={() => setActiveTable(null)} employees={employeeLists.onLeave} />}
             {activeTable === "Hired" && <HiredTable onClose={() => setActiveTable(null)} employees={employeeLists.hired} />}
           </div>
         )}
@@ -210,7 +210,7 @@ export default function HDashboard(): React.ReactElement {
   const employeeLists = useMemo(() => {
     const processList = (list?: EmployeeStats[]): DashboardEmployee[] => (list || []).map(emp => ({
       ...emp,
-      id: Number(emp.id) || 0,
+      id: String(emp.id || ''),
       name: String(emp.name || `${emp.firstName || ''} ${emp.lastName || ''}`.trim()),
       department: String(emp.department || emp.departmentName || ''),
     } as DashboardEmployee));

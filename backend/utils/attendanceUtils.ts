@@ -116,17 +116,18 @@ export const determineStatus = (
     return ATTENDANCE_STATUS.PRESENT;
   }
 
-  // NEW RULE: Both late AND undertime = Absent
+  // 100% BUSINESS RULE: Both late AND undertime = Absent
+  // If an employee is late AND leaves early, they are considered absent for the shift.
   if (lateMinutes > 0 && undertimeMinutes > 0) {
     return ATTENDANCE_STATUS.ABSENT;
   }
 
-  // UPDATED RULE: Late only = Present (Late)
+  // 100% BUSINESS RULE: Late only = Present (Late)
   if (lateMinutes > 0) {
     return ATTENDANCE_STATUS.PRESENT_LATE;
   }
 
-  // Undertime only
+  // 100% BUSINESS RULE: Undertime only = Undertime
   if (undertimeMinutes > 0) {
     return ATTENDANCE_STATUS.UNDERTIME;
   }
