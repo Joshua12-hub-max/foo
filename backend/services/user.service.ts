@@ -24,7 +24,7 @@ import { eq, and, desc, SQL, sql } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 import { normalizeIdSql } from '../utils/idUtils.js';
 
-import * as LeaveService from './leaveService.js';
+import * as leaveService from './leaveService.js';
 
 type NewEmployee = typeof authentication.$inferInsert;
 
@@ -33,7 +33,7 @@ export class UserService {
     const where = conditions.length > 0 ? and(...conditions) : undefined;
     
     // Fetch default shift times once
-    const defaultShift = await LeaveService.getDefaultShift();
+    const defaultShift = await leaveService.getDefaultShift();
     const defaultName = defaultShift.name || 'Standard Shift';
     const defaultTime = `${defaultShift.startTime} - ${defaultShift.endTime}`;
 
@@ -126,7 +126,7 @@ export class UserService {
 
   static async getEmployeeById(id: number) {
     // Fetch default shift times once
-    const defaultShift = await LeaveService.getDefaultShift();
+    const defaultShift = await leaveService.getDefaultShift();
     const defaultName = defaultShift.name || 'Standard Shift';
     const defaultTime = `${defaultShift.startTime} - ${defaultShift.endTime}`;
 

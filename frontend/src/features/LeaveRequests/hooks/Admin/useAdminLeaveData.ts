@@ -65,6 +65,11 @@ export const useAdminLeaveData = (initialFilters?: Record<string, string>) => {
           attachmentPath: l.attachmentPath ?? undefined,
           adminFormPath: l.adminFormPath ?? undefined,
           finalAttachmentPath: l.finalAttachmentPath ?? undefined,
+          workingDays: l.workingDays,
+          currentBalance: l.currentBalance,
+          daysWithPay: l.daysWithPay,
+          daysWithoutPay: l.daysWithoutPay,
+          actualPaymentStatus: l.actualPaymentStatus
         };
       }) : [];
 

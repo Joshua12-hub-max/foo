@@ -142,7 +142,7 @@ export const verifyToken: MiddlewareFunction = (
 ) => {
   try {
     const downloadToken = req.query.token as string | undefined;
-    let cookieToken = req.cookies?.accessToken as string | undefined;
+    const cookieToken = req.cookies?.accessToken as string | undefined;
 
     // 1. Handle Short-lived Download Tokens (Highest Priority for Frames/Downloads)
     if (downloadToken) {

@@ -68,13 +68,22 @@ const Table: React.FC<TableProps> = ({ data, onOpenApprove, onOpenReject, onOpen
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-800 whitespace-nowrap">{new Date(item.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
                   <td className="px-6 py-4">
-                    <div className="flex items-center gap-1.5">
-                      <div className={`flex items-center justify-center w-8 h-8 rounded-lg bg-white text-gray-900 border border-gray-200 shadow-sm`}>
-                        <span className="text-sm font-medium">
-                          {Number(item.workingDays || 0).toFixed(1)}
-                        </span>
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-1.5">
+                        <div className={`flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-100 shadow-sm`}>
+                          <span className="text-sm font-bold">
+                            {Number(item.workingDays || 0).toFixed(1)}
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-gray-400 font-bold uppercase tracking-tight">Requested</span>
                       </div>
-                      <span className="text-[10px] text-gray-400 font-medium tracking-tighter">Days</span>
+                      {item.currentBalance !== undefined && (
+                        <div className="flex items-center gap-1.5 ml-0.5">
+                           <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">
+                             Bal: {Number(item.currentBalance).toFixed(2)}
+                           </span>
+                        </div>
+                      )}
                     </div>
                   </td>
                   <td className="px-6 py-4">

@@ -105,7 +105,8 @@ export async function checkSystemWideUniqueness(params: CheckUniquenessParams): 
       philhealthNumber: recruitmentApplicants.philhealthNumber,
       pagibigNumber: recruitmentApplicants.pagibigNumber,
       tinNumber: recruitmentApplicants.tinNumber,
-      gsisNumber: recruitmentApplicants.gsisNumber
+      gsisNumber: recruitmentApplicants.gsisNumber,
+      stage: recruitmentApplicants.stage
     })
     .from(recruitmentApplicants)
     .where(or(...appConditions));
@@ -118,6 +119,13 @@ export async function checkSystemWideUniqueness(params: CheckUniquenessParams): 
       
       if (excludeAppId && appId === excludeAppId) {
         console.log(`[DEBUG] Successfully excluded applicant ${appId}`);
+        continue;
+      }
+
+      // RELAXATION: If the applicant is already hired, they are likely the same person 
+      // registering as an employee. Do not block their registration.
+      if (app.stage === 'Hired') {
+        console.log(`[DEBUG] Ignoring conflict for Hired applicant ${appId}`);
         continue;
       }
       

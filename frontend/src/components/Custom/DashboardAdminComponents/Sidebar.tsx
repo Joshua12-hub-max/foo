@@ -58,7 +58,7 @@ export default function Sidebar({ sidebarOpen, navItems, handleLogout, onSection
             />
              {sidebarOpen && (<div className="mt-5 text-center transition-all duration-300">
                 <h1 className="text-sm font-black tracking-tight text-[var(--zed-text-dark)] leading-tight">
-                  {userRole === 'Human Resource' ? 'HR Portal' : 'Admin Portal'}
+                  {userRole === 'Human Resource' ? 'Human Resource Portal' : 'Administrator Portal'}
                 </h1>
                 <p className="text-[10px] font-black text-[var(--zed-text-muted)] mt-1.5 tracking-widest leading-tight">City Human Resource Management Officer</p>
               </div>

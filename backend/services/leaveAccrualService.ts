@@ -10,7 +10,7 @@ import { eq, and, ne, sql, inArray, desc } from 'drizzle-orm';
 import { 
   type CreditType,
 } from '../types/leave.types.js';
-import * as LeaveService from './leaveService.js';
+import * as leaveService from './leaveService.js';
 
 /**
  * Calculate earned credits based on Days Present (CSC Rule XVI)
@@ -56,7 +56,7 @@ export const getLWOPDays = async (employeeId: string, month: number, year: numbe
       const start = leave.startDate > firstDayOfMonth ? leave.startDate : firstDayOfMonth;
       const end = leave.endDate < lastDayOfMonth ? leave.endDate : lastDayOfMonth;
 
-      const workingDaysInMonth = await LeaveService.calculateWorkingDays(start, end);
+      const workingDaysInMonth = await leaveService.calculateWorkingDays(start, end);
 
       if (leave.isWithPay === false) {
           // Fully without pay
@@ -91,7 +91,7 @@ export const getLWOPDays = async (employeeId: string, month: number, year: numbe
  */
 export const accrueCreditsForMonth = async (month: number, year: number, specificEmployeeIds: string[] = []) => {
   try {
-    const policy = await LeaveService.getLeavePolicy();
+    const policy = await leaveService.getLeavePolicy();
     const accruingTypes = policy.monthlyAccrual.accruingTypes;
     const accrualRuleType = policy.monthlyAccrual.accrualRuleType;
 
@@ -133,7 +133,7 @@ export const accrueCreditsForMonth = async (month: number, year: number, specifi
 
       if (earnedCredits > 0) {
         for (const creditType of policy.monthlyAccrual.accrualCreditTypes) {
-          await LeaveService.updateBalance(
+          await leaveService.updateBalance(
             employeeId,
             creditType as CreditType,
             earnedCredits,

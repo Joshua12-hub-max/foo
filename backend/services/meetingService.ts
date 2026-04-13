@@ -47,10 +47,10 @@ export const generateGoogleMeetLink = async (options: MeetingOptions): Promise<M
 
     const oauth2Client = getOAuth2Client();
     oauth2Client.setCredentials({
-      /* eslint-disable @typescript-eslint/naming-convention */
+       
       access_token: tokens.accessToken,
       refresh_token: tokens.refreshToken
-      /* eslint-enable @typescript-eslint/naming-convention */
+       
     });
 
     // Handle token refresh if expired

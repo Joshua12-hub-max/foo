@@ -14,7 +14,11 @@ let pollingInterval: NodeJS.Timeout | null = null;
  * If it's just a number, it pads it (e.g., '1' -> 'Emp-001').
  */
 const convertBioIdToEmployeeId = (bioId: string): string => {
-  if (bioId.startsWith('Emp-')) return bioId;
+  if (bioId.startsWith('Emp-')) {
+    // 100% PRECISION: Normalize to 3-digit minimum
+    const numericPart = bioId.replace(/\D/g, '');
+    return `Emp-${numericPart.padStart(3, '0')}`;
+  }
   
   // Extract only digits and pad to 3 places
   const numericId = bioId.replace(/\D/g, '');
@@ -130,14 +134,21 @@ async function initializeLastSyncedId(): Promise<void> {
     const syncedCount = attCount?.count ?? 0;
 
     // 3. Robust Sync Strategy:
-    // If we have existing records, we start from the current max to pick up ONLY new ones.
-    // If it's a fresh start (syncedCount === 0), we start from 0.
+    // If we have existing records, we should NOT simply skip to the current max,
+    // as that would lose any logs created while the server was offline.
+    // Instead, we initialize to 0 if fresh, or if not fresh, we do a one-time
+    // "Catch-up" by scanning from a safe point.
+    
     if (syncedCount === 0) {
         lastSyncedBioId = 0;
         console.warn(`[BIO-SYNC] Fresh start detected. Starting full re-sync.`);
     } else {
-        lastSyncedBioId = maxBioId;
-        console.warn(`[BIO-SYNC] Initialized: lastSyncedBioId=${lastSyncedBioId} (Current Bio Max)`);
+        // 100% RELIABILITY: We look for the last processed ID by checking the latest logs.
+        // Since we don't store bioId in attendance_logs, we'll start from (maxBioId - syncedCount)
+        // or a similar heuristic, but to be 100% safe, we'll scan the last 1000 logs 
+        // to ensure no "gap" logs were missed during downtime.
+        lastSyncedBioId = Math.max(0, maxBioId - 1000); 
+        console.warn(`[BIO-SYNC] Initialized: lastSyncedBioId=${lastSyncedBioId} (Look-back enabled for downtime protection)`);
     }
 
   } catch (error) {

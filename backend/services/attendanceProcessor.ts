@@ -254,33 +254,25 @@ export const processDailyAttendance = async (
       status = leaveType || 'Leave';
     }
 
-    // 4. Upsert into daily_time_records ONLY if there are VALID logs, the employee is on leave, OR they have a schedule
-    
-    let shouldSaveDTR = false;
-    
-    if (isOnLeave) {
-        shouldSaveDTR = true;
-    } else if (hasScheduleOrTarget) {
-        shouldSaveDTR = true; // Always save if they are scheduled! (to record absence, late, undertime)
-    } else if (timeIn !== null || timeOut !== null) {
-        shouldSaveDTR = true; // Unscheduled, but they logged something (Overtime/Rest Day Duty)
-    }
+    // 4. Upsert based on a more resilient logic.
+    // If logs exist, a record MUST be created.
+    if (logs.length > 0) {
+      let finalStatus = status;
 
-    // 100% NOISE FILTER: 
-    // If on a Rest Day (no schedule) and not on leave, check for "Enrollment Noise"
-    let isNoiseLog = false;
-    if (!hasScheduleOrTarget && !isOnLeave && timeIn !== null && timeOut !== null) {
-      const inHour = timeIn.getHours();
-      if (inHour === 0 || inHour === 23) {
-        isNoiseLog = true;
+      // If there's no schedule, but they logged in, it needs manual review.
+      if (!hasScheduleOrTarget) {
+        finalStatus = 'Needs Review';
       }
-    }
 
-    if (isNoiseLog) {
-        shouldSaveDTR = false;
-    }
-
-    if (shouldSaveDTR) {
+      // The "Noise Filter" might be too aggressive. For now, we will record
+      // these logs for review instead of discarding them.
+      if (!hasScheduleOrTarget && !isOnLeave && timeIn !== null && timeOut !== null) {
+        const inHour = timeIn.getHours();
+        if (inHour === 0 || inHour === 23) {
+          finalStatus = 'Needs Review (Noise)';
+        }
+      }
+      
       const normalizedTargetId = normalizeIdJs(employeeId);
       await db.insert(dailyTimeRecords).values({
         employeeId: normalizedTargetId,
@@ -290,7 +282,7 @@ export const processDailyAttendance = async (
         lateMinutes: totalLateMinutes,
         undertimeMinutes: totalUndertimeMinutes,
         overtimeMinutes: totalOvertimeMinutes,
-        status,
+        status: finalStatus,
         updatedAt: sql`CURRENT_TIMESTAMP`
       }).onDuplicateKeyUpdate({
         set: {
@@ -299,16 +291,43 @@ export const processDailyAttendance = async (
           lateMinutes: totalLateMinutes,
           undertimeMinutes: totalUndertimeMinutes,
           overtimeMinutes: totalOvertimeMinutes,
-          status,
+          status: finalStatus,
           updatedAt: sql`CURRENT_TIMESTAMP`
         }
       });
     } else {
-      // CLEANUP: Only delete if it's truly a ghost record on a rest day with no logs
-      await db.delete(dailyTimeRecords).where(and(
-        compareIds(dailyTimeRecords.employeeId, employeeId),
-        eq(dailyTimeRecords.date, dateStr)
-      ));
+      // NO LOGS EXIST FOR THIS DAY
+      let statusForNoLogs = 'Absent';
+      if (isOnLeave) {
+        statusForNoLogs = leaveType || 'Leave';
+      }
+
+      // Only record 'Absent' or 'Leave' if the employee was expected to work.
+      if (hasScheduleOrTarget || isOnLeave) {
+        const normalizedTargetId = normalizeIdJs(employeeId);
+        await db.insert(dailyTimeRecords).values({
+          employeeId: normalizedTargetId,
+          date: dateStr,
+          timeIn: null, timeOut: null,
+          lateMinutes: 0, undertimeMinutes: 0, overtimeMinutes: 0,
+          status: statusForNoLogs,
+          updatedAt: sql`CURRENT_TIMESTAMP`
+        }).onDuplicateKeyUpdate({
+          set: {
+            timeIn: null, timeOut: null,
+            lateMinutes: 0, undertimeMinutes: 0, overtimeMinutes: 0,
+            status: statusForNoLogs,
+            updatedAt: sql`CURRENT_TIMESTAMP`
+          }
+        });
+      } else {
+        // No logs, no schedule, not on leave. This is a true rest day.
+        // Delete any lingering record to keep the DTR clean.
+        await db.delete(dailyTimeRecords).where(and(
+          compareIds(dailyTimeRecords.employeeId, employeeId),
+          eq(dailyTimeRecords.date, dateStr)
+        ));
+      }
     }
 
     // 5. AUTO-UPDATE SUMMARY & CHECK VIOLATIONS

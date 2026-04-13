@@ -168,7 +168,7 @@ export default function Sidebar({ isOpen, navItems, onLogout, onSectionChange }:
             className="w-full flex items-center justify-center gap-2 py-2.5 text-[var(--zed-text-muted)] font-black bg-white hover:bg-gray-50 rounded-[var(--radius-sm)] transition-all border border-[var(--zed-border-light)] hover:text-[var(--zed-text-dark)] text-xs tracking-wider"
           >
             <Shield className="w-4 h-4 flex-shrink-0" />
-            {sidebarOpen && (localStorage.getItem('user-role') === 'Human Resource' ? 'Switch to HR Portal' : 'Switch to Admin Portal')}
+            {sidebarOpen && (localStorage.getItem('user-role') === 'Human Resource' ? 'Switch to Human Resource Portal' : 'Switch to Administrator Portal')}
           </Link>
         )}
 

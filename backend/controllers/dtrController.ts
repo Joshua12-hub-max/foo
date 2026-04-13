@@ -185,7 +185,7 @@ export const getAllRecords = async (req: Request, res: Response): Promise<void> 
         .leftJoin(
             dtrCorrections,
             and(
-                eq(dtrCorrections.employeeId, dailyTimeRecords.employeeId),
+                compareIds(dtrCorrections.employeeId, dailyTimeRecords.employeeId),
                 eq(dtrCorrections.dateTime, dailyTimeRecords.date),
                 eq(dtrCorrections.status, 'Pending')
             )
@@ -673,7 +673,7 @@ export const updateCorrectionStatus = async (req: Request, res: Response): Promi
               // APPROVED LOGIC
               // A. Fetch existing DTR record
               const [dtr] = await db.select().from(dailyTimeRecords).where(and(
-                  eq(dailyTimeRecords.employeeId, request.employeeId),
+                  compareIds(dailyTimeRecords.employeeId, request.employeeId),
                   eq(dailyTimeRecords.date, request.dateTime)
               ));
 
@@ -682,7 +682,7 @@ export const updateCorrectionStatus = async (req: Request, res: Response): Promi
             const dayName = dtrDate.toLocaleDateString('en-US', { weekday: 'long' });
             
             const [schedule] = await db.select().from(schedules).where(and(
-                eq(schedules.employeeId, request.employeeId),
+                compareIds(schedules.employeeId, request.employeeId),
                 eq(schedules.dayOfWeek, dayName)
             )).limit(1);
 

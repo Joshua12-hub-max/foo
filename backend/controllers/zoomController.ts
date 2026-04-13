@@ -13,14 +13,14 @@ interface ZoomConfig {
   clientSecret: string;
 }
 
-/* eslint-disable @typescript-eslint/naming-convention */
+ 
 interface ZoomTokenResponse {
   access_token: string;
   token_type: string;
   expires_in: number;
   scope: string;
 }
-/* eslint-enable @typescript-eslint/naming-convention */
+ 
 
 interface ZoomMeetingRequest {
   topic: string;
@@ -37,7 +37,7 @@ interface ZoomMeetingRequest {
   };
 }
 
-/* eslint-disable @typescript-eslint/naming-convention */
+ 
 interface ZoomMeetingResponse {
   id: number;
   host_id: string;
@@ -48,7 +48,7 @@ interface ZoomMeetingResponse {
   join_url: string;
   password?: string;
 }
-/* eslint-enable @typescript-eslint/naming-convention */
+ 
 
 interface CreateMeetingRequestBody {
   topic: string;
@@ -121,16 +121,16 @@ const getZoomAccessToken = async (): Promise<string> => {
       null,
       {
         params: {
-          /* eslint-disable @typescript-eslint/naming-convention */
+           
           grant_type: 'account_credentials',
           account_id: config.accountId,
-          /* eslint-enable @typescript-eslint/naming-convention */
+           
         },
         headers: {
-          /* eslint-disable @typescript-eslint/naming-convention */
+           
           'Authorization': `Basic ${credentials}`,
           'Content-Type': 'application/x-www-form-urlencoded',
-          /* eslint-enable @typescript-eslint/naming-convention */
+           
         },
       }
     );
@@ -228,10 +228,10 @@ export const createZoomMeeting = async (req: Request, res: Response): Promise<vo
       meetingRequest,
       {
         headers: {
-          /* eslint-disable @typescript-eslint/naming-convention */
+           
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
-          /* eslint-enable @typescript-eslint/naming-convention */
+           
         },
       }
     );

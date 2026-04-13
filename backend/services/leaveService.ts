@@ -234,7 +234,7 @@ export const logToServiceRecord = async (
   }
   };
 
-  export const getTardinessPolicy = async (): Promise<any> => {
+  export const getTardinessPolicy = async (): Promise<Record<string, unknown> | null> => {
   try {
       const results = await db.select()
       .from(internalPolicies)
@@ -249,7 +249,7 @@ export const logToServiceRecord = async (
   }
   };
 
-  export const getPenaltyPolicy = async (): Promise<any> => {
+  export const getPenaltyPolicy = async (): Promise<Record<string, unknown> | null> => {
   try {
       const results = await db.select()
       .from(internalPolicies)

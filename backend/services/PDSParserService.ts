@@ -57,7 +57,7 @@ export class PDSParserService {
       declarations: {}
     };
     
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+     
     const personal = data.personal!;
 
     const sheet1 = workbook.getWorksheet(1) || workbook.getWorksheet('C1');

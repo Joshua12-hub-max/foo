@@ -1726,14 +1726,15 @@ export const findHiredApplicant: AsyncHandler = async (req, res) => {
 
 export const checkEmailUniqueness: AsyncHandler = async (req, res) => {
   try {
-    const { email, applicantId } = z.object({ 
+    const { email, applicantId, applicant_id } = z.object({ 
       email: z.string().email(),
-      applicantId: z.string().optional()
+      applicantId: z.string().optional(),
+      applicant_id: z.string().optional()
     }).parse(req.query);
     
     const errors = await checkSystemWideUniqueness({ 
       email,
-      excludeApplicantId: applicantId ? parseInt(applicantId) : undefined
+      excludeApplicantId: (applicantId || applicant_id) ? parseInt(applicantId || applicant_id!) : undefined
     });
     
     if (errors.email) {
@@ -1967,25 +1968,25 @@ export const setupPortal: AsyncHandler = async (req, res) => {
 export const checkGovtIdUniqueness: AsyncHandler = async (req, res) => {
   try {
     const { 
-      umidNumber, 
-      philsysId, 
-      philhealthNumber, 
-      pagibigNumber, 
-      tinNumber, 
-      gsisNumber,
-      excludeAuthId,
-      excludeApplicantId
+      umidNumber, umid_number,
+      philsysId, philsys_id,
+      philhealthNumber, philhealth_number,
+      pagibigNumber, pagibig_number,
+      tinNumber, tin_number,
+      gsisNumber, gsis_number,
+      excludeAuthId, exclude_auth_id,
+      excludeApplicantId, exclude_applicant_id
     } = req.query;
 
     const errors = await checkSystemWideUniqueness({
-      umidNumber: String(umidNumber || ''),
-      philsysId: String(philsysId || ''),
-      philhealthNumber: String(philhealthNumber || ''),
-      pagibigNumber: String(pagibigNumber || ''),
-      tinNumber: String(tinNumber || ''),
-      gsisNumber: String(gsisNumber || ''),
-      excludeAuthId: excludeAuthId ? Number(excludeAuthId) : undefined,
-      excludeApplicantId: excludeApplicantId ? Number(excludeApplicantId) : undefined
+      umidNumber: String(umidNumber || umid_number || ''),
+      philsysId: String(philsysId || philsys_id || ''),
+      philhealthNumber: String(philhealthNumber || philhealth_number || ''),
+      pagibigNumber: String(pagibigNumber || pagibig_number || ''),
+      tinNumber: String(tinNumber || tin_number || ''),
+      gsisNumber: String(gsisNumber || gsis_number || ''),
+      excludeAuthId: excludeAuthId ? Number(excludeAuthId) : (exclude_auth_id ? Number(exclude_auth_id) : undefined),
+      excludeApplicantId: excludeApplicantId ? Number(excludeApplicantId) : (exclude_applicant_id ? Number(exclude_applicant_id) : undefined)
     });
 
     if (Object.keys(errors).length > 0) {

@@ -91,9 +91,9 @@ const getAuthenticatedClient = async (userId: number): Promise<{ client: OAuth2C
     const oauth2Client = getOAuth2Client();
 
     oauth2Client.setCredentials({
-      // eslint-disable-next-line @typescript-eslint/naming-convention
+       
       access_token: tokenData.accessToken,
-      // eslint-disable-next-line @typescript-eslint/naming-convention
+       
       refresh_token: tokenData.refreshToken,
     });
 
@@ -152,11 +152,11 @@ export const initiateGoogleAuth = async (req: Request, res: Response): Promise<v
     const stateToken = AuthService.generateOAuthStateToken(userId);
 
     const authUrl = oauth2Client.generateAuthUrl({
-      // eslint-disable-next-line @typescript-eslint/naming-convention
+       
       access_type: 'offline',
       scope: ['https://www.googleapis.com/auth/calendar'],
       prompt: 'consent',
-      // eslint-disable-next-line @typescript-eslint/naming-convention
+       
       include_granted_scopes: true,
       state: stateToken, // Pass our secure token
     });

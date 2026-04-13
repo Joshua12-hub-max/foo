@@ -29,7 +29,7 @@ import { PDSUpdateSchema } from '../schemas/employeeSchema.js';
  * ensuring we can safely access the employeeId column.
  */
 // PdsTableWithEmployeeId removed
-/* eslint-disable @typescript-eslint/naming-convention */
+ 
 const PDS_TABLES: Record<string, MySqlTable> = {
   'family': pdsFamily,
   'education': pdsEducation,
@@ -40,7 +40,7 @@ const PDS_TABLES: Record<string, MySqlTable> = {
   'other_info': pdsOtherInfo,
   'references': pdsReferences
 };
-/* eslint-enable @typescript-eslint/naming-convention */
+ 
 
 /**
  * Get a specific PDS section for an employee.

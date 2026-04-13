@@ -15,7 +15,7 @@ import {
 } from "../schemas/attendanceSchema.js";
 import { DTRApiResponse } from "../types/attendance.js";
 import { formatToManilaDateTime, currentManilaDateTime } from "../utils/dateUtils.js";
-import { compareIds } from "../utils/idUtils.js";
+import { compareIds, normalizeIdJs, normalizeIdSql } from "../utils/idUtils.js";
 import { processDailyAttendance } from "../services/attendanceProcessor.js";
 
 /**
@@ -136,7 +136,7 @@ export const getLogs = async (req: Request, res: Response): Promise<void> => {
     let existingDtrs: any[] = [];
     if (empIds.length > 0 && dates.length > 0) {
       existingDtrs = await db.select().from(dailyTimeRecords).where(and(
-        inArray(dailyTimeRecords.employeeId, empIds),
+        inArray(normalizeIdSql(dailyTimeRecords.employeeId), empIds.map(normalizeIdJs)),
         inArray(dailyTimeRecords.date, dates)
       ));
     }

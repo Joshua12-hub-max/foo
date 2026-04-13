@@ -2,7 +2,7 @@ import { db } from '../db/index.js';
 import { tardinessSummary, policyViolations, employeeMemos, memoSequences, authentication, pdsHrDetails, shiftTemplates } from '../db/schema.js';
 import { eq, asc } from 'drizzle-orm';
 import crypto from 'crypto';
-import * as LeaveService from './leaveService.js';
+import * as leaveService from './leaveService.js';
 
 interface ViolationConfig {
   violationType: 'habitualTardiness' | 'absence' | 'habitualUndertime';
@@ -216,8 +216,8 @@ export const checkPolicyViolations = async (
   _month: number
 ): Promise<void> => {
   try {
-    const tardinessPolicy = await LeaveService.getTardinessPolicy();
-    const penaltyPolicy = await LeaveService.getPenaltyPolicy();
+    const tardinessPolicy = await leaveService.getTardinessPolicy();
+    const penaltyPolicy = await leaveService.getPenaltyPolicy();
     
     const tracker = new CSCViolationTracker();
     const offenses = await tracker.identifyOffenses(employeeId, tardinessPolicy);

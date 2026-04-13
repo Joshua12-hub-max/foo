@@ -3,7 +3,7 @@ import {
   X, User, Mail, Phone, MapPin, Calendar, Briefcase, 
   GraduationCap, Award, Brain, Fingerprint, FileText,
   BadgeCheck, Globe, Hash, Ruler, Weight, Droplet,
-  LucideIcon, Download, Eye, FileCode, Paperclip
+  LucideIcon, Download, Eye, FileCode, Paperclip, Loader2
 } from 'lucide-react';
 import { Applicant, ApplicantDocument } from '@/types/recruitment';
 import { requestDownloadToken } from '@/Service/Auth';
@@ -22,7 +22,7 @@ const ApplicantDetailModal: React.FC<ApplicantDetailModalProps> = ({ isOpen, onC
   const [loadingDocs, setLoadingDocs] = useState(false);
 
   useEffect(() => {
-    if (isOpen && applicant.id) {
+    if (isOpen && applicant?.id) {
       setLoadingDocs(true);
       recruitmentApi.getApplicantDocuments(applicant.id)
         .then(res => {
@@ -30,7 +30,7 @@ const ApplicantDetailModal: React.FC<ApplicantDetailModalProps> = ({ isOpen, onC
         })
         .finally(() => setLoadingDocs(false));
     }
-  }, [isOpen, applicant.id]);
+  }, [isOpen, applicant?.id]);
 
   if (!isOpen || !applicant) return null;
 

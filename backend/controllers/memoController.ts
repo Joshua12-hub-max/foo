@@ -7,7 +7,7 @@ import { createNotification, updateNotificationsByReference } from './notificati
 import type { AuthenticatedRequest, MemoType, MemoStatus, MemoPriority, EmploymentStatus } from '../types/index.js';
 import { formatFullName } from '../utils/nameUtils.js';
 
-/* eslint-disable @typescript-eslint/naming-convention */
+ 
 const MEMO_TYPE_TO_STATUS: Record<MemoType, EmploymentStatus | undefined> = {
   'Termination Notice': 'Terminated',
   'Suspension Notice': 'Suspended',
@@ -15,7 +15,7 @@ const MEMO_TYPE_TO_STATUS: Record<MemoType, EmploymentStatus | undefined> = {
   'Written Warning': 'Written Warning',
   'Show Cause': 'Show Cause'
 };
-/* eslint-enable @typescript-eslint/naming-convention */
+ 
 
 const generateMemoNumber = async (): Promise<string> => {
   const year = new Date().getFullYear();
