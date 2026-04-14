@@ -26,12 +26,7 @@ export const getEvents = async (req: Request, res: Response): Promise<void> => {
     const isAdminOrHr = ['Administrator', 'Human Resource'].includes(authReq.user.role || '');
     const { onlyMyDept } = req.query;
 
-    const baseCondition = or(
-      gte(events.endDate, sql`CURDATE()`),
-      isNull(events.endDate)
-    );
-
-    const conditions = [baseCondition];
+    const conditions = [];
 
     // If not Admin OR if Admin explicitly asks for their personal portal view (onlyMyDept)
     if (!isAdminOrHr || onlyMyDept === 'true') {
@@ -60,10 +55,10 @@ export const getEvents = async (req: Request, res: Response): Promise<void> => {
       .where(and(...conditions))
       .orderBy(asc(events.date));
 
-    res.status(200).json({ events: result });
+    res.status(200).json({ success: true, events: result });
   } catch (_error) {
 
-    res.status(500).json({ message: 'Failed to fetch events' });
+    res.status(500).json({ success: false, message: 'Failed to fetch events' });
   }
 };
 

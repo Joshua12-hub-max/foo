@@ -11,7 +11,6 @@ export const getAnnouncements = async (_req: Request, res: Response): Promise<vo
   try {
     const result = await db.select()
       .from(announcements)
-      .where(gte(announcements.createdAt, sql`DATE_SUB(NOW(), INTERVAL 7 DAY)`))
       .orderBy(desc(announcements.createdAt));
       
     res.status(200).json({ success: true, announcements: result });

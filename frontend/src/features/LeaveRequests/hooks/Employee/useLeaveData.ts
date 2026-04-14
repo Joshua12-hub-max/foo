@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { leaveApi } from "@/api/leaveApi";
 import { EmployeeLeaveRequest } from '../../types';
@@ -44,13 +44,13 @@ export const useLeaveData = () => {
     placeholderData: (previousData) => previousData
   });
 
-  const refreshLeaves = async () => {
+  const refreshLeaves = useCallback(async () => {
     await queryClient.invalidateQueries({ queryKey: ['employee-leaves'] });
-  };
+  }, [queryClient]);
 
-  const updateFilters = (newFilters: any) => {
+  const updateFilters = useCallback((newFilters: any) => {
     setFilters(newFilters);
-  };
+  }, [setFilters]);
 
   return { 
     leaves: data?.leaves || [], 

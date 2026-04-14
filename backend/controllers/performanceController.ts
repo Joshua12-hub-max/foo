@@ -646,7 +646,7 @@ export const updateReview = async (req: Request, res: Response): Promise<void> =
   const authReq = req as AuthenticatedRequest;
   try {
     const validatedData = updateReviewSchema.parse(req.body);
-    const { items, overallFeedback, strengths, improvements, additionalComments } = validatedData;
+    const { items, overallFeedback, strengths, improvements, additionalComments, reviewerRemarks } = validatedData;
 
     const review = await db.query.performanceReviews.findFirst({
       where: eq(performanceReviews.id, Number(id))
@@ -685,6 +685,9 @@ export const updateReview = async (req: Request, res: Response): Promise<void> =
         feedbackJson = review.overallFeedback || null;
       }
     }
+
+    // Merge reviewerRemarks/additionalComments into a single value for the column if needed
+    const finalReviewerRemarks = reviewerRemarks || additionalComments || review.reviewerRemarks;
 
     if (items && Array.isArray(items)) {
       const incomingIds = (items as ReviewItemInput[])
@@ -756,6 +759,7 @@ export const updateReview = async (req: Request, res: Response): Promise<void> =
     await db.update(performanceReviews)
       .set({ 
         overallFeedback: feedbackJson, 
+        reviewerRemarks: finalReviewerRemarks || null,
         totalScore, 
         updatedAt: formatDateForMySQL(new Date()) 
       })

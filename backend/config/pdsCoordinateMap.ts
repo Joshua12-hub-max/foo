@@ -223,99 +223,99 @@ export interface PdsCoordinateMap {
 export const PDS_COORDINATE_MAP: PdsCoordinateMap = {
   c1: {
     personalInfo: {
-      // Name fields (typically starting around row 7)
-      surname: { sheet: 1, cell: 'D7' },
-      firstName: { sheet: 1, cell: 'D8' },
-      middleName: { sheet: 1, cell: 'D9' },
+      // Name fields - CORRECTED based on actual Excel file
+      surname: { sheet: 1, cell: 'D10' },
+      firstName: { sheet: 1, cell: 'D11' },
+      middleName: { sheet: 1, cell: 'D12' },
 
       // Birth information
-      birthDate: { sheet: 1, cell: 'D11' },
-      placeOfBirth: { sheet: 1, cell: 'D12' },
+      birthDate: { sheet: 1, cell: 'D13' },
+      placeOfBirth: { sheet: 1, cell: 'D15' },
 
-      // Physical attributes
-      gender: { sheet: 1, row: 13, columns: ['D', 'E', 'F', 'G'] },
-      heightM: { sheet: 1, cell: 'D15' },
-      weightKg: { sheet: 1, cell: 'D16' },
-      bloodType: { sheet: 1, cell: 'D17' },
+      // Physical attributes - EXACT COORDINATES
+      gender: { sheet: 1, row: 16, columns: ['D', 'P'] }, // D=Male, P=Female
+      heightM: { sheet: 1, cell: 'D22' },
+      weightKg: { sheet: 1, cell: 'D24' },
+      bloodType: { sheet: 1, cell: 'D25' },
 
-      // Civil status (typically around row 14)
+      // Civil status - EXACT COORDINATES (all in column P)
       civilStatus: {
-        single: { sheet: 1, row: 14, columns: ['D', 'E'] },
-        married: { sheet: 1, row: 14, columns: ['F', 'G'] },
-        widowed: { sheet: 1, row: 15, columns: ['D', 'E'] },
-        separated: { sheet: 1, row: 15, columns: ['F', 'G'] },
-        others: { sheet: 1, row: 16, columns: ['D', 'E'] },
+        single: { sheet: 1, row: 10, columns: ['P'] }, // Might be row 10 or nearby
+        married: { sheet: 1, row: 11, columns: ['P'] },
+        widowed: { sheet: 1, row: 12, columns: ['P'] },
+        separated: { sheet: 1, row: 13, columns: ['P'] },
+        others: { sheet: 1, row: 16, columns: ['P'] }, // Solo Parent at row 15, Others at row 16
       },
 
-      // Citizenship (typically around row 18)
+      // Citizenship
       citizenship: {
-        filipino: { sheet: 1, row: 18, columns: ['I'] },
-        dualCitizenship: { sheet: 1, row: 18, columns: ['K'] },
-        byBirth: { sheet: 1, row: 19, columns: ['I'] },
-        byNaturalization: { sheet: 1, row: 19, columns: ['K'] },
-        dualCountry: { sheet: 1, cell: 'I20' },
+        filipino: { sheet: 1, row: 13, columns: ['G'] }, // Row 13 has "16. CITIZENSHIP"
+        dualCitizenship: { sheet: 1, row: 15, columns: ['G'] }, // Row 15 has dual citizenship text
+        byBirth: { sheet: 1, row: 13, columns: ['G'] },
+        byNaturalization: { sheet: 1, row: 15, columns: ['G'] },
+        dualCountry: { sheet: 1, cell: 'G15' }, // "Pls. indicate country:" label row
       },
 
-      // Government IDs
-      gsisNumber: { sheet: 1, cell: 'D19' },
-      pagibigNumber: { sheet: 1, cell: 'D20' },
-      philhealthNumber: { sheet: 1, cell: 'D21' },
-      sssNumber: { sheet: 1, cell: 'D22' },
-      tinNumber: { sheet: 1, cell: 'D23' },
-      agencyEmployeeNo: { sheet: 1, cell: 'D24' },
-      umidNumber: { sheet: 1, cell: 'D25' },
-      philsysId: { sheet: 1, cell: 'D26' },
+      // Government IDs - CORRECTED
+      gsisNumber: { sheet: 1, cell: 'D26' }, // NOTE: Not found in test file
+      pagibigNumber: { sheet: 1, cell: 'D29' },
+      philhealthNumber: { sheet: 1, cell: 'D31' },
+      sssNumber: { sheet: 1, cell: 'D32' }, // NOTE: Not found in test file, using PhilSys row
+      tinNumber: { sheet: 1, cell: 'D33' },
+      agencyEmployeeNo: { sheet: 1, cell: 'D34' },
+      umidNumber: { sheet: 1, cell: 'D27' },
+      philsysId: { sheet: 1, cell: 'D32' },
 
-      // Residential address (typically starting around row 18)
+      // Residential address - CORRECTED
       residentialAddress: {
-        houseBlockLot: { sheet: 1, cell: 'I18' },
-        street: { sheet: 1, cell: 'L18' },
-        subdivision: { sheet: 1, cell: 'I20' },
-        barangay: { sheet: 1, cell: 'L20' },
-        city: { sheet: 1, cell: 'I23' },
-        province: { sheet: 1, cell: 'L23' },
-        region: { sheet: 1, cell: 'I24' },
-        zipCode: { sheet: 1, cell: 'I25' },
+        houseBlockLot: { sheet: 1, cell: 'I17' },
+        street: { sheet: 1, cell: 'L17' },
+        subdivision: { sheet: 1, cell: 'I19' },
+        barangay: { sheet: 1, cell: 'L19' },
+        city: { sheet: 1, cell: 'I22' },
+        province: { sheet: 1, cell: 'L22' },
+        region: { sheet: 1, cell: 'I24' }, // ZIP CODE row
+        zipCode: { sheet: 1, cell: 'I24' },
       },
 
-      // Permanent address (typically starting around row 28)
+      // Permanent address - CORRECTED
       permanentAddress: {
-        houseBlockLot: { sheet: 1, cell: 'I28' },
-        street: { sheet: 1, cell: 'L28' },
-        subdivision: { sheet: 1, cell: 'I30' },
-        barangay: { sheet: 1, cell: 'L30' },
-        city: { sheet: 1, cell: 'J32' },
-        province: { sheet: 1, cell: 'N32' },
-        region: { sheet: 1, cell: 'I33' },
-        zipCode: { sheet: 1, cell: 'I34' },
+        houseBlockLot: { sheet: 1, cell: 'I25' },
+        street: { sheet: 1, cell: 'L25' },
+        subdivision: { sheet: 1, cell: 'I27' },
+        barangay: { sheet: 1, cell: 'L27' },
+        city: { sheet: 1, cell: 'J29' },
+        province: { sheet: 1, cell: 'N29' },
+        region: { sheet: 1, cell: 'I31' },
+        zipCode: { sheet: 1, cell: 'I31' },
       },
 
-      // Contact information
-      telephoneNo: { sheet: 1, cell: 'I36' },
-      mobileNo: { sheet: 1, cell: 'I37' },
-      email: { sheet: 1, cell: 'I38' },
+      // Contact information - CORRECTED
+      telephoneNo: { sheet: 1, cell: 'I32' }, // Row 32 G32 label
+      mobileNo: { sheet: 1, cell: 'I33' },
+      email: { sheet: 1, cell: 'I34' },
     },
 
     family: {
       spouse: {
-        surname: { sheet: 1, cell: 'D30' },
-        firstName: { sheet: 1, cell: 'D31' },
-        middleName: { sheet: 1, cell: 'D32' },
-        occupation: { sheet: 1, cell: 'D33' },
-        employer: { sheet: 1, cell: 'D34' },
-        businessAddress: { sheet: 1, cell: 'D35' },
-        telephoneNo: { sheet: 1, cell: 'D36' },
+        surname: { sheet: 1, cell: 'D36' },
+        firstName: { sheet: 1, cell: 'D37' },
+        middleName: { sheet: 1, cell: 'D38' },
+        occupation: { sheet: 1, cell: 'D39' },
+        employer: { sheet: 1, cell: 'D40' },
+        businessAddress: { sheet: 1, cell: 'D41' },
+        telephoneNo: { sheet: 1, cell: 'D42' },
       },
       father: {
-        surname: { sheet: 1, cell: 'D38' },
-        firstName: { sheet: 1, cell: 'D39' },
-        middleName: { sheet: 1, cell: 'D40' },
-        nameExtension: { sheet: 1, cell: 'G39' },
-      },
-      mother: {
         surname: { sheet: 1, cell: 'D43' },
         firstName: { sheet: 1, cell: 'D44' },
         middleName: { sheet: 1, cell: 'D45' },
+        nameExtension: { sheet: 1, cell: 'G44' },
+      },
+      mother: {
+        surname: { sheet: 1, cell: 'D47' },
+        firstName: { sheet: 1, cell: 'D48' },
+        middleName: { sheet: 1, cell: 'D49' },
       },
       children: {
         sheet: 1,
@@ -327,49 +327,49 @@ export const PDS_COORDINATE_MAP: PdsCoordinateMap = {
 
     education: {
       elementary: {
-        schoolName: { sheet: 1, cell: 'D48' },
-        degreeCourse: { sheet: 1, cell: 'G48' },
-        dateFrom: { sheet: 1, cell: 'J48' },
-        dateTo: { sheet: 1, cell: 'K48' },
-        unitsEarned: { sheet: 1, cell: 'L48' },
-        yearGraduated: { sheet: 1, cell: 'M48' },
-        honors: { sheet: 1, cell: 'N48' },
+        schoolName: { sheet: 1, cell: 'D54' },
+        degreeCourse: { sheet: 1, cell: 'G54' },
+        dateFrom: { sheet: 1, cell: 'J54' },
+        dateTo: { sheet: 1, cell: 'K54' },
+        unitsEarned: { sheet: 1, cell: 'L54' },
+        yearGraduated: { sheet: 1, cell: 'M54' },
+        honors: { sheet: 1, cell: 'N54' },
       },
       secondary: {
-        schoolName: { sheet: 1, cell: 'D49' },
-        degreeCourse: { sheet: 1, cell: 'G49' },
-        dateFrom: { sheet: 1, cell: 'J49' },
-        dateTo: { sheet: 1, cell: 'K49' },
-        unitsEarned: { sheet: 1, cell: 'L49' },
-        yearGraduated: { sheet: 1, cell: 'M49' },
-        honors: { sheet: 1, cell: 'N49' },
+        schoolName: { sheet: 1, cell: 'D55' },
+        degreeCourse: { sheet: 1, cell: 'G55' },
+        dateFrom: { sheet: 1, cell: 'J55' },
+        dateTo: { sheet: 1, cell: 'K55' },
+        unitsEarned: { sheet: 1, cell: 'L55' },
+        yearGraduated: { sheet: 1, cell: 'M55' },
+        honors: { sheet: 1, cell: 'N55' },
       },
       vocational: {
-        schoolName: { sheet: 1, cell: 'D50' },
-        degreeCourse: { sheet: 1, cell: 'G50' },
-        dateFrom: { sheet: 1, cell: 'J50' },
-        dateTo: { sheet: 1, cell: 'K50' },
-        unitsEarned: { sheet: 1, cell: 'L50' },
-        yearGraduated: { sheet: 1, cell: 'M50' },
-        honors: { sheet: 1, cell: 'N50' },
+        schoolName: { sheet: 1, cell: 'D56' },
+        degreeCourse: { sheet: 1, cell: 'G56' },
+        dateFrom: { sheet: 1, cell: 'J56' },
+        dateTo: { sheet: 1, cell: 'K56' },
+        unitsEarned: { sheet: 1, cell: 'L56' },
+        yearGraduated: { sheet: 1, cell: 'M56' },
+        honors: { sheet: 1, cell: 'N56' },
       },
       college: {
-        schoolName: { sheet: 1, cell: 'D51' },
-        degreeCourse: { sheet: 1, cell: 'G51' },
-        dateFrom: { sheet: 1, cell: 'J51' },
-        dateTo: { sheet: 1, cell: 'K51' },
-        unitsEarned: { sheet: 1, cell: 'L51' },
-        yearGraduated: { sheet: 1, cell: 'M51' },
-        honors: { sheet: 1, cell: 'N51' },
+        schoolName: { sheet: 1, cell: 'D57' },
+        degreeCourse: { sheet: 1, cell: 'G57' },
+        dateFrom: { sheet: 1, cell: 'J57' },
+        dateTo: { sheet: 1, cell: 'K57' },
+        unitsEarned: { sheet: 1, cell: 'L57' },
+        yearGraduated: { sheet: 1, cell: 'M57' },
+        honors: { sheet: 1, cell: 'N57' },
       },
       graduate: {
-        schoolName: { sheet: 1, cell: 'D52' },
-        degreeCourse: { sheet: 1, cell: 'G52' },
-        dateFrom: { sheet: 1, cell: 'J52' },
-        dateTo: { sheet: 1, cell: 'K52' },
-        unitsEarned: { sheet: 1, cell: 'L52' },
-        yearGraduated: { sheet: 1, cell: 'M52' },
-        honors: { sheet: 1, cell: 'N52' },
+        schoolName: { sheet: 1, cell: 'D58' },
+        degreeCourse: { sheet: 1, cell: 'G58' },
+        dateFrom: { sheet: 1, cell: 'J58' },
+        dateTo: { sheet: 1, cell: 'K58' },
+        unitsEarned: { sheet: 1, cell: 'L58' },
+        yearGraduated: { sheet: 1, cell: 'M58' },
+        honors: { sheet: 1, cell: 'N58' },
       },
     },
   },

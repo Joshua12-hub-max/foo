@@ -12,7 +12,8 @@ export const filterEventsByDate = (events: CalendarDisplayItem[], date: Date): C
   
   // Helper to parse "YYYY-MM-DD" safely into local date context
   const parseLocalDate = (dateStr: string) => {
-    const str = String(dateStr).split('T')[0];
+    // Split by T or Space to handle both ISO and MySQL timestamp formats
+    const str = String(dateStr).split(/[T ]/)[0];
     const [year, month, day] = str.split('-').map(Number);
     if (!year || !month || !day) return new Date(NaN);
     return new Date(year, month - 1, day);
@@ -57,7 +58,8 @@ export const combineCalendarItems = (events: CalendarDisplayItem[], holidays: Ho
 
   // Helper to parse "YYYY-MM-DD" safely into local date
   const parseLocalDate = (dateStr: string | Date) => {
-    const str = String(dateStr).split('T')[0];
+    // Split by T or Space to handle both ISO and MySQL timestamp formats
+    const str = String(dateStr).split(/[T ]/)[0];
     const [year, month, day] = str.split('-').map(Number);
     return new Date(year, month - 1, day);
   };

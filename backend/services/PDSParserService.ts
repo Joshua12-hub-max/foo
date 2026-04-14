@@ -90,6 +90,12 @@ const getCellValue = (sheet: ExcelJS.Worksheet, cellAddress: string): string | n
     return normalizePdsDate(value);
   }
 
+  // Handle hyperlink objects
+  if (typeof value === 'object' && 'text' in value && 'hyperlink' in value) {
+    const hyperlink = value as { text: string; hyperlink: string };
+    return hyperlink.text.trim() || null;
+  }
+
   // Handle rich text
   if (typeof value === 'object' && 'richText' in value) {
     const richText = value.richText as Array<{ text?: string }>;
@@ -213,26 +219,51 @@ const extractAllData = (workbook: ExcelJS.Workbook): RawPdsExcelData => {
         ])
       : null,
     civilStatus: sheet1
-      ? getCheckboxValue(sheet1, PDS_COORDINATE_MAP.c1.personalInfo.civilStatus.single, [
-          { col: 'D', val: 'Single' },
-          { col: 'E', val: 'Single' },
-        ]) ||
-        getCheckboxValue(sheet1, PDS_COORDINATE_MAP.c1.personalInfo.civilStatus.married, [
-          { col: 'F', val: 'Married' },
-          { col: 'G', val: 'Married' },
-        ]) ||
-        getCheckboxValue(sheet1, PDS_COORDINATE_MAP.c1.personalInfo.civilStatus.widowed, [
-          { col: 'D', val: 'Widowed' },
-          { col: 'E', val: 'Widowed' },
-        ]) ||
-        getCheckboxValue(sheet1, PDS_COORDINATE_MAP.c1.personalInfo.civilStatus.separated, [
-          { col: 'F', val: 'Separated' },
-          { col: 'G', val: 'Separated' },
-        ]) ||
-        getCheckboxValue(sheet1, PDS_COORDINATE_MAP.c1.personalInfo.civilStatus.others, [
-          { col: 'D', val: 'Other/s' },
-          { col: 'E', val: 'Other/s' },
-        ])
+      ? (() => {
+          // Check column P for text-based civil status
+          const p11 = getCellValue(sheet1, 'P11');
+          if (p11 && p11.toLowerCase().includes('married')) return 'Married';
+
+          const p12 = getCellValue(sheet1, 'P12');
+          if (p12 && p12.toLowerCase().includes('widow')) return 'Widowed';
+
+          const p13 = getCellValue(sheet1, 'P13');
+          if (p13 && p13.toLowerCase().includes('separated')) return 'Separated';
+
+          const p15 = getCellValue(sheet1, 'P15');
+          if (p15 && p15.toLowerCase().includes('solo parent')) return 'Solo Parent';
+
+          const p16 = getCellValue(sheet1, 'P16');
+          if (p16 && p16.toLowerCase().includes('others')) return 'Other/s';
+
+          const p10 = getCellValue(sheet1, 'P10');
+          if (p10 && p10.toLowerCase().includes('single')) return 'Single';
+
+          // Fallback to checkbox detection
+          return (
+            getCheckboxValue(sheet1, PDS_COORDINATE_MAP.c1.personalInfo.civilStatus.single, [
+              { col: 'D', val: 'Single' },
+              { col: 'E', val: 'Single' },
+            ]) ||
+            getCheckboxValue(sheet1, PDS_COORDINATE_MAP.c1.personalInfo.civilStatus.married, [
+              { col: 'F', val: 'Married' },
+              { col: 'G', val: 'Married' },
+            ]) ||
+            getCheckboxValue(sheet1, PDS_COORDINATE_MAP.c1.personalInfo.civilStatus.widowed, [
+              { col: 'D', val: 'Widowed' },
+              { col: 'E', val: 'Widowed' },
+            ]) ||
+            getCheckboxValue(sheet1, PDS_COORDINATE_MAP.c1.personalInfo.civilStatus.separated, [
+              { col: 'F', val: 'Separated' },
+              { col: 'G', val: 'Separated' },
+            ]) ||
+            getCheckboxValue(sheet1, PDS_COORDINATE_MAP.c1.personalInfo.civilStatus.others, [
+              { col: 'D', val: 'Other/s' },
+              { col: 'E', val: 'Other/s' },
+            ]) ||
+            null
+          );
+        })()
       : null,
     heightM: sheet1 ? getCellValue(sheet1, PDS_COORDINATE_MAP.c1.personalInfo.heightM.cell) : null,
     weightKg: sheet1 ? getCellValue(sheet1, PDS_COORDINATE_MAP.c1.personalInfo.weightKg.cell) : null,

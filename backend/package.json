@@ -19,7 +19,11 @@
     "clean": "rimraf node_modules package-lock.json dist && npm install",
     "type-check": "tsc --noEmit",
     "lint": "eslint .",
-    "build": "swc src -d dist"
+    "build": "swc src -d dist",
+    "diagnose-pds": "node --import @swc-node/register/esm-register scripts/diagnose-pds-display-v2.ts",
+    "test-pds-parser": "node --import @swc-node/register/esm-register scripts/test-pds-parser.ts",
+    "dump-excel": "node --import @swc-node/register/esm-register scripts/dump-excel-cells.ts",
+    "map-excel": "node --import @swc-node/register/esm-register scripts/comprehensive-excel-map.ts"
   },
   "dependencies": {
     "@faker-js/faker": "^10.2.0",

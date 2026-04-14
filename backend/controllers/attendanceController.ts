@@ -364,10 +364,18 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<vo
     
     const isAdminOrHr = ['Administrator', 'Human Resource'].includes(user.role);
     
-    // Default to 'all' for Admin/HR, otherwise 'self'
-    const effectiveId = (queryEmployeeId && queryEmployeeId !== 'all' && queryEmployeeId !== '') 
-      ? String(queryEmployeeId) 
-      : (isAdminOrHr ? 'all' : user.employeeId);
+    // 100% SECURE: Hard enforcement of data ownership.
+    let effectiveId: string;
+    if (isAdminOrHr) {
+        // Admins can request 'all' or a specific employeeId
+        effectiveId = (queryEmployeeId && queryEmployeeId !== 'all' && queryEmployeeId !== '') 
+          ? String(queryEmployeeId) 
+          : 'all';
+    } else {
+        // Regular employees are STRICTLY LOCKED to their own employeeId from the token.
+        // They cannot override this via query parameters.
+        effectiveId = user.employeeId;
+    }
 
     const today = currentManilaDateOnly();
     

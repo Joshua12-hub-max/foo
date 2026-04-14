@@ -96,8 +96,10 @@ export const determineStatus = (
 
   // Night time validation helper (10 PM - 5 AM)
   const isNightTime = (time: string): boolean => {
-    const hour = parseInt(time.split(':')[0]);
-    return hour >= 22 || hour < 5;
+    // Handle both "HH:mm" and "YYYY-MM-DD HH:mm:ss" or ISO strings
+    const timePart = time.includes(' ') ? time.split(' ')[1] : (time.includes('T') ? time.split('T')[1] : time);
+    const hour = parseInt(timePart.split(':')[0]);
+    return !isNaN(hour) && (hour >= 22 || hour < 5);
   };
 
   // Validate night time in

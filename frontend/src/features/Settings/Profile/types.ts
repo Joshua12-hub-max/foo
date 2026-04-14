@@ -31,6 +31,7 @@ export interface BaseProfile {
   religion?: string | null;
   citizenship?: string | null;
   citizenshipType?: string | null;
+  dualCountry?: string | null;
   
   // Contact
   phoneNumber?: string | null;
@@ -77,6 +78,7 @@ export interface BaseProfile {
   philsysId?: string | null;
   philhealthNumber?: string | null;
   pagibigNumber?: string | null;
+  sssNumber?: string | null;
   tinNumber?: string | null;
   gsisNumber?: string | null;
   
@@ -124,7 +126,8 @@ export interface ProfileFormData {
   religion: string;
   citizenship: string;
   citizenshipType: string;
-  
+  dualCountry: string;
+
   // Work
   officeAddress: string;
   station: string;
@@ -140,6 +143,7 @@ export interface ProfileFormData {
   philsysId: string;
   philhealthNumber: string;
   pagibigNumber: string;
+  sssNumber: string;
   tinNumber: string;
   gsisNumber: string;
   

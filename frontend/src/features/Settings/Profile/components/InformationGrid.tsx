@@ -126,6 +126,7 @@ const InformationGrid: React.FC<InformationGridProps> = ({
             {renderInput("Religion", "religion")}
             {renderInput("Citizenship", "citizenship")}
             {renderInput("Citizenship Type", "citizenshipType")}
+            {renderInput("Dual Citizenship Country", "dualCountry")}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8">
@@ -139,6 +140,7 @@ const InformationGrid: React.FC<InformationGridProps> = ({
             <InfoItem label="Religion" value={profile?.religion} />
             <InfoItem label="Citizenship" value={profile?.citizenship} />
             <InfoItem label="Citizenship Type" value={profile?.citizenshipType} />
+            <InfoItem label="Dual Citizenship Country" value={profile?.dualCountry} />
           </div>
         )}
       </ToggleSection>
@@ -254,6 +256,7 @@ const InformationGrid: React.FC<InformationGridProps> = ({
             {renderInput("PhilSys ID", "philsysId")}
             {renderInput("PhilHealth Number", "philhealthNumber")}
             {renderInput("Pag-IBIG Number", "pagibigNumber")}
+            {renderInput("SSS Number", "sssNumber")}
             {renderInput("TIN Number", "tinNumber")}
             {renderInput("GSIS BP Number", "gsisNumber")}
           </div>
@@ -263,6 +266,7 @@ const InformationGrid: React.FC<InformationGridProps> = ({
             <InfoItem label="PhilSys ID" value={profile?.philsysId} />
             <InfoItem label="PhilHealth Number" value={profile?.philhealthNumber} />
             <InfoItem label="Pag-IBIG Number" value={profile?.pagibigNumber} />
+            <InfoItem label="SSS Number" value={profile?.sssNumber} />
             <InfoItem label="TIN Number" value={profile?.tinNumber} />
             <InfoItem label="GSIS BP Number" value={profile?.gsisNumber} />
           </div>

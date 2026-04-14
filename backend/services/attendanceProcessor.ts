@@ -242,8 +242,8 @@ export const processDailyAttendance = async (
       hasScheduleOrTarget,
       isShiftActive,
       timeOut !== null,
-      timeIn ? timeIn.toISOString().split('T')[1].substring(0, 5) : null, // timeIn as HH:mm string
-      timeOut ? timeOut.toISOString().split('T')[1].substring(0, 5) : null // timeOut as HH:mm string
+      timeIn ? formatToManilaDateTime(timeIn) : null, 
+      timeOut ? formatToManilaDateTime(timeOut) : null
     );
 
     if (hasScheduleOrTarget) {

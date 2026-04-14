@@ -12,6 +12,6 @@ const router: Router = Router();
 router.get('/logs', verifyToken, getLogs);
 router.get('/raw-logs', verifyAdmin, getRawLogs);
 router.get('/recent-activity', verifyAdmin, getRecentActivity);
-router.get('/dashboard-stats', verifyAdmin, getDashboardStats);
+router.get('/dashboard-stats', verifyToken, getDashboardStats);
 
 export default router;

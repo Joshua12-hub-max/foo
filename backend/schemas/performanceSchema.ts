@@ -72,5 +72,6 @@ export const updateReviewSchema = z.object({
   overallFeedback: z.string().optional(),
   strengths: z.string().optional(),
   improvements: z.string().optional(),
-  additionalComments: z.string().optional()
+  additionalComments: z.string().optional(),
+  reviewerRemarks: z.string().optional()
 });
